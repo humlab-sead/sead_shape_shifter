@@ -74,11 +74,15 @@ tidy:
 	@uv run black src tests backend ingesters
 
 .PHONY: lint
-lint: tidy ruff pylint check-target-model-schema-reference
+lint: tidy ruff pylint check-target-model-schema-reference check-doc-links
 
 .PHONY: check-imports
 check-imports:
 	@python scripts/check_imports.py
+
+.PHONY: check-doc-links
+check-doc-links:
+	@scripts/check_doc_links.sh
 
 ################################################################################
 # JSON Schema generation (for frontend Monaco editor autocomplete)
@@ -179,7 +183,7 @@ backend-run:
 	@echo "Starting backend server on http://localhost:$(BACKEND_PORT)"
 	@PYTHONPATH=. uv run uvicorn backend.app.main:app \
 		--log-level debug \
-		--host 0.0.0.0 --port $(BACKEND_PORT) \
+		--host 127.0.0.1 --port $(BACKEND_PORT) \
 		--timeout-keep-alive 120
 
 .PHONY: backend-run-log
@@ -188,7 +192,7 @@ backend-run-log:
 	@mkdir -p logs
 	@PYTHONPATH=. uv run uvicorn backend.app.main:app \
 		--log-level debug \
-		--host 0.0.0.0 --port $(BACKEND_PORT) \
+		--host 127.0.0.1 --port $(BACKEND_PORT) \
 		--timeout-keep-alive 120 2>&1 | tee logs/backend.log
 
 .PHONY: backend-run-with-hmr
@@ -211,7 +215,7 @@ backend-run-with-hmr:
 		--timeout-keep-alive 120 \
 		--reload-exclude 'tests' \
 		--reload-exclude 'backend/tests' \
-		--host 0.0.0.0 --port $(BACKEND_PORT)
+		--host 127.0.0.1 --port $(BACKEND_PORT)
 
 
 .PHONY: backend-test
@@ -260,6 +264,18 @@ install-graphify:
 	@graphify vscode install
 	@graphify codex install
 	@echo "✓ Graphify installed and pre-commit hook set up"
+
+# 	@graphify extract . --project
+# 	@graphify cluster-only $(HOME)/source/sead_shape_shifter
+# 	@graphify export callflow-html
+
+commit-graphify:
+	@git add graphify-out
+	@if git diff --cached --quiet -- graphify-out; then \
+		echo "No changes in graphify§-out"; \
+	else \
+		git commit -m "chore: updated graphify graph"; \
+	fi
 
 ################################################################################
 # Project Editor UI
@@ -320,22 +336,6 @@ frontend-run:
 frontend-preview:
 	@echo "Preview production build on http://localhost:4173"
 	@cd frontend && pnpm preview
-
-################################################################################
-# Docker
-################################################################################
-
-# Include Docker recipes from docker/Makefile
-DOCKER_DIR := ./docker
-export DOCKER_DIR
-include docker/Makefile
-
-.PHONY: docker-patch-frontend
-docker-patch-frontend:
-	@echo "Rebuilding frontend and patching running container..."
-	@cd frontend && pnpm build:skip-check
-	@docker cp frontend/dist/. shape-shifter:/app/frontend/dist/
-	@echo "✓ Frontend patched in running container"
 
 ################################################################################
 # Other stuff

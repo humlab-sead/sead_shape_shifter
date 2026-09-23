@@ -54,12 +54,34 @@ class TestBuildChangeRequestPackage:
                 "sample_taxon": ProjectedTable(entity_name="sample_taxon", frame=bridge_frame.copy()),
             }
         )
+        planned_tables = [
+            PlannedTable(
+                entity_name="sample",
+                frame=sample_frame,
+                planned_actions=pd.Series(
+                    [PlannedRowAction.REFERENCE_EXISTING, PlannedRowAction.ALLOCATE, PlannedRowAction.RECONCILE],
+                    index=sample_frame.index,
+                    name="_planned_action",
+                ),
+            ),
+            PlannedTable(
+                entity_name="sample_taxon",
+                frame=bridge_frame,
+                planned_actions=pd.Series(
+                    [PlannedRowAction.EVALUATE_BRIDGE],
+                    index=bridge_frame.index,
+                    name="_planned_action",
+                ),
+            ),
+        ]
 
-        package = build_change_request_package(projection_result, identity_result)
+        package = build_change_request_package(projection_result, identity_result, planned_tables)
 
         assert set(package.tables) == {"sample", "sample_taxon"}
         assert package.tables["sample"].frame["sample_name"].tolist() == ["new"]
         assert package.tables["sample"].row_states.tolist() == [ChangeRowState.NEWLY_ALLOCATED_ENTITY]
+        assert package.tables["sample"].planned_actions is not None
+        assert package.tables["sample"].planned_actions.tolist() == [PlannedRowAction.ALLOCATE]
         assert package.tables["sample_taxon"].frame["sample_taxon_id"].tolist() == [5001]
         assert package.tables["sample_taxon"].row_states.tolist() == [ChangeRowState.DERIVED_BRIDGE_ROW]
 
@@ -120,4 +142,5 @@ class TestBuildChangeRequestPackage:
         package = build_change_request_package(projection_result, identity_result, planned_tables)
 
         assert package.tables["sample"].frame["sample_name"].tolist() == ["changed"]
+        assert package.tables["sample"].planned_actions is not None
         assert package.tables["sample"].planned_actions.tolist() == [PlannedRowAction.UPDATE_EXISTING_CANDIDATE]

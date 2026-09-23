@@ -69,11 +69,11 @@ Those topics belong in developer-facing documentation, design/architecture docum
 
 ## Sources to trust
 
-- `docker/docker-compose.yml`, `docker/Dockerfile` — runtime service definitions
-- `docker/Makefile`, `docker/build.sh` — build and deployment scripts
+- `container/podman-compose.yml`, `container/Containerfile` — runtime service definitions
+- `container/Makefile`, `container/scripts/build.sh` — build and deployment scripts
 - `.github/workflows/` — CI/CD pipeline definitions
 - `backend/app/core/config.py` — runtime configuration and environment variable definitions
 - `AGENTS.md` — canonical architecture and operational rules
 - `docs/DEVELOPMENT.md` — scope boundary for local vs runtime configuration
 
-Verify operational claims against current workflow files, Docker config, and runtime configuration before documenting them.
+Verify operational claims against current workflow files, Podman configuration, and runtime configuration before documenting them.

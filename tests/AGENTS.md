@@ -19,6 +19,7 @@ make test                               # full suite (Core + backend)
 - Use `@pytest.mark.asyncio` for all async tests (any test that calls `ShapeShifter.normalize()` or a loader).
 - Test domain validators by passing inline `pd.DataFrame` values — no project file, no database.
 - Test data loaders: cover both `load()` (success path) and `test_connection()` (success and failure paths).
+- Patch shared modules (`click`, `loguru`) through `monkeypatch`. Assigning to them directly, such as `module.click.echo = MagicMock()`, changes the imported module for the whole pytest process and breaks unrelated test files.
 - Never call `asyncio.run()` inside a test — use `@pytest.mark.asyncio` instead.
 - Never import `backend.*` from test files in this directory.
 - Use absolute imports: `from src...`.

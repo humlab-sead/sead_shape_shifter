@@ -84,7 +84,7 @@ E2E tests require both the backend and frontend servers to be running.
 
 Detailed manual test procedures (UI checklists, feature-specific verification steps) are maintained separately:
 
-- [Manual Testing Guide](other/MANUAL_TESTING_GUIDE.md) — UI walkthrough checklists for core application features
+- [Manual Testing Guide](testing/MANUAL_TESTING_GUIDE.md) — UI walkthrough checklists for core application features
 - [Merged Entity Manual Test Checklist](testing/MERGED_ENTITY_MANUAL_TEST_CHECKLIST.md) — merged entity setup and verification
 - [Target Model Conformance Manual Test Checklist](testing/TARGET_MODEL_CONFORMANCE_MANUAL_TEST_CHECKLIST.md) — conformance validation across fixture types
 - [Error Scenario Testing](testing/ERROR_SCENARIO_TESTING.md) — error handling and recovery
@@ -214,4 +214,4 @@ The current CI pipeline (`.github/workflows/release.yml`) runs semantic-release 
 - [DESIGN.md](DESIGN.md) — architecture, layer boundaries, pipeline design
 - [OPERATIONS.md](OPERATIONS.md) — environments, deployment, and CI/CD
 - [CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md) — YAML project configuration reference
-- Manual test guides: [other/MANUAL_TESTING_GUIDE.md](other/MANUAL_TESTING_GUIDE.md), [testing/](testing/)
+- Manual test guides: [testing/MANUAL_TESTING_GUIDE.md](testing/MANUAL_TESTING_GUIDE.md), [testing/](testing/)

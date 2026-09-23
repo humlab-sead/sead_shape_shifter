@@ -1147,6 +1147,7 @@ class ShapeShiftProject:
                 runtime_root=dotget(context, "runtime_root, application_root"),
                 application_root_env_var=dotget(context, "application_root_env_var", "APPLICATION_ROOT"),
                 source_path=dotget(context, "filename, file_path") or self.filename,
+                allowed_roots=tuple(context.get("allowed_roots", ())),
                 inplace=False,
                 strict=strict,
             ),
@@ -1226,7 +1227,7 @@ class ShapeShiftProject:
     @staticmethod
     def from_file(
         filename: str,
-        env_file: str = ".env",
+        env_file: str | None = ".env",
         env_prefix: str = "SHAPE_SHIFTER",
         runtime_root: str | Path | None = None,
         application_root_env_var: str = "APPLICATION_ROOT",

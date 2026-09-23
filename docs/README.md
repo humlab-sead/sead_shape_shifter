@@ -1,291 +1,83 @@
 # Shape Shifter Documentation
 
-## Overview
+This directory contains the active guides, references, deployment runbooks, and proposal records for Shape Shifter.
 
-This directory contains comprehensive documentation for the Shape Shifter data transformation framework and its Project Editor UI.
+## Main Guides
 
-## Main Documentation
+| Document | Purpose |
+|---|---|
+| [USER_GUIDE.md](USER_GUIDE.md) | Use the Project Editor to create projects, manage entities, validate data, and export results. |
+| [CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md) | YAML configuration reference for entities, data sources, transformations, relationships, directives, and validation. |
+| [DEVELOPMENT.md](DEVELOPMENT.md) | Local setup, development workflow, architecture pointers, testing, and contribution practices. |
+| [TESTING.md](TESTING.md) | Test strategy, test levels, fixtures, browser checks, and manual verification. |
+| [OPERATIONS.md](OPERATIONS.md) | Runtime configuration, deployment, health checks, backups, recovery, and rollback. |
 
-These are the primary system documentation files:
+## Architecture And Requirements
 
-### User Documentation
+| Document | Purpose |
+|---|---|
+| [DESIGN.md](DESIGN.md) | System architecture, data flow, API boundaries, security, and design decisions. |
+| [DIAGRAMS.md](DIAGRAMS.md) | System, workflow, sequence, state, deployment, and registry diagrams. |
+| [REQUIREMENTS.md](REQUIREMENTS.md) | Functional and non-functional requirements, personas, use cases, constraints, and success criteria. |
+| [GLOSSARY.md](GLOSSARY.md) | Definitions for Shape Shifter terms used across import, transformation, validation, and export. |
+| [SQL_SAFETY_POLICY.md](SQL_SAFETY_POLICY.md) | Rules for SQL execution, query validation, and database safety. |
 
-- **[USER_GUIDE.md](USER_GUIDE.md)**
-  - Getting started with Shape Shifter
-  - Working with projects
-  - Managing entities and relationships
-  - Dual-mode entity editing (Form and YAML)
-  - Validation workflows
-  - Performance optimization
-  - Tips, troubleshooting, and FAQ
+## Security And Data Contracts
 
-### System Requirements & Architecture
+| Document | Purpose |
+|---|---|
+| [AUTHORIZATION.md](AUTHORIZATION.md) | Authorization principals, resources, roles, actions, denial behavior, and enforcement coverage. |
+| [AUTHORIZATION_ROUTE_INVENTORY.md](AUTHORIZATION_ROUTE_INVENTORY.md) | API route inventory and authorization classification status. |
+| [DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](DATA_PROVIDER_SUBMISSION_LIFECYCLE.md) | Lifecycle policy for provider-submitted data changes and version history. |
+| [TARGET_MODEL_GUIDE.md](TARGET_MODEL_GUIDE.md) | Target model concepts, authoring guidance, and validation workflow. |
+| [TARGET_MODEL_SCHEMA_REFERENCE.md](TARGET_MODEL_SCHEMA_REFERENCE.md) | Generated target-model schema reference. |
 
-- **[REQUIREMENTS.md](REQUIREMENTS.md)**
-  - 33 functional requirements (FR-1 to FR-33)
-  - 15 non-functional requirements (NFR-1 to NFR-15)
-  - User personas and use cases
-  - Success criteria and constraints
-  - Comprehensive glossary
+## Deployment
 
-- **[DESIGN.md](DESIGN.md)**
-  - System architecture (Vue3 + FastAPI)
-  - Backend and frontend architecture details
-  - Design patterns and best practices
-  - API design and data flow
-  - Security considerations
-  - Deployment architecture
+| Document | Purpose |
+|---|---|
+| [container/README.md](../container/README.md) | Supported Podman deployment quick start, configuration, lifecycle commands, and diagnostics. |
+| [container/DEPLOYMENT.md](../container/DEPLOYMENT.md) | Deployment-host setup, environment deployment, reverse proxy, systemd, and multi-environment procedures. |
 
-### Project
-
-- **[CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md)** 
-  - Complete YAML configuration reference
-  - Entity definitions and all properties
-  - **Foreign Key Constraints** - Complete validation system with cardinality, match requirements, data quality constraints
-  - **Append Project** - Union/concatenation of multiple data sources (SQL, fixed, data)
-  - **Project Validation** - 9 validation specifications with detailed error reporting
-  - Data sources and transformations
-  - Unnest operations (wide to long format)
-  - Special syntax (@value, @include, @load)
-  - Complete examples and best practices
-  - Troubleshooting guide
-
-- **[DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](DATA_PROVIDER_SUBMISSION_LIFECYCLE.md)**
-  - Durable lifecycle policy for provider-submitted data changes
-  - Ownership-first update rules and one-live-version history invariants
-  - Allowed, restricted, and blocked change classes
-  - Minimum state model and state-transition policy contract
-
-### Development
-
-- **[DEVELOPMENT.md](DEVELOPMENT.md)**
-  - Development environment setup
-  - System architecture deep-dive
-  - Backend development with Python/FastAPI
-  - Frontend development with Vue3
-  - Testing strategies and procedures
-  - API development guide
-  - Code organization and patterns
-  - Best practices and conventions
-  - Troubleshooting and debugging
-  - Contributing guidelines
-
-- **[OPERATIONS.md](OPERATIONS.md)**
-  - Environments and operational assumptions
-  - Configuration and secrets model
-  - Data layout and mounted paths
-  - Build artifacts and image tagging
-  - Deployment flow and deploy scripts
-  - CI pipeline and release process
-  - Post-deployment verification and smoke checks
-  - Rollback procedure
-  - Health checks, observability, and log management
-  - Backup and recovery
-
-- **[proposal-writing-guide.instructions.md](../.github/instructions/proposal-writing-guide.instructions.md)**
-  - Rules for writing short, problem-focused design proposals
-  - Keeps proposal documents precise, concrete, and decision-oriented
-  - Moved to `.github/instructions/` so it loads automatically when editing proposals
-
-- **[templates/PROPOSAL_TEMPLATE.md](templates/PROPOSAL_TEMPLATE.md)**
-  - Default template for new design proposals
-  - Provides a lean structure with optional sections for more complex decisions
-
-### Testing
-
-- **[TESTING.md](TESTING.md)**
-  - Testing philosophy and strategy
-  - Backend testing with pytest
-  - Frontend testing with Vitest
-  - Cross-browser testing procedures
-  - Integration testing checklists
-  - Manual testing procedures
-  - Performance testing
-  - Accessibility testing
-  - Test data management
-  - CI/CD integration
-
-## Supplementary Documentation
-
-### Design Proposals
+## Proposals
 
 Proposal documents are grouped by status:
 
-- **[proposals/](proposals/)**: active and backlog proposals under discussion
-- **[proposals/future/](proposals/future/)**: deferred proposals kept for later work
-- **[proposals/done/](proposals/done/)**: completed or decided proposals
-- **[proposals/onhold/](proposals/onhold/)**: paused proposal work
+| Location | Contents |
+|---|---|
+| [proposals/](proposals/) | Active proposals and current implementation decisions. |
+| [proposals/future/](proposals/future/) | Deferred proposals kept for later work. |
+| [proposals/done/](proposals/done/) | Completed or decided proposals and archived records. |
+| [proposals/onhold/](proposals/onhold/) | Paused proposal work. |
 
-Current proposals:
+Current proposal entry points:
 
-- **[proposals/BUGSCEP_PILOT_PROJECT.md](proposals/BUGSCEP_PILOT_PROJECT.md)**
-  - Documents the current BugsCEP pilot and the next implementation slices for continued migration work.
+| Document | Purpose |
+|---|---|
+| [BUGSCEP_PILOT_PROJECT.md](proposals/BUGSCEP_PILOT_PROJECT.md) | BugsCEP pilot status and next implementation slices. |
+| [BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md](proposals/BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md) | Branch-scoped consumption for mixed-branch parent rows. |
+| [RECONCILIATION_FUTURE_IMPROVEMENTS.md](proposals/RECONCILIATION_FUTURE_IMPROVEMENTS.md) | Future reconciliation improvements. |
+| [RULESYNC_AGENT_INSTRUCTIONS_UNIFICATION.md](proposals/RULESYNC_AGENT_INSTRUCTIONS_UNIFICATION.md) | Unification of agent instructions and rulesync behavior. |
+| [CHANGE_REQUEST_INGESTER/](proposals/CHANGE_REQUEST_INGESTER/) | Change-request ingester design, implementation plans, and follow-up records. |
+| [SHAPESHIFTER_PROJECT_AI_ADVISOR/](proposals/SHAPESHIFTER_PROJECT_AI_ADVISOR/) | Project advisor proposal and implementation-readiness documents. |
 
-- **[proposals/BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md](proposals/BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md)**
-  - Proposes explicit branch-scoped consumption for downstream entities that read mixed-branch parent rows.
+## Supporting Material
 
-- **[proposals/done/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](proposals/done/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md)**
-  - Records the completed conformance backlog rollout and the deferred follow-up that moved out of the active proposal set.
+| Location | Contents |
+|---|---|
+| [presentations/](presentations/) | Presentations for development teams, archaeologists, and stakeholders. |
+| [other/](other/) | Specialized extension and implementation guides. |
+| [templates/](templates/) | Templates for proposals and other project documents. |
+| [whats-new/](whats-new/) | User-facing release notes and publishing templates. |
+| [archive/](archive/) | Historical implementation notes and feature-specific records. |
 
-- **[proposals/CHANGE_REQUEST_INGESTER/](proposals/CHANGE_REQUEST_INGESTER/)**
-  - Groups the active change-request ingester design and follow-up proposal documents.
+## Navigation
 
-Future proposals:
+- **Use Shape Shifter:** [USER_GUIDE.md](USER_GUIDE.md) and [CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md)
+- **Develop:** [DEVELOPMENT.md](DEVELOPMENT.md), [DESIGN.md](DESIGN.md), and [TESTING.md](TESTING.md)
+- **Operate:** [OPERATIONS.md](OPERATIONS.md), [container/README.md](../container/README.md), and [container/DEPLOYMENT.md](../container/DEPLOYMENT.md)
+- **Understand requirements:** [REQUIREMENTS.md](REQUIREMENTS.md) and [GLOSSARY.md](GLOSSARY.md)
+- **Configure relationships:** [Foreign Key Constraints](CONFIGURATION_GUIDE.md#foreign-key-constraints) and [Append Project](CONFIGURATION_GUIDE.md#append-project-unionconcatenation)
+- **Validate projects:** [Project Validation](CONFIGURATION_GUIDE.md#project-validation)
 
-- **[proposals/future/AI_PROJECT_ADVISOR_PROPOSAL.md](proposals/future/AI_PROJECT_ADVISOR_PROPOSAL.md)**
-  - Proposal for a grounded project advisor with Shape Shifter and SEAD/SIMS knowledge.
-
-- **[proposals/future/COMMENT_PRESERVING_SAVE_PATH.md](proposals/future/COMMENT_PRESERVING_SAVE_PATH.md)**
-  - Proposes preserving YAML comments across ordinary project saves so local modeling rationale is not lost during editor round trips.
-
-- **[proposals/future/COMMENT_PRESERVING_SAVE_PATH_IMPLEMENTATION_SKETCH.md](proposals/future/COMMENT_PRESERVING_SAVE_PATH_IMPLEMENTATION_SKETCH.md)**
-  - Companion technical sketch for implementing the comment-preserving save proposal.
-
-- **[proposals/future/FIXED_ENTITY_TYPE_CONVENTION_ENHANCEMENTS.md](proposals/future/FIXED_ENTITY_TYPE_CONVENTION_ENHANCEMENTS.md)**
-  - Tracks deferred work around fixed-entity type conventions.
-
-- **[proposals/future/FK_NULL_KEY_POLICY_MODEL.md](proposals/future/FK_NULL_KEY_POLICY_MODEL.md)**
-  - Placeholder for a later phase proposal about an explicit missing-key policy model.
-
-- **[proposals/future/QUERY_FILTER_ENGINE_SELECTION.md](proposals/future/QUERY_FILTER_ENGINE_SELECTION.md)**
-  - Defers a narrow extension to allow explicit pandas query-engine selection (`engine: python`) on `type: query` filters.
-
-- **[proposals/future/PENDING_IMPROVEMENTS.md](proposals/future/PENDING_IMPROVEMENTS.md)**
-  - Collects proposal ideas that remain deferred but not yet closed.
-
-- **[proposals/future/UNIFIED_FILE_BACKED_ENTITY_TYPE.md](proposals/future/UNIFIED_FILE_BACKED_ENTITY_TYPE.md)**
-  - Proposes replacing separate file-backed entity types with one `type: file` model plus format selection.
-
-### Done Proposals
-
-- **[proposals/done/](proposals/done/)**
-  - Browse completed and decided proposal documents.
-
-- **[proposals/done/BOUNDARY_BASED_PROJECT_PERSISTENCE.md](proposals/done/BOUNDARY_BASED_PROJECT_PERSISTENCE.md)**
-  - Proposes narrower project-save boundaries as a foundation for later collaboration and persistence improvements.
-
-- **[proposals/done/DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md](proposals/done/DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md)**
-  - Records the completed follow-through work around `extra_columns` derived values.
-
-- **[proposals/done/FK_LOOKUP_NULL_KEY_DEFAULT_BEHAVIOR.md](proposals/done/FK_LOOKUP_NULL_KEY_DEFAULT_BEHAVIOR.md)**
-  - Defines the current default behavior for null handling in lookup-style foreign-key joins.
-
-- **[proposals/done/MATERIALIZED_DEPENDENCY_VISUALIZATION.md](proposals/done/MATERIALIZED_DEPENDENCY_VISUALIZATION.md)**
-  - Documents the delivered dependency-graph support for frozen historical source dependencies.
-
-- **[proposals/done/USER_FACING_RELEASE_NOTES_STRATEGY.md](proposals/done/USER_FACING_RELEASE_NOTES_STRATEGY.md)**
-  - Covers the adopted strategy for user-facing release notes alongside the technical changelog.
-
-### Other Documents
-
-- **[presentations/PRESENTATION.md](presentations/PRESENTATION.md)**
-  - Marp slide deck: general system overview for the SEAD development team
-
-- **[presentations/PRESENTATION_ARCHAEOLOGISTS.md](presentations/PRESENTATION_ARCHAEOLOGISTS.md)**
-  - Marp slide deck: Shape Shifter overview for archaeologists and domain experts
-
-- **[presentations/EXECUTIVE_SUMMARY.md](presentations/EXECUTIVE_SUMMARY.md)**
-  - Short non-technical summary of Shape Shifter for stakeholders
-
-- **[other/DSL_EXTENSIBILITY_GUIDE.md](other/DSL_EXTENSIBILITY_GUIDE.md)**
-  - Extension guide for adding new expression types or functions to the tiny DSL after the initial implementation.
-  - Covers AST, parser, validator, evaluator, and backend update points.
-
-### What's New
-
-- **[whats-new/README.md](whats-new/README.md)**
-  - User-facing release notes index and publishing guidance
-
-- **[whats-new/TEMPLATE.md](whats-new/TEMPLATE.md)**
-  - Reusable template for concise, non-technical release summaries
-
-## Archived Documentation
-
-Historical implementation notes and feature-specific documentation have been moved to [archive/](archive/) including:
-- Entity state management implementations
-- Server state refactoring notes  
-- Schema refactoring details
-- Hash-based cache invalidation
-- Driver schema registry
-- Split pane implementations
-- YAML editor feature specs
-- Frontend session management
-- Reconciliation revision notes
-
-These are preserved for reference but may contain outdated information.
-
-## Quick Navigation
-
-### I want to
-
-**Use Shape Shifter:**
-- Start here: [USER_GUIDE.md](USER_GUIDE.md)
-- Configure transformations: [CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md)
-
-**Develop on Shape Shifter:**
-- Start here: [DEVELOPMENT.md](DEVELOPMENT.md)
-- Architecture overview: [DESIGN.md](DESIGN.md)
-- Operations and deployment: [OPERATIONS.md](OPERATIONS.md)
-
-**Test Shape Shifter:**
-- Testing procedures: [TESTING.md](TESTING.md)
-- Project validation: [CONFIGURATION_GUIDE.md - Project Validation section](CONFIGURATION_GUIDE.md#project-validation)
-
-**Understand Requirements:**
-- Feature requirements: [REQUIREMENTS.md](REQUIREMENTS.md)
-- System architecture: [DESIGN.md](DESIGN.md)
-
-**Configure Relationships:**
-- Foreign keys & constraints: [CONFIGURATION_GUIDE.md - Foreign Key Constraints section](CONFIGURATION_GUIDE.md#foreign-key-constraints)
-- Union/concatenation: [CONFIGURATION_GUIDE.md - Append Project section](CONFIGURATION_GUIDE.md#append-project-unionconcatenation)
-
-**Validate Projects:**
-- Comprehensive validation guide: [CONFIGURATION_GUIDE.md - Project Validation section](CONFIGURATION_GUIDE.md#project-validation)
-
-## Documentation Standards
-
-All main documentation follows these principles:
-
-- **Complete**: Comprehensive coverage of features and use cases
-- **Accurate**: Up-to-date with current implementation
-- **Clear**: Written for the target audience (users, developers, testers)
-- **Project-Agnostic**: Free of sprint/phase-specific references
-- **Maintainable**: Structured for long-term maintenance
-- **Searchable**: Clear headings, table of contents, and cross-references
-
-## Contributing to Documentation
-
-When updating documentation:
-
-1. **Update the relevant main guide** rather than creating new files
-2. **Maintain consistency** with existing structure and style
-3. **Update this README** if adding new documentation files
-4. **Test examples** to ensure they work with current code
-5. **Update cross-references** if moving or renaming content
-6. **Remove outdated information** rather than marking as deprecated
-
-## Version History
-
-- **v0.2.0** (2025-12-31): Configuration → Project refactoring
-  - Renamed "configuration" to "project" throughout
-  - Archived implementation-specific documentation
-  - Updated API endpoints and class names
-  - Consolidated active documentation
-  
-- **v0.1.0** (2025-12-14): Initial consolidated documentation
-  - Created 6 main system documentation files
-  - Consolidated 10+ source documents
-  - Established documentation structure
-
-## Support
-
-For questions or issues:
-
-- **GitHub Issues**: Report bugs or request features
-- **Discussions**: Ask questions and share ideas
-- **Documentation Issues**: Report inaccuracies or suggest improvements
-
----
-
-**Last Updated**: December 31, 2025  
-**Documentation Version**: 2.0
+Archived documents are retained for historical reference and may describe behavior that no longer exists. Use the active documents above for current behavior.

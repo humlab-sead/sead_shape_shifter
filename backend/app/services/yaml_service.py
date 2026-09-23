@@ -33,6 +33,8 @@ from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap, CommentedSeq
 from ruamel.yaml.scalarstring import LiteralScalarString, SingleQuotedScalarString
 
+from src.path_resolution import resolve_contained_path
+
 YamlPath = tuple[str | int, ...]
 CommentRegistry = dict[YamlPath, str]
 
@@ -678,13 +680,13 @@ class YamlService:
 
         # Create backup directory in project folder: project_dir/backups/
         project_dir: Path = path.parent
-        backup_dir: Path = project_dir / "backups"
+        backup_dir = resolve_contained_path("backups", project_dir)
         backup_dir.mkdir(parents=True, exist_ok=True)
 
         # Generate timestamp with microseconds to avoid collisions
         timestamp: str = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         backup_name: str = f"{path.stem}.backup.{timestamp}{path.suffix}"
-        backup_path: Path = backup_dir / backup_name
+        backup_path = resolve_contained_path(backup_name, backup_dir)
 
         try:
             logger.debug(f"Creating backup: {path} -> {backup_path}")
@@ -727,13 +729,21 @@ class YamlService:
             logger.warning("list_backups called without project_dir, returning empty list")
             return []
 
-        backup_dir: Path = Path(project_dir) / "backups"
+        backup_dir = resolve_contained_path("backups", project_dir)
 
         if not backup_dir.exists():
             return []
 
         pattern: str = "*.backup.*"
-        backups: list[Path] = sorted(backup_dir.glob(pattern), key=lambda p: p.stat().st_mtime, reverse=True)
+        backups = []
+        for backup in backup_dir.glob(pattern):
+            try:
+                managed_backup = resolve_contained_path(backup, backup_dir, allow_absolute=True)
+            except ValueError:
+                continue
+            if managed_backup.is_file():
+                backups.append(managed_backup)
+        backups.sort(key=lambda p: p.stat().st_mtime, reverse=True)
 
         logger.debug(f"Found {len(backups)} backup(s) for pattern '{pattern}' in {backup_dir}")
         return list(backups)
@@ -755,6 +765,12 @@ class YamlService:
         """
         backup = Path(backup_path)
         target = Path(target_path)
+
+        try:
+            backup = resolve_contained_path(backup, target.parent / "backups", allow_absolute=True)
+            target = resolve_contained_path(target.name, target.parent, allow_absolute=False)
+        except ValueError as exc:
+            raise YamlServiceError("Backup path is outside the managed project directory") from exc
 
         if not backup.exists():
             raise YamlServiceError(f"Backup file not found: {backup}")

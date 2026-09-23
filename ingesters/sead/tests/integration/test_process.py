@@ -6,13 +6,18 @@ from ingesters.sead.submission import Submission
 from src.configuration.config import Config
 
 
-def test_create_options(cfg: Config):
+def test_create_options():
     opts: Options = Options(
         **{
             "submission_name": "42",
             "filename": "data/projects/dummy.xlsx",
             "data_types": "dendrochronology",
-            "database": cfg.get("options:database"),
+            "database": {
+                "host": "localhost",
+                "port": 9999,
+                "user": "myuser",
+                "dbname": "sead",
+            },
             "output_folder": "data/output",
             "skip": False,
             "submission_id": None,

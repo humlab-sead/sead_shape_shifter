@@ -18,6 +18,7 @@ from backend.app.exceptions import (
 from backend.app.services.project import ProjectServiceError
 from backend.app.services.yaml_service import YamlServiceError
 from backend.app.utils.exceptions import BaseAPIException
+from backend.app.utils.public_errors import public_error_detail
 
 T = TypeVar("T")
 
@@ -94,22 +95,22 @@ def handle_endpoint_errors(func: Callable[..., T]) -> Callable[..., T]:
 
         # Handle custom API exceptions with status codes (legacy)
         except BaseAPIException as e:
-            logger.exception(f"API error in {func.__name__}: {e}")
-            raise HTTPException(status_code=e.status_code, detail=str(e)) from e
+            logger.error(f"API error in {func.__name__} [{e.__class__.__name__}]")
+            raise HTTPException(status_code=e.status_code, detail=public_error_detail("Request failed")) from e
 
         # Handle service-level errors (legacy - generic 500)
         except (ProjectServiceError, YamlServiceError) as e:
-            logger.exception(f"Service error in {func.__name__}: {e}")
-            raise HTTPException(status_code=500, detail=str(e)) from e
+            logger.error(f"Service error in {func.__name__} [{e.__class__.__name__}]")
+            raise HTTPException(status_code=500, detail=public_error_detail("Request failed")) from e
 
         # Handle unexpected errors (structured response)
         except Exception as e:
-            logger.exception(f"Unexpected error in {func.__name__}: {e}")
+            logger.error(f"Unexpected error in {func.__name__} [{e.__class__.__name__}]")
             raise HTTPException(
                 status_code=500,
                 detail={
                     "error_type": "InternalServerError",
-                    "message": str(e) or "An unexpected error occurred",
+                    "message": public_error_detail("An unexpected error occurred"),
                     "tips": [
                         "Check server logs for details",
                         "Verify your request parameters are valid",

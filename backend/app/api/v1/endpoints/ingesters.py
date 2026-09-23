@@ -1,7 +1,11 @@
 """API endpoints for data ingester operations."""
 
-from fastapi import APIRouter, HTTPException, status
+from typing import Annotated
 
+from fastapi import APIRouter, Depends, HTTPException, status
+
+from backend.app.authorization.dependencies import require_application_action
+from backend.app.authorization.models import Action, Principal
 from backend.app.models.ingester import (
     IngesterMetadataResponse,
     IngestRequest,
@@ -12,6 +16,7 @@ from backend.app.models.ingester import (
 from backend.app.services.ingester_service import get_ingester_service
 
 router = APIRouter()
+ingester_operator_dependency = require_application_action(Action.RUN_INGESTERS)
 
 
 @router.get("", response_model=list[IngesterMetadataResponse])
@@ -25,7 +30,11 @@ async def list_ingesters() -> list[IngesterMetadataResponse]:
 
 
 @router.post("/{key}/validate", response_model=ValidateResponse)
-async def validate_data(key: str, request: ValidateRequest) -> ValidateResponse:
+async def validate_data(
+    key: str,
+    request: ValidateRequest,
+    _: Annotated[Principal, Depends(ingester_operator_dependency)],
+) -> ValidateResponse:
     """Validate data using the specified ingester.
 
     Args:
@@ -36,7 +45,8 @@ async def validate_data(key: str, request: ValidateRequest) -> ValidateResponse:
         Validation result with is_valid flag, errors, and warnings
 
     Raises:
-        HTTPException: 404 if ingester not found, 500 if validation fails critically
+        HTTPException: 403 if the principal lacks run_ingesters, 404 if ingester not found,
+        500 if validation fails critically
     """
     try:
         result = await get_ingester_service().validate(key, request)
@@ -48,7 +58,11 @@ async def validate_data(key: str, request: ValidateRequest) -> ValidateResponse:
 
 
 @router.post("/{key}/ingest", response_model=IngestResponse)
-async def ingest_data(key: str, request: IngestRequest) -> IngestResponse:
+async def ingest_data(
+    key: str,
+    request: IngestRequest,
+    _: Annotated[Principal, Depends(ingester_operator_dependency)],
+) -> IngestResponse:
     """Ingest data using the specified ingester.
 
     Args:
@@ -59,7 +73,8 @@ async def ingest_data(key: str, request: IngestRequest) -> IngestResponse:
         Ingestion result with success status, records processed, submission ID, and output path
 
     Raises:
-        HTTPException: 404 if ingester not found, 500 if ingestion fails
+        HTTPException: 403 if the principal lacks run_ingesters, 404 if ingester not found,
+        500 if ingestion fails
     """
     try:
         return await get_ingester_service().ingest(key, request)

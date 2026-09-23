@@ -1,0 +1,171 @@
+administrators:
+  - admin
+  - roger
+  - rebecka
+resources:
+  - resource_type: project
+    locator: aDNA-pilot
+    grants:
+      - principal_id: roger
+        role: owner
+  - resource_type: project
+    locator: Brunos_copy_Riia_Strucke_v8
+    grants:
+      - principal_id: bruno
+        role: owner
+  - resource_type: project
+    locator: Bruno-Strucke-test
+    grants:
+      - principal_id: bruno
+        role: owner
+  - resource_type: project
+    locator: Bruno-Strucke-v1-Raw-dataset
+    grants:
+      - principal_id: bruno
+        role: owner
+  - resource_type: project
+    locator: Bruno-Strucke-v2-Raw-dataset
+    grants:
+      - principal_id: bruno
+        role: owner
+  - resource_type: project
+    locator: Bruno-Strucke-v2-test
+    grants:
+      - principal_id: bruno
+        role: owner
+  - resource_type: project
+    locator: bugscep:bugcep_20250608
+    grants:
+      - principal_id: roger
+        role: owner
+  - resource_type: project
+    locator: digidiggie_tng
+    grants:
+      - principal_id: roger
+        role: owner
+  - resource_type: project
+    locator: Glykou_etal_2021
+    grants:
+      - principal_id: riia
+        role: owner
+  - resource_type: project
+    locator: riia-edited-strucke-test
+    grants:
+      - principal_id: riia
+        role: owner
+  - resource_type: project
+    locator: riia-glykou_et_al_2021
+    grants:
+      - principal_id: riia
+        role: owner
+  - resource_type: project
+    locator: Riia-PetterLarrsonsDatasets
+    grants:
+      - principal_id: riia
+        role: owner
+  - resource_type: project
+    locator: riia-strucke-excelfil-test
+    grants:
+      - principal_id: riia
+        role: owner
+  - resource_type: project
+    locator: riia-strucke-test
+    grants:
+      - principal_id: riia
+        role: owner
+  - resource_type: project
+    locator: Riia-Strucke-V5
+    grants:
+      - principal_id: riia
+        role: owner
+  - resource_type: project
+    locator: Riia_Strucke_v8
+    grants:
+      - principal_id: riia
+        role: owner
+  - resource_type: project
+    locator: Riia-v8Strucke-new
+    grants:
+      - principal_id: riia
+        role: owner
+  - resource_type: project
+    locator: roger-strucke-test
+    grants:
+      - principal_id: roger
+        role: owner
+  - resource_type: project
+    locator: strucke-test
+    grants:
+      - principal_id: roger
+        role: owner
+  - resource_type: project
+    locator: test-bug
+    grants:
+      - principal_id: roger
+        role: owner
+  - resource_type: project
+    locator: arbodat:arbodat-copy
+    grants:
+      - principal_id: roger
+        role: owner
+  - resource_type: project
+    locator: arbodat:arbodat-copy-test-bruno
+    grants:
+      - principal_id: bruno
+        role: owner
+  - resource_type: project
+    locator: arbodat:arbodat-rebecka
+    grants:
+      - principal_id: rebecka
+        role: owner
+  - resource_type: project
+    locator: arbodat:arbodat-riia
+    grants:
+      - principal_id: riia
+        role: owner
+  - resource_type: project
+    locator: arbodat:arbodat-roger
+    grants:
+      - principal_id: roger
+        role: owner
+  - resource_type: project
+    locator: arbodat:arbodat-test
+    grants:
+      - principal_id: roger
+        role: owner
+  - resource_type: shared_data_source
+    locator: arbodat-data-options
+    grants:
+      - subject_type: everyone
+        subject_id: authenticated
+        role: reader
+  - resource_type: shared_data_source
+    locator: arbodat-lookup-options
+    grants:
+      - subject_type: everyone
+        subject_id: authenticated
+        role: reader
+  - resource_type: shared_data_source
+    locator: bugscep_data_20250608
+    grants:
+      - subject_type: everyone
+        subject_id: authenticated
+        role: reader
+  - resource_type: shared_data_source
+    locator: bulgaria-arbodat-lookup-options
+    grants:
+      - subject_type: everyone
+        subject_id: authenticated
+        role: reader
+  - resource_type: shared_data_source
+    locator: digidiggie_tng-options
+    grants:
+      - subject_type: everyone
+        subject_id: authenticated
+        role: reader
+  - resource_type: shared_data_source
+    locator: sead-options
+    grants:
+      - subject_type: everyone
+        subject_id: authenticated
+        role: reader

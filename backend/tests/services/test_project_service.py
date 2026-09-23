@@ -1132,16 +1132,14 @@ options: {}
         # Create nested source
         nested_dir = service.projects_dir / "category" / "source_project"
         nested_dir.mkdir(parents=True)
-        (nested_dir / "shapeshifter.yml").write_text(
-            """
+        (nested_dir / "shapeshifter.yml").write_text("""
 metadata:
   type: shapeshifter-project
   name: category/source_project
   version: 1.0.0
 entities: {}
 options: {}
-"""
-        )
+""")
 
         result = service.copy_project("category/source_project", "category/target_project")
 
@@ -1174,7 +1172,7 @@ options: {}
         assert result.metadata.default_entity == "sample"
 
     def test_update_metadata_new_name_ignored(self, service: ProjectService, sample_project_with_files: Path):
-        """Test that new_name parameter is ignored (use rename instead)."""
+        """Test that new_name is ignored because the file name sets the project name."""
         result = service.update_metadata("test_project", new_name="different_name", description="Test")
 
         # Name should NOT change (filename is source of truth)

@@ -11,6 +11,7 @@ from loguru import logger
 from backend.app.models.project import Project
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.utils.fixed_schema import derive_fixed_schema
+from src.path_resolution import resolve_contained_path
 from src.types.fixed_entity_types import normalize_fixed_entity_column_types, resolve_fixed_entity_column_type
 
 
@@ -99,7 +100,10 @@ class EntityValuesService:
             Full path to values file
         """
         project: Project = self.project_service.load_project(project_name)
-        return project.folder / filename
+        try:
+            return resolve_contained_path(filename, project.folder)
+        except ValueError as exc:
+            raise ValueError(f"Values file path is outside project '{project_name}'") from exc
 
     def _read_values_file(self, file_path: Path) -> tuple[list[str], list[list[Any]], str, str]:
         """

@@ -50,6 +50,7 @@ Core pipeline order matters: Extract → Filter → Link → Unnest → Translat
 - Use the unified environment at `.venv/` for Python work.
 - Run targeted tests for the changed area before finishing.
 - Run broader tests when a change crosses layers.
+- When completing work tracked by a task or phase plan, update its progress tracker, checklist, status, and deliverables in the same change; do not leave completed work marked as not started.
 - When touching project YAML, validate against `.github/instructions/shapeshifter-configuration.instructions.md`.
 
 ## Cross-cutting instructions
@@ -60,7 +61,7 @@ Core pipeline order matters: Extract → Filter → Link → Unnest → Translat
 
 ## graphify
 
-For repo architecture or relationship questions, follow the graphify quick start in `AGENTS.md`.
+When `graphify-out/graph.json` exists, run `.venv/bin/graphify query "<question>"` before broad codebase exploration, architecture searches, or relationship searches. Use `.venv/bin/graphify path "<source>" "<target>"` for a specific relationship and `.venv/bin/graphify explain "<concept>"` for a focused concept. Verify graphify results against current source code, tests, configuration, and applicable instructions. Use `rg` or targeted file reads for exact text and local implementation details. After modifying code, run `.venv/bin/graphify update .` to refresh the graph. Follow the full graphify quick start and fallback guidance in `AGENTS.md`.
 
 <!-- rtk-instructions v2 -->
 **rtk** is a CLI proxy that filters and compresses command outputs, saving 60-90% tokens.
