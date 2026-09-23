@@ -176,12 +176,12 @@
 
 **Tasks:**
 
-* [ ] `T5.10` **Change:** Establish the rollback result for the frozen unit.
+* [x] `T5.10` **Change:** Establish the rollback result for the frozen unit.
   * **Target:** The frozen deployment.
   * **Current -> required:** A rollback exercise ran on 2026-09-22 at 16:48:11 with integrity passing and reconciliation zero-missing. Whether it can be cited depends on whether the frozen image identity matches image ID `6a487db7…04a8`.
   * **Implementation:** First compare the frozen identity with the recorded one. On a match, cite the recorded transcript and note the matching identity. On a mismatch, create a fresh backup with `container/scripts/authorization.sh backup` and record its path and checksum, then run `container/scripts/verify/rollback_exercise.sh` with `--image`, `--authorization-backup`, `--manifest`, and `--evidence-dir`, and confirm integrity, reconciliation, image identity, and health. Run `make service-restart` afterwards.
   * **Constraints:** Run the exercise only inside an approved rollback window and with the rollback owner's decision if a step fails. Never verify integrity against the retained backup; verify a copy.
-  * **Validation:** `V-5.10`, `V-5.11`.
+  * **Validation:** `V-5.10`, `V-5.11`. The frozen identity matches image ID `6a487db7…04a8`, so the 2026-09-22 exercise is cited rather than repeated: integrity passed, reconciliation was zero-missing, the running image equalled the recorded image, and health returned `200`. Transcript `<DATA_DIR>/backups/rollback-exercise.log`; recorded in the deployment record *Area 4*.
 
 **Completion evidence:** The deployment record states either the matching prior rollback result or a fresh transcript, with integrity and reconciliation outcomes.
 
@@ -218,7 +218,7 @@
 | `PH5-AC-2` | `T5.3`, `T5.6` | `V-5.3`, `V-5.6` | Listener, firewall, and proxy-boundary output for the frozen unit, with the cross-host probe as an accepted exception |
 | `PH5-AC-3` | `T5.7`, `T5.8`, `T5.9` | `V-5.7`, `V-5.8`, `V-5.9` | Deployed proxy overwrite lines, access-check transcript with the principal scope, route-classification result |
 | `PH5-AC-4` | `T5.4`, `T5.5`, `T5.11` | `V-5.4`, `V-5.5`, `V-5.12` | Container configuration, grant, and log-review results with no credential values |
-| `PH5-AC-5` | `T5.10` | `V-5.10`, `V-5.11` | Matching prior rollback result, or a fresh transcript with integrity and reconciliation outcomes |
+| `PH5-AC-5` | `T5.10` | `V-5.10`, `V-5.11` | Matching prior rollback result, cited because the frozen image identity matches |
 | `PH5-AC-6` | `T5.12` | `V-5.13` | `SECURITY_CHECK.md` entry with commit, identity, results, limitations, and exceptions |
 
 ## Validation And Testing
@@ -247,7 +247,7 @@
 | Exposure and configuration evidence | Firewall, container configuration, and grant results for the frozen unit | Done | Deployment record, and `exposure-configuration-grants.log` and `postgres-grants.log` under `<DATA_DIR>/deployment-verification/phase-5/` |
 | Proxy identity evidence | Deployed proxy overwrite lines, read from the enabled site file | Done | Deployment record, *Area 3* |
 | Access-check transcript | Corrected-script output with principal scope and isolation-direction count | Done | `<DATA_DIR>/deployment-verification/phase-5/authenticated-access.log`, and the deployment record *Area 3* |
-| Rollback disposition | Matching prior result or a fresh transcript with integrity and reconciliation | Not started | Deployment record, and `<DATA_DIR>/backups/` |
+| Rollback disposition | Matching prior result or a fresh transcript with integrity and reconciliation | Done | `<DATA_DIR>/backups/rollback-exercise.log`, and the deployment record *Area 4* |
 | Log-review disposition | Reviewed matches, or an approved exception naming the owner and reason | Not started | Deployment record, and `SECURITY_CHECK.md` |
 | Updated security record | Tested commit, image identity, results, limitations, and approved exceptions | Not started | [SECURITY_CHECK.md](../done/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md) |
 | Phase plan status update | Phase 5 complete, with its result and any exceptions | Not started | [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md) |
@@ -259,7 +259,7 @@
 | Area 1: Freeze the release unit and record its identity | Done | Frozen unit confirmed on the host: image ID `6a487db7…04a8`, manifest digest `sha256:7ff51b2b…`, revision `dbff5ab9…4f96`, deployed manifest checksum `43c03186…fb90`. It equals the unit Phase 4 verified |
 | Area 2: Re-verify exposure, container configuration, and grants | Done | Exposure, container configuration, and grants all passed 2026-09-22. The cross-host probe is an accepted exception; see the deployment record |
 | Area 3: Confirm proxy identity handling and access behavior | Done | `T5.7`, `T5.8`, and `T5.9` all passed 2026-09-23. The corrected access check ran on the host and its transcript is filed; the Phase 4 residual risk is retired |
-| Area 4: Confirm backup, restore, and rollback for the frozen unit | Not started | May be satisfied by citing the 2026-09-22 exercise when the image identity matches |
+| Area 4: Confirm backup, restore, and rollback for the frozen unit | Done | Closed as a citation: the frozen image identity matches the image the 2026-09-22 exercise ran against, so no re-run is needed |
 | Area 5: Close the log review and update the security record | Not started | The host-log review is the one security check still open |
 
 ## Definition Of Done
@@ -268,7 +268,7 @@
 - [x] `PH5-AC-2` has listener, firewall, and proxy-boundary evidence recorded for the frozen unit, with the cross-host probe recorded as an accepted exception.
 - [x] `PH5-AC-3` has the deployed proxy overwrite evidenced, the access checks returning the expected statuses with the principal scope recorded, and the route-classification suite passing at the frozen revision.
 - [ ] `PH5-AC-4` has container configuration, grant, and log-review results recorded, with no credential value anywhere.
-- [ ] `PH5-AC-5` has a rollback result for the frozen unit, or a reviewed exception with an owner.
+- [x] `PH5-AC-5` has a rollback result for the frozen unit, cited from the matching 2026-09-22 exercise, with integrity and reconciliation outcomes.
 - [ ] `PH5-AC-6` has `SECURITY_CHECK.md` and the deployment record stating the tested commit, image identity, results, limitations, and approved exceptions.
 - [ ] Every check that could not run is recorded as `not run` with a reason, and no such check is presented as passed.
 - [ ] `scripts/check_doc_links.sh` and `git diff --check` pass, and the phase plan status reflects the outcome.

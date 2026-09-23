@@ -99,7 +99,7 @@ Each section is filled by the area that owns it.
 | Area 1: Release unit and image identity | *Release Unit* above | Done |
 | Area 2: Exposure, container configuration, grants | *Area 2* below | Passed, with an accepted exception for the cross-host probe |
 | Area 3: Proxy identity handling and access behavior | *Area 3* below | Done |
-| Area 4: Backup, restore, and rollback | Not yet recorded | Not started |
+| Area 4: Backup, restore, and rollback | *Area 4* below | Done — cited from the matching Phase 4 exercise |
 | Area 5: Log review and security record | Not yet recorded | Not started |
 
 The frozen image identity matches image ID `6a487db7…04a8` from the UAT-ready deployment record, so the following results recorded there are citable for this frozen unit, and only the genuinely new checks need to run:
@@ -222,6 +222,26 @@ All five probes behave as intended: `401` unauthenticated, `200` for the owner o
 **This retires the Phase 4 accepted risk.** The corrected script's in-container role lookup had never executed on this host; it now has, and it produced the principal scope and the `1 of 2` count the Phase 4 record predicted. The UAT-ready deployment record carries a dated update saying so.
 
 **Symmetric isolation is still not demonstrated**, and the script says why: `riia` holds `project_maintainer`, which reads every project by policy, so the second direction is an expected privileged read rather than evidence of isolation. That matches the Phase 4 record. Testing it needs two principals that hold no read-granting deployment role.
+
+## Area 4: Backup, Restore, And Rollback
+
+### `T5.10` / `V-5.10`, `V-5.11` — rollback result for the frozen unit: cited
+
+The frozen release unit equals image ID `6a487db7…04a8`, so the exercise recorded in the UAT-ready deployment record applies to this unit and nothing has to be re-run. A result normally carries no weight for a different image; this one carries its weight because the identity matches.
+
+| Item | Value |
+| --- | --- |
+| Exercise | 2026-09-22 16:48:11, from the deployment host |
+| Image | `6a487db7…04a8`, revision `dbff5ab9…4f96`, equal to the running image after the exercise |
+| Authorization database | restored from `authorization-20260922-164454.sqlite3`, SHA-256 `9ebf2f22…8b3e` |
+| Integrity check | passed |
+| Reconciliation | `Missing: 0 resources, 0 administrators, 0 grants` |
+| Health after restart | `http://127.0.0.1:8012/api/v1/health` returned `200` |
+| Transcript | `<DATA_DIR>/backups/rollback-exercise.log` |
+
+**The restore was state-neutral.** The pre-rollback backup is byte-identical to the three earlier backups of the same day, so the database the exercise restored is the database that was already running. The procedure is demonstrated; authorization state did not change.
+
+**What the citation does not cover.** The exercise ran against the same image but before this phase, so it is cited rather than repeated — if the release unit is reopened for any reason, the rollback check has to run again. And `rollback_exercise.sh` starts the container outside `shape-shifter.service`, so a standalone run leaves the unit reporting `active (exited)` while the container was recreated; `make service-restart` realigned it on 2026-09-22, and the same step would follow any future standalone run.
 
 ## Limitations
 
