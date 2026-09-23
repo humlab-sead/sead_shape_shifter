@@ -91,7 +91,7 @@ Acceptance criteria:
 
 **Tasks:**
 
-* [ ] `T1.2` **Add an approved-variable gate to expansion.**
+* [x] `T1.2` **Add an approved-variable gate to expansion.**
   * **Target:** `src/utility.py::replace_env_vars`.
   * **Current → required:** Any `${NAME}` resolves against `os.environ` → only names on an approved list expand; others resolve to empty (or stay literal) and never return a secret value.
   * **Implementation:** Introduce an `allowed_vars: frozenset[str] | None = None` parameter (None = current behavior, for trusted internal callers). When supplied, `_resolve_env_var` returns `""` for names not in the set. Populate the approved set from a single configuration source (the existing `Settings`/env-prefix area) listing the variables legitimate project YAML uses (e.g. `SHAPE_SHIFTER_*` data-dir/application-root names). Keep `env_prefix` behavior intact.
@@ -204,7 +204,7 @@ New test files are marked `NEW`. Run focused backend tests with the repo venv; t
 | Area | Status | Dependencies | Notes |
 |---|---|---|---|
 | Area 1 — SPA containment | Done | None | `T1.1` implemented; `V-1` passes (7 tests) |
-| Area 2 — Env allowlist | Not started | None | `T1.2`, `T1.3` |
+| Area 2 — Env allowlist | In progress | None | `T1.2` done (gate in `replace_env_vars`); `T1.3` pending (thread set through resolver) |
 | Area 3 — Unmapped types | Not started | None | `T1.4` |
 | Area 4 — Project paths | Not started | None | `T1.5` |
 | Area 5 — Repro environment | Not started | None | `T1.6` |
