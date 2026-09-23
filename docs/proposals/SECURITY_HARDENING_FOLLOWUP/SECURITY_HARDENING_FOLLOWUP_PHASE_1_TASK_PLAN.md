@@ -15,9 +15,9 @@ Source proposal: [SECURITY_HARDENING_FOLLOWUP.md](SECURITY_HARDENING_FOLLOWUP.md
 Acceptance criteria:
 
 - [x] `PH1-AC-1` (from `P-AC-1`) The SPA route serves only files under the frontend dist directory; absolute-path and `..` arms are rejected.
-- [ ] `PH1-AC-2` (from `P-AC-1`) `${VAR}` expansion in request-supplied and stored entity config reaches only approved variables; unapproved names neither expand nor return values in preview rows.
-- [ ] `PH1-AC-3` (from `P-AC-1`) An entity type missing from the mapper factory fails as unsupported before any file read.
-- [ ] `PH1-AC-4` (from `P-AC-1`) Project creation cannot write outside `PROJECTS_DIR` via traversal, an absolute name, or a colon locator aliasing another project's file, and `namespace:project` locators continue to work.
+- [x] `PH1-AC-2` (from `P-AC-1`) `${VAR}` expansion in request-supplied and stored entity config reaches only approved variables; unapproved names neither expand nor return values in preview rows.
+- [x] `PH1-AC-3` (from `P-AC-1`) An entity type missing from the mapper factory fails as unsupported before any file read.
+- [x] `PH1-AC-4` (from `P-AC-1`) Project creation cannot write outside `PROJECTS_DIR` via traversal, an absolute name, or a colon locator aliasing another project's file, and `namespace:project` locators continue to work.
 - [ ] `PH1-AC-5` (from `P-AC-8`) The ledger's root-only bootstrap tests run in the disposable environment with the host verified untouched.
 
 ## Repository Findings
@@ -137,10 +137,11 @@ Acceptance criteria:
 
 **Tasks:**
 
-* [ ] `T1.5` **Resolve and contain the project directory at the service boundary.**
+* [x] `T1.5` **Resolve and contain the project directory at the service boundary.**
   * **Target:** `ProjectOperations.create_project`, `copy_project`, `delete_project`.
   * **Current → required:** `self.projects_dir / ProjectNameMapper.to_path(name)` joined with only an `exists()` collision check → validate the name, then resolve the mapped path through `resolve_contained_path(to_path(name), projects_dir)` and reject on `ValueError`, for every path built from a caller-supplied name.
   * **Implementation:** Add a shared helper (on `ProjectUtils` or `ProjectOperations`) that runs `validate_project_name` then `resolve_contained_path` and returns the contained `shapeshifter.yml` path; use it in create/copy/delete and the collision check. The collision check must compare resolved paths, so `up:../victim` cannot pass while pointing at another project's file.
+  * **Done:** `ProjectUtils.resolve_project_dir(name)` runs `validate_project_name` then `resolve_contained_path(to_path(name), projects_dir)`, raising `BadRequestError` on `ValueError`; `resolve_project_file` appends `shapeshifter.yml`. `ProjectOperations` receives a `project_dir_resolver` callback (wired to `ProjectUtils.resolve_project_dir` in `ProjectService`) and uses it in `create_project`, `copy_project` (both source and target), `delete_project`, and the `update_metadata` path, so the collision/existence checks compare resolved, contained paths. `up:../victim` is rejected before the collision check, and no caller-supplied name can write or read outside `PROJECTS_DIR`. Namespaced locators (`arbodat:arbodat-copy` → `arbodat/arbodat-copy`) still resolve inside the root. `ResourceConflictError`/`ResourceNotFoundError` semantics are unchanged; escaping names now raise `BadRequestError` (HTTP 400).
   * **Constraints:** Preserve `namespace:project` (e.g. `arbodat:arbodat-copy` → `arbodat/arbodat-copy`); reject absolute names and `..` at any segment; keep existing `ResourceConflictError`/`ResourceNotFoundError` semantics.
   * **Validation:** `V-4`.
 
@@ -184,7 +185,7 @@ New test files are marked `NEW`. Run focused backend tests with the repo venv; t
 | `V-1` | `backend/tests/api/test_spa_catchall_containment.py` — `resolve_spa_file` with `..`, absolute, symlink-escape, deep link, and root against a fake dist | `uv run pytest backend/tests/api/test_spa_catchall_containment.py -v` | `PH1-AC-1` | Escape arms fall back to `index.html`; deep link and root return `index.html`; in-root file served | Pass (7 tests, 2026-09-23) |
 | `V-2` | `NEW` `backend/tests/test_env_var_allowlist.py` — preview with `${SECRET}` in `override_config` and in stored YAML; approved var still resolves | `uv run pytest backend/tests/test_env_var_allowlist.py -v` | `PH1-AC-2` | No env value in `PreviewResult.rows`; approved var expands | Pass (6 tests, 2026-09-23) |
 | `V-3` | `backend/tests/mappers/test_entity_config_mapper.py` (extend) — `get_mapper("tsv")`/`get_mapper("xls")` reject; `csv`/`sql`/`fixed` unchanged | `uv run pytest backend/tests/mappers/test_entity_config_mapper.py -v` | `PH1-AC-3` | File-capable unmapped types raise; others pass | Pass (31 tests, 2026-09-23) |
-| `V-4` | `backend/tests/services/test_project_utils.py` + `backend/tests/services/project/` (extend) — create/copy/delete with `../../x`, `/abs`, `up:../victim`, `ns:child`; assert filesystem effect | `uv run pytest backend/tests/services/test_project_utils.py backend/tests/services/project -v` | `PH1-AC-4` | Out-of-root writes rejected, nothing written; namespaced create works | Pass (existing util cases green) |
+| `V-4` | `backend/tests/services/test_project_utils.py` + `backend/tests/services/test_project_service.py` (extend) — create/copy/delete with `../../x`, `/abs`, `up:../victim`, `ns:child`; assert filesystem effect | `uv run pytest backend/tests/services/test_project_utils.py backend/tests/services/test_project_service.py backend/tests/services/project -v` | `PH1-AC-4` | Out-of-root writes rejected, nothing written; namespaced create works | Pass (16 new cases, 2026-09-23) |
 | `V-5` | Manual: follow `docs/testing/SECURITY_LEDGER_REPRODUCTION.md` in a throwaway container; confirm host-untouched assertion | Manual method | `PH1-AC-5` | Package runs isolated; host paths unchanged | Not run: doc is new |
 | `V-6` | Regression: full backend suite for touched areas | `uv run pytest backend/tests -v` | `PH1-AC-1`-`PH1-AC-4` | No new failures vs baseline | Fail (pre-existing): ledger records 25 failed / 4 errors on trunk, incl. 11 in `tests/process/test_subset_service.py` — not caused by Phase 1; confirm the delta is zero |
 | `V-7` | Lint/format | `make lint` (Black + isort) | all | Clean | Not run |
@@ -199,7 +200,7 @@ New test files are marked `NEW`. Run focused backend tests with the repo venv; t
 | Unsupported-type rejection | `backend/app/mappers/entity_config_mapper.py::EntityConfigMapperFactory` | `T1.4` | `V-3` passes |
 | Contained project paths | `backend/app/services/project/project_operations.py`, `project_utils.py` | `T1.5` | `V-4` passes |
 | Reproduction recipe | `NEW` `docs/testing/SECURITY_LEDGER_REPRODUCTION.md` | `T1.6` | `V-5` passes |
-| New regression tests | `backend/tests/api/test_spa_catchall_containment.py` (created); `backend/tests/test_env_var_allowlist.py` (created); extended `test_entity_config_mapper.py`, `test_project_utils.py` | `T1.1`-`T1.5` | `V-1` passes; `V-2` passes; `V-3`-`V-4` pending |
+| New regression tests | `backend/tests/api/test_spa_catchall_containment.py` (created); `backend/tests/test_env_var_allowlist.py` (created); extended `test_entity_config_mapper.py`, `test_project_utils.py`, `test_project_service.py` | `T1.1`-`T1.5` | `V-1` passes; `V-2` passes; `V-3` passes; `V-4` passes |
 
 ## Progress Tracker
 
@@ -208,7 +209,7 @@ New test files are marked `NEW`. Run focused backend tests with the repo venv; t
 | Area 1 — SPA containment | Done | None | `T1.1` implemented; `V-1` passes (7 tests) |
 | Area 2 — Env allowlist | Done | None | `T1.2` (gate in `replace_env_vars`) and `T1.3` (allowlist threaded through `ResolutionContext`/`resolve_directives`/`Settings.env_opts`) done; `V-2` passes (6 tests) |
 | Area 3 — Unmapped types | Done | None | `T1.4` done (`get_mapper` fails closed for `tsv`/`xls`); `V-3` passes (31 tests) |
-| Area 4 — Project paths | Not started | None | `T1.5` |
+| Area 4 — Project paths | Done | None | `T1.5` done (`ProjectUtils.resolve_project_dir`/`resolve_project_file` wired into create/copy/delete/update_metadata); `V-4` passes (16 tests) |
 | Area 5 — Repro environment | Not started | None | `T1.6` |
 
 ## Definition Of Done
