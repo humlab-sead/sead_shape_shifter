@@ -97,7 +97,7 @@ Each section is filled by the area that owns it.
 | Area | Section | Status |
 | --- | --- | --- |
 | Area 1: Release unit and image identity | *Release Unit* above | Done |
-| Area 2: Exposure, container configuration, grants | *Area 2* below | Partly: exposure and container configuration passed; the grant check did not run |
+| Area 2: Exposure, container configuration, grants | *Area 2* below | Passed, with an accepted exception for the cross-host probe |
 | Area 3: Proxy identity handling and access behavior | Not yet recorded | Not started |
 | Area 4: Backup, restore, and rollback | Not yet recorded | Not started |
 | Area 5: Log review and security record | Not yet recorded | Not started |
@@ -118,7 +118,7 @@ Still new in Phase 5 regardless of the match: the proxy identity-header evidence
 
 ## Area 2: Exposure, Container Configuration, And Grants
 
-Run 2026-09-22 from `/tmp`, as root for the firewall check and as the deployment user for the other two. Transcript: `<DATA_DIR>/deployment-verification/phase-5/exposure-configuration-grants.log`.
+Run 2026-09-22 from `/tmp`, as root for the firewall check and as the deployment user for the other two. Transcripts: `exposure-configuration-grants.log` and `postgres-grants.log` under `<DATA_DIR>/deployment-verification/phase-5/`.
 
 ### `T5.3` / `V-5.3` — network exposure and the proxy boundary: passed, host side
 
@@ -129,7 +129,22 @@ Run 2026-09-22 from `/tmp`, as root for the firewall check and as the deployment
 | Loopback health | `200` |
 | LAN refusal | `172.18.134.53:8012` refused |
 
-**Still outstanding: the cross-host leg.** The transcript prints `nc -zvw5 172.18.134.53 8012` (expect refused or timed out) and `nc -zvw5 172.18.134.53 443`. Run both from a second host. Note that `443` is accepted only from `172.18.134.40`, so a host outside that address will time out on `443` as well; run the proxy leg from `172.18.134.40`, or record that source restriction as the reason the leg cannot be exercised from an arbitrary host.
+**The cross-host probe: accepted exception.** No second host is available for an off-host probe. The project has already accepted this case once, in the test environment cutover record under *Same-LAN exception acceptance*: accepted 2026-09-22 by Roger Mähler, who is also the named approver for exceptions to unavailable checks, on the grounds that loopback-only publication, a default-drop firewall policy, and external HTTPS reachability are the compensating checks. The same terms apply here, with these results for the frozen unit:
+
+| Compensating check | Result |
+| --- | --- |
+| Backend published on loopback only | `ss -ltn` shows `127.0.0.1:8012` and no listener on `172.18.134.53`; the container publishes `{"8012/tcp":[{"HostIp":"127.0.0.1","HostPort":"8012"}]}` |
+| LAN probe from the host | `172.18.134.53:8012` refused |
+| Firewall policy | nftables input policy `drop`, ending in `reject with icmp admin-prohibited`, with no rule naming `8012` |
+| External reachability | `test-shape-shifter.sead.se` resolves to `130.239.34.54`; HTTPS reachability was verified on 2026-09-22 in the Phase 3 record |
+
+Accepted 2026-09-23 by Roger Mähler. `PH5-AC-2` is met by the listener, firewall, and LAN-refusal results above; the off-host probe is an additional confirmation, not the criterion.
+
+**What the exception does not prove, and why the printed probe is weak anyway.** The script's probe targets `172.18.134.53:8012`, but `8012` is bound to loopback only, so a refusal from any source is explained by the binding rather than by the firewall. Running it from a second LAN host would not isolate the firewall rule. The probe that *would* isolate it needs a source on the target LAN other than `172.18.134.40`, because `443` is bound on every interface and accepted from that address alone. Neither source is available here.
+
+**Topology, observed 2026-09-23.** This host is `172.18.134.53/27` on `ens33`; `172.18.134.40` is a directly attached neighbour and the only permitted source for `80` and `443`; and `test-shape-shifter.sead.se` resolves to `130.239.34.54`, which is not on this host. The public path therefore reaches nginx here through the front at `172.18.134.40`, and an internal LAN probe does not exercise the public path at all.
+
+**How to retire the exception.** No second LAN host is needed for the strongest substitute: probe the public address from an off-LAN machine — the health route for `200`, a protected route for `401`, and `nc -zvw5 130.239.34.54 8012` for a refusal. File that transcript and this exception can be replaced by a result.
 
 ### `T5.4` / `V-5.4` — container configuration, mounts, secrets, environment: passed
 
@@ -144,22 +159,19 @@ Run 2026-09-22 from `/tmp`, as root for the firewall check and as the deployment
 
 **The one warning is a false positive.** The scan flags `GPG_KEY` as a credential-like variable name. It is one of the standard variables of the official Python base image, alongside `PYTHON_VERSION` and `PYTHON_SHA256`, and is used to verify the Python source tarball during the image build. It is not a deployment credential and holds no project secret. It appears in the image environment and therefore in the container's, which is expected for an inherited base-image variable. No action needed; recorded so the warning is not raised again as a finding.
 
-### `T5.5` / `V-5.5` — PostgreSQL grants and store placement: partly done
+### `T5.5` / `V-5.5` — PostgreSQL grants and store placement: passed
 
-The authorization store checks passed: `container-data/state/authorization.sqlite3`, owner `test-shape-shifter.sead.se` (1021), mode `600`, size 106496 bytes. It sits inside the data directory, not in the project, log, or shared-data trees.
+Run 2026-09-22 as the deployment user, host-side against `127.0.0.1:9023`.
 
-The role verification did not run:
+| Check | Result |
+| --- | --- |
+| Role `sead_ro` in `sead_staging`, schema `public` | Read-only. `SELECT` works on every relation, and the role has no elevated attributes (`rolsuper`, `rolcreatedb`, `rolcreaterole`, `rolreplication`, `rolbypassrls` are all false), no memberships, no owned objects, and no write or privilege-management access |
+| `rolinherit` | `t`, inert while the account holds no memberships, matching the Phase 3 record |
+| Authorization store | `container-data/state/authorization.sqlite3`, owner `test-shape-shifter.sead.se` (1021), mode `600`, size 106496 bytes, inside the data directory |
 
-```
-psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: No such file or directory
-```
+**The first attempt failed on a command error, and the reason is worth keeping.** `verify_postgres_grants.sh` ran from the host with no `--host` or `--port`, so libpq used a local Unix socket, where no server listens. `config/backend.env` sets `SEAD_HOST=host.docker.internal`, which resolves only inside the container, so a host-side run needs the address this host uses for the same server. The host listens on `9023`, and libpq matches a password-file entry on host, port, database, and user, so the retry used `--host 127.0.0.1 --port 9023` with a temporary password-file copy whose host field was rewritten from `host.docker.internal`. Nothing about the deployment changed.
 
-**That is a command error, not a deployment finding.** `verify_postgres_grants.sh` ran on the host with no `--host` or `--port`, so libpq defaulted to a local Unix socket, where no PostgreSQL server listens. The database is reached over the network, and the deployment passes `SEAD_HOST`, `SEAD_PORT`, and `SEAD_DBNAME` to the container through `config/backend.env`.
-
-Two ways to close it:
-
-1. Re-run with the database's host-visible address and port, and point `PGPASSFILE` at `<CONFIG_DIR>/.pgpass/.pgpass`. The password file matches on host, port, database, and user, and wildcards are allowed in every field except the password, so use the host string the file is keyed on.
-2. If the database is administered separately, the database administrator's grant result is an acceptable input. The phase plan's task-plan handoff permits it, and grants live in the database rather than in the image, so the result does not depend on the frozen image identity.
+**Adjacent observation, outside `PH5-AC-2`.** The host has a wildcard listener on the database port: `ss -ltn` reported `LISTEN 0 4096 *:9023 *:*`, and the check connected to it successfully as `sead_ro` against `sead_staging`. The input chain drops by default, accepts loopback, and contains no rule for `9023`, so the port is reachable only over loopback from the host, and the container reaches it as `host.docker.internal:9023`. The firewall is therefore the only control shielding a database port that is bound on every interface; the exact packet path the container uses was not traced here, and the intended posture is worth confirming.
 
 ## Limitations
 

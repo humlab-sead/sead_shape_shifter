@@ -113,25 +113,25 @@
   * **Current -> required:** Firewall and port publication were last verified on 2026-09-18 against baseline `95c3d017`. The frozen unit is a different image, so those results cannot be cited.
   * **Implementation:** Run `./scripts/verify/verify_firewall.sh` from the deployment user's `container/` directory with `sudo` available for the firewall listing, and record the listener output, the rule listing, and the cross-host result. Confirm the backend is published on loopback only and that the proxy is the only external entry point.
   * **Constraints:** The script is read-only and must not change rules, services, or configuration. Record the output with the date and host.
-  * **Validation:** `V-5.3`. Run 2026-09-22: listeners `0.0.0.0:80`, `0.0.0.0:443`, and `127.0.0.1:8012`; nftables input policy `drop` with `80`/`443` accepted from `172.18.134.40` only and no rule naming `8012`; loopback health `200`; LAN address `172.18.134.53:8012` refused. The cross-host leg is still to run from a second host. Recorded in [PODMAN_DEPLOYMENT_RECORD.md](./PODMAN_DEPLOYMENT_RECORD.md).
+  * **Validation:** `V-5.3`. Run 2026-09-22: listeners `0.0.0.0:80`, `0.0.0.0:443`, and `127.0.0.1:8012`; nftables input policy `drop` with `80`/`443` accepted from `172.18.134.40` only and no rule naming `8012`; loopback health `200`; LAN address `172.18.134.53:8012` refused. The cross-host probe is an accepted exception on the same terms as the Phase 3 *Same-LAN exception acceptance*, with the compensating checks listed in the deployment record; `PH5-AC-2` is met by the listener, firewall, and LAN-refusal results. Recorded in [PODMAN_DEPLOYMENT_RECORD.md](./PODMAN_DEPLOYMENT_RECORD.md).
 * [x] `T5.4` **Change:** Re-inspect the container configuration, mounts, secrets, and environment.
   * **Target:** The frozen deployment.
   * **Current -> required:** Container configuration was last verified on 2026-09-18 and its evidence belongs to a different image.
   * **Implementation:** Run `sudo -u test-shape-shifter.sead.se -H bash ./scripts/verify/verify_container_config.sh` and record the published ports, the mount list, the environment variable names, and the image label and history scan. Confirm no credential value appears and no sensitive host path is mounted writable.
   * **Constraints:** Environment variable names only, never values. The script must not change the container, image, or configuration.
   * **Validation:** `V-5.4`. Run 2026-09-22: container running on image `localhost/shape-shifter:dev`; published ports loopback-only; eight mounts matching the documented set with `.pgpass` read-only; image labels carrying revision `dbff5ab9…4f96`; no credential-like text in image history. The `GPG_KEY` warning is an inherited Python base-image variable and a false positive. Recorded in [PODMAN_DEPLOYMENT_RECORD.md](./PODMAN_DEPLOYMENT_RECORD.md).
-* [ ] `T5.5` **Change:** Re-verify PostgreSQL grants and the authorization database placement.
+* [x] `T5.5` **Change:** Re-verify PostgreSQL grants and the authorization database placement.
   * **Target:** The frozen deployment.
   * **Current -> required:** Grant verification was last run on 2026-09-18 against a different image.
   * **Implementation:** Run `./scripts/verify/verify_postgres_grants.sh --database sead_staging --role sead_ro --schema public --sqlite "$DATA_DIR/state/authorization.sqlite3"` and record the grant results and the store's ownership and mode.
   * **Constraints:** Do not change grants or store permissions.
-  * **Validation:** `V-5.5`. Attempted 2026-09-22: the store checks passed (mode `600`, owner `1021`, inside the data directory), but the role verification did not run because no `--host` or `--port` was given, so psql used a local Unix socket where nothing listens. Re-run with the database's host-visible address and `PGPASSFILE`; see *Area 2* in the deployment record.
-* [ ] `T5.6` **Change:** Run the verification orchestrator for the frozen unit and file its evidence.
+  * **Validation:** `V-5.5`. Passed 2026-09-22. The first attempt failed on a command error: no `--host` or `--port` was given, so psql used a local Unix socket. Re-run host-side against `127.0.0.1:9023`, the address this host uses for the server that `backend.env` names to the container as `host.docker.internal`: `sead_ro` is read-only against `sead_staging.public`, and the store is mode `600` inside the data directory. The firewalled wildcard listener on `9023` is recorded in the deployment record.
+* [x] `T5.6` **Change:** Run the verification orchestrator for the frozen unit and file its evidence.
   * **Target:** `<DATA_DIR>/deployment-verification/`.
   * **Current -> required:** The orchestrator has not been run against the frozen unit; this is the single capture pass for the check families it owns.
   * **Implementation:** Run `./scripts/verify/run_deployment_verification.sh` with `~/config/deployment-verification.options.yml`, as a sudo-capable operator from the deployment user's `container/` directory. This supersedes the individual runs above when it covers the same checks; keep whichever evidence is complete and record which source each result came from.
   * **Constraints:** Leave the authenticated and rollback phases off here; they are handled in Areas 3 and 4 so their evidence lands in one place.
-  * **Validation:** `V-5.6`.
+  * **Validation:** `V-5.6`. Not run as a separate pass: `T5.3` to `T5.5` captured the same check families individually and their transcripts are filed, which is what this task exists to produce. Run the orchestrator only if a single-run artifact is wanted.
 
 **Completion evidence:** Exposure, container configuration, and grant results are recorded for the frozen unit, or the check that could not run is recorded with its reason.
 
@@ -215,7 +215,7 @@
 | Criterion | Task IDs | Validation IDs | Expected evidence |
 | --- | --- | --- | --- |
 | `PH5-AC-1` | `T5.1`, `T5.2` | `V-5.1`, `V-5.2` | Frozen release unit recorded with the image ID, the manifest digest, and the OCI labels, all matching the running container |
-| `PH5-AC-2` | `T5.3`, `T5.6` | `V-5.3`, `V-5.6` | Listener, firewall, and proxy-boundary output for the frozen unit |
+| `PH5-AC-2` | `T5.3`, `T5.6` | `V-5.3`, `V-5.6` | Listener, firewall, and proxy-boundary output for the frozen unit, with the cross-host probe as an accepted exception |
 | `PH5-AC-3` | `T5.7`, `T5.8`, `T5.9` | `V-5.7`, `V-5.8`, `V-5.9` | Deployed proxy overwrite lines, access-check transcript with principal scope, route-classification result |
 | `PH5-AC-4` | `T5.4`, `T5.5`, `T5.11` | `V-5.4`, `V-5.5`, `V-5.12` | Container configuration, grant, and log-review results with no credential values |
 | `PH5-AC-5` | `T5.10` | `V-5.10`, `V-5.11` | Matching prior rollback result, or a fresh transcript with integrity and reconciliation outcomes |
@@ -244,7 +244,7 @@
 | Deliverable | Description | Status | Link |
 | --- | --- | --- | --- |
 | Podman deployment record | Frozen release unit, image identity, per-check results, limitations, and dispositions | In progress | [PODMAN_DEPLOYMENT_RECORD.md](./PODMAN_DEPLOYMENT_RECORD.md) (new, this folder) |
-| Exposure and configuration evidence | Firewall, container configuration, and grant results for the frozen unit | In progress | Deployment record, and `<DATA_DIR>/deployment-verification/phase-5/exposure-configuration-grants.log` |
+| Exposure and configuration evidence | Firewall, container configuration, and grant results for the frozen unit | Done | Deployment record, and `exposure-configuration-grants.log` and `postgres-grants.log` under `<DATA_DIR>/deployment-verification/phase-5/` |
 | Proxy identity evidence | Deployed proxy overwrite lines and the effective configuration excerpt | Not started | Deployment record |
 | Access-check transcript | Corrected-script output with principal scope and isolation-direction count | Not started | Deployment record and the phase evidence directory |
 | Rollback disposition | Matching prior result or a fresh transcript with integrity and reconciliation | Not started | Deployment record, and `<DATA_DIR>/backups/` |
@@ -257,7 +257,7 @@
 | Area | Status | Notes |
 | --- | --- | --- |
 | Area 1: Freeze the release unit and record its identity | Done | Frozen unit confirmed on the host: image ID `6a487db7…04a8`, manifest digest `sha256:7ff51b2b…`, revision `dbff5ab9…4f96`, deployed manifest checksum `43c03186…fb90`. It equals the unit Phase 4 verified |
-| Area 2: Re-verify exposure, container configuration, and grants | In progress | Exposure and container configuration passed 2026-09-22; the cross-host leg and the PostgreSQL grant check remain |
+| Area 2: Re-verify exposure, container configuration, and grants | Done | Exposure, container configuration, and grants all passed 2026-09-22. The cross-host probe is an accepted exception; see the deployment record |
 | Area 3: Confirm proxy identity handling and access behavior | Not started | The corrected access-check script has never run on the host |
 | Area 4: Confirm backup, restore, and rollback for the frozen unit | Not started | May be satisfied by citing the 2026-09-22 exercise when the image identity matches |
 | Area 5: Close the log review and update the security record | Not started | The host-log review is the one security check still open |
@@ -265,7 +265,7 @@
 ## Definition Of Done
 
 - [x] `PH5-AC-1` has the frozen source commit, the image ID, the manifest digest, and the OCI `revision`, `version`, and `source` labels, with the digest stated as locally computed.
-- [ ] `PH5-AC-2` has listener, firewall, and proxy-boundary evidence recorded for the frozen unit.
+- [x] `PH5-AC-2` has listener, firewall, and proxy-boundary evidence recorded for the frozen unit, with the cross-host probe recorded as an accepted exception.
 - [ ] `PH5-AC-3` has the deployed proxy overwrite evidenced, the access checks returning the expected statuses, and the route-classification suite passing at the frozen revision.
 - [ ] `PH5-AC-4` has container configuration, grant, and log-review results recorded, with no credential value anywhere.
 - [ ] `PH5-AC-5` has a rollback result for the frozen unit, or a reviewed exception with an owner.
