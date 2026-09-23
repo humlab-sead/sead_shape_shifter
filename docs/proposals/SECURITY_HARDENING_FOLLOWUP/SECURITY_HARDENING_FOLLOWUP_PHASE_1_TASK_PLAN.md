@@ -117,10 +117,11 @@ Acceptance criteria:
 
 **Tasks:**
 
-* [ ] `T1.4` **Fail closed on types absent from the mapper factory.**
+* [x] `T1.4` **Fail closed on types absent from the mapper factory.**
   * **Target:** `EntityConfigMapperFactory.get_mapper`.
   * **Current → required:** Unknown types return the no-op `DefaultEntityConfigMapper`, so `tsv`/`xls`/other registered loaders receive a raw `options.filename` → types that name a file-based loader but have no containment mapper are rejected as unsupported before resolution.
   * **Implementation:** Distinguish legitimately no-op types (sql-family, entity, merged — no `options.filename`) from file-capable loader keys missing from the mapper cache (`tsv`, `xls`). Reject the latter (raise a `BadRequestError`/`ConfigurationError` at the mapper boundary) rather than passing them through. Keep the no-op default only for types that never carry a file path.
+  * **Done:** `FILE_BASED_DRIVERS` is now the authoritative file-capable set (`csv, tsv, xlsx, xls, openpyxl`). `get_mapper` returns the cached mapper when present; if the type is file-capable but has no mapper (`tsv`, `xls`), it raises `BadRequestError` before any file read; otherwise it returns the no-op default. SQL-family (`sqlite`, `postgres`, `ucanaccess`, `duckdb`), `entity`, `merged`, and `fixed` are unchanged. `BadRequestError` maps to HTTP 400 via the error middleware.
   * **Constraints:** Do not break `sql`, `entity`, `merged`, or `fixed` flows; do not widen the mapper cache silently — the point is that a file path never reaches a loader uncontained.
   * **Validation:** `V-3`.
 
@@ -182,7 +183,7 @@ New test files are marked `NEW`. Run focused backend tests with the repo venv; t
 |---|---|---|---|---|---|
 | `V-1` | `backend/tests/api/test_spa_catchall_containment.py` — `resolve_spa_file` with `..`, absolute, symlink-escape, deep link, and root against a fake dist | `uv run pytest backend/tests/api/test_spa_catchall_containment.py -v` | `PH1-AC-1` | Escape arms fall back to `index.html`; deep link and root return `index.html`; in-root file served | Pass (7 tests, 2026-09-23) |
 | `V-2` | `NEW` `backend/tests/test_env_var_allowlist.py` — preview with `${SECRET}` in `override_config` and in stored YAML; approved var still resolves | `uv run pytest backend/tests/test_env_var_allowlist.py -v` | `PH1-AC-2` | No env value in `PreviewResult.rows`; approved var expands | Pass (6 tests, 2026-09-23) |
-| `V-3` | `backend/tests/mappers/test_entity_config_mapper.py` (extend) — `get_mapper("tsv")`/`get_mapper("xls")` reject; `csv`/`sql`/`fixed` unchanged | `uv run pytest backend/tests/mappers/test_entity_config_mapper.py -v` | `PH1-AC-3` | File-capable unmapped types raise; others pass | Pass (existing cases green) |
+| `V-3` | `backend/tests/mappers/test_entity_config_mapper.py` (extend) — `get_mapper("tsv")`/`get_mapper("xls")` reject; `csv`/`sql`/`fixed` unchanged | `uv run pytest backend/tests/mappers/test_entity_config_mapper.py -v` | `PH1-AC-3` | File-capable unmapped types raise; others pass | Pass (31 tests, 2026-09-23) |
 | `V-4` | `backend/tests/services/test_project_utils.py` + `backend/tests/services/project/` (extend) — create/copy/delete with `../../x`, `/abs`, `up:../victim`, `ns:child`; assert filesystem effect | `uv run pytest backend/tests/services/test_project_utils.py backend/tests/services/project -v` | `PH1-AC-4` | Out-of-root writes rejected, nothing written; namespaced create works | Pass (existing util cases green) |
 | `V-5` | Manual: follow `docs/testing/SECURITY_LEDGER_REPRODUCTION.md` in a throwaway container; confirm host-untouched assertion | Manual method | `PH1-AC-5` | Package runs isolated; host paths unchanged | Not run: doc is new |
 | `V-6` | Regression: full backend suite for touched areas | `uv run pytest backend/tests -v` | `PH1-AC-1`-`PH1-AC-4` | No new failures vs baseline | Fail (pre-existing): ledger records 25 failed / 4 errors on trunk, incl. 11 in `tests/process/test_subset_service.py` — not caused by Phase 1; confirm the delta is zero |
@@ -206,7 +207,7 @@ New test files are marked `NEW`. Run focused backend tests with the repo venv; t
 |---|---|---|---|
 | Area 1 — SPA containment | Done | None | `T1.1` implemented; `V-1` passes (7 tests) |
 | Area 2 — Env allowlist | Done | None | `T1.2` (gate in `replace_env_vars`) and `T1.3` (allowlist threaded through `ResolutionContext`/`resolve_directives`/`Settings.env_opts`) done; `V-2` passes (6 tests) |
-| Area 3 — Unmapped types | Not started | None | `T1.4` |
+| Area 3 — Unmapped types | Done | None | `T1.4` done (`get_mapper` fails closed for `tsv`/`xls`); `V-3` passes (31 tests) |
 | Area 4 — Project paths | Not started | None | `T1.5` |
 | Area 5 — Repro environment | Not started | None | `T1.6` |
 
