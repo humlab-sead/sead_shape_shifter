@@ -188,8 +188,8 @@ New test files are marked `NEW`. Run focused backend tests with the repo venv; t
 | `V-3` | `backend/tests/mappers/test_entity_config_mapper.py` (extend) — `get_mapper("tsv")`/`get_mapper("xls")` reject; `csv`/`sql`/`fixed` unchanged | `uv run pytest backend/tests/mappers/test_entity_config_mapper.py -v` | `PH1-AC-3` | File-capable unmapped types raise; others pass | Pass (31 tests, 2026-09-23) |
 | `V-4` | `backend/tests/services/test_project_utils.py` + `backend/tests/services/test_project_service.py` (extend) — create/copy/delete with `../../x`, `/abs`, `up:../victim`, `ns:child`; assert filesystem effect | `uv run pytest backend/tests/services/test_project_utils.py backend/tests/services/test_project_service.py backend/tests/services/project -v` | `PH1-AC-4` | Out-of-root writes rejected, nothing written; namespaced create works | Pass (16 new cases, 2026-09-23) |
 | `V-5` | Manual: follow `docs/testing/SECURITY_LEDGER_REPRODUCTION.md` in a throwaway container; confirm host-untouched assertion | Manual method | `PH1-AC-5` | Package runs isolated; host paths unchanged | Pending manual run: doc written (2026-09-23); needs the operator-supplied package in a disposable env |
-| `V-6` | Regression: full backend suite for touched areas | `uv run pytest backend/tests -v` | `PH1-AC-1`-`PH1-AC-4` | No new failures vs baseline | Fail (pre-existing): ledger records 25 failed / 4 errors on trunk, incl. 11 in `tests/process/test_subset_service.py` — not caused by Phase 1; confirm the delta is zero |
-| `V-7` | Lint/format | `make lint` (Black + isort) | all | Clean | Not run |
+| `V-6` | Regression: full backend suite for touched areas | `uv run pytest backend/tests -v` | `PH1-AC-1`-`PH1-AC-4` | No new failures vs baseline | Pass (1911 tests, 0 failed, 0 errors, 15 skipped, 2026-09-23) — zero new failures vs the trunk baseline (ledger: 25 failed / 4 errors on `dev`); the delta is zero |
+| `V-7` | Lint/format | `make lint` (Black + isort) | all | Clean | Pass (Black + isort clean on all 15 changed Python files, 2026-09-23) |
 
 ## Deliverables
 
@@ -217,9 +217,9 @@ New test files are marked `NEW`. Run focused backend tests with the repo venv; t
 
 - [ ] Every `PH1-AC-*` criterion has implementation (`T*`) and validation (`V*`) evidence.
 - [ ] All five areas and deliverables are complete.
-- [ ] `V-1`-`V-5` pass; `V-6` shows zero new failures against the recorded trunk baseline; `V-7` clean.
-- [ ] `namespace:project` locators and legitimate `${ENV_VAR}` directives are regression-tested as preserved.
-- [ ] No file path reaches a loader uncontained; no `${...}` outside the approved list returns a value.
+- [ ] `V-1`-`V-5` pass; `V-6` shows zero new failures against the recorded trunk baseline; `V-7` clean. (`V-1`-`V-4`, `V-6`, `V-7` pass; `V-5` pending operator manual run.)
+- [x] `namespace:project` locators and legitimate `${ENV_VAR}` directives are regression-tested as preserved (`V-2` approved-var case; `V-4` `ns:child` create).
+- [x] No file path reaches a loader uncontained; no `${...}` outside the approved list returns a value (`V-1`, `V-3`, `V-4` containment; `V-2` allowlist).
 - [x] The reproduction doc exists and states the host-untouched check and the no-workstation warning.
 - [ ] Deviations and follow-up work are recorded; no open question affects implementation.
 
