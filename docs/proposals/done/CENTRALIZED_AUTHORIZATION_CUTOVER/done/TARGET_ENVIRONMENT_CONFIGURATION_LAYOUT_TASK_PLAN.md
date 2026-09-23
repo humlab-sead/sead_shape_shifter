@@ -8,7 +8,7 @@
 - **Related phase:** Phase 2 resource and manifest preparation; prerequisite to Phase 3 migration readiness
 - **Goal:** Require the deployment user's `~/config`, `~/container`, and `~/container-data` sibling directories, move deployment-specific configuration and authorization inputs into `~/config`, and keep `~/container` replaceable and effectively read-only.
 - **Planning decision:** This is a separate deployment-layout change, not a redefinition of authorization Phase 3. The master cutover plan should reference this plan as a prerequisite before Phase 3 execution.
-- **Dependencies:** The existing authorization manifest and principal roster are reviewed in [TEST_DEPLOYMENT_RESOURCE_INVENTORY.md](../../../../secrets/TEST_DEPLOYMENT_RESOURCE_INVENTORY.md). The target deployment is not released to end users, so no backward-compatible path fallback is required.
+- **Dependencies:** The existing authorization manifest and principal roster are reviewed in [TEST_DEPLOYMENT_RESOURCE_INVENTORY.md](../../../../../secrets/TEST_DEPLOYMENT_RESOURCE_INVENTORY.md). The target deployment is not released to end users, so no backward-compatible path fallback is required.
 
 ### Acceptance Criteria
 
@@ -235,7 +235,7 @@ The normal deployment layout requires these three sibling directories under the 
   * **Constraints:** Keep nginx credentials and authorization group installation on the host; do not mount or copy all config into the application image.
   * **Validation:** `V-18`, `V-19`.
 * [x] `T5.3` **Change:** Rewrite deployment documentation and cutover references.
-  * **Target:** `container/README.md`, `container/DEPLOYMENT.md`, `docs/OPERATIONS.md`, `docs/proposals/CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md`, and relevant inventory/status records.
+  * **Target:** `container/README.md`, `container/DEPLOYMENT.md`, `docs/OPERATIONS.md`, `docs/proposals/done/CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md`, and relevant inventory/status records.
   * **Current → required:** Documentation describes `container/.env`, `container-data/backend.env`, and a two-directory layout. It must describe the three-directory layout, provisioning order, permissions, replacement workflow, and authorization manifest location.
   * **Constraints:** Mark the old development layout as retired rather than documenting compatibility behavior.
   * **Validation:** `V-20`.
