@@ -5,7 +5,7 @@
 - Future proposal / not yet approved
 - Scope: backend application log records (`backend/app/core/logging_config.py`)
 - Goal: prevent user-supplied newlines from forging application log records
-- Related: [DEPLOYMENT_VERIFICATION_HANDOFF.md](../CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md) "Log review" check
+- Related: [DEPLOYMENT_VERIFICATION_HANDOFF.md](../done/CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md) "Log review" check
 
 ## Summary
 

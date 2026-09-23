@@ -5,7 +5,7 @@
 - Draft proposal / not yet approved
 - Scope: store principal-to-team membership in the authorization database and authorize against it in addition to trusted-proxy groups
 - Goal: let an operator assign people to a team inside Shape Shifter when the deployment cannot supply verified group IDs
-- Related: [AUTHORIZATION.md](../../AUTHORIZATION.md), [AUTHORIZATION_ROUTE_INVENTORY.md](../../AUTHORIZATION_ROUTE_INVENTORY.md), [Centralized Authorization System Cutover Plan](../CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md), [Authorization Schema Migration Registry](./AUTHORIZATION_SCHEMA_MIGRATION_REGISTRY.md), [Native Application Authentication](./NATIVE_APPLICATION_AUTHENTICATION.md)
+- Related: [AUTHORIZATION.md](../../AUTHORIZATION.md), [AUTHORIZATION_ROUTE_INVENTORY.md](../../AUTHORIZATION_ROUTE_INVENTORY.md), [Centralized Authorization System Cutover Plan](../done/CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md), [Authorization Schema Migration Registry](./AUTHORIZATION_SCHEMA_MIGRATION_REGISTRY.md), [Native Application Authentication](./NATIVE_APPLICATION_AUTHENTICATION.md)
 
 ## Summary
 

@@ -2,17 +2,17 @@
 
 ## Phase Summary
 
-- Status: Implemented — closed. The containment and assessment checks that were left open are handed to the operations team in [DEPLOYMENT_VERIFICATION_HANDOFF.md](../../../CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md), which shares the release gate with [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../../../CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md)
+- Status: Implemented — closed. The containment and assessment checks that were left open are handed to the operations team in [DEPLOYMENT_VERIFICATION_HANDOFF.md](../../../done/CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md), which shares the release gate with [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../../../done/CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md)
 - Proposal: [MITIGATE_SECURITY_ISSUES.md](./MITIGATE_SECURITY_ISSUES.md)
 - Review record: [SECURITY_CHECK.md](../SECURITY_CHECK.md)
-- Release verification: [DEPLOYMENT_VERIFICATION_HANDOFF.md](../../../CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md) — verifies the exact release commit and is operations work, outside this plan
+- Release verification: [DEPLOYMENT_VERIFICATION_HANDOFF.md](../../../done/CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md) — verifies the exact release commit and is operations work, outside this plan
 - Goal: Enforce nginx-authenticated identity in FastAPI and remove the highest-severity file, database, configuration, and secret-access paths before restoring shared or production use
 
 **Acceptance Criteria**
 
 Completion requires that sensitive API operations demand a verified nginx-authenticated identity and an application-side authorization decision; that the API cannot read or write files outside approved server-owned roots; that PostgreSQL and DuckDB execution reject destructive, multi-statement, external-file, extension-loading, and network-capable operations; and that client responses disclose no secrets, connection details, SQL, or sensitive filesystem paths.
 
-Deployment verification of the exact release commit is not one of these criteria. It is operations work, owned by [DEPLOYMENT_VERIFICATION_HANDOFF.md](../../../CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md).
+Deployment verification of the exact release commit is not one of these criteria. It is operations work, owned by [DEPLOYMENT_VERIFICATION_HANDOFF.md](../../../done/CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md).
 
 ## Work Breakdown
 
@@ -28,7 +28,7 @@ Containment and assessment while the application controls were being built: rest
 
 **Task record**
 
-Handed over, with no task plan of its own. The port, documentation-route, and endpoint items are covered by the verified controls: the backend publishes on loopback only, the documentation routes return `401`, and authorization rejects the endpoint calls that disablement was meant to block. Firewall rules, log review, mount re-inspection, credential rotation, and the containment record are owned by the operations team in [DEPLOYMENT_VERIFICATION_HANDOFF.md](../../../CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md).
+Handed over, with no task plan of its own. The port, documentation-route, and endpoint items are covered by the verified controls: the backend publishes on loopback only, the documentation routes return `401`, and authorization rejects the endpoint calls that disablement was meant to block. Firewall rules, log review, mount re-inspection, credential rotation, and the containment record are owned by the operations team in [DEPLOYMENT_VERIFICATION_HANDOFF.md](../../../done/CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md).
 
 **Completion Criteria**
 
@@ -118,7 +118,7 @@ Focused regression suites now cover unauthenticated and cross-resource authoriza
 
 **Task record**
 
-[MITIGATE_SECURITY_ISSUES_PHASE_5_TASK_PLAN.md](./MITIGATE_SECURITY_ISSUES_PHASE_5_TASK_PLAN.md) — complete. The release-host checks sit outside this plan, in [DEPLOYMENT_VERIFICATION_HANDOFF.md](../../../CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md).
+[MITIGATE_SECURITY_ISSUES_PHASE_5_TASK_PLAN.md](./MITIGATE_SECURITY_ISSUES_PHASE_5_TASK_PLAN.md) — complete. The release-host checks sit outside this plan, in [DEPLOYMENT_VERIFICATION_HANDOFF.md](../../../done/CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md).
 
 **Completion Criteria**
 
@@ -128,12 +128,12 @@ Focused security tests, regression tests, and deployment checks pass on the exac
 
 | Area | Status | Notes |
 |---|---|---|
-| Exposure containment and impact assessment | Handed over | Port, documentation-route, and endpoint containment are covered by the verified controls; firewall rules, log review, mount re-inspection, credential rotation, and the containment record are owned by the operations team in [DEPLOYMENT_VERIFICATION_HANDOFF.md](../../../CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md) |
+| Exposure containment and impact assessment | Handed over | Port, documentation-route, and endpoint containment are covered by the verified controls; firewall rules, log review, mount re-inspection, credential rotation, and the containment record are owned by the operations team in [DEPLOYMENT_VERIFICATION_HANDOFF.md](../../../done/CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md) |
 | Authentication, authorization, and CORS | Done | Proxy identity, direct-route protection, session ownership, CORS, health disclosure, cross-resource HTTP, and team-grant regressions are covered; implementation recorded in [CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md](./CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md) |
 | Filesystem and project configuration boundaries | Done | Archived in [MITIGATE_SECURITY_ISSUES_PHASE_2_TASK_PLAN.md](./MITIGATE_SECURITY_ISSUES_PHASE_2_TASK_PLAN.md); ingester source and destination boundaries are deferred to [INGESTER_FILESYSTEM_BOUNDARIES.md](../../../CHANGE_REQUEST_INGESTER/INGESTER_FILESYSTEM_BOUNDARIES.md) |
 | SQL, PostgreSQL, and DuckDB restrictions | Done | Archived in [MITIGATE_SECURITY_ISSUES_PHASE_3_TASK_PLAN.md](./MITIGATE_SECURITY_ISSUES_PHASE_3_TASK_PLAN.md), with results in [MITIGATE_SECURITY_ISSUES_PHASE_3_VALIDATION.md](./MITIGATE_SECURITY_ISSUES_PHASE_3_VALIDATION.md) |
 | Data-source and error handling controls | Done | Data-source inventory, server-managed destinations, and public error redaction are complete; detailed work is archived in [MITIGATE_SECURITY_ISSUES_PHASE_4_TASK_PLAN.md](./MITIGATE_SECURITY_ISSUES_PHASE_4_TASK_PLAN.md) |
-| Security regression and release verification | Done | Phase 5 is complete and archived in [MITIGATE_SECURITY_ISSUES_PHASE_5_TASK_PLAN.md](./MITIGATE_SECURITY_ISSUES_PHASE_5_TASK_PLAN.md); the release-host checks are operations work outside this plan, in [DEPLOYMENT_VERIFICATION_HANDOFF.md](../../../CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md) |
+| Security regression and release verification | Done | Phase 5 is complete and archived in [MITIGATE_SECURITY_ISSUES_PHASE_5_TASK_PLAN.md](./MITIGATE_SECURITY_ISSUES_PHASE_5_TASK_PLAN.md); the release-host checks are operations work outside this plan, in [DEPLOYMENT_VERIFICATION_HANDOFF.md](../../../done/CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md) |
 
 ## Definition Of Done
 
@@ -153,13 +153,13 @@ The temporary exposure controls were not resolved here: the containment and asse
 
 | Deliverable | Description | Status | Link |
 |---|---|---|---|
-| Containment record | Exposure, credential, log, firewall, and proxy assessment | Handed over | Operations owns the record in [DEPLOYMENT_VERIFICATION_HANDOFF.md](../../../CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md), including the credential-rotation check the containment phase required |
+| Containment record | Exposure, credential, log, firewall, and proxy assessment | Handed over | Operations owns the record in [DEPLOYMENT_VERIFICATION_HANDOFF.md](../../../done/CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md), including the credential-rotation check the containment phase required |
 | Access-control implementation | Authentication, authorization, session ownership, CSRF, and CORS controls | Done | [CENTRALIZED_AUTHORIZATION_SYSTEM.md](./CENTRALIZED_AUTHORIZATION_SYSTEM.md), [CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md](./CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md); the conditional CSRF task was withdrawn because the deployment does not use cookie authentication, and the resource-identifier follow-up is a separate proposal: [SERVER_OWNED_RESOURCE_IDENTIFIERS.md](../../../future/SERVER_OWNED_RESOURCE_IDENTIFIERS.md) |
 | Boundary-control implementation | Filesystem, YAML directive, upload, download, and execution-target restrictions | Done | [MITIGATE_SECURITY_ISSUES_PHASE_2_TASK_PLAN.md](./MITIGATE_SECURITY_ISSUES_PHASE_2_TASK_PLAN.md); ingester boundaries deferred to [INGESTER_FILESYSTEM_BOUNDARIES.md](../../../CHANGE_REQUEST_INGESTER/INGESTER_FILESYSTEM_BOUNDARIES.md) |
 | Query safety implementation | SQL policy, database role controls, DuckDB restrictions, and resource limits | Done | [MITIGATE_SECURITY_ISSUES_PHASE_3_TASK_PLAN.md](./MITIGATE_SECURITY_ISSUES_PHASE_3_TASK_PLAN.md), [MITIGATE_SECURITY_ISSUES_PHASE_3_VALIDATION.md](./MITIGATE_SECURITY_ISSUES_PHASE_3_VALIDATION.md) |
 | Data-source and error handling controls | Server-managed destinations, approved environment-variable resolution, and public error redaction | Done | [MITIGATE_SECURITY_ISSUES_PHASE_4_TASK_PLAN.md](./MITIGATE_SECURITY_ISSUES_PHASE_4_TASK_PLAN.md); ingester route work tracked in [INGESTER_AUTHORIZATION_TASKS.md](../../../CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md) |
 | Security regression suite | Tests for the verified review cases and bypass paths | Done | [MITIGATE_SECURITY_ISSUES_PHASE_5_TASK_PLAN.md](./MITIGATE_SECURITY_ISSUES_PHASE_5_TASK_PLAN.md); evidence and the finding matrix are in [SECURITY_CHECK.md](../SECURITY_CHECK.md) |
-| Release verification record | Results for the exact image, commit, and deployed configuration | Out of scope | Operations owns it in [DEPLOYMENT_VERIFICATION_HANDOFF.md](../../../CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md); [SECURITY_CHECK.md](../SECURITY_CHECK.md) keeps the release identity, port binding, proxy, health, and route-protection results already verified |
+| Release verification record | Results for the exact image, commit, and deployed configuration | Out of scope | Operations owns it in [DEPLOYMENT_VERIFICATION_HANDOFF.md](../../../done/CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md); [SECURITY_CHECK.md](../SECURITY_CHECK.md) keeps the release identity, port binding, proxy, health, and route-protection results already verified |
 
 ## Scope
 
@@ -171,7 +171,7 @@ The temporary exposure controls were not resolved here: the containment and asse
 
 **Out of scope**
 
-- Deployment verification of the exact release commit: image identity, port binding, proxy routes, firewall rules, database grants, mounted files, logs, and rollback. The operations team owns it in [DEPLOYMENT_VERIFICATION_HANDOFF.md](../../../CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md).
+- Deployment verification of the exact release commit: image identity, port binding, proxy routes, firewall rules, database grants, mounted files, logs, and rollback. The operations team owns it in [DEPLOYMENT_VERIFICATION_HANDOFF.md](../../../done/CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md).
 - Spreadsheet formula injection, UCanAccess supply-chain hardening, log formatting cleanup, and other medium or low findings except where they are needed for the high-severity controls.
 - Unrelated data-integrity and documentation bugs.
 - Production staffing, dates, ownership, and release scheduling.
@@ -189,7 +189,7 @@ The temporary exposure controls were not resolved here: the containment and asse
 
 Every question that this plan raised now has an owner elsewhere:
 
-- Which database operations must remain writable, and who may request them? — [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../../../CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md).
+- Which database operations must remain writable, and who may request them? — [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../../../done/CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md).
 - Which filesystem roots are approved in each deployment environment? — the approved-root registry in [OPERATIONS.md](../../../../OPERATIONS.md#approved-file-roots) and the release-host checks in the handoff.
 - Is the ingester API removed, kept disabled, or redesigned? — [INGESTER_AUTHORIZATION_TASKS.md](../../../CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md) and [INGESTER_FILESYSTEM_BOUNDARIES.md](../../../CHANGE_REQUEST_INGESTER/INGESTER_FILESYSTEM_BOUNDARIES.md).
 - When should native application authentication replace nginx authentication? — [NATIVE_APPLICATION_AUTHENTICATION.md](../../../future/NATIVE_APPLICATION_AUTHENTICATION.md).

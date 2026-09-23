@@ -2,15 +2,15 @@
 
 ## Phase Summary
 
-- **Source decision document:** [Centralized Authorization System](../../done/MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM.md)
+- **Source decision document:** [Centralized Authorization System](../../../done/MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM.md)
 - **Source phase plan:** [Centralized Authorization System Cutover Plan](../CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md) — [Phase 2: Review Deployment Resources And Initial Grants](../CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md#phase-2-review-deployment-resources-and-initial-grants)
 - **Status:** Complete for the test target; the reviewed inputs were applied and reconciled during Phase 3.
 - **Goal:** Produce the deployment's authorization inputs — a reviewed resource list, confirmed principal IDs, and an initial administrator-and-grant manifest — without modifying project YAML.
-- **Readiness:** Complete for the test target. The host, principal roster, resource owners/readers, and reviewed manifest are recorded in [TEST_DEPLOYMENT_RESOURCE_INVENTORY.md](../../../../secrets/TEST_DEPLOYMENT_RESOURCE_INVENTORY.md) and the [test-environment cutover handoff](../TEST_ENVIRONMENT_AUTHORIZATION_CUTOVER_HANDOFF.md).
+- **Readiness:** Complete for the test target. The host, principal roster, resource owners/readers, and reviewed manifest are recorded in [TEST_DEPLOYMENT_RESOURCE_INVENTORY.md](../../../../../secrets/TEST_DEPLOYMENT_RESOURCE_INVENTORY.md) and the [test-environment cutover handoff](../TEST_ENVIRONMENT_AUTHORIZATION_CUTOVER_HANDOFF.md).
 - **Dependencies:** Phase 1 complete (route and operation inventory). The phase plan records `Depends On: The Phase 1 inventory`.
 - **Constraints:** Do not modify project YAML or other user-editable project data. Do not infer principal ownership from filenames, project metadata, or request data. Keep the authorization policy unchanged. Do not apply or reconcile the manifest in this phase; application and reconciliation belong to Phase 3.
 
-**Previously blocking decisions** — resolved for the test target as recorded in [TEST_DEPLOYMENT_RESOURCE_INVENTORY.md](../../../../secrets/TEST_DEPLOYMENT_RESOURCE_INVENTORY.md):
+**Previously blocking decisions** — resolved for the test target as recorded in [TEST_DEPLOYMENT_RESOURCE_INVENTORY.md](../../../../../secrets/TEST_DEPLOYMENT_RESOURCE_INVENTORY.md):
 
 1. **Deployment host and environment:** resolved as the `test` environment on `humlabsead`, with legacy sources recorded separately from the target mounts.
 2. **Principal ID values:** confirmed as the case-sensitive nginx user values, including administrators `admin`, `roger`, and `rebecka`.
@@ -37,7 +37,7 @@ The reviewed input set was validated with `migrate --dry-run`, then imported and
 | `docs/AUTHORIZATION.md` (Principals; Resource Roles) | `principal_id` is the trimmed, case-sensitive value of the trusted-proxy identity header. Project roles are `viewer`, `editor`, `executor`, `owner`; the shared-source role is `reader`; broad subjects must not receive `owner` | Identity confirmation compares against the header values nginx actually supplies; direct-principal `owner` grants only |
 | `backend/app/core/config.py` | `AUTHORIZATION_DATABASE_PATH` (default `state/authorization.sqlite3`), `AUTHORIZATION_BOOTSTRAP_ADMIN_PRINCIPALS`, `PROJECTS_DIR`, and the shared-data directory resolve the inventory sources | The inventory reads these configured directories on the selected host; bootstrap admins are compared, not invented |
 | `backend/app/mappers/project_name_mapper.py::to_api_name`, `backend/app/authorization/dependencies.py::_data_source_locator` | A project locator is the API name derived from the project directory; a shared-data-source locator is the filename stem | The resource list uses these exact locator forms so `require_project` and `require_shared_data_source` lookups match later |
-| [TEST_DEPLOYMENT_RESOURCE_INVENTORY.md](../../../secrets/TEST_DEPLOYMENT_RESOURCE_INVENTORY.md) and [TEST_ENVIRONMENT_AUTHORIZATION_CUTOVER_HANDOFF.md](./TEST_ENVIRONMENT_AUTHORIZATION_CUTOVER_HANDOFF.md) | Test host, nginx principal roster, 26 project owners, 6 shared-source readers, reviewed manifest, and cutover results are recorded | Phase 2 inputs are complete; missing target project content remains a provisioning or policy-regeneration decision |
+| [TEST_DEPLOYMENT_RESOURCE_INVENTORY.md](../../../../../secrets/TEST_DEPLOYMENT_RESOURCE_INVENTORY.md) and [TEST_ENVIRONMENT_AUTHORIZATION_CUTOVER_HANDOFF.md](../TEST_ENVIRONMENT_AUTHORIZATION_CUTOVER_HANDOFF.md) | Test host, nginx principal roster, 26 project owners, 6 shared-source readers, reviewed manifest, and cutover results are recorded | Phase 2 inputs are complete; missing target project content remains a provisioning or policy-regeneration decision |
 
 ## Scope
 
@@ -65,7 +65,7 @@ The reviewed input set was validated with `migrate --dry-run`, then imported and
 
 **Objective:** A reviewed resource list with a locator per entry, no duplicate locator within a resource type, and a recorded conflict with any existing authorization record.
 
-**Evidence:** [TEST_DEPLOYMENT_RESOURCE_INVENTORY.md](../../../../secrets/TEST_DEPLOYMENT_RESOURCE_INVENTORY.md), including the 26-project and 6-shared-source inventory and conflict review.
+**Evidence:** [TEST_DEPLOYMENT_RESOURCE_INVENTORY.md](../../../../../secrets/TEST_DEPLOYMENT_RESOURCE_INVENTORY.md), including the 26-project and 6-shared-source inventory and conflict review.
 
 * [x] `T1.1` **Change:** List every migration-source project and shared data source with its locator and lifecycle state.
   * **Target:** the selected host's `PROJECTS_DIR` and shared-data directory; output to the new resource-list record (path recorded at execution, see Open Questions).
@@ -81,13 +81,13 @@ The reviewed input set was validated with `migrate --dry-run`, then imported and
   * **Constraints:** Do not infer ownership from locators or metadata. Record conflicts; do not resolve them silently.
   * **Validation:** `V-1`, `V-2` — passed; no duplicate or existing-resource conflict was found.
 
-**Completion evidence:** The resource list is recorded in [TEST_DEPLOYMENT_RESOURCE_INVENTORY.md](../../../secrets/TEST_DEPLOYMENT_RESOURCE_INVENTORY.md); every entry carries a locator and expected state, and no unresolved duplicate or conflict remains unrecorded.
+**Completion evidence:** The resource list is recorded in [TEST_DEPLOYMENT_RESOURCE_INVENTORY.md](../../../../../secrets/TEST_DEPLOYMENT_RESOURCE_INVENTORY.md); every entry carries a locator and expected state, and no unresolved duplicate or conflict remains unrecorded.
 
 ### Area 2: Confirm principal IDs against deployment identities
 
 **Objective:** A signed principal-ID record whose administrator, owner, and reader values match the nginx identity header exactly, with corrections recorded.
 
-**Evidence:** The principal roster and administrator decision are recorded in [TEST_DEPLOYMENT_RESOURCE_INVENTORY.md](../../../../secrets/TEST_DEPLOYMENT_RESOURCE_INVENTORY.md); runtime identity behavior was exercised through nginx during the test cutover.
+**Evidence:** The principal roster and administrator decision are recorded in [TEST_DEPLOYMENT_RESOURCE_INVENTORY.md](../../../../../secrets/TEST_DEPLOYMENT_RESOURCE_INVENTORY.md); runtime identity behavior was exercised through nginx during the test cutover.
 
 * [x] `T2.1` **Change:** Collect and validate the deployment principal IDs.
   * **Target:** the new principal-ID record.
@@ -109,7 +109,7 @@ The reviewed input set was validated with `migrate --dry-run`, then imported and
 
 **Objective:** A manifest that `migrate --dry-run` validates, and a review that confirms every administrator, resource, and grant is present, every resource has an owner or reader, and project YAML is unchanged.
 
-**Evidence:** [resources/authorization/test-initial-manifest.yaml](../../../../resources/authorization/test-initial-manifest.yaml), the inventory validation record, and the live cutover handoff.
+**Evidence:** [resources/authorization/test-initial-manifest.yaml](../../../../../resources/authorization/test-initial-manifest.yaml), the inventory validation record, and the live cutover handoff.
 
 * [x] `T3.1` **Change:** Author the initial authorization manifest.
   * **Target:** new manifest file (path recorded at execution; see Open Questions).
@@ -152,10 +152,10 @@ For every check, record the command, its output, and the reviewer in the phase p
 
 | Deliverable | Description | Status | Link |
 | --- | --- | --- | --- |
-| Deployment resource list | 26 migration-source projects and 6 shared data sources with locator and lifecycle state, plus the conflict check result | Done | [TEST_DEPLOYMENT_RESOURCE_INVENTORY.md](../../../../secrets/TEST_DEPLOYMENT_RESOURCE_INVENTORY.md) |
-| Principal-ID record | Administrator, owner, and reader values confirmed against the nginx identity header, with accepted role decisions | Done | [TEST_DEPLOYMENT_RESOURCE_INVENTORY.md](../../../../secrets/TEST_DEPLOYMENT_RESOURCE_INVENTORY.md) |
-| Initial authorization manifest | `{administrators, resources}` matching `_load_validated_manifest`, validated by `migrate --dry-run` | Done | [test-initial-manifest.yaml](../../../../resources/authorization/test-initial-manifest.yaml) |
-| Manifest review | Dated note naming the reviewer and confirming coverage and unchanged project YAML | Done | [TEST_DEPLOYMENT_RESOURCE_INVENTORY.md](../../../../secrets/TEST_DEPLOYMENT_RESOURCE_INVENTORY.md) and [test cutover handoff](../TEST_ENVIRONMENT_AUTHORIZATION_CUTOVER_HANDOFF.md) |
+| Deployment resource list | 26 migration-source projects and 6 shared data sources with locator and lifecycle state, plus the conflict check result | Done | [TEST_DEPLOYMENT_RESOURCE_INVENTORY.md](../../../../../secrets/TEST_DEPLOYMENT_RESOURCE_INVENTORY.md) |
+| Principal-ID record | Administrator, owner, and reader values confirmed against the nginx identity header, with accepted role decisions | Done | [TEST_DEPLOYMENT_RESOURCE_INVENTORY.md](../../../../../secrets/TEST_DEPLOYMENT_RESOURCE_INVENTORY.md) |
+| Initial authorization manifest | `{administrators, resources}` matching `_load_validated_manifest`, validated by `migrate --dry-run` | Done | [test-initial-manifest.yaml](../../../../../resources/authorization/test-initial-manifest.yaml) |
+| Manifest review | Dated note naming the reviewer and confirming coverage and unchanged project YAML | Done | [TEST_DEPLOYMENT_RESOURCE_INVENTORY.md](../../../../../secrets/TEST_DEPLOYMENT_RESOURCE_INVENTORY.md) and [test cutover handoff](../TEST_ENVIRONMENT_AUTHORIZATION_CUTOVER_HANDOFF.md) |
 
 ## Progress Tracker
 
