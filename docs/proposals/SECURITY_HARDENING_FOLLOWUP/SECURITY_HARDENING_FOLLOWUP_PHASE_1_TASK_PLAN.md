@@ -157,10 +157,11 @@ Acceptance criteria:
 
 **Tasks:**
 
-* [ ] `T1.6` **Document an isolated run recipe for the ledger package.**
+* [x] `T1.6` **Document an isolated run recipe for the ledger package.**
   * **Target:** `NEW` `docs/testing/SECURITY_LEDGER_REPRODUCTION.md`.
   * **Current → required:** No maintained procedure exists; the ledger warns its harness rewrites positional args only and must not run on a workstation → a maintained recipe runs `RUN.sh` inside a disposable container/VM and asserts host paths are unchanged.
   * **Implementation:** Record the disposable-environment steps, the host-untouched assertion, and the explicit warning against workstation/root runs. Reference the ledger's own limits (section 6) without copying the package.
+  * **Done:** `docs/testing/SECURITY_LEDGER_REPRODUCTION.md` created. It states the no-workstation/root warning up front, explains why isolation is required (root execution; stub wrappers rewrite positional args only, so `>`/`sed -i`/`cp --target-directory=`/`bash -c` reach the real host; partial host snapshot; do not forward the `sudo` stub), gives a throwaway-container/VM run recipe with the package path as operator-supplied `TBD`, lists the host-untouched roots (`/etc/nginx`, `/etc/systemd/system`, `/data`, and `config`/`container`/`container-data` under `$HOME`) plus a manual before/after `stat`/`find` check, and links the proposal, `TESTING.md`, and the container README. It references the ledger's section 6 limits without copying the package and commits nothing from `secrets/`.
   * **Constraints:** Do not commit anything from `secrets/`; the recipe points at the local package path as `TBD` (operator-supplied).
   * **Validation:** `V-5`.
 
@@ -186,7 +187,7 @@ New test files are marked `NEW`. Run focused backend tests with the repo venv; t
 | `V-2` | `NEW` `backend/tests/test_env_var_allowlist.py` — preview with `${SECRET}` in `override_config` and in stored YAML; approved var still resolves | `uv run pytest backend/tests/test_env_var_allowlist.py -v` | `PH1-AC-2` | No env value in `PreviewResult.rows`; approved var expands | Pass (6 tests, 2026-09-23) |
 | `V-3` | `backend/tests/mappers/test_entity_config_mapper.py` (extend) — `get_mapper("tsv")`/`get_mapper("xls")` reject; `csv`/`sql`/`fixed` unchanged | `uv run pytest backend/tests/mappers/test_entity_config_mapper.py -v` | `PH1-AC-3` | File-capable unmapped types raise; others pass | Pass (31 tests, 2026-09-23) |
 | `V-4` | `backend/tests/services/test_project_utils.py` + `backend/tests/services/test_project_service.py` (extend) — create/copy/delete with `../../x`, `/abs`, `up:../victim`, `ns:child`; assert filesystem effect | `uv run pytest backend/tests/services/test_project_utils.py backend/tests/services/test_project_service.py backend/tests/services/project -v` | `PH1-AC-4` | Out-of-root writes rejected, nothing written; namespaced create works | Pass (16 new cases, 2026-09-23) |
-| `V-5` | Manual: follow `docs/testing/SECURITY_LEDGER_REPRODUCTION.md` in a throwaway container; confirm host-untouched assertion | Manual method | `PH1-AC-5` | Package runs isolated; host paths unchanged | Not run: doc is new |
+| `V-5` | Manual: follow `docs/testing/SECURITY_LEDGER_REPRODUCTION.md` in a throwaway container; confirm host-untouched assertion | Manual method | `PH1-AC-5` | Package runs isolated; host paths unchanged | Pending manual run: doc written (2026-09-23); needs the operator-supplied package in a disposable env |
 | `V-6` | Regression: full backend suite for touched areas | `uv run pytest backend/tests -v` | `PH1-AC-1`-`PH1-AC-4` | No new failures vs baseline | Fail (pre-existing): ledger records 25 failed / 4 errors on trunk, incl. 11 in `tests/process/test_subset_service.py` — not caused by Phase 1; confirm the delta is zero |
 | `V-7` | Lint/format | `make lint` (Black + isort) | all | Clean | Not run |
 
@@ -199,7 +200,7 @@ New test files are marked `NEW`. Run focused backend tests with the repo venv; t
 | Allowlist at resolver boundary | `src/configuration/resolve.py::EnvironmentVariableResolver`, `ResolutionContext` | `T1.3` | `V-2` passes |
 | Unsupported-type rejection | `backend/app/mappers/entity_config_mapper.py::EntityConfigMapperFactory` | `T1.4` | `V-3` passes |
 | Contained project paths | `backend/app/services/project/project_operations.py`, `project_utils.py` | `T1.5` | `V-4` passes |
-| Reproduction recipe | `NEW` `docs/testing/SECURITY_LEDGER_REPRODUCTION.md` | `T1.6` | `V-5` passes |
+| Reproduction recipe | `NEW` `docs/testing/SECURITY_LEDGER_REPRODUCTION.md` | `T1.6` | doc written; `V-5` pending manual run |
 | New regression tests | `backend/tests/api/test_spa_catchall_containment.py` (created); `backend/tests/test_env_var_allowlist.py` (created); extended `test_entity_config_mapper.py`, `test_project_utils.py`, `test_project_service.py` | `T1.1`-`T1.5` | `V-1` passes; `V-2` passes; `V-3` passes; `V-4` passes |
 
 ## Progress Tracker
@@ -210,7 +211,7 @@ New test files are marked `NEW`. Run focused backend tests with the repo venv; t
 | Area 2 — Env allowlist | Done | None | `T1.2` (gate in `replace_env_vars`) and `T1.3` (allowlist threaded through `ResolutionContext`/`resolve_directives`/`Settings.env_opts`) done; `V-2` passes (6 tests) |
 | Area 3 — Unmapped types | Done | None | `T1.4` done (`get_mapper` fails closed for `tsv`/`xls`); `V-3` passes (31 tests) |
 | Area 4 — Project paths | Done | None | `T1.5` done (`ProjectUtils.resolve_project_dir`/`resolve_project_file` wired into create/copy/delete/update_metadata); `V-4` passes (16 tests) |
-| Area 5 — Repro environment | Not started | None | `T1.6` |
+| Area 5 — Repro environment | Done | None | `T1.6` done (`docs/testing/SECURITY_LEDGER_REPRODUCTION.md` written); `V-5` pending operator manual run |
 
 ## Definition Of Done
 
@@ -219,7 +220,7 @@ New test files are marked `NEW`. Run focused backend tests with the repo venv; t
 - [ ] `V-1`-`V-5` pass; `V-6` shows zero new failures against the recorded trunk baseline; `V-7` clean.
 - [ ] `namespace:project` locators and legitimate `${ENV_VAR}` directives are regression-tested as preserved.
 - [ ] No file path reaches a loader uncontained; no `${...}` outside the approved list returns a value.
-- [ ] The reproduction doc exists and states the host-untouched check and the no-workstation warning.
+- [x] The reproduction doc exists and states the host-untouched check and the no-workstation warning.
 - [ ] Deviations and follow-up work are recorded; no open question affects implementation.
 
 ## Risks And Open Questions
