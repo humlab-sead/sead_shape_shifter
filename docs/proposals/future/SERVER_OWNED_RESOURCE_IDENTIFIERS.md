@@ -6,7 +6,7 @@
 - Scope: server-owned resource records for generated outputs, backups, uploads, and long-running operations, and the API contracts that use them
 - Goal: stop client-selected filenames and paths from acting as resource identity, so every later request resolves through a server record
 - Origin: follow-up to the closed mitigation work — [MITIGATE_SECURITY_ISSUES.md](../done/MITIGATE_SECURITY_ISSUES/done/MITIGATE_SECURITY_ISSUES.md), [phase plan](../done/MITIGATE_SECURITY_ISSUES/done/MITIGATE_SECURITY_ISSUES_PHASE_PLAN.md)
-- Related: [centralized authorization design](../done/MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM.md), [implementation task plan](../done/MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md), [cutover plan](../CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md)
+- Related: [centralized authorization design](../done/MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM.md), [implementation task plan](../done/MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md), [cutover plan](../done/CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md)
 
 ## Summary
 

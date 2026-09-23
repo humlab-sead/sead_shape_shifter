@@ -4,7 +4,7 @@
 
 Shape Shifter uses a centralized authorization system to decide whether an authenticated principal may perform an action on a protected resource. Resource records, grants, deployment roles, and authorization audit events are stored outside project-managed data in the configured SQLite authorization database.
 
-This document describes the implemented policy. Route-by-route coverage and the remaining enforcement work are tracked in [AUTHORIZATION_ROUTE_INVENTORY.md](AUTHORIZATION_ROUTE_INVENTORY.md) and sequenced by the [cutover plan](proposals/CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md).
+This document describes the implemented policy. Route-by-route coverage and the remaining enforcement work are tracked in [AUTHORIZATION_ROUTE_INVENTORY.md](AUTHORIZATION_ROUTE_INVENTORY.md) and sequenced by the [cutover plan](proposals/done/CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md).
 
 The current route declarations are listed in [AUTHORIZATION_ROUTE_INVENTORY.md](AUTHORIZATION_ROUTE_INVENTORY.md), which records a requirement for every route. The ingester validation and execution rows record `application:run_ingesters` with enforcement pending.
 
@@ -113,4 +113,4 @@ Audit records must not contain credentials, SQL text, sensitive filesystem paths
 
 Implemented controls cover project resources and project children, shared data-source access, project references to shared sources, and authenticated access to the global application and error logs. The policy is intentionally deny-by-default.
 
-Ingester authorization remains proposed work and is tracked in [INGESTER_AUTHORIZATION_TASKS.md](proposals/CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md); the inventory records `application:run_ingesters` for the ingester validation and execution routes as enforcement pending. Every other route records a requirement and no row reads `UNDECLARED`. [AUTHORIZATION_ROUTE_INVENTORY.md](AUTHORIZATION_ROUTE_INVENTORY.md) holds the classification together with its dated review, which Phase 1 of the [cutover plan](proposals/CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md) produced.
+Ingester authorization remains proposed work and is tracked in [INGESTER_AUTHORIZATION_TASKS.md](proposals/CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md); the inventory records `application:run_ingesters` for the ingester validation and execution routes as enforcement pending. Every other route records a requirement and no row reads `UNDECLARED`. [AUTHORIZATION_ROUTE_INVENTORY.md](AUTHORIZATION_ROUTE_INVENTORY.md) holds the classification together with its dated review, which Phase 1 of the [cutover plan](proposals/done/CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md) produced.
