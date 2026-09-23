@@ -1,0 +1,24 @@
+# ==============================================================================
+# PostgreSQL password file template (.pgpass)
+# ==============================================================================
+# Copy this file to config/.pgpass/.pgpass, next to the checkout, and add real
+# credentials.
+#
+# Format: hostname:port:database:username:password
+#
+# Examples:
+#   db.example.com:5432:sead_production:sead_user:your_password_here
+#   localhost:5432:*:postgres:admin123
+#   *.example.com:5432:*:user:pass
+#
+# Wildcards (*) can be used for any field except the password.
+#
+# Security:
+#   chmod 600 config/.pgpass/.pgpass
+#   Never commit the real file.
+#
+# Documentation: https://www.postgresql.org/docs/current/libpq-pgpass.html
+# ==============================================================================
+
+# Add database credentials here (one per line):
+# hostname:port:database:username:password

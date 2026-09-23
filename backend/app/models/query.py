@@ -34,6 +34,7 @@ class QueryExecution(BaseModel):
     query: str = Field(..., description="SQL query to execute", min_length=1)
     limit: int = Field(default=100, description="Maximum number of rows to return", ge=1, le=10000)
     timeout: int = Field(default=30, description="Query timeout in seconds", ge=1, le=300)
+    memory_limit_mb: int = Field(default=64, description="Maximum query result memory in MiB", ge=1, le=1024)
 
 
 class QueryIntrospection(BaseModel):

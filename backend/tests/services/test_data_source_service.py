@@ -1,13 +1,18 @@
 """Tests for DataSourceService."""
 
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
+from uuid import uuid4
 
 import pytest
 import yaml
 from pydantic import SecretStr
 
+from backend.app.authorization.models import Grant, Principal, ResourceRecord, ResourceType
+from backend.app.authorization.repository import SQLiteAuthorizationRepository
+from backend.app.authorization.service import AuthorizationService
 from backend.app.models.data_source import DataSourceConfig, DataSourceStatus
 from backend.app.services.data_source_service import DataSourceService
 from src.loaders import DataLoader
@@ -203,6 +208,24 @@ class TestDataSourceService:
         assert len(configs) == 1
         assert configs[0].name == "valid"
 
+    def test_list_authorized_data_sources_filters_unreadable_sources(
+        self, service: DataSourceService, temp_sources_dir: Path, sample_yaml_data: dict
+    ):
+        """Test authorized list only returns readable shared data sources."""
+        (temp_sources_dir / "db1.yml").write_text(yaml.dump(sample_yaml_data))
+        (temp_sources_dir / "db2.yml").write_text(yaml.dump(sample_yaml_data))
+        repository = SQLiteAuthorizationRepository(temp_sources_dir / "authorization.sqlite3")
+        db1 = ResourceRecord(uuid4(), ResourceType.SHARED_DATA_SOURCE, "db1")
+        db2 = ResourceRecord(uuid4(), ResourceType.SHARED_DATA_SOURCE, "db2")
+        repository.create_resource(db1)
+        repository.create_resource(db2)
+        repository.add_grant(Grant("alice", db1.resource_id, "reader", datetime.now(UTC), "admin"))
+
+        configs = service.list_authorized_data_sources(Principal("alice", "test", datetime.now(UTC)), AuthorizationService(repository))
+
+        assert [config.name for config in configs] == ["db1"]
+        repository.close()
+
     # Get data source tests
 
     def test_get_data_source_exists(self, service: DataSourceService, temp_sources_dir: Path, sample_yaml_data: dict):
@@ -269,6 +292,21 @@ class TestDataSourceService:
             data = yaml.safe_load(f)
         assert "name" not in data
         assert "filename" not in data
+
+    def test_create_data_source_rejects_custom_connection_string(self, service: DataSourceService, sample_config: DataSourceConfig):
+        """Test server-managed policy rejects custom connection strings before save."""
+        sample_config.connection_string = "postgresql://example.com/testdb"
+
+        with pytest.raises(ValueError, match="connection strings are not allowed"):
+            service.create_data_source("test", sample_config)
+
+    def test_create_data_source_rejects_unapproved_env_vars(self, service: DataSourceService, sample_config: DataSourceConfig, monkeypatch):
+        """Test server-managed policy rejects unapproved environment variables before save."""
+        monkeypatch.setenv("UNAPPROVED_HOST", "example.com")
+        sample_config.host = "${UNAPPROVED_HOST}"
+
+        with pytest.raises(ValueError, match="unapproved environment variables"):
+            service.create_data_source("test", sample_config)
 
     # Update data source tests
 
@@ -364,6 +402,8 @@ class TestDataSourceService:
 
             assert result.success is False
             assert "Connection failed" in result.message
+            assert "Correlation ID:" in result.message
+            assert "Connection refused" not in result.message
 
     @pytest.mark.asyncio
     async def test_test_connection_uses_mapper(self, service: DataSourceService, sample_config: DataSourceConfig):

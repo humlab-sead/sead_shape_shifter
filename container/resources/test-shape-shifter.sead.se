@@ -1,0 +1,120 @@
+# Shape Shifter test site: https://test-shape-shifter.sead.se
+#
+# Install this file on the host that answers the public name for the site. The
+# vhost terminates TLS, authenticates the user, and proxies to the backend on
+# the loopback interface.
+#
+# Target location on the server:
+#   /etc/nginx/sites-available/test-shape-shifter.sead.se
+#   /etc/nginx/sites-enabled/test-shape-shifter.sead.se (symlink)
+#
+# Nginx authenticates the user with HTTP Basic auth and forwards the
+# authenticated name in X-Authenticated-User. The backend runs with
+# SHAPE_SHIFTER_TRUSTED_PROXY_AUTH_ENABLED=true and rejects requests without
+# that header, so the upstream must stay reachable only on loopback.
+#
+# Install order:
+#   1. Enable the HTTP-only vhost (test-shape-shifter.sead.se.bootstrap) and
+#      obtain the certificate with certbot webroot.
+#   2. Replace the enabled file with this file, then:
+#        sudo nginx -t && sudo systemctl reload nginx
+#
+# Do not enable this file before the certificate exists: nginx fails to start
+# when ssl_certificate points at a missing file.
+
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+# Authorization group membership. Basic auth has no group claim of its own, so
+# the group header the backend reads is derived from the authenticated user name.
+# The included membership file holds one line per member, for example:
+#
+#     roger    sead-admins,strucke-editors;
+#
+# Membership lives in /etc/nginx/authz/groups.d/. The wildcard tolerates a
+# missing directory or no matching file, so the header is empty until members
+# are added. After editing membership:
+#   sudo nginx -t && sudo systemctl reload nginx
+map $remote_user $authz_groups {
+    default "";
+    include /etc/nginx/authz/groups.d/*.conf;
+}
+
+upstream shape_shifter_test {
+    server 127.0.0.1:8012;
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name test-shape-shifter.sead.se;
+
+    access_log /var/log/nginx/test-shape-shifter.sead.se.access.log;
+    error_log  /var/log/nginx/test-shape-shifter.sead.se.error.log warn;
+
+    # Keeps certificate renewal working. Certbot renews without reloading nginx.
+    # No auth_basic here: this server block adds none, and renewal must reach
+    # these files without credentials.
+    location /.well-known/acme-challenge/ {
+        auth_basic off;
+        root /var/www/html;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+
+    server_name test-shape-shifter.sead.se;
+
+    ssl_certificate     /etc/letsencrypt/live/test-shape-shifter.sead.se/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/test-shape-shifter.sead.se/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1d;
+
+    # Authentication boundary. The whole site, including /api/v1/docs and
+    # /api/v1/openapi.json, requires a valid htpasswd user.
+    auth_basic "Shape Shifter";
+    auth_basic_user_file /etc/nginx/htpasswd/shape-shifter;
+
+    access_log /var/log/nginx/test-shape-shifter.sead.se.access.log;
+    error_log  /var/log/nginx/test-shape-shifter.sead.se.error.log warn;
+
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+
+    client_max_body_size 100M;
+
+    location / {
+        proxy_pass http://shape_shifter_test;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Identity handed to FastAPI. $remote_user is set by auth_basic above.
+        proxy_set_header X-Authenticated-User $remote_user;
+
+        # Authorization groups for this user; empty when the user is in none.
+        proxy_set_header X-Authenticated-Groups $authz_groups;
+
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+
+        # Normalization runs can take longer than the 60s default.
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 300s;
+        proxy_read_timeout 300s;
+    }
+}

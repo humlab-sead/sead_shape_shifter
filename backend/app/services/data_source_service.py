@@ -7,8 +7,12 @@ from typing import Any
 import yaml
 from loguru import logger
 
+from backend.app.authorization.models import Action, Principal, ResourceType
+from backend.app.authorization.service import AuthorizationService
 from backend.app.mappers.data_source_mapper import DataSourceMapper
+from backend.app.middleware.correlation import get_correlation_id
 from backend.app.models.data_source import DataSourceConfig, DataSourceStatus, DataSourceTestResult
+from backend.app.services.data_source_policy import validate_server_managed_data_source
 from src.loaders.base_loader import ConnectTestResult, DataLoader, DataLoaders
 from src.model import DataSourceConfig as CoreDataSourceConfig
 
@@ -37,6 +41,10 @@ class DataSourceService:
         if raise_if_not_found and not path.exists():
             raise ValueError(f"Data source file '{filename}' not found")
         return path
+
+    def data_source_locator(self, filename: str | Path) -> str:
+        """Return the authorization locator for a data source filename."""
+        return self._resolve_data_source_path(filename).stem
 
     def _list_data_source_files(self) -> list[Path]:
         """List all data source YAML files in the projects directory.
@@ -128,6 +136,15 @@ class DataSourceService:
 
         return result
 
+    def list_authorized_data_sources(self, principal: Principal, authorization_service: AuthorizationService) -> list[DataSourceConfig]:
+        """Return shared data sources readable by a principal."""
+        authorized_sources: list[DataSourceConfig] = []
+        for data_source in self.list_data_sources():
+            resource = authorization_service.repository.get_resource_by_locator(ResourceType.SHARED_DATA_SOURCE, data_source.name)
+            if resource is not None and authorization_service.is_allowed(principal, Action.READ, resource):
+                authorized_sources.append(data_source)
+        return authorized_sources
+
     def load_data_source(
         self,
         source: str | Path | dict[str, Any],
@@ -184,6 +201,8 @@ class DataSourceService:
         if file_path.exists():
             raise ValueError(f"Data source file '{filename}' already exists")
 
+        validate_server_managed_data_source(config)
+
         config_dict: dict[str, Any] = config.model_dump(exclude_none=True, exclude={"name"})
 
         if config.password:
@@ -212,6 +231,8 @@ class DataSourceService:
 
         if not file_path.exists():
             raise ValueError(f"Data source file '{filename}' not found")
+
+        validate_server_managed_data_source(config)
 
         config_dict: dict[str, Any] = config.model_dump(exclude_none=True, exclude={"name"})
 
@@ -263,8 +284,10 @@ class DataSourceService:
             return DataSourceTestResult.from_core_result(result)
         except Exception as e:  # pylint: disable=broad-except
             elapsed_ms = int((time.time() - start_time) * 1000)
-            logger.error(f"Connection test failed for '{config.name}': {e}")
-            return DataSourceTestResult.create_failure(message=f"Connection failed: {str(e)}", connection_time_ms=elapsed_ms)
+            logger.error(f"Connection test failed for '{config.name}' [corr={get_correlation_id()}] [{e.__class__.__name__}]")
+            return DataSourceTestResult.create_failure(
+                message=f"Connection failed. Correlation ID: {get_correlation_id()}", connection_time_ms=elapsed_ms
+            )
 
     def get_status(self, filename: str | Path) -> DataSourceStatus:
         """Get current status of a data source.

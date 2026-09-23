@@ -1,12 +1,15 @@
 """Integration tests for ingester API endpoints."""
 
 from collections.abc import Iterator
+from datetime import UTC, datetime
 from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
 from httpx import Response
 
+from backend.app.api.v1.endpoints.ingesters import ingester_operator_dependency
+from backend.app.authorization.models import Principal
 from backend.app.ingesters.protocol import IngesterConfig
 from backend.app.ingesters.registry import get_ingester_registry
 from backend.app.main import app
@@ -33,8 +36,17 @@ def reset_ingester_registry_state() -> Iterator[None]:
 @pytest.fixture
 def client() -> Iterator[TestClient]:
     """Create a fresh TestClient so app startup runs inside the test."""
+    previous_overrides = app.dependency_overrides.copy()
+    app.dependency_overrides[ingester_operator_dependency] = lambda: Principal(
+        principal_id="test-operator",
+        authentication_provider="test",
+        authenticated_at=datetime.now(UTC),
+    )
     with TestClient(app) as test_client:
-        yield test_client
+        try:
+            yield test_client
+        finally:
+            app.dependency_overrides = previous_overrides
 
 
 class TestIngestersEndpoints:

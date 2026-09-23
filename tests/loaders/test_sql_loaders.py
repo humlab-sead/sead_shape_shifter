@@ -4,6 +4,7 @@ Tests for Database Loaders
 Tests the vendor-specific database introspection methods in database loaders.
 """
 
+from typing import Any
 from unittest.mock import AsyncMock, Mock, patch
 
 import pandas as pd
@@ -37,11 +38,32 @@ class TestInjectLimit:
         assert "LIMIT 100" in modified.upper()
 
     def test_preserve_existing_limit(self, loader: SqliteLoader):
-        """Should not modify query with existing LIMIT."""
+        """Should preserve an existing lower LIMIT."""
         query: str = "SELECT * FROM users LIMIT 50"
         modified = loader.inject_limit(query, 100)
 
         assert modified == query
+
+    def test_cap_existing_limit(self, loader: SqliteLoader):
+        """Should cap a user-supplied LIMIT above the server maximum."""
+        modified = loader.inject_limit("SELECT * FROM users LIMIT 100000", 100000)
+
+        assert "LIMIT 10000" in modified.upper()
+        assert "100000" not in modified
+
+    def test_limit_cap_ignores_nested_limit(self, loader: SqliteLoader):
+        """Should cap the outer query without changing a nested query limit."""
+        query = "SELECT * FROM (SELECT * FROM users LIMIT 5) AS limited LIMIT 100000"
+        modified = loader.inject_limit(query, 100000)
+
+        assert "users LIMIT 5" in modified
+        assert "LIMIT 10000" in modified.upper()
+
+    def test_limit_cap_preserves_offset(self, loader: SqliteLoader):
+        """Should cap LIMIT while preserving OFFSET."""
+        modified = loader.inject_limit("SELECT * FROM users LIMIT 100000 OFFSET 2", 100000)
+
+        assert "LIMIT 10000 OFFSET 2" in modified.upper()
 
     def test_dont_add_limit_to_non_select(self, loader: SqliteLoader):
         """Should not add LIMIT to non-SELECT queries."""
@@ -49,6 +71,26 @@ class TestInjectLimit:
         modified = loader.inject_limit(query, 100)
         assert "LIMIT" not in modified.upper()
         assert modified == query
+
+    def test_quote_name_escapes_embedded_quotes(self, loader: SqliteLoader):
+        """Should escape quote characters inside identifiers."""
+        assert loader.quote_name('column"name') == '"column""name"'
+
+    @pytest.mark.parametrize("identifier", ["", "bad\x00name"])
+    def test_quote_name_rejects_invalid_identifiers(self, loader: SqliteLoader, identifier: str):
+        """Should reject empty and NUL-containing identifiers."""
+        with pytest.raises(ValueError):
+            loader.quote_name(identifier)
+
+    def test_quote_name_ignores_limit_in_literals_and_comments(self, loader: SqliteLoader):
+        """Should not treat LIMIT text in literals or comments as a clause."""
+        query = "SELECT 'unlimited' AS label /* LIMIT 5 */"
+
+        modified = loader.inject_limit(query, 100)
+
+        assert modified.endswith("LIMIT 100;")
+        assert "'unlimited'" in modified
+        assert "/* LIMIT 5 */" in modified
 
 
 class TestPostgresSqlLoader:
@@ -109,7 +151,8 @@ class TestPostgresSqlLoader:
             mock_read_sql.assert_called_once()
             call_args = mock_read_sql.call_args[0][0]
             assert "information_schema.tables" in call_args
-            assert "public" in call_args
+            assert ":schema" in call_args
+            assert mock_read_sql.call_args.kwargs["params"] == {"schema": "public"}
 
     @pytest.mark.asyncio
     async def test_get_table_schema(self, loader):
@@ -140,7 +183,7 @@ class TestPostgresSqlLoader:
 
         call_count = 0
 
-        async def mock_read_sql(query):
+        async def mock_read_sql(query, params=None):
             nonlocal call_count
             call_count += 1
             if "information_schema.columns" in query:
@@ -187,8 +230,22 @@ class TestPostgresSqlLoader:
 
             # Should default to 'public' schema
             call_args = mock_read_sql.call_args[0][0]
-            assert "public" in call_args
+            assert ":schema" in call_args
+            assert mock_read_sql.call_args.kwargs["params"] == {"schema": "public"}
             assert tables is not None
+
+    @pytest.mark.asyncio
+    async def test_metadata_filter_values_are_bound(self, loader):
+        """Should pass metadata filter values separately from SQL text."""
+        with patch.object(loader, "read_sql", new_callable=AsyncMock) as mock_read_sql:
+            mock_read_sql.return_value = pd.DataFrame(columns=["table_name", "schema", "comment"])
+            malicious_schema = "public' OR '1'='1"
+
+            await loader.get_tables(schema=malicious_schema)
+
+            query = mock_read_sql.call_args.args[0]
+            assert malicious_schema not in query
+            assert mock_read_sql.call_args.kwargs["params"] == {"schema": malicious_schema}
 
 
 class TestSqliteLoader:
@@ -274,7 +331,8 @@ class TestSqliteLoader:
                 mock_read_sql.assert_called()
                 call_args = mock_read_sql.call_args[0][0]
                 assert "KEY_COLUMN_USAGE" in call_args
-                assert "users" in call_args
+                assert "?" in call_args
+                assert mock_read_sql.call_args.kwargs["params"] == ("users",)
 
 
 class TestUCanAccessLoader:
@@ -287,7 +345,7 @@ class TestUCanAccessLoader:
             name="test_access",
             cfg={
                 "driver": "access",
-                "options": {"filename": "test.mdb"},
+                "options": {"filename": "dummy.mdb"},
             },
         )
 
@@ -357,7 +415,7 @@ class TestUCanAccessLoader:
             patched_connection.return_value.__enter__.return_value = mock_connection
             patched_connection.return_value.__exit__.return_value = None
 
-            result = loader.read_sql_sync("SELECT ...")
+            result = loader.read_sql_sync("SELECT 1 AS analysis_entity_type")
 
         assert list(result.columns) == ["analysis_entity_type", "analysis_entity_value", "ArchDat"]
         assert result.iloc[0].tolist() == ["relative_dating", "BZ", "BZ"]
@@ -464,7 +522,7 @@ class TestUCanAccessLoader:
         uri = loader.create_db_uri()
 
         assert "jdbc:ucanaccess://" in uri
-        assert "test.mdb" in uri
+        assert "dummy.mdb" in uri
 
     @pytest.mark.asyncio
     async def test_load_with_top_limit(self, loader):
@@ -640,6 +698,7 @@ class TestUCanAccessLoader:
     @pytest.mark.asyncio
     async def test_test_connection_failure(self, loader):
         """Should handle MS Access connection failure."""
+
         with patch.object(loader, "get_tables", new_callable=AsyncMock) as mock_get_tables:
             mock_get_tables.side_effect = Exception("Cannot open database file")
 
@@ -647,7 +706,7 @@ class TestUCanAccessLoader:
 
             assert result.success is False
             assert "failed" in result.message.lower()
-            assert "Cannot open database file" in result.message
+            assert "Connection failed" in result.message
 
 
 class DummySqlLoader(SqlLoader):
@@ -656,7 +715,9 @@ class DummySqlLoader(SqlLoader):
     def create_db_uri(self) -> str:
         return "sqlite://"
 
-    async def read_sql(self, sql: str) -> pd.DataFrame:
+    async def read_sql(
+        self, sql: str, params: dict[str, Any] | tuple[Any, ...] | None = None
+    ) -> pd.DataFrame:  # pylint: disable=unused-argument
         return pd.DataFrame()
 
     async def get_tables(self, **kwargs):
@@ -898,7 +959,7 @@ class TestSqlLoaderCore:
 
         call_count = 0
 
-        async def mock_read_sql(query):
+        async def mock_read_sql(query, params=None):
             nonlocal call_count
             call_count += 1
             if "INFORMATION_SCHEMA.COLUMNS" in query:

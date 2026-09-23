@@ -9,7 +9,7 @@ export interface DispatcherMetadata {
 
 export interface ExecuteRequest {
   dispatcher_key: string
-  target: string
+  target: string // Managed output name/relative path, or data source name for database targets.
   run_validation?: boolean
   translate?: boolean
   drop_foreign_keys?: boolean

@@ -34,6 +34,7 @@ make test                                               # full suite (Core + bac
 | Directory / file | What it tests |
 |---|---|
 | `api/` | Endpoint request/response, routing, and HTTP status codes |
+| `data_providers/` | Provider-specific tests that load real project files (for example `arbodat/`); they need that provider's data sources to be available |
 | `integration/` | Cross-layer flows (endpoint → service → Core) with minimal mocking |
 | `ingesters/` | Ingester implementations registered in `backend/` |
 | `mappers/` | `ProjectMapper` conversions between API and Core models |

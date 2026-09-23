@@ -8,11 +8,11 @@ import yaml
 from loguru import logger
 
 from backend.app.core.config import settings
+from backend.app.exceptions import ResourceConflictError, ResourceNotFoundError, ValidationError
 from backend.app.mappers.reconciliation_mapper import ReconciliationMapper
 from backend.app.models import reconciliation as dto
 from backend.app.models.project import Project
 from backend.app.services import ProjectService
-from backend.app.utils.exceptions import BadRequestError, NotFoundError
 from src.reconciliation import model as core
 
 
@@ -152,21 +152,28 @@ class EntityMappingManager:
             Updated entity resolution catalog (domain model)
 
         Raises:
-            BadRequestError: If entity mapping already exists or entity doesn't exist
+            ValidationError: If entity mapping already exists or entity doesn't exist
         """
         # Verify entity exists in project
         project: Project = self.project_service.load_project(project_name)
         entity_exists: bool = entity_name in project.entities
 
         if not entity_exists:
-            raise BadRequestError(f"Entity '{entity_name}' does not exist in project '{project_name}'")
+            raise ValidationError(
+                f"Entity '{entity_name}' does not exist in project '{project_name}'",
+                context={"entity": entity_name, "project": project_name},
+            )
 
         # Load registry (now returns domain model)
         catalog: core.EntityResolutionCatalog = self.load_catalog(project_name)
 
         # Check if entity mapping already exists using domain model method
         if catalog.exists(entity_name, target_field):
-            raise BadRequestError(f"Entity mapping for entity '{entity_name}' and target field '{target_field}' already exists")
+            raise ResourceConflictError(
+                f"Entity mapping for entity '{entity_name}' and target field '{target_field}' already exists",
+                resource_type="entity_mapping",
+                resource_id=f"{entity_name}.{target_field}",
+            )
 
         # Ensure mapping is empty for new entity mapping
         entity_mapping.links = []
@@ -209,11 +216,15 @@ class EntityMappingManager:
             Updated entity mapping registry (domain model)
 
         Raises:
-            NotFoundError: If entity mapping doesn't exist
+            ResourceNotFoundError: If entity mapping doesn't exist
         """
         catalog: core.EntityResolutionCatalog = self.load_catalog(project_name)
         if not catalog.exists(entity_name, target_field):
-            raise NotFoundError(f"Entity mapping for entity '{entity_name}' and target field '{target_field}' not found")
+            raise ResourceNotFoundError(
+                f"Entity mapping for entity '{entity_name}' and target field '{target_field}' not found",
+                resource_type="entity_mapping",
+                resource_id=f"{entity_name}.{target_field}",
+            )
 
         mapping: core.EntityResolutionSet | None = catalog.get(entity_name, target_field)
 
@@ -248,19 +259,26 @@ class EntityMappingManager:
             Updated entity mapping catalog (domain model)
 
         Raises:
-            NotFoundError: If mapping catalog doesn't exist
-            BadRequestError: If mapping catalog has mappings and force=False
+            ResourceNotFoundError: If mapping catalog doesn't exist
+            ValidationError: If mapping catalog has mappings and force=False
         """
         catalog: core.EntityResolutionCatalog = self.load_catalog(project_name)
 
         # Check if catalog exists using domain model method
         mapping: core.EntityResolutionSet | None = catalog.get(entity_name, target_field)
         if mapping is None:
-            raise NotFoundError(f"Mapping catalog for entity '{entity_name}' and target field '{target_field}' not found")
+            raise ResourceNotFoundError(
+                f"Mapping catalog for entity '{entity_name}' and target field '{target_field}' not found",
+                resource_type="entity_mapping",
+                resource_id=f"{entity_name}.{target_field}",
+            )
 
         # Check for existing mappings using domain model method
         if not mapping.is_empty() and not force:
-            raise BadRequestError(f"Cannot delete existing mapping {mapping.count()} from catalog. " "Use force=True to delete anyway.")
+            raise ValidationError(
+                f"Cannot delete existing mapping {mapping.count()} from catalog. Use force=True to delete anyway.",
+                context={"entity": entity_name, "target_field": target_field, "mapping_count": mapping.count()},
+            )
 
         # Delete catalog using domain model method
         mapping_count: int = mapping.count()

@@ -31,14 +31,14 @@ Examples:
 import asyncio
 import json
 import sys
-from typing import Any
+from typing import Any, Literal
 
 import click
 from loguru import logger
 
 from backend.app.core.config import Settings
 from backend.app.ingesters.registry import IngesterRegistry, get_ingester_registry
-from backend.app.models.ingester import IngestRequest, ValidateRequest
+from backend.app.models.ingester import IngesterMetadataResponse, IngestRequest, ValidateRequest
 from backend.app.services.ingester_service import get_ingester_service
 
 # Discover ingesters on module load (before CLI commands run)
@@ -55,14 +55,14 @@ def discover_ingesters() -> IngesterRegistry:
 def setup_logging(verbose: bool = False) -> None:
     """Configure logging for CLI."""
     logger.remove()
-    level = "DEBUG" if verbose else "INFO"
+    level: Literal["DEBUG"] | Literal["INFO"] = "DEBUG" if verbose else "INFO"
     logger.add(sys.stderr, level=level, format="<level>{level: <8}</level> | <level>{message}</level>")
 
 
 def load_config_file(config_path: str) -> dict[str, Any]:
     """Load configuration from JSON file."""
     try:
-        with open(config_path, "r") as f:
+        with open(config_path, "r", encoding="utf-8") as f:
             return json.load(f)
     except FileNotFoundError:
         logger.error(f"Config file not found: {config_path}")
@@ -91,7 +91,7 @@ def list_ingesters() -> None:
     """List all available data ingesters."""
     logger.info("Fetching available ingesters...")
 
-    ingesters = get_ingester_service().list_ingesters()
+    ingesters: list[IngesterMetadataResponse] = get_ingester_service().list_ingesters()
 
     if not ingesters:
         logger.warning("No ingesters available")
@@ -117,7 +117,13 @@ def list_ingesters() -> None:
 @click.option("--config", "-c", "config_file", type=click.Path(exists=True), help="JSON config file")
 @click.option("--ignore-columns", multiple=True, help="Column patterns to ignore (can specify multiple times)")
 @click.pass_context
-def validate(ctx: click.Context, ingester_key: str, source: str, config_file: str | None, ignore_columns: tuple[str, ...]) -> None:
+def validate(
+    ctx: click.Context,  # pylint: disable=unused-argument
+    ingester_key: str,
+    source: str,
+    config_file: str | None,
+    ignore_columns: tuple[str, ...],
+) -> None:
     """Validate data file before ingestion.
 
     INGESTER_KEY: Key of the ingester to use (e.g., 'sead')
@@ -145,7 +151,7 @@ def validate(ctx: click.Context, ingester_key: str, source: str, config_file: st
     except ValueError as e:
         logger.error(f"Validation failed: {e}")
         sys.exit(1)
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-except
         logger.exception(f"Unexpected error during validation: {e}")
         sys.exit(1)
 
@@ -189,7 +195,7 @@ def validate(ctx: click.Context, ingester_key: str, source: str, config_file: st
 @click.option("--explode/--no-explode", default=False, help="Explode submission into public tables")
 @click.pass_context
 def ingest(
-    ctx: click.Context,
+    ctx: click.Context,  # pylint: disable=unused-argument
     ingester_key: str,
     source: str,
     config_file: str | None,
@@ -251,7 +257,7 @@ def ingest(
     except ValueError as e:
         logger.error(f"Ingestion failed: {e}")
         sys.exit(1)
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-except
         logger.exception(f"Unexpected error during ingestion: {e}")
         sys.exit(1)
 
@@ -277,4 +283,4 @@ def ingest(
 
 
 if __name__ == "__main__":
-    cli(obj={})
+    cli(obj={})  # pylint: disable=no-value-for-parameter

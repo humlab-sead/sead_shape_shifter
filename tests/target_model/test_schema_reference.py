@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from pylint.lint import Run
-
 from src.target_model.schema_reference import generate_target_model_schema_reference
 
 REFERENCE_PATH = Path("docs/TARGET_MODEL_SCHEMA_REFERENCE.md")

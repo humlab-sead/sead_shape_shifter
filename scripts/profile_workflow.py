@@ -1,6 +1,6 @@
 """Profiling script for the access-database CSV workflow.
 
-Mirrors test_access_database_csv_workflow from tests/process/test_workflow.py.
+Mirrors test_access_database_csv_workflow from backend/tests/data_providers/arbodat/test_workflow.py.
 
 Usage:
     uv run python scripts/profile_workflow.py              # text report to stdout

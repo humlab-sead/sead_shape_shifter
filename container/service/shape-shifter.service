@@ -1,0 +1,38 @@
+[Unit]
+Description=Shape Shifter Podman Container Service
+Documentation=https://github.com/humlab-sead/sead_shape_shifter
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+# Start the container through the same scripts an operator uses, so a systemd
+# start and a manual `make up` resolve CONFIG_DIR/deployment.env identically.
+#
+# This unit deliberately sets no IMAGE_NAME, HOST_PORT, COMPOSE_PROJECT_NAME,
+# CONFIG_DIR, or DATA_DIR. The shared loader resolves the canonical home-root
+# layout, and systemd's environment wins over deployment.env when explicitly
+# configured by the operator.
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=%h/container
+
+Environment=PODMAN_SYSTEMD_UNIT=%n
+
+ExecStart=%h/container/scripts/up.sh
+ExecStop=%h/container/scripts/down.sh
+
+# Restart the compose invocation if it fails; container restart policy is set
+# by podman-compose.yml (restart: unless-stopped).
+Restart=on-failure
+RestartSec=10
+
+# Optional resource limits. Adjust to the host capacity.
+# MemoryLimit=2G
+# CPUQuota=200%
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=shape-shifter
+
+[Install]
+WantedBy=default.target

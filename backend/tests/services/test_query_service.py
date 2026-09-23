@@ -10,6 +10,7 @@ import pandas as pd
 import pytest
 import sqlparse
 
+import backend.app.services.query_service as query_service_module
 from backend.app.exceptions import QueryExecutionError, QuerySecurityError
 from backend.app.models.data_source import DataSourceConfig
 from backend.app.models.query import QueryResult, QueryValidation
@@ -87,12 +88,12 @@ class TestQueryValidation:
         assert result.is_valid is True or len(result.errors) > 0
 
     def test_validate_multiple_statements(self):
-        """Should warn about multiple statements."""
+        """Should reject multiple statements before execution."""
         query: str = "SELECT * FROM users; SELECT * FROM orders;"
         result: QueryValidation = self.service.validate_query(query)
 
-        assert len(result.warnings) > 0
-        assert "multiple statements" in result.warnings[0].lower()
+        assert result.is_valid is False
+        assert any("multiple statements" in error.lower() for error in result.errors)
 
     def test_validate_no_where_clause(self):
         """Should warn about queries without WHERE clause."""
@@ -226,6 +227,17 @@ class TestQueryExecution:
         assert len(error.tips) > 0
 
     @pytest.mark.asyncio
+    async def test_execute_multiple_statements_does_not_reach_loader(self, mock_ds_config):
+        """Should reject stacked statements before constructing or calling a loader."""
+        with patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader:
+            service: QueryService = QueryService()
+
+            with pytest.raises(QuerySecurityError, match="prohibited operations"):
+                await service.execute_query(ds_cfg=mock_ds_config, query="SELECT 1; SELECT 2")
+
+            mock_get_loader.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_execute_connection_error(self, mock_ds_config):
         """Should handle connection errors."""
 
@@ -240,7 +252,8 @@ class TestQueryExecution:
 
                 await service.execute_query(ds_cfg=mock_ds_config, query=query)
 
-        assert "connection failed" in str(exc_info.value).lower()
+        assert str(exc_info.value) == "Query execution failed."
+        assert "connection failed" not in exc_info.value.context
 
     @pytest.mark.asyncio
     async def test_execute_query_error(self, mock_ds_config):
@@ -258,6 +271,8 @@ class TestQueryExecution:
             with pytest.raises(QueryExecutionError) as exc_info:
                 await service.execute_query(ds_cfg=mock_ds_config, query=query)
             assert "query execution failed" in str(exc_info.value).lower()
+            assert "table not found" not in str(exc_info.value).lower()
+            assert "query" not in exc_info.value.context
 
     @pytest.mark.asyncio
     async def test_execute_with_null_values(self, mock_ds_config):
@@ -529,6 +544,117 @@ class TestQueryService:
             assert len(error.tips) > 0
 
     @pytest.mark.asyncio
+    async def test_execute_query_releases_concurrency_slot_after_timeout(self, service: QueryService, mock_ds_config: DataSourceConfig):
+        """A timed-out query should release the shared concurrency slot for the next query."""
+        original_semaphore = query_service_module.QUERY_EXECUTION_SEMAPHORE
+        query_service_module.QUERY_EXECUTION_SEMAPHORE = asyncio.Semaphore(1)
+
+        started = asyncio.Event()
+        first_loader = AsyncMock()
+
+        async def slow_read_sql(query: str) -> pd.DataFrame:  # pylint: disable=unused-argument
+            started.set()
+            await asyncio.sleep(10)
+            return pd.DataFrame({"id": [1]})
+
+        first_loader.read_sql = slow_read_sql
+        first_loader.inject_limit = MagicMock(side_effect=lambda q, p: q)
+
+        second_loader = AsyncMock()
+        second_loader.read_sql = AsyncMock(return_value=pd.DataFrame({"id": [2]}))
+        second_loader.inject_limit = MagicMock(side_effect=lambda q, p: q)
+
+        try:
+            with (
+                patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
+                patch("backend.app.services.query_service.DataSourceMapper") as mock_mapper,
+            ):
+                mock_mapper.to_core_config = MagicMock(return_value=MagicMock())
+                mock_get_loader.side_effect = [lambda data_source: first_loader, lambda data_source: second_loader]
+
+                first_task = asyncio.create_task(service.execute_query(ds_cfg=mock_ds_config, query="SELECT * FROM users", timeout=1))
+                await asyncio.wait_for(started.wait(), timeout=1)
+                second_task = asyncio.create_task(service.execute_query(ds_cfg=mock_ds_config, query="SELECT * FROM users", timeout=1))
+
+                with pytest.raises(QueryExecutionError):
+                    await first_task
+
+                result = await asyncio.wait_for(second_task, timeout=2)
+                assert result.row_count == 1
+                assert query_service_module.QUERY_EXECUTION_SEMAPHORE._value == 1
+        finally:
+            query_service_module.QUERY_EXECUTION_SEMAPHORE = original_semaphore
+
+    @pytest.mark.asyncio
+    async def test_execute_query_releases_concurrency_slot_after_cancellation(
+        self, service: QueryService, mock_ds_config: DataSourceConfig
+    ):
+        """A cancelled query should release the shared concurrency slot for the next query."""
+        original_semaphore = query_service_module.QUERY_EXECUTION_SEMAPHORE
+        query_service_module.QUERY_EXECUTION_SEMAPHORE = asyncio.Semaphore(1)
+
+        started = asyncio.Event()
+        first_loader = AsyncMock()
+
+        async def slow_read_sql(query: str) -> pd.DataFrame:  # pylint: disable=unused-argument
+            started.set()
+            await asyncio.sleep(10)
+            return pd.DataFrame({"id": [1]})
+
+        first_loader.read_sql = slow_read_sql
+        first_loader.inject_limit = MagicMock(side_effect=lambda q, p: q)
+
+        second_loader = AsyncMock()
+        second_loader.read_sql = AsyncMock(return_value=pd.DataFrame({"id": [2]}))
+        second_loader.inject_limit = MagicMock(side_effect=lambda q, p: q)
+
+        try:
+            with (
+                patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
+                patch("backend.app.services.query_service.DataSourceMapper") as mock_mapper,
+            ):
+                mock_mapper.to_core_config = MagicMock(return_value=MagicMock())
+                mock_get_loader.side_effect = [lambda data_source: first_loader, lambda data_source: second_loader]
+
+                first_task = asyncio.create_task(service.execute_query(ds_cfg=mock_ds_config, query="SELECT * FROM users", timeout=5))
+                await asyncio.wait_for(started.wait(), timeout=1)
+                first_task.cancel()
+
+                with pytest.raises(asyncio.CancelledError):
+                    await first_task
+
+                result = await asyncio.wait_for(
+                    service.execute_query(ds_cfg=mock_ds_config, query="SELECT * FROM users", timeout=1),
+                    timeout=2,
+                )
+                assert result.row_count == 1
+                assert query_service_module.QUERY_EXECUTION_SEMAPHORE._value == 1
+        finally:
+            query_service_module.QUERY_EXECUTION_SEMAPHORE = original_semaphore
+
+    @pytest.mark.asyncio
+    async def test_execute_query_enforces_memory_limit(self, service: QueryService, mock_ds_config: DataSourceConfig):
+        """Test execution fails when the loaded query result exceeds the configured memory limit."""
+        query = "SELECT * FROM users"
+        large_loader = AsyncMock()
+        large_loader.read_sql = AsyncMock(return_value=pd.DataFrame({"payload": ["x" * (1024 * 1024)]}))
+        large_loader.inject_limit = MagicMock(side_effect=lambda q, p: q)
+
+        with (
+            patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
+            patch("backend.app.services.query_service.DataSourceMapper") as mock_mapper,
+        ):
+            mock_get_loader.return_value = lambda data_source: large_loader
+            mock_mapper.to_core_config = MagicMock(return_value=MagicMock())
+
+            with pytest.raises(QueryExecutionError) as exc_info:
+                await service.execute_query(ds_cfg=mock_ds_config, query=query, memory_limit_mb=1)
+
+        error = exc_info.value
+        assert "memory limit" in error.message.lower()
+        assert error.context.get("data_source") == mock_ds_config.name
+
+    @pytest.mark.asyncio
     async def test_execute_query_loader_error(self, service: QueryService, mock_ds_config: DataSourceConfig):
         """Test execution handles loader errors."""
         query = "SELECT * FROM users"
@@ -631,6 +757,25 @@ class TestQueryService:
 
             # Since result >= limit, should be truncated
             assert result.is_truncated is True
+
+    @pytest.mark.asyncio
+    async def test_execute_query_limits_serialized_response_size(self, service: QueryService, mock_ds_config: DataSourceConfig):
+        """Test execution truncates rows when the serialized response exceeds the server limit."""
+        large_loader = AsyncMock()
+        large_loader.read_sql = AsyncMock(return_value=pd.DataFrame({"value": ["x" * (1024 * 1024)] * 10}))
+        large_loader.inject_limit = MagicMock(side_effect=lambda q, p: q)
+
+        with (
+            patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
+            patch("backend.app.services.query_service.DataSourceMapper") as mock_mapper,
+        ):
+            mock_get_loader.return_value = lambda data_source: large_loader
+            mock_mapper.to_core_config = MagicMock(return_value=MagicMock())
+
+            result = await service.execute_query(ds_cfg=mock_ds_config, query="SELECT * FROM large_table", limit=100)
+
+            assert result.is_truncated is True
+            assert result.row_count < 10
 
     @pytest.mark.asyncio
     async def test_execute_query_tracks_execution_time(self, service: QueryService, mock_ds_config: DataSourceConfig):
@@ -837,7 +982,8 @@ class TestColumnIntrospection:
 
             error = exc_info.value
             assert "introspection failed" in error.message.lower()
-            assert "doesn't exist" in error.message.lower()
+            assert "doesn't exist" not in error.message.lower()
+            assert "query" not in error.context
 
     @pytest.mark.asyncio
     async def test_introspect_query_columns_timeout(self, mock_ds_config):

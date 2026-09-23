@@ -18,7 +18,7 @@ applyTo: "README.md"
 - High-level feature summary — short bullets, no implementation detail
 - Quick start section showing the minimum commands to run the service locally
 - Prerequisites (terse: tool names and version requirements only)
-- Brief links to the primary documentation files (`docs/DESIGN.md`, `docs/DEVELOPMENT.md`, `docs/OPERATIONS.md`, `docs/TESTING.md`, `docs/DIAGRAMS.md`, `AGENTS.md`, `docker/README.md`)
+- Brief links to the primary documentation files (`docs/DESIGN.md`, `docs/DEVELOPMENT.md`, `docs/OPERATIONS.md`, `docs/TESTING.md`, `docs/DIAGRAMS.md`, `AGENTS.md`, `container/README.md`)
 - One-line API endpoint table or a brief "how to connect OpenRefine" note
 - License and authorship
 
@@ -27,7 +27,7 @@ applyTo: "README.md"
 - Detailed local setup walkthrough — that belongs in `docs/DEVELOPMENT.md`
 - Code quality, linting, and formatting guidance — belongs in `docs/DEVELOPMENT.md`
 - Full test commands and test marker explanations — belongs in `docs/TESTING.md`
-- Production deployment procedures, Docker Compose options, environment variable catalog — belongs in `docs/OPERATIONS.md` and `docker/README.md`
+- Production deployment procedures, Podman Compose options, environment variable catalog — belongs in `docs/OPERATIONS.md` and `container/README.md`
 - Architecture deep-dives, component descriptions, key flows — belongs in `docs/DESIGN.md` and `docs/DIAGRAMS.md`
 - Detailed code examples (strategy implementation, ConfigValue usage, entity YAML) — belongs in `AGENTS.md` or `docs/DEVELOPMENT.md`
 - Large API response JSON examples — belongs in generated API docs or a dedicated API reference
@@ -43,7 +43,7 @@ applyTo: "README.md"
 - `docs/OPERATIONS.md`: environments, deployment, CI/CD, rollback, observability
 - `docs/DIAGRAMS.md`: system diagrams (context, components, flows, state machines)
 - `AGENTS.md`: AI coding agent instructions and canonical patterns
-- `docker/README.md`: Docker deployment details
+- `container/README.md`: Podman deployment details
 
 ## Writing rules
 

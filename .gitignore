@@ -73,7 +73,7 @@ target/
 .ipynb_checkpoints
 
 # pyenv
-.python-version
+# .python-version
 
 # celery beat schedule file
 celerybeat-schedule
@@ -108,6 +108,8 @@ update
 csv_files
 tests/output
 **/.env*
+# container/.env.example holds non-secret deployment defaults and is tracked.
+!container/.env.example
 **/chat*.json
 bin
 *.pdf
@@ -117,6 +119,7 @@ deprecated
 output*.xlsx
 **/*.mdb
 **/*.accdb
+!tests/test_data/ucanaccess_test.mdb
 backups
 .vite
 coverage
@@ -134,4 +137,6 @@ node_modules
 graphify-out/*-*-*
 graphify-out/cost.json 
 graphify-out/manifest.json 
-# graphify-out/cache/         # optional: commit for speed, skip to keep repo small
+# Optional: commit cache for speed, skip to keep repo small.
+graphify-out/cache/
+secrets

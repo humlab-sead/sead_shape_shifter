@@ -38,6 +38,7 @@ from backend.app.models import (
 from backend.app.utils import convert_ruamel_types
 from src.configuration import find_unresolved_directives
 from src.model import ShapeShiftProject, TableConfig
+from src.path_resolution import resolve_contained_path
 from src.reconciliation.mapping_manager import MappingManager
 from src.reconciliation.mapping_model import MappingCatalog
 from src.reconciliation.mapping_validator import SidecarValidationError, validate_entity_mapping, validate_local_key
@@ -286,11 +287,13 @@ class ProjectMapper:
 
         # Only resolve if there are unresolved directives
         if not project.is_resolved():
+            project_root = resolve_contained_path(project_name.replace(":", "/"), settings.PROJECTS_DIR)
             # Pass env_prefix and env_file from settings for proper env var resolution
             project = project.resolve(
                 filename=api_config.filename,
                 env_prefix=settings.env_prefix,
                 env_filename=settings.env_file,
+                allowed_roots=(project_root, settings.GLOBAL_DATA_DIR, settings.GLOBAL_DATA_SOURCE_DIR),
             )
 
         ProjectMapper._validate_mapping_sidecar(project, api_config.filename)
