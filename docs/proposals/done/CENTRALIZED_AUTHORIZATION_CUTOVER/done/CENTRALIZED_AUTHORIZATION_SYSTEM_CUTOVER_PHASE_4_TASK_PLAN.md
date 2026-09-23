@@ -1,10 +1,10 @@
 # Centralized Authorization System Cutover – Phase 4 Task Plan
 
-- **Source proposal:** [Centralized Authorization System](../../done/MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM.md)
+- **Source proposal:** [Centralized Authorization System](../../../done/MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM.md)
 - **Source phase plan:** [Centralized Authorization System Cutover Plan](../CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md) - [Phase 4: Deliver And Record The UAT-Ready Deployment](../CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md#phase-4-deliver-and-record-the-uat-ready-deployment)
 - **Prerequisite plans:** [Phase 3 task plan](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_3_TASK_PLAN.md), [Phase 2 task plan](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_2_TASK_PLAN.md), [Target Environment Configuration Layout task plan](./TARGET_ENVIRONMENT_CONFIGURATION_LAYOUT_TASK_PLAN.md)
 - **Goal:** Record the authorization-enabled deployment on the new server as ready for user acceptance testing, with its operator procedures exercised and the evidence a user acceptance test needs assembled.
-- **Plan readiness:** Validated. The deployment, its host, its paths, and every command below are verified against the repository and the recorded Phase 3 evidence. The production flip is out of scope and owned by [PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md](../../future/PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md).
+- **Plan readiness:** Validated. The deployment, its host, its paths, and every command below are verified against the repository and the recorded Phase 3 evidence. The production flip is out of scope and owned by [PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md](../../../future/PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md).
 - **Dependencies:** Phases 1–3 complete for the test target; the reviewed project and shared-data content provisioned; Roger Mähler named as the rollback decision owner.
 - **Closure 2026-09-22:** Phase 4 is complete. The post-fix re-run of the corrected access-check script was skipped because the principal passwords were not available from the workstation used, and the residual risk is accepted by the phase owner. See the deployment record section *Post-Fix Re-Run Skipped (Accepted Risk)*.
 
@@ -60,7 +60,7 @@
 - Selecting the production Podman service model.
 - Authorization policy changes and route reclassification.
 
-**Affected components:** the deployment's `CONFIG_DIR` and `CONTAINER_DATA_DIR`, the authorization SQLite store, the systemd user unit, and the documentation under `docs/proposals/CENTRALIZED_AUTHORIZATION_CUTOVER/`.
+**Affected components:** the deployment's `CONFIG_DIR` and `CONTAINER_DATA_DIR`, the authorization SQLite store, the systemd user unit, and the documentation under `docs/proposals/done/CENTRALIZED_AUTHORIZATION_CUTOVER/`.
 
 ## Work Breakdown
 
@@ -149,7 +149,7 @@
 
 **Objective:** A user acceptance test owner can act on the record without reading the Phase 3 archive.
 
-**Affected code:** Deployment record; `docs/proposals/CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md`.
+**Affected code:** Deployment record; `docs/proposals/done/CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md`.
 
 **Dependencies:** Areas 1–3.
 
@@ -239,4 +239,4 @@
 - **Reviewed projects may still lack owners.** If a reviewed project has no granting principal, the access check falls back to temporary projects, which proves enforcement rather than dataset availability, and the record must say so. No reviewed project lacks an owner, but a second problem replaces the fallback case: every reviewed owner except `bruno` holds a deployment role that grants read on all projects, so no reviewed pair can produce the symmetric isolation probe. The deployment record states this, records the four required outcomes, and notes that the corrected script reports `1 of 2` isolation directions for that pair. The corrected script is merged to `dev` and reached the target at 19:09; the re-run that would confirm the count was skipped, and the residual risk is accepted.
 - **Host services are reachable only through the gateway alias.** Any deployment-side connection check against a host database must use `host.docker.internal`; a host-side success is not evidence for the container.
 - **One data source was removed by decision.** `bulgaria-arbodat-lookup-options` declared no data file, and the legacy file enumeration contains no Bulgarian dataset, so the definition was deleted on 2026-09-22 and the application now lists five shared data sources. The reviewed manifest, the deployed manifest, and the inventory still name it, and the authorization resource remains an inert orphan because the CLI has no delete or lifecycle command. Dropping those records together is a follow-up, kept separate because editing the manifest would invalidate the checksum acceptance relies on.
-- **The production flip has its own owner and questions.** UAT ownership, the DNS and proxy repoint, and user migration are recorded in [PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md](../../future/PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md), not here.
+- **The production flip has its own owner and questions.** UAT ownership, the DNS and proxy repoint, and user migration are recorded in [PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md](../../../future/PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md), not here.

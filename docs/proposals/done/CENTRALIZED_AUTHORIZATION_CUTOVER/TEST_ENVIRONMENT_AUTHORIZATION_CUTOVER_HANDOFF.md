@@ -65,7 +65,7 @@ Facts recorded on 2026-09-22:
 
 - Accounts: `admin`, `roger`, `riia`, `rebecka`, `mattias`, `ershad`, `phil`, `athena`, `victoria`, `bruno`, `rooster`.
 - Application roles: `project_maintainer` for `roger`, `rebecka`, `riia`, `mattias`; `project_creator` and `operator` for `riia`, `phil`, `ershad`, `mattias`, `bruno`, `athena`, `victoria`; `admin` for `admin`.
-- Reviewed manifest: [resources/authorization/test-initial-manifest.yaml](../../../resources/authorization/test-initial-manifest.yaml) holds 32 resources (26 project, 6 shared_data_source), 32 grants (26 `owner` for one principal each, 6 `reader` for `everyone`/`authenticated`), and 3 administrators (`admin`, `roger`, `rebecka`).
+- Reviewed manifest: [resources/authorization/test-initial-manifest.yaml](../../../../resources/authorization/test-initial-manifest.yaml) holds 32 resources (26 project, 6 shared_data_source), 32 grants (26 `owner` for one principal each, 6 `reader` for `everyone`/`authenticated`), and 3 administrators (`admin`, `roger`, `rebecka`).
 - `SHAPE_SHIFTER_AUTHORIZATION_ALLOW_AUTHENTICATED_EVERYONE=true` is set in `~/config/backend.env` and is live in the container; without it the six `everyone` grants are refused at import time.
 - Inventory before cleanup: `list-resources` returned 51 rows (36 with lifecycle `active`, 15 `deleted`) and `list-grants` returned 51 rows. The four temporary `project:verification-containment-<timestamp>` resources were then deleted through the application; they are now deleted lifecycle records and excluded from `export-manifest`.
 - Target content: all 26 reviewed project locators resolve to a `shapeshifter.yml`, and all 6 reviewed shared data sources appear in the application's listing. `arbodat-data-options`, `arbodat-lookup-options`, `bugscep_data_20250608`, and `digidiggie_tng-options` reference `ArchBotDaten.mdb`, `ArchBotStrukDat.mdb`, `bugsdata_20250608.mdb`, and `Digidiggie_v7_kbw.accdb`, all present in `container-data/shared/shared-data`. `bulgaria-arbodat-lookup-options` is accepted with the `access` driver and no `filename`, and `sead-options` resolves `${SEAD_HOST}`, `${SEAD_PORT}`, `${SEAD_DBNAME}`, and `${SEAD_USER}` from `config/backend.env`, where `SEAD_HOST` is `host.docker.internal` because the container cannot reach the host's LAN address.
@@ -104,17 +104,17 @@ From the checkout, `sudo -u test-shape-shifter.sead.se` fails with `cannot chdir
 | [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_2_TASK_PLAN.md](./done/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_2_TASK_PLAN.md) | Phase 2 authorization work and its acceptance criteria |
 | [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md) | Overall cutover phases and release disposition |
 | [DEPLOYMENT_VERIFICATION_HANDOFF.md](./DEPLOYMENT_VERIFICATION_HANDOFF.md) | Earlier deployment verification record |
-| [container/DEPLOYMENT.md](../../../container/DEPLOYMENT.md) | Layout, authorization inputs, replacing the checkout, image build |
-| [container/scripts/authorization.sh](../../../container/scripts/authorization.sh) | Operator wrapper: `import-manifest`, `export-manifest`, `backup`, `restore`, and pass-through CLI commands |
-| [container/scripts/deploy/bootstrap-authentication-and-authorization.sh](../../../container/scripts/deploy/bootstrap-authentication-and-authorization.sh) | Accounts, nginx group file, application roles, manifest import |
-| [container/scripts/verify/verify_authenticated_access.sh](../../../container/scripts/verify/verify_authenticated_access.sh) | Enforcement check used for the result above |
-| [container/scripts/verify/run_deployment_verification.sh](../../../container/scripts/verify/run_deployment_verification.sh) | Orchestrated verification runs; `--authenticated` enables the check above |
-| [resources/authorization/test-initial-manifest.yaml](../../../resources/authorization/test-initial-manifest.yaml) | Reviewed policy that was imported |
+| [container/DEPLOYMENT.md](../../../../container/DEPLOYMENT.md) | Layout, authorization inputs, replacing the checkout, image build |
+| [container/scripts/authorization.sh](../../../../container/scripts/authorization.sh) | Operator wrapper: `import-manifest`, `export-manifest`, `backup`, `restore`, and pass-through CLI commands |
+| [container/scripts/deploy/bootstrap-authentication-and-authorization.sh](../../../../container/scripts/deploy/bootstrap-authentication-and-authorization.sh) | Accounts, nginx group file, application roles, manifest import |
+| [container/scripts/verify/verify_authenticated_access.sh](../../../../container/scripts/verify/verify_authenticated_access.sh) | Enforcement check used for the result above |
+| [container/scripts/verify/run_deployment_verification.sh](../../../../container/scripts/verify/run_deployment_verification.sh) | Orchestrated verification runs; `--authenticated` enables the check above |
+| [resources/authorization/test-initial-manifest.yaml](../../../../resources/authorization/test-initial-manifest.yaml) | Reviewed policy that was imported |
 | `secrets/` (local only, gitignored) | `TEST_DEPLOYMENT_RESOURCE_INVENTORY.md`, `STATUS_20260921.md`, and `.env` with the htpasswd passwords |
 
 ## Next Actions
 
-1. **Confirm the remaining configuration-dependent data source.** `sead-options` is verified against the live database. `bulgaria-arbodat-lookup-options` still declares the `access` driver with no data file, so confirm whether that is intentional.
+1. **Resolved: the configuration-dependent data source is settled.** `sead-options` is verified against the live database, and `bulgaria-arbodat-lookup-options` was removed on 2026-09-22 rather than provisioned. Three records still name it and its authorization resource remains an inert orphan; a follow-up covers them together.
 
 2. **Retain the completed verification evidence.** The rollback evidence is under `container-data/backups/rollback-20260922-103540`; the credential-rotation output records the two in-scope passwords as rotated and PostgreSQL rotation is out of scope by decision, and the same-LAN exception remains accepted because no second host is available on the target LAN.
 
@@ -126,8 +126,8 @@ From the checkout, `sudo -u test-shape-shifter.sead.se` fails with `cannot chdir
 - `make restart` can print `rootless netns: kill network process: permission denied` while removing the network. It is a teardown warning, `podman-compose down` still exits zero, and `up` recreates the network.
 - The four containment resources were removed through the application and are now deleted lifecycle records; `export-manifest` excludes them.
 - `verify_authenticated_access.sh` requires each project to be granted to exactly one principal, and neither principal may be a bootstrap administrator.
-- `bulgaria-arbodat-lookup-options` remains unproven in use: the application lists it, but it declares the `access` driver with no `filename`. The authenticated access check used temporary colon-qualified projects, so it verifies grant enforcement rather than access to the reviewed dataset.
-- **Container-to-host services need the gateway alias.** The container cannot reach the host's LAN address, so host services must be addressed as `host.docker.internal`. Host-side checks against the LAN address succeed and therefore give a false positive. See [container/DEPLOYMENT.md](../../../container/DEPLOYMENT.md).
+- `bulgaria-arbodat-lookup-options` was resolved on 2026-09-22 by removing the definition: it declared the `access` driver with no data file, the legacy file enumeration of 2026-09-18 lists no Bulgarian dataset, and nothing referenced the source. Three records still name it and the authorization resource remains an inert orphan; a follow-up covers them together. The authenticated access check used temporary colon-qualified projects, so it verifies grant enforcement rather than access to the reviewed dataset.
+- **Container-to-host services need the gateway alias.** The container cannot reach the host's LAN address, so host services must be addressed as `host.docker.internal`. Host-side checks against the LAN address succeed and therefore give a false positive. See [container/DEPLOYMENT.md](../../../../container/DEPLOYMENT.md).
 - The release image is built from merged `dev` at `dbff5ab95459652354c040b9d4fec6e2ead94f96`, so its recorded source revision matches the checkout where the focused and full backend suites passed. The earlier `d27b072c` image built from checkout `e38f4bc6` remains on the host as the rollback target and is no longer the running image.
 
 ## Open Decisions

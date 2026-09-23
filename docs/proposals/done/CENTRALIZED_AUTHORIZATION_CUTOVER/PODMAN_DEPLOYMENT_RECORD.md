@@ -1,10 +1,10 @@
 # Podman Deployment Record
 
-- **Status:** In progress — Area 1 complete 2026-09-22: the release unit is frozen and its identity confirmed on the host. Areas 2–5 not started.
+- **Status:** Complete 2026-09-23 — all five areas done: the release unit is frozen with its identity confirmed on the host, and the exposure, container-configuration, grant, proxy-identity, access, route-classification, log-review, and rollback results are recorded, with two approved exceptions. [SECURITY_CHECK.md](../../done/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md) carries the release result.
 - **Source phase plan:** [Centralized Authorization System Cutover Plan](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md) - [Phase 5: Verify Podman Deployment And Update Security Record](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md#phase-5-verify-podman-deployment-and-update-security-record)
-- **Source task plan:** [Phase 5 task plan](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_5_TASK_PLAN.md)
+- **Source task plan:** [Phase 5 task plan](./done/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_5_TASK_PLAN.md)
 - **Predecessor records:** [UAT-ready deployment record](./done/UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md), [Podman deployment verification handoff](./DEPLOYMENT_VERIFICATION_HANDOFF.md), [test environment cutover handoff](./TEST_ENVIRONMENT_AUTHORIZATION_CUTOVER_HANDOFF.md)
-- **Related, not required:** [Release Cycle Evidence And Locking](../RELEASE_CYCLE_EVIDENCE_AND_LOCKING/README.md)
+- **Related, not required:** [Release Cycle Evidence And Locking](../../RELEASE_CYCLE_EVIDENCE_AND_LOCKING/README.md)
 
 ## Purpose
 
