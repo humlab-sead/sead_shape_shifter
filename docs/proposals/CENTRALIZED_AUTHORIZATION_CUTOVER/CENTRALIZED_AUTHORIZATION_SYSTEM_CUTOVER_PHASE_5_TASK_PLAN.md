@@ -195,12 +195,12 @@
 
 **Tasks:**
 
-* [ ] `T5.11` **Change:** Resolve the outstanding host-log review.
+* [x] `T5.11` **Change:** Resolve the outstanding host-log review.
   * **Target:** PostgreSQL and container logs.
   * **Current -> required:** The 2026-09-18 run failed the host-log review because the PostgreSQL log could not be read, and candidate matches require operator review. It is tracked as a non-blocking GitHub issue.
   * **Implementation:** Run `container/scripts/verify/verify_logs.sh` with the PostgreSQL log accessible, and review every candidate match it reports. Where access is still unavailable, record an approved exception naming the owner, the reason, and the residual risk.
   * **Constraints:** Never print credential values found in a log; record the location and the finding instead. An unavailable check is an exception, not a pass.
-  * **Validation:** `V-5.12`.
+  * **Validation:** `V-5.12`. Passed 2026-09-23 for three of the four sources, with the fourth recorded as an approved exception. The Shape Shifter container log (1598 lines) and the nginx access log (27 lines) returned no matches. The nginx error log (5 lines) returned five candidates, all reviewed and all non-findings: every match is the word `password` inside nginx's own `user "admin": password mismatch` message, and the review counted zero value-bearing forms. The PostgreSQL server log was not swept, by operator decision taken 2026-09-23: it belongs to `super.sead.se` and is shared across the `supersead-*` stack, so reading it would mean reading other applications' queries; the residual risk is limited to SQL text. Evidence: `phase-5/log-review.log` and `phase-5/log-review-candidates.log`; recorded in [PODMAN_DEPLOYMENT_RECORD.md](./PODMAN_DEPLOYMENT_RECORD.md) *Area 5*.
 * [ ] `T5.12` **Change:** Update the security record and the phase status.
   * **Target:** `docs/proposals/done/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md`; `CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md`; the deployment record.
   * **Current -> required:** `PH5-AC-6` requires the security record to carry the tested commit, image digest, results, limitations, and approved exceptions. The phase plan still shows Phase 5 as not started.
@@ -248,7 +248,7 @@
 | Proxy identity evidence | Deployed proxy overwrite lines, read from the enabled site file | Done | Deployment record, *Area 3* |
 | Access-check transcript | Corrected-script output with principal scope and isolation-direction count | Done | `<DATA_DIR>/deployment-verification/phase-5/authenticated-access.log`, and the deployment record *Area 3* |
 | Rollback disposition | Matching prior result or a fresh transcript with integrity and reconciliation | Done | `<DATA_DIR>/backups/rollback-exercise.log`, and the deployment record *Area 4* |
-| Log-review disposition | Reviewed matches, or an approved exception naming the owner and reason | Not started | Deployment record, and `SECURITY_CHECK.md` |
+| Log-review disposition | Reviewed matches, or an approved exception naming the owner and reason | Done | Deployment record *Area 5*, and `log-review.log` and `log-review-candidates.log` under `<DATA_DIR>/deployment-verification/phase-5/` |
 | Updated security record | Tested commit, image identity, results, limitations, and approved exceptions | Not started | [SECURITY_CHECK.md](../done/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md) |
 | Phase plan status update | Phase 5 complete, with its result and any exceptions | Not started | [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md) |
 
@@ -260,14 +260,14 @@
 | Area 2: Re-verify exposure, container configuration, and grants | Done | Exposure, container configuration, and grants all passed 2026-09-22. The cross-host probe is an accepted exception; see the deployment record |
 | Area 3: Confirm proxy identity handling and access behavior | Done | `T5.7`, `T5.8`, and `T5.9` all passed 2026-09-23. The corrected access check ran on the host and its transcript is filed; the Phase 4 residual risk is retired |
 | Area 4: Confirm backup, restore, and rollback for the frozen unit | Done | Closed as a citation: the frozen image identity matches the image the 2026-09-22 exercise ran against, so no re-run is needed |
-| Area 5: Close the log review and update the security record | Not started | The host-log review is the one security check still open |
+| Area 5: Close the log review and update the security record | In progress | `T5.11` is closed: three sources swept with no matches, the five nginx error candidates reviewed as non-findings, and the PostgreSQL server log recorded as an approved exception. `T5.12`, the security-record update, remains |
 
 ## Definition Of Done
 
 - [x] `PH5-AC-1` has the frozen source commit, the image ID, the manifest digest, and the OCI `revision`, `version`, and `source` labels, with the digest stated as locally computed.
 - [x] `PH5-AC-2` has listener, firewall, and proxy-boundary evidence recorded for the frozen unit, with the cross-host probe recorded as an accepted exception.
 - [x] `PH5-AC-3` has the deployed proxy overwrite evidenced, the access checks returning the expected statuses with the principal scope recorded, and the route-classification suite passing at the frozen revision.
-- [ ] `PH5-AC-4` has container configuration, grant, and log-review results recorded, with no credential value anywhere.
+- [x] `PH5-AC-4` has container configuration, grant, and log-review results recorded, with no credential value anywhere, and the one source that was not swept recorded as an approved exception with its owner and reason.
 - [x] `PH5-AC-5` has a rollback result for the frozen unit, cited from the matching 2026-09-22 exercise, with integrity and reconciliation outcomes.
 - [ ] `PH5-AC-6` has `SECURITY_CHECK.md` and the deployment record stating the tested commit, image identity, results, limitations, and approved exceptions.
 - [ ] Every check that could not run is recorded as `not run` with a reason, and no such check is presented as passed.
@@ -279,7 +279,7 @@
 - **The authenticated check needs an operator with the passwords.** They are readable on the host in `~/config/authorization.env`, so the check ran on 2026-09-23 and the Phase 4 residual risk is retired. A future run on a host without that file would need the passwords supplied another way, and symmetric isolation still needs two principals that hold no read-granting deployment role.
 - **The frozen unit can be reopened.** Any image rebuild, manifest edit, or layout change invalidates every result recorded for it. Reopen deliberately and re-run the invalidated checks; do not verify a moving target.
 - **Two evidence locations may both hold results.** The Phase 4 record cites `<DATA_DIR>/deployment-verification/phase-4/`, the orchestrator writes timestamped run directories under `<DATA_DIR>/deployment-verification/`, and the 2026-09-18 run used a different root. Record which source each result came from, and prefer citing a locked artifact over prose.
-- **The log review may remain blocked.** PostgreSQL log access was unavailable before. An approved exception is acceptable for `PH5-AC-5`-style findings, but it needs an owner and a reason, not a note that the check was skipped.
+- **The log review is closed with one source excepted.** The PostgreSQL server log was not read. The deployment record carries the owner, the reason, and the residual risk, which is limited to SQL text; the source that could hold a connection string was swept clear across 1598 lines.
 - **Route classification is a blocking check.** A mismatch between the runtime routes and the inventory blocks the phase; the inventory is not adjusted to make a check pass.
 - **Deliberate non-repetition is a decision, not an omission.** Any check not re-run in this phase must point to the recorded result it relies on and the image identity that result belongs to.
 - **Open question:** whether `SECURITY_CHECK.md` remains the right home for the release disposition as more applications adopt this pattern, or whether the release-cycle proposal should define a separate record. This phase uses `SECURITY_CHECK.md` as the phase plan specifies.
