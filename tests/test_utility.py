@@ -514,6 +514,44 @@ class TestReplaceEnvVars:
         with pytest.raises(ValueError, match="Unresolved environment variables.*MISSING"):
             replace_env_vars({"path": "${MISSING}/file"}, raise_if_unresolved=True)
 
+    def test_allowed_vars_expands_only_approved(self):
+        """An approved variable expands; an unapproved one does not."""
+        with patch.dict(os.environ, {"APPROVED": "yes", "SECRET": "leak"}):
+            allowed = frozenset({"APPROVED"})
+            result = replace_env_vars("${APPROVED}-${SECRET}", allowed_vars=allowed)
+            assert result == "yes-"
+
+    def test_allowed_vars_none_expands_everything(self):
+        """With no approved list, every variable expands (trusted internal callers)."""
+        with patch.dict(os.environ, {"ANY": "value"}):
+            result = replace_env_vars("${ANY}", allowed_vars=None)
+            assert result == "value"
+
+    def test_allowed_vars_empty_blocks_all(self):
+        """An empty approved list blocks every variable."""
+        with patch.dict(os.environ, {"ANY": "value"}):
+            result = replace_env_vars("${ANY}", allowed_vars=frozenset())
+            assert result == ""
+
+    def test_allowed_vars_respects_prefix(self):
+        """An approved bare name still resolves through the prefix fallback."""
+        with patch.dict(os.environ, {"APP_DATA_DIR": "/data"}):
+            result = replace_env_vars("${DATA_DIR}", env_prefix="APP", allowed_vars=frozenset({"DATA_DIR"}))
+            assert result == "/data"
+
+    def test_allowed_vars_unapproved_raises_when_unresolved(self):
+        """An unapproved variable is treated as unresolved under raise_if_unresolved."""
+        with patch.dict(os.environ, {"SECRET": "leak"}):
+            with pytest.raises(ValueError, match="Unresolved environment variables.*SECRET"):
+                replace_env_vars("${SECRET}", allowed_vars=frozenset({"OTHER"}), raise_if_unresolved=True)
+
+    def test_allowed_vars_recurses_into_structures(self):
+        """The approved-list gate applies inside nested dicts and lists."""
+        with patch.dict(os.environ, {"OK": "yes", "NO": "leak"}):
+            data = {"a": "${OK}", "b": ["${NO}", "${OK}"]}
+            result = replace_env_vars(data, allowed_vars=frozenset({"OK"}))
+            assert result == {"a": "yes", "b": ["", "yes"]}
+
     def test_raise_if_unresolved_in_nested_dict(self):
         """Test that raise_if_unresolved works with nested dict structures."""
         with pytest.raises(ValueError, match="Unresolved environment variables.*MISSING"):

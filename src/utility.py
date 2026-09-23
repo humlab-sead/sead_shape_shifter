@@ -507,6 +507,7 @@ def replace_env_vars(
     env_prefix: str = "",
     try_without_prefix: bool = True,
     raise_if_unresolved: bool = False,
+    allowed_vars: frozenset[str] | set[str] | None = None,
 ) -> R:
     """Recursively replaces environment variables in data.
 
@@ -518,6 +519,11 @@ def replace_env_vars(
         env_prefix: Optional prefix for environment variables
         try_without_prefix: If True, try both with and without prefix
         raise_if_unresolved: If True, raise ValueError if any ${...} patterns remain unresolved
+        allowed_vars: Optional approved variable names. When provided, only these
+            names expand; any other ${NAME} is treated as unresolved (replaced with
+            an empty string, or left literal when raise_if_unresolved is True) and
+            its environment value is never read. When None (default), every name is
+            expanded, which is the behavior trusted internal callers rely on.
 
     Returns:
         Data with environment variables replaced
@@ -533,18 +539,26 @@ def replace_env_vars(
         'value'
         >>> replace_env_vars("${MISSING}", raise_if_unresolved=True)
         ValueError: Unresolved environment variables: ${MISSING}
+        >>> replace_env_vars("${SECRET}", allowed_vars=frozenset({"MY_VAR"}))
+        ''  # SECRET is not approved, so it is not expanded
     """
     if isinstance(data, dict):
-        result = {k: replace_env_vars(v, env_prefix, try_without_prefix, raise_if_unresolved) for k, v in data.items()}
+        result = {k: replace_env_vars(v, env_prefix, try_without_prefix, raise_if_unresolved, allowed_vars) for k, v in data.items()}
         return result  # type: ignore[return-value]
     if isinstance(data, list):
-        result = [replace_env_vars(i, env_prefix, try_without_prefix, raise_if_unresolved) for i in data]
+        result = [replace_env_vars(i, env_prefix, try_without_prefix, raise_if_unresolved, allowed_vars) for i in data]
         return result  # type: ignore[return-value]
     if isinstance(data, str):
         # Find all ${...} patterns and replace them
         def replacer(match):
             env_var_name = match.group(1)
-            resolved_value = _resolve_env_var(env_var_name, env_prefix, try_without_prefix)
+
+            # When an approved list is supplied, names outside it never reach the
+            # environment. Treat them as unresolved so no value is exposed.
+            if allowed_vars is not None and env_var_name not in allowed_vars:
+                resolved_value = ""
+            else:
+                resolved_value = _resolve_env_var(env_var_name, env_prefix, try_without_prefix)
 
             # If raise_if_unresolved is True and we got empty string, leave the pattern unreplaced
             # so we can detect it later
