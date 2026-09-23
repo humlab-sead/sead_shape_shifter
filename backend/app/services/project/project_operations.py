@@ -8,9 +8,9 @@ from typing import TYPE_CHECKING, Any
 from loguru import logger
 
 from backend.app.exceptions import ConfigurationError, ResourceConflictError, ResourceNotFoundError
-from backend.app.mappers.project_name_mapper import ProjectNameMapper
 from backend.app.middleware.correlation import get_correlation_id
 from backend.app.models.project import Project, ProjectMetadata
+from backend.app.services.project.project_utils import ProjectUtils
 
 if TYPE_CHECKING:
     from backend.app.core.state_manager import ApplicationStateManager
@@ -39,6 +39,7 @@ class ProjectOperations:
         load_project_callback,  # Callable to load project
         cache_invalidator,  # Callable[[str, str], None]
         save_metadata_boundary_callback=None,  # Optional: Callable[[str, dict], None]
+        project_dir_resolver=None,  # Optional: Callable[[str], Path] -> validated, contained project dir
     ):
         """Initialize project operations.
 
@@ -55,6 +56,10 @@ class ProjectOperations:
                 When provided, update_metadata() writes only the metadata section,
                 preserving comments in options/entities.  Falls back to full
                 save_project when absent.
+            project_dir_resolver: Function that validates a project name and returns
+                its directory resolved to stay inside ``projects_dir``. Used by
+                create/copy/delete/update_metadata so every caller-supplied name is
+                contained before any filesystem effect.
         """
         self.yaml_service = yaml_service
         self.projects_dir = projects_dir
@@ -65,6 +70,21 @@ class ProjectOperations:
         self._load_project = load_project_callback
         self._invalidate_all_caches = cache_invalidator
         self._save_metadata_boundary = save_metadata_boundary_callback
+        self._resolve_project_dir = project_dir_resolver
+
+    def _contained_project_dir(self, name: str) -> Path:
+        """Return the project directory for ``name``, validated and contained.
+
+        Delegates to the injected ``project_dir_resolver`` when present. If no
+        resolver was wired, falls back to a local ``ProjectUtils`` so containment
+        is always enforced and never silently skipped.
+
+        Raises:
+            BadRequestError: If the name is invalid or resolves outside the projects root
+        """
+        if self._resolve_project_dir is not None:
+            return self._resolve_project_dir(name)
+        return ProjectUtils(self.projects_dir).resolve_project_dir(name)
 
     def create_project(self, name: str, entities: dict[str, Any] | None = None, task_list: dict[str, Any] | None = None) -> Project:
         """
@@ -82,9 +102,11 @@ class ProjectOperations:
             ResourceConflictError: If project already exists
         """
         corr: str = get_correlation_id()
-        # New structure: projects_dir/name/shapeshifter.yml (convert : to /)
-        path_name: str = ProjectNameMapper.to_path(name)
-        file_path: Path = self.projects_dir / path_name / "shapeshifter.yml"
+        # Validate the name and resolve a directory guaranteed to stay inside
+        # projects_dir, so traversal/absolute/colon-alias names cannot alias
+        # another project's file or write outside the managed root.
+        project_dir: Path = self._contained_project_dir(name)
+        file_path: Path = project_dir / "shapeshifter.yml"
 
         if file_path.exists():
             raise ResourceConflictError(resource_type="project", resource_id=name, message=f"Project '{name}' already exists")
@@ -130,7 +152,7 @@ class ProjectOperations:
         """
         corr: str = get_correlation_id()
 
-        project_dir: Path = self.projects_dir / ProjectNameMapper.to_path(name)
+        project_dir: Path = self._contained_project_dir(name)
         file_path: Path = project_dir / "shapeshifter.yml"
 
         if not file_path.exists():
@@ -202,9 +224,11 @@ class ProjectOperations:
             ResourceConflictError: If target project already exists
             ProjectServiceError: If copy fails
         """
-        # New structure: projects_dir/name/shapeshifter.yml (convert : to /)
-        source_dir: Path = self.projects_dir / ProjectNameMapper.to_path(source_name)
-        target_dir: Path = self.projects_dir / ProjectNameMapper.to_path(target_name)
+        # Validate both names and resolve directories guaranteed to stay inside
+        # projects_dir, so neither source nor target can traverse outside the
+        # managed root or alias another project's file.
+        source_dir: Path = self._contained_project_dir(source_name)
+        target_dir: Path = self._contained_project_dir(target_name)
         source_file: Path = source_dir / "shapeshifter.yml"
         target_file: Path = target_dir / "shapeshifter.yml"
 
@@ -299,8 +323,8 @@ class ProjectOperations:
         if not project.metadata:
             raise ConfigurationError(message=f"Project '{name}' has no metadata")
 
-        # Determine original file path to preserve filename (convert : to /)
-        original_file_path: Path = self.projects_dir / ProjectNameMapper.to_path(name) / "shapeshifter.yml"
+        # Determine original file path, validated and contained inside projects_dir
+        original_file_path: Path = self._contained_project_dir(name) / "shapeshifter.yml"
 
         # Update metadata fields (only if provided, ignore new_name)
         if description is not None:
