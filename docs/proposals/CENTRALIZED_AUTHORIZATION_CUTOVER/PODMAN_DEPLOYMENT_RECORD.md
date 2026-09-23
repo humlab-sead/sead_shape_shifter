@@ -97,7 +97,7 @@ Each section is filled by the area that owns it.
 | Area | Section | Status |
 | --- | --- | --- |
 | Area 1: Release unit and image identity | *Release Unit* above | Done |
-| Area 2: Exposure, container configuration, grants | Not yet recorded | Not started |
+| Area 2: Exposure, container configuration, grants | *Area 2* below | Partly: exposure and container configuration passed; the grant check did not run |
 | Area 3: Proxy identity handling and access behavior | Not yet recorded | Not started |
 | Area 4: Backup, restore, and rollback | Not yet recorded | Not started |
 | Area 5: Log review and security record | Not yet recorded | Not started |
@@ -114,7 +114,52 @@ The frozen image identity matches image ID `6a487db7…04a8` from the UAT-ready 
 
 Still new in Phase 5 regardless of the match: the proxy identity-header evidence (`T5.7`), the corrected access-check script's first host run (`T5.8`), and the host-log review disposition (`T5.11`).
 
-**Observed while reading the identity, not yet a check result.** `podman container inspect` reported the port mapping `{"8012/tcp":[{"HostIp":"127.0.0.1","HostPort":"8012"}]}`, so the published port is bound to loopback. This supports `PH5-AC-2`; it is not the check. `verify_firewall.sh` still has to report the listener, the firewall rules, and the cross-host refusal.
+**Superseded by Area 2.** The loopback binding observed here was confirmed as a check result by `verify_firewall.sh` and `verify_container_config.sh`; see *Area 2* below.
+
+## Area 2: Exposure, Container Configuration, And Grants
+
+Run 2026-09-22 from `/tmp`, as root for the firewall check and as the deployment user for the other two. Transcript: `<DATA_DIR>/deployment-verification/phase-5/exposure-configuration-grants.log`.
+
+### `T5.3` / `V-5.3` — network exposure and the proxy boundary: passed, host side
+
+| Check | Result |
+| --- | --- |
+| Listeners | `0.0.0.0:80`, `0.0.0.0:443`, `[::]:80`, `[::]:443`, and `127.0.0.1:8012`. The backend is loopback-only |
+| Firewall | nftables, `chain input` policy `drop`. Ports `80` and `443` are accepted from `172.18.134.40` only, and no rule mentions `8012` |
+| Loopback health | `200` |
+| LAN refusal | `172.18.134.53:8012` refused |
+
+**Still outstanding: the cross-host leg.** The transcript prints `nc -zvw5 172.18.134.53 8012` (expect refused or timed out) and `nc -zvw5 172.18.134.53 443`. Run both from a second host. Note that `443` is accepted only from `172.18.134.40`, so a host outside that address will time out on `443` as well; run the proxy leg from `172.18.134.40`, or record that source restriction as the reason the leg cannot be exercised from an arbitrary host.
+
+### `T5.4` / `V-5.4` — container configuration, mounts, secrets, environment: passed
+
+| Check | Result |
+| --- | --- |
+| Container | `shape-shifter`, state `running`, image `localhost/shape-shifter:dev` |
+| Port publication | `{"8012/tcp":[{"HostIp":"127.0.0.1","HostPort":"8012"}]}`, loopback-only |
+| Mounts | Eight, matching the documented set: `projects`, `shared`, `logs`, `output`, `backups`, `tmp`, and `state` read-write, and `.pgpass` read-only. No unexpected mount, and no sensitive host path mounted writable |
+| Image labels | revision `dbff5ab9…4f96`, created `2026-09-22T10:54:49Z`, title `shape-shifter`, version `dev`, source repository, built with buildah `1.42.1` |
+| Image history | No credential-like text |
+| Environment | Variable names listed, values never printed |
+
+**The one warning is a false positive.** The scan flags `GPG_KEY` as a credential-like variable name. It is one of the standard variables of the official Python base image, alongside `PYTHON_VERSION` and `PYTHON_SHA256`, and is used to verify the Python source tarball during the image build. It is not a deployment credential and holds no project secret. It appears in the image environment and therefore in the container's, which is expected for an inherited base-image variable. No action needed; recorded so the warning is not raised again as a finding.
+
+### `T5.5` / `V-5.5` — PostgreSQL grants and store placement: partly done
+
+The authorization store checks passed: `container-data/state/authorization.sqlite3`, owner `test-shape-shifter.sead.se` (1021), mode `600`, size 106496 bytes. It sits inside the data directory, not in the project, log, or shared-data trees.
+
+The role verification did not run:
+
+```
+psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: No such file or directory
+```
+
+**That is a command error, not a deployment finding.** `verify_postgres_grants.sh` ran on the host with no `--host` or `--port`, so libpq defaulted to a local Unix socket, where no PostgreSQL server listens. The database is reached over the network, and the deployment passes `SEAD_HOST`, `SEAD_PORT`, and `SEAD_DBNAME` to the container through `config/backend.env`.
+
+Two ways to close it:
+
+1. Re-run with the database's host-visible address and port, and point `PGPASSFILE` at `<CONFIG_DIR>/.pgpass/.pgpass`. The password file matches on host, port, database, and user, and wildcards are allowed in every field except the password, so use the host string the file is keyed on.
+2. If the database is administered separately, the database administrator's grant result is an acceptable input. The phase plan's task-plan handoff permits it, and grants live in the database rather than in the image, so the result does not depend on the frozen image identity.
 
 ## Limitations
 
