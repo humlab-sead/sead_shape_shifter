@@ -145,24 +145,24 @@
 
 **Tasks:**
 
-* [ ] `T5.7` **Change:** Confirm the proxy removes and replaces the identity header.
+* [x] `T5.7` **Change:** Confirm the proxy removes and replaces the identity header.
   * **Target:** The deployed nginx site and the effective configuration.
   * **Current -> required:** `PH5-AC-3` requires identity-header handling to be verified. Client identity headers were never recorded as a distinct check; the standing limitation that the middleware trusts any source is recorded but the overwrite itself is not evidenced.
   * **Implementation:** Inspect `/etc/nginx/sites-available/test-shape-shifter.sead.se` and the effective configuration from `sudo nginx -T`. Confirm the site sets `proxy_set_header X-Authenticated-User $remote_user` and that no client-supplied identity header is passed through. Record the relevant configuration lines and the `nginx -t` result.
   * **Constraints:** Read only. Do not reload or change the proxy configuration. Do not record the `htpasswd` path contents.
-  * **Validation:** `V-5.7`.
+  * **Validation:** `V-5.7`. Passed 2026-09-23 from the enabled site file, which `sites-enabled` symlinks to: `auth_basic` covers the whole `443` block; `proxy_set_header X-Authenticated-User $remote_user;` and `proxy_set_header X-Authenticated-Groups $authz_groups;` are the only places either header is set anywhere under `/etc/nginx`; the upstream is `127.0.0.1:8012`. `nginx -t` and `nginx -T` need root and were not run. Recorded in [PODMAN_DEPLOYMENT_RECORD.md](./PODMAN_DEPLOYMENT_RECORD.md).
 * [ ] `T5.8` **Change:** Re-run the authenticated access check with the corrected script.
   * **Target:** `https://test-shape-shifter.sead.se`.
   * **Current -> required:** Two filed runs used the pre-fix script, and the corrected script was merged in PR #500 and synced but never executed on the host; the Phase 4 record accepts that as residual risk. Running it here closes that risk and supplies `PH5-AC-3` evidence.
   * **Implementation:** Run `container/scripts/verify/verify_authenticated_access.sh` with `--base-url https://test-shape-shifter.sead.se`, the reviewed pair of principals and projects, and the administrator probe for a protected list route. Redirect the output into the phase evidence directory. Confirm unauthenticated `401`, allowed `200`, concealed denied `404`, administrator `200`, and record the principal-scope block and how many isolation directions were verified.
   * **Constraints:** Passwords are prompted, never passed as arguments, never written to a file, and never recorded. Do not grant ownership to make a check pass. Where no reviewed pair can produce a symmetric isolation probe, record that the direction that matters was verified and why the other is masked.
   * **Validation:** `V-5.8`.
-* [ ] `T5.9` **Change:** Confirm route classification at the frozen revision.
+* [x] `T5.9` **Change:** Confirm route classification at the frozen revision.
   * **Target:** `backend/tests/authorization/test_route_authentication.py`.
   * **Current -> required:** The suite passed at the deployed revision on 2026-09-22; `PH5-AC-3` needs the result bound to the frozen revision.
   * **Implementation:** Run `.venv/bin/pytest backend/tests/authorization -q` at the frozen commit and record the result alongside the frozen revision.
   * **Constraints:** A mismatch between the runtime routes and `docs/AUTHORIZATION_ROUTE_INVENTORY.md` blocks the phase. Do not edit the inventory to pass the check.
-  * **Validation:** `V-5.9`.
+  * **Validation:** `V-5.9`. Passed 2026-09-23: `.venv/bin/pytest backend/tests/authorization -q` returned 192 passed, 1 skipped, 0 failed, exit 0. It ran at branch head rather than at `dbff5ab9`, which is equivalent because `git diff --stat dbff5ab9..HEAD -- backend src tests` is empty.
 
 **Completion evidence:** Identity-header handling is evidenced from the deployed configuration, and the access checks return the expected statuses with the principal scope recorded.
 
@@ -245,7 +245,7 @@
 | --- | --- | --- | --- |
 | Podman deployment record | Frozen release unit, image identity, per-check results, limitations, and dispositions | In progress | [PODMAN_DEPLOYMENT_RECORD.md](./PODMAN_DEPLOYMENT_RECORD.md) (new, this folder) |
 | Exposure and configuration evidence | Firewall, container configuration, and grant results for the frozen unit | Done | Deployment record, and `exposure-configuration-grants.log` and `postgres-grants.log` under `<DATA_DIR>/deployment-verification/phase-5/` |
-| Proxy identity evidence | Deployed proxy overwrite lines and the effective configuration excerpt | Not started | Deployment record |
+| Proxy identity evidence | Deployed proxy overwrite lines, read from the enabled site file | Done | Deployment record, *Area 3* |
 | Access-check transcript | Corrected-script output with principal scope and isolation-direction count | Not started | Deployment record and the phase evidence directory |
 | Rollback disposition | Matching prior result or a fresh transcript with integrity and reconciliation | Not started | Deployment record, and `<DATA_DIR>/backups/` |
 | Log-review disposition | Reviewed matches, or an approved exception naming the owner and reason | Not started | Deployment record, and `SECURITY_CHECK.md` |
@@ -258,7 +258,7 @@
 | --- | --- | --- |
 | Area 1: Freeze the release unit and record its identity | Done | Frozen unit confirmed on the host: image ID `6a487db7…04a8`, manifest digest `sha256:7ff51b2b…`, revision `dbff5ab9…4f96`, deployed manifest checksum `43c03186…fb90`. It equals the unit Phase 4 verified |
 | Area 2: Re-verify exposure, container configuration, and grants | Done | Exposure, container configuration, and grants all passed 2026-09-22. The cross-host probe is an accepted exception; see the deployment record |
-| Area 3: Confirm proxy identity handling and access behavior | Not started | The corrected access-check script has never run on the host |
+| Area 3: Confirm proxy identity handling and access behavior | In progress | `T5.7` and `T5.9` passed 2026-09-23; `T5.8` is prepared and waits on the principal passwords, which are readable on the host |
 | Area 4: Confirm backup, restore, and rollback for the frozen unit | Not started | May be satisfied by citing the 2026-09-22 exercise when the image identity matches |
 | Area 5: Close the log review and update the security record | Not started | The host-log review is the one security check still open |
 
