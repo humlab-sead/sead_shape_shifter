@@ -690,6 +690,107 @@ The first inspection of the running deployment found two failures.
 
 ---
 
+## Podman Deployment Verification Record (2026-09-23)
+
+The centralized-authorization release was verified in the Podman deployment on
+`humlabsead.srv.its.umu.se`. This section states the tested commit, the image
+identity, the result of each check, the limitations, and the approved
+exceptions. The per-check detail is in
+[PODMAN_DEPLOYMENT_RECORD.md](../CENTRALIZED_AUTHORIZATION_CUTOVER/PODMAN_DEPLOYMENT_RECORD.md).
+
+### Release identity
+
+The release unit was frozen on 2026-09-22 and was not rebuilt, reconfigured, or
+edited for the duration of the phase. Every result below belongs to this
+identity; reopening the image, the manifest, or the deployment layout
+invalidates all of them.
+
+| Item | Value |
+|---|---|
+| Tested commit | `dbff5ab95459652354c040b9d4fec6e2ead94f96` — merge of PR #495, 2026-09-22, recorded in the image label `org.opencontainers.image.revision` |
+| Image | `localhost/shape-shifter:dev`, built with `GIT_REF=dev` |
+| Image ID (configuration digest) | `6a487db722883da0eb0c3cfdc00444c07dea1edaf7d59b15643227576acc04a8` |
+| Image manifest digest | `localhost/shape-shifter@sha256:7ff51b2b9af759f3cfa4e1d970e3acea025985aba1898e3263ae25fc8887474d` — **computed locally** |
+| OCI labels | revision `dbff5ab95459652354c040b9d4fec6e2ead94f96`, version `dev`, source `https://github.com/humlab-sead/sead_shape_shifter.git` |
+| Manifest | reviewed `resources/authorization/test-initial-manifest.yaml`, deployed as `config/authorization-manifest.yaml`, SHA-256 `43c03186f708164ce9334a001c45b80c4f206fb2efa06d413dff9ad4a2cafb90` |
+| Container | `shape-shifter`, running the image ID above |
+| Deployment target | host `humlabsead.srv.its.umu.se`; user `test-shape-shifter.sead.se`; backend `127.0.0.1:8012`; proxy `https://test-shape-shifter.sead.se`; data directory `/data/test-shape-shifter.sead.se/container-data` |
+| Runtime | Podman `5.7.0`, rootless |
+
+Three identifiers — the image ID, the OCI `revision` label, and the deployed
+manifest checksum — match the UAT-ready deployment record, so the frozen unit is
+the same artifact Phase 4 verified and its results stay citable.
+
+**The manifest digest is local evidence.** The `localhost/` repository prefix
+shows the image was never pushed, so nothing outside this host vouches for the
+manifest, and a digest computed on another host is not guaranteed to match. The
+OCI `revision` label is the identity that travels across hosts.
+
+### Check results
+
+| Check | Result |
+|---|---|
+| Release identity matches the running container (`PH5-AC-1`) | Pass — image ID, manifest digest, and `revision` label all match the running container |
+| Network exposure and proxy boundary (`PH5-AC-2`) | Pass, host side — listeners `0.0.0.0:80`, `0.0.0.0:443`, and `127.0.0.1:8012` only; nftables input policy `drop` accepting `80` and `443` from `172.18.134.40` alone, with no rule naming `8012`; loopback health `200`; LAN address `172.18.134.53:8012` refused. The off-host probe is an approved exception below |
+| Container configuration, mounts, secrets, environment (`PH5-AC-4`) | Pass — container `shape-shifter` on `localhost/shape-shifter:dev`; port published loopback-only; eight mounts matching the documented set with `.pgpass` read-only; image labels carrying revision `dbff5ab9…4f96`; no credential-like text in image history; environment variable names listed, values never printed |
+| PostgreSQL grants and authorization store placement (`PH5-AC-4`) | Pass — `sead_ro` is read-only against `sead_staging.public`, with no elevated attributes, memberships, or owned objects; store `container-data/state/authorization.sqlite3`, owner `test-shape-shifter.sead.se` (1021), mode `600` |
+| Proxy identity-header handling (`PH5-AC-3`) | Pass — the enabled site sets `proxy_set_header X-Authenticated-User $remote_user` and `proxy_set_header X-Authenticated-Groups $authz_groups`; a recursive search of `/etc/nginx` found these as the only occurrences; the upstream is `127.0.0.1:8012` |
+| Authenticated access (`PH5-AC-3`) | Pass — unauthenticated `401`, owner `200` on his own project, concealed `404` for another principal, administrator `200`; the corrected script reported the principal scope and `1 of 2` isolation directions |
+| Route classification at the frozen revision (`PH5-AC-3`) | Pass — `.venv/bin/pytest backend/tests/authorization -q` returned 192 passed, 1 skipped, 0 failed, exit 0 |
+| Backup, integrity, restore, and reconciliation (`PH5-AC-5`) | Pass — cited from the 2026-09-22 16:48:11 exercise: integrity passed, reconciliation `Missing: 0 resources, 0 administrators, 0 grants`, health `200`, running image equal to the recorded image, and a restore byte-identical to the running database |
+| Log review (`PH5-AC-4`) | Three of four sources clear; the fourth is an approved exception below. The Shape Shifter container log (1598 lines) and the nginx access log (27 lines) returned no matches; the nginx error log returned five candidates, all reviewed as non-findings (the word `password` inside nginx's own `user "admin": password mismatch` message, with zero value-bearing forms) |
+| Orchestrated single-pass capture (`V-5.6`) | Not run as a separate pass — `T5.3` to `T5.5` captured the same check families individually and their transcripts are filed |
+
+### Finding dispositions
+
+- **Host-log review, the one open security check.** The 2026-09-18 failure is
+  closed: three sources were swept on 2026-09-23 with no value-bearing match,
+  and the fourth is the approved exception below.
+- **Credential rotation.** Resolved as an approved exception on 2026-09-22:
+  PostgreSQL credential rotation is out of scope for every PostgreSQL database,
+  so the deployed `sead_ro` `.pgpass` credential is not rotated.
+- **Deferred cleanups.** The orphan `verification-containment-*` resources and
+  the `bulgaria-arbodat-lookup-options` records are unchanged by this phase.
+
+### Limitations
+
+- **The manifest digest is computed locally**, with no external provenance; see
+  *Release identity*.
+- **The freeze is an operator commitment, not a technical control.** Nothing
+  prevents a rebuild.
+- **Two values are carried, not re-read.** The hostname and the proxy
+  configuration come from the UAT-ready deployment record.
+- **No off-host probe was possible**, and the printed probe is weak on its own:
+  `8012` is bound to loopback, so a refusal from any source is explained by the
+  binding rather than by the firewall rule. The exception below names the
+  compensating checks and how the exception can be retired.
+- **`nginx -t` and `nginx -T` were not run**, because they need root. The
+  enabled site file and an exhaustive search of `/etc/nginx` were used instead.
+- **Symmetric cross-resource isolation is not demonstrated.** `riia` holds
+  `project_maintainer`, which reads every project by policy, so only `1 of 2`
+  isolation directions was verified. The second direction is an expected
+  privileged read, not evidence of isolation.
+- **The rollback result is cited, not re-run.** It belongs to the same image
+  identity, so it carries its weight for this unit; a reopen would require a
+  fresh exercise.
+- **An adjacent observation, outside `PH5-AC-2`.** The host has a wildcard
+  listener on database port `9023`, shielded only by the firewall, and the exact
+  packet path the container uses was not traced. The intended posture is worth
+  confirming.
+- **A standalone `rollback_exercise.sh` run** leaves the systemd unit reporting
+  `active (exited)`; `make service-restart` realigned it, and the same step
+  would follow any future standalone run.
+
+### Approved exceptions
+
+| Exception | Owner | Reason | Residual risk and compensating checks |
+|---|---|---|---|
+| Off-host network probe not possible (`PH5-AC-2`) | Approved 2026-09-23 by Roger Mähler, the named approver for exceptions to unavailable checks | No second host is available for an off-host probe | Loopback-only publication, a default-drop firewall policy, and external HTTPS reachability are the compensating checks; the criterion is met by the listener, firewall, and LAN-refusal results. Retire the exception by probing the public address from an off-LAN machine |
+| PostgreSQL server log not swept (`PH5-AC-4`) | Owner of the excluded source: `super.sead.se`, which runs `supersead-postgresql-1`; approved by the Shape Shifter deployment operator 2026-09-23 | The database server is shared infrastructure outside this deployment, so reading its log would mean reading other applications' queries | Limited to SQL text. PostgreSQL writes the user name, not the secret, on a failed login; the one way a password could reach the log is a `log_statement`-captured `ALTER ROLE ... PASSWORD`, which was not checked because the log was not read |
+| PostgreSQL credential rotation out of scope | Approved 2026-09-22 (carried from the deployment handoff) | Rotation is out of scope for every PostgreSQL database, including the SEAD database | The `sead_ro` `.pgpass` credential is not rotated; the account remains read-only, and `rolinherit` is inert while it holds no memberships |
+
+---
+
 ## Tier 1 — Exploitable with a single unauthenticated request
 
 The root cause for most of Tier 1 is the same: **the FastAPI app has no

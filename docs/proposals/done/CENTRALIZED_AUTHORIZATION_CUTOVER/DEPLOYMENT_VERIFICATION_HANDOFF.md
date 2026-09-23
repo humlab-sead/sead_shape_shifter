@@ -1,9 +1,9 @@
 # Handoff: Podman Deployment Verification
 
-**Status:** Test-release disposition ready — one non-blocking verification failure (host-log review) is tracked in a GitHub issue; the credential-rotation item is resolved as an approved exception. The authenticated-access and rollback exercises were completed on 2026-09-22 during the centralized-authorization cutover Phase 4 and are recorded below.
+**Status:** Closed 2026-09-23 — the release disposition is recorded in [SECURITY_CHECK.md](../../done/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md#podman-deployment-verification-record-2026-09-23). The host-log review was completed during the centralized-authorization cutover Phase 5, with the PostgreSQL server log recorded as an approved exception; the credential-rotation item stays resolved as an approved exception. The authenticated-access and rollback exercises were completed on 2026-09-22 during Phase 4 and are recorded below.
 **Opened:** 2026-09-16 (extended the same day with the containment and credential-rotation checks that the development plan left open)
 **Verification runs:** 2026-09-18 on `humlabsead`; latest run `20260918T210002Z-3878349`
-**Source plan:** [MITIGATE_SECURITY_ISSUES_PHASE_5_TASK_PLAN.md](../done/MITIGATE_SECURITY_ISSUES/done/MITIGATE_SECURITY_ISSUES_PHASE_5_TASK_PLAN.md) (Phase 5, closed)
+**Source plan:** [MITIGATE_SECURITY_ISSUES_PHASE_5_TASK_PLAN.md](../../done/MITIGATE_SECURITY_ISSUES/done/MITIGATE_SECURITY_ISSUES_PHASE_5_TASK_PLAN.md) (Phase 5, closed)
 
 ## Purpose
 
@@ -27,7 +27,7 @@ The test deployment on `humlabsead` was inspected again on 2026-09-18. The lates
 | Container mounts, secrets, and environment variables | Verified on 2026-09-18 |
 | PostgreSQL grants for the release deployment | Verified on 2026-09-18, including the authorization SQLite store location and permissions |
 | Endpoint containment | Verified on 2026-09-18 for execution, raw YAML, data-source creation, and ingester routes |
-| Log review (container, proxy, database) | Failed on host-log review: PostgreSQL log access was unavailable and candidate matches require operator review; container-log review passed. Confirmed and recorded as a non-blocking GitHub issue. |
+| Log review (container, proxy, database) | Closed 2026-09-23 in cutover Phase 5: the container log (1598 lines) and the nginx access log (27 lines) returned no matches, and the five nginx error-log candidates were reviewed as non-findings. The PostgreSQL server log was not swept and is an approved exception owned by `super.sead.se`. |
 | Credential rotation after the loopback fix | Resolved as an approved exception on 2026-09-22: PostgreSQL credential rotation is out of scope for every PostgreSQL database, including the SEAD database, so the `sead_ro` `.pgpass` credential is not rotated. Previously recorded as a non-blocking GitHub issue. |
 | Authenticated access and cross-resource isolation with real principals | Completed 2026-09-22 in the cutover Phase 4: `401` unauthenticated, owner `200`, another principal's project concealed `404`, administrator `200`; the symmetric isolation direction is masked by `project_maintainer` |
 | Rollback exercise | Completed 2026-09-22 in the cutover Phase 4: image and authorization database restored, integrity passed, reconciliation zero-missing, health `200` |
@@ -37,34 +37,34 @@ The test deployment on `humlabsead` was inspected again on 2026-09-18. The lates
 - Two defects found on 2026-09-15 and corrected: the deployed image had been built from `main` instead of `dev`, so it contained no authorization package and returned `200` for unauthenticated requests; and the backend was published on every interface, so `172.18.134.53:8012` reached it directly and bypassed nginx Basic auth. The image was rebuilt with `GIT_REF=dev`, and the deployed compose file now publishes `127.0.0.1:${HOST_PORT:-8012}:8012`.
 - The checks marked Verified in the table above, with methods and results.
 - The verification scripts are implemented under `container/scripts/verify`; the orchestrator is `container/scripts/verify/run_deployment_verification.sh`. Four read-only runs were recorded on 2026-09-18. The latest run passed firewall, container configuration, PostgreSQL grants, endpoint containment, and container-log review.
-- The two latest-run failures are confirmed and recorded as non-blocking GitHub issues: pending credential rotation and incomplete host-log review. The rotation item is now closed as an approved exception, because PostgreSQL credential rotation was decided out of scope for every PostgreSQL database, including the SEAD database, on 2026-09-22. The first run also reported transient endpoint-containment and container-log failures; both passed in the three subsequent runs.
+- The two latest-run failures are now closed. Credential rotation closed on 2026-09-22 as an approved exception, because PostgreSQL credential rotation was decided out of scope for every PostgreSQL database, including the SEAD database. The host-log review closed on 2026-09-23 in cutover Phase 5: three sources were swept clear and the PostgreSQL server log is an approved exception. The first run also reported transient endpoint-containment and container-log failures; both passed in the three subsequent runs.
 - Focused security suites re-run on `95c3d017`.
 - PostgreSQL: `scripts/postgres/create-readonly-role.sh` and `scripts/postgres/verify_readonly_role.sql` pass against a disposable PostgreSQL 16 (`NOINHERIT`, no role memberships, no owned objects, no schema `CREATE`). The deployed `sead_ro` account was probed with read-only catalog queries against the live `sead_staging` database on 2026-09-16: 730 of 730 relations readable, no write privilege on any relation, schema and database `CREATE` denied, no `COPY` membership.
 - The `rolinherit = t` attribute on the deployed `sead_ro` account was handed to the database administrator on 2026-09-16. It is inert while the account has no memberships. The repository role script creates the role with `NOINHERIT`.
 
-Evidence for all of the above is recorded in [SECURITY_CHECK.md](../done/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md#deployment-verification-record-2026-09-15).
+Evidence for all of the above is recorded in [SECURITY_CHECK.md](../../done/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md#deployment-verification-record-2026-09-15).
 
 ## Key References
 
 | Document | Use |
 |---|---|
-| [SECURITY_CHECK.md](../done/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md#deployment-verification-record-2026-09-15) | Release identity, checks performed, defects, and limitations from the 2026-09-15 run |
-| [SECURITY_CHECK.md](../done/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md#live-read-only-role-verification-2026-09-16) | Database grant checks and results against the live test database |
+| [SECURITY_CHECK.md](../../done/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md#deployment-verification-record-2026-09-15) | Release identity, checks performed, defects, and limitations from the 2026-09-15 run |
+| [SECURITY_CHECK.md](../../done/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md#live-read-only-role-verification-2026-09-16) | Database grant checks and results against the live test database |
 | [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md#phase-5-verify-podman-deployment-and-update-security-record) | Deployment record and release disposition that consume these results |
-| [container/DEPLOYMENT.md](../../../container/DEPLOYMENT.md) | Build, service install, and proxy setup for the Podman deployment |
-| [container/scripts/service.sh](../../../container/scripts/service.sh) | Service control actions: install, enable, disable, start, stop, restart, status, logs |
-| [OPERATIONS.md](../../OPERATIONS.md#post-deployment-verification) | Current post-deployment verification and [rollback](../../OPERATIONS.md#rollback) guidance; still written for Docker Compose, so treat the commands as needs-rewrite |
+| [container/DEPLOYMENT.md](../../../../container/DEPLOYMENT.md) | Build, service install, and proxy setup for the Podman deployment |
+| [container/scripts/service.sh](../../../../container/scripts/service.sh) | Service control actions: install, enable, disable, start, stop, restart, status, logs |
+| [OPERATIONS.md](../../../OPERATIONS.md#post-deployment-verification) | Current post-deployment verification and [rollback](../../../OPERATIONS.md#rollback) guidance; still written for Docker Compose, so treat the commands as needs-rewrite |
 
 ## Next Actions
 
-The verification command and outputs are recorded in the dated run directories under `sead-tools/test-shape-shifter.sead.se/container/deployment-verification`. The current disposition is suitable for deployment to the test release in the test target environment. Keep the two GitHub issues attached to the release record and complete the remaining exercises before a production or shared-environment promotion.
+The verification command and outputs are recorded in the dated run directories under `sead-tools/test-shape-shifter.sead.se/container/deployment-verification`. The current disposition is suitable for deployment to the test release in the test target environment. Both previously tracked items are closed and the release disposition is recorded; the production move and its open questions stay with [PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md](../../future/PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md).
 
 - [x] **Firewall rules** — Passed in the latest read-only run.
 - [x] **Container configuration re-inspection** — Passed in the latest read-only run.
 - [x] **PostgreSQL grants for the release host** — Passed in the latest read-only run.
 - [x] **Endpoint containment** — Passed in the latest read-only run.
 - [x] **Record the results** — Dated reports and detailed logs are recorded in the deployment-verification output directory.
-- [!] **Log review** — Host-log review failed because the PostgreSQL log could not be read and candidate matches require review; tracked in a non-blocking GitHub issue.
+- [x] **Log review** — Closed 2026-09-23 in cutover Phase 5: three sources were swept with no value-bearing match, and the PostgreSQL server log is an approved exception owned by `super.sead.se`. See [PODMAN_DEPLOYMENT_RECORD.md](./PODMAN_DEPLOYMENT_RECORD.md) *Area 5*.
 - [x] **Credential rotation** — Resolved as an approved exception on 2026-09-22: PostgreSQL credential rotation is out of scope for every PostgreSQL database, including the SEAD database, so the `sead_ro` `.pgpass` credential is not rotated.
 - [x] **Authenticated access with real principals** — Passed 2026-09-22: proxy `401` unauthenticated, owner `200`, another principal's project concealed `404`, administrator `200`. Both runs are filed as `/data/test-shape-shifter.sead.se/container-data/deployment-verification/phase-4/verify-authenticated-access.log`; see [UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md](./done/UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md) *Access-check detail*.
 - [x] **Rollback exercise** — Passed 2026-09-22 16:48:11: the recorded image and authorization database were restored, integrity passed, reconciliation reported `Missing: 0 resources, 0 administrators, 0 grants`, and health returned `200`. Transcript `container-data/backups/rollback-exercise.log`; see [UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md](./done/UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md) *Rollback detail*.
@@ -87,6 +87,6 @@ The verification command and outputs are recorded in the dated run directories u
 
 ## Suggested Follow-Up Documents
 
-- Update the Podman deployment record in [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md) Phase 5 from these results.
-- Rewrite the [OPERATIONS.md](../../OPERATIONS.md#post-deployment-verification) post-deployment verification and rollback sections for Podman instead of Docker Compose.
-- Archive this handoff once the release disposition is recorded in [SECURITY_CHECK.md](../done/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md).
+- Done 2026-09-23: the Podman deployment record [PODMAN_DEPLOYMENT_RECORD.md](./PODMAN_DEPLOYMENT_RECORD.md) carries these results, and Phase 5 of [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md) is complete.
+- Rewrite the [OPERATIONS.md](../../../OPERATIONS.md#post-deployment-verification) post-deployment verification and rollback sections for Podman instead of Docker Compose.
+- Done 2026-09-23: the release disposition is recorded in [SECURITY_CHECK.md](../../done/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md), and this proposal folder is archived under `docs/proposals/done/`.

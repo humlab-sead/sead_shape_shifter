@@ -1,9 +1,9 @@
 # Centralized Authorization System Cutover – Phase 5 Task Plan
 
-- **Source proposal:** [Centralized Authorization System](../done/MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM.md)
-- **Source phase plan:** [Centralized Authorization System Cutover Plan](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md) - [Phase 5: Verify Podman Deployment And Update Security Record](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md#phase-5-verify-podman-deployment-and-update-security-record)
-- **Prerequisite records:** [UAT-ready deployment record](./done/UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md), [Podman deployment verification handoff](./DEPLOYMENT_VERIFICATION_HANDOFF.md), [test environment cutover handoff](./TEST_ENVIRONMENT_AUTHORIZATION_CUTOVER_HANDOFF.md)
-- **Related, not required:** [Release Cycle Evidence And Locking](../RELEASE_CYCLE_EVIDENCE_AND_LOCKING/README.md). That proposal owns evidence tooling, result locking, and run deltas. This phase uses the scripts that exist and does not wait for it.
+- **Source proposal:** [Centralized Authorization System](../../../done/MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM.md)
+- **Source phase plan:** [Centralized Authorization System Cutover Plan](../CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md) - [Phase 5: Verify Podman Deployment And Update Security Record](../CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md#phase-5-verify-podman-deployment-and-update-security-record)
+- **Prerequisite records:** [UAT-ready deployment record](./UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md), [Podman deployment verification handoff](../DEPLOYMENT_VERIFICATION_HANDOFF.md), [test environment cutover handoff](../TEST_ENVIRONMENT_AUTHORIZATION_CUTOVER_HANDOFF.md)
+- **Related, not required:** [Release Cycle Evidence And Locking](../../../RELEASE_CYCLE_EVIDENCE_AND_LOCKING/README.md). That proposal owns evidence tooling, result locking, and run deltas. This phase uses the scripts that exist and does not wait for it.
 - **Goal:** Verify the authorization release in the Podman deployment and record security results for that release.
 - **Plan readiness:** Validated. Every command below exists in the repository or in the recorded operator output. The release unit is frozen and its identity is confirmed on the host. One dependency sits outside the plan: whether an operator with the principal passwords is available.
 - **Dependencies:** Phases 1–4 complete; the frozen release unit decided; Roger Mähler named as the rollback decision owner.
@@ -35,8 +35,8 @@
 | Evidence | Finding | Planning implication |
 | --- | --- | --- |
 | Host read 2026-09-22 | `make info`, `config/deployment.env`, `sha256sum` on the deployed manifest, and `podman image inspect` returned image ID `6a487db7…04a8`, manifest digest `localhost/shape-shifter@sha256:7ff51b2b…`, OCI revision `dbff5ab9…4f96`, and a deployed manifest checksum identical to the reviewed copy | The frozen release unit equals the image Phase 4 verified, so those results stay citable and this phase keeps its small delta |
-| [UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md](./done/UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md) | Records image `shape-shifter:dev`, image ID `6a487db7…04a8`, revision `dbff5ab9…4f96`, manifest SHA-256 `43c03186…fb90`, 144 audit events, 36 active resources, 53 grants, and a passing rollback exercise at 16:48:11 with reconciliation `Missing: 0 resources, 0 administrators, 0 grants` | These are the results to cite when the frozen image identity matches. The record states an image ID, not a registry digest |
-| [DEPLOYMENT_VERIFICATION_HANDOFF.md](./DEPLOYMENT_VERIFICATION_HANDOFF.md) | The 2026-09-18 run `20260918T210002Z-3878349` verified firewall, port publication, proxy denial, container configuration, PostgreSQL grants, authorization database placement, and endpoint containment; the host-log review failed and is tracked as a non-blocking GitHub issue. That run recorded baseline commit `95c3d017` and digest `sha256:aa320c4c…` | Those results describe a different image, so they cannot be cited for the frozen unit. The host-log review is the one security check still open |
+| [UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md](./UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md) | Records image `shape-shifter:dev`, image ID `6a487db7…04a8`, revision `dbff5ab9…4f96`, manifest SHA-256 `43c03186…fb90`, 144 audit events, 36 active resources, 53 grants, and a passing rollback exercise at 16:48:11 with reconciliation `Missing: 0 resources, 0 administrators, 0 grants` | These are the results to cite when the frozen image identity matches. The record states an image ID, not a registry digest |
+| [DEPLOYMENT_VERIFICATION_HANDOFF.md](../DEPLOYMENT_VERIFICATION_HANDOFF.md) | The 2026-09-18 run `20260918T210002Z-3878349` verified firewall, port publication, proxy denial, container configuration, PostgreSQL grants, authorization database placement, and endpoint containment; the host-log review failed and is tracked as a non-blocking GitHub issue. That run recorded baseline commit `95c3d017` and digest `sha256:aa320c4c…` | Those results describe a different image, so they cannot be cited for the frozen unit. The host-log review is the one security check still open |
 | `container/scripts/verify/run_deployment_verification.sh` | Orchestrator. Writes `summary.txt`, one `<check>.log` per check, and a copy of the options file into a timestamped directory under `<DATA_DIR>/deployment-verification/`. Runs firewall, container configuration, PostgreSQL grants, log, credential, and endpoint-containment checks; authenticated access and rollback are opt-in via `--authenticated` and `--rollback` | This is the closest thing to a single capture entry point. It reads no image digest and no authorization inventory |
 | `container/scripts/verify/verify_container_config.sh` | Inspects the running container's published ports, mounts, environment variable names, image labels, and image history. It does not read `RepoDigests` | The image identity task cannot be delegated to this script; read the digest explicitly |
 | `container/scripts/verify/verify_authenticated_access.sh` | Accepts `--base-url`, `--principal-a`, `--principal-b`, `--project-a`, `--project-b`, `-h`. Has no evidence-directory option, so output must be redirected. The corrected version reads the principals' deployment roles and reports how many isolation directions were verified | Redirecting its output into the phase evidence directory is the whole capture mechanism; no new tooling is needed |
@@ -63,13 +63,13 @@
 
 **Out of scope**
 
-- Evidence tooling, result locking, and run deltas; owned by [Release Cycle Evidence And Locking](../RELEASE_CYCLE_EVIDENCE_AND_LOCKING/README.md).
+- Evidence tooling, result locking, and run deltas; owned by [Release Cycle Evidence And Locking](../../../RELEASE_CYCLE_EVIDENCE_AND_LOCKING/README.md).
 - Building or rebuilding the image, changing the deployment layout, or selecting the production Podman service model.
 - Authorization policy, grants, route reclassification, and the deferred cleanups.
 - The production flip to the authorized server.
 - PostgreSQL credential rotation, which is out of scope by decision for every PostgreSQL database.
 
-**Affected components:** the deployment's container and image identity, `/etc/nginx/sites-available/test-shape-shifter.sead.se`, the authorization SQLite store, the systemd user unit, `docs/proposals/done/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md`, and a new deployment record in this folder.
+**Affected components:** the deployment's container and image identity, `/etc/nginx/sites-available/test-shape-shifter.sead.se`, the authorization SQLite store, the systemd user unit, `docs/proposals/done/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md`, and a new deployment record in the proposal folder.
 
 ## Work Breakdown
 
@@ -77,24 +77,24 @@
 
 **Objective:** The release unit is frozen and identified by values that cannot change underneath a recorded result.
 
-**Affected code:** New deployment record in this folder; `<CONFIG_DIR>/deployment.env`; the running container and image.
+**Affected code:** New deployment record in the proposal folder; `<CONFIG_DIR>/deployment.env`; the running container and image.
 
 **Dependencies:** None.
 
 **Tasks:**
 
 * [x] `T5.1` **Change:** Freeze the release unit and record the deployment target.
-  * **Target:** Deployment record (`PODMAN_DEPLOYMENT_RECORD.md`, new, in this folder).
+  * **Target:** Deployment record (`PODMAN_DEPLOYMENT_RECORD.md`, new, in the proposal folder).
   * **Current -> required:** The Phase 4 record captures identity for acceptance; this phase needs identity frozen as a precondition, with the commitment not to rebuild or reconfigure during the phase.
   * **Implementation:** Record the source commit, `GIT_REF`, `IMAGE_NAME`, the manifest path and SHA-256, the configuration directory and data directory, host, deployment user, container name, published port, and proxy hostname. State that the image is not rebuilt and the layout is not changed for the duration of the phase.
   * **Constraints:** Record identifiers only. Do not record credential values.
-  * **Validation:** `V-5.1`. Complete 2026-09-22 in [PODMAN_DEPLOYMENT_RECORD.md](./PODMAN_DEPLOYMENT_RECORD.md): the source commit `dbff5ab9…4f96`, the unchanged application code and tests at that revision, the reviewed manifest checksum `43c03186…fb90`, and the deployment target from `make info` and `config/deployment.env` are recorded. The deployed manifest checksum matches the reviewed copy.
+  * **Validation:** `V-5.1`. Complete 2026-09-22 in [PODMAN_DEPLOYMENT_RECORD.md](../PODMAN_DEPLOYMENT_RECORD.md): the source commit `dbff5ab9…4f96`, the unchanged application code and tests at that revision, the reviewed manifest checksum `43c03186…fb90`, and the deployment target from `make info` and `config/deployment.env` are recorded. The deployed manifest checksum matches the reviewed copy.
 * [x] `T5.2` **Change:** Record the immutable image identity.
   * **Target:** Deployment record.
   * **Current -> required:** `PH5-AC-1` requires a source commit and an image digest. No registry is configured, so no manifest digest exists; the identity must be recorded explicitly and its limitation stated.
   * **Implementation:** As the deployment user, read `podman image inspect --format '{{.Id}}'`, `{{json .RepoDigests}}`, and the `org.opencontainers.image.revision`, `.version`, and `.source` labels for the frozen image, and confirm the image ID matches the one the running container uses. Record the image ID, the manifest digest, and the labels, and state that the digest is computed locally because the image was never pushed.
   * **Constraints:** Do not push the image to a registry in this phase. Do not treat a tag as identity. State the digest's local provenance wherever the identity is cited.
-  * **Validation:** `V-5.2`. Complete 2026-09-22: the host returned image ID `6a487db7…04a8`, the manifest digest `localhost/shape-shifter@sha256:7ff51b2b…` from `.RepoDigests`, and the OCI `revision` label `dbff5ab9…4f96`; the running container uses the same image ID. `.RepoDigests` was not empty, contrary to the plan's assumption, so no substitute identity is needed. Recorded in [PODMAN_DEPLOYMENT_RECORD.md](./PODMAN_DEPLOYMENT_RECORD.md).
+  * **Validation:** `V-5.2`. Complete 2026-09-22: the host returned image ID `6a487db7…04a8`, the manifest digest `localhost/shape-shifter@sha256:7ff51b2b…` from `.RepoDigests`, and the OCI `revision` label `dbff5ab9…4f96`; the running container uses the same image ID. `.RepoDigests` was not empty, contrary to the plan's assumption, so no substitute identity is needed. Recorded in [PODMAN_DEPLOYMENT_RECORD.md](../PODMAN_DEPLOYMENT_RECORD.md).
 
 **Completion evidence:** The deployment record states every release-unit field, records the image ID, the manifest digest, and the OCI labels as the identity, and states that the digest was computed locally.
 
@@ -113,13 +113,13 @@
   * **Current -> required:** Firewall and port publication were last verified on 2026-09-18 against baseline `95c3d017`. The frozen unit is a different image, so those results cannot be cited.
   * **Implementation:** Run `./scripts/verify/verify_firewall.sh` from the deployment user's `container/` directory with `sudo` available for the firewall listing, and record the listener output, the rule listing, and the cross-host result. Confirm the backend is published on loopback only and that the proxy is the only external entry point.
   * **Constraints:** The script is read-only and must not change rules, services, or configuration. Record the output with the date and host.
-  * **Validation:** `V-5.3`. Run 2026-09-22: listeners `0.0.0.0:80`, `0.0.0.0:443`, and `127.0.0.1:8012`; nftables input policy `drop` with `80`/`443` accepted from `172.18.134.40` only and no rule naming `8012`; loopback health `200`; LAN address `172.18.134.53:8012` refused. The cross-host probe is an accepted exception on the same terms as the Phase 3 *Same-LAN exception acceptance*, with the compensating checks listed in the deployment record; `PH5-AC-2` is met by the listener, firewall, and LAN-refusal results. Recorded in [PODMAN_DEPLOYMENT_RECORD.md](./PODMAN_DEPLOYMENT_RECORD.md).
+  * **Validation:** `V-5.3`. Run 2026-09-22: listeners `0.0.0.0:80`, `0.0.0.0:443`, and `127.0.0.1:8012`; nftables input policy `drop` with `80`/`443` accepted from `172.18.134.40` only and no rule naming `8012`; loopback health `200`; LAN address `172.18.134.53:8012` refused. The cross-host probe is an accepted exception on the same terms as the Phase 3 *Same-LAN exception acceptance*, with the compensating checks listed in the deployment record; `PH5-AC-2` is met by the listener, firewall, and LAN-refusal results. Recorded in [PODMAN_DEPLOYMENT_RECORD.md](../PODMAN_DEPLOYMENT_RECORD.md).
 * [x] `T5.4` **Change:** Re-inspect the container configuration, mounts, secrets, and environment.
   * **Target:** The frozen deployment.
   * **Current -> required:** Container configuration was last verified on 2026-09-18 and its evidence belongs to a different image.
   * **Implementation:** Run `sudo -u test-shape-shifter.sead.se -H bash ./scripts/verify/verify_container_config.sh` and record the published ports, the mount list, the environment variable names, and the image label and history scan. Confirm no credential value appears and no sensitive host path is mounted writable.
   * **Constraints:** Environment variable names only, never values. The script must not change the container, image, or configuration.
-  * **Validation:** `V-5.4`. Run 2026-09-22: container running on image `localhost/shape-shifter:dev`; published ports loopback-only; eight mounts matching the documented set with `.pgpass` read-only; image labels carrying revision `dbff5ab9…4f96`; no credential-like text in image history. The `GPG_KEY` warning is an inherited Python base-image variable and a false positive. Recorded in [PODMAN_DEPLOYMENT_RECORD.md](./PODMAN_DEPLOYMENT_RECORD.md).
+  * **Validation:** `V-5.4`. Run 2026-09-22: container running on image `localhost/shape-shifter:dev`; published ports loopback-only; eight mounts matching the documented set with `.pgpass` read-only; image labels carrying revision `dbff5ab9…4f96`; no credential-like text in image history. The `GPG_KEY` warning is an inherited Python base-image variable and a false positive. Recorded in [PODMAN_DEPLOYMENT_RECORD.md](../PODMAN_DEPLOYMENT_RECORD.md).
 * [x] `T5.5` **Change:** Re-verify PostgreSQL grants and the authorization database placement.
   * **Target:** The frozen deployment.
   * **Current -> required:** Grant verification was last run on 2026-09-18 against a different image.
@@ -150,7 +150,7 @@
   * **Current -> required:** `PH5-AC-3` requires identity-header handling to be verified. Client identity headers were never recorded as a distinct check; the standing limitation that the middleware trusts any source is recorded but the overwrite itself is not evidenced.
   * **Implementation:** Inspect `/etc/nginx/sites-available/test-shape-shifter.sead.se` and the effective configuration from `sudo nginx -T`. Confirm the site sets `proxy_set_header X-Authenticated-User $remote_user` and that no client-supplied identity header is passed through. Record the relevant configuration lines and the `nginx -t` result.
   * **Constraints:** Read only. Do not reload or change the proxy configuration. Do not record the `htpasswd` path contents.
-  * **Validation:** `V-5.7`. Passed 2026-09-23 from the enabled site file, which `sites-enabled` symlinks to: `auth_basic` covers the whole `443` block; `proxy_set_header X-Authenticated-User $remote_user;` and `proxy_set_header X-Authenticated-Groups $authz_groups;` are the only places either header is set anywhere under `/etc/nginx`; the upstream is `127.0.0.1:8012`. `nginx -t` and `nginx -T` need root and were not run. Recorded in [PODMAN_DEPLOYMENT_RECORD.md](./PODMAN_DEPLOYMENT_RECORD.md).
+  * **Validation:** `V-5.7`. Passed 2026-09-23 from the enabled site file, which `sites-enabled` symlinks to: `auth_basic` covers the whole `443` block; `proxy_set_header X-Authenticated-User $remote_user;` and `proxy_set_header X-Authenticated-Groups $authz_groups;` are the only places either header is set anywhere under `/etc/nginx`; the upstream is `127.0.0.1:8012`. `nginx -t` and `nginx -T` need root and were not run. Recorded in [PODMAN_DEPLOYMENT_RECORD.md](../PODMAN_DEPLOYMENT_RECORD.md).
 * [x] `T5.8` **Change:** Re-run the authenticated access check with the corrected script.
   * **Target:** `https://test-shape-shifter.sead.se`.
   * **Current -> required:** Two filed runs used the pre-fix script, and the corrected script was merged in PR #500 and synced but never executed on the host; the Phase 4 record accepts that as residual risk. Running it here closes that risk and supplies `PH5-AC-3` evidence.
@@ -200,13 +200,13 @@
   * **Current -> required:** The 2026-09-18 run failed the host-log review because the PostgreSQL log could not be read, and candidate matches require operator review. It is tracked as a non-blocking GitHub issue.
   * **Implementation:** Run `container/scripts/verify/verify_logs.sh` with the PostgreSQL log accessible, and review every candidate match it reports. Where access is still unavailable, record an approved exception naming the owner, the reason, and the residual risk.
   * **Constraints:** Never print credential values found in a log; record the location and the finding instead. An unavailable check is an exception, not a pass.
-  * **Validation:** `V-5.12`. Passed 2026-09-23 for three of the four sources, with the fourth recorded as an approved exception. The Shape Shifter container log (1598 lines) and the nginx access log (27 lines) returned no matches. The nginx error log (5 lines) returned five candidates, all reviewed and all non-findings: every match is the word `password` inside nginx's own `user "admin": password mismatch` message, and the review counted zero value-bearing forms. The PostgreSQL server log was not swept, by operator decision taken 2026-09-23: it belongs to `super.sead.se` and is shared across the `supersead-*` stack, so reading it would mean reading other applications' queries; the residual risk is limited to SQL text. Evidence: `phase-5/log-review.log` and `phase-5/log-review-candidates.log`; recorded in [PODMAN_DEPLOYMENT_RECORD.md](./PODMAN_DEPLOYMENT_RECORD.md) *Area 5*.
-* [ ] `T5.12` **Change:** Update the security record and the phase status.
+  * **Validation:** `V-5.12`. Passed 2026-09-23 for three of the four sources, with the fourth recorded as an approved exception. The Shape Shifter container log (1598 lines) and the nginx access log (27 lines) returned no matches. The nginx error log (5 lines) returned five candidates, all reviewed and all non-findings: every match is the word `password` inside nginx's own `user "admin": password mismatch` message, and the review counted zero value-bearing forms. The PostgreSQL server log was not swept, by operator decision taken 2026-09-23: it belongs to `super.sead.se` and is shared across the `supersead-*` stack, so reading it would mean reading other applications' queries; the residual risk is limited to SQL text. Evidence: `phase-5/log-review.log` and `phase-5/log-review-candidates.log`; recorded in [PODMAN_DEPLOYMENT_RECORD.md](../PODMAN_DEPLOYMENT_RECORD.md) *Area 5*.
+* [x] `T5.12` **Change:** Update the security record and the phase status.
   * **Target:** `docs/proposals/done/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md`; `CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md`; the deployment record.
   * **Current -> required:** `PH5-AC-6` requires the security record to carry the tested commit, image digest, results, limitations, and approved exceptions. The phase plan still shows Phase 5 as not started.
   * **Implementation:** Add the Podman deployment result to `SECURITY_CHECK.md` with the tested commit, image identity, each check's result, the limitations, and every approved exception with its owner. Mark Phase 5 complete in the phase plan with a link to the deployment record.
   * **Constraints:** Change only the status and completion statements in the phase plan; do not re-scope it. Do not present a `not run` or excepted check as passed.
-  * **Validation:** `V-5.13`.
+  * **Validation:** `V-5.13`. Passed 2026-09-23: `SECURITY_CHECK.md` carries a *Podman Deployment Verification Record (2026-09-23)* stating the tested commit, the image identity, each check's result, the limitations, and three approved exceptions with owners. The phase plan status and the Phase 5 *Readiness* statement both show the phase complete, each linking to [PODMAN_DEPLOYMENT_RECORD.md](../PODMAN_DEPLOYMENT_RECORD.md). `scripts/check_doc_links.sh` and `git diff --check` are clean.
 
 **Completion evidence:** Every finding has a recorded disposition, and the security record describes the frozen release.
 
@@ -243,14 +243,14 @@
 
 | Deliverable | Description | Status | Link |
 | --- | --- | --- | --- |
-| Podman deployment record | Frozen release unit, image identity, per-check results, limitations, and dispositions | In progress | [PODMAN_DEPLOYMENT_RECORD.md](./PODMAN_DEPLOYMENT_RECORD.md) (new, this folder) |
+| Podman deployment record | Frozen release unit, image identity, per-check results, limitations, and dispositions | Done | [PODMAN_DEPLOYMENT_RECORD.md](../PODMAN_DEPLOYMENT_RECORD.md) (in the proposal folder) |
 | Exposure and configuration evidence | Firewall, container configuration, and grant results for the frozen unit | Done | Deployment record, and `exposure-configuration-grants.log` and `postgres-grants.log` under `<DATA_DIR>/deployment-verification/phase-5/` |
 | Proxy identity evidence | Deployed proxy overwrite lines, read from the enabled site file | Done | Deployment record, *Area 3* |
 | Access-check transcript | Corrected-script output with principal scope and isolation-direction count | Done | `<DATA_DIR>/deployment-verification/phase-5/authenticated-access.log`, and the deployment record *Area 3* |
 | Rollback disposition | Matching prior result or a fresh transcript with integrity and reconciliation | Done | `<DATA_DIR>/backups/rollback-exercise.log`, and the deployment record *Area 4* |
 | Log-review disposition | Reviewed matches, or an approved exception naming the owner and reason | Done | Deployment record *Area 5*, and `log-review.log` and `log-review-candidates.log` under `<DATA_DIR>/deployment-verification/phase-5/` |
-| Updated security record | Tested commit, image identity, results, limitations, and approved exceptions | Not started | [SECURITY_CHECK.md](../done/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md) |
-| Phase plan status update | Phase 5 complete, with its result and any exceptions | Not started | [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md) |
+| Updated security record | Tested commit, image identity, results, limitations, and approved exceptions | Done | [SECURITY_CHECK.md](../../../done/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md) |
+| Phase plan status update | Phase 5 complete, with its result and any exceptions | Done | [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md) |
 
 ## Progress Tracker
 
@@ -260,7 +260,7 @@
 | Area 2: Re-verify exposure, container configuration, and grants | Done | Exposure, container configuration, and grants all passed 2026-09-22. The cross-host probe is an accepted exception; see the deployment record |
 | Area 3: Confirm proxy identity handling and access behavior | Done | `T5.7`, `T5.8`, and `T5.9` all passed 2026-09-23. The corrected access check ran on the host and its transcript is filed; the Phase 4 residual risk is retired |
 | Area 4: Confirm backup, restore, and rollback for the frozen unit | Done | Closed as a citation: the frozen image identity matches the image the 2026-09-22 exercise ran against, so no re-run is needed |
-| Area 5: Close the log review and update the security record | In progress | `T5.11` is closed: three sources swept with no matches, the five nginx error candidates reviewed as non-findings, and the PostgreSQL server log recorded as an approved exception. `T5.12`, the security-record update, remains |
+| Area 5: Close the log review and update the security record | Done | `T5.11` is closed: three sources swept with no matches, the five nginx error candidates reviewed as non-findings, and the PostgreSQL server log recorded as an approved exception. `T5.12` is closed: `SECURITY_CHECK.md` carries the tested commit, image identity, results, limitations, and approved exceptions, and the phase plan shows Phase 5 complete |
 
 ## Definition Of Done
 
@@ -269,9 +269,9 @@
 - [x] `PH5-AC-3` has the deployed proxy overwrite evidenced, the access checks returning the expected statuses with the principal scope recorded, and the route-classification suite passing at the frozen revision.
 - [x] `PH5-AC-4` has container configuration, grant, and log-review results recorded, with no credential value anywhere, and the one source that was not swept recorded as an approved exception with its owner and reason.
 - [x] `PH5-AC-5` has a rollback result for the frozen unit, cited from the matching 2026-09-22 exercise, with integrity and reconciliation outcomes.
-- [ ] `PH5-AC-6` has `SECURITY_CHECK.md` and the deployment record stating the tested commit, image identity, results, limitations, and approved exceptions.
-- [ ] Every check that could not run is recorded as `not run` with a reason, and no such check is presented as passed.
-- [ ] `scripts/check_doc_links.sh` and `git diff --check` pass, and the phase plan status reflects the outcome.
+- [x] `PH5-AC-6` has `SECURITY_CHECK.md` and the deployment record stating the tested commit, image identity, results, limitations, and approved exceptions.
+- [x] Every check that could not run is recorded as `not run` with a reason, and no such check is presented as passed.
+- [x] `scripts/check_doc_links.sh` and `git diff --check` pass, and the phase plan status reflects the outcome.
 
 ## Risks And Open Questions
 

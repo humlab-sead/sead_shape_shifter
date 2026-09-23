@@ -259,9 +259,9 @@ Accepted 2026-09-22 by Roger Mähler. A later run would only make the transcript
 |---|---|
 | [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_4_TASK_PLAN.md](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_4_TASK_PLAN.md) | Task and validation IDs this record satisfies |
 | [TEST_ENVIRONMENT_AUTHORIZATION_CUTOVER_HANDOFF.md](../TEST_ENVIRONMENT_AUTHORIZATION_CUTOVER_HANDOFF.md) | Full Phase 3 evidence, for detail this record condenses |
-| [PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md](../../future/PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md) | The out-of-scope production move, its owners, and its open questions |
-| [container/DEPLOYMENT.md](../../../../container/DEPLOYMENT.md) | Operator procedures: build, service lifecycle, health, logs, host-service access |
-| [docs/OPERATIONS.md](../../../OPERATIONS.md) | Runtime configuration and operational invariants |
+| [PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md](../../../future/PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md) | The out-of-scope production move, its owners, and its open questions |
+| [container/DEPLOYMENT.md](../../../../../container/DEPLOYMENT.md) | Operator procedures: build, service lifecycle, health, logs, host-service access |
+| [docs/OPERATIONS.md](../../../../OPERATIONS.md) | Runtime configuration and operational invariants |
 
 ## Next Actions
 

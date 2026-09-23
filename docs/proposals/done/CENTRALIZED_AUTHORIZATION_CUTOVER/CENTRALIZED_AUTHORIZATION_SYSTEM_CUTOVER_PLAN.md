@@ -2,13 +2,14 @@
 
 ## Status
 
-- Phase plan / Phases 1, 2, 2A, 3, and 4 complete; Phase 5 not started
+- Phase plan / Phases 1, 2, 2A, 3, 4, and 5 complete
+- **Phase 5 completion 2026-09-23:** [PODMAN_DEPLOYMENT_RECORD.md](./PODMAN_DEPLOYMENT_RECORD.md) records the frozen release unit — source commit `dbff5ab9…4f96`, image ID `6a487db7…04a8`, and the locally computed manifest digest — the exposure, container-configuration, grant, proxy-identity, access, route-classification, and rollback results, the limitations, and the approved exceptions. `PH5-AC-1` to `PH5-AC-6` are met and `VM-5.1` to `VM-5.4` are covered. [SECURITY_CHECK.md](../../done/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md) now carries the tested commit, image identity, results, limitations, and approved exceptions. Two exceptions are recorded, each with its owner: the off-host network probe, accepted by Roger Mähler, and the unread PostgreSQL server log, owned by `super.sead.se`.
 - **Phase 4 completion 2026-09-22:** [UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md](./done/UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md) records the release, manifest, and backup identifiers, the route-inventory, ownership, and audit results, the access checks, and a passing rollback exercise with a byte-identical restore. `PH4-AC-1` to `PH4-AC-5` are met and `VM-4.1` to `VM-4.4` are covered. Phase 5 prerequisites are satisfied by that record. The post-fix re-run of the corrected access-check script was skipped because the principal passwords were not available from the workstation used, and the residual risk is accepted; the record states this under *Post-Fix Re-Run Skipped (Accepted Risk)*, and two cleanups are deferred until after the acceptance window under *Cleanup Deferred Until After Acceptance*.
 - Scope: route and operation inventory, migration input, readiness validation, an authorization-enabled deployment ready for user acceptance testing, and Podman release verification
 - Goal: deliver and record an authorization-enabled deployment on the new server that is ready for user acceptance testing, together with the operator procedures and documentation needed to run, verify, and roll it back
-- **Scope change 2026-09-22:** flipping production traffic and users from the old server to the new server is out of scope. It repoints DNS and the reverse proxy, migrates users, and depends on user acceptance testing this project does not own, so it moves to [PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md](../future/PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md).
-- Source decision: [Centralized Authorization System](../done/MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM.md)
-- Related: [Deployment Verification Handoff](./DEPLOYMENT_VERIFICATION_HANDOFF.md), [SECURITY_CHECK.md](../done/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md), [Release Cycle Evidence And Locking](../RELEASE_CYCLE_EVIDENCE_AND_LOCKING/README.md)
+- **Scope change 2026-09-22:** flipping production traffic and users from the old server to the new server is out of scope. It repoints DNS and the reverse proxy, migrates users, and depends on user acceptance testing this project does not own, so it moves to [PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md](../../future/PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md).
+- Source decision: [Centralized Authorization System](../../done/MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM.md)
+- Related: [Deployment Verification Handoff](./DEPLOYMENT_VERIFICATION_HANDOFF.md), [SECURITY_CHECK.md](../../done/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md), [Release Cycle Evidence And Locking](../../RELEASE_CYCLE_EVIDENCE_AND_LOCKING/README.md)
 
 ## Summary
 
@@ -341,7 +342,7 @@ Verify the authorization release in the Podman deployment and record security re
 
 **Readiness**
 
-Ready for a task plan. The task plan is [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_5_TASK_PLAN.md](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_5_TASK_PLAN.md), trimmed to the checks the frozen release unit invalidates. The deployment host is the new server. The production Podman service model is deferred to [PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md](../future/PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md), and these checks apply to the deployment as installed.
+Complete on 2026-09-23. The task plan is [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_5_TASK_PLAN.md](./done/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_5_TASK_PLAN.md), trimmed to the checks the frozen release unit invalidates, and the resulting record is [PODMAN_DEPLOYMENT_RECORD.md](./PODMAN_DEPLOYMENT_RECORD.md). The deployment host is the new server. The production Podman service model is deferred to [PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md](../../future/PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md), and these checks apply to the deployment as installed.
 
 ## Cross-Phase Rules
 
@@ -349,7 +350,7 @@ Ready for a task plan. The task plan is [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVE
 - Do not modify project YAML to assign authorization ownership or grants.
 - Treat the reviewed manifest and the generation-specific resource records as the source of migration input.
 - Keep the backup created for readiness testing available until user acceptance testing concludes or the fallback to the old server is no longer available.
-- Do not repoint production DNS or the reverse proxy from the old server to the new server under this plan; the flip is owned by [PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md](../future/PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md).
+- Do not repoint production DNS or the reverse proxy from the old server to the new server under this plan; the flip is owned by [PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md](../../future/PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md).
 - Do not provision the new server with the pre-authorization deployment, so the two identity models never coexist there.
 - Keep the current authorization policy unchanged during deployment unless a separate approved design change is made.
 
@@ -381,11 +382,11 @@ Exact test and inspection commands belong in the phase task plans.
 
 These decisions block phases, and [DEPLOYMENT_VERIFICATION_HANDOFF.md](./DEPLOYMENT_VERIFICATION_HANDOFF.md) tracks their current state.
 
-- Which deployment user serves the production instance once users move to the new server? Resolve in [PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md](../future/PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md).
+- Which deployment user serves the production instance once users move to the new server? Resolve in [PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md](../../future/PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md).
 - Who owns and executes user acceptance testing, and against which criteria? Resolve before any user moves to the new server.
-- Who owns the production flip, the DNS and proxy repoint, and user migration? Resolve in [PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md](../future/PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md).
+- Who owns the production flip, the DNS and proxy repoint, and user migration? Resolve in [PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md](../../future/PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md).
 - Does the deployment keep the shared `sead_ro` account or use an application-specific read-only account? The database administrator owns this decision; resolve before Phase 5.
 
 ## Final Recommendation
 
-Treat this plan as the gate for a deployment ready for user acceptance testing, not for moving users. Complete the phases in order, and do not present a deployment for acceptance until every acceptance criterion passes or an explicitly reviewed exception is recorded. The rollback decision owner is Roger Mähler. Moving production users to the new server is a separate decision, covered by [PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md](../future/PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md).
+Treat this plan as the gate for a deployment ready for user acceptance testing, not for moving users. Complete the phases in order, and do not present a deployment for acceptance until every acceptance criterion passes or an explicitly reviewed exception is recorded. The rollback decision owner is Roger Mähler. Moving production users to the new server is a separate decision, covered by [PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md](../../future/PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md).
