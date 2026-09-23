@@ -98,7 +98,7 @@ Each section is filled by the area that owns it.
 | --- | --- | --- |
 | Area 1: Release unit and image identity | *Release Unit* above | Done |
 | Area 2: Exposure, container configuration, grants | *Area 2* below | Passed, with an accepted exception for the cross-host probe |
-| Area 3: Proxy identity handling and access behavior | Not yet recorded | Not started |
+| Area 3: Proxy identity handling and access behavior | *Area 3* below | `T5.7` and `T5.9` passed; `T5.8` prepared |
 | Area 4: Backup, restore, and rollback | Not yet recorded | Not started |
 | Area 5: Log review and security record | Not yet recorded | Not started |
 
@@ -142,7 +142,7 @@ Accepted 2026-09-23 by Roger Mähler. `PH5-AC-2` is met by the listener, firewal
 
 **What the exception does not prove, and why the printed probe is weak anyway.** The script's probe targets `172.18.134.53:8012`, but `8012` is bound to loopback only, so a refusal from any source is explained by the binding rather than by the firewall. Running it from a second LAN host would not isolate the firewall rule. The probe that *would* isolate it needs a source on the target LAN other than `172.18.134.40`, because `443` is bound on every interface and accepted from that address alone. Neither source is available here.
 
-**Topology, observed 2026-09-23.** This host is `172.18.134.53/27` on `ens33`; `172.18.134.40` is a directly attached neighbour and the only permitted source for `80` and `443`; and `test-shape-shifter.sead.se` resolves to `130.239.34.54`, which is not on this host. The public path therefore reaches nginx here through the front at `172.18.134.40`, and an internal LAN probe does not exercise the public path at all.
+**Topology, observed 2026-09-23.** This host is `172.18.134.53/27` on `ens33`; `172.18.134.40` is a directly attached neighbour and the only permitted source for `80` and `443`; and `test-shape-shifter.sead.se` resolves to `130.239.34.54`, which is not on this host. The public path therefore reaches nginx here through the campus NAT at `172.18.134.40` — the deployed site file names it as such — and an internal LAN probe does not exercise the public path at all.
 
 **How to retire the exception.** No second LAN host is needed for the strongest substitute: probe the public address from an off-LAN machine — the health route for `200`, a protected route for `401`, and `nc -zvw5 130.239.34.54 8012` for a refusal. File that transcript and this exception can be replaced by a result.
 
@@ -172,6 +172,35 @@ Run 2026-09-22 as the deployment user, host-side against `127.0.0.1:9023`.
 **The first attempt failed on a command error, and the reason is worth keeping.** `verify_postgres_grants.sh` ran from the host with no `--host` or `--port`, so libpq used a local Unix socket, where no server listens. `config/backend.env` sets `SEAD_HOST=host.docker.internal`, which resolves only inside the container, so a host-side run needs the address this host uses for the same server. The host listens on `9023`, and libpq matches a password-file entry on host, port, database, and user, so the retry used `--host 127.0.0.1 --port 9023` with a temporary password-file copy whose host field was rewritten from `host.docker.internal`. Nothing about the deployment changed.
 
 **Adjacent observation, outside `PH5-AC-2`.** The host has a wildcard listener on the database port: `ss -ltn` reported `LISTEN 0 4096 *:9023 *:*`, and the check connected to it successfully as `sead_ro` against `sead_staging`. The input chain drops by default, accepts loopback, and contains no rule for `9023`, so the port is reachable only over loopback from the host, and the container reaches it as `host.docker.internal:9023`. The firewall is therefore the only control shielding a database port that is bound on every interface; the exact packet path the container uses was not traced here, and the intended posture is worth confirming.
+
+## Area 3: Proxy Identity Handling And Access Behavior
+
+Started 2026-09-23. `T5.7` and `T5.9` passed; `T5.8` is prepared and waits on the principal passwords.
+
+### `T5.7` / `V-5.7` — proxy replaces the identity header: passed
+
+The deployed site is `/etc/nginx/sites-available/test-shape-shifter.sead.se`, and `/etc/nginx/sites-enabled/test-shape-shifter.sead.se` is a symlink to it, so the reviewed file is the enabled one. Read as the operator on 2026-09-23. The two steps of `V-5.7` that need root, `nginx -t` and `nginx -T`, were not run.
+
+| Finding | Detail |
+| --- | --- |
+| Authentication | `auth_basic "Shape Shifter"` with `auth_basic_user_file /etc/nginx/htpasswd/shape-shifter`, on the whole `443` server block, so `/api/v1/docs` and `/api/v1/openapi.json` are covered. The only `auth_basic off` is the ACME location on the plain-HTTP block, which serves certificate renewal and proxies nothing |
+| Identity header | `proxy_set_header X-Authenticated-User $remote_user;` — `$remote_user` is set by `auth_basic`, so the value is server-derived, and `proxy_set_header` replaces a client-supplied header of the same name |
+| Group header | `proxy_set_header X-Authenticated-Groups $authz_groups;` — `$authz_groups` comes from `map $remote_user { include /etc/nginx/authz/groups.d/*.conf; }`, so the key is the authenticated user again, not the request |
+| Upstream | `upstream shape_shifter_test { server 127.0.0.1:8012; }` |
+| Elsewhere | A recursive search of `/etc/nginx` found no other reference to either header. Two files could not be read: `authz/groups.d/shape-shifter.conf` and `ssl/selfsigned.key`. The first is included inside a `map` block and can hold only map entries; the second is a private key. Neither can carry `proxy_set_header` |
+| Other | TLS 1.2 and 1.3 only; HSTS, `X-Content-Type-Options: nosniff`, and `X-Frame-Options: SAMEORIGIN` on every response |
+
+**What this establishes.** A client cannot choose the identity the backend trusts: both headers the backend reads are replaced from server-side values on every proxied request, which is what `PH5-AC-3` asks for.
+
+**What it does not establish.** The effective configuration as nginx resolves it. `sudo nginx -t` and `sudo nginx -T` remain available if a reviewer wants that dump; the symlink and the exhaustive search above already show that no other file overrides these headers.
+
+### `T5.9` / `V-5.9` — route classification at the frozen revision: passed
+
+`.venv/bin/pytest backend/tests/authorization -q` returned 192 passed, 1 skipped, 0 failed, exit 0. It ran at branch head rather than at `dbff5ab9`, which is equivalent here because `git diff --stat dbff5ab9..HEAD -- backend src tests` is empty, so the tested code and tests are identical to the frozen revision.
+
+### `T5.8` / `V-5.8` — corrected access check: prepared
+
+The corrected script takes the principal passwords through `PRINCIPAL_A_PASSWORD` and `PRINCIPAL_B_PASSWORD`. They are readable on the deployment host in `~/config/authorization.env`: `AUTH_PASSWORD` covers the principals named in `AUTH_USERS`, and `ADMIN_AUTH_PASSWORD` covers the administrator. That supersedes the Phase 4 conclusion that the passwords were unavailable — they are unavailable from the workstation, not from the host — so this run can retire the Phase 4 accepted risk instead of carrying it forward.
 
 ## Limitations
 
