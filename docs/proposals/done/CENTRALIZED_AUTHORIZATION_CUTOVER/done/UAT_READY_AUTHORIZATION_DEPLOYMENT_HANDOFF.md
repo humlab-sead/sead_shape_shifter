@@ -3,7 +3,7 @@
 **Status:** Phase 4 complete and closed on 2026-09-22. All four task areas are done and `PH4-AC-1` to `PH4-AC-5` are met. The corrected access-check script was merged to `dev` in PR #500 and reached the deployment host at 19:09, after both recorded runs. The post-fix re-run was skipped, and the residual risk is accepted; see *Post-Fix Re-Run Skipped (Accepted Risk)*.
 **Opened:** 2026-09-22
 **Environment:** host `humlabsead.srv.its.umu.se`, deployment user `test-shape-shifter.sead.se` (uid/gid 1021), container `shape-shifter` published on `127.0.0.1:8012`, proxy `https://test-shape-shifter.sead.se`
-**Source plans:** [Phase 4 task plan](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_4_TASK_PLAN.md), [Phase 3 task plan](./done/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_3_TASK_PLAN.md), [Centralized Authorization System Cutover Plan](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md)
+**Source plans:** [Phase 4 task plan](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_4_TASK_PLAN.md), [Phase 3 task plan](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_3_TASK_PLAN.md), [Centralized Authorization System Cutover Plan](../CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md)
 
 ## Purpose
 
@@ -234,10 +234,12 @@ The residual risk is accepted, for these reasons:
 
 Accepted 2026-09-22 by Roger Mähler. A later run would only make the transcript self-labelling; it would not change a recorded result.
 
+> **Update 2026-09-23: the risk is retired.** The corrected script was run against this deployment during Phase 5 (`T5.8`), using the principal password from `~/config/authorization.env` on the host. It passed, printed the principal scope, and reported `1 of 2` isolation directions — the in-container role lookup executed for the first time on this target. The transcript is filed as `<DATA_DIR>/deployment-verification/phase-5/authenticated-access.log`, and the result is recorded in [PODMAN_DEPLOYMENT_RECORD.md](../PODMAN_DEPLOYMENT_RECORD.md) *Area 3*. Nothing else in this record changes; the accepted risk is simply discharged.
+
 ## What Is Not Verified
 
 - **Symmetric cross-resource isolation.** Only one of the two directions was verified, because `riia` holds `project_maintainer`. The other direction is an expected privileged read. Nothing here shows that two scope-limited principals cannot reach each other's projects, because the deployment has no such pair.
-- **The corrected probe script against the live deployment.** The fix was merged to `dev` in PR #500 and reached the target at 19:09. Neither filed run used it: both pre-fix runs finished by 17:01, and the proxy recorded no request after 18:38, so the corrected script never executed against the deployment. No transcript therefore shows the in-container role lookup, the principal-scope block, or the `1 of 2` isolation-direction count. The re-run was skipped and the risk accepted; see *Post-Fix Re-Run Skipped (Accepted Risk)*.
+- **The corrected probe script against the live deployment.** The fix was merged to `dev` in PR #500 and reached the target at 19:09. Neither filed run used it: both pre-fix runs finished by 17:01, and the proxy recorded no request after 18:38, so the corrected script never executed against the deployment. No transcript therefore shows the in-container role lookup, the principal-scope block, or the `1 of 2` isolation-direction count. The re-run was skipped and the risk accepted; see *Post-Fix Re-Run Skipped (Accepted Risk)*. **Superseded 2026-09-23:** the run was performed in Phase 5 and the corrected script executed on the target; see the update under that section.
 - **The five-source listing through the API.** The definition file is gone from `container-data/shared/data-sources`, which is the directory `GET /api/v1/data-sources` enumerates, but the listing itself was not re-run after the removal.
 - **Functional correctness of the application.** This record covers authorization behaviour and operator procedures. Whether transformations, ingesters, and loaders produce correct output is not assessed here and belongs to the acceptance owners.
 - **Production.** Nothing here was verified on the production host, and the production flip is out of scope.
@@ -256,10 +258,10 @@ Accepted 2026-09-22 by Roger Mähler. A later run would only make the transcript
 | Reference | Use |
 |---|---|
 | [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_4_TASK_PLAN.md](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_4_TASK_PLAN.md) | Task and validation IDs this record satisfies |
-| [TEST_ENVIRONMENT_AUTHORIZATION_CUTOVER_HANDOFF.md](./TEST_ENVIRONMENT_AUTHORIZATION_CUTOVER_HANDOFF.md) | Full Phase 3 evidence, for detail this record condenses |
-| [PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md](../future/PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md) | The out-of-scope production move, its owners, and its open questions |
-| [container/DEPLOYMENT.md](../../../container/DEPLOYMENT.md) | Operator procedures: build, service lifecycle, health, logs, host-service access |
-| [docs/OPERATIONS.md](../../../OPERATIONS.md) | Runtime configuration and operational invariants |
+| [TEST_ENVIRONMENT_AUTHORIZATION_CUTOVER_HANDOFF.md](../TEST_ENVIRONMENT_AUTHORIZATION_CUTOVER_HANDOFF.md) | Full Phase 3 evidence, for detail this record condenses |
+| [PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md](../../../future/PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md) | The out-of-scope production move, its owners, and its open questions |
+| [container/DEPLOYMENT.md](../../../../../container/DEPLOYMENT.md) | Operator procedures: build, service lifecycle, health, logs, host-service access |
+| [docs/OPERATIONS.md](../../../../OPERATIONS.md) | Runtime configuration and operational invariants |
 
 ## Next Actions
 
@@ -293,7 +295,7 @@ Resolved on 2026-09-22:
 
 - **The four `verification-containment-*` resources need no action.** They are inert orphan records hidden by a locator/name mismatch; see *Resource inventory detail*.
 - **The probe script is fixed, merged, and deployed.** It reads deployment roles, labels a privileged read, and states how many isolation directions were verified. It was merged to `dev` in PR #500 and reached the target at 19:09.
-- **The post-fix re-run is skipped and its risk accepted.** The principal passwords are not available from the workstation used for this work, so the correction has never executed against the deployment. The residual risk is accepted; see *Post-Fix Re-Run Skipped (Accepted Risk)*.
+- **The post-fix re-run is skipped and its risk accepted.** The principal passwords are not available from the workstation used for this work, so the correction has never executed against the deployment. The residual risk is accepted; see *Post-Fix Re-Run Skipped (Accepted Risk)*. Superseded 2026-09-23: the run was performed in Phase 5 and the risk is retired.
 - **No symmetric isolation transcript is required.** The four required outcomes are recorded. If reviewers ask for one, produce it with real scoped grants on two reviewed projects rather than the temporary-project fixture path, which would add to the orphan pile.
 - **Tester accounts: no grant changes.** Acceptance content is exercised through a gatekeeper account (`roger`, `rebecka`, `riia`, `mattias`) or `bruno`; the four accounts that own no reviewed project are not used for it. This matches reviewed Decisions 7, 8, and 10, and keeps the manifest checksum, the backup lineage, and the rollback position valid. See *Tester accounts*.
 - **`bulgaria-arbodat-lookup-options` is removed, not provisioned.** The legacy file enumeration contains no Bulgarian dataset and nothing referenced the source. See *Shared data source decision*.

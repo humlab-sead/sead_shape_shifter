@@ -162,7 +162,7 @@ Deferred. These features are part of the product workflow, but they must use app
 - Add CORS tests for approved and unapproved origins, including credentialed requests.
 - Add spreadsheet tests that inspect generated cells and verify that untrusted values are stored as text.
 - Run the documented reproduction cases from [`SECURITY_CHECK.md`](../SECURITY_CHECK.md) after each mitigation, using disposable databases and files only.
-- Verify the deployed image, port binding, reverse proxy, firewall, environment variables, database grants, mounted files, and access logs. This is operations work rather than development work: see [DEPLOYMENT_VERIFICATION_HANDOFF.md](../../../CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md).
+- Verify the deployed image, port binding, reverse proxy, firewall, environment variables, database grants, mounted files, and access logs. This is operations work rather than development work: see [DEPLOYMENT_VERIFICATION_HANDOFF.md](../../../done/CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md).
 
 ## Acceptance Criteria
 
@@ -177,7 +177,7 @@ All criteria below are met except the three marked otherwise, which are recorded
 - CORS accepts only configured trusted origins and uses credentials only where required.
 - Generated spreadsheets cannot execute values supplied as data. — Unmet and excluded from the phase plan; recorded as a follow-up in `SECURITY_CHECK.md`.
 - The UCanAccess artifact is version-pinned and checksum-verified. — Unmet and excluded from the phase plan; recorded as a follow-up in `SECURITY_CHECK.md`.
-- The full security regression suite and the re-verification cases pass on the exact release commit. — Operations-owned: [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../../../CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md) and [DEPLOYMENT_VERIFICATION_HANDOFF.md](../../../CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md).
+- The full security regression suite and the re-verification cases pass on the exact release commit. — Operations-owned: [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../../../done/CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md) and [DEPLOYMENT_VERIFICATION_HANDOFF.md](../../../done/CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md).
 
 ## Recommended Delivery Order
 
@@ -189,7 +189,7 @@ All criteria below are met except the three marked otherwise, which are recorded
 6. Redact errors and logs, neutralize spreadsheet formulas, and harden the UCanAccess installation.
 7. Run the complete regression and deployment verification checklist.
 
-Steps 1, 5, and 7 are owned elsewhere: containment and credential rotation in [DEPLOYMENT_VERIFICATION_HANDOFF.md](../../../CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md), ingester disposition in [INGESTER_AUTHORIZATION_TASKS.md](../../../CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md), and deployment verification in [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../../../CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md). The spreadsheet and UCanAccess items in step 6 are recorded as follow-ups in `SECURITY_CHECK.md`.
+Steps 1, 5, and 7 are owned elsewhere: containment and credential rotation in [DEPLOYMENT_VERIFICATION_HANDOFF.md](../../../done/CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md), ingester disposition in [INGESTER_AUTHORIZATION_TASKS.md](../../../CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md), and deployment verification in [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../../../done/CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md). The spreadsheet and UCanAccess items in step 6 are recorded as follow-ups in `SECURITY_CHECK.md`.
 
 ## Open Questions
 
@@ -204,4 +204,4 @@ Steps 1, 5, and 7 are owned elsewhere: containment and credential rotation in [D
 
 ## Final Recommendation
 
-Treat the API as unsafe for shared or production use until nginx-authenticated identity is enforced by FastAPI, resource authorization is implemented, direct backend access is blocked, and filesystem, SQL, and secret-redaction controls are complete. Apply the containment and credential-rotation actions immediately, then deliver the remaining controls in the order above. Keep [`SECURITY_CHECK.md`](../SECURITY_CHECK.md) as the verification record and update it with the results of that verification. Verifying the exact release commit in the deployment is operations work, owned by [DEPLOYMENT_VERIFICATION_HANDOFF.md](../../../CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md) and [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../../../CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md). Native application authentication can follow as a separate hardening change.
+Treat the API as unsafe for shared or production use until nginx-authenticated identity is enforced by FastAPI, resource authorization is implemented, direct backend access is blocked, and filesystem, SQL, and secret-redaction controls are complete. Apply the containment and credential-rotation actions immediately, then deliver the remaining controls in the order above. Keep [`SECURITY_CHECK.md`](../SECURITY_CHECK.md) as the verification record and update it with the results of that verification. Verifying the exact release commit in the deployment is operations work, owned by [DEPLOYMENT_VERIFICATION_HANDOFF.md](../../../done/CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md) and [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../../../done/CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md). Native application authentication can follow as a separate hardening change.
