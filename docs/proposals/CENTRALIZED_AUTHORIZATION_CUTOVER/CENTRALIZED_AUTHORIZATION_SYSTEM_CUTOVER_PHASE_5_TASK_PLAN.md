@@ -108,24 +108,24 @@
 
 **Tasks:**
 
-* [ ] `T5.3` **Change:** Re-verify network exposure and the reverse proxy boundary.
+* [x] `T5.3` **Change:** Re-verify network exposure and the reverse proxy boundary.
   * **Target:** The frozen deployment.
   * **Current -> required:** Firewall and port publication were last verified on 2026-09-18 against baseline `95c3d017`. The frozen unit is a different image, so those results cannot be cited.
   * **Implementation:** Run `./scripts/verify/verify_firewall.sh` from the deployment user's `container/` directory with `sudo` available for the firewall listing, and record the listener output, the rule listing, and the cross-host result. Confirm the backend is published on loopback only and that the proxy is the only external entry point.
   * **Constraints:** The script is read-only and must not change rules, services, or configuration. Record the output with the date and host.
-  * **Validation:** `V-5.3`.
-* [ ] `T5.4` **Change:** Re-inspect the container configuration, mounts, secrets, and environment.
+  * **Validation:** `V-5.3`. Run 2026-09-22: listeners `0.0.0.0:80`, `0.0.0.0:443`, and `127.0.0.1:8012`; nftables input policy `drop` with `80`/`443` accepted from `172.18.134.40` only and no rule naming `8012`; loopback health `200`; LAN address `172.18.134.53:8012` refused. The cross-host leg is still to run from a second host. Recorded in [PODMAN_DEPLOYMENT_RECORD.md](./PODMAN_DEPLOYMENT_RECORD.md).
+* [x] `T5.4` **Change:** Re-inspect the container configuration, mounts, secrets, and environment.
   * **Target:** The frozen deployment.
   * **Current -> required:** Container configuration was last verified on 2026-09-18 and its evidence belongs to a different image.
   * **Implementation:** Run `sudo -u test-shape-shifter.sead.se -H bash ./scripts/verify/verify_container_config.sh` and record the published ports, the mount list, the environment variable names, and the image label and history scan. Confirm no credential value appears and no sensitive host path is mounted writable.
   * **Constraints:** Environment variable names only, never values. The script must not change the container, image, or configuration.
-  * **Validation:** `V-5.4`.
+  * **Validation:** `V-5.4`. Run 2026-09-22: container running on image `localhost/shape-shifter:dev`; published ports loopback-only; eight mounts matching the documented set with `.pgpass` read-only; image labels carrying revision `dbff5ab9…4f96`; no credential-like text in image history. The `GPG_KEY` warning is an inherited Python base-image variable and a false positive. Recorded in [PODMAN_DEPLOYMENT_RECORD.md](./PODMAN_DEPLOYMENT_RECORD.md).
 * [ ] `T5.5` **Change:** Re-verify PostgreSQL grants and the authorization database placement.
   * **Target:** The frozen deployment.
   * **Current -> required:** Grant verification was last run on 2026-09-18 against a different image.
   * **Implementation:** Run `./scripts/verify/verify_postgres_grants.sh --database sead_staging --role sead_ro --schema public --sqlite "$DATA_DIR/state/authorization.sqlite3"` and record the grant results and the store's ownership and mode.
   * **Constraints:** Do not change grants or store permissions.
-  * **Validation:** `V-5.5`.
+  * **Validation:** `V-5.5`. Attempted 2026-09-22: the store checks passed (mode `600`, owner `1021`, inside the data directory), but the role verification did not run because no `--host` or `--port` was given, so psql used a local Unix socket where nothing listens. Re-run with the database's host-visible address and `PGPASSFILE`; see *Area 2* in the deployment record.
 * [ ] `T5.6` **Change:** Run the verification orchestrator for the frozen unit and file its evidence.
   * **Target:** `<DATA_DIR>/deployment-verification/`.
   * **Current -> required:** The orchestrator has not been run against the frozen unit; this is the single capture pass for the check families it owns.
@@ -244,7 +244,7 @@
 | Deliverable | Description | Status | Link |
 | --- | --- | --- | --- |
 | Podman deployment record | Frozen release unit, image identity, per-check results, limitations, and dispositions | In progress | [PODMAN_DEPLOYMENT_RECORD.md](./PODMAN_DEPLOYMENT_RECORD.md) (new, this folder) |
-| Exposure and configuration evidence | Firewall, container configuration, and grant results for the frozen unit | Not started | Deployment record, and the run directory under `<DATA_DIR>/deployment-verification/` |
+| Exposure and configuration evidence | Firewall, container configuration, and grant results for the frozen unit | In progress | Deployment record, and `<DATA_DIR>/deployment-verification/phase-5/exposure-configuration-grants.log` |
 | Proxy identity evidence | Deployed proxy overwrite lines and the effective configuration excerpt | Not started | Deployment record |
 | Access-check transcript | Corrected-script output with principal scope and isolation-direction count | Not started | Deployment record and the phase evidence directory |
 | Rollback disposition | Matching prior result or a fresh transcript with integrity and reconciliation | Not started | Deployment record, and `<DATA_DIR>/backups/` |
@@ -257,7 +257,7 @@
 | Area | Status | Notes |
 | --- | --- | --- |
 | Area 1: Freeze the release unit and record its identity | Done | Frozen unit confirmed on the host: image ID `6a487db7…04a8`, manifest digest `sha256:7ff51b2b…`, revision `dbff5ab9…4f96`, deployed manifest checksum `43c03186…fb90`. It equals the unit Phase 4 verified |
-| Area 2: Re-verify exposure, container configuration, and grants | Not started | Evidence from 2026-09-18 describes a different image and cannot be cited |
+| Area 2: Re-verify exposure, container configuration, and grants | In progress | Exposure and container configuration passed 2026-09-22; the cross-host leg and the PostgreSQL grant check remain |
 | Area 3: Confirm proxy identity handling and access behavior | Not started | The corrected access-check script has never run on the host |
 | Area 4: Confirm backup, restore, and rollback for the frozen unit | Not started | May be satisfied by citing the 2026-09-22 exercise when the image identity matches |
 | Area 5: Close the log review and update the security record | Not started | The host-log review is the one security check still open |
