@@ -18,7 +18,7 @@ Acceptance criteria:
 - [x] `PH1-AC-2` (from `P-AC-1`) `${VAR}` expansion in request-supplied and stored entity config reaches only approved variables; unapproved names neither expand nor return values in preview rows.
 - [x] `PH1-AC-3` (from `P-AC-1`) An entity type missing from the mapper factory fails as unsupported before any file read.
 - [x] `PH1-AC-4` (from `P-AC-1`) Project creation cannot write outside `PROJECTS_DIR` via traversal, an absolute name, or a colon locator aliasing another project's file, and `namespace:project` locators continue to work.
-- [ ] `PH1-AC-5` (from `P-AC-8`) The ledger's root-only bootstrap tests run in the disposable environment with the host verified untouched.
+- [x] `PH1-AC-5` (from `P-AC-8`) The ledger's root-only bootstrap tests run in the disposable environment with the host verified untouched.
 
 ## Repository Findings
 
@@ -187,7 +187,7 @@ New test files are marked `NEW`. Run focused backend tests with the repo venv; t
 | `V-2` | `NEW` `backend/tests/test_env_var_allowlist.py` — preview with `${SECRET}` in `override_config` and in stored YAML; approved var still resolves | `uv run pytest backend/tests/test_env_var_allowlist.py -v` | `PH1-AC-2` | No env value in `PreviewResult.rows`; approved var expands | Pass (6 tests, 2026-09-23) |
 | `V-3` | `backend/tests/mappers/test_entity_config_mapper.py` (extend) — `get_mapper("tsv")`/`get_mapper("xls")` reject; `csv`/`sql`/`fixed` unchanged | `uv run pytest backend/tests/mappers/test_entity_config_mapper.py -v` | `PH1-AC-3` | File-capable unmapped types raise; others pass | Pass (31 tests, 2026-09-23) |
 | `V-4` | `backend/tests/services/test_project_utils.py` + `backend/tests/services/test_project_service.py` (extend) — create/copy/delete with `../../x`, `/abs`, `up:../victim`, `ns:child`; assert filesystem effect | `uv run pytest backend/tests/services/test_project_utils.py backend/tests/services/test_project_service.py backend/tests/services/project -v` | `PH1-AC-4` | Out-of-root writes rejected, nothing written; namespaced create works | Pass (16 new cases, 2026-09-23) |
-| `V-5` | Manual: follow `docs/testing/SECURITY_LEDGER_REPRODUCTION.md` in a throwaway container; confirm host-untouched assertion | Manual method | `PH1-AC-5` | Package runs isolated; host paths unchanged | Pending manual run: doc written (2026-09-23); needs the operator-supplied package in a disposable env |
+| `V-5` | Manual: follow `docs/testing/SECURITY_LEDGER_REPRODUCTION.md` in a throwaway container; confirm host-untouched assertion | Manual method | `PH1-AC-5` | Package runs isolated; host paths unchanged | Pass (2026-09-24): package run as root in a throwaway container with only the repo mounted read-only; before/after host-state `diff` empty (`HOST UNTOUCHED`). Test pass/fail is not the V-5 criterion — remaining failures are the unremediated phase 2-7 findings plus missing container services, not a phase 1 regression |
 | `V-6` | Regression: full backend suite for touched areas | `uv run pytest backend/tests -v` | `PH1-AC-1`-`PH1-AC-4` | No new failures vs baseline | Pass (1911 tests, 0 failed, 0 errors, 15 skipped, 2026-09-23) — zero new failures vs the trunk baseline (ledger: 25 failed / 4 errors on `dev`); the delta is zero |
 | `V-7` | Lint/format | `make lint` (Black + isort) | all | Clean | Pass (Black + isort clean on all 15 changed Python files, 2026-09-23) |
 
@@ -200,7 +200,7 @@ New test files are marked `NEW`. Run focused backend tests with the repo venv; t
 | Allowlist at resolver boundary | `src/configuration/resolve.py::EnvironmentVariableResolver`, `ResolutionContext` | `T1.3` | `V-2` passes |
 | Unsupported-type rejection | `backend/app/mappers/entity_config_mapper.py::EntityConfigMapperFactory` | `T1.4` | `V-3` passes |
 | Contained project paths | `backend/app/services/project/project_operations.py`, `project_utils.py` | `T1.5` | `V-4` passes |
-| Reproduction recipe | `NEW` `docs/testing/SECURITY_LEDGER_REPRODUCTION.md` | `T1.6` | doc written; `V-5` pending manual run |
+| Reproduction recipe | `NEW` `docs/testing/SECURITY_LEDGER_REPRODUCTION.md` | `T1.6` | `V-5` passes (2026-09-24) |
 | New regression tests | `backend/tests/api/test_spa_catchall_containment.py` (created); `backend/tests/test_env_var_allowlist.py` (created); extended `test_entity_config_mapper.py`, `test_project_utils.py`, `test_project_service.py` | `T1.1`-`T1.5` | `V-1` passes; `V-2` passes; `V-3` passes; `V-4` passes |
 
 ## Progress Tracker
@@ -211,17 +211,17 @@ New test files are marked `NEW`. Run focused backend tests with the repo venv; t
 | Area 2 — Env allowlist | Done | None | `T1.2` (gate in `replace_env_vars`) and `T1.3` (allowlist threaded through `ResolutionContext`/`resolve_directives`/`Settings.env_opts`) done; `V-2` passes (6 tests) |
 | Area 3 — Unmapped types | Done | None | `T1.4` done (`get_mapper` fails closed for `tsv`/`xls`); `V-3` passes (31 tests) |
 | Area 4 — Project paths | Done | None | `T1.5` done (`ProjectUtils.resolve_project_dir`/`resolve_project_file` wired into create/copy/delete/update_metadata); `V-4` passes (16 tests) |
-| Area 5 — Repro environment | Done | None | `T1.6` done (`docs/testing/SECURITY_LEDGER_REPRODUCTION.md` written); `V-5` pending operator manual run |
+| Area 5 — Repro environment | Done | None | `T1.6` done (`docs/testing/SECURITY_LEDGER_REPRODUCTION.md` written); `V-5` passes (2026-09-24, host untouched) |
 
 ## Definition Of Done
 
-- [ ] Every `PH1-AC-*` criterion has implementation (`T*`) and validation (`V*`) evidence.
-- [ ] All five areas and deliverables are complete.
-- [ ] `V-1`-`V-5` pass; `V-6` shows zero new failures against the recorded trunk baseline; `V-7` clean. (`V-1`-`V-4`, `V-6`, `V-7` pass; `V-5` pending operator manual run.)
+- [x] Every `PH1-AC-*` criterion has implementation (`T*`) and validation (`V*`) evidence.
+- [x] All five areas and deliverables are complete.
+- [x] `V-1`-`V-5` pass; `V-6` shows zero new failures against the recorded trunk baseline; `V-7` clean.
 - [x] `namespace:project` locators and legitimate `${ENV_VAR}` directives are regression-tested as preserved (`V-2` approved-var case; `V-4` `ns:child` create).
 - [x] No file path reaches a loader uncontained; no `${...}` outside the approved list returns a value (`V-1`, `V-3`, `V-4` containment; `V-2` allowlist).
 - [x] The reproduction doc exists and states the host-untouched check and the no-workstation warning.
-- [ ] Deviations and follow-up work are recorded; no open question affects implementation.
+- [x] Deviations and follow-up work are recorded; no open question affects implementation. (All three Risks items resolved in-task: approved-var set derived and `V-2` passes; `V-6` gated on zero-new-failures and passes; `tsv`/`xls` rejection verified in `V-3`.)
 
 ## Risks And Open Questions
 
