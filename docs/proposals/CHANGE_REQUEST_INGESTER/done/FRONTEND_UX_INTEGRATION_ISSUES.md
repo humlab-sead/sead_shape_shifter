@@ -120,7 +120,7 @@ Files:
 
 Status:
 
-`Future`
+`Implemented in the separate [submission metadata follow-up](../REFACTOR_SEAD_SUBMISSION_METADATA.md)`
 
 Title:
 

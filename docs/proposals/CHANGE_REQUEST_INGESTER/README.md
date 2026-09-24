@@ -18,7 +18,7 @@ The accepted Delivery 1 direction is:
 
 - Delivery 1 baseline work is closed.
 - Delivery 1 follow-up issue slices are resolved or implemented on the current branch.
-- Frontend UX integration is implemented, with one deferred follow-up for stable metadata defaults.
+- Frontend UX integration and persisted stable metadata defaults are implemented; upstream database validation remains open in [the submission metadata proposal](./REFACTOR_SEAD_SUBMISSION_METADATA.md).
 - Provider-update lifecycle policy gate is accepted.
 - Provider-submission lifecycle docs are archived under [done/DATA_PROVIDER_SUBMISSION_LIFECYCLE](./done/DATA_PROVIDER_SUBMISSION_LIFECYCLE).
 - Shared-data review and operator contract work now lives in [SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT/SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT.md](./SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT/SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT.md).
@@ -66,7 +66,7 @@ For the single consolidated tracker of remaining work, use:
 - Data-provider update scope is accepted and now governs downstream existing-row update behavior
 - Provider-submission lifecycle work is archived under `done/DATA_PROVIDER_SUBMISSION_LIFECYCLE`
 - Shared-data review and operator routing now has a separate proposal folder
-- Frontend issue breakdown exists as implementation record and deferred follow-up tracking
+- Frontend issue breakdown records the implemented workflow; stable defaults were delivered separately in the submission metadata work
 - Upstream SIMS handoff docs now live in `humlab-sead/sead_authority_service:docs/proposals/`
 
 ## Remaining Tasks Snapshot
