@@ -34,6 +34,7 @@ class ResolutionContext:
     env_filename: str | None = None
     try_without_prefix: bool = True
     allowed_roots: tuple[Path, ...] = ()
+    allowed_vars: frozenset[str] | set[str] | None = None
 
     def for_loaded_source(self, source_path: str, root_data: dict[str, Any]) -> "ResolutionContext":
         """Return a context for resolving a newly loaded document.
@@ -52,6 +53,7 @@ class ResolutionContext:
             env_filename=self.env_filename,
             try_without_prefix=self.try_without_prefix,
             allowed_roots=self.allowed_roots,
+            allowed_vars=self.allowed_vars,
         )
 
 
@@ -116,6 +118,7 @@ def resolve_directives(
     strict: bool = False,
     try_without_prefix: bool = True,
     allowed_roots: tuple[str | Path, ...] = (),
+    allowed_vars: frozenset[str] | set[str] | None = None,
 ) -> dict[str, Any]:
     """Resolve configuration directives in the provided data dictionary.
 
@@ -148,6 +151,7 @@ def resolve_directives(
         env_filename=env_filename,
         try_without_prefix=try_without_prefix,
         allowed_roots=tuple(Path(root).resolve() for root in allowed_roots),
+        allowed_vars=allowed_vars,
     )
 
     # Build directive resolver map (order does not matter — each resolver only
@@ -513,6 +517,7 @@ class EnvironmentVariableResolver(DirectiveResolver):
                 match.group(0),
                 env_prefix=context.env_prefix or "",
                 try_without_prefix=context.try_without_prefix,
+                allowed_vars=context.allowed_vars,
             )
             if not resolved_value:
                 return resolved_value
