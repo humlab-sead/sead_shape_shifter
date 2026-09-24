@@ -2,7 +2,7 @@
 
 Repository-verified task plan for **Phase 1: Contain request-controlled file and environment disclosure**.
 
-Source proposal: [SECURITY_HARDENING_FOLLOWUP.md](SECURITY_HARDENING_FOLLOWUP.md) · Source phase plan: [SECURITY_HARDENING_FOLLOWUP_PHASE_PLAN.md](SECURITY_HARDENING_FOLLOWUP_PHASE_PLAN.md) · Phase criteria: `PH1-AC-1` … `PH1-AC-5` (from `P-AC-1`, `P-AC-8`).
+Source proposal: [SECURITY_HARDENING_FOLLOWUP.md](../SECURITY_HARDENING_FOLLOWUP.md) · Source phase plan: [SECURITY_HARDENING_FOLLOWUP_PHASE_PLAN.md](../SECURITY_HARDENING_FOLLOWUP_PHASE_PLAN.md) · Phase criteria: `PH1-AC-1` … `PH1-AC-5` (from `P-AC-1`, `P-AC-8`).
 
 ## Phase Summary
 
