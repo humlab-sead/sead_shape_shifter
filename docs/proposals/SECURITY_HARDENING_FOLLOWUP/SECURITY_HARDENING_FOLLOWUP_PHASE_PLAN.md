@@ -25,6 +25,47 @@ It does not include task-level file inventories, exact commands, or test names (
 - Items C1, C2, 15 are fixed and retained as guards; 33 is green; 32 is decided policy. The route-classification test exists but no CI workflow runs it (`.github/workflows/` holds only `release.yml`).
 - The ledger's external test package lives in `secrets/` and is not a CI asset; its root-only tests must not run on a workstation.
 - Fixed decisions carried from the proposal: preserve `namespace:project` locators by containing the mapped path, not banning colons; keep the global `project_maintainer` role as documented; do not require `read_logs` on log routes but do limit sensitive log content; constrain dangerous ingester inputs behind the existing `run_ingesters` gate.
+- The two decisions gating phase 2 are recorded below (D-1, D-2). The phase 5 decisions (SQL read forms; masked-YAML edit contract) remain open.
+
+## Recorded Decisions
+
+### D-1 (2026-09-24): Configuration ownership and root-script placement
+
+**Decision**
+
+Root provisions and rotates the bootstrap configuration; the deployment account never reads it. Each environment gets its own root-owned directory, isolated from every other environment and from the deployment-writable checkout, and convenience sudo is removed rather than relocated.
+
+- One directory per environment at `/var/lib/shape-shifter/<domain>/` (root:www-data, mode 0750; the parent is root:root 0755), keyed by domain to match the existing host accounts and `/data/<user>` layout. It holds that environment's `authorization.env` (root:root 0600), per-principal secret files under `secrets/` (root:root 0700/0600), the htpasswd file and `groups.d/` membership (root:www-data 0640, the only files nginx opens), and the reviewed manifest copy (root:root 0600; `authorization.sh` pipes it into the container at import time, so no daemon reads it in place). Deployment configuration (`backend.env`, `deployment.env`, `.pgpass`) stays in `~/config` owned by the deployment user, unchanged.
+- The vhost template gains per-environment auth paths: `auth_basic_user_file /var/lib/shape-shifter/__DOMAIN__/htpasswd;` and a membership include from the same directory. The shared `map $remote_user $authz_groups` block must also become per-environment (a distinct variable name per vhost), because two rendered vhosts defining the same map variable fail `nginx -t`. This is required anyway once production and staging join the host.
+- Bootstrap keeps its root run but reads configuration as data only: a strict `KEY=VALUE` reader replaces `source`, and a preflight asserts the file and every parent directory are root-owned and not group- or world-writable, checked on the resolved path so a symlink or directory replacement fails the check instead of bypassing it. Bootstrap takes the domain (hence the environment directory) as an argument instead of defaulting `CONFIG_DIR` below the checkout.
+- Root's remaining work in bootstrap is the two www-data-readable writes (htpasswd file, groups file) inside the environment directory. The podman and authorization orchestration it currently performs through `sudo -u` moves to a deployment-user-run flow, which also removes the literal `TARGET_PATH` from the root path (head-start on item 23).
+- Relocate to `/usr/local/sbin/shape-shifter/` through the release step: `bootstrap-authentication-and-authorization.sh` and `install_nginx_reverse_proxy.sh`. These are the only scripts whose text root must execute, and both are shared across environments and parameterized by domain.
+- De-root rather than relocate: `deploy_single_environment.sh`, `install_systemd_service.sh`, `sync-to-deploy`, and `run_deployment_verification.sh` use root only to become the deployment user; they will require `sudo -u <deploy-user>` capability instead of a root gate. The verification bundle's only root need is `nginx -t`, covered by one sudoers entry.
+
+**Why**
+
+A script-by-script audit found the genuinely root-only operations are small and file-shaped (the htpasswd and groups writes, vhost install and reload, `nginx -t`, firewall listing); the other root gates exist for convenience. Root-owned directories inside the deployment user's tree do not qualify: the user owns the parent and can replace the directory. The required property is that no directory in an executed path is writable below root, which `/var/lib` and `/usr/local` satisfy without new install machinery beyond the release step. A single project-owned tree under `/var/lib` keeps each environment's credentials in one place — rotating or decommissioning an environment touches one directory — and keeps `/etc` free of project files. The host nginx runs unconfined (no AppArmor profile for nginx is installed), so it can read its auth files outside `/etc/nginx`; if a confinement profile is added later, it must cover these paths or the two files move under `/etc/nginx/` with the template updated.
+
+**Consequence for the current host**
+
+Today the htpasswd file (`/etc/nginx/htpasswd/shape-shifter`) and the groups include (`/etc/nginx/authz/groups.d/*.conf`) are shared by name across environments, and the wildcard include would merge every environment's memberships into any vhost that includes the directory. The per-environment layout fixes this before staging and production are onboarded; migrating `test-shape-shifter.sead.se` to it is part of phase 2.
+
+**Residual risk accepted**
+
+The deployment account still holds its own configuration and database credentials. This decision removes the guaranteed escalation from "operator follows the documented `sudo` runbook" to "attacker needs a real root exploit"; it does not reduce the deployment account's existing exposure.
+
+### D-2 (2026-09-24): Per-principal secret migration and rotation
+
+**Decision**
+
+Each named principal gets an independent secret stored as a file at `/var/lib/shape-shifter/<domain>/secrets/<user>` (root:root, mode 0600), in preference to per-principal variables in the shared env file. The same principal may hold a different secret per environment; each environment rotates independently.
+
+**Origin**: the shared `AUTH_PASSWORD` was an intentional cutover measure, not an oversight — one secret to distribute kept the authorization rollout low-friction. That window has closed: with per-principal grants and audit live, a shared secret now means any principal can authenticate as another and leave audit records under their name, and offboarding one account forces re-handoff of all of them. The per-principal files retire the measure while keeping handoff friction small (generate-and-print once; rotate one file per change).
+
+- Bootstrap generates each secret on first run and prints it once for individual handoff; rotating one principal rewrites one file.
+- A principal listed in `AUTH_USERS` with no secret file is a hard failure; no principal falls back to any shared value.
+- The shared `AUTH_PASSWORD` is retired: bootstrap refuses to run while it is present in the root configuration, and migration is a fresh generation for every principal, because the shared value already circulated through handoffs. Deterministic transforms of it and in-script literals are rejected the same way.
+- `verify_credential_rotation.sh` gains per-principal checks; `authorization.env.example` and `container/DEPLOYMENT.md` document the new layout.
 
 ## Phase Plan
 
@@ -87,8 +128,7 @@ Make the bootstrap path root-safe and give every named principal an independent 
 
 **Depends On**
 
-- Required decision: who provisions and rotates root-owned bootstrap configuration (deployment account vs root)
-- Required decision: per-principal secret migration and rotation approach
+- `D-1` and `D-2` recorded above (configuration ownership; per-principal secret migration)
 - Phase 1 output: disposable environment for root-only tests
 
 **Outputs**
@@ -110,11 +150,11 @@ Make the bootstrap path root-safe and give every named principal an independent 
 
 **Task-Plan Handoff**
 
-- Source: `P-AC-4`, ledger items 16, 27, 26. Fixed: never source user-writable shell text as root; reject deterministic transforms of the shared secret and in-script literals. Blocking questions: configuration-ownership decision; secret-migration decision. Do not roll out before both are recorded.
+- Source: `P-AC-4`, ledger items 16, 27, 26. Fixed: never source user-writable shell text as root; reject deterministic transforms of the shared secret and in-script literals. Decisions `D-1` and `D-2` fix the layout (per-environment `/var/lib/shape-shifter/<domain>/`, data-only reader with ownership preflight, two scripts relocated, four scripts de-rooted, per-principal secret files with generate-and-print migration). Blocking questions: none.
 
 **Readiness**
 
-Requires a named decision (configuration ownership; per-principal secret migration)
+Ready for a task plan
 
 ### Phase 3: Make authorization changes recoverable and audits attributable
 
@@ -348,4 +388,4 @@ Ready for a task plan
 
 ## Final Recommendation
 
-Start the phase 1 task plan immediately — it carries six of the seven CRITICAL items and needs no decision. Run the two named decisions (configuration ownership with per-principal secret migration; SQL read forms with the masked-YAML edit contract) in parallel so phases 2 and 5 are not idle. Hold phase 7 last so its gates certify the accumulated fixes, and do not close any ledger ID without a maintained regression test or a named exception.
+Start the phase 1 task plan immediately — it carries six of the seven CRITICAL items and needs no decision. The phase 2 gate is now open: `D-1` and `D-2` are recorded, so its task plan can start while the remaining decision (SQL read forms with the masked-YAML edit contract) runs in parallel so phase 5 is not idle. Hold phase 7 last so its gates certify the accumulated fixes, and do not close any ledger ID without a maintained regression test or a named exception.
