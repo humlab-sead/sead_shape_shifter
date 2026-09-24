@@ -17,9 +17,9 @@ Implemented in this PR:
 - distinct pending-confirmation state and rerun guidance during validation and ingestion
 - operator-facing deploy artifact summary and handoff guidance
 
-Still deferred:
+Follow-up delivered separately:
 
-- persisting stable `sead_change_request` submission defaults in project metadata
+- Stable `sead_change_request` submission defaults are persisted in project metadata by [the submission metadata proposal](../REFACTOR_SEAD_SUBMISSION_METADATA.md). PostgreSQL contract validation remains pending there.
 
 ## Summary
 
@@ -122,11 +122,9 @@ On success, the UI should show the operator enough information to understand wha
 - exposing too much low-level detail would make the UI noisy, so the frontend should summarize state rather than mirror the full internal planning model
 - if the backend response shape is not yet stable enough for these states, this CR may need a small backend API follow-up
 
-## Future Follow-Up
+## Follow-Up Delivered
 
-A later change request should evaluate which stable `sead_change_request` submission defaults belong in project YAML rather than being entered for each run.
-
-That follow-up should likely persist project-scoped defaults under an ingester-specific metadata section rather than flattening workflow-specific fields into the generic project metadata editor.
+The separate submission metadata proposal implemented project-scoped defaults under the ingester-specific project configuration. Its remaining PostgreSQL contract validation is tracked in that proposal's task plan.
 
 ## Validation And Acceptance Criteria
 
