@@ -21,6 +21,7 @@ from backend.app.middleware.proxy_auth import ProxyAuthenticationMiddleware
 from backend.app.utils.public_errors import public_error_detail
 from backend.app.utils.safe_logging import sanitize_log_value
 from src.loaders.sql_loaders import init_jvm_for_ucanaccess
+from src.path_resolution import resolve_contained_path
 
 
 @asynccontextmanager
@@ -157,6 +158,26 @@ if docs_dir.exists() and docs_dir.is_dir():
 
 # Serve static frontend files (production mode)
 frontend_dist = Path(__file__).parent.parent.parent / "frontend" / "dist"
+
+
+def resolve_spa_file(full_path: str, dist_dir: Path) -> Path:
+    """Return the file the SPA catch-all should serve for a requested path.
+
+    Serves the requested file only when it resolves inside ``dist_dir``.
+    Absolute paths and parent traversal (for example ``/etc/passwd`` or
+    ``../secret``) resolve outside the root and fall back to ``index.html``,
+    preserving client-side routing without exposing files outside the build.
+    """
+    index_file = dist_dir / "index.html"
+    try:
+        file_path = resolve_contained_path(full_path, dist_dir)
+    except ValueError:
+        return index_file
+    if file_path.is_file():
+        return file_path
+    return index_file
+
+
 if frontend_dist.exists() and frontend_dist.is_dir():
     logger.info(f"Serving frontend from: {frontend_dist}")
     # Mount static files (JS, CSS, assets)
@@ -166,12 +187,7 @@ if frontend_dist.exists() and frontend_dist.is_dir():
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
         """Serve SPA for all routes (except API and static assets)."""
-        # Try to serve the file if it exists
-        file_path = frontend_dist / full_path
-        if file_path.is_file():
-            return FileResponse(file_path)
-        # Otherwise serve index.html for client-side routing
-        return FileResponse(frontend_dist / "index.html")
+        return FileResponse(resolve_spa_file(full_path, frontend_dist))
 
 else:
     logger.info(f"Frontend dist directory not found: {frontend_dist}")

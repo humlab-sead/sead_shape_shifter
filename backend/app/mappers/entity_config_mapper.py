@@ -20,6 +20,7 @@ from typing import Any
 from loguru import logger
 
 from backend.app.core.config import Settings
+from backend.app.utils.exceptions import BadRequestError
 from backend.app.utils.file_path_resolver import FilePathResolver
 from src.types.fixed_entity_types import FixedEntityTypeCoercer, FixedEntityTypeConvention, normalize_fixed_entity_type_conventions
 
@@ -202,8 +203,12 @@ class EntityConfigMapperFactory:
     Maintains registry of file-based drivers and returns specialized mappers.
     """
 
-    # File-based drivers that need path resolution
-    FILE_BASED_DRIVERS: set[str] = {"csv", "xlsx", "openpyxl"}
+    # File-capable loader keys whose entities carry options.filename and must be
+    # resolved through a containment mapper. Any key here without a mapper entry
+    # is rejected rather than passed through, so a file path never reaches a
+    # loader uncontained. SQL-family loaders (sqlite, ucanaccess, postgres,
+    # duckdb) are intentionally absent: they are no-op at this boundary.
+    FILE_BASED_DRIVERS: set[str] = {"csv", "tsv", "xlsx", "xls", "openpyxl"}
 
     def __init__(self, settings: Settings):
         """Initialize factory with settings.
@@ -228,9 +233,21 @@ class EntityConfigMapperFactory:
             entity_type: Entity type (e.g., "csv", "xlsx", "openpyxl", "fixed", "sql")
 
         Returns:
-            EntityConfigMapper instance (either file-based or default)
+            EntityConfigMapper instance (file-based, fixed, or default no-op)
+
+        Raises:
+            BadRequestError: If the type names a file-capable loader that has no
+                containment mapper, so its options.filename would reach a loader
+                uncontained. Fail closed rather than return the no-op default.
         """
-        return self._mapper_cache.get(entity_type, self._default_mapper)
+        mapper = self._mapper_cache.get(entity_type)
+        if mapper is not None:
+            return mapper
+        if entity_type in self.FILE_BASED_DRIVERS:
+            raise BadRequestError(
+                f"Entity type '{entity_type}' reads a file path but has no containment mapper; it is not supported for preview."
+            )
+        return self._default_mapper
 
     def get_mapper_for_entity(self, entity_config: dict[str, Any]) -> EntityConfigMapper:
         """Get mapper based on entity's type.

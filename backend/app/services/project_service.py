@@ -87,6 +87,7 @@ class ProjectService:
             load_project_callback=self.load_project,
             cache_invalidator=self._invalidate_all_caches,
             save_metadata_boundary_callback=self.save_metadata_boundary,
+            project_dir_resolver=self.utils.resolve_project_dir,
         )
 
         # Initialize entity operations component
