@@ -41,25 +41,7 @@ This directory contains the active guides, references, deployment runbooks, and 
 
 ## Proposals
 
-Proposal documents are grouped by status:
-
-| Location | Contents |
-|---|---|
-| [proposals/](proposals/) | Active proposals and current implementation decisions. |
-| [proposals/future/](proposals/future/) | Deferred proposals kept for later work. |
-| [proposals/done/](proposals/done/) | Completed or decided proposals and archived records. |
-| [proposals/onhold/](proposals/onhold/) | Paused proposal work. |
-
-Current proposal entry points:
-
-| Document | Purpose |
-|---|---|
-| [BUGSCEP_PILOT_PROJECT.md](proposals/BUGSCEP_PILOT_PROJECT.md) | BugsCEP pilot status and next implementation slices. |
-| [BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md](proposals/BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md) | Branch-scoped consumption for mixed-branch parent rows. |
-| [RECONCILIATION_FUTURE_IMPROVEMENTS.md](proposals/RECONCILIATION_FUTURE_IMPROVEMENTS.md) | Future reconciliation improvements. |
-| [RULESYNC_AGENT_INSTRUCTIONS_UNIFICATION.md](proposals/RULESYNC_AGENT_INSTRUCTIONS_UNIFICATION.md) | Unification of agent instructions and rulesync behavior. |
-| [CHANGE_REQUEST_INGESTER/](proposals/CHANGE_REQUEST_INGESTER/) | Change-request ingester design, implementation plans, and follow-up records. |
-| [SHAPESHIFTER_PROJECT_AI_ADVISOR/](proposals/SHAPESHIFTER_PROJECT_AI_ADVISOR/) | Project advisor proposal and implementation-readiness documents. |
+See the [proposal index](proposals/README.md) for proposal status groups and current entry points.
 
 ## Supporting Material
 
