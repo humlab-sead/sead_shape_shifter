@@ -4,7 +4,6 @@
 
 - Repository implementation complete; upstream PostgreSQL validation pending
 - Scope: `sead_change_request` submission metadata — persisted defaults plus SEAD submission storage
-- Upstream baseline: [Initial submission-model DDL](20260830_DDL_SUBMISSION_MODEL_REFACTOR.sql)
 - Task plan: [REFACTOR_SEAD_SUBMISSION_METADATA_TASK_PLAN.md](REFACTOR_SEAD_SUBMISSION_METADATA_TASK_PLAN.md)
 - Goal: persist stable submission metadata and map each change request into the initial upstream SEAD submission model
 
