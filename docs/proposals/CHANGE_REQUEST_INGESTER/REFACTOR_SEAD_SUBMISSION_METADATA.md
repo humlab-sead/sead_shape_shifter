@@ -17,7 +17,7 @@ This CR closes both gaps. It persists stable submission defaults in project YAML
 
 The revised upstream DDL includes dedicated `submission_identifier`, `issue_identifier`, and `author` columns. These values describe the submission as a whole and are not encoded in `notes` or kept only in change-package metadata.
 
-The revised upstream migration cannot reconstruct true logical submissions from legacy data. It therefore seeds one manually reviewable historical submission per data provider. Legacy `date_submitted` values remain attached to the migrated event rows as `tbl_submission_tasks.event_date` or `tbl_dataset_contacts.event_date`, and task rows retain the originating dataset bibliography through `tbl_submission_tasks.biblio_id`.
+The revised upstream migration cannot reconstruct true logical submissions from legacy data. It therefore seeds six manually reviewable historical submission groups: MAL, BugsCEP, ceramics, the Dendrochronology pilot, aDNA, and Lund Living Trees. The Dendrochronology pilot and Lund Living Trees groups both reference provider 10. Legacy `date_submitted` values remain attached to the migrated event rows as `tbl_submission_tasks.event_date` or `tbl_dataset_contacts.event_date`, and task rows retain the originating dataset bibliography through `tbl_submission_tasks.biblio_id`.
 
 ## Problem
 
@@ -74,7 +74,7 @@ Deployment of this upstream DDL and legacy compatibility remain outside this rep
 
 Legacy submission types 10 (`Samples collected`) and 11 (`Samples analysed`) do not become submission tasks. The redesign migrates them to `tbl_dataset_contacts` with contact types 4 and 2 respectively.
 
-Historical `date_submitted` values vary within what can only be approximated as one logical submission. The migration therefore does not derive submission-level dates from those values. It creates one historical submission per provider with fields exposed for manual correction, links each legacy dataset and task through its provider, and keeps each date on the event row where it originated. No submission-date column is added to `tbl_datasets`; dated dataset-contact activity remains available through `tbl_dataset_contacts`.
+Historical `date_submitted` values vary within the six configured submission groups. The migration therefore does not derive submission-level dates from those values. It creates one manually reviewable submission for each configured group, links each legacy dataset and task through its provider, and keeps each date on the event row where it originated. The Dendrochronology pilot and Lund Living Trees are separate groups for provider 10. No submission-date column is added to `tbl_datasets`; dated dataset-contact activity remains available through `tbl_dataset_contacts`.
 
 ## Proposed Design
 
@@ -166,7 +166,7 @@ The emitted submission row uses the resolved `data_provider_id`. Each dataset em
 - The SEAD schema is owned upstream. The five new tables, the `tbl_datasets.submission_id` foreign key, data migration, and any legacy views must be deployed before generated artifacts can run.
 - Project-metadata correspondence is simple, but it assumes one submission per project run. Multiple submissions per project or multiple providers per submission are not served by the recommended option.
 - The redesign changes the meaning of legacy submission data. Most `tbl_dataset_submissions` rows become `tbl_submission_tasks`; types 10 and 11 become dataset contacts. Existing consumers may require compatibility views.
-- Historical rows are grouped into one seed submission per provider because existing data cannot identify true logical submissions. Those seed values require manual review before upstream deployment.
+- Historical rows are grouped into six manually reviewable submissions because existing data cannot identify true logical submissions. The Dendrochronology pilot and Lund Living Trees are separate groups for provider 10; verify these configured groupings before upstream deployment.
 - Task bibliography is inherited from the originating dataset. This preserves the available reference but does not assert that the bibliography describes the task independently of that dataset.
 - The initial DDL is the implementation baseline, but it may still change upstream. Shape Shifter target models must be updated if table names, column types, or initial state identifiers change.
 - The new metadata columns are specific to the current change-request workflow. Their names and meanings must remain useful to other submission sources rather than encoding GitHub-specific behavior in the database schema.
@@ -192,7 +192,7 @@ The emitted submission row uses the resolved `data_provider_id`. Each dataset em
 - Every delivered dataset references that submission through `tbl_datasets.submission_id`.
 - The ingester does not depend on legacy `tbl_dataset_submissions` or treat task types 10 and 11 as submission tasks.
 - Maintained target models represent submission tasks and dated dataset contacts without requiring the ingester to emit task rows.
-- The historical migration seeds one editable submission per provider and preserves legacy event dates on task or dataset-contact rows.
+- The historical migration seeds the six configured submission groups, including separate Dendrochronology pilot and Lund Living Trees submissions for provider 10, and preserves legacy event dates on task or dataset-contact rows.
 - The target model, ingester, and docs stay consistent with the accepted mapping option.
 
 ## Recommended Delivery Order
