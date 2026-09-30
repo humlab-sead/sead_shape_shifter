@@ -23,7 +23,7 @@ Do not treat labels, examples, or placeholder text as input values.
 
 Before implementing, read:
 
-- [Task plan detailed guide](references/task-plan-detailed.md)
+- `.github/instructions/task-plan.instructions.md`
 - [Proposal document structure](references/proposal-document-structure.md)
 - [Coding practices](references/coding-practices.md)
 - the task plan and its linked proposal and phase plan

@@ -1,122 +1,220 @@
 ---
-description: "Use when creating or updating task plans for a development phase, phase work breakdowns, implementation checklists, or phase-level execution trackers. Covers work breakdown, progress tracking, definition of done, deliverables, and validation planning."
+name: "Phase Task Plan Instructions"
+description: "Use when creating or updating repository-validated implementation plans, phase work breakdowns, implementation checklists, or execution trackers."
+applyTo: "docs/proposals/**/*_TASK_PLAN.md"
 ---
+
 
 # Copilot Instructions: Phase Task Plans
 
-When asked to create a task plan for a development phase, generate a Markdown document that turns the phase description into actionable implementation work.
+When asked to plan a development phase, produce a Markdown implementation plan detailed enough for another coding agent to execute.
 
-This file is the canonical instruction for phase task plans. Avoid duplicating overlapping guidance in other instruction files.
+Unless implementation is explicitly requested, create or update only the requested planning document. Do not modify implementation, test, configuration, or unrelated documentation files.
+
+## Planning Process
+
+Before writing the plan:
+
+1. Extract the goal, scope, constraints, and acceptance criteria.
+2. When `graphify-out/graph.json` exists, begin with a scoped `.venv/bin/graphify query "<phase question>"`. Use `path` or `explain` for relationships, then inspect relevant project instructions, code, tests, configuration, and documentation to verify findings.
+3. Trace affected callers, consumers, contracts, schemas, and data flows where relevant.
+4. Locate existing project commands and similar implementations.
+5. Identify dependencies, risks, ambiguities, and behavior that must be preserved.
+6. Validate the completed plan using the checklist below.
+
+Treat Graphify as a navigation aid, not the source of truth. If it conflicts with source or tests, plan from the current source and note the discrepancy.
+
+Do not use `TBD` for facts that reasonable repository inspection can establish.
 
 ## Output
 
-Return only the Markdown task plan unless the user asks for explanation.
+Return only the Markdown plan unless the user asks for explanation.
 
-Prefer lean plans. Include optional sections only when they add useful guidance. Do not create empty or repetitive sections just to satisfy a template.
+Prefer repository-specific detail over generic guidance. Name verified files, symbols, commands, APIs, and tests when applicable, and explain material omissions.
 
-Default to implementation planning, not staffing, scheduling, or release management, unless the user explicitly asks for those dimensions.
+Use one of these readiness states:
 
-## Section Priority
+* **Validated** — repository targets are verified, no unresolved decision can change the implementation, and the plan is ready for execution.
+* **Draft** — more repository investigation or user confirmation is required before implementation can begin.
+* **Blocked** — a missing external decision or dependency prevents completing the plan or starting implementation.
 
-Use this priority order when deciding what to include:
-
-1. **Essential:** Include unless the user explicitly asks for a very short plan.
-2. **Recommended:** Include when the phase is non-trivial or has multiple work areas.
-3. **Optional:** Include only when relevant; otherwise skip.
+Explain why a plan is Draft or Blocked. Use only Validated plans for implementation handoff.
+A Validated plan must contain executable validation commands or manual methods and no unresolved placeholders.
 
 ## Default Structure
 
-1. Phase Summary — Essential
-2. Work Breakdown — Essential
-3. Progress Tracker — Essential
-4. Definition Of Done — Essential
-5. Validation And Testing — Recommended
-6. Deliverables — Recommended
-7. Scope — Recommended
-8. Risks And Mitigations — Optional
-9. Open Questions — Optional
-10. Assumptions — Optional
+1. Phase Summary
+2. Repository Findings
+3. Scope
+4. Work Breakdown
+5. Acceptance-Criteria Coverage
+6. Validation And Testing
+7. Deliverables
+8. Progress Tracker
+9. Definition Of Done
+10. Risks And Open Questions — when relevant
+
+Include sections that add implementation guidance. Omit a section only when it is genuinely irrelevant; do not add empty or repetitive sections.
+
+## Phase Summary
+
+Include:
+
+* Phase title and goal.
+* Plan readiness.
+* Constraints and dependencies.
+* Source proposal and phase-plan links, plus the phase criterion IDs.
+* Acceptance criteria as a numbered checklist using IDs such as `PH1-AC-1`.
+
+Preserve supplied phase criteria and their source proposal mappings. Clarify outcomes when necessary without changing the IDs.
+
+## Repository Findings
+
+Summarize only findings that affect implementation:
+
+Start with **Repository basis:** the branch and commit when available, the planning date, and whether uncommitted changes were considered.
+
+| Evidence                  | Finding          | Planning implication          |
+| ------------------------- | ---------------- | ----------------------------- |
+| `path/to/file.py::symbol` | Current behavior | Required change or constraint |
+
+Prefer paths and symbols over line numbers. Clearly distinguish verified findings from assumptions.
+
+## Scope
+
+State:
+
+* **In scope**
+* **Out of scope**
+* Affected components, layers, contracts, data, tests, and documentation
+
+Do not add unrelated improvements.
+
+## Work Breakdown
+
+Create the fewest independently implementable and reviewable work areas, normally 2–6.
+
+For each work area include:
+
+### Area N: Action-oriented title
+
+**Objective:** Observable result of this area.
+
+**Affected code:** Verified existing files and symbols, plus proposed files marked `NEW`.
+
+**Dependencies:** Preceding areas or unresolved decisions.
+
+**Tasks:**
+
+Give every task a stable ID and use this structure:
+
+```markdown
+* [ ] `T1.1` **Change:** Concrete implementation result.
+  * **Target:** Exact existing file and symbol, or proposed file marked `NEW`.
+  * **Current → required:** Existing behavior and required behavior.
+  * **Implementation:** Steps, interfaces, data flow, state changes, and error behavior.
+  * **Constraints:** Compatibility, preservation, migration, and security requirements when relevant.
+  * **Validation:** Validation IDs, specific test files, cases, and expected results, including negative and boundary cases when relevant.
+```
+
+**Completion evidence:** State the observable condition that proves the area is complete.
+
+Order areas according to implementation dependencies.
+
+## Acceptance-Criteria Coverage
+
+Map every acceptance criterion to implementation and validation:
+
+| Criterion | Task IDs     | Validation IDs | Expected evidence |
+| --------- | ------------ | -------------- | ----------------- |
+| `PH1-AC-1` | `T1.1`, `T1.2` | `V-1`       | Observable result |
+
+No acceptance criterion may remain unmapped, and every referenced task and validation ID must exist.
+
+## Validation And Testing
+
+Give every validation check a stable ID such as `V-1`. Use verified repository commands or executable manual methods:
+
+| ID    | Check and target | Command or method    | Covers            | Expected result | Baseline |
+| ----- | ---------------- | -------------------- | ----------------- | --------------- | -------- |
+| `V-1` | Focused tests    | Exact command or manual method | `PH1-AC-1` | Tests pass | Pass, Fail, or Not run: reason |
+| `V-2` | Regression tests | Exact command or manual method | Existing behavior | No regressions | Pass, Fail, or Not run: reason |
+
+Include relevant:
+
+* Unit, component, integration, and contract tests.
+* Negative, boundary, and regression cases.
+* Type checking, linting, and formatting.
+* Migration and data-integrity checks.
+* Security and authorization checks.
+* Documentation or generated-artifact checks.
+
+For every planned test, name the exact existing or `NEW` test file, scenario, fixtures or input data, and expected assertions.
+Run relevant baseline checks during planning when safe and proportionate. Record Pass, Fail, or Not run with any existing failures
+or reason for not running; do not present a planned check as a current pass.
+
+## Deliverables
+
+List every file or generated artifact to create or update. Use exact paths, mark new targets `NEW`, and link each deliverable to
+its producing task IDs.
+
+| Deliverable | Target | Task IDs | Completion evidence |
+| ----------- | ------ | -------- | ------------------- |
+| Code change | `path/to/file.py::symbol` | `T1.1` | Observable result |
+
+## Progress Tracker
+
+| Area   | Status      | Dependencies | Notes |
+| ------ | ----------- | ------------ | ----- |
+| Area 1 | Not started | None         |       |
+
+Use: Not started, In progress, Blocked, or Done.
+
+## Definition Of Done
+
+Include a phase-specific checklist confirming that:
+
+* [ ] Every acceptance criterion has implementation and validation evidence.
+* [ ] All work areas and deliverables are complete.
+* [ ] Required tests and quality checks pass.
+* [ ] Behavior identified for preservation has been regression-tested.
+* [ ] Contracts, migrations, documentation, and generated artifacts are synchronized where applicable.
+* [ ] Deviations and follow-up work are documented.
+* [ ] No unresolved question affects implementation, correctness, or validation.
+
+## Risks And Open Questions
+
+Include only concrete risks and unresolved decisions that could block or materially change implementation.
+
+For an open question, state why it matters, what depends on it, and the recommended resolution when evidence supports one.
 
 ## Rules
 
-- Preserve the phase title, goal, focus areas, and acceptance criteria.
-- Convert acceptance criteria into checkable outcomes.
-- Ensure every acceptance criterion is covered by at least one work area and one Definition Of Done item.
-- If the phase changes behavior, contracts, data, migrations, or APIs, include at least one validation activity that covers the affected acceptance criteria.
-- Make tasks concrete, implementation-oriented, and independently checkable.
-- Use Markdown checklists for work items and Definition Of Done.
-- Use the Progress Tracker table for status. Do not duplicate the same status in multiple formats unless it adds new information.
-- Use `TBD` for unknown owners, dates, links, commands, decisions, and other repository-specific details.
-- Do not invent project facts, file paths, commands, APIs, or test names.
-- If information is missing but the goal is clear, make only structural assumptions about sequencing, grouping, or ordering of work, and record them explicitly.
-- Do not infer owners, dates, dependencies, PR workflow, file paths, commands, APIs, or test names.
-- When the phase produces documentation, inventories, or other maintained artifacts, state the target document or file location explicitly when known. If the location is undecided and affects implementation, record its selection as an open question.
-- Prefer the repository's document-placement guidance over ad hoc storage locations.
-- Put unresolved decisions in **Open Questions** only if they affect implementation.
-- Skip sections that would only contain generic filler.
+* Do not invent repository facts.
+* Inspect before using placeholders.
+* Mark files to be created explicitly.
+* Record necessary assumptions and how they will be verified.
+* Prefer established project conventions.
+* Make tasks concrete and independently checkable.
+* Use direct verbs such as implement, update, remove, migrate, test, and validate.
+* Avoid vague tasks such as “look into,” “handle,” or “address.”
+* Avoid verbatim narrative duplication; use task and validation IDs for required cross-references.
+* Create a Validated task plan only for a phase marked ready in its phase plan.
+* For implementation handoff, instruct the agent to stop and report evidence if verified repository state conflicts with the plan.
+  Do not invent a replacement design or broaden scope.
+* Keep simple plans short; add detail only when complexity requires it.
 
-## Section Guidance
+## Final Plan Validation
 
-### Phase Summary — Essential
+Before returning the plan, confirm that:
 
-Include phase title, goal, focus, and acceptance criteria as a checklist. Include status only when useful. Include owner only if provided; otherwise omit it or mark `TBD`. Skip dates, links, branch, or PR fields unless provided or useful.
+* Referenced existing files, symbols, commands, and tests were verified.
+* Proposed changes match repository architecture and conventions.
+* Affected callers, consumers, and contracts were considered.
+* Every acceptance criterion maps to work and validation.
+* Source proposal and phase criteria remain traceable through task and validation IDs.
+* Tasks are ordered by their actual dependencies.
+* Risks and assumptions are explicit.
+* Another coding agent could begin without repeating the initial investigation.
 
-### Work Breakdown — Essential
-
-Create the fewest work areas that keep work independently implementable and reviewable, typically 3-6 based on the phase focus. For each area include objective, checklist tasks, and completion criteria. End each area with an observable completion condition. For very small phases, use 1-2 work areas.
-
-### Progress Tracker — Essential
-
-Use a compact table:
-
-| Area | Status | Notes |
-|---|---|---|
-| TBD | Not started | TBD |
-
-Use simple statuses: Not started, In progress, Blocked, Done.
-
-Keep this section compact. It should summarize area status, not repeat the full task list.
-
-### Definition Of Done — Essential
-
-Use a final checklist that confirms acceptance criteria coverage, validation, review, and follow-up capture.
-
-### Validation And Testing — Recommended
-
-Include when the phase changes code, contracts, data, migrations, APIs, or behavior. Prefer repository-specific checks only when they are explicitly known from the user request or workspace context. Otherwise use placeholders such as `<test-command>`. List required checks such as type checks, unit tests, regression tests, contract tests, documentation review, or inventory review.
-
-### Deliverables — Recommended
-
-Include when the phase has concrete outputs such as code, docs, inventories, tests, migration scripts, or review artifacts.
-
-For documentation or inventory deliverables, include the target file or document family in the description or link column when known. If the target location is undecided and affects implementation, keep its selection as an explicit open question.
-
-| Deliverable | Description | Status | Link |
-|---|---|---|---|
-| TBD | TBD | Not started | TBD |
-
-### Scope — Recommended
-
-Include when boundaries matter. Use **In scope** and **Out of scope**. Skip for simple phases where scope is obvious from the work breakdown.
-
-### Risks And Mitigations — Optional
-
-Include only when there are meaningful risks, such as undocumented legacy behavior, contract drift, stale inventory, ambiguous unsupported behavior, or insufficient regression coverage.
-
-### Open Questions — Optional
-
-Include only for unresolved decisions that could block or redirect implementation. Do not list questions whose answers are obvious from the phase description.
-
-### Assumptions — Optional
-
-Include only when assumptions are needed to avoid inventing facts. Keep them few, explicit, and limited to sequencing, grouping, or ordering of work.
-
-## Style
-
-Use direct task verbs: identify, document, implement, update, validate, test, review, classify, confirm.
-
-Avoid vague tasks like "look into", "handle", or "think about".
-
-Do not repeat the same item verbatim across Work Breakdown, Progress Tracker, Deliverables, and Definition Of Done.
-
-Target concise plans: roughly 1-2 screens for simple phases and 2-4 screens for non-trivial phases.
+If any check fails, correct the plan or mark it Draft or Blocked.
