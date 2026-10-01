@@ -203,6 +203,20 @@ operation_id = operation_manager.create_operation(
 
 Use `require_operation(Action.READ)` or `require_operation(Action.EDIT)` for later progress, stream, result, and cancellation routes. Do not treat an operation ID or session ID as authorization. A background task uses the authorization state recorded when it starts; later access must reauthorize against the recorded project.
 
+### Local authorization debug setup
+
+The `FastAPI Backend (Debug)` launch profile uses the `local-developer` principal, disables trusted-proxy authentication, binds the API to localhost, and writes to `state/authorization-dev.sqlite3`. From the repository root, initialize its admin role and register existing projects and shared data sources with:
+
+```bash
+SHAPE_SHIFTER_ENVIRONMENT=development \
+SHAPE_SHIFTER_TRUSTED_PROXY_AUTH_ENABLED=false \
+SHAPE_SHIFTER_DEVELOPMENT_PRINCIPAL_ID=local-developer \
+SHAPE_SHIFTER_AUTHORIZATION_DATABASE_PATH=state/authorization-dev.sqlite3 \
+uv run sead-authorization dev-bootstrap
+```
+
+If that database is missing, lacks the local admin, or is missing resource records, the debug launch logs the same command without changing the database. This hint is enabled only in the debug launch profile. The command refuses non-development environments, enabled trusted-proxy authentication, or any database path other than `state/authorization-dev.sqlite3`. It is safe to rerun: existing roles, resource IDs, and grants are preserved, and newly discovered local resources are added. Run it again after adding project or shared data source files outside the API.
+
 When adding or changing protected work:
 
 1. Select the resource and action from `backend.app.authorization.models.Action`.
