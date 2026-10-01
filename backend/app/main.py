@@ -1,5 +1,7 @@
 """FastAPI application entry point."""
 
+import shlex
+import sqlite3
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import AsyncGenerator
@@ -12,6 +14,7 @@ from loguru import logger
 from starlette.formparsers import MultiPartParser
 
 from backend.app.api.v1.api import api_router
+from backend.app.authorization.operations import development_bootstrap_required
 from backend.app.core.config import settings
 from backend.app.core.logging_config import configure_logging
 from backend.app.core.state_manager import ApplicationState, init_app_state
@@ -22,6 +25,57 @@ from backend.app.utils.public_errors import public_error_detail
 from backend.app.utils.safe_logging import sanitize_log_value
 from src.loaders.sql_loaders import init_jvm_for_ucanaccess
 from src.path_resolution import resolve_contained_path
+
+
+def _log_development_authorization_bootstrap_hint() -> None:
+    """Print a bootstrap command when the opted-in local authorization store is incomplete."""
+    principal_id = settings.DEVELOPMENT_PRINCIPAL_ID
+    if (
+        not settings.AUTHORIZATION_DEV_BOOTSTRAP_HINT_ENABLED
+        or settings.ENVIRONMENT != "development"
+        or settings.TRUSTED_PROXY_AUTH_ENABLED
+        or not principal_id
+    ):
+        return
+
+    development_database = (settings.APPLICATION_ROOT / "state" / "authorization-dev.sqlite3").resolve()
+    if settings.AUTHORIZATION_DATABASE_PATH.resolve() != development_database:
+        return
+
+    from backend.app.services.data_source_service import DataSourceService
+    from backend.app.services.project_service import ProjectService
+
+    project_locators = {project.name for project in ProjectService(settings.PROJECTS_DIR).list_projects()}
+    shared_data_source_locators = {source.name for source in DataSourceService(settings.GLOBAL_DATA_SOURCE_DIR).list_data_sources()}
+    try:
+        bootstrap_required = development_bootstrap_required(
+            development_database,
+            principal_id,
+            project_locators,
+            shared_data_source_locators,
+        )
+    except sqlite3.Error:
+        logger.warning(
+            "Could not inspect the development authorization database. "
+            "Check it with `uv run sead-authorization integrity-check`."
+        )
+        return
+
+    if not bootstrap_required:
+        return
+
+    bootstrap_command = (
+        "SHAPE_SHIFTER_ENVIRONMENT=development \\\n"
+        "SHAPE_SHIFTER_TRUSTED_PROXY_AUTH_ENABLED=false \\\n"
+        f"SHAPE_SHIFTER_DEVELOPMENT_PRINCIPAL_ID={shlex.quote(principal_id)} \\\n"
+        "SHAPE_SHIFTER_AUTHORIZATION_DATABASE_PATH=state/authorization-dev.sqlite3 \\\n"
+        "uv run sead-authorization dev-bootstrap"
+    )
+    logger.warning(
+        "Development authorization is not initialized for the current local resources. "
+        "Run this from the repository root to initialize it:\n{}",
+        bootstrap_command,
+    )
 
 
 @asynccontextmanager
@@ -50,6 +104,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:  # pylint: disable=unused-ar
     logger.info(f"Project directory: {settings.PROJECTS_DIR}")
     app_state: ApplicationState = init_app_state(settings.PROJECTS_DIR)
     await app_state.start()
+    _log_development_authorization_bootstrap_hint()
 
     # Initialize JVM for UCanAccess (MS Access database support)
     # Must be done once at startup, as JPype doesn't allow JVM restart
