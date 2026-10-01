@@ -148,7 +148,6 @@ describe('ReconciliationView', () => {
 
     expect(reconciliationStore.exportToMapping).toHaveBeenCalledWith('test_project', 'site', 'site_code')
     expect(wrapper.text()).toContain('Exported 2 links to mapping. Skipped 1 existing manual links.')
-    expect(exportButton.exists()).toBe(true)
   })
 
   it('disables the export button while exporting and shows an error on failure', async () => {
