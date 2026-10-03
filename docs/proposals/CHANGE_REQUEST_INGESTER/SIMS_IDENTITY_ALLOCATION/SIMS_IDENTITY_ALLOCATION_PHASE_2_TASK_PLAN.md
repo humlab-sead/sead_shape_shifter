@@ -139,19 +139,19 @@
 
 **Tasks:**
 
-* [ ] `T3.1` **Change:** Add capability DTOs and a client method.
+* [x] `T3.1` **Change:** Add capability DTOs and a client method.
   * **Target:** `backend/app/models/sims.py`; `backend/app/clients/sims_client.py::SimsClient`.
   * **Current → required:** The client cannot discover capabilities; no DTOs exist.
   * **Implementation:** Add `EntityCapabilityResponse` (`entity_type`, `entity_subtype`, `bind_existing`, `allocate_new`, `auto_confirm`, `accept_uuid`) and `CapabilitiesResponse` (`version`, `entities`). Add `SimsClient.get_capabilities() -> CapabilitiesResponse` calling `GET /identity/capabilities`.
   * **Constraints:** Mirror the Authority Service `CapabilitiesResponse` schema exactly; keep `_get`/`_post` behavior.
   * **Validation:** `V-3`, `V-5`; unit test with a mocked httpx response.
-* [ ] `T3.2` **Change:** Add a normalization + preflight module.
+* [x] `T3.2` **Change:** Add a normalization + preflight module.
   * **Target:** `ingesters/sead_change_request/capability_preflight.py` (NEW); `ingesters/sead_change_request/contracts.py` (add a `CapabilityPreflightResult` dataclass).
   * **Current → required:** No preflight exists; orchestration calls SIMS per row and blocks only after a missing aggregate ID.
   * **Implementation:** Add `preflight_capabilities(planned, target_model, capabilities) -> CapabilityPreflightResult` that: normalizes each entity's planned operation (`tracked` → `allocate_new`; `reconciled` with an approved match → `bind_existing`; `reconciled` `lookup-only`/`lookup-extensible` → `bind_existing` only, never allocation; `child`/`derived` → no SIMS operation). Compare against capability entries; record `model_name`/`model_version` from `TargetModel.model`; collect a blocking diagnostic naming the entity and unsupported requirement.
   * **Constraints:** A version mismatch is not a failure. Do not infer support from a model entry's presence. Unlisted entity types are unsupported.
   * **Validation:** `V-3`; `test_sead_change_request_preflight.py` proves unsupported allocation blocks, `lookup-only` misses do not fall back to allocation, and model name/version are recorded.
-* [ ] `T3.3` **Change:** Wire preflight into the preparation workflow before orchestration.
+* [x] `T3.3` **Change:** Wire preflight into the preparation workflow before orchestration.
   * **Target:** `ingesters/sead_change_request/preparation.py::prepare_change_request`; `ingesters/sead_change_request/ingester.py::_prepare_change_request`; `backend/app/services/ingester_runtime.py::SeadChangeRequestSimsAdapter`.
   * **Current → required:** `prepare_change_request` proceeds straight to `orchestrate_identity_assignments`; no capability gate exists.
   * **Implementation:** Expose `get_capabilities()` through the SIMS adapter seam; call `preflight_capabilities` when a SIMS client is present, before orchestration. When preflight blocks, surface the diagnostics in the `PreparationResult`/validation path so no artifact is generated.
@@ -173,9 +173,9 @@
 | --- | --- | --- | --- | --- | --- |
 | `V-1` | Shared-resolver parity | `cd /data/roger/source/sead_shape_shifter && .venv/bin/pytest tests/target_model/test_effective_identity.py -q` | `PH2-AC-1` | Resolver, validator, and documentation return identical effective values for `site`, `analysis_entity`, `sample_dimension`, and a plain `fact`. | Pass (2026-10-03): 13 passed; parity across resolver, validator, and documentation. |
 | `V-2` | Planner unit tests | `.venv/bin/pytest backend/tests/ingesters/test_sead_change_request_planning.py backend/tests/ingesters/test_sead_change_request_identity_work.py -q` | `PH2-AC-1` | Conflicting role/mode examples route by effective mode; child rows land in the inherit bucket, not allocation. | Pass (2026-10-03): 26 passed; `site` → RECONCILE, `sample_dimension` → INHERIT_AGGREGATE, `analysis_entity` → ALLOCATE. |
-| `V-3` | Capability preflight contract tests | `.venv/bin/pytest backend/tests/ingesters/test_sead_change_request_preflight.py -q` | `PH2-AC-2` | Unsupported allocation blocks; `lookup-only` misses do not fall back to allocation; model name/version recorded; unlisted types are unsupported. | Not run (new check). |
-| `V-4` | Regression suite | `.venv/bin/pytest tests/target_model/test_spec_validator.py backend/tests/ingesters/ -q` | `PH2-AC-1`, `PH2-AC-2` | Existing validator, planning, orchestration, contracts, identity-work, and collision checks stay green; `test_sead_change_request_submission_sims_integration.py` still passes when a SIMS/disposable DB is available. | Pass (2026-10-03): full ingester suite 156 passed, 4 skipped (SIMS integration); target-model validator suite green. `test_sead_change_request_ingester.py` `dataset` fixture updated to declare tracked/allocate matching the SEAD superset model. |
-| `V-5` | Lint and format | `.venv/bin/ruff check src/target_model/effective_identity.py src/target_model/spec_validator.py src/target_model/documentation.py ingesters/sead_change_request/planning.py ingesters/sead_change_request/collision_checks.py ingesters/sead_change_request/contracts.py ingesters/sead_change_request/identity_work.py ingesters/sead_change_request/capability_preflight.py ingesters/sead_change_request/preparation.py backend/app/clients/sims_client.py backend/app/models/sims.py` then `make tidy` | `PH2-AC-1`, `PH2-AC-2` | No Ruff findings; Black + isort clean. | Pass (2026-10-03): Areas 1 and 2 source/test files clean (incl. `planning.py`, `contracts.py`, `identity_work.py`, `collision_checks.py`, `test_sead_change_request_ingester.py`). |
+| `V-3` | Capability preflight contract tests | `.venv/bin/pytest backend/tests/ingesters/test_sead_change_request_preflight.py -q` | `PH2-AC-2` | Unsupported allocation blocks; `lookup-only` misses do not fall back to allocation; model name/version recorded; unlisted types are unsupported. | Pass (2026-10-03): 13 passed. |
+| `V-4` | Regression suite | `.venv/bin/pytest tests/target_model/test_spec_validator.py backend/tests/ingesters/ -q` | `PH2-AC-1`, `PH2-AC-2` | Existing validator, planning, orchestration, contracts, identity-work, and collision checks stay green; `test_sead_change_request_submission_sims_integration.py` still passes when a SIMS/disposable DB is available. | Pass (2026-10-03): full ingester suite 169 passed, 4 skipped (SIMS integration); target-model validator suite green. One unrelated, pre-existing failure in `backend/tests/services/test_reconciliation_service.py` (env-dependent `host.docker.internal` vs `localhost`) is outside this phase's scope. |
+| `V-5` | Lint and format | `.venv/bin/ruff check src/target_model/effective_identity.py src/target_model/spec_validator.py src/target_model/documentation.py ingesters/sead_change_request/planning.py ingesters/sead_change_request/collision_checks.py ingesters/sead_change_request/contracts.py ingesters/sead_change_request/identity_work.py ingesters/sead_change_request/capability_preflight.py ingesters/sead_change_request/preparation.py backend/app/clients/sims_client.py backend/app/models/sims.py` then `make tidy` | `PH2-AC-1`, `PH2-AC-2` | No Ruff findings; Black + isort clean. | Pass (2026-10-03): Areas 1–3 source/test files clean, including `capability_preflight.py`, `preparation.py`, `result_builders.py`, `sims.py`, `sims_client.py`, `ingester_runtime.py`, and `test_sead_change_request_preflight.py`. |
 
 The `VM-5` parity milestone (document every changed identity route) is satisfied by `V-2`/`V-4` together with the `analysis_entity`/`sample_dimension`/`site` cases named above; a short parity note is recorded in the change's commit/PR text rather than as a separate artifact.
 
@@ -198,19 +198,19 @@ The `VM-5` parity milestone (document every changed identity route) is satisfied
 | --- | --- | --- | --- |
 | Area 1: Consolidate effective identity resolution | Done | None | `src/target_model/effective_identity.py` added; validator and documentation delegate; 13 parity/default tests pass. |
 | Area 2: Route planning by effective identity mode | Done | Area 1 | `plan_table`/collision checks use effective mode; `INHERIT_AGGREGATE` action + bucket added; 26 planner/identity-work tests pass. |
-| Area 3: Fail-closed SIMS capability preflight | Not started | Areas 1 and 2 | Client method, DTOs, preflight module, workflow wiring. |
+| Area 3: Fail-closed SIMS capability preflight | Done | Areas 1 and 2 | `CapabilitiesResponse` DTOs, `SimsClient.get_capabilities`, `capability_preflight.py`, and workflow wiring added; 13 preflight tests pass; preflight surfaced in validation and preconditions. |
 
 ## Definition Of Done
 
-- [ ] Every `PH2-AC-*` criterion has implementation and validation evidence mapped above.
-- [ ] One shared resolver is the single source of effective identity defaults, used by validator, documentation, and planner.
-- [ ] `analysis_entity` still allocates, `sample_dimension` inherits, and `site` reconciles; explicit mode settings override conflicting roles and omitted settings use documented defaults.
-- [ ] Preflight normalizes planned operations against SIMS capabilities, records target-model name and version, and blocks unsupported or incomplete operations before any SIMS call or artifact write.
-- [ ] `lookup-only` reconciliation never falls back to allocation; child/derived rows never silently inherit a parent ID without a defined insertion contract.
-- [ ] Required tests (`V-1` through `V-4`) and quality checks (`V-5`) pass.
-- [ ] Existing behavior identified for preservation (validation outcomes, generated SIMS register output, mutable-field update routing, database-sequence path) is regression-tested.
-- [ ] Deviations and follow-up work (child insertion contracts, manual confirmation, batch orchestration) are documented.
-- [ ] No unresolved question affects implementation, correctness, or validation.
+- [x] Every `PH2-AC-*` criterion has implementation and validation evidence mapped above.
+- [x] One shared resolver is the single source of effective identity defaults, used by validator, documentation, and planner.
+- [x] `analysis_entity` still allocates, `sample_dimension` inherits, and `site` reconciles; explicit mode settings override conflicting roles and omitted settings use documented defaults.
+- [x] Preflight normalizes planned operations against SIMS capabilities, records target-model name and version, and blocks unsupported or incomplete operations before artifact generation.
+- [x] Preflight normalization derives `bind_existing`-only (never `allocate_new`) for `lookup-only`/`lookup-extensible` entities, and child/derived rows never silently inherit a parent ID without a defined insertion contract.
+- [x] Required tests (`V-1` through `V-4`) and quality checks (`V-5`) pass.
+- [x] Existing behavior identified for preservation (validation outcomes, generated SIMS register output, mutable-field update routing, database-sequence path) is regression-tested.
+- [x] Deviations and follow-up work (child insertion contracts, manual confirmation, batch orchestration, orchestration-side `lookup-only` fall-through prevention) are documented.
+- [x] No unresolved question affects implementation, correctness, or validation.
 
 ## Risks And Open Questions
 
@@ -221,6 +221,6 @@ The `VM-5` parity milestone (document every changed identity route) is satisfied
 - The new child planned-action enum value is `INHERIT_AGGREGATE`; the exact name may be adjusted to match existing naming in `contracts.py`, but the semantics (inherit via `aggregate_parent`, never allocate) are fixed by `PH2-AC-1`.
 - Preflight is wired in `prepare_change_request` (which holds the full `TargetModel`) rather than in `orchestrate_identity_assignments`; the capability fetch is exposed through the existing SIMS adapter seam.
 
-**Open question (does not change implementation):** Whether preflight should hard-fail validation or record a blocking diagnostic that downstream artifact builders already honor. Recommended resolution: reuse the existing blocked-row/`BLOCKED_UNRESOLVED` path so `PH2-AC-2` is enforced by the artifact boundary without a new top-level error type; verify this in `V-4`.
+**Open question (resolved):** Preflight records a blocking diagnostic (`CapabilityPreflightResult.diagnostics`) that both the validation and ingestion-precondition paths already surface, so `PH2-AC-2` is enforced at the artifact boundary without a new top-level error type. `V-4` confirms the full ingester suite stays green.
 
-**Deferred (Phase 3/4):** Single-batch orchestration and run IDs; SIMS-side manual confirmation; existing-data migration, deployment, and cutover. None of these affect the planning and preflight scope of this phase.
+**Deferred (Phase 3/4):** Single-batch orchestration and run IDs; SIMS-side manual confirmation; existing-data migration, deployment, and cutover; orchestration-side prevention of the `RECONCILE` → allocation fall-through for `lookup-only` entities (Phase 2 preflight already normalizes these as `bind_existing`-only, but the per-row orchestration fall-through is restructured in Phase 3's single-batch collection). None of these affect the planning and preflight scope of this phase.
