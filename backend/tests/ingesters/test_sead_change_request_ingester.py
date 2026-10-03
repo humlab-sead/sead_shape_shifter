@@ -220,6 +220,8 @@ def submission_target_model() -> dict:
         },
         dataset={
             "role": "lookup",
+            "identity_tracking": "tracked",
+            "reconciliation": "allocate",
             "public_id": "dataset_id",
             "target_table": "tbl_datasets",
             "foreign_keys": [{"entity": "submission"}],

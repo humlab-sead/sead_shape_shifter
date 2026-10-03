@@ -57,3 +57,16 @@ class TestBuildIdentityWorkPlan:
         assert work_plan.total_blocked_existing_update_rows == 1
         assert work_plan.update_candidate_rows["sample"]["sample_id"].tolist() == [101]
         assert work_plan.blocked_existing_update_rows["sample"]["sample_id"].tolist() == [102]
+
+    def test_partitions_child_rows_into_inherit_queue(self):
+        """Child rows should be grouped into the aggregate-inheritance queue, not allocation."""
+        frame = pd.DataFrame({"sample_dimension_id": [None], "sample_id": [10]})
+        actions = pd.Series([PlannedRowAction.INHERIT_AGGREGATE], index=frame.index, name="_planned_action")
+
+        work_plan = build_identity_work_plan(
+            [PlannedTable(entity_name="sample_dimension", frame=frame, planned_actions=actions)]
+        )
+
+        assert work_plan.total_inherit_rows == 1
+        assert work_plan.total_allocation_rows == 0
+        assert work_plan.inherit_rows["sample_dimension"]["sample_id"].tolist() == [10]
