@@ -109,19 +109,19 @@
 
 **Tasks:**
 
-* [ ] `T2.1` **Change:** Collect SIMS work before any resolve call.
+* [x] `T2.1` **Change:** Collect SIMS work before any resolve call.
   * **Target:** `ingesters/sead_change_request/orchestration.py::orchestrate_identity_assignments`.
   * **Current → required:** SIMS resolve happens inline per row, interleaved with reconciliation and database-sequence reservation.
   * **Implementation:** First pass collects, in deterministic order, each row that needs SIMS work (`ALLOCATE` rows, `RECONCILE` rows whose reconciliation returned an approved match for binding, and `RECONCILE` rows approved for allocation after a miss). Keep reconciliation and `RESERVE_DATABASE_ID` handling in the first pass; defer SIMS to one `resolve_batch` call. Maintain an ordered list of `(entity_name, row_index, approved_aggregate_id | None)` correlating request slots to rows.
   * **Constraints:** Preserve `REFERENCE_EXISTING`/`UPDATE_EXISTING_CANDIDATE`/`BLOCK_EXISTING_UPDATE` and `EVALUATE_BRIDGE` handling. Do not resolve bridge or child rows through SIMS.
   * **Validation:** `V-2`; fake records one resolve call with the expected request count and order.
-* [ ] `T2.2` **Change:** Map ordered outcomes back to row assignments.
+* [x] `T2.2` **Change:** Map ordered outcomes back to row assignments.
   * **Target:** `ingesters/sead_change_request/orchestration.py`.
   * **Current → required:** Outcomes are read one at a time from a single-row response.
   * **Implementation:** After `resolve_batch`, zip the ordered outcome list with the collected correlation list and write each `IdentityAssignment` (`RECONCILED_CLASSIFIER` or `NEWLY_ALLOCATED_ENTITY`) by entity name and row index. Block any slot whose `target_id` is missing or mismatches an approved aggregate ID.
   * **Constraints:** Request order is the correlation contract; do not match by entity name alone.
   * **Validation:** `V-2`, `V-4`; reorder a two-entity batch and assert assignments stay on the correct rows.
-* [ ] `T2.3` **Change:** Prevent `lookup-only`/`lookup-extensible` reconciliation misses from allocating.
+* [x] `T2.3` **Change:** Prevent `lookup-only`/`lookup-extensible` reconciliation misses from allocating.
   * **Target:** `ingesters/sead_change_request/orchestration.py`; uses `src/target_model/effective_identity.resolve_effective_identity`.
   * **Current → required:** A `RECONCILE` row with no reconciliation match falls through to `allocate_entity`.
   * **Implementation:** For a reconciled row, read the effective reconciliation strategy. Only request allocation on a miss when the strategy is `reconcile-exact` or `reconcile-fuzzy`; a `lookup-only`/`lookup-extensible` miss becomes `BLOCKED_UNRESOLVED` with a "no approved match" note.
@@ -199,9 +199,9 @@
 | ID | Check and target | Command or method | Covers | Expected result | Baseline |
 | --- | --- | --- | --- | --- | --- |
 | `V-1` | Request model and run-ID persistence | `cd /data/roger/source/sead_shape_shifter && .venv/bin/pytest backend/tests/ingesters/test_sead_change_request_orchestration.py -q` | `PH3-AC-1` | `run_id` round-trips through `ResolveRequest` and `SubmissionContext`; a supplied key is preserved, an absent key is minted once. | Pass (2026-10-03): new `test_sead_change_request_input_resolution.py` (6 tests) plus adapter `resolve_batch` and `SubmissionContext.run_id` tests; `resolve_batch` submits one request with the persisted run ID. |
-| `V-2` | Single-batch collection and correlation | `.venv/bin/pytest backend/tests/ingesters/test_sead_change_request_orchestration.py -q` | `PH3-AC-1`, `PH3-AC-2` | One `resolve_batch` call; outcomes map by order; `lookup-only` misses do not allocate. | Pass (2026-10-03): existing 35-test orchestration/confirmation/sql-builder set green; new cases added this phase. |
+| `V-2` | Single-batch collection and correlation | `.venv/bin/pytest backend/tests/ingesters/test_sead_change_request_orchestration.py -q` | `PH3-AC-1`, `PH3-AC-2` | One `resolve_batch` call; outcomes map by order; `lookup-only` misses do not allocate. | Pass (2026-10-03): 16 orchestration tests pass, including one-batch collection, order correlation, and `lookup-only`/`reconcile-exact` miss handling. |
 | `V-3` | No-confirm blocking | `.venv/bin/pytest backend/tests/ingesters/test_sead_change_request_confirmation.py backend/tests/ingesters/test_sead_change_request_ingester.py -q` | `PH3-AC-2` | `confirm_binding_set` is never called; a `proposed` set yields a pending-confirmation failure with no artifact bundle. | Not run (new check). |
-| `V-4` | Regression suite | `.venv/bin/pytest backend/tests/ingesters/ -q` | `PH3-AC-1`, `PH3-AC-2`, `PH3-AC-3` | Full ingester suite stays green; `test_sead_change_request_submission_sims_integration.py` passes against the disposable DB when available. | Pass (2026-10-03): 178 passed, 4 skipped after Area 1. |
+| `V-4` | Regression suite | `.venv/bin/pytest backend/tests/ingesters/ -q` | `PH3-AC-1`, `PH3-AC-2`, `PH3-AC-3` | Full ingester suite stays green; `test_sead_change_request_submission_sims_integration.py` passes against the disposable DB when available. | Pass (2026-10-03): 182 passed, 4 skipped after Area 2. |
 | `V-5` | Strategy parity | `.venv/bin/pytest backend/tests/ingesters/test_sead_change_request_sql_builder.py backend/tests/ingesters/test_sead_change_request_package_builder.py -q` | `PH3-AC-3` | Inline `INSERT` and copy-CSV emit equivalent identity values; no package for unsupported/unconfirmed work. | Not run (new check). |
 | `V-6` | Lint and format | `.venv/bin/ruff check backend/app/models/sims.py backend/app/services/ingester_runtime.py ingesters/sead_change_request/orchestration.py ingesters/sead_change_request/contracts.py ingesters/sead_change_request/input_resolution.py ingesters/sead_change_request/preparation.py ingesters/sead_change_request/ingester.py ingesters/sead_change_request/result_builders.py` then `make tidy` | `PH3-AC-1`, `PH3-AC-2`, `PH3-AC-3` | No Ruff findings; Black + isort clean. | Not run during planning. |
 
@@ -224,7 +224,7 @@ The phase-plan `VM-6` (one request and one Binding Set per run, stable mapping, 
 | Area | Status | Dependencies | Notes |
 | --- | --- | --- | --- |
 | Area 1: Collect and submit one SIMS resolve batch | Done | Phase 1 run_id, Phase 2 modes | `run_id` on `ResolveRequest`/`SubmissionContext`; minted/persisted at input resolution; `resolve_batch` adapter entry point added; 27 runtime/contract/input-resolution tests pass. |
-| Area 2: Collect per-row work then resolve in one batch | Not started | Area 1 | Collect-then-batch; order correlation; no lookup-only allocation. |
+| Area 2: Collect per-row work then resolve in one batch | Done | Area 1 | `orchestrate_identity_assignments` collects `SimsResolveItem`s and submits one `resolve_batch`; order-correlated outcomes; `lookup-only`/`lookup-extensible` misses blocked; batch 409 handled as a blocked batch. |
 | Area 3: Block artifact generation until confirmation | Not started | Area 2 | Remove auto-confirm; `proposed` blocks. |
 | Area 4: Parity across both deploy strategies | Not started | Areas 2 and 3 | Equivalence assertions; no package for unsupported/unconfirmed work. |
 
