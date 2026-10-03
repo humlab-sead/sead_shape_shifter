@@ -14,7 +14,7 @@ from psycopg import sql
 from backend.app.clients.reconciliation_client import ReconciliationClient, ReconciliationQuery
 from backend.app.clients.sims_client import SimsClient
 from backend.app.core.config import Settings
-from backend.app.models.sims import IdentitySignal, IdentityType, ResolutionRequest, ResolveRequest
+from backend.app.models.sims import CapabilitiesResponse, IdentitySignal, IdentityType, ResolutionRequest, ResolveRequest
 from ingesters.sead_change_request.contracts import SubmissionContext
 
 
@@ -184,6 +184,10 @@ class SeadChangeRequestSimsAdapter:
         """Read the current Binding Set lifecycle state from SIMS."""
         binding_set = await self._sims_client.get_binding_set(UUID(binding_set_uuid))
         return binding_set.lifecycle_state.value
+
+    async def get_capabilities(self) -> CapabilitiesResponse:
+        """Return the configured SIMS identity capabilities for preflight."""
+        return await self._sims_client.get_capabilities()
 
     async def confirm_binding_set(self, binding_set_uuid: str) -> str:
         """Confirm the Binding Set and return the resulting lifecycle state."""

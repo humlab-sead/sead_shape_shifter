@@ -163,3 +163,26 @@ class ChangeDetectionResult(BaseModel):
     tracked_identity_uuid: UUID
     outcome: ChangeOutcome
     previous_hash: str | None = Field(default=None, description="The previously stored hash, if any.")
+
+
+# ---------------------------------------------------------------------------
+# Capability models (GET /identity/capabilities)
+# ---------------------------------------------------------------------------
+
+
+class EntityCapabilityResponse(BaseModel):
+    """Published capability for one configured entity type."""
+
+    entity_type: str
+    entity_subtype: str
+    bind_existing: bool
+    allocate_new: bool
+    auto_confirm: bool
+    accept_uuid: bool
+
+
+class CapabilitiesResponse(BaseModel):
+    """Response body for GET /identity/capabilities."""
+
+    version: str
+    entities: list[EntityCapabilityResponse]
