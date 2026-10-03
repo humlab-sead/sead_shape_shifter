@@ -47,8 +47,6 @@ class SimsClientPort(Protocol):
 
     async def resolve_batch(self, items: list[Any], submission_context: SubmissionContext) -> dict[str, Any]: ...
 
-    async def confirm_binding_set(self, binding_set_uuid: str) -> str: ...
-
     async def associate_change_request(self, binding_set_uuid: str, change_request_name: str) -> None: ...
 
 
@@ -262,8 +260,6 @@ async def orchestrate_identity_assignments(
 
     if sims_client is not None and binding_set_uuid:
         binding_set_state = binding_set_state or await sims_client.get_binding_set_state(binding_set_uuid)
-        if binding_set_state != "confirmed":
-            binding_set_state = await sims_client.confirm_binding_set(binding_set_uuid)
 
         if binding_set_state != "confirmed":
             for entity_name, row_index in sims_assigned_rows:

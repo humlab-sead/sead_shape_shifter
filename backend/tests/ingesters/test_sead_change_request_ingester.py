@@ -1893,8 +1893,8 @@ class TestSeadChangeRequestIngesterIngest:
 
     @pytest.mark.asyncio
     async def test_ingest_associates_change_request_after_confirmation(self, tmp_path):
-        """Ingest should associate the requested CR name after Binding Set confirmation succeeds."""
-        sims_client = FakeSimsClient(binding_set_state="proposed", confirmed_binding_set_state="confirmed", target_id=501)
+        """Ingest should associate the requested CR name when the Binding Set is already confirmed."""
+        sims_client = FakeSimsClient(binding_set_state="confirmed", target_id=501)
         ingester = SeadChangeRequestIngester(
             IngesterConfig(
                 host="localhost",

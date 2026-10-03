@@ -51,6 +51,7 @@ class FakeSimsClient:
         self.approved_aggregate_ids: list[int] = []
         self.allocated_entities: list[str] = []
         self.batch_calls: list[list[SimsResolveItem]] = []
+        self.confirm_calls: list[str] = []
 
     async def allocate_entity(self, entity_name: str, row: dict, submission_context: SubmissionContext) -> dict:
         self.allocated_entities.append(entity_name)
@@ -105,6 +106,7 @@ class FakeSimsClient:
         }
 
     async def confirm_binding_set(self, binding_set_uuid: str) -> str:
+        self.confirm_calls.append(binding_set_uuid)
         self.binding_set_state = self.confirmed_binding_set_state
         return self.binding_set_state
 
@@ -300,19 +302,41 @@ class TestOrchestrateIdentityAssignments:
         assert result.binding_set_state == "proposed"
 
     @pytest.mark.asyncio
-    async def test_proposed_binding_set_is_confirmed_when_sims_supports_confirmation(self):
+    async def test_proposed_binding_set_is_not_auto_confirmed(self):
+        """The ingester must not auto-confirm; a proposed set stays proposed and blocks."""
         frame = pd.DataFrame({"sample_id": [None]})
         planned_table = plan_table("sample", frame, EntitySpec(role="fact", public_id="sample_id"))
+        sims_client = FakeSimsClient(binding_set_state="proposed", confirmed_binding_set_state="confirmed", target_id=501)
 
         result = await orchestrate_identity_assignments(
             [planned_table],
             minimal_submission_context(),
-            sims_client=FakeSimsClient(binding_set_state="proposed", confirmed_binding_set_state="confirmed", target_id=501),
+            sims_client=sims_client,
+        )
+
+        assignment = result.assignments["sample"][0]
+        assert assignment.state == ChangeRowState.BLOCKED_UNRESOLVED
+        assert "must be confirmed" in (assignment.note or "")
+        assert result.binding_set_state == "proposed"
+        assert sims_client.confirm_calls == []
+
+    @pytest.mark.asyncio
+    async def test_confirmed_binding_set_proceeds_without_confirm_call(self):
+        """A confirmed set proceeds and the ingester never confirms it."""
+        frame = pd.DataFrame({"sample_id": [None]})
+        planned_table = plan_table("sample", frame, EntitySpec(role="fact", public_id="sample_id"))
+        sims_client = FakeSimsClient(binding_set_state="confirmed", target_id=501)
+
+        result = await orchestrate_identity_assignments(
+            [planned_table],
+            minimal_submission_context(),
+            sims_client=sims_client,
         )
 
         assignment = result.assignments["sample"][0]
         assert assignment.state == ChangeRowState.NEWLY_ALLOCATED_ENTITY
         assert result.binding_set_state == "confirmed"
+        assert sims_client.confirm_calls == []
 
     @pytest.mark.asyncio
     async def test_missing_target_id_blocks_sims_rows(self):
