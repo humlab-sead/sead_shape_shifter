@@ -78,19 +78,19 @@
 
 **Tasks:**
 
-* [ ] `T1.1` **Change:** Add `run_id` to the consumer request model and the submission context.
+* [x] `T1.1` **Change:** Add `run_id` to the consumer request model and the submission context.
   * **Target:** `backend/app/models/sims.py::ResolveRequest`; `ingesters/sead_change_request/contracts.py::SubmissionContext`.
   * **Current → required:** The service requires a `run_id`, but the consumer DTO and `SubmissionContext` have none.
   * **Implementation:** Add a required `run_id: str` to `ResolveRequest`. Add `run_id: str | None = None` to `SubmissionContext` so a persisted key can be carried across retries.
   * **Constraints:** Keep `ResolveRequest` aligned with the service schema; `SubmissionContext` is a consumer record and may carry the optional key.
   * **Validation:** `V-1`, `V-4`; model and orchestration tests confirm `run_id` round-trips.
-* [ ] `T1.2` **Change:** Resolve and persist the run ID at input resolution.
+* [x] `T1.2` **Change:** Resolve and persist the run ID at input resolution.
   * **Target:** `ingesters/sead_change_request/input_resolution.py::_resolve_submission_context`.
   * **Current → required:** No `run_id` is read or generated.
   * **Implementation:** Read an optional `run_id` string from the context data; when absent, mint a fresh UUID (`str(uuid4())`) so each intentional execution gets a new key and retries reuse the persisted value. Pass it into `SubmissionContext`.
   * **Constraints:** Never mint a new `run_id` for an ambiguous retry; the persisted value is authoritative.
   * **Validation:** `V-1`; test that a supplied `run_id` is preserved and an absent one is generated exactly once.
-* [ ] `T1.3` **Change:** Add a batch resolve entry point to the SIMS adapter.
+* [x] `T1.3` **Change:** Add a batch resolve entry point to the SIMS adapter.
   * **Target:** `backend/app/services/ingester_runtime.py::SeadChangeRequestSimsAdapter`; `ingesters/sead_change_request/orchestration.py::SimsClientPort`.
   * **Current → required:** The adapter only exposes per-row `allocate_entity`/`bind_existing_entity`.
   * **Implementation:** Add `resolve_batch(requests: list[ResolutionRequest], submission_context, run_id) -> dict` that builds one `ResolveRequest` (with `run_id`) and returns the ordered outcomes plus binding-set UUID/state. Extend `SimsClientPort` with the same method.
@@ -198,10 +198,10 @@
 
 | ID | Check and target | Command or method | Covers | Expected result | Baseline |
 | --- | --- | --- | --- | --- | --- |
-| `V-1` | Request model and run-ID persistence | `cd /data/roger/source/sead_shape_shifter && .venv/bin/pytest backend/tests/ingesters/test_sead_change_request_orchestration.py -q` | `PH3-AC-1` | `run_id` round-trips through `ResolveRequest` and `SubmissionContext`; a supplied key is preserved, an absent key is minted once. | Not run (new check). |
+| `V-1` | Request model and run-ID persistence | `cd /data/roger/source/sead_shape_shifter && .venv/bin/pytest backend/tests/ingesters/test_sead_change_request_orchestration.py -q` | `PH3-AC-1` | `run_id` round-trips through `ResolveRequest` and `SubmissionContext`; a supplied key is preserved, an absent key is minted once. | Pass (2026-10-03): new `test_sead_change_request_input_resolution.py` (6 tests) plus adapter `resolve_batch` and `SubmissionContext.run_id` tests; `resolve_batch` submits one request with the persisted run ID. |
 | `V-2` | Single-batch collection and correlation | `.venv/bin/pytest backend/tests/ingesters/test_sead_change_request_orchestration.py -q` | `PH3-AC-1`, `PH3-AC-2` | One `resolve_batch` call; outcomes map by order; `lookup-only` misses do not allocate. | Pass (2026-10-03): existing 35-test orchestration/confirmation/sql-builder set green; new cases added this phase. |
 | `V-3` | No-confirm blocking | `.venv/bin/pytest backend/tests/ingesters/test_sead_change_request_confirmation.py backend/tests/ingesters/test_sead_change_request_ingester.py -q` | `PH3-AC-2` | `confirm_binding_set` is never called; a `proposed` set yields a pending-confirmation failure with no artifact bundle. | Not run (new check). |
-| `V-4` | Regression suite | `.venv/bin/pytest backend/tests/ingesters/ -q` | `PH3-AC-1`, `PH3-AC-2`, `PH3-AC-3` | Full ingester suite stays green; `test_sead_change_request_submission_sims_integration.py` passes against the disposable DB when available. | Pass (2026-10-03): 169 passed, 4 skipped. |
+| `V-4` | Regression suite | `.venv/bin/pytest backend/tests/ingesters/ -q` | `PH3-AC-1`, `PH3-AC-2`, `PH3-AC-3` | Full ingester suite stays green; `test_sead_change_request_submission_sims_integration.py` passes against the disposable DB when available. | Pass (2026-10-03): 178 passed, 4 skipped after Area 1. |
 | `V-5` | Strategy parity | `.venv/bin/pytest backend/tests/ingesters/test_sead_change_request_sql_builder.py backend/tests/ingesters/test_sead_change_request_package_builder.py -q` | `PH3-AC-3` | Inline `INSERT` and copy-CSV emit equivalent identity values; no package for unsupported/unconfirmed work. | Not run (new check). |
 | `V-6` | Lint and format | `.venv/bin/ruff check backend/app/models/sims.py backend/app/services/ingester_runtime.py ingesters/sead_change_request/orchestration.py ingesters/sead_change_request/contracts.py ingesters/sead_change_request/input_resolution.py ingesters/sead_change_request/preparation.py ingesters/sead_change_request/ingester.py ingesters/sead_change_request/result_builders.py` then `make tidy` | `PH3-AC-1`, `PH3-AC-2`, `PH3-AC-3` | No Ruff findings; Black + isort clean. | Not run during planning. |
 
@@ -223,7 +223,7 @@ The phase-plan `VM-6` (one request and one Binding Set per run, stable mapping, 
 
 | Area | Status | Dependencies | Notes |
 | --- | --- | --- | --- |
-| Area 1: Collect and submit one SIMS resolve batch | Not started | Phase 1 run_id, Phase 2 modes | `run_id` on request/context; batch adapter method. |
+| Area 1: Collect and submit one SIMS resolve batch | Done | Phase 1 run_id, Phase 2 modes | `run_id` on `ResolveRequest`/`SubmissionContext`; minted/persisted at input resolution; `resolve_batch` adapter entry point added; 27 runtime/contract/input-resolution tests pass. |
 | Area 2: Collect per-row work then resolve in one batch | Not started | Area 1 | Collect-then-batch; order correlation; no lookup-only allocation. |
 | Area 3: Block artifact generation until confirmation | Not started | Area 2 | Remove auto-confirm; `proposed` blocks. |
 | Area 4: Parity across both deploy strategies | Not started | Areas 2 and 3 | Equivalence assertions; no package for unsupported/unconfirmed work. |
