@@ -140,19 +140,19 @@
 
 **Tasks:**
 
-* [ ] `T3.1` **Change:** Remove the ingester auto-confirm call.
+* [x] `T3.1` **Change:** Remove the ingester auto-confirm call.
   * **Target:** `ingesters/sead_change_request/orchestration.py::orchestrate_identity_assignments`.
   * **Current → required:** The function calls `sims_client.confirm_binding_set` when the state is not `confirmed`.
   * **Implementation:** Replace the confirm call with a read-only `get_binding_set_state` check. When the state is `proposed`, leave it and mark SIMS-assigned rows `BLOCKED_UNRESOLVED` with a pending-confirmation note; do not call `confirm_binding_set`.
   * **Constraints:** The ingester must not mutate the Binding Set state; only SIMS auto-confirms for auto-confirmable batches.
   * **Validation:** `V-3`, `V-4`; a fake asserts `confirm_binding_set` is never called and a `proposed` set blocks.
-* [ ] `T3.2` **Change:** Keep the pending-confirmation report aligned with the no-confirm flow.
+* [x] `T3.2` **Change:** Keep the pending-confirmation report aligned with the no-confirm flow.
   * **Target:** `ingesters/sead_change_request/preparation.py::_build_pending_confirmation_report`.
   * **Current → required:** The report is built when state is non-confirmed and blocked rows exist; this already matches the no-confirm flow.
   * **Implementation:** No structural change; confirm the report still fires for a `proposed` set and its rerun instruction references the persisted `run_id` so a retry reuses the same batch.
   * **Constraints:** Preserve the operator-facing report contract.
   * **Validation:** `V-3`; assert the rerun instruction names the same `run_id`/submission context.
-* [ ] `T3.3` **Change:** Verify the artifact boundary blocks on unconfirmed sets.
+* [x] `T3.3` **Change:** Verify the artifact boundary blocks on unconfirmed sets.
   * **Target:** `ingesters/sead_change_request/ingester.py::ingest`; `ingesters/sead_change_request/result_builders.py::check_ingestion_preconditions`.
   * **Current → required:** `check_ingestion_preconditions` already returns a failure on blocked rows/pending confirmation; confirm it holds when the batch state is `proposed`.
   * **Implementation:** Add/adjust an ingester test that submits a `proposed`-state fake and asserts no artifact bundle is emitted and the failure carries the pending-confirmation report.
@@ -200,8 +200,8 @@
 | --- | --- | --- | --- | --- | --- |
 | `V-1` | Request model and run-ID persistence | `cd /data/roger/source/sead_shape_shifter && .venv/bin/pytest backend/tests/ingesters/test_sead_change_request_orchestration.py -q` | `PH3-AC-1` | `run_id` round-trips through `ResolveRequest` and `SubmissionContext`; a supplied key is preserved, an absent key is minted once. | Pass (2026-10-03): new `test_sead_change_request_input_resolution.py` (6 tests) plus adapter `resolve_batch` and `SubmissionContext.run_id` tests; `resolve_batch` submits one request with the persisted run ID. |
 | `V-2` | Single-batch collection and correlation | `.venv/bin/pytest backend/tests/ingesters/test_sead_change_request_orchestration.py -q` | `PH3-AC-1`, `PH3-AC-2` | One `resolve_batch` call; outcomes map by order; `lookup-only` misses do not allocate. | Pass (2026-10-03): 16 orchestration tests pass, including one-batch collection, order correlation, and `lookup-only`/`reconcile-exact` miss handling. |
-| `V-3` | No-confirm blocking | `.venv/bin/pytest backend/tests/ingesters/test_sead_change_request_confirmation.py backend/tests/ingesters/test_sead_change_request_ingester.py -q` | `PH3-AC-2` | `confirm_binding_set` is never called; a `proposed` set yields a pending-confirmation failure with no artifact bundle. | Not run (new check). |
-| `V-4` | Regression suite | `.venv/bin/pytest backend/tests/ingesters/ -q` | `PH3-AC-1`, `PH3-AC-2`, `PH3-AC-3` | Full ingester suite stays green; `test_sead_change_request_submission_sims_integration.py` passes against the disposable DB when available. | Pass (2026-10-03): 182 passed, 4 skipped after Area 2. |
+| `V-3` | No-confirm blocking | `.venv/bin/pytest backend/tests/ingesters/test_sead_change_request_confirmation.py backend/tests/ingesters/test_sead_change_request_ingester.py -q` | `PH3-AC-2` | `confirm_binding_set` is never called; a `proposed` set yields a pending-confirmation failure with no artifact bundle. | Pass (2026-10-03): orchestration no-confirm tests assert `confirm_calls == []`; `test_ingest_returns_pending_confirmation_report_for_proposed_binding_set` asserts `deploy_artifact is None`. |
+| `V-4` | Regression suite | `.venv/bin/pytest backend/tests/ingesters/ -q` | `PH3-AC-1`, `PH3-AC-2`, `PH3-AC-3` | Full ingester suite stays green; `test_sead_change_request_submission_sims_integration.py` passes against the disposable DB when available. | Pass (2026-10-03): 183 passed, 4 skipped after Area 3. |
 | `V-5` | Strategy parity | `.venv/bin/pytest backend/tests/ingesters/test_sead_change_request_sql_builder.py backend/tests/ingesters/test_sead_change_request_package_builder.py -q` | `PH3-AC-3` | Inline `INSERT` and copy-CSV emit equivalent identity values; no package for unsupported/unconfirmed work. | Not run (new check). |
 | `V-6` | Lint and format | `.venv/bin/ruff check backend/app/models/sims.py backend/app/services/ingester_runtime.py ingesters/sead_change_request/orchestration.py ingesters/sead_change_request/contracts.py ingesters/sead_change_request/input_resolution.py ingesters/sead_change_request/preparation.py ingesters/sead_change_request/ingester.py ingesters/sead_change_request/result_builders.py` then `make tidy` | `PH3-AC-1`, `PH3-AC-2`, `PH3-AC-3` | No Ruff findings; Black + isort clean. | Not run during planning. |
 
@@ -225,7 +225,7 @@ The phase-plan `VM-6` (one request and one Binding Set per run, stable mapping, 
 | --- | --- | --- | --- |
 | Area 1: Collect and submit one SIMS resolve batch | Done | Phase 1 run_id, Phase 2 modes | `run_id` on `ResolveRequest`/`SubmissionContext`; minted/persisted at input resolution; `resolve_batch` adapter entry point added; 27 runtime/contract/input-resolution tests pass. |
 | Area 2: Collect per-row work then resolve in one batch | Done | Area 1 | `orchestrate_identity_assignments` collects `SimsResolveItem`s and submits one `resolve_batch`; order-correlated outcomes; `lookup-only`/`lookup-extensible` misses blocked; batch 409 handled as a blocked batch. |
-| Area 3: Block artifact generation until confirmation | Not started | Area 2 | Remove auto-confirm; `proposed` blocks. |
+| Area 3: Block artifact generation until confirmation | Done | Area 2 | `confirm_binding_set` removed from orchestration and `SimsClientPort`; `proposed` set blocks with no confirm call; pending-confirmation report still fires. |
 | Area 4: Parity across both deploy strategies | Not started | Areas 2 and 3 | Equivalence assertions; no package for unsupported/unconfirmed work. |
 
 ## Definition Of Done
