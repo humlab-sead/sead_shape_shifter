@@ -87,12 +87,22 @@ class SubmissionContext:
     timestamp: datetime
     binding_set_uuid: str | None = None
     change_request_name: str | None = None
+    run_id: str | None = None
     datatype: str | None = None
     identifier: str | None = None
     description: str | None = None
     issue_identifier: str | None = None
     author: str | None = None
     data_provider_code: str | None = None
+
+
+@dataclass(slots=True)
+class SimsResolveItem:
+    """One row of SIMS work collected for a single resolve batch."""
+
+    entity_name: str
+    row: dict[str, Any]
+    approved_aggregate_id: int | None = None
 
 
 @dataclass(slots=True)
