@@ -46,6 +46,52 @@ class TestPlanTable:
 
         assert plan.planned_actions.tolist() == [PlannedRowAction.RECONCILE, PlannedRowAction.RECONCILE]
 
+    def test_database_sequence_public_ids_plan_for_target_reservation(self):
+        """Explicitly non-tracked entities can reserve public IDs from a database sequence."""
+        frame = pd.DataFrame({"submission_id": [None], "submission_name": ["Submission A"]})
+        entity_spec = EntitySpec(
+            role="fact",
+            public_id="submission_id",
+            public_id_generation="database_sequence",
+            target_table="tbl_submissions",
+            identity_tracking="derived",
+            reconciliation="derive",
+        )
+
+        plan = plan_table("submission", frame, entity_spec)
+
+        assert plan.planned_actions.tolist() == [PlannedRowAction.RESERVE_DATABASE_ID]
+        assert not plan.diagnostics
+
+    def test_database_sequence_public_id_requires_target_table(self):
+        """Database sequence allocation must fail planning when the target table is unknown."""
+        frame = pd.DataFrame({"submission_id": [None]})
+        entity_spec = EntitySpec(
+            role="fact",
+            public_id="submission_id",
+            public_id_generation="database_sequence",
+            identity_tracking="derived",
+            reconciliation="derive",
+        )
+
+        with pytest.raises(ValueError, match="has no target_table"):
+            plan_table("submission", frame, entity_spec)
+
+    @pytest.mark.parametrize("identity_tracking", [None, "tracked"])
+    def test_database_sequence_requires_explicit_non_tracked_identity(self, identity_tracking):
+        """Tracked and implicitly tracked entities must use SIMS rather than a target sequence."""
+        frame = pd.DataFrame({"submission_id": [None]})
+        entity_spec = EntitySpec(
+            role="fact",
+            public_id="submission_id",
+            public_id_generation="database_sequence",
+            target_table="tbl_submissions",
+            identity_tracking=identity_tracking,
+        )
+
+        with pytest.raises(ValueError, match="must explicitly declare a non-tracked identity_tracking value"):
+            plan_table("submission", frame, entity_spec)
+
     def test_fact_rows_treat_numpy_missing_public_ids_as_missing(self):
         """NumPy-backed missing public_id values should not be treated as existing references."""
         frame = pd.DataFrame(
@@ -72,6 +118,44 @@ class TestPlanTable:
         plan = plan_table("sample_taxon", frame, entity_spec)
 
         assert plan.planned_actions.tolist() == [PlannedRowAction.EVALUATE_BRIDGE]
+        assert not plan.diagnostics
+
+    @pytest.mark.parametrize(
+        ("entity_name", "entity_spec", "frame"),
+        [
+            (
+                "dataset",
+                EntitySpec(
+                    role="lookup",
+                    public_id="dataset_id",
+                    identity_tracking="tracked",
+                    reconciliation="allocate",
+                ),
+                pd.DataFrame({"dataset_id": [None], "dataset_name": ["New dataset"]}),
+            ),
+            (
+                "analysis_entity",
+                EntitySpec(
+                    role="bridge",
+                    public_id="analysis_entity_id",
+                    identity_tracking="tracked",
+                    reconciliation="allocate",
+                ),
+                pd.DataFrame(
+                    {
+                        "analysis_entity_id": [None],
+                        "physical_sample_id": [10],
+                        "dataset_id": [20],
+                    }
+                ),
+            ),
+        ],
+    )
+    def test_tracked_allocations_are_not_routed_by_entity_role(self, entity_name, entity_spec, frame):
+        """Tracked entities explicitly marked for allocation use SIMS even when their role is bridge."""
+        plan = plan_table(entity_name, frame, entity_spec)
+
+        assert plan.planned_actions.tolist() == [PlannedRowAction.ALLOCATE]
         assert not plan.diagnostics
 
     def test_bridge_rows_report_missing_uniqueness_metadata(self):

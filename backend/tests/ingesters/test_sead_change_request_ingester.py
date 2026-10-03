@@ -6,6 +6,7 @@ from datetime import datetime
 from hashlib import sha256
 from typing import Any, cast
 
+import httpx
 import pandas as pd
 import pytest
 
@@ -43,6 +44,7 @@ class FakeSimsClient:
         self.binding_set_state = binding_set_state
         self.confirmed_binding_set_state = confirmed_binding_set_state or binding_set_state
         self.target_id = target_id
+        self.approved_aggregate_ids: list[int] = []
         self.associated_change_requests: list[tuple[str, str]] = []
 
     async def allocate_entity(self, entity_name: str, row: dict, submission_context) -> dict:
@@ -51,6 +53,15 @@ class FakeSimsClient:
             "binding_set_uuid": self.binding_set_uuid,
             "binding_set_state": self.binding_set_state,
             "note": f"Allocated {entity_name}",
+        }
+
+    async def bind_existing_entity(self, entity_name: str, row: dict, approved_aggregate_id: int, submission_context) -> dict:
+        self.approved_aggregate_ids.append(approved_aggregate_id)
+        return {
+            "target_id": approved_aggregate_id,
+            "binding_set_uuid": self.binding_set_uuid,
+            "binding_set_state": self.binding_set_state,
+            "note": f"Bound {entity_name} to approved aggregate ID {approved_aggregate_id}",
         }
 
     async def derive_bridge_row(self, entity_name: str, row: dict, submission_context) -> dict:
@@ -82,13 +93,19 @@ class FakeBackendSimsClient:
         lifecycle_state: str = "confirmed",
         *,
         target_id: int | None = None,
+        resolve_error: httpx.HTTPStatusError | None = None,
     ) -> None:
         self.binding_set_uuid = binding_set_uuid
         self.lifecycle_state = lifecycle_state
         self.target_id = target_id
+        self.resolve_error = resolve_error
         self.associated_change_requests: list[tuple[str, str]] = []
 
     async def resolve(self, request: object):
+        if self.resolve_error is not None:
+            raise self.resolve_error
+        requested_aggregate_id = request.requests[0].approved_aggregate_id
+        target_id = requested_aggregate_id if requested_aggregate_id is not None else self.target_id
         return cast(
             Any,
             type(
@@ -107,7 +124,7 @@ class FakeBackendSimsClient:
                         type(
                             "Outcome",
                             (),
-                            {"tracked_identity_uuid": None, "target_id": self.target_id},
+                            {"tracked_identity_uuid": None, "target_id": target_id},
                         )()
                     ],
                 },
@@ -151,6 +168,18 @@ class FakeCollisionChecker:
         return (table_name, tuple(sorted(filters.items()))) in self.rows
 
 
+class FakeTargetIdAllocator:
+    """Return a configured public ID reserved from a target sequence."""
+
+    def __init__(self, target_id: int | None) -> None:
+        self.target_id = target_id
+        self.requests: list[tuple[str, str]] = []
+
+    async def reserve_target_id(self, table_name: str, public_id_column: str) -> int | None:
+        self.requests.append((table_name, public_id_column))
+        return self.target_id
+
+
 class StubBundleFileDeployStrategy:
     """Test strategy that emits an extra sidecar file in the artifact bundle."""
 
@@ -183,6 +212,8 @@ def submission_target_model() -> dict:
         citation={"role": "lookup", "public_id": "biblio_id", "target_table": "tbl_biblio"},
         submission={
             "role": "fact",
+            "identity_tracking": "tracked",
+            "reconciliation": "allocate",
             "public_id": "submission_id",
             "target_table": "tbl_submissions",
             "foreign_keys": [{"entity": "submission_state"}, {"entity": "data_provider"}, {"entity": "citation"}],
@@ -854,6 +885,7 @@ class TestSeadChangeRequestIngesterIngest:
     @pytest.mark.asyncio
     async def test_ingest_emits_submission_and_links_new_dataset(self, tmp_path):
         """Ingest should resolve the provider, emit one submission, and link new datasets to it."""
+        target_id_allocator = FakeTargetIdAllocator(702)
         ingester = SeadChangeRequestIngester(
             IngesterConfig(
                 host="localhost",
@@ -875,6 +907,7 @@ class TestSeadChangeRequestIngesterIngest:
                     "submission_context": minimal_submission_context(),
                     "reconciliation_client": FakeReconciliationClient(target_id=51),
                     "sims_client": FakeSimsClient(binding_set_state="confirmed", target_id=501),
+                    "target_id_allocator": target_id_allocator,
                 },
             )
         )
@@ -888,10 +921,12 @@ class TestSeadChangeRequestIngesterIngest:
         assert 'INSERT INTO "tbl_datasets"' in deploy_sql
         assert '"submission_id"' in deploy_sql
         assert "tbl_submission_tasks" not in deploy_sql
+        assert target_id_allocator.requests == []
 
     @pytest.mark.asyncio
     async def test_ingest_copy_csv_emits_submission_and_dataset_payloads(self, tmp_path):
         """Copy-CSV should emit payloads for the new submission and linked dataset only."""
+        target_id_allocator = FakeTargetIdAllocator(702)
         ingester = SeadChangeRequestIngester(
             IngesterConfig(
                 host="localhost",
@@ -914,6 +949,7 @@ class TestSeadChangeRequestIngesterIngest:
                     "deploy_strategy": "copy_csv",
                     "reconciliation_client": FakeReconciliationClient(target_id=51),
                     "sims_client": FakeSimsClient(binding_set_state="confirmed", target_id=501),
+                    "target_id_allocator": target_id_allocator,
                 },
             )
         )
@@ -927,6 +963,7 @@ class TestSeadChangeRequestIngesterIngest:
         assert any(path.endswith("/tbl_datasets.gz") for path in bundle_files)
         assert not any(path.endswith("/tbl_data_providers.gz") for path in bundle_files)
         assert not any(path.endswith("/tbl_submission_states.gz") for path in bundle_files)
+        assert target_id_allocator.requests == []
 
     @pytest.mark.asyncio
     async def test_ingest_returns_validation_failure_for_invalid_bundle(self):
@@ -1016,6 +1053,71 @@ class TestSeadChangeRequestIngesterIngest:
         assert result.success is False
         assert result.message == "Identity resolution incomplete"
         assert result.error_details == "Entity 'sample' row '0' is missing an identity assignment for planned action 'allocate'"
+
+    @pytest.mark.asyncio
+    async def test_ingest_blocks_sample_without_required_fields_or_references(self, tmp_path):
+        """Ingest must not emit artifacts when required sample fields or references are missing."""
+        target_model = minimal_target_model(
+            sample_group={"role": "fact", "public_id": "sample_group_id"},
+            sample_type={"role": "lookup", "public_id": "sample_type_id"},
+            sample={
+                "role": "fact",
+                "public_id": "physical_sample_id",
+                "target_table": "tbl_physical_samples",
+                "columns": {
+                    "sample_group_id": {"required": True, "type": "integer", "nullable": False},
+                    "sample_type_id": {"required": True, "type": "integer", "nullable": False},
+                    "sample_name": {"required": True, "type": "string", "nullable": False},
+                },
+                "foreign_keys": [
+                    {"entity": "sample_group", "required": True},
+                    {"entity": "sample_type", "required": True},
+                ],
+            },
+        )
+        ingester = SeadChangeRequestIngester(
+            IngesterConfig(
+                host="localhost",
+                port=5432,
+                dbname="test_db",
+                user="test_user",
+                output_folder=str(tmp_path),
+                extra={
+                    "tables": {
+                        "sample": pd.DataFrame(
+                            {
+                                "physical_sample_id": [None],
+                                "sample_group_id": [None],
+                                "sample_type_id": [None],
+                                "sample_name": [None],
+                            }
+                        )
+                    },
+                    "target_model": target_model,
+                    "submission_context": minimal_submission_context(),
+                    "identity_assignments": {
+                        "sample": {
+                            0: {
+                                "state": ChangeRowState.NEWLY_ALLOCATED_ENTITY,
+                                "target_id": 501,
+                            }
+                        }
+                    },
+                },
+            )
+        )
+
+        result = await ingester.ingest("submission.xlsx", validate_first=False)
+
+        assert result.success is False
+        assert result.message == "PK/FK projection incomplete"
+        assert result.error_details == (
+            "Entity 'sample' has 1 null value(s) in required target column 'sample_name'\n"
+            "Entity 'sample' has 1 missing required FK value(s) for 'sample_group_id'\n"
+            "Entity 'sample' has 1 missing required FK value(s) for 'sample_type_id'"
+        )
+        assert result.deploy_artifact is None
+        assert not list(tmp_path.iterdir())
 
     @pytest.mark.asyncio
     async def test_ingest_accepts_resolved_identity_assignments(self, tmp_path):
@@ -1529,8 +1631,8 @@ class TestSeadChangeRequestIngesterIngest:
         assert result.deploy_artifact is None
 
     @pytest.mark.asyncio
-    async def test_ingest_returns_explicit_capability_gap_when_sims_has_no_target_id(self):
-        """Ingest should surface the current Delivery 1 SIMS capability gap explicitly."""
+    async def test_ingest_blocks_before_writing_when_sims_has_no_aggregate_id(self, tmp_path):
+        """Ingest should block artifact output when SIMS does not return an aggregate ID."""
         sims_client = FakeSimsClient(binding_set_state="confirmed", target_id=None)
         ingester = SeadChangeRequestIngester(
             IngesterConfig(
@@ -1538,6 +1640,7 @@ class TestSeadChangeRequestIngesterIngest:
                 port=5432,
                 dbname="test_db",
                 user="test_user",
+                output_folder=str(tmp_path),
                 extra={
                     "tables": {"sample": pd.DataFrame({"sample_id": [None]})},
                     "target_model": minimal_target_model(sample={"role": "fact", "public_id": "sample_id"}),
@@ -1550,10 +1653,12 @@ class TestSeadChangeRequestIngesterIngest:
         result = await ingester.ingest("submission.xlsx", validate_first=False)
 
         assert result.success is False
-        assert result.message == "SIMS target ID allocation capability incomplete"
+        assert result.message == "SIMS aggregate ID allocation capability incomplete"
         assert result.error_details is not None
         assert "complete target projection" in result.error_details
-        assert "target-facing integer ID" in result.error_details
+        assert "SIMS aggregate ID" in result.error_details
+        assert result.deploy_artifact is None
+        assert not list(tmp_path.iterdir())
 
     @pytest.mark.asyncio
     async def test_ingest_runs_mixed_pilot_bundle(self, tmp_path):
@@ -1701,6 +1806,40 @@ class TestSeadChangeRequestIngesterIngest:
         )
         bundle_name = expected_bundle_name(change_request_name="deploy/backend-bridge")
         assert (tmp_path / bundle_name / "deploy" / f"{bundle_name}.sql").exists()
+
+    @pytest.mark.asyncio
+    async def test_ingest_blocks_artifact_when_approved_match_conflicts_with_sims(self, tmp_path):
+        request = httpx.Request("POST", "http://sims.test/identity/resolve")
+        response = httpx.Response(409, request=request, text="approved aggregate ID is already bound elsewhere")
+        conflict = httpx.HTTPStatusError("409 Conflict", request=request, response=response)
+        adapter = SeadChangeRequestSimsAdapter(cast(Any, FakeBackendSimsClient(resolve_error=conflict)))
+        ingester = SeadChangeRequestIngester(
+            IngesterConfig(
+                host="localhost",
+                port=5432,
+                dbname="test_db",
+                user="test_user",
+                output_folder=str(tmp_path),
+                extra={
+                    "tables": {"taxon": pd.DataFrame({"taxon_id": [None], "taxon_name": ["Approved taxon"]})},
+                    "target_model": minimal_target_model(
+                        taxon={"role": "classifier", "public_id": "taxon_id", "target_table": "tbl_taxa"}
+                    ),
+                    "submission_context": minimal_submission_context(),
+                    "sims_client": adapter,
+                    "reconciliation_client": FakeReconciliationClient(target_id=77),
+                },
+            )
+        )
+
+        result = await ingester.ingest("submission.xlsx", validate_first=False)
+
+        assert result.success is False
+        assert result.message == "Identity resolution incomplete"
+        assert "HTTP 409" in (result.error_details or "")
+        assert "already bound elsewhere" in (result.error_details or "")
+        assert result.deploy_artifact is None
+        assert list(tmp_path.iterdir()) == []
 
     @pytest.mark.asyncio
     async def test_ingest_associates_change_request_after_confirmation(self, tmp_path):
