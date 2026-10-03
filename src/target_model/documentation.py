@@ -23,6 +23,7 @@ import pandas as pd
 from jinja2 import Environment, FileSystemLoader
 from jinja2.environment import Template
 
+from src.target_model.effective_identity import resolve_effective_identity
 from src.target_model.models import EntitySpec, TargetModel
 from src.target_model.schema_reference import generate_target_model_schema_reference
 from src.utility import Registry
@@ -259,36 +260,11 @@ class SimsDocumentGenerator(TextDocumentGenerator):
     @staticmethod
     def _resolve_effective_sims(spec: EntitySpec) -> dict[str, str | None]:
         """Compute effective SIMS properties, applying defaults from entity role."""
-        identity_tracking: str | None = spec.identity_tracking
-        reconciliation: str | None = spec.reconciliation
-        aggregate_parent: str | None = spec.aggregate_parent
-
-        if identity_tracking is None:
-            if aggregate_parent:
-                identity_tracking = "child"
-            elif spec.role == "fact":
-                identity_tracking = "tracked"
-            elif spec.role in ("lookup", "classifier"):
-                identity_tracking = "reconciled"
-            elif spec.role == "bridge":
-                identity_tracking = "derived"
-
-        if reconciliation is None:
-            if identity_tracking == "child":
-                reconciliation = None
-            elif identity_tracking == "tracked":
-                reconciliation = "allocate"
-            elif spec.role == "lookup":
-                reconciliation = "reconcile-exact"
-            elif spec.role == "classifier":
-                reconciliation = "lookup-only"
-            elif identity_tracking == "derived":
-                reconciliation = "derive"
-
+        effective = resolve_effective_identity(spec)
         return {
-            "identity_tracking": identity_tracking,
-            "reconciliation": reconciliation,
-            "aggregate_parent": aggregate_parent,
+            "identity_tracking": effective.identity_tracking,
+            "reconciliation": effective.reconciliation,
+            "aggregate_parent": effective.aggregate_parent,
         }
 
     @staticmethod
