@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from src.issues import CoreIssue
+from src.target_model.effective_identity import resolve_effective_identity
 from src.target_model.models import EntitySpec, TargetModel
 
 
@@ -98,30 +99,8 @@ class TargetModelSpecValidator:
 
     @staticmethod
     def _resolve_effective_sims(spec: EntitySpec) -> tuple[str | None, str | None]:
-        identity_tracking: str | None = spec.identity_tracking
-        reconciliation: str | None = spec.reconciliation
-
-        if identity_tracking is None:
-            if spec.aggregate_parent:
-                identity_tracking = "child"
-            elif spec.role == "fact":
-                identity_tracking = "tracked"
-            elif spec.role in ("lookup", "classifier"):
-                identity_tracking = "reconciled"
-            elif spec.role == "bridge":
-                identity_tracking = "derived"
-
-        if reconciliation is None:
-            if identity_tracking == "tracked":
-                reconciliation = "allocate"
-            elif spec.role == "lookup":
-                reconciliation = "reconcile-exact"
-            elif spec.role == "classifier":
-                reconciliation = "lookup-only"
-            elif identity_tracking == "derived":
-                reconciliation = "derive"
-
-        return identity_tracking, reconciliation
+        effective = resolve_effective_identity(spec)
+        return effective.identity_tracking, effective.reconciliation
 
     def _validate_aggregate_parent(self, target_model: TargetModel, entity_name: str, entity_spec: EntitySpec) -> list[SpecValidationIssue]:
         issues: list[SpecValidationIssue] = []
