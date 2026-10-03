@@ -55,7 +55,8 @@ async def check_projected_collisions(
         insert_frame: pd.DataFrame = projected_table.frame.loc[insert_mask]
         table_name: str = entity_spec.target_table or entity_name
 
-        if entity_spec.role == "bridge":
+        is_tracked_allocation = entity_spec.identity_tracking == "tracked" and entity_spec.reconciliation == "allocate"
+        if entity_spec.role == "bridge" and not is_tracked_allocation:
             diagnostics.extend(await _check_bridge_collisions(entity_name, table_name, entity_spec, insert_frame, collision_checker))
             continue
 

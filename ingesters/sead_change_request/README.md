@@ -187,7 +187,8 @@ Optional injected collaborators include:
 
 - `sims_client`: allocates entities, derives bridge rows, and manages Binding Set state
 - `reconciliation_client`: resolves classifier-like rows to existing target IDs
-- `collision_checker`: checks whether rendered rows would collide with target data
+- `collision_checker`: checks whether rendered rows would collide with target data and reserves configured database-sequence public IDs
+- `target_id_allocator`: optional separate client for reserving configured database-sequence public IDs; defaults to `collision_checker`
 
 ## Artifact Output
 

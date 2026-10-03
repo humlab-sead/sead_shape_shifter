@@ -81,6 +81,11 @@ class ResolutionRequest(BaseModel):
         default_factory=list,
         description="Optional supplementary keys also stored alongside the primary signal.",
     )
+    approved_aggregate_id: int | None = Field(
+        default=None,
+        gt=0,
+        description="SIMS-issued aggregate ID selected by the consumer for binding.",
+    )
 
 
 class ResolveRequest(BaseModel):
@@ -127,7 +132,7 @@ class ResolutionOutcome(BaseModel):
     tracked_identity_uuid: UUID | None = None
     target_id: int | None = Field(
         default=None,
-        description="Target-facing integer ID resolved or allocated for the entity when the authority service can materialize one.",
+        description="SIMS-issued aggregate ID returned under the current target_id API field.",
     )
 
 
