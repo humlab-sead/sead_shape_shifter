@@ -244,6 +244,35 @@ def test_validator_reports_invalid_identity_reconciliation_combinations() -> Non
     ]
 
 
+def test_validator_requires_database_sequences_to_use_explicit_non_tracked_identity() -> None:
+    target_model = TargetModel.model_validate(
+        {
+            "model": {"name": "SEAD Clearinghouse", "version": "2.0.0"},
+            "entities": {
+                "implicitly_tracked": {
+                    "role": "fact",
+                    "public_id": "implicitly_tracked_id",
+                    "public_id_generation": "database_sequence",
+                },
+                "tracked_entity": {
+                    "role": "fact",
+                    "public_id": "tracked_entity_id",
+                    "public_id_generation": "database_sequence",
+                    "identity_tracking": "tracked",
+                    "reconciliation": "allocate",
+                },
+            },
+        }
+    )
+
+    issues = TargetModelSpecValidator().validate(target_model)
+
+    assert [(issue.code, issue.entity) for issue in issues] == [
+        ("DATABASE_SEQUENCE_REQUIRES_EXPLICIT_NON_TRACKED_IDENTITY", "implicitly_tracked"),
+        ("DATABASE_SEQUENCE_REQUIRES_EXPLICIT_NON_TRACKED_IDENTITY", "tracked_entity"),
+    ]
+
+
 def test_validator_reports_invalid_allowed_values_usage() -> None:
     target_model = TargetModel.model_validate(
         {

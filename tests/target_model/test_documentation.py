@@ -521,6 +521,9 @@ class TestTargetModelDocumentGenerator:
         result = gen.generate(DocumentFormat.SIMS)
         assert isinstance(result, bytes)
         assert len(result) > 0
+        generated = result.decode()
+        assert "not the SIMS tracked-identity registry" in generated
+        assert "does not prescribe the SIMS identity value format or allocator implementation" in generated
 
     def test_generate_raises_value_error_for_unknown_format(self):
         gen = TargetModelDocumentGenerator(self._model())
