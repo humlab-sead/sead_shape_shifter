@@ -19,6 +19,7 @@ from loguru import logger
 
 from backend.app.models.sims import (
     BindingSetResponse,
+    CapabilitiesResponse,
     ChangeDetectionRequest,
     ChangeDetectionResult,
     ResolveRequest,
@@ -184,3 +185,15 @@ class SimsClient:
         """
         data = await self._get("scopes")
         return [SourceScope.model_validate(item) for item in data]
+
+    async def get_capabilities(self) -> CapabilitiesResponse:
+        """Return the configured SIMS identity capabilities (GET /identity/capabilities).
+
+        Returns:
+            CapabilitiesResponse with the capability version and one entry per configured entity type.
+
+        Raises:
+            httpx.HTTPStatusError: On 4xx/5xx responses from the authority service.
+        """
+        data = await self._get("capabilities")
+        return CapabilitiesResponse.model_validate(data)

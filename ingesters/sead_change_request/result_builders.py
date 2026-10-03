@@ -11,6 +11,8 @@ from ingesters.sead_change_request.preparation import PreparationResult
 def build_validation_result(preparation: PreparationResult) -> ValidationResult:
     """Build the protocol validation result from a shared preparation output."""
     validation_errors = preparation.planned.errors + preparation.projection_result.diagnostics
+    if preparation.preflight_result is not None:
+        validation_errors = validation_errors + preparation.preflight_result.diagnostics
     warnings = list(preparation.planned.warnings)
 
     if preparation.resolution_result.blocked_rows:
@@ -81,7 +83,8 @@ def summarize_identity_work(preparation: PreparationResult) -> list[str]:
             f"{work_plan.total_blocked_existing_update_rows} blocked_existing_update, "
             f"{work_plan.total_allocation_rows} allocation, "
             f"{work_plan.total_reconciliation_rows} reconciliation, "
-            f"{work_plan.total_bridge_rows} bridge"
+            f"{work_plan.total_bridge_rows} bridge, "
+            f"{work_plan.total_inherit_rows} inherit"
         )
     ]
 
@@ -100,6 +103,12 @@ def build_ingestion_input_failure(exc: InputResolutionError) -> IngestionResult:
 
 def check_ingestion_preconditions(preparation: PreparationResult) -> IngestionResult | None:
     """Return a failed ingestion result when preparation did not reach a deployable state."""
+    if preparation.preflight_result is not None and preparation.preflight_result.has_blockers:
+        return IngestionResult.create_failed_result(
+            message="SIMS capability preflight failed",
+            details=failure_details(preparation.preflight_result.diagnostics),
+        )
+
     if preparation.planned.errors:
         return IngestionResult.create_failed_result(
             message="Validation failed",

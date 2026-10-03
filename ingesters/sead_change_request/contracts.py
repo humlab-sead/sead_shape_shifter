@@ -148,6 +148,20 @@ class IdentityWorkPlan:
 
 
 @dataclass(slots=True)
+class CapabilityPreflightResult:
+    """Result of comparing planned identity work against SIMS capabilities."""
+
+    model_name: str
+    model_version: str
+    checked_entities: list[str] = field(default_factory=list)
+    diagnostics: list[str] = field(default_factory=list)
+
+    @property
+    def has_blockers(self) -> bool:
+        return bool(self.diagnostics)
+
+
+@dataclass(slots=True)
 class IdentityAssignment:
     """Resolved identity decision for a single planned row."""
 

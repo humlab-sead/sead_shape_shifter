@@ -11,6 +11,7 @@ import pandas as pd
 import pytest
 
 from backend.app.ingesters import IngesterConfig
+from backend.app.models.sims import CapabilitiesResponse, EntityCapabilityResponse
 from backend.app.services.ingester_runtime import SeadChangeRequestSimsAdapter
 from ingesters.sead_change_request import ChangeRowState, DeployArtifact, SourceTableBundle
 from ingesters.sead_change_request.contracts import SubmissionContext, resolve_bundle_name
@@ -129,6 +130,36 @@ class FakeBackendSimsClient:
                     ],
                 },
             )(),
+        )
+
+    async def get_capabilities(self) -> CapabilitiesResponse:
+        """Return a permissive capability set for the entities used by adapter tests."""
+        entity_types = (
+            "sample",
+            "sample_group",
+            "taxon",
+            "sample_taxon",
+            "submission",
+            "submission_state",
+            "data_provider",
+            "citation",
+            "dataset",
+            "site",
+            "method",
+        )
+        return CapabilitiesResponse(
+            version="1.0",
+            entities=[
+                EntityCapabilityResponse(
+                    entity_type=entity_type,
+                    entity_subtype="shared_metadata",
+                    bind_existing=True,
+                    allocate_new=True,
+                    auto_confirm=True,
+                    accept_uuid=False,
+                )
+                for entity_type in entity_types
+            ],
         )
 
     async def get_binding_set(self, binding_set_uuid):
