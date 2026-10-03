@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 
 from ingesters.sead_change_request import ChangeRowState, SubmissionContext, orchestrate_identity_assignments, plan_table
-from ingesters.sead_change_request.contracts import PlannedRowAction, PlannedTable
+from ingesters.sead_change_request.contracts import PlannedRowAction, PlannedTable, SimsResolveItem
 from ingesters.sead_change_request.orchestration import SIMS_AGGREGATE_ID_CAPABILITY_NOTE
 from src.target_model.models import EntitySpec
 
@@ -50,6 +50,7 @@ class FakeSimsClient:
         self.target_id = target_id
         self.approved_aggregate_ids: list[int] = []
         self.allocated_entities: list[str] = []
+        self.batch_calls: list[list[SimsResolveItem]] = []
 
     async def allocate_entity(self, entity_name: str, row: dict, submission_context: SubmissionContext) -> dict:
         self.allocated_entities.append(entity_name)
@@ -86,6 +87,22 @@ class FakeSimsClient:
 
     async def get_binding_set_state(self, binding_set_uuid: str) -> str:
         return self.binding_set_state
+
+    async def resolve_batch(self, items: list[SimsResolveItem], submission_context: SubmissionContext) -> dict:
+        self.batch_calls.append(list(items))
+        outcomes = []
+        for item in items:
+            if item.approved_aggregate_id is not None:
+                self.approved_aggregate_ids.append(item.approved_aggregate_id)
+                outcomes.append({"target_id": item.approved_aggregate_id, "tracked_identity_uuid": None})
+            else:
+                self.allocated_entities.append(item.entity_name)
+                outcomes.append({"target_id": self.target_id, "tracked_identity_uuid": None})
+        return {
+            "outcomes": outcomes,
+            "binding_set_uuid": self.binding_set_uuid,
+            "binding_set_state": self.binding_set_state,
+        }
 
     async def confirm_binding_set(self, binding_set_uuid: str) -> str:
         self.binding_set_state = self.confirmed_binding_set_state
@@ -346,3 +363,97 @@ class TestOrchestrateIdentityAssignments:
         assignment = result.assignments["sample"][0]
         assert assignment.state == ChangeRowState.BLOCKED_UNRESOLVED
         assert "blocked until mutable-field boundaries are complete" in (assignment.note or "")
+
+    @pytest.mark.asyncio
+    async def test_multiple_allocations_are_collected_into_one_batch(self):
+        """Two allocate rows should submit exactly one SIMS resolve batch."""
+        frame = pd.DataFrame({"sample_id": [None, None], "sample_name": ["A", "B"]})
+        planned_table = plan_table("sample", frame, EntitySpec(role="fact", public_id="sample_id"))
+        sims_client = FakeSimsClient(binding_set_state="confirmed", target_id=501)
+
+        result = await orchestrate_identity_assignments(
+            [planned_table],
+            minimal_submission_context(),
+            sims_client=sims_client,
+        )
+
+        assert len(sims_client.batch_calls) == 1
+        assert len(sims_client.batch_calls[0]) == 2
+        assert result.assignments["sample"][0].target_id == 501
+        assert result.assignments["sample"][1].target_id == 501
+
+    @pytest.mark.asyncio
+    async def test_outcomes_map_to_rows_by_request_order(self):
+        """Outcomes must correlate to rows by request order, not by entity name."""
+        frame = pd.DataFrame({"sample_id": [None, None], "sample_name": ["A", "B"]})
+        planned_table = plan_table("sample", frame, EntitySpec(role="fact", public_id="sample_id"))
+        sims_client = FakeSimsClient(binding_set_state="confirmed", target_id=501)
+
+        async def ordered_resolve_batch(items, submission_context):
+            sims_client.batch_calls.append(list(items))
+            return {
+                "outcomes": [
+                    {"target_id": 1001, "tracked_identity_uuid": None},
+                    {"target_id": 1002, "tracked_identity_uuid": None},
+                ],
+                "binding_set_uuid": sims_client.binding_set_uuid,
+                "binding_set_state": sims_client.binding_set_state,
+            }
+
+        sims_client.resolve_batch = ordered_resolve_batch
+
+        result = await orchestrate_identity_assignments(
+            [planned_table],
+            minimal_submission_context(),
+            sims_client=sims_client,
+        )
+
+        assert result.assignments["sample"][0].target_id == 1001
+        assert result.assignments["sample"][1].target_id == 1002
+
+    @pytest.mark.asyncio
+    async def test_lookup_only_miss_does_not_allocate(self):
+        """A lookup-only reconciliation miss must block instead of allocating."""
+        frame = pd.DataFrame({"taxa_tree_master_id": [None], "taxon_name": ["Taxon A"]})
+        entity_spec = EntitySpec(
+            role="classifier",
+            public_id="taxa_tree_master_id",
+            identity_tracking="reconciled",
+            reconciliation="lookup-only",
+        )
+        planned_table = plan_table("taxa_tree_master", frame, entity_spec)
+        sims_client = FakeSimsClient(binding_set_state="confirmed", target_id=501)
+
+        result = await orchestrate_identity_assignments(
+            [planned_table],
+            minimal_submission_context(),
+            sims_client=sims_client,
+            reconciliation_client=FakeReconciliationClient(target_id=None),
+            target_model_entities={"taxa_tree_master": entity_spec},
+        )
+
+        assignment = result.assignments["taxa_tree_master"][0]
+        assert assignment.state == ChangeRowState.BLOCKED_UNRESOLVED
+        assert "does not permit SIMS allocation" in (assignment.note or "")
+        assert sims_client.batch_calls == []
+
+    @pytest.mark.asyncio
+    async def test_reconcile_exact_miss_allocates_after_approval(self):
+        """A reconcile-exact reconciliation miss may request allocation after approval."""
+        frame = pd.DataFrame({"site_id": [None], "site_name": ["Nordic Site"]})
+        entity_spec = EntitySpec(role="lookup", public_id="site_id")
+        planned_table = plan_table("site", frame, entity_spec)
+        sims_client = FakeSimsClient(binding_set_state="confirmed", target_id=501)
+
+        result = await orchestrate_identity_assignments(
+            [planned_table],
+            minimal_submission_context(),
+            sims_client=sims_client,
+            reconciliation_client=FakeReconciliationClient(target_id=None),
+            target_model_entities={"site": entity_spec},
+        )
+
+        assignment = result.assignments["site"][0]
+        assert assignment.state == ChangeRowState.NEWLY_ALLOCATED_ENTITY
+        assert assignment.target_id == 501
+        assert sims_client.allocated_entities == ["site"]
