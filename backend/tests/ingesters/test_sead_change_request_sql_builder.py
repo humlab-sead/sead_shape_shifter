@@ -112,6 +112,75 @@ class TestBuildDeployArtifact:
         ]
         assert artifact.bundle_files == {f"deploy/{expected_bundle_name}/tbl_sample.gz": "101\tO'Reilly\ttrue\n"}
 
+    def test_inline_insert_omits_generated_bridge_id(self):
+        frame = pd.DataFrame({"site_location_id": pd.Series([pd.NA], dtype="Int64"), "site_id": [6489], "location_id": [1]})
+        package = ChangeRequestPackage(
+            tables={
+                "site_location": ChangeRequestTable(
+                    name="site_location",
+                    frame=frame,
+                    row_states=pd.Series([ChangeRowState.DERIVED_BRIDGE_ROW], index=frame.index, name="_row_state"),
+                )
+            }
+        )
+        target_model = minimal_target_model(
+            site_location={
+                "role": "bridge",
+                "public_id": "site_location_id",
+                "target_table": "tbl_site_locations",
+                "columns": {
+                    "site_location_id": {"required": True, "generated": True, "type": "integer", "nullable": False},
+                    "site_id": {"required": True, "type": "integer", "nullable": False},
+                    "location_id": {"required": True, "type": "integer", "nullable": False},
+                },
+            }
+        )
+        submission_context = SubmissionContext(
+            submission_name="site-insert",
+            project_name="test-project",
+            timestamp=datetime(2026, 5, 23, 23, 0, 0),
+        )
+
+        artifact = build_deploy_artifact(package, target_model, submission_context)
+
+        assert artifact.statements == ['INSERT INTO "tbl_site_locations" ("site_id", "location_id") VALUES (6489, 1);']
+
+    def test_copy_csv_omits_generated_bridge_id(self):
+        frame = pd.DataFrame({"site_location_id": pd.Series([pd.NA], dtype="Int64"), "site_id": [6489], "location_id": [1]})
+        package = ChangeRequestPackage(
+            tables={
+                "site_location": ChangeRequestTable(
+                    name="site_location",
+                    frame=frame,
+                    row_states=pd.Series([ChangeRowState.DERIVED_BRIDGE_ROW], index=frame.index, name="_row_state"),
+                )
+            }
+        )
+        target_model = minimal_target_model(
+            site_location={
+                "role": "bridge",
+                "public_id": "site_location_id",
+                "target_table": "tbl_site_locations",
+                "columns": {
+                    "site_location_id": {"required": True, "generated": True, "type": "integer", "nullable": False},
+                    "site_id": {"required": True, "type": "integer", "nullable": False},
+                    "location_id": {"required": True, "type": "integer", "nullable": False},
+                },
+            }
+        )
+        submission_context = SubmissionContext(
+            submission_name="site-insert",
+            project_name="test-project",
+            timestamp=datetime(2026, 5, 23, 23, 0, 0),
+        )
+
+        artifact = build_deploy_artifact(package, target_model, submission_context, strategy="copy_csv")
+        expected_bundle_name = bundle_name(submission_context)
+        bundle_path = f"deploy/{expected_bundle_name}/tbl_site_locations.gz"
+
+        assert artifact.bundle_files[bundle_path] == "6489\t1\n"
+        assert '("site_id", "location_id")' in artifact.statements[0]
+
     def test_copy_csv_distinguishes_null_and_empty_string(self):
         """CSV-mode payloads should distinguish null from empty string."""
         frame = pd.DataFrame({"sample_id": [101], "sample_name": [""], "sample_note": [None]})

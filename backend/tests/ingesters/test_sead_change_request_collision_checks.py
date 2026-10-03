@@ -119,3 +119,41 @@ class TestCheckProjectedCollisions:
 
         assert result.has_conflicts is True
         assert result.diagnostics == ["Bridge entity 'sample_taxon' cannot run collision checks because unique_sets metadata is missing"]
+
+    @pytest.mark.asyncio
+    async def test_tracked_allocated_bridge_checks_its_public_id(self):
+        frame = pd.DataFrame({"analysis_entity_id": [223430], "physical_sample_id": [63876], "dataset_id": [91925]})
+        identity_result = IdentityResolutionResult(
+            tables={
+                "analysis_entity": ResolvedIdentityTable(
+                    entity_name="analysis_entity",
+                    frame=frame.copy(),
+                    row_states=pd.Series([ChangeRowState.NEWLY_ALLOCATED_ENTITY], index=frame.index, name="_row_state"),
+                    resolved_target_ids=pd.Series([223430], index=frame.index, dtype="Int64", name="_target_id"),
+                )
+            }
+        )
+        projection_result = TargetProjectionResult(
+            tables={"analysis_entity": ProjectedTable(entity_name="analysis_entity", frame=frame.copy())}
+        )
+
+        result = await check_projected_collisions(
+            projection_result,
+            identity_result,
+            minimal_target_model(
+                analysis_entity={
+                    "role": "bridge",
+                    "identity_tracking": "tracked",
+                    "reconciliation": "allocate",
+                    "public_id": "analysis_entity_id",
+                    "target_table": "tbl_analysis_entities",
+                }
+            ),
+            FakeCollisionChecker(target_ids={("tbl_analysis_entities", "analysis_entity_id", 223430)}),
+        )
+
+        assert result.has_conflicts is True
+        assert result.diagnostics == [
+            "Entity 'analysis_entity' row '0' collides with existing target ID 223430 "
+            "in 'tbl_analysis_entities.analysis_entity_id'"
+        ]
