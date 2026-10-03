@@ -104,25 +104,25 @@
 
 **Objective:** Store a scoped run key and completed result with all batch writes in one transaction; replay identical requests and reject key reuse with a changed payload.
 
-**Affected code:** `sead_authority_service/src/api/identity_router.py::ResolveRequest`, `resolve()`; `sead_authority_service/src/identity/service.py::IdentityService`; `sead_authority_service/src/identity/repository.py`; `sead_authority_service/schema/sql/identity/010_resolve_batch_idempotency.sql` (NEW); `sead_authority_service/tests/identity/test_repository.py`; `sead_authority_service/tests/identity/test_service.py`.
+**Affected code:** `sead_authority_service/src/api/identity_router.py::ResolveRequest`, `resolve()`; `sead_authority_service/src/identity/service.py::IdentityService`; `sead_authority_service/src/identity/repository.py`; `sead_authority_service/schema/sql/identity/011_resolve_batch_idempotency.sql` (NEW); `sead_authority_service/tests/identity/test_repository.py`; `sead_authority_service/tests/identity/test_service.py`.
 
 **Dependencies:** `T1.1` defines the required run ID and capability/enablement contract. The additive migration must be applied to the helper-owned database before `V-5`.
 
 **Tasks:**
 
-* [ ] `T2.1` **Change:** Add persistent storage for scoped run keys, request fingerprints, and completed resolve responses.
-  * **Target:** `sead_authority_service/schema/sql/identity/010_resolve_batch_idempotency.sql` (NEW); `sead_authority_service/src/identity/repository.py`.
+* [x] `T2.1` **Change:** Add persistent storage for scoped run keys, request fingerprints, and completed resolve responses.
+  * **Target:** `sead_authority_service/schema/sql/identity/011_resolve_batch_idempotency.sql` (NEW); `sead_authority_service/src/identity/repository.py`.
   * **Current → required:** The database has no resolve-batch idempotency record or unique scope/run-key constraint.
   * **Implementation:** Add an additive identity-schema migration and repository operations to look up and persist one completed batch result per scoped key, including the canonical request fingerprint and response needed for exact replay.
   * **Constraints:** Insert the idempotency record and result in the same transaction as the Submission and identity changes. Never release or recycle a target ID. Do not edit generated schema artifacts or deploy the migration outside the disposable database during this phase.
   * **Validation:** `V-3`, `V-5`; repository unit tests for lookup, insert, uniqueness, and fingerprint mismatch; disposable schema inspection after migration.
-* [ ] `T2.2` **Change:** Route one resolve request through a service method that owns the complete transaction.
+* [x] `T2.2` **Change:** Route one resolve request through a service method that owns the complete transaction.
   * **Target:** `sead_authority_service/src/api/identity_router.py::ResolveRequest`, `resolve()`; `sead_authority_service/src/identity/service.py::IdentityService`.
   * **Current → required:** The router creates the scope and Submission, resolves rows, then binds them in separate transaction contexts.
   * **Implementation:** Require the contract's stable run ID from the first supported batch request and delegate scope resolution/creation, replay lookup, Submission creation, all source-identity resolution, one Binding Set, target-ID allocation, and result persistence to one outer `get_connection()` transaction. Return the saved result for same-key/same-payload retries; return the contract's conflict for same-key/different-payload requests; preserve request order in outcomes.
   * **Constraints:** A failure at any point rolls back the scope created for the batch, Submission, source keys, tracked identities, bindings, Binding Set, and replay result. Use the existing nested `get_connection()` behavior rather than opening independent transaction scopes.
   * **Validation:** `V-2`, `V-4`, `V-5`; unit tests for response ordering and rollback propagation, plus disposable batch replay and failure tests.
-* [ ] `T2.3` **Change:** Serialize duplicate run keys and preserve source-identity binding rules during batch retries.
+* [x] `T2.3` **Change:** Serialize duplicate run keys and preserve source-identity binding rules during batch retries.
   * **Target:** `sead_authority_service/src/identity/service.py::IdentityService`; `sead_authority_service/src/identity/repository.py::SourceIdentityRepository`.
   * **Current → required:** Source-key and binding locks exist, but no lock or unique key serializes concurrent calls for one run ID.
   * **Implementation:** Acquire a database transaction lock for the scoped run key before creating batch records, enforce uniqueness in the schema, reuse confirmed bindings, and retain the existing proposed-binding conflict for a distinct run. Ensure an approved existing `site` ID binds to the existing materialized identity without minting and that new `site`/`sample` operations return their SIMS-allocated target IDs.
@@ -181,7 +181,7 @@
 | `V-2` | Identity unit and API suite | `cd /data/roger/source/sead_authority_service && uv run pytest tests/identity/ -q` | `PH1-AC-1`, `PH1-AC-2`, `PH1-AC-5` | Tests pass for validated configuration, generic capability response, approved binding, missing/invalid configuration, and explicit allocation failures. | Pass on current checkout; database integration tests skipped because `SIMS_INTEGRATION_DB` was unset. |
 | `V-3` | Focused lint | `cd /data/roger/source/sead_authority_service && uv run ruff check src/api/identity_router.py src/identity/policy.py src/identity/service.py src/identity/repository.py tests/identity/test_api.py tests/identity/test_capabilities.py tests/identity/test_service.py tests/identity/test_repository.py tests/identity/test_service_integration.py` | `PH1-AC-1`, `PH1-AC-4`, `PH1-AC-5` | No Ruff findings in the Phase 1 source and test targets. | Pass on existing targets; the NEW test module is not present yet. |
 | `V-4` | Batch contract integration tests | After confirming the configured host/port/database are exactly the helper-owned `127.0.0.1:55432/sead_staging`: `cd /data/roger/source/sead_authority_service && SIMS_INTEGRATION_DB=1 ENV_FILE=tests/.env uv run pytest tests/identity/test_service_integration.py -k batch -v` | `PH1-AC-3`, `PH1-AC-4`, `PH1-AC-5`, `PH1-AC-6` | Guarded tests prove replay, concurrent duplicate serialization, changed-payload conflict, pending-binding conflict, request order, and rollback without duplicate or partial SIMS identities. | Not run; database integration was not enabled during planning. |
-| `V-5` | Additive migration and allocator checks | Apply `schema/sql/identity/010_resolve_batch_idempotency.sql` only after confirming `SEAD_AUTHORITY_OPTIONS_DATABASE_HOST=127.0.0.1`, `SEAD_AUTHORITY_OPTIONS_DATABASE_PORT=55432`, and `SEAD_AUTHORITY_OPTIONS_DATABASE_DBNAME=sead_staging`; inspect the new constraint/table and run `V-4`. | `PH1-AC-2`, `PH1-AC-3`, `PH1-AC-4`, `PH1-AC-5`, `PH1-AC-6` | Migration creates the batch-key constraint on the helper database; failed batches do not advance SIMS allocator state; configured identity values remain unique in the SIMS store. | Not run; migration does not exist. |
+| `V-5` | Additive migration and allocator checks | Apply `schema/sql/identity/011_resolve_batch_idempotency.sql` only after confirming `SEAD_AUTHORITY_OPTIONS_DATABASE_HOST=127.0.0.1`, `SEAD_AUTHORITY_OPTIONS_DATABASE_PORT=55432`, and `SEAD_AUTHORITY_OPTIONS_DATABASE_DBNAME=sead_staging`; inspect the new constraint/table and run `V-4`. | `PH1-AC-2`, `PH1-AC-3`, `PH1-AC-4`, `PH1-AC-5`, `PH1-AC-6` | Migration creates the batch-key constraint on the helper database; failed batches do not advance SIMS allocator state; configured identity values remain unique in the SIMS store. | Not run; migration created but not applied to the disposable database yet. |
 
 The documented disposable check does not validate real reconciliation decisions, intended deployment settings, writer retirement, bootstrap coverage, or cutover. Those remain outside this phase's verification scope.
 
@@ -192,7 +192,7 @@ The documented disposable check does not validate real reconciliation decisions,
 | Capability contract proposal | `sead_authority_service/docs/proposals/SIMS_IDENTITY_CAPABILITY_CONTRACT.md` (NEW) | `T1.1` | Reviewed contract defines the approved operations, response version, error behavior, and required run-ID/fingerprint fields. |
 | Capability API and explicit policy | `sead_authority_service/src/api/identity_router.py`, `src/identity/policy.py`, `config/identity_policy.yml` | `T1.2` | API returns the versioned capability data and rejects unsupported operations before writes. |
 | Identity documentation | `sead_authority_service/src/identity/README.md` | `T1.3` | Endpoint, validated capability configuration, and disposable-test guidance match implementation. |
-| Resolve idempotency migration | `sead_authority_service/schema/sql/identity/010_resolve_batch_idempotency.sql` (NEW) | `T2.1` | Additive schema stores scoped run key, fingerprint, and completed response with a uniqueness constraint. |
+| Resolve idempotency migration | `sead_authority_service/schema/sql/identity/011_resolve_batch_idempotency.sql` (NEW) | `T2.1` | Additive schema stores scoped run key, fingerprint, and completed response with a uniqueness constraint. |
 | Atomic batch orchestration | `sead_authority_service/src/api/identity_router.py`, `src/identity/service.py`, `src/identity/repository.py` | `T2.1`, `T2.2`, `T2.3` | Whole resolve batch commits or rolls back together and exact retries replay the saved result. |
 | Regression and disposable tests | `sead_authority_service/tests/identity/test_capabilities.py` (NEW), `test_api.py`, `test_service.py`, `test_repository.py`, `test_service_integration.py` | `T1.2`, `T1.3`, `T2.1`, `T2.2`, `T2.3`, `T3.1`, `T3.2` | Unit and guarded database tests prove the criteria in the coverage table. |
 | Phase 1 task plan | `docs/proposals/CHANGE_REQUEST_INGESTER/SIMS_IDENTITY_ALLOCATION/SIMS_IDENTITY_ALLOCATION_PHASE_1_TASK_PLAN.md` (NEW) | — | This plan records the repository basis, checks, criteria mapping, and open contract decisions. |
@@ -202,7 +202,7 @@ The documented disposable check does not validate real reconciliation decisions,
 | Area | Status | Dependencies | Notes |
 | --- | --- | --- | --- |
 | Area 1: Define and enforce capability contract | Done | `T1.1` contract deliverable | Capability contract, operations config, `GET /identity/capabilities`, and resolve operation checks implemented and tested. |
-| Area 2: Make resolve batches atomic and replayable | Not started | Area 1; additive migration | Preserve the current dirty Authority Service worktree. |
+| Area 2: Make resolve batches atomic and replayable | Done | Area 1; additive migration | `resolve_batch`, run-key advisory lock, fingerprint replay/conflict, and `011_resolve_batch_idempotency.sql` implemented; unit/API tests pass. Disposable DB-backed `V-4`/`V-5` evidence is Area 3. |
 | Area 3: Verify approved operations in disposable database | Not started | Areas 1 and 2; apply migration to helper database | No intended-deployment or cutover validation. |
 
 ## Definition Of Done
