@@ -79,19 +79,19 @@
 
 **Tasks:**
 
-* [ ] `T1.1` **Change:** Write the companion Authority Service proposal and settle the capability and request contract before implementation.
+* [x] `T1.1` **Change:** Write the companion Authority Service proposal and settle the capability and request contract before implementation.
   * **Target:** `sead_authority_service/docs/proposals/SIMS_IDENTITY_CAPABILITY_CONTRACT.md` (NEW); review Shape Shifter `backend/app/models/sims.py::ResolveRequest` and `backend/app/clients/sims_client.py::SIMSClient.resolve()`.
   * **Current → required:** The phase handoff requires a versioned `GET /identity/capabilities` response, but the exact response schema belongs in a companion Authority Service proposal. The existing downstream request has no stable run ID.
   * **Implementation:** Specify the response version, generic entity-scoped configuration, accepted source-key semantics, confirmation behavior, and identity-value result. A provider-supplied UUID is a source identity value only; it must never replace the SIMS-minted tracked identity UUID or aggregate identity value. Use `site` and `sample` as examples only. Define stable errors for missing or invalid configuration, require a stable run ID and payload fingerprint from the first batch contract version, and document how clients learn configured capabilities. Keep Shape Shifter's reconciliation and match/miss approval outside SIMS.
   * **Constraints:** Configuration selects generic behavior; it must not require entity-specific allocator code. SIMS guarantees uniqueness only within its own identity store and does not map identity values to SEAD tables or columns. Do not include cutover or production enablement in this development task.
   * **Validation:** `V-1`; contract review against the agreed generic identity ownership model, phase plan, and current consumer request model.
-* [ ] `T1.2` **Change:** Replace implicit policy fallback with explicit operation checks and publish the versioned capability response.
+* [x] `T1.2` **Change:** Replace implicit policy fallback with explicit operation checks and publish the versioned capability response.
   * **Target:** `sead_authority_service/src/identity/policy.py::IdentityPolicy`; `sead_authority_service/config/identity_policy.yml`; `sead_authority_service/src/api/identity_router.py`.
   * **Current → required:** Unknown types receive default policy, the policy has no enforced operation field, and no capability endpoint exists.
   * **Implementation:** Parse and validate generic entity configuration defined by `T1.1`; add `GET /identity/capabilities`; derive supported operations from configuration and require a valid configured operation on `POST /identity/resolve` before scope, Submission, or identity writes. Return the contract's stable client error when configuration is missing or invalid.
   * **Constraints:** Preserve `get_entity_policy()` fallback for existing non-capability callers; the resolve endpoint must use validated generic configuration and must not mistake that fallback for support. New entity types must use the same allocator implementation.
   * **Validation:** `V-2`; policy tests for listed/unlisted types and operation combinations; API tests for capability version/content, stable rejection, and rejection before writes.
-* [ ] `T1.3` **Change:** Document the new endpoint and enforceable operation scope in the identity module guide.
+* [x] `T1.3` **Change:** Document the new endpoint and enforceable operation scope in the identity module guide.
   * **Target:** `sead_authority_service/src/identity/README.md`.
   * **Current → required:** The endpoint list and test instructions do not include capability discovery or batch replay.
   * **Implementation:** Document the capability endpoint, configuration-driven operations, missing/invalid configuration behavior, and the documented disposable integration-test command.
@@ -201,7 +201,7 @@ The documented disposable check does not validate real reconciliation decisions,
 
 | Area | Status | Dependencies | Notes |
 | --- | --- | --- | --- |
-| Area 1: Define and enforce capability contract | Not started | `T1.1` contract deliverable | Run ID is required from the first contract version; allocation remains disabled outside the disposable test setup until Phase 4 gates. |
+| Area 1: Define and enforce capability contract | Done | `T1.1` contract deliverable | Capability contract, operations config, `GET /identity/capabilities`, and resolve operation checks implemented and tested. |
 | Area 2: Make resolve batches atomic and replayable | Not started | Area 1; additive migration | Preserve the current dirty Authority Service worktree. |
 | Area 3: Verify approved operations in disposable database | Not started | Areas 1 and 2; apply migration to helper database | No intended-deployment or cutover validation. |
 
