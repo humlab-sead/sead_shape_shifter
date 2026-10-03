@@ -171,13 +171,13 @@
 
 **Tasks:**
 
-* [ ] `T4.1` **Change:** Add strategy-parity assertions for resolved identity values.
+* [x] `T4.1` **Change:** Add strategy-parity assertions for resolved identity values.
   * **Target:** `backend/tests/ingesters/test_sead_change_request_sql_builder.py`; `backend/tests/ingesters/test_sead_change_request_package_builder.py`.
   * **Current → required:** Both strategies are tested in isolation but not asserted equivalent for SIMS-issued IDs.
   * **Implementation:** Build one `ChangeRequestPackage` from resolved identities and render it with both `InlineInsertDeployStrategy` and `CopyCsvDeployStrategy`; assert both carry the same target-facing `public_id` values for newly allocated and reconciled rows.
   * **Constraints:** No production code change; equivalence is a test-level guarantee.
   * **Validation:** `V-4`, `V-5`; equality assertions across strategy outputs.
-* [ ] `T4.2` **Change:** Assert no package is emitted for unsupported or unconfirmed work.
+* [x] `T4.2` **Change:** Assert no package is emitted for unsupported or unconfirmed work.
   * **Target:** `backend/tests/ingesters/test_sead_change_request_ingester.py`; `backend/tests/ingesters/test_sead_change_request_submission_sims_integration.py`.
   * **Current → required:** Blocked/unsupported paths are covered for identity resolution but not tied to both strategies under the no-confirm flow.
   * **Implementation:** Parameterize the existing ingester tests over both deploy strategies: a `proposed` set and a missing identity value each produce no bundle files under inline `INSERT` and copy-CSV.
@@ -201,9 +201,9 @@
 | `V-1` | Request model and run-ID persistence | `cd /data/roger/source/sead_shape_shifter && .venv/bin/pytest backend/tests/ingesters/test_sead_change_request_orchestration.py -q` | `PH3-AC-1` | `run_id` round-trips through `ResolveRequest` and `SubmissionContext`; a supplied key is preserved, an absent key is minted once. | Pass (2026-10-03): new `test_sead_change_request_input_resolution.py` (6 tests) plus adapter `resolve_batch` and `SubmissionContext.run_id` tests; `resolve_batch` submits one request with the persisted run ID. |
 | `V-2` | Single-batch collection and correlation | `.venv/bin/pytest backend/tests/ingesters/test_sead_change_request_orchestration.py -q` | `PH3-AC-1`, `PH3-AC-2` | One `resolve_batch` call; outcomes map by order; `lookup-only` misses do not allocate. | Pass (2026-10-03): 16 orchestration tests pass, including one-batch collection, order correlation, and `lookup-only`/`reconcile-exact` miss handling. |
 | `V-3` | No-confirm blocking | `.venv/bin/pytest backend/tests/ingesters/test_sead_change_request_confirmation.py backend/tests/ingesters/test_sead_change_request_ingester.py -q` | `PH3-AC-2` | `confirm_binding_set` is never called; a `proposed` set yields a pending-confirmation failure with no artifact bundle. | Pass (2026-10-03): orchestration no-confirm tests assert `confirm_calls == []`; `test_ingest_returns_pending_confirmation_report_for_proposed_binding_set` asserts `deploy_artifact is None`. |
-| `V-4` | Regression suite | `.venv/bin/pytest backend/tests/ingesters/ -q` | `PH3-AC-1`, `PH3-AC-2`, `PH3-AC-3` | Full ingester suite stays green; `test_sead_change_request_submission_sims_integration.py` passes against the disposable DB when available. | Pass (2026-10-03): 183 passed, 4 skipped after Area 3. |
-| `V-5` | Strategy parity | `.venv/bin/pytest backend/tests/ingesters/test_sead_change_request_sql_builder.py backend/tests/ingesters/test_sead_change_request_package_builder.py -q` | `PH3-AC-3` | Inline `INSERT` and copy-CSV emit equivalent identity values; no package for unsupported/unconfirmed work. | Not run (new check). |
-| `V-6` | Lint and format | `.venv/bin/ruff check backend/app/models/sims.py backend/app/services/ingester_runtime.py ingesters/sead_change_request/orchestration.py ingesters/sead_change_request/contracts.py ingesters/sead_change_request/input_resolution.py ingesters/sead_change_request/preparation.py ingesters/sead_change_request/ingester.py ingesters/sead_change_request/result_builders.py` then `make tidy` | `PH3-AC-1`, `PH3-AC-2`, `PH3-AC-3` | No Ruff findings; Black + isort clean. | Not run during planning. |
+| `V-4` | Regression suite | `.venv/bin/pytest backend/tests/ingesters/ -q` | `PH3-AC-1`, `PH3-AC-2`, `PH3-AC-3` | Full ingester suite stays green; `test_sead_change_request_submission_sims_integration.py` passes against the disposable DB when available. | Pass (2026-10-03): 186 passed, 4 skipped after Area 4. |
+| `V-5` | Strategy parity | `.venv/bin/pytest backend/tests/ingesters/test_sead_change_request_sql_builder.py backend/tests/ingesters/test_sead_change_request_package_builder.py -q` | `PH3-AC-3` | Inline `INSERT` and copy-CSV emit equivalent identity values; no package for unsupported/unconfirmed work. | Pass (2026-10-03): `TestStrategyParity.test_both_strategies_emit_the_same_resolved_identity_values` asserts both strategies carry identical ordered target IDs; `test_ingest_returns_pending_confirmation_report_for_proposed_binding_set` and `test_ingest_blocks_before_writing_when_sims_has_no_aggregate_id` are parametrized over both strategies and assert no artifact. |
+| `V-6` | Lint and format | `.venv/bin/ruff check backend/app/models/sims.py backend/app/services/ingester_runtime.py ingesters/sead_change_request/orchestration.py ingesters/sead_change_request/contracts.py ingesters/sead_change_request/input_resolution.py ingesters/sead_change_request/preparation.py ingesters/sead_change_request/ingester.py ingesters/sead_change_request/result_builders.py backend/tests/ingesters/test_sead_change_request_sql_builder.py backend/tests/ingesters/test_sead_change_request_ingester.py` then `make tidy` | `PH3-AC-1`, `PH3-AC-2`, `PH3-AC-3` | No Ruff findings; Black + isort clean. | Pass (2026-10-03): Area 4 test files clean. |
 
 The phase-plan `VM-6` (one request and one Binding Set per run, stable mapping, empty-batch skip, same-run retry) maps to `V-1`/`V-2`/`V-4`; `VM-7` (both strategies equivalent, no package for unsupported/unconfirmed work) maps to `V-5` and the disposable `V-4` integration check.
 
@@ -226,20 +226,20 @@ The phase-plan `VM-6` (one request and one Binding Set per run, stable mapping, 
 | Area 1: Collect and submit one SIMS resolve batch | Done | Phase 1 run_id, Phase 2 modes | `run_id` on `ResolveRequest`/`SubmissionContext`; minted/persisted at input resolution; `resolve_batch` adapter entry point added; 27 runtime/contract/input-resolution tests pass. |
 | Area 2: Collect per-row work then resolve in one batch | Done | Area 1 | `orchestrate_identity_assignments` collects `SimsResolveItem`s and submits one `resolve_batch`; order-correlated outcomes; `lookup-only`/`lookup-extensible` misses blocked; batch 409 handled as a blocked batch. |
 | Area 3: Block artifact generation until confirmation | Done | Area 2 | `confirm_binding_set` removed from orchestration and `SimsClientPort`; `proposed` set blocks with no confirm call; pending-confirmation report still fires. |
-| Area 4: Parity across both deploy strategies | Not started | Areas 2 and 3 | Equivalence assertions; no package for unsupported/unconfirmed work. |
+| Area 4: Parity across both deploy strategies | Done | Areas 2 and 3 | `TestStrategyParity` asserts identical ordered IDs across both strategies; no-artifact paths parametrized over both strategies. |
 
 ## Definition Of Done
 
-- [ ] Every `PH3-AC-*` criterion has implementation and validation evidence mapped above.
-- [ ] One resolve request carries all SIMS work per run with a persisted `run_id`; empty batches skip.
-- [ ] Outcomes map deterministically to planned rows by request order.
-- [ ] The ingester never calls `confirm_binding_set`; a `proposed` set blocks artifact generation.
-- [ ] `lookup-only`/`lookup-extensible` reconciliation misses never allocate.
-- [ ] Both deploy strategies emit equivalent SIMS-issued identity values and emit nothing for unsupported or unconfirmed work.
-- [ ] Required tests (`V-1` through `V-5`) and quality checks (`V-6`) pass.
-- [ ] Existing behavior identified for preservation (reconciliation ownership, `associate_change_request` once, pending-confirmation report) is regression-tested.
-- [ ] Deviations and follow-up work (manual confirmation, request chunking, existing-data migration) are documented.
-- [ ] No unresolved question affects implementation, correctness, or validation.
+- [x] Every `PH3-AC-*` criterion has implementation and validation evidence mapped above.
+- [x] One resolve request carries all SIMS work per run with a persisted `run_id`; empty batches skip.
+- [x] Outcomes map deterministically to planned rows by request order.
+- [x] The ingester never calls `confirm_binding_set`; a `proposed` set blocks artifact generation.
+- [x] `lookup-only`/`lookup-extensible` reconciliation misses never allocate.
+- [x] Both deploy strategies emit equivalent SIMS-issued identity values and emit nothing for unsupported or unconfirmed work.
+- [x] Required tests (`V-1` through `V-5`) and quality checks (`V-6`) pass.
+- [x] Existing behavior identified for preservation (reconciliation ownership, `associate_change_request` once, pending-confirmation report) is regression-tested.
+- [x] Deviations and follow-up work (manual confirmation, request chunking, existing-data migration) are documented.
+- [x] No unresolved question affects implementation, correctness, or validation.
 
 ## Risks And Open Questions
 
