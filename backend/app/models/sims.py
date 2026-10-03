@@ -92,6 +92,7 @@ class ResolveRequest(BaseModel):
     """Request body for POST /identity/resolve."""
 
     scope_name: str = Field(description="Source Scope name, e.g. 'sead://reconciliation' or a provider URI.")
+    run_id: str = Field(description="Stable idempotency key for this batch, scoped to the source scope. Reused across retries.")
     submission_name: str = Field(description="Human-readable name for this submission batch.")
     requests: list[ResolutionRequest] = Field(
         description="One entry per domain entity to resolve.",

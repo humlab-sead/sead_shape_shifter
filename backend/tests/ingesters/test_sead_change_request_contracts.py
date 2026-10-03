@@ -11,6 +11,7 @@ from ingesters.sead_change_request.contracts import (
     LogicalRecordVersion,
     PendingConfirmationReport,
     ResolvedIdentityTable,
+    SimsResolveItem,
     validate_one_live_version,
 )
 
@@ -84,6 +85,26 @@ class TestSubmissionContext:
         assert context.timestamp == timestamp
         assert context.binding_set_uuid == "binding-123"
         assert context.change_request_name == "CR-2026-001"
+        assert context.run_id is None
+
+    def test_submission_context_carries_run_id(self):
+        """Submission context should persist the batch run ID across retries."""
+        context = SubmissionContext(
+            submission_name="test-submission",
+            project_name="test-project",
+            timestamp=datetime(2026, 5, 23, 22, 0, 0),
+            run_id="run-123",
+        )
+
+        assert context.run_id == "run-123"
+
+    def test_sims_resolve_item_defaults(self):
+        """A SIMS resolve item should carry entity name, row, and an optional approved ID."""
+        item = SimsResolveItem(entity_name="site", row={"site_name": "A"})
+
+        assert item.entity_name == "site"
+        assert item.row == {"site_name": "A"}
+        assert item.approved_aggregate_id is None
 
 
 class TestBuildPendingConfirmationReport:
