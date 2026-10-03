@@ -10,7 +10,7 @@ The accepted Delivery 1 direction is:
 
 - DataFrame-first ingestion inside the ingester core
 - identity resolution before SQL generation
-- SIMS allocation for new entities and allocatable classifiers
+- generic SIMS allocation for new tracked aggregates where validated service configuration permits it
 - reconciliation-first handling for existing classifier matches
 - forward-only change-package generation with non-revertible placeholder handling when required
 
@@ -33,6 +33,8 @@ For the single consolidated tracker of remaining work, use:
 - [../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md) — durable lifecycle rules reference
 - [done/DATA_PROVIDER_SUBMISSION_LIFECYCLE/README.md](./done/DATA_PROVIDER_SUBMISSION_LIFECYCLE/README.md) — archived provider-submission lifecycle set
 - [SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT/SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT.md](./SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT/SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT.md) — separate shared-data review proposal
+- [SIMS identity allocation contract](./SIMS_IDENTITY_ALLOCATION/SIMS_IDENTITY_ALLOCATION_CONTRACT.md) — Shape Shifter responsibilities for model-driven planning, reconciliation, and artifact checks
+- [Cross-system identity allocation phase plan](./SIMS_IDENTITY_ALLOCATION/SIMS_IDENTITY_ALLOCATION_PHASE_PLAN.md) — integration sequence with owners and dependencies across Shape Shifter, Authority Service, and Change Control
 - [REFACTOR_SEAD_SUBMISSION_METADATA.md](./REFACTOR_SEAD_SUBMISSION_METADATA.md) — proposed CR for persisted submission defaults and SEAD submission container
 - [STRONGER_IDEMPOTENCY_AND_RESUBMISSION_TASK_PLAN.md](../INGESTER_IDEMPOTENCY_AND_RESUBMISSION/STRONGER_IDEMPOTENCY_AND_RESUBMISSION_TASK_PLAN.md) — proposed next-phase plan for exact reruns and partially overlapping re-submissions
 - [INGESTER_AUTHORIZATION_TASKS.md](./INGESTER_AUTHORIZATION_TASKS.md) — proposed authorization work for ingester routes and approved operations
@@ -67,7 +69,7 @@ For the single consolidated tracker of remaining work, use:
 - Provider-submission lifecycle work is archived under `done/DATA_PROVIDER_SUBMISSION_LIFECYCLE`
 - Shared-data review and operator routing now has a separate proposal folder
 - Frontend issue breakdown records the implemented workflow; stable defaults were delivered separately in the submission metadata work
-- Upstream SIMS handoff docs now live in `humlab-sead/sead_authority_service:docs/proposals/`
+- SIMS API and allocator responsibilities are documented in the [Authority Service target-ID proposal](https://github.com/humlab-sead/sead_authority_service/blob/main/docs/proposals/SIMS_TARGET_ID_CONTRACT.md); the cross-system phase plan remains here because it sequences Shape Shifter's consuming workflow
 
 ## Remaining Tasks Snapshot
 
@@ -82,7 +84,7 @@ For the single consolidated tracker of remaining work, use:
 
 - existing entity rows remain reference-only when `public_id` is populated
 - bridge and association rows are evaluated independently using metadata-defined uniqueness rules where available
-- classifier rows try reconciliation first and may allocate through SIMS in Delivery 1 if needed
+- Shape Shifter reconciles classifier rows and approves matches or misses; an approved miss may request SIMS allocation only when the generic operation is configured
 - blocked unresolved rows stop the run before SQL generation
 - collision checks cover target ID collisions plus metadata-defined bridge uniqueness checks
 
