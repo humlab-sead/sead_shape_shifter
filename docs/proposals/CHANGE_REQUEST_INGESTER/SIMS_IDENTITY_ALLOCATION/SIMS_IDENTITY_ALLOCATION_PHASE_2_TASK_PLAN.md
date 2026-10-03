@@ -108,19 +108,19 @@
 
 **Tasks:**
 
-* [ ] `T2.1` **Change:** Drive `plan_table` actions from effective identity.
+* [x] `T2.1` **Change:** Drive `plan_table` actions from effective identity.
   * **Target:** `ingesters/sead_change_request/planning.py::plan_table`.
   * **Current → required:** Action selection uses raw `identity_tracking`/`reconciliation` and `role`. `sample_dimension` (child) and `site` (lookup) misroute to `ALLOCATE`.
   * **Implementation:** Compute `EffectiveIdentity` once via `resolve_effective_identity`. Map the missing-public-ID action by effective mode: `tracked` → `ALLOCATE`; `reconciled` → `RECONCILE`; `derived` → `EVALUATE_BRIDGE`; `child` → a new `INHERIT_AGGREGATE` action. Preserve `REFERENCE_EXISTING`/`UPDATE_EXISTING_CANDIDATE` for rows with a public-ID value and the `database_sequence` path. Keep the `bridge` branch as `identity_tracking == "derived"` (so `analysis_entity`, which is `tracked`, still allocates).
   * **Constraints:** Preserve the `database_sequence` non-tracked guard and the existing mutable-field update routing. Do not change `RECONCILE` semantics for classifier lookup entities.
   * **Validation:** `V-2`, `V-4`; extend `test_sead_change_request_planning.py` with `analysis_entity`, `sample_dimension`, and `site` cases.
-* [ ] `T2.2` **Change:** Introduce a child action and its identity-work bucket.
+* [x] `T2.2` **Change:** Introduce a child action and its identity-work bucket.
   * **Target:** `ingesters/sead_change_request/contracts.py::PlannedRowAction`; `ingesters/sead_change_request/identity_work.py::build_identity_work_plan`.
   * **Current → required:** No planned action distinguishes child rows from allocation candidates; `IdentityWorkPlan` has no child bucket.
   * **Implementation:** Add `PlannedRowAction.INHERIT_AGGREGATE` and an `inherit_rows` dict on `IdentityWorkPlan`, populated in `build_identity_work_plan`. Child rows inherit identity through `aggregate_parent`; their own `public_id` source is resolved later and fails closed when no insertion contract is defined.
   * **Constraints:** Do not silently fall back from child handling to parent IDs or to allocation. Keep the new action out of `INSERTABLE_ROW_STATES` until projection resolves an insertion contract.
   * **Validation:** `V-2`, `V-4`; extend `test_sead_change_request_identity_work.py`.
-* [ ] `T2.3` **Change:** Unify collision-check routing with effective identity.
+* [x] `T2.3` **Change:** Unify collision-check routing with effective identity.
   * **Target:** `ingesters/sead_change_request/collision_checks.py::check_projected_collisions`.
   * **Current → required:** The file re-derives `is_tracked_allocation` + `role == "bridge"` instead of using effective metadata.
   * **Implementation:** Replace the local raw-field routing with `resolve_effective_identity(spec)` so bridge handling is selected by `identity_tracking == "derived"` and allocation by `tracked`, matching `plan_table`.
@@ -172,10 +172,10 @@
 | ID | Check and target | Command or method | Covers | Expected result | Baseline |
 | --- | --- | --- | --- | --- | --- |
 | `V-1` | Shared-resolver parity | `cd /data/roger/source/sead_shape_shifter && .venv/bin/pytest tests/target_model/test_effective_identity.py -q` | `PH2-AC-1` | Resolver, validator, and documentation return identical effective values for `site`, `analysis_entity`, `sample_dimension`, and a plain `fact`. | Pass (2026-10-03): 13 passed; parity across resolver, validator, and documentation. |
-| `V-2` | Planner unit tests | `.venv/bin/pytest backend/tests/ingesters/test_sead_change_request_planning.py backend/tests/ingesters/test_sead_change_request_identity_work.py -q` | `PH2-AC-1` | Conflicting role/mode examples route by effective mode; child rows land in the inherit bucket, not allocation. | Pass (2026-10-03): existing suite passes; new cases added this phase. |
+| `V-2` | Planner unit tests | `.venv/bin/pytest backend/tests/ingesters/test_sead_change_request_planning.py backend/tests/ingesters/test_sead_change_request_identity_work.py -q` | `PH2-AC-1` | Conflicting role/mode examples route by effective mode; child rows land in the inherit bucket, not allocation. | Pass (2026-10-03): 26 passed; `site` → RECONCILE, `sample_dimension` → INHERIT_AGGREGATE, `analysis_entity` → ALLOCATE. |
 | `V-3` | Capability preflight contract tests | `.venv/bin/pytest backend/tests/ingesters/test_sead_change_request_preflight.py -q` | `PH2-AC-2` | Unsupported allocation blocks; `lookup-only` misses do not fall back to allocation; model name/version recorded; unlisted types are unsupported. | Not run (new check). |
-| `V-4` | Regression suite | `.venv/bin/pytest tests/target_model/test_spec_validator.py backend/tests/ingesters/ -q` | `PH2-AC-1`, `PH2-AC-2` | Existing validator, planning, orchestration, contracts, identity-work, and collision checks stay green; `test_sead_change_request_submission_sims_integration.py` still passes when a SIMS/disposable DB is available. | Pass (2026-10-03): 55 targeted tests pass; broad run recorded at completion. |
-| `V-5` | Lint and format | `.venv/bin/ruff check src/target_model/effective_identity.py src/target_model/spec_validator.py src/target_model/documentation.py ingesters/sead_change_request/planning.py ingesters/sead_change_request/collision_checks.py ingesters/sead_change_request/contracts.py ingesters/sead_change_request/identity_work.py ingesters/sead_change_request/capability_preflight.py ingesters/sead_change_request/preparation.py backend/app/clients/sims_client.py backend/app/models/sims.py` then `make tidy` | `PH2-AC-1`, `PH2-AC-2` | No Ruff findings; Black + isort clean. | Pass (2026-10-03): Area 1 files clean (`effective_identity.py`, `spec_validator.py`, `documentation.py`, `test_effective_identity.py`). |
+| `V-4` | Regression suite | `.venv/bin/pytest tests/target_model/test_spec_validator.py backend/tests/ingesters/ -q` | `PH2-AC-1`, `PH2-AC-2` | Existing validator, planning, orchestration, contracts, identity-work, and collision checks stay green; `test_sead_change_request_submission_sims_integration.py` still passes when a SIMS/disposable DB is available. | Pass (2026-10-03): full ingester suite 156 passed, 4 skipped (SIMS integration); target-model validator suite green. `test_sead_change_request_ingester.py` `dataset` fixture updated to declare tracked/allocate matching the SEAD superset model. |
+| `V-5` | Lint and format | `.venv/bin/ruff check src/target_model/effective_identity.py src/target_model/spec_validator.py src/target_model/documentation.py ingesters/sead_change_request/planning.py ingesters/sead_change_request/collision_checks.py ingesters/sead_change_request/contracts.py ingesters/sead_change_request/identity_work.py ingesters/sead_change_request/capability_preflight.py ingesters/sead_change_request/preparation.py backend/app/clients/sims_client.py backend/app/models/sims.py` then `make tidy` | `PH2-AC-1`, `PH2-AC-2` | No Ruff findings; Black + isort clean. | Pass (2026-10-03): Areas 1 and 2 source/test files clean (incl. `planning.py`, `contracts.py`, `identity_work.py`, `collision_checks.py`, `test_sead_change_request_ingester.py`). |
 
 The `VM-5` parity milestone (document every changed identity route) is satisfied by `V-2`/`V-4` together with the `analysis_entity`/`sample_dimension`/`site` cases named above; a short parity note is recorded in the change's commit/PR text rather than as a separate artifact.
 
@@ -189,7 +189,7 @@ The `VM-5` parity milestone (document every changed identity route) is satisfied
 | Capability client + DTOs | `backend/app/models/sims.py`, `backend/app/clients/sims_client.py` | `T3.1` | `get_capabilities()` returns the capability schema. |
 | Preflight module | `ingesters/sead_change_request/capability_preflight.py` (NEW) | `T3.2` | `preflight_capabilities` normalizes and compares, recording model name/version. |
 | Workflow wiring | `ingesters/sead_change_request/preparation.py`, `ingester.py`, `backend/app/services/ingester_runtime.py` | `T3.3` | Preflight runs before orchestration; blocked runs produce no artifact. |
-| Tests | `tests/target_model/test_effective_identity.py` (NEW), `backend/tests/ingesters/test_sead_change_request_preflight.py` (NEW), plus edits to `test_sead_change_request_planning.py`, `test_sead_change_request_identity_work.py`, `test_sead_change_request_orchestration.py` | `T1.3`, `T2.1`, `T2.2`, `T3.2`, `T3.3` | New and extended tests cover the criteria in the coverage table. |
+| Tests | `tests/target_model/test_effective_identity.py` (NEW), `backend/tests/ingesters/test_sead_change_request_preflight.py` (NEW), plus edits to `test_sead_change_request_planning.py`, `test_sead_change_request_identity_work.py`, `test_sead_change_request_ingester.py`, `test_sead_change_request_orchestration.py` | `T1.3`, `T2.1`, `T2.2`, `T3.2`, `T3.3` | New and extended tests cover the criteria in the coverage table. |
 | Phase 2 task plan | `docs/proposals/CHANGE_REQUEST_INGESTER/SIMS_IDENTITY_ALLOCATION/SIMS_IDENTITY_ALLOCATION_PHASE_2_TASK_PLAN.md` (NEW) | — | This plan records the repository basis, criteria mapping, and validation commands. |
 
 ## Progress Tracker
@@ -197,7 +197,7 @@ The `VM-5` parity milestone (document every changed identity route) is satisfied
 | Area | Status | Dependencies | Notes |
 | --- | --- | --- | --- |
 | Area 1: Consolidate effective identity resolution | Done | None | `src/target_model/effective_identity.py` added; validator and documentation delegate; 13 parity/default tests pass. |
-| Area 2: Route planning by effective identity mode | Not started | Area 1 | `plan_table`/collision checks use effective mode; child action added. |
+| Area 2: Route planning by effective identity mode | Done | Area 1 | `plan_table`/collision checks use effective mode; `INHERIT_AGGREGATE` action + bucket added; 26 planner/identity-work tests pass. |
 | Area 3: Fail-closed SIMS capability preflight | Not started | Areas 1 and 2 | Client method, DTOs, preflight module, workflow wiring. |
 
 ## Definition Of Done
