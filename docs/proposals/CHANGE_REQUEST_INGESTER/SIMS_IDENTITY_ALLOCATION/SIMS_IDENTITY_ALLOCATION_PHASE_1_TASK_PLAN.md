@@ -28,7 +28,7 @@
 
 ## Repository Findings
 
-**Repository basis:** Planning date 2026-10-02. Shape Shifter is on `dev` at `eb927801`; the Authority Service is on `sims-resume-work-autumn-2026` at `cb29605`. Both checkouts have uncommitted changes. Findings below use those working trees; preserve their changes.
+**Repository basis:** Planning date 2026-10-02. The Authority Service is on `sims-resume-work-autumn-2026` at `cb29605` and retains uncommitted changes; findings below use that working tree and must preserve its changes. The Shape Shifter SIMS integration work this plan depends on has since been committed on `dev`.
 
 | Evidence | Finding | Planning implication |
 | --- | --- | --- |
@@ -82,7 +82,7 @@
 * [ ] `T1.1` **Change:** Write the companion Authority Service proposal and settle the capability and request contract before implementation.
   * **Target:** `sead_authority_service/docs/proposals/SIMS_IDENTITY_CAPABILITY_CONTRACT.md` (NEW); review Shape Shifter `backend/app/models/sims.py::ResolveRequest` and `backend/app/clients/sims_client.py::SIMSClient.resolve()`.
   * **Current → required:** The phase handoff requires a versioned `GET /identity/capabilities` response, but the exact response schema belongs in a companion Authority Service proposal. The existing downstream request has no stable run ID.
-  * **Implementation:** Specify the response version, generic entity-scoped configuration, accepted source-key semantics, confirmation behavior, and identity-value result. Use `site` and `sample` as examples only. Define stable errors for missing or invalid configuration, require a stable run ID and payload fingerprint from the first batch contract version, and document how clients learn configured capabilities. Keep Shape Shifter's reconciliation and match/miss approval outside SIMS.
+  * **Implementation:** Specify the response version, generic entity-scoped configuration, accepted source-key semantics, confirmation behavior, and identity-value result. A provider-supplied UUID is a source identity value only; it must never replace the SIMS-minted tracked identity UUID or aggregate identity value. Use `site` and `sample` as examples only. Define stable errors for missing or invalid configuration, require a stable run ID and payload fingerprint from the first batch contract version, and document how clients learn configured capabilities. Keep Shape Shifter's reconciliation and match/miss approval outside SIMS.
   * **Constraints:** Configuration selects generic behavior; it must not require entity-specific allocator code. SIMS guarantees uniqueness only within its own identity store and does not map identity values to SEAD tables or columns. Do not include cutover or production enablement in this development task.
   * **Validation:** `V-1`; contract review against the agreed generic identity ownership model, phase plan, and current consumer request model.
 * [ ] `T1.2` **Change:** Replace implicit policy fallback with explicit operation checks and publish the versioned capability response.
@@ -126,7 +126,7 @@
   * **Target:** `sead_authority_service/src/identity/service.py::IdentityService`; `sead_authority_service/src/identity/repository.py::SourceIdentityRepository`.
   * **Current → required:** Source-key and binding locks exist, but no lock or unique key serializes concurrent calls for one run ID.
   * **Implementation:** Acquire a database transaction lock for the scoped run key before creating batch records, enforce uniqueness in the schema, reuse confirmed bindings, and retain the existing proposed-binding conflict for a distinct run. Ensure an approved existing `site` ID binds to the existing materialized identity without minting and that new `site`/`sample` operations return their SIMS-allocated target IDs.
-  * **Constraints:** Preserve source keys, tracked UUIDs, and integer IDs as separate values. Do not use SEAD sequences. A failed batch must not leave a successful replay record or partial allocation.
+  * **Constraints:** Preserve source keys, tracked UUIDs, and aggregate identity values as separate values. Do not use SEAD sequences. A failed batch must not leave a successful replay record or partial allocation.
   * **Validation:** `V-3`, `V-4`, `V-5`; repository/service unit tests and database-backed concurrent replay, changed-payload conflict, confirmed retry, proposed-binding conflict, and allocator-state rollback scenarios.
 
 **Completion evidence:** Database-backed requests demonstrate one Submission/Binding Set per successful run, exact replay without duplicate allocations, a conflict for changed payloads, and no partial database state after a failed batch.
@@ -224,4 +224,4 @@ The documented disposable check does not validate real reconciliation decisions,
 
 **Open decisions:** None identified from the approved Phase 1 scope. Capability support and allocation enablement are separate contract values; the required run ID is part of the initial contract, not a migration path.
 
-**Implementation risk:** The Authority Service and Shape Shifter worktrees contain uncommitted changes. Before implementing any task, compare the live diffs with this plan and preserve changes that are not part of Phase 1.
+**Implementation risk:** The Authority Service worktree contains uncommitted changes. Before implementing any task, compare its live diff with this plan and preserve changes that are not part of Phase 1.
