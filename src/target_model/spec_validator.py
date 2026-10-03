@@ -186,6 +186,20 @@ class TargetModelSpecValidator:
         issues: list[SpecValidationIssue] = []
         identity_tracking, reconciliation = self._resolve_effective_sims(entity_spec)
 
+        if entity_spec.public_id_generation == "database_sequence" and (
+            entity_spec.identity_tracking is None or entity_spec.identity_tracking == "tracked"
+        ):
+            issues.append(
+                SpecValidationIssue(
+                    code="DATABASE_SEQUENCE_REQUIRES_EXPLICIT_NON_TRACKED_IDENTITY",
+                    message=(
+                        f"Entity '{entity_name}' uses database_sequence public ID generation but must explicitly declare "
+                        "a non-tracked identity_tracking value; tracked identities must be allocated by SIMS"
+                    ),
+                    entity=entity_name,
+                )
+            )
+
         if identity_tracking == "child":
             if entity_spec.reconciliation is not None:
                 issues.append(

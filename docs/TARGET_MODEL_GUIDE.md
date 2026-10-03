@@ -164,6 +164,7 @@ entities:
 | `domains`          | No       | List of domain tags; used to filter entities when generating project templates |
 | `target_table`     | No       | Physical table name in the target system (informational, e.g. `tbl_sites`)     |
 | `public_id`        | No       | Expected `public_id` value in the project entity                               |
+| `public_id_generation` | No   | `database_sequence` reserves an ID from the target database for an explicitly non-tracked entity |
 | `identity_columns` | No       | Columns that form the natural key in the target system                         |
 | `columns`          | No       | Map of column name → column spec; conformance checks these against the project |
 | `unique_sets`      | No       | List of unique-set column groups                                               |
@@ -248,10 +249,12 @@ These fields describe Shape Shifter's identity intent and lookup/allocation work
 
 Shape Shifter validates these fields together when a target model loads:
 
+- if omitted, fact entities default to `identity_tracking: tracked` and `reconciliation: allocate`
 - `aggregate_parent` must name another entity in the same model
 - entities with `aggregate_parent` must also declare a foreign key to that parent
 - `identity_tracking: child` requires `aggregate_parent`
 - `tracked` entities resolve to `allocate`
+- `public_id_generation: database_sequence` requires an explicit non-tracked `identity_tracking` value; tracked IDs must be allocated by SIMS
 - `derived` entities resolve to `derive`
 - `child` entities must not declare a reconciliation strategy
 - `reconciled` entities must resolve to one of `reconcile-exact`, `reconcile-fuzzy`, `lookup-only`, or `lookup-extensible`
@@ -261,6 +264,7 @@ Shape Shifter validates these fields together when a target model loads:
 | `identity_tracking` | `tracked`, `reconciled`, `derived`, `child` | Declares whether the entity gets its own tracked identity, is matched by business keys, derives identity from related rows, or inherits from an aggregate parent |
 | `reconciliation` | `allocate`, `reconcile-exact`, `reconcile-fuzzy`, `lookup-only`, `lookup-extensible`, `derive` | Declares the expected matching or allocation mode for this entity |
 | `aggregate_parent` | Entity name | Required when identity is inherited from a parent aggregate such as `analysis_entity` or `sample` |
+| `public_id_generation` | `database_sequence` | Reserves an ID from the target database for an entity explicitly configured as non-tracked |
 
 ---
 

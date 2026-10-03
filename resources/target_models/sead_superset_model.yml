@@ -100,6 +100,11 @@ entities:
     public_id: site_location_id
     identity_columns: [site_id, location_id]
     columns:
+      site_location_id:
+        required: true
+        generated: true
+        type: integer
+        nullable: false
       site_id:
         required: true
         type: integer
@@ -1009,6 +1014,8 @@ entities:
     role: lookup
     required: true
     description: Dataset context for imported analytical observations.
+    identity_tracking: tracked
+    reconciliation: allocate
     domains: [core]
     target_table: tbl_datasets
     public_id: dataset_id
@@ -1124,6 +1131,8 @@ entities:
 
   submission:
     role: fact
+    identity_tracking: tracked
+    reconciliation: allocate
     required: false
     description: Metadata that groups datasets delivered by one data provider.
     domains: [core, provenance]
