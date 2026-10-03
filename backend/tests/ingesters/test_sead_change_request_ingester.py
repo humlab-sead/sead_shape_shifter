@@ -1654,7 +1654,9 @@ class TestSeadChangeRequestIngesterIngest:
         assert result.error_details == "Bridge entity 'sample_taxon' cannot run collision checks because unique_sets metadata is missing"
 
     @pytest.mark.asyncio
-    async def test_ingest_returns_pending_confirmation_report_for_proposed_binding_set(self):
+    @pytest.mark.parametrize("deploy_strategy", ["inline_insert", "copy_csv"])
+    @pytest.mark.asyncio
+    async def test_ingest_returns_pending_confirmation_report_for_proposed_binding_set(self, deploy_strategy):
         """Ingest should return the structured pending confirmation report when SIMS blocks finalization."""
         sims_client = FakeSimsClient(binding_set_state="proposed", confirmed_binding_set_state="proposed", target_id=501)
         ingester = SeadChangeRequestIngester(
@@ -1667,6 +1669,7 @@ class TestSeadChangeRequestIngesterIngest:
                     "tables": {"sample": pd.DataFrame({"sample_id": [None]})},
                     "target_model": minimal_target_model(sample={"role": "fact", "public_id": "sample_id"}),
                     "submission_context": minimal_submission_context(),
+                    "deploy_strategy": deploy_strategy,
                     "sims_client": sims_client,
                 },
             )
@@ -1680,8 +1683,9 @@ class TestSeadChangeRequestIngesterIngest:
         assert result.pending_confirmation_report["binding_set_uuid"] == "binding-123"
         assert result.deploy_artifact is None
 
+    @pytest.mark.parametrize("deploy_strategy", ["inline_insert", "copy_csv"])
     @pytest.mark.asyncio
-    async def test_ingest_blocks_before_writing_when_sims_has_no_aggregate_id(self, tmp_path):
+    async def test_ingest_blocks_before_writing_when_sims_has_no_aggregate_id(self, tmp_path, deploy_strategy):
         """Ingest should block artifact output when SIMS does not return an aggregate ID."""
         sims_client = FakeSimsClient(binding_set_state="confirmed", target_id=None)
         ingester = SeadChangeRequestIngester(
@@ -1695,6 +1699,7 @@ class TestSeadChangeRequestIngesterIngest:
                     "tables": {"sample": pd.DataFrame({"sample_id": [None]})},
                     "target_model": minimal_target_model(sample={"role": "fact", "public_id": "sample_id"}),
                     "submission_context": minimal_submission_context(),
+                    "deploy_strategy": deploy_strategy,
                     "sims_client": sims_client,
                 },
             )
