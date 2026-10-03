@@ -244,7 +244,7 @@ When `via` is present, conformance first checks the source entity points to the 
 
 ### Identity And Reconciliation Fields
 
-These fields describe how an entity participates in SIMS identity handling and lookup/allocation workflows.
+These fields describe Shape Shifter's identity intent and lookup/allocation workflow for a target-model entity. SIMS applies its generic identity mechanism according to its own validated entity configuration; the target model does not prescribe entity-specific SIMS implementation code.
 
 Shape Shifter validates these fields together when a target model loads:
 
@@ -447,7 +447,7 @@ The SEAD superset spec uses `naming.public_id_suffix: "_id"` and declares `const
 | `html`     | Stakeholder presentations, reference  | `<stem>.html` |
 | `excel`    | Review workshops, gap analysis        | `<stem>.xlsx` |
 | `markdown` | GitHub wikis, version-controlled docs | `<stem>.md`   |
-| `sims`     | SIMS entity register and identity review | `<stem>.sims.md` |
+| `sims`     | Shape Shifter target-model reference for SIMS; not a SIMS capability registry | `<stem>.sims.md` |
 
 ```bash
 # Generate all formats (default)
@@ -459,7 +459,7 @@ python scripts/generate_target_model_docs.py resources/target_models/sead_supers
 # Excel for gap-analysis workshops
 python scripts/generate_target_model_docs.py resources/target_models/sead_superset_model.yml --format excel
 
-# SIMS entity register for Authority Service docs
+# Target-model reference for Authority Service docs
 python scripts/generate_target_model_docs.py resources/target_models/sead_superset_model.yml --format sims
 
 # Custom output directory
