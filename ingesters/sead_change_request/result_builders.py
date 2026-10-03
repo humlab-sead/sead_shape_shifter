@@ -4,7 +4,7 @@ from loguru import logger
 
 from backend.app.ingesters.protocol import IngestionResult, ValidationResult
 from ingesters.sead_change_request.input_resolution import InputResolutionError
-from ingesters.sead_change_request.orchestration import SIMS_TARGET_ID_CAPABILITY_NOTE
+from ingesters.sead_change_request.orchestration import SIMS_AGGREGATE_ID_CAPABILITY_NOTE
 from ingesters.sead_change_request.preparation import PreparationResult
 
 
@@ -133,11 +133,11 @@ def failure_details(diagnostics: list[str]) -> str:
 def _identity_resolution_message(diagnostics: list[str], pending_confirmation_report: dict[str, object] | None) -> str:
     if pending_confirmation_report is not None:
         return "Binding Set confirmation incomplete"
-    if _is_sims_target_id_capability_gap(diagnostics):
-        return "SIMS target ID allocation capability incomplete"
+    if _is_sims_aggregate_id_capability_gap(diagnostics):
+        return "SIMS aggregate ID allocation capability incomplete"
     return "Identity resolution incomplete"
 
 
-def _is_sims_target_id_capability_gap(diagnostics: list[str]) -> bool:
-    """Detect the current SIMS limitation where allocation returns no target-facing integer ID."""
-    return bool(diagnostics) and all(SIMS_TARGET_ID_CAPABILITY_NOTE in diagnostic for diagnostic in diagnostics)
+def _is_sims_aggregate_id_capability_gap(diagnostics: list[str]) -> bool:
+    """Detect when SIMS allocation returns no aggregate ID."""
+    return bool(diagnostics) and all(SIMS_AGGREGATE_ID_CAPABILITY_NOTE in diagnostic for diagnostic in diagnostics)

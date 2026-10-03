@@ -54,11 +54,12 @@ class InlineInsertDeployStrategy:
         for entity_name, package_table in change_package.tables.items():
             entity_spec = target_model.entities[entity_name]
             table_name = entity_spec.target_table or entity_name
+            generated_columns = {name for name, column in entity_spec.columns.items() if column.generated}
             for row_index, row in package_table.frame.iterrows():
                 if _is_update_row(package_table, row_index):
                     statements.append(_render_update_statement(table_name, row, entity_spec.public_id, package_table.mutable_fields))
                 else:
-                    statements.append(_render_insert_statement(table_name, row))
+                    statements.append(_render_insert_statement(table_name, row, generated_columns))
 
         deploy_sql_lines = ["BEGIN;", "SET CONSTRAINTS ALL DEFERRED;"]
         deploy_sql_lines.extend(statements)
@@ -97,7 +98,8 @@ class CopyCsvDeployStrategy:
             insert_mask, update_mask = _package_row_masks(package_table)
 
             if bool(insert_mask.any()):
-                columns = _renderable_columns(package_table.frame.loc[insert_mask])
+                generated_columns = {name for name, column in entity_spec.columns.items() if column.generated}
+                columns = _renderable_columns(package_table.frame.loc[insert_mask], generated_columns)
                 if columns:
                     bundle_name = _artifact_directory_name(submission_context)
                     payload_relative_path = _build_bundle_payload_relative_path(bundle_name, table_name)
@@ -296,10 +298,7 @@ def _render_sql_file(file_type: str, submission_context: SubmissionContext, body
         f"  Author            {_resolved_author(submission_context)}",
         f"  Date              {submission_context.timestamp.date().isoformat()}",
         f"  Description       {_resolved_description(submission_context)}",
-        (
-            "  Issue             "
-            f"https://github.com/humlab-sead/sead_change_control/issues/{_resolved_issue_identifier(submission_context)}"
-        ),
+        (f"  Issue             https://github.com/humlab-sead/sead_change_control/issues/{_resolved_issue_identifier(submission_context)}"),
         "***************************************************************************/",
         "",
     ]
@@ -326,9 +325,9 @@ def _resolved_author(submission_context: SubmissionContext) -> str:
     return submission_context.author or "unknown"
 
 
-def _render_insert_statement(table_name: str, row: pd.Series) -> str:
+def _render_insert_statement(table_name: str, row: pd.Series, generated_columns: set[str] | None = None) -> str:
     """Render a single INSERT statement from a projected row."""
-    columns = _renderable_columns(row)
+    columns = _renderable_columns(row, generated_columns)
     identifiers = ", ".join(_quote_identifier(column) for column in columns)
     values = ", ".join(_render_literal(row[column]) for column in columns)
     return f"INSERT INTO {_quote_identifier(table_name)} ({identifiers}) VALUES ({values});"
@@ -429,18 +428,25 @@ def _render_copy_csv_real(value: Real) -> str:
     return "0" if rendered == "-0" else rendered
 
 
-def _renderable_columns(row_like: pd.Series | pd.DataFrame) -> list[str]:
+def _renderable_columns(row_like: pd.Series | pd.DataFrame, excluded_columns: set[str] | None = None) -> list[str]:
     """Return non-internal column names in stable order for artifact rendering."""
+    excluded = excluded_columns or set()
     if isinstance(row_like, pd.DataFrame):
         return [
             str(column)
             for column in row_like.columns
-            if not str(column).startswith("_") and not str(column).endswith("__existing") and str(column) != "system_id"
+            if str(column) not in excluded
+            and not str(column).startswith("_")
+            and not str(column).endswith("__existing")
+            and str(column) != "system_id"
         ]
     return [
         str(column)
         for column in row_like.index
-        if not str(column).startswith("_") and not str(column).endswith("__existing") and str(column) != "system_id"
+        if str(column) not in excluded
+        and not str(column).startswith("_")
+        and not str(column).endswith("__existing")
+        and str(column) != "system_id"
     ]
 
 
@@ -549,7 +555,7 @@ def _validate_bundle_table_name(table_name: str) -> str:
     if SAFE_BUNDLE_TABLE_NAME_PATTERN.fullmatch(table_name):
         return table_name
 
-    raise ValueError("Unsafe table name " f"'{table_name}' for copy_csv deploy artifact; expected only letters, digits, and underscores")
+    raise ValueError(f"Unsafe table name '{table_name}' for copy_csv deploy artifact; expected only letters, digits, and underscores")
 
 
 def _artifact_directory_name(submission_context: SubmissionContext) -> str:

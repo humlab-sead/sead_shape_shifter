@@ -4,8 +4,9 @@ from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 from ingesters.sead_change_request.contracts import ChangeRowState, IdentityAssignment, PlannedRowAction, PlannedTable, SubmissionContext
+from src.target_model.models import EntitySpec
 
-SIMS_TARGET_ID_CAPABILITY_NOTE = "SIMS allocation could not complete target projection because no target-facing integer ID was returned"
+SIMS_AGGREGATE_ID_CAPABILITY_NOTE = "SIMS allocation could not complete target projection because no SIMS aggregate ID was returned"
 
 
 @dataclass(slots=True)
@@ -22,6 +23,14 @@ class SimsClientPort(Protocol):
 
     async def allocate_entity(self, entity_name: str, row: dict[str, Any], submission_context: SubmissionContext) -> dict[str, Any]: ...
 
+    async def bind_existing_entity(
+        self,
+        entity_name: str,
+        row: dict[str, Any],
+        approved_aggregate_id: int,
+        submission_context: SubmissionContext,
+    ) -> dict[str, Any]: ...
+
     async def derive_bridge_row(self, entity_name: str, row: dict[str, Any], submission_context: SubmissionContext) -> dict[str, Any]: ...
 
     async def get_binding_set_state(self, binding_set_uuid: str) -> str: ...
@@ -37,12 +46,20 @@ class ReconciliationClientPort(Protocol):
     async def reconcile_entity(self, entity_name: str, row: dict[str, Any]) -> int | None: ...
 
 
+class TargetIdAllocatorPort(Protocol):
+    """Target database sequence allocator used for public IDs outside SIMS."""
+
+    async def reserve_target_id(self, table_name: str, public_id_column: str) -> int | None: ...
+
+
 async def orchestrate_identity_assignments(
     planned_tables: list[PlannedTable],
     submission_context: SubmissionContext,
     *,
     sims_client: SimsClientPort | None = None,
     reconciliation_client: ReconciliationClientPort | None = None,
+    target_id_allocator: TargetIdAllocatorPort | None = None,
+    target_model_entities: dict[str, EntitySpec] | None = None,
     fallback_assignments: dict[str, dict[object, IdentityAssignment]] | None = None,
 ) -> IdentityOrchestrationResult:
     """Build identity assignments using injected SIMS and reconciliation clients."""
@@ -72,12 +89,73 @@ async def orchestrate_identity_assignments(
 
             row_payload = {str(column_name): value for column_name, value in planned_table.frame.loc[[row_index]].iloc[0].to_dict().items()}
 
+            if planned_action == PlannedRowAction.RESERVE_DATABASE_ID:
+                entity_spec = (target_model_entities or {}).get(planned_table.entity_name)
+                if (
+                    entity_spec is None
+                    or entity_spec.public_id_generation != "database_sequence"
+                    or not entity_spec.target_table
+                    or not entity_spec.public_id
+                ):
+                    raise ValueError(
+                        f"Entity '{planned_table.entity_name}' requires database-sequence ID metadata "
+                        "with target_table and public_id"
+                    )
+                if target_id_allocator is None:
+                    entity_assignments[row_index] = IdentityAssignment(
+                        state=ChangeRowState.BLOCKED_UNRESOLVED,
+                        note=f"Database sequence ID reservation is not configured for '{planned_table.entity_name}'",
+                    )
+                    continue
+                target_id = await target_id_allocator.reserve_target_id(entity_spec.target_table, entity_spec.public_id)
+                if target_id is None:
+                    entity_assignments[row_index] = IdentityAssignment(
+                        state=ChangeRowState.BLOCKED_UNRESOLVED,
+                        note=(
+                            f"No database sequence is associated with target column "
+                            f"'{entity_spec.target_table}.{entity_spec.public_id}'"
+                        ),
+                    )
+                    continue
+                entity_assignments[row_index] = IdentityAssignment(
+                    state=ChangeRowState.NEWLY_ALLOCATED_ENTITY,
+                    target_id=target_id,
+                    note=(
+                        f"Reserved '{entity_spec.public_id}' from the database sequence for "
+                        f"'{entity_spec.target_table}'"
+                    ),
+                )
+                continue
+
             if planned_action == PlannedRowAction.RECONCILE and reconciliation_client is not None:
                 reconciled_target_id = await reconciliation_client.reconcile_entity(planned_table.entity_name, row_payload)
                 if reconciled_target_id is not None:
+                    if sims_client is not None:
+                        binding = await sims_client.bind_existing_entity(
+                            planned_table.entity_name,
+                            row_payload,
+                            reconciled_target_id,
+                            submission_context,
+                        )
+                        target_id = binding.get("target_id")
+                        note = binding.get("note")
+                        binding_set_uuid = binding.get("binding_set_uuid") or binding_set_uuid
+                        binding_set_state = binding.get("binding_set_state") or binding_set_state
+                        if target_id != reconciled_target_id:
+                            blocking_note = note or (
+                                f"SIMS did not bind '{planned_table.entity_name}' to approved aggregate ID "
+                                f"{reconciled_target_id}"
+                            )
+                            entity_assignments[row_index] = IdentityAssignment(
+                                state=ChangeRowState.BLOCKED_UNRESOLVED,
+                                note=blocking_note,
+                            )
+                            continue
+                        sims_assigned_rows.append((planned_table.entity_name, row_index))
                     entity_assignments[row_index] = IdentityAssignment(
                         state=ChangeRowState.RECONCILED_CLASSIFIER,
-                        target_id=reconciled_target_id,
+                        target_id=target_id if sims_client is not None else reconciled_target_id,
+                        note=note if sims_client is not None else None,
                     )
                     continue
 
@@ -86,7 +164,7 @@ async def orchestrate_identity_assignments(
                 target_id = allocation.get("target_id")
                 note = allocation.get("note")
                 if target_id is None:
-                    blocking_note = SIMS_TARGET_ID_CAPABILITY_NOTE
+                    blocking_note = SIMS_AGGREGATE_ID_CAPABILITY_NOTE
                     if note:
                         blocking_note = f"{blocking_note}: {note}"
                     entity_assignments[row_index] = IdentityAssignment(

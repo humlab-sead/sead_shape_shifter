@@ -44,6 +44,7 @@ class PlannedRowAction(StrEnum):
     UPDATE_EXISTING_CANDIDATE = "update_existing_candidate"
     BLOCK_EXISTING_UPDATE = "block_existing_update"
     ALLOCATE = "allocate"
+    RESERVE_DATABASE_ID = "reserve_database_id"
     RECONCILE = "reconcile"
     EVALUATE_BRIDGE = "evaluate_bridge"
 

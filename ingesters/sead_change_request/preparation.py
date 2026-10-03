@@ -17,7 +17,11 @@ from ingesters.sead_change_request.contracts import (
 )
 from ingesters.sead_change_request.identity_resolution import resolve_planned_tables
 from ingesters.sead_change_request.identity_work import build_identity_work_plan
-from ingesters.sead_change_request.orchestration import IdentityOrchestrationResult, orchestrate_identity_assignments
+from ingesters.sead_change_request.orchestration import (
+    IdentityOrchestrationResult,
+    TargetIdAllocatorPort,
+    orchestrate_identity_assignments,
+)
 from ingesters.sead_change_request.target_projection import project_target_ids
 from src.target_model.models import TargetModel
 
@@ -68,6 +72,7 @@ async def prepare_change_request(
     *,
     sims_client: Any | None,
     reconciliation_client: Any | None,
+    target_id_allocator: TargetIdAllocatorPort | None = None,
 ) -> PreparationResult:
     """Run the shared preparation workflow after inputs are resolved."""
     orchestration_result: IdentityOrchestrationResult = await orchestrate_identity_assignments(
@@ -75,6 +80,8 @@ async def prepare_change_request(
         inputs.submission_context,
         sims_client=sims_client,
         reconciliation_client=reconciliation_client,
+        target_id_allocator=target_id_allocator,
+        target_model_entities=inputs.target_model.entities,
         fallback_assignments=inputs.fallback_assignments,
     )
     if orchestration_result.binding_set_uuid and not inputs.submission_context.binding_set_uuid:

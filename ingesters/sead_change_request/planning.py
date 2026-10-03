@@ -37,7 +37,8 @@ def plan_table(
     """Plan row actions for one entity table in a deterministic way."""
     diagnostics: list[str] = []
 
-    if entity_spec.role == "bridge":
+    is_tracked_allocation = entity_spec.identity_tracking == "tracked" and entity_spec.reconciliation == "allocate"
+    if entity_spec.role == "bridge" and not is_tracked_allocation:
         if not entity_spec.unique_sets:
             diagnostics.append(f"Bridge entity '{entity_name}' has no unique_sets metadata; Delivery 1 uniqueness checks will be blocked")
         planned_actions = pd.Series([PlannedRowAction.EVALUATE_BRIDGE] * len(frame.index), index=frame.index, name="_planned_action")
@@ -48,9 +49,19 @@ def plan_table(
         raise ValueError(f"Entity '{entity_name}' is missing target-model public_id metadata")
     if public_id not in frame.columns:
         raise ValueError(f"Entity '{entity_name}' is missing public_id column '{public_id}' in the source DataFrame")
+    if entity_spec.public_id_generation == "database_sequence":
+        if not entity_spec.target_table:
+            raise ValueError(f"Entity '{entity_name}' uses database_sequence public ID generation but has no target_table")
+        if entity_spec.identity_tracking is None or entity_spec.identity_tracking == "tracked":
+            raise ValueError(
+                f"Entity '{entity_name}' uses database_sequence public ID generation but must explicitly declare "
+                "a non-tracked identity_tracking value; tracked identities must be allocated by SIMS"
+            )
 
     existing_mask = frame[public_id].map(_has_public_id_value)
     missing_action = PlannedRowAction.RECONCILE if entity_spec.role == "classifier" else PlannedRowAction.ALLOCATE
+    if entity_spec.public_id_generation == "database_sequence":
+        missing_action = PlannedRowAction.RESERVE_DATABASE_ID
     planned_actions = pd.Series(missing_action, index=frame.index, name="_planned_action")
     planned_actions.loc[existing_mask] = PlannedRowAction.REFERENCE_EXISTING
 
