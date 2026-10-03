@@ -47,6 +47,7 @@ class PlannedRowAction(StrEnum):
     RESERVE_DATABASE_ID = "reserve_database_id"
     RECONCILE = "reconcile"
     EVALUATE_BRIDGE = "evaluate_bridge"
+    INHERIT_AGGREGATE = "inherit_aggregate"
 
 
 class LifecycleVersionState(StrEnum):
@@ -115,6 +116,7 @@ class IdentityWorkPlan:
     allocation_rows: dict[str, pd.DataFrame] = field(default_factory=dict)
     reconciliation_rows: dict[str, pd.DataFrame] = field(default_factory=dict)
     bridge_rows: dict[str, pd.DataFrame] = field(default_factory=dict)
+    inherit_rows: dict[str, pd.DataFrame] = field(default_factory=dict)
 
     @property
     def total_existing_rows(self) -> int:
@@ -139,6 +141,10 @@ class IdentityWorkPlan:
     @property
     def total_bridge_rows(self) -> int:
         return sum(len(frame.index) for frame in self.bridge_rows.values())
+
+    @property
+    def total_inherit_rows(self) -> int:
+        return sum(len(frame.index) for frame in self.inherit_rows.values())
 
 
 @dataclass(slots=True)
