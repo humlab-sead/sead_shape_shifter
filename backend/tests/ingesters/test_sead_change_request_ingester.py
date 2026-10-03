@@ -14,7 +14,7 @@ from backend.app.ingesters import IngesterConfig
 from backend.app.models.sims import CapabilitiesResponse, EntityCapabilityResponse
 from backend.app.services.ingester_runtime import SeadChangeRequestSimsAdapter
 from ingesters.sead_change_request import ChangeRowState, DeployArtifact, SourceTableBundle
-from ingesters.sead_change_request.contracts import SubmissionContext, resolve_bundle_name
+from ingesters.sead_change_request.contracts import SimsResolveItem, SubmissionContext, resolve_bundle_name
 from ingesters.sead_change_request.ingester import SeadChangeRequestIngester
 
 # pylint: disable=unused-argument
@@ -47,6 +47,20 @@ class FakeSimsClient:
         self.target_id = target_id
         self.approved_aggregate_ids: list[int] = []
         self.associated_change_requests: list[tuple[str, str]] = []
+
+    async def resolve_batch(self, items: list[SimsResolveItem], submission_context) -> dict:
+        outcomes = []
+        for item in items:
+            if item.approved_aggregate_id is not None:
+                self.approved_aggregate_ids.append(item.approved_aggregate_id)
+                outcomes.append({"target_id": item.approved_aggregate_id, "tracked_identity_uuid": None})
+            else:
+                outcomes.append({"target_id": self.target_id, "tracked_identity_uuid": None})
+        return {
+            "outcomes": outcomes,
+            "binding_set_uuid": self.binding_set_uuid,
+            "binding_set_state": self.binding_set_state,
+        }
 
     async def allocate_entity(self, entity_name: str, row: dict, submission_context) -> dict:
         return {
@@ -105,8 +119,17 @@ class FakeBackendSimsClient:
     async def resolve(self, request: object):
         if self.resolve_error is not None:
             raise self.resolve_error
-        requested_aggregate_id = request.requests[0].approved_aggregate_id
-        target_id = requested_aggregate_id if requested_aggregate_id is not None else self.target_id
+        outcomes = []
+        for resolution_request in request.requests:
+            requested_aggregate_id = resolution_request.approved_aggregate_id
+            target_id = requested_aggregate_id if requested_aggregate_id is not None else self.target_id
+            outcomes.append(
+                type(
+                    "Outcome",
+                    (),
+                    {"tracked_identity_uuid": None, "target_id": target_id},
+                )()
+            )
         return cast(
             Any,
             type(
@@ -121,13 +144,7 @@ class FakeBackendSimsClient:
                             "lifecycle_state": type("LifecycleState", (), {"value": self.lifecycle_state})(),
                         },
                     )(),
-                    "outcomes": [
-                        type(
-                            "Outcome",
-                            (),
-                            {"tracked_identity_uuid": None, "target_id": target_id},
-                        )()
-                    ],
+                    "outcomes": outcomes,
                 },
             )(),
         )

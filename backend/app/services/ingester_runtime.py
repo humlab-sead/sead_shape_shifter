@@ -189,7 +189,15 @@ class SeadChangeRequestSimsAdapter:
                 for item in items
             ],
         )
-        response = await self._sims_client.resolve(request)
+        try:
+            response = await self._sims_client.resolve(request)
+        except httpx.HTTPStatusError as exc:
+            return {
+                "outcomes": [],
+                "binding_set_uuid": None,
+                "binding_set_state": None,
+                "error": f"SIMS rejected the batch (HTTP {exc.response.status_code}): {exc.response.text}",
+            }
         return {
             "outcomes": [
                 {
