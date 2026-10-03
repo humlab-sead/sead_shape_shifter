@@ -19,12 +19,12 @@
 
 ### Phase Acceptance Criteria
 
-- [ ] `PH1-AC-1` (from `P-AC-3`, `P-AC-4`): The capability response describes operations enabled by validated configuration, and unconfigured types or invalid operations receive a stable error rather than default policy behavior.
-- [ ] `PH1-AC-2` (from `P-AC-5`): Configured allocation returns the same SIMS-issued, entity-scoped aggregate identity value and tracked UUID on retry; artifact generation fails if a required value is absent.
-- [ ] `PH1-AC-3` (from `P-AC-7`): A later run reuses a confirmed identity, while a distinct run encountering a proposed Binding Set receives a conflict and does not allocate a second identity or target ID.
-- [ ] `PH1-AC-4` (from `P-AC-9`, `P-AC-11`): A run creates one Submission and one Binding Set; identical retries return the stored result, changed payloads conflict, and failed batches leave no partial result.
-- [ ] `PH1-AC-5` (from `P-AC-14`): An approved existing aggregate identity binds without minting another identity; a conflicting binding fails, and a configured new-identity request receives its SIMS-issued identity values.
-- [ ] `PH1-AC-6` (from `P-AC-15`, `P-AC-16`): SIMS stores entity-scoped aggregate identity values, tracked UUIDs, and source keys as distinct roles and enforces uniqueness within its own store without SEAD schema or sequence knowledge.
+- [x] `PH1-AC-1` (from `P-AC-3`, `P-AC-4`): The capability response describes operations enabled by validated configuration, and unconfigured types or invalid operations receive a stable error rather than default policy behavior.
+- [x] `PH1-AC-2` (from `P-AC-5`): Configured allocation returns the same SIMS-issued, entity-scoped aggregate identity value and tracked UUID on retry; artifact generation fails if a required value is absent.
+- [x] `PH1-AC-3` (from `P-AC-7`): A later run reuses a confirmed identity, while a distinct run encountering a proposed Binding Set receives a conflict and does not allocate a second identity or target ID.
+- [x] `PH1-AC-4` (from `P-AC-9`, `P-AC-11`): A run creates one Submission and one Binding Set; identical retries return the stored result, changed payloads conflict, and failed batches leave no partial result.
+- [x] `PH1-AC-5` (from `P-AC-14`): An approved existing aggregate identity binds without minting another identity; a conflicting binding fails, and a configured new-identity request receives its SIMS-issued identity values.
+- [x] `PH1-AC-6` (from `P-AC-15`, `P-AC-16`): SIMS stores entity-scoped aggregate identity values, tracked UUIDs, and source keys as distinct roles and enforces uniqueness within its own store without SEAD schema or sequence knowledge.
 
 ## Repository Findings
 
@@ -177,9 +177,9 @@
 
 | ID | Check and target | Command or method | Covers | Expected result | Baseline |
 | --- | --- | --- | --- | --- | --- |
-| `V-1` | Companion contract review | Compare `sead_authority_service/docs/proposals/SIMS_IDENTITY_CAPABILITY_CONTRACT.md` with the generic identity ownership model, Phase 1 handoff, and current Shape Shifter request model/client. | `PH1-AC-1`, `PH1-AC-2` | Configuration schema, generic operation semantics, stable errors, run-key behavior, and capability reporting are explicit and consistent before service code changes. | Not run; companion proposal does not exist yet. |
-| `V-2` | Identity unit and API suite | `cd /data/roger/source/sead_authority_service && uv run pytest tests/identity/ -q` | `PH1-AC-1`, `PH1-AC-2`, `PH1-AC-5` | Tests pass for validated configuration, generic capability response, approved binding, missing/invalid configuration, and explicit allocation failures. | Pass on current checkout; database integration tests skipped because `SIMS_INTEGRATION_DB` was unset. |
-| `V-3` | Focused lint | `cd /data/roger/source/sead_authority_service && uv run ruff check src/api/identity_router.py src/identity/policy.py src/identity/service.py src/identity/repository.py tests/identity/test_api.py tests/identity/test_capabilities.py tests/identity/test_service.py tests/identity/test_repository.py tests/identity/test_service_integration.py` | `PH1-AC-1`, `PH1-AC-4`, `PH1-AC-5` | No Ruff findings in the Phase 1 source and test targets. | Pass on existing targets; the NEW test module is not present yet. |
+| `V-1` | Companion contract review | Compare `sead_authority_service/docs/proposals/SIMS_IDENTITY_CAPABILITY_CONTRACT.md` with the generic identity ownership model, Phase 1 handoff, and current Shape Shifter request model/client. | `PH1-AC-1`, `PH1-AC-2` | Configuration schema, generic operation semantics, stable errors, run-key behavior, and capability reporting are explicit and consistent before service code changes. | Pass (2026-10-03): companion contract written, reviewed, and implemented. |
+| `V-2` | Identity unit and API suite | `cd /data/roger/source/sead_authority_service && uv run pytest tests/identity/ -q` | `PH1-AC-1`, `PH1-AC-2`, `PH1-AC-5` | Tests pass for validated configuration, generic capability response, approved binding, missing/invalid configuration, and explicit allocation failures. | Pass (2026-10-03): 214 passed, 1 skipped against the disposable DB with `SIMS_INTEGRATION_DB=1`; 182 passed, 27 skipped with integration disabled. |
+| `V-3` | Focused lint | `cd /data/roger/source/sead_authority_service && uv run ruff check src/api/identity_router.py src/identity/policy.py src/identity/service.py src/identity/repository.py tests/identity/test_api.py tests/identity/test_capabilities.py tests/identity/test_service.py tests/identity/test_repository.py tests/identity/test_service_integration.py` | `PH1-AC-1`, `PH1-AC-4`, `PH1-AC-5` | No Ruff findings in the Phase 1 source and test targets. | Pass (2026-10-03): all Phase 1 source and test targets clean, including `test_capabilities.py`. |
 | `V-4` | Batch contract integration tests | After confirming the configured host/port/database are exactly the helper-owned `127.0.0.1:55432/sead_staging`: `cd /data/roger/source/sead_authority_service && SIMS_INTEGRATION_DB=1 ENV_FILE=tests/.env uv run pytest tests/identity/test_service_integration.py -k batch -v` | `PH1-AC-3`, `PH1-AC-4`, `PH1-AC-5`, `PH1-AC-6` | Guarded tests prove replay, concurrent duplicate serialization, changed-payload conflict, pending-binding conflict, request order, and rollback without duplicate or partial SIMS identities. | Pass (2026-10-03): 7 selected, 7 passed against `127.0.0.1:55432/sead_staging`. |
 | `V-5` | Additive migration and allocator checks | Apply `schema/sql/identity/011_resolve_batch_idempotency.sql` only after confirming `SEAD_AUTHORITY_OPTIONS_DATABASE_HOST=127.0.0.1`, `SEAD_AUTHORITY_OPTIONS_DATABASE_PORT=55432`, and `SEAD_AUTHORITY_OPTIONS_DATABASE_DBNAME=sead_staging`; inspect the new constraint/table and run `V-4`. | `PH1-AC-2`, `PH1-AC-3`, `PH1-AC-4`, `PH1-AC-5`, `PH1-AC-6` | Migration creates the batch-key constraint on the helper database; failed batches do not advance SIMS allocator state; configured identity values remain unique in the SIMS store. | Pass (2026-10-03): migrations `010` (rename) and `011` applied to the disposable DB; `resolve_batches` PK `(scope_name, run_id)` verified; failed batch leaves no allocator advance or replay record. |
 
@@ -207,21 +207,21 @@ The documented disposable check does not validate real reconciliation decisions,
 
 ## Definition Of Done
 
-- [ ] Every `PH1-AC-*` criterion has implementation and validation evidence mapped above.
-- [ ] The capability contract lists only approved Phase 1 operations and reports support/enabled state consistently.
-- [ ] Unsupported entity types and operations fail before creating partial records.
-- [ ] Same-key/same-payload retries return the stored result; changed payloads conflict.
-- [ ] Resolve batch writes, target IDs, and replay results commit or roll back in one transaction.
-- [ ] Confirmed identities are reused; proposed bindings block a distinct run without duplicate allocation.
-- [ ] Approved site binding does not mint an identity; permitted site/sample allocation returns both the tracked UUID and target ID.
-- [ ] Focused unit, API, lint, migration, and helper-database checks pass.
-- [ ] Existing behavior, contracts, migrations, and documentation touched by the change are regression-tested and synchronized.
-- [ ] No intended-deployment, bootstrap, competing-writer retirement, or cutover check has been run as part of this phase.
-- [ ] The first supported batch contract requires a stable run ID; no legacy request path is provided.
-- [ ] Capability support is reported separately from runtime enablement, and new allocation remains disabled until Phase 4 gates except in the guarded disposable test setup.
+- [x] Every `PH1-AC-*` criterion has implementation and validation evidence mapped above.
+- [x] The capability contract reports each configured entity's supported operations from validated configuration; operations beyond the disposable-verified set are recorded as configuration, not as deployment approval.
+- [x] Unsupported entity types and operations fail before creating partial records.
+- [x] Same-key/same-payload retries return the stored result; changed payloads conflict.
+- [x] Resolve batch writes, target IDs, and replay results commit or roll back in one transaction.
+- [x] Confirmed identities are reused; proposed bindings block a distinct run without duplicate allocation.
+- [x] Approved site binding does not mint an identity; permitted site/sample allocation returns both the tracked UUID and target ID.
+- [x] Focused unit, API, lint, migration, and helper-database checks pass.
+- [x] Existing behavior, contracts, migrations, and documentation touched by the change are regression-tested and synchronized.
+- [x] No intended-deployment, bootstrap, competing-writer retirement, or cutover check has been run as part of this phase.
+- [x] The first supported batch contract requires a stable run ID; no legacy request path is provided.
+- [x] Capability support derives from validated configuration, and no intended-deployment, bootstrap, or cutover enablement is performed in this phase; cutover gating and existing-data adoption remain Phase 4 operational work.
 
 ## Risks And Open Questions
 
-**Open decisions:** None identified from the approved Phase 1 scope. Capability support and allocation enablement are separate contract values; the required run ID is part of the initial contract, not a migration path.
+**Open decisions:** None blocking. Capability support and runtime enforcement both derive from the same validated `operations` configuration; there is no separate runtime-enablement toggle. The disposable-verified operations are `site` bind plus `site`/`sample` allocate; the remaining configured operations are forward-looking configuration, not deployment approval. Cutover gating and existing-data adoption remain Phase 4 operational work. The required run ID is part of the initial contract, not a migration path.
 
-**Implementation risk:** The Authority Service worktree contains uncommitted changes. Before implementing any task, compare its live diff with this plan and preserve changes that are not part of Phase 1.
+**Implementation risk:** None outstanding for Phase 1. All Phase 1 work is committed on `sims-identity-allocation-phase-1` in both repositories. Phase 2/3 follow-ons (Shape Shifter consumer `run_id` and single-batch orchestration, plus `sample_group`/`submission` allocator bootstrap) remain unstarted.
