@@ -33,8 +33,7 @@ For the single consolidated tracker of remaining work, use:
 - [../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md) — durable lifecycle rules reference
 - [done/DATA_PROVIDER_SUBMISSION_LIFECYCLE/README.md](./done/DATA_PROVIDER_SUBMISSION_LIFECYCLE/README.md) — archived provider-submission lifecycle set
 - [SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT/SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT.md](./SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT/SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT.md) — separate shared-data review proposal
-- [SIMS identity allocation contract](./SIMS_IDENTITY_ALLOCATION/SIMS_IDENTITY_ALLOCATION_CONTRACT.md) — Shape Shifter responsibilities for model-driven planning, reconciliation, and artifact checks
-- [Cross-system identity allocation phase plan](./SIMS_IDENTITY_ALLOCATION/SIMS_IDENTITY_ALLOCATION_PHASE_PLAN.md) — integration sequence with owners and dependencies across Shape Shifter, Authority Service, and Change Control
+- [SIMS-SEAD trust-contract adoption proposal](./CUTOVER_AND_DEPLOYMENT/SIMS_SEAD_TRUST_CONTRACT_ADOPTION_PROPOSAL.md) — active operational work for existing-data adoption, cutover, and deployment
 - [REFACTOR_SEAD_SUBMISSION_METADATA.md](./REFACTOR_SEAD_SUBMISSION_METADATA.md) — proposed CR for persisted submission defaults and SEAD submission container
 - [STRONGER_IDEMPOTENCY_AND_RESUBMISSION_TASK_PLAN.md](../INGESTER_IDEMPOTENCY_AND_RESUBMISSION/STRONGER_IDEMPOTENCY_AND_RESUBMISSION_TASK_PLAN.md) — proposed next-phase plan for exact reruns and partially overlapping re-submissions
 - [INGESTER_AUTHORIZATION_TASKS.md](./INGESTER_AUTHORIZATION_TASKS.md) — proposed authorization work for ingester routes and approved operations
@@ -46,6 +45,8 @@ For the single consolidated tracker of remaining work, use:
 
 ## Implemented Or Historical References
 
+- [SIMS identity allocation contract](./done/SIMS_IDENTITY_ALLOCATION/SIMS_IDENTITY_ALLOCATION_CONTRACT.md) — completed Shape Shifter responsibilities for model-driven planning, reconciliation, and artifact checks
+- [Cross-system identity allocation phase plan](./done/SIMS_IDENTITY_ALLOCATION/SIMS_IDENTITY_ALLOCATION_PHASE_PLAN.md) — completed Phases 1–3; the folder also contains task plans and candidate verification
 - [done/CHANGE_REQUEST_INGESTER_DELIVERY_1/SEAD_CHANGE_REQUEST_INGESTER.md](./done/CHANGE_REQUEST_INGESTER_DELIVERY_1/SEAD_CHANGE_REQUEST_INGESTER.md) — Closed Delivery 1 baseline proposal and accepted design decisions
 - [done/CHANGE_REQUEST_INGESTER_DELIVERY_1/DELIVERY_1_IMPLEMENTATION_PLAN.md](./done/CHANGE_REQUEST_INGESTER_DELIVERY_1/DELIVERY_1_IMPLEMENTATION_PLAN.md) — Closed Delivery 1 implementation plan and workstream record
 - [done/CHANGE_REQUEST_INGESTER_DELIVERY_1/DELIVERY_1_HARDENING.md](./done/CHANGE_REQUEST_INGESTER_DELIVERY_1/DELIVERY_1_HARDENING.md) — Closed Delivery 1 hardening contract for the `copy_csv` artifact bundle
@@ -69,7 +70,7 @@ For the single consolidated tracker of remaining work, use:
 - Provider-submission lifecycle work is archived under `done/DATA_PROVIDER_SUBMISSION_LIFECYCLE`
 - Shared-data review and operator routing now has a separate proposal folder
 - Frontend issue breakdown records the implemented workflow; stable defaults were delivered separately in the submission metadata work
-- SIMS API and allocator responsibilities are documented in the [Authority Service target-ID proposal](https://github.com/humlab-sead/sead_authority_service/blob/main/docs/proposals/SIMS_TARGET_ID_CONTRACT.md); the cross-system phase plan remains here because it sequences Shape Shifter's consuming workflow
+- SIMS API and allocator responsibilities are documented in the [Authority Service target-ID proposal](https://github.com/humlab-sead/sead_authority_service/blob/main/docs/proposals/SIMS_TARGET_ID_CONTRACT.md); completed Phases 1–3 are archived under `done`, while adoption and cutover remain separate operational work
 
 ## Remaining Tasks Snapshot
 

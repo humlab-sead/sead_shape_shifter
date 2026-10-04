@@ -1,5 +1,7 @@
 # Cross-System Phase Plan: Target-Model And SIMS Identity Allocation
 
+**Status:** Phases 1–3 are complete; the task plans record implementation and validation. Existing-data adoption, cutover, and deployment remain separate operational work.
+
 Source proposal: [Target-Model and SIMS Identity Allocation Contract](./SIMS_IDENTITY_ALLOCATION_CONTRACT.md)
 SIMS identity contract: [SIMS `target_id` response proposal](https://github.com/humlab-sead/sead_authority_service/blob/main/docs/proposals/SIMS_TARGET_ID_CONTRACT.md)
 
@@ -7,7 +9,7 @@ SIMS identity contract: [SIMS `target_id` response proposal](https://github.com/
 
 This plan sequences cross-system development for `sead_change_request`. The current development task is to deliver a configurable, generic SIMS identity mechanism and the Shape Shifter integration contract. SIMS-owned API, identity-store, and allocation decisions belong in Authority Service proposals; target-model planning, reconciliation, and artifact behavior belong in Shape Shifter proposals.
 
-Cutover, production rollout, existing-data migration, and SEAD database-integrity checks are outside this development plan and are covered by the [CHANGE_REQUEST_INGESTER cutover and deployment proposal](../CUTOVER_AND_DEPLOYMENT/CHANGE_REQUEST_INGESTER_CUTOVER_AND_DEPLOYMENT_PROPOSAL.md). Shape Shifter approves uncertain reconciliation matches before requesting SIMS identity work.
+Cutover, production rollout, existing-data migration, and SEAD database-integrity checks are outside this development plan and are covered by the [SIMS-SEAD trust-contract adoption proposal](../../CUTOVER_AND_DEPLOYMENT/SIMS_SEAD_TRUST_CONTRACT_ADOPTION_PROPOSAL.md). Shape Shifter approves uncertain reconciliation matches before requesting SIMS identity work.
 
 ## Problem
 
@@ -17,13 +19,13 @@ The ingester currently plans identity work by entity role and calls SIMS per row
 
 This plan covers Phases 1–3: the development changes needed to plan from effective target-model identity rules, check SIMS's configured capabilities, resolve one batch per run, and generate artifacts only with valid SIMS identity values and a confirmed Binding Set.
 
-Cutover tasks are out of scope: production or intended-deployment validation, existing-data backfill, writer changes, SEAD integrity checks, rollout, and deployment belong to the [operational cutover and deployment proposal](../CUTOVER_AND_DEPLOYMENT/CHANGE_REQUEST_INGESTER_CUTOVER_AND_DEPLOYMENT_PROPOSAL.md). Manual SIMS Binding Set confirmation, automatic expiry or supersession of pending Binding Sets, unsupported child or derived insertion paths, and request chunking also remain outside these development phases.
+Cutover tasks are out of scope: production or intended-deployment validation, existing-data backfill, writer changes, SEAD integrity checks, rollout, and deployment belong to the [operational cutover and deployment proposal](../../CUTOVER_AND_DEPLOYMENT/SIMS_SEAD_TRUST_CONTRACT_ADOPTION_PROPOSAL.md). Manual SIMS Binding Set confirmation, automatic expiry or supersession of pending Binding Sets, unsupported child or derived insertion paths, and request chunking also remain outside these development phases.
 
 ## Current Position
 
-- The target model defines effective identity modes and reconciliation behavior; the ingester planner still routes by role. See the source proposal's Current Behavior section.
-- The SIMS endpoint accepts a list of requests, but the current Shape Shifter adapter calls it once per row. Each resolve call creates a Submission and Binding Set.
-- The site and sample identity paths have disposable verification as initial configuration examples. The generic configurable allocation mechanism, capability publication, strict rejection of unconfigured operations, and request-level idempotency remain development work. Cutover is separate operational work described in the [operational proposal](../CUTOVER_AND_DEPLOYMENT/CHANGE_REQUEST_INGESTER_CUTOVER_AND_DEPLOYMENT_PROPOSAL.md).
+- The shared effective-identity resolver drives validation, generated documentation, and ingester planning; the Phase 2 task plan records the route-parity checks.
+- Shape Shifter submits one batch per artifact-producing run and maps outcomes to planned rows; the Phase 3 task plan records run-ID persistence and artifact confirmation checks.
+- Phase 1 delivered generic configuration-driven allocation, capability publication, explicit operation rejection, and request-level idempotency. The site and sample disposable paths are examples, not an architecture limit.
 - The candidate verification guide is complete for the agreed disposable scope: the site binding and allocation paths, sample allocation, and required site/sample insertion paths have been checked, and submission IDs are reserved through the target database sequence. The sample-child comparison found no additional required path for this candidate.
 - The 2026-10-02 approval records initial `site` and `sample` verification examples for Phase 1 planning. It does not constrain the generic allocator to these entity types or authorize production use or cutover.
 
@@ -33,7 +35,7 @@ Cutover tasks are out of scope: production or intended-deployment validation, ex
 | --- | --- | --- |
 | SEAD Authority Service (SIMS) | Tracked aggregate identities, scoped source-identity associations, generic configured allocation, and uniqueness within its own identity store. SIMS does not map identities to SEAD tables or enforce SEAD database integrity. | Phase 1 development; see the [SIMS identity response proposal](https://github.com/humlab-sead/sead_authority_service/blob/main/docs/proposals/SIMS_TARGET_ID_CONTRACT.md). |
 | Shape Shifter | Target-model identity intent, SEAD reconciliation and approval, capability preflight, run orchestration, and artifact generation. | Phases 2–3. |
-| SEAD integration and operations | Consume SIMS-issued aggregate identity values under the trust contract; establish that existing tracked entities are represented in SIMS before operational adoption. SEAD database integrity remains SEAD's responsibility. | Separate operational work in the [cutover and deployment proposal](../CUTOVER_AND_DEPLOYMENT/CHANGE_REQUEST_INGESTER_CUTOVER_AND_DEPLOYMENT_PROPOSAL.md). |
+| SEAD integration and operations | Consume SIMS-issued aggregate identity values under the trust contract; establish that existing tracked entities are represented in SIMS before operational adoption. SEAD database integrity remains SEAD's responsibility. | Separate operational work in the [cutover and deployment proposal](../../CUTOVER_AND_DEPLOYMENT/SIMS_SEAD_TRUST_CONTRACT_ADOPTION_PROPOSAL.md). |
 
 Keep this plan in Shape Shifter because it sequences the consumer workflow and cross-system validation. Do not move the whole plan into the Authority Service repository; keep SIMS-specific contracts and implementation plans in that repository and link them here.
 
@@ -205,7 +207,7 @@ Ready for a task plan after Phases 1 and 2 are complete.
 - Keep system-owned implementation decisions in the owning repository's proposal; this plan records only cross-system sequencing and acceptance.
 - Keep the target model authoritative for Shape Shifter's identity intent, Shape Shifter responsible for reconciliation and approval, and SIMS responsible for its generic tracked-identity store and identity minting. SIMS does not map identities to SEAD tables or enforce SEAD database integrity.
 - Treat `site` and `sample` as initial configuration and verification examples, not the limits of generic SIMS support.
-- Keep existing-data trust establishment, production cutover, and deployment outside this development plan; see the [operational proposal](../CUTOVER_AND_DEPLOYMENT/CHANGE_REQUEST_INGESTER_CUTOVER_AND_DEPLOYMENT_PROPOSAL.md).
+- Keep existing-data trust establishment, production cutover, and deployment outside this development plan; see the [operational proposal](../../CUTOVER_AND_DEPLOYMENT/SIMS_SEAD_TRUST_CONTRACT_ADOPTION_PROPOSAL.md).
 - Fail closed before artifact generation for unsupported configured capabilities, missing identity values, invalid untracked-row insertion contracts, and unconfirmed Binding Sets.
 - Use one Binding Set per run; do not add chunking or multi-set aggregation in this plan.
 - Do not auto-confirm proposed sets or retry ambiguous requests with a new run ID.
@@ -213,8 +215,8 @@ Ready for a task plan after Phases 1 and 2 are complete.
 
 ## Validation Strategy
 
-Validate Phases 1–3 in layers: SIMS API and identity-store behavior first; target-model planning and semantic capability compatibility second; single-batch orchestration and both artifact strategies third. Existing-data migration, operational trust-contract adoption, production validation, and cutover are not validation milestones for this development plan; they belong to the [operational cutover and deployment proposal](../CUTOVER_AND_DEPLOYMENT/CHANGE_REQUEST_INGESTER_CUTOVER_AND_DEPLOYMENT_PROPOSAL.md). Exact commands, test files, fixtures, and assertions belong in each development phase task plan.
+Validate Phases 1–3 in layers: SIMS API and identity-store behavior first; target-model planning and semantic capability compatibility second; single-batch orchestration and both artifact strategies third. Existing-data migration, operational trust-contract adoption, production validation, and cutover are not validation milestones for this development plan; they belong to the [operational cutover and deployment proposal](../../CUTOVER_AND_DEPLOYMENT/SIMS_SEAD_TRUST_CONTRACT_ADOPTION_PROPOSAL.md). Exact commands, test files, fixtures, and assertions belong in each development phase task plan.
 
 ## Final Recommendation
 
-Implement and validate the generic SIMS identity mechanism and Shape Shifter integration in Phases 1–3. The disposable candidate guide records initial examples; it does not constrain the architecture. Cutover, existing-data migration, deployment, and SEAD integrity checks remain separate operational work in the [linked proposal](../CUTOVER_AND_DEPLOYMENT/CHANGE_REQUEST_INGESTER_CUTOVER_AND_DEPLOYMENT_PROPOSAL.md).
+Phases 1–3 implemented and validated the generic SIMS identity mechanism and Shape Shifter integration. The disposable candidate guide records initial examples; it does not constrain the architecture. Cutover, existing-data migration, deployment, and SEAD integrity checks remain separate operational work in the [linked proposal](../../CUTOVER_AND_DEPLOYMENT/SIMS_SEAD_TRUST_CONTRACT_ADOPTION_PROPOSAL.md).

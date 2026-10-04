@@ -16,13 +16,13 @@
 - Both deploy strategies (inline `INSERT` and copy-CSV) must emit the same SIMS-issued identity values for supported work.
 - SIMS remains the sole minter; Shape Shifter still owns reconciliation and match/miss approval before the batch.
 
-**Source documents:** [identity-allocation proposal](./SIMS_IDENTITY_ALLOCATION_CONTRACT.md), [phase plan](./SIMS_IDENTITY_ALLOCATION_PHASE_PLAN.md), and the Phase 1 [capability contract](../../../../sead_authority_service/docs/proposals/SIMS_IDENTITY_CAPABILITY_CONTRACT.md).
+**Source documents:** [identity-allocation proposal](./SIMS_IDENTITY_ALLOCATION_CONTRACT.md), [phase plan](./SIMS_IDENTITY_ALLOCATION_PHASE_PLAN.md), and the Phase 1 [capability contract](https://github.com/humlab-sead/sead_authority_service/blob/main/docs/proposals/SIMS_IDENTITY_CAPABILITY_CONTRACT.md).
 
 ### Phase Acceptance Criteria
 
-- [ ] `PH3-AC-1` (from `P-AC-9`, `P-AC-11`): Each run sends all SIMS work in one request, skips empty batches, and reuses its run ID only for identical retries.
-- [ ] `PH3-AC-2` (from `P-AC-10`): Outcomes map deterministically to planned rows; the ingester does not confirm proposed sets and writes artifacts only when the set is confirmed.
-- [ ] `PH3-AC-3` (from `P-AC-5`, `P-AC-12`): Both artifact strategies emit the required SIMS-issued identity values consistently and emit no package when capability, identity-value, insertion, or confirmation requirements are unmet.
+- [x] `PH3-AC-1` (from `P-AC-9`, `P-AC-11`): Each run sends all SIMS work in one request, skips empty batches, and reuses its run ID only for identical retries.
+- [x] `PH3-AC-2` (from `P-AC-10`): Outcomes map deterministically to planned rows; the ingester does not confirm proposed sets and writes artifacts only when the set is confirmed.
+- [x] `PH3-AC-3` (from `P-AC-5`, `P-AC-12`): Both artifact strategies emit the required SIMS-issued identity values consistently and emit no package when capability, identity-value, insertion, or confirmation requirements are unmet.
 
 ## Repository Findings
 
@@ -217,7 +217,7 @@ The phase-plan `VM-6` (one request and one Binding Set per run, stable mapping, 
 | Single-batch orchestration | `ingesters/sead_change_request/orchestration.py` | `T2.1`, `T2.2`, `T2.3` | Collect-then-batch; deterministic order mapping; no `lookup-only` allocation. |
 | No-confirm flow | `ingesters/sead_change_request/orchestration.py`, `preparation.py`, `result_builders.py`, `ingester.py` | `T3.1`, `T3.2`, `T3.3` | `confirm_binding_set` removed; `proposed` blocks generation. |
 | Tests | `test_sead_change_request_orchestration.py`, `test_sead_change_request_confirmation.py`, `test_sead_change_request_sql_builder.py`, `test_sead_change_request_package_builder.py`, `test_sead_change_request_ingester.py`, `test_sead_change_request_submission_sims_integration.py` | `T1.1`–`T4.2` | New and extended tests cover the criteria in the coverage table. |
-| Phase 3 task plan | `docs/proposals/CHANGE_REQUEST_INGESTER/SIMS_IDENTITY_ALLOCATION/SIMS_IDENTITY_ALLOCATION_PHASE_3_TASK_PLAN.md` (NEW) | — | This plan records the repository basis, criteria mapping, and validation commands. |
+| Phase 3 task plan | `docs/proposals/CHANGE_REQUEST_INGESTER/done/SIMS_IDENTITY_ALLOCATION/SIMS_IDENTITY_ALLOCATION_PHASE_3_TASK_PLAN.md` | — | This plan records the repository basis, criteria mapping, and validation commands. |
 
 ## Progress Tracker
 
@@ -247,4 +247,4 @@ The phase-plan `VM-6` (one request and one Binding Set per run, stable mapping, 
 
 **Open implementation choice (resolved by repo convention, recorded for the coding agent):** The `run_id` is minted with `uuid4()` when absent and stored on `SubmissionContext`. The exact generation function may be adjusted to match existing `resolve_bundle_name`/UUID conventions in `contracts.py`, but persistence-and-reuse semantics are fixed by `PH3-AC-1`.
 
-**Deferred operational work:** Existing-data migration, bootstrap, deployment, and cutover are tracked in the [operational cutover and deployment proposal](../CUTOVER_AND_DEPLOYMENT/CHANGE_REQUEST_INGESTER_CUTOVER_AND_DEPLOYMENT_PROPOSAL.md). SIMS-side manual confirmation workflow and request chunking are explicitly out of Phase 3 scope.
+**Deferred operational work:** Existing-data migration, bootstrap, deployment, and cutover are tracked in the [operational cutover and deployment proposal](../../CUTOVER_AND_DEPLOYMENT/SIMS_SEAD_TRUST_CONTRACT_ADOPTION_PROPOSAL.md). SIMS-side manual confirmation workflow and request chunking are explicitly out of Phase 3 scope.
