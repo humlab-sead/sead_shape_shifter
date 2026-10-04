@@ -70,7 +70,7 @@ The initial upstream database redesign introduces:
 - `tbl_datasets.submission_id`, linking each dataset to its submission
 - `tbl_dataset_contacts.event_date`, preserving dates for legacy task types 10 and 11
 
-Deployment of this upstream DDL and legacy compatibility remain outside this repository.
+Deployment of this upstream DDL and legacy compatibility remain outside this repository; track their release prerequisites in the [cutover and deployment workstream](./CUTOVER_AND_DEPLOYMENT/README.md).
 
 Legacy submission types 10 (`Samples collected`) and 11 (`Samples analysed`) do not become submission tasks. The redesign migrates them to `tbl_dataset_contacts` with contact types 4 and 2 respectively.
 

@@ -64,6 +64,10 @@ SEAD-owned validation must confirm that the target system persists the generated
 
 Use SEAD Change Control for writer and schema changes. Include any Sqitch change request that can write tracked entities before backfill is complete; do not apply a new tracked-entity writer CR after backfill completion. Initialize SIMS allocators above the existing SEAD IDs before enabling new allocations. At cutover, new tracked identities come from SIMS and SEAD consumes those identities rather than minting them through its sequences.
 
+Confirm that the submission schema, required legacy migration, and any required compatibility behavior are deployed before generated packages become eligible. The upstream release and compatibility-view owner remain to be confirmed.
+
+The [PostgreSQL contract validation handoff](./POSTGRESQL_CONTRACT_VALIDATION.md) records a current blocker: disposable tests found that both generated artifact strategies explicitly insert submission and dataset IDs without advancing their database sequences. The next default-generated IDs can therefore collide. Do not deploy those test packages. Resolve the identity and sequence contract, then verify sequence safety for both strategies against disposable database clones.
+
 Define deployment and package-supersession gates in the operational delivery plan. A regenerated package must not become eligible until its earlier package for the same logical submission has been withdrawn or superseded. SIMS Binding Set state remains audit state and does not revoke generated SQL.
 
 ### Deferred development follow-up
@@ -80,6 +84,7 @@ Manual SIMS Binding Set confirmation, automatic expiry or supersession of pendin
 - Verification checks detect drift but do not prevent it at write time. Adoption therefore depends on running the checks and treating any unmatched SEAD row as a blocking bug.
 - The backfill cannot be finalized until the tracked entity set and entity-type mapping are unambiguous.
 - Deployment ordering must respect the rule that no tracked-entity writer CR is applied after backfill completion.
+- Explicit IDs in generated artifacts can leave SEAD sequences behind and cause later default-generated IDs to collide; both current test strategies fail the recorded sequence check.
 
 ## Testing And Validation
 
@@ -89,6 +94,7 @@ Manual SIMS Binding Set confirmation, automatic expiry or supersession of pendin
 - Verify the writer-CR and deployment gates, including package withdrawal or supersession before a regenerated package becomes eligible.
 - Confirm SIMS-only rows do not fail the SEAD coverage check.
 - Confirm SEAD persistence and artifact checks meet the target-system contract without relying on SIMS to enforce SEAD integrity.
+- Apply each artifact strategy to its own disposable clone and verify that subsequent default-generated IDs cannot collide with explicitly inserted IDs.
 
 ## Acceptance Criteria
 
@@ -99,6 +105,7 @@ Manual SIMS Binding Set confirmation, automatic expiry or supersession of pendin
 - `P-AC-5`: Deployment validation includes package withdrawal or supersession before a regenerated package becomes eligible.
 - `P-AC-6`: The operational work remains separate from the development CR, and no cross-schema foreign key is introduced for this trust contract.
 - `P-AC-7`: SEAD-owned validation confirms the target system's persistence and artifact contract; it does not rely on SIMS to enforce SEAD database integrity.
+- `P-AC-8`: Both generated artifact strategies pass post-package sequence-safety checks on disposable databases before deployment; packages that leave sequences behind explicit IDs are not eligible.
 
 ## Planning Handoff
 
@@ -106,13 +113,14 @@ After this proposal is approved, create a separate operational delivery plan und
 
 Preserve these decisions: SIMS starts empty for backfill; existing SEAD IDs and UUIDs are retained; every tracked SEAD row must match SIMS; SIMS-only rows are allowed; identity drift is a SEAD operational bug; no tracked-entity writer CR is applied after backfill completion; and SEAD remains responsible for its database integrity.
 
-Resolve the SIMS entity-type mapping, the UUID migration order, and the operational deployment gates before finalizing executable work.
+Resolve the SIMS entity-type mapping, UUID migration order, upstream schema release and compatibility ownership, artifact sequence safety, and package-supersession gates before finalizing executable work.
 
 ## Open Questions
 
 - Does SEAD `tbl_physical_samples` map to SIMS entity type `sample` or `physical_sample`? The current SIMS policy uses `sample`, while the operational backfill draft names `physical_sample`.
 - Should the missing UUID columns be added and populated before backfill? The same UUID must ultimately be present in SEAD and SIMS.
 - Which Change Control CRs and deployment gates implement the writer transition and package-supersession requirement?
+- Which upstream release provides the submission schema, and which component owns legacy compatibility views and their removal schedule?
 
 ## Final Recommendation
 

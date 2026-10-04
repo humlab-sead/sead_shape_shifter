@@ -18,7 +18,7 @@ The accepted Delivery 1 direction is:
 
 - Delivery 1 baseline work is closed.
 - Delivery 1 follow-up issue slices are resolved or implemented on the current branch.
-- Frontend UX integration and persisted stable metadata defaults are implemented; upstream database validation remains open in [the submission metadata proposal](./REFACTOR_SEAD_SUBMISSION_METADATA.md).
+- Frontend UX integration and persisted stable metadata defaults are implemented; upstream database validation remains open in the [cutover and deployment workstream](./CUTOVER_AND_DEPLOYMENT/README.md) and its [submission metadata task plan](./REFACTOR_SEAD_SUBMISSION_METADATA_TASK_PLAN.md).
 - Provider-update lifecycle policy gate is accepted.
 - Provider-submission lifecycle docs are archived under [done/DATA_PROVIDER_SUBMISSION_LIFECYCLE](./done/DATA_PROVIDER_SUBMISSION_LIFECYCLE).
 - Shared-data review and operator contract work now lives in [SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT/SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT.md](./SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT/SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT.md).
@@ -34,6 +34,7 @@ For the single consolidated tracker of remaining work, use:
 - [done/DATA_PROVIDER_SUBMISSION_LIFECYCLE/README.md](./done/DATA_PROVIDER_SUBMISSION_LIFECYCLE/README.md) — archived provider-submission lifecycle set
 - [SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT/SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT.md](./SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT/SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT.md) — separate shared-data review proposal
 - [SIMS-SEAD trust-contract adoption proposal](./CUTOVER_AND_DEPLOYMENT/SIMS_SEAD_TRUST_CONTRACT_ADOPTION_PROPOSAL.md) — active operational work for existing-data adoption, cutover, and deployment
+- [CUTOVER_AND_DEPLOYMENT/README.md](./CUTOVER_AND_DEPLOYMENT/README.md) — consolidated operational decisions and deployment gates
 - [REFACTOR_SEAD_SUBMISSION_METADATA.md](./REFACTOR_SEAD_SUBMISSION_METADATA.md) — proposed CR for persisted submission defaults and SEAD submission container
 - [STRONGER_IDEMPOTENCY_AND_RESUBMISSION_TASK_PLAN.md](../INGESTER_IDEMPOTENCY_AND_RESUBMISSION/STRONGER_IDEMPOTENCY_AND_RESUBMISSION_TASK_PLAN.md) — proposed next-phase plan for exact reruns and partially overlapping re-submissions
 - [INGESTER_AUTHORIZATION_TASKS.md](./INGESTER_AUTHORIZATION_TASKS.md) — proposed authorization work for ingester routes and approved operations
