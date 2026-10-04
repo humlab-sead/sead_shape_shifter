@@ -1,4 +1,4 @@
-# CHANGE_REQUEST_INGESTER Operational Cutover and Deployment
+# SIMS-SEAD Trust-Contract Adoption
 
 ## Status
 
@@ -6,7 +6,7 @@
 - Scope: operational adoption of SIMS-issued identities for SEAD tracked entities
 - Goal: keep backfill, cutover, and deployment separate from the SIMS identity-allocation development work
 
-Related documents: [SIMS identity-allocation phase plan](../SIMS_IDENTITY_ALLOCATION/SIMS_IDENTITY_ALLOCATION_PHASE_PLAN.md) and [SIMS-SEAD operational decisions](./SIMS_IDENTITY_ALLOCATION_OPERATIONAL_PLAN.md).
+Related documents: [completed SIMS identity-allocation phase plan](../done/SIMS_IDENTITY_ALLOCATION/SIMS_IDENTITY_ALLOCATION_PHASE_PLAN.md) and [SIMS-SEAD operational decisions](./SIMS_IDENTITY_ALLOCATION_OPERATIONAL_PLAN.md).
 
 ## Summary
 

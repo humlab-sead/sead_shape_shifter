@@ -151,7 +151,7 @@
   * **Target:** `sead_authority_service/tests/identity/test_service_integration.py`, using the existing `disposable_service` fixture and its `127.0.0.1:55432/sead_staging` guard.
   * **Current → required:** Existing integration tests cover individual site/sample allocation, concurrent identity operations, approved target IDs, and proposed-binding conflicts, but not an idempotent atomic resolve batch.
   * **Implementation:** Add database-backed scenarios for same-key/same-payload replay, concurrent duplicate run requests, same-key/changed-payload conflict, request-order preservation, distinct-run proposed-binding conflict, and rollback after an earlier batch item has written. Query the SIMS database to confirm source keys, tracked UUIDs, and configured aggregate identity values remain distinct and linked, and that allocator state is not advanced by a failed batch.
-  * **Constraints:** Every new database test must use the guarded disposable fixture. Check the host, port, and database before applying SQL or running tests. Do not connect to an intended deployment or run bootstrap/cutover checks; those belong to the [operational proposal](../CUTOVER_AND_DEPLOYMENT/CHANGE_REQUEST_INGESTER_CUTOVER_AND_DEPLOYMENT_PROPOSAL.md).
+  * **Constraints:** Every new database test must use the guarded disposable fixture. Check the host, port, and database before applying SQL or running tests. Do not connect to an intended deployment or run bootstrap/cutover checks; those belong to the [operational proposal](../../CUTOVER_AND_DEPLOYMENT/SIMS_SEAD_TRUST_CONTRACT_ADOPTION_PROPOSAL.md).
   * **Validation:** `V-4`, `V-5`.
 * [x] `T3.3` **Change:** Rerun the focused identity suite and targeted lint after implementation.
   * **Target:** The identity API, policy, service, repository, and integration test files listed in this plan.
@@ -195,7 +195,7 @@ The documented disposable check does not validate real reconciliation decisions,
 | Resolve idempotency migration | `sead_authority_service/schema/sql/identity/011_resolve_batch_idempotency.sql` (NEW) | `T2.1` | Additive schema stores scoped run key, fingerprint, and completed response with a uniqueness constraint. |
 | Atomic batch orchestration | `sead_authority_service/src/api/identity_router.py`, `src/identity/service.py`, `src/identity/repository.py` | `T2.1`, `T2.2`, `T2.3` | Whole resolve batch commits or rolls back together and exact retries replay the saved result. |
 | Regression and disposable tests | `sead_authority_service/tests/identity/test_capabilities.py` (NEW), `test_api.py`, `test_service.py`, `test_repository.py`, `test_service_integration.py` | `T1.2`, `T1.3`, `T2.1`, `T2.2`, `T2.3`, `T3.1`, `T3.2` | Unit and guarded database tests prove the criteria in the coverage table. |
-| Phase 1 task plan | `docs/proposals/CHANGE_REQUEST_INGESTER/SIMS_IDENTITY_ALLOCATION/SIMS_IDENTITY_ALLOCATION_PHASE_1_TASK_PLAN.md` (NEW) | — | This plan records the repository basis, checks, criteria mapping, and open contract decisions. |
+| Phase 1 task plan | `docs/proposals/CHANGE_REQUEST_INGESTER/done/SIMS_IDENTITY_ALLOCATION/SIMS_IDENTITY_ALLOCATION_PHASE_1_TASK_PLAN.md` | — | This plan records the repository basis, checks, criteria mapping, and open contract decisions. |
 
 ## Progress Tracker
 
@@ -218,10 +218,10 @@ The documented disposable check does not validate real reconciliation decisions,
 - [x] Existing behavior, contracts, migrations, and documentation touched by the change are regression-tested and synchronized.
 - [x] No intended-deployment, bootstrap, competing-writer retirement, or cutover check has been run as part of this phase.
 - [x] The first supported batch contract requires a stable run ID; no legacy request path is provided.
-- [x] Capability support derives from validated configuration, and no intended-deployment, bootstrap, or cutover enablement is performed in this phase; cutover gating and existing-data adoption are tracked in the [operational cutover and deployment proposal](../CUTOVER_AND_DEPLOYMENT/CHANGE_REQUEST_INGESTER_CUTOVER_AND_DEPLOYMENT_PROPOSAL.md).
+- [x] Capability support derives from validated configuration, and no intended-deployment, bootstrap, or cutover enablement is performed in this phase; cutover gating and existing-data adoption are tracked in the [operational cutover and deployment proposal](../../CUTOVER_AND_DEPLOYMENT/SIMS_SEAD_TRUST_CONTRACT_ADOPTION_PROPOSAL.md).
 
 ## Risks And Open Questions
 
-**Open decisions:** None blocking. Capability support and runtime enforcement both derive from the same validated `operations` configuration; there is no separate runtime-enablement toggle. The disposable-verified operations are `site` bind plus `site`/`sample` allocate; the remaining configured operations are forward-looking configuration, not deployment approval. Cutover gating and existing-data adoption are tracked in the [operational cutover and deployment proposal](../CUTOVER_AND_DEPLOYMENT/CHANGE_REQUEST_INGESTER_CUTOVER_AND_DEPLOYMENT_PROPOSAL.md). The required run ID is part of the initial contract, not a migration path.
+**Open decisions:** None blocking. Capability support and runtime enforcement both derive from the same validated `operations` configuration; there is no separate runtime-enablement toggle. The disposable-verified operations are `site` bind plus `site`/`sample` allocate; the remaining configured operations are forward-looking configuration, not deployment approval. Cutover gating and existing-data adoption are tracked in the [operational cutover and deployment proposal](../../CUTOVER_AND_DEPLOYMENT/SIMS_SEAD_TRUST_CONTRACT_ADOPTION_PROPOSAL.md). The required run ID is part of the initial contract, not a migration path.
 
-**Implementation risk:** None outstanding for Phase 1. All Phase 1 work is committed on `sims-identity-allocation-phase-1` in both repositories. Phase 2/3 follow-ons (Shape Shifter consumer `run_id` and single-batch orchestration, plus `sample_group`/`submission` allocator bootstrap) remain unstarted.
+**Implementation risk:** None outstanding for Phase 1. All Phase 1 work is committed on `sims-identity-allocation-phase-1` in both repositories. Phases 2 and 3 are complete; their task plans record implementation and validation evidence.

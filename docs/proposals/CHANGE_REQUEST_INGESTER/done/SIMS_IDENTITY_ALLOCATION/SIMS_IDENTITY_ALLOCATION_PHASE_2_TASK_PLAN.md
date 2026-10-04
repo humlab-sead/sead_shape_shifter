@@ -4,7 +4,7 @@
 
 **Goal:** Make the SEAD change-request ingester plan identity work from the target model's effective `identity_tracking`, `reconciliation`, and `aggregate_parent` values (the same rules target-model validation and documentation use) and reject unsupported work against SIMS's published capability contract before SIMS resolution or artifact generation.
 
-**Readiness:** Validated. Phase 2 is marked ready in the [phase plan](./SIMS_IDENTITY_ALLOCATION_PHASE_PLAN.md). Phase 1 has published the [capability contract](../../../../sead_authority_service/docs/proposals/SIMS_IDENTITY_CAPABILITY_CONTRACT.md) and a validated configuration model, and `GET /identity/capabilities` is implemented in the Authority Service. The normalized operation mapping and fail-closed behavior are fully specified by the source proposal and phase plan.
+**Readiness:** Validated. Phase 2 is marked ready in the [phase plan](./SIMS_IDENTITY_ALLOCATION_PHASE_PLAN.md). Phase 1 published the [capability contract](https://github.com/humlab-sead/sead_authority_service/blob/main/docs/proposals/SIMS_IDENTITY_CAPABILITY_CONTRACT.md) and a validated configuration model, and `GET /identity/capabilities` is implemented in the Authority Service. The normalized operation mapping and fail-closed behavior are fully specified by the source proposal and phase plan.
 
 **Constraints and dependencies**
 
@@ -15,12 +15,12 @@
 - Do not change SIMS behavior. SIMS guarantees uniqueness only within its own identity store. Cutover, bootstrap, deployment, and SEAD database integrity remain out of scope.
 - Model name and version are recorded for diagnostics only; a version mismatch is not itself a failure.
 
-**Source documents:** [identity-allocation proposal](./SIMS_IDENTITY_ALLOCATION_CONTRACT.md), [phase plan](./SIMS_IDENTITY_ALLOCATION_PHASE_PLAN.md), and the Phase 1 [capability contract](../../../../sead_authority_service/docs/proposals/SIMS_IDENTITY_CAPABILITY_CONTRACT.md).
+**Source documents:** [identity-allocation proposal](./SIMS_IDENTITY_ALLOCATION_CONTRACT.md), [phase plan](./SIMS_IDENTITY_ALLOCATION_PHASE_PLAN.md), and the Phase 1 [capability contract](https://github.com/humlab-sead/sead_authority_service/blob/main/docs/proposals/SIMS_IDENTITY_CAPABILITY_CONTRACT.md).
 
 ### Phase Acceptance Criteria
 
-- [ ] `PH2-AC-1` (from `P-AC-1`, `P-AC-2`): Planning derives each row's identity work from the target model's effective `identity_tracking`, `reconciliation`, and `aggregate_parent` values, including documented defaults, and matches target-model validation behavior.
-- [ ] `PH2-AC-2` (from `P-AC-3`, `P-AC-4`, `P-AC-5`): Preflight compares normalized identity requirements against the versioned SIMS capability response, records the target-model name and version, and blocks unsupported or incomplete operations before artifact generation.
+- [x] `PH2-AC-1` (from `P-AC-1`, `P-AC-2`): Planning derives each row's identity work from the target model's effective `identity_tracking`, `reconciliation`, and `aggregate_parent` values, including documented defaults, and matches target-model validation behavior.
+- [x] `PH2-AC-2` (from `P-AC-3`, `P-AC-4`, `P-AC-5`): Preflight compares normalized identity requirements against the versioned SIMS capability response, records the target-model name and version, and blocks unsupported or incomplete operations before artifact generation.
 
 ## Repository Findings
 
@@ -81,7 +81,7 @@
   * **Target:** `src/target_model/effective_identity.py` (NEW).
   * **Current → required:** The default rules exist as two private copies (`spec_validator._resolve_effective_sims` and `documentation._resolve_effective_sims`). There is no single importable resolver.
   * **Implementation:** Define `EffectiveIdentity` (fields `identity_tracking`, `reconciliation`, `aggregate_parent`, all `str | None`) and `resolve_effective_identity(spec: EntitySpec) -> EffectiveIdentity`. Implement the exact defaults: `aggregate_parent` implies `child`; otherwise `fact` → `tracked`, `lookup`/`classifier` → `reconciled`, `bridge` → `derived`; `tracked` → `allocate`, `lookup` → `reconcile-exact`, `classifier` → `lookup-only`, `derived` → `derive`, `child` → no reconciliation.
-  * **Constraints:** Preserve the documented defaults in [TARGET_MODEL_GUIDE.md](../../TARGET_MODEL_GUIDE.md) verbatim. Do not change validation outcomes. No `backend` imports; this is a `src/` module.
+  * **Constraints:** Preserve the documented defaults in [TARGET_MODEL_GUIDE.md](../../../../TARGET_MODEL_GUIDE.md) verbatim. Do not change validation outcomes. No `backend` imports; this is a `src/` module.
   * **Validation:** `V-1`; `tests/target_model/test_effective_identity.py` proves defaults and explicit overrides.
 * [x] `T1.2` **Change:** Delegate both private resolvers to the shared one.
   * **Target:** `src/target_model/spec_validator.py::TargetModelSpecValidator._resolve_effective_sims`; `src/target_model/documentation.py::SimsDocumentGenerator._resolve_effective_sims`.
@@ -190,7 +190,7 @@ The `VM-5` parity milestone (document every changed identity route) is satisfied
 | Preflight module | `ingesters/sead_change_request/capability_preflight.py` (NEW) | `T3.2` | `preflight_capabilities` normalizes and compares, recording model name/version. |
 | Workflow wiring | `ingesters/sead_change_request/preparation.py`, `ingester.py`, `backend/app/services/ingester_runtime.py` | `T3.3` | Preflight runs before orchestration; blocked runs produce no artifact. |
 | Tests | `tests/target_model/test_effective_identity.py` (NEW), `backend/tests/ingesters/test_sead_change_request_preflight.py` (NEW), plus edits to `test_sead_change_request_planning.py`, `test_sead_change_request_identity_work.py`, `test_sead_change_request_ingester.py`, `test_sead_change_request_orchestration.py` | `T1.3`, `T2.1`, `T2.2`, `T3.2`, `T3.3` | New and extended tests cover the criteria in the coverage table. |
-| Phase 2 task plan | `docs/proposals/CHANGE_REQUEST_INGESTER/SIMS_IDENTITY_ALLOCATION/SIMS_IDENTITY_ALLOCATION_PHASE_2_TASK_PLAN.md` (NEW) | — | This plan records the repository basis, criteria mapping, and validation commands. |
+| Phase 2 task plan | `docs/proposals/CHANGE_REQUEST_INGESTER/done/SIMS_IDENTITY_ALLOCATION/SIMS_IDENTITY_ALLOCATION_PHASE_2_TASK_PLAN.md` | — | This plan records the repository basis, criteria mapping, and validation commands. |
 
 ## Progress Tracker
 
@@ -223,4 +223,4 @@ The `VM-5` parity milestone (document every changed identity route) is satisfied
 
 **Open question (resolved):** Preflight records a blocking diagnostic (`CapabilityPreflightResult.diagnostics`) that both the validation and ingestion-precondition paths already surface, so `PH2-AC-2` is enforced at the artifact boundary without a new top-level error type. `V-4` confirms the full ingester suite stays green.
 
-**Deferred (Phase 3/4):** Single-batch orchestration and run IDs; SIMS-side manual confirmation; existing-data migration, deployment, and cutover; orchestration-side prevention of the `RECONCILE` → allocation fall-through for `lookup-only` entities (Phase 2 preflight already normalizes these as `bind_existing`-only, but the per-row orchestration fall-through is restructured in Phase 3's single-batch collection). None of these affect the planning and preflight scope of this phase.
+**Deferred follow-up:** SIMS-side manual confirmation and request chunking remain outside the completed development phases. Existing-data migration, deployment, and cutover are covered by the separate operational proposal. Phase 3 addressed the `RECONCILE` → allocation fall-through for `lookup-only` entities.

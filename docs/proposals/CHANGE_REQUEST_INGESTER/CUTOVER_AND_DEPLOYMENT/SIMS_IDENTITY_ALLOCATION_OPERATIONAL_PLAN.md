@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft. Records the operational decisions for existing-data migration, cross-schema checks, sequence deprecation, and UUID schema gaps. Rollout and cutover remain separate Change Control work. An operational delivery plan cannot be finalized until this plan and the separate deployment decisions referenced in the [phase plan](../SIMS_IDENTITY_ALLOCATION/SIMS_IDENTITY_ALLOCATION_PHASE_PLAN.md) are approved.
+Draft. Records the operational decisions for existing-data migration, cross-schema checks, sequence deprecation, and UUID schema gaps. Rollout and cutover remain separate Change Control work. An operational delivery plan cannot be finalized until this plan and the separate deployment decisions referenced in the [completed phase plan](../done/SIMS_IDENTITY_ALLOCATION/SIMS_IDENTITY_ALLOCATION_PHASE_PLAN.md) are approved.
 
 ## Summary
 
@@ -98,4 +98,4 @@ Verified against the SEAD schema snapshot and `sead_model` DDL:
 2. Review the SEAD writer CRs and prepare the missing-UUID schema CRs before fixing the backfill baseline.
 3. Write and review the idempotent backfill scripts (per entity type) and the SEAD-to-SIMS coverage checks (D2).
 4. Define the separate rollout and cutover CRs (D4), including when SEAD stops minting and SIMS allocation begins.
-5. Once this plan and the separate rollout and cutover decisions are approved, create an operational delivery plan based on the [standalone cutover and deployment proposal](./CHANGE_REQUEST_INGESTER_CUTOVER_AND_DEPLOYMENT_PROPOSAL.md).
+5. Once this plan and the separate rollout and cutover decisions are approved, create an operational delivery plan based on the [SIMS-SEAD trust-contract adoption proposal](./SIMS_SEAD_TRUST_CONTRACT_ADOPTION_PROPOSAL.md).
