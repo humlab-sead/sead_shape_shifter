@@ -106,7 +106,7 @@ If an importer cannot be represented with the current instructions:
 Each completed policy should be validated in `sead_bugs_import` with:
 
 ```bash
-cd /home/roger/source/sead_bugs_import
+cd /path/to/sead_bugs_import
 make validate-policy-format
 ```
 
