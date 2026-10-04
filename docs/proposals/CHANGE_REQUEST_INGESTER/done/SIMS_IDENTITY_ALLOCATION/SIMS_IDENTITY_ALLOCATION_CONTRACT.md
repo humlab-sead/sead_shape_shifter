@@ -51,7 +51,7 @@ The current Authority Service also has a site allocator prototype and an optiona
 - The ingester's [`plan_table()`](../../../../../ingesters/sead_change_request/planning.py) selects allocation for most roles, reconciliation for classifiers, and derivation for bridges. It does not resolve or use the effective identity mode or reconciliation strategy.
 - The SIMS adapter sends an entity name and serialized row values to `POST /identity/resolve`; it has no capability-discovery call. The `IdentityPolicy` class can list explicitly configured entity types internally, but the API does not publish that list. Unknown entity types receive default policy rather than an unsupported-type error.
 - The Authority Service returns an optional `target_id` for approved existing matches and has a disposable-verified site allocator prototype. Other entity types still do not return aggregate identity values for allocation. The prototype is not production-ready. See the [SIMS target-ID proposal](https://github.com/humlab-sead/sead_authority_service/blob/main/docs/proposals/SIMS_TARGET_ID_CONTRACT.md).
-- The active [PostgreSQL contract handoff](../../POSTGRESQL_CONTRACT_VALIDATION.md) records that current change-package validation is blocked on this identity contract.
+- The active [PostgreSQL contract handoff](../../CUTOVER_AND_DEPLOYMENT/POSTGRESQL_CONTRACT_VALIDATION.md) records that current change-package validation is blocked on this identity contract.
 
 ## Proposed Design
 
