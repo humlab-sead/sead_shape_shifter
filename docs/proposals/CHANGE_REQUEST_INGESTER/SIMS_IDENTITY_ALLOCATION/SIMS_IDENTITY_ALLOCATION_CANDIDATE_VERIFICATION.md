@@ -34,6 +34,6 @@ The three approved cases exercised one generic mechanism. Cross-cutting behavior
 
 - Generic capability publication, strict rejection of unconfigured operations, and batch idempotency: Phase 1 of the [phase plan](./SIMS_IDENTITY_ALLOCATION_PHASE_PLAN.md).
 - Model-driven planning, capability preflight, and artifact generation: Phases 2–3.
-- Existing-data bootstrap, competing-writer retirement, deployment validation, and cutover: Phase 4, separate operational work.
+- Existing-data bootstrap, competing-writer retirement, deployment validation, and cutover: separate operational work in the [cutover and deployment proposal](../CUTOVER_AND_DEPLOYMENT/CHANGE_REQUEST_INGESTER_CUTOVER_AND_DEPLOYMENT_PROPOSAL.md).
 
 The SEAD table, column, sequence, and bootstrap observations that earlier versions of this guide recorded described only the disposable setup. They were retired with the contract change that scopes SIMS uniqueness to its own identity store; they do not assign SEAD integrity or schema-mapping responsibility to SIMS.

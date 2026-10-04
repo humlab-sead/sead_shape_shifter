@@ -247,4 +247,4 @@ The phase-plan `VM-6` (one request and one Binding Set per run, stable mapping, 
 
 **Open implementation choice (resolved by repo convention, recorded for the coding agent):** The `run_id` is minted with `uuid4()` when absent and stored on `SubmissionContext`. The exact generation function may be adjusted to match existing `resolve_bundle_name`/UUID conventions in `contracts.py`, but persistence-and-reuse semantics are fixed by `PH3-AC-1`.
 
-**Deferred (Phase 4):** Existing-data migration, bootstrap, deployment, and cutover. SIMS-side manual confirmation workflow and request chunking are explicitly out of Phase 3 scope.
+**Deferred operational work:** Existing-data migration, bootstrap, deployment, and cutover are tracked in the [operational cutover and deployment proposal](../CUTOVER_AND_DEPLOYMENT/CHANGE_REQUEST_INGESTER_CUTOVER_AND_DEPLOYMENT_PROPOSAL.md). SIMS-side manual confirmation workflow and request chunking are explicitly out of Phase 3 scope.

@@ -151,7 +151,7 @@
   * **Target:** `sead_authority_service/tests/identity/test_service_integration.py`, using the existing `disposable_service` fixture and its `127.0.0.1:55432/sead_staging` guard.
   * **Current → required:** Existing integration tests cover individual site/sample allocation, concurrent identity operations, approved target IDs, and proposed-binding conflicts, but not an idempotent atomic resolve batch.
   * **Implementation:** Add database-backed scenarios for same-key/same-payload replay, concurrent duplicate run requests, same-key/changed-payload conflict, request-order preservation, distinct-run proposed-binding conflict, and rollback after an earlier batch item has written. Query the SIMS database to confirm source keys, tracked UUIDs, and configured aggregate identity values remain distinct and linked, and that allocator state is not advanced by a failed batch.
-  * **Constraints:** Every new database test must use the guarded disposable fixture. Check the host, port, and database before applying SQL or running tests. Do not connect to an intended deployment or run Phase 4 bootstrap/cutover checks.
+  * **Constraints:** Every new database test must use the guarded disposable fixture. Check the host, port, and database before applying SQL or running tests. Do not connect to an intended deployment or run bootstrap/cutover checks; those belong to the [operational proposal](../CUTOVER_AND_DEPLOYMENT/CHANGE_REQUEST_INGESTER_CUTOVER_AND_DEPLOYMENT_PROPOSAL.md).
   * **Validation:** `V-4`, `V-5`.
 * [x] `T3.3` **Change:** Rerun the focused identity suite and targeted lint after implementation.
   * **Target:** The identity API, policy, service, repository, and integration test files listed in this plan.
@@ -218,10 +218,10 @@ The documented disposable check does not validate real reconciliation decisions,
 - [x] Existing behavior, contracts, migrations, and documentation touched by the change are regression-tested and synchronized.
 - [x] No intended-deployment, bootstrap, competing-writer retirement, or cutover check has been run as part of this phase.
 - [x] The first supported batch contract requires a stable run ID; no legacy request path is provided.
-- [x] Capability support derives from validated configuration, and no intended-deployment, bootstrap, or cutover enablement is performed in this phase; cutover gating and existing-data adoption remain Phase 4 operational work.
+- [x] Capability support derives from validated configuration, and no intended-deployment, bootstrap, or cutover enablement is performed in this phase; cutover gating and existing-data adoption are tracked in the [operational cutover and deployment proposal](../CUTOVER_AND_DEPLOYMENT/CHANGE_REQUEST_INGESTER_CUTOVER_AND_DEPLOYMENT_PROPOSAL.md).
 
 ## Risks And Open Questions
 
-**Open decisions:** None blocking. Capability support and runtime enforcement both derive from the same validated `operations` configuration; there is no separate runtime-enablement toggle. The disposable-verified operations are `site` bind plus `site`/`sample` allocate; the remaining configured operations are forward-looking configuration, not deployment approval. Cutover gating and existing-data adoption remain Phase 4 operational work. The required run ID is part of the initial contract, not a migration path.
+**Open decisions:** None blocking. Capability support and runtime enforcement both derive from the same validated `operations` configuration; there is no separate runtime-enablement toggle. The disposable-verified operations are `site` bind plus `site`/`sample` allocate; the remaining configured operations are forward-looking configuration, not deployment approval. Cutover gating and existing-data adoption are tracked in the [operational cutover and deployment proposal](../CUTOVER_AND_DEPLOYMENT/CHANGE_REQUEST_INGESTER_CUTOVER_AND_DEPLOYMENT_PROPOSAL.md). The required run ID is part of the initial contract, not a migration path.
 
 **Implementation risk:** None outstanding for Phase 1. All Phase 1 work is committed on `sims-identity-allocation-phase-1` in both repositories. Phase 2/3 follow-ons (Shape Shifter consumer `run_id` and single-batch orchestration, plus `sample_group`/`submission` allocator bootstrap) remain unstarted.
