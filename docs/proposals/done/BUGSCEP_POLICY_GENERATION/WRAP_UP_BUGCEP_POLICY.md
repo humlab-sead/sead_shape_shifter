@@ -7,7 +7,7 @@
 - Goal: resume later without re-discovery
 - Repositories: `sead_bugs_import` and `sead_shape_shifter`
 - Branches at wrap-up: `dev` in both repositories
-- Last full validation: `cd /home/roger/source/sead_bugs_import && make validate-policy-format`
+- Last full validation: `cd /path/to/sead_bugs_import && make validate-policy-format`
 - Last full validation result: passed on 2026-05-29 with 103 tests, 0 failures, 0 errors
 
 ## Summary
@@ -119,9 +119,9 @@ Updated the Shape Shifter fidelity proposal in:
 
 These validations were run and passed:
 
-1. `cd /home/roger/source/sead_bugs_import && sh ./mvnw -q -Dtest=PolicyFormatValidationTest,SupportingOutputPolicyHarnessTest,RelativeAgeManagerFixtureExecutionTest test`
-2. `cd /home/roger/source/sead_bugs_import && sh ./mvnw -q -Dtest=PolicyFormatValidationTest,RelatedOutputPolicyHarnessTest,RelativeDateUpdaterForCalendarFixtureExecutionTest test`
-3. `cd /home/roger/source/sead_bugs_import && make validate-policy-format`
+1. `cd /path/to/sead_bugs_import && sh ./mvnw -q -Dtest=PolicyFormatValidationTest,SupportingOutputPolicyHarnessTest,RelativeAgeManagerFixtureExecutionTest test`
+2. `cd /path/to/sead_bugs_import && sh ./mvnw -q -Dtest=PolicyFormatValidationTest,RelatedOutputPolicyHarnessTest,RelativeDateUpdaterForCalendarFixtureExecutionTest test`
+3. `cd /path/to/sead_bugs_import && make validate-policy-format`
 
 The final full run reported:
 
@@ -162,7 +162,7 @@ For that importer:
 Suggested narrow command:
 
 ```bash
-cd /home/roger/source/sead_bugs_import && sh ./mvnw -q -Dtest=PolicyFormatValidationTest,<matching harness test>,<matching Java fixture test> test
+cd /path/to/sead_bugs_import && sh ./mvnw -q -Dtest=PolicyFormatValidationTest,<matching harness test>,<matching Java fixture test> test
 ```
 
 ### Option B: Deepen One Existing Covered Importer Locally
@@ -178,7 +178,7 @@ Good candidates are:
 Suggested narrow command:
 
 ```bash
-cd /home/roger/source/sead_bugs_import && sh ./mvnw -q -Dtest=PolicyFormatValidationTest,<matching harness test>,<matching Java fixture test> test
+cd /path/to/sead_bugs_import && sh ./mvnw -q -Dtest=PolicyFormatValidationTest,<matching harness test>,<matching Java fixture test> test
 ```
 
 ### Option C: Return To `datescalendar` Only For A Concrete Missing Branch
