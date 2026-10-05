@@ -3,7 +3,15 @@
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
-from ingesters.sead_change_request.contracts import ChangeRowState, IdentityAssignment, PlannedRowAction, PlannedTable, SubmissionContext
+from ingesters.sead_change_request.contracts import (
+    ChangeRowState,
+    IdentityAssignment,
+    PlannedRowAction,
+    PlannedTable,
+    SimsResolveItem,
+    SubmissionContext,
+)
+from src.target_model.effective_identity import resolve_effective_identity
 from src.target_model.models import EntitySpec
 
 SIMS_AGGREGATE_ID_CAPABILITY_NOTE = "SIMS allocation could not complete target projection because no SIMS aggregate ID was returned"
@@ -35,7 +43,9 @@ class SimsClientPort(Protocol):
 
     async def get_binding_set_state(self, binding_set_uuid: str) -> str: ...
 
-    async def confirm_binding_set(self, binding_set_uuid: str) -> str: ...
+    async def get_capabilities(self) -> Any: ...
+
+    async def resolve_batch(self, items: list[Any], submission_context: SubmissionContext) -> dict[str, Any]: ...
 
     async def associate_change_request(self, binding_set_uuid: str, change_request_name: str) -> None: ...
 
@@ -52,6 +62,19 @@ class TargetIdAllocatorPort(Protocol):
     async def reserve_target_id(self, table_name: str, public_id_column: str) -> int | None: ...
 
 
+def _can_allocate_after_miss(entity_spec: EntitySpec | None) -> bool:
+    """Return True when a reconciled miss may request SIMS allocation.
+
+    Only `reconcile-exact` and `reconcile-fuzzy` permit allocation after an
+    approved miss. `lookup-only` and `lookup-extensible` entities never allocate;
+    a missing entity spec fails closed rather than assuming allocation is allowed.
+    """
+    if entity_spec is None:
+        return False
+    effective = resolve_effective_identity(entity_spec)
+    return effective.identity_tracking == "reconciled" and effective.reconciliation in ("reconcile-exact", "reconcile-fuzzy")
+
+
 async def orchestrate_identity_assignments(
     planned_tables: list[PlannedTable],
     submission_context: SubmissionContext,
@@ -66,12 +89,15 @@ async def orchestrate_identity_assignments(
     assignments: dict[str, dict[object, IdentityAssignment]] = {
         entity_name: dict(entity_assignments) for entity_name, entity_assignments in (fallback_assignments or {}).items()
     }
+    sims_items: list[SimsResolveItem] = []
+    sims_targets: list[tuple[str, object]] = []
     sims_assigned_rows: list[tuple[str, object]] = []
     binding_set_uuid: str | None = submission_context.binding_set_uuid
     binding_set_state: str | None = None
 
     for planned_table in planned_tables:
         entity_assignments: dict[object, IdentityAssignment] = assignments.setdefault(planned_table.entity_name, {})
+        entity_spec: EntitySpec | None = (target_model_entities or {}).get(planned_table.entity_name)
         for row_index, planned_action in planned_table.planned_actions.items():
             if planned_action in {PlannedRowAction.REFERENCE_EXISTING, PlannedRowAction.UPDATE_EXISTING_CANDIDATE}:
                 continue
@@ -127,60 +153,49 @@ async def orchestrate_identity_assignments(
                 )
                 continue
 
-            if planned_action == PlannedRowAction.RECONCILE and reconciliation_client is not None:
+            if planned_action == PlannedRowAction.RECONCILE:
+                if reconciliation_client is None:
+                    entity_assignments[row_index] = IdentityAssignment(
+                        state=ChangeRowState.BLOCKED_UNRESOLVED,
+                        note=(f"Entity '{planned_table.entity_name}' requires reconciliation but no reconciliation client is configured"),
+                    )
+                    continue
                 reconciled_target_id = await reconciliation_client.reconcile_entity(planned_table.entity_name, row_payload)
                 if reconciled_target_id is not None:
                     if sims_client is not None:
-                        binding = await sims_client.bind_existing_entity(
-                            planned_table.entity_name,
-                            row_payload,
-                            reconciled_target_id,
-                            submission_context,
+                        sims_items.append(
+                            SimsResolveItem(
+                                entity_name=planned_table.entity_name,
+                                row=row_payload,
+                                approved_aggregate_id=reconciled_target_id,
+                            )
                         )
-                        target_id = binding.get("target_id")
-                        note = binding.get("note")
-                        binding_set_uuid = binding.get("binding_set_uuid") or binding_set_uuid
-                        binding_set_state = binding.get("binding_set_state") or binding_set_state
-                        if target_id != reconciled_target_id:
-                            blocking_note = note or (
-                                f"SIMS did not bind '{planned_table.entity_name}' to approved aggregate ID "
-                                f"{reconciled_target_id}"
-                            )
-                            entity_assignments[row_index] = IdentityAssignment(
-                                state=ChangeRowState.BLOCKED_UNRESOLVED,
-                                note=blocking_note,
-                            )
-                            continue
-                        sims_assigned_rows.append((planned_table.entity_name, row_index))
+                        sims_targets.append((planned_table.entity_name, row_index))
+                    else:
+                        entity_assignments[row_index] = IdentityAssignment(
+                            state=ChangeRowState.RECONCILED_CLASSIFIER,
+                            target_id=reconciled_target_id,
+                        )
+                    continue
+                if not _can_allocate_after_miss(entity_spec):
                     entity_assignments[row_index] = IdentityAssignment(
-                        state=ChangeRowState.RECONCILED_CLASSIFIER,
-                        target_id=target_id if sims_client is not None else reconciled_target_id,
-                        note=note if sims_client is not None else None,
+                        state=ChangeRowState.BLOCKED_UNRESOLVED,
+                        note=(
+                            f"Entity '{planned_table.entity_name}' has no approved reconciliation match "
+                            "and its strategy does not permit SIMS allocation"
+                        ),
                     )
                     continue
 
             if planned_action in {PlannedRowAction.ALLOCATE, PlannedRowAction.RECONCILE} and sims_client is not None:
-                allocation = await sims_client.allocate_entity(planned_table.entity_name, row_payload, submission_context)
-                target_id = allocation.get("target_id")
-                note = allocation.get("note")
-                if target_id is None:
-                    blocking_note = SIMS_AGGREGATE_ID_CAPABILITY_NOTE
-                    if note:
-                        blocking_note = f"{blocking_note}: {note}"
-                    entity_assignments[row_index] = IdentityAssignment(
-                        state=ChangeRowState.BLOCKED_UNRESOLVED,
-                        note=blocking_note,
+                sims_items.append(
+                    SimsResolveItem(
+                        entity_name=planned_table.entity_name,
+                        row=row_payload,
+                        approved_aggregate_id=None,
                     )
-                else:
-                    entity_assignments[row_index] = IdentityAssignment(
-                        state=ChangeRowState.NEWLY_ALLOCATED_ENTITY,
-                        target_id=target_id,
-                        note=note,
-                    )
-                binding_set_uuid = allocation.get("binding_set_uuid") or binding_set_uuid
-                binding_set_state = allocation.get("binding_set_state") or binding_set_state
-                if target_id is not None:
-                    sims_assigned_rows.append((planned_table.entity_name, row_index))
+                )
+                sims_targets.append((planned_table.entity_name, row_index))
                 continue
 
             if planned_action == PlannedRowAction.EVALUATE_BRIDGE and sims_client is not None:
@@ -200,15 +215,51 @@ async def orchestrate_identity_assignments(
                         state=ChangeRowState.BLOCKED_UNRESOLVED,
                         note=blocking_note,
                     )
-                binding_set_uuid = bridge.get("binding_set_uuid") or binding_set_uuid
-                binding_set_state = bridge.get("binding_set_state") or binding_set_state
-                if bridge.get("target_id") is not None:
-                    sims_assigned_rows.append((planned_table.entity_name, row_index))
+                continue
+
+    if sims_items and sims_client is not None:
+        batch = await sims_client.resolve_batch(sims_items, submission_context)
+        batch_error = batch.get("error")
+        if batch_error is not None:
+            for entity_name, row_index in sims_targets:
+                assignments.setdefault(entity_name, {})[row_index] = IdentityAssignment(
+                    state=ChangeRowState.BLOCKED_UNRESOLVED,
+                    note=batch_error,
+                )
+        else:
+            outcomes: list[dict[str, Any]] = batch.get("outcomes", [])
+            binding_set_uuid = batch.get("binding_set_uuid") or binding_set_uuid
+            binding_set_state = batch.get("binding_set_state") or binding_set_state
+
+            for (entity_name, row_index), item, outcome in zip(sims_targets, sims_items, outcomes):
+                target_id = outcome.get("target_id")
+                if item.approved_aggregate_id is not None:
+                    if target_id != item.approved_aggregate_id:
+                        assignments.setdefault(entity_name, {})[row_index] = IdentityAssignment(
+                            state=ChangeRowState.BLOCKED_UNRESOLVED,
+                            note=(f"SIMS did not bind '{entity_name}' to approved aggregate ID {item.approved_aggregate_id}"),
+                        )
+                    else:
+                        assignments.setdefault(entity_name, {})[row_index] = IdentityAssignment(
+                            state=ChangeRowState.RECONCILED_CLASSIFIER,
+                            target_id=target_id,
+                            note=(f"Bound {entity_name} to approved aggregate ID {item.approved_aggregate_id}"),
+                        )
+                elif target_id is None:
+                    assignments.setdefault(entity_name, {})[row_index] = IdentityAssignment(
+                        state=ChangeRowState.BLOCKED_UNRESOLVED,
+                        note=SIMS_AGGREGATE_ID_CAPABILITY_NOTE,
+                    )
+                else:
+                    assignments.setdefault(entity_name, {})[row_index] = IdentityAssignment(
+                        state=ChangeRowState.NEWLY_ALLOCATED_ENTITY,
+                        target_id=target_id,
+                        note=(f"Allocated {entity_name}"),
+                    )
+                sims_assigned_rows.append((entity_name, row_index))
 
     if sims_client is not None and binding_set_uuid:
         binding_set_state = binding_set_state or await sims_client.get_binding_set_state(binding_set_uuid)
-        if binding_set_state != "confirmed":
-            binding_set_state = await sims_client.confirm_binding_set(binding_set_uuid)
 
         if binding_set_state != "confirmed":
             for entity_name, row_index in sims_assigned_rows:

@@ -203,7 +203,7 @@ From the original proposal analysis:
 To reproduce these results:
 
 ```bash
-cd /home/roger/source/sead_shape_shifter
+cd /path/to/sead_shape_shifter
 python scripts/compare_target_models.py
 ```
 

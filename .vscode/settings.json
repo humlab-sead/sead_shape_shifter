@@ -204,7 +204,7 @@
     "yaml.format.singleQuote": false,
     "yaml.keyOrdering": false,
     "yaml.schemas": {
-        "/home/roger/source/sead_shape_shifter/frontend/src/schemas/projectSchema.json": [
+        "./frontend/src/schemas/projectSchema.json": [
             "**/shapeshifter.yml"
         ]
     },

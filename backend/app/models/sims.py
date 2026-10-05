@@ -92,6 +92,7 @@ class ResolveRequest(BaseModel):
     """Request body for POST /identity/resolve."""
 
     scope_name: str = Field(description="Source Scope name, e.g. 'sead://reconciliation' or a provider URI.")
+    run_id: str = Field(description="Stable idempotency key for this batch, scoped to the source scope. Reused across retries.")
     submission_name: str = Field(description="Human-readable name for this submission batch.")
     requests: list[ResolutionRequest] = Field(
         description="One entry per domain entity to resolve.",
@@ -163,3 +164,26 @@ class ChangeDetectionResult(BaseModel):
     tracked_identity_uuid: UUID
     outcome: ChangeOutcome
     previous_hash: str | None = Field(default=None, description="The previously stored hash, if any.")
+
+
+# ---------------------------------------------------------------------------
+# Capability models (GET /identity/capabilities)
+# ---------------------------------------------------------------------------
+
+
+class EntityCapabilityResponse(BaseModel):
+    """Published capability for one configured entity type."""
+
+    entity_type: str
+    entity_subtype: str
+    bind_existing: bool
+    allocate_new: bool
+    auto_confirm: bool
+    accept_uuid: bool
+
+
+class CapabilitiesResponse(BaseModel):
+    """Response body for GET /identity/capabilities."""
+
+    version: str
+    entities: list[EntityCapabilityResponse]

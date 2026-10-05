@@ -607,3 +607,61 @@ class TestBuildDeployArtifact:
             f"FROM program 'zcat -qac {expected_bundle_name}/tbl_sample.gz' WITH (FORMAT csv, DELIMITER E'\\t', ENCODING 'utf-8');",
             'UPDATE "tbl_sample" SET "sample_name" = \'changed row\' WHERE "sample_id" = 102;',
         ]
+
+
+class TestStrategyParity:
+    """Both deploy strategies must emit the same SIMS-issued identity values."""
+
+    def _package_with_resolved_identities(self) -> ChangeRequestPackage:
+        frame = pd.DataFrame(
+            {
+                "system_id": [1, 2],
+                "sample_id": [501, 502],
+                "sample_name": ["Allocated A", "Allocated B"],
+            }
+        )
+        return ChangeRequestPackage(
+            tables={
+                "sample": ChangeRequestTable(
+                    name="sample",
+                    frame=frame,
+                    row_states=pd.Series(
+                        [ChangeRowState.NEWLY_ALLOCATED_ENTITY, ChangeRowState.NEWLY_ALLOCATED_ENTITY],
+                        index=frame.index,
+                        name="_row_state",
+                    ),
+                )
+            }
+        )
+
+    def _submission_context(self) -> SubmissionContext:
+        return SubmissionContext(
+            submission_name="test-submission",
+            project_name="test-project",
+            timestamp=datetime(2026, 5, 23, 23, 0, 0),
+            datatype="mal",
+            identifier="TEST_SUBMISSION",
+        )
+
+    def test_both_strategies_emit_the_same_resolved_identity_values(self):
+        """Inline INSERT and copy-CSV must both carry the SIMS-issued target IDs in order."""
+        package = self._package_with_resolved_identities()
+        target_model = minimal_target_model(sample={"role": "fact", "public_id": "sample_id", "target_table": "tbl_sample"})
+        context = self._submission_context()
+
+        inline = build_deploy_artifact(package, target_model, context, strategy="inline_insert")
+        copy_csv = build_deploy_artifact(package, target_model, context, strategy="copy_csv")
+
+        # Inline INSERT carries both resolved IDs in its VALUES clauses.
+        assert 'INSERT INTO "tbl_sample" ("sample_id", "sample_name") VALUES (501, \'Allocated A\');' in inline.statements
+        assert 'INSERT INTO "tbl_sample" ("sample_id", "sample_name") VALUES (502, \'Allocated B\');' in inline.statements
+
+        # copy-CSV carries the same two resolved IDs in its sidecar payload.
+        bundle_name = resolve_bundle_name(context)
+        payload = copy_csv.bundle_files[f"deploy/{bundle_name}/tbl_sample.gz"]
+        assert payload == "501\tAllocated A\n502\tAllocated B\n"
+
+        # Both strategies preserve exactly the same ordered target-ID values.
+        inline_ids = [int(statement.split("VALUES (")[1].split(",")[0]) for statement in inline.statements]
+        csv_ids = [int(line.split("\t")[0]) for line in payload.rstrip("\n").split("\n")]
+        assert inline_ids == csv_ids == [501, 502]

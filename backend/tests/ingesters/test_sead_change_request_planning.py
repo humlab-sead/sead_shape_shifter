@@ -158,6 +158,26 @@ class TestPlanTable:
         assert plan.planned_actions.tolist() == [PlannedRowAction.ALLOCATE]
         assert not plan.diagnostics
 
+    def test_lookup_rows_route_to_reconciliation_not_allocation(self):
+        """A lookup entity missing its public ID should reconcile, not allocate."""
+        frame = pd.DataFrame({"site_id": [None], "site_name": ["Nordic Site"]})
+        entity_spec = EntitySpec(role="lookup", public_id="site_id")
+
+        plan = plan_table("site", frame, entity_spec)
+
+        assert plan.planned_actions.tolist() == [PlannedRowAction.RECONCILE]
+        assert not plan.diagnostics
+
+    def test_child_rows_route_to_aggregate_inheritance(self):
+        """A child entity missing its public ID should inherit from its aggregate parent, not allocate."""
+        frame = pd.DataFrame({"sample_dimension_id": [None], "sample_id": [10]})
+        entity_spec = EntitySpec(role="fact", public_id="sample_dimension_id", aggregate_parent="sample")
+
+        plan = plan_table("sample_dimension", frame, entity_spec)
+
+        assert plan.planned_actions.tolist() == [PlannedRowAction.INHERIT_AGGREGATE]
+        assert not plan.diagnostics
+
     def test_bridge_rows_report_missing_uniqueness_metadata(self):
         """Bridge rows should surface missing uniqueness metadata as an early diagnostic."""
         frame = pd.DataFrame({"sample_id": [1], "taxon_id": [2]})

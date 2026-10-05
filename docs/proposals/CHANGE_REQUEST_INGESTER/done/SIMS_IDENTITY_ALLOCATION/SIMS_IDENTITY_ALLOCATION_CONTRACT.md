@@ -2,7 +2,7 @@
 
 ## Status
 
-- System ownership is documented: Shape Shifter owns model-driven planning, reconciliation, and artifact checks; the Authority Service owns SIMS identity and allocation behavior. Shape implementation and integration remain pending. The Authority Service's site allocator prototype is verified only against a disposable database.
+- Implementation and integration are complete for Phases 1–3; the cross-system phase plan and task plans record the validation results. Existing-data adoption, production rollout, and cutover remain separate operational work.
 - Scope: identity work planning and SIMS capability checks in `sead_change_request`
 - Goal: use target-model identity rules to plan rows without assuming SIMS supports every entity in the model
 
@@ -18,7 +18,7 @@ This proposal owns Shape Shifter behavior: interpreting effective target-model i
 
 The Authority Service owns SIMS API semantics, tracked-identity persistence, generic configurable allocation, source-identity associations, and uniqueness within the SIMS identity store. SIMS does not own SEAD table or column mappings, SEAD database constraints, or deployment integrity checks. The [SIMS `target_id` proposal](https://github.com/humlab-sead/sead_authority_service/blob/main/docs/proposals/SIMS_TARGET_ID_CONTRACT.md) covers the service response contract. SEAD consumes SIMS-issued aggregate identity values under the agreed trust contract.
 
-The site and sample checks in the candidate verification guide are initial verification examples, not an architectural limit or a requirement for entity-specific code. Production deployment and cutover are outside the current development task.
+The site and sample checks in the candidate verification guide are initial verification examples, not an architectural limit or a requirement for entity-specific code. Production deployment and cutover are outside the current development task; see the [SIMS-SEAD trust-contract adoption proposal](../../CUTOVER_AND_DEPLOYMENT/SIMS_SEAD_TRUST_CONTRACT_ADOPTION_PROPOSAL.md).
 
 ## Problem
 
@@ -42,16 +42,16 @@ The current Authority Service also has a site allocator prototype and an optiona
 
 - Implementing the Authority Service API, allocator, bootstrap, or identity database schema in this proposal; these belong to Authority Service proposals and plans.
 - Replacing the target model's identity modes or changing its entity taxonomy.
-- Defining SEAD database integrity enforcement, existing-data migration, production rollout, or cutover. These are outside the current development task.
+- Defining SEAD database integrity enforcement, existing-data migration, production rollout, or cutover. These are outside the current development task and tracked in the [operational cutover and deployment proposal](../../CUTOVER_AND_DEPLOYMENT/SIMS_SEAD_TRUST_CONTRACT_ADOPTION_PROPOSAL.md).
 - Treating the target model as a list of individual runtime identities already stored in SIMS.
 
 ## Current Behavior
 
-- The target model permits `tracked`, `reconciled`, `derived`, and `child` identity modes. When fields are omitted, target-model validation and generated documentation infer effective behavior from the entity role and aggregate parent. See [Target Model Guide](../../../TARGET_MODEL_GUIDE.md), [SEAD superset model](../../../../resources/target_models/sead_superset_model.yml), and [identity rules validator](../../../../src/target_model/spec_validator.py).
-- The ingester's [`plan_table()`](../../../../ingesters/sead_change_request/planning.py) selects allocation for most roles, reconciliation for classifiers, and derivation for bridges. It does not resolve or use the effective identity mode or reconciliation strategy.
+- The target model permits `tracked`, `reconciled`, `derived`, and `child` identity modes. When fields are omitted, target-model validation and generated documentation infer effective behavior from the entity role and aggregate parent. See [Target Model Guide](../../../../TARGET_MODEL_GUIDE.md), [SEAD superset model](../../../../../resources/target_models/sead_superset_model.yml), and [identity rules validator](../../../../../src/target_model/spec_validator.py).
+- The ingester's [`plan_table()`](../../../../../ingesters/sead_change_request/planning.py) selects allocation for most roles, reconciliation for classifiers, and derivation for bridges. It does not resolve or use the effective identity mode or reconciliation strategy.
 - The SIMS adapter sends an entity name and serialized row values to `POST /identity/resolve`; it has no capability-discovery call. The `IdentityPolicy` class can list explicitly configured entity types internally, but the API does not publish that list. Unknown entity types receive default policy rather than an unsupported-type error.
 - The Authority Service returns an optional `target_id` for approved existing matches and has a disposable-verified site allocator prototype. Other entity types still do not return aggregate identity values for allocation. The prototype is not production-ready. See the [SIMS target-ID proposal](https://github.com/humlab-sead/sead_authority_service/blob/main/docs/proposals/SIMS_TARGET_ID_CONTRACT.md).
-- The active [PostgreSQL contract handoff](../POSTGRESQL_CONTRACT_VALIDATION.md) records that current change-package validation is blocked on this identity contract.
+- The active [PostgreSQL contract handoff](../../CUTOVER_AND_DEPLOYMENT/POSTGRESQL_CONTRACT_VALIDATION.md) records that current change-package validation is blocked on this identity contract.
 
 ## Proposed Design
 
@@ -96,7 +96,7 @@ Do not release or recycle an allocated aggregate identity value. If its package 
 
 SIMS does not check whether an aggregate identity value conflicts with a value already stored in SEAD. SEAD is responsible for its own persistence integrity. The SIMS–SEAD contract trusts that SEAD consumes identities minted by SIMS and does not create tracked aggregate identities independently. SEAD database constraints, collision handling, and operational cutover are outside the current development task.
 
-Before a regenerated package becomes eligible for deployment, Change Control must withdraw or supersede the earlier change request for the same logical submission. A SIMS Binding Set status can record that supersession for audit, but it does not revoke SQL that has already been generated. If two packages are nevertheless applied, the first successful insert wins and the other must fail on database uniqueness constraints.
+Package withdrawal or supersession before deployment, and the gate for regenerated packages, are operational responsibilities covered by the [cutover and deployment proposal](../../CUTOVER_AND_DEPLOYMENT/SIMS_SEAD_TRUST_CONTRACT_ADOPTION_PROPOSAL.md). A SIMS Binding Set status is audit state; it does not revoke generated SQL.
 
 ### One SIMS batch per ingester run
 
@@ -149,7 +149,7 @@ Before identity orchestration, Shape Shifter compares each entity's normalized, 
 - SIMS retry tests prove the same source identity returns the same tracked UUID and aggregate identity value, and abandoned values are never reassigned to another identity.
 - SIMS concurrency tests prove simultaneous runs for the same source identity cannot create duplicate tracked identities, and a distinct run receives a pending-identity conflict while an earlier set remains proposed.
 - Confirmation tests prove the ingester never confirms a proposed set automatically, and artifact generation remains blocked until SIMS reports the set as confirmed.
-- Change Control workflow validation proves an earlier package for the same logical submission is withdrawn or superseded before a regenerated package can be deployed.
+- Package withdrawal, supersession, and deployment eligibility are validated in the separate [operational cutover and deployment work](../../CUTOVER_AND_DEPLOYMENT/SIMS_SEAD_TRUST_CONTRACT_ADOPTION_PROPOSAL.md), not in this development task.
 - Inline INSERT and copy-CSV artifact tests prove both strategies emit equivalent identities and no package is written when a required capability or target ID is missing.
 - Disposable PostgreSQL validation must pass the submission artifact assertions in the linked contract handoff after the identity behavior is implemented.
 
@@ -162,12 +162,12 @@ Before identity orchestration, Shape Shifter compares each entity's normalized, 
 - `P-AC-5`: SIMS provides a generic, configuration-driven mechanism for minting tracked aggregate identity values. Shape Shifter blocks artifact generation when a required identity value or insertion path is unavailable. Child and derived rows use insertion paths outside SIMS unless the domain model identifies them as tracked aggregates.
 - `P-AC-6`: SIMS guarantees uniqueness of aggregate identity values within its own identity store. It does not guarantee SEAD database uniqueness, map values to SEAD tables or columns, or enforce SEAD integrity.
 - `P-AC-7`: Re-resolving a confirmed source identity returns its same tracked UUID and aggregate identity value; a distinct run encountering a proposed Binding Set receives a pending-identity conflict and does not allocate another identity. Allocated values are never released or reused, including when a package is abandoned.
-- `P-AC-8`: Change Control withdraws or supersedes an earlier package for the same logical submission before a regenerated package is eligible for deployment.
+- `P-AC-8`: The development work does not control deployment eligibility; package withdrawal or supersession before a regenerated package is deployed is defined in the [operational cutover and deployment proposal](../../CUTOVER_AND_DEPLOYMENT/SIMS_SEAD_TRUST_CONTRACT_ADOPTION_PROPOSAL.md).
 - `P-AC-9`: One artifact-producing ingester run sends all SIMS identity work in one resolve request and receives one Submission and one Binding Set; an empty SIMS work set makes no request.
 - `P-AC-10`: SIMS returns outcomes in request order. The ingester never confirms a proposed Binding Set automatically and blocks artifact generation until the set is confirmed; it associates a confirmed set once with the generated change request.
 - `P-AC-11`: SIMS serializes requests by scoped run-level idempotency key and commits the key, batch result, and identity changes in one transaction. A same-key/same-payload retry returns the original result; a different payload with that key conflicts; a failed batch leaves no partial result.
 - `P-AC-12`: Inline INSERT and copy-CSV output pass the disposable PostgreSQL submission-artifact contract checks.
-- `P-AC-13`: The SIMS–SEAD trust contract requires every tracked entity represented in SEAD to have a corresponding SIMS tracked identity. Establishing this invariant for existing production data is separate operational work and is not part of the current development scope.
+- `P-AC-13`: The SIMS–SEAD trust contract requires every tracked entity represented in SEAD to have a corresponding SIMS tracked identity. Establishing this invariant for existing production data is separate operational work described in the [cutover and deployment proposal](../../CUTOVER_AND_DEPLOYMENT/SIMS_SEAD_TRUST_CONTRACT_ADOPTION_PROPOSAL.md), not part of the current development scope.
 - `P-AC-14`: Shape Shifter performs reconciliation and approval before SIMS resolution. SIMS binds an approved existing aggregate identity without minting another identity; an approved miss requests a new identity through the configured generic mechanism. A conflicting binding fails without remapping.
 - `P-AC-15`: For every tracked aggregate, SIMS stores an entity-scoped aggregate identity value, tracked UUID, and associated scoped source identities as distinct roles.
 - `P-AC-16`: SIMS's generic allocator is configured by entity type, mints aggregate identity values, and enforces uniqueness within SIMS without SEAD table, column, sequence, or database-constraint knowledge.
@@ -184,7 +184,7 @@ Use the [cross-system phase plan](./SIMS_IDENTITY_ALLOCATION_PHASE_PLAN.md) for 
 - Specify insertion-time keys for child and derived rows outside SIMS, including `site_location_id`, when those rows do not receive independent tracked UUIDs.
 - Persist the aggregate identity value with the tracked identity from first allocation so retries return the same UUID and value; do not release or recycle allocated values. Serialize identity resolution so a concurrent run cannot allocate a second identity for the same source identity.
 - For a distinct run, reuse confirmed bindings and reject source identities with a still-proposed Binding Set. Treat resolution or abandonment of that set as an operator action; defer automatic expiry and supersession.
-- Ensure Change Control withdraws or supersedes an earlier package before a regenerated package for the same logical submission is eligible for deployment. Treat SIMS Binding Set supersession as audit state, not as SQL revocation.
+- Keep package withdrawal, supersession, and deployment eligibility in the linked operational proposal; they are not development acceptance criteria. Treat SIMS Binding Set status as audit state, not SQL revocation.
 - Send all SIMS work for one artifact-producing ingester run in one resolve request. Retain a scoped run ID across retries, serialize duplicate requests, and commit the idempotency record and batch result atomically. Give each intentional run a new ID.
 - Do not confirm proposed Binding Sets from the ingester. Initially allow only auto-confirmable operations; require a confirmed set before artifact generation and defer a manual-review workflow.
 - Preserve request order in SIMS outcomes or introduce an explicit row correlation value if the API cannot guarantee ordering. Do not add chunking or multi-set orchestration until a real batch limit requires it.
