@@ -21,7 +21,7 @@ from backend.app.services.ingester_runtime import (
     SeadChangeRequestTargetCollisionChecker,
 )
 from ingesters.sead_change_request import ChangeRowState, orchestrate_identity_assignments
-from ingesters.sead_change_request.contracts import PlannedRowAction, PlannedTable, SubmissionContext
+from ingesters.sead_change_request.contracts import PlannedRowAction, PlannedTable, SimsResolveItem, SubmissionContext
 
 # pylint: disable=unused-argument
 
@@ -193,6 +193,47 @@ class TestSeadChangeRequestSimsAdapter:
         assert allocation["binding_set_uuid"] == "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
         assert allocation["binding_set_state"] == "confirmed"
         assert allocation["note"] == "SIMS resolved 'sample' into Binding Set 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'"
+
+    @pytest.mark.asyncio
+    async def test_resolve_batch_submits_one_request_with_run_id(self):
+        sims_client = FakeBackendSimsClient(lifecycle_state="confirmed", target_id=501)
+        adapter = SeadChangeRequestSimsAdapter(cast(Any, sims_client))
+        context = SubmissionContext(
+            submission_name="test-submission",
+            project_name="test-project",
+            timestamp=datetime.fromisoformat("2026-05-23T23:10:00"),
+            run_id="run-123",
+        )
+
+        result = await adapter.resolve_batch(
+            [
+                SimsResolveItem(entity_name="sample", row={"sample_id": None, "name": "A"}),
+                SimsResolveItem(entity_name="sample", row={"sample_id": None, "name": "B"}),
+            ],
+            context,
+        )
+
+        assert len(sims_client.resolve_requests) == 1
+        request = sims_client.resolve_requests[0]
+        assert request.run_id == "run-123"
+        assert len(request.requests) == 2
+        assert result["binding_set_uuid"] == "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+        assert result["binding_set_state"] == "confirmed"
+
+    @pytest.mark.asyncio
+    async def test_resolve_batch_mints_run_id_when_context_has_none(self):
+        sims_client = FakeBackendSimsClient(lifecycle_state="confirmed", target_id=501)
+        adapter = SeadChangeRequestSimsAdapter(cast(Any, sims_client))
+        context = SubmissionContext(
+            submission_name="test-submission",
+            project_name="test-project",
+            timestamp=datetime.fromisoformat("2026-05-23T23:10:00"),
+        )
+
+        await adapter.resolve_batch([SimsResolveItem(entity_name="sample", row={"name": "A"})], context)
+
+        request = sims_client.resolve_requests[0]
+        assert request.run_id
 
     @pytest.mark.asyncio
     async def test_reconciliation_result_flows_through_adapter_into_sims_request(self):

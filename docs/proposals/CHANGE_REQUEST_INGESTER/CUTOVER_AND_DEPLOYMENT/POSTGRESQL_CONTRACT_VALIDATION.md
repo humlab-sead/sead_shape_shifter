@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Validate the submission-model schema, each historical `fn_migrate_submission_datasets` call, and generated submission artifacts against a disposable copy of the baseline database. This covers the PostgreSQL contract acceptance criterion in the [submission metadata task plan](REFACTOR_SEAD_SUBMISSION_METADATA_TASK_PLAN.md), not the SEAD release cycle.
+Validate the submission-model schema, each historical `fn_migrate_submission_datasets` call, and generated submission artifacts against a disposable copy of the baseline database. This is the pre-deployment PostgreSQL gate for the [submission metadata task plan](../REFACTOR_SEAD_SUBMISSION_METADATA_TASK_PLAN.md); it does not define the SEAD release schedule.
 
 **Status:** Historical calls validated; current artifact generation blocked on the SIMS identity contract
 
@@ -13,7 +13,7 @@ Validate the submission-model schema, each historical `fn_migrate_submission_dat
 - The current DML verify script checks the date parser, but does not assert the individual migration calls or generated submission artifacts.
 - The DDL adds `data_provider_code`, but the legacy provider copy does not populate it. The artifact test needs a provider code set on the disposable database.
 - The six historical submission groups are confirmed as intended: MAL/provider 2, BugsCEP/provider 1, ceramics/provider 3, Dendrochronology pilot/provider 10, aDNA/provider 12, and Lund Living Trees/provider 10.
-- A compressed baseline dump is available at [tmp/sead_staging_baseline.sql.gz](../../../tmp/sead_staging_baseline.sql.gz). It was created from `sead_staging` in plain SQL format with `--create` and `--clean`; gzip integrity passes. The dump contains definitions of the migration functions but not the new submission tables or `tbl_datasets.submission_id`. Confirm the restored table and column state before using it as the pre-DDL baseline.
+- A compressed baseline dump is available at [tmp/sead_staging_baseline.sql.gz](../../../../tmp/sead_staging_baseline.sql.gz). It was created from `sead_staging` in plain SQL format with `--create` and `--clean`; gzip integrity passes. The dump contains definitions of the migration functions but not the new submission tables or `tbl_datasets.submission_id`. Confirm the restored table and column state before using it as the pre-DDL baseline.
 - Setup gate 1 completed on 2026-09-30: the dump was restored into `ss_contract_20260930_101335` in the network-isolated container `ss-pg-ss-contract-20260930-101335`. The restored database has 6 dataset masters, 143452 legacy dataset submissions, and 59052 datasets. The new submission tables and `tbl_datasets.submission_id` are absent. The initial attempt with `postgres:16-alpine` stopped at the missing PostGIS extension; that disposable container was removed before restoring with `postgis/postgis:16-3.4`. No migration calls were run.
 - Setup gate 2 prepared `ss_contract_prepared_20260930_101335` from the restored baseline. The DDL and current DML function definitions load, six provider identities match the legacy masters, and there are no submissions, submission tasks, or linked datasets. Individual, combined, and artifact assertion scripts are available; no helper call or generated package has run. The verified baseline groups contain 2967, 13433, 11076, 27032, 10, and 4534 datasets (59052 total).
 - Setup gate 3 uses the in-memory `test-project` submission input in the two ingester tests below. Both strategies generated packages with the same new dataset and a reference-only existing dataset. Their rows were checked against the prepared database's required columns and IDs before executing the packages on separate clones.
@@ -24,17 +24,17 @@ Validate the submission-model schema, each historical `fn_migrate_submission_dat
 
 ## Key References
 
-- [Task plan](REFACTOR_SEAD_SUBMISSION_METADATA_TASK_PLAN.md)
-- [Submission-model DDL](../../../../sead_change_control/sead_model/deploy/20260830_DDL_SUBMISSION_MODEL_REFACTOR.sql)
-- [Submission-model DML](../../../../sead_change_control/sead_model/deploy/20260830_DML_SUBMISSION_MODEL_MIGRATE.sql)
-- [DML verification script](../../../../sead_change_control/sead_model/verify/20260830_DML_SUBMISSION_MODEL_MIGRATE.sql)
+- [Task plan](../REFACTOR_SEAD_SUBMISSION_METADATA_TASK_PLAN.md)
+- [Submission-model DDL](../../../../../sead_change_control/sead_model/deploy/20260830_DDL_SUBMISSION_MODEL_REFACTOR.sql)
+- [Submission-model DML](../../../../../sead_change_control/sead_model/deploy/20260830_DML_SUBMISSION_MODEL_MIGRATE.sql)
+- [DML verification script](../../../../../sead_change_control/sead_model/verify/20260830_DML_SUBMISSION_MODEL_MIGRATE.sql)
 
 ## Next Actions
 
 **Setup gate (complete before running the validation calls)**
 
 1. Completed: inspect and run the isolated baseline restore procedure below. Keep the source and shared servers out of the container workflow.
-2. Completed: cloned the disposable migration template for each group and the combined run, then passed the [historical-call assertions](../../../tests/integration/submission_model_contract.sql) before and after each execution. The [artifact assertions](../../../tests/integration/submission_artifact_contract.sql) fail on current fixed-ID packages at the sequence check.
+2. Completed: cloned the disposable migration template for each group and the combined run, then passed the [historical-call assertions](../../../../tests/integration/submission_model_contract.sql) before and after each execution. The [artifact assertions](../../../../tests/integration/submission_artifact_contract.sql) fail on current fixed-ID packages at the sequence check.
 3. Blocked: define how SIMS tracking and target integer IDs interact before repeating artifact validation. The prior generated-ID packages used a rolled-back implementation.
 
 Current fixed-ID packages fail the sequence check. Do not deploy them as a solution to this contract gap.
@@ -160,7 +160,7 @@ podman exec -i "$container" psql -X -v ON_ERROR_STOP=1 -v "submission_id=$group"
    -U postgres -d "$clone" < /data/roger/source/sead_shape_shifter/tests/integration/submission_model_contract.sql
 ```
 
-For artifact validation, clone the completed six-call database twice *after* adding the disposable provider-code fixture. Run the [artifact assertion script](../../../tests/integration/submission_artifact_contract.sql) without `after` on each clone before applying its package. After applying inline INSERT to one clone and copy-CSV to the other, rerun it with `after=1` and gate 3's actual values as shown below. `new_dataset_ids` must be a PostgreSQL integer-array literal of the package's new dataset IDs (for example `{100,101}`), not IDs from the legacy baseline. It checks that exactly one Pending submission with a native UUID and null submission date was added, that every new dataset references it, and that all pre-existing dataset links are unchanged. Compare the final ordered, ID-free dataset/submission rows printed by each strategy; do not compare generated UUIDs or allocated IDs. The project and concrete parameter values belong to setup gate 3.
+For artifact validation, clone the completed six-call database twice *after* adding the disposable provider-code fixture. Run the [artifact assertion script](../../../../tests/integration/submission_artifact_contract.sql) without `after` on each clone before applying its package. After applying inline INSERT to one clone and copy-CSV to the other, rerun it with `after=1` and gate 3's actual values as shown below. `new_dataset_ids` must be a PostgreSQL integer-array literal of the package's new dataset IDs (for example `{100,101}`), not IDs from the legacy baseline. It checks that exactly one Pending submission with a native UUID and null submission date was added, that every new dataset references it, and that all pre-existing dataset links are unchanged. Compare the final ordered, ID-free dataset/submission rows printed by each strategy; do not compare generated UUIDs or allocated IDs. The project and concrete parameter values belong to setup gate 3.
 
 ```bash
 artifact_db="ss_contract_inline_$(date +%Y%m%d_%H%M%S)"
@@ -178,7 +178,7 @@ podman exec -i "$container" psql -X -v ON_ERROR_STOP=1 -v after=1 \
 
 **Setup gate 3: representative artifact input**
 
-The runnable project context is `test-project` in the submission/dataset tests in [the ingester test file](../../../backend/tests/ingesters/test_sead_change_request_ingester.py). The `submission.xlsx` argument names an in-memory normalized input supplied through `IngesterConfig.extra["tables"]`; no workbook or on-disk project YAML is required. These tests use a fake SIMS client and do not validate target-ID allocation against the live service. Regenerate both strategy bundles for inspection only; do not deploy them while the identity contract is unresolved:
+The runnable project context is `test-project` in the submission/dataset tests in [the ingester test file](../../../../backend/tests/ingesters/test_sead_change_request_ingester.py). The `submission.xlsx` argument names an in-memory normalized input supplied through `IngesterConfig.extra["tables"]`; no workbook or on-disk project YAML is required. These tests use a fake SIMS client and do not validate target-ID allocation against the live service. Regenerate both strategy bundles for inspection only; do not deploy them while the identity contract is unresolved:
 
 ```bash
 .venv/bin/pytest backend/tests/ingesters/test_sead_change_request_ingester.py -q \

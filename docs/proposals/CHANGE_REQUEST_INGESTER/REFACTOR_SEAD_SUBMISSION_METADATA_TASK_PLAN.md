@@ -15,7 +15,7 @@
 - [x] The bundled target models represent submission tasks, task types, task bibliography, and dated dataset contacts.
 - [x] The ingester resolves an existing provider, emits one Pending submission, and links new datasets to it.
 - [x] Both deploy strategies are covered by focused integration tests.
-- [ ] The upstream PostgreSQL contract is validated against a disposable migrated database ([validation handoff](POSTGRESQL_CONTRACT_VALIDATION.md)).
+- [ ] The upstream PostgreSQL contract is validated against a disposable migrated database ([validation handoff](CUTOVER_AND_DEPLOYMENT/POSTGRESQL_CONTRACT_VALIDATION.md)).
 - [x] The proposal describes the implemented contract and remaining upstream work.
 
 ## Work Breakdown
@@ -149,7 +149,7 @@ Focused and broader checks pass, generated artifacts execute against the upstrea
 - `rtk .venv/bin/pytest backend/tests/ingesters/test_sead_change_request_*.py -q`
 - From `frontend/`: `rtk pnpm exec vitest run src/components/ingester/__tests__/IngesterForm.test.ts`
 - From `frontend/`: `rtk pnpm build`
-- PostgreSQL contract procedure: [POSTGRESQL_CONTRACT_VALIDATION.md](POSTGRESQL_CONTRACT_VALIDATION.md)
+- PostgreSQL contract procedure: [POSTGRESQL_CONTRACT_VALIDATION.md](CUTOVER_AND_DEPLOYMENT/POSTGRESQL_CONTRACT_VALIDATION.md)
 
 ## Deliverables
 

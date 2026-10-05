@@ -53,7 +53,7 @@ The pilot project lives in [data/projects/bugs/shapeshifter.yml](../../data/proj
 The current pilot uses UCanAccess against a real BugsCEP `.mdb` file through `BUGS_CEP_MDB_FILE` and validates with:
 
 ```bash
-cd /home/roger/source/sead_shape_shifter
+cd /path/to/sead_shape_shifter
 BUGS_CEP_MDB_FILE=../sead_bugs_import/bugsdata/bugsdata_20231219.mdb \
 ./.venv/bin/python scripts/validate_project.py data/projects/bugs/shapeshifter.yml
 ```

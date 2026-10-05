@@ -85,6 +85,19 @@ check-doc-links:
 	@scripts/check_doc_links.sh
 
 ################################################################################
+# Development authorization for the current local resources. 
+################################################################################
+
+.PHONY: development-authorization
+development-authorization:
+	@echo "Setting up development authorization for local resources..."
+	@SHAPE_SHIFTER_ENVIRONMENT=development \
+	SHAPE_SHIFTER_TRUSTED_PROXY_AUTH_ENABLED=false \
+	SHAPE_SHIFTER_DEVELOPMENT_PRINCIPAL_ID=local-developer \
+	SHAPE_SHIFTER_AUTHORIZATION_DATABASE_PATH=state/authorization-dev.sqlite3 \
+	uv run sead-authorization dev-bootstrap
+
+################################################################################
 # JSON Schema generation (for frontend Monaco editor autocomplete)
 ################################################################################
 
@@ -111,6 +124,19 @@ generate-target-model-schema-reference:
 check-target-model-schema-reference:
 	@echo "Checking if target-model schema reference is in sync with Pydantic models..."
 	@uv run python scripts/generate_target_model_schema_reference.py --check
+
+################################################################################
+# Target-model data export (Excel)
+################################################################################
+
+EXPORT_OUTPUT ?= output/sead_lookup_classifier_tables.xlsx
+EXPORT_ROLES ?= lookup classifier
+
+.PHONY: export-target-tables
+export-target-tables:
+	@echo "Exporting target-model tables (roles: $(EXPORT_ROLES)) to $(EXPORT_OUTPUT)..."
+	@mkdir -p $(dir $(EXPORT_OUTPUT))
+	@uv run python scripts/export_target_tables.py $(EXPORT_OUTPUT) $(addprefix --role ,$(EXPORT_ROLES))
 
 ################################################################################
 # Target-model template generation

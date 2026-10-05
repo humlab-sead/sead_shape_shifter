@@ -1,5 +1,7 @@
 # Cross-System Phase Plan: Target-Model And SIMS Identity Allocation
 
+**Status:** Phases 1–3 are complete; the task plans record implementation and validation. Existing-data adoption, cutover, and deployment remain separate operational work.
+
 Source proposal: [Target-Model and SIMS Identity Allocation Contract](./SIMS_IDENTITY_ALLOCATION_CONTRACT.md)
 SIMS identity contract: [SIMS `target_id` response proposal](https://github.com/humlab-sead/sead_authority_service/blob/main/docs/proposals/SIMS_TARGET_ID_CONTRACT.md)
 
@@ -7,7 +9,7 @@ SIMS identity contract: [SIMS `target_id` response proposal](https://github.com/
 
 This plan sequences cross-system development for `sead_change_request`. The current development task is to deliver a configurable, generic SIMS identity mechanism and the Shape Shifter integration contract. SIMS-owned API, identity-store, and allocation decisions belong in Authority Service proposals; target-model planning, reconciliation, and artifact behavior belong in Shape Shifter proposals.
 
-Cutover, production rollout, existing-data migration, and SEAD database-integrity checks are separate operational work and are explicitly outside the current development task. Shape Shifter approves uncertain reconciliation matches before requesting SIMS identity work.
+Cutover, production rollout, existing-data migration, and SEAD database-integrity checks are outside this development plan and are covered by the [SIMS-SEAD trust-contract adoption proposal](../../CUTOVER_AND_DEPLOYMENT/SIMS_SEAD_TRUST_CONTRACT_ADOPTION_PROPOSAL.md). Shape Shifter approves uncertain reconciliation matches before requesting SIMS identity work.
 
 ## Problem
 
@@ -15,15 +17,15 @@ The ingester currently plans identity work by entity role and calls SIMS per row
 
 ## Scope
 
-This plan covers the development changes needed to plan from effective target-model identity rules, check SIMS's configured capabilities, resolve one batch per run, and generate artifacts only with valid SIMS identity values and a confirmed Binding Set. It also records a separate future operational phase for establishing the SIMS–SEAD trust contract for existing data.
+This plan covers Phases 1–3: the development changes needed to plan from effective target-model identity rules, check SIMS's configured capabilities, resolve one batch per run, and generate artifacts only with valid SIMS identity values and a confirmed Binding Set.
 
-The current development task does not include cutover, production or intended-deployment validation, existing-data bootstrap, stopping other writers, SEAD collision enforcement, or rollout. It also does not include a manual SIMS Binding Set confirmation workflow, automatic expiry or supersession of pending Binding Sets, insertion paths for unsupported child or derived rows, or request chunking.
+Cutover tasks are out of scope: production or intended-deployment validation, existing-data backfill, writer changes, SEAD integrity checks, rollout, and deployment belong to the [operational cutover and deployment proposal](../../CUTOVER_AND_DEPLOYMENT/SIMS_SEAD_TRUST_CONTRACT_ADOPTION_PROPOSAL.md). Manual SIMS Binding Set confirmation, automatic expiry or supersession of pending Binding Sets, unsupported child or derived insertion paths, and request chunking also remain outside these development phases.
 
 ## Current Position
 
-- The target model defines effective identity modes and reconciliation behavior; the ingester planner still routes by role. See the source proposal's Current Behavior section.
-- The SIMS endpoint accepts a list of requests, but the current Shape Shifter adapter calls it once per row. Each resolve call creates a Submission and Binding Set.
-- The site and sample identity paths have disposable verification as initial configuration examples. The generic configurable allocation mechanism, capability publication, strict rejection of unconfigured operations, and request-level idempotency remain development work. Cutover is separate operational work.
+- The shared effective-identity resolver drives validation, generated documentation, and ingester planning; the Phase 2 task plan records the route-parity checks.
+- Shape Shifter submits one batch per artifact-producing run and maps outcomes to planned rows; the Phase 3 task plan records run-ID persistence and artifact confirmation checks.
+- Phase 1 delivered generic configuration-driven allocation, capability publication, explicit operation rejection, and request-level idempotency. The site and sample disposable paths are examples, not an architecture limit.
 - The candidate verification guide is complete for the agreed disposable scope: the site binding and allocation paths, sample allocation, and required site/sample insertion paths have been checked, and submission IDs are reserved through the target database sequence. The sample-child comparison found no additional required path for this candidate.
 - The 2026-10-02 approval records initial `site` and `sample` verification examples for Phase 1 planning. It does not constrain the generic allocator to these entity types or authorize production use or cutover.
 
@@ -32,8 +34,8 @@ The current development task does not include cutover, production or intended-de
 | System | Owns | Plan coverage |
 | --- | --- | --- |
 | SEAD Authority Service (SIMS) | Tracked aggregate identities, scoped source-identity associations, generic configured allocation, and uniqueness within its own identity store. SIMS does not map identities to SEAD tables or enforce SEAD database integrity. | Phase 1 development; see the [SIMS identity response proposal](https://github.com/humlab-sead/sead_authority_service/blob/main/docs/proposals/SIMS_TARGET_ID_CONTRACT.md). |
-| Shape Shifter | Target-model identity intent, SEAD reconciliation and approval, capability preflight, run orchestration, and artifact generation. | Phases 2–3 and Shape Shifter portions of Phase 4. |
-| SEAD integration and operations | Consume SIMS-issued aggregate identity values under the trust contract; establish that existing tracked entities are represented in SIMS before operational adoption. SEAD database integrity remains SEAD's responsibility. | Separate operational follow-up, not the current development task. |
+| Shape Shifter | Target-model identity intent, SEAD reconciliation and approval, capability preflight, run orchestration, and artifact generation. | Phases 2–3. |
+| SEAD integration and operations | Consume SIMS-issued aggregate identity values under the trust contract; establish that existing tracked entities are represented in SIMS before operational adoption. SEAD database integrity remains SEAD's responsibility. | Separate operational work in the [cutover and deployment proposal](../../CUTOVER_AND_DEPLOYMENT/SIMS_SEAD_TRUST_CONTRACT_ADOPTION_PROPOSAL.md). |
 
 Keep this plan in Shape Shifter because it sequences the consumer workflow and cross-system validation. Do not move the whole plan into the Authority Service repository; keep SIMS-specific contracts and implementation plans in that repository and link them here.
 
@@ -200,62 +202,12 @@ Use one idempotent SIMS request per artifact-producing run and produce artifacts
 
 Ready for a task plan after Phases 1 and 2 are complete.
 
-### Phase 4: Separate Follow-On — Trust-Contract Adoption
-
-**System Owner**
-
-SEAD and SIMS operational owners, with Shape Shifter and Change Control participating in their respective integration responsibilities.
-
-**Goal**
-
-Establish the SIMS–SEAD trust contract for existing tracked entities and coordinate operational adoption. This is a separate follow-on phase, outside the current development task.
-
-**Focus**
-
-- Establish that each tracked entity already represented by SEAD has a corresponding SIMS identity before relying on the trust contract. The migration method and data checks belong to the operational cutover plan, not this development task.
-- Coordinate the transition so SIMS is the sole minter of tracked aggregate identities. Do not prescribe SEAD table, column, or sequence changes as SIMS responsibilities.
-- Confirm separately that SEAD consumes SIMS-issued identities under the agreed trust contract. Any SEAD persistence constraints remain SEAD's responsibility.
-- Handle package eligibility and deployment procedures in the SEAD operational plan.
-
-**Depends On**
-
-- Phases 1–3 and a separately approved operational plan for establishing the trust contract with existing data.
-
-**Outputs**
-
-- An operationally established trust contract under which each tracked SEAD entity has a SIMS identity.
-- Recorded follow-up scope for SIMS manual confirmation, pending-set expiry or supersession, and unsupported child/derived insertion paths.
-
-**Acceptance Criteria**
-
-- `PH4-AC-1` (from `P-AC-5`, `P-AC-13`, `P-AC-16`) Operational adoption establishes that every tracked entity represented in SEAD has a corresponding SIMS identity and that SIMS is the sole minter of tracked aggregate identities.
-- `PH4-AC-2` (from `P-AC-8`) The operational deployment process defines how an earlier package is withdrawn or superseded before a regenerated package becomes eligible.
-- `PH4-AC-3` (from `P-AC-12`) SEAD-owned validation confirms the target system's persistence and artifact contract; this is not a SIMS database-integrity guarantee.
-- `PH4-AC-4` (from `P-AC-13`) Operational coverage checks confirm that every tracked entity represented in SEAD has a corresponding SIMS identity without requiring SIMS to map identities to SEAD table or column names.
-
-**Validation Milestones**
-
-- `VM-8` Separately approved operational checks confirm the SIMS–SEAD trust contract for existing tracked entities, covering `PH4-AC-1` and `PH4-AC-4`.
-- `VM-9` Separately approved SEAD operational checks validate SEAD's own persistence and artifact contract behavior; they do not assign database-integrity guarantees to SIMS, covering `PH4-AC-1` and `PH4-AC-3`.
-- `VM-10` Change Control workflow validation proves superseded packages cannot become eligible after regeneration, covering `PH4-AC-2`.
-
-**Task-Plan Handoff**
-
-- Do not treat this follow-on operational phase as part of the current development task.
-- Verify that tracked entities without source bindings still have SIMS identities. Coordinate data migration and operational adoption through a separately approved plan.
-- Treat SIMS Binding Set state as audit state; it does not revoke generated SQL.
-- SEAD owns its persistence constraints; SIMS guarantees uniqueness only within its own identity store.
-
-**Readiness**
-
-Requires a separately approved operational plan for existing-data migration, trust-contract adoption, and deployment.
-
 ## Cross-Phase Rules
 
 - Keep system-owned implementation decisions in the owning repository's proposal; this plan records only cross-system sequencing and acceptance.
 - Keep the target model authoritative for Shape Shifter's identity intent, Shape Shifter responsible for reconciliation and approval, and SIMS responsible for its generic tracked-identity store and identity minting. SIMS does not map identities to SEAD tables or enforce SEAD database integrity.
 - Treat `site` and `sample` as initial configuration and verification examples, not the limits of generic SIMS support.
-- Keep existing-data trust establishment and production cutover as separate operational work; neither is part of the current development task.
+- Keep existing-data trust establishment, production cutover, and deployment outside this development plan; see the [operational proposal](../../CUTOVER_AND_DEPLOYMENT/SIMS_SEAD_TRUST_CONTRACT_ADOPTION_PROPOSAL.md).
 - Fail closed before artifact generation for unsupported configured capabilities, missing identity values, invalid untracked-row insertion contracts, and unconfirmed Binding Sets.
 - Use one Binding Set per run; do not add chunking or multi-set aggregation in this plan.
 - Do not auto-confirm proposed sets or retry ambiguous requests with a new run ID.
@@ -263,8 +215,8 @@ Requires a separately approved operational plan for existing-data migration, tru
 
 ## Validation Strategy
 
-Validate the current development task in layers: SIMS API and identity-store behavior first; target-model planning and semantic capability compatibility second; single-batch orchestration and both artifact strategies third. Existing-data migration, operational trust-contract adoption, production validation, and cutover are separate future work and are not validation milestones for this development task. Exact commands, test files, fixtures, and assertions belong in each phase task plan.
+Validate Phases 1–3 in layers: SIMS API and identity-store behavior first; target-model planning and semantic capability compatibility second; single-batch orchestration and both artifact strategies third. Existing-data migration, operational trust-contract adoption, production validation, and cutover are not validation milestones for this development plan; they belong to the [operational cutover and deployment proposal](../../CUTOVER_AND_DEPLOYMENT/SIMS_SEAD_TRUST_CONTRACT_ADOPTION_PROPOSAL.md). Exact commands, test files, fixtures, and assertions belong in each development phase task plan.
 
 ## Final Recommendation
 
-Implement and validate the generic SIMS identity mechanism and Shape Shifter integration before planning production adoption. The disposable candidate guide records initial examples; it does not constrain the architecture. Cutover, existing-data migration, and SEAD integrity checks remain separate operational work outside this development task.
+Phases 1–3 implemented and validated the generic SIMS identity mechanism and Shape Shifter integration. The disposable candidate guide records initial examples; it does not constrain the architecture. Cutover, existing-data migration, deployment, and SEAD integrity checks remain separate operational work in the [linked proposal](../../CUTOVER_AND_DEPLOYMENT/SIMS_SEAD_TRUST_CONTRACT_ADOPTION_PROPOSAL.md).

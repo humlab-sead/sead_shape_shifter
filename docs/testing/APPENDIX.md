@@ -121,9 +121,9 @@
 
 ### Project Files
 
-- **Projects Directory**: `/home/roger/source/sead_shape_shifter/projects/`
-- **Test Database**: `/home/roger/source/sead_shape_shifter/projects/test_query_tester.db`
-- **Backups**: `/home/roger/source/sead_shape_shifter/backups/`
+- **Projects Directory**: `/path/to/sead_shape_shifter/projects/`
+- **Test Database**: `/path/to/sead_shape_shifter/projects/test_query_tester.db`
+- **Backups**: `/path/to/sead_shape_shifter/backups/`
 
 ### Sample Projects
 
@@ -235,7 +235,7 @@ performance.getEntriesByType('navigation')
 
 ```bash
 # Start backend
-cd /home/roger/source/sead_shape_shifter
+cd /path/to/sead_shape_shifter
 make backend-run
 # or
 make br
@@ -248,7 +248,7 @@ make br
 
 ```bash
 # Start frontend dev server
-cd /home/roger/source/sead_shape_shifter
+cd /path/to/sead_shape_shifter
 make frontend-run
 # or
 make fr

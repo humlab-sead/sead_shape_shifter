@@ -19,12 +19,7 @@
             "type": "debugpy",
             "request": "launch",
             "module": "uvicorn",
-            "args": [
-                "backend.app.main:app",
-                "--host", "127.0.0.1",
-                "--port", "8013",
-                "--reload"
-            ],
+            "args": [ "backend.app.main:app", "--host", "127.0.0.1", "--port", "8013", "--reload" ],
             "jinja": true,
             "justMyCode": false,
             "console": "integratedTerminal",
@@ -43,16 +38,17 @@
             "type": "debugpy",
             "request": "launch",
             "module": "uvicorn",
-            "args": [
-                "backend.app.main:app",
-                "--host", "0.0.0.0",
-                "--port", "8013"
-            ],
+            "args": [ "backend.app.main:app", "--host", "127.0.0.1", "--port", "8013" ],
             "jinja": true,
             "justMyCode": false,
             "console": "integratedTerminal",
             "env": {
-                "PYTHONPATH": "${workspaceFolder}:${workspaceFolder}/backend"
+                "PYTHONPATH": "${workspaceFolder}:${workspaceFolder}/backend",
+                "SHAPE_SHIFTER_ENVIRONMENT": "development",
+                "SHAPE_SHIFTER_TRUSTED_PROXY_AUTH_ENABLED": "false",
+                "SHAPE_SHIFTER_DEVELOPMENT_PRINCIPAL_ID": "local-developer",
+                "SHAPE_SHIFTER_AUTHORIZATION_DATABASE_PATH": "state/authorization-dev.sqlite3",
+                "SHAPE_SHIFTER_AUTHORIZATION_DEV_BOOTSTRAP_HINT_ENABLED": "true"
             },
             "cwd": "${workspaceFolder}"
         }
