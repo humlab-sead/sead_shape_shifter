@@ -67,6 +67,15 @@ flowchart TD
     class Execute,Review,Dispatch delivery;
 ```
 
+### Presentation Versions
+
+The onboarding deck uses two presentation-sized diagrams. The first shows how one source row can provide values for several related result datasets. The second adapts the project editing workflow above for a slide.
+
+| Diagram | Preview | Editable source |
+|---------|---------|-----------------|
+| Source row to related records | ![A spreadsheet row becomes separate site, taxon, and sample datasets with links from the sample](presentations/source_to_related_records.svg) | [Graphviz source](presentations/source_to_related_records.dot) |
+| Project workflow | ![Add data, build datasets, preview and validate, review matches, create output, and dispatch when configured](presentations/project_workflow.svg) | [Graphviz source](presentations/project_workflow.dot) |
+
 ## Validation Flow
 
 Validation checks configuration, processed data, and target-model conformance at separate levels.
