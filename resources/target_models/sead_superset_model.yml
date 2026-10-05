@@ -2423,9 +2423,9 @@ entities:
     domains: [dating]
     target_table: tbl_dating_material
     public_id: dating_material_id
-    identity_columns: [dating_material_name]
+    identity_columns: [material_dated]
     columns:
-      dating_material_name:
+      material_dated:
         required: true
         type: string
         nullable: false
@@ -2436,7 +2436,7 @@ entities:
         type: integer
         nullable: true
     unique_sets:
-      - [dating_material_name]
+      - [material_dated]
     foreign_keys:
       - entity: abundance_element
         required: false
