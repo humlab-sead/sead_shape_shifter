@@ -161,6 +161,43 @@ def initialize_database(path: Path) -> None:
     repository.close()
 
 
+def development_bootstrap_required(
+    database: Path,
+    principal_id: str,
+    project_locators: set[str],
+    shared_data_source_locators: set[str],
+) -> bool:
+    """Return whether a read-only check finds missing development authorization records."""
+    if not database.is_file():
+        return True
+
+    database_uri = f"{database.resolve().as_uri()}?mode=ro"
+    with sqlite3.connect(database_uri, uri=True) as connection:
+        tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+        if not {"application_role", "resource"}.issubset(tables):
+            return True
+
+        has_development_admin = connection.execute(
+            "SELECT 1 FROM application_role WHERE principal_id = ? AND role = 'admin'",
+            (principal_id,),
+        ).fetchone()
+        if has_development_admin is None:
+            return True
+
+        registered_resources = {
+            (resource_type, locator)
+            for resource_type, locator in connection.execute(
+                "SELECT resource_type, locator FROM resource WHERE lifecycle_state = 'active'"
+            )
+        }
+
+    expected_resources = {("project", locator) for locator in project_locators}
+    expected_resources.update(("shared_data_source", locator) for locator in shared_data_source_locators)
+    return not expected_resources.issubset(registered_resources)
+
+
+
+
 def _load_manifest(path: Path) -> dict[str, Any]:
     """Read a manifest as JSON or YAML and check that it holds an object."""
     try:

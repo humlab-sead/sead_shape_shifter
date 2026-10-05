@@ -1,8 +1,10 @@
 """Input and config resolution for the SEAD change request ingester."""
 
+from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 import pandas as pd
 
@@ -186,6 +188,8 @@ def _resolve_submission_context(config: IngesterConfig) -> SubmissionContext:
     context_data = extras.get("submission_context")
 
     if isinstance(context_data, SubmissionContext):
+        if context_data.run_id is None:
+            return replace(context_data, run_id=str(uuid4()))
         return context_data
 
     if not isinstance(context_data, dict):
@@ -204,6 +208,7 @@ def _resolve_submission_context(config: IngesterConfig) -> SubmissionContext:
 
     binding_set_uuid: str | None = _optional_string(context_data, "binding_set_uuid", SubmissionContextError)
     change_request_name: str | None = _optional_string(context_data, "change_request_name", SubmissionContextError)
+    run_id: str | None = _resolve_run_id(context_data)
     datatype: str | None = _optional_string(context_data, "datatype", SubmissionContextError)
     identifier: str | None = _optional_string(context_data, "identifier", SubmissionContextError)
     description: str | None = _optional_string(context_data, "description", SubmissionContextError)
@@ -221,6 +226,7 @@ def _resolve_submission_context(config: IngesterConfig) -> SubmissionContext:
         timestamp=parsed_timestamp,
         binding_set_uuid=binding_set_uuid,
         change_request_name=change_request_name,
+        run_id=run_id,
         datatype=normalized_datatype,
         identifier=normalized_identifier,
         description=normalized_description,
@@ -228,6 +234,16 @@ def _resolve_submission_context(config: IngesterConfig) -> SubmissionContext:
         author=author.strip() if isinstance(author, str) else None,
         data_provider_code=data_provider_code.strip() if isinstance(data_provider_code, str) else None,
     )
+
+
+def _resolve_run_id(context_data: dict[str, Any]) -> str | None:
+    """Return a persisted run ID, or mint a fresh one when absent.
+
+    The persisted value is authoritative for retries; a missing value mints a
+    new UUID so each intentional execution gets a distinct idempotency key.
+    """
+    persisted: str | None = _optional_string(context_data, "run_id", SubmissionContextError)
+    return persisted if persisted else str(uuid4())
 
 
 def _optional_string(data: dict[str, Any], field_name: str, error_type: type[InputResolutionError]) -> str | None:

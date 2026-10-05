@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from src.issues import CoreIssue
+from src.target_model.effective_identity import resolve_effective_identity
 from src.target_model.models import EntitySpec, TargetModel
 
 
@@ -98,30 +99,8 @@ class TargetModelSpecValidator:
 
     @staticmethod
     def _resolve_effective_sims(spec: EntitySpec) -> tuple[str | None, str | None]:
-        identity_tracking: str | None = spec.identity_tracking
-        reconciliation: str | None = spec.reconciliation
-
-        if identity_tracking is None:
-            if spec.aggregate_parent:
-                identity_tracking = "child"
-            elif spec.role == "fact":
-                identity_tracking = "tracked"
-            elif spec.role in ("lookup", "classifier"):
-                identity_tracking = "reconciled"
-            elif spec.role == "bridge":
-                identity_tracking = "derived"
-
-        if reconciliation is None:
-            if identity_tracking == "tracked":
-                reconciliation = "allocate"
-            elif spec.role == "lookup":
-                reconciliation = "reconcile-exact"
-            elif spec.role == "classifier":
-                reconciliation = "lookup-only"
-            elif identity_tracking == "derived":
-                reconciliation = "derive"
-
-        return identity_tracking, reconciliation
+        effective = resolve_effective_identity(spec)
+        return effective.identity_tracking, effective.reconciliation
 
     def _validate_aggregate_parent(self, target_model: TargetModel, entity_name: str, entity_spec: EntitySpec) -> list[SpecValidationIssue]:
         issues: list[SpecValidationIssue] = []
@@ -185,6 +164,20 @@ class TargetModelSpecValidator:
     def _validate_identity_rules(self, entity_name: str, entity_spec: EntitySpec) -> list[SpecValidationIssue]:
         issues: list[SpecValidationIssue] = []
         identity_tracking, reconciliation = self._resolve_effective_sims(entity_spec)
+
+        if entity_spec.public_id_generation == "database_sequence" and (
+            entity_spec.identity_tracking is None or entity_spec.identity_tracking == "tracked"
+        ):
+            issues.append(
+                SpecValidationIssue(
+                    code="DATABASE_SEQUENCE_REQUIRES_EXPLICIT_NON_TRACKED_IDENTITY",
+                    message=(
+                        f"Entity '{entity_name}' uses database_sequence public ID generation but must explicitly declare "
+                        "a non-tracked identity_tracking value; tracked identities must be allocated by SIMS"
+                    ),
+                    entity=entity_name,
+                )
+            )
 
         if identity_tracking == "child":
             if entity_spec.reconciliation is not None:

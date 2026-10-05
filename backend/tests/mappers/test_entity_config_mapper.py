@@ -13,6 +13,7 @@ from backend.app.mappers.entity_config_mapper import (
     FileBasedEntityConfigMapper,
     FixedEntityConfigMapper,
 )
+from backend.app.utils.exceptions import BadRequestError
 from src.types.fixed_entity_types import (
     FixedEntityColumnTypeDeclarationError,
     FixedEntityShapeValidationError,
@@ -58,6 +59,23 @@ class TestEntityConfigMapperFactory:
         """Test that fixed values driver returns fixed-entity mapper."""
         mapper = factory.get_mapper("fixed")
         assert isinstance(mapper, FixedEntityConfigMapper)
+
+    @pytest.mark.parametrize("entity_type", ["tsv", "xls"])
+    def test_get_mapper_rejects_file_capable_type_without_mapper(self, factory: EntityConfigMapperFactory, entity_type: str) -> None:
+        """File-capable loader keys missing a containment mapper fail closed."""
+        with pytest.raises(BadRequestError, match="no containment mapper"):
+            factory.get_mapper(entity_type)
+
+    @pytest.mark.parametrize("entity_type", ["sql", "sqlite", "postgres", "postgresql", "ucanaccess", "duckdb", "entity", "merged"])
+    def test_get_mapper_returns_default_for_non_file_types(self, factory: EntityConfigMapperFactory, entity_type: str) -> None:
+        """Types that never carry options.filename keep the no-op default mapper."""
+        mapper = factory.get_mapper(entity_type)
+        assert isinstance(mapper, DefaultEntityConfigMapper)
+
+    def test_get_mapper_for_entity_rejects_unsupported_file_type(self, factory: EntityConfigMapperFactory) -> None:
+        """get_mapper_for_entity surfaces the rejection for a tsv entity config."""
+        with pytest.raises(BadRequestError, match="no containment mapper"):
+            factory.get_mapper_for_entity({"type": "tsv", "options": {"filename": "../../etc/passwd"}})
 
 
 class TestDefaultEntityConfigMapper:

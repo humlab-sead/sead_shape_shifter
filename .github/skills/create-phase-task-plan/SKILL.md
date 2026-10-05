@@ -22,14 +22,15 @@ Infer details when the conversation or verified repository content establishes t
 
 The target document may come from the current conversation. Do not derive it from repository naming patterns alone. If the destination remains ambiguous, ask one concise clarifying question.
 
+Name new task-plan documents with the `_TASK_PLAN.md` suffix. Include the phase identifier in the name when needed to distinguish plans for different phases. Preserve the path of an existing plan when updating it; if a user-supplied new target lacks the suffix, confirm the path before writing.
+
 Do not treat labels, examples, or placeholder text as input values.
 
 ## References
 
 Before writing or revising a task plan, read:
 
-- [Task plan detailed guide](references/task-plan-detailed.md)
-- [Task plan guide](references/task-plan.md)
+- `.github/instructions/task-plan.instructions.md`
 - [Proposal document structure](references/proposal-document-structure.md)
 - applicable repository instruction files, including `AGENTS.md`
 

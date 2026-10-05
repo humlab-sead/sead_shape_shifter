@@ -66,6 +66,24 @@ def test_target_model_parses_richer_entity_payload() -> None:
     assert location.unique_sets == [["location_type_id", "location_name"]]
 
 
+def test_target_model_parses_database_sequence_public_id_generation() -> None:
+    target_model = TargetModel.model_validate(
+        {
+            "model": {"name": "SEAD Clearinghouse", "version": "2.0.0"},
+            "entities": {
+                "submission": {
+                    "role": "fact",
+                    "target_table": "tbl_submissions",
+                    "public_id": "submission_id",
+                    "public_id_generation": "database_sequence",
+                }
+            },
+        }
+    )
+
+    assert target_model.entities["submission"].public_id_generation == "database_sequence"
+
+
 def test_target_model_rejects_unknown_model_fields() -> None:
     with pytest.raises(ValidationError):
         TargetModel.model_validate(

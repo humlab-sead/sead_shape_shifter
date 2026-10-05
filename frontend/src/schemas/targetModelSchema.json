@@ -142,6 +142,20 @@
           "default": null,
           "title": "Public Id"
         },
+        "public_id_generation": {
+          "anyOf": [
+            {
+              "const": "database_sequence",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Reserve the public ID from the target table's database sequence before artifact generation. Use only when identity_tracking is explicitly set to a non-tracked value.",
+          "title": "Public Id Generation"
+        },
         "identity_columns": {
           "items": {
             "type": "string"

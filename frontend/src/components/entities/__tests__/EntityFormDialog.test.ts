@@ -163,8 +163,8 @@ const childStubs = {
     template: '<div data-testid="fixed-values-grid" />',
   },
   SuggestionsPanel: { template: '<div data-testid="suggestions-panel" />' },
-  MaterializeDialog: { template: '<div data-testid="materialize-dialog" />' },
-  UnmaterializeDialog: { template: '<div data-testid="unmaterialize-dialog" />' },
+  MaterializeDialog: { name: 'MaterializeDialog', template: '<div data-testid="materialize-dialog" />' },
+  UnmaterializeDialog: { name: 'UnmaterializeDialog', template: '<div data-testid="unmaterialize-dialog" />' },
   AgGridVue: { template: '<div data-testid="preview-grid" />' },
 }
 
@@ -430,7 +430,7 @@ describe('EntityFormDialog', () => {
 
     await flushPromises()
 
-    wrapper.findComponent('[data-testid="materialize-dialog"]').vm.$emit('materialized')
+    wrapper.findComponent({ name: 'MaterializeDialog' }).vm.$emit('materialized')
     await flushPromises()
 
     expect(mockState.getEntity).toHaveBeenCalledWith('arbodat', 'abundance_source')
@@ -464,7 +464,7 @@ describe('EntityFormDialog', () => {
 
     await flushPromises()
 
-    wrapper.findComponent('[data-testid="unmaterialize-dialog"]').vm.$emit('unmaterialized', ['abundance_source'])
+    wrapper.findComponent({ name: 'UnmaterializeDialog' }).vm.$emit('unmaterialized', ['abundance_source'])
     await flushPromises()
 
     expect(mockState.getEntity).toHaveBeenCalledWith('arbodat', 'abundance_source')

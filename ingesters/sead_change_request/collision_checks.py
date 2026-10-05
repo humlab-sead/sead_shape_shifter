@@ -6,6 +6,7 @@ from typing import Protocol
 import pandas as pd
 
 from ingesters.sead_change_request.contracts import ChangeRowState, IdentityResolutionResult, ResolvedIdentityTable, TargetProjectionResult
+from src.target_model.effective_identity import resolve_effective_identity
 from src.target_model.models import EntitySpec, TargetModel
 
 INSERTABLE_ROW_STATES: set[ChangeRowState] = {
@@ -55,7 +56,8 @@ async def check_projected_collisions(
         insert_frame: pd.DataFrame = projected_table.frame.loc[insert_mask]
         table_name: str = entity_spec.target_table or entity_name
 
-        if entity_spec.role == "bridge":
+        effective = resolve_effective_identity(entity_spec)
+        if effective.identity_tracking == "derived":
             diagnostics.extend(await _check_bridge_collisions(entity_name, table_name, entity_spec, insert_frame, collision_checker))
             continue
 

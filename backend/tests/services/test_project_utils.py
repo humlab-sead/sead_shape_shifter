@@ -135,3 +135,37 @@ options: {}
         project_file = utils.ensure_project_exists("parent:child")
         assert project_file.exists()
         assert project_file.parent.name == "child"
+
+    # resolve_project_dir / resolve_project_file tests
+
+    def test_resolve_project_dir_simple(self, utils: ProjectUtils, temp_config_dir: Path):
+        """A simple name resolves to a contained directory under the root."""
+        resolved = utils.resolve_project_dir("test")
+        assert resolved == (temp_config_dir / "test").resolve()
+        assert resolved.is_relative_to(temp_config_dir.resolve())
+
+    def test_resolve_project_dir_nested(self, utils: ProjectUtils, temp_config_dir: Path):
+        """A namespaced locator resolves to the nested contained directory."""
+        resolved = utils.resolve_project_dir("arbodat:arbodat-copy")
+        assert resolved == (temp_config_dir / "arbodat" / "arbodat-copy").resolve()
+        assert resolved.is_relative_to(temp_config_dir.resolve())
+
+    def test_resolve_project_file_appends_config_name(self, utils: ProjectUtils, temp_config_dir: Path):
+        """resolve_project_file returns the contained shapeshifter.yml path."""
+        resolved = utils.resolve_project_file("ns:child")
+        assert resolved.name == "shapeshifter.yml"
+        assert resolved.parent == (temp_config_dir / "ns" / "child").resolve()
+
+    @pytest.mark.parametrize(
+        "bad_name",
+        [
+            "../../etc/passwd",
+            "up:../victim",
+            "/absolute/path",
+            "parent:..:sibling",
+        ],
+    )
+    def test_resolve_project_dir_rejects_escape(self, utils: ProjectUtils, bad_name: str):
+        """Traversal, colon-alias, and absolute names are rejected before any write."""
+        with pytest.raises(BadRequestError):
+            utils.resolve_project_dir(bad_name)

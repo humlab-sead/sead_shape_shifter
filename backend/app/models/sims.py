@@ -81,12 +81,18 @@ class ResolutionRequest(BaseModel):
         default_factory=list,
         description="Optional supplementary keys also stored alongside the primary signal.",
     )
+    approved_aggregate_id: int | None = Field(
+        default=None,
+        gt=0,
+        description="SIMS-issued aggregate ID selected by the consumer for binding.",
+    )
 
 
 class ResolveRequest(BaseModel):
     """Request body for POST /identity/resolve."""
 
     scope_name: str = Field(description="Source Scope name, e.g. 'sead://reconciliation' or a provider URI.")
+    run_id: str = Field(description="Stable idempotency key for this batch, scoped to the source scope. Reused across retries.")
     submission_name: str = Field(description="Human-readable name for this submission batch.")
     requests: list[ResolutionRequest] = Field(
         description="One entry per domain entity to resolve.",
@@ -127,7 +133,7 @@ class ResolutionOutcome(BaseModel):
     tracked_identity_uuid: UUID | None = None
     target_id: int | None = Field(
         default=None,
-        description="Target-facing integer ID resolved or allocated for the entity when the authority service can materialize one.",
+        description="SIMS-issued aggregate ID returned under the current target_id API field.",
     )
 
 
@@ -158,3 +164,26 @@ class ChangeDetectionResult(BaseModel):
     tracked_identity_uuid: UUID
     outcome: ChangeOutcome
     previous_hash: str | None = Field(default=None, description="The previously stored hash, if any.")
+
+
+# ---------------------------------------------------------------------------
+# Capability models (GET /identity/capabilities)
+# ---------------------------------------------------------------------------
+
+
+class EntityCapabilityResponse(BaseModel):
+    """Published capability for one configured entity type."""
+
+    entity_type: str
+    entity_subtype: str
+    bind_existing: bool
+    allocate_new: bool
+    auto_confirm: bool
+    accept_uuid: bool
+
+
+class CapabilitiesResponse(BaseModel):
+    """Response body for GET /identity/capabilities."""
+
+    version: str
+    entities: list[EntityCapabilityResponse]

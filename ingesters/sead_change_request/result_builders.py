@@ -4,13 +4,15 @@ from loguru import logger
 
 from backend.app.ingesters.protocol import IngestionResult, ValidationResult
 from ingesters.sead_change_request.input_resolution import InputResolutionError
-from ingesters.sead_change_request.orchestration import SIMS_TARGET_ID_CAPABILITY_NOTE
+from ingesters.sead_change_request.orchestration import SIMS_AGGREGATE_ID_CAPABILITY_NOTE
 from ingesters.sead_change_request.preparation import PreparationResult
 
 
 def build_validation_result(preparation: PreparationResult) -> ValidationResult:
     """Build the protocol validation result from a shared preparation output."""
     validation_errors = preparation.planned.errors + preparation.projection_result.diagnostics
+    if preparation.preflight_result is not None:
+        validation_errors = validation_errors + preparation.preflight_result.diagnostics
     warnings = list(preparation.planned.warnings)
 
     if preparation.resolution_result.blocked_rows:
@@ -81,7 +83,8 @@ def summarize_identity_work(preparation: PreparationResult) -> list[str]:
             f"{work_plan.total_blocked_existing_update_rows} blocked_existing_update, "
             f"{work_plan.total_allocation_rows} allocation, "
             f"{work_plan.total_reconciliation_rows} reconciliation, "
-            f"{work_plan.total_bridge_rows} bridge"
+            f"{work_plan.total_bridge_rows} bridge, "
+            f"{work_plan.total_inherit_rows} inherit"
         )
     ]
 
@@ -100,6 +103,12 @@ def build_ingestion_input_failure(exc: InputResolutionError) -> IngestionResult:
 
 def check_ingestion_preconditions(preparation: PreparationResult) -> IngestionResult | None:
     """Return a failed ingestion result when preparation did not reach a deployable state."""
+    if preparation.preflight_result is not None and preparation.preflight_result.has_blockers:
+        return IngestionResult.create_failed_result(
+            message="SIMS capability preflight failed",
+            details=failure_details(preparation.preflight_result.diagnostics),
+        )
+
     if preparation.planned.errors:
         return IngestionResult.create_failed_result(
             message="Validation failed",
@@ -133,11 +142,11 @@ def failure_details(diagnostics: list[str]) -> str:
 def _identity_resolution_message(diagnostics: list[str], pending_confirmation_report: dict[str, object] | None) -> str:
     if pending_confirmation_report is not None:
         return "Binding Set confirmation incomplete"
-    if _is_sims_target_id_capability_gap(diagnostics):
-        return "SIMS target ID allocation capability incomplete"
+    if _is_sims_aggregate_id_capability_gap(diagnostics):
+        return "SIMS aggregate ID allocation capability incomplete"
     return "Identity resolution incomplete"
 
 
-def _is_sims_target_id_capability_gap(diagnostics: list[str]) -> bool:
-    """Detect the current SIMS limitation where allocation returns no target-facing integer ID."""
-    return bool(diagnostics) and all(SIMS_TARGET_ID_CAPABILITY_NOTE in diagnostic for diagnostic in diagnostics)
+def _is_sims_aggregate_id_capability_gap(diagnostics: list[str]) -> bool:
+    """Detect when SIMS allocation returns no aggregate ID."""
+    return bool(diagnostics) and all(SIMS_AGGREGATE_ID_CAPABILITY_NOTE in diagnostic for diagnostic in diagnostics)

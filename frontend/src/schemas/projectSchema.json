@@ -47,6 +47,19 @@
           "description": "Project version",
           "title": "Version"
         },
+        "data_provider_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Stable SEAD data provider code for the project",
+          "title": "Data Provider Code"
+        },
         "file_path": {
           "anyOf": [
             {

@@ -164,6 +164,7 @@ entities:
 | `domains`          | No       | List of domain tags; used to filter entities when generating project templates |
 | `target_table`     | No       | Physical table name in the target system (informational, e.g. `tbl_sites`)     |
 | `public_id`        | No       | Expected `public_id` value in the project entity                               |
+| `public_id_generation` | No   | `database_sequence` reserves an ID from the target database for an explicitly non-tracked entity |
 | `identity_columns` | No       | Columns that form the natural key in the target system                         |
 | `columns`          | No       | Map of column name → column spec; conformance checks these against the project |
 | `unique_sets`      | No       | List of unique-set column groups                                               |
@@ -244,14 +245,16 @@ When `via` is present, conformance first checks the source entity points to the 
 
 ### Identity And Reconciliation Fields
 
-These fields describe how an entity participates in SIMS identity handling and lookup/allocation workflows.
+These fields describe Shape Shifter's identity intent and lookup/allocation workflow for a target-model entity. SIMS applies its generic identity mechanism according to its own validated entity configuration; the target model does not prescribe entity-specific SIMS implementation code.
 
 Shape Shifter validates these fields together when a target model loads:
 
+- if omitted, fact entities default to `identity_tracking: tracked` and `reconciliation: allocate`
 - `aggregate_parent` must name another entity in the same model
 - entities with `aggregate_parent` must also declare a foreign key to that parent
 - `identity_tracking: child` requires `aggregate_parent`
 - `tracked` entities resolve to `allocate`
+- `public_id_generation: database_sequence` requires an explicit non-tracked `identity_tracking` value; tracked IDs must be allocated by SIMS
 - `derived` entities resolve to `derive`
 - `child` entities must not declare a reconciliation strategy
 - `reconciled` entities must resolve to one of `reconcile-exact`, `reconcile-fuzzy`, `lookup-only`, or `lookup-extensible`
@@ -261,6 +264,7 @@ Shape Shifter validates these fields together when a target model loads:
 | `identity_tracking` | `tracked`, `reconciled`, `derived`, `child` | Declares whether the entity gets its own tracked identity, is matched by business keys, derives identity from related rows, or inherits from an aggregate parent |
 | `reconciliation` | `allocate`, `reconcile-exact`, `reconcile-fuzzy`, `lookup-only`, `lookup-extensible`, `derive` | Declares the expected matching or allocation mode for this entity |
 | `aggregate_parent` | Entity name | Required when identity is inherited from a parent aggregate such as `analysis_entity` or `sample` |
+| `public_id_generation` | `database_sequence` | Reserves an ID from the target database for an entity explicitly configured as non-tracked |
 
 ---
 
@@ -447,7 +451,7 @@ The SEAD superset spec uses `naming.public_id_suffix: "_id"` and declares `const
 | `html`     | Stakeholder presentations, reference  | `<stem>.html` |
 | `excel`    | Review workshops, gap analysis        | `<stem>.xlsx` |
 | `markdown` | GitHub wikis, version-controlled docs | `<stem>.md`   |
-| `sims`     | SIMS entity register and identity review | `<stem>.sims.md` |
+| `sims`     | Shape Shifter target-model reference for SIMS; not a SIMS capability registry | `<stem>.sims.md` |
 
 ```bash
 # Generate all formats (default)
@@ -459,7 +463,7 @@ python scripts/generate_target_model_docs.py resources/target_models/sead_supers
 # Excel for gap-analysis workshops
 python scripts/generate_target_model_docs.py resources/target_models/sead_superset_model.yml --format excel
 
-# SIMS entity register for Authority Service docs
+# Target-model reference for Authority Service docs
 python scripts/generate_target_model_docs.py resources/target_models/sead_superset_model.yml --format sims
 
 # Custom output directory

@@ -74,6 +74,7 @@ class SeadChangeRequestIngester:
             planned,
             sims_client=self._get_client("sims_client"),
             reconciliation_client=self._get_client("reconciliation_client"),
+            target_id_allocator=self._get_client("target_id_allocator") or self._get_client("collision_checker"),
         )
 
     async def _add_submission_tables(self, inputs: ResolvedInputs) -> ResolvedInputs:
@@ -112,24 +113,39 @@ class SeadChangeRequestIngester:
         except InputResolutionError as exc:
             return build_validation_input_failure(exc)
 
+        self._log_validation(preparation)
+        return build_validation_result(preparation)
+
+    @staticmethod
+    def _log_validation(preparation: PreparationResult) -> None:
+        """Log the source bundle and target-model counts used during validation."""
         logger.info(
             "Validated SEAD change request source bundle with {} table(s), {} row(s), and {} planned table(s)",
             len(preparation.inputs.bundle.tables),
             sum(len(frame.index) for frame in preparation.inputs.bundle.tables.values()),
             len(preparation.planned.tables),
         )
-        return build_validation_result(preparation)
 
     async def ingest(self, excel_file: Path | str, validate_first: bool = True) -> IngestionResult:
-        if validate_first:
-            validation: ValidationResult = await self.validate(excel_file)
-            if not validation.is_valid:
-                return IngestionResult.create_failed_result(message="Validation failed", details=failure_details(validation.errors))
-
         try:
             preparation: PreparationResult = await self._prepare_change_request(excel_file)
         except InputResolutionError as exc:
+            if validate_first:
+                validation_failure = build_validation_input_failure(exc)
+                return IngestionResult.create_failed_result(
+                    message="Validation failed",
+                    details=failure_details(validation_failure.errors),
+                )
             return build_ingestion_input_failure(exc)
+
+        if validate_first:
+            self._log_validation(preparation)
+            validation: ValidationResult = build_validation_result(preparation)
+            if not validation.is_valid:
+                return IngestionResult.create_failed_result(
+                    message="Validation failed",
+                    details=failure_details(validation.errors),
+                )
 
         precondition_failure = check_ingestion_preconditions(preparation)
         if precondition_failure is not None:

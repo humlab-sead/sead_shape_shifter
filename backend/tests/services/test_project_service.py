@@ -1517,3 +1517,84 @@ task_list:
         task_list2 = project2.task_list or {}
 
         assert "entity1" in task_list2.get("done", [])
+
+
+class TestProjectServicePathContainment:
+    """T1.5: create/copy/delete must reject names that escape the projects root."""
+
+    @pytest.fixture
+    def temp_config_dir(self, tmp_path: Path) -> Path:
+        """Create temporary configurations directory."""
+        config_dir = tmp_path / "configurations"
+        config_dir.mkdir()
+        return config_dir
+
+    @pytest.fixture
+    def service(self, temp_config_dir: Path) -> ProjectService:
+        """Create service instance with temporary directory."""
+        mock_state = MagicMock()
+        mock_state.update = MagicMock()
+        mock_state.get = MagicMock(return_value=None)
+        return ProjectService(projects_dir=temp_config_dir, state=mock_state)
+
+    @pytest.fixture
+    def source_project(self, temp_config_dir: Path) -> Path:
+        """Create a valid source project for copy tests."""
+        project_dir = temp_config_dir / "source"
+        project_dir.mkdir()
+        (project_dir / "shapeshifter.yml").write_text(
+            "metadata:\n  type: shapeshifter-project\n  name: source\n  version: 1.0.0\nentities: {}\noptions: {}\n"
+        )
+        return project_dir
+
+    @pytest.mark.parametrize("bad_name", ["../../victim", "/etc/pwned", "up:../victim"])
+    def test_create_rejects_escape_and_writes_nothing(self, service: ProjectService, temp_config_dir: Path, bad_name: str):
+        """create_project rejects traversal/absolute/colon-alias names and writes nothing outside the root."""
+        outside = temp_config_dir.parent / "victim"
+        with pytest.raises(BadRequestError):
+            service.create_project(bad_name)
+        assert not outside.exists()
+        # Nothing was created anywhere under the parent except the managed root itself.
+        assert list(temp_config_dir.iterdir()) == []
+
+    def test_create_namespaced_locator_works(self, service: ProjectService, temp_config_dir: Path):
+        """A namespaced locator (arbodat:arbodat-copy) still creates the nested directory."""
+        config = service.create_project("arbodat:arbodat-copy")
+        assert config.metadata
+        assert config.metadata.name == "arbodat:arbodat-copy"
+        assert (temp_config_dir / "arbodat" / "arbodat-copy" / "shapeshifter.yml").exists()
+
+    def test_create_collision_compares_resolved_paths(self, service: ProjectService, temp_config_dir: Path):
+        """A colon-alias pointing at an existing project's file is rejected, not treated as new."""
+        existing = temp_config_dir / "victim"
+        existing.mkdir()
+        (existing / "shapeshifter.yml").write_text("metadata:\n  name: victim\nentities: {}\noptions: {}\n")
+
+        # 'up:../victim' resolves to the same directory as the existing 'victim' project.
+        with pytest.raises(BadRequestError):
+            service.create_project("up:../victim")
+
+    @pytest.mark.parametrize("bad_name", ["../../victim", "/etc/pwned", "up:../victim"])
+    def test_delete_rejects_escape(self, service: ProjectService, temp_config_dir: Path, bad_name: str):
+        """delete_project rejects escaping names before touching the filesystem."""
+        outside = temp_config_dir.parent / "victim"
+        outside.mkdir()
+        (outside / "shapeshifter.yml").write_text("metadata:\n  name: victim\n")
+
+        with pytest.raises(BadRequestError):
+            service.delete_project(bad_name)
+        # The out-of-root project must survive untouched.
+        assert outside.exists()
+
+    @pytest.mark.parametrize("bad_name", ["../../victim", "/etc/pwned", "up:../victim"])
+    def test_copy_rejects_escape_on_target(self, service: ProjectService, source_project: Path, temp_config_dir: Path, bad_name: str):
+        """copy_project rejects an escaping target name and writes nothing outside the root."""
+        outside = temp_config_dir.parent / "victim"
+        with pytest.raises(BadRequestError):
+            service.copy_project("source", bad_name)
+        assert not outside.exists()
+
+    def test_copy_rejects_escape_on_source(self, service: ProjectService, temp_config_dir: Path):
+        """copy_project rejects an escaping source name."""
+        with pytest.raises(BadRequestError):
+            service.copy_project("../../etc/passwd", "target")

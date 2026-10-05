@@ -226,3 +226,45 @@ The Makefile includes a convenient target:
 make reconcile ARGS="my_project site"
 make reconcile ARGS="my_project site --threshold 0.90 -v"
 ```
+
+## Recording a Reviewed SIMS Site No-Match
+
+The `record_sims_site_no_match.py` script records an explicitly reviewed site no-match in a Shape Shifter project. It checks that the selected source row exists exactly once and has no accepted target ID, then verifies the saved `will_not_match` mapping. It does not call SIMS or allocate an ID.
+
+The script requires the reviewer to supply snapshot details, a reason, and a non-empty reconciliation evidence file. It defaults to a dry run. It only accepts `disposable` or `staging`; disposable runs must use a loopback API URL. Production is not supported.
+
+```bash
+python scripts/record_sims_site_no_match.py \
+  --base-url http://127.0.0.1:8012 \
+  --environment disposable \
+  --project my_project \
+  --target-field site_name \
+  --source-value "Site with no match" \
+  --snapshot-id sead-staging-2026-10-02 \
+  --snapshot-at 2026-10-02T10:00:00Z \
+  --site-row-count 3462 \
+  --reviewer "Reviewer name" \
+  --reason "Reviewed all candidates; none identifies this site." \
+  --evidence tmp/site-reconciliation-review.json
+
+# After reviewing the dry-run checks:
+python scripts/record_sims_site_no_match.py \
+  --base-url http://127.0.0.1:8012 \
+  --environment disposable \
+  --project my_project \
+  --target-field site_name \
+  --source-value "Site with no match" \
+  --snapshot-id sead-staging-2026-10-02 \
+  --snapshot-at 2026-10-02T10:00:00Z \
+  --site-row-count 3462 \
+  --reviewer "Reviewer name" \
+  --reason "Reviewed all candidates; none identifies this site." \
+  --evidence tmp/site-reconciliation-review.json \
+  --confirm-allocation-strategy \
+  --approve-no-match \
+  --apply
+```
+
+If the API requires a bearer token, provide it through `SHAPE_SHIFTER_API_TOKEN`; do not pass credentials as command-line arguments. The script stores the evidence file's SHA-256, snapshot details, reviewer, and reason in the reconciliation mapping notes. Run it against the Shape Shifter project configured for the same SEAD snapshot that supplied the reviewed candidates.
+
+The script hashes but does not interpret the evidence file, and it cannot independently confirm which environment, snapshot, or target-model strategy the API uses. Before applying, verify that the project uses the reviewed SEAD snapshot and that its effective strategy permits allocation after a miss; `--confirm-allocation-strategy` records this operator check but does not inspect the model. The reviewer must also check that the evidence covers this exact source value and snapshot.

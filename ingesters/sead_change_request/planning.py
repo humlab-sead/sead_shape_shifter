@@ -7,6 +7,7 @@ from pandas import Series
 
 from ingesters.sead_change_request.contracts import PlannedRowAction, PlannedTable, SourceTableBundle
 from ingesters.sead_change_request.preparation import PlannedBundle
+from src.target_model.effective_identity import EffectiveIdentity, resolve_effective_identity
 from src.target_model.models import EntitySpec
 
 
@@ -26,6 +27,17 @@ def _values_equal_for_existing_row_planning(left: Any, right: Any) -> bool:
     return left == right
 
 
+def _missing_action_for(effective: EffectiveIdentity) -> PlannedRowAction:
+    """Return the planned action for rows whose public ID is unresolved."""
+    if effective.identity_tracking == "tracked":
+        return PlannedRowAction.ALLOCATE
+    if effective.identity_tracking == "reconciled":
+        return PlannedRowAction.RECONCILE
+    if effective.identity_tracking == "child":
+        return PlannedRowAction.INHERIT_AGGREGATE
+    raise ValueError(f"Effective identity_tracking '{effective.identity_tracking}' cannot plan a missing-public-ID action")
+
+
 def plan_table(
     entity_name: str,
     frame: pd.DataFrame,
@@ -36,12 +48,24 @@ def plan_table(
 ) -> PlannedTable:
     """Plan row actions for one entity table in a deterministic way."""
     diagnostics: list[str] = []
+    effective = resolve_effective_identity(entity_spec)
 
-    if entity_spec.role == "bridge":
+    if entity_spec.public_id_generation == "database_sequence":
+        if not entity_spec.target_table:
+            raise ValueError(f"Entity '{entity_name}' uses database_sequence public ID generation but has no target_table")
+        if entity_spec.identity_tracking is None or entity_spec.identity_tracking == "tracked":
+            raise ValueError(
+                f"Entity '{entity_name}' uses database_sequence public ID generation but must explicitly declare "
+                "a non-tracked identity_tracking value; tracked identities must be allocated by SIMS"
+            )
+        missing_action = PlannedRowAction.RESERVE_DATABASE_ID
+    elif effective.identity_tracking == "derived":
         if not entity_spec.unique_sets:
             diagnostics.append(f"Bridge entity '{entity_name}' has no unique_sets metadata; Delivery 1 uniqueness checks will be blocked")
         planned_actions = pd.Series([PlannedRowAction.EVALUATE_BRIDGE] * len(frame.index), index=frame.index, name="_planned_action")
         return PlannedTable(entity_name=entity_name, frame=frame, planned_actions=planned_actions, diagnostics=diagnostics)
+    else:
+        missing_action = _missing_action_for(effective)
 
     public_id = entity_spec.public_id
     if not public_id:
@@ -50,7 +74,6 @@ def plan_table(
         raise ValueError(f"Entity '{entity_name}' is missing public_id column '{public_id}' in the source DataFrame")
 
     existing_mask = frame[public_id].map(_has_public_id_value)
-    missing_action = PlannedRowAction.RECONCILE if entity_spec.role == "classifier" else PlannedRowAction.ALLOCATE
     planned_actions = pd.Series(missing_action, index=frame.index, name="_planned_action")
     planned_actions.loc[existing_mask] = PlannedRowAction.REFERENCE_EXISTING
 

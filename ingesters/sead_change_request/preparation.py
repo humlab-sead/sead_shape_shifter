@@ -3,7 +3,9 @@
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
+from ingesters.sead_change_request.capability_preflight import preflight_capabilities
 from ingesters.sead_change_request.contracts import (
+    CapabilityPreflightResult,
     IdentityAssignment,
     IdentityResolutionResult,
     IdentityWorkPlan,
@@ -17,7 +19,11 @@ from ingesters.sead_change_request.contracts import (
 )
 from ingesters.sead_change_request.identity_resolution import resolve_planned_tables
 from ingesters.sead_change_request.identity_work import build_identity_work_plan
-from ingesters.sead_change_request.orchestration import IdentityOrchestrationResult, orchestrate_identity_assignments
+from ingesters.sead_change_request.orchestration import (
+    IdentityOrchestrationResult,
+    TargetIdAllocatorPort,
+    orchestrate_identity_assignments,
+)
 from ingesters.sead_change_request.target_projection import project_target_ids
 from src.target_model.models import TargetModel
 
@@ -60,6 +66,7 @@ class PreparationResult:
     projection_result: TargetProjectionResult
     outcome_summary: SubmissionOutcomeSummary
     pending_confirmation_report: dict[str, Any] | None = None
+    preflight_result: CapabilityPreflightResult | None = None
 
 
 async def prepare_change_request(
@@ -68,13 +75,22 @@ async def prepare_change_request(
     *,
     sims_client: Any | None,
     reconciliation_client: Any | None,
+    target_id_allocator: TargetIdAllocatorPort | None = None,
 ) -> PreparationResult:
     """Run the shared preparation workflow after inputs are resolved."""
+    preflight_result: CapabilityPreflightResult | None = await _run_capability_preflight(
+        planned.tables,
+        inputs.target_model,
+        sims_client,
+    )
+
     orchestration_result: IdentityOrchestrationResult = await orchestrate_identity_assignments(
         planned.tables,
         inputs.submission_context,
         sims_client=sims_client,
         reconciliation_client=reconciliation_client,
+        target_id_allocator=target_id_allocator,
+        target_model_entities=inputs.target_model.entities,
         fallback_assignments=inputs.fallback_assignments,
     )
     if orchestration_result.binding_set_uuid and not inputs.submission_context.binding_set_uuid:
@@ -106,7 +122,28 @@ async def prepare_change_request(
         projection_result=projection_result,
         outcome_summary=outcome_summary,
         pending_confirmation_report=pending_confirmation_report,
+        preflight_result=preflight_result,
     )
+
+
+async def _run_capability_preflight(
+    planned_tables: list[PlannedTable],
+    target_model: TargetModel,
+    sims_client: Any | None,
+) -> CapabilityPreflightResult | None:
+    """Run capability preflight when the SIMS client publishes capabilities.
+
+    Returns None when no SIMS client is present or the client does not expose
+    capability discovery, so callers without preflight support keep the existing
+    non-SIMS behavior.
+    """
+    if sims_client is None:
+        return None
+    get_capabilities = getattr(sims_client, "get_capabilities", None)
+    if get_capabilities is None:
+        return None
+    capabilities = await get_capabilities()
+    return preflight_capabilities(planned_tables, target_model, capabilities)
 
 
 def _build_pending_confirmation_report(

@@ -113,6 +113,46 @@ class TestProjectTargetIds:
         assert result.tables["sample"].frame["site_id"].isna().tolist() == [True]
         assert result.diagnostics == ["Entity 'sample' has 1 unresolved FK value(s) for 'site_id'"]
 
+    def test_reports_missing_required_sample_foreign_keys(self):
+        """Required sample group and type references must not project as null."""
+        frame = pd.DataFrame(
+            {
+                "system_id": [10],
+                "physical_sample_id": [None],
+                "sample_group_id": [None],
+                "sample_type_id": [None],
+            }
+        )
+        identity_result = IdentityResolutionResult(
+            tables={
+                "sample": ResolvedIdentityTable(
+                    entity_name="sample",
+                    frame=frame,
+                    row_states=pd.Series([ChangeRowState.NEWLY_ALLOCATED_ENTITY], index=frame.index, name="_row_state"),
+                    resolved_target_ids=pd.Series([601], index=frame.index, dtype="Int64", name="_target_id"),
+                )
+            }
+        )
+        target_model = minimal_target_model(
+            sample_group={"role": "fact", "public_id": "sample_group_id"},
+            sample_type={"role": "lookup", "public_id": "sample_type_id"},
+            sample={
+                "role": "fact",
+                "public_id": "physical_sample_id",
+                "foreign_keys": [
+                    {"entity": "sample_group", "required": True},
+                    {"entity": "sample_type", "required": True},
+                ],
+            },
+        )
+
+        result = project_target_ids(identity_result, target_model)
+
+        assert result.diagnostics == [
+            "Entity 'sample' has 1 missing required FK value(s) for 'sample_group_id'",
+            "Entity 'sample' has 1 missing required FK value(s) for 'sample_type_id'",
+        ]
+
     def test_skips_parent_resolution_for_entirely_null_foreign_key(self):
         """A nullable FK with no values should not require its parent table in the bundle."""
         submission_frame = pd.DataFrame({"system_id": [1], "submission_id": [None], "biblio_id": [None]})

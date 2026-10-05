@@ -24,6 +24,32 @@ def project_target_ids(identity_result: IdentityResolutionResult, target_model: 
                     f"Entity '{entity_name}' has {unresolved_pk_count} row(s) without a resolved target ID for '{entity_spec.public_id}'"
                 )
 
+        required_fk_columns = {
+            remote_spec.public_id
+            for foreign_key in entity_spec.foreign_keys
+            if foreign_key.required
+            and (remote_spec := target_model.entities.get(foreign_key.entity)) is not None
+            and remote_spec.public_id
+        }
+        for column_name, column_spec in entity_spec.columns.items():
+            if (
+                frame.empty
+                or not column_spec.required
+                or column_spec.nullable is True
+                or column_spec.generated
+                or column_name == entity_spec.public_id
+                or column_name in required_fk_columns
+            ):
+                continue
+            if column_name not in frame.columns:
+                table_diagnostics.append(f"Entity '{entity_name}' is missing required target column '{column_name}'")
+                continue
+            missing_value_count = int(frame[column_name].isna().sum())
+            if missing_value_count:
+                table_diagnostics.append(
+                    f"Entity '{entity_name}' has {missing_value_count} null value(s) in required target column '{column_name}'"
+                )
+
         for foreign_key in entity_spec.foreign_keys:
             remote_entity = foreign_key.entity
             remote_spec = target_model.entities.get(remote_entity)
@@ -35,7 +61,16 @@ def project_target_ids(identity_result: IdentityResolutionResult, target_model: 
 
             fk_column = remote_spec.public_id
             if fk_column not in frame.columns:
+                if foreign_key.required and not frame.empty:
+                    table_diagnostics.append(
+                        f"Entity '{entity_name}' is missing required FK column '{fk_column}' for '{remote_entity}'"
+                    )
                 continue
+            missing_required_fk_count = int(frame[fk_column].isna().sum())
+            if foreign_key.required and missing_required_fk_count:
+                table_diagnostics.append(
+                    f"Entity '{entity_name}' has {missing_required_fk_count} missing required FK value(s) for '{fk_column}'"
+                )
             if not bool(frame[fk_column].notna().any()):
                 continue
 

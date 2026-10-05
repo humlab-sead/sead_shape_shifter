@@ -5,7 +5,7 @@
 - Document type: supporting design specification
 - Status: Proposed; scope and open contract decisions remain pending
 - Task plan: [Stronger Idempotency And Re-submission](STRONGER_IDEMPOTENCY_AND_RESUBMISSION_TASK_PLAN.md)
-- Preceding phase: [SEAD Change Request Submission Metadata](REFACTOR_SEAD_SUBMISSION_METADATA_TASK_PLAN.md)
+- Preceding phase: [SEAD Change Request Submission Metadata](../CHANGE_REQUEST_INGESTER/REFACTOR_SEAD_SUBMISSION_METADATA_TASK_PLAN.md)
 
 ## Purpose
 

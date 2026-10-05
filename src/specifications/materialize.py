@@ -31,12 +31,12 @@ class CanMaterializeSpecification(Specification):
             self.add_error("Entity is already materialized", entity.entity_name)
         # Rule 3: Cannot depend on non-materialized dynamic entities
         dependencies: chain[str] = chain((fk.remote_entity for fk in entity.foreign_keys), entity.depends_on)
-        for entity_name in dependencies:
+        for dependency_name in dependencies:
             try:
-                dep_entity: TableConfig = self.project.get_table(entity_name)
+                dep_entity: TableConfig = self.project.get_table(dependency_name)
                 if dep_entity.type != "fixed" and not dep_entity.is_materialized:
-                    self.add_error(f"Depends on non-materialized entity '{entity_name}'", entity_name)
+                    self.add_error(f"Depends on non-materialized entity '{dependency_name}'", entity.entity_name)
             except KeyError:
-                self.add_error(f"Depends on non-existent entity '{entity_name}'", entity_name)
+                self.add_error(f"Depends on non-existent entity '{dependency_name}'", entity.entity_name)
 
         return not self.has_errors()

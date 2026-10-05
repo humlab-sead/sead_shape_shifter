@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import re
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
+import httpx
 import psycopg
 from loguru import logger
 from psycopg import sql
@@ -13,8 +14,8 @@ from psycopg import sql
 from backend.app.clients.reconciliation_client import ReconciliationClient, ReconciliationQuery
 from backend.app.clients.sims_client import SimsClient
 from backend.app.core.config import Settings
-from backend.app.models.sims import IdentitySignal, IdentityType, ResolutionRequest, ResolveRequest
-from ingesters.sead_change_request.contracts import SubmissionContext
+from backend.app.models.sims import CapabilitiesResponse, IdentitySignal, IdentityType, ResolutionRequest, ResolveRequest
+from ingesters.sead_change_request.contracts import SimsResolveItem, SubmissionContext
 
 
 def inject_ingester_runtime_dependencies(ingester_key: str | None, extra: dict[str, Any], settings: Settings) -> dict[str, Any]:
@@ -73,13 +74,36 @@ class SeadChangeRequestSimsAdapter:
         self._created_by = created_by
 
     async def allocate_entity(self, entity_name: str, row: dict[str, Any], submission_context: SubmissionContext) -> dict[str, Any]:
-        """Resolve the row in SIMS and return Binding Set information.
+        """Resolve the row in SIMS as a new or already-bound identity."""
+        return await self._resolve_entity(entity_name, row, submission_context)
 
-        The current SIMS client exposes tracked-identity UUIDs and Binding Sets, but not
-        target-facing integer IDs required by Delivery 1 target projection.
-        """
+    async def bind_existing_entity(
+        self,
+        entity_name: str,
+        row: dict[str, Any],
+        approved_aggregate_id: int,
+        submission_context: SubmissionContext,
+    ) -> dict[str, Any]:
+        """Bind the source row to its approved existing SIMS aggregate ID."""
+        return await self._resolve_entity(
+            entity_name,
+            row,
+            submission_context,
+            approved_aggregate_id=approved_aggregate_id,
+        )
+
+    async def _resolve_entity(
+        self,
+        entity_name: str,
+        row: dict[str, Any],
+        submission_context: SubmissionContext,
+        *,
+        approved_aggregate_id: int | None = None,
+    ) -> dict[str, Any]:
+        """Resolve a source row in SIMS and return its aggregate ID and Binding Set."""
         request = ResolveRequest(
             scope_name=self._build_scope_name(submission_context),
+            run_id=self._run_id_for(submission_context),
             submission_name=submission_context.submission_name,
             created_by=self._created_by,
             requests=[
@@ -89,29 +113,103 @@ class SeadChangeRequestSimsAdapter:
                         identity_type=IdentityType.BUSINESS_KEY,
                         identity_value=self._build_identity_value(entity_name, row),
                     ),
+                    approved_aggregate_id=approved_aggregate_id,
                 )
             ],
         )
-        response = await self._sims_client.resolve(request)
+        try:
+            response = await self._sims_client.resolve(request)
+        except httpx.HTTPStatusError as exc:
+            if approved_aggregate_id is None or exc.response.status_code != 409:
+                raise
+            return {
+                "target_id": None,
+                "binding_set_uuid": None,
+                "binding_set_state": None,
+                "note": (
+                    f"SIMS rejected approved aggregate ID {approved_aggregate_id} "
+                    f"(HTTP {exc.response.status_code}): {exc.response.text}"
+                ),
+            }
+
         tracked_identity_uuid = None
         target_id = None
         if response.outcomes:
             tracked_identity_uuid = response.outcomes[0].tracked_identity_uuid
             target_id = response.outcomes[0].target_id
 
+        note = (
+            f"SIMS resolved '{entity_name}' into Binding Set '{response.binding_set.binding_set_uuid}'"
+            if target_id is not None
+            else (
+                f"SIMS resolved '{entity_name}' into Binding Set '{response.binding_set.binding_set_uuid}', "
+                "but the current SIMS client does not expose a SIMS aggregate ID"
+            )
+        )
+        if approved_aggregate_id is not None and target_id != approved_aggregate_id:
+            target_id = None
+            note = (
+                f"SIMS did not return approved aggregate ID {approved_aggregate_id}; "
+                "refusing to use a different aggregate ID"
+            )
+
         return {
             "target_id": target_id,
             "binding_set_uuid": str(response.binding_set.binding_set_uuid),
             "binding_set_state": response.binding_set.lifecycle_state.value,
             "tracked_identity_uuid": str(tracked_identity_uuid) if tracked_identity_uuid is not None else None,
-            "note": (
-                f"SIMS resolved '{entity_name}' into Binding Set '{response.binding_set.binding_set_uuid}'"
-                if target_id is not None
-                else (
-                    f"SIMS resolved '{entity_name}' into Binding Set '{response.binding_set.binding_set_uuid}', "
-                    "but the current SIMS client does not expose a target-facing integer ID"
+            "note": note,
+        }
+
+    async def resolve_batch(
+        self,
+        items: list[SimsResolveItem],
+        submission_context: SubmissionContext,
+    ) -> dict[str, Any]:
+        """Resolve all collected SIMS work in one idempotent request.
+
+        Builds one ResolveRequest carrying every item's request, using the
+        persisted run ID as the idempotency key. Returns the ordered outcomes
+        plus the batch Binding Set UUID and lifecycle state.
+        """
+        request = ResolveRequest(
+            scope_name=self._build_scope_name(submission_context),
+            run_id=self._run_id_for(submission_context),
+            submission_name=submission_context.submission_name,
+            created_by=self._created_by,
+            requests=[
+                ResolutionRequest(
+                    entity_type=item.entity_name,
+                    primary_signal=IdentitySignal(
+                        identity_type=IdentityType.BUSINESS_KEY,
+                        identity_value=self._build_identity_value(item.entity_name, item.row),
+                    ),
+                    approved_aggregate_id=item.approved_aggregate_id,
                 )
-            ),
+                for item in items
+            ],
+        )
+        try:
+            response = await self._sims_client.resolve(request)
+        except httpx.HTTPStatusError as exc:
+            return {
+                "outcomes": [],
+                "binding_set_uuid": None,
+                "binding_set_state": None,
+                "error": f"SIMS rejected the batch (HTTP {exc.response.status_code}): {exc.response.text}",
+            }
+        return {
+            "outcomes": [
+                {
+                    "target_id": outcome.target_id,
+                    "tracked_identity_uuid": (
+                        str(outcome.tracked_identity_uuid) if outcome.tracked_identity_uuid is not None else None
+                    ),
+                }
+                for outcome in response.outcomes
+            ],
+            "binding_set_uuid": str(response.binding_set.binding_set_uuid),
+            "binding_set_state": response.binding_set.lifecycle_state.value,
         }
 
     async def derive_bridge_row(
@@ -139,6 +237,10 @@ class SeadChangeRequestSimsAdapter:
         binding_set = await self._sims_client.get_binding_set(UUID(binding_set_uuid))
         return binding_set.lifecycle_state.value
 
+    async def get_capabilities(self) -> CapabilitiesResponse:
+        """Return the configured SIMS identity capabilities for preflight."""
+        return await self._sims_client.get_capabilities()
+
     async def confirm_binding_set(self, binding_set_uuid: str) -> str:
         """Confirm the Binding Set and return the resulting lifecycle state."""
         binding_set = await self._sims_client.confirm_binding_set(UUID(binding_set_uuid))
@@ -152,6 +254,10 @@ class SeadChangeRequestSimsAdapter:
         if self._scope_name:
             return self._scope_name
         return f"sead-change-request:{submission_context.project_name}"
+
+    def _run_id_for(self, submission_context: SubmissionContext) -> str:
+        """Return the persisted run ID, minting a fallback when absent."""
+        return submission_context.run_id or str(uuid4())
 
     def _build_identity_value(self, entity_name: str, row: dict[str, Any]) -> str:
         serialized_pairs: list[str] = []
@@ -231,7 +337,7 @@ class SeadChangeRequestReconciliationAdapter:
 
 
 class SeadChangeRequestTargetCollisionChecker:
-    """Read-only PostgreSQL collision checker for Delivery 1 target-side preflight checks."""
+    """PostgreSQL adapter for target collision checks and public-ID sequence reservations."""
 
     def __init__(
         self,
@@ -259,6 +365,18 @@ class SeadChangeRequestTargetCollisionChecker:
             sql.Identifier(public_id_column),
         )
         return await self._fetch_exists(statement, (target_id,))
+
+    async def reserve_target_id(self, table_name: str, public_id_column: str) -> int | None:
+        """Consume and return the next value from a target column's associated sequence."""
+        statement = sql.SQL("SELECT nextval(pg_get_serial_sequence(%s, %s))")
+        async with await psycopg.AsyncConnection.connect(**self._connection_kwargs) as connection:
+            qualified_table_name = self._table_identifier(table_name).as_string(connection)
+            async with connection.cursor() as cursor:
+                await cursor.execute(statement, (qualified_table_name, public_id_column))
+                row = await cursor.fetchone()
+        if row is None or row[0] is None:
+            return None
+        return int(row[0])
 
     async def row_exists(self, table_name: str, filters: dict[str, object]) -> bool:
         if not filters:
