@@ -85,6 +85,19 @@ check-doc-links:
 	@scripts/check_doc_links.sh
 
 ################################################################################
+# Development authorization for the current local resources. 
+################################################################################
+
+.PHONY: development-authorization
+development-authorization:
+	@echo "Setting up development authorization for local resources..."
+	@SHAPE_SHIFTER_ENVIRONMENT=development \
+	SHAPE_SHIFTER_TRUSTED_PROXY_AUTH_ENABLED=false \
+	SHAPE_SHIFTER_DEVELOPMENT_PRINCIPAL_ID=local-developer \
+	SHAPE_SHIFTER_AUTHORIZATION_DATABASE_PATH=state/authorization-dev.sqlite3 \
+	uv run sead-authorization dev-bootstrap
+
+################################################################################
 # JSON Schema generation (for frontend Monaco editor autocomplete)
 ################################################################################
 
