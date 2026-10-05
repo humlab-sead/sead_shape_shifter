@@ -44,8 +44,10 @@ class PlannedRowAction(StrEnum):
     UPDATE_EXISTING_CANDIDATE = "update_existing_candidate"
     BLOCK_EXISTING_UPDATE = "block_existing_update"
     ALLOCATE = "allocate"
+    RESERVE_DATABASE_ID = "reserve_database_id"
     RECONCILE = "reconcile"
     EVALUATE_BRIDGE = "evaluate_bridge"
+    INHERIT_AGGREGATE = "inherit_aggregate"
 
 
 class LifecycleVersionState(StrEnum):
@@ -85,12 +87,22 @@ class SubmissionContext:
     timestamp: datetime
     binding_set_uuid: str | None = None
     change_request_name: str | None = None
+    run_id: str | None = None
     datatype: str | None = None
     identifier: str | None = None
     description: str | None = None
     issue_identifier: str | None = None
     author: str | None = None
     data_provider_code: str | None = None
+
+
+@dataclass(slots=True)
+class SimsResolveItem:
+    """One row of SIMS work collected for a single resolve batch."""
+
+    entity_name: str
+    row: dict[str, Any]
+    approved_aggregate_id: int | None = None
 
 
 @dataclass(slots=True)
@@ -114,6 +126,7 @@ class IdentityWorkPlan:
     allocation_rows: dict[str, pd.DataFrame] = field(default_factory=dict)
     reconciliation_rows: dict[str, pd.DataFrame] = field(default_factory=dict)
     bridge_rows: dict[str, pd.DataFrame] = field(default_factory=dict)
+    inherit_rows: dict[str, pd.DataFrame] = field(default_factory=dict)
 
     @property
     def total_existing_rows(self) -> int:
@@ -138,6 +151,24 @@ class IdentityWorkPlan:
     @property
     def total_bridge_rows(self) -> int:
         return sum(len(frame.index) for frame in self.bridge_rows.values())
+
+    @property
+    def total_inherit_rows(self) -> int:
+        return sum(len(frame.index) for frame in self.inherit_rows.values())
+
+
+@dataclass(slots=True)
+class CapabilityPreflightResult:
+    """Result of comparing planned identity work against SIMS capabilities."""
+
+    model_name: str
+    model_version: str
+    checked_entities: list[str] = field(default_factory=list)
+    diagnostics: list[str] = field(default_factory=list)
+
+    @property
+    def has_blockers(self) -> bool:
+        return bool(self.diagnostics)
 
 
 @dataclass(slots=True)

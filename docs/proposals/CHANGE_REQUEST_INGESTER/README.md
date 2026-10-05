@@ -10,7 +10,7 @@ The accepted Delivery 1 direction is:
 
 - DataFrame-first ingestion inside the ingester core
 - identity resolution before SQL generation
-- SIMS allocation for new entities and allocatable classifiers
+- generic SIMS allocation for new tracked aggregates where validated service configuration permits it
 - reconciliation-first handling for existing classifier matches
 - forward-only change-package generation with non-revertible placeholder handling when required
 
@@ -18,7 +18,7 @@ The accepted Delivery 1 direction is:
 
 - Delivery 1 baseline work is closed.
 - Delivery 1 follow-up issue slices are resolved or implemented on the current branch.
-- Frontend UX integration is implemented, with one deferred follow-up for stable metadata defaults.
+- Frontend UX integration and persisted stable metadata defaults are implemented; upstream database validation remains open in the [cutover and deployment workstream](./CUTOVER_AND_DEPLOYMENT/README.md) and its [submission metadata task plan](./REFACTOR_SEAD_SUBMISSION_METADATA_TASK_PLAN.md).
 - Provider-update lifecycle policy gate is accepted.
 - Provider-submission lifecycle docs are archived under [done/DATA_PROVIDER_SUBMISSION_LIFECYCLE](./done/DATA_PROVIDER_SUBMISSION_LIFECYCLE).
 - Shared-data review and operator contract work now lives in [SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT/SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT.md](./SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT/SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT.md).
@@ -33,8 +33,10 @@ For the single consolidated tracker of remaining work, use:
 - [../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md) — durable lifecycle rules reference
 - [done/DATA_PROVIDER_SUBMISSION_LIFECYCLE/README.md](./done/DATA_PROVIDER_SUBMISSION_LIFECYCLE/README.md) — archived provider-submission lifecycle set
 - [SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT/SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT.md](./SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT/SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT.md) — separate shared-data review proposal
+- [SIMS-SEAD trust-contract adoption proposal](./CUTOVER_AND_DEPLOYMENT/SIMS_SEAD_TRUST_CONTRACT_ADOPTION_PROPOSAL.md) — active operational work for existing-data adoption, cutover, and deployment
+- [CUTOVER_AND_DEPLOYMENT/README.md](./CUTOVER_AND_DEPLOYMENT/README.md) — consolidated operational decisions and deployment gates
 - [REFACTOR_SEAD_SUBMISSION_METADATA.md](./REFACTOR_SEAD_SUBMISSION_METADATA.md) — proposed CR for persisted submission defaults and SEAD submission container
-- [STRONGER_IDEMPOTENCY_AND_RESUBMISSION_TASK_PLAN.md](./STRONGER_IDEMPOTENCY_AND_RESUBMISSION_TASK_PLAN.md) — proposed next-phase plan for exact reruns and partially overlapping re-submissions
+- [STRONGER_IDEMPOTENCY_AND_RESUBMISSION_TASK_PLAN.md](../INGESTER_IDEMPOTENCY_AND_RESUBMISSION/STRONGER_IDEMPOTENCY_AND_RESUBMISSION_TASK_PLAN.md) — proposed next-phase plan for exact reruns and partially overlapping re-submissions
 - [INGESTER_AUTHORIZATION_TASKS.md](./INGESTER_AUTHORIZATION_TASKS.md) — proposed authorization work for ingester routes and approved operations
 - [done/DATA_PROVIDER_SUBMISSION_LIFECYCLE/LIFECYCLE_PHASE_1_2_ISSUES.md](./done/DATA_PROVIDER_SUBMISSION_LIFECYCLE/LIFECYCLE_PHASE_1_2_ISSUES.md) — issue-ready phase 1 and phase 2 implementation slices
 - [done/DATA_PROVIDER_SUBMISSION_LIFECYCLE/LIFECYCLE_PHASE_3_ISSUES.md](./done/DATA_PROVIDER_SUBMISSION_LIFECYCLE/LIFECYCLE_PHASE_3_ISSUES.md) — phase 3 implementation record for existing-row provider update handling
@@ -44,6 +46,8 @@ For the single consolidated tracker of remaining work, use:
 
 ## Implemented Or Historical References
 
+- [SIMS identity allocation contract](./done/SIMS_IDENTITY_ALLOCATION/SIMS_IDENTITY_ALLOCATION_CONTRACT.md) — completed Shape Shifter responsibilities for model-driven planning, reconciliation, and artifact checks
+- [Cross-system identity allocation phase plan](./done/SIMS_IDENTITY_ALLOCATION/SIMS_IDENTITY_ALLOCATION_PHASE_PLAN.md) — completed Phases 1–3; the folder also contains task plans and candidate verification
 - [done/CHANGE_REQUEST_INGESTER_DELIVERY_1/SEAD_CHANGE_REQUEST_INGESTER.md](./done/CHANGE_REQUEST_INGESTER_DELIVERY_1/SEAD_CHANGE_REQUEST_INGESTER.md) — Closed Delivery 1 baseline proposal and accepted design decisions
 - [done/CHANGE_REQUEST_INGESTER_DELIVERY_1/DELIVERY_1_IMPLEMENTATION_PLAN.md](./done/CHANGE_REQUEST_INGESTER_DELIVERY_1/DELIVERY_1_IMPLEMENTATION_PLAN.md) — Closed Delivery 1 implementation plan and workstream record
 - [done/CHANGE_REQUEST_INGESTER_DELIVERY_1/DELIVERY_1_HARDENING.md](./done/CHANGE_REQUEST_INGESTER_DELIVERY_1/DELIVERY_1_HARDENING.md) — Closed Delivery 1 hardening contract for the `copy_csv` artifact bundle
@@ -66,8 +70,8 @@ For the single consolidated tracker of remaining work, use:
 - Data-provider update scope is accepted and now governs downstream existing-row update behavior
 - Provider-submission lifecycle work is archived under `done/DATA_PROVIDER_SUBMISSION_LIFECYCLE`
 - Shared-data review and operator routing now has a separate proposal folder
-- Frontend issue breakdown exists as implementation record and deferred follow-up tracking
-- Upstream SIMS handoff docs now live in `humlab-sead/sead_authority_service:docs/proposals/`
+- Frontend issue breakdown records the implemented workflow; stable defaults were delivered separately in the submission metadata work
+- SIMS API and allocator responsibilities are documented in the [Authority Service target-ID proposal](https://github.com/humlab-sead/sead_authority_service/blob/main/docs/proposals/SIMS_TARGET_ID_CONTRACT.md); completed Phases 1–3 are archived under `done`, while adoption and cutover remain separate operational work
 
 ## Remaining Tasks Snapshot
 
@@ -82,7 +86,7 @@ For the single consolidated tracker of remaining work, use:
 
 - existing entity rows remain reference-only when `public_id` is populated
 - bridge and association rows are evaluated independently using metadata-defined uniqueness rules where available
-- classifier rows try reconciliation first and may allocate through SIMS in Delivery 1 if needed
+- Shape Shifter reconciles classifier rows and approves matches or misses; an approved miss may request SIMS allocation only when the generic operation is configured
 - blocked unresolved rows stop the run before SQL generation
 - collision checks cover target ID collisions plus metadata-defined bridge uniqueness checks
 

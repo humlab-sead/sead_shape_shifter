@@ -106,7 +106,7 @@ YAML-level instructions such as `@include:`, `@value:`, and `${ENV_VAR}` that ar
 
 ### Three-Tier Identity System
 
-Shape Shifter's identity model: (1) `system_id` for internal references, (2) `keys` for business-key matching and deduplication, (3) `public_id` for target schema column names that hold SEAD IDs after mapping.
+Shape Shifter's identity model: (1) `system_id` for internal references, (2) `keys` for business-key matching and deduplication, (3) `public_id` for target schema column names that hold SEAD IDs after mapping. These Shape Shifter fields are distinct from the SEAD ID, SIMS UUID, and source-key roles described below.
 
 ### system_id
 
@@ -182,6 +182,30 @@ A test that checks multiple parts of the system working together.
 
 A relationship between entities using local `system_id` values. Foreign keys never use external IDs as internal reference values. The child column uses the parent's `public_id` as its column name.
 
+### SEAD Internal ID
+
+**Definition:** The integer or bigint primary key used for relational storage in a SEAD table, such as `site_id`.
+
+**Context:** SIMS does not map its identities to SEAD tables or columns and does not enforce uniqueness in the SEAD database. SEAD consumes SIMS-issued aggregate identity values under the SIMS–SEAD trust contract. This is not Shape Shifter's local `system_id`.
+
+### SIMS Tracked UUID
+
+**Definition:** The stable UUID SIMS assigns to one tracked aggregate identity.
+
+**Context:** SIMS stores the UUID with the entity-scoped aggregate identity value and its scoped source identities. SEAD's use of those values is governed by the trust contract.
+
+### Source Identity Keys
+
+**Definition:** Business, provider, and authority identifiers recorded within a source scope and used to identify or reconcile incoming records.
+
+**Context:** SIMS links source identities to a tracked aggregate identity. Source keys are not SIMS-minted aggregate identity values.
+
+### SIMS Identity Mapping
+
+**Definition:** SIMS's record associating an entity type, its SIMS-issued aggregate identity value, its tracked UUID, and scoped source identities.
+
+**Context:** SIMS uses a generic mechanism configured by entity type and guarantees uniqueness within its own identity store. SIMS does not map identity values to SEAD tables or columns or guarantee uniqueness in SEAD.
+
 ## 4. SEAD and Identity Concepts
 
 ### SEAD
@@ -194,7 +218,7 @@ The normalization and transformation engine. Converts source data into SEAD-comp
 
 ### SIMS
 
-Scientific Identity Management Service. The official authority for long-term SEAD identity allocation and mapping. Shape Shifter prepares reconciliation inputs but does not replace SIMS.
+Scientific Identity Management Service. The owner of tracked aggregate identities and scoped source-identity associations. Shape Shifter prepares reconciliation inputs; SEAD consumes SIMS-issued aggregate identity values under a trust contract.
 
 ### SEAD Authoritative Service
 

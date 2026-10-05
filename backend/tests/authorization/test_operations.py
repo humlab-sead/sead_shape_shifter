@@ -12,6 +12,7 @@ from backend.app.authorization.models import Grant, GrantSubjectType, ResourceRe
 from backend.app.authorization.operations import (
     apply_manifest,
     backup_database,
+    development_bootstrap_required,
     export_manifest,
     initialize_database,
     inspect_manifest,
@@ -20,6 +21,7 @@ from backend.app.authorization.operations import (
     restore_database,
 )
 from backend.app.authorization.repository import SQLiteAuthorizationRepository
+from backend.app.core.config import settings
 from backend.app.scripts.authorization import cli
 
 
@@ -69,6 +71,33 @@ def test_initialize_database_is_idempotent_and_preserves_schema(tmp_path) -> Non
     with sqlite3.connect(database) as connection:
         assert connection.execute("SELECT MAX(version) FROM schema_version").fetchone()[0] == 4
         assert connection.execute("SELECT role FROM application_role WHERE principal_id = 'alice'").fetchone()[0] == "admin"
+
+
+def test_development_bootstrap_check_is_read_only_for_missing_and_empty_databases(tmp_path) -> None:
+    missing_database = tmp_path / "missing.sqlite3"
+    empty_database = tmp_path / "empty.sqlite3"
+    empty_database.touch()
+
+    assert development_bootstrap_required(missing_database, "local-developer", set(), set()) is True
+    assert not missing_database.exists()
+    assert development_bootstrap_required(empty_database, "local-developer", set(), set()) is True
+    assert empty_database.stat().st_size == 0
+
+
+def test_development_bootstrap_check_detects_missing_roles_and_resources(tmp_path) -> None:
+    database = tmp_path / "authorization.sqlite3"
+    initialize_database(database)
+    repository = SQLiteAuthorizationRepository(database)
+    project = ResourceRecord(uuid4(), ResourceType.PROJECT, "project-a")
+    source = ResourceRecord(uuid4(), ResourceType.SHARED_DATA_SOURCE, "source-a")
+    repository.create_resource(project)
+    repository.create_resource(source)
+    repository.add_application_role("local-developer", "admin", "test")
+    repository.close()
+
+    assert development_bootstrap_required(database, "local-developer", {"project-a"}, {"source-a"}) is False
+    assert development_bootstrap_required(database, "other-developer", {"project-a"}, {"source-a"}) is True
+    assert development_bootstrap_required(database, "local-developer", {"project-a", "project-b"}, {"source-a"}) is True
 
 
 def test_failed_grant_insert_rolls_back_without_audit_event(tmp_path) -> None:
@@ -214,6 +243,79 @@ def test_apply_manifest_is_idempotent(tmp_path) -> None:
 
     assert apply_manifest(manifest, database) == {"administrators": 1, "resources": 1, "grants": 1}
     assert apply_manifest(manifest, database) == {"administrators": 0, "resources": 1, "grants": 0}
+
+
+def test_dev_bootstrap_is_idempotent_and_registers_local_resources(tmp_path, monkeypatch) -> None:
+    application_root = tmp_path
+    projects_dir = application_root / "projects"
+    project_file = projects_dir / "group" / "project-a" / "shapeshifter.yml"
+    project_file.parent.mkdir(parents=True)
+    project_file.write_text("metadata:\n  type: test\nentities: {}\n", encoding="utf-8")
+    data_sources_dir = application_root / "shared" / "data-sources"
+    data_sources_dir.mkdir(parents=True)
+    (data_sources_dir / "source-a.yml").write_text("driver: postgresql\n", encoding="utf-8")
+
+    monkeypatch.setattr(settings, "ENVIRONMENT", "development")
+    monkeypatch.setattr(settings, "TRUSTED_PROXY_AUTH_ENABLED", False)
+    monkeypatch.setattr(settings, "DEVELOPMENT_PRINCIPAL_ID", "local-developer")
+    monkeypatch.setattr(settings, "APPLICATION_ROOT", application_root)
+    monkeypatch.setattr(settings, "AUTHORIZATION_DATABASE_PATH", application_root / "state" / "authorization-dev.sqlite3")
+    monkeypatch.setattr(settings, "PROJECTS_DIR", projects_dir)
+    monkeypatch.setattr(settings, "GLOBAL_DATA_SOURCE_DIR", data_sources_dir)
+
+    runner = CliRunner()
+    first_run = runner.invoke(cli, ["dev-bootstrap"])
+    second_run = runner.invoke(cli, ["dev-bootstrap"])
+
+    assert first_run.exit_code == 0, first_run.output
+    assert second_run.exit_code == 0, second_run.output
+    assert "admin created" in first_run.output
+    assert "admin already present" in second_run.output
+    assert "projects 0/1 added" in second_run.output
+    assert "shared data sources 0/1 added" in second_run.output
+
+    repository = SQLiteAuthorizationRepository(settings.AUTHORIZATION_DATABASE_PATH)
+    assert repository.list_application_roles("local-developer") == ["admin"]
+    assert repository.get_resource_by_locator(ResourceType.PROJECT, "group:project-a") is not None
+    assert repository.get_resource_by_locator(ResourceType.SHARED_DATA_SOURCE, "source-a") is not None
+    repository.close()
+
+
+def test_dev_bootstrap_refuses_non_development_environment(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(settings, "ENVIRONMENT", "production")
+    database = tmp_path / "authorization.sqlite3"
+    monkeypatch.setattr(settings, "AUTHORIZATION_DATABASE_PATH", database)
+
+    result = CliRunner().invoke(cli, ["dev-bootstrap"])
+
+    assert result.exit_code != 0
+    assert "only available when ENVIRONMENT=development" in result.output
+    assert not database.exists()
+
+
+def test_dev_bootstrap_refuses_trusted_proxy_authentication(monkeypatch) -> None:
+    monkeypatch.setattr(settings, "ENVIRONMENT", "development")
+    monkeypatch.setattr(settings, "TRUSTED_PROXY_AUTH_ENABLED", True)
+
+    result = CliRunner().invoke(cli, ["dev-bootstrap"])
+
+    assert result.exit_code != 0
+    assert "requires TRUSTED_PROXY_AUTH_ENABLED=false" in result.output
+
+
+def test_dev_bootstrap_refuses_non_development_database_path(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(settings, "ENVIRONMENT", "development")
+    monkeypatch.setattr(settings, "TRUSTED_PROXY_AUTH_ENABLED", False)
+    monkeypatch.setattr(settings, "DEVELOPMENT_PRINCIPAL_ID", "local-developer")
+    monkeypatch.setattr(settings, "APPLICATION_ROOT", tmp_path)
+    database = tmp_path / "state" / "authorization.sqlite3"
+    monkeypatch.setattr(settings, "AUTHORIZATION_DATABASE_PATH", database)
+
+    result = CliRunner().invoke(cli, ["dev-bootstrap"])
+
+    assert result.exit_code != 0
+    assert "only writes state/authorization-dev.sqlite3" in result.output
+    assert not database.exists()
 
 
 def test_typed_manifest_applies_and_reconciles_broad_grants(tmp_path) -> None:

@@ -112,6 +112,75 @@ class TestBuildDeployArtifact:
         ]
         assert artifact.bundle_files == {f"deploy/{expected_bundle_name}/tbl_sample.gz": "101\tO'Reilly\ttrue\n"}
 
+    def test_inline_insert_omits_generated_bridge_id(self):
+        frame = pd.DataFrame({"site_location_id": pd.Series([pd.NA], dtype="Int64"), "site_id": [6489], "location_id": [1]})
+        package = ChangeRequestPackage(
+            tables={
+                "site_location": ChangeRequestTable(
+                    name="site_location",
+                    frame=frame,
+                    row_states=pd.Series([ChangeRowState.DERIVED_BRIDGE_ROW], index=frame.index, name="_row_state"),
+                )
+            }
+        )
+        target_model = minimal_target_model(
+            site_location={
+                "role": "bridge",
+                "public_id": "site_location_id",
+                "target_table": "tbl_site_locations",
+                "columns": {
+                    "site_location_id": {"required": True, "generated": True, "type": "integer", "nullable": False},
+                    "site_id": {"required": True, "type": "integer", "nullable": False},
+                    "location_id": {"required": True, "type": "integer", "nullable": False},
+                },
+            }
+        )
+        submission_context = SubmissionContext(
+            submission_name="site-insert",
+            project_name="test-project",
+            timestamp=datetime(2026, 5, 23, 23, 0, 0),
+        )
+
+        artifact = build_deploy_artifact(package, target_model, submission_context)
+
+        assert artifact.statements == ['INSERT INTO "tbl_site_locations" ("site_id", "location_id") VALUES (6489, 1);']
+
+    def test_copy_csv_omits_generated_bridge_id(self):
+        frame = pd.DataFrame({"site_location_id": pd.Series([pd.NA], dtype="Int64"), "site_id": [6489], "location_id": [1]})
+        package = ChangeRequestPackage(
+            tables={
+                "site_location": ChangeRequestTable(
+                    name="site_location",
+                    frame=frame,
+                    row_states=pd.Series([ChangeRowState.DERIVED_BRIDGE_ROW], index=frame.index, name="_row_state"),
+                )
+            }
+        )
+        target_model = minimal_target_model(
+            site_location={
+                "role": "bridge",
+                "public_id": "site_location_id",
+                "target_table": "tbl_site_locations",
+                "columns": {
+                    "site_location_id": {"required": True, "generated": True, "type": "integer", "nullable": False},
+                    "site_id": {"required": True, "type": "integer", "nullable": False},
+                    "location_id": {"required": True, "type": "integer", "nullable": False},
+                },
+            }
+        )
+        submission_context = SubmissionContext(
+            submission_name="site-insert",
+            project_name="test-project",
+            timestamp=datetime(2026, 5, 23, 23, 0, 0),
+        )
+
+        artifact = build_deploy_artifact(package, target_model, submission_context, strategy="copy_csv")
+        expected_bundle_name = bundle_name(submission_context)
+        bundle_path = f"deploy/{expected_bundle_name}/tbl_site_locations.gz"
+
+        assert artifact.bundle_files[bundle_path] == "6489\t1\n"
+        assert '("site_id", "location_id")' in artifact.statements[0]
+
     def test_copy_csv_distinguishes_null_and_empty_string(self):
         """CSV-mode payloads should distinguish null from empty string."""
         frame = pd.DataFrame({"sample_id": [101], "sample_name": [""], "sample_note": [None]})
@@ -538,3 +607,61 @@ class TestBuildDeployArtifact:
             f"FROM program 'zcat -qac {expected_bundle_name}/tbl_sample.gz' WITH (FORMAT csv, DELIMITER E'\\t', ENCODING 'utf-8');",
             'UPDATE "tbl_sample" SET "sample_name" = \'changed row\' WHERE "sample_id" = 102;',
         ]
+
+
+class TestStrategyParity:
+    """Both deploy strategies must emit the same SIMS-issued identity values."""
+
+    def _package_with_resolved_identities(self) -> ChangeRequestPackage:
+        frame = pd.DataFrame(
+            {
+                "system_id": [1, 2],
+                "sample_id": [501, 502],
+                "sample_name": ["Allocated A", "Allocated B"],
+            }
+        )
+        return ChangeRequestPackage(
+            tables={
+                "sample": ChangeRequestTable(
+                    name="sample",
+                    frame=frame,
+                    row_states=pd.Series(
+                        [ChangeRowState.NEWLY_ALLOCATED_ENTITY, ChangeRowState.NEWLY_ALLOCATED_ENTITY],
+                        index=frame.index,
+                        name="_row_state",
+                    ),
+                )
+            }
+        )
+
+    def _submission_context(self) -> SubmissionContext:
+        return SubmissionContext(
+            submission_name="test-submission",
+            project_name="test-project",
+            timestamp=datetime(2026, 5, 23, 23, 0, 0),
+            datatype="mal",
+            identifier="TEST_SUBMISSION",
+        )
+
+    def test_both_strategies_emit_the_same_resolved_identity_values(self):
+        """Inline INSERT and copy-CSV must both carry the SIMS-issued target IDs in order."""
+        package = self._package_with_resolved_identities()
+        target_model = minimal_target_model(sample={"role": "fact", "public_id": "sample_id", "target_table": "tbl_sample"})
+        context = self._submission_context()
+
+        inline = build_deploy_artifact(package, target_model, context, strategy="inline_insert")
+        copy_csv = build_deploy_artifact(package, target_model, context, strategy="copy_csv")
+
+        # Inline INSERT carries both resolved IDs in its VALUES clauses.
+        assert 'INSERT INTO "tbl_sample" ("sample_id", "sample_name") VALUES (501, \'Allocated A\');' in inline.statements
+        assert 'INSERT INTO "tbl_sample" ("sample_id", "sample_name") VALUES (502, \'Allocated B\');' in inline.statements
+
+        # copy-CSV carries the same two resolved IDs in its sidecar payload.
+        bundle_name = resolve_bundle_name(context)
+        payload = copy_csv.bundle_files[f"deploy/{bundle_name}/tbl_sample.gz"]
+        assert payload == "501\tAllocated A\n502\tAllocated B\n"
+
+        # Both strategies preserve exactly the same ordered target-ID values.
+        inline_ids = [int(statement.split("VALUES (")[1].split(",")[0]) for statement in inline.statements]
+        csv_ids = [int(line.split("\t")[0]) for line in payload.rstrip("\n").split("\n")]
+        assert inline_ids == csv_ids == [501, 502]

@@ -15,8 +15,10 @@ def build_identity_work_plan(planned_tables: list[PlannedTable]) -> IdentityWork
             (PlannedRowAction.UPDATE_EXISTING_CANDIDATE, work_plan.update_candidate_rows),
             (PlannedRowAction.BLOCK_EXISTING_UPDATE, work_plan.blocked_existing_update_rows),
             (PlannedRowAction.ALLOCATE, work_plan.allocation_rows),
+            (PlannedRowAction.RESERVE_DATABASE_ID, work_plan.allocation_rows),
             (PlannedRowAction.RECONCILE, work_plan.reconciliation_rows),
             (PlannedRowAction.EVALUATE_BRIDGE, work_plan.bridge_rows),
+            (PlannedRowAction.INHERIT_AGGREGATE, work_plan.inherit_rows),
         ):
             action_rows: pd.DataFrame | None = _select_action_rows(planned_table, action)
             if action_rows is not None:

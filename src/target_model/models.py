@@ -35,6 +35,13 @@ class EntitySpec(BaseModel):
     domains: list[str] = Field(default_factory=list)
     target_table: str | None = None
     public_id: str | None = None
+    public_id_generation: Literal["database_sequence"] | None = Field(
+        default=None,
+        description=(
+            "Reserve the public ID from the target table's database sequence before artifact generation. "
+            "Use only when identity_tracking is explicitly set to a non-tracked value."
+        ),
+    )
     identity_columns: list[str] = Field(default_factory=list)
     columns: dict[str, ColumnSpec] = Field(default_factory=dict)
     unique_sets: list[list[str]] = Field(default_factory=list)

@@ -794,19 +794,6 @@
       "title": "Check Functional Dependency",
       "type": "boolean"
     },
-    "surrogate_name": {
-      "anyOf": [
-        {
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "description": "Fixed entity type name used when the entity represents a controlled vocabulary type.",
-      "title": "Surrogate Name"
-    },
     "type_names": {
       "description": "Column name list for unnest type columns, referenced by @value: in other entities.",
       "items": {

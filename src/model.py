@@ -1148,6 +1148,7 @@ class ShapeShiftProject:
                 application_root_env_var=dotget(context, "application_root_env_var", "APPLICATION_ROOT"),
                 source_path=dotget(context, "filename, file_path") or self.filename,
                 allowed_roots=tuple(context.get("allowed_roots", ())),
+                allowed_vars=context.get("allowed_vars"),
                 inplace=False,
                 strict=strict,
             ),

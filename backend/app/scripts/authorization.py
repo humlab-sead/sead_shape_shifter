@@ -3,6 +3,7 @@
 import json
 from datetime import UTC, datetime
 from pathlib import Path
+from uuid import uuid4
 
 import click
 
@@ -57,6 +58,72 @@ def migrate(database: Path | None, manifest: Path | None, dry_run: bool) -> None
     else:
         initialize_database(path)
     click.echo(f"Authorization database ready: {path}")
+
+
+@cli.command("dev-bootstrap")
+def dev_bootstrap() -> None:
+    """Initialize the dedicated development authorization database and local resources."""
+    if settings.ENVIRONMENT != "development":
+        raise click.ClickException("Development bootstrap is only available when ENVIRONMENT=development")
+    if settings.TRUSTED_PROXY_AUTH_ENABLED:
+        raise click.ClickException("Development bootstrap requires TRUSTED_PROXY_AUTH_ENABLED=false")
+
+    principal_id = settings.DEVELOPMENT_PRINCIPAL_ID
+    if principal_id is None:
+        raise click.ClickException("Set DEVELOPMENT_PRINCIPAL_ID to a valid local principal before bootstrapping")
+    if (
+        not principal_id.strip()
+        or principal_id != principal_id.strip()
+        or len(principal_id) > 255
+        or not principal_id.isprintable()
+    ):
+        raise click.ClickException("Set DEVELOPMENT_PRINCIPAL_ID to a valid local principal before bootstrapping")
+
+    development_database = (settings.APPLICATION_ROOT / "state" / "authorization-dev.sqlite3").resolve()
+    database = settings.AUTHORIZATION_DATABASE_PATH.resolve()
+    if database != development_database:
+        raise click.ClickException("Development bootstrap only writes state/authorization-dev.sqlite3")
+
+    from backend.app.services.data_source_service import DataSourceService
+    from backend.app.services.project_service import ProjectService
+
+    project_names = [project.name for project in ProjectService(settings.PROJECTS_DIR).list_projects()]
+    data_source_names = [
+        data_source.name for data_source in DataSourceService(settings.GLOBAL_DATA_SOURCE_DIR).list_data_sources()
+    ]
+
+    repository = SQLiteAuthorizationRepository(database)
+    try:
+        admin_created = "admin" not in repository.list_application_roles(principal_id)
+        if admin_created:
+            repository.add_application_role(principal_id, "admin", "development-bootstrap")
+
+        projects_created = _register_development_resources(repository, ResourceType.PROJECT, project_names)
+        data_sources_created = _register_development_resources(repository, ResourceType.SHARED_DATA_SOURCE, data_source_names)
+    finally:
+        repository.close()
+
+    admin_status = "created" if admin_created else "already present"
+    click.echo(
+        f"Development authorization ready for {principal_id}: admin {admin_status}; "
+        f"projects {projects_created}/{len(project_names)} added; "
+        f"shared data sources {data_sources_created}/{len(data_source_names)} added"
+    )
+
+
+def _register_development_resources(
+    repository: SQLiteAuthorizationRepository,
+    resource_type: ResourceType,
+    locators: list[str],
+) -> int:
+    """Add missing local resource records without changing existing grants."""
+    created = 0
+    for locator in locators:
+        if repository.get_resource_by_locator(resource_type, locator) is not None:
+            continue
+        repository.create_resource(ResourceRecord(uuid4(), resource_type, locator))
+        created += 1
+    return created
 
 
 @cli.command("integrity-check")
