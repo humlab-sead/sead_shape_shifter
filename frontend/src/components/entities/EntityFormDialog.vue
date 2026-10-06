@@ -670,6 +670,7 @@
                   :entity-name="formData.name"
                    :entity-columns="effectiveEntityColumns"
                   :is-entity-saved="mode === 'edit'"
+                  :has-unsaved-changes="hasPendingChanges"
                   @update:model-value="handleForeignKeysUpdate"
                 />
               </v-window-item>
