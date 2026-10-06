@@ -124,8 +124,7 @@ async def orchestrate_identity_assignments(
                     or not entity_spec.public_id
                 ):
                     raise ValueError(
-                        f"Entity '{planned_table.entity_name}' requires database-sequence ID metadata "
-                        "with target_table and public_id"
+                        f"Entity '{planned_table.entity_name}' requires database-sequence ID metadata " "with target_table and public_id"
                     )
                 if target_id_allocator is None:
                     entity_assignments[row_index] = IdentityAssignment(
@@ -146,10 +145,7 @@ async def orchestrate_identity_assignments(
                 entity_assignments[row_index] = IdentityAssignment(
                     state=ChangeRowState.NEWLY_ALLOCATED_ENTITY,
                     target_id=target_id,
-                    note=(
-                        f"Reserved '{entity_spec.public_id}' from the database sequence for "
-                        f"'{entity_spec.target_table}'"
-                    ),
+                    note=(f"Reserved '{entity_spec.public_id}' from the database sequence for " f"'{entity_spec.target_table}'"),
                 )
                 continue
 
