@@ -206,7 +206,7 @@ class TestOrchestrateIdentityAssignments:
         assert assignment.state == ChangeRowState.NEWLY_ALLOCATED_ENTITY
         assert assignment.target_id == 703
         assert sims_client.allocated_entities == ["submission"]
-        assert target_id_allocator.requests == []
+        assert not target_id_allocator.requests
 
     @pytest.mark.asyncio
     async def test_explicitly_non_tracked_database_sequence_does_not_call_sims(self):
@@ -318,7 +318,7 @@ class TestOrchestrateIdentityAssignments:
         assert assignment.state == ChangeRowState.BLOCKED_UNRESOLVED
         assert "must be confirmed" in (assignment.note or "")
         assert result.binding_set_state == "proposed"
-        assert sims_client.confirm_calls == []
+        assert not sims_client.confirm_calls
 
     @pytest.mark.asyncio
     async def test_confirmed_binding_set_proceeds_without_confirm_call(self):
@@ -336,7 +336,7 @@ class TestOrchestrateIdentityAssignments:
         assignment = result.assignments["sample"][0]
         assert assignment.state == ChangeRowState.NEWLY_ALLOCATED_ENTITY
         assert result.binding_set_state == "confirmed"
-        assert sims_client.confirm_calls == []
+        assert not sims_client.confirm_calls
 
     @pytest.mark.asyncio
     async def test_missing_target_id_blocks_sims_rows(self):
@@ -459,7 +459,7 @@ class TestOrchestrateIdentityAssignments:
         assignment = result.assignments["taxa_tree_master"][0]
         assert assignment.state == ChangeRowState.BLOCKED_UNRESOLVED
         assert "does not permit SIMS allocation" in (assignment.note or "")
-        assert sims_client.batch_calls == []
+        assert not sims_client.batch_calls
 
     @pytest.mark.asyncio
     async def test_reconcile_exact_miss_allocates_after_approval(self):

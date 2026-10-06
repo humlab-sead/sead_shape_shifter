@@ -31,7 +31,7 @@ def project_target_ids(identity_result: IdentityResolutionResult, target_model: 
         }
         for column_name, column_spec in entity_spec.columns.items():
             if (
-                frame.empty
+                frame.empty  # pylint: disable=too-many-boolean-expressions
                 or not column_spec.required
                 or column_spec.nullable is True
                 or column_spec.generated
