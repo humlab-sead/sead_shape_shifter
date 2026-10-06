@@ -283,11 +283,11 @@ export const useProjectStore = defineStore('project', () => {
     }
   }
 
-  async function restoreBackup(name: string, backupPath: string) {
+  async function restoreBackup(name: string, backupName: string) {
     loading.value = true
     error.value = null
     try {
-      const project = await api.projects.restore(name, { backup_path: backupPath })
+      const project = await api.projects.restore(name, { backup_name: backupName })
       selectedProject.value = project
 
       // Update in list if exists

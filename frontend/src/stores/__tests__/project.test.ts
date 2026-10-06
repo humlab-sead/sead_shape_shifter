@@ -379,8 +379,8 @@ describe('useProjectStore', () => {
     it('should fetch backups successfully', async () => {
       const store = useProjectStore()
       const mockBackups = [
-        { file_name: 'backup1.yml', file_path: '/tmp/backup1.yml', created_at: Date.now() } as BackupInfo,
-        { file_name: 'backup2.yml', file_path: '/tmp/backup2.yml', created_at: Date.now() } as BackupInfo,
+        { file_name: 'backup1.yml', created_at: Date.now() } as BackupInfo,
+        { file_name: 'backup2.yml', created_at: Date.now() } as BackupInfo,
       ]
 
       vi.mocked(api.projects.listBackups).mockResolvedValue(mockBackups)
@@ -419,7 +419,7 @@ describe('useProjectStore', () => {
 
       const result = await store.restoreBackup('test-project', 'backup.yml')
 
-      expect(api.projects.restore).toHaveBeenCalledWith('test-project', { backup_path: 'backup.yml' })
+      expect(api.projects.restore).toHaveBeenCalledWith('test-project', { backup_name: 'backup.yml' })
       expect(store.selectedProject).toEqual(restored)
       expect(store.projects[0]?.entity_count).toBe(10)
       expect(store.hasUnsavedChanges).toBe(false)
@@ -606,9 +606,7 @@ describe('useProjectStore', () => {
       store.projects = [{ name: 'test' } as ProjectMetadata]
       store.selectedProject = { metadata: { name: 'test' } } as Project
       store.validationResult = { error_count: 0 } as ValidationResult
-      store.backups = [
-        { file_name: 'backup.yml', file_path: '/tmp/backup.yml', created_at: Date.now() } as BackupInfo,
-      ]
+      store.backups = [{ file_name: 'backup.yml', created_at: Date.now() } as BackupInfo]
       store.loading = true
       store.error = 'Some error'
       store.hasUnsavedChanges = true
