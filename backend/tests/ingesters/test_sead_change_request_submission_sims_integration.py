@@ -22,7 +22,7 @@ from ingesters.sead_change_request.ingester import SeadChangeRequestIngester
 class DisposableProviderResolver:
     """Resolve the test data provider to a row seeded only during artifact execution."""
 
-    async def reconcile_entity(self, entity_name: str, row: dict[str, Any]) -> int | None:
+    async def reconcile_entity(self, entity_name: str, row: dict[str, Any]) -> int | None:  # pylint: disable=unused-argument
         return 1
 
 
@@ -39,8 +39,8 @@ class DisposableManagedIdentityAllocator:
     async def allocate_entity(
         self,
         entity_name: str,
-        row: dict[str, Any],
-        submission_context: SubmissionContext,
+        row: dict[str, Any],  # pylint: disable=unused-argument
+        submission_context: SubmissionContext,  # pylint: disable=unused-argument
     ) -> dict[str, Any]:
         return {
             "target_id": self.target_ids[entity_name],
@@ -375,34 +375,49 @@ async def test_both_artifacts_use_sims_submission_id_and_rollback(tmp_path: Path
         )
         assert completed.returncode == 0, completed.stdout + completed.stderr
 
-        assert await _fetch_count(
-            connection_kwargs,
-            "SELECT count(*) FROM public.tbl_submissions WHERE submission_id = %s",
-            (submission_id,),
-        ) == 0
-        assert await _fetch_count(
-            connection_kwargs,
-            "SELECT count(*) FROM public.tbl_datasets WHERE dataset_id = %s",
-            (91925,),
-        ) == 0
-        assert await _fetch_count(
-            connection_kwargs,
-            "SELECT count(*) FROM public.tbl_physical_samples WHERE physical_sample_id = %s",
-            (63876,),
-        ) == 0
-        assert await _fetch_count(
-            connection_kwargs,
-            "SELECT count(*) FROM public.tbl_analysis_entities WHERE analysis_entity_id = %s",
-            (223430,),
-        ) == 0
-        assert await _fetch_count(
-            connection_kwargs,
-            "SELECT count(*) FROM public.tbl_data_providers WHERE data_provider_id = %s",
-            (1,),
-        ) == 0
+        assert (
+            await _fetch_count(
+                connection_kwargs,
+                "SELECT count(*) FROM public.tbl_submissions WHERE submission_id = %s",
+                (submission_id,),
+            )
+            == 0
+        )
+        assert (
+            await _fetch_count(
+                connection_kwargs,
+                "SELECT count(*) FROM public.tbl_datasets WHERE dataset_id = %s",
+                (91925,),
+            )
+            == 0
+        )
+        assert (
+            await _fetch_count(
+                connection_kwargs,
+                "SELECT count(*) FROM public.tbl_physical_samples WHERE physical_sample_id = %s",
+                (63876,),
+            )
+            == 0
+        )
+        assert (
+            await _fetch_count(
+                connection_kwargs,
+                "SELECT count(*) FROM public.tbl_analysis_entities WHERE analysis_entity_id = %s",
+                (223430,),
+            )
+            == 0
+        )
+        assert (
+            await _fetch_count(
+                connection_kwargs,
+                "SELECT count(*) FROM public.tbl_data_providers WHERE data_provider_id = %s",
+                (1,),
+            )
+            == 0
+        )
 
     assert len(artifact_names) == 2
-    assert target_database.reserved_ids == []
+    assert not target_database.reserved_ids
     assert await _sequence_state(connection_kwargs, "public.tbl_submissions", "submission_id") == initial_submission_sequence
     for sequence, expected_state in managed_sequence_states.items():
         assert await _sequence_state(connection_kwargs, *sequence) == expected_state

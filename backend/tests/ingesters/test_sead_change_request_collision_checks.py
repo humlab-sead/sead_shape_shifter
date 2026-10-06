@@ -154,5 +154,5 @@ class TestCheckProjectedCollisions:
 
         assert result.has_conflicts is True
         assert result.diagnostics == [
-            "Entity 'analysis_entity' row '0' collides with existing target ID 223430 " "in 'tbl_analysis_entities.analysis_entity_id'"
+            "Entity 'analysis_entity' row '0' collides with existing target ID 223430 in 'tbl_analysis_entities.analysis_entity_id'"
         ]

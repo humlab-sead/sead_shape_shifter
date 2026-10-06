@@ -971,7 +971,7 @@ class TestSeadChangeRequestIngesterIngest:
         assert 'INSERT INTO "tbl_datasets"' in deploy_sql
         assert '"submission_id"' in deploy_sql
         assert "tbl_submission_tasks" not in deploy_sql
-        assert target_id_allocator.requests == []
+        assert not target_id_allocator.requests
 
     @pytest.mark.asyncio
     async def test_ingest_copy_csv_emits_submission_and_dataset_payloads(self, tmp_path):
@@ -1013,7 +1013,7 @@ class TestSeadChangeRequestIngesterIngest:
         assert any(path.endswith("/tbl_datasets.gz") for path in bundle_files)
         assert not any(path.endswith("/tbl_data_providers.gz") for path in bundle_files)
         assert not any(path.endswith("/tbl_submission_states.gz") for path in bundle_files)
-        assert target_id_allocator.requests == []
+        assert not target_id_allocator.requests
 
     @pytest.mark.asyncio
     async def test_ingest_returns_validation_failure_for_invalid_bundle(self):
@@ -1892,7 +1892,7 @@ class TestSeadChangeRequestIngesterIngest:
         assert "HTTP 409" in (result.error_details or "")
         assert "already bound elsewhere" in (result.error_details or "")
         assert result.deploy_artifact is None
-        assert list(tmp_path.iterdir()) == []
+        assert not list(tmp_path.iterdir())
 
     @pytest.mark.asyncio
     async def test_ingest_associates_change_request_after_confirmation(self, tmp_path):

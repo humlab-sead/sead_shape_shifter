@@ -184,7 +184,7 @@ def development_bootstrap_required(
         if has_development_admin is None:
             return True
 
-        registered_resources = {
+        registered_resources = {  # pylint: disable=unnecessary-comprehension
             (resource_type, locator)
             for resource_type, locator in connection.execute("SELECT resource_type, locator FROM resource WHERE lifecycle_state = 'active'")
         }

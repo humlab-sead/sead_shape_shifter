@@ -1555,7 +1555,7 @@ class TestProjectServicePathContainment:
             service.create_project(bad_name)
         assert not outside.exists()
         # Nothing was created anywhere under the parent except the managed root itself.
-        assert list(temp_config_dir.iterdir()) == []
+        assert not any(temp_config_dir.iterdir())
 
     def test_create_namespaced_locator_works(self, service: ProjectService, temp_config_dir: Path):
         """A namespaced locator (arbodat:arbodat-copy) still creates the nested directory."""
