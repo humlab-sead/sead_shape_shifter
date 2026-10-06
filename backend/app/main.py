@@ -56,8 +56,7 @@ def _log_development_authorization_bootstrap_hint() -> None:
         )
     except sqlite3.Error:
         logger.warning(
-            "Could not inspect the development authorization database. "
-            "Check it with `uv run sead-authorization integrity-check`."
+            "Could not inspect the development authorization database. " "Check it with `uv run sead-authorization integrity-check`."
         )
         return
 

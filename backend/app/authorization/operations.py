@@ -186,16 +186,12 @@ def development_bootstrap_required(
 
         registered_resources = {
             (resource_type, locator)
-            for resource_type, locator in connection.execute(
-                "SELECT resource_type, locator FROM resource WHERE lifecycle_state = 'active'"
-            )
+            for resource_type, locator in connection.execute("SELECT resource_type, locator FROM resource WHERE lifecycle_state = 'active'")
         }
 
     expected_resources = {("project", locator) for locator in project_locators}
     expected_resources.update(("shared_data_source", locator) for locator in shared_data_source_locators)
     return not expected_resources.issubset(registered_resources)
-
-
 
 
 def _load_manifest(path: Path) -> dict[str, Any]:

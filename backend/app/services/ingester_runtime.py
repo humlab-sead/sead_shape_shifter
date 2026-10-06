@@ -148,10 +148,7 @@ class SeadChangeRequestSimsAdapter:
         )
         if approved_aggregate_id is not None and target_id != approved_aggregate_id:
             target_id = None
-            note = (
-                f"SIMS did not return approved aggregate ID {approved_aggregate_id}; "
-                "refusing to use a different aggregate ID"
-            )
+            note = f"SIMS did not return approved aggregate ID {approved_aggregate_id}; " "refusing to use a different aggregate ID"
 
         return {
             "target_id": target_id,
@@ -202,9 +199,7 @@ class SeadChangeRequestSimsAdapter:
             "outcomes": [
                 {
                     "target_id": outcome.target_id,
-                    "tracked_identity_uuid": (
-                        str(outcome.tracked_identity_uuid) if outcome.tracked_identity_uuid is not None else None
-                    ),
+                    "tracked_identity_uuid": (str(outcome.tracked_identity_uuid) if outcome.tracked_identity_uuid is not None else None),
                 }
                 for outcome in response.outcomes
             ],

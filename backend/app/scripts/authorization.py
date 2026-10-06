@@ -71,12 +71,7 @@ def dev_bootstrap() -> None:
     principal_id = settings.DEVELOPMENT_PRINCIPAL_ID
     if principal_id is None:
         raise click.ClickException("Set DEVELOPMENT_PRINCIPAL_ID to a valid local principal before bootstrapping")
-    if (
-        not principal_id.strip()
-        or principal_id != principal_id.strip()
-        or len(principal_id) > 255
-        or not principal_id.isprintable()
-    ):
+    if not principal_id.strip() or principal_id != principal_id.strip() or len(principal_id) > 255 or not principal_id.isprintable():
         raise click.ClickException("Set DEVELOPMENT_PRINCIPAL_ID to a valid local principal before bootstrapping")
 
     development_database = (settings.APPLICATION_ROOT / "state" / "authorization-dev.sqlite3").resolve()
@@ -88,9 +83,7 @@ def dev_bootstrap() -> None:
     from backend.app.services.project_service import ProjectService
 
     project_names = [project.name for project in ProjectService(settings.PROJECTS_DIR).list_projects()]
-    data_source_names = [
-        data_source.name for data_source in DataSourceService(settings.GLOBAL_DATA_SOURCE_DIR).list_data_sources()
-    ]
+    data_source_names = [data_source.name for data_source in DataSourceService(settings.GLOBAL_DATA_SOURCE_DIR).list_data_sources()]
 
     repository = SQLiteAuthorizationRepository(database)
     try:

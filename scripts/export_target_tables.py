@@ -132,20 +132,20 @@ def main(output: Path, model_path: Path, roles: tuple[str, ...], host: str | Non
                 for name, entity in entities.items():
                     table: str = entity["target_table"]
                     if table not in db_columns:
-                        click.echo(f"  {name}: skipped, table {schema}.{table} not found")
+                        click.echo(f"  SKIPPED: {name}: table {schema}.{table} not found")
                         continue
                     columns: list[str] = [c for c in entity["columns"] if c in db_columns[table]]
                     absent: list[str] = [c for c in entity["columns"] if c not in db_columns[table]]
                     if absent:
-                        click.echo(f"  {name}: warning, columns not in {schema}.{table}, exporting without them: {', '.join(absent)}")
+                        click.echo(f"  WARNING: {name}: columns not in {schema}.{table}, exporting without them: {', '.join(absent)}")
                     if not columns:
-                        click.echo(f"  {name}: skipped, no model columns found in {schema}.{table}")
+                        click.echo(f"  SKIPPED: {name}: no model columns found in {schema}.{table}")
                         continue
                     # The primary key leads the sheet and orders the rows.
                     public_id: str | None = entity.get("public_id")
                     order_by: str | None = public_id if public_id in db_columns[table] else None
                     if public_id and not order_by:
-                        click.echo(f"  {name}: warning, primary key {public_id} not in {schema}.{table}, exporting without it")
+                        click.echo(f"  WARNING: {name}: primary key {public_id} not in {schema}.{table}, exporting without it")
                     if order_by:
                         columns = [public_id] + [c for c in columns if c != public_id]
                     query = (

@@ -1877,9 +1877,7 @@ class TestSeadChangeRequestIngesterIngest:
                 output_folder=str(tmp_path),
                 extra={
                     "tables": {"taxon": pd.DataFrame({"taxon_id": [None], "taxon_name": ["Approved taxon"]})},
-                    "target_model": minimal_target_model(
-                        taxon={"role": "classifier", "public_id": "taxon_id", "target_table": "tbl_taxa"}
-                    ),
+                    "target_model": minimal_target_model(taxon={"role": "classifier", "public_id": "taxon_id", "target_table": "tbl_taxa"}),
                     "submission_context": minimal_submission_context(),
                     "sims_client": adapter,
                     "reconciliation_client": FakeReconciliationClient(target_id=77),
