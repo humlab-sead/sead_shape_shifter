@@ -2881,18 +2881,12 @@ function handleYamlValidation(isValid: boolean, error?: string) {
 }
 
 async function handleYamlChange(value: string) {
-  // Auto-sync YAML to form data when valid
-  if (yamlValid.value) {
-    const success = yamlToFormData(value)
-    if (success) {
-      // Explicitly trigger validation after YAML changes
-      // This ensures Save button is enabled when editing via YAML tab
-      await nextTick()
-      const result = await formRef.value?.validate()
-      if (result?.valid) {
-        formValid.value = true
-      }
-    }
+  if (!yamlToFormData(value)) return
+
+  await nextTick()
+  const result = await formRef.value?.validate()
+  if (result?.valid) {
+    formValid.value = true
   }
 }
 

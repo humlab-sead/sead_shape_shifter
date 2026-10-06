@@ -148,7 +148,11 @@ const childStubs = {
     props: ['modelValue', 'label', 'items', 'disabled'],
     template: '<div class="v-combobox-stub" :data-label="label" :data-disabled="String(disabled)"><slot /></div>',
   },
-  YamlEditor: { template: '<div data-testid="yaml-editor" />' },
+  YamlEditor: {
+    name: 'YamlEditor',
+    props: ['modelValue'],
+    template: '<div data-testid="yaml-editor" />',
+  },
   SqlEditor: { template: '<div data-testid="sql-editor" />' },
   ForeignKeyEditor: { template: '<div data-testid="foreign-key-editor" />' },
   FiltersEditor: { template: '<div data-testid="filters-editor" />' },
@@ -407,6 +411,55 @@ describe('EntityFormDialog', () => {
           label: 'int',
           created_at: 'date',
         },
+      }),
+    })
+  })
+
+  it('syncs corrected YAML before saving when the previous YAML was invalid', async () => {
+    const wrapper = mountEntityFormDialog({
+      mode: 'edit',
+      entity: sourceEntities[0],
+      initialTab: 'yaml',
+    })
+
+    await flushPromises()
+    await nextTick()
+
+    const columnsCombobox = wrapper.findAllComponents({ name: 'VCombobox' }).find((component) => component.props('label') === 'Columns')
+    columnsCombobox!.vm.$emit('update:modelValue', ['sample_name', 'form_only_edit'])
+    await flushPromises()
+
+    const yamlEditor = wrapper.findComponent({ name: 'YamlEditor' })
+    yamlEditor.vm.$emit('update:modelValue', 'name: [broken')
+    yamlEditor.vm.$emit('change', 'name: [broken')
+    yamlEditor.vm.$emit('validate', false, 'Invalid YAML')
+    await flushPromises()
+
+    const correctedYaml = [
+      'name: abundance_source',
+      'type: entity',
+      'public_id: abundance_id',
+      'keys:',
+      '  - sample_name',
+      'columns:',
+      '  - sample_name',
+      '  - yaml_corrected',
+    ].join('\n')
+    yamlEditor.vm.$emit('update:modelValue', correctedYaml)
+    yamlEditor.vm.$emit('change', correctedYaml)
+    yamlEditor.vm.$emit('validate', true)
+    await flushPromises()
+
+    const saveButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Save')
+    expect(saveButton).toBeTruthy()
+    expect(saveButton!.element.disabled).toBe(false)
+
+    await saveButton!.trigger('click')
+    await flushPromises()
+
+    expect(mockState.update).toHaveBeenCalledWith('abundance_source', {
+      entity_data: expect.objectContaining({
+        columns: ['sample_name', 'yaml_corrected'],
       }),
     })
   })
