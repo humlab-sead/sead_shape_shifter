@@ -255,8 +255,11 @@
                   :entity-name="entityName"
                   :foreign-key="fk"
                   :foreign-key-index="index"
-                  :disabled="!isEntitySaved"
+                  :disabled="!isEntitySaved || hasUnsavedChanges"
                 />
+                <div v-if="isEntitySaved && hasUnsavedChanges" class="text-caption text-medium-emphasis mt-1">
+                  Save the entity before testing this foreign key.
+                </div>
               </v-col>
             </v-row>
           </v-expansion-panel-text>
@@ -285,12 +288,14 @@ interface Props {
   entityName: string
   entityColumns?: string[] | string
   isEntitySaved?: boolean
+  hasUnsavedChanges?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   availableEntities: () => [],
   entityColumns: () => [],
   isEntitySaved: false,
+  hasUnsavedChanges: false,
 })
 
 const emit = defineEmits<{

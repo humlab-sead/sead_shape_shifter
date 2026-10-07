@@ -12,6 +12,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from backend.app.core.config import settings
+from backend.app.models.project import Project, ProjectMetadata
 from backend.app.services.project_service import ProjectService
 from backend.app.services.yaml_service import YamlService
 
@@ -187,3 +188,84 @@ class TestSaveEntityBoundary:
     def test_invalidates_state_cache(self, service: ProjectService, project_file: Path) -> None:  # pylint: disable=unused-argument
         service.save_entity_boundary("test-project", "sample", {"type": "entity", "keys": ["x"]})
         cast(MagicMock, service.state.invalidate).assert_called_once_with("test-project")
+
+
+class TestSaveEntityRenameBoundary:
+    @staticmethod
+    def _renamed_project(project_file: Path) -> Project:
+        return Project(
+            metadata=ProjectMetadata(
+                name="test-project",
+                description="Test",
+                version="1.0.0",
+                file_path=str(project_file),
+                entity_count=2,
+                default_entity="specimen",
+            ),
+            entities={
+                "specimen": {"type": "entity", "keys": ["sample_id"], "columns": ["name", "value"]},
+                "site": {"type": "entity", "keys": ["site_id"], "columns": ["location"]},
+            },
+            options={"output": "csv"},
+        )
+
+    def test_renames_project_and_moves_note_without_changing_task_state(self, service: ProjectService, project_file: Path) -> None:
+        project_data = service.yaml_service.load(project_file)
+        project_data["metadata"]["default_entity"] = "sample"
+        service.yaml_service.save(project_data, project_file, create_backup=False)
+        sidecar_path = service.sidecar_manager.get_sidecar_path(project_file)
+        service.yaml_service.save(
+            {"task_list": {"todo": ["sample"], "flagged": {"sample": True}}, "notes": {"sample": "Check rows"}},
+            sidecar_path,
+        )
+
+        warnings = service.save_entity_rename_boundary("test-project", "sample", "specimen", self._renamed_project(project_file))
+
+        project_data = YamlService().load(project_file)
+        sidecar_data = YamlService().load(sidecar_path)
+        assert "sample" not in project_data["entities"]
+        assert project_data["entities"]["specimen"]["keys"] == ["sample_id"]
+        assert project_data["metadata"]["default_entity"] == "specimen"
+        assert sidecar_data == {
+            "task_list": {"todo": ["sample"], "flagged": {"sample": True}},
+            "notes": {"specimen": "Check rows"},
+        }
+        assert warnings == []
+
+    def test_sidecar_save_failure_keeps_project_rename_and_returns_warning(
+        self, service: ProjectService, project_file: Path, monkeypatch
+    ) -> None:
+        sidecar_path = service.sidecar_manager.get_sidecar_path(project_file)
+        service.yaml_service.save({"task_list": {"done": ["sample"]}, "notes": {"sample": "Check rows"}}, sidecar_path)
+        sidecar_before = sidecar_path.read_bytes()
+        original_save = service.yaml_service.save
+
+        def fail_sidecar_save(data, filename, *args, **kwargs):
+            if Path(filename) == sidecar_path:
+                raise OSError("simulated sidecar save failure")
+            return original_save(data, filename, *args, **kwargs)
+
+        monkeypatch.setattr(service.yaml_service, "save", fail_sidecar_save)
+
+        warnings = service.save_entity_rename_boundary("test-project", "sample", "specimen", self._renamed_project(project_file))
+
+        project_data = YamlService().load(project_file)
+        assert "specimen" in project_data["entities"]
+        assert "sample" not in project_data["entities"]
+        assert sidecar_path.read_bytes() == sidecar_before
+
+        assert warnings == [
+            "Entity 'specimen' was saved, but its note could not be moved from 'sample'. The note remains under the old name."
+        ]
+
+    def test_existing_destination_note_returns_warning_without_overwriting(self, service: ProjectService, project_file: Path) -> None:
+        sidecar_path = service.sidecar_manager.get_sidecar_path(project_file)
+        service.yaml_service.save({"notes": {"sample": "Original note", "specimen": "Existing note"}}, sidecar_path)
+
+        warnings = service.save_entity_rename_boundary("test-project", "sample", "specimen", self._renamed_project(project_file))
+
+        saved_project = YamlService().load(project_file)
+        saved_sidecar = YamlService().load(sidecar_path)
+        assert "specimen" in saved_project["entities"]
+        assert saved_sidecar["notes"] == {"sample": "Original note", "specimen": "Existing note"}
+        assert warnings and "note could not be moved" in warnings[0]

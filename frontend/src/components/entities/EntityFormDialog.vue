@@ -98,7 +98,6 @@
                             label="Entity Name *"
                             :rules="nameRules"
                             variant="outlined"
-                            :disabled="mode === 'edit'"
                             required
                           >
                             <template #message>
@@ -657,6 +656,13 @@
 
                     <v-alert v-if="error" type="error" variant="tonal" class="mt-4">
                       {{ error }}
+                      <template v-if="renameConflictDependents.length">
+                        <div class="mt-2">Referenced by: {{ renameConflictDependents.join(', ') }}.</div>
+                        <div class="mt-2">
+                          Cancel the rename or update these dependencies first. To rename them together, edit the project YAML and
+                          update the matching task sidecar keys.
+                        </div>
+                      </template>
                     </v-alert>
                   </v-form>
                 </v-defaults-provider>
@@ -670,6 +676,7 @@
                   :entity-name="formData.name"
                    :entity-columns="effectiveEntityColumns"
                   :is-entity-saved="mode === 'edit'"
+                  :has-unsaved-changes="hasPendingChanges"
                   @update:model-value="handleForeignKeysUpdate"
                 />
               </v-window-item>
@@ -1105,7 +1112,7 @@ const { getSuggestionsForEntity, loading: suggestionsLoading } = useSuggestions(
 const appSettings = useSettings()
 const fkSuggestionsEnabled = computed(() => appSettings.enableFkSuggestions.value)
 
-const { error: showError } = useNotification()
+const { error: showError, warning: showWarning } = useNotification()
 
 const projectStore = useProjectStore()
 
@@ -1145,6 +1152,7 @@ const formRef = ref()
 const formValid = ref(false)
 const loading = ref(false)
 const error = ref<string | null>(null)
+const renameConflictDependents = ref<string[]>([])
 const showSaveSuccess = ref(false)
 let saveSuccessTimeout: ReturnType<typeof setTimeout> | null = null
 const suggestions = ref<any>(null)
@@ -2916,6 +2924,7 @@ async function refreshFormValidity() {
 
 function buildDirtySnapshot(): string {
   const snapshot: Record<string, unknown> = {
+    name: formData.value.name,
     entityData: buildEntityConfigFromFormData(),
   }
 
@@ -2943,6 +2952,26 @@ function refreshDirtyState() {
   hasPendingChanges.value = buildDirtySnapshot() !== initialFormSnapshot.value
 }
 
+function setSaveError(err: unknown) {
+  const apiError = err as {
+    response?: {
+      data?: {
+        detail?: {
+          message?: string
+          context?: { conflict_type?: string; dependent_entities?: unknown }
+        }
+      }
+    }
+  }
+  const detail = apiError.response?.data?.detail
+  const context = detail?.context
+  renameConflictDependents.value =
+    context?.conflict_type === 'entity_has_dependents' && Array.isArray(context.dependent_entities)
+      ? context.dependent_entities.filter((name): name is string => typeof name === 'string')
+      : []
+  error.value = detail?.message ?? (err instanceof Error ? err.message : 'Failed to save entity')
+}
+
 const isSaveDisabled = computed(() => {
   if (!formValid.value) return true
   if (props.mode === 'edit') return !hasPendingChanges.value && !sqlColumnSyncPending.value
@@ -2958,6 +2987,7 @@ async function handleSubmit() {
 
   loading.value = true
   error.value = null
+  renameConflictDependents.value = []
 
   try {
     // Use shared function to build entity config
@@ -2980,9 +3010,14 @@ async function handleSubmit() {
         showSaveSuccess.value = false
       }, 3000)
     } else {
-      await update(formData.value.name, {
+      const originalEntityName = props.entity?.name ?? formData.value.name
+      const updatedEntity = await update(originalEntityName, {
         entity_data: entityData,
+        ...(formData.value.name !== originalEntityName ? { new_name: formData.value.name } : {}),
       })
+      for (const warning of updatedEntity.warnings ?? []) {
+        showWarning(warning)
+      }
 
       // Save external values if entity has @load: directive
       if (shouldSaveExternalValues) {
@@ -3020,7 +3055,7 @@ async function handleSubmit() {
 
       // Keep dialog open after saving in edit mode
       syncDetectedSqlColumnsToFormData()
-      emit('saved', formData.value.name)
+      emit('saved', updatedEntity.name)
 
       captureInitialSnapshot()
 
@@ -3032,7 +3067,7 @@ async function handleSubmit() {
       }, 3000)
     }
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to save entity'
+    setSaveError(err)
   } finally {
     loading.value = false
   }
@@ -3043,11 +3078,13 @@ async function handleSubmitAndClose() {
 
   loading.value = true
   error.value = null
+  renameConflictDependents.value = []
 
   try {
     const entityData = buildEntityConfigFromFormData({ includeDerivedSqlColumns: true })
     const valuesField = entityData.values
     const shouldSaveExternalValues = typeof valuesField === 'string' && valuesField.startsWith('@load:')
+    let savedEntityName = formData.value.name
 
     if (props.mode === 'create') {
       await create({
@@ -3055,9 +3092,15 @@ async function handleSubmitAndClose() {
         entity_data: entityData,
       })
     } else {
-      await update(formData.value.name, {
+      const originalEntityName = props.entity?.name ?? formData.value.name
+      const updatedEntity = await update(originalEntityName, {
         entity_data: entityData,
+        ...(formData.value.name !== originalEntityName ? { new_name: formData.value.name } : {}),
       })
+      savedEntityName = updatedEntity.name
+      for (const warning of updatedEntity.warnings ?? []) {
+        showWarning(warning)
+      }
 
       // Save external values if entity has @load: directive
       if (shouldSaveExternalValues) {
@@ -3100,10 +3143,10 @@ async function handleSubmitAndClose() {
       captureInitialSnapshot()
     }
 
-    emit('saved', formData.value.name)
+    emit('saved', savedEntityName)
     handleClose()
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to save entity'
+    setSaveError(err)
   } finally {
     loading.value = false
   }
@@ -3120,6 +3163,7 @@ function handleClose() {
   }
 
   error.value = null
+  renameConflictDependents.value = []
   showSaveSuccess.value = false
   if (saveSuccessTimeout) {
     clearTimeout(saveSuccessTimeout)
@@ -3409,6 +3453,7 @@ watch(
 
       // Reset UI state
       error.value = null
+      renameConflictDependents.value = []
       formRef.value?.resetValidation()
       suggestions.value = null
       showSuggestions.value = false

@@ -831,8 +831,8 @@
           <v-list v-if="backups.length > 0">
             <v-list-item
               v-for="backup in backups"
-              :key="backup.file_path"
-              @click="handleRestoreBackup(backup.file_path)"
+              :key="backup.file_name"
+              @click="handleRestoreBackup(backup.file_name)"
             >
               <template #prepend>
                 <v-icon icon="mdi-file-clock-outline" />
@@ -846,7 +846,7 @@
                   icon="mdi-restore"
                   variant="text"
                   size="small"
-                  @click.stop="handleRestoreBackup(backup.file_path)"
+                  @click.stop="handleRestoreBackup(backup.file_name)"
                 />
               </template>
             </v-list-item>
@@ -2457,9 +2457,9 @@ async function handleDataSourcesUpdated() {
   await handleRefresh()
 }
 
-async function handleRestoreBackup(backupPath: string) {
+async function handleRestoreBackup(backupName: string) {
   try {
-    await restore(projectName.value, backupPath)
+    await restore(projectName.value, backupName)
     successMessage.value = 'Backup restored successfully'
     showSuccessSnackbar.value = true
     showBackupsDialog.value = false

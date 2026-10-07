@@ -382,7 +382,6 @@ describe('useProjects', () => {
       const mockBackups = [
         {
           file_name: 'project.backup.20240101.yml',
-          file_path: '/tmp/project.backup.20240101.yml',
           created_at: 1704067200,
         },
       ]
