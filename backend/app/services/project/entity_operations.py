@@ -11,6 +11,7 @@ from backend.app.middleware.correlation import get_correlation_id
 from backend.app.models.entity import Entity
 from backend.app.models.project import Project
 from backend.app.services.project.entity_persistence_strategies import EntityPersistenceStrategyRegistry
+from backend.app.utils.entity_name import validate_new_entity_name
 
 if TYPE_CHECKING:
     pass
@@ -119,6 +120,7 @@ class EntityOperations:
         Raises:
             ResourceConflictError: If entity already exists
         """
+        validate_new_entity_name(entity_name)
         if entity_name in project.entities:
             raise ResourceConflictError(resource_type="entity", resource_id=entity_name, message=f"Entity '{entity_name}' already exists")
 
@@ -208,6 +210,7 @@ class EntityOperations:
             ProjectNotFoundError: If project not found
             ResourceConflictError: If entity already exists
         """
+        validate_new_entity_name(entity_name)
         corr: str = get_correlation_id()
         lock = self._get_lock(project_name)
         logger.info(

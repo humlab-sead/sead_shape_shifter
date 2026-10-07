@@ -203,6 +203,19 @@ class TestEntitiesCreate:
         get_response = await authorized_client.get("/api/v1/projects/test_project/entities/new_entity")
         assert get_response.status_code == 200
 
+    async def test_create_entity_rejects_invalid_name(self, tmp_path, monkeypatch, reset_services, sample_entity_data, authorized_client):
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        await authorized_client.post("/api/v1/projects", json={"name": "test_project", "entities": {}})
+
+        response = await authorized_client.post(
+            "/api/v1/projects/test_project/entities",
+            json={"name": "_invalid", "entity_data": sample_entity_data},
+        )
+
+        assert response.status_code == 422
+        entities_response = await authorized_client.get("/api/v1/projects/test_project/entities")
+        assert entities_response.json() == []
+
     async def test_create_duplicate_entity(self, tmp_path, monkeypatch, reset_services, sample_entity_data, authorized_client):
         """Test creating duplicate entity returns 409 Conflict."""
 
