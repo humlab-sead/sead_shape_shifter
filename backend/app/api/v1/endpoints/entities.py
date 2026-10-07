@@ -74,7 +74,7 @@ class EntityCreateRequest(BaseModel):
 
 
 class EntityUpdateRequest(BaseModel):
-    """Request to update entity. See ``EntityCreateRequest`` for ``entity_data`` shape details."""
+    """Request to update entity."""
 
     entity_data: dict[str, Any] = Field(
         ...,
