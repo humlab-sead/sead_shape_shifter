@@ -274,6 +274,94 @@ class TestEntitiesUpdate:
         get_response = await authorized_client.get("/api/v1/projects/test_project/entities/test_entity")
         assert get_response.json()["entity_data"]["columns"] == ["updated", "fields"]
 
+    async def test_rename_entity_updates_project_and_sidecar(
+        self, tmp_path, monkeypatch, reset_services, sample_entity_data, authorized_client
+    ):
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        await authorized_client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "entities": {"sample": sample_entity_data}},
+        )
+
+        project_file = tmp_path / "test_project" / "shapeshifter.yml"
+        project_data = yaml.safe_load(project_file.read_text(encoding="utf-8"))
+        project_data["metadata"]["default_entity"] = "sample"
+        project_file.write_text(yaml.safe_dump(project_data), encoding="utf-8")
+        sidecar_path = project_file.parent / "shapeshifter.tasks.yml"
+        sidecar_path.write_text(
+            yaml.safe_dump(
+                {"task_list": {"todo": ["sample"], "flagged": {"sample": True}}, "notes": {"sample": "Check rows"}}
+            ),
+            encoding="utf-8",
+        )
+
+        response = await authorized_client.put(
+            "/api/v1/projects/test_project/entities/sample",
+            json={"new_name": "specimen", "entity_data": sample_entity_data},
+        )
+
+        assert response.status_code == 200
+        assert response.json()["name"] == "specimen"
+        assert response.json()["warnings"] == []
+        assert (await authorized_client.get("/api/v1/projects/test_project/entities/sample")).status_code == 404
+        assert (await authorized_client.get("/api/v1/projects/test_project/entities/specimen")).status_code == 200
+        saved_project = yaml.safe_load(project_file.read_text(encoding="utf-8"))
+        saved_sidecar = yaml.safe_load(sidecar_path.read_text(encoding="utf-8"))
+        assert saved_project["metadata"]["default_entity"] == "specimen"
+        assert saved_sidecar == {
+            "task_list": {"todo": ["sample"], "flagged": {"sample": True}},
+            "notes": {"specimen": "Check rows"},
+        }
+
+    async def test_rename_succeeds_and_returns_warning_when_note_update_fails(
+        self, tmp_path, monkeypatch, reset_services, sample_entity_data, authorized_client
+    ):
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        await authorized_client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "entities": {"sample": sample_entity_data}},
+        )
+
+        def fail_note_rename(*args, **kwargs):
+            raise OSError("simulated note sidecar failure")
+
+        monkeypatch.setattr(
+            "backend.app.services.task_list_sidecar_manager.TaskListSidecarManager.prepare_entity_note_rename",
+            fail_note_rename,
+        )
+        response = await authorized_client.put(
+            "/api/v1/projects/test_project/entities/sample",
+            json={"new_name": "specimen", "entity_data": sample_entity_data},
+        )
+
+        assert response.status_code == 200
+        assert response.json()["name"] == "specimen"
+        assert response.json()["warnings"] == [
+            "Entity 'specimen' was saved, but its note could not be moved from 'sample'. The note remains under the old name."
+        ]
+        project_data = yaml.safe_load((tmp_path / "test_project" / "shapeshifter.yml").read_text(encoding="utf-8"))
+        assert "specimen" in project_data["entities"]
+        assert "sample" not in project_data["entities"]
+
+    async def test_rename_entity_conflict_returns_dependent_names(
+        self, tmp_path, monkeypatch, reset_services, sample_entity_data, authorized_client
+    ):
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        dependent = {"type": "entity", "foreign_keys": [{"entity": "sample", "defer_dependency": True}]}
+        await authorized_client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "entities": {"sample": sample_entity_data, "dependent": dependent}},
+        )
+
+        response = await authorized_client.put(
+            "/api/v1/projects/test_project/entities/sample",
+            json={"new_name": "specimen", "entity_data": sample_entity_data},
+        )
+
+        assert response.status_code == 409
+        assert response.json()["detail"]["context"]["dependent_entities"] == ["dependent"]
+        assert "sample" in yaml.safe_load((tmp_path / "test_project" / "shapeshifter.yml").read_text())["entities"]
+
     async def test_update_nonexistent_entity(self, tmp_path, monkeypatch, reset_services, sample_entity_data, authorized_client):
         """Test updating non-existent entity fails."""
 

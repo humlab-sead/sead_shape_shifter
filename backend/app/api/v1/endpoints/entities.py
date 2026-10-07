@@ -74,7 +74,9 @@ class EntityCreateRequest(BaseModel):
 
 
 class EntityUpdateRequest(BaseModel):
-    """Request to update entity."""
+    """Request to update an entity and optionally change its name."""
+
+    new_name: str | None = Field(default=None, min_length=2, pattern=ENTITY_NAME_PATTERN, description="Replacement entity name")
 
     entity_data: dict[str, Any] = Field(
         ...,
@@ -91,9 +93,10 @@ class EntityResponse(BaseModel):
     etag: str = Field(..., description="Content-based ETag for optimistic locking")
     materialized: dict[str, Any] | None = Field(default=None, description="Materialization metadata (if entity is materialized)")
     fixed_schema: FixedSchema | None = Field(default=None, description="Authoritative fixed-schema metadata for fixed entities")
+    warnings: list[str] = Field(default_factory=list, description="Non-fatal warnings from the operation")
 
 
-def _build_entity_response(name: str, entity_data: dict[str, Any]) -> EntityResponse:
+def _build_entity_response(name: str, entity_data: dict[str, Any], warnings: list[str] | None = None) -> EntityResponse:
     """Build a consistent entity response payload."""
     return EntityResponse(
         name=name,
@@ -101,6 +104,7 @@ def _build_entity_response(name: str, entity_data: dict[str, Any]) -> EntityResp
         etag=compute_entity_etag(entity_data),
         materialized=entity_data.get("materialized"),
         fixed_schema=derive_fixed_schema(entity_data),
+        warnings=warnings or [],
     )
 
 
@@ -240,10 +244,17 @@ async def update_entity(
         Updated entity data with a fresh ETag
     """
     project_service: ProjectService = get_project_service()
-    project_service.update_entity_by_name(authorized_project.resource.locator, entity_name, request.entity_data, expected_etag=if_match)
-    entity_data: dict[str, Any] = project_service.get_entity_by_name(authorized_project.resource.locator, entity_name)
-    logger.info(f"Updated entity '{entity_name}' in '{project_name}'")
-    return _build_entity_response(entity_name, entity_data)
+    warnings: list[str] = project_service.update_entity_by_name(
+        authorized_project.resource.locator,
+        entity_name,
+        request.entity_data,
+        expected_etag=if_match,
+        new_name=request.new_name,
+    )
+    response_name: str = request.new_name or entity_name
+    entity_data: dict[str, Any] = project_service.get_entity_by_name(authorized_project.resource.locator, response_name)
+    logger.info(f"Updated entity '{entity_name}' as '{response_name}' in '{project_name}'")
+    return _build_entity_response(response_name, entity_data, warnings)
 
 
 @router.delete(

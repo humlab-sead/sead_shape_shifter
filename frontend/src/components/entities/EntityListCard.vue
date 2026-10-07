@@ -331,6 +331,11 @@ async function handleEntitySaved(entityName: string) {
     } else {
       console.warn(`Entity "${entityName}" not found in list - store sync issue`)
     }
+  } else {
+    const entity = entities.value?.find((item) => item.name === entityName)
+    if (entity) {
+      selectedEntity.value = entity
+    }
   }
 }
 
