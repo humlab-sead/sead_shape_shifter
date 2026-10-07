@@ -30,7 +30,7 @@ from backend.app.authorization.repository import SQLiteAuthorizationRepository
 from backend.app.core.config import settings
 
 
-@click.group()
+@click.group(context_settings={"max_content_width": 120})
 def cli() -> None:
     """Manage Shape Shifter authorization storage."""
 
