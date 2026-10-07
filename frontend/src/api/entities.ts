@@ -24,6 +24,7 @@ export interface EntityResponse {
   etag: string
   materialized?: MaterializedMetadata
   fixed_schema?: FixedSchema | null
+  warnings?: string[]
 }
 
 export interface EntityCreateRequest {
@@ -32,6 +33,7 @@ export interface EntityCreateRequest {
 }
 
 export interface EntityUpdateRequest {
+  new_name?: string
   entity_data: Record<string, unknown>
 }
 

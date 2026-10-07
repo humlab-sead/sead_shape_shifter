@@ -404,6 +404,21 @@ class TestTableConfig:
         assert table.foreign_keys[0].remote_entity == "location"
         assert table.foreign_keys[0].local_keys == ["location_id"]
 
+    def test_referenced_entities_includes_deferred_foreign_keys_and_both_filter_fields(self):
+        entities = {
+            "target": {"columns": []},
+            "deferred_fk": {"foreign_keys": [{"entity": "target", "defer_dependency": True}]},
+            "filter_entity": {"filters": [{"entity": "target"}]},
+            "other_filter_entity": {"filters": [{"other_entity": "target"}]},
+        }
+
+        target = TableConfig(entities_cfg=entities, entity_name="target")
+        deferred_fk = TableConfig(entities_cfg=entities, entity_name="deferred_fk")
+
+        assert list(target.dependent_entities()) == ["deferred_fk", "filter_entity", "other_filter_entity"]
+        assert "target" in deferred_fk.referenced_entities
+        assert "target" not in deferred_fk.depends_on
+
     def test_table_with_foreign_keys_extra_columns(self):
         """Test table configuration with foreign keys including extra_columns."""
         entities: dict[str, dict[str, Any]] = {

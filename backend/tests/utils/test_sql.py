@@ -48,6 +48,10 @@ class TestExtractTables:
         tables = extract_tables(sql)
         assert tables == ["users"]
 
+    def test_unquoted_keyword_table_name(self):
+        """Test extracting a table name that sqlparse classifies as a keyword."""
+        assert extract_tables("SELECT * FROM sample WHERE id = 1") == ["sample"]
+
     def test_select_with_join(self):
         """Test extracting tables from JOIN query."""
         sql = "SELECT * FROM users JOIN orders ON users.id = orders.user_id"

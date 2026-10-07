@@ -6,6 +6,7 @@ from typing import Any, Iterable
 
 from fastapi import UploadFile
 from loguru import logger
+from ruamel.yaml import CommentedMap
 
 from backend.app.authorization.models import Action, Principal, ResourceRecord, ResourceType
 from backend.app.authorization.service import AuthorizationService
@@ -97,6 +98,7 @@ class ProjectService:
             save_project_callback=self.save_project,
             persistence_strategy_registry=EntityPersistenceStrategyRegistry(),
             save_entity_boundary_callback=self.save_entity_boundary,
+            save_entity_rename_callback=self.save_entity_rename_boundary,
         )
 
         # Initialize file manager component
@@ -443,6 +445,37 @@ class ProjectService:
         self.yaml_service.merge_boundary(file_path, ("entities", entity_name), entity_dict)
         self.state.invalidate(project_name)
 
+    def save_entity_rename_boundary(self, project_name: str, old_name: str, new_name: str, project: Project) -> list[str]:
+        """Save an entity rename and best-effort move its note in the task sidecar."""
+        file_path: Path = self._resolve_project_file_path(project_name)
+        project_data: CommentedMap = self.yaml_service.load_commented(file_path)
+        entities_data: dict[str, Any] | None = project_data.get("entities")
+        if not isinstance(entities_data, dict) or old_name not in entities_data:
+            raise ResourceNotFoundError(resource_type="entity", resource_id=old_name, message=f"Entity '{old_name}' not found")
+
+        entities_data.pop(old_name)
+        entities_data[new_name] = project.entities[new_name]
+        metadata_data: dict[str, Any] | None = project_data.get("metadata")
+        if isinstance(metadata_data, dict) and metadata_data.get("default_entity") == old_name:
+            metadata_data["default_entity"] = new_name
+
+        self.yaml_service.save_commented(project_data, file_path, create_backup=False)
+        self._invalidate_all_caches(project_name, get_correlation_id())
+
+        try:
+            sidecar_data: dict[str, Any] | None = self.sidecar_manager.prepare_entity_note_rename(file_path, old_name, new_name)
+            if sidecar_data is None:
+                return []
+            sidecar_path: Path = self.sidecar_manager.get_sidecar_path(file_path)
+            self.yaml_service.save(sidecar_data, sidecar_path, create_backup=False)
+            return []
+        except Exception as error:  # noqa: PERF203 ; pylint: disable=broad-exception-caught
+            warning: str = (
+                f"Entity '{new_name}' was saved, but its note could not be moved from '{old_name}'. " "The note remains under the old name."
+            )
+            logger.warning("{} Reason: {}", warning, error)
+            return [warning]
+
     # ------------------------------------------------------------------
 
     def _verify_save(self, name: str, expected_entities: list[str], file_path: Path, corr: str) -> None:
@@ -731,7 +764,8 @@ class ProjectService:
         entity_data: dict[str, Any],
         *,
         expected_etag: str | None = None,
-    ) -> None:
+        new_name: str | None = None,
+    ) -> list[str]:
         """
         Update entity in project by project name.
 
@@ -750,7 +784,13 @@ class ProjectService:
             ResourceNotFoundError: If entity not found
             EntityConflictError: If *expected_etag* is given and does not match
         """
-        return self.entity_operations.update_entity_by_name(project_name, entity_name, entity_data, expected_etag=expected_etag)
+        return self.entity_operations.update_entity_by_name(
+            project_name,
+            entity_name,
+            entity_data,
+            expected_etag=expected_etag,
+            new_name=new_name,
+        )
 
     def delete_entity_by_name(self, project_name: str, entity_name: str) -> None:
         """

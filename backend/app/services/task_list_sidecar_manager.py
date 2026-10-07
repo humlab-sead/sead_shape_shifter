@@ -8,11 +8,13 @@ independent task tracking without affecting project structure. This enables:
 - Backward compatibility with projects that still have task_list in main file
 """
 
+from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
 from loguru import logger
 
+from backend.app.exceptions import ResourceConflictError
 from backend.app.services.yaml_service import YamlService, get_yaml_service
 from src.sidecars import TaskList
 
@@ -148,6 +150,31 @@ class TaskListSidecarManager:
     def load_notes(self, project_file_path: Path) -> dict[str, str]:
         """Load entity notes from the sidecar file if they exist."""
         return self.load_sidecar_data(project_file_path).get("notes", {})
+
+    def prepare_entity_note_rename(self, project_file_path: Path, old_name: str, new_name: str) -> dict[str, Any] | None:
+        """Return sidecar data with one entity's note re-keyed."""
+        sidecar_path: Path = self.get_sidecar_path(project_file_path)
+        if not sidecar_path.exists():
+            return None
+
+        data: dict[str, Any] = self.yaml_service.load(sidecar_path)
+        raw_notes = data.get("notes", {}) if isinstance(data, dict) else {}
+        if not isinstance(raw_notes, dict) or old_name not in raw_notes:
+            return None
+
+        notes = deepcopy(raw_notes)
+        if new_name in notes:
+            raise ResourceConflictError(
+                message=f"Cannot move the note to '{new_name}' because a note already uses that name.",
+                resource_type="entity",
+                resource_id=new_name,
+                context={"conflict_type": "sidecar_note_collision", "old_name": old_name, "new_name": new_name},
+            )
+
+        notes[new_name] = notes.pop(old_name)
+        payload = deepcopy(data)
+        payload["notes"] = notes
+        return payload
 
     def save_task_list(self, project_file_path: Path, task_list: TaskList) -> None:
         """Save task list to sidecar file.

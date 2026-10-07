@@ -459,6 +459,57 @@ class TableConfig:
         )
 
     @cached_property
+    def referenced_entities(self) -> set[str]:
+        """Return all entity names referenced by this configuration."""
+        references: set[str] = set()
+
+        if isinstance(self.source, str):
+            references.add(self.source)
+
+        explicit_dependencies = self.entity_cfg.get("depends_on", []) or []
+        if isinstance(explicit_dependencies, str):
+            references.add(explicit_dependencies)
+        elif isinstance(explicit_dependencies, (list, tuple, set)):
+            references.update(value for value in explicit_dependencies if isinstance(value, str))
+
+        foreign_keys = self.entity_cfg.get("foreign_keys", []) or []
+        if isinstance(foreign_keys, dict):
+            foreign_keys = [foreign_keys]
+        for foreign_key in foreign_keys:
+            if isinstance(foreign_key, dict):
+                target = foreign_key.get("entity") or foreign_key.get("remote_entity")
+                if isinstance(target, str):
+                    references.add(target)
+
+        for config_key in ("append", "branches"):
+            configs = self.entity_cfg.get(config_key, []) or []
+            if isinstance(configs, str):
+                references.add(configs)
+                continue
+            if isinstance(configs, dict):
+                configs = [configs]
+            if isinstance(configs, (list, tuple)):
+                references.update(
+                    config["source"]
+                    for config in configs
+                    if isinstance(config, dict) and isinstance(config.get("source"), str)
+                )
+
+        filters = self.entity_cfg.get("filters", []) or []
+        if isinstance(filters, dict):
+            filters = [filters]
+        if isinstance(filters, (list, tuple)):
+            for filter_config in filters:
+                if isinstance(filter_config, dict):
+                    references.update(
+                        value
+                        for value in (filter_config.get("entity"), filter_config.get("other_entity"))
+                        if isinstance(value, str)
+                    )
+
+        return references
+
+    @cached_property
     def foreign_keys(self) -> list[ForeignKeyConfig]:
         return [
             ForeignKeyConfig(local_entity=self.entity_name, fk_cfg=fk_data) for fk_data in self.entity_cfg.get("foreign_keys", []) or []
@@ -466,56 +517,17 @@ class TableConfig:
 
     def dependent_entities(self) -> Generator[str, None, None]:
         """Yield names of entities that depend on this entity."""
-        for entity_name, entity_cfg in self.entities_cfg.items():
-            try:
-                # Check source
-                if entity_cfg.get("source") == self.entity_name:
-                    yield entity_name
-                    continue
-
-                # Check depends_on
-                depends_on: list[str] = entity_cfg.get("depends_on", []) or []
-                if self.entity_name in depends_on:
-                    yield entity_name
-                    continue
-
-                # Check foreign keys
-                foreign_keys: list[dict[str, Any]] = entity_cfg.get("foreign_keys", []) or []
-                for fk in foreign_keys:
-                    if fk.get("entity") == self.entity_name:
-                        yield entity_name
-                        break
-
-                # Check append sources
-                append_raw = entity_cfg.get("append", []) or []
-                # Normalize to list (append can be: string, dict, or list of dicts)
-                if isinstance(append_raw, str):
-                    # Skip string format - not a valid dependency check
-                    continue
-
-                if isinstance(append_raw, dict):
-                    append_cfgs = [append_raw]
-                else:
-                    append_cfgs = append_raw
-
-                for append_cfg in append_cfgs:
-                    if isinstance(append_cfg, dict) and append_cfg.get("source") == self.entity_name:
-                        yield entity_name
-                        break
-
-                # Check branch sources (for merged entities)
-                branches_raw = entity_cfg.get("branches", []) or []
-                if isinstance(branches_raw, dict):
-                    branch_cfgs = [branches_raw]
-                else:
-                    branch_cfgs = branches_raw
-
-                for branch_cfg in branch_cfgs:
-                    if isinstance(branch_cfg, dict) and branch_cfg.get("source") == self.entity_name:
-                        yield entity_name
-                        break
-            except KeyError:
+        for entity_name in sorted(self.entities_cfg):
+            entity_cfg = self.entities_cfg[entity_name]
+            if entity_name == self.entity_name or not isinstance(entity_cfg, dict):
                 continue
+            referenced_entities = TableConfig(
+                entities_cfg=self.entities_cfg,
+                entity_name=entity_name,
+                project_options=self.project_options,
+            ).referenced_entities
+            if self.entity_name in referenced_entities:
+                yield entity_name
 
     @cached_property
     def append_configs(self) -> list[dict[str, Any]]:

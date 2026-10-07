@@ -375,12 +375,10 @@ describe('projectsApi', () => {
       const mockBackups: BackupInfo[] = [
         {
           file_name: 'backup1.yml',
-          file_path: '/path/to/backup1.yml',
           created_at: 1640995200,
         },
         {
           file_name: 'backup2.yml',
-          file_path: '/path/to/backup2.yml',
           created_at: 1641081600,
         },
       ]
@@ -408,7 +406,7 @@ describe('projectsApi', () => {
   describe('restore', () => {
     it('should restore project from backup', async () => {
       const restoreData: RestoreBackupRequest = {
-        backup_path: '/path/to/backup.yml',
+        backup_name: 'backup.yml',
       }
 
       const mockResponse: Project = {

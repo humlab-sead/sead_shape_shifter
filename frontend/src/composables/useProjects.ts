@@ -102,9 +102,9 @@ export function useProjects(options: UseProjectsOptions = {}) {
     }
   }
 
-  async function restore(name: string, backupPath: string) {
+  async function restore(name: string, backupName: string) {
     try {
-      return await store.restoreBackup(name, backupPath)
+      return await store.restoreBackup(name, backupName)
     } catch (err) {
       console.error(`Failed to restore backup for "${name}":`, err)
       throw err

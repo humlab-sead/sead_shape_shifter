@@ -20,6 +20,7 @@ const mockState = vi.hoisted(() => ({
   debouncedPreviewEntity: vi.fn(),
   getSuggestionsForEntity: vi.fn(),
   showError: vi.fn(),
+  showWarning: vi.fn(),
   getValidDirectives: vi.fn(async () => []),
   getEntity: vi.fn(),
   getValues: vi.fn(),
@@ -59,6 +60,7 @@ vi.mock('@/composables', async () => {
 vi.mock('@/composables/useNotification', () => ({
   useNotification: () => ({
     error: mockState.showError,
+    warning: mockState.showWarning,
   }),
 }))
 
@@ -288,6 +290,7 @@ describe('EntityFormDialog', () => {
     mockState.debouncedPreviewEntity.mockClear()
     mockState.getSuggestionsForEntity.mockReset()
     mockState.showError.mockReset()
+    mockState.showWarning.mockReset()
     mockState.getEntity.mockReset()
     mockState.getValues.mockReset()
     mockState.updateValues.mockReset()
@@ -413,6 +416,57 @@ describe('EntityFormDialog', () => {
         },
       }),
     })
+  })
+
+  it('submits an edited entity name as a guarded rename', async () => {
+    const sourceEntity = sourceEntities[0]!
+    const renamedEntity = createEntity('renamed_source', sourceEntity.entity_data)
+    const warning = "Entity 'renamed_source' was saved, but its note could not be moved from 'abundance_source'. The note remains under the old name."
+    mockState.update.mockResolvedValue({ ...renamedEntity, warnings: [warning] })
+    const wrapper = mountEntityFormDialog({ mode: 'edit', entity: sourceEntity })
+
+    await flushPromises()
+    const nameField = wrapper.findAllComponents({ name: 'VTextField' }).find((component) => component.props('label') === 'Entity Name *')
+    expect(nameField).toBeTruthy()
+    expect(nameField?.props('disabled')).not.toBe(true)
+    nameField!.vm.$emit('update:modelValue', 'renamed_source')
+    await flushPromises()
+
+    const saveButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Save')
+    expect(saveButton?.element.disabled).toBe(false)
+    await saveButton!.trigger('click')
+    await flushPromises()
+
+    expect(mockState.update).toHaveBeenCalledWith('abundance_source', {
+      entity_data: expect.any(Object),
+      new_name: 'renamed_source',
+    })
+    expect(mockState.showWarning).toHaveBeenCalledWith(warning)
+    expect(wrapper.emitted('saved')?.at(-1)).toEqual(['renamed_source'])
+  })
+
+  it('shows dependent entities and manual rename guidance on a rename conflict', async () => {
+    mockState.update.mockRejectedValue({
+      response: {
+        data: {
+          detail: {
+            message: "Cannot rename entity 'abundance_source' because other entities refer to it.",
+            context: { conflict_type: 'entity_has_dependents', dependent_entities: ['analysis_entity'] },
+          },
+        },
+      },
+    })
+    const wrapper = mountEntityFormDialog({ mode: 'edit', entity: sourceEntities[0]! })
+
+    await flushPromises()
+    const nameField = wrapper.findAllComponents({ name: 'VTextField' }).find((component) => component.props('label') === 'Entity Name *')
+    nameField!.vm.$emit('update:modelValue', 'renamed_source')
+    await flushPromises()
+    await wrapper.findAll('button').find((button) => button.text().trim() === 'Save')!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('analysis_entity')
+    expect(wrapper.text()).toContain('update the matching task sidecar keys')
   })
 
   it('syncs corrected YAML before saving when the previous YAML was invalid', async () => {

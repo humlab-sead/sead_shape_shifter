@@ -828,6 +828,54 @@ class TestShapeShifter:
         pd.testing.assert_frame_equal(result, expected)
 
     @pytest.mark.asyncio
+    async def test_normalize_does_not_restore_extra_columns_consumed_by_unnest(self):
+        """Unnest should remove value variables while still resolving deferred extra columns."""
+        survey_df = pd.DataFrame({"row_id": [1, 2]})
+        project = ShapeShiftProject(
+            cfg={
+                "entities": {
+                    "measurement": {
+                        "type": "entity",
+                        "source": "survey",
+                        "columns": ["row_id"],
+                        "extra_columns": {
+                            "material": "peat",
+                            "texture": "fibrous",
+                            "label": "=concat(value_name, ': ', value)",
+                        },
+                        "unnest": {
+                            "id_vars": ["row_id"],
+                            "value_vars": ["material", "texture"],
+                            "var_name": "value_name",
+                            "value_name": "value",
+                        },
+                    }
+                }
+            }
+        )
+        normalizer = ShapeShifter(project=project, default_entity="survey", table_store=TableStore({"survey": survey_df}))
+
+        await normalizer.normalize()
+
+        result = normalizer.table_store["measurement"]
+        assert "material" not in result.columns
+        assert "texture" not in result.columns
+
+        actual = result[["row_id", "value_name", "value", "label"]].sort_values(["row_id", "value_name"]).reset_index(drop=True)
+        expected = pd.DataFrame(
+            {
+                "row_id": [1, 1, 2, 2],
+                "value_name": ["material", "texture", "material", "texture"],
+                "value": ["peat", "fibrous", "peat", "fibrous"],
+                "label": ["material: peat", "texture: fibrous", "material: peat", "texture: fibrous"],
+            }
+        )
+        expected["label"] = expected["label"].astype("string")
+
+        pd.testing.assert_frame_equal(actual, expected)
+        assert "measurement" not in normalizer.unresolved_extra_columns
+
+    @pytest.mark.asyncio
     async def test_normalize_tracks_unresolved_deferred_extra_columns(self):
         """Unresolved deferred extra_columns should be tracked for later validation reporting."""
         project = ShapeShiftProject(
