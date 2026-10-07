@@ -245,3 +245,7 @@ We need to create a handoff for the next phase of this migration of BugsCEP impo
 2. Craete a machine-readable document that an AI coding agent can use to more easy get up-to-speed in this migration work.
 
 
+# TODO: #523 Bug when switching entity type
+
+When switch entity type from branched entity to derived entity, the source field remain disabled.
+This might be caused by missing field "source" in the derived entity configuration.
