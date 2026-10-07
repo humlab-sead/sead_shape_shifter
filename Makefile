@@ -298,7 +298,7 @@ install-graphify:
 commit-graphify:
 	@git add graphify-out
 	@if git diff --cached --quiet -- graphify-out; then \
-		echo "No changes in graphify§-out"; \
+		echo "No changes in graphify-out"; \
 	else \
 		git commit -m "chore: updated graphify graph"; \
 	fi
