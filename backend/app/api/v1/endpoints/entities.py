@@ -15,6 +15,7 @@ from backend.app.services.entity_values_service import EntityValuesData, EntityV
 from backend.app.services.materialization_service import MaterializationService
 from backend.app.services.project.entity_operations import compute_entity_etag
 from backend.app.services.project_service import ProjectService, get_project_service
+from backend.app.utils.entity_name import ENTITY_NAME_PATTERN
 from backend.app.utils.error_handlers import handle_endpoint_errors
 from backend.app.utils.fixed_schema import FixedSchema, derive_fixed_schema
 
@@ -64,7 +65,7 @@ class EntityCreateRequest(BaseModel):
     - ``{source_entity}_id`` per branch — sparse FK column back to source ``system_id``
     """
 
-    name: str = Field(..., description="Entity name")
+    name: str = Field(..., min_length=2, pattern=ENTITY_NAME_PATTERN, description="Entity name")
     entity_data: dict[str, Any] = Field(
         ...,
         description="Entity configuration data. Shape depends on `type`. See model description for merged entity shape.",

@@ -12,6 +12,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from backend.app.exceptions import ConfigurationError
 from backend.app.models.project import Project, ProjectMetadata
 from backend.app.services.project.entity_operations import EntityOperations
 
@@ -80,6 +81,15 @@ def _make_operations(
 
 
 class TestAddEntityByNameBoundary:
+    def test_rejects_invalid_new_entity_name_without_saving(self, project_with_entities: Project) -> None:
+        ops, save_project, save_boundary = _make_operations(project_with_entities, with_boundary=True)
+
+        with pytest.raises(ConfigurationError, match="New entity names"):
+            ops.add_entity_by_name("test-project", "_invalid", _sample_entity())
+
+        save_project.assert_not_called()
+        save_boundary.assert_not_called()
+
     def test_calls_boundary_callback_when_provided(self, project_with_entities: Project) -> None:
         ops, save_project, save_boundary = _make_operations(project_with_entities, with_boundary=True)
         new_entity = {"type": "entity", "keys": ["analysis_id"], "columns": ["result"]}
