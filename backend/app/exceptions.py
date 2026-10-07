@@ -465,6 +465,20 @@ class ResourceConflictError(ResourceError):
         super().__init__(message, recoverable=True, context=context, **kwargs)
 
 
+    @staticmethod
+    def create_entity_has_dependents(entity_name: str, new_name: str, dependent_names: list[str]) -> "ResourceConflictError":
+        return ResourceConflictError(
+                message=f"Cannot rename entity '{entity_name}' because other entities refer to it.",
+                resource_type="entity",
+                resource_id=entity_name,
+                context={
+                    "conflict_type": "entity_has_dependents",
+                    "entity_name": entity_name,
+                    "new_name": new_name,
+                    "dependent_entities": dependent_names,
+                },
+            )
+
 class EntityConflictError(ResourceConflictError):
     """
     Entity was concurrently modified; ETag mismatch.
