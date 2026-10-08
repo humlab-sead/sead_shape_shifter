@@ -50,7 +50,6 @@ The deployment user's home directory holds three sibling directories:
 Run as the deployment user, from `~/container`:
 
 ```bash
-make install-ucanaccess   # only needed for MS Access data sources
 make setup                # create ~/config, ~/container-data and the templates
 nano ~/config/deployment.env   # image, branch, port and frontend build arguments
 nano ~/config/backend.env      # runtime settings
@@ -327,11 +326,6 @@ sudo -u test-shape-shifter.sead.se ls ~/config ~/container-data
 cd ~/container
 make build && make restart && make healthcheck
 ```
-
-The replacement checkout must contain the UCanAccess build dependency under
-`lib/ucanaccess`; `make install-ucanaccess` downloads it and `make validate`
-reports whether it is present. A workdir build stages the installed dependency
-into its build context, so both build modes use the same copy.
 
 Image identity keeps following the configured values: `make build` reads
 `GIT_REF`, `GIT_REPO`, and `IMAGE_NAME` from `~/config/deployment.env`, passes the

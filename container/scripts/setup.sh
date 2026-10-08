@@ -147,15 +147,6 @@ if [ "$missing_authorization_files" = true ]; then
 fi
 
 echo
-log_info "Checking UCanAccess JARs..."
-if [ -d "$ROOT_DIR/lib/ucanaccess" ]; then
-  log_success "UCanAccess found at $ROOT_DIR/lib/ucanaccess"
-else
-  log_warning "Missing $ROOT_DIR/lib/ucanaccess"
-  log_info "MS Access data sources need it. Install with: make install-ucanaccess"
-fi
-
-echo
 log_info "Setting up systemd user service..."
 if [ ! -f "$SERVICE_DIR/shape-shifter.service" ]; then
   log_warning "service/shape-shifter.service not found, skipping"
