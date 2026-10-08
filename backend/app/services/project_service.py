@@ -280,7 +280,7 @@ class ProjectService:
             project.metadata.is_valid = True
 
             # Cache in ApplicationState for subsequent requests (multiple projects can be cached)
-            self.state.activate(project)
+            self.state.activate(project, name)
 
             logger.info("[{}] load_project: '{}' from DISK entities={}", corr, name, len(project.entities))
             return project
@@ -320,8 +320,19 @@ class ProjectService:
         # Ensure project directory exists
         file_path.parent.mkdir(parents=True, exist_ok=True)
 
+        # The project file path is authoritative for the project locator. Derive the
+        # locator from the path so a moved folder updates the state cache key and the
+        # stored metadata name even when metadata.name was stale. Fall back to the
+        # metadata name when the path is not a project subfolder of the projects root.
+        try:
+            relative_dir: Path = file_path.parent.resolve().relative_to(self.projects_dir.resolve())
+            locator: str = ProjectNameMapper.to_api_name(str(relative_dir)) if str(relative_dir) != "." else project.metadata.name
+        except ValueError:
+            locator = project.metadata.name
+        project.metadata.name = locator
+
         corr: str = get_correlation_id()
-        name: str = project.metadata.name
+        name: str = locator
         entity_count: int = len(project.entities or {})
         entity_names: list[str] = sorted((project.entities or {}).keys())
 
@@ -361,7 +372,7 @@ class ProjectService:
 
             logger.info("[{}] save_project: '{}' saved and verified OK", corr, name)
 
-            self.state.update(project)
+            self.state.update(project, name)
 
             return project
 

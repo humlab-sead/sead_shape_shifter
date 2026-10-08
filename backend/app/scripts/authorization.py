@@ -268,6 +268,55 @@ def revoke(
         repository.close()
 
 
+@cli.command("move-resource")
+@click.option("--database", type=click.Path(exists=True, path_type=Path), default=None)
+@click.option("--resource-type", required=True, type=click.Choice([resource_type.value for resource_type in ResourceType]))
+@click.option("--from-locator", required=True)
+@click.option("--to-locator", required=True)
+@click.option("--actor", required=True)
+@click.option("--dry-run", is_flag=True)
+@click.option("--yes", is_flag=True, help="Confirm the move.")
+@click.option("--non-interactive", is_flag=True, help="Skip confirmation for controlled automation.")
+def move_resource(
+    database: Path | None,
+    resource_type: str,
+    from_locator: str,
+    to_locator: str,
+    actor: str,
+    dry_run: bool,
+    yes: bool,
+    non_interactive: bool,
+) -> None:
+    """Move an active resource to a new locator without changing its UUID or grants.
+
+    Unlike deleting and recreating a resource, a move keeps the resource UUID, so
+    existing grants continue to apply. Use this after moving a project folder, whose
+    locator is the path-derived project name.
+    """
+    if from_locator == to_locator:
+        raise click.ClickException("--from-locator and --to-locator must differ")
+    if not actor.strip():
+        raise click.ClickException("--actor must be a non-empty string")
+
+    path: Path = database or settings.AUTHORIZATION_DATABASE_PATH
+    repository = SQLiteAuthorizationRepository(path)
+    try:
+        typed_resource = ResourceType(resource_type)
+        source = repository.get_resource_by_locator(typed_resource, from_locator)
+        if source is None:
+            raise click.ClickException(f"Active resource not found: {resource_type}:{from_locator}")
+        if repository.get_resource_by_locator(typed_resource, to_locator) is not None:
+            raise click.ClickException(f"An active resource already uses locator: {resource_type}:{to_locator}")
+        if dry_run:
+            click.echo(f"Dry run: would move {resource_type}:{from_locator} to {resource_type}:{to_locator}")
+            return
+        _confirm_destructive(f"Move {resource_type}:{from_locator} to {resource_type}:{to_locator}?", yes, non_interactive)
+        repository.update_resource_locator(source.resource_id, to_locator, actor)
+        click.echo(f"Moved {resource_type}:{from_locator} to {resource_type}:{to_locator} (resource_id {source.resource_id})")
+    finally:
+        repository.close()
+
+
 @cli.command("list-grants")
 @click.option("--database", type=click.Path(exists=True, path_type=Path), default=None)
 @click.option("--effective", is_flag=True, help="Expand group grants through the trusted membership provider.")
