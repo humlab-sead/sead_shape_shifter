@@ -2,7 +2,7 @@
 
 ## Status
 
-- Proposed change request
+- **Implemented** (branch `stage-aware-column-suggestions`); closes issue [#527](https://github.com/humlab-sead/sead_shape_shifter/issues/527) and fixes issue [#511](https://github.com/humlab-sead/sead_shape_shifter/issues/511)
 - Scope: entity-editor column suggestions across the backend introspection service and the frontend entity editor
 - Goal: make each editor combobox suggest columns known to be available at that control's pipeline stage
 
