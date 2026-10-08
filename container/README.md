@@ -3,8 +3,7 @@
 Deployment files for running Shape Shifter as a rootless Podman container. The
 container serves the FastAPI backend and the built Vue 3 frontend on one port
 (default `8012`). This directory is also the standalone build context used on
-deployment hosts, so it carries everything the build needs except the
-(git-ignored) UCanAccess JARs in `lib/`.
+deployment hosts, so it carries everything the build needs.
 
 ## Prerequisites
 
@@ -30,8 +29,7 @@ Each environment has three sibling directories in the deployment user's home:
 ├── Containerfile       # image build
 ├── scripts/            # build, setup, lifecycle and deploy helpers
 ├── service/            # systemd user unit
-├── resources/          # generic templates: backend.env, .pgpass, authorization.env, NGINX vhosts
-└── lib/                # UCanAccess JARs (untracked build dependency)
+└── resources/          # generic templates: backend.env, .pgpass, authorization.env, NGINX vhosts
 
 ~/config/               # environment configuration, outside the checkout
 ├── deployment.env      # image, ref, port, compose name, path overrides
@@ -52,16 +50,13 @@ Makefile resolves both and exports `CONFIG_DIR` and `CONTAINER_DATA_DIR`, so
 `CONFIG_DIR` and every mutable mount from `CONTAINER_DATA_DIR`.
 
 This checkout holds no live configuration, so a release archive can replace it
-without touching `~/config` or `~/container-data`. `make build-local` stages
-`lib/ucanaccess` into the repository-root build context, which is the one
-writable side effect, and it applies to development builds only.
+without touching `~/config` or `~/container-data`.
 
 ## Quick Start
 
 Run these as the deployment user from the `container/` directory:
 
 ```bash
-make install-ucanaccess   # only needed for MS Access data sources
 make setup                # create ~/config, ~/container-data and the templates
 nano ~/config/deployment.env   # image, branch, port and frontend build arguments
 nano ~/config/backend.env      # runtime settings
@@ -88,7 +83,6 @@ HOST_PORT=8013 make up
 | Command                  | Purpose                                             |
 |--------------------------|-----------------------------------------------------|
 | `make setup`             | Create `~/config`, the data directories and the template files |
-| `make install-ucanaccess`| Download the UCanAccess JARs into `lib/ucanaccess`   |
 | `make build`             | Build the image from GitHub (`GIT_REF`, `GIT_REPO`)  |
 | `make build-local`       | Build the image from the local repository checkout   |
 | `make up` / `make down`  | Start / stop the container                          |

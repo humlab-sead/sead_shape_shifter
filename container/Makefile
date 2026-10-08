@@ -94,7 +94,6 @@ help:
 	@echo "$(BLUE)=== Shape Shifter Podman Deployment ===$(NC)"
 	@echo ""
 	@echo "$(GREEN)First-time setup:$(NC)"
-	@echo "  make install-ucanaccess  Install UCanAccess JARs (MS Access support)"
 	@echo "  make setup               Create config, data directories and environment files"
 	@echo ""
 	@echo "$(GREEN)Build and run:$(NC)"
@@ -211,10 +210,6 @@ setup-env: check-podman
 		echo "$(GREEN)+ $(CONFIG_DIR)/.pgpass/.pgpass already exists$(NC)"; \
 	fi
 
-.PHONY: install-ucanaccess
-install-ucanaccess:
-	@$(SCRIPTS_DIR)/install-ucanaccess.sh
-
 # ===========================================================================
 # Build
 # ===========================================================================
@@ -300,7 +295,6 @@ validate: check-podman
 	@test -d "$(CONTAINER_DATA_DIR)" && echo "$(GREEN)+ Data directory exists$(NC)" || echo "$(YELLOW)! Data directory missing (run make setup)$(NC)"
 	@test -f "$(CONFIG_DIR)/backend.env" && echo "$(GREEN)+ Environment file exists$(NC)" || echo "$(YELLOW)! Environment file missing (run make setup)$(NC)"
 	@test -d "$(CONFIG_DIR)/.pgpass" -a -f "$(CONFIG_DIR)/.pgpass/.pgpass" && echo "$(GREEN)+ .pgpass file exists$(NC)" || echo "$(YELLOW)! .pgpass file missing (run make setup)$(NC)"
-	@test -d lib/ucanaccess && echo "$(GREEN)+ UCanAccess JARs present$(NC)" || echo "$(YELLOW)! lib/ucanaccess missing (run make install-ucanaccess)$(NC)"
 	@podman info >/dev/null 2>&1 && echo "$(GREEN)+ Podman is accessible$(NC)" || { echo "$(RED)x Podman is not accessible$(NC)"; exit 1; }
 	@echo "$(GREEN)+ Validation complete$(NC)"
 
