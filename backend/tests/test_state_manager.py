@@ -287,6 +287,14 @@ class TestApplicationState:
         app_state.set_active_project(sample_config)
         assert app_state.get_version("test-project") == 2
 
+    def test_set_active_project_uses_explicit_locator_over_metadata_name(self, app_state: ApplicationState, sample_config: Project):
+        """An explicit locator keys the state cache instead of metadata.name."""
+        app_state.set_active_project(sample_config, "arbodat:test-project")
+
+        assert app_state._active_project_name == "arbodat:test-project"
+        assert "arbodat:test-project" in app_state._active_projects
+        assert "test-project" not in app_state._active_projects
+
     @pytest.mark.asyncio
     async def test_cleanup_stale_sessions(self, app_state: ApplicationState):
         """Test cleanup of stale sessions."""
@@ -500,6 +508,32 @@ class TestApplicationStateManagerHelpers:
         active_metadata = manager.get_active_metadata()
         assert active_metadata.name == "test-project"
         assert active_metadata.entity_count == 0
+
+    def test_activate_uses_explicit_locator(self, project_dir: Path, sample_config: Project, reset_singletons):
+        """activate keys the cache by the supplied locator, not metadata.name."""
+        sm._app_state = ApplicationState(project_dir)
+        manager = sm.get_app_state_manager()
+
+        manager.activate(sample_config, "arbodat:test-project")
+
+        assert sm._app_state.get_project("arbodat:test-project") is sample_config  # type: ignore[union-attr]
+        assert sm._app_state.get_project("test-project") is None  # type: ignore[union-attr]
+
+    def test_update_uses_explicit_locator(self, project_dir: Path, sample_config: Project, reset_singletons):
+        """update refreshes the entry keyed by the supplied locator, not metadata.name."""
+        sm._app_state = ApplicationState(project_dir)
+        manager = sm.get_app_state_manager()
+        manager.activate(sample_config)
+
+        updated = Project(
+            metadata=ProjectMetadata(name="stale-name", entity_count=0),
+            entities={},
+            options={"flag": True},
+        )
+        manager.update(updated, "test-project")
+
+        assert sm._app_state.get_project("test-project") is updated  # type: ignore[union-attr]
+        assert sm._app_state.get_project("stale-name") is None  # type: ignore[union-attr]
 
     def test_activate_without_name_raises(self, reset_singletons):
         """Test activate raises when no name available."""
