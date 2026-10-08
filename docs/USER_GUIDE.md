@@ -385,6 +385,37 @@ Shortcut:
 
 ---
 
+## Reshape Data with Unnest
+
+Use the **Unnest** tab to turn wide data (one column per measurement) into long data (one row per measurement). It reshapes the table with a melt operation.
+
+The tab has two column lists that behave differently:
+
+| Setting             | What happens to these columns                                                                 |
+|---------------------|-----------------------------------------------------------------------------------------------|
+| **ID Variables**    | Retained and repeated. The values are copied onto every generated row, so each row keeps its identifier. |
+| **Value Variables** | Reshaped and removed. Their names become rows in the variable-name column, their values become rows in the value-name column, and the original columns no longer appear in the output. |
+
+Value-variable columns are consumed by the reshape. Do not add them to **ID Variables** to keep them; listing a column there stops it being melted and changes the result.
+
+If you leave **Value Variables** empty, every column that is not an ID variable is melted.
+
+**Example.** With `site_id` as an ID variable and `KoordX`, `KoordY`, and `KoordZ` as value variables, one row becomes three:
+
+```
+| site_id | coordinate_type | coordinate_value |
+|---------|-----------------|------------------|
+| 1       | KoordX          | 100              |
+| 1       | KoordY          | 200              |
+| 1       | KoordZ          | 50               |
+```
+
+To keep an original value beside the melted result, add a copy of the column first (for example an alias under **Extra Columns**) and list the copy under **ID Variables**. The copy is retained and repeated on each row; the original is still melted.
+
+For the full `unnest` field reference, see [CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md).
+
+---
+
 ## Preview While Editing
 
 Preview helps verify:
