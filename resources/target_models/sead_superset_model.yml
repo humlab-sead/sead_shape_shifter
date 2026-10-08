@@ -536,25 +536,6 @@ entities:
       - entity: dimension
         required: true
 
-  # coordinate_system:
-  #   role: classifier
-  #   required: false
-  #   description: Controlled vocabulary for coordinate reference systems used by SEAD spatial data.
-  #   domains: [spatial]
-  #   target_table: tbl_coordinate_systems
-  #   public_id: coordinate_system_id
-  #   identity_columns: [coordinate_system]
-  #   columns:
-  #     coordinate_system:
-  #       required: true
-  #       type: string
-  #       nullable: true
-  #     description:
-  #       type: string
-  #       nullable: true
-  #   unique_sets:
-  #     - [coordinate_system]
-
   sample_coordinate:
     role: fact
     required: false
@@ -2375,30 +2356,41 @@ entities:
     unique_sets:
       - [age_type]
 
-  # chronology:
-  #   role: lookup
-  #   required: false
-  #   description: Chronological framework or dating system
-  #   domains: [dating]
-  #   target_table: tbl_chronologies
-  #   public_id: chronology_id
-  #   identity_columns: [chronology_name]
-  #   columns:
-  #     chronology_name:
-  #       required: true
-  #       type: string
-  #       nullable: false
-  #     location_id:
-  #       type: integer
-  #       nullable: true
-  #     notes:
-  #       type: string
-  #       nullable: true
-  #   unique_sets:
-  #     - [chronology_name]
-  #   foreign_keys:
-  #     - entity: location
-  #       required: false
+  chronology:
+    role: lookup
+    required: false
+    description: Chronological framework built from dated samples.
+    domains: [dating]
+    target_table: tbl_chronologies
+    public_id: chronology_id
+    identity_columns: [chronology_name]
+    columns:
+      chronology_name:
+        required: true
+        type: string
+        nullable: false
+      age_model:
+        type: string
+        nullable: true
+      relative_age_type_id:
+        type: integer
+        nullable: true
+      contact_id:
+        type: integer
+        nullable: true
+      date_prepared:
+        type: date
+        nullable: true
+      notes:
+        type: string
+        nullable: true
+    unique_sets:
+      - [chronology_name]
+    foreign_keys:
+      - entity: relative_age_type
+        required: false
+      - entity: contact
+        required: false
 
   dating_uncertainty:
     role: classifier
