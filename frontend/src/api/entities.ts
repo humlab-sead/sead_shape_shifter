@@ -37,6 +37,32 @@ export interface EntityUpdateRequest {
   entity_data: Record<string, unknown>
 }
 
+export interface ColumnAvailabilityRequest {
+  entity_draft: Record<string, unknown>
+  source_columns?: string[] | null
+}
+
+export interface ForeignKeyColumnCandidates {
+  index: number
+  entity: string
+  local_keys_before_unnest: string[]
+  local_keys_after_unnest: string[]
+  remote_keys: string[]
+  extra_column_sources: string[]
+}
+
+export interface ColumnAvailabilityResponse {
+  columns: string[]
+  business_keys: string[]
+  replacements: string[]
+  drop_duplicates: string[]
+  drop_empty_rows: string[]
+  extra_columns: { sources: string[] }
+  filters: Record<string, string[]>
+  foreign_keys: ForeignKeyColumnCandidates[]
+  unnest: { id_vars: string[]; value_vars: string[] }
+}
+
 export interface GenerateFromTableRequest {
   data_source: string
   table_name: string
@@ -83,6 +109,21 @@ export const entitiesApi = {
   },
 
   /**
+   * Get operation-specific column candidates for an unsaved entity draft.
+   */
+  getColumnAvailability: async (
+    projectName: string,
+    entityName: string,
+    data: ColumnAvailabilityRequest
+  ): Promise<ColumnAvailabilityResponse> => {
+    return apiRequest<ColumnAvailabilityResponse>({
+      method: 'POST',
+      url: `/projects/${projectName}/entities/${entityName}/column-availability`,
+      data,
+    })
+  },
+
+  /**
    * Create new entity
    */
   create: async (projectName: string, data: EntityCreateRequest): Promise<EntityResponse> => {
@@ -100,7 +141,7 @@ export const entitiesApi = {
     projectName: string,
     entityName: string,
     data: EntityUpdateRequest,
-    ifMatch?: string,
+    ifMatch?: string
   ): Promise<EntityResponse> => {
     return apiRequest<EntityResponse>({
       method: 'PUT',
@@ -133,14 +174,10 @@ export const entitiesApi = {
 
   /**
    * Get external values for entity with @load: directive
-   * 
+   *
    * @param format - Optional format negotiation (parquet/csv)
    */
-  getValues: async (
-    projectName: string,
-    entityName: string,
-    format?: string
-  ): Promise<EntityValuesResponse> => {
+  getValues: async (projectName: string, entityName: string, format?: string): Promise<EntityValuesResponse> => {
     const params = format ? { format } : undefined
     return apiRequest<EntityValuesResponse>({
       method: 'GET',
@@ -151,7 +188,7 @@ export const entitiesApi = {
 
   /**
    * Update external values for entity with @load: directive
-   * 
+   *
    * @param ifMatch - Optional etag for optimistic locking
    */
   updateValues: async (

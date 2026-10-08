@@ -12,7 +12,7 @@ function normalizeForeignKeyLanguage(text: string | undefined): string | undefin
   }
 
   return text
-    .replace(/Allow Null Keys/g, 'Allow Missing Join Keys')
+    .replace(/Allow (?:Null Keys|Missing Join Keys)/gi, 'Allow Missing Join Keys')
     .replace(/null values found in/gi, 'missing values found in')
     .replace(/null keys/gi, 'missing join keys')
     .replace(/null key/gi, 'missing join key')
