@@ -76,7 +76,7 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     site_natgridref = target_model.entities["site_natgridref"]
     site_property = target_model.entities["site_property"]
     sample_dimension = target_model.entities["sample_dimension"]
-    coordinate_system = target_model.entities["coordinate_system"]
+    chronology = target_model.entities["chronology"]
     colour = target_model.entities["colour"]
     sample_colour = target_model.entities["sample_colour"]
     ecocode = target_model.entities["ecocode"]
@@ -102,7 +102,7 @@ def test_sead_superset_spec_loads_and_validates() -> None:
 
     assert target_model.model.name == "SEAD Clearinghouse Extended"
     assert target_model.model.format_version == "1"
-    assert len(target_model.entities) == 103
+    assert len(target_model.entities) == 102
     assert submission.identity_tracking == "tracked"
     assert submission.reconciliation == "allocate"
     assert submission.public_id_generation is None
@@ -133,7 +133,7 @@ def test_sead_superset_spec_loads_and_validates() -> None:
         "sample_location_type",
         "sample_note",
         "horizon",
-        "coordinate_system",
+        "chronology",
         "colour",
         "sample_colour",
         "project_type",
@@ -205,7 +205,8 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     assert sample_colour.target_table == "tbl_sample_colours"
     assert sample_colour.aggregate_parent == "sample"
     assert any(foreign_key.entity == "colour" for foreign_key in sample_colour.foreign_keys)
-    assert coordinate_system.target_table == "tbl_coordinate_systems"
+    assert chronology.target_table == "tbl_chronologies"
+    assert any(foreign_key.entity == "relative_age_type" for foreign_key in chronology.foreign_keys)
     assert project_type.target_table == "tbl_project_types"
     assert project_stage.target_table == "tbl_project_stages"
     assert any(foreign_key.entity == "project_type" for foreign_key in project.foreign_keys)
