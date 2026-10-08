@@ -209,5 +209,6 @@
         ]
     },
     "vitest.filesWatcherInclude": "frontend/src/**/*",
-    "vitest.watchOnStartup": false
+    "vitest.watchOnStartup": false,
+    "vitest.rootConfig": "frontend/vitest.config.ts"
 }
