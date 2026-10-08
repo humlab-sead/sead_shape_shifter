@@ -177,6 +177,56 @@ class TestFixedSchemaDerivation:
             "order_source": "stored",
         }
 
+    async def test_update_fixed_entity_returns_authoritative_fixed_schema(self, tmp_path, monkeypatch, reset_services, authorized_client):
+        """Updated fixed entities should return normalized, canonical schema metadata."""
+
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+
+        await authorized_client.post("/api/v1/projects", json={"name": "test_project", "entities": {}})
+
+        entity_data = {
+            "type": "fixed",
+            "public_id": "feature_type_id",
+            "keys": ["name"],
+            "columns": ["description"],
+            "values": [],
+        }
+
+        create = await authorized_client.post(
+            "/api/v1/projects/test_project/entities",
+            json={"name": "feature_type", "entity_data": entity_data},
+        )
+        assert create.status_code == 201
+
+        update = await authorized_client.put(
+            "/api/v1/projects/test_project/entities/feature_type",
+            json={"entity_data": entity_data},
+        )
+        assert update.status_code == 200
+        payload = update.json()
+        assert payload["fixed_schema"] == {
+            "full_columns": ["system_id", "feature_type_id", "name", "description"],
+            "editable_columns": ["description"],
+            "identity_columns": ["system_id", "feature_type_id"],
+            "key_columns": ["name"],
+            "order_source": "stored",
+        }
+        assert payload["entity_data"]["columns"] == ["system_id", "feature_type_id", "name", "description"]
+
+    async def test_non_fixed_entity_has_no_fixed_schema(self, tmp_path, monkeypatch, reset_services, sample_entity_data, authorized_client):
+        """Non-fixed entities should not expose fixed-schema metadata."""
+
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+
+        await authorized_client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "entities": {"test_entity": sample_entity_data}},
+        )
+
+        response = await authorized_client.get("/api/v1/projects/test_project/entities/test_entity")
+        assert response.status_code == 200
+        assert response.json()["fixed_schema"] is None
+
 
 class TestEntitiesCreate:
     """Tests for creating entities."""
