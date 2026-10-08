@@ -374,6 +374,43 @@ describe('EntityFormDialog', () => {
     expect(branchesTab?.props('disabled')).toBe(false)
   })
 
+  it('enables the source field when switching an existing merged entity to the derived entity type', async () => {
+    const wrapper = mountEntityFormDialog({ mode: 'edit', entity: mergedEntity })
+    await flushPromises()
+    await nextTick()
+
+    const findSourceField = () =>
+      wrapper
+        .findAllComponents({ name: 'VAutocomplete' })
+        .find((component) => component.props('label') === 'Source Entity')
+
+    // A merged entity has no top-level source field.
+    expect(findSourceField()).toBeUndefined()
+
+    const typeSelect = findSelectByLabel(wrapper, 'Type *')
+    expect(typeSelect).toBeTruthy()
+    typeSelect!.vm.$emit('update:modelValue', 'entity')
+    await flushPromises()
+    await nextTick()
+
+    const sourceField = findSourceField()
+    expect(sourceField).toBeTruthy()
+    expect(sourceField?.props('disabled')).not.toBe(true)
+  })
+
+  it('keeps the source field locked for an already-derived entity in edit mode', async () => {
+    const wrapper = mountEntityFormDialog({ mode: 'edit', entity: sourceEntities[0]! })
+    await flushPromises()
+    await nextTick()
+
+    const sourceField = wrapper
+      .findAllComponents({ name: 'VAutocomplete' })
+      .find((component) => component.props('label') === 'Source Entity')
+
+    expect(sourceField).toBeTruthy()
+    expect(sourceField?.props('disabled')).toBe(true)
+  })
+
   it('maps operation-specific candidates and saves values absent from suggestions', async () => {
     mockState.update.mockResolvedValue({ warnings: [] })
     mockState.columnAvailability = {

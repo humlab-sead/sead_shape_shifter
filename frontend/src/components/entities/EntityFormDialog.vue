@@ -141,7 +141,7 @@
                             :items="availableSourceEntities"
                             label="Source Entity"
                             variant="outlined"
-                            :disabled="mode === 'edit'"
+                            :disabled="isSourceEntityFieldDisabled"
                             clearable
                             persistent-placeholder
                           >
@@ -1421,6 +1421,15 @@ const canPreview = computed(() => {
 })
 
 const isMergedEntityType = computed(() => formData.value.type === 'merged')
+
+// The source of an entity that is already saved as a derived (entity) type is
+// locked so its configured columns are not silently dropped. When the type has
+// just been changed to 'entity' from another type (for example merged), the
+// field must stay editable so a source can be selected.
+const isSourceEntityFieldDisabled = computed(() => {
+  if (props.mode !== 'edit') return false
+  return currentEntity.value?.entity_data?.type === 'entity'
+})
 
 const ALL_BRANCH_PREVIEW_VALUE = '__all__'
 const selectedPreviewBranch = ref<string>(ALL_BRANCH_PREVIEW_VALUE)
