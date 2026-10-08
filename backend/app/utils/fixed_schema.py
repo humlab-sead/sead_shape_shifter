@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, TypedDict
 
+from src.types.fixed_entity_types import build_fixed_entity_full_columns
+
 
 class FixedSchema(TypedDict):
     """Authoritative fixed-schema metadata for editor clients."""
@@ -16,23 +18,13 @@ class FixedSchema(TypedDict):
 
 
 def build_fixed_full_columns(columns: list[str], key_columns: list[str], public_id: str | None) -> list[str]:
-    """Build canonical fixed-entity column order."""
-    full_columns: list[str] = ["system_id"]
+    """Build canonical fixed-entity column order.
 
-    if public_id:
-        trimmed_public_id = public_id.strip()
-        if trimmed_public_id and trimmed_public_id not in full_columns:
-            full_columns.append(trimmed_public_id)
-
-    for key in key_columns:
-        if key not in full_columns:
-            full_columns.append(key)
-
-    for column in columns:
-        if column not in full_columns:
-            full_columns.append(column)
-
-    return full_columns
+    Delegates to the core ordering rule so the backend and project validation
+    share one definition of the authoritative fixed-entity column order.
+    """
+    trimmed_public_id: str | None = public_id.strip() if public_id else None
+    return build_fixed_entity_full_columns(columns, key_columns, trimmed_public_id or None)
 
 
 def _normalize_columns(value: Any) -> list[str]:
