@@ -411,6 +411,42 @@ describe('EntityFormDialog', () => {
     expect(sourceField?.props('disabled')).toBe(true)
   })
 
+  it('focuses the entity name field when the create dialog opens', async () => {
+    const wrapper = mountEntityFormDialog({ modelValue: false, mode: 'create' })
+    await flushPromises()
+
+    const nameField = wrapper
+      .findAllComponents({ name: 'VTextField' })
+      .find((component) => component.props('label') === 'Entity Name *')
+    expect(nameField).toBeTruthy()
+
+    const focusSpy = vi.spyOn(nameField!.find('input').element as HTMLInputElement, 'focus')
+
+    await wrapper.setProps({ modelValue: true })
+    await flushPromises()
+    await nextTick()
+
+    expect(focusSpy).toHaveBeenCalled()
+  })
+
+  it('does not move focus to the entity name field when the edit dialog opens', async () => {
+    const wrapper = mountEntityFormDialog({ modelValue: false, mode: 'edit', entity: sourceEntities[0]! })
+    await flushPromises()
+
+    const nameField = wrapper
+      .findAllComponents({ name: 'VTextField' })
+      .find((component) => component.props('label') === 'Entity Name *')
+    expect(nameField).toBeTruthy()
+
+    const focusSpy = vi.spyOn(nameField!.find('input').element as HTMLInputElement, 'focus')
+
+    await wrapper.setProps({ modelValue: true })
+    await flushPromises()
+    await nextTick()
+
+    expect(focusSpy).not.toHaveBeenCalled()
+  })
+
   it('maps operation-specific candidates and saves values absent from suggestions', async () => {
     mockState.update.mockResolvedValue({ warnings: [] })
     mockState.columnAvailability = {
