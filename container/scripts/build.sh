@@ -8,7 +8,7 @@
 #   Tag:    ./build.sh --git-ref v1.2.0         (clone a release tag, no cache-bust)
 #
 # GitHub builds always run in standalone mode: the build context is this script's
-# directory, so the deployment host only needs Containerfile, build.sh and lib/.
+# directory, so the deployment host only needs Containerfile and build.sh.
 
 set -euo pipefail
 
@@ -261,28 +261,8 @@ fi
 
 g_build_date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-# UCanAccess is installed beside the Containerfile in container/lib/ucanaccess.
-# A standalone bundle uses the container directory as its build context, so the
-# Containerfile reads the dependency directly. A workdir build uses the
-# repository root as its build context, so the dependency is staged there when
-# it is absent, which keeps both build modes on the one installed copy. An
-# existing context copy is left alone; MS Access sources need the JARs, and the
-# build still succeeds without them.
-g_dependency_dir="$g_script_dir/lib"
-g_context_lib_dir="$g_build_context/lib"
-if [ -d "$g_dependency_dir/ucanaccess" ] && [ ! -d "$g_context_lib_dir/ucanaccess" ]; then
-    echo "Staging UCanAccess from $g_dependency_dir into $g_context_lib_dir"
-    mkdir -p "$g_context_lib_dir"
-    cp -R "$g_dependency_dir/." "$g_context_lib_dir/"
-fi
-if [ ! -d "$g_context_lib_dir" ]; then
-    echo "warning: no lib/ directory in build context; creating an empty one"
-    echo "warning: MS Access support needs lib/ucanaccess - run scripts/install-ucanaccess.sh"
-    mkdir -p "$g_context_lib_dir"
-fi
-if [ ! -d "$g_context_lib_dir/ucanaccess" ]; then
-    echo "warning: lib/ucanaccess not found - MS Access data sources will not load"
-fi
+# UCanAccess is downloaded and pinned inside the Containerfile, so the build
+# context no longer needs to carry the JARs.
 
 echo ""
 echo "============================================================"
@@ -304,7 +284,7 @@ if [ ${#g_additional_tags[@]} -gt 0 ]; then
 fi
 echo "Containerfile:   $g_containerfile"
 echo "Build Context:   $g_build_context"
-echo "UCanAccess:      $g_context_lib_dir/ucanaccess"
+echo "UCanAccess:      downloaded during build"
 echo "User UID:        $g_user_uid"
 echo "User GID:        $g_user_gid"
 echo "No Cache:        ${g_no_cache:-false}"

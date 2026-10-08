@@ -24,8 +24,8 @@
 #                   --build-arg CACHE_BUST=$(git ls-remote https://github.com/humlab-sead/sead_shape_shifter.git refs/heads/main | cut -f1) \
 #                   -t shape-shifter:latest .
 #
-# Standalone builds require the UCanAccess JARs beside this Containerfile:
-#   lib/ucanaccess/*.jar   (see scripts/install-ucanaccess.sh)
+# UCanAccess (MS Access support) is downloaded and pinned at build time, so no
+# JARs need to travel with the deployment bundle or build context.
 # ==============================================================================
 
 # Global build arguments (available to all stages)
@@ -70,14 +70,25 @@ COPY pyproject.toml ./
 COPY uv.lock ./
 COPY README.md ./
 
-FROM alpine:${ALPINE_VERSION} AS lib-context
+# UCanAccess (MS Access support) is downloaded and pinned at build time instead
+# of being read from the build context. The JARs are git-ignored, so a
+# standalone GitHub build no longer needs them to travel with the deployment
+# bundle, and a workdir build no longer stages them from container/lib.
+FROM alpine:${ALPINE_VERSION} AS ucanaccess
 
-WORKDIR /lib-context
+ARG UCANACCESS_VERSION=5.0.1
+ARG UCANACCESS_URL=https://downloads.sourceforge.net/project/ucanaccess/UCanAccess-${UCANACCESS_VERSION}.bin.zip
 
-# lib/ is read from the build context in both build modes. GitHub builds clone
-# application source without the (git-ignored) UCanAccess JARs, so those JARs
-# must travel with the deployment bundle.
-COPY lib/ ./lib/
+WORKDIR /ucanaccess
+
+# Extract the archive's single top-level directory into this stage so the
+# runtime stage can copy the JARs straight into /app/lib/ucanaccess.
+RUN apk add --no-cache curl unzip && \
+    curl -fsSL -o ucanaccess.zip "${UCANACCESS_URL}" && \
+    unzip -q ucanaccess.zip && \
+    rm ucanaccess.zip && \
+    mv "UCanAccess-${UCANACCESS_VERSION}.bin"/* . && \
+    rmdir "UCanAccess-${UCANACCESS_VERSION}.bin"
 
 ARG SOURCE=workdir
 FROM source-${SOURCE} AS source
@@ -91,13 +102,19 @@ FROM node:${NODE_VERSION}-alpine AS frontend-builder
 
 WORKDIR /app/frontend
 
-# Install pnpm
-RUN npm install -g pnpm@9
+# Install pnpm. The frontend uses `allowBuilds` in pnpm-workspace.yaml, a pnpm
+# 10 feature, so pin to the matching major and a known-good patch. pnpm 9
+# misreads that file as a workspace declaration with no `packages` field and
+# fails the build with "packages field missing or empty".
+RUN npm install -g pnpm@10.34.6
 
 # Copy dependency manifests first so application source edits do not invalidate
-# the pnpm install layer.
+# the pnpm install layer. pnpm-workspace.yaml is needed here too: pnpm 10
+# blocks dependency build scripts unless `allowBuilds` (in that file) permits
+# them, so it must be present before `pnpm install` runs.
 COPY --from=source /source/frontend/package.json ./package.json
 COPY --from=source /source/frontend/pnpm-lock.yaml ./pnpm-lock.yaml
+COPY --from=source /source/frontend/pnpm-workspace.yaml ./pnpm-workspace.yaml
 
 # Install dependencies
 RUN pnpm install --frozen-lockfile
@@ -201,8 +218,8 @@ COPY --from=source /source/docs ./docs/
 COPY --from=source /source/scripts ./scripts/
 COPY --from=source /source/ingesters ./ingesters/
 
-# Copy UCanAccess JARs from the build context in both modes.
-COPY --from=lib-context /lib-context/lib ./lib/
+# Copy UCanAccess JARs downloaded during the build.
+COPY --from=ucanaccess /ucanaccess ./lib/ucanaccess
 
 # Copy built frontend from frontend-builder
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
