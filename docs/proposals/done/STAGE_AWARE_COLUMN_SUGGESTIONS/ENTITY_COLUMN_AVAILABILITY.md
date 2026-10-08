@@ -54,12 +54,12 @@ A shared resolver should return stage-specific candidate sets from the current e
 
 Relevant implementation and tests:
 
-- [`src/normalizer.py`](../../../src/normalizer.py)
-- [`src/extract.py`](../../../src/extract.py)
-- [`src/transforms/unnest.py`](../../../src/transforms/unnest.py)
-- [`src/model.py`](../../../src/model.py)
-- [`src/target_model/conformance.py`](../../../src/target_model/conformance.py)
-- [`frontend/src/components/entities/EntityFormDialog.vue`](../../../frontend/src/components/entities/EntityFormDialog.vue)
-- [`frontend/src/components/entities/ForeignKeyEditor.vue`](../../../frontend/src/components/entities/ForeignKeyEditor.vue)
-- [`backend/app/services/column_introspection_service.py`](../../../backend/app/services/column_introspection_service.py)
-- [`backend/tests/services/test_column_introspection_service.py`](../../../backend/tests/services/test_column_introspection_service.py)
+- [`src/normalizer.py`](../../../../src/normalizer.py)
+- [`src/extract.py`](../../../../src/extract.py)
+- [`src/transforms/unnest.py`](../../../../src/transforms/unnest.py)
+- [`src/model.py`](../../../../src/model.py)
+- [`src/target_model/conformance.py`](../../../../src/target_model/conformance.py)
+- [`frontend/src/components/entities/EntityFormDialog.vue`](../../../../frontend/src/components/entities/EntityFormDialog.vue)
+- [`frontend/src/components/entities/ForeignKeyEditor.vue`](../../../../frontend/src/components/entities/ForeignKeyEditor.vue)
+- [`backend/app/services/column_introspection_service.py`](../../../../backend/app/services/column_introspection_service.py)
+- [`backend/tests/services/test_column_introspection_service.py`](../../../../backend/tests/services/test_column_introspection_service.py)
