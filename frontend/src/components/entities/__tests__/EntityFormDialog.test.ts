@@ -5,7 +5,7 @@ import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 
-import type { EntityResponse } from '@/api/entities'
+import type { ColumnAvailabilityResponse, EntityResponse } from '@/api/entities'
 import EntityFormDialog from '../EntityFormDialog.vue'
 
 const mockState = vi.hoisted(() => ({
@@ -19,6 +19,8 @@ const mockState = vi.hoisted(() => ({
   previewEntity: vi.fn(async () => mockState.previewData),
   debouncedPreviewEntity: vi.fn(),
   getSuggestionsForEntity: vi.fn(),
+  columnAvailability: null as ColumnAvailabilityResponse | null,
+  refreshColumnAvailability: vi.fn(),
   showError: vi.fn(),
   showWarning: vi.fn(),
   getValidDirectives: vi.fn(async () => []),
@@ -42,6 +44,12 @@ vi.mock('@/composables', async () => {
       getSuggestionsForEntity: mockState.getSuggestionsForEntity,
       loading: vue.ref(false),
     }),
+    useColumnAvailability: () => ({
+      availability: vue.ref(mockState.columnAvailability),
+      loading: vue.ref(false),
+      error: vue.ref(null),
+      refresh: mockState.refreshColumnAvailability,
+    }),
     useEntityPreview: () => ({
       previewData: vue.ref(mockState.previewData),
       loading: vue.ref(mockState.previewLoading),
@@ -61,12 +69,6 @@ vi.mock('@/composables/useNotification', () => ({
   useNotification: () => ({
     error: mockState.showError,
     warning: mockState.showWarning,
-  }),
-}))
-
-vi.mock('@/composables/useDirectiveValidation', () => ({
-  useDirectiveValidation: () => ({
-    getValidDirectives: mockState.getValidDirectives,
   }),
 }))
 
@@ -117,7 +119,8 @@ const childStubs = {
   VTab: {
     name: 'VTab',
     props: ['value', 'disabled'],
-    template: '<button type="button" class="v-tab-stub" :data-tab-value="value" :data-disabled="String(disabled)"><slot /></button>',
+    template:
+      '<button type="button" class="v-tab-stub" :data-tab-value="value" :data-disabled="String(disabled)"><slot /></button>',
   },
   VWindow: {
     template: '<div class="v-window-stub"><slot /></div>',
@@ -156,13 +159,29 @@ const childStubs = {
     template: '<div data-testid="yaml-editor" />',
   },
   SqlEditor: { template: '<div data-testid="sql-editor" />' },
-  ForeignKeyEditor: { template: '<div data-testid="foreign-key-editor" />' },
+  ForeignKeyEditor: {
+    name: 'ForeignKeyEditor',
+    props: ['modelValue'],
+    template: '<div data-testid="foreign-key-editor" />',
+  },
   FiltersEditor: { template: '<div data-testid="filters-editor" />' },
-  UnnestEditor: { template: '<div data-testid="unnest-editor" />' },
+  UnnestEditor: {
+    name: 'UnnestEditor',
+    props: ['idVarColumns', 'valueVarColumns'],
+    template: '<div data-testid="unnest-editor" />',
+  },
   AppendEditor: { template: '<div data-testid="append-editor" />' },
   BranchEditor: { template: '<div data-testid="branch-editor" />' },
-  ExtraColumnsEditor: { template: '<div data-testid="extra-columns-editor" />' },
-  ReplacementsEditor: { template: '<div data-testid="replacements-editor" />' },
+  ExtraColumnsEditor: {
+    name: 'ExtraColumnsEditor',
+    props: ['availableColumns'],
+    template: '<div data-testid="extra-columns-editor" />',
+  },
+  ReplacementsEditor: {
+    name: 'ReplacementsEditor',
+    props: ['availableColumns'],
+    template: '<div data-testid="replacements-editor" />',
+  },
   FixedValuesGrid: {
     name: 'FixedValuesGrid',
     props: ['modelValue', 'columns', 'publicId', 'columnTypes'],
@@ -271,10 +290,31 @@ describe('EntityFormDialog', () => {
         },
       ],
       columns: [
-        { name: 'analysis_entity_branch', data_type: 'string', nullable: false, is_key: false, is_derived: true, derived_from: null },
+        {
+          name: 'analysis_entity_branch',
+          data_type: 'string',
+          nullable: false,
+          is_key: false,
+          is_derived: true,
+          derived_from: null,
+        },
         { name: 'abundance_id', data_type: 'int', nullable: true, is_key: false, is_derived: true, derived_from: null },
-        { name: 'relative_dating_id', data_type: 'int', nullable: true, is_key: false, is_derived: true, derived_from: null },
-        { name: 'sample_name', data_type: 'string', nullable: false, is_key: true, is_derived: false, derived_from: null },
+        {
+          name: 'relative_dating_id',
+          data_type: 'int',
+          nullable: true,
+          is_key: false,
+          is_derived: true,
+          derived_from: null,
+        },
+        {
+          name: 'sample_name',
+          data_type: 'string',
+          nullable: false,
+          is_key: true,
+          is_derived: false,
+          derived_from: null,
+        },
       ],
       total_rows_in_preview: 1,
       estimated_total_rows: 1,
@@ -289,6 +329,8 @@ describe('EntityFormDialog', () => {
     mockState.previewEntity.mockClear()
     mockState.debouncedPreviewEntity.mockClear()
     mockState.getSuggestionsForEntity.mockReset()
+    mockState.columnAvailability = null
+    mockState.refreshColumnAvailability.mockReset()
     mockState.showError.mockReset()
     mockState.showWarning.mockReset()
     mockState.getEntity.mockReset()
@@ -332,7 +374,19 @@ describe('EntityFormDialog', () => {
     expect(branchesTab?.props('disabled')).toBe(false)
   })
 
-  it('shows the columns picker for merged entities and seeds it with branch-union columns', async () => {
+  it('maps operation-specific candidates and saves values absent from suggestions', async () => {
+    mockState.update.mockResolvedValue({ warnings: [] })
+    mockState.columnAvailability = {
+      columns: ['server_column'],
+      business_keys: ['server_key'],
+      replacements: ['replacement_column'],
+      drop_duplicates: ['dedupe_column'],
+      drop_empty_rows: ['empty_check_column'],
+      extra_columns: { sources: ['extra_source_column'] },
+      filters: { extract: ['filter_column'] },
+      foreign_keys: [],
+      unnest: { id_vars: ['id_candidate'], value_vars: ['value_candidate'] },
+    }
     const wrapper = mountEntityFormDialog({
       mode: 'edit',
       entity: mergedEntity,
@@ -341,20 +395,59 @@ describe('EntityFormDialog', () => {
     await flushPromises()
     await nextTick()
 
-    const columnsCombobox = wrapper.findAllComponents({ name: 'VCombobox' }).find((component) => component.props('label') === 'Columns')
+    const columnsCombobox = wrapper
+      .findAllComponents({ name: 'VCombobox' })
+      .find((component) => component.props('label') === 'Columns')
+    const keysCombobox = wrapper
+      .findAllComponents({ name: 'VCombobox' })
+      .find((component) => component.props('label') === 'Business Keys *')
+    const dedupeCombobox = wrapper
+      .findAllComponents({ name: 'VCombobox' })
+      .find((component) => component.props('label') === 'Deduplication Columns')
+    const emptyRowsCombobox = wrapper
+      .findAllComponents({ name: 'VCombobox' })
+      .find((component) => component.props('label') === 'Columns to Check for Empty Values')
+    const unnestEditor = wrapper.findComponent({ name: 'UnnestEditor' })
+    const extraColumnsEditor = wrapper.findComponent({ name: 'ExtraColumnsEditor' })
+    const replacementsEditor = wrapper.findComponent({ name: 'ReplacementsEditor' })
 
     expect(columnsCombobox).toBeTruthy()
-    expect(columnsCombobox?.props('items')).toEqual(
-      expect.arrayContaining([
-        'analysis_entity_branch',
-        'sample_name',
-        'abundance_value',
-        'dating_value',
-        'abundance_id',
-        'relative_dating_id',
-      ])
-    )
+    expect(columnsCombobox?.props('items')).toEqual(['server_column'])
+    expect(keysCombobox?.props('items')).toEqual(['server_key'])
+    expect(dedupeCombobox?.props('items')).toEqual(['dedupe_column'])
+    expect(emptyRowsCombobox?.props('items')).toEqual(['empty_check_column'])
+    expect(unnestEditor.props('idVarColumns')).toEqual(['id_candidate'])
+    expect(unnestEditor.props('valueVarColumns')).toEqual(['value_candidate'])
+    expect(extraColumnsEditor.props('availableColumns')).toEqual(['extra_source_column'])
+    expect(replacementsEditor.props('availableColumns')).toEqual(['replacement_column'])
     expect(wrapper.text()).toContain('Available post-merge: columns')
+
+    const foreignKeyEditor = wrapper.findComponent({ name: 'ForeignKeyEditor' })
+    foreignKeyEditor.vm.$emit('update:modelValue', [
+      { entity: 'abundance_source', local_keys: ['sample_name'], remote_keys: ['sample_name'] },
+    ])
+    columnsCombobox!.vm.$emit('update:modelValue', ['unlisted_column'])
+    await flushPromises()
+    await nextTick()
+
+    const latestRequest = mockState.refreshColumnAvailability.mock.calls.at(-1)
+    expect(latestRequest?.[2].entity_draft.foreign_keys).toEqual([
+      expect.objectContaining({ entity: 'abundance_source' }),
+    ])
+    expect(latestRequest?.[2].entity_draft.columns).toEqual(['unlisted_column'])
+    expect(columnsCombobox?.props('modelValue')).toEqual(['unlisted_column'])
+
+    const saveButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Save')
+    expect(saveButton?.element.disabled).toBe(false)
+    await saveButton!.trigger('click')
+    await flushPromises()
+
+    expect(mockState.update).toHaveBeenCalledWith(
+      'analysis_entity',
+      expect.objectContaining({
+        entity_data: expect.objectContaining({ columns: ['unlisted_column'] }),
+      })
+    )
   })
 
   it('supports toggling preview between merged rows and branch source rows', async () => {
@@ -421,12 +514,15 @@ describe('EntityFormDialog', () => {
   it('submits an edited entity name as a guarded rename', async () => {
     const sourceEntity = sourceEntities[0]!
     const renamedEntity = createEntity('renamed_source', sourceEntity.entity_data)
-    const warning = "Entity 'renamed_source' was saved, but its note could not be moved from 'abundance_source'. The note remains under the old name."
+    const warning =
+      "Entity 'renamed_source' was saved, but its note could not be moved from 'abundance_source'. The note remains under the old name."
     mockState.update.mockResolvedValue({ ...renamedEntity, warnings: [warning] })
     const wrapper = mountEntityFormDialog({ mode: 'edit', entity: sourceEntity })
 
     await flushPromises()
-    const nameField = wrapper.findAllComponents({ name: 'VTextField' }).find((component) => component.props('label') === 'Entity Name *')
+    const nameField = wrapper
+      .findAllComponents({ name: 'VTextField' })
+      .find((component) => component.props('label') === 'Entity Name *')
     expect(nameField).toBeTruthy()
     expect(nameField?.props('disabled')).not.toBe(true)
     nameField!.vm.$emit('update:modelValue', 'renamed_source')
@@ -459,10 +555,15 @@ describe('EntityFormDialog', () => {
     const wrapper = mountEntityFormDialog({ mode: 'edit', entity: sourceEntities[0]! })
 
     await flushPromises()
-    const nameField = wrapper.findAllComponents({ name: 'VTextField' }).find((component) => component.props('label') === 'Entity Name *')
+    const nameField = wrapper
+      .findAllComponents({ name: 'VTextField' })
+      .find((component) => component.props('label') === 'Entity Name *')
     nameField!.vm.$emit('update:modelValue', 'renamed_source')
     await flushPromises()
-    await wrapper.findAll('button').find((button) => button.text().trim() === 'Save')!.trigger('click')
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text().trim() === 'Save')!
+      .trigger('click')
     await flushPromises()
 
     expect(wrapper.text()).toContain('analysis_entity')
@@ -479,7 +580,9 @@ describe('EntityFormDialog', () => {
     await flushPromises()
     await nextTick()
 
-    const columnsCombobox = wrapper.findAllComponents({ name: 'VCombobox' }).find((component) => component.props('label') === 'Columns')
+    const columnsCombobox = wrapper
+      .findAllComponents({ name: 'VCombobox' })
+      .find((component) => component.props('label') === 'Columns')
     columnsCombobox!.vm.$emit('update:modelValue', ['sample_name', 'form_only_edit'])
     await flushPromises()
 
