@@ -28,6 +28,8 @@ export type {
 export { useEntityPreview } from './useEntityPreview'
 export type { PreviewResult, ColumnInfo } from './useEntityPreview'
 
+export { useColumnAvailability } from './useColumnAvailability'
+
 export { useForeignKeyTester } from './useForeignKeyTester'
 export type { JoinStatistics, CardinalityInfo, UnmatchedRow, JoinTestResult } from './useForeignKeyTester'
 
