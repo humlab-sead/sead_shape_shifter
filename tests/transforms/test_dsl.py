@@ -10,6 +10,7 @@ Tests cover:
 - Edge cases: unicode, escaping, special characters
 """
 
+from decimal import Decimal
 from typing import cast
 
 import pandas as pd
@@ -592,6 +593,136 @@ class TestPandasStringBackend:
         expected = pd.Series(["fallback", "x", "fallback"])
         pd.testing.assert_series_equal(result, expected, check_names=False)
 
+    def test_replace_basic(self):
+        """Test replace substitutes all occurrences and preserves nulls."""
+        df = pd.DataFrame({"col": ["a-b-c", "x", None]})
+        backend = PandasStringBackend(df)
+
+        result = backend.call("replace", [df["col"], "-", "_"], SourceSpan(1, 1, 1, 1))
+        expected = pd.Series(["a_b_c", "x", None], dtype="string")
+        pd.testing.assert_series_equal(result, expected, check_names=False)
+
+    def test_replace_multiple_occurrences_all_replaced(self):
+        """Test replace substitutes every occurrence, not just the first."""
+        df = pd.DataFrame({"col": ["aa"]})
+        backend = PandasStringBackend(df)
+
+        result = backend.call("replace", [df["col"], "a", "b"], SourceSpan(1, 1, 1, 1))
+        expected = pd.Series(["bb"], dtype="string")
+        pd.testing.assert_series_equal(result, expected, check_names=False)
+
+    def test_replace_old_is_literal_not_regex(self):
+        """Test replace treats the search string literally, not as a regex."""
+        df = pd.DataFrame({"col": ["abc"]})
+        backend = PandasStringBackend(df)
+
+        # A regex interpretation of '.' would match every character and produce '---'.
+        result = backend.call("replace", [df["col"], ".", "-"], SourceSpan(1, 1, 1, 1))
+        expected = pd.Series(["abc"], dtype="string")
+        pd.testing.assert_series_equal(result, expected, check_names=False)
+
+    def test_replace_null_replacement_removes_substring(self):
+        """Test replace with a null replacement deletes the matched substring."""
+        df = pd.DataFrame({"col": ["a-b"]})
+        backend = PandasStringBackend(df)
+
+        result = backend.call("replace", [df["col"], "-", None], SourceSpan(1, 1, 1, 1))
+        expected = pd.Series(["ab"], dtype="string")
+        pd.testing.assert_series_equal(result, expected, check_names=False)
+
+    def test_replace_requires_scalar_args(self):
+        """Test replace rejects column references as the search or replacement string."""
+        df = pd.DataFrame({"col": ["a"], "old": ["a"]})
+        backend = PandasStringBackend(df)
+
+        with pytest.raises(DSLEvaluationError, match="requires string literal arguments"):
+            backend.call("replace", [df["col"], df["old"], "b"], SourceSpan(1, 1, 1, 1))
+
+    def test_regex_extract_first_match(self):
+        """Test regex_extract returns the first full match and null when there is none."""
+        df = pd.DataFrame({"col": ["ID-12", "nope", None]})
+        backend = PandasStringBackend(df)
+
+        result = backend.call("regex_extract", [df["col"], "[0-9]+"], SourceSpan(1, 1, 1, 1))
+        expected = pd.Series(["12", None, None])
+        pd.testing.assert_series_equal(result, expected, check_names=False)
+
+    def test_regex_extract_capture_group(self):
+        """Test regex_extract selects the requested capture group."""
+        df = pd.DataFrame({"col": ["SE-123", "NO"]})
+        backend = PandasStringBackend(df)
+
+        result = backend.call("regex_extract", [df["col"], "^([A-Z]{2})-", 1], SourceSpan(1, 1, 1, 1))
+        expected = pd.Series(["SE", None])
+        pd.testing.assert_series_equal(result, expected, check_names=False)
+
+    def test_regex_extract_invalid_pattern_error(self):
+        """Test regex_extract raises on an invalid regex pattern."""
+        df = pd.DataFrame({"col": ["abc"]})
+        backend = PandasStringBackend(df)
+
+        with pytest.raises(DSLEvaluationError, match="invalid pattern"):
+            backend.call("regex_extract", [df["col"], "["], SourceSpan(1, 1, 1, 1))
+
+    def test_regex_extract_missing_group_error(self):
+        """Test regex_extract raises when the pattern has no such capture group."""
+        df = pd.DataFrame({"col": ["abc123"]})
+        backend = PandasStringBackend(df)
+
+        with pytest.raises(DSLEvaluationError, match="pattern has no group 5"):
+            backend.call("regex_extract", [df["col"], "([0-9]+)", 5], SourceSpan(1, 1, 1, 1))
+
+    def test_regex_extract_requires_literal_pattern(self):
+        """Test regex_extract rejects a column reference as the pattern."""
+        df = pd.DataFrame({"col": ["abc"]})
+        backend = PandasStringBackend(df)
+
+        with pytest.raises(DSLEvaluationError, match="requires a string literal for pattern"):
+            backend.call("regex_extract", [df["col"], df["col"]], SourceSpan(1, 1, 1, 1))
+
+    def test_to_decimal_default_precision(self):
+        """Test to_decimal uses precision 10 by default."""
+        df = pd.DataFrame({"col": [1.005, 3]})
+        backend = PandasStringBackend(df)
+
+        result = backend.call("to_decimal", [df["col"]], SourceSpan(1, 1, 1, 1))
+        assert result.tolist() == [Decimal("1.0050000000"), Decimal("3.0000000000")]
+
+    def test_to_decimal_rounds_half_up(self):
+        """Test to_decimal quantizes with ROUND_HALF_UP and preserves nulls."""
+        df = pd.DataFrame({"col": [1.005, 3, None]})
+        backend = PandasStringBackend(df)
+
+        result = backend.call("to_decimal", [df["col"], 2], SourceSpan(1, 1, 1, 1))
+        assert result.tolist()[0] == Decimal("1.01")
+        assert result.tolist()[1] == Decimal("3.00")
+        assert pd.isna(result.tolist()[2])
+
+    def test_to_decimal_from_string(self):
+        """Test to_decimal converts numeric strings."""
+        df = pd.DataFrame({"col": ["3.14159"]})
+        backend = PandasStringBackend(df)
+
+        result = backend.call("to_decimal", [df["col"], 3], SourceSpan(1, 1, 1, 1))
+        expected = pd.Series([Decimal("3.142")], dtype=object)
+        pd.testing.assert_series_equal(result, expected, check_names=False)
+
+    def test_to_decimal_rejects_negative_precision(self):
+        """Test to_decimal rejects a negative precision."""
+        df = pd.DataFrame({"col": [1.5]})
+        backend = PandasStringBackend(df)
+
+        with pytest.raises(DSLEvaluationError, match="requires non-negative precision"):
+            backend.call("to_decimal", [df["col"], -1], SourceSpan(1, 1, 1, 1))
+
+    def test_to_decimal_requires_scalar_precision(self):
+        """Test to_decimal rejects a column reference as precision."""
+        df = pd.DataFrame({"col": [1.5], "prec": [2]})
+        backend = PandasStringBackend(df)
+
+        with pytest.raises(DSLEvaluationError, match="requires integer literal arguments"):
+            backend.call("to_decimal", [df["col"], df["prec"]], SourceSpan(1, 1, 1, 1))
+
     def test_unknown_function_error(self):
         """Test calling unknown function raises error."""
         df = pd.DataFrame({"col": ["a"]})
@@ -698,6 +829,37 @@ class TestFormulaEngine:
         # Validation error for unknown column (caught at validation stage)
         with pytest.raises(DSLValidationError):
             engine.evaluate_formula("=missing_col", df)
+
+    def test_evaluate_formula_new_string_and_numeric_functions(self):
+        """Evaluate replace, regex_extract, and to_decimal through the engine."""
+        df = pd.DataFrame({"code": ["SE-123", "SE-456"], "raw": ["1.005", "2.5"]})
+        engine = FormulaEngine()
+
+        result = engine.apply_extra_columns(
+            df,
+            {
+                "clean_code": "=replace(code, '-', '_')",
+                "number": "=regex_extract(code, '[0-9]+')",
+                "value": "=to_decimal(raw, 2)",
+            },
+            in_place=False,
+        )
+
+        assert result["clean_code"].tolist() == ["SE_123", "SE_456"]
+        assert result["number"].tolist() == ["123", "456"]
+        assert result["value"].tolist() == [Decimal("1.01"), Decimal("2.50")]
+
+    def test_evaluate_formula_new_function_arity_validation(self):
+        """Arity limits for the new functions are enforced during validation."""
+        df = pd.DataFrame({"col": ["a"]})
+        engine = FormulaEngine()
+
+        with pytest.raises(DSLValidationError):
+            engine.evaluate_formula("=replace(col, '-')", df)
+        with pytest.raises(DSLValidationError):
+            engine.evaluate_formula("=regex_extract(col)", df)
+        with pytest.raises(DSLValidationError):
+            engine.evaluate_formula("=to_decimal()", df)
 
 
 # ============================================================================
