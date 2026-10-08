@@ -133,15 +133,23 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
 
         # Note: system_id is always "system_id" (standardized name, auto-generated)
 
-        self.check_fields(entity_name, ["values"], "exists/E")
+        # A fixed entity can be populated entirely by its append branches. In that
+        # case explicit values are optional, so only require them (and warn when they
+        # are empty) for fixed entities that do not use append.
+        values_provided: bool = self.field_exists(f"entities.{entity_name}.values")
 
         if not table.has_append:
+            self.check_fields(entity_name, ["values"], "exists/E")
             # warn if values is empty since fixed entities are expected to have data
             self.check_fields(entity_name, ["values"], "not_empty/W")
 
         self.check_fields(entity_name, ["type"], "has_value/E", expected_value="fixed")
         self.check_fields(entity_name, ["source", "data_source", "query"], "is_empty/W")
-        self.check_fields(entity_name, ["values"], "of_type/E", expected_types=(list,))
+
+        # Validate the declared type when values are provided, or when they are
+        # required because the entity has no append branches.
+        if values_provided or not table.has_append:
+            self.check_fields(entity_name, ["values"], "of_type/E", expected_types=(list,))
 
         columns: list[str] = table.safe_columns
         keys: list[str] = table.safe_keys

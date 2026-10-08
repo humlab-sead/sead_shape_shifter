@@ -204,6 +204,29 @@ class TestFixedEntityFieldsSpecification:
                     "public_id": "method_id",
                     "values": [[1, 7, "Sampling"]],
                 },
+                "fixed_with_append_empty_values": {
+                    "type": "fixed",
+                    "columns": ["system_id", "entity_id", "label"],
+                    "keys": ["label"],
+                    "public_id": "entity_id",
+                    "values": [],
+                    "append": [{"source": "valid_fixed"}],
+                },
+                "fixed_with_append_missing_values": {
+                    "type": "fixed",
+                    "columns": ["system_id", "entity_id", "label"],
+                    "keys": ["label"],
+                    "public_id": "entity_id",
+                    "append": [{"source": "valid_fixed"}],
+                },
+                "fixed_with_append_non_list_values": {
+                    "type": "fixed",
+                    "columns": ["system_id", "entity_id", "label"],
+                    "keys": ["label"],
+                    "public_id": "entity_id",
+                    "values": "not-a-list",
+                    "append": [{"source": "valid_fixed"}],
+                },
             },
         }
 
@@ -396,6 +419,41 @@ class TestFixedEntityFieldsSpecification:
 
         assert result is False, spec.get_report()
         assert any("unsupported type 'integer'" in str(error).lower() for error in spec.errors), spec.get_report()
+
+    def test_fixed_with_append_and_empty_values_has_no_warning(self, project_cfg):
+        """Fixed entities populated by append branches should not warn about empty values.
+
+        Regression test for issue #427.
+        """
+        spec = FixedEntityFieldsSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="fixed_with_append_empty_values")
+
+        assert result is True, spec.get_report()
+        assert len(spec.errors) == 0, spec.get_report()
+        assert len(spec.warnings) == 0, spec.get_report()
+
+    def test_fixed_with_append_and_missing_values_is_valid(self, project_cfg):
+        """Fixed entities populated by append branches may omit values entirely.
+
+        Regression test for issue #427.
+        """
+        spec = FixedEntityFieldsSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="fixed_with_append_missing_values")
+
+        assert result is True, spec.get_report()
+        assert len(spec.errors) == 0, spec.get_report()
+        assert len(spec.warnings) == 0, spec.get_report()
+
+    def test_fixed_with_append_and_non_list_values_is_invalid(self, project_cfg):
+        """Provided values must still be a list even when append branches exist."""
+        spec = FixedEntityFieldsSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="fixed_with_append_non_list_values")
+
+        assert result is False, spec.get_report()
+        assert any("must be of type(s) 'list'" in str(error) for error in spec.errors), spec.get_report()
 
 
 class TestSqlEntityFieldsSpecification:
