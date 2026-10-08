@@ -8,6 +8,7 @@ This index covers proposals and initiative records that need attention or provid
 |---|---|---|
 | [Branch-Scoped Consumers For Mixed-Branch Parents](BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md) | Proposed follow-up | Let downstream entities select which branch of a mixed parent they consume. |
 | [BugsCEP Importer Migration Runtime Decision Spike](BUGSCEP_IMPORTER_MIGRATION_IMPLEMENTATION_DECISION/BUGSCEP_IMPORTER_MIGRATION_IMPLEMENTATION_DECISION.md) | Proposed change request | Test candidate runtime paths against the completed policy contract before choosing one. |
+| [Define And Verify The SEAD Target Model Coverage Boundary](SEAD_TARGET_MODEL_COVERAGE_BOUNDARY.md) | Proposed change request | Pin the target-model coverage boundary, record one disposition per in-scope table, and verify it with a generated report and a lint hook. |
 | [Ingester Authorization](INGESTER_AUTHORIZATION_TASKS/INGESTER_AUTHORIZATION_TASKS.md) | Proposed change | Authorize projects, sources, and destinations used by ingester operations. |
 | [Secure Ingester Filesystem And Destination Access](INGESTER_FILESYSTEM_BOUNDARIES/INGESTER_FILESYSTEM_BOUNDARIES.md) | Proposed change | Restrict ingester file access and database destinations to approved resources. |
 | [Ingester Idempotency And Re-submission](INGESTER_IDEMPOTENCY_AND_RESUBMISSION/INGESTER_IDEMPOTENCY_AND_RESUBMISSION.md) | Proposed; contract decisions pending | Define deterministic reruns, partial overlap, and recovery from interrupted requests. |
