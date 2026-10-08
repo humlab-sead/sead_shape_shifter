@@ -25,6 +25,17 @@ def unnest(entity: str, table: pd.DataFrame, table_cfg: TableConfig) -> pd.DataF
     if not var_name or not value_name:
         raise ValueError(f"{entity}[unnesting]: Invalid configuration: {unnest_config}")
 
+    # Defensive check for configurations that bypass project validation. Pandas
+    # keeps overlapping columns as identifiers instead of melting them, which can
+    # drop variables or return no rows.
+    overlap: set[str] = set(id_vars) & set(value_vars)
+    if overlap:
+        raise ValueError(
+            f"{entity}[unnesting]: Cannot unnest entity, columns cannot be both `id_vars` and `value_vars`: "
+            f"{sorted(overlap)}. Overlapping columns are treated as identifiers and are not melted; "
+            f"remove them from one of the lists."
+        )
+
     opts: dict[str, Any] = {
         "var_name": var_name,
         "value_name": value_name,
