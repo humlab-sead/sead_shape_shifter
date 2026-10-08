@@ -64,6 +64,14 @@ if [[ "$(id -u)" -ne 0 ]]; then
   exit 1
 fi
 
+# Rootless Podman needs the user's systemd user manager when it creates
+# containers. Without an interactive login that manager only starts when
+# lingering is enabled; otherwise `make build` and `make up` fail with a polkit
+# "Access denied" error from crun. Enable lingering here (root can do this) and
+# expose the user's runtime directory to the `sudo -u` commands below.
+loginctl enable-linger "$USER"
+USER_UID="$(id -u "$USER")"
+
 # The archive URL accepts a branch or a tag, so no branch or tag detection is
 # needed. The wildcard matches the top-level directory, whose name differs
 # between the two: GitHub strips the leading 'v' from a tag, so v2.1.0 extracts
@@ -74,6 +82,7 @@ echo "Fetching deployment files for $USER (ref $REF)..."
 sudo -u "$USER" \
   env ARCHIVE_URL="$ARCHIVE_URL" \
       DEPLOY_REPO="$REPO_URL" DEPLOY_REF="$REF" DEPLOY_PORT="$HOST_PORT" \
+      XDG_RUNTIME_DIR="/run/user/$USER_UID" \
   bash -lc '
 set -euo pipefail
 cd ~
@@ -105,7 +114,9 @@ echo "Recorded GIT_REPO, GIT_REF, IMAGE_NAME and HOST_PORT in ~/config/deploymen
 
 if [[ "$DO_BUILD" = true ]]; then
   echo "Building and starting the container..."
-  sudo -u "$USER" bash -lc '
+  sudo -u "$USER" \
+    env "XDG_RUNTIME_DIR=/run/user/$USER_UID" \
+    bash -lc '
 set -euo pipefail
 cd ~/container
 make build
