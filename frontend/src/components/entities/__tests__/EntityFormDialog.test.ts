@@ -161,7 +161,7 @@ const childStubs = {
   SqlEditor: { template: '<div data-testid="sql-editor" />' },
   ForeignKeyEditor: {
     name: 'ForeignKeyEditor',
-    props: ['modelValue'],
+    props: ['modelValue', 'columnCandidates'],
     template: '<div data-testid="foreign-key-editor" />',
   },
   FiltersEditor: { template: '<div data-testid="filters-editor" />' },
@@ -384,7 +384,16 @@ describe('EntityFormDialog', () => {
       drop_empty_rows: ['empty_check_column'],
       extra_columns: { sources: ['extra_source_column'] },
       filters: { extract: ['filter_column'] },
-      foreign_keys: [],
+      foreign_keys: [
+        {
+          index: 0,
+          entity: 'abundance_source',
+          local_keys_before_unnest: ['child_key'],
+          local_keys_after_unnest: ['measurement_type'],
+          remote_keys: ['sample_name', 'system_id'],
+          extra_column_sources: ['source_value'],
+        },
+      ],
       unnest: { id_vars: ['id_candidate'], value_vars: ['value_candidate'] },
     }
     const wrapper = mountEntityFormDialog({
@@ -423,6 +432,7 @@ describe('EntityFormDialog', () => {
     expect(wrapper.text()).toContain('Available post-merge: columns')
 
     const foreignKeyEditor = wrapper.findComponent({ name: 'ForeignKeyEditor' })
+    expect(foreignKeyEditor.props('columnCandidates')).toEqual(mockState.columnAvailability.foreign_keys)
     foreignKeyEditor.vm.$emit('update:modelValue', [
       { entity: 'abundance_source', local_keys: ['sample_name'], remote_keys: ['sample_name'] },
     ])

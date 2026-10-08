@@ -12,6 +12,12 @@ _PROJECT_ENTITIES = {
         "columns": ["parent_key", "source_value"],
         "extra_columns": {"derived_value": "source_value"},
     },
+        "other_parent": {
+            "type": "entity",
+            "public_id": "other_parent_id",
+            "keys": ["other_parent_key"],
+            "columns": ["other_parent_key", "other_value"],
+        },
     "child": {
         "type": "entity",
         "public_id": "child_id",
@@ -46,7 +52,10 @@ async def test_post_uses_unsaved_draft_and_returns_operation_and_stage_candidate
         "public_id": "child_id",
         "keys": ["child_key"],
         "columns": ["child_key", "draft_value", "amount"],
-        "foreign_keys": [{"entity": "parent", "local_keys": ["child_key"], "remote_keys": ["parent_key"]}],
+        "foreign_keys": [
+            {"entity": "parent", "local_keys": ["child_key"], "remote_keys": ["parent_key"]},
+            {"entity": "other_parent", "local_keys": [], "remote_keys": [], "how": "cross"},
+        ],
         "filters": [{"type": "exists_in", "stage": "after_link", "column": "draft_value"}],
         "unnest": {
             "id_vars": ["child_key"],
@@ -69,10 +78,21 @@ async def test_post_uses_unsaved_draft_and_returns_operation_and_stage_candidate
     for operation in ("business_keys", "replacements", "drop_duplicates", "drop_empty_rows"):
         assert isinstance(body[operation], list)
     assert "child_key" in body["business_keys"]
-    assert "derived_value" in body["foreign_keys"][0]["remote_keys"]
-    assert "system_id" in body["foreign_keys"][0]["extra_column_sources"]
-    assert "amount" in body["foreign_keys"][0]["local_keys_before_unnest"]
-    assert "amount" not in body["foreign_keys"][0]["local_keys_after_unnest"]
+    foreign_keys = body["foreign_keys"]
+    assert [(foreign_key["index"], foreign_key["entity"]) for foreign_key in foreign_keys] == [
+        (0, "parent"),
+        (1, "other_parent"),
+    ]
+    assert "derived_value" in foreign_keys[0]["remote_keys"]
+    assert "system_id" in foreign_keys[0]["remote_keys"]
+    assert "system_id" in foreign_keys[0]["extra_column_sources"]
+    assert "amount" in foreign_keys[0]["local_keys_before_unnest"]
+    assert "amount" not in foreign_keys[0]["local_keys_after_unnest"]
+    assert "parent_id" not in foreign_keys[1]["local_keys_before_unnest"]
+    assert "parent_id" in foreign_keys[1]["local_keys_after_unnest"]
+    assert "other_parent_key" in foreign_keys[1]["remote_keys"]
+    assert "system_id" in foreign_keys[1]["remote_keys"]
+    assert "system_id" in foreign_keys[1]["extra_column_sources"]
     assert "after_link" in body["filters"]
     assert "child_key" in body["unnest"]["id_vars"]
     assert "amount" in body["unnest"]["value_vars"]

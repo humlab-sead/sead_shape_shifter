@@ -697,6 +697,7 @@
                   :project-name="projectName"
                   :entity-name="formData.name"
                   :entity-columns="effectiveEntityColumns"
+                  :column-candidates="columnAvailability?.foreign_keys ?? []"
                   :is-entity-saved="mode === 'edit'"
                   :has-unsaved-changes="hasPendingChanges"
                   @update:model-value="handleForeignKeysUpdate"
