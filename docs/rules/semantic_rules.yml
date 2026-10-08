@@ -967,6 +967,24 @@ rules:
         path: src/specifications/entity.py
         symbol: UnnestColumnsSpecification
 
+  - id: entity.unnest.id_vars_value_vars_no_overlap
+    title: unnest id_vars and value_vars must not overlap
+    severity: error
+    category: consistency
+    applies_to: entities.*.unnest
+    check:
+      kind: disjoint
+      fields:
+        - id_vars[]
+        - value_vars[]
+    message: "A column is listed as both an id_var and a value_var."
+    fix: "Remove the overlapping column from id_vars or value_vars; overlapping columns are kept as identifiers and are not melted."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: UnnestColumnsSpecification
+
   - id: entity.drop_duplicates.allowed_types
     title: drop_duplicates supports bool, string, list, or dict
     severity: error

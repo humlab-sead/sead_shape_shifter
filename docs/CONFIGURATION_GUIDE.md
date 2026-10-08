@@ -2187,14 +2187,13 @@ unnest:
   - **Non-Empty**: Must contain at least one column (error if empty)
   - **String Items**: Each item must be a string (error if not)
   - **Column Existence**: Columns should exist in entity (suggested validation)
-  - **No Overlap**: Should not overlap with id_vars (suggested validation)
+  - **No Overlap**: Must not overlap with id_vars (error if it does)
 - **Common Issues**:
   - Missing value_vars
   - Value columns don't exist in source
-  - Overlap with id_vars
+  - Overlap with id_vars (rejected; overlapping columns are kept as identifiers and are not melted)
 - **Suggested Additional Validation**:
   - Validate columns exist before unnesting
-  - Warn if value_vars includes id_vars columns
 
 ##### `var_name`
 - **Type**: `string`
