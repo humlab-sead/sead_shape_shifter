@@ -1362,6 +1362,28 @@ class TestExtraColumnsConflictsSpecification:
         assert result is False
         assert any("extra_columns 'system_id' conflicts" in issue.message for issue in spec.errors)
 
+    def test_key_matching_extra_column_is_allowed(self):
+        """A business key may reference an extra_columns entry because keys add no result column."""
+        project_cfg = {
+            "entities": {
+                "sample": {
+                    "type": "entity",
+                    "columns": ["sample_code"],
+                    "keys": ["sample_code", "derived_key"],
+                    "extra_columns": {
+                        "derived_key": "sample_code",
+                    },
+                }
+            }
+        }
+
+        spec = ExtraColumnsConflictsSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="sample")
+
+        assert result is True
+        assert spec.errors == []
+
 
 class TestAppendSpecification:
     """Tests for AppendSpecification."""

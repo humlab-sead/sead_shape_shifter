@@ -875,10 +875,12 @@ class ExtraColumnsConflictsSpecification(ProjectSpecification):
 
     Checks that extra_column names don't conflict with:
     - Columns from "columns" field
-    - Business keys from "keys" field
     - Public ID from "public_id" field
     - System column "system_id"
     - Unnest columns (value_name, var_name)
+
+    Business keys from the "keys" field are not checked. A key only marks an
+    existing column, so an extra_column name may also be used as a key.
     """
 
     def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:

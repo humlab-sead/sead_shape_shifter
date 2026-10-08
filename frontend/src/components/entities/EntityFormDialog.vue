@@ -2673,11 +2673,13 @@ const sourceReferenceColumn = computed(() => {
 })
 
 const extraColumnsReservedNames = computed(() => {
+  // Business keys only mark existing columns; they do not add result columns.
+  // A key may point at an extra column, so keys are not reserved names here.
+  // This mirrors the backend ExtraColumnsConflictsSpecification rule.
   const names = [
     'system_id',
     formData.value.public_id,
     ...(formData.value.columns || []),
-    ...(formData.value.keys || []),
     formData.value.advanced.unnest?.var_name,
     formData.value.advanced.unnest?.value_name,
   ]

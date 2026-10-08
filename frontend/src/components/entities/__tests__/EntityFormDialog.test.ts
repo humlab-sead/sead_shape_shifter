@@ -7,6 +7,7 @@ import * as directives from 'vuetify/directives'
 
 import type { ColumnAvailabilityResponse, EntityResponse } from '@/api/entities'
 import EntityFormDialog from '../EntityFormDialog.vue'
+import { getExtraColumnDiagnostics } from '../extraColumnsEditorUtils'
 
 const mockState = vi.hoisted(() => ({
   entities: [] as EntityResponse[],
@@ -174,7 +175,7 @@ const childStubs = {
   BranchEditor: { template: '<div data-testid="branch-editor" />' },
   ExtraColumnsEditor: {
     name: 'ExtraColumnsEditor',
-    props: ['availableColumns'],
+    props: ['availableColumns', 'reservedNames'],
     template: '<div data-testid="extra-columns-editor" />',
   },
   ReplacementsEditor: {
@@ -531,6 +532,46 @@ describe('EntityFormDialog', () => {
         entity_data: expect.objectContaining({ columns: ['unlisted_column'] }),
       })
     )
+  })
+
+  it('does not treat a business key as a reserved extra-column name', async () => {
+    // Regression for #506: an extra column may also be used as a business key.
+    const entity = createEntity('sample', {
+      type: 'entity',
+      public_id: 'sample_id',
+      columns: ['sample_name'],
+      keys: ['sample_name', 'derived_key'],
+      extra_columns: { derived_key: 'sample_name' },
+      unnest: {
+        id_vars: ['sample_name'],
+        value_vars: ['reading'],
+        var_name: 'measurement_type',
+        value_name: 'measurement_value',
+      },
+    })
+
+    const wrapper = mountEntityFormDialog({
+      mode: 'edit',
+      entity,
+    })
+
+    await flushPromises()
+    await nextTick()
+
+    const reservedNames = wrapper.findComponent({ name: 'ExtraColumnsEditor' }).props('reservedNames') as string[]
+
+    // Real result columns stay reserved.
+    expect(reservedNames).toEqual(
+      expect.arrayContaining(['system_id', 'sample_id', 'sample_name', 'measurement_type', 'measurement_value'])
+    )
+    // The business key must not be reserved, because keys add no result column.
+    expect(reservedNames).not.toContain('derived_key')
+
+    const diagnostics = getExtraColumnDiagnostics([{ column: 'derived_key', source: 'sample_name' }], 0, {
+      reservedNames,
+      availableColumns: ['sample_name'],
+    })
+    expect(diagnostics.some((diagnostic) => diagnostic.severity === 'error')).toBe(false)
   })
 
   it('supports toggling preview between merged rows and branch source rows', async () => {
