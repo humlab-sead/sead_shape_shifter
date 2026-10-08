@@ -94,6 +94,7 @@
                       <v-row no-gutters>
                         <v-col cols="4" class="pr-2">
                           <v-text-field
+                            ref="entityNameField"
                             v-model="formData.name"
                             label="Entity Name *"
                             :rules="nameRules"
@@ -1172,6 +1173,7 @@ const previewError = ref<PreviewError>(null)
 
 // Form state
 const formRef = ref()
+const entityNameField = ref()
 const formValid = ref(false)
 const loading = ref(false)
 const error = ref<string | null>(null)
@@ -3514,6 +3516,10 @@ watch(
         await refreshFormValidity()
         initialFormSnapshot.value = null
         hasPendingChanges.value = false
+
+        // Place the cursor in the Entity Name field so the user can start typing immediately.
+        await nextTick()
+        entityNameField.value?.focus()
       }
     }
   },
