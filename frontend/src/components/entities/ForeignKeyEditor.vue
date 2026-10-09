@@ -167,6 +167,48 @@
               </v-col>
             </v-row>
 
+            <div v-if="getKeyPairRows(fk).length > 1" class="mb-2" data-testid="fk-key-pair-preview">
+              <div class="text-caption font-weight-medium mb-1">Key Pair Preview</div>
+              <table class="w-100 text-caption">
+                <thead>
+                  <tr>
+                    <th scope="col" class="text-left">Pair</th>
+                    <th scope="col" class="text-left">Local Key</th>
+                    <th scope="col" class="text-left">Remote Key</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="pair in getKeyPairRows(fk)" :key="pair.index">
+                    <td>{{ pair.index }}</td>
+                    <td>{{ pair.local }}</td>
+                    <td>{{ pair.remote }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <v-alert
+              v-if="hasKeyCountMismatch(fk)"
+              type="warning"
+              variant="tonal"
+              density="compact"
+              class="mb-2"
+              data-testid="fk-key-count-warning"
+            >
+              Local and remote key counts differ. Each local key must match the remote key at the same position.
+            </v-alert>
+            <v-alert
+              v-if="hasSuspiciousKeyReorder(fk)"
+              type="warning"
+              variant="tonal"
+              density="compact"
+              class="mb-2"
+              data-testid="fk-key-order-warning"
+            >
+              Local and remote keys contain the same names in a different order. Key matching is positional; verify each
+              pair.
+            </v-alert>
+
             <!-- Extra Columns Section -->
             <v-row dense class="mb-2">
               <v-col cols="12">
@@ -274,6 +316,7 @@ import type { ForeignKeyConfig, ForeignKeyConstraints } from '@/types'
 import ForeignKeyTester from './ForeignKeyTester.vue'
 import { useDirectiveValidation } from '@/composables/useDirectiveValidation'
 import { normalizeForeignKeyKeys } from './foreignKeyEditorUtils'
+import { getKeyPairRows, hasKeyCountMismatch, hasSuspiciousKeyReorder } from './foreignKeyPreviewUtils'
 
 interface Props {
   modelValue: ForeignKeyConfig[]
