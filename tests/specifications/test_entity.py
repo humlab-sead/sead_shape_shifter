@@ -72,6 +72,73 @@ class TestEntityFieldsBaseSpecification:
         assert result is False
         assert len(spec.errors) > 0
 
+    def test_keys_must_name_configured_or_generated_output_fields(self):
+        project_cfg = {
+            "entities": {
+                "parent": {"type": "fixed", "public_id": "parent_id", "columns": ["id"], "keys": []},
+                "generated": {
+                    "type": "entity",
+                    "columns": ["source", "measure"],
+                    "keys": ["copied", "parent_id", "remote_name", "kind", "reading"],
+                    "extra_columns": {"copied": "source"},
+                    "foreign_keys": [
+                        {"entity": "parent", "local_keys": ["source"], "remote_keys": ["id"], "extra_columns": {"remote_name": "name"}}
+                    ],
+                    "unnest": {"id_vars": ["source"], "value_vars": ["measure"], "var_name": "kind", "value_name": "reading"},
+                },
+            }
+        }
+
+        spec = EntityFieldsBaseSpecification(project_cfg)
+
+        assert spec.is_satisfied_by(entity_name="generated") is True
+        assert spec.errors == []
+
+    def test_keys_without_producers_fail_with_actionable_message(self):
+        project_cfg = {"entities": {"unproduced": {"type": "entity", "columns": ["source"], "keys": ["missing"]}}}
+        spec = EntityFieldsBaseSpecification(project_cfg)
+
+        assert spec.is_satisfied_by(entity_name="unproduced") is False
+        error_text = "\n".join(str(error) for error in spec.errors)
+        assert "unproduced" in error_text
+        assert "missing" in error_text
+        assert "'keys' do not create output columns" in error_text
+        assert "'columns'" in error_text
+
+    def test_auto_detected_sql_key_validation_is_deferred_when_columns_are_unknown(self):
+        project_cfg = {
+            "entities": {
+                "dynamic_sql": {
+                    "type": "sql",
+                    "columns": [],
+                    "keys": ["query_discovered_key"],
+                    "data_source": "database",
+                    "query": "SELECT * FROM source_table",
+                    "auto_detect_columns": True,
+                }
+            }
+        }
+        spec = EntityFieldsBaseSpecification(project_cfg)
+
+        assert spec.is_satisfied_by(entity_name="dynamic_sql") is True
+
+    def test_auto_detected_sql_rejects_key_outside_configured_output(self):
+        project_cfg = {
+            "entities": {
+                "dynamic_sql": {
+                    "type": "sql",
+                    "columns": ["known_query_column"],
+                    "keys": ["query_discovered_key"],
+                    "data_source": "database",
+                    "query": "SELECT * FROM source_table",
+                    "auto_detect_columns": True,
+                }
+            }
+        }
+        spec = EntityFieldsBaseSpecification(project_cfg)
+
+        assert spec.is_satisfied_by(entity_name="dynamic_sql") is False
+
 
 class TestFixedEntityFieldsSpecification:
     """Tests for FixedEntityFieldsSpecification."""
@@ -538,7 +605,7 @@ class TestSqlColumnConfigurationSpecification:
         assert result is False
         assert any("contain duplicates" in str(e) for e in spec.errors)
 
-    def test_manual_sql_requires_keys_in_columns(self):
+    def test_manual_sql_key_validation_uses_producer_aware_entity_specification(self):
         project_cfg = {
             "entities": {
                 "sql_entity": {
@@ -553,11 +620,14 @@ class TestSqlColumnConfigurationSpecification:
         }
 
         spec = SqlColumnConfigurationSpecification(project_cfg)
+        entity_spec = EntityFieldsBaseSpecification(project_cfg)
 
-        result = spec.is_satisfied_by(entity_name="sql_entity")
+        assert spec.is_satisfied_by(entity_name="sql_entity") is True
 
-        assert result is False
-        assert any("must be included in the specified columns" in str(e) for e in spec.errors)
+        assert entity_spec.is_satisfied_by(entity_name="sql_entity") is False
+        error_text = "\n".join(str(error) for error in entity_spec.errors)
+        assert "key_col" in error_text
+        assert "'keys' do not create output columns" in error_text
 
     def test_auto_detect_sql_allows_keys_outside_configured_columns(self):
         project_cfg = {

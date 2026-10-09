@@ -335,7 +335,7 @@ class ShapeShifter:
         )
 
     def _check_duplicate_keys(self, entity: str, table_cfg: TableConfig) -> None:
-        """Check for duplicate keys in the processed table and log an error if found."""
+        """Check that processed output contains every configured business key."""
 
         if not table_cfg.keys:
             return
@@ -344,8 +344,11 @@ class ShapeShifter:
         missing_keys: set[str] = keys - set(self.table_store[entity].columns)
 
         if missing_keys:
-            # We cannot check for duplicates if keys are missing, just return
-            return
+            raise ValueError(
+                f"Entity '{entity}': key column(s) {sorted(missing_keys)} are missing from processed output. "
+                "'keys' do not create output columns. Add the missing fields to 'columns' or configure the producer "
+                "(extra_columns, foreign_keys, or unnest) that creates them."
+            )
 
         has_duplicate_keys: bool = bool(self.table_store[entity].duplicated(subset=list(table_cfg.keys)).any())
         if has_duplicate_keys:

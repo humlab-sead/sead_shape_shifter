@@ -50,8 +50,7 @@ class EntityFieldsBaseSpecification(ProjectSpecification):
             if self.field_exists(f"entities.{entity_name}.{field}"):
                 self.check_fields(entity_name, [field], "is_string_list/E")
 
-        # Validate that keys are a subset of columns
-        # self.check_fields(entity_name, ["keys"], "keys_subset_of_columns/E")
+        self.check_fields(entity_name, ["keys"], "keys_subset_of_columns/E")
 
         self.check_fields(entity_name, ["type"], "exists/E")
         if self.field_exists(f"entities.{entity_name}.type"):
@@ -399,16 +398,6 @@ class SqlColumnConfigurationSpecification(ProjectSpecification):
                 field="columns",
             )
 
-        if not auto_detect_columns:
-            missing_keys: list[str] = [key for key in table.keys if key not in configured_columns]
-            if missing_keys:
-                self.add_error(
-                    f"Entity '{entity_name}': key column(s) {missing_keys} must be included in the "
-                    "specified columns when auto-detect is disabled.",
-                    entity=entity_name,
-                    field="columns",
-                )
-
         return not self.has_errors()
 
 
@@ -752,8 +741,8 @@ class ExtraColumnsExpressionSpecification(ProjectSpecification):
             )
             return False
 
-        current_available: set[str] = self.get_entity_columns(entity_name, include_types={"columns", "keys"})
-        eventual_available: set[str] = self.get_entity_columns(entity_name, include_types={"columns", "keys", "foreign_keys", "unnest"})
+        current_available: set[str] = self.get_entity_columns(entity_name, include_types={"columns"})
+        eventual_available: set[str] = self.get_entity_columns(entity_name, include_types={"columns", "foreign_keys", "unnest"})
         eventual_available.update(extra_columns.keys())
 
         for new_col, value in extra_columns.items():
@@ -898,9 +887,7 @@ class ExtraColumnsConflictsSpecification(ProjectSpecification):
             return True
 
         # Only check actual source columns, not keys (keys can be added via extra_columns)
-        existing_columns: set[str] = set(
-            table_cfg.get_columns(include_keys=False, include_fks=False, include_extra=False, include_unnest=True)
-        )
+        existing_columns: set[str] = set(table_cfg.get_columns(include_fks=False, include_extra=False, include_unnest=True))
         existing_columns.add(table_cfg.system_id)
         if table_cfg.public_id:
             existing_columns.add(table_cfg.public_id)
