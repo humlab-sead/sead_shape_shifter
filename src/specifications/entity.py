@@ -84,12 +84,11 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
         values: list[Any],
         columns: list[str],
         public_id: str,
-        keys: list[str],
         column_types: dict[str, str],
         conventions: list[FixedEntityTypeConvention],
     ) -> None:
         """Validate that fixed-entity values match declared or inferred backend types."""
-        full_columns = build_fixed_entity_full_columns(columns, keys, public_id)
+        full_columns = build_fixed_entity_full_columns(columns, public_id)
 
         for row_idx, row in enumerate(values):
             row_columns = columns if len(row) == len(columns) else full_columns
@@ -151,7 +150,6 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
             self.check_fields(entity_name, ["values"], "of_type/E", expected_types=(list,))
 
         columns: list[str] = table.safe_columns
-        keys: list[str] = table.safe_keys
         raw_values: list[Any] | None = table.values if isinstance(table.values, list) else None
         dict_rows = raw_values is not None and len(raw_values) > 0 and all(isinstance(row, dict) for row in raw_values)
         values: list[Any] = raw_values if dict_rows and raw_values is not None else table.safe_values
@@ -172,8 +170,10 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
             row_keys = set().union(*(row.keys() for row in raw_values)) if raw_values else set()
             missing_columns = set(columns) - row_keys
             if missing_columns:
+                full_columns = build_fixed_entity_full_columns(columns, public_id)
                 self.add_error(
-                    f"Fixed data entity '{entity_name}' has externally loaded rows missing columns {sorted(missing_columns)}",
+                    f"Fixed data entity '{entity_name}' has externally loaded rows missing columns {sorted(missing_columns)}. "
+                    f"Expected positional column order: {full_columns}",
                     entity=entity_name,
                     field="values",
                 )
@@ -198,7 +198,8 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
         #    Using set union elegantly deduplicates if identity columns are mistakenly in columns
         shape_is_valid = True
         if values and not dict_rows:
-            expected_with_identity: int = len(set(columns) | {public_id, "system_id"})
+            full_columns = build_fixed_entity_full_columns(columns, public_id)
+            expected_with_identity: int = len(full_columns)
             expected_without_identity: int = len(columns)
             values_length: int = len(values[0]) if values else 0
 
@@ -206,7 +207,8 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
             if not all(len(row) == values_length for row in values):
                 shape_is_valid = False
                 self.add_error(
-                    f"Fixed data entity '{entity_name}' has inconsistent row lengths in values",
+                    f"Fixed data entity '{entity_name}' has inconsistent row lengths in values. "
+                    f"Expected positional column order: {full_columns}",
                     entity=entity_name,
                     field="values",
                 )
@@ -216,13 +218,13 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
                 self.add_error(
                     f"Fixed data entity '{entity_name}' has mismatched number of columns and values "
                     f"(got {values_length} values per row, expected {expected_without_identity} for data-only "
-                    f"or {expected_with_identity} with identity columns)",
+                    f"or {expected_with_identity} with identity columns). Expected positional column order: {full_columns}",
                     entity=entity_name,
                     field="values",
                 )
 
         if values and not dict_rows and shape_is_valid:
-            self._validate_column_types(entity_name, values, columns, public_id, keys, column_types, conventions)
+            self._validate_column_types(entity_name, values, columns, public_id, column_types, conventions)
 
         return not self.has_errors()
 

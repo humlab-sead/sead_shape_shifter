@@ -10,7 +10,7 @@ from loguru import logger
 
 from backend.app.models.project import Project
 from backend.app.services.project_service import ProjectService, get_project_service
-from backend.app.utils.fixed_schema import derive_fixed_schema
+from backend.app.utils.fixed_schema import build_legacy_fixed_full_columns, derive_fixed_schema
 from src.path_resolution import resolve_contained_path
 from src.types.fixed_entity_types import normalize_fixed_entity_column_types, resolve_fixed_entity_column_type
 
@@ -194,16 +194,16 @@ class EntityValuesService:
         Returns:
             Actual format used
         """
-        # Create parent directory if it doesn't exist
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-
         # Infer format from file extension if not specified
         if format_type is None:
             suffix: str = file_path.suffix.lower()
             format_type = "parquet" if suffix == ".parquet" else "csv"
 
-        # Validate shape before handing off to pandas for clearer API errors.
+        # Validate shape before creating directories or handing off to pandas for clearer API errors.
         self._validate_values_shape(columns=columns, values=values)
+
+        # Create parent directory if it doesn't exist
+        file_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Convert list[list] to DataFrame using stable dtypes when column types are known.
         df = self._build_dataframe_for_storage(columns, values, column_types)
@@ -233,17 +233,90 @@ class EntityValuesService:
                     f"but row {idx} has {actual_width} values"
                 )
 
-    def _validate_fixed_columns(self, entity_name: str, entity_data: dict[str, Any], columns: list[str]) -> None:
-        """Require fixed-entity updates to use the authoritative full column order."""
+    @staticmethod
+    def _normalize_fixed_request_columns(
+        entity_name: str,
+        entity_data: dict[str, Any],
+        columns: list[str],
+    ) -> list[str]:
+        """Resolve the authoritative fixed column order for an incoming values request.
+
+        Accepts the authoritative order or the exact recognized legacy order and
+        rejects unknown, duplicate, or incomplete column names. Non-fixed
+        entities are returned unchanged.
+        """
         fixed_schema = derive_fixed_schema(entity_data)
         if not fixed_schema:
-            return
+            return list(columns)
 
-        expected_columns: list[str] = fixed_schema["full_columns"]
-        if columns != expected_columns:
+        full_columns: list[str] = list(fixed_schema["full_columns"])
+
+        missing_keys: list[str] = [key for key in fixed_schema["key_columns"] if key not in full_columns]
+        if missing_keys:
             raise ValueError(
-                f"Fixed entity '{entity_name}' must update values using authoritative columns {expected_columns}; " f"received {columns}"
+                f"Fixed entity '{entity_name}' has business key(s) {missing_keys} that are not produced; "
+                f"expected positional column order: {full_columns}"
             )
+
+        if not all(isinstance(column, str) for column in columns):
+            raise ValueError(f"Fixed entity '{entity_name}' values request must use string column names; received {columns}")
+
+        if len(set(columns)) != len(columns):
+            raise ValueError(f"Fixed entity '{entity_name}' values request has duplicate column names; received {columns}")
+
+        legacy_columns: list[str] = build_legacy_fixed_full_columns(entity_data)
+        if columns != full_columns and columns != legacy_columns:
+            raise ValueError(
+                f"Fixed entity '{entity_name}' must update values using authoritative columns {full_columns}; received {columns}"
+            )
+
+        if set(columns) != set(full_columns):
+            unknown_columns: list[str] = sorted(set(columns) - set(full_columns))
+            missing_columns: list[str] = sorted(set(full_columns) - set(columns))
+            raise ValueError(
+                f"Fixed entity '{entity_name}' values request columns do not match produced fields; "
+                f"unknown {unknown_columns}, missing {missing_columns}; expected positional column order: {full_columns}"
+            )
+
+        return full_columns
+
+    @staticmethod
+    def _reorder_rows_by_name(
+        request_columns: list[str],
+        target_columns: list[str],
+        values: list[list[Any]],
+    ) -> list[list[Any]]:
+        """Reorder row cells to the target column order by matching column names."""
+        if request_columns == target_columns:
+            return values
+
+        index_by_name: dict[str, int] = {column: index for index, column in enumerate(request_columns)}
+        return [[row[index_by_name[column]] for column in target_columns] for row in values]
+
+    @staticmethod
+    def _normalize_fixed_stored_values(
+        entity_name: str,
+        entity_data: dict[str, Any],
+        columns: list[str],
+        values: list[list[Any]],
+    ) -> tuple[list[str], list[list[Any]]]:
+        """Return stored fixed values in the authoritative order without writing the file."""
+        fixed_schema = derive_fixed_schema(entity_data)
+        if not fixed_schema:
+            return list(columns), values
+
+        full_columns: list[str] = list(fixed_schema["full_columns"])
+        if columns == full_columns:
+            return full_columns, values
+
+        if len(set(columns)) != len(columns) or set(columns) != set(full_columns):
+            missing_columns: list[str] = sorted(set(full_columns) - set(columns))
+            raise ValueError(
+                f"Fixed entity '{entity_name}' stored values use columns {columns} that do not match the expected "
+                f"positional column order {full_columns}; missing fields: {missing_columns}"
+            )
+
+        return full_columns, EntityValuesService._reorder_rows_by_name(columns, full_columns, values)
 
     def get_values(self, project_name: str, entity_name: str) -> EntityValuesData:
         """
@@ -273,8 +346,9 @@ class EntityValuesService:
         file_path: Path = self._resolve_values_path(project_name, filename)
         logger.debug(f"Loading values from {file_path}")
 
-        # Read file
+        # Read file and present fixed values in the authoritative column order without writing.
         columns, values, format_type, etag = self._read_values_file(file_path)
+        columns, values = self._normalize_fixed_stored_values(entity_name, entity_data, columns, values)
 
         return EntityValuesData(columns=columns, values=values, format=format_type, row_count=len(values), etag=etag)
 
@@ -314,7 +388,10 @@ class EntityValuesService:
         if not filename:
             raise ValueError(f"Entity '{entity_name}' does not have @load: directive (values: {values_field})")
 
-        self._validate_fixed_columns(entity_name, entity_data, columns)
+        # Validate and normalize the request before any file write or directory creation.
+        self._validate_values_shape(columns=columns, values=values)
+        normalized_columns: list[str] = EntityValuesService._normalize_fixed_request_columns(entity_name, entity_data, columns)
+        normalized_values: list[list[Any]] = EntityValuesService._reorder_rows_by_name(columns, normalized_columns, values)
 
         # Resolve file path
         file_path: Path = self._resolve_values_path(project_name, filename)
@@ -328,12 +405,18 @@ class EntityValuesService:
         logger.info(f"Updating values at {file_path}")
 
         # Write file
-        actual_format: str = self._write_values_file(file_path, columns, values, format_type, column_types)
+        actual_format: str = self._write_values_file(file_path, normalized_columns, normalized_values, format_type, column_types)
 
         # Generate new etag after write
         new_etag: str = self._generate_etag(file_path)
 
-        return EntityValuesData(columns=columns, values=values, format=actual_format, row_count=len(values), etag=new_etag)
+        return EntityValuesData(
+            columns=normalized_columns,
+            values=normalized_values,
+            format=actual_format,
+            row_count=len(normalized_values),
+            etag=new_etag,
+        )
 
 
 def get_entity_values_service() -> EntityValuesService:

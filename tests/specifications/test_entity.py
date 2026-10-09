@@ -332,6 +332,28 @@ class TestFixedEntityFieldsSpecification:
 
         assert result is False
 
+    def test_fixed_entity_rejects_key_without_producer(self):
+        """Fixed entities should reject a business key that no producer creates."""
+        project_cfg = {
+            "entities": {
+                "broken_fixed": {
+                    "type": "fixed",
+                    "public_id": "broken_fixed_id",
+                    "keys": ["missing_key"],
+                    "columns": ["a", "b"],
+                    "values": [[1, None, "aa", "bb"]],
+                }
+            }
+        }
+        spec = FixedEntityFieldsSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="broken_fixed")
+
+        assert result is False, spec.get_report()
+        error_text = "\n".join(str(error) for error in spec.errors)
+        assert "missing_key" in error_text
+        assert "'keys' do not create output columns" in error_text
+
     def test_mismatched_column_row_length(self, project_cfg):
         """Test validation fails when row length doesn't match columns."""
         spec = FixedEntityFieldsSpecification(project_cfg)

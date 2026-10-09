@@ -312,6 +312,134 @@ class TestEntityValuesService:
         with pytest.raises(ValueError, match="authoritative columns"):
             service.update_values("test_project", "location", ["country"], [["Sweden"]], "parquet")
 
+    def test_update_values_remaps_recognized_legacy_order(self, service, mock_project_service, tmp_path):
+        """The exact legacy identity/keys/data order should be remapped by column name before saving."""
+        mock_project = Mock()
+        mock_project.folder = tmp_path
+        mock_project_service.load_project.return_value = mock_project
+
+        entity_data = {
+            "type": "fixed",
+            "public_id": "location_id",
+            "keys": ["country"],
+            "columns": ["name", "country"],
+            "values": "@load:materialized/test.parquet",
+        }
+        mock_project_service.get_entity_by_name.return_value = entity_data
+
+        result = service.update_values(
+            "test_project",
+            "location",
+            ["system_id", "location_id", "country", "name"],
+            [[1, 100, "Sweden", "Uppsala"]],
+            "parquet",
+        )
+
+        assert result.columns == ["system_id", "location_id", "name", "country"]
+        assert result.values == [[1, 100, "Uppsala", "Sweden"]]
+        saved = pd.read_parquet(tmp_path / "materialized" / "test.parquet")
+        assert saved.columns.tolist() == ["system_id", "location_id", "name", "country"]
+        assert saved.values.tolist() == [[1, 100, "Uppsala", "Sweden"]]
+
+    def test_update_values_rejects_duplicate_and_unknown_columns(self, service, mock_project_service, tmp_path):
+        """Duplicate, unknown, or incomplete fixed column requests should be rejected."""
+        mock_project = Mock()
+        mock_project.folder = tmp_path
+        mock_project_service.load_project.return_value = mock_project
+
+        entity_data = {
+            "type": "fixed",
+            "public_id": "location_id",
+            "keys": ["name"],
+            "columns": ["name", "country"],
+            "values": "@load:materialized/test.parquet",
+        }
+        mock_project_service.get_entity_by_name.return_value = entity_data
+
+        with pytest.raises(ValueError, match="duplicate"):
+            service.update_values("test_project", "location", ["system_id", "system_id", "name", "country"], [[1, 1, "a", "b"]], "parquet")
+
+        with pytest.raises(ValueError, match="authoritative columns"):
+            service.update_values(
+                "test_project", "location", ["system_id", "location_id", "name", "unknown"], [[1, 100, "a", "b"]], "parquet"
+            )
+
+        with pytest.raises(ValueError, match="authoritative columns"):
+            service.update_values("test_project", "location", ["system_id", "location_id", "name"], [[1, 100, "a"]], "parquet")
+
+    def test_update_values_rejection_keeps_file_and_directory_unchanged(self, service, mock_project_service, tmp_path):
+        """Rejected fixed value updates must not write or create files."""
+        mock_project = Mock()
+        mock_project.folder = tmp_path
+        mock_project_service.load_project.return_value = mock_project
+
+        entity_data = {
+            "type": "fixed",
+            "public_id": "location_id",
+            "keys": ["name"],
+            "columns": ["name", "country"],
+            "values": "@load:materialized/test.parquet",
+        }
+        mock_project_service.get_entity_by_name.return_value = entity_data
+
+        with pytest.raises(ValueError, match="authoritative columns"):
+            service.update_values("test_project", "location", ["country"], [["Sweden"]], "parquet")
+
+        assert not (tmp_path / "materialized").exists()
+
+    def test_get_values_normalizes_permuted_compatible_order(self, service, mock_project_service, tmp_path):
+        """GET should reorder a compatible stored fixed file without writing it."""
+        mock_project = Mock()
+        mock_project.folder = tmp_path
+        mock_project_service.load_project.return_value = mock_project
+
+        entity_data = {
+            "type": "fixed",
+            "public_id": "location_id",
+            "keys": ["name"],
+            "columns": ["name", "country"],
+            "values": "@load:materialized/test.parquet",
+        }
+        mock_project_service.get_entity_by_name.return_value = entity_data
+
+        file_path = tmp_path / "materialized" / "test.parquet"
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        pd.DataFrame({"location_id": [100], "system_id": [1], "country": ["Sweden"], "name": ["Uppsala"]}).to_parquet(
+            file_path, index=False
+        )
+        before = file_path.read_bytes()
+
+        result = service.get_values("test_project", "location")
+
+        assert result.columns == ["system_id", "location_id", "name", "country"]
+        assert result.values == [[1, 100, "Uppsala", "Sweden"]]
+        assert file_path.read_bytes() == before
+
+    def test_get_values_rejects_incompatible_layout_without_writing(self, service, mock_project_service, tmp_path):
+        """GET should reject a stored layout missing produced fields and leave the file unchanged."""
+        mock_project = Mock()
+        mock_project.folder = tmp_path
+        mock_project_service.load_project.return_value = mock_project
+
+        entity_data = {
+            "type": "fixed",
+            "public_id": "location_id",
+            "keys": ["name"],
+            "columns": ["name", "country"],
+            "values": "@load:materialized/test.parquet",
+        }
+        mock_project_service.get_entity_by_name.return_value = entity_data
+
+        file_path = tmp_path / "materialized" / "test.parquet"
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        pd.DataFrame({"system_id": [1], "name": ["Uppsala"]}).to_parquet(file_path, index=False)
+        before = file_path.read_bytes()
+
+        with pytest.raises(ValueError, match="do not match the expected"):
+            service.get_values("test_project", "location")
+
+        assert file_path.read_bytes() == before
+
     def test_get_entity_values_service_factory(self):
         """Test factory function returns service instance."""
 
