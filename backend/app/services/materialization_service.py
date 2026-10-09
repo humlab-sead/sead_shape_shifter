@@ -19,6 +19,7 @@ from backend.app.models.project import Project
 from backend.app.services.entity_values_service import EntityValuesService
 from backend.app.services.project.entity_persistence_strategies import EntityPersistenceStrategyRegistry
 from backend.app.services.project_service import ProjectService
+from backend.app.utils.fixed_schema import derive_fixed_schema
 from src.model import ShapeShiftProject, TableConfig
 from src.normalizer import ShapeShifter
 from src.reconciliation.mapping_manager import MappingManager
@@ -216,6 +217,14 @@ class MaterializationService:
         """Build a dataframe from saved materialized rows."""
         return pd.DataFrame(values, columns=columns)
 
+    @staticmethod
+    def _resolve_saved_full_columns(entity_cfg: dict[str, Any], columns: list[str]) -> list[str]:
+        """Rebuild the authoritative full column order for stored inline materialized rows."""
+        fixed_schema = derive_fixed_schema(entity_cfg)
+        if fixed_schema:
+            return list(fixed_schema["full_columns"])
+        return columns
+
     def _load_saved_materialized_rows(self, api_project: Project, entity_name: str) -> tuple[list[str], list[list[Any]]]:
         """Read the currently saved materialized rows from inline values or @load storage."""
         entity_cfg = api_project.entities.get(entity_name)
@@ -228,7 +237,8 @@ class MaterializationService:
         if isinstance(values, list):
             if not columns:
                 raise MaterializationError(f"Entity '{entity_name}' is missing columns for inline materialized values.")
-            return list(columns), values
+            # Inline rows are stored in full order while 'columns' holds produced data fields only.
+            return self._resolve_saved_full_columns(entity_cfg, list(columns)), values
 
         loaded = self.entity_values_service.get_values(api_project.metadata.name if api_project.metadata else "", entity_name)
         return list(loaded.columns), loaded.values
@@ -453,11 +463,17 @@ class MaterializationService:
         if not saved_state:
             logger.warning(f"Entity '{table.entity_name}' has no config to save - unmaterialization may not be possible")
 
+        # The managed identity columns lead the stored row order but are not data columns.
+        identity_columns: set[str] = {"system_id"}
+        if table.public_id:
+            identity_columns.add(table.public_id)
+        data_columns: list[str] = [column for column in df.columns.tolist() if column not in identity_columns]
+
         new_config = {
             "type": "fixed",
             "public_id": table.public_id,
             "keys": list(table.keys),
-            "columns": list(df.columns),
+            "columns": data_columns,
             "values": values_inline if values_inline else None,
             "materialized": {
                 "enabled": True,

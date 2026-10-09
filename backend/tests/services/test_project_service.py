@@ -634,7 +634,7 @@ options:
 
         result = strategy.prepare_for_persistence("method", entity_data)
 
-        assert result["columns"] == ["system_id", "method_id", "name"]
+        assert result["columns"] == ["name"]
         assert result["values"] == [[1, 53, "Sampling"]]
 
     def test_fixed_entity_persistence_accepts_declared_int_columns(self):
@@ -811,7 +811,7 @@ options:
             service.add_entity_by_name("test", "site", entity_data)
 
     def test_add_entity_by_name_normalizes_fixed_columns(self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict):
-        """Legacy fixed entities should be normalized to canonical full columns on save."""
+        """Fixed entities should store produced data columns without managed identity fields."""
         test_dir = temp_config_dir / "test"
         test_dir.mkdir()
         (test_dir / "shapeshifter.yml").write_text(yaml.dump(sample_yaml_dict))
@@ -824,14 +824,41 @@ options:
             "type": "fixed",
             "public_id": "site_id",
             "keys": ["Fustel", "EVNr"],
-            "columns": ["site_type_id", "altitude"],
+            "columns": ["system_id", "site_id", "Fustel", "EVNr", "site_type_id", "altitude"],
             "values": "@load:materialized/site.parquet",
         }
 
         service.add_entity_by_name("test", "site", entity_data)
 
         config = service.load_project("test")
-        assert config.entities["site"]["columns"] == ["system_id", "site_id", "Fustel", "EVNr", "site_type_id", "altitude"]
+        assert config.entities["site"]["columns"] == ["Fustel", "EVNr", "site_type_id", "altitude"]
+
+    def test_add_entity_by_name_rejects_fixed_key_without_producer(
+        self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict
+    ):
+        """Fixed entities whose keys are not produced should be rejected with the expected order."""
+        test_dir = temp_config_dir / "test"
+        test_dir.mkdir()
+        config_path = test_dir / "shapeshifter.yml"
+        config_path.write_text(yaml.dump(sample_yaml_dict))
+        original_config = config_path.read_text()
+
+        mock_state = MagicMock()
+        mock_state.get.return_value = None
+        service.state = mock_state
+
+        entity_data = {
+            "type": "fixed",
+            "public_id": "site_id",
+            "keys": ["Fustel"],
+            "columns": ["site_type_id", "altitude"],
+            "values": "@load:materialized/site.parquet",
+        }
+
+        with pytest.raises(SchemaValidationError, match="does not produce"):
+            service.add_entity_by_name("test", "site", entity_data)
+
+        assert config_path.read_text() == original_config
 
     def test_update_entity_by_name(self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict):
         """Test updating entity by configuration name."""
