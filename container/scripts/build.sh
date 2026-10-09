@@ -8,7 +8,7 @@
 #   Tag:    ./build.sh --git-ref v1.2.0         (clone a release tag, no cache-bust)
 #
 # GitHub builds always run in standalone mode: the build context is this script's
-# directory, so the deployment host only needs Containerfile and build.sh.
+# directory, so the deployment host only needs Containerfile, build.sh and lib/.
 
 set -euo pipefail
 
