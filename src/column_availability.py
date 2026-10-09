@@ -89,9 +89,7 @@ def _get_source_candidates(
     processed_parent_columns: Mapping[str, Sequence[str]] | None,
 ) -> list[str]:
     candidates: list[str] = list(source_columns or [])
-    candidates.extend(sorted(table_cfg.keys))
     candidates.extend(table_cfg.safe_columns)
-    candidates.extend(column for fk in table_cfg.foreign_keys for column in fk.local_keys)
 
     if table_cfg.type == "fixed":
         candidates.extend(column for column in table_cfg.values_column_order if column != table_cfg.system_id)

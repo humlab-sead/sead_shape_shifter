@@ -427,9 +427,7 @@ class PreviewResultBuilder:
         preview_df: pd.DataFrame = table_store[entity_name].head(limit) if limit is not None else table_store[entity_name]
 
         key_columns: set[str] = entity_cfg.get_key_columns()
-        existing_result_columns: set[str] = set(
-            entity_cfg.get_columns(include_keys=True, include_fks=False, include_extra=False, include_unnest=True)
-        )
+        existing_result_columns: set[str] = set(entity_cfg.get_columns(include_fks=False, include_extra=False, include_unnest=True))
         existing_result_columns.add(entity_cfg.system_id)
         if entity_cfg.public_id:
             existing_result_columns.add(entity_cfg.public_id)

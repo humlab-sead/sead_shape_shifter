@@ -99,6 +99,27 @@ def test_unknown_source_fields_remain_advisory_and_partial_metadata_is_used() ->
     assert "not_known" not in result["extra_columns"]["sources"]
 
 
+def test_key_only_fields_are_not_suggested() -> None:
+    project = ShapeShiftProject(
+        cfg={
+            "entities": {
+                "sample": {
+                    "type": "entity",
+                    "keys": ["not_produced"],
+                    "columns": ["produced"],
+                }
+            }
+        }
+    )
+
+    result = resolve_column_availability(project, "sample")
+
+    assert result["columns"] == ["produced"]
+    assert result["business_keys"] == ["produced"]
+    assert "not_produced" not in result["columns"]
+    assert "not_produced" not in result["business_keys"]
+
+
 def test_derived_entity_uses_supplied_processed_source_columns() -> None:
     project = ShapeShiftProject(
         cfg={
@@ -141,7 +162,8 @@ def test_merged_candidates_include_branch_outputs_without_branch_system_id() -> 
 
     result = resolve_column_availability(project, "all_sites")
 
-    assert {"site_code", "site_name", "all_sites_branch", "site_id"}.issubset(result["columns"])
+    assert {"site_name", "all_sites_branch", "site_id"}.issubset(result["columns"])
+    assert "site_code" not in result["columns"]
     assert "system_id" not in result["columns"]
 
 
@@ -207,7 +229,12 @@ async def test_candidates_match_deterministic_normalizer_checkpoints(monkeypatch
     project = ShapeShiftProject(
         cfg={
             "entities": {
-                "site": {"type": "fixed", "public_id": "site_id", "keys": ["site_code"], "columns": ["site_name"]},
+                "site": {
+                    "type": "fixed",
+                    "public_id": "site_id",
+                    "keys": ["site_code"],
+                    "columns": ["site_code", "site_name"],
+                },
                 "measurement": {
                     "type": "entity",
                     "keys": ["site_code"],

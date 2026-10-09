@@ -22,6 +22,7 @@ class FakeFK:
 @dataclass
 class FakeTableConfig:
     keys_columns_and_fks: list[str]
+    type: str = "entity"
     entity_name: str | None = "ent"
     unnest: bool = False
     unnest_columns: list[str] = field(default_factory=list)
