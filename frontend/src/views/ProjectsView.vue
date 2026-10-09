@@ -110,12 +110,7 @@
                   size="x-small"
                   @click.stop="handleSelectProject(project.name)"
                 />
-                <v-btn
-                  icon="mdi-content-copy"
-                  variant="text"
-                  size="x-small"
-                  @click.stop="handleCopyClick(project)"
-                />
+                <v-btn icon="mdi-content-copy" variant="text" size="x-small" @click.stop="handleCopyClick(project)" />
                 <v-btn
                   icon="mdi-check-circle-outline"
                   variant="text"
