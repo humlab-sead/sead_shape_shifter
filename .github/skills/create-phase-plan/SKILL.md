@@ -18,7 +18,9 @@ Determine from the user's request or current conversation:
 
 Infer details when the conversation or verified repository content establishes them.
 
-The target document may come from the current conversation. Do not derive it from repository naming patterns alone. If the destination remains ambiguous, ask one concise clarifying question.
+An explicit target from the user or the current conversation takes precedence. Otherwise, name and place the phase plan per the Document Naming rule in [Proposal document structure](references/proposal-document-structure.md). If the source proposal path is unknown, ask one concise clarifying question.
+
+Preserve the path of an existing phase plan when updating it. If a user-supplied target does not follow the convention, confirm the path before writing.
 
 Do not treat labels, examples, or placeholder text as input values.
 
