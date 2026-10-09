@@ -79,6 +79,66 @@ describe('ForeignKeyEditor', () => {
     expect(tester.attributes('data-disabled')).toBe('false')
   })
 
+  it('shows the positional key pairs and warns when matching keys are reordered', () => {
+    const wrapper = shallowMount(ForeignKeyEditor, {
+      props: {
+        modelValue: [
+          {
+            entity: 'site',
+            local_keys: ['Fustel', 'EVNr'],
+            remote_keys: ['EVNr', 'Fustel'],
+            how: 'inner',
+          },
+        ],
+        projectName: 'demo',
+        entityName: 'sample',
+      },
+      global: {
+        renderStubDefaultSlot: true,
+        stubs: { VAutocomplete: ControlStub, VSelect: ControlStub, VCombobox: ControlStub },
+      },
+    })
+
+    const rows = wrapper.findAll('[data-testid="fk-key-pair-preview"] tbody tr')
+    expect(rows.map((row) => row.findAll('td').map((cell) => cell.text()))).toEqual([
+      ['1', 'Fustel', 'EVNr'],
+      ['2', 'EVNr', 'Fustel'],
+    ])
+    expect(wrapper.get('[data-testid="fk-key-order-warning"]').text()).toContain(
+      'Local and remote keys contain the same names in a different order.'
+    )
+    expect(wrapper.find('[data-testid="fk-key-count-warning"]').exists()).toBe(false)
+  })
+
+  it('shows a warning and an empty pair slot when key counts differ', () => {
+    const wrapper = shallowMount(ForeignKeyEditor, {
+      props: {
+        modelValue: [
+          {
+            entity: 'location',
+            local_keys: ['location_type', 'location_name'],
+            remote_keys: ['location_type'],
+            how: 'inner',
+          },
+        ],
+        projectName: 'demo',
+        entityName: 'sample',
+      },
+      global: {
+        renderStubDefaultSlot: true,
+        stubs: { VAutocomplete: ControlStub, VSelect: ControlStub, VCombobox: ControlStub },
+      },
+    })
+
+    const rows = wrapper.findAll('[data-testid="fk-key-pair-preview"] tbody tr')
+    expect(rows.map((row) => row.findAll('td').map((cell) => cell.text()))).toEqual([
+      ['1', 'location_type', 'location_type'],
+      ['2', 'location_name', ''],
+    ])
+    expect(wrapper.get('[data-testid="fk-key-count-warning"]').text()).toContain('Local and remote key counts differ.')
+    expect(wrapper.find('[data-testid="fk-key-order-warning"]').exists()).toBe(false)
+  })
+
   it('maps candidates to the matching foreign key and keeps free-text entry', async () => {
     const wrapper = shallowMount(ForeignKeyEditor, {
       props: {
