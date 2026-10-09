@@ -38,6 +38,18 @@ describe('taskGraph', () => {
     expect(shouldShowNodeForTaskFilter(mkStatus({ blocked_by: [] }), 'blocked')).toBe(false)
   })
 
+  it('filters entities not marked ignored', () => {
+    expect(shouldShowNodeForTaskFilter(mkStatus({ status: 'todo' as any }), 'not_ignored')).toBe(true)
+    expect(shouldShowNodeForTaskFilter(mkStatus({ status: 'done' as any }), 'not_ignored')).toBe(true)
+    expect(shouldShowNodeForTaskFilter(mkStatus({ status: 'ongoing' as any }), 'not_ignored')).toBe(true)
+    expect(shouldShowNodeForTaskFilter(mkStatus({ status: 'ignored' as any }), 'not_ignored')).toBe(false)
+  })
+
+  it('filters entities with a note', () => {
+    expect(shouldShowNodeForTaskFilter(mkStatus({ has_note: true }), 'has_note')).toBe(true)
+    expect(shouldShowNodeForTaskFilter(mkStatus({ has_note: false }), 'has_note')).toBe(false)
+  })
+
   it('filters critical entities', () => {
     expect(shouldShowNodeForTaskFilter(mkStatus({ priority: 'critical' as any }), 'critical')).toBe(true)
     expect(shouldShowNodeForTaskFilter(mkStatus({ priority: 'ready' as any }), 'critical')).toBe(false)
