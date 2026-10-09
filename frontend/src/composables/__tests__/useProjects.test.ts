@@ -185,6 +185,48 @@ describe('useProjects', () => {
     })
   })
 
+  describe('ensureLoaded (stale-while-revalidate)', () => {
+    it('should block on a fetch when the cache is cold', async () => {
+      const store = useProjectStore()
+      const spy = vi.spyOn(store, 'fetchProjects').mockResolvedValue()
+
+      const { ensureLoaded, initialized } = useProjects({ autoFetch: false })
+      await ensureLoaded()
+
+      expect(spy).toHaveBeenCalledTimes(1)
+      expect(spy).toHaveBeenCalledWith()
+      expect(initialized.value).toBe(true)
+    })
+
+    it('should reuse a fresh cached list without fetching', async () => {
+      const store = useProjectStore()
+      store.projects = [{ name: 'cached' } as ProjectMetadata]
+      vi.spyOn(store, 'isProjectsStale').mockReturnValue(false)
+      const spy = vi.spyOn(store, 'fetchProjects').mockResolvedValue()
+
+      const { ensureLoaded, initialized } = useProjects({ autoFetch: false })
+      await ensureLoaded()
+
+      expect(initialized.value).toBe(true)
+      expect(spy).not.toHaveBeenCalled()
+    })
+
+    it('should revalidate a stale cached list in the background', async () => {
+      const store = useProjectStore()
+      store.projects = [{ name: 'cached' } as ProjectMetadata]
+      vi.spyOn(store, 'isProjectsStale').mockReturnValue(true)
+      const spy = vi.spyOn(store, 'fetchProjects').mockResolvedValue()
+
+      const { ensureLoaded, initialized } = useProjects({ autoFetch: false })
+      await ensureLoaded()
+
+      expect(initialized.value).toBe(true)
+      expect(spy).toHaveBeenCalledWith({ silent: true })
+      // A background revalidation must not block the view with a loading state.
+      expect(store.loading).toBe(false)
+    })
+  })
+
   describe('select action', () => {
     it('should select a project', async () => {
       const store = useProjectStore()

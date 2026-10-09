@@ -47,6 +47,10 @@ profile-stats:
 	@uv run python -c "import pstats; p = pstats.Stats('profile.stats'); p.sort_stats('cumulative').print_stats(30)"
 	@echo "✓ Full stats saved to profile.stats"
 
+.PHONY: profile-projects
+profile-projects:
+	@uv run python scripts/profile_projects_listing.py
+
 .PHONY: publish
 publish:
 	@echo "Publishing Python package to PyPI"

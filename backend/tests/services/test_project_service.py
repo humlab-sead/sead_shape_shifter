@@ -157,6 +157,26 @@ options:
         assert configs[0].created_at > 0
         assert configs[0].modified_at > 0
 
+    def test_list_projects_uses_listing_loader(self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict, monkeypatch):
+        """Discovery loads project files through the fast listing loader."""
+        project_dir = temp_config_dir / "listing"
+        project_dir.mkdir()
+        (project_dir / "shapeshifter.yml").write_text(yaml.dump(sample_yaml_dict))
+
+        calls: list[Path] = []
+        original = service.yaml_service.load_for_listing
+
+        def spying(filename):
+            calls.append(Path(filename))
+            return original(filename)
+
+        monkeypatch.setattr(service.yaml_service, "load_for_listing", spying)
+
+        configs = service.list_projects()
+
+        assert [config.name for config in configs] == ["listing"]
+        assert calls == [project_dir / "shapeshifter.yml"]
+
     def test_list_configurations_skips_non_yml(self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict):
         """Test list ignores non-YAML files."""
         # New structure: project_name/shapeshifter.yml

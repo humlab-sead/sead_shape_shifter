@@ -39,6 +39,34 @@ export function useProjects(options: UseProjectsOptions = {}) {
     }
   }
 
+  /**
+   * Refresh the project list in the background without blocking the view.
+   * Used when a cached list is shown but its freshness window has expired.
+   */
+  async function revalidate() {
+    try {
+      await store.fetchProjects({ silent: true })
+    } catch (err) {
+      console.error('Failed to revalidate projects:', err)
+    }
+  }
+
+  /**
+   * Load the project list on mount using a stale-while-revalidate strategy: a
+   * cached list is shown immediately and only re-fetched when it is stale, while
+   * a cold cache blocks on the first fetch.
+   */
+  async function ensureLoaded() {
+    if (store.projects.length > 0) {
+      initialized.value = true
+      if (store.isProjectsStale()) {
+        void revalidate()
+      }
+      return
+    }
+    await fetch()
+  }
+
   async function select(name: string) {
     try {
       return await store.selectProject(name)
@@ -131,7 +159,7 @@ export function useProjects(options: UseProjectsOptions = {}) {
   // Auto-fetch on mount if enabled
   onMounted(async () => {
     if (autoFetch && !initialized.value) {
-      await fetch()
+      await ensureLoaded()
     }
 
     // Auto-select project if specified
@@ -156,6 +184,8 @@ export function useProjects(options: UseProjectsOptions = {}) {
     count,
     // Actions
     fetch,
+    revalidate,
+    ensureLoaded,
     select,
     refresh,
     create,

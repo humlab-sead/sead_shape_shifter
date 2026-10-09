@@ -2,9 +2,12 @@
 
 import time
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
+from ruamel.yaml.comments import CommentedMap
 
+from backend.app.services import yaml_service as yaml_service_module
 from backend.app.services.yaml_service import (
     YamlLoadError,
     YamlService,
@@ -80,6 +83,65 @@ third: 3
         data = yaml_service.load(file_path)
         keys = list(data.keys())
         assert keys == ["first", "second", "third"]
+
+
+class TestYamlServiceLoadForListing:
+    """Tests for the fast, discovery-only loader used by project listing."""
+
+    def test_matches_full_load_for_valid_document(self, yaml_service, temp_yaml_file):
+        """The listing loader returns the same data as the full loader."""
+        assert yaml_service.load_for_listing(temp_yaml_file) == yaml_service.load(temp_yaml_file)
+
+    def test_returns_plain_python_objects(self, yaml_service, temp_yaml_file):
+        """The listing loader returns plain dicts, not ruamel wrapper types."""
+        data = yaml_service.load_for_listing(temp_yaml_file)
+        assert isinstance(data, dict) and not isinstance(data, CommentedMap)
+        assert isinstance(data["entities"], dict) and not isinstance(data["entities"], CommentedMap)
+
+    def test_load_nonexistent_file(self, yaml_service, tmp_path):
+        """A missing file raises the same error as the full loader."""
+        with pytest.raises(YamlLoadError, match="File not found"):
+            yaml_service.load_for_listing(tmp_path / "nonexistent.yml")
+
+    def test_load_directory_raises_error(self, yaml_service, tmp_path):
+        """A directory raises the same error as the full loader."""
+        with pytest.raises(YamlLoadError, match="Not a file"):
+            yaml_service.load_for_listing(tmp_path)
+
+    def test_load_empty_file(self, yaml_service, tmp_path):
+        """An empty file returns an empty dict."""
+        empty_file = tmp_path / "empty.yml"
+        empty_file.write_text("")
+        assert yaml_service.load_for_listing(empty_file) == {}
+
+    def test_non_mapping_root_raises_error(self, yaml_service, tmp_path):
+        """A non-mapping root raises the same error as the full loader."""
+        list_file = tmp_path / "list.yml"
+        list_file.write_text("- one\n- two\n")
+        with pytest.raises(YamlLoadError, match="must be a dictionary"):
+            yaml_service.load_for_listing(list_file)
+
+    def test_rejects_duplicate_keys_like_full_loader(self, yaml_service, tmp_path):
+        """Duplicate mapping keys are rejected, matching the full loader."""
+        duplicate_file = tmp_path / "duplicate.yml"
+        duplicate_file.write_text("entities:\n  sample:\n    type: entity\n  sample:\n    type: entity\n")
+
+        with pytest.raises(YamlLoadError):
+            yaml_service.load(duplicate_file)
+
+        with pytest.raises(YamlLoadError):
+            yaml_service.load_for_listing(duplicate_file)
+
+    def test_falls_back_to_full_loader(self, yaml_service, temp_yaml_file, monkeypatch):
+        """A file the fast parser cannot handle is retried with the full loader."""
+
+        def explode(*args, **kwargs):
+            raise RuntimeError("fast parser cannot handle this file")
+
+        monkeypatch.setattr(yaml_service_module, "_LISTING_YAML_LOADER", object())
+        monkeypatch.setattr(yaml_service_module, "_pyyaml", SimpleNamespace(load=explode))
+
+        assert yaml_service.load_for_listing(temp_yaml_file) == yaml_service.load(temp_yaml_file)
 
 
 class TestYamlServiceSave:

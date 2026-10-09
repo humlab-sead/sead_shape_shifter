@@ -129,7 +129,9 @@ class ProjectService:
         # Recursively find all shapeshifter.yml files
         for yaml_file in self.projects_dir.rglob("shapeshifter.yml"):
             try:
-                data: dict[str, Any] = self.yaml_service.load(yaml_file)
+                # Discovery only reads metadata.type and the entity count, so use the
+                # faster listing loader instead of the full round-trip-preserving load.
+                data: dict[str, Any] = self.yaml_service.load_for_listing(yaml_file)
 
                 if not self.specification.is_satisfied_by(data):
                     logger.debug(f"Skipping {yaml_file} - does not satisfy project specification")
