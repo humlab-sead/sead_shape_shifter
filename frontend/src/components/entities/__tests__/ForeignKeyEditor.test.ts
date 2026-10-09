@@ -18,8 +18,9 @@ vi.mock('@/composables/useDirectiveValidation', () => ({
 
 const ForeignKeyTesterStub = {
   name: 'ForeignKeyTester',
-  props: ['disabled'],
-  template: '<div data-testid="foreign-key-tester" :data-disabled="String(disabled)" />',
+  props: ['disabled', 'foreignKey'],
+  template:
+    '<div data-testid="foreign-key-tester" :data-disabled="String(disabled)" :data-entity="foreignKey.entity" />',
 }
 
 const ComboboxStub = {
@@ -41,7 +42,7 @@ describe('ForeignKeyEditor', () => {
     directiveMocks.validateDirective.mockClear()
   })
 
-  it('disables foreign key testing while entity changes are unsaved', async () => {
+  it('allows testing an existing entity foreign key draft without saving', async () => {
     const wrapper = shallowMount(ForeignKeyEditor, {
       props: {
         modelValue: [
@@ -69,8 +70,9 @@ describe('ForeignKeyEditor', () => {
     })
 
     const tester = wrapper.find('[data-testid="foreign-key-tester"]')
-    expect(tester.attributes('data-disabled')).toBe('true')
-    expect(wrapper.text()).toContain('Save the entity before testing this foreign key.')
+    expect(tester.attributes('data-disabled')).toBe('false')
+    expect(tester.attributes('data-entity')).toBe('site')
+    expect(wrapper.text()).toContain('Tests this foreign key against saved entity data without saving your changes.')
 
     await wrapper.setProps({ hasUnsavedChanges: false })
 
