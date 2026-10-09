@@ -180,7 +180,7 @@ const childStubs = {
   },
   ReplacementsEditor: {
     name: 'ReplacementsEditor',
-    props: ['availableColumns'],
+    props: ['modelValue', 'availableColumns'],
     template: '<div data-testid="replacements-editor" />',
   },
   FixedValuesGrid: {
@@ -338,6 +338,27 @@ describe('EntityFormDialog', () => {
     mockState.getValues.mockReset()
     mockState.updateValues.mockReset()
     mockState.syncCachedEntity.mockReset()
+  })
+
+  it('loads persisted replacements into the ReplacementsEditor when the edit dialog opens', async () => {
+    const entityWithReplacements = createEntity('locations', {
+      type: 'entity',
+      public_id: 'location_id',
+      keys: ['location_name'],
+      columns: ['socken', 'landskap'],
+      replacements: {
+        landskap: [{ map: { Bo: 'Bohuslan', Vg: 'Vastergotland' } }],
+      },
+    })
+
+    const wrapper = mountEntityFormDialog({ mode: 'edit', entity: entityWithReplacements })
+    await flushPromises()
+    await nextTick()
+
+    const replacementsEditor = wrapper.findComponent({ name: 'ReplacementsEditor' })
+    expect(replacementsEditor.props('modelValue')).toEqual({
+      landskap: [{ map: { Bo: 'Bohuslan', Vg: 'Vastergotland' } }],
+    })
   })
 
   it('shows the branches tab when type changes to merged, enables it in create mode, and hides append', async () => {

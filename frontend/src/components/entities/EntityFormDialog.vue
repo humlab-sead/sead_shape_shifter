@@ -3319,6 +3319,7 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
       append: (entity.entity_data.append as any[]) || [],
       branches: (entity.entity_data.branches as any[]) || [],
       extra_columns: (entity.entity_data.extra_columns as Record<string, ExtraColumnValue>) || undefined,
+      replacements: (entity.entity_data.replacements as Record<string, any>) || undefined,
     },
   }
 }
