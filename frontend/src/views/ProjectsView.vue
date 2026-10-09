@@ -30,6 +30,14 @@
         />
       </v-col>
       <v-col cols="12" md="3" class="text-right">
+        <v-btn
+          icon="mdi-refresh"
+          variant="text"
+          :disabled="loading"
+          aria-label="Refresh project list"
+          title="Refresh project list"
+          @click="handleRefresh"
+        />
         <v-btn color="primary" prepend-icon="mdi-plus" @click="showCreateDialog = true"> New Project </v-btn>
       </v-col>
     </v-row>

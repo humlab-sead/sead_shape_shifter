@@ -30,6 +30,13 @@ function extractErrorMessage(err: unknown, fallback: string): string {
   return err instanceof Error ? err.message : fallback
 }
 
+/**
+ * How long a fetched project list is treated as fresh. Within this window a view
+ * mount reuses the cached list; after it, the list is revalidated in the
+ * background while the cached list stays visible.
+ */
+export const PROJECT_LIST_TTL_MS = 30_000
+
 export const useProjectStore = defineStore('project', () => {
   // State
   const projects = ref<ProjectMetadata[]>([])
@@ -39,6 +46,8 @@ export const useProjectStore = defineStore('project', () => {
   const loading = ref(false)
   const error = ref<string | null>(null)
   const hasUnsavedChanges = ref(false)
+  // When the project list was last read from the server; null means it is not known to be fresh.
+  const lastFetchedAt = ref<number | null>(null)
 
   // Diagnostic logging helper for state sync debugging
   function logState(action: string, details: Record<string, unknown> = {}) {
@@ -72,17 +81,39 @@ export const useProjectStore = defineStore('project', () => {
   })
 
   // Actions
-  async function fetchProjects() {
-    loading.value = true
+  async function fetchProjects(options: { silent?: boolean } = {}) {
+    const silent = options.silent ?? false
+    if (!silent) {
+      loading.value = true
+    }
     error.value = null
     try {
       projects.value = await api.projects.list()
+      lastFetchedAt.value = Date.now()
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to fetch projects'
+      // A background revalidation keeps the cached list visible, so it does not
+      // surface an error page; it only marks the list stale for the next attempt.
+      if (!silent) {
+        error.value = err instanceof Error ? err.message : 'Failed to fetch projects'
+      }
+      lastFetchedAt.value = null
       throw err
     } finally {
-      loading.value = false
+      if (!silent) {
+        loading.value = false
+      }
     }
+  }
+
+  function isProjectsStale(ttlMs: number = PROJECT_LIST_TTL_MS): boolean {
+    if (lastFetchedAt.value === null) {
+      return true
+    }
+    return Date.now() - lastFetchedAt.value > ttlMs
+  }
+
+  function markProjectsStale() {
+    lastFetchedAt.value = null
   }
 
   async function selectProject(name: string) {
@@ -146,6 +177,7 @@ export const useProjectStore = defineStore('project', () => {
         modified_at: project.metadata?.modified_at,
         is_valid: project.metadata?.is_valid,
       })
+      markProjectsStale()
       selectedProject.value = project
       hasUnsavedChanges.value = false
       logState('createProject:after', { name: data.name })
@@ -177,6 +209,7 @@ export const useProjectStore = defineStore('project', () => {
         }
       }
 
+      markProjectsStale()
       selectedProject.value = project
       hasUnsavedChanges.value = false
       return project
@@ -212,6 +245,7 @@ export const useProjectStore = defineStore('project', () => {
         }
       }
 
+      markProjectsStale()
       selectedProject.value = project
       hasUnsavedChanges.value = false
 
@@ -236,6 +270,7 @@ export const useProjectStore = defineStore('project', () => {
 
       await api.projects.delete(name)
       projects.value = projects.value.filter((c) => c.name !== name)
+      markProjectsStale()
       if (selectedProject.value?.metadata?.name === name) {
         selectedProject.value = null
       }
@@ -466,6 +501,7 @@ export const useProjectStore = defineStore('project', () => {
     loading.value = false
     error.value = null
     hasUnsavedChanges.value = false
+    lastFetchedAt.value = null
   }
 
   return {
@@ -477,6 +513,7 @@ export const useProjectStore = defineStore('project', () => {
     loading,
     error,
     hasUnsavedChanges,
+    lastFetchedAt,
     // Getters
     currentProjectName,
     sortedProjects,
@@ -485,6 +522,8 @@ export const useProjectStore = defineStore('project', () => {
     hasWarnings,
     // Actions
     fetchProjects,
+    isProjectsStale,
+    markProjectsStale,
     selectProject,
     refreshProject,
     createProject,
