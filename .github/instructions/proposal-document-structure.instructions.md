@@ -1,5 +1,5 @@
 ---
-description: "Use when creating or editing proposal-tree Markdown files in docs/proposals. Enforces document-type selection, required structure, and separation between proposals, phase plans, task plans, handoffs, and archive notes."
+description: "Use when creating or editing proposal-tree Markdown files in docs/proposals, including naming and locating proposals, phase plans, and task plans. Enforces document-type selection, document naming, required structure, and separation between document types."
 applyTo: "docs/proposals/**/*.md"
 ---
 
@@ -18,6 +18,22 @@ Classify each file as one primary type before writing. Create separate files whe
 | Task plan | Breaking one phase into work items and definition of done | Multi-phase strategy |
 | Handoff | Recording current state, next actions, risks, references, and open decisions | New decisions unless clearly labeled as recommendations |
 | Archive note | Recording completed work | New active scope |
+
+## Document Naming
+
+Name each document from the work it covers and its role, so related files sort together and the source document is identifiable from the name.
+
+| Type | Name | Location |
+|---|---|---|
+| Proposal | `<TOPIC>.md` | `docs/proposals/` |
+| Phase plan | `<TOPIC>_PHASE_PLAN.md` | Beside the proposal |
+| Task plan | `<TOPIC>_PHASE_<N>_TASK_PLAN.md` | Beside the phase plan |
+
+- `<TOPIC>` is the source proposal's file name without its extension and names the work, for example `DECLARATIVE_BUSINESS_KEYS`.
+- `<N>` is the phase number from the phase plan. Omit `_PHASE_<N>` when the plan has a single unnumbered phase.
+- Keep a topic's documents in a folder named `<TOPIC>` when the topic has more than one document; a standalone proposal may sit directly in `docs/proposals/`.
+- Status folders such as `done/`, `future/`, and `onhold/`, and grouping folders that hold several topics, do not follow the single-topic rule.
+- An explicit target from the user or the current conversation takes precedence. Preserve the path of an existing document when updating it, and confirm the path before writing when a supplied target does not follow these names.
 
 ## Structures
 
@@ -100,3 +116,4 @@ Check that:
 - acceptance criteria retain their required source and downstream mappings
 - open questions are real decisions, not filler
 - related phase plans, task plans, or handoff documents are linked when they already exist
+- the document name and location follow the Document Naming rule
