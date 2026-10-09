@@ -121,6 +121,33 @@ describe('FixedValuesGrid', () => {
     expect(wrapper.emitted('validation-errors')).toBeUndefined()
   })
 
+  it('renders columns in the supplied order without recomputing positions', async () => {
+    const wrapper = shallowMount(FixedValuesGrid, {
+      props: {
+        modelValue: [[1, 53, '2026-05-19', 'Sampling']],
+        columns: ['system_id', 'method_id', 'created_at', 'label'],
+        columnTypes: {},
+        publicId: 'method_id',
+      },
+      global: {
+        stubs: {
+          AgGridVue: AgGridVueStub,
+        },
+      },
+    })
+
+    await nextTick()
+
+    const columnDefs = (wrapper.vm as any).columnDefs as Array<Record<string, any>>
+    // The first column def is the selection checkbox; the rest mirror props.columns.
+    expect(columnDefs.slice(1).map((column) => column.headerName)).toEqual([
+      'system_id',
+      'method_id',
+      'created_at',
+      'label',
+    ])
+  })
+
   it('wires compact header components for editable columns and removes detached controls', async () => {
     const wrapper = shallowMount(FixedValuesGrid, {
       props: {
