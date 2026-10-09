@@ -249,10 +249,10 @@
                   :entity-name="entityName"
                   :foreign-key="fk"
                   :foreign-key-index="index"
-                  :disabled="!isEntitySaved || hasUnsavedChanges"
+                  :disabled="!isEntitySaved"
                 />
                 <div v-if="isEntitySaved && hasUnsavedChanges" class="text-caption text-medium-emphasis mt-1">
-                  Save the entity before testing this foreign key.
+                  Tests this foreign key against saved entity data without saving your changes.
                 </div>
               </v-col>
             </v-row>

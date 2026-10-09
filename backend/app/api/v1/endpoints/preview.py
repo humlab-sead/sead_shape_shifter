@@ -8,6 +8,7 @@ from loguru import logger
 from backend.app.authorization.dependencies import require_project
 from backend.app.authorization.models import Action, AuthorizedResource
 from backend.app.exceptions import ConstraintViolationError, ValidationError
+from backend.app.models.entity import ForeignKeyConfig
 from backend.app.models.join_test import JoinTestResult
 from backend.app.models.shapeshift import PreviewResult
 from backend.app.services.project_service import ProjectService
@@ -248,6 +249,9 @@ async def test_foreign_key_join(
     entity_name: str = Path(..., description="Name of the entity with the foreign key"),
     fk_index: int = Path(..., description="Index of the foreign key to test", ge=0),
     sample_size: int = Query(100, description="Number of rows to test", ge=10, le=1000),
+    foreign_key_config: Optional[ForeignKeyConfig] = Body(
+        None, description="Current foreign key configuration; when provided, tests this configuration instead of a saved index"
+    ),
     validate_fk_service: ValidateForeignKeyService = Depends(get_validate_fk_service),
 ) -> JoinTestResult:
     """
@@ -272,6 +276,7 @@ async def test_foreign_key_join(
             entity_name=entity_name,
             foreign_key_index=fk_index,
             sample_size=sample_size,
+            foreign_key_config=foreign_key_config,
         )
         return result
     except FunctionalDependencyError as e:
