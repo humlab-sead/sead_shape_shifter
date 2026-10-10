@@ -40,6 +40,7 @@ REQUIRED_FILES=(
 	Containerfile
 	.env.example
 	.containerignore
+    scripts/container.sh
 	scripts/load-env.sh
 	scripts/env-config.sh
 	scripts/setup.sh
