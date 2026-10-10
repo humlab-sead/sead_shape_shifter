@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pandas as pd
 import pytest
 
+from src.extract import SubsetService
 from src.loaders.base_loader import DataLoader
 from src.model import ShapeShiftProject, TableConfig
 from src.normalizer import ProcessState, ShapeShifter
@@ -243,6 +244,55 @@ class TestProcessState:
 
 class TestShapeShifter:
     """Tests for ShapeShifter class."""
+
+    @pytest.mark.asyncio
+    async def test_process_entity_rejects_loader_discovered_missing_key(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        project = ShapeShiftProject(
+            cfg={
+                "entities": {
+                    "sql_entity": {
+                        "type": "sql",
+                        "columns": [],
+                        "keys": ["not_loaded"],
+                        "data_source": "database",
+                        "query": "SELECT value FROM source_table",
+                    }
+                }
+            }
+        )
+        normalizer = ShapeShifter(project=project)
+        monkeypatch.setattr(normalizer, "get_subset", AsyncMock(return_value=pd.DataFrame({"value": [1]})))
+
+        try:
+            with pytest.raises(ValueError, match=r"sql_entity.*not_loaded.*keys.*do not create output columns"):
+                await normalizer._process_entity("sql_entity", SubsetService())
+        finally:
+            normalizer.duckdb_workspace.close()
+            normalizer.loaders.close_all()
+
+    @pytest.mark.asyncio
+    async def test_process_entity_accepts_key_produced_by_extra_columns(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        project = ShapeShiftProject(
+            cfg={
+                "entities": {
+                    "sample": {
+                        "type": "entity",
+                        "columns": ["source_value"],
+                        "keys": ["generated_key"],
+                        "extra_columns": {"generated_key": "source_value"},
+                    }
+                }
+            }
+        )
+        normalizer = ShapeShifter(project=project)
+        monkeypatch.setattr(normalizer, "get_subset", AsyncMock(return_value=pd.DataFrame({"source_value": ["a", "b"]})))
+
+        try:
+            await normalizer._process_entity("sample", SubsetService())
+            assert normalizer.table_store["sample"]["generated_key"].tolist() == ["a", "b"]
+        finally:
+            normalizer.duckdb_workspace.close()
+            normalizer.loaders.close_all()
 
     def test_initialization(self, survey_only_config: ShapeShiftProject):
         """Test ShapeShifter initialization."""

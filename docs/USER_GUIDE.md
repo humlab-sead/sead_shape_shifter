@@ -503,6 +503,16 @@ Use `fixed` entities for:
 
 The fixed editor supports spreadsheet-style pasting.
 
+### Fixed Row Order and Business Keys
+
+The fixed grid shows the schema Shape Shifter uses for the stored rows:
+
+- Managed identity fields lead the grid: `system_id`, then the entity's `public_id` when it has one.
+- Produced data fields follow in their configured order.
+- Business keys label fields that already exist in the grid. Adding a key does not add a grid column, and a key that no produced field matches is reported by validation.
+
+If a fixed entity stores its values in a separate file (an `@load:` directive), the editor loads those rows into the same displayed order. When the values file columns cannot be matched to the displayed schema, the editor shows an error and disables saving instead of writing rows into the wrong fields.
+
 ### Edit a Fixed Entity
 
 Use this workflow when you need to maintain a lookup table directly in the project:

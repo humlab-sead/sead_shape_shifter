@@ -677,8 +677,8 @@ class TestTableConfig:
 
         assert table.has_append is False
 
-    def test_keys_and_columns_property(self):
-        """Test keys_and_columns returns keys first, then columns."""
+    def test_keys_and_columns_property_uses_configured_columns_only(self):
+        """Test keys_and_columns preserves configured producer order and ignores key-only fields."""
         entities: dict[str, dict[str, Any]] = {
             "site": {"public_id": "site_id", "keys": ["id", "name"], "columns": ["description", "id", "location"]}
         }
@@ -686,11 +686,7 @@ class TestTableConfig:
         table = TableConfig(entities_cfg=entities, entity_name="site")
         result = table.keys_and_columns
 
-        # Keys should come first
-        assert set(result[:2]) == {"id", "name"}
-        # Then non-key columns
-        assert "description" in result[2:]
-        assert "location" in result[2:]
+        assert result == ["description", "id", "location"]
 
     def test_unnest_columns_property(self):
         """Test unnest_columns returns set of unnest column names."""
@@ -750,7 +746,7 @@ class TestTableConfig:
 
         assert table.is_unnested(df) is False
 
-    def test_get_columns_all_included(self):
+    def test_get_columns_returns_produced_fields_without_key_only_fields(self):
         """Test get_columns with all options included."""
         entities: dict[str, dict[str, Any]] = {
             "site": {
@@ -759,28 +755,29 @@ class TestTableConfig:
                 "columns": ["name", "description"],
                 "extra_columns": {"created_at": None},
                 "foreign_keys": [{"entity": "location", "local_keys": ["location_id"], "remote_keys": ["location_id"]}],
-                "unnest": {"id_vars": ["id"], "value_vars": ["val"], "var_name": "var", "value_name": "value"},
+                "unnest": {"id_vars": ["row_id"], "value_vars": ["val"], "var_name": "var", "value_name": "value"},
             },
             "location": {"public_id": "location_id"},
         }
 
         table = TableConfig(entities_cfg=entities, entity_name="site")
-        cols = table.get_columns(include_keys=True, include_fks=True, include_extra=True, include_unnest=True)
+        cols = table.get_columns(include_fks=True, include_extra=True, include_unnest=True)
 
-        assert "id" in cols
+        assert "id" not in cols
         assert "name" in cols
         assert "description" in cols
         assert "created_at" in cols
         assert "location_id" in cols
+        assert "row_id" in cols
         assert "var" in cols
         assert "value" in cols
 
-    def test_get_columns_exclude_keys(self):
-        """Test get_columns excluding keys."""
+    def test_get_columns_ignores_keys_not_declared_as_outputs(self):
+        """Test get_columns does not treat keys as output fields."""
         entities: dict[str, dict[str, Any]] = {"site": {"public_id": "site_id", "keys": ["id"], "columns": ["name"]}}
 
         table = TableConfig(entities_cfg=entities, entity_name="site")
-        cols = table.get_columns(include_keys=False)
+        cols = table.get_columns()
 
         assert "id" not in cols
         assert "name" in cols
@@ -938,7 +935,7 @@ class TestTableConfig:
 
         result = table.values_column_order
 
-        expected = ["system_id", "sample_type_id", "lab_id", "type_code", "type_name", "description", "active"]
+        expected = ["system_id", "sample_type_id", "type_name", "description", "active"]
         assert result == expected
 
     def test_values_column_order_without_public_id(self):
@@ -948,7 +945,7 @@ class TestTableConfig:
 
         result = table.values_column_order
 
-        expected = ["system_id", "code", "name", "description"]
+        expected = ["system_id", "name", "description"]
         assert result == expected
 
     def test_values_column_order_without_keys(self):
@@ -1436,8 +1433,8 @@ class TestShapeShiftProject:
 
         reordered = tables.reorder_columns("site", df)
 
-        # site_id should be first, the the rest of the columns sorted
-        assert list(reordered.columns) == ["site_id", "description", "name"]
+        # The configured data-column order follows the entity configuration.
+        assert list(reordered.columns) == ["site_id", "name", "description"]
 
     def test_reorder_columns_with_foreign_keys(self):
         """Test reorder_columns places foreign key IDs after primary ID."""
@@ -1458,8 +1455,8 @@ class TestShapeShiftProject:
 
         reordered = tables.reorder_columns("site", df)
 
-        # Order: site_id, location_id, then other columns
-        assert list(reordered.columns) == ["site_id", "location_id", "location_name", "site_name"]
+        # Order: site_id, location_id, then configured data columns
+        assert list(reordered.columns) == ["site_id", "location_id", "site_name", "location_name"]
 
     def test_reorder_columns_with_extra_columns(self):
         """Test reorder_columns places extra_columns after foreign keys."""
@@ -1515,7 +1512,7 @@ class TestShapeShiftProject:
         reordered = tables.reorder_columns("site", df)
 
         # Should still work, just without site_id in front
-        assert list(reordered.columns) == ["description", "name"]
+        assert list(reordered.columns) == ["name", "description"]
 
     def test_reorder_columns_with_table_config_object(self):
         """Test reorder_columns accepts TableConfig object instead of string."""

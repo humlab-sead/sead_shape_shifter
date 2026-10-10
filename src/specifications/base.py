@@ -91,7 +91,7 @@ class Specification(ABC):
         return "\n".join(lines)
 
 
-ColumnType = Literal["columns", "keys", "extra_columns", "unnest", "foreign_keys"]
+ColumnType = Literal["columns", "extra_columns", "unnest", "foreign_keys"]
 
 
 class ProjectSpecification(Specification):
@@ -158,7 +158,7 @@ class ProjectSpecification(Specification):
         FIXME: consider moving it TableConfig
                Note that columns available at a specific FK's linking includes result columns from previous linked FKs.
         """
-        avaliable_types: set[ColumnType] = {"columns", "keys", "extra_columns", "unnest", "foreign_keys"}
+        avaliable_types: set[ColumnType] = {"columns", "extra_columns", "unnest", "foreign_keys"}
         exclude_types = exclude_types or set()
         include_types = (include_types or avaliable_types) - exclude_types
 
@@ -176,19 +176,18 @@ class ProjectSpecification(Specification):
             if columns:
                 all_columns.update(columns)
 
-        if "keys" in include_types:
-            keys: list[str] | None = entity_cfg.get("keys")
-            if keys:
-                all_columns.update(keys)
-
         if "extra_columns" in include_types:
             extra_columns: dict[str, Any] | None = entity_cfg.get("extra_columns")
             if extra_columns:
                 all_columns.update(extra_columns.keys())
 
         if "unnest" in include_types:
+            unnest_cfg = entity_cfg.get("unnest", {}) or {}
+            id_vars: list[str] | None = unnest_cfg.get("id_vars")
+            if id_vars:
+                all_columns.update(id_vars)
             for column in ["var_name", "value_name"]:
-                col_name: str | None = entity_cfg.get("unnest", {}).get(column)
+                col_name: str | None = unnest_cfg.get(column)
                 if col_name:
                     all_columns.add(col_name)
 

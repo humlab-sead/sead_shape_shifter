@@ -5,7 +5,7 @@ from loguru import logger
 
 from src.loaders.base_loader import ConnectTestResult
 from src.transforms.utility import add_system_id
-from src.types.fixed_entity_types import FixedEntityTypeCoercer
+from src.types.fixed_entity_types import FixedEntityTypeCoercer, build_fixed_entity_full_columns
 
 from .base_loader import DataLoader, DataLoaders, LoaderType
 
@@ -105,23 +105,18 @@ class FixedLoader(DataLoader):
         if not all(len(row) == row_length for row in values):
             raise ValueError(f"Fixed data entity '{entity_name}' has inconsistent row lengths in values")
 
-        identity_columns: list[str] = []
-        if table_cfg.system_id not in columns:
-            identity_columns.append(table_cfg.system_id)
-        if table_cfg.public_id and table_cfg.public_id not in columns:
-            identity_columns.append(table_cfg.public_id)
-
-        columns_with_identity: list[str] = identity_columns + columns
+        full_columns: list[str] = build_fixed_entity_full_columns(columns, table_cfg.public_id)
 
         if row_length == len(columns):
             return columns
 
-        if row_length == len(columns_with_identity):
-            return columns_with_identity
+        if row_length == len(full_columns):
+            return full_columns
 
         raise ValueError(
             f"Fixed data entity '{entity_name}' has mismatched number of values per row "
-            f"(got {row_length}, expected {len(columns)} for data-only rows or {len(columns_with_identity)} with identity columns)"
+            f"(got {row_length}, expected {len(columns)} for data-only rows or {len(full_columns)} with identity columns). "
+            f"Expected positional column order: {full_columns}"
         )
 
     async def test_connection(self) -> ConnectTestResult:

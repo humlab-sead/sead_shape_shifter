@@ -379,8 +379,8 @@
                           >
                             <template #message>
                               <span class="text-caption" v-if="formData.type === 'fixed'">
-                                Fixed values grid fields. Business keys should be chosen from these fields; system_id
-                                and public_id stay implicit in the stored schema.
+                                Fixed values grid fields. Business keys select produced fields but do not add grid
+                                columns; system_id and public_id stay implicit in the stored schema.
                               </span>
                               <span class="text-caption" v-else-if="isMergedEntityType">
                                 Optional post-merge column restriction. Leave empty to keep the full union returned by
@@ -549,7 +549,8 @@
                       />
                       <v-alert v-else type="info" variant="tonal" density="compact" class="mb-2">
                         <v-alert-title>No Columns Defined</v-alert-title>
-                        Add keys and/or columns above to define the grid structure for fixed values.
+                        Add produced columns above to define the grid structure for fixed values. Business keys do not
+                        create grid columns.
                       </v-alert>
                     </div>
 
@@ -1039,7 +1040,7 @@ import { ref, computed, watch, watchEffect, onMounted, onUnmounted } from 'vue'
 import { useEntities, useSuggestions, useEntityPreview, useSettings, useColumnAvailability } from '@/composables'
 import { useNotification } from '@/composables/useNotification'
 import { useProjectStore, useEntityStore } from '@/stores'
-import type { EntityResponse } from '@/api/entities'
+import type { EntityResponse, FixedSchema } from '@/api/entities'
 import type { ForeignKeySuggestion, DependencySuggestion } from '@/composables'
 import * as yaml from 'js-yaml'
 import { AgGridVue } from 'ag-grid-vue3'
@@ -1065,7 +1066,7 @@ import { api } from '@/api'
 import type { EntityTypeInfo } from '@/api/data-sources'
 import { queryApi } from '@/api/query'
 import {
-  buildFixedValuesColumns,
+  buildFixedFullColumns,
   applyMaterializationRoundTripToFixedEntity,
   extractMaterializationRoundTripState,
   getExternalValuesUpdateColumns,
@@ -1204,6 +1205,13 @@ const materializedConfig = ref<Record<string, any> | null>(null)
 const initialFormSnapshot = ref<string | null>(null)
 const hasPendingChanges = ref(false)
 const suppressFixedSchemaRemap = ref(false)
+// Backend `fixed_schema` metadata loaded for the current fixed entity, if any.
+// It is retained for identity/key roles and order provenance, but never used as
+// a second ordering rule: the active order always comes from produced columns.
+const loadedFixedSchema = ref<FixedSchema | null>(null)
+// Set when external values cannot be mapped onto the active full order. Blocks a
+// positional save instead of guessing a legacy layout.
+const fixedValuesLayoutError = ref<string | null>(null)
 
 interface FormData {
   name: string
@@ -1408,9 +1416,10 @@ const delimiterOptions = [
 ]
 
 // Important: `values` is a positional 2D array, so the grid column order must match the three-tier identity model.
-// Fixed values grid must include: system_id, public_id (if defined), keys, and columns
+// The fixed grid order is the managed identity columns followed by the produced data columns.
+// Business keys never add grid positions.
 const fixedValuesColumns = computed(() => {
-  return buildFixedValuesColumns(formData.value.columns || [], formData.value.keys || [], formData.value.public_id)
+  return buildFixedFullColumns(formData.value.columns || [], formData.value.public_id)
 })
 
 // Can preview only in edit mode
@@ -1822,9 +1831,12 @@ function buildEntityConfigFromFormData(options: BuildEntityConfigOptions = {}): 
   const entityData: Record<string, unknown> = {
     type: formData.value.type,
     keys: serializeKeysField(formData.value.keys),
-    // For fixed entities, explicitly include system_id and public_id in columns list
-    // This ensures the columns match the fixedValuesColumns order used by the grid
-    columns: formData.value.type === 'fixed' ? fixedValuesColumns.value : serializeKeysField(effectiveColumns),
+    // For fixed entities, persist the produced data columns (managed identity
+    // fields stay implicit). The positional grid/values order adds identity back.
+    columns:
+      formData.value.type === 'fixed'
+        ? normalizeEditableFixedColumns(fixedValuesColumns.value, formData.value.public_id)
+        : serializeKeysField(effectiveColumns),
   }
 
   // Always include public_id (even if null) to prevent field from being omitted
@@ -2417,7 +2429,8 @@ watch(
   { deep: true }
 )
 
-// Watch columns to automatically remove forbidden values for fixed entities
+// Watch columns to automatically remove forbidden identity columns for fixed entities.
+// Business keys are advisory and must not be added or removed by column edits.
 watch(
   () => formData.value.columns,
   (newColumns) => {
@@ -2428,47 +2441,9 @@ watch(
 
       const filtered = newColumns.filter((col) => !forbidden.has(col))
       if (filtered.length !== newColumns.length) {
-        // Auto-remove forbidden columns
+        // Auto-remove forbidden identity columns
         formData.value.columns = filtered
-        return
       }
-
-      const filteredKeys = normalizeChipField(formData.value.keys).filter((key) => {
-        if (key.trim().startsWith('@')) {
-          return true
-        }
-        return filtered.includes(key)
-      })
-
-      if (JSON.stringify(filteredKeys) !== JSON.stringify(formData.value.keys)) {
-        formData.value.keys = filteredKeys
-      }
-    }
-  },
-  { deep: true }
-)
-
-watch(
-  () => formData.value.keys,
-  (newKeys) => {
-    if (formData.value.type !== 'fixed' || !Array.isArray(newKeys)) {
-      return
-    }
-
-    const publicId = formData.value.public_id
-    const existingColumns = normalizeChipField(formData.value.columns)
-    const missingKeyColumns = normalizeChipField(newKeys).filter((key) => {
-      if (!key || key.trim().startsWith('@')) {
-        return false
-      }
-      if (key === 'system_id' || key === publicId) {
-        return false
-      }
-      return !existingColumns.includes(key)
-    })
-
-    if (missingKeyColumns.length > 0) {
-      formData.value.columns = [...existingColumns, ...missingKeyColumns]
     }
   },
   { deep: true }
@@ -2788,12 +2763,10 @@ function yamlToFormData(yamlString: string): boolean {
     const normalizedColumns = normalizeChipField(data.columns)
     const editableFixedColumns =
       (data.type || 'entity') === 'fixed'
-        ? normalizeEditableFixedColumns(normalizedColumns, normalizedKeys, publicId)
+        ? normalizeEditableFixedColumns(normalizedColumns, publicId)
         : normalizedColumns
     const fixedFullColumns =
-      (data.type || 'entity') === 'fixed'
-        ? buildFixedValuesColumns(editableFixedColumns, normalizedKeys, publicId)
-        : normalizedColumns
+      (data.type || 'entity') === 'fixed' ? buildFixedFullColumns(editableFixedColumns, publicId) : normalizedColumns
     const normalizedColumnTypes = normalizeFixedColumnTypes(data.column_types, fixedFullColumns)
 
     // Keep non-inline values/materialization metadata from YAML edits.
@@ -2802,7 +2775,7 @@ function yamlToFormData(yamlString: string): boolean {
     materializedConfig.value = roundTrip.materializedConfig
     const normalizedFixedRows =
       (data.type || 'entity') === 'fixed'
-        ? normalizeFixedValuesRowsForForm(roundTrip.inlineValues, normalizedColumns, normalizedKeys, publicId)
+        ? normalizeFixedValuesRowsForForm(roundTrip.inlineValues, normalizedColumns, publicId)
         : roundTrip.inlineValues
 
     const dropDuplicates = data.drop_duplicates
@@ -2969,7 +2942,11 @@ function setSaveError(err: unknown) {
 
 const isSaveDisabled = computed(() => {
   if (!formValid.value) return true
-  if (props.mode === 'edit') return !hasPendingChanges.value && !sqlColumnSyncPending.value
+  if (props.mode === 'edit') {
+    // Never submit a positional save while external values cannot be mapped.
+    if (fixedValuesLayoutError.value) return true
+    return !hasPendingChanges.value && !sqlColumnSyncPending.value
+  }
   return false
 })
 
@@ -3238,6 +3215,7 @@ function handleUnmaterialized(unmaterializedEntities: string[]) {
 }
 
 function buildFormDataFromEntity(entity: EntityResponse): FormData {
+  fixedValuesLayoutError.value = null
   const dropDuplicates = entity.entity_data.drop_duplicates
   const dropEmptyRows = entity.entity_data.drop_empty_rows
   const nestedCheckFunctionalDependency =
@@ -3251,16 +3229,27 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
         ? nestedCheckFunctionalDependency
         : dropDuplicates !== undefined && dropDuplicates !== null
 
-  // For fixed entities, strip system_id and public_id from columns
-  // since they're auto-managed and will be auto-added on save
+  // For fixed entities, strip identity columns from the produced column list.
+  // Backend `fixed_schema` metadata is authoritative for order and identity roles.
   const keys = normalizeChipField(entity.entity_data.keys)
   const normalizedColumns = normalizeChipField(entity.entity_data.columns)
   const publicId = (entity.entity_data.public_id as string) || (entity.entity_data.surrogate_id as string) || ''
+  const fixedSchema = entity.entity_data.type === 'fixed' ? (entity.fixed_schema ?? null) : null
+  loadedFixedSchema.value = fixedSchema
   let columns = normalizedColumns
   let fixedFullColumns = normalizedColumns
   if (entity.entity_data.type === 'fixed') {
-    fixedFullColumns = entity.fixed_schema?.full_columns || normalizedColumns
-    columns = normalizeEditableFixedColumns(fixedFullColumns, keys, publicId)
+    // Metadata order wins when supplied. Without metadata, derive identity plus
+    // explicitly stored columns; business keys never add positional fields.
+    fixedFullColumns =
+      fixedSchema?.full_columns && fixedSchema.full_columns.length > 0
+        ? fixedSchema.full_columns
+        : buildFixedFullColumns(normalizedColumns, publicId)
+    const identityColumns =
+      fixedSchema?.identity_columns && fixedSchema.identity_columns.length > 0
+        ? fixedSchema.identity_columns
+        : ['system_id', ...(publicId ? [publicId] : [])]
+    columns = fixedFullColumns.filter((column) => !identityColumns.includes(column))
   }
   const normalizedColumnTypes = normalizeFixedColumnTypes(
     entity.entity_data.column_types,
@@ -3271,7 +3260,7 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
   const roundTrip = extractMaterializationRoundTripState(entity.entity_data)
   const normalizedFixedRows =
     entity.entity_data.type === 'fixed'
-      ? normalizeFixedValuesRowsForForm(roundTrip.inlineValues, normalizedColumns, keys, publicId)
+      ? normalizeFixedValuesRowsForForm(roundTrip.inlineValues, normalizedColumns, publicId)
       : roundTrip.inlineValues
   hasExternalValues.value = Boolean(roundTrip.externalValuesDirective)
   externalValuesDirective.value = roundTrip.externalValuesDirective
@@ -3336,6 +3325,7 @@ async function loadExternalValuesIfNeeded(entity: EntityResponse) {
     externalValuesDirective.value = rawValues
     loadingExternalValues.value = true
     externalValuesError.value = null
+    fixedValuesLayoutError.value = null
 
     try {
       debugEntityForm(`[EntityFormDialog] Loading external values for ${entity.name}: ${rawValues}`)
@@ -3344,14 +3334,24 @@ async function loadExternalValuesIfNeeded(entity: EntityResponse) {
       // Populate form data with fetched values
       suppressFixedSchemaRemap.value = true
       try {
-        formData.value.values = response.values
         if (formData.value.type === 'fixed') {
-          formData.value.columns = normalizeEditableFixedColumns(
-            response.columns,
-            formData.value.keys,
-            formData.value.public_id
-          )
+          // The backend GET normalizes stored values to the authoritative full
+          // order. A mismatch means the response cannot be mapped safely, so
+          // reject it visibly instead of guessing another layout.
+          const activeFullColumns = fixedValuesColumns.value
+          if (JSON.stringify(response.columns) !== JSON.stringify(activeFullColumns)) {
+            fixedValuesLayoutError.value =
+              `External values columns ${JSON.stringify(response.columns)} do not match the entity schema ` +
+              `${JSON.stringify(activeFullColumns)}. Fix the values file before saving.`
+            externalValuesError.value = fixedValuesLayoutError.value
+            formData.value.values = []
+            externalValuesEtag.value = null
+            return
+          }
+
+          formData.value.values = response.values
         } else {
+          formData.value.values = response.values
           formData.value.columns = response.columns
         }
       } finally {
@@ -3380,6 +3380,7 @@ async function loadExternalValuesIfNeeded(entity: EntityResponse) {
     externalValuesDirective.value = null
     externalValuesError.value = null
     externalValuesEtag.value = null
+    fixedValuesLayoutError.value = null
   }
 }
 

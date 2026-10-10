@@ -425,8 +425,8 @@ async def update_entity_values(
     sync_result = get_materialization_service().sync_materialized_entity_mappings(
         project_name=authorized_project.resource.locator,
         entity_name=entity_name,
-        columns=request.columns,
-        values=request.values,
+        columns=list(result.columns),
+        values=result.values,
         require_materialized=False,
     )
     if not sync_result.success:
