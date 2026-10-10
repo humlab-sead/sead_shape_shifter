@@ -10,7 +10,9 @@ export const TASK_STATUS_NODE_CLASSES = ['task-todo', 'task-done', 'task-ignored
  */
 export function shouldShowNodeForTaskFilter(status: EntityTaskStatus | undefined, filter: TaskGraphFilter): boolean {
   if (!status) {
-    return true
+    // An untracked entity has no task status and therefore no note, so the
+    // "has_note" filter must exclude it. All other filters keep the default.
+    return filter !== 'has_note'
   }
 
   switch (filter) {
