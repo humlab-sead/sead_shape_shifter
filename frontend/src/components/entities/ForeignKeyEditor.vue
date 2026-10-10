@@ -8,13 +8,7 @@
     <v-divider />
 
     <v-card-text class="pa-2">
-      <v-alert
-        v-if="foreignKeys.length > 0"
-        type="info"
-        variant="tonal"
-        density="compact"
-        class="mb-3 text-caption"
-      >
+      <v-alert v-if="foreignKeys.length > 0" type="info" variant="tonal" density="compact" class="mb-3 text-caption">
         <strong>Foreign Keys</strong> link this entity to other entities through matching column values.
         <ul class="mt-2 mb-0 pl-4">
           <li>Compound keys are matched by position: local item N maps to remote item N</li>
@@ -142,10 +136,10 @@
                   persistent-placeholder
                   variant="outlined"
                   density="compact"
-                  :items="localColumnItems[index]"
+                  :items="getLocalColumnItems(index)"
                   :error="localKeyErrors[index] !== undefined"
                   :messages="localKeyErrors[index]"
-                  @focus="loadLocalColumns(index)"
+                  @focus="loadDirectives"
                   @update:model-value="handleLocalKeysUpdate(index, $event)"
                 />
               </v-col>
@@ -164,14 +158,56 @@
                   persistent-placeholder
                   variant="outlined"
                   density="compact"
-                  :items="remoteColumnItems[index]"
+                  :items="getRemoteKeyItems(index)"
                   :error="remoteKeyErrors[index] !== undefined"
                   :messages="remoteKeyErrors[index]"
-                  @focus="loadRemoteColumns(index)"
+                  @focus="loadDirectives"
                   @update:model-value="handleRemoteKeysUpdate(index, $event)"
                 />
               </v-col>
             </v-row>
+
+            <div v-if="getKeyPairRows(fk).length > 1" class="mb-2" data-testid="fk-key-pair-preview">
+              <div class="text-caption font-weight-medium mb-1">Key Pair Preview</div>
+              <table class="w-100 text-caption">
+                <thead>
+                  <tr>
+                    <th scope="col" class="text-left">Pair</th>
+                    <th scope="col" class="text-left">Local Key</th>
+                    <th scope="col" class="text-left">Remote Key</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="pair in getKeyPairRows(fk)" :key="pair.index">
+                    <td>{{ pair.index }}</td>
+                    <td>{{ pair.local }}</td>
+                    <td>{{ pair.remote }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <v-alert
+              v-if="hasKeyCountMismatch(fk)"
+              type="warning"
+              variant="tonal"
+              density="compact"
+              class="mb-2"
+              data-testid="fk-key-count-warning"
+            >
+              Local and remote key counts differ. Each local key must match the remote key at the same position.
+            </v-alert>
+            <v-alert
+              v-if="hasSuspiciousKeyReorder(fk)"
+              type="warning"
+              variant="tonal"
+              density="compact"
+              class="mb-2"
+              data-testid="fk-key-order-warning"
+            >
+              Local and remote keys contain the same names in a different order. Key matching is positional; verify each
+              pair.
+            </v-alert>
 
             <!-- Extra Columns Section -->
             <v-row dense class="mb-2">
@@ -212,9 +248,9 @@
                               label="Remote Column"
                               variant="outlined"
                               density="compact"
-                              :items="remoteColumnItems[index]"
+                              :items="getExtraColumnSourceItems(index)"
                               hide-details
-                              @focus="loadRemoteColumns(index)"
+                              @focus="loadDirectives"
                               @update:model-value="updateExtraColumn(index, colIndex, extraCol.local, extraCol.remote)"
                             />
                           </v-col>
@@ -257,6 +293,9 @@
                   :foreign-key-index="index"
                   :disabled="!isEntitySaved"
                 />
+                <div v-if="isEntitySaved && hasUnsavedChanges" class="text-caption text-medium-emphasis mt-1">
+                  Tests this foreign key against saved entity data without saving your changes.
+                </div>
               </v-col>
             </v-row>
           </v-expansion-panel-text>
@@ -272,25 +311,30 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import type { ForeignKeyColumnCandidates } from '@/api/entities'
 import type { ForeignKeyConfig, ForeignKeyConstraints } from '@/types'
 import ForeignKeyTester from './ForeignKeyTester.vue'
-import { useColumnIntrospection } from '@/composables/useColumnIntrospection'
 import { useDirectiveValidation } from '@/composables/useDirectiveValidation'
 import { normalizeForeignKeyKeys } from './foreignKeyEditorUtils'
+import { getKeyPairRows, hasKeyCountMismatch, hasSuspiciousKeyReorder } from './foreignKeyPreviewUtils'
 
 interface Props {
   modelValue: ForeignKeyConfig[]
   availableEntities?: string[]
+  columnCandidates?: ForeignKeyColumnCandidates[]
   projectName: string
   entityName: string
   entityColumns?: string[] | string
   isEntitySaved?: boolean
+  hasUnsavedChanges?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   availableEntities: () => [],
+  columnCandidates: () => [],
   entityColumns: () => [],
   isEntitySaved: false,
+  hasUnsavedChanges: false,
 })
 
 const emit = defineEmits<{
@@ -333,15 +377,9 @@ function cloneForeignKey(fk: ForeignKeyConfig): ForeignKeyConfig {
 }
 
 const foreignKeys = ref<ForeignKeyConfig[]>(props.modelValue.map(cloneForeignKey))
-const { getAvailableColumns, flattenColumns } = useColumnIntrospection()
 const { validateDirective, getValidDirectives, isDirective } = useDirectiveValidation()
-
-// Cache for column suggestions per entity
-const columnCache = ref<Map<string, Array<{ value: string; category: string }>>>(new Map())
-
-// Items for comboboxes (indexed by FK index)
-const localColumnItems = ref<string[][]>([])
-const remoteColumnItems = ref<string[][]>([])
+const directiveItems = ref<string[]>([])
+let directivesLoaded = false
 
 // Validation errors for directive values (indexed by FK index)
 const localKeyErrors = ref<Array<string | undefined>>([])
@@ -444,24 +482,6 @@ async function handleRemoteKeysUpdate(fkIndex: number, value: unknown) {
 }
 
 /**
- * Get column suggestions for an entity.
- */
-async function getColumnSuggestions(entityName: string): Promise<Array<{ value: string; category: string }>> {
-  if (columnCache.value.has(entityName)) {
-    return columnCache.value.get(entityName)!
-  }
-
-  const result = await getAvailableColumns(props.projectName, entityName)
-  if (!result) {
-    return []
-  }
-
-  const suggestions = flattenColumns(result.local_columns)
-  columnCache.value.set(entityName, suggestions)
-  return suggestions
-}
-
-/**
  * Extract @value directives from entity columns configuration.
  */
 function extractColumnDirectives(): string[] {
@@ -486,65 +506,40 @@ function extractColumnDirectives(): string[] {
   return directives
 }
 
-/**
- * Load local columns for a specific FK.
- */
-async function loadLocalColumns(fkIndex: number) {
-  const existingItems = localColumnItems.value[fkIndex]
-  if (existingItems && existingItems.length > 0) {
-    return // Already loaded
-  }
-
-  const [suggestions, directives] = await Promise.all([
-    getColumnSuggestions(props.entityName),
-    getValidDirectives(props.projectName),
-  ])
-
-  // Extract directives from entity's columns configuration
-  const columnDirectives = extractColumnDirectives()
-
-  // Combine all suggestions, avoiding duplicates
-  const allDirectives = [...new Set([...directives, ...columnDirectives])]
-
-  localColumnItems.value[fkIndex] = [...new Set([...suggestions.map((s) => s.value), ...allDirectives])]
+async function loadDirectives() {
+  if (directivesLoaded) return
+  directiveItems.value = await getValidDirectives(props.projectName)
+  directivesLoaded = true
 }
 
-/**
- * Load remote columns for a specific FK.
- */
-async function loadRemoteColumns(fkIndex: number) {
+function getColumnCandidates(fkIndex: number): ForeignKeyColumnCandidates | undefined {
   const fk = foreignKeys.value[fkIndex]
-  if (!fk) return
-  if (!fk.entity) {
-    remoteColumnItems.value[fkIndex] = []
-    return
-  }
+  if (!fk) return undefined
 
-  const existingItems = remoteColumnItems.value[fkIndex]
-  if (existingItems && existingItems.length > 0) {
-    return // Already loaded
-  }
-
-  const [suggestions, directives] = await Promise.all([
-    getColumnSuggestions(fk.entity),
-    getValidDirectives(props.projectName),
-  ])
-  remoteColumnItems.value[fkIndex] = [...new Set([...suggestions.map((s) => s.value), ...directives])]
+  return props.columnCandidates.find((candidates) => candidates.index === fkIndex && candidates.entity === fk.entity)
 }
 
-// Watch for entity changes to reload remote columns
-watch(
-  () => foreignKeys.value.map((fk) => fk.entity),
-  (newEntities, oldEntities) => {
-    newEntities.forEach((entity, index) => {
-      if (entity !== oldEntities[index]) {
-        // Entity changed, clear remote columns cache for this FK
-        remoteColumnItems.value[index] = []
-      }
-    })
-  },
-  { deep: true }
-)
+function getLocalColumnItems(fkIndex: number): string[] {
+  const candidates = getColumnCandidates(fkIndex)
+  return [
+    ...new Set([
+      ...(candidates?.local_keys_before_unnest ?? []),
+      ...(candidates?.local_keys_after_unnest ?? []),
+      ...directiveItems.value,
+      ...extractColumnDirectives(),
+    ]),
+  ]
+}
+
+function getRemoteKeyItems(fkIndex: number): string[] {
+  const candidates = getColumnCandidates(fkIndex)
+  return [...new Set([...(candidates?.remote_keys ?? []), ...directiveItems.value])]
+}
+
+function getExtraColumnSourceItems(fkIndex: number): string[] {
+  const candidates = getColumnCandidates(fkIndex)
+  return [...new Set([...(candidates?.extra_column_sources ?? []), ...directiveItems.value])]
+}
 
 const joinTypes = [
   { title: 'Inner Join', value: 'inner' },

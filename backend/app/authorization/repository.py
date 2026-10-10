@@ -1,5 +1,6 @@
 """Persistence contract and SQLite implementation for authorization data."""
 
+import json
 import sqlite3
 from collections.abc import Sequence
 from datetime import UTC, datetime
@@ -48,6 +49,8 @@ class AuthorizationRepository(Protocol):
     def list_all_application_roles(self) -> list[ApplicationRoleAssignment]: ...
 
     def update_resource_lifecycle(self, resource_id: UUID, lifecycle_state: str) -> None: ...
+
+    def update_resource_locator(self, resource_id: UUID, locator: str, actor_principal_id: str) -> None: ...
 
     def remove_grant(
         self,
@@ -217,6 +220,31 @@ class SQLiteAuthorizationRepository:
                 resource_id=resource_id,
                 action=lifecycle_state,
                 outcome="allowed",
+            )
+
+    def update_resource_locator(self, resource_id: UUID, locator: str, actor_principal_id: str) -> None:
+        """Move an active resource to a new locator while keeping its UUID and grants.
+
+        The unique index on (resource_type, locator) allows only one active resource per
+        locator, so the new locator must be free. The audit event records the previous and
+        new locators so a move can be traced.
+        """
+        with self._connection:
+            row = self._connection.execute("SELECT locator FROM resource WHERE resource_id = ?", (str(resource_id),)).fetchone()
+            if row is None:
+                raise ValueError("Resource not found")
+            previous_locator = row["locator"]
+            self._connection.execute(
+                "UPDATE resource SET locator = ? WHERE resource_id = ?",
+                (locator, str(resource_id)),
+            )
+            self._record_audit(
+                actor_principal_id=actor_principal_id,
+                event_type="resource_locator_changed",
+                resource_id=resource_id,
+                action="move",
+                outcome="allowed",
+                details=json.dumps({"from_locator": previous_locator, "to_locator": locator}, sort_keys=True),
             )
 
     def remove_grant(

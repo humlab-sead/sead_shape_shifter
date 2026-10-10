@@ -22,7 +22,7 @@ Entity Key Ordering:
 
 import json
 import shutil
-from collections.abc import Mapping, Sequence
+from collections.abc import Hashable, Mapping, Sequence
 from datetime import datetime
 from io import StringIO
 from pathlib import Path
@@ -37,6 +37,57 @@ from src.path_resolution import resolve_contained_path
 
 YamlPath = tuple[str | int, ...]
 CommentRegistry = dict[YamlPath, str]
+
+# Discovery reads many YAML files to use only a few top-level fields. A C-based
+# parser is roughly an order of magnitude faster than the pure-Python ruamel
+# parser, but it does not preserve comments or formatting, so it is used only for
+# discovery and only when the file parses. Any file it cannot handle falls back to
+# the full loader.
+try:
+    import yaml as _pyyaml
+    from yaml import CSafeLoader as _YamlCSafeLoader
+    from yaml.constructor import ConstructorError as _YamlConstructorError
+except ImportError:  # pragma: no cover - the C build of pyyaml is optional
+    _pyyaml = None  # type: ignore[assignment]
+    _YamlCSafeLoader = None  # type: ignore[assignment]
+    _YamlConstructorError = None  # type: ignore[assignment]
+
+_YAML_MERGE_TAG = "tag:yaml.org,2002:merge"
+
+
+def _build_listing_yaml_loader() -> type | None:
+    """Return a C-based YAML loader, or None when the C parser is unavailable.
+
+    The loader rejects duplicate mapping keys so discovery matches
+    ``YamlService.load``, which uses a loader that rejects duplicates.
+    """
+    if _YamlCSafeLoader is None:
+        return None
+
+    class _ListingYamlLoader(_YamlCSafeLoader):  # type: ignore[misc, valid-type]
+        """C-based YAML loader that rejects duplicate mapping keys."""
+
+        def construct_mapping(self, node: Any, deep: bool = False) -> dict:
+            seen: set = set()
+            for key_node, _value_node in node.value:
+                if key_node.tag == _YAML_MERGE_TAG:
+                    continue
+                key: Any = self.construct_object(key_node, deep=deep)
+                if isinstance(key, Hashable):
+                    if key in seen:
+                        raise _YamlConstructorError(
+                            "while constructing a mapping",
+                            node.start_mark,
+                            f"found duplicate key {key!r}",
+                            key_node.start_mark,
+                        )
+                    seen.add(key)
+            return super().construct_mapping(node, deep=deep)
+
+    return _ListingYamlLoader
+
+
+_LISTING_YAML_LOADER = _build_listing_yaml_loader()
 
 
 class YamlServiceError(Exception):
@@ -109,6 +160,66 @@ class YamlService:
         except Exception as e:
             logger.error(f"Failed to load YAML file {path}: {e}")
             raise YamlLoadError(f"Failed to parse YAML file {path}: {e}") from e
+
+    def load_for_listing(self, filename: str | Path) -> dict[str, Any]:
+        """Load a YAML file as plain objects for read-only discovery.
+
+        Uses a C-based parser when available, which is roughly an order of
+        magnitude faster than ``load()``, and falls back to ``load()`` when that
+        parser cannot handle a file. It skips the JSON round-trip and the size log
+        that ``load()`` performs, so it is only suitable for callers that read a
+        few fields and never write the parsed data back. The result contains plain
+        Python objects.
+
+        Note:
+            Because the JSON round-trip is skipped, values keep their native YAML
+            types here: dates and timestamps come back as ``datetime.date`` or
+            ``datetime.datetime`` objects and non-string mapping keys stay as they
+            are, whereas ``load()`` returns them as strings. Callers that compare
+            or serialize these fields must handle both shapes.
+
+        Args:
+            filename: Path to YAML file
+
+        Returns:
+            Parsed YAML data as a dictionary with plain Python objects
+
+        Raises:
+            YamlLoadError: If the file is missing, is not a file, has a
+                non-mapping root, or cannot be parsed by either loader
+        """
+
+        if _LISTING_YAML_LOADER is None:
+            return self.load(filename)
+
+        path = Path(filename)
+
+        if not path.exists():
+            raise YamlLoadError(f"File not found: {path}")
+
+        if not path.is_file():
+            raise YamlLoadError(f"Not a file: {path}")
+
+        try:
+            logger.debug(f"Fast-loading YAML file for listing: {path}")
+            with path.open("r", encoding="utf-8") as f:
+                data = _pyyaml.load(f, Loader=_LISTING_YAML_LOADER)
+        except Exception as e:  # pylint: disable=broad-except
+            # A file the C parser cannot handle is retried with the full loader,
+            # which is the authoritative parse for the rest of the service. The
+            # fallback is correct but slow, so it is logged at info level: seeing
+            # it for every file means the fast path is broken, not just the file.
+            logger.info(f"Falling back to full YAML load for {path}: {e}")
+            return self.load(filename)
+
+        if data is None:
+            logger.warning(f"Empty YAML file: {path}")
+            return {}
+
+        if not isinstance(data, dict):
+            raise YamlLoadError(f"YAML root must be a dictionary, got {type(data).__name__}")
+
+        return data
 
     def save(
         self,

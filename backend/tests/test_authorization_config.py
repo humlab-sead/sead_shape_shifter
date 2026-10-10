@@ -70,7 +70,7 @@ def test_debug_startup_logs_bootstrap_command_only_when_opted_in(tmp_path, monke
     )
     try:
         _log_development_authorization_bootstrap_hint()
-        assert messages == []
+        assert not messages
 
         monkeypatch.setattr(settings, "AUTHORIZATION_DEV_BOOTSTRAP_HINT_ENABLED", True)
         _log_development_authorization_bootstrap_hint()

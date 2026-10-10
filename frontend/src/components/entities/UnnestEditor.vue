@@ -5,7 +5,7 @@
     <template v-if="unnestEnabled">
       <v-combobox
         v-model="unnest.id_vars"
-        :items="availableColumns"
+        :items="idVarColumns"
         label="ID Variables"
         hint="Columns to keep as-is"
         persistent-hint
@@ -18,7 +18,7 @@
 
       <v-combobox
         v-model="unnest.value_vars"
-        :items="availableColumns"
+        :items="valueVarColumns"
         label="Value Variables"
         hint="Columns to unpivot"
         persistent-hint
@@ -49,12 +49,7 @@
       />
     </template>
 
-    <v-alert
-      type="info"
-      variant="tonal"
-      density="compact"
-      class="mt-3 text-caption"
-    >
+    <v-alert type="info" variant="tonal" density="compact" class="mt-3 text-caption">
       <strong>Unnesting</strong> allows you to reshape data from wide format to long format.
       <ul class="mt-2 mb-0 pl-4">
         <li><strong>ID variables:</strong> columns to keep fixed (identifiers)</li>
@@ -62,10 +57,7 @@
         <li><strong>Variable name:</strong> name of the new column holding former column names</li>
         <li><strong>Value name:</strong> name of the new column holding values</li>
       </ul>
-
     </v-alert>
-
-
   </div>
 </template>
 
@@ -81,7 +73,8 @@ interface UnnestConfig {
 
 interface Props {
   modelValue?: UnnestConfig | null
-  availableColumns?: string[]
+  idVarColumns?: string[]
+  valueVarColumns?: string[]
 }
 
 const props = defineProps<Props>()
@@ -101,7 +94,8 @@ const unnest = ref<UnnestConfig>(
 
 const unnestEnabled = ref(!!props.modelValue)
 
-const availableColumns = computed(() => props.availableColumns || [])
+const idVarColumns = computed(() => props.idVarColumns ?? [])
+const valueVarColumns = computed(() => props.valueVarColumns ?? [])
 
 watch(
   [unnestEnabled, unnest],

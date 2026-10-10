@@ -22,6 +22,7 @@ The API layer is the editing/persistence boundary. Core is the execution/process
 No hardcoded field lists - all field handling is derived from Pydantic schemas.
 """
 
+from pathlib import Path
 from typing import Any
 
 from loguru import logger
@@ -287,7 +288,17 @@ class ProjectMapper:
 
         # Only resolve if there are unresolved directives
         if not project.is_resolved():
-            project_root = resolve_contained_path(project_name.replace(":", "/"), settings.PROJECTS_DIR)
+            # Anchor relative file resolution to the project file's own location so a
+            # moved project folder keeps working even when metadata.name is stale. Fall
+            # back to the name-derived, containment-checked path when no file is known.
+            projects_root: Path = Path(settings.PROJECTS_DIR).resolve()
+            project_root: Path | None = None
+            if api_config.filename:
+                candidate_root: Path = Path(api_config.filename).resolve().parent
+                if candidate_root.is_relative_to(projects_root):
+                    project_root = candidate_root
+            if project_root is None:
+                project_root = resolve_contained_path(project_name.replace(":", "/"), settings.PROJECTS_DIR)
             # Pass env_prefix and env_file from settings for proper env var resolution
             project = project.resolve(
                 filename=api_config.filename,

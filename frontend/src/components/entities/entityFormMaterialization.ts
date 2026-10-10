@@ -5,54 +5,49 @@ export interface MaterializationRoundTripState {
 }
 
 /**
- * Fixed-entity columns in YAML include the full persisted row schema.
- * The form hides identity columns, but keeps business-key columns visible so
- * the editable grid shape remains obvious to users.
+ * Remove managed identity columns from a fixed full schema.
+ *
+ * The editor edits produced data columns; `system_id` and the public ID are
+ * implicit and must never be edited as ordinary data fields.
  */
-export function normalizeEditableFixedColumns(
-  columns: string[],
-  _keys: string[],
-  publicId: string | null | undefined
-): string[] {
+export function normalizeEditableFixedColumns(fullColumns: string[], publicId: string | null | undefined): string[] {
   const hiddenColumns = new Set<string>(['system_id'])
 
   if (publicId && publicId.trim().length > 0) {
-    hiddenColumns.add(publicId)
+    hiddenColumns.add(publicId.trim())
   }
 
-  return columns.filter((column) => !hiddenColumns.has(column))
+  return fullColumns.filter((column) => !hiddenColumns.has(column))
 }
 
 /**
- * Build the canonical fixed-values column order.
+ * Build the authoritative fixed full column order from produced data columns.
+ *
+ * Order is managed identity columns followed by the produced data columns in
+ * their declared order. Business keys describe produced fields and never add
+ * positions, so they are not accepted here.
  */
-export function buildFixedValuesColumns(
-  columns: string[],
-  keys: string[],
-  publicId: string | null | undefined
-): string[] {
-  const canonical: string[] = ['system_id']
+export function buildFixedFullColumns(producedColumns: string[], publicId: string | null | undefined): string[] {
+  const fullColumns: string[] = ['system_id']
 
-  if (publicId && publicId.trim().length > 0) {
-    canonical.push(publicId)
+  if (typeof publicId === 'string' && publicId.trim().length > 0 && !fullColumns.includes(publicId.trim())) {
+    fullColumns.push(publicId.trim())
   }
 
-  for (const key of keys) {
-    if (typeof key === 'string' && key.trim().length > 0 && !canonical.includes(key)) {
-      canonical.push(key)
-    }
-  }
-
-  for (const column of columns) {
-    if (typeof column !== 'string' || column.trim().length === 0) {
+  for (const column of producedColumns) {
+    if (typeof column !== 'string') {
       continue
     }
-    if (!canonical.includes(column)) {
-      canonical.push(column)
+
+    const name = column.trim()
+    if (name.length === 0 || fullColumns.includes(name)) {
+      continue
     }
+
+    fullColumns.push(name)
   }
 
-  return canonical
+  return fullColumns
 }
 
 /**
@@ -66,14 +61,13 @@ export function buildFixedValuesColumns(
 export function normalizeFixedValuesRowsForForm(
   values: any[][],
   storedColumns: string[],
-  keys: string[],
   publicId: string | null | undefined
 ): any[][] {
   if (!Array.isArray(values) || values.length === 0) {
     return values
   }
 
-  const fullColumns = buildFixedValuesColumns(storedColumns, keys, publicId)
+  const fullColumns = buildFixedFullColumns(storedColumns, publicId)
   const rowLength = Array.isArray(values[0]) ? values[0].length : 0
 
   if (rowLength === 0 || values.some((row) => !Array.isArray(row) || row.length !== rowLength)) {
@@ -110,8 +104,8 @@ export function normalizeFixedValuesRowsForForm(
  * Remap fixed rows when the editor schema changes in memory.
  *
  * The grid stores rows positionally, but users expect edits to follow column
- * names. When keys/columns move in or out of the fixed schema, rebuild rows by
- * column name so surviving fields keep their values.
+ * names. When produced columns move in or out of the fixed schema, rebuild rows
+ * by column name so surviving fields keep their values.
  */
 export function remapFixedValuesRowsToColumns(
   values: any[][],

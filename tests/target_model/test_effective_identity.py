@@ -54,9 +54,7 @@ class TestResolveEffectiveIdentity:
 
     def test_explicit_values_override_role_defaults(self) -> None:
         # analysis_entity: bridge role but explicitly tracked/allocate.
-        effective = resolve_effective_identity(
-            _spec(role="bridge", identity_tracking="tracked", reconciliation="allocate")
-        )
+        effective = resolve_effective_identity(_spec(role="bridge", identity_tracking="tracked", reconciliation="allocate"))
 
         assert effective.identity_tracking == "tracked"
         assert effective.reconciliation == "allocate"

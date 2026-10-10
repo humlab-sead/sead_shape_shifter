@@ -63,7 +63,7 @@ def format_sheet(worksheet: Worksheet, max_width: int = 60) -> None:
             cell.font = header_font if cell.row == 1 else font
     for column in worksheet.columns:
         longest = max((len(str(cell.value)) for cell in column if cell.value is not None), default=8)
-        worksheet.column_dimensions[column[0].column_letter].width = min(longest + 2, max_width)
+        worksheet.column_dimensions[column[0].column_letter].width = min(longest + 2, max_width)  # type: ignore
 
 
 @click.command()
@@ -128,26 +128,26 @@ def main(output: Path, model_path: Path, roles: tuple[str, ...], host: str | Non
 
             with engine.connect() as sa_conn, pd.ExcelWriter(output, engine="openpyxl") as writer:
                 # The Normal style is the default font for cells without an explicit one.
-                writer.book._named_styles["Normal"].font = Font(name=DEFAULT_FONT_NAME, size=DEFAULT_FONT_SIZE)
+                writer.book._named_styles["Normal"].font = Font(name=DEFAULT_FONT_NAME, size=DEFAULT_FONT_SIZE)  # type: ignore
                 for name, entity in entities.items():
                     table: str = entity["target_table"]
                     if table not in db_columns:
-                        click.echo(f"  {name}: skipped, table {schema}.{table} not found")
+                        click.echo(f"  SKIPPED: {name}: table {schema}.{table} not found")
                         continue
                     columns: list[str] = [c for c in entity["columns"] if c in db_columns[table]]
                     absent: list[str] = [c for c in entity["columns"] if c not in db_columns[table]]
                     if absent:
-                        click.echo(f"  {name}: warning, columns not in {schema}.{table}, exporting without them: {', '.join(absent)}")
+                        click.echo(f"  WARNING: {name}: columns not in {schema}.{table}, exporting without them: {', '.join(absent)}")
                     if not columns:
-                        click.echo(f"  {name}: skipped, no model columns found in {schema}.{table}")
+                        click.echo(f"  SKIPPED: {name}: no model columns found in {schema}.{table}")
                         continue
                     # The primary key leads the sheet and orders the rows.
                     public_id: str | None = entity.get("public_id")
                     order_by: str | None = public_id if public_id in db_columns[table] else None
                     if public_id and not order_by:
-                        click.echo(f"  {name}: warning, primary key {public_id} not in {schema}.{table}, exporting without it")
+                        click.echo(f"  WARNING: {name}: primary key {public_id} not in {schema}.{table}, exporting without it")
                     if order_by:
-                        columns = [public_id] + [c for c in columns if c != public_id]
+                        columns = [public_id] + [c for c in columns if c != public_id]  # type: ignore
                     query = (
                         sql.SQL("SELECT {} FROM {}")
                         .format(
@@ -171,4 +171,4 @@ def main(output: Path, model_path: Path, roles: tuple[str, ...], host: str | Non
 
 
 if __name__ == "__main__":
-    main()
+    main()  # type: ignore ; pylint: disable=no-value-for-parameter

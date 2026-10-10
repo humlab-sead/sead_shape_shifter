@@ -17,6 +17,7 @@ Every entity uses three distinct identity concepts. Never conflate them.
 - FK child column name = parent's `public_id` name
 - FK child column values = parent's `system_id` values
 - `public_id` must end with `_id`
+- `keys` may reference an identity column (`system_id` or `public_id`) because those columns are produced; this is permitted but not recommended. Prefer business columns for matching and deduplication.
 - `map_to_remote()` decorates `public_id` with remote SEAD IDs — separate from FK linking
 
 ## Entity Types and Roles

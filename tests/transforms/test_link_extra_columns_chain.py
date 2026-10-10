@@ -34,6 +34,7 @@ class TestLinkExtraColumnsChain:
                     },
                     "public_id": "project_contact_id",
                     "keys": ["Projekt", "contact_type", "contact_name"],
+                    "columns": ["Projekt", "contact_type", "contact_name"],
                 },
                 # Final target entity
                 "contact": {
@@ -41,6 +42,7 @@ class TestLinkExtraColumnsChain:
                     "source": {"contact_name": ["Alice", "Bob", "Charlie"], "email": ["a@test.com", "b@test.com", "c@test.com"]},
                     "public_id": "contact_id",
                     "keys": ["contact_name"],
+                    "columns": ["contact_name", "email"],
                 },
                 # Entity with chained FKs: FK #1 adds contact_name via extra_columns, FK #2 uses it
                 "dataset_contacts": {

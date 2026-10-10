@@ -5,7 +5,14 @@
   </div>
 
   <v-list v-else>
-    <v-list-item v-for="(message, index) in messages" :key="index" :value="index">
+    <v-list-item
+      v-for="(message, index) in messages"
+      :key="index"
+      :value="index"
+      class="validation-message-item"
+      :class="{ 'validation-message-item--expanded': isExpanded(index) }"
+      @click="toggleExpanded(index)"
+    >
       <template #prepend>
         <v-icon
           :icon="message.severity === 'error' ? 'mdi-alert-circle' : 'mdi-alert'"
@@ -13,7 +20,7 @@
         />
       </template>
 
-      <v-list-item-title>{{ message.message }}</v-list-item-title>
+      <v-list-item-title class="validation-message-text">{{ message.message }}</v-list-item-title>
 
       <v-list-item-subtitle class="mt-1">
         <v-chip v-if="message.priority" size="x-small" :color="getPriorityColor(message.priority)" class="mr-1">
@@ -30,11 +37,17 @@
           prepend-icon="mdi-cube"
           append-icon="mdi-open-in-new"
           class="mr-1 validation-entity-chip"
-          @click="handleOpenEntity(message.entity)"
+          @click.stop="handleOpenEntity(message.entity)"
         >
           {{ message.entity }}
         </v-chip>
-        <v-chip v-if="message.branch_name || message.branch_source" size="x-small" color="teal" variant="outlined" class="mr-1">
+        <v-chip
+          v-if="message.branch_name || message.branch_source"
+          size="x-small"
+          color="teal"
+          variant="outlined"
+          class="mr-1"
+        >
           {{ formatBranchLabel(message.branch_name, message.branch_source) }}
         </v-chip>
         <v-chip v-if="message.field" size="x-small" variant="outlined" prepend-icon="mdi-table-column" class="mr-1">
@@ -55,19 +68,41 @@
         </v-chip>
       </v-list-item-subtitle>
 
-      <template v-if="message.suggestion" #append>
-        <v-tooltip location="top">
-          <template #activator="{ props: tooltipProps }">
-            <v-icon v-bind="tooltipProps" icon="mdi-lightbulb-outline" color="info" size="small" />
-          </template>
-          <span>{{ message.suggestion }}</span>
-        </v-tooltip>
+      <v-alert
+        v-if="isExpanded(index) && message.suggestion"
+        type="info"
+        variant="tonal"
+        density="compact"
+        class="mt-3 validation-message-suggestion"
+        @click.stop
+      >
+        <span class="text-body-2"><strong>Suggestion:</strong> {{ message.suggestion }}</span>
+      </v-alert>
+
+      <template #append>
+        <div class="d-flex align-center">
+          <v-tooltip v-if="message.suggestion && !isExpanded(index)" location="top">
+            <template #activator="{ props: tooltipProps }">
+              <v-icon v-bind="tooltipProps" icon="mdi-lightbulb-outline" color="info" size="small" class="mr-1" />
+            </template>
+            <span>{{ message.suggestion }}</span>
+          </v-tooltip>
+          <v-btn
+            :icon="isExpanded(index) ? 'mdi-chevron-up' : 'mdi-chevron-down'"
+            size="x-small"
+            variant="text"
+            :aria-label="isExpanded(index) ? 'Collapse message' : 'Expand message'"
+            :aria-expanded="isExpanded(index)"
+            @click.stop="toggleExpanded(index)"
+          />
+        </div>
       </template>
     </v-list-item>
   </v-list>
 </template>
 
 <script setup lang="ts">
+import { ref, watch } from 'vue'
 import type { ValidationError, ValidationPriority } from '@/types'
 
 interface Props {
@@ -79,11 +114,35 @@ interface Emits {
   (e: 'open-entity', entityName: string): void
 }
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
   emptyMessage: 'No messages',
 })
 
 const emit = defineEmits<Emits>()
+
+const expandedIndexes = ref<Set<number>>(new Set())
+
+// Collapse every row when the displayed messages change (for example after re-validation or a tab switch).
+watch(
+  () => props.messages,
+  () => {
+    expandedIndexes.value = new Set()
+  }
+)
+
+function isExpanded(index: number): boolean {
+  return expandedIndexes.value.has(index)
+}
+
+function toggleExpanded(index: number) {
+  const next = new Set(expandedIndexes.value)
+  if (next.has(index)) {
+    next.delete(index)
+  } else {
+    next.add(index)
+  }
+  expandedIndexes.value = next
+}
 
 function handleOpenEntity(entityName: string | null | undefined) {
   if (!entityName) {
@@ -117,7 +176,23 @@ function formatBranchLabel(branchName: string | null | undefined, branchSource: 
 </script>
 
 <style scoped>
+.validation-message-item {
+  cursor: pointer;
+}
+
 .validation-entity-chip {
   cursor: pointer;
+}
+
+/* Expanded rows drop the single-line ellipsis so the full message is readable. */
+.validation-message-item--expanded .validation-message-text {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+}
+
+.validation-message-suggestion {
+  cursor: text;
 }
 </style>

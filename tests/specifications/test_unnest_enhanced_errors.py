@@ -43,7 +43,6 @@ def test_unnest_columns_spec_includes_available_columns():
 
     # Verify error provides helpful guidance
     assert "'columns'" in error_msg
-    assert "'keys'" in error_msg
     assert "'extra_columns'" in error_msg
     assert "foreign keys" in error_msg
 

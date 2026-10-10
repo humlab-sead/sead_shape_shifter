@@ -17,12 +17,11 @@ export interface ProjectUpdateRequest {
 
 export interface BackupInfo {
   file_name: string
-  file_path: string
   created_at: number
 }
 
 export interface RestoreBackupRequest {
-  backup_path: string
+  backup_name: string
 }
 
 export interface MetadataUpdateRequest {

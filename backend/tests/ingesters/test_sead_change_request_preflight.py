@@ -92,7 +92,7 @@ class TestPreflightCapabilities:
         )
 
         assert not result.has_blockers
-        assert result.diagnostics == []
+        assert not result.diagnostics
 
     def test_reconcile_exact_entity_requires_bind_and_allocate(self):
         # reconcile-exact can bind a match or allocate after an approved miss, so both are required.

@@ -86,8 +86,8 @@ class TestRealWorldErrorScenarios:
         assert "contact_name" in fk_errors[0].message
         assert "missing local_keys" in fk_errors[0].message
 
-    def test_abundance_property_type_duplicate_keys_warning(self):
-        """Test: abundance_property_type[keys]: DUPLICATE KEYS FOUND FOR KEYS {'abundance_property_type_id'}"""
+    def test_abundance_property_type_unproduced_key_fails_validation(self):
+        """A key that is absent from configured output fields fails structural validation."""
 
         # Note: Actual duplicate detection requires data, but we can catch config issues
         project_cfg = {
@@ -96,7 +96,7 @@ class TestRealWorldErrorScenarios:
                 "abundance_property_type": {
                     "type": "sql",
                     "columns": ["name", "description"],
-                    "keys": ["abundance_property_type_id"],  # Not in columns - warning!
+                    "keys": ["abundance_property_type_id"],
                     "data_source": "db1",
                     "query": "SELECT * FROM abundance_property_type",
                 }
@@ -107,13 +107,10 @@ class TestRealWorldErrorScenarios:
         validator = CompositeProjectSpecification(project_cfg)
         result = validator.is_satisfied_by()
 
-        # Should pass (warnings don't fail validation)
-        assert result is True
-
-        # But should have warnings
-        assert len(validator.warnings) > 0
-        key_warnings = [w for w in validator.warnings if w.entity_name == "abundance_property_type"]
-        assert len(key_warnings) > 0
+        assert result is False
+        key_errors = [error for error in validator.errors if error.entity_name == "abundance_property_type"]
+        assert any("abundance_property_type_id" in error.message for error in key_errors)
+        assert any("'keys' do not create output columns" in error.message for error in key_errors)
 
     def test_location_unnest_error(self):
         """Test: location[unnesting]: Cannot unnest entity, missing `id_vars` columns: ['location_id']"""

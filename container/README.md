@@ -3,8 +3,7 @@
 Deployment files for running Shape Shifter as a rootless Podman container. The
 container serves the FastAPI backend and the built Vue 3 frontend on one port
 (default `8012`). This directory is also the standalone build context used on
-deployment hosts, so it carries everything the build needs except the
-(git-ignored) UCanAccess JARs in `lib/`.
+deployment hosts, so it carries everything the build needs.
 
 ## Prerequisites
 
@@ -30,8 +29,7 @@ Each environment has three sibling directories in the deployment user's home:
 ├── Containerfile       # image build
 ├── scripts/            # build, setup, lifecycle and deploy helpers
 ├── service/            # systemd user unit
-├── resources/          # generic templates: backend.env, .pgpass, authorization.env, NGINX vhosts
-└── lib/                # UCanAccess JARs (untracked build dependency)
+└── resources/          # generic templates: backend.env, .pgpass, authorization.env, NGINX vhosts
 
 ~/config/               # environment configuration, outside the checkout
 ├── deployment.env      # image, ref, port, compose name, path overrides
@@ -52,16 +50,13 @@ Makefile resolves both and exports `CONFIG_DIR` and `CONTAINER_DATA_DIR`, so
 `CONFIG_DIR` and every mutable mount from `CONTAINER_DATA_DIR`.
 
 This checkout holds no live configuration, so a release archive can replace it
-without touching `~/config` or `~/container-data`. `make build-local` stages
-`lib/ucanaccess` into the repository-root build context, which is the one
-writable side effect, and it applies to development builds only.
+without touching `~/config` or `~/container-data`.
 
 ## Quick Start
 
 Run these as the deployment user from the `container/` directory:
 
 ```bash
-make install-ucanaccess   # only needed for MS Access data sources
 make setup                # create ~/config, ~/container-data and the templates
 nano ~/config/deployment.env   # image, branch, port and frontend build arguments
 nano ~/config/backend.env      # runtime settings
@@ -88,7 +83,6 @@ HOST_PORT=8013 make up
 | Command                  | Purpose                                             |
 |--------------------------|-----------------------------------------------------|
 | `make setup`             | Create `~/config`, the data directories and the template files |
-| `make install-ucanaccess`| Download the UCanAccess JARs into `lib/ucanaccess`   |
 | `make build`             | Build the image from GitHub (`GIT_REF`, `GIT_REPO`)  |
 | `make build-local`       | Build the image from the local repository checkout   |
 | `make up` / `make down`  | Start / stop the container                          |
@@ -192,6 +186,56 @@ the bind-mounted data directories.
 rebuild. They come from `~/config/deployment.env` and reach the build as
 arguments (see `podman-compose.yml` and `Containerfile`); they are not read from
 `backend.env`.
+
+## Container Releases
+
+The `container/` tree is versioned and published independently of the
+application. Container releases are GitHub Releases tagged `container-vX.Y.Z`,
+created only from merges to the protected `container-release` branch by the
+`container-release` workflow. Application releases (`vX.Y.Z` tags produced by
+semantic-release on `main`) are a separate stream: a container tag says nothing
+about the application version, and publishing or selecting a container release
+never changes `GIT_REF` or `IMAGE_NAME`.
+
+Each container release carries:
+
+- `container-vX.Y.Z.tar.gz` — the complete tracked `container/` tree, unpacking
+  to a single `container/` directory. `.containerignore` filters only the image
+  build context, never this archive.
+- `container-vX.Y.Z.tar.gz.sha256` — a `sha256sum` checksum that detects
+  transfer corruption. It is not an authenticity signature; trust comes from
+  the protected repository and release workflow.
+- Release notes recording the exact source commit. Select releases by their
+  exact tag, not by a branch or "latest".
+
+### Promoting a container release
+
+1. Create a promotion branch from the current tip of `container-release`.
+2. Merge `main` into the promotion branch, so the reviewed tree carries the
+   latest application changes.
+3. Set the next version explicitly in `container/VERSION` as `X.Y.Z`. The value
+   must be a plain three-part version that strictly increases over the highest
+   existing `container-v*` tag.
+4. Open a PR targeting `container-release` and review the resulting `container/`
+   tree, not just the commit list.
+5. The PR run validates the release inputs and builds the archive with
+   read-only permissions. It creates no tag and no Release. A missing, reused,
+   or malformed version, or a missing required deployment file, fails the PR.
+6. After an approved review, merge. The post-merge workflow publishes exactly
+   one `container-vX.Y.Z` tag and Release from the merged commit, and refuses
+   to run when that tag or Release already exists.
+
+To inspect a published release locally:
+
+```bash
+gh release view container-vX.Y.Z --repo humlab-sead/sead_shape_shifter
+sha256sum -c container-vX.Y.Z.tar.gz.sha256
+tar -tzf container-vX.Y.Z.tar.gz | head
+```
+
+Installing a release on a deployment host and selecting it per environment is a
+separate change and is not yet available; until then, keep using the checkout
+placement described in [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## Documentation
 

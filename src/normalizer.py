@@ -11,6 +11,7 @@ import pandas as pd
 from loguru import logger
 
 from src.dispatch import Dispatcher, Dispatchers
+from src.exceptions import MissingBusinessKeyError
 from src.extract import SubsetService
 from src.loaders import DataLoader
 from src.loaders.base_loader import DataLoaders, LoaderType
@@ -208,17 +209,19 @@ class ShapeShifter:
         # Process all configured tables (base + append items)
         data: pd.DataFrame = await self.get_subset(subset_service, entity, table_cfg)
 
+        deferred_extra_columns: dict[str, Any] = {}
+
         # Evaluate extra_columns immediately after loading (before FK linking)
         # This ensures columns added via extra_columns (including key columns) are available for FK validation
         if table_cfg.extra_columns:
-            data, deferred = self.extra_col_evaluator.evaluate_extra_columns(
+            data, deferred_extra_columns = self.extra_col_evaluator.evaluate_extra_columns(
                 df=data,
                 extra_columns=table_cfg.extra_columns,
                 entity_name=entity,
                 defer_missing=True,  # Defer columns that reference FK-added columns
             )
-            if deferred:
-                logger.trace(f"{entity}[extra_columns]: Deferred {len(deferred)} columns until after FK linking")
+            if deferred_extra_columns:
+                logger.trace(f"{entity}[extra_columns]: Deferred {len(deferred_extra_columns)} columns until after FK linking")
 
         if table_cfg.filters:
             data = apply_filters(name=entity, df=data, cfg=table_cfg, data_store=self.table_store, stage="extract")
@@ -235,7 +238,7 @@ class ShapeShifter:
         self.linker.link_entity(entity_name=entity)
 
         # Re-evaluate deferred extra_columns after FK linking (in case they reference FK-added columns)
-        self._evaluate_deferred_extra_columns(entity)
+        deferred_extra_columns = self._evaluate_deferred_extra_columns(entity, deferred_extra_columns)
 
         if table_cfg.filters:
             self.table_store[entity] = apply_filters(
@@ -250,7 +253,7 @@ class ShapeShifter:
             self.unnest_entity(entity=entity)
             self.linker.link_entity(entity_name=entity)
             # Re-evaluate deferred extra_columns after unnesting (in case unnest added new columns)
-            self._evaluate_deferred_extra_columns(entity)
+            deferred_extra_columns = self._evaluate_deferred_extra_columns(entity, deferred_extra_columns)
 
             if table_cfg.filters:
                 self.table_store[entity] = apply_filters(
@@ -281,9 +284,16 @@ class ShapeShifter:
 
         # Verify extra_columns were evaluated for this entity
         if table_cfg.extra_columns:
+            extra_columns_to_verify = table_cfg.extra_columns
+            if table_cfg.unnest:
+                consumed_value_vars = set(table_cfg.unnest.value_vars)
+                extra_columns_to_verify = {
+                    column: value for column, value in table_cfg.extra_columns.items() if column not in consumed_value_vars
+                }
+
             unresolved_extra_columns = self.extra_col_evaluator.get_unresolved_extra_columns(
                 self.table_store[entity],
-                table_cfg.extra_columns,
+                extra_columns_to_verify,
             )
 
             if unresolved_extra_columns:
@@ -291,7 +301,7 @@ class ShapeShifter:
             else:
                 self.unresolved_extra_columns.pop(entity, None)
 
-            self.extra_col_evaluator.verify_extra_columns(self.table_store[entity], table_cfg.extra_columns, entity)
+            self.extra_col_evaluator.verify_extra_columns(self.table_store[entity], extra_columns_to_verify, entity)
 
         # Reorder columns immediately so each entity is fully formed before downstream entities process it
         self.table_store[entity] = self.project.reorder_columns(entity, self.table_store[entity])
@@ -326,16 +336,34 @@ class ShapeShifter:
         )
 
     def _check_duplicate_keys(self, entity: str, table_cfg: TableConfig) -> None:
-        """Check for duplicate keys in the processed table and log an error if found."""
+        """Check that processed output contains every configured business key.
+
+        The managed identity columns (system_id and public_id) are permitted as
+        keys even though they are added to the output after this check runs, so
+        they never count as missing. This matches the structural validator,
+        which treats them as produced columns.
+        """
 
         if not table_cfg.keys:
             return
 
         keys: set[str] = set(table_cfg.keys) if table_cfg.keys else set()
-        missing_keys: set[str] = keys - set(self.table_store[entity].columns)
+        managed_keys: set[str] = set(table_cfg.identity_columns)
+        missing_keys: set[str] = keys - set(self.table_store[entity].columns) - managed_keys
 
         if missing_keys:
-            # We cannot check for duplicates if keys are missing, just return
+            raise MissingBusinessKeyError(
+                f"Entity '{entity}': key column(s) {sorted(missing_keys)} are missing from processed output. "
+                "'keys' do not create output columns. Add the missing fields to 'columns' or configure the producer "
+                "(extra_columns, foreign_keys, or unnest) that creates them.",
+                entity_name=entity,
+                missing_keys=sorted(missing_keys),
+            )
+
+        # Managed identity columns are system-generated: system_id is unique by
+        # construction and public_id is filled in later, so a duplicate scan on
+        # keys made only of them would be meaningless.
+        if keys <= managed_keys:
             return
 
         has_duplicate_keys: bool = bool(self.table_store[entity].duplicated(subset=list(table_cfg.keys)).any())
@@ -343,27 +371,25 @@ class ShapeShifter:
             # raise ValueError(f"{entity}[keys]: Duplicate keys found for keys {table_cfg.keys}.")
             logger.error(f"{entity}[keys]: DUPLICATE KEYS FOUND FOR KEYS {table_cfg.keys}.")
 
-    def _evaluate_deferred_extra_columns(self, entity_name: str) -> None:
-        """Re-evaluate deferred extra_columns for an entity after FK linking or unnesting.
+    def _evaluate_deferred_extra_columns(self, entity_name: str, deferred_extra_columns: dict[str, Any]) -> dict[str, Any]:
+        """Re-evaluate extra_columns that were deferred because their source columns were unavailable.
 
         This handles interpolated strings that reference columns added by FK linking
         (e.g., extra_columns from remote FK tables) or by unnesting operations.
 
-        The evaluator is idempotent - it skips columns already in the DataFrame.
-
         Args:
             entity_name: Name of entity to process deferred columns for
+            deferred_extra_columns: Extra columns deferred during the previous evaluation pass
+
         """
-        table_cfg: TableConfig = self.project.get_table(entity_name)
-        if not table_cfg.extra_columns:
-            return  # No extra_columns configured
+        if not deferred_extra_columns:
+            return {}
 
         df: pd.DataFrame = self.table_store[entity_name]
 
-        # Pass ALL extra_columns - evaluator will skip existing ones (idempotent)
         result, still_deferred = self.extra_col_evaluator.evaluate_extra_columns(
             df=df,
-            extra_columns=table_cfg.extra_columns,  # Full dict, not filtered
+            extra_columns=deferred_extra_columns,
             entity_name=entity_name,
             defer_missing=True,  # Allow re-deferral if columns still missing
         )
@@ -376,6 +402,7 @@ class ShapeShifter:
             logger.trace(f"{entity_name}[deferred]: Still waiting for columns: {list(still_deferred.keys())}")
         else:
             logger.trace(f"{entity_name}[deferred]: Successfully evaluated all deferred extra_columns")
+        return still_deferred
 
     def retry_linking(self) -> None:
         """Retry linking only for entities currently in deferred set."""

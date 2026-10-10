@@ -576,7 +576,7 @@ rules:
         symbol: FixedEntityFieldsSpecification
 
   - id: entity.fixed.values_must_be_list
-    title: fixed entity values must be a list
+    title: fixed entity values must be a list when provided
     severity: error
     category: structural
     applies_to: entities.*
@@ -586,8 +586,28 @@ rules:
       kind: type_compatible
       field: values
       expected: list
-    message: "Fixed entities must define values as a list."
-    fix: "Set values to a list of rows (list rows or dict rows)."
+    message: "Fixed entities must define values as a list when values are provided."
+    fix: "Set values to a list of rows (list rows or dict rows), or omit values when append branches supply the rows."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: FixedEntityFieldsSpecification
+
+  - id: entity.fixed.values_required_without_append
+    title: fixed entities without append must define values
+    severity: error
+    category: conditional
+    applies_to: entities.*
+    when:
+      type: fixed
+    check:
+      kind: exists
+      field: values
+      unless:
+        has_append: true
+    message: "Fixed entities must define values unless append branches supply the rows."
+    fix: "Add values as a list of rows, or configure append branches to populate the entity."
     confidence: high
     source:
       - kind: specification
@@ -961,6 +981,24 @@ rules:
         - value_vars[]
     message: "Unnest references columns that are not available when unnest runs."
     fix: "Use columns available after linking (columns, keys, extra_columns, or FK-added columns)."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: UnnestColumnsSpecification
+
+  - id: entity.unnest.id_vars_value_vars_no_overlap
+    title: unnest id_vars and value_vars must not overlap
+    severity: error
+    category: consistency
+    applies_to: entities.*.unnest
+    check:
+      kind: disjoint
+      fields:
+        - id_vars[]
+        - value_vars[]
+    message: "A column is listed as both an id_var and a value_var."
+    fix: "Remove the overlapping column from id_vars or value_vars; overlapping columns are kept as identifiers and are not melted."
     confidence: high
     source:
       - kind: specification

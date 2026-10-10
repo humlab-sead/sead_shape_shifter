@@ -32,7 +32,8 @@
             <strong>{{ foreignKey.entity }}</strong>
           </div>
           <div class="text-caption mt-1">
-            Keys: {{ Array.isArray(foreignKey.local_keys) ? foreignKey.local_keys.join(', ') : foreignKey.local_keys }} →
+            Keys:
+            {{ Array.isArray(foreignKey.local_keys) ? foreignKey.local_keys.join(', ') : foreignKey.local_keys }} →
             {{ Array.isArray(foreignKey.remote_keys) ? foreignKey.remote_keys.join(', ') : foreignKey.remote_keys }}
           </div>
           <div class="text-caption">Type: {{ foreignKey.how || 'left' }}</div>
@@ -242,18 +243,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useForeignKeyTester } from '@/composables/useForeignKeyTester'
-
-interface ForeignKey {
-  entity: string
-  local_keys: string[]
-  remote_keys: string[]
-  how?: string
-}
+import type { ForeignKeyConfig } from '@/types'
 
 interface Props {
   projectName: string
   entityName: string
-  foreignKey: ForeignKey
+  foreignKey: ForeignKeyConfig
   foreignKeyIndex: number
   disabled?: boolean
 }
@@ -278,7 +273,7 @@ const {
 } = useForeignKeyTester()
 
 const runTest = async () => {
-  await testForeignKey(props.projectName, props.entityName, props.foreignKeyIndex, sampleSize.value)
+  await testForeignKey(props.projectName, props.entityName, props.foreignKeyIndex, props.foreignKey, sampleSize.value)
 }
 
 const errorAlertType = computed(() => {

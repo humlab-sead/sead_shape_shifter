@@ -425,7 +425,9 @@ naming:
 
 ## SEAD Superset Spec (`sead_superset_model.yml`)
 
-The bundled SEAD superset spec at `resources/target_models/sead_superset_model.yml` currently covers 92 entities. It is intended to be the near-complete shared SEAD model from which individual Shape Shifter projects can select curated subsets.
+The bundled SEAD superset spec at `resources/target_models/sead_superset_model.yml` currently covers 102 entities. It is intended to be the near-complete shared SEAD model from which individual Shape Shifter projects can select curated subsets.
+
+Coverage is not yet complete. Of the 136 in-scope SEAD tables in the filtered live-schema snapshot, 42 remain unmapped. Remaining coverage work is tracked in [Define And Verify The SEAD Target Model Coverage Boundary](proposals/SEAD_TARGET_MODEL_COVERAGE_BOUNDARY.md) and [#532](https://github.com/humlab-sead/sead_shape_shifter/issues/532).
 
 | Domain       | Entities                                                                                                                                                                |
 |--------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|

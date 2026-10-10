@@ -47,6 +47,10 @@ profile-stats:
 	@uv run python -c "import pstats; p = pstats.Stats('profile.stats'); p.sort_stats('cumulative').print_stats(30)"
 	@echo "✓ Full stats saved to profile.stats"
 
+.PHONY: profile-projects
+profile-projects:
+	@uv run python scripts/profile_projects_listing.py
+
 .PHONY: publish
 publish:
 	@echo "Publishing Python package to PyPI"
@@ -298,7 +302,7 @@ install-graphify:
 commit-graphify:
 	@git add graphify-out
 	@if git diff --cached --quiet -- graphify-out; then \
-		echo "No changes in graphify§-out"; \
+		echo "No changes in graphify-out"; \
 	else \
 		git commit -m "chore: updated graphify graph"; \
 	fi

@@ -459,6 +459,53 @@ class TableConfig:
         )
 
     @cached_property
+    def referenced_entities(self) -> set[str]:
+        """Return all entity names referenced by this configuration."""
+        references: set[str] = set()
+
+        if isinstance(self.source, str):
+            references.add(self.source)
+
+        explicit_dependencies = self.entity_cfg.get("depends_on", []) or []
+        if isinstance(explicit_dependencies, str):
+            references.add(explicit_dependencies)
+        elif isinstance(explicit_dependencies, (list, tuple, set)):
+            references.update(value for value in explicit_dependencies if isinstance(value, str))
+
+        foreign_keys = self.entity_cfg.get("foreign_keys", []) or []
+        if isinstance(foreign_keys, dict):
+            foreign_keys = [foreign_keys]
+        for foreign_key in foreign_keys:
+            if isinstance(foreign_key, dict):
+                target = foreign_key.get("entity") or foreign_key.get("remote_entity")
+                if isinstance(target, str):
+                    references.add(target)
+
+        for config_key in ("append", "branches"):
+            configs = self.entity_cfg.get(config_key, []) or []
+            if isinstance(configs, str):
+                references.add(configs)
+                continue
+            if isinstance(configs, dict):
+                configs = [configs]
+            if isinstance(configs, (list, tuple)):
+                references.update(
+                    config["source"] for config in configs if isinstance(config, dict) and isinstance(config.get("source"), str)
+                )
+
+        filters = self.entity_cfg.get("filters", []) or []
+        if isinstance(filters, dict):
+            filters = [filters]
+        if isinstance(filters, (list, tuple)):
+            for filter_config in filters:
+                if isinstance(filter_config, dict):
+                    references.update(
+                        value for value in (filter_config.get("entity"), filter_config.get("other_entity")) if isinstance(value, str)
+                    )
+
+        return references
+
+    @cached_property
     def foreign_keys(self) -> list[ForeignKeyConfig]:
         return [
             ForeignKeyConfig(local_entity=self.entity_name, fk_cfg=fk_data) for fk_data in self.entity_cfg.get("foreign_keys", []) or []
@@ -466,56 +513,17 @@ class TableConfig:
 
     def dependent_entities(self) -> Generator[str, None, None]:
         """Yield names of entities that depend on this entity."""
-        for entity_name, entity_cfg in self.entities_cfg.items():
-            try:
-                # Check source
-                if entity_cfg.get("source") == self.entity_name:
-                    yield entity_name
-                    continue
-
-                # Check depends_on
-                depends_on: list[str] = entity_cfg.get("depends_on", []) or []
-                if self.entity_name in depends_on:
-                    yield entity_name
-                    continue
-
-                # Check foreign keys
-                foreign_keys: list[dict[str, Any]] = entity_cfg.get("foreign_keys", []) or []
-                for fk in foreign_keys:
-                    if fk.get("entity") == self.entity_name:
-                        yield entity_name
-                        break
-
-                # Check append sources
-                append_raw = entity_cfg.get("append", []) or []
-                # Normalize to list (append can be: string, dict, or list of dicts)
-                if isinstance(append_raw, str):
-                    # Skip string format - not a valid dependency check
-                    continue
-
-                if isinstance(append_raw, dict):
-                    append_cfgs = [append_raw]
-                else:
-                    append_cfgs = append_raw
-
-                for append_cfg in append_cfgs:
-                    if isinstance(append_cfg, dict) and append_cfg.get("source") == self.entity_name:
-                        yield entity_name
-                        break
-
-                # Check branch sources (for merged entities)
-                branches_raw = entity_cfg.get("branches", []) or []
-                if isinstance(branches_raw, dict):
-                    branch_cfgs = [branches_raw]
-                else:
-                    branch_cfgs = branches_raw
-
-                for branch_cfg in branch_cfgs:
-                    if isinstance(branch_cfg, dict) and branch_cfg.get("source") == self.entity_name:
-                        yield entity_name
-                        break
-            except KeyError:
+        for entity_name in sorted(self.entities_cfg):
+            entity_cfg = self.entities_cfg[entity_name]
+            if entity_name == self.entity_name or not isinstance(entity_cfg, dict):
                 continue
+            referenced_entities = TableConfig(
+                entities_cfg=self.entities_cfg,
+                entity_name=entity_name,
+                project_options=self.project_options,
+            ).referenced_entities
+            if self.entity_name in referenced_entities:
+                yield entity_name
 
     @cached_property
     def append_configs(self) -> list[dict[str, Any]]:
@@ -554,8 +562,8 @@ class TableConfig:
 
     @property
     def keys_and_columns(self) -> list[str]:
-        """Get columns with keys first, followed by other columns."""
-        return list(self.keys) + [col for col in self.columns if col not in self.keys]
+        """Return configured data columns without adding business keys."""
+        return list(self.columns)
 
     @property
     def identity_columns(self) -> list[str]:
@@ -564,14 +572,12 @@ class TableConfig:
 
     @property
     def values_column_order(self) -> list[str]:
-        """Get canonical column order for fixed values: system_id → public_id → keys → data columns.
+        """Get canonical fixed-value order: system_id, public_id, then configured data columns.
 
-        This defines the expected order for the 'values' field in fixed entities,
-        following the three-tier identity system:
+        This defines the expected order for the 'values' field in fixed entities:
         1. system_id (local sequential identity)
         2. public_id (target schema identity, if defined)
-        3. keys (business keys)
-        4. columns (data columns, excluding identity columns)
+        3. columns (data columns, excluding identity columns)
 
         Returns:
             Ordered list of column names
@@ -582,7 +588,7 @@ class TableConfig:
               keys: [type_code]
               columns: [type_name, description]
 
-            Returns: ["system_id", "sample_type_id", "type_code", "type_name", "description"]
+            Returns: ["system_id", "sample_type_id", "type_name", "description"]
         """
         result: list[str] = []
 
@@ -593,12 +599,9 @@ class TableConfig:
         if self.public_id:
             result.append(self.public_id)
 
-        # 3. keys (business identifiers)
-        result.extend(sorted(self.keys))
-
-        # 4. data columns (excluding system_id and public_id to avoid duplicates)
+        # 3. data columns (excluding system_id and public_id to avoid duplicates)
         identity_cols = {self.system_id, self.public_id} if self.public_id else {self.system_id}
-        data_cols = [c for c in self.safe_columns if c not in identity_cols and c not in self.keys]
+        data_cols = [c for c in self.safe_columns if c not in identity_cols]
         result.extend(data_cols)
 
         return result
@@ -649,33 +652,31 @@ class TableConfig:
 
     @cached_property
     def extra_fk_columns(self) -> set[str]:
-        """Get set of foreign key columns not in columns or keys."""
+        """Get foreign key columns that are not configured data columns."""
         extra_columns: set[str] = set()
         for fk in self.foreign_keys:
             extra_columns = extra_columns.union(set(fk.local_keys))
-        return self.fk_columns - (set(self.keys_and_columns))
+        return self.fk_columns - set(self.keys_and_columns)
 
     @property
     def keys_columns_and_fks(self) -> list[str]:
-        """Get set of all columns used in keys, columns, and foreign keys, pending unnesting columns excluded)."""
-        keys_and_data_columns: list[str] = self.keys_and_columns
-        return keys_and_data_columns + unique(
-            list(x for x in self.fk_columns if x not in keys_and_data_columns and x not in self.unnest_columns)
-        )
+        """Return configured data and FK input columns, excluding pending unnest outputs."""
+        data_columns: list[str] = self.keys_and_columns
+        columns = data_columns + unique(list(x for x in self.fk_columns if x not in data_columns and x not in self.unnest_columns))
+        if self.unnest:
+            columns.extend(self.unnest.id_vars)
+        return unique(columns)
 
-    def get_columns(
-        self, include_keys: bool = True, include_fks: bool = True, include_extra: bool = True, include_unnest: bool = True
-    ) -> list[str]:
-        """Get list of columns based on inclusion criteria."""
+    def get_columns(self, include_fks: bool = True, include_extra: bool = True, include_unnest: bool = True) -> list[str]:
+        """Return configured and generated output columns based on inclusion criteria."""
         cols: list[str] = []
-        if include_keys:
-            cols.extend(list(self.keys))
         cols.extend(self.columns)
         if include_fks:
             cols.extend(list(self.fk_columns))
         if include_extra:
             cols.extend(list(self.extra_columns.keys()))
         if include_unnest and self.unnest:
+            cols.extend(self.unnest.id_vars)
             cols.extend([self.unnest.var_name, self.unnest.value_name])
         return unique(cols)
 
@@ -872,9 +873,13 @@ class TableConfig:
 
             merged[key] = value
 
-        # Filter out public_id from columns list for append sources
-        # The public_id column will be added after concatenation with None values
-        if "columns" in merged and self.public_id:
+        # Filter out public_id from inherited columns for append sources.
+        # The public_id column is added after concatenation with None values,
+        # so inherited parent columns must not extract it from the append source.
+        # Columns declared explicitly on the append item are kept as-is: they
+        # name the source fields to extract, and add_public_id_column preserves
+        # values that are already present.
+        if "columns" in merged and "columns" not in append_data and self.public_id:
             columns = merged["columns"]
             if isinstance(columns, list) and self.public_id in columns:
                 merged["columns"] = [col for col in columns if col != self.public_id]
@@ -902,7 +907,7 @@ class TableConfig:
         """Return the columns this entity presents to a target model.
 
         Contract in v1:
-        - without unnest: includes business keys, explicit `columns`, `public_id`,
+        - without unnest: includes explicit `columns`, `public_id`,
         configured `extra_columns`, and generated FK-facing columns
         - with unnest: first collapse the current table shape the same way `pd.melt`
         does, so only surviving `id_vars`, `var_name`, and `value_name` count as
@@ -922,7 +927,6 @@ class TableConfig:
             target_columns.extend(sorted(self.surviving_unnest_columns))
         else:
             system_id: str = self.system_id
-            target_columns.extend(column for column in self.safe_keys if column != system_id)
             target_columns.extend(column for column in self.safe_columns if column != system_id)
             target_columns.extend(self.extra_column_names)
 
@@ -1181,7 +1185,7 @@ class ShapeShiftProject:
         )
         existing_cols_to_move: list[str] = [col for col in cols_to_move if col in table.columns]
         other_cols: list[str] = [col for col in table.columns if col not in existing_cols_to_move]
-        new_column_order: list[str] = existing_cols_to_move + other_cols
+        new_column_order: list[str] = existing_cols_to_move + sorted(other_cols)
         return unique(new_column_order)
 
     def reorder_columns(self, table_cfg: str | TableConfig, table: pd.DataFrame) -> pd.DataFrame:
@@ -1207,10 +1211,10 @@ class ShapeShiftProject:
             cols_to_move.append(table_cfg.public_id)
 
         # Add FK columns (use parent's public_id)
-        cols_to_move.extend(sorted([self.get_table(fk.remote_entity).public_id for fk in table_cfg.foreign_keys]))
+        cols_to_move.extend(self.get_table(fk.remote_entity).public_id for fk in table_cfg.foreign_keys)
 
         # Add extra columns
-        cols_to_move.extend(sorted(table_cfg.extra_column_names))
+        cols_to_move.extend(table_cfg.extra_column_names)
 
         # Remove duplicates while preserving order
         existing_cols_to_move: list[str] = []
@@ -1220,8 +1224,12 @@ class ShapeShiftProject:
                 existing_cols_to_move.append(col)
                 seen.add(col)
 
-        other_cols: list[str] = [col for col in table.columns if col not in existing_cols_to_move]
-        new_column_order: list[str] = existing_cols_to_move + sorted(other_cols)
+        configured_columns: list[str] = [
+            column for column in table_cfg.safe_columns if column in table.columns and column not in existing_cols_to_move
+        ]
+        selected_columns: set[str] = set(existing_cols_to_move) | set(configured_columns)
+        other_cols: list[str] = [col for col in table.columns if col not in selected_columns]
+        new_column_order: list[str] = existing_cols_to_move + configured_columns + other_cols
         table = table[new_column_order]
         return table
 
