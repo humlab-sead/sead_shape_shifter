@@ -2,17 +2,17 @@
 
 ## Summary
 
-This plan sequences the implementation described in [the proposal](DECLARATIVE_BUSINESS_KEYS.md). It uses five phases: remove key-driven output selection in Core and add key validation, make one backend fixed schema authoritative for persistence and value conversion, adopt that schema in the frontend, run regression and integration checks, and retire legacy values-order input.
+This plan sequences the implementation described in [the proposal](DECLARATIVE_BUSINESS_KEYS.md). It uses four phases: remove key-driven output selection in Core and add key validation, make one backend fixed schema authoritative for persistence and value conversion, adopt that schema in the frontend, and run regression and integration checks. Retiring the legacy values-order input is deferred to issue #539 because it is cleanup, not a delivery dependency.
 
-The ordering follows the proposal's recommended delivery order. The validation-error content and the compatibility rule are cross-phase rules rather than a delivery step. The rollout period for removing legacy input support is the only decision that could change later phases; everything else is settled by the proposal.
+The ordering follows the proposal's recommended delivery order. The validation-error content and the compatibility rule are cross-phase rules rather than a delivery step. The rollout period that once gated retiring legacy input support is resolved: the frontend bundled with the backend is the only client that sends fixed-values requests, and it already sends the authoritative order. Retirement is therefore a code-removal cleanup tracked as issue #539, not a delivery phase or a coordinated client transition. Everything else is settled by the proposal.
 
 ## Problem
 
-`keys` currently both describes business-key behavior and contributes output columns. That dual role produces inconsistent schemas across Core extraction, SQL ordering, fixed-schema derivation, materialization, and the entity editor. The change must land as a coordinated update across Core, backend, frontend, and saved project data, with a controlled transition for existing clients that send legacy positional values.
+`keys` currently both describes business-key behavior and contributes output columns. That dual role produces inconsistent schemas across Core extraction, SQL ordering, fixed-schema derivation, materialization, and the entity editor. The change must land as a coordinated update across Core, backend, frontend, and saved project data. The only client that sends fixed-values requests is the frontend bundled with the backend, so the transition is limited to that client rather than to independent external clients.
 
 ## Scope
 
-This plan covers the Core output-selection and key-validation change, fixed and materialized schema derivation, backend persistence and value conversion, frontend adoption of backend fixed-schema metadata, and the regression and integration checks that gate retiring legacy input support.
+This plan covers the Core output-selection and key-validation change, fixed and materialized schema derivation, backend persistence and value conversion, frontend adoption of backend fixed-schema metadata, and the regression and integration checks that gate the change.
 
 It does not change the three-tier identity model, `system_id` or `public_id` meaning, foreign-key join behavior, or business-key checks. It does not add an automatic project or values migration tool and does not restate the proposal's rationale.
 
@@ -24,6 +24,8 @@ It does not change the three-tier identity model, `system_id` or `public_id` mea
 - The keys-subset check in `EntityFieldsBaseSpecification` is present but commented out, so keys are not currently validated against produced fields.
 - `resolve_column_availability` seeds source candidates from configured keys and `values_column_order`, so a configured key can be suggested without a producer.
 - The frontend computes fixed grid order locally from columns, keys, and `public_id`, and its key watcher appends missing keys into the columns list. `fixed_schema` is already typed on entity responses and is additive.
+- `EntityValuesService._normalize_fixed_request_columns` recognizes the historical identity/keys/data request order through `build_legacy_fixed_full_columns` and remaps those rows by name before saving. `_normalize_fixed_stored_values` separately reorders any stored column permutation with the same name set when reading, without writing the file.
+- Structural and data validation reject business keys that are not produced: keys outside a fixed entity's `full_columns`, duplicate fixed columns, and unproduced keys reported by data validation.
 - Proposal decision: `fixed_schema` API work is complete; frontend adoption remains open. Validation must never write project or values files.
 
 ## Phase Plan
@@ -190,44 +192,15 @@ Prove the coordinated change end-to-end across Core, backend, fixed values, mate
 
 Ready for a task plan after Phases 1 through 3.
 
-### Phase 5: Legacy Values-Order Retirement
+### Deferred: Legacy Values-Order Retirement
 
-**Goal**
+Retiring the legacy fixed-values request-order recognition is tracked as issue #539. It is not a delivery phase and does not block deploying the change:
 
-Remove the legacy values-order compatibility path once the rollout period is decided and clients have adopted the new contract.
+- The remaining code only accepts *additional* input shapes on top of the authoritative order, so it is backward-compatible and blocks nothing.
+- No independent values-request client exists, so there is no rollout to coordinate.
+- Removal is a code change, not a data migration: no project or values files are rewritten, and the read-side stored-order normalization in `_normalize_fixed_stored_values` must stay so existing sidecar files remain readable.
 
-**Focus**
-
-- Confirm the rollout period and that existing clients send the authoritative order.
-- Remove the legacy recognition and remap path.
-- Keep validation errors and the authoritative `fixed_schema` order unchanged after removal.
-
-**Depends On**
-
-- Phase 4 passing regression and integration results.
-- A named rollout period for removing legacy input support.
-
-**Outputs**
-
-- A single authoritative values-order contract with no legacy remap path.
-
-**Acceptance Criteria**
-
-- `PH5-AC-1` (from `P-AC-4`) After retirement, values requests accept only the authoritative order, and prior regression and integration coverage still passes.
-
-**Validation Milestones**
-
-- `VM-5` Post-retirement regression confirms the authoritative order alone is accepted and the changed behavior is unchanged. Covers `PH5-AC-1`.
-
-**Task-Plan Handoff**
-
-- Source criteria: `P-AC-4`.
-- Fixed decisions: retirement is a cutover, not a data migration; no project or values files are rewritten.
-- Blocking questions: the rollout period is undecided and blocks retirement.
-
-**Readiness**
-
-Requires a named decision: the legacy values-order rollout period.
+The work itself is: drop the `build_legacy_fixed_full_columns` recognition from `_normalize_fixed_request_columns`, remove `build_fixed_entity_legacy_columns` and its wrapper once they have no callers, and replace the tests that assert legacy-order acceptance with tests that assert the same request fails with an error naming the authoritative order.
 
 ## Cross-Phase Rules
 
@@ -238,7 +211,7 @@ Requires a named decision: the legacy values-order rollout period.
 - Keep structural checks conservative for loader-discovered fields; the runtime check remains authoritative.
 - Keep suggestion lists advisory and keep free-text entry available in every phase.
 - Validation errors must name the entity, the missing key, why it is not produced, and, where fixed or materialized values are affected, the expected positional column order.
-- Accept and remap only an exact, unambiguous legacy fixed-values order; reject duplicate names, unknown orders, and row widths matching neither accepted layout, and never guess an unsafe mapping.
+- Accept and remap only an exact, unambiguous legacy fixed-values order; reject duplicate names, unknown orders, and row widths matching neither accepted layout, and never guess an unsafe mapping. Removing this acceptance is deferred to issue #539.
 
 ## Validation Strategy
 
@@ -247,10 +220,11 @@ Requires a named decision: the legacy values-order rollout period.
 - Backend tests for `fixed_schema` derivation, GET and PUT normalization, exact new order, recognized legacy remap, and rejection of ambiguous payloads.
 - Frontend tests for hydration from `fixed_schema`, grid order, keys that are also produced columns, save round-trips, and the no-metadata fallback.
 - Integration tests for an existing fixed entity with a missing key, materialized values through open, edit, and save, and a source-backed entity with a loader-discovered missing key.
-- A grouped regression at Phase 4 and a post-retirement regression at Phase 5.
+- A survey of existing project files confirming that none configures a business key that is not produced, supporting the strict-validation cutover.
+- A grouped regression at Phase 4; post-retirement regression belongs to issue #539.
 
 Exact commands, test files, fixtures, and assertions belong in the phase task plans.
 
 ## Final Recommendation
 
-Sequence the work in the proposal's order. Land the Core rule first, then the fixed-schema and persistence change, then frontend adoption. Apply the error-content and compatibility rules from the start. Run the grouped regression and integration checks before retiring legacy input support, and retire that support only once the rollout period is decided.
+Sequence the work in the proposal's order. Land the Core rule first, then the fixed-schema and persistence change, then frontend adoption. Apply the error-content and compatibility rules from the start. Run the grouped regression and integration checks before release. Retiring the legacy request-order path is deferred to issue #539, because the remaining acceptance code is backward-compatible cleanup and does not block deploying the change.
