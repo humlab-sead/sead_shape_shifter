@@ -88,6 +88,38 @@
         </template>
       </v-list-item>
 
+      <!-- Active (not ignored) -->
+      <v-list-item
+        :active="selectedFilter === 'not_ignored'"
+        @click="selectFilter('not_ignored')"
+      >
+        <template #prepend>
+          <v-icon icon="mdi-filter-remove-outline" color="primary" />
+        </template>
+        <v-list-item-title>Active (not ignored)</v-list-item-title>
+        <template #append>
+          <v-chip size="x-small" color="primary" variant="flat">
+            {{ activeCount }}
+          </v-chip>
+        </template>
+      </v-list-item>
+
+      <!-- With note -->
+      <v-list-item
+        :active="selectedFilter === 'has_note'"
+        @click="selectFilter('has_note')"
+      >
+        <template #prepend>
+          <v-icon icon="mdi-note-text-outline" color="info" />
+        </template>
+        <v-list-item-title>With Note</v-list-item-title>
+        <template #append>
+          <v-chip size="x-small" color="info" variant="flat">
+            {{ noteCount }}
+          </v-chip>
+        </template>
+      </v-list-item>
+
       <!-- Blocked -->
       <v-list-item
         :active="selectedFilter === 'blocked'"
@@ -154,7 +186,7 @@
 import { computed } from 'vue'
 import type { ProjectTaskStatus, EntityTaskStatus } from '@/composables/useTaskStatus'
 
-export type TaskFilter = 'all' | 'todo' | 'done' | 'ignored' | 'blocked' | 'critical'
+export type TaskFilter = 'all' | 'todo' | 'done' | 'ignored' | 'not_ignored' | 'has_note' | 'blocked' | 'critical'
 
 interface Props {
   modelValue: TaskFilter
@@ -202,6 +234,20 @@ const criticalCount = computed(() => {
   return entities.filter(e => e.priority === 'critical').length
 })
 
+// Count of entities not marked ignored
+const activeCount = computed(() => {
+  if (!props.taskStatus) return 0
+  const entities = Object.values(props.taskStatus.entities) as EntityTaskStatus[]
+  return entities.filter(e => e.status !== 'ignored').length
+})
+
+// Count of entities with a persisted task note
+const noteCount = computed(() => {
+  if (!props.taskStatus) return 0
+  const entities = Object.values(props.taskStatus.entities) as EntityTaskStatus[]
+  return entities.filter(e => e.has_note).length
+})
+
 const activeFilterCount = computed(() => {
   if (!props.taskStatus) return 0
   
@@ -210,6 +256,8 @@ const activeFilterCount = computed(() => {
     case 'todo': return stats.value?.todo ?? 0
     case 'done': return stats.value?.done ?? 0
     case 'ignored': return stats.value?.ignored ?? 0
+    case 'not_ignored': return activeCount.value
+    case 'has_note': return noteCount.value
     case 'blocked': return blockedCount.value
     case 'critical': return criticalCount.value
     default: return 0

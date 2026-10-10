@@ -20,6 +20,7 @@ Unknown keys in these sections are rejected because each model uses `extra="forb
 - `entities.<entity_name>.domains[]`: string (list item)
 - `entities.<entity_name>.target_table`: string | null (optional)
 - `entities.<entity_name>.public_id`: string | null (optional)
+- `entities.<entity_name>.public_id_generation`: string | null (optional)
 - `entities.<entity_name>.identity_columns`: list[string] (optional)
 - `entities.<entity_name>.identity_columns[]`: string (list item)
 - `entities.<entity_name>.columns`: map[string, ColumnSpec] (optional)
@@ -85,6 +86,7 @@ Values under `entities.<entity_name>` for each target entity.
 | domains | list[string] | No | [] | - |
 | target_table | string \| null | No | null | null |
 | public_id | string \| null | No | null | null |
+| public_id_generation | string \| null | No | null | null |
 | identity_columns | list[string] | No | [] | - |
 | columns | map[string, ColumnSpec] | No | {} | - |
 | unique_sets | list[list[string]] | No | [] | - |

@@ -379,12 +379,17 @@ class TestProjectsBackups:
         updated_entities = {"sample": {"type": "entity", "keys": ["id"], "columns": ["name"]}}
         await authorized_client.put("/api/v1/projects/test_project", json={"entities": updated_entities, "options": {}})
 
+        task_sidecar = tmp_path / "test_project" / "shapeshifter.tasks.yml"
+        task_sidecar.write_text("task_list: {}\n", encoding="utf-8")
+        yaml_service.get_yaml_service().create_backup(task_sidecar)
+
         # List backups
         response = await authorized_client.get("/api/v1/projects/test_project/backups")
         assert response.status_code == 200
         backups = response.json()
         assert len(backups) >= 1
         assert "shapeshifter" in backups[0]["file_name"]
+        assert all(".tasks.backup." not in backup["file_name"] for backup in backups)
 
     async def test_restore_backup(self, reset_services, tmp_path, monkeypatch, sample_project_data, authorized_client):
         """Test restoring from backup."""
@@ -418,6 +423,31 @@ class TestProjectsBackups:
         assert "sample" in original_data["entities"]
         assert "sample" in restored_data["entities"]
         assert restored_data["entities"]["sample"]["columns"] == original_data["entities"]["sample"]["columns"]
+
+    async def test_restore_rejects_task_list_sidecar_backup(
+        self, reset_services, tmp_path, monkeypatch, sample_project_data, authorized_client
+    ):
+        """Restoring a task-list backup must not replace the project configuration."""
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        create_response = await authorized_client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "entities": sample_project_data["entities"]},
+        )
+        assert create_response.status_code == 201
+
+        config_path = tmp_path / "test_project" / "shapeshifter.yml"
+        original_config = config_path.read_text(encoding="utf-8")
+        task_sidecar = tmp_path / "test_project" / "shapeshifter.tasks.yml"
+        task_sidecar.write_text("task_list:\n  todo: [sample]\n", encoding="utf-8")
+        task_backup = yaml_service.get_yaml_service().create_backup(task_sidecar)
+
+        response = await authorized_client.post(
+            "/api/v1/projects/test_project/restore",
+            json={"backup_name": task_backup.name},
+        )
+
+        assert response.status_code == 404
+        assert config_path.read_text(encoding="utf-8") == original_config
 
     async def test_restore_rejects_backup_from_another_project(
         self, reset_services, tmp_path, monkeypatch, sample_project_data, authorized_client

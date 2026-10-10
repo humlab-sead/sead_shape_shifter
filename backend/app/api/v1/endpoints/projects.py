@@ -36,6 +36,7 @@ from src.target_model import DocumentFormat
 
 router = APIRouter()
 shared_data_source_reader_dependency = require_shared_data_source(Action.READ)
+PROJECT_CONFIG_FILENAME = "shapeshifter.yml"
 
 # pylint: disable=no-member
 
@@ -46,6 +47,17 @@ def _project_directory(project_name: str) -> Path:
         return resolve_contained_path(ProjectNameMapper.to_path(project_name), settings.PROJECTS_DIR)
     except ValueError as exc:
         raise BadRequestError("Project path is outside the managed projects directory") from exc
+
+
+def _list_project_config_backups(yaml_service: YamlService, project_dir: Path) -> list[Path]:
+    """Return backups created from the project's shapeshifter.yml file."""
+    config_path = Path(PROJECT_CONFIG_FILENAME)
+    backup_prefix = f"{config_path.stem}.backup."
+    return [
+        backup
+        for backup in yaml_service.list_backups(project_dir=project_dir)
+        if backup.name.startswith(backup_prefix) and backup.suffix == config_path.suffix
+    ]
 
 
 def _authorize_referenced_shared_data_sources(
@@ -399,7 +411,7 @@ async def list_backups(
     """
     yaml_service: YamlService = get_yaml_service()
     project_dir = _project_directory(authorized_project.resource.locator)
-    backups: list[Path] = yaml_service.list_backups(project_dir=project_dir)
+    backups: list[Path] = _list_project_config_backups(yaml_service, project_dir)
     backup_infos: list[BackupInfo] = [
         BackupInfo(
             file_name=backup.name,
@@ -432,12 +444,12 @@ async def restore_backup(
     """
     yaml_service: YamlService = get_yaml_service()
     project_dir: Path = _project_directory(authorized_project.resource.locator)
-    backups: list[Path] = yaml_service.list_backups(project_dir=project_dir)
+    backups: list[Path] = _list_project_config_backups(yaml_service, project_dir)
     backup_path: Path | None = next((backup for backup in backups if backup.name == request.backup_name), None)
     if backup_path is None:
         raise NotFoundError(f"Backup '{request.backup_name}' not found for project '{name}'")
 
-    target_path: Path = resolve_contained_path("shapeshifter.yml", project_dir)
+    target_path: Path = resolve_contained_path(PROJECT_CONFIG_FILENAME, project_dir)
     yaml_service.restore_backup(backup_path, str(target_path), create_backup=True)
     restored_data: dict[str, Any] = yaml_service.load(target_path)
     stat = target_path.stat()

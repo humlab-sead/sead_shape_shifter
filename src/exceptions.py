@@ -27,3 +27,23 @@ class FunctionalDependencyError(ValueError, ShapeShifterCoreError):
         self.entity_name = entity_name
         self.determinant_columns = determinant_columns or []
         self.details = details or {}
+
+
+class MissingBusinessKeyError(ValueError, ShapeShifterCoreError):
+    """Raised when an entity's business keys are not produced by its output.
+
+    Carries the offending entity and the missing key names so callers can report
+    a structured business-key error rather than a generic failure.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        entity_name: str | None = None,
+        missing_keys: list[str] | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.message = message
+        self.entity_name = entity_name
+        self.missing_keys = missing_keys or []

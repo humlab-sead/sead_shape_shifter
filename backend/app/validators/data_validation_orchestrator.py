@@ -16,6 +16,7 @@ from backend.app import models as api
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.services.project_service import ProjectService
 from backend.app.services.shapeshift_service import ShapeShiftService
+from src.exceptions import MissingBusinessKeyError
 from src.model import ShapeShiftProject
 from src.normalizer import ShapeShifter
 from src.table_store import TableStore
@@ -27,6 +28,7 @@ from src.target_model.data_validators import (
 )
 from src.target_model.models import TargetModel
 from src.validators.data_validators import (
+    BusinessKeyProducedValidator,
     ColumnExistsValidator,
     DataTypeCompatibilityValidator,
     ForeignKeyDataValidator,
@@ -212,9 +214,10 @@ class DataValidationOrchestrator:
             if columns:
                 issues.extend(ColumnExistsValidator.validate(df, columns, entity_name, entity_cfg))
 
-            # Validate natural keys
+            # Validate that business keys are produced by the entity output and unique
             keys: list[str] = entity_cfg.get("keys", [])
             if keys:
+                issues.extend(BusinessKeyProducedValidator.validate(df, keys, entity_name))
                 issues.extend(NaturalKeyUniquenessValidator.validate(df, keys, entity_name))
 
             # Validate foreign keys
@@ -255,6 +258,10 @@ class DataValidationOrchestrator:
                             )
                         except Exception as e:
                             logger.warning(f"Could not validate target model FK integrity {entity_name} -> {fk_spec.entity}: {e}")
+
+        except MissingBusinessKeyError as e:
+            logger.warning(f"Business key not produced for entity {entity_name}: {e}")
+            issues.extend(BusinessKeyProducedValidator.issues_for_missing_keys(entity_name, list(e.missing_keys)))
 
         except Exception as e:
             logger.warning(f"Could not validate entity {entity_name}: {e}")

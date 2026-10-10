@@ -615,6 +615,7 @@ def test_core_conformance_reports_known_gaps_for_full_arbodat_project() -> None:
             ("ORPHAN_FACT_ENTITY", "abundance_property"),
             ("MISSING_REQUIRED_COLUMN", "abundance_ident_level"),
             ("MISSING_REQUIRED_COLUMN", "analysis_entity"),
+            ("MISSING_REQUIRED_COLUMN", "abundance_modification"),
             ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "abundance"),
             ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "abundance_ident_level"),
             ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "analysis_entity"),
@@ -655,7 +656,7 @@ def test_core_conformance_current_corpus_issue_families_are_stable() -> None:
         "arbodat_full": Counter(
             {
                 "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 3,
-                "MISSING_REQUIRED_COLUMN": 2,
+                "MISSING_REQUIRED_COLUMN": 3,
                 "APPEND_MISSING_REQUIRED_COLUMN": 2,
                 "MISSING_INDUCED_REQUIRED_ENTITY": 1,
                 "ORPHAN_FACT_ENTITY": 1,

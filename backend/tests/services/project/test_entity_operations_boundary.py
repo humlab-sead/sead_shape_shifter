@@ -12,6 +12,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from backend.app.exceptions import ConfigurationError, ResourceConflictError
 from backend.app.models.project import Project, ProjectMetadata
 from backend.app.services.project.entity_operations import EntityOperations
 
@@ -80,8 +81,17 @@ def _make_operations(
 
 
 class TestAddEntityByNameBoundary:
-    def test_calls_boundary_callback_when_provided(self, project_with_entities: Project) -> None:
+    def test_rejects_invalid_new_entity_name_without_saving(self, project_with_entities: Project) -> None:
         ops, save_project, save_boundary = _make_operations(project_with_entities, with_boundary=True)
+
+        with pytest.raises(ConfigurationError, match="New entity names"):
+            ops.add_entity_by_name("test-project", "_invalid", _sample_entity())
+
+        save_project.assert_not_called()
+        save_boundary.assert_not_called()
+
+    def test_calls_boundary_callback_when_provided(self, project_with_entities: Project) -> None:
+        ops, _, save_boundary = _make_operations(project_with_entities, with_boundary=True)
         new_entity = {"type": "entity", "keys": ["analysis_id"], "columns": ["result"]}
         ops.add_entity_by_name("test-project", "analysis", new_entity)
         save_boundary.assert_called_once()
@@ -91,7 +101,7 @@ class TestAddEntityByNameBoundary:
         assert call_args[0][2] is not None  # dict, not None
 
     def test_does_not_call_save_project_when_boundary_provided(self, project_with_entities: Project) -> None:
-        ops, save_project, save_boundary = _make_operations(project_with_entities, with_boundary=True)
+        ops, save_project, _ = _make_operations(project_with_entities, with_boundary=True)
         ops.add_entity_by_name("test-project", "analysis", {"type": "entity", "keys": ["x"]})
         save_project.assert_not_called()
 
@@ -107,8 +117,53 @@ class TestAddEntityByNameBoundary:
 
 
 class TestUpdateEntityByNameBoundary:
+    @pytest.mark.parametrize(
+        "dependent_config",
+        [
+            {"source": "sample"},
+            {"depends_on": ["sample"]},
+            {"foreign_keys": [{"entity": "sample", "defer_dependency": True}]},
+            {"append": [{"source": "sample"}]},
+            {"branches": [{"source": "sample"}]},
+            {"filters": [{"entity": "sample"}]},
+            {"filters": [{"other_entity": "sample"}]},
+            {"values": "@value: entities.sample.keys"},
+            {"options": {"@value: entities.sample.keys": "name"}},
+            {"type": "sql", "data_source": "@internal", "query": "SELECT * FROM sample"},
+        ],
+    )
+    def test_rename_rejects_each_supported_reference_without_saving(self, dependent_config: dict[str, Any]) -> None:
+        project = _make_project({"sample": _sample_entity(), "dependent": dependent_config})
+        ops, save_project, save_boundary = _make_operations(project, with_boundary=True)
+        rename_callback = MagicMock()
+        ops._save_entity_rename = rename_callback
+
+        with pytest.raises(ResourceConflictError) as error:
+            ops.update_entity_by_name("test-project", "sample", _sample_entity(), new_name="renamed_sample")
+
+        assert error.value.context["dependent_entities"] == ["dependent"]
+        save_project.assert_not_called()
+        save_boundary.assert_not_called()
+        rename_callback.assert_not_called()
+
+    def test_rename_without_dependents_updates_default_entity_and_calls_rename_persistence(self) -> None:
+        project = _make_project({"sample": _sample_entity()})
+        project.metadata.default_entity = "sample"
+        ops, save_project, save_boundary = _make_operations(project, with_boundary=True)
+        rename_callback = MagicMock()
+        ops._save_entity_rename = rename_callback
+
+        ops.update_entity_by_name("test-project", "sample", _sample_entity(), new_name="renamed_sample")
+
+        rename_callback.assert_called_once()
+        renamed_project = rename_callback.call_args.args[3]
+        assert set(renamed_project.entities) == {"renamed_sample"}
+        assert renamed_project.metadata.default_entity == "renamed_sample"
+        save_project.assert_not_called()
+        save_boundary.assert_not_called()
+
     def test_calls_boundary_callback_when_provided(self, project_with_entities: Project) -> None:
-        ops, save_project, save_boundary = _make_operations(project_with_entities, with_boundary=True)
+        ops, _, save_boundary = _make_operations(project_with_entities, with_boundary=True)
         updated = {"type": "entity", "keys": ["sample_id"], "columns": ["name", "value", "extra"]}
         ops.update_entity_by_name("test-project", "sample", updated)
         save_boundary.assert_called_once()
@@ -135,7 +190,7 @@ class TestUpdateEntityByNameBoundary:
 
 class TestDeleteEntityByNameBoundary:
     def test_calls_boundary_callback_with_none(self, project_with_entities: Project) -> None:
-        ops, save_project, save_boundary = _make_operations(project_with_entities, with_boundary=True)
+        ops, _, save_boundary = _make_operations(project_with_entities, with_boundary=True)
         ops.delete_entity_by_name("test-project", "sample")
         save_boundary.assert_called_once()
         call_args = save_boundary.call_args

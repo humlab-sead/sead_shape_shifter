@@ -66,6 +66,8 @@ Examples:
   container/scripts/authorization.sh grant --resource-type project \
     --locator example --subject-type principal --subject-id user \
     --role viewer --actor operator
+  container/scripts/authorization.sh move-resource --resource-type project \
+    --from-locator old-name --to-locator arbodat:new-name --actor operator
 EOF
 }
 
@@ -114,7 +116,7 @@ run_cli() {
     shift || true
     local -a command_args=("$@")
     case "$command_name" in
-        grant|revoke|grant-application-role|revoke-application-role)
+        grant|revoke|grant-application-role|revoke-application-role|move-resource)
             local has_actor=false
             local argument
             for argument in "${command_args[@]}"; do

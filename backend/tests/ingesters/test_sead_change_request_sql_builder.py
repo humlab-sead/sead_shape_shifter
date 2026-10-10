@@ -657,8 +657,8 @@ class TestStrategyParity:
         assert 'INSERT INTO "tbl_sample" ("sample_id", "sample_name") VALUES (502, \'Allocated B\');' in inline.statements
 
         # copy-CSV carries the same two resolved IDs in its sidecar payload.
-        bundle_name = resolve_bundle_name(context)
-        payload = copy_csv.bundle_files[f"deploy/{bundle_name}/tbl_sample.gz"]
+        resolved_bundle_name: str = resolve_bundle_name(context)
+        payload: str = copy_csv.bundle_files[f"deploy/{resolved_bundle_name}/tbl_sample.gz"]
         assert payload == "501\tAllocated A\n502\tAllocated B\n"
 
         # Both strategies preserve exactly the same ordered target-ID values.

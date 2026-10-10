@@ -1,6 +1,6 @@
 import type { EntityTaskStatus } from '@/composables/useTaskStatus'
 
-export type TaskGraphFilter = 'all' | 'todo' | 'ongoing' | 'done' | 'ignored' | 'blocked' | 'critical' | 'flagged'
+export type TaskGraphFilter = 'all' | 'todo' | 'ongoing' | 'done' | 'ignored' | 'not_ignored' | 'has_note' | 'blocked' | 'critical' | 'flagged'
 export type GraphColorByMode = 'task' | 'type'
 
 export const TASK_STATUS_NODE_CLASSES = ['task-todo', 'task-done', 'task-ignored', 'task-ongoing', 'task-blocked', 'task-critical', 'task-ready', 'task-flagged', 'task-has-note']
@@ -22,6 +22,10 @@ export function shouldShowNodeForTaskFilter(status: EntityTaskStatus | undefined
       return status.status === 'done'
     case 'ignored':
       return status.status === 'ignored'
+    case 'not_ignored':
+      return status.status !== 'ignored'
+    case 'has_note':
+      return status.has_note === true
     case 'blocked':
       return (status.blocked_by?.length ?? 0) > 0
     case 'critical':

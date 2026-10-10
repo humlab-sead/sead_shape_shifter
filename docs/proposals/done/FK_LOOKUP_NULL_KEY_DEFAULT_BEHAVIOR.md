@@ -2,7 +2,7 @@
 
 ## Status
 
-- Proposed feature / change request
+- Completed; implemented and released in v1.25.0
 - Scope: core FK validation, merge behavior, documentation, frontend terminology
 - Goal: define a sensible default behavior for alternative-key FK joins when key columns contain `NULL` / `NaN`
 - Tracking issues: #357, #353, #356, #354, #355

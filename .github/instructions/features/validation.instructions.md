@@ -20,7 +20,7 @@ Run structural and constraint validation before data validation — structural e
 - Return `list[ValidationIssue]` — not API DTOs, not exceptions.
 - `ValidationIssue` carries: `entity_name`, `column_name` (optional), `message`, `severity` (`error` / `warning`).
 - Validators are pure functions — no side effects, no I/O.
-- Current validators: `ColumnExistsValidator`, `DataTypeCompatibilityValidator`, `ForeignKeyDataValidator`, `ForeignKeyIntegrityValidator`, `NaturalKeyUniquenessValidator`, `NonEmptyResultValidator`, `UnresolvedExtraColumnsValidator`.
+- Current validators: `BusinessKeyProducedValidator`, `ColumnExistsValidator`, `DataTypeCompatibilityValidator`, `ForeignKeyDataValidator`, `ForeignKeyIntegrityValidator`, `NaturalKeyUniquenessValidator`, `NonEmptyResultValidator`, `UnresolvedExtraColumnsValidator`.
 
 ## Constraint Validators (`src/constraints.py`)
 

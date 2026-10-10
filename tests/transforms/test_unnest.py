@@ -361,3 +361,65 @@ class TestUnnest:
         assert "coordinate_value" in result.columns
         assert len(result) == 10  # 2 rows * 5 coordinates
         assert set(result["coordinate_type"].unique()) == {"KoordX", "KoordY", "KoordZ", "TiefeBis", "TiefeVon"}
+
+    def test_unnest_raises_when_id_vars_and_value_vars_partially_overlap(self):
+        """Test that a partial overlap raises a clear error naming the conflict."""
+        entity = "test_entity"
+        table = pd.DataFrame({"id": [1, 2], "col1": [10, 20], "col2": [30, 40]})
+        config = {
+            "test_entity": {
+                "columns": ["id", "col1", "col2"],
+                "unnest": {
+                    "id_vars": ["id", "col1"],
+                    "value_vars": ["col1", "col2"],
+                    "var_name": "variable",
+                    "value_name": "value",
+                },
+            }
+        }
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
+
+        with pytest.raises(ValueError, match=r"columns cannot be both `id_vars` and `value_vars`: \['col1'\]"):
+            unnest(entity, table, table_cfg)
+
+    def test_unnest_raises_when_all_value_vars_overlap(self):
+        """Test that a complete overlap raises an error instead of returning zero rows."""
+        entity = "test_entity"
+        table = pd.DataFrame({"id": [1, 2], "col1": [10, 20]})
+        config = {
+            "test_entity": {
+                "columns": ["id", "col1"],
+                "unnest": {
+                    "id_vars": ["id", "col1"],
+                    "value_vars": ["col1"],
+                    "var_name": "variable",
+                    "value_name": "value",
+                },
+            }
+        }
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
+
+        with pytest.raises(ValueError, match="columns cannot be both `id_vars` and `value_vars`"):
+            unnest(entity, table, table_cfg)
+
+    def test_unnest_disjoint_id_vars_and_value_vars_melts(self):
+        """Test that disjoint id_vars and value_vars melt normally."""
+        entity = "test_entity"
+        table = pd.DataFrame({"id": [1, 2], "col1": [10, 20], "col2": [30, 40]})
+        config = {
+            "test_entity": {
+                "columns": ["id", "col1", "col2"],
+                "unnest": {
+                    "id_vars": ["id"],
+                    "value_vars": ["col1", "col2"],
+                    "var_name": "variable",
+                    "value_name": "value",
+                },
+            }
+        }
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
+
+        result = unnest(entity, table, table_cfg)
+
+        expected = pd.DataFrame({"id": [1, 2, 1, 2], "variable": ["col1", "col1", "col2", "col2"], "value": [10, 20, 30, 40]})
+        pd.testing.assert_frame_equal(result, expected)

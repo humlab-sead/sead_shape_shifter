@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from backend.app.exceptions import ResourceConflictError
 from backend.app.services.task_list_sidecar_manager import TaskListSidecarManager
 from backend.app.services.yaml_service import YamlService
 from src.sidecars import TaskList
@@ -192,6 +193,45 @@ class TestTaskListSidecarManager:
         yaml_service.save({"task_list": {"done": ["site"]}, "notes": {"site": "Need coordinates"}}, sidecar_path)
 
         assert sidecar_manager.load_notes(project_file) == {"site": "Need coordinates"}
+
+    def test_prepare_entity_note_rename_moves_note_without_changing_task_state(self, project_file, sidecar_manager, yaml_service):
+        sidecar_path = sidecar_manager.get_sidecar_path(project_file)
+        yaml_service.save(
+            {
+                "task_list": {
+                    "todo": ["site"],
+                    "ongoing": ["site"],
+                    "done": ["site"],
+                    "ignored": ["site"],
+                    "flagged": {"site": True},
+                },
+                "notes": {"site": "Check coordinates"},
+            },
+            sidecar_path,
+        )
+
+        renamed = sidecar_manager.prepare_entity_note_rename(project_file, "site", "location")
+
+        assert renamed == {
+            "task_list": {
+                "todo": ["site"],
+                "ongoing": ["site"],
+                "done": ["site"],
+                "ignored": ["site"],
+                "flagged": {"site": True},
+            },
+            "notes": {"location": "Check coordinates"},
+        }
+        assert yaml_service.load(sidecar_path)["notes"] == {"site": "Check coordinates"}
+
+    def test_prepare_entity_note_rename_rejects_existing_destination_note(self, project_file, sidecar_manager, yaml_service):
+        yaml_service.save(
+            {"notes": {"site": "Original note", "location": "Existing note"}},
+            sidecar_manager.get_sidecar_path(project_file),
+        )
+
+        with pytest.raises(ResourceConflictError, match="note already uses that name"):
+            sidecar_manager.prepare_entity_note_rename(project_file, "site", "location")
 
     def test_set_note_persists_multiline_note(self, project_file, sidecar_manager, yaml_service):
         """Setting a note should write it to the sidecar and preserve line breaks."""

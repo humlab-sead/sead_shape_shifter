@@ -6,6 +6,7 @@ from typing import Any, Iterable
 
 from fastapi import UploadFile
 from loguru import logger
+from ruamel.yaml import CommentedMap
 
 from backend.app.authorization.models import Action, Principal, ResourceRecord, ResourceType
 from backend.app.authorization.service import AuthorizationService
@@ -97,6 +98,7 @@ class ProjectService:
             save_project_callback=self.save_project,
             persistence_strategy_registry=EntityPersistenceStrategyRegistry(),
             save_entity_boundary_callback=self.save_entity_boundary,
+            save_entity_rename_callback=self.save_entity_rename_boundary,
         )
 
         # Initialize file manager component
@@ -127,7 +129,9 @@ class ProjectService:
         # Recursively find all shapeshifter.yml files
         for yaml_file in self.projects_dir.rglob("shapeshifter.yml"):
             try:
-                data: dict[str, Any] = self.yaml_service.load(yaml_file)
+                # Discovery only reads metadata.type and the entity count, so use the
+                # faster listing loader instead of the full round-trip-preserving load.
+                data: dict[str, Any] = self.yaml_service.load_for_listing(yaml_file)
 
                 if not self.specification.is_satisfied_by(data):
                     logger.debug(f"Skipping {yaml_file} - does not satisfy project specification")
@@ -278,7 +282,7 @@ class ProjectService:
             project.metadata.is_valid = True
 
             # Cache in ApplicationState for subsequent requests (multiple projects can be cached)
-            self.state.activate(project)
+            self.state.activate(project, name)
 
             logger.info("[{}] load_project: '{}' from DISK entities={}", corr, name, len(project.entities))
             return project
@@ -318,8 +322,19 @@ class ProjectService:
         # Ensure project directory exists
         file_path.parent.mkdir(parents=True, exist_ok=True)
 
+        # The project file path is authoritative for the project locator. Derive the
+        # locator from the path so a moved folder updates the state cache key and the
+        # stored metadata name even when metadata.name was stale. Fall back to the
+        # metadata name when the path is not a project subfolder of the projects root.
+        try:
+            relative_dir: Path = file_path.parent.resolve().relative_to(self.projects_dir.resolve())
+            locator: str = ProjectNameMapper.to_api_name(str(relative_dir)) if str(relative_dir) != "." else project.metadata.name
+        except ValueError:
+            locator = project.metadata.name
+        project.metadata.name = locator
+
         corr: str = get_correlation_id()
-        name: str = project.metadata.name
+        name: str = locator
         entity_count: int = len(project.entities or {})
         entity_names: list[str] = sorted((project.entities or {}).keys())
 
@@ -359,7 +374,7 @@ class ProjectService:
 
             logger.info("[{}] save_project: '{}' saved and verified OK", corr, name)
 
-            self.state.update(project)
+            self.state.update(project, name)
 
             return project
 
@@ -442,6 +457,37 @@ class ProjectService:
         logger.info(f"save_entity_boundary: '{project_name}' entity='{entity_name}' delete={entity_dict is None}")
         self.yaml_service.merge_boundary(file_path, ("entities", entity_name), entity_dict)
         self.state.invalidate(project_name)
+
+    def save_entity_rename_boundary(self, project_name: str, old_name: str, new_name: str, project: Project) -> list[str]:
+        """Save an entity rename and best-effort move its note in the task sidecar."""
+        file_path: Path = self._resolve_project_file_path(project_name)
+        project_data: CommentedMap = self.yaml_service.load_commented(file_path)
+        entities_data: dict[str, Any] | None = project_data.get("entities")
+        if not isinstance(entities_data, dict) or old_name not in entities_data:
+            raise ResourceNotFoundError(resource_type="entity", resource_id=old_name, message=f"Entity '{old_name}' not found")
+
+        entities_data.pop(old_name)
+        entities_data[new_name] = project.entities[new_name]
+        metadata_data: dict[str, Any] | None = project_data.get("metadata")
+        if isinstance(metadata_data, dict) and metadata_data.get("default_entity") == old_name:
+            metadata_data["default_entity"] = new_name
+
+        self.yaml_service.save_commented(project_data, file_path, create_backup=False)
+        self._invalidate_all_caches(project_name, get_correlation_id())
+
+        try:
+            sidecar_data: dict[str, Any] | None = self.sidecar_manager.prepare_entity_note_rename(file_path, old_name, new_name)
+            if sidecar_data is None:
+                return []
+            sidecar_path: Path = self.sidecar_manager.get_sidecar_path(file_path)
+            self.yaml_service.save(sidecar_data, sidecar_path, create_backup=False)
+            return []
+        except Exception as error:  # noqa: PERF203 ; pylint: disable=broad-exception-caught
+            warning: str = (
+                f"Entity '{new_name}' was saved, but its note could not be moved from '{old_name}'. " "The note remains under the old name."
+            )
+            logger.warning("{} Reason: {}", warning, error)
+            return [warning]
 
     # ------------------------------------------------------------------
 
@@ -731,7 +777,8 @@ class ProjectService:
         entity_data: dict[str, Any],
         *,
         expected_etag: str | None = None,
-    ) -> None:
+        new_name: str | None = None,
+    ) -> list[str]:
         """
         Update entity in project by project name.
 
@@ -750,7 +797,13 @@ class ProjectService:
             ResourceNotFoundError: If entity not found
             EntityConflictError: If *expected_etag* is given and does not match
         """
-        return self.entity_operations.update_entity_by_name(project_name, entity_name, entity_data, expected_etag=expected_etag)
+        return self.entity_operations.update_entity_by_name(
+            project_name,
+            entity_name,
+            entity_data,
+            expected_etag=expected_etag,
+            new_name=new_name,
+        )
 
     def delete_entity_by_name(self, project_name: str, entity_name: str) -> None:
         """

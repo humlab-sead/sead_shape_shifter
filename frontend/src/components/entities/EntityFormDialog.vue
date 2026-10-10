@@ -94,11 +94,11 @@
                       <v-row no-gutters>
                         <v-col cols="4" class="pr-2">
                           <v-text-field
+                            ref="entityNameField"
                             v-model="formData.name"
                             label="Entity Name *"
                             :rules="nameRules"
                             variant="outlined"
-                            :disabled="mode === 'edit'"
                             required
                           >
                             <template #message>
@@ -142,15 +142,16 @@
                             :items="availableSourceEntities"
                             label="Source Entity"
                             variant="outlined"
-                            :disabled="mode === 'edit'"
+                            :disabled="isSourceEntityFieldDisabled"
                             clearable
                             persistent-placeholder
                           >
                             <template #message>
                               <span class="text-caption">Parent entity to derive this entity from</span>
                               <span v-if="sourceReferenceColumn" class="text-caption d-block mt-1">
-                                Selecting <strong>{{ sourceReferenceColumn }}</strong> in Columns adds a parent reference.
-                                Values come from the source entity's <strong>system_id</strong>, matching FK behavior.
+                                Selecting <strong>{{ sourceReferenceColumn }}</strong> in Columns adds a parent
+                                reference. Values come from the source entity's <strong>system_id</strong>, matching FK
+                                behavior.
                               </span>
                             </template>
                           </v-autocomplete>
@@ -263,7 +264,8 @@
                           <code>data_source</code>, <code>query</code>, file options, and <code>append</code>
                         </li>
                         <li>
-                          Preview headers describe which branch provides each column and which branches receive null-filled values.
+                          Preview headers describe which branch provides each column and which branches receive
+                          null-filled values.
                         </li>
                       </ul>
                     </v-alert>
@@ -341,7 +343,7 @@
                           <!-- Keys (business keys) -->
                           <v-combobox
                             v-model="formData.keys"
-                            :items="availableColumns"
+                            :items="columnAvailability?.business_keys ?? []"
                             label="Business Keys *"
                             variant="outlined"
                             multiple
@@ -358,12 +360,15 @@
                     </div>
 
                     <!-- Columns (for entity/fixed/file/merged types) with Depends On -->
-                    <div class="form-row" v-if="formData.type === 'entity' || formData.type === 'fixed' || isFileType || isMergedEntityType">
+                    <div
+                      class="form-row"
+                      v-if="formData.type === 'entity' || formData.type === 'fixed' || isFileType || isMergedEntityType"
+                    >
                       <v-row no-gutters>
                         <v-col cols="8" class="pr-2">
                           <v-combobox
                             v-model="formData.columns"
-                            :items="availableColumns"
+                            :items="columnAvailability?.columns ?? []"
                             label="Columns"
                             variant="outlined"
                             multiple
@@ -374,10 +379,12 @@
                           >
                             <template #message>
                               <span class="text-caption" v-if="formData.type === 'fixed'">
-                                Fixed values grid fields. Business keys should be chosen from these fields; system_id and public_id stay implicit in the stored schema.
+                                Fixed values grid fields. Business keys select produced fields but do not add grid
+                                columns; system_id and public_id stay implicit in the stored schema.
                               </span>
                               <span class="text-caption" v-else-if="isMergedEntityType">
-                                Optional post-merge column restriction. Leave empty to keep the full union returned by all branches.
+                                Optional post-merge column restriction. Leave empty to keep the full union returned by
+                                all branches.
                               </span>
                               <span class="text-caption" v-else-if="formData.type === 'entity'">
                                 Select from source columns or add new names (type to filter suggestions)
@@ -409,7 +416,10 @@
                     </div>
 
                     <!-- Detected Columns (for sql type, readonly display) with Depends On -->
-                    <div class="form-row" v-if="formData.type === 'sql' && (columnsOptions.length > 0 || columnsLoading)">
+                    <div
+                      class="form-row"
+                      v-if="formData.type === 'sql' && (columnsOptions.length > 0 || columnsLoading)"
+                    >
                       <v-row no-gutters>
                         <v-col cols="8" class="pr-2">
                           <v-combobox
@@ -423,7 +433,9 @@
                             persistent-placeholder
                           >
                             <template #message>
-                              <span class="text-caption">Columns detected from your SQL query. Saved with the entity when you save.</span>
+                              <span class="text-caption"
+                                >Columns detected from your SQL query. Saved with the entity when you save.</span
+                              >
                             </template>
                           </v-combobox>
                         </v-col>
@@ -452,18 +464,16 @@
                         density="compact"
                         class="mt-2"
                       >
-                        Detected SQL columns are not stored on this entity yet. Save is enabled so they can be persisted.
+                        Detected SQL columns are not stored on this entity yet. Save is enabled so they can be
+                        persisted.
                       </v-alert>
 
-                      <v-alert
-                        v-else-if="sqlColumnMismatch"
-                        type="info"
-                        variant="tonal"
-                        density="compact"
-                        class="mt-2"
-                      >
+                      <v-alert v-else-if="sqlColumnMismatch" type="info" variant="tonal" density="compact" class="mt-2">
                         <div class="d-flex align-center justify-space-between ga-2 flex-wrap">
-                          <span>Stored columns differ from the current query result. They will remain unchanged until you explicitly replace them.</span>
+                          <span
+                            >Stored columns differ from the current query result. They will remain unchanged until you
+                            explicitly replace them.</span
+                          >
                           <v-btn
                             size="small"
                             variant="outlined"
@@ -539,12 +549,21 @@
                       />
                       <v-alert v-else type="info" variant="tonal" density="compact" class="mb-2">
                         <v-alert-title>No Columns Defined</v-alert-title>
-                        Add keys and/or columns above to define the grid structure for fixed values.
+                        Add produced columns above to define the grid structure for fixed values. Business keys do not
+                        create grid columns.
                       </v-alert>
                     </div>
 
                     <!-- Depends On (standalone when no columns field is shown) -->
-                    <div class="form-row" v-if="formData.type !== 'entity' && formData.type !== 'fixed' && !isFileType && !(formData.type === 'sql' && (columnsOptions.length > 0 || columnsLoading))">
+                    <div
+                      class="form-row"
+                      v-if="
+                        formData.type !== 'entity' &&
+                        formData.type !== 'fixed' &&
+                        !isFileType &&
+                        !(formData.type === 'sql' && (columnsOptions.length > 0 || columnsLoading))
+                      "
+                    >
                       <v-combobox
                         v-model="formData.depends_on"
                         label="Depends On"
@@ -586,7 +605,7 @@
 
                           <v-combobox
                             v-model="formData.drop_duplicates.columns"
-                            :items="availableColumns"
+                            :items="columnAvailability?.drop_duplicates ?? []"
                             label="Deduplication Columns"
                             variant="outlined"
                             multiple
@@ -614,7 +633,7 @@
                           </v-row>
                           <v-combobox
                             v-model="formData.drop_empty_rows.columns"
-                            :items="availableColumns"
+                            :items="columnAvailability?.drop_empty_rows ?? []"
                             label="Columns to Check for Empty Values"
                             variant="outlined"
                             multiple
@@ -645,18 +664,25 @@
                       />
                     </div>
 
-                    <!-- SQL Query (for sql and duckdb types) -->
-                    <div class="form-row" v-if="formData.type === 'sql' || formData.type === 'duckdb'">
+                    <!-- SQL Query -->
+                    <div class="form-row" v-if="formData.type === 'sql'">
                       <SqlEditor
                         v-model="formData.query"
                         height="250px"
-                        :help-text="formData.type === 'duckdb' ? 'SQL query executed against already-processed entities in DuckDB' : 'SQL query to execute against the selected data source'"
+                        help-text="SQL query to execute against the selected data source"
                         :error="formValid === false && !formData.query ? 'SQL query is required' : ''"
                       />
                     </div>
 
                     <v-alert v-if="error" type="error" variant="tonal" class="mt-4">
                       {{ error }}
+                      <template v-if="renameConflictDependents.length">
+                        <div class="mt-2">Referenced by: {{ renameConflictDependents.join(', ') }}.</div>
+                        <div class="mt-2">
+                          Cancel the rename or update these dependencies first. To rename them together, edit the
+                          project YAML and update the matching task sidecar keys.
+                        </div>
+                      </template>
                     </v-alert>
                   </v-form>
                 </v-defaults-provider>
@@ -668,8 +694,10 @@
                   :available-entities="availableSourceEntities"
                   :project-name="projectName"
                   :entity-name="formData.name"
-                   :entity-columns="effectiveEntityColumns"
+                  :entity-columns="effectiveEntityColumns"
+                  :column-candidates="columnAvailability?.foreign_keys ?? []"
                   :is-entity-saved="mode === 'edit'"
+                  :has-unsaved-changes="hasPendingChanges"
                   @update:model-value="handleForeignKeysUpdate"
                 />
               </v-window-item>
@@ -679,7 +707,11 @@
               </v-window-item>
 
               <v-window-item value="unnest">
-                <unnest-editor v-model="formData.advanced.unnest" :available-columns="availableColumnsForUnnest" />
+                <unnest-editor
+                  v-model="formData.advanced.unnest"
+                  :id-var-columns="columnAvailability?.unnest.id_vars ?? []"
+                  :value-var-columns="columnAvailability?.unnest.value_vars ?? []"
+                />
               </v-window-item>
 
               <v-window-item v-if="!isMergedEntityType" value="append">
@@ -708,7 +740,7 @@
               <v-window-item value="extra_columns">
                 <extra-columns-editor
                   v-model="formData.advanced.extra_columns"
-                  :available-columns="extraColumnsAvailableColumns"
+                  :available-columns="columnAvailability?.extra_columns.sources ?? []"
                   :reserved-names="extraColumnsReservedNames"
                 />
               </v-window-item>
@@ -716,7 +748,7 @@
               <v-window-item value="replacements">
                 <replacements-editor
                   v-model="formData.advanced.replacements"
-                  :available-columns="availableColumnsForReplacements"
+                  :available-columns="columnAvailability?.replacements ?? []"
                 />
               </v-window-item>
 
@@ -1005,11 +1037,10 @@
  * - Adds minimal overhead (~10-50ms API call) for guaranteed data consistency
  */
 import { ref, computed, watch, watchEffect, onMounted, onUnmounted } from 'vue'
-import { useEntities, useSuggestions, useEntityPreview, useSettings } from '@/composables'
+import { useEntities, useSuggestions, useEntityPreview, useSettings, useColumnAvailability } from '@/composables'
 import { useNotification } from '@/composables/useNotification'
-import { useDirectiveValidation } from '@/composables/useDirectiveValidation'
 import { useProjectStore, useEntityStore } from '@/stores'
-import type { EntityResponse } from '@/api/entities'
+import type { EntityResponse, FixedSchema } from '@/api/entities'
 import type { ForeignKeySuggestion, DependencySuggestion } from '@/composables'
 import * as yaml from 'js-yaml'
 import { AgGridVue } from 'ag-grid-vue3'
@@ -1035,7 +1066,7 @@ import { api } from '@/api'
 import type { EntityTypeInfo } from '@/api/data-sources'
 import { queryApi } from '@/api/query'
 import {
-  buildFixedValuesColumns,
+  buildFixedFullColumns,
   applyMaterializationRoundTripToFixedEntity,
   extractMaterializationRoundTripState,
   getExternalValuesUpdateColumns,
@@ -1102,10 +1133,11 @@ const { entities, create, update } = useEntities({
 })
 
 const { getSuggestionsForEntity, loading: suggestionsLoading } = useSuggestions()
+const { availability: columnAvailability, refresh: refreshColumnAvailability } = useColumnAvailability()
 const appSettings = useSettings()
 const fkSuggestionsEnabled = computed(() => appSettings.enableFkSuggestions.value)
 
-const { error: showError } = useNotification()
+const { error: showError, warning: showWarning } = useNotification()
 
 const projectStore = useProjectStore()
 
@@ -1142,9 +1174,11 @@ const previewError = ref<PreviewError>(null)
 
 // Form state
 const formRef = ref()
+const entityNameField = ref()
 const formValid = ref(false)
 const loading = ref(false)
 const error = ref<string | null>(null)
+const renameConflictDependents = ref<string[]>([])
 const showSaveSuccess = ref(false)
 let saveSuccessTimeout: ReturnType<typeof setTimeout> | null = null
 const suggestions = ref<any>(null)
@@ -1171,6 +1205,13 @@ const materializedConfig = ref<Record<string, any> | null>(null)
 const initialFormSnapshot = ref<string | null>(null)
 const hasPendingChanges = ref(false)
 const suppressFixedSchemaRemap = ref(false)
+// Backend `fixed_schema` metadata loaded for the current fixed entity, if any.
+// It is retained for identity/key roles and order provenance, but never used as
+// a second ordering rule: the active order always comes from produced columns.
+const loadedFixedSchema = ref<FixedSchema | null>(null)
+// Set when external values cannot be mapped onto the active full order. Blocks a
+// positional save instead of guessing a legacy layout.
+const fixedValuesLayoutError = ref<string | null>(null)
 
 interface FormData {
   name: string
@@ -1357,14 +1398,13 @@ const sheetOptions = ref<string[]>([])
 const sheetOptionsLoading = ref(false)
 const columnsOptions = ref<string[]>([])
 const columnsLoading = ref(false)
-const directivePaths = ref<string[]>([])
 
 function findSelectedFileInfo(filename: string, location?: 'global' | 'local'): FileInfo | undefined {
-  return availableProjectFiles.value.find((file) => file.name === filename && file.location === location)
-    || availableProjectFiles.value.find((file) => file.name === filename)
+  return (
+    availableProjectFiles.value.find((file) => file.name === filename && file.location === location) ||
+    availableProjectFiles.value.find((file) => file.name === filename)
+  )
 }
-
-const { getValidDirectives } = useDirectiveValidation()
 
 // Delimiter options for CSV
 const delimiterOptions = [
@@ -1376,13 +1416,10 @@ const delimiterOptions = [
 ]
 
 // Important: `values` is a positional 2D array, so the grid column order must match the three-tier identity model.
-// Fixed values grid must include: system_id, public_id (if defined), keys, and columns
+// The fixed grid order is the managed identity columns followed by the produced data columns.
+// Business keys never add grid positions.
 const fixedValuesColumns = computed(() => {
-  return buildFixedValuesColumns(
-    formData.value.columns || [],
-    formData.value.keys || [],
-    formData.value.public_id
-  )
+  return buildFixedFullColumns(formData.value.columns || [], formData.value.public_id)
 })
 
 // Can preview only in edit mode
@@ -1391,6 +1428,15 @@ const canPreview = computed(() => {
 })
 
 const isMergedEntityType = computed(() => formData.value.type === 'merged')
+
+// The source of an entity that is already saved as a derived (entity) type is
+// locked so its configured columns are not silently dropped. When the type has
+// just been changed to 'entity' from another type (for example merged), the
+// field must stay editable so a source can be selected.
+const isSourceEntityFieldDisabled = computed(() => {
+  if (props.mode !== 'edit') return false
+  return currentEntity.value?.entity_data?.type === 'entity'
+})
 
 const ALL_BRANCH_PREVIEW_VALUE = '__all__'
 const selectedPreviewBranch = ref<string>(ALL_BRANCH_PREVIEW_VALUE)
@@ -1403,7 +1449,8 @@ const mergedBranchConfigs = computed(() => {
   }
 
   return (formData.value.advanced.branches || []).filter(
-    (branch): branch is { name?: string; source?: string; keys?: string[] } => typeof branch === 'object' && branch !== null
+    (branch): branch is { name?: string; source?: string; keys?: string[] } =>
+      typeof branch === 'object' && branch !== null
   )
 })
 
@@ -1417,7 +1464,13 @@ const previewTargetOptions = computed(() => {
 
 const previewSourceBranchOptions = computed(() => {
   return mergedBranchConfigs.value
-    .filter((branch) => typeof branch.name === 'string' && branch.name.length > 0 && typeof branch.source === 'string' && branch.source.length > 0)
+    .filter(
+      (branch) =>
+        typeof branch.name === 'string' &&
+        branch.name.length > 0 &&
+        typeof branch.source === 'string' &&
+        branch.source.length > 0
+    )
     .map((branch) => ({
       title: `${branch.name} (${branch.source})`,
       value: branch.name as string,
@@ -1430,11 +1483,20 @@ const selectedPreviewSourceBranchOption = computed(() => {
 })
 
 const isPreviewingBranchSource = computed(() => {
-  return formData.value.type === 'merged' && previewTargetMode.value === 'source' && !!selectedPreviewSourceBranchOption.value
+  return (
+    formData.value.type === 'merged' &&
+    previewTargetMode.value === 'source' &&
+    !!selectedPreviewSourceBranchOption.value
+  )
 })
 
 const mergedPreviewBranchColumn = computed(() => {
-  if (isPreviewingBranchSource.value || formData.value.type !== 'merged' || !formData.value.name || !livePreviewData.value?.columns) {
+  if (
+    isPreviewingBranchSource.value ||
+    formData.value.type !== 'merged' ||
+    !formData.value.name ||
+    !livePreviewData.value?.columns
+  ) {
     return null
   }
 
@@ -1462,7 +1524,12 @@ const mergedPreviewFkColumns = computed(() => {
 })
 
 const mergedPreviewColumnCoverage = computed<Record<string, { presentIn: string[]; absentIn: string[] }>>(() => {
-  if (isPreviewingBranchSource.value || formData.value.type !== 'merged' || !mergedPreviewBranchColumn.value || !livePreviewData.value?.columns) {
+  if (
+    isPreviewingBranchSource.value ||
+    formData.value.type !== 'merged' ||
+    !mergedPreviewBranchColumn.value ||
+    !livePreviewData.value?.columns
+  ) {
     return {}
   }
 
@@ -1480,11 +1547,14 @@ const mergedPreviewColumnCoverage = computed<Record<string, { presentIn: string[
     return {}
   }
 
-  const hasValue = (value: unknown): boolean => value !== null && value !== undefined && !(typeof value === 'string' && value.length === 0)
+  const hasValue = (value: unknown): boolean =>
+    value !== null && value !== undefined && !(typeof value === 'string' && value.length === 0)
 
   return Object.fromEntries(
     livePreviewData.value.columns.map((column) => {
-      const presentIn = branchNames.filter((branch) => rows.some((row) => row[branchColumn] === branch && hasValue(row[column.name])))
+      const presentIn = branchNames.filter((branch) =>
+        rows.some((row) => row[branchColumn] === branch && hasValue(row[column.name]))
+      )
       const absentIn = branchNames.filter((branch) => !presentIn.includes(branch))
       return [column.name, { presentIn, absentIn }]
     })
@@ -1506,7 +1576,10 @@ function describeMergedPreviewColumn(columnName: string): string | undefined {
   return `Present in: ${coverage.presentIn.join(', ')}. Null-filled for: ${coverage.absentIn.join(', ')}`
 }
 
-function isMergedPreviewNullFillCell(columnName: string | undefined, row: Record<string, unknown> | undefined): boolean {
+function isMergedPreviewNullFillCell(
+  columnName: string | undefined,
+  row: Record<string, unknown> | undefined
+): boolean {
   if (!columnName || !row || !mergedPreviewBranchColumn.value) {
     return false
   }
@@ -1526,7 +1599,10 @@ function isMergedPreviewNullFillCell(columnName: string | undefined, row: Record
 }
 
 const mergedPreviewHasBranchFilter = computed(() => {
-  return previewTargetMode.value === 'merged' && Boolean(mergedPreviewBranchColumn.value && livePreviewData.value?.rows?.length)
+  return (
+    previewTargetMode.value === 'merged' &&
+    Boolean(mergedPreviewBranchColumn.value && livePreviewData.value?.rows?.length)
+  )
 })
 
 const previewBranchOptions = computed(() => {
@@ -1565,16 +1641,23 @@ const previewColumnDefs = computed<ColDef[]>(() => {
       mergedPreviewFkColumns.value.includes(col.name) ? 'merged-preview-fk-header' : '',
       mergedPreviewColumnCoverage.value[col.name]?.absentIn.length ? 'merged-preview-partial-header' : '',
     ].filter(Boolean),
-    headerTooltip: [
-      col.name === mergedPreviewBranchColumn.value ? 'Auto-generated branch discriminator for merged entities' : '',
-      mergedPreviewFkColumns.value.includes(col.name) ? 'Sparse lineage foreign key back to the source branch row' : '',
-      describeMergedPreviewColumn(col.name) || '',
-    ].filter(Boolean).join(' | ') || undefined,
+    headerTooltip:
+      [
+        col.name === mergedPreviewBranchColumn.value ? 'Auto-generated branch discriminator for merged entities' : '',
+        mergedPreviewFkColumns.value.includes(col.name)
+          ? 'Sparse lineage foreign key back to the source branch row'
+          : '',
+        describeMergedPreviewColumn(col.name) || '',
+      ]
+        .filter(Boolean)
+        .join(' | ') || undefined,
     cellClass: [
       col.is_key ? 'key-column' : '',
       col.name === mergedPreviewBranchColumn.value ? 'merged-preview-branch-cell' : '',
       mergedPreviewFkColumns.value.includes(col.name) ? 'merged-preview-fk-cell' : '',
-    ].filter(Boolean).join(' '),
+    ]
+      .filter(Boolean)
+      .join(' '),
     cellClassRules: {
       'merged-preview-null-fill-cell': (params: any) => isMergedPreviewNullFillCell(col.name, params.data),
     },
@@ -1729,7 +1812,6 @@ function buildEntityConfigFromFormData(options: BuildEntityConfigOptions = {}): 
    */
   const { includeDerivedSqlColumns = false } = options
 
-
   /**
    * Serialize a keys/columns array back to YAML form.
    * A single @value: directive element is written as a scalar string for cleaner YAML.
@@ -1743,16 +1825,18 @@ function buildEntityConfigFromFormData(options: BuildEntityConfigOptions = {}): 
     return keys
   }
 
-  const effectiveColumns = formData.value.type === 'sql'
-    ? getSqlColumnsForPersistence(includeDerivedSqlColumns)
-    : formData.value.columns
+  const effectiveColumns =
+    formData.value.type === 'sql' ? getSqlColumnsForPersistence(includeDerivedSqlColumns) : formData.value.columns
 
   const entityData: Record<string, unknown> = {
     type: formData.value.type,
     keys: serializeKeysField(formData.value.keys),
-    // For fixed entities, explicitly include system_id and public_id in columns list
-    // This ensures the columns match the fixedValuesColumns order used by the grid
-    columns: formData.value.type === 'fixed' ? fixedValuesColumns.value : serializeKeysField(effectiveColumns),
+    // For fixed entities, persist the produced data columns (managed identity
+    // fields stay implicit). The positional grid/values order adds identity back.
+    columns:
+      formData.value.type === 'fixed'
+        ? normalizeEditableFixedColumns(fixedValuesColumns.value, formData.value.public_id)
+        : serializeKeysField(effectiveColumns),
   }
 
   // Always include public_id (even if null) to prevent field from being omitted
@@ -2077,15 +2161,18 @@ function getColumnsFromEntity(entityName: string | null): string[] {
   const sourceKeys = Array.isArray((sourceEntity as any)?.entity_data?.keys)
     ? (sourceEntity as any).entity_data.keys
     : []
-  const sourcePublicId = typeof (sourceEntity as any)?.entity_data?.public_id === 'string'
-    ? (sourceEntity as any).entity_data.public_id.trim()
-    : ''
+  const sourcePublicId =
+    typeof (sourceEntity as any)?.entity_data?.public_id === 'string'
+      ? (sourceEntity as any).entity_data.public_id.trim()
+      : ''
 
-  const combined = Array.from(new Set([
-    ...sourceKeys,
-    ...sourceColumns,
-    ...(sourcePublicId && sourcePublicId !== formData.value.public_id ? [sourcePublicId] : []),
-  ]))
+  const combined = Array.from(
+    new Set([
+      ...sourceKeys,
+      ...sourceColumns,
+      ...(sourcePublicId && sourcePublicId !== formData.value.public_id ? [sourcePublicId] : []),
+    ])
+  )
   return combined.filter((c) => c !== 'system_id')
 }
 
@@ -2118,7 +2205,6 @@ async function fetchSqlColumns() {
   try {
     const columns = await queryApi.introspectQueryColumns(dataSource, query, props.projectName)
     columnsOptions.value = columns
-
   } catch (err: any) {
     console.error('Failed to introspect SQL query columns', err)
     const message = err.response?.data?.detail || err.message || 'Unknown error'
@@ -2153,12 +2239,9 @@ watch(
   { deep: true }
 )
 
-watch(
-  [mergedPreviewBranchColumn, () => formData.value.name],
-  () => {
-    selectedPreviewBranch.value = ALL_BRANCH_PREVIEW_VALUE
-  }
-)
+watch([mergedPreviewBranchColumn, () => formData.value.name], () => {
+  selectedPreviewBranch.value = ALL_BRANCH_PREVIEW_VALUE
+})
 
 watch(
   previewSourceBranchOptions,
@@ -2169,7 +2252,10 @@ watch(
       return
     }
 
-    if (!selectedPreviewSourceBranch.value || !options.some((option) => option.value === selectedPreviewSourceBranch.value)) {
+    if (
+      !selectedPreviewSourceBranch.value ||
+      !options.some((option) => option.value === selectedPreviewSourceBranch.value)
+    ) {
       selectedPreviewSourceBranch.value = options[0]?.value || null
     }
   },
@@ -2264,14 +2350,10 @@ watch(
 watch(
   () => formData.value.type,
   async (newType, oldType) => {
-    // Clear data source and query when switching away from SQL/DuckDB
-    if (newType !== 'sql' && newType !== 'duckdb') {
+    // Clear data source and query when switching away from SQL
+    if (newType !== 'sql') {
       formData.value.data_source = ''
       formData.value.query = ''
-    }
-    // Clear data source when switching to duckdb (it uses internal engine)
-    if (newType === 'duckdb') {
-      formData.value.data_source = ''
     }
 
     // Clear source when switching away from entity
@@ -2328,7 +2410,7 @@ watch(
       // Debounce query changes to avoid excessive API calls while typing
       if (newQuery !== oldQuery) {
         // Wait a bit after query stops changing
-        await new Promise(resolve => setTimeout(resolve, 500))
+        await new Promise((resolve) => setTimeout(resolve, 500))
         // Check if query is still the same (not changed during timeout)
         if (formData.value.query === newQuery) {
           await fetchSqlColumns()
@@ -2347,7 +2429,8 @@ watch(
   { deep: true }
 )
 
-// Watch columns to automatically remove forbidden values for fixed entities
+// Watch columns to automatically remove forbidden identity columns for fixed entities.
+// Business keys are advisory and must not be added or removed by column edits.
 watch(
   () => formData.value.columns,
   (newColumns) => {
@@ -2358,47 +2441,9 @@ watch(
 
       const filtered = newColumns.filter((col) => !forbidden.has(col))
       if (filtered.length !== newColumns.length) {
-        // Auto-remove forbidden columns
+        // Auto-remove forbidden identity columns
         formData.value.columns = filtered
-        return
       }
-
-      const filteredKeys = normalizeChipField(formData.value.keys).filter((key) => {
-        if (key.trim().startsWith('@')) {
-          return true
-        }
-        return filtered.includes(key)
-      })
-
-      if (JSON.stringify(filteredKeys) !== JSON.stringify(formData.value.keys)) {
-        formData.value.keys = filteredKeys
-      }
-    }
-  },
-  { deep: true }
-)
-
-watch(
-  () => formData.value.keys,
-  (newKeys) => {
-    if (formData.value.type !== 'fixed' || !Array.isArray(newKeys)) {
-      return
-    }
-
-    const publicId = formData.value.public_id
-    const existingColumns = normalizeChipField(formData.value.columns)
-    const missingKeyColumns = normalizeChipField(newKeys).filter((key) => {
-      if (!key || key.trim().startsWith('@')) {
-        return false
-      }
-      if (key === 'system_id' || key === publicId) {
-        return false
-      }
-      return !existingColumns.includes(key)
-    })
-
-    if (missingKeyColumns.length > 0) {
-      formData.value.columns = [...existingColumns, ...missingKeyColumns]
     }
   },
   { deep: true }
@@ -2472,13 +2517,6 @@ onMounted(() => {
   if (isExcelType.value && formData.value.options.filename) {
     fetchSheetOptions()
   }
-
-  // Pre-fetch @value: directive suggestions for the combobox
-  if (props.projectName) {
-    getValidDirectives(props.projectName).then((paths) => {
-      directivePaths.value = paths
-    })
-  }
 })
 
 onUnmounted(() => {
@@ -2531,44 +2569,16 @@ const sourceEntityPublicIdMap = computed<Record<string, string | null>>(() => {
   )
 })
 
-const mergedAvailableColumns = computed(() => {
-  if (!isMergedEntityType.value) {
-    return [] as string[]
-  }
-
-  const outputColumns = new Set<string>()
-
-  if (formData.value.name) {
-    outputColumns.add(`${formData.value.name}_branch`)
-  }
-
-  for (const branch of mergedBranchConfigs.value) {
-    if (!branch.source) {
-      continue
-    }
-
-    for (const column of getColumnsFromEntity(branch.source)) {
-      if (column && column !== 'system_id') {
-        outputColumns.add(column)
-      }
-    }
-
-    const branchFkColumn = sourceEntityPublicIdMap.value[branch.source] || `${branch.source}_id`
-    if (branchFkColumn && branchFkColumn !== 'system_id') {
-      outputColumns.add(branchFkColumn)
-    }
-  }
-
-  return Array.from(outputColumns)
-})
+const INTERNAL_DATA_SOURCE = '@internal'
 
 const availableDataSources = computed(() => {
-  // Get entity source names from project's options.data_sources (e.g., "arbodat_data", "sead")
+  // Declared data sources plus the reserved "@internal" sentinel, which queries
+  // already-processed entities through the built-in DuckDB workspace.
   const dataSources = projectStore.selectedProject?.options?.data_sources
   if (dataSources && typeof dataSources === 'object') {
-    return Object.keys(dataSources)
+    return [...Object.keys(dataSources), INTERNAL_DATA_SOURCE]
   }
-  return []
+  return [INTERNAL_DATA_SOURCE]
 })
 
 // File type computed properties
@@ -2578,19 +2588,6 @@ const isFileType = computed(() => {
 
 const isExcelType = computed(() => {
   return ['xlsx', 'openpyxl'].includes(formData.value.type)
-})
-
-const availableColumns = computed(() => {
-  const cols = isMergedEntityType.value
-    ? mergedAvailableColumns.value
-    : formData.value.type === 'fixed'
-      ? Array.from(new Set([...normalizeChipField(formData.value.columns), ...normalizeChipField(formData.value.keys)]))
-          .filter((column) => column && column !== 'system_id' && column !== formData.value.public_id)
-      : columnsOptions.value
-  const directives = directivePaths.value
-  if (directives.length === 0) return cols
-  // Show regular columns first, then @value: directive paths as additional options
-  return [...cols, ...directives.filter((d) => !cols.includes(d))]
 })
 
 const effectiveEntityColumns = computed(() => {
@@ -2638,9 +2635,10 @@ const sourceReferenceColumn = computed(() => {
   if (formData.value.type !== 'entity' || !formData.value.source) return null
 
   const sourceEntity = entities.value.find((entity) => entity.name === formData.value.source)
-  const sourcePublicId = typeof (sourceEntity as any)?.entity_data?.public_id === 'string'
-    ? (sourceEntity as any).entity_data.public_id.trim()
-    : ''
+  const sourcePublicId =
+    typeof (sourceEntity as any)?.entity_data?.public_id === 'string'
+      ? (sourceEntity as any).entity_data.public_id.trim()
+      : ''
 
   if (!sourcePublicId || sourcePublicId === formData.value.public_id) {
     return null
@@ -2649,34 +2647,14 @@ const sourceReferenceColumn = computed(() => {
   return sourcePublicId
 })
 
-const availableColumnsForUnnest = computed(() => {
-  const keys = formData.value.keys || []
-  const columns = effectiveEntityColumns.value
-  const options = columnsOptions.value.length > 0 ? columnsOptions.value : columns
-  const extraColumnNames = Object.keys(formData.value.advanced.extra_columns || {})
-  const combined = Array.from(new Set([...keys, ...options, ...extraColumnNames]))
-  return combined.filter((c) => c && c !== 'system_id')
-})
-
-const availableColumnsForReplacements = computed(() => {
-  const columns = effectiveEntityColumns.value
-  const extraColumnNames = Object.keys(formData.value.advanced.extra_columns || {})
-  const combined = Array.from(new Set([...columns, ...extraColumnNames]))
-  return combined.filter((c) => c && c !== 'system_id')
-})
-
-const extraColumnsAvailableColumns = computed(() => {
-  const sourceColumns = effectiveEntityColumns.value
-  const sourcePublicId = sourceReferenceColumn.value ? [sourceReferenceColumn.value] : []
-  return Array.from(new Set([...sourceColumns, ...sourcePublicId])).filter(Boolean)
-})
-
 const extraColumnsReservedNames = computed(() => {
+  // Business keys only mark existing columns; they do not add result columns.
+  // A key may point at an extra column, so keys are not reserved names here.
+  // This mirrors the backend ExtraColumnsConflictsSpecification rule.
   const names = [
     'system_id',
     formData.value.public_id,
     ...(formData.value.columns || []),
-    ...(formData.value.keys || []),
     formData.value.advanced.unnest?.var_name,
     formData.value.advanced.unnest?.value_name,
   ]
@@ -2783,21 +2761,22 @@ function yamlToFormData(yamlString: string): boolean {
     const normalizedKeys = normalizeChipField(data.keys)
     const publicId = data.public_id || data.surrogate_id || ''
     const normalizedColumns = normalizeChipField(data.columns)
-    const editableFixedColumns = (data.type || 'entity') === 'fixed'
-      ? normalizeEditableFixedColumns(normalizedColumns, normalizedKeys, publicId)
-      : normalizedColumns
-    const fixedFullColumns = (data.type || 'entity') === 'fixed'
-      ? buildFixedValuesColumns(editableFixedColumns, normalizedKeys, publicId)
-      : normalizedColumns
+    const editableFixedColumns =
+      (data.type || 'entity') === 'fixed'
+        ? normalizeEditableFixedColumns(normalizedColumns, publicId)
+        : normalizedColumns
+    const fixedFullColumns =
+      (data.type || 'entity') === 'fixed' ? buildFixedFullColumns(editableFixedColumns, publicId) : normalizedColumns
     const normalizedColumnTypes = normalizeFixedColumnTypes(data.column_types, fixedFullColumns)
 
     // Keep non-inline values/materialization metadata from YAML edits.
     const roundTrip = extractMaterializationRoundTripState(data)
     externalValuesDirective.value = roundTrip.externalValuesDirective
     materializedConfig.value = roundTrip.materializedConfig
-    const normalizedFixedRows = (data.type || 'entity') === 'fixed'
-      ? normalizeFixedValuesRowsForForm(roundTrip.inlineValues, normalizedColumns, normalizedKeys, publicId)
-      : roundTrip.inlineValues
+    const normalizedFixedRows =
+      (data.type || 'entity') === 'fixed'
+        ? normalizeFixedValuesRowsForForm(roundTrip.inlineValues, normalizedColumns, publicId)
+        : roundTrip.inlineValues
 
     const dropDuplicates = data.drop_duplicates
     const dropDuplicatesData = {
@@ -2832,10 +2811,7 @@ function yamlToFormData(yamlString: string): boolean {
         surrogate_id: data.surrogate_id || '', // Keep for backward compat
         keys: normalizedKeys,
         column_types: normalizedColumnTypes,
-        columns:
-          (data.type || 'entity') === 'fixed'
-            ? editableFixedColumns
-            : normalizedColumns,
+        columns: (data.type || 'entity') === 'fixed' ? editableFixedColumns : normalizedColumns,
         values: normalizedFixedRows,
         source: data.source || null,
         data_source: data.data_source || '',
@@ -2881,18 +2857,12 @@ function handleYamlValidation(isValid: boolean, error?: string) {
 }
 
 async function handleYamlChange(value: string) {
-  // Auto-sync YAML to form data when valid
-  if (yamlValid.value) {
-    const success = yamlToFormData(value)
-    if (success) {
-      // Explicitly trigger validation after YAML changes
-      // This ensures Save button is enabled when editing via YAML tab
-      await nextTick()
-      const result = await formRef.value?.validate()
-      if (result?.valid) {
-        formValid.value = true
-      }
-    }
+  if (!yamlToFormData(value)) return
+
+  await nextTick()
+  const result = await formRef.value?.validate()
+  if (result?.valid) {
+    formValid.value = true
   }
 }
 
@@ -2922,6 +2892,7 @@ async function refreshFormValidity() {
 
 function buildDirtySnapshot(): string {
   const snapshot: Record<string, unknown> = {
+    name: formData.value.name,
     entityData: buildEntityConfigFromFormData(),
   }
 
@@ -2949,9 +2920,33 @@ function refreshDirtyState() {
   hasPendingChanges.value = buildDirtySnapshot() !== initialFormSnapshot.value
 }
 
+function setSaveError(err: unknown) {
+  const apiError = err as {
+    response?: {
+      data?: {
+        detail?: {
+          message?: string
+          context?: { conflict_type?: string; dependent_entities?: unknown }
+        }
+      }
+    }
+  }
+  const detail = apiError.response?.data?.detail
+  const context = detail?.context
+  renameConflictDependents.value =
+    context?.conflict_type === 'entity_has_dependents' && Array.isArray(context.dependent_entities)
+      ? context.dependent_entities.filter((name): name is string => typeof name === 'string')
+      : []
+  error.value = detail?.message ?? (err instanceof Error ? err.message : 'Failed to save entity')
+}
+
 const isSaveDisabled = computed(() => {
   if (!formValid.value) return true
-  if (props.mode === 'edit') return !hasPendingChanges.value && !sqlColumnSyncPending.value
+  if (props.mode === 'edit') {
+    // Never submit a positional save while external values cannot be mapped.
+    if (fixedValuesLayoutError.value) return true
+    return !hasPendingChanges.value && !sqlColumnSyncPending.value
+  }
   return false
 })
 
@@ -2964,6 +2959,7 @@ async function handleSubmit() {
 
   loading.value = true
   error.value = null
+  renameConflictDependents.value = []
 
   try {
     // Use shared function to build entity config
@@ -2986,9 +2982,14 @@ async function handleSubmit() {
         showSaveSuccess.value = false
       }, 3000)
     } else {
-      await update(formData.value.name, {
+      const originalEntityName = props.entity?.name ?? formData.value.name
+      const updatedEntity = await update(originalEntityName, {
         entity_data: entityData,
+        ...(formData.value.name !== originalEntityName ? { new_name: formData.value.name } : {}),
       })
+      for (const warning of updatedEntity.warnings ?? []) {
+        showWarning(warning)
+      }
 
       // Save external values if entity has @load: directive
       if (shouldSaveExternalValues) {
@@ -3026,7 +3027,7 @@ async function handleSubmit() {
 
       // Keep dialog open after saving in edit mode
       syncDetectedSqlColumnsToFormData()
-      emit('saved', formData.value.name)
+      emit('saved', updatedEntity.name)
 
       captureInitialSnapshot()
 
@@ -3038,7 +3039,7 @@ async function handleSubmit() {
       }, 3000)
     }
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to save entity'
+    setSaveError(err)
   } finally {
     loading.value = false
   }
@@ -3049,11 +3050,13 @@ async function handleSubmitAndClose() {
 
   loading.value = true
   error.value = null
+  renameConflictDependents.value = []
 
   try {
     const entityData = buildEntityConfigFromFormData({ includeDerivedSqlColumns: true })
     const valuesField = entityData.values
     const shouldSaveExternalValues = typeof valuesField === 'string' && valuesField.startsWith('@load:')
+    let savedEntityName = formData.value.name
 
     if (props.mode === 'create') {
       await create({
@@ -3061,9 +3064,15 @@ async function handleSubmitAndClose() {
         entity_data: entityData,
       })
     } else {
-      await update(formData.value.name, {
+      const originalEntityName = props.entity?.name ?? formData.value.name
+      const updatedEntity = await update(originalEntityName, {
         entity_data: entityData,
+        ...(formData.value.name !== originalEntityName ? { new_name: formData.value.name } : {}),
       })
+      savedEntityName = updatedEntity.name
+      for (const warning of updatedEntity.warnings ?? []) {
+        showWarning(warning)
+      }
 
       // Save external values if entity has @load: directive
       if (shouldSaveExternalValues) {
@@ -3106,10 +3115,10 @@ async function handleSubmitAndClose() {
       captureInitialSnapshot()
     }
 
-    emit('saved', formData.value.name)
+    emit('saved', savedEntityName)
     handleClose()
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to save entity'
+    setSaveError(err)
   } finally {
     loading.value = false
   }
@@ -3126,6 +3135,7 @@ function handleClose() {
   }
 
   error.value = null
+  renameConflictDependents.value = []
   showSaveSuccess.value = false
   if (saveSuccessTimeout) {
     clearTimeout(saveSuccessTimeout)
@@ -3205,6 +3215,7 @@ function handleUnmaterialized(unmaterializedEntities: string[]) {
 }
 
 function buildFormDataFromEntity(entity: EntityResponse): FormData {
+  fixedValuesLayoutError.value = null
   const dropDuplicates = entity.entity_data.drop_duplicates
   const dropEmptyRows = entity.entity_data.drop_empty_rows
   const nestedCheckFunctionalDependency =
@@ -3218,16 +3229,27 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
         ? nestedCheckFunctionalDependency
         : dropDuplicates !== undefined && dropDuplicates !== null
 
-  // For fixed entities, strip system_id and public_id from columns
-  // since they're auto-managed and will be auto-added on save
+  // For fixed entities, strip identity columns from the produced column list.
+  // Backend `fixed_schema` metadata is authoritative for order and identity roles.
   const keys = normalizeChipField(entity.entity_data.keys)
   const normalizedColumns = normalizeChipField(entity.entity_data.columns)
   const publicId = (entity.entity_data.public_id as string) || (entity.entity_data.surrogate_id as string) || ''
+  const fixedSchema = entity.entity_data.type === 'fixed' ? (entity.fixed_schema ?? null) : null
+  loadedFixedSchema.value = fixedSchema
   let columns = normalizedColumns
   let fixedFullColumns = normalizedColumns
   if (entity.entity_data.type === 'fixed') {
-    fixedFullColumns = entity.fixed_schema?.full_columns || normalizedColumns
-    columns = normalizeEditableFixedColumns(fixedFullColumns, keys, publicId)
+    // Metadata order wins when supplied. Without metadata, derive identity plus
+    // explicitly stored columns; business keys never add positional fields.
+    fixedFullColumns =
+      fixedSchema?.full_columns && fixedSchema.full_columns.length > 0
+        ? fixedSchema.full_columns
+        : buildFixedFullColumns(normalizedColumns, publicId)
+    const identityColumns =
+      fixedSchema?.identity_columns && fixedSchema.identity_columns.length > 0
+        ? fixedSchema.identity_columns
+        : ['system_id', ...(publicId ? [publicId] : [])]
+    columns = fixedFullColumns.filter((column) => !identityColumns.includes(column))
   }
   const normalizedColumnTypes = normalizeFixedColumnTypes(
     entity.entity_data.column_types,
@@ -3236,14 +3258,10 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
 
   // Handle values: can be either array (inline) or string (@load: directive for materialized entities)
   const roundTrip = extractMaterializationRoundTripState(entity.entity_data)
-  const normalizedFixedRows = entity.entity_data.type === 'fixed'
-    ? normalizeFixedValuesRowsForForm(
-        roundTrip.inlineValues,
-        normalizedColumns,
-        keys,
-        publicId
-      )
-    : roundTrip.inlineValues
+  const normalizedFixedRows =
+    entity.entity_data.type === 'fixed'
+      ? normalizeFixedValuesRowsForForm(roundTrip.inlineValues, normalizedColumns, publicId)
+      : roundTrip.inlineValues
   hasExternalValues.value = Boolean(roundTrip.externalValuesDirective)
   externalValuesDirective.value = roundTrip.externalValuesDirective
   materializedConfig.value = roundTrip.materializedConfig
@@ -3290,6 +3308,7 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
       append: (entity.entity_data.append as any[]) || [],
       branches: (entity.entity_data.branches as any[]) || [],
       extra_columns: (entity.entity_data.extra_columns as Record<string, ExtraColumnValue>) || undefined,
+      replacements: (entity.entity_data.replacements as Record<string, any>) || undefined,
     },
   }
 }
@@ -3306,6 +3325,7 @@ async function loadExternalValuesIfNeeded(entity: EntityResponse) {
     externalValuesDirective.value = rawValues
     loadingExternalValues.value = true
     externalValuesError.value = null
+    fixedValuesLayoutError.value = null
 
     try {
       debugEntityForm(`[EntityFormDialog] Loading external values for ${entity.name}: ${rawValues}`)
@@ -3314,10 +3334,24 @@ async function loadExternalValuesIfNeeded(entity: EntityResponse) {
       // Populate form data with fetched values
       suppressFixedSchemaRemap.value = true
       try {
-        formData.value.values = response.values
         if (formData.value.type === 'fixed') {
-          formData.value.columns = normalizeEditableFixedColumns(response.columns, formData.value.keys, formData.value.public_id)
+          // The backend GET normalizes stored values to the authoritative full
+          // order. A mismatch means the response cannot be mapped safely, so
+          // reject it visibly instead of guessing another layout.
+          const activeFullColumns = fixedValuesColumns.value
+          if (JSON.stringify(response.columns) !== JSON.stringify(activeFullColumns)) {
+            fixedValuesLayoutError.value =
+              `External values columns ${JSON.stringify(response.columns)} do not match the entity schema ` +
+              `${JSON.stringify(activeFullColumns)}. Fix the values file before saving.`
+            externalValuesError.value = fixedValuesLayoutError.value
+            formData.value.values = []
+            externalValuesEtag.value = null
+            return
+          }
+
+          formData.value.values = response.values
         } else {
+          formData.value.values = response.values
           formData.value.columns = response.columns
         }
       } finally {
@@ -3346,6 +3380,7 @@ async function loadExternalValuesIfNeeded(entity: EntityResponse) {
     externalValuesDirective.value = null
     externalValuesError.value = null
     externalValuesEtag.value = null
+    fixedValuesLayoutError.value = null
   }
 }
 
@@ -3415,6 +3450,7 @@ watch(
 
       // Reset UI state
       error.value = null
+      renameConflictDependents.value = []
       formRef.value?.resetValidation()
       suggestions.value = null
       showSuggestions.value = false
@@ -3484,6 +3520,10 @@ watch(
         await refreshFormValidity()
         initialFormSnapshot.value = null
         hasPendingChanges.value = false
+
+        // Place the cursor in the Entity Name field so the user can start typing immediately.
+        await nextTick()
+        entityNameField.value?.focus()
       }
     }
   },
@@ -3520,7 +3560,7 @@ watch(activeTab, (newTab, oldTab) => {
 })
 
 // Fetch suggestions when columns change (debounced)
-let suggestionTimeout: NodeJS.Timeout | null = null
+let suggestionTimeout: ReturnType<typeof setTimeout> | null = null
 watchEffect(() => {
   if (!fkSuggestionsEnabled.value) {
     if (suggestions.value || showSuggestions.value) {
@@ -3602,6 +3642,28 @@ function handleAcceptDependency(dep: DependencySuggestion) {
 function handleRejectDependency(dep: DependencySuggestion) {
   debugEntityForm('Rejected dependency suggestion:', dep)
 }
+
+watch(
+  () => ({
+    isOpen: props.modelValue,
+    projectName: props.projectName,
+    entityName: formData.value.name,
+    entityDraft: buildEntityConfigFromFormData({ includeDerivedSqlColumns: true }),
+    sourceColumns: [...columnsOptions.value],
+  }),
+  (requestState) => {
+    if (!requestState.isOpen) {
+      refreshColumnAvailability('', '', { entity_draft: {} })
+      return
+    }
+
+    refreshColumnAvailability(requestState.projectName, requestState.entityName, {
+      entity_draft: requestState.entityDraft,
+      source_columns: requestState.sourceColumns,
+    })
+  },
+  { deep: true, immediate: true }
+)
 </script>
 
 <style scoped>

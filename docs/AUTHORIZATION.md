@@ -39,11 +39,37 @@ Each protected resource has a server-owned UUID, resource type, current locator,
 | `project_child`            | A project-owned child resource                                 |
 | `shared_data_source_child` | A shared-data-source-owned child resource                      |
 
-A grant assigns a resource role to one typed subject and one resource UUID. Subjects are `principal`, `group`, or authenticated `everyone`. Project names and shared data-source filenames are locators, not authorization identities. Deleting a resource and reusing its locator creates a new UUID, so it cannot inherit old grants.
+A grant assigns a resource role to one typed subject and one resource UUID. Subjects are `principal`, `group`, or authenticated `everyone`. Project names and shared data-source filenames are locators, not authorization identities. Deleting a resource and reusing its locator creates a new UUID, so it cannot inherit old grants. A move is not a delete and recreate: `sead-authorization move-resource` changes the locator of an existing resource and keeps its UUID, so its grants continue to apply. See [Moving a resource locator](#moving-a-resource-locator).
 
 Direct-principal grants use `principal_id` in legacy manifests or `subject_type: principal` and `subject_id` in typed manifests. Group grants use verified group IDs supplied by the trusted authentication provider. In Phase 1, nginx supplies them through the configured trusted group header, and group matching is disabled unless that source is explicitly enabled. A site that authenticates with `auth_basic` has no group claim of its own, so the header comes from a membership file; see [NGINX group header](OPERATIONS.md#nginx-group-header). Membership is never inferred from client request fields. `everyone` means every authenticated principal and uses the fixed subject ID `authenticated`; anonymous requests are still denied. Authenticated-`everyone` matching is disabled unless explicitly enabled in deployment configuration.
 
 Resource access is denied unless the resource is active and a policy rule permits the action. A grant on a parent resource applies to its children. For example, a project grant can authorize work on a project child resource. Child grants do not grant access to a parent.
+
+## Moving A Resource Locator
+
+A project locator is derived from its folder path, so moving or renaming a project folder changes its locator. Moving only the folder leaves the old locator active and the grants attached to it, and the new locator resolves to nothing, so only an `admin` can reach the project. Move the authorization resource with the folder.
+
+The supported command is `sead-authorization move-resource`:
+
+```bash
+sead-authorization move-resource \
+  --resource-type project \
+  --from-locator old-name \
+  --to-locator arbodat:new-name \
+  --actor operator
+```
+
+The command requires a free target locator, refuses a source that is not active, and refuses identical locators. It keeps the resource UUID and its grants, and it records a `resource_locator_changed` audit event containing the previous and new locators. Add `--dry-run` to check the move without changing storage.
+
+In a container deployment, `container/scripts/move-project.sh` moves the project folder and updates the locator in one step, rolling the folder back if the authorization change fails:
+
+```bash
+container/scripts/move-project.sh --project old-name --to arbodat/new-name
+```
+
+Both values accept `/` and `:`. The script requires a running container, because `authorization.sh` runs the command inside it. If the moved project was the active editing project, restart the container after the move so in-memory state does not keep the old locator.
+
+An operator who already moved the folder by hand can call `move-resource` on its own.
 
 ## Resource Roles
 

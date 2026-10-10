@@ -36,22 +36,45 @@ def find_duplicate_fixed_entity_columns(columns: list[str]) -> list[str]:
     return duplicates
 
 
-def build_fixed_entity_full_columns(columns: list[str], key_columns: list[str], public_id: str | None) -> list[str]:
-    """Build the canonical full column order for fixed entities."""
+def build_fixed_entity_full_columns(columns: list[str], public_id: str | None) -> list[str]:
+    """Build the canonical full column order for fixed entities.
+
+    The full order is the managed identity columns followed by the produced data
+    columns in their declared or stored order. Business keys describe produced
+    fields and never add positions, so they are not accepted here.
+    """
     full_columns: list[str] = ["system_id"]
 
     if public_id and public_id not in full_columns:
         full_columns.append(public_id)
-
-    for key in key_columns:
-        if key not in full_columns:
-            full_columns.append(key)
 
     for column in columns:
         if column not in full_columns:
             full_columns.append(column)
 
     return full_columns
+
+
+def build_fixed_entity_legacy_columns(columns: list[str], key_columns: list[str], public_id: str | None) -> list[str]:
+    """Rebuild the historical identity/keys/data order used by legacy values requests.
+
+    This exists only to recognize requests that used the previous key-inclusive
+    positional order. It is not the authoritative order for fixed rows.
+    """
+    legacy_columns: list[str] = ["system_id"]
+
+    if public_id and public_id not in legacy_columns:
+        legacy_columns.append(public_id)
+
+    for key in key_columns:
+        if key not in legacy_columns:
+            legacy_columns.append(key)
+
+    for column in columns:
+        if column not in legacy_columns:
+            legacy_columns.append(column)
+
+    return legacy_columns
 
 
 class FixedEntityColumnTypeDeclarationError(ValueError):

@@ -4,7 +4,13 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { entitiesApi } from '../entities'
-import type { EntityResponse, EntityCreateRequest, EntityUpdateRequest } from '../entities'
+import type {
+  ColumnAvailabilityRequest,
+  ColumnAvailabilityResponse,
+  EntityResponse,
+  EntityCreateRequest,
+  EntityUpdateRequest,
+} from '../entities'
 
 // Mock the API client
 vi.mock('../client', () => ({
@@ -55,7 +61,10 @@ describe('entitiesApi', () => {
 
   describe('get', () => {
     it('should fetch a specific entity', async () => {
-      const mockEntity: EntityResponse = createEntityResponse('test-entity', { table: 'users', columns: ['id', 'name'] })
+      const mockEntity: EntityResponse = createEntityResponse('test-entity', {
+        table: 'users',
+        columns: ['id', 'name'],
+      })
 
       vi.mocked(apiRequest).mockResolvedValue(mockEntity)
 
@@ -78,6 +87,48 @@ describe('entitiesApi', () => {
       expect(apiRequest).toHaveBeenCalledWith({
         method: 'GET',
         url: '/projects/config-1/entities/entity-with-dash',
+      })
+    })
+  })
+
+  describe('getColumnAvailability', () => {
+    it('posts the current entity draft and known source columns', async () => {
+      const request: ColumnAvailabilityRequest = {
+        entity_draft: {
+          type: 'entity',
+          columns: ['sample_name'],
+          foreign_keys: [{ entity: 'sample_group', local_keys: ['sample_group_name'] }],
+        },
+        source_columns: ['sample_name', 'sample_group_name'],
+      }
+      const response: ColumnAvailabilityResponse = {
+        columns: ['sample_name', 'sample_group_name'],
+        business_keys: ['sample_name'],
+        replacements: ['sample_name'],
+        drop_duplicates: ['sample_name'],
+        drop_empty_rows: ['sample_name', 'sample_group_id'],
+        extra_columns: { sources: ['sample_name'] },
+        filters: { extract: ['sample_name'] },
+        foreign_keys: [
+          {
+            index: 0,
+            entity: 'sample_group',
+            local_keys_before_unnest: ['sample_group_name'],
+            local_keys_after_unnest: ['sample_group_name'],
+            remote_keys: ['sample_group_id', 'system_id'],
+            extra_column_sources: ['sample_group_id', 'system_id'],
+          },
+        ],
+        unnest: { id_vars: ['sample_name'], value_vars: [] },
+      }
+
+      vi.mocked(apiRequest).mockResolvedValue(response)
+
+      await expect(entitiesApi.getColumnAvailability('test-project', 'sample', request)).resolves.toEqual(response)
+      expect(apiRequest).toHaveBeenCalledWith({
+        method: 'POST',
+        url: '/projects/test-project/entities/sample/column-availability',
+        data: request,
       })
     })
   })

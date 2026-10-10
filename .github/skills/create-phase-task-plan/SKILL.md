@@ -20,9 +20,9 @@ Determine from the user's request or current conversation:
 
 Infer details when the conversation or verified repository content establishes them.
 
-The target document may come from the current conversation. Do not derive it from repository naming patterns alone. If the destination remains ambiguous, ask one concise clarifying question.
+An explicit target from the user or the current conversation takes precedence. Otherwise, name and place the task plan per the Document Naming rule in [Proposal document structure](references/proposal-document-structure.md). If the source proposal path or phase number is unknown, ask one concise clarifying question.
 
-Name new task-plan documents with the `_TASK_PLAN.md` suffix. Include the phase identifier in the name when needed to distinguish plans for different phases. Preserve the path of an existing plan when updating it; if a user-supplied new target lacks the suffix, confirm the path before writing.
+Preserve the path of an existing task plan when updating it. If a user-supplied target does not follow the convention, confirm the path before writing.
 
 Do not treat labels, examples, or placeholder text as input values.
 

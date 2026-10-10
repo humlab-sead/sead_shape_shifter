@@ -30,7 +30,7 @@ from backend.app.authorization.repository import SQLiteAuthorizationRepository
 from backend.app.core.config import settings
 
 
-@click.group()
+@click.group(context_settings={"max_content_width": 120})
 def cli() -> None:
     """Manage Shape Shifter authorization storage."""
 
@@ -71,12 +71,7 @@ def dev_bootstrap() -> None:
     principal_id = settings.DEVELOPMENT_PRINCIPAL_ID
     if principal_id is None:
         raise click.ClickException("Set DEVELOPMENT_PRINCIPAL_ID to a valid local principal before bootstrapping")
-    if (
-        not principal_id.strip()
-        or principal_id != principal_id.strip()
-        or len(principal_id) > 255
-        or not principal_id.isprintable()
-    ):
+    if not principal_id.strip() or principal_id != principal_id.strip() or len(principal_id) > 255 or not principal_id.isprintable():
         raise click.ClickException("Set DEVELOPMENT_PRINCIPAL_ID to a valid local principal before bootstrapping")
 
     development_database = (settings.APPLICATION_ROOT / "state" / "authorization-dev.sqlite3").resolve()
@@ -88,9 +83,7 @@ def dev_bootstrap() -> None:
     from backend.app.services.project_service import ProjectService
 
     project_names = [project.name for project in ProjectService(settings.PROJECTS_DIR).list_projects()]
-    data_source_names = [
-        data_source.name for data_source in DataSourceService(settings.GLOBAL_DATA_SOURCE_DIR).list_data_sources()
-    ]
+    data_source_names = [data_source.name for data_source in DataSourceService(settings.GLOBAL_DATA_SOURCE_DIR).list_data_sources()]
 
     repository = SQLiteAuthorizationRepository(database)
     try:
@@ -271,6 +264,55 @@ def revoke(
         except ValueError as error:
             raise click.ClickException(str(error)) from error
         click.echo(f"Revoked {role} from {subject_type}:{subject_id} on {resource_type}:{locator}")
+    finally:
+        repository.close()
+
+
+@cli.command("move-resource")
+@click.option("--database", type=click.Path(exists=True, path_type=Path), default=None)
+@click.option("--resource-type", required=True, type=click.Choice([resource_type.value for resource_type in ResourceType]))
+@click.option("--from-locator", required=True)
+@click.option("--to-locator", required=True)
+@click.option("--actor", required=True)
+@click.option("--dry-run", is_flag=True)
+@click.option("--yes", is_flag=True, help="Confirm the move.")
+@click.option("--non-interactive", is_flag=True, help="Skip confirmation for controlled automation.")
+def move_resource(
+    database: Path | None,
+    resource_type: str,
+    from_locator: str,
+    to_locator: str,
+    actor: str,
+    dry_run: bool,
+    yes: bool,
+    non_interactive: bool,
+) -> None:
+    """Move an active resource to a new locator without changing its UUID or grants.
+
+    Unlike deleting and recreating a resource, a move keeps the resource UUID, so
+    existing grants continue to apply. Use this after moving a project folder, whose
+    locator is the path-derived project name.
+    """
+    if from_locator == to_locator:
+        raise click.ClickException("--from-locator and --to-locator must differ")
+    if not actor.strip():
+        raise click.ClickException("--actor must be a non-empty string")
+
+    path: Path = database or settings.AUTHORIZATION_DATABASE_PATH
+    repository = SQLiteAuthorizationRepository(path)
+    try:
+        typed_resource = ResourceType(resource_type)
+        source = repository.get_resource_by_locator(typed_resource, from_locator)
+        if source is None:
+            raise click.ClickException(f"Active resource not found: {resource_type}:{from_locator}")
+        if repository.get_resource_by_locator(typed_resource, to_locator) is not None:
+            raise click.ClickException(f"An active resource already uses locator: {resource_type}:{to_locator}")
+        if dry_run:
+            click.echo(f"Dry run: would move {resource_type}:{from_locator} to {resource_type}:{to_locator}")
+            return
+        _confirm_destructive(f"Move {resource_type}:{from_locator} to {resource_type}:{to_locator}?", yes, non_interactive)
+        repository.update_resource_locator(source.resource_id, to_locator, actor)
+        click.echo(f"Moved {resource_type}:{from_locator} to {resource_type}:{to_locator} (resource_id {source.resource_id})")
     finally:
         repository.close()
 

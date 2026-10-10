@@ -170,6 +170,8 @@ export const useEntityStore = defineStore('entity', () => {
       const index = entities.value.findIndex((e: EntityResponse) => e.name === entityName)
       if (index !== -1) {
         entities.value[index] = entity
+      } else {
+        syncCachedEntity(entity)
       }
 
       selectedEntity.value = entity
@@ -181,16 +183,22 @@ export const useEntityStore = defineStore('entity', () => {
       
       return entity
     } catch (err: unknown) {
-      const axiosErr = err as { response?: { status?: number; data?: { detail?: { context?: { current_etag?: string; current_entity?: Record<string, unknown> } } } } }
-      if (axiosErr?.response?.status === 409) {
-        const ctx = axiosErr.response?.data?.detail?.context
+      const axiosErr = err as {
+        response?: {
+          status?: number
+          data?: { detail?: { context?: { current_etag?: string; current_entity?: Record<string, unknown> }; message?: string } }
+        }
+      }
+      const detail = axiosErr?.response?.data?.detail
+      if (axiosErr?.response?.status === 409 && detail?.context?.current_etag) {
+        const ctx = detail.context
         conflictInfo.value = {
           entityName,
           currentEtag: ctx?.current_etag ?? '',
           currentEntity: ctx?.current_entity ?? {},
         }
       }
-      error.value = err instanceof Error ? err.message : 'Failed to update entity'
+      error.value = detail?.message ?? (err instanceof Error ? err.message : 'Failed to update entity')
       throw err
     } finally {
       loading.value = false

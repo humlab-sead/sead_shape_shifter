@@ -1,0 +1,67 @@
+digraph SourceToRelatedRecords {
+    graph [
+        rankdir=LR,
+        bgcolor="#ffffff",
+        pad="0.24",
+        nodesep="0.38",
+        ranksep="0.68",
+        fontname="DejaVu Sans",
+        fontsize=18,
+        fontcolor="#243746",
+        label="One source row can become separate linked records",
+        labelloc=t
+    ];
+
+    node [
+        shape=box,
+        style="rounded,filled",
+        fontname="DejaVu Sans",
+        fontsize=14,
+        color="#58728c",
+        fontcolor="#243241",
+        penwidth=1.5,
+        margin="0.20,0.14"
+    ];
+
+    edge [
+        fontname="Aptos, Segoe UI, sans-serif",
+        fontsize=11,
+        color="#526579",
+        fontcolor="#374151",
+        penwidth=1.35,
+        arrowsize=0.8
+    ];
+
+    source [
+        label="Spreadsheet row\nS01 | Ageröd | Betula | 25 cm",
+        fillcolor="#f5efe3",
+        color="#9b8153"
+    ];
+
+    project [
+        label="Shape Shifter project\nClean values\nBuild datasets\nLink and check records",
+        fillcolor="#e7eef5"
+    ];
+
+    subgraph cluster_results {
+        label="Prepared datasets";
+        color="#d4dce3";
+        style="rounded";
+        fontname="DejaVu Sans";
+        fontsize=13;
+        fontcolor="#526579";
+
+        site [label="Site\nAgeröd", fillcolor="#e1f1e7", color="#5c9670"];
+        taxon [label="Taxon\nBetula", fillcolor="#fff7d6", color="#b28a2d"];
+        sample [label="Sample\nS01 · 25 cm", fillcolor="#e7eef5"];
+
+        { rank=same; site; taxon; sample; }
+    }
+
+    source -> project [label="prepare"];
+    project -> site [label="create"];
+    project -> taxon;
+    project -> sample;
+    sample -> site [label="linked to", style=dashed, color="#2b8a8f", fontcolor="#236a70", constraint=false];
+    sample -> taxon [label="linked to", style=dashed, color="#2b8a8f", fontcolor="#236a70", constraint=false];
+}
