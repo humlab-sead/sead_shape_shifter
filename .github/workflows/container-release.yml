@@ -55,7 +55,7 @@ jobs:
           fetch-depth: 0
 
       - name: Verify release inputs
-        run: bash container/scripts/verify/verify_container_release.sh dir
+        run: bash container/scripts/verify/verify_container_release.sh dir --resume-at-head
 
       - name: Allow an existing tag only at this commit
         run: |
