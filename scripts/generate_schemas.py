@@ -28,10 +28,12 @@ SCRIPT_COMMAND = "python scripts/generate_schemas.py"
 # Add backend to path
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from backend.app.models.entity import Entity
-from backend.app.models.project import Project
-from src.loaders.driver_metadata import DriverSchemaRegistry
-from src.target_model.models import TargetModel
+# pylint: disable=import-error,wrong-import-position
+
+from backend.app.models.entity import Entity  # type: ignore
+from backend.app.models.project import Project  # type: ignore
+from src.loaders.driver_metadata import DriverSchemaRegistry  # type: ignore
+from src.target_model.models import TargetModel  # type: ignore
 
 SCHEMA_CONFIG: dict[str, dict[str, Any]] = {
     "entitySchema.json": {
