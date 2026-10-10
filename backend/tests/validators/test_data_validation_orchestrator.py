@@ -12,6 +12,7 @@ from backend.app.validators.data_validation_orchestrator import (
     PreviewDataFetchStrategy,
     TableStoreDataFetchStrategy,
 )
+from src.exceptions import MissingBusinessKeyError
 from src.model import ShapeShiftProject
 from src.normalizer import ShapeShifter
 from src.table_store import TableStore
@@ -77,6 +78,79 @@ async def test_orchestrator_with_table_store_strategy():
 
     # Should return domain ValidationIssues (not API models)
     assert isinstance(issues, list)
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_reports_unproduced_business_key():
+    """Data validation reports a business key the entity output does not contain."""
+    table_store = TableStore(
+        {
+            "test_entity": pd.DataFrame({"col1": [1, 2], "col2": [3, 4]}),
+        }
+    )
+
+    mock_core_project = Mock()
+    mock_core_project.cfg.get.return_value = {
+        "test_entity": {
+            "columns": ["col1", "col2"],
+            "keys": ["col1", "missing_key"],
+        }
+    }
+
+    strategy = TableStoreDataFetchStrategy(table_store)
+    orchestrator = DataValidationOrchestrator(fetch_strategy=strategy)
+
+    issues = await orchestrator.validate_all_entities(
+        core_project=mock_core_project,
+        project_name="test_project",
+        entity_names=["test_entity"],
+    )
+
+    key_issues = [issue for issue in issues if issue.code == "BUSINESS_KEY_NOT_PRODUCED"]
+    assert len(key_issues) == 1
+    assert key_issues[0].entity == "test_entity"
+    assert key_issues[0].field == "keys"
+    assert key_issues[0].column == "missing_key"
+    assert "missing_key" in key_issues[0].message
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_maps_normalization_missing_key_error_to_business_key_issue():
+    """A normalization missing-key failure is reported as a structured business-key error."""
+
+    class MissingKeyFetchStrategy(TableStoreDataFetchStrategy):
+        """Strategy whose fetch fails the way normalization does for an unproduced key."""
+
+        async def fetch(self, project_name: str, entity_name: str) -> pd.DataFrame:
+            raise MissingBusinessKeyError(
+                f"Entity '{entity_name}': key column(s) ['missing_key'] are missing from processed output.",
+                entity_name=entity_name,
+                missing_keys=["missing_key"],
+            )
+
+    mock_core_project = Mock()
+    mock_core_project.cfg.get.return_value = {
+        "test_entity": {
+            "columns": ["col1"],
+            "keys": ["missing_key"],
+        }
+    }
+
+    strategy = MissingKeyFetchStrategy(TableStore())
+    orchestrator = DataValidationOrchestrator(fetch_strategy=strategy)
+
+    issues = await orchestrator.validate_all_entities(
+        core_project=mock_core_project,
+        project_name="test_project",
+        entity_names=["test_entity"],
+    )
+
+    key_issues = [issue for issue in issues if issue.code == "BUSINESS_KEY_NOT_PRODUCED"]
+    assert len(key_issues) == 1
+    assert key_issues[0].severity == "error"
+    assert key_issues[0].entity == "test_entity"
+    assert key_issues[0].field == "keys"
+    assert key_issues[0].column == "missing_key"
 
 
 @pytest.mark.asyncio

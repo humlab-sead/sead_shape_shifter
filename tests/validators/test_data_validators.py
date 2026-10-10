@@ -4,6 +4,7 @@ import pandas as pd
 import pytest
 
 from src.validators.data_validators import (
+    BusinessKeyProducedValidator,
     ColumnExistsValidator,
     DataTypeCompatibilityValidator,
     DuplicateKeysValidator,
@@ -175,6 +176,59 @@ class TestColumnExistsValidator:
         assert "FlSchn" not in all_messages
         assert "okBefu" not in all_messages
         assert "BestJa" not in all_messages
+
+
+class TestBusinessKeyProducedValidator:
+    """Tests for BusinessKeyProducedValidator."""
+
+    def test_passes_when_all_keys_are_produced(self):
+        """No issues when every configured key exists in the DataFrame."""
+        df = pd.DataFrame({"a": [1, 2], "b": [3, 4]})
+
+        issues = BusinessKeyProducedValidator.validate(df, ["a", "b"], "test_entity")
+
+        assert issues == []
+
+    def test_reports_missing_key_with_actionable_message(self):
+        """A configured key absent from the data is reported with the agreed error content."""
+        df = pd.DataFrame({"a": [1, 2], "b": [3, 4]})
+
+        issues = BusinessKeyProducedValidator.validate(df, ["a", "missing_key"], "test_entity")
+
+        assert len(issues) == 1
+        issue = issues[0]
+        assert issue.code == "BUSINESS_KEY_NOT_PRODUCED"
+        assert issue.severity == "error"
+        assert issue.entity == "test_entity"
+        assert issue.field == "keys"
+        assert issue.column == "missing_key"
+        assert "missing_key" in issue.message
+        assert "'keys' do not create output columns" in issue.message
+        assert "'columns'" in issue.suggestion
+
+    def test_reports_only_the_missing_keys(self):
+        """Composite keys report only the keys the data does not contain."""
+        df = pd.DataFrame({"a": [1, 2], "b": [3, 4]})
+
+        issues = BusinessKeyProducedValidator.validate(df, ["a", "b", "c", "d"], "test_entity")
+
+        assert {issue.column for issue in issues} == {"c", "d"}
+
+    def test_empty_dataframe_no_errors(self):
+        """An empty DataFrame is skipped, matching ColumnExistsValidator behavior."""
+        df = pd.DataFrame()
+
+        issues = BusinessKeyProducedValidator.validate(df, ["missing_key"], "test_entity")
+
+        assert issues == []
+
+    def test_no_keys_no_errors(self):
+        """No configured keys produce no issues."""
+        df = pd.DataFrame({"a": [1, 2]})
+
+        issues = BusinessKeyProducedValidator.validate(df, [], "test_entity")
+
+        assert issues == []
 
 
 class TestNaturalKeyUniquenessValidator:
