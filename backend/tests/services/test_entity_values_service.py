@@ -309,7 +309,7 @@ class TestEntityValuesService:
         }
         mock_project_service.get_entity_by_name.return_value = entity_data
 
-        with pytest.raises(ValueError, match="authoritative columns"):
+        with pytest.raises(ValueError, match="expected positional column order"):
             service.update_values("test_project", "location", ["country"], [["Sweden"]], "parquet")
 
     def test_update_values_remaps_recognized_legacy_order(self, service, mock_project_service, tmp_path):
@@ -359,12 +359,12 @@ class TestEntityValuesService:
         with pytest.raises(ValueError, match="duplicate"):
             service.update_values("test_project", "location", ["system_id", "system_id", "name", "country"], [[1, 1, "a", "b"]], "parquet")
 
-        with pytest.raises(ValueError, match="authoritative columns"):
+        with pytest.raises(ValueError, match="expected positional column order"):
             service.update_values(
                 "test_project", "location", ["system_id", "location_id", "name", "unknown"], [[1, 100, "a", "b"]], "parquet"
             )
 
-        with pytest.raises(ValueError, match="authoritative columns"):
+        with pytest.raises(ValueError, match="expected positional column order"):
             service.update_values("test_project", "location", ["system_id", "location_id", "name"], [[1, 100, "a"]], "parquet")
 
     def test_update_values_rejection_keeps_file_and_directory_unchanged(self, service, mock_project_service, tmp_path):
@@ -382,7 +382,7 @@ class TestEntityValuesService:
         }
         mock_project_service.get_entity_by_name.return_value = entity_data
 
-        with pytest.raises(ValueError, match="authoritative columns"):
+        with pytest.raises(ValueError, match="expected positional column order"):
             service.update_values("test_project", "location", ["country"], [["Sweden"]], "parquet")
 
         assert not (tmp_path / "materialized").exists()
