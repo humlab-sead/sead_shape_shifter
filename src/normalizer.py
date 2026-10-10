@@ -336,13 +336,20 @@ class ShapeShifter:
         )
 
     def _check_duplicate_keys(self, entity: str, table_cfg: TableConfig) -> None:
-        """Check that processed output contains every configured business key."""
+        """Check that processed output contains every configured business key.
+
+        The managed identity columns (system_id and public_id) are permitted as
+        keys even though they are added to the output after this check runs, so
+        they never count as missing. This matches the structural validator,
+        which treats them as produced columns.
+        """
 
         if not table_cfg.keys:
             return
 
         keys: set[str] = set(table_cfg.keys) if table_cfg.keys else set()
-        missing_keys: set[str] = keys - set(self.table_store[entity].columns)
+        managed_keys: set[str] = set(table_cfg.identity_columns)
+        missing_keys: set[str] = keys - set(self.table_store[entity].columns) - managed_keys
 
         if missing_keys:
             raise MissingBusinessKeyError(
@@ -352,6 +359,12 @@ class ShapeShifter:
                 entity_name=entity,
                 missing_keys=sorted(missing_keys),
             )
+
+        # Managed identity columns are system-generated: system_id is unique by
+        # construction and public_id is filled in later, so a duplicate scan on
+        # keys made only of them would be meaningless.
+        if keys <= managed_keys:
+            return
 
         has_duplicate_keys: bool = bool(self.table_store[entity].duplicated(subset=list(table_cfg.keys)).any())
         if has_duplicate_keys:

@@ -294,6 +294,37 @@ class TestShapeShifter:
             normalizer.duckdb_workspace.close()
             normalizer.loaders.close_all()
 
+    @pytest.mark.asyncio
+    async def test_process_entity_accepts_managed_identity_keys(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Keys naming the managed identity columns must not fail the runtime key check.
+
+        system_id and public_id are added to the output after the check runs, so
+        they are permitted as keys even though the source frame lacks them.
+        """
+        project = ShapeShiftProject(
+            cfg={
+                "entities": {
+                    "sample": {
+                        "type": "entity",
+                        "public_id": "sample_id",
+                        "columns": ["source_value"],
+                        "keys": ["system_id", "sample_id"],
+                    }
+                }
+            }
+        )
+        normalizer = ShapeShifter(project=project)
+        monkeypatch.setattr(normalizer, "get_subset", AsyncMock(return_value=pd.DataFrame({"source_value": ["a", "b"]})))
+
+        try:
+            await normalizer._process_entity("sample", SubsetService())
+            output = normalizer.table_store["sample"]
+            assert output["system_id"].tolist() == [1, 2]
+            assert "sample_id" in output.columns
+        finally:
+            normalizer.duckdb_workspace.close()
+            normalizer.loaders.close_all()
+
     def test_initialization(self, survey_only_config: ShapeShiftProject):
         """Test ShapeShifter initialization."""
         df = pd.DataFrame({"col1": [1, 2], "col2": [3, 4]})
