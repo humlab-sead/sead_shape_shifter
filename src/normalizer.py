@@ -360,13 +360,21 @@ class ShapeShifter:
                 missing_keys=sorted(missing_keys),
             )
 
-        # Managed identity columns are system-generated: system_id is unique by
-        # construction and public_id is filled in later, so a duplicate scan on
-        # keys made only of them would be meaningless.
-        if keys <= managed_keys:
+        # Only keys already present in the processed output can be scanned for
+        # duplicates. Managed identity columns are system-generated (system_id is
+        # unique by construction) and public_id is filled in later, so they carry
+        # no duplicate information and are excluded. Composite keys that mix a
+        # managed identity column with a produced business column are therefore
+        # scanned over just the produced columns instead of raising a KeyError on
+        # the not-yet-added identity column.
+        available_keys: list[str] = [
+            key for key in table_cfg.keys if key not in managed_keys and key in self.table_store[entity].columns
+        ]
+
+        if not available_keys:
             return
 
-        has_duplicate_keys: bool = bool(self.table_store[entity].duplicated(subset=list(table_cfg.keys)).any())
+        has_duplicate_keys: bool = bool(self.table_store[entity].duplicated(subset=available_keys).any())
         if has_duplicate_keys:
             # raise ValueError(f"{entity}[keys]: Duplicate keys found for keys {table_cfg.keys}.")
             logger.error(f"{entity}[keys]: DUPLICATE KEYS FOUND FOR KEYS {table_cfg.keys}.")
