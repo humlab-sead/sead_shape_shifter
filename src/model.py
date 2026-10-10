@@ -873,9 +873,13 @@ class TableConfig:
 
             merged[key] = value
 
-        # Filter out public_id from columns list for append sources
-        # The public_id column will be added after concatenation with None values
-        if "columns" in merged and self.public_id:
+        # Filter out public_id from inherited columns for append sources.
+        # The public_id column is added after concatenation with None values,
+        # so inherited parent columns must not extract it from the append source.
+        # Columns declared explicitly on the append item are kept as-is: they
+        # name the source fields to extract, and add_public_id_column preserves
+        # values that are already present.
+        if "columns" in merged and "columns" not in append_data and self.public_id:
             columns = merged["columns"]
             if isinstance(columns, list) and self.public_id in columns:
                 merged["columns"] = [col for col in columns if col != self.public_id]

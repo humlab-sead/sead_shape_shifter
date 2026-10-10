@@ -1387,7 +1387,7 @@ class UnnestColumnsSpecification(ProjectSpecification):
     """Validates that unnest configuration references existing columns.
 
     Unnest happens after FK linking, so id_vars can reference:
-    - Static columns (columns, keys)
+    - Static columns (columns)
     - Extra columns (extra_columns)
     - FK-added columns (remote entity's public_id + FK extra_columns)
     """
@@ -1434,7 +1434,7 @@ class UnnestColumnsSpecification(ProjectSpecification):
                 self.add_error(
                     f"Unnest configuration references missing id_vars columns: {sorted(missing_id_vars)}. "
                     f"Available columns: {sorted(all_columns)}. "
-                    f"These columns must be in 'columns', 'keys', 'extra_columns', or added by foreign keys.",
+                    f"These columns must be in 'columns', 'extra_columns', or added by foreign keys.",
                     entity=entity_name,
                     field="unnest.id_vars",
                 )
@@ -1446,7 +1446,7 @@ class UnnestColumnsSpecification(ProjectSpecification):
                 self.add_error(
                     f"Unnest configuration references missing value_vars columns: {sorted(missing_value_vars)}. "
                     f"Available columns: {sorted(all_columns)}. "
-                    f"These columns must be in 'columns', 'keys', 'extra_columns', or added by foreign keys.",
+                    f"These columns must be in 'columns', 'extra_columns', or added by foreign keys.",
                     entity=entity_name,
                     field="unnest.value_vars",
                 )
@@ -1459,7 +1459,7 @@ class ForeignKeyColumnsSpecification(ProjectSpecification):
     """Validates that foreign key local_keys exist in entity columns.
 
     FK linking happens after load, so local_keys can reference:
-    - Static columns (columns, keys)
+    - Static columns (columns)
     - Extra columns (extra_columns)
     - Columns added by previous FKs in the chain (public_id + extra_columns)
 
@@ -1481,7 +1481,7 @@ class ForeignKeyColumnsSpecification(ProjectSpecification):
             return True
 
         # Start with columns available before any FK linking
-        # (columns, keys, extra_columns, system_id, public_id, unnest result columns)
+        # (columns, extra_columns, system_id, public_id, unnest result columns)
         available_columns: set[str] = self.get_entity_columns(entity_name, exclude_types={"foreign_keys"})
 
         # Check each foreign key sequentially, accumulating columns as we go
@@ -1502,7 +1502,7 @@ class ForeignKeyColumnsSpecification(ProjectSpecification):
             if missing_local_keys:
                 self.add_error(
                     f"Foreign key to '{remote_entity}' references missing local_keys: {missing_local_keys}. "
-                    f"These columns must be in 'columns', 'keys', 'extra_columns', or added by prior foreign keys.",
+                    f"These columns must be in 'columns', 'extra_columns', or added by prior foreign keys.",
                     entity=entity_name,
                     field=f"foreign_keys[{idx}].local_keys",
                 )

@@ -158,16 +158,16 @@ class TestUnnestColumnsSpecification:
         assert result is True
         assert len(spec.errors) == 0
 
-    def test_id_vars_in_keys_passes(self):
-        """Test that id_vars can be in keys instead of columns."""
+    def test_id_vars_in_columns_and_keys_passes(self):
+        """Test that id_vars declared as keys also pass when listed in columns."""
         project_cfg = {
             "entities": {
                 "test_entity": {
                     "type": "sql",
                     "keys": ["id"],
-                    "columns": ["measure1"],
+                    "columns": ["id", "measure1"],
                     "unnest": {
-                        "id_vars": ["id"],  # In keys, not columns
+                        "id_vars": ["id"],  # Keys must name produced columns
                         "value_vars": ["measure1"],
                         "var_name": "measure",
                         "value_name": "value",
@@ -313,18 +313,18 @@ class TestForeignKeyColumnsSpecification:
         assert "contact_name" in spec.errors[0].message
         assert "missing local_keys" in spec.errors[0].message
 
-    def test_local_keys_in_keys_passes(self):
-        """Test that local_keys can be in keys instead of columns."""
+    def test_local_keys_in_columns_and_keys_passes(self):
+        """Test that local_keys declared as keys also pass when listed in columns."""
         project_cfg = {
             "entities": {
                 "site": {
                     "type": "sql",
                     "keys": ["site_name", "location_name"],
-                    "columns": ["description"],
+                    "columns": ["site_name", "location_name", "description"],
                     "foreign_keys": [
                         {
                             "entity": "location",
-                            "local_keys": ["location_name"],  # In keys
+                            "local_keys": ["location_name"],  # Keys name produced columns
                             "remote_keys": ["location_name"],
                         }
                     ],
