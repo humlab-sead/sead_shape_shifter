@@ -354,6 +354,49 @@ class TestFixedEntityFieldsSpecification:
         assert "missing_key" in error_text
         assert "'keys' do not create output columns" in error_text
 
+    def test_fixed_entity_rejects_key_produced_outside_fixed_schema(self):
+        """A key produced only by extra_columns is not part of the fixed schema and must be rejected."""
+        project_cfg = {
+            "entities": {
+                "broken_fixed": {
+                    "type": "fixed",
+                    "public_id": "broken_fixed_id",
+                    "keys": ["generated_key"],
+                    "columns": ["a"],
+                    "extra_columns": {"generated_key": "a"},
+                    "values": [[1, None, "aa"]],
+                }
+            }
+        }
+        spec = FixedEntityFieldsSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="broken_fixed")
+
+        assert result is False, spec.get_report()
+        error_text = "\n".join(str(error) for error in spec.errors)
+        assert "generated_key" in error_text
+        assert "not part of the fixed schema" in error_text
+        assert "Expected positional column order" in error_text
+
+    def test_fixed_entity_accepts_key_within_fixed_schema(self):
+        """A key that is a declared column remains valid."""
+        project_cfg = {
+            "entities": {
+                "valid_fixed": {
+                    "type": "fixed",
+                    "public_id": "valid_fixed_id",
+                    "keys": ["a"],
+                    "columns": ["a"],
+                    "values": [[1, None, "aa"]],
+                }
+            }
+        }
+        spec = FixedEntityFieldsSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="valid_fixed")
+
+        assert result is True, spec.get_report()
+
     def test_mismatched_column_row_length(self, project_cfg):
         """Test validation fails when row length doesn't match columns."""
         spec = FixedEntityFieldsSpecification(project_cfg)

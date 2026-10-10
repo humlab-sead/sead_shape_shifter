@@ -111,6 +111,49 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
                         column=col_name,
                     )
 
+    def _validate_fixed_schema_keys(
+        self,
+        entity_name: str,
+        entity_cfg: dict[str, Any],
+        public_id: str,
+    ) -> None:
+        """Check that fixed business keys belong to the fixed schema.
+
+        The fixed schema is the managed identity columns plus ``columns``. A key that is
+        produced only by ``extra_columns``, a foreign key, or ``unnest`` is part of the
+        generic producer set, but it has no positional slot in fixed rows, so the entity
+        cannot address it during a values round-trip. Such keys are reported here. Keys
+        that no producer creates are reported by the shared keys field rule instead.
+        """
+        raw_columns: Any = entity_cfg.get("columns")
+        if not isinstance(raw_columns, list):
+            return
+
+        declared_columns: list[str] = [column for column in raw_columns if isinstance(column, str)]
+
+        raw_keys: Any = entity_cfg.get("keys")
+        if not isinstance(raw_keys, list):
+            return
+
+        keys: list[str] = [key for key in raw_keys if isinstance(key, str)]
+        if not keys:
+            return
+
+        full_columns: list[str] = build_fixed_entity_full_columns(declared_columns, public_id)
+        produced_columns: set[str] = self.get_entity_columns(entity_name)
+        keys_outside_schema: list[str] = [key for key in keys if key not in full_columns and key in produced_columns]
+
+        if keys_outside_schema:
+            self.add_error(
+                f"Fixed data entity '{entity_name}' uses business key(s) {sorted(keys_outside_schema)} "
+                "that are not part of the fixed schema (managed identity columns plus 'columns'). "
+                "A key produced only by extra_columns, a foreign key, or unnest cannot be addressed in fixed rows. "
+                f"Expected positional column order: {full_columns}",
+                entity=entity_name,
+                field="keys",
+                code="KEY_OUTSIDE_FIXED_SCHEMA",
+            )
+
     def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
         """Check that fields are for the fixed entity."""
         super().is_satisfied_by(entity_name=entity_name, **kwargs)
@@ -130,6 +173,8 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
             return not self.has_errors()  # Can't proceed without public_id
 
         # Note: system_id is always "system_id" (standardized name, auto-generated)
+
+        self._validate_fixed_schema_keys(entity_name, entity_cfg, public_id)
 
         # A fixed entity can be populated entirely by its append branches. In that
         # case explicit values are optional, so only require them (and warn when they
