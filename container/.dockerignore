@@ -1,8 +1,9 @@
 # Build context excludes for standalone Podman builds.
 # Podman reads .containerignore first and falls back to .dockerignore.
 #
-# Only Containerfile and lib/ are copied from the context in standalone
-# (SOURCE=github) builds, so everything else can be excluded safely.
+# Only Containerfile is copied from the context in standalone (SOURCE=github)
+# builds; UCanAccess is downloaded during the build, so everything else can be
+# excluded safely.
 
 # Version control and editor state
 .git/
@@ -31,9 +32,6 @@ __pycache__/
 node_modules/
 frontend/node_modules/
 frontend/dist/
-
-# UCanAccess licenses are not needed at runtime; keep the JARs.
-lib/ucanaccess/licenses/
 
 # Documentation and service definitions are not needed to build the image
 docs/

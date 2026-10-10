@@ -559,45 +559,30 @@ class TestUCanAccessLoader:
             assert "system_id" in result.columns
 
     @pytest.mark.asyncio
-    async def test_load_rejects_duplicate_detected_columns_without_labels(self, loader):
-        """Access loader should fail schema validation when detected columns still contain duplicate source names."""
-        sample_df = pd.DataFrame(
-            [["18_0025", "P16", "18_0025_0003", "relative_dating", "BZ", None, None, None, None, None, "BZ"]],
-            columns=[
-                "Projekt",
-                "Befu",
-                "ProbNr",
-                "ANALYSIS_ENTITY_TYPE",
-                "ArchDat",
-                "PCODE",
-                "FRAKTION",
-                "CF",
-                "RTYP",
-                "ZUST",
-                "ArchDat",
-            ],
-        )
+    async def test_load_defers_unconfigured_key_check_for_auto_detected_columns(self, loader):
+        """Access loader should leave detected output fields for runtime key validation."""
+        sample_df = pd.DataFrame({"source_b": [2], "source_a": [1]})
 
         table_cfg = TableConfig(
             entities_cfg={
-                "analysis_entity_relative_dating": {
+                "detected_entity": {
                     "type": "sql",
                     "query": "select ...",
-                    "keys": ["Projekt", "Befu", "ProbNr", "analysis_entity_type", "analysis_entity_value"],
-                    "columns": ["PCODE", "Fraktion", "cf", "RTyp", "Zust", "ArchDat"],
+                    "keys": ["not_detected"],
+                    "columns": [],
                     "auto_detect_columns": True,
                     "check_column_names": True,
-                    "public_id": "analysis_entity_id",
                 }
             },
-            entity_name="analysis_entity_relative_dating",
+            entity_name="detected_entity",
         )
 
         with patch.object(loader, "read_sql", new_callable=AsyncMock) as mock_read_sql:
             mock_read_sql.return_value = sample_df
 
-            with pytest.raises(ValueError, match=r"key column\(s\) \['analysis_entity_value'\] are missing in the data"):
-                await loader.load("analysis_entity_relative_dating", table_cfg)
+            result = await loader.load("detected_entity", table_cfg)
+
+        assert result.columns.tolist() == ["system_id", "source_b", "source_a"]
 
     @pytest.mark.asyncio
     async def test_load_normalizes_access_alias_casing_without_reordering(self, loader):

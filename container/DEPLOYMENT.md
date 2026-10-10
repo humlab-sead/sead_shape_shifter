@@ -50,7 +50,6 @@ The deployment user's home directory holds three sibling directories:
 Run as the deployment user, from `~/container`:
 
 ```bash
-make install-ucanaccess   # only needed for MS Access data sources
 make setup                # create ~/config, ~/container-data and the templates
 nano ~/config/deployment.env   # image, branch, port and frontend build arguments
 nano ~/config/backend.env      # runtime settings
@@ -255,13 +254,14 @@ Install the user service so the container starts on boot:
 sudo scripts/deploy/install_systemd_service.sh test-shape-shifter.sead.se
 ```
 
-The unit starts the container through `scripts/up.sh` and stops it with
-`scripts/down.sh`, the same scripts an operator runs, so a systemd start and a
-manual `make up` resolve `~/config/deployment.env` identically. The unit sets no
-deployment configuration of its own: a value in the unit environment would
-override the deployment file, because the compose tools prefer the environment
-over the file. The unit only fixes `WorkingDirectory=%h/container`, so the code
-that runs is the code in the checkout.
+The unit starts the container through `scripts/container.sh up` and stops it
+with `scripts/container.sh down`, the same dispatcher an operator runs, so a
+systemd start and a manual `make up` resolve `~/config/deployment.env`
+identically. The unit sets no deployment configuration of its own: a value in
+the unit environment would override the deployment file, because the compose
+tools prefer the environment over the file. The unit only fixes
+`WorkingDirectory=%h/container`, so the code that runs is the code in the
+checkout.
 
 Control it with the `service-*` targets, which call `scripts/service.sh`:
 
@@ -327,11 +327,6 @@ sudo -u test-shape-shifter.sead.se ls ~/config ~/container-data
 cd ~/container
 make build && make restart && make healthcheck
 ```
-
-The replacement checkout must contain the UCanAccess build dependency under
-`lib/ucanaccess`; `make install-ucanaccess` downloads it and `make validate`
-reports whether it is present. A workdir build stages the installed dependency
-into its build context, so both build modes use the same copy.
 
 Image identity keeps following the configured values: `make build` reads
 `GIT_REF`, `GIT_REPO`, and `IMAGE_NAME` from `~/config/deployment.env`, passes the

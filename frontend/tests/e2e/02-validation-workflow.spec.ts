@@ -1,14 +1,12 @@
 import { test, expect } from '@playwright/test'
 
-test.skip(true, 'Playwright e2e tests are disabled')
-
 /**
  * Critical Workflow Test: Validation and Auto-Fix
  * 
  * Tests the validation workflow including error detection and auto-fix suggestions
  */
 
-test.describe('Validation and Auto-Fix Workflow', () => {
+test.describe.skip('Validation and Auto-Fix Workflow', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
     

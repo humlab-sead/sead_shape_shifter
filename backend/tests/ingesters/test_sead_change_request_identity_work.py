@@ -63,9 +63,7 @@ class TestBuildIdentityWorkPlan:
         frame = pd.DataFrame({"sample_dimension_id": [None], "sample_id": [10]})
         actions = pd.Series([PlannedRowAction.INHERIT_AGGREGATE], index=frame.index, name="_planned_action")
 
-        work_plan = build_identity_work_plan(
-            [PlannedTable(entity_name="sample_dimension", frame=frame, planned_actions=actions)]
-        )
+        work_plan = build_identity_work_plan([PlannedTable(entity_name="sample_dimension", frame=frame, planned_actions=actions)])
 
         assert work_plan.total_inherit_rows == 1
         assert work_plan.total_allocation_rows == 0

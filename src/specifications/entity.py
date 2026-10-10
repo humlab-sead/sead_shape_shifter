@@ -11,6 +11,7 @@ from src.types.fixed_entity_types import (
     FixedEntityTypeConvention,
     FixedEntityTypeConventionDeclarationError,
     build_fixed_entity_full_columns,
+    find_duplicate_fixed_entity_columns,
     is_valid_fixed_entity_value,
     normalize_fixed_entity_column_types,
     normalize_fixed_entity_type_conventions,
@@ -50,8 +51,7 @@ class EntityFieldsBaseSpecification(ProjectSpecification):
             if self.field_exists(f"entities.{entity_name}.{field}"):
                 self.check_fields(entity_name, [field], "is_string_list/E")
 
-        # Validate that keys are a subset of columns
-        # self.check_fields(entity_name, ["keys"], "keys_subset_of_columns/E")
+        self.check_fields(entity_name, ["keys"], "keys_subset_of_columns/E")
 
         self.check_fields(entity_name, ["type"], "exists/E")
         if self.field_exists(f"entities.{entity_name}.type"):
@@ -85,12 +85,11 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
         values: list[Any],
         columns: list[str],
         public_id: str,
-        keys: list[str],
         column_types: dict[str, str],
         conventions: list[FixedEntityTypeConvention],
     ) -> None:
         """Validate that fixed-entity values match declared or inferred backend types."""
-        full_columns = build_fixed_entity_full_columns(columns, keys, public_id)
+        full_columns = build_fixed_entity_full_columns(columns, public_id)
 
         for row_idx, row in enumerate(values):
             row_columns = columns if len(row) == len(columns) else full_columns
@@ -113,6 +112,70 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
                         column=col_name,
                     )
 
+    def _validate_fixed_duplicate_columns(self, entity_name: str, entity_cfg: dict[str, Any]) -> None:
+        """Check that a fixed entity does not declare the same column twice.
+
+        ``TableConfig.safe_columns`` removes duplicates silently, which can hide the
+        mistake until a later row-width error. Report the raw duplicates instead.
+        """
+        raw_columns: Any = entity_cfg.get("columns")
+        if not isinstance(raw_columns, list):
+            return
+
+        declared_columns: list[str] = [column for column in raw_columns if isinstance(column, str)]
+        duplicates: list[str] = find_duplicate_fixed_entity_columns(declared_columns)
+        if duplicates:
+            self.add_error(
+                f"Fixed data entity '{entity_name}' declares duplicate columns: {', '.join(duplicates)}. "
+                "Column names in 'columns' must be unique.",
+                entity=entity_name,
+                field="columns",
+                code="DUPLICATE_COLUMNS",
+            )
+
+    def _validate_fixed_schema_keys(
+        self,
+        entity_name: str,
+        entity_cfg: dict[str, Any],
+        public_id: str,
+    ) -> None:
+        """Check that fixed business keys belong to the fixed schema.
+
+        The fixed schema is the managed identity columns plus ``columns``. A key that is
+        produced only by ``extra_columns``, a foreign key, or ``unnest`` is part of the
+        generic producer set, but it has no positional slot in fixed rows, so the entity
+        cannot address it during a values round-trip. Such keys are reported here. Keys
+        that no producer creates are reported by the shared keys field rule instead.
+        """
+        raw_columns: Any = entity_cfg.get("columns")
+        if not isinstance(raw_columns, list):
+            return
+
+        declared_columns: list[str] = [column for column in raw_columns if isinstance(column, str)]
+
+        raw_keys: Any = entity_cfg.get("keys")
+        if not isinstance(raw_keys, list):
+            return
+
+        keys: list[str] = [key for key in raw_keys if isinstance(key, str)]
+        if not keys:
+            return
+
+        full_columns: list[str] = build_fixed_entity_full_columns(declared_columns, public_id)
+        produced_columns: set[str] = self.get_entity_columns(entity_name)
+        keys_outside_schema: list[str] = [key for key in keys if key not in full_columns and key in produced_columns]
+
+        if keys_outside_schema:
+            self.add_error(
+                f"Fixed data entity '{entity_name}' uses business key(s) {sorted(keys_outside_schema)} "
+                "that are not part of the fixed schema (managed identity columns plus 'columns'). "
+                "A key produced only by extra_columns, a foreign key, or unnest cannot be addressed in fixed rows. "
+                f"Expected positional column order: {full_columns}",
+                entity=entity_name,
+                field="keys",
+                code="KEY_OUTSIDE_FIXED_SCHEMA",
+            )
+
     def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
         """Check that fields are for the fixed entity."""
         super().is_satisfied_by(entity_name=entity_name, **kwargs)
@@ -133,18 +196,28 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
 
         # Note: system_id is always "system_id" (standardized name, auto-generated)
 
-        self.check_fields(entity_name, ["values"], "exists/E")
+        self._validate_fixed_duplicate_columns(entity_name, entity_cfg)
+        self._validate_fixed_schema_keys(entity_name, entity_cfg, public_id)
+
+        # A fixed entity can be populated entirely by its append branches. In that
+        # case explicit values are optional, so only require them (and warn when they
+        # are empty) for fixed entities that do not use append.
+        values_provided: bool = self.field_exists(f"entities.{entity_name}.values")
 
         if not table.has_append:
+            self.check_fields(entity_name, ["values"], "exists/E")
             # warn if values is empty since fixed entities are expected to have data
             self.check_fields(entity_name, ["values"], "not_empty/W")
 
         self.check_fields(entity_name, ["type"], "has_value/E", expected_value="fixed")
         self.check_fields(entity_name, ["source", "data_source", "query"], "is_empty/W")
-        self.check_fields(entity_name, ["values"], "of_type/E", expected_types=(list,))
+
+        # Validate the declared type when values are provided, or when they are
+        # required because the entity has no append branches.
+        if values_provided or not table.has_append:
+            self.check_fields(entity_name, ["values"], "of_type/E", expected_types=(list,))
 
         columns: list[str] = table.safe_columns
-        keys: list[str] = table.safe_keys
         raw_values: list[Any] | None = table.values if isinstance(table.values, list) else None
         dict_rows = raw_values is not None and len(raw_values) > 0 and all(isinstance(row, dict) for row in raw_values)
         values: list[Any] = raw_values if dict_rows and raw_values is not None else table.safe_values
@@ -165,8 +238,10 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
             row_keys = set().union(*(row.keys() for row in raw_values)) if raw_values else set()
             missing_columns = set(columns) - row_keys
             if missing_columns:
+                full_columns = build_fixed_entity_full_columns(columns, public_id)
                 self.add_error(
-                    f"Fixed data entity '{entity_name}' has externally loaded rows missing columns {sorted(missing_columns)}",
+                    f"Fixed data entity '{entity_name}' has externally loaded rows missing columns {sorted(missing_columns)}. "
+                    f"Expected positional column order: {full_columns}",
                     entity=entity_name,
                     field="values",
                 )
@@ -191,7 +266,8 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
         #    Using set union elegantly deduplicates if identity columns are mistakenly in columns
         shape_is_valid = True
         if values and not dict_rows:
-            expected_with_identity: int = len(set(columns) | {public_id, "system_id"})
+            full_columns = build_fixed_entity_full_columns(columns, public_id)
+            expected_with_identity: int = len(full_columns)
             expected_without_identity: int = len(columns)
             values_length: int = len(values[0]) if values else 0
 
@@ -199,7 +275,8 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
             if not all(len(row) == values_length for row in values):
                 shape_is_valid = False
                 self.add_error(
-                    f"Fixed data entity '{entity_name}' has inconsistent row lengths in values",
+                    f"Fixed data entity '{entity_name}' has inconsistent row lengths in values. "
+                    f"Expected positional column order: {full_columns}",
                     entity=entity_name,
                     field="values",
                 )
@@ -209,13 +286,13 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
                 self.add_error(
                     f"Fixed data entity '{entity_name}' has mismatched number of columns and values "
                     f"(got {values_length} values per row, expected {expected_without_identity} for data-only "
-                    f"or {expected_with_identity} with identity columns)",
+                    f"or {expected_with_identity} with identity columns). Expected positional column order: {full_columns}",
                     entity=entity_name,
                     field="values",
                 )
 
         if values and not dict_rows and shape_is_valid:
-            self._validate_column_types(entity_name, values, columns, public_id, keys, column_types, conventions)
+            self._validate_column_types(entity_name, values, columns, public_id, column_types, conventions)
 
         return not self.has_errors()
 
@@ -390,16 +467,6 @@ class SqlColumnConfigurationSpecification(ProjectSpecification):
                 entity=entity_name,
                 field="columns",
             )
-
-        if not auto_detect_columns:
-            missing_keys: list[str] = [key for key in table.keys if key not in configured_columns]
-            if missing_keys:
-                self.add_error(
-                    f"Entity '{entity_name}': key column(s) {missing_keys} must be included in the "
-                    "specified columns when auto-detect is disabled.",
-                    entity=entity_name,
-                    field="columns",
-                )
 
         return not self.has_errors()
 
@@ -744,8 +811,8 @@ class ExtraColumnsExpressionSpecification(ProjectSpecification):
             )
             return False
 
-        current_available: set[str] = self.get_entity_columns(entity_name, include_types={"columns", "keys"})
-        eventual_available: set[str] = self.get_entity_columns(entity_name, include_types={"columns", "keys", "foreign_keys", "unnest"})
+        current_available: set[str] = self.get_entity_columns(entity_name, include_types={"columns"})
+        eventual_available: set[str] = self.get_entity_columns(entity_name, include_types={"columns", "foreign_keys", "unnest"})
         eventual_available.update(extra_columns.keys())
 
         for new_col, value in extra_columns.items():
@@ -867,10 +934,12 @@ class ExtraColumnsConflictsSpecification(ProjectSpecification):
 
     Checks that extra_column names don't conflict with:
     - Columns from "columns" field
-    - Business keys from "keys" field
     - Public ID from "public_id" field
     - System column "system_id"
     - Unnest columns (value_name, var_name)
+
+    Business keys from the "keys" field are not checked. A key only marks an
+    existing column, so an extra_column name may also be used as a key.
     """
 
     def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
@@ -888,9 +957,7 @@ class ExtraColumnsConflictsSpecification(ProjectSpecification):
             return True
 
         # Only check actual source columns, not keys (keys can be added via extra_columns)
-        existing_columns: set[str] = set(
-            table_cfg.get_columns(include_keys=False, include_fks=False, include_extra=False, include_unnest=True)
-        )
+        existing_columns: set[str] = set(table_cfg.get_columns(include_fks=False, include_extra=False, include_unnest=True))
         existing_columns.add(table_cfg.system_id)
         if table_cfg.public_id:
             existing_columns.add(table_cfg.public_id)
@@ -1320,7 +1387,7 @@ class UnnestColumnsSpecification(ProjectSpecification):
     """Validates that unnest configuration references existing columns.
 
     Unnest happens after FK linking, so id_vars can reference:
-    - Static columns (columns, keys)
+    - Static columns (columns)
     - Extra columns (extra_columns)
     - FK-added columns (remote entity's public_id + FK extra_columns)
     """
@@ -1342,6 +1409,21 @@ class UnnestColumnsSpecification(ProjectSpecification):
         id_vars: list[str] | None = unnest_cfg.get("id_vars")
         value_vars: list[str] | None = unnest_cfg.get("value_vars")
 
+        # Reject columns listed as both identifiers and melted values. Pandas treats
+        # an overlapping column as an identifier and does not melt it, so a full
+        # overlap returns zero rows and a partial overlap silently drops the
+        # overlapping variables from the result.
+        if isinstance(id_vars, list) and isinstance(value_vars, list):
+            overlap: set[str] = set(id_vars) & set(value_vars)
+            if overlap:
+                self.add_error(
+                    f"Unnest configuration lists the same columns in both id_vars and value_vars: {sorted(overlap)}. "
+                    f"Overlapping columns are kept as identifiers and are not melted; if every value_vars column "
+                    f"overlaps, unnest returns no rows. Remove each conflicting column from id_vars or value_vars.",
+                    entity=entity_name,
+                    field="unnest.value_vars",
+                )
+
         # Get all columns available when unnest runs (after FK linking)
         all_columns: set[str] = self.get_entity_columns(entity_name, exclude_types={"unnest"})
 
@@ -1352,7 +1434,7 @@ class UnnestColumnsSpecification(ProjectSpecification):
                 self.add_error(
                     f"Unnest configuration references missing id_vars columns: {sorted(missing_id_vars)}. "
                     f"Available columns: {sorted(all_columns)}. "
-                    f"These columns must be in 'columns', 'keys', 'extra_columns', or added by foreign keys.",
+                    f"These columns must be in 'columns', 'extra_columns', or added by foreign keys.",
                     entity=entity_name,
                     field="unnest.id_vars",
                 )
@@ -1364,7 +1446,7 @@ class UnnestColumnsSpecification(ProjectSpecification):
                 self.add_error(
                     f"Unnest configuration references missing value_vars columns: {sorted(missing_value_vars)}. "
                     f"Available columns: {sorted(all_columns)}. "
-                    f"These columns must be in 'columns', 'keys', 'extra_columns', or added by foreign keys.",
+                    f"These columns must be in 'columns', 'extra_columns', or added by foreign keys.",
                     entity=entity_name,
                     field="unnest.value_vars",
                 )
@@ -1377,7 +1459,7 @@ class ForeignKeyColumnsSpecification(ProjectSpecification):
     """Validates that foreign key local_keys exist in entity columns.
 
     FK linking happens after load, so local_keys can reference:
-    - Static columns (columns, keys)
+    - Static columns (columns)
     - Extra columns (extra_columns)
     - Columns added by previous FKs in the chain (public_id + extra_columns)
 
@@ -1399,7 +1481,7 @@ class ForeignKeyColumnsSpecification(ProjectSpecification):
             return True
 
         # Start with columns available before any FK linking
-        # (columns, keys, extra_columns, system_id, public_id, unnest result columns)
+        # (columns, extra_columns, system_id, public_id, unnest result columns)
         available_columns: set[str] = self.get_entity_columns(entity_name, exclude_types={"foreign_keys"})
 
         # Check each foreign key sequentially, accumulating columns as we go
@@ -1420,7 +1502,7 @@ class ForeignKeyColumnsSpecification(ProjectSpecification):
             if missing_local_keys:
                 self.add_error(
                     f"Foreign key to '{remote_entity}' references missing local_keys: {missing_local_keys}. "
-                    f"These columns must be in 'columns', 'keys', 'extra_columns', or added by prior foreign keys.",
+                    f"These columns must be in 'columns', 'extra_columns', or added by prior foreign keys.",
                     entity=entity_name,
                     field=f"foreign_keys[{idx}].local_keys",
                 )

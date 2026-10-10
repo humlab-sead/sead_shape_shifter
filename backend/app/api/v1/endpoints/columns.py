@@ -6,10 +6,34 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from backend.app.authorization.dependencies import require_project
 from backend.app.authorization.models import Action, AuthorizedResource
+from backend.app.models.column_availability import ColumnAvailabilityRequest, ColumnAvailabilityResponse
 from backend.app.services.column_introspection_service import ColumnAvailability, ColumnIntrospectionService
 from backend.app.services.project_service import ProjectService
+from backend.app.services.stage_aware_column_service import StageAwareColumnService
+from backend.app.utils.error_handlers import handle_endpoint_errors
 
 router = APIRouter()
+
+
+@router.post(
+    "/projects/{project_name}/entities/{entity_name}/column-availability",
+    response_model=ColumnAvailabilityResponse,
+)
+@handle_endpoint_errors
+async def get_stage_aware_column_availability(
+    project_name: str,  # pylint: disable=unused-argument
+    entity_name: str,
+    request: ColumnAvailabilityRequest,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
+) -> ColumnAvailabilityResponse:
+    """Return operation-specific candidates for the submitted entity draft."""
+    service = StageAwareColumnService()
+    return service.get_column_availability(
+        authorized_project.resource.locator,
+        entity_name,
+        request.entity_draft,
+        source_columns=request.source_columns,
+    )
 
 
 @router.get("/projects/{project_name}/entities/{entity_name}/columns", response_model=dict[str, ColumnAvailability])

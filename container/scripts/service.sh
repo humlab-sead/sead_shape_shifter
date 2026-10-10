@@ -5,8 +5,8 @@
 #
 # One entry point for every systemd action, so the unit name and the command
 # behind each action are defined in one place. The Makefile service-* targets
-# call this script. The unit itself starts the container through up.sh and
-# stops it through down.sh.
+# call this script. The unit itself starts the container through
+# container.sh up and stops it through container.sh down.
 set -euo pipefail
 
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"

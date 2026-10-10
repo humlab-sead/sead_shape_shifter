@@ -27,13 +27,11 @@ def project_target_ids(identity_result: IdentityResolutionResult, target_model: 
         required_fk_columns = {
             remote_spec.public_id
             for foreign_key in entity_spec.foreign_keys
-            if foreign_key.required
-            and (remote_spec := target_model.entities.get(foreign_key.entity)) is not None
-            and remote_spec.public_id
+            if foreign_key.required and (remote_spec := target_model.entities.get(foreign_key.entity)) is not None and remote_spec.public_id
         }
         for column_name, column_spec in entity_spec.columns.items():
             if (
-                frame.empty
+                frame.empty  # pylint: disable=too-many-boolean-expressions
                 or not column_spec.required
                 or column_spec.nullable is True
                 or column_spec.generated
@@ -62,9 +60,7 @@ def project_target_ids(identity_result: IdentityResolutionResult, target_model: 
             fk_column = remote_spec.public_id
             if fk_column not in frame.columns:
                 if foreign_key.required and not frame.empty:
-                    table_diagnostics.append(
-                        f"Entity '{entity_name}' is missing required FK column '{fk_column}' for '{remote_entity}'"
-                    )
+                    table_diagnostics.append(f"Entity '{entity_name}' is missing required FK column '{fk_column}' for '{remote_entity}'")
                 continue
             missing_required_fk_count = int(frame[fk_column].isna().sum())
             if foreign_key.required and missing_required_fk_count:

@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from backend.app.mappers.project_mapper import ProjectMapper
+from backend.app.models.entity import ForeignKeyConfig as ApiForeignKeyConfig
 from backend.app.models.shapeshift import PreviewResult
 from backend.app.services import validate_fk_service
 from backend.app.services.validate_fk_service import ValidateForeignKeyService
@@ -120,6 +121,50 @@ async def test_test_foreign_key_success(monkeypatch: pytest.MonkeyPatch, preview
     assert result.cardinality.actual == "one_to_one"
     assert result.unmatched_sample == []
     assert result.warnings == []
+
+
+@pytest.mark.asyncio
+async def test_test_unsaved_foreign_key_config_does_not_use_saved_index(
+    monkeypatch: pytest.MonkeyPatch, preview_service: AsyncMock
+) -> None:
+    """Test an unsaved relationship even when its editor index is absent from saved config."""
+    patch_config_resolution(monkeypatch, build_config(cardinality="one_to_one"))
+    service = ValidateForeignKeyService(preview_service=preview_service)
+    preview_service.preview_entity.side_effect = [
+        PreviewResult(
+            entity_name="orders",
+            rows=[{"order_id": 1, "customer_id": 1, "amount": 10.0}],
+            columns=[],
+            total_rows_in_preview=1,
+            execution_time_ms=0,
+        ),
+        PreviewResult(
+            entity_name="customers",
+            rows=[{"id": 1, "name": "Alice"}],
+            columns=[],
+            total_rows_in_preview=1,
+            execution_time_ms=0,
+        ),
+    ]
+
+    result = await service.test_foreign_key(
+        "fk_test",
+        "orders",
+        foreign_key_index=1,
+        sample_size=10,
+        foreign_key_config=ApiForeignKeyConfig(
+            entity="customers",
+            local_keys=["customer_id"],
+            remote_keys=["id"],
+            how="left",
+            constraints={"cardinality": "one_to_one"},
+        ),
+    )
+
+    assert result.success is True
+    assert result.remote_entity == "customers"
+    assert result.local_keys == ["customer_id"]
+    assert preview_service.preview_entity.await_args_list[0].args == ("fk_test", "orders")
 
 
 @pytest.mark.asyncio

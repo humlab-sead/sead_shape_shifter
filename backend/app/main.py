@@ -21,6 +21,8 @@ from backend.app.core.state_manager import ApplicationState, init_app_state
 from backend.app.ingesters.registry import IngesterRegistry, get_ingester_registry
 from backend.app.middleware.correlation import CorrelationMiddleware
 from backend.app.middleware.proxy_auth import ProxyAuthenticationMiddleware
+from backend.app.services.data_source_service import DataSourceService
+from backend.app.services.project_service import ProjectService
 from backend.app.utils.public_errors import public_error_detail
 from backend.app.utils.safe_logging import sanitize_log_value
 from src.loaders.sql_loaders import init_jvm_for_ucanaccess
@@ -42,9 +44,6 @@ def _log_development_authorization_bootstrap_hint() -> None:
     if settings.AUTHORIZATION_DATABASE_PATH.resolve() != development_database:
         return
 
-    from backend.app.services.data_source_service import DataSourceService
-    from backend.app.services.project_service import ProjectService
-
     project_locators = {project.name for project in ProjectService(settings.PROJECTS_DIR).list_projects()}
     shared_data_source_locators = {source.name for source in DataSourceService(settings.GLOBAL_DATA_SOURCE_DIR).list_data_sources()}
     try:
@@ -56,8 +55,7 @@ def _log_development_authorization_bootstrap_hint() -> None:
         )
     except sqlite3.Error:
         logger.warning(
-            "Could not inspect the development authorization database. "
-            "Check it with `uv run sead-authorization integrity-check`."
+            "Could not inspect the development authorization database. Check it with `uv run sead-authorization integrity-check`."
         )
         return
 

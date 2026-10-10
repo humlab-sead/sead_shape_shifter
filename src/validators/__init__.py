@@ -1,6 +1,7 @@
 """Domain validators for data quality checks."""
 
 from src.validators.data_validators import (
+    BusinessKeyProducedValidator,
     ColumnExistsValidator,
     DataTypeCompatibilityValidator,
     DuplicateKeysValidator,
@@ -12,6 +13,7 @@ from src.validators.data_validators import (
 )
 
 __all__ = [
+    "BusinessKeyProducedValidator",
     "ColumnExistsValidator",
     "DataTypeCompatibilityValidator",
     "DuplicateKeysValidator",

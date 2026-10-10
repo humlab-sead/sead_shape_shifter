@@ -85,16 +85,89 @@ class TestUnnestColumnsSpecification:
         assert len(spec.errors) > 0
         assert "missing_col" in spec.errors[0].message
 
-    def test_id_vars_in_keys_passes(self):
-        """Test that id_vars can be in keys instead of columns."""
+    def test_overlapping_id_vars_and_value_vars_error(self):
+        """Test that a column in both id_vars and value_vars is rejected."""
+        project_cfg = {
+            "entities": {
+                "test_entity": {
+                    "type": "sql",
+                    "columns": ["id", "measure1", "measure2"],
+                    "unnest": {
+                        "id_vars": ["id", "measure1"],
+                        "value_vars": ["measure1", "measure2"],
+                        "var_name": "measure",
+                        "value_name": "value",
+                    },
+                }
+            }
+        }
+
+        spec = UnnestColumnsSpecification(project_cfg)
+        result = spec.is_satisfied_by(entity_name="test_entity")
+
+        assert result is False
+        assert len(spec.errors) > 0
+        assert "measure1" in spec.errors[0].message
+        assert "both id_vars and value_vars" in spec.errors[0].message
+        assert spec.errors[0].field == "unnest.value_vars"
+
+    def test_complete_overlap_id_vars_and_value_vars_error(self):
+        """Test that a complete overlap is rejected for every conflicting column."""
+        project_cfg = {
+            "entities": {
+                "test_entity": {
+                    "type": "sql",
+                    "columns": ["id", "measure1"],
+                    "unnest": {
+                        "id_vars": ["id", "measure1"],
+                        "value_vars": ["measure1"],
+                        "var_name": "measure",
+                        "value_name": "value",
+                    },
+                }
+            }
+        }
+
+        spec = UnnestColumnsSpecification(project_cfg)
+        result = spec.is_satisfied_by(entity_name="test_entity")
+
+        assert result is False
+        assert len(spec.errors) > 0
+        assert "measure1" in spec.errors[0].message
+
+    def test_disjoint_id_vars_and_value_vars_passes(self):
+        """Test that disjoint id_vars and value_vars pass validation."""
+        project_cfg = {
+            "entities": {
+                "test_entity": {
+                    "type": "sql",
+                    "columns": ["id", "measure1", "measure2"],
+                    "unnest": {
+                        "id_vars": ["id"],
+                        "value_vars": ["measure1", "measure2"],
+                        "var_name": "measure",
+                        "value_name": "value",
+                    },
+                }
+            }
+        }
+
+        spec = UnnestColumnsSpecification(project_cfg)
+        result = spec.is_satisfied_by(entity_name="test_entity")
+
+        assert result is True
+        assert len(spec.errors) == 0
+
+    def test_id_vars_in_columns_and_keys_passes(self):
+        """Test that id_vars declared as keys also pass when listed in columns."""
         project_cfg = {
             "entities": {
                 "test_entity": {
                     "type": "sql",
                     "keys": ["id"],
-                    "columns": ["measure1"],
+                    "columns": ["id", "measure1"],
                     "unnest": {
-                        "id_vars": ["id"],  # In keys, not columns
+                        "id_vars": ["id"],  # Keys must name produced columns
                         "value_vars": ["measure1"],
                         "var_name": "measure",
                         "value_name": "value",
@@ -240,18 +313,18 @@ class TestForeignKeyColumnsSpecification:
         assert "contact_name" in spec.errors[0].message
         assert "missing local_keys" in spec.errors[0].message
 
-    def test_local_keys_in_keys_passes(self):
-        """Test that local_keys can be in keys instead of columns."""
+    def test_local_keys_in_columns_and_keys_passes(self):
+        """Test that local_keys declared as keys also pass when listed in columns."""
         project_cfg = {
             "entities": {
                 "site": {
                     "type": "sql",
                     "keys": ["site_name", "location_name"],
-                    "columns": ["description"],
+                    "columns": ["site_name", "location_name", "description"],
                     "foreign_keys": [
                         {
                             "entity": "location",
-                            "local_keys": ["location_name"],  # In keys
+                            "local_keys": ["location_name"],  # Keys name produced columns
                             "remote_keys": ["location_name"],
                         }
                     ],

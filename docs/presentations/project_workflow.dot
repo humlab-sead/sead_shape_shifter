@@ -1,0 +1,49 @@
+digraph ProjectWorkflow {
+    graph [
+        rankdir=LR,
+        bgcolor="#ffffff",
+        pad="0.24",
+        nodesep="0.30",
+        ranksep="0.45",
+        fontname="DejaVu Sans",
+        fontsize=18,
+        fontcolor="#243746",
+        label="A repeatable project workflow",
+        labelloc=t,
+        splines=polyline
+    ];
+
+    node [
+        shape=box,
+        style="rounded,filled",
+        fontname="DejaVu Sans",
+        fontsize=13,
+        color="#58728c",
+        fontcolor="#243241",
+        penwidth=1.5,
+        margin="0.16,0.12"
+    ];
+
+    edge [
+        fontname="Aptos, Segoe UI, sans-serif",
+        fontsize=10,
+        color="#526579",
+        fontcolor="#374151",
+        penwidth=1.3,
+        arrowsize=0.75
+    ];
+
+    source [label="Add source data\nFiles or database", fillcolor="#f5efe3", color="#9b8153"];
+    build [label="Build datasets\nClean, reshape, link", fillcolor="#e7eef5"];
+    check [label="Preview and\nvalidate", fillcolor="#fff7d6", color="#b28a2d"];
+    review [label="Review matches\nwhen needed", fillcolor="#e7eef5"];
+    output [label="Create and inspect\noutput", fillcolor="#e1f1e7", color="#5c9670"];
+    dispatch [label="Dispatch\nwhen configured", fillcolor="#e1f1e7", color="#5c9670"];
+
+    source -> build;
+    build -> check;
+    check -> review [label="ready"];
+    review -> output;
+    output -> dispatch;
+    check -> build [label="fix issues", style=dashed, color="#b28a2d", fontcolor="#80631e", constraint=false];
+}

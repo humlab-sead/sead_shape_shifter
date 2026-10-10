@@ -69,6 +69,13 @@ SCRIPTS_DIR := ./scripts
 RESOURCES_DIR := ./resources
 ENV_EXAMPLE := $(MAKEFILE_DIR).env.example
 
+# Container lifecycle actions all delegate to scripts/container.sh. The script
+# applies the same defaults when it is run directly, so keep the two lists in
+# step.
+CONTAINER_ENV := DATA_DIR="$(CONTAINER_DATA_DIR)" HOST_PORT="$(HOST_PORT)" \
+	IMAGE_NAME="$(IMAGE_NAME)" COMPOSE_PROJECT_NAME="$(COMPOSE_PROJECT_NAME)" \
+	CONTAINER_NAME="$(CONTAINER_NAME)"
+
 # podman-compose reads runtime configuration from CONFIG_DIR and mutable data
 # from CONTAINER_DATA_DIR.
 export CONFIG_DIR
@@ -94,7 +101,6 @@ help:
 	@echo "$(BLUE)=== Shape Shifter Podman Deployment ===$(NC)"
 	@echo ""
 	@echo "$(GREEN)First-time setup:$(NC)"
-	@echo "  make install-ucanaccess  Install UCanAccess JARs (MS Access support)"
 	@echo "  make setup               Create config, data directories and environment files"
 	@echo ""
 	@echo "$(GREEN)Build and run:$(NC)"
@@ -211,10 +217,6 @@ setup-env: check-podman
 		echo "$(GREEN)+ $(CONFIG_DIR)/.pgpass/.pgpass already exists$(NC)"; \
 	fi
 
-.PHONY: install-ucanaccess
-install-ucanaccess:
-	@$(SCRIPTS_DIR)/install-ucanaccess.sh
-
 # ===========================================================================
 # Build
 # ===========================================================================
@@ -236,19 +238,20 @@ build-no-cache: check-podman
 # ===========================================================================
 # Container lifecycle
 # ===========================================================================
+# These targets delegate to scripts/container.sh; CONTAINER_ENV above passes the
+# resolved deployment values.
 
 .PHONY: up
 up: check-podman
-	@DATA_DIR="$(CONTAINER_DATA_DIR)" HOST_PORT="$(HOST_PORT)" IMAGE_NAME="$(IMAGE_NAME)" \
-		COMPOSE_PROJECT_NAME="$(COMPOSE_PROJECT_NAME)" $(SCRIPTS_DIR)/up.sh
+	@$(CONTAINER_ENV) $(SCRIPTS_DIR)/container.sh up
 
 .PHONY: down
 down:
-	@DATA_DIR="$(CONTAINER_DATA_DIR)" COMPOSE_PROJECT_NAME="$(COMPOSE_PROJECT_NAME)" $(SCRIPTS_DIR)/down.sh
+	@$(CONTAINER_ENV) $(SCRIPTS_DIR)/container.sh down
 
 .PHONY: restart
-restart: down up
-	@echo "$(GREEN)+ Container restarted$(NC)"
+restart: check-podman
+	@$(CONTAINER_ENV) $(SCRIPTS_DIR)/container.sh restart
 
 # ===========================================================================
 # Diagnostics
@@ -256,7 +259,7 @@ restart: down up
 
 .PHONY: logs
 logs:
-	@DATA_DIR="$(CONTAINER_DATA_DIR)" COMPOSE_PROJECT_NAME="$(COMPOSE_PROJECT_NAME)" $(SCRIPTS_DIR)/logs.sh
+	@$(CONTAINER_ENV) $(SCRIPTS_DIR)/container.sh logs
 
 .PHONY: ps
 ps:
@@ -264,7 +267,7 @@ ps:
 
 .PHONY: status
 status:
-	@CONTAINER_NAME="$(CONTAINER_NAME)" $(SCRIPTS_DIR)/status.sh
+	@$(CONTAINER_ENV) $(SCRIPTS_DIR)/container.sh status
 
 .PHONY: shell
 shell:
@@ -300,7 +303,6 @@ validate: check-podman
 	@test -d "$(CONTAINER_DATA_DIR)" && echo "$(GREEN)+ Data directory exists$(NC)" || echo "$(YELLOW)! Data directory missing (run make setup)$(NC)"
 	@test -f "$(CONFIG_DIR)/backend.env" && echo "$(GREEN)+ Environment file exists$(NC)" || echo "$(YELLOW)! Environment file missing (run make setup)$(NC)"
 	@test -d "$(CONFIG_DIR)/.pgpass" -a -f "$(CONFIG_DIR)/.pgpass/.pgpass" && echo "$(GREEN)+ .pgpass file exists$(NC)" || echo "$(YELLOW)! .pgpass file missing (run make setup)$(NC)"
-	@test -d lib/ucanaccess && echo "$(GREEN)+ UCanAccess JARs present$(NC)" || echo "$(YELLOW)! lib/ucanaccess missing (run make install-ucanaccess)$(NC)"
 	@podman info >/dev/null 2>&1 && echo "$(GREEN)+ Podman is accessible$(NC)" || { echo "$(RED)x Podman is not accessible$(NC)"; exit 1; }
 	@echo "$(GREEN)+ Validation complete$(NC)"
 

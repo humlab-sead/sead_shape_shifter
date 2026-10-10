@@ -1,14 +1,12 @@
 import { test, expect } from '@playwright/test'
 
-test.skip(true, 'Playwright e2e tests are disabled')
-
 /**
  * Critical Workflow Test: Project Management
  * 
  * Tests the core project CRUD operations
  */
 
-test.describe('Project Management', () => {
+test.describe.skip('Project Management', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
   })

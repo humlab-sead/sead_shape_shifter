@@ -15,7 +15,7 @@ from backend.app.mappers.entity_config_mapper import EntityConfigMapper, EntityC
 from backend.app.models.shapeshift import ColumnInfo, PreviewResult
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.utils.caches import ShapeShiftCache, ShapeShiftProjectCache
-from src.exceptions import FunctionalDependencyError
+from src.exceptions import FunctionalDependencyError, MissingBusinessKeyError
 from src.model import ShapeShiftProject, TableConfig
 from src.normalizer import ShapeShifter
 from src.specifications.constraints import ForeignKeyConstraintViolation, ForeignKeyNullConstraintViolation, ValidationIssue
@@ -192,7 +192,12 @@ class ShapeShiftService:
 
             return shapeshifter.table_store, validation_issues
 
-        except (FunctionalDependencyError, ForeignKeyConstraintViolation, ForeignKeyNullConstraintViolation):
+        except (
+            FunctionalDependencyError,
+            ForeignKeyConstraintViolation,
+            ForeignKeyNullConstraintViolation,
+            MissingBusinessKeyError,
+        ):
             raise
 
         except Exception as e:
@@ -245,7 +250,12 @@ class ShapeShiftService:
 
             return shapeshifter.table_store, validation_issues
 
-        except (FunctionalDependencyError, ForeignKeyConstraintViolation, ForeignKeyNullConstraintViolation):
+        except (
+            FunctionalDependencyError,
+            ForeignKeyConstraintViolation,
+            ForeignKeyNullConstraintViolation,
+            MissingBusinessKeyError,
+        ):
             raise
 
         except Exception as e:
@@ -427,9 +437,7 @@ class PreviewResultBuilder:
         preview_df: pd.DataFrame = table_store[entity_name].head(limit) if limit is not None else table_store[entity_name]
 
         key_columns: set[str] = entity_cfg.get_key_columns()
-        existing_result_columns: set[str] = set(
-            entity_cfg.get_columns(include_keys=True, include_fks=False, include_extra=False, include_unnest=True)
-        )
+        existing_result_columns: set[str] = set(entity_cfg.get_columns(include_fks=False, include_extra=False, include_unnest=True))
         existing_result_columns.add(entity_cfg.system_id)
         if entity_cfg.public_id:
             existing_result_columns.add(entity_cfg.public_id)

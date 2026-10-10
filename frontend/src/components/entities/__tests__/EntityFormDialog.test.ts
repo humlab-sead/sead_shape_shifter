@@ -5,8 +5,9 @@ import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 
-import type { EntityResponse } from '@/api/entities'
+import type { ColumnAvailabilityResponse, EntityResponse } from '@/api/entities'
 import EntityFormDialog from '../EntityFormDialog.vue'
+import { getExtraColumnDiagnostics } from '../extraColumnsEditorUtils'
 
 const mockState = vi.hoisted(() => ({
   entities: [] as EntityResponse[],
@@ -19,7 +20,10 @@ const mockState = vi.hoisted(() => ({
   previewEntity: vi.fn(async () => mockState.previewData),
   debouncedPreviewEntity: vi.fn(),
   getSuggestionsForEntity: vi.fn(),
+  columnAvailability: null as ColumnAvailabilityResponse | null,
+  refreshColumnAvailability: vi.fn(),
   showError: vi.fn(),
+  showWarning: vi.fn(),
   getValidDirectives: vi.fn(async () => []),
   getEntity: vi.fn(),
   getValues: vi.fn(),
@@ -41,6 +45,12 @@ vi.mock('@/composables', async () => {
       getSuggestionsForEntity: mockState.getSuggestionsForEntity,
       loading: vue.ref(false),
     }),
+    useColumnAvailability: () => ({
+      availability: vue.ref(mockState.columnAvailability),
+      loading: vue.ref(false),
+      error: vue.ref(null),
+      refresh: mockState.refreshColumnAvailability,
+    }),
     useEntityPreview: () => ({
       previewData: vue.ref(mockState.previewData),
       loading: vue.ref(mockState.previewLoading),
@@ -59,12 +69,7 @@ vi.mock('@/composables', async () => {
 vi.mock('@/composables/useNotification', () => ({
   useNotification: () => ({
     error: mockState.showError,
-  }),
-}))
-
-vi.mock('@/composables/useDirectiveValidation', () => ({
-  useDirectiveValidation: () => ({
-    getValidDirectives: mockState.getValidDirectives,
+    warning: mockState.showWarning,
   }),
 }))
 
@@ -115,7 +120,8 @@ const childStubs = {
   VTab: {
     name: 'VTab',
     props: ['value', 'disabled'],
-    template: '<button type="button" class="v-tab-stub" :data-tab-value="value" :data-disabled="String(disabled)"><slot /></button>',
+    template:
+      '<button type="button" class="v-tab-stub" :data-tab-value="value" :data-disabled="String(disabled)"><slot /></button>',
   },
   VWindow: {
     template: '<div class="v-window-stub"><slot /></div>',
@@ -148,15 +154,35 @@ const childStubs = {
     props: ['modelValue', 'label', 'items', 'disabled'],
     template: '<div class="v-combobox-stub" :data-label="label" :data-disabled="String(disabled)"><slot /></div>',
   },
-  YamlEditor: { template: '<div data-testid="yaml-editor" />' },
+  YamlEditor: {
+    name: 'YamlEditor',
+    props: ['modelValue'],
+    template: '<div data-testid="yaml-editor" />',
+  },
   SqlEditor: { template: '<div data-testid="sql-editor" />' },
-  ForeignKeyEditor: { template: '<div data-testid="foreign-key-editor" />' },
+  ForeignKeyEditor: {
+    name: 'ForeignKeyEditor',
+    props: ['modelValue', 'columnCandidates'],
+    template: '<div data-testid="foreign-key-editor" />',
+  },
   FiltersEditor: { template: '<div data-testid="filters-editor" />' },
-  UnnestEditor: { template: '<div data-testid="unnest-editor" />' },
+  UnnestEditor: {
+    name: 'UnnestEditor',
+    props: ['idVarColumns', 'valueVarColumns'],
+    template: '<div data-testid="unnest-editor" />',
+  },
   AppendEditor: { template: '<div data-testid="append-editor" />' },
   BranchEditor: { template: '<div data-testid="branch-editor" />' },
-  ExtraColumnsEditor: { template: '<div data-testid="extra-columns-editor" />' },
-  ReplacementsEditor: { template: '<div data-testid="replacements-editor" />' },
+  ExtraColumnsEditor: {
+    name: 'ExtraColumnsEditor',
+    props: ['availableColumns', 'reservedNames'],
+    template: '<div data-testid="extra-columns-editor" />',
+  },
+  ReplacementsEditor: {
+    name: 'ReplacementsEditor',
+    props: ['modelValue', 'availableColumns'],
+    template: '<div data-testid="replacements-editor" />',
+  },
   FixedValuesGrid: {
     name: 'FixedValuesGrid',
     props: ['modelValue', 'columns', 'publicId', 'columnTypes'],
@@ -207,6 +233,51 @@ const fixedEntity: EntityResponse = {
       created_at: 'date',
     },
     values: [[1, 53, 'Sampling', '2026-05-19']],
+  },
+}
+
+// Backend metadata order differs from the business-key order: the produced key
+// `label` follows `created_at` in the authoritative full schema.
+const orderedFixedEntity: EntityResponse = {
+  name: 'method',
+  etag: 'etag-method-ordered',
+  fixed_schema: {
+    full_columns: ['system_id', 'method_id', 'created_at', 'label'],
+    editable_columns: ['created_at'],
+    identity_columns: ['system_id', 'method_id'],
+    key_columns: ['label'],
+    order_source: 'stored',
+  },
+  entity_data: {
+    type: 'fixed',
+    public_id: 'method_id',
+    keys: ['label'],
+    columns: ['created_at', 'label'],
+    column_types: {
+      label: 'string',
+      created_at: 'date',
+    },
+    values: [[1, 53, '2026-05-19', 'Sampling']],
+  },
+}
+
+// A fixed entity whose values live in external storage.
+const externalFixedEntity: EntityResponse = {
+  name: 'method',
+  etag: 'etag-method-external',
+  fixed_schema: {
+    full_columns: ['system_id', 'method_id', 'created_at', 'label'],
+    editable_columns: ['created_at'],
+    identity_columns: ['system_id', 'method_id'],
+    key_columns: ['label'],
+    order_source: 'stored',
+  },
+  entity_data: {
+    type: 'fixed',
+    public_id: 'method_id',
+    keys: ['label'],
+    columns: ['created_at', 'label'],
+    values: '@load:materialized/method.parquet',
   },
 }
 
@@ -265,10 +336,31 @@ describe('EntityFormDialog', () => {
         },
       ],
       columns: [
-        { name: 'analysis_entity_branch', data_type: 'string', nullable: false, is_key: false, is_derived: true, derived_from: null },
+        {
+          name: 'analysis_entity_branch',
+          data_type: 'string',
+          nullable: false,
+          is_key: false,
+          is_derived: true,
+          derived_from: null,
+        },
         { name: 'abundance_id', data_type: 'int', nullable: true, is_key: false, is_derived: true, derived_from: null },
-        { name: 'relative_dating_id', data_type: 'int', nullable: true, is_key: false, is_derived: true, derived_from: null },
-        { name: 'sample_name', data_type: 'string', nullable: false, is_key: true, is_derived: false, derived_from: null },
+        {
+          name: 'relative_dating_id',
+          data_type: 'int',
+          nullable: true,
+          is_key: false,
+          is_derived: true,
+          derived_from: null,
+        },
+        {
+          name: 'sample_name',
+          data_type: 'string',
+          nullable: false,
+          is_key: true,
+          is_derived: false,
+          derived_from: null,
+        },
       ],
       total_rows_in_preview: 1,
       estimated_total_rows: 1,
@@ -283,11 +375,35 @@ describe('EntityFormDialog', () => {
     mockState.previewEntity.mockClear()
     mockState.debouncedPreviewEntity.mockClear()
     mockState.getSuggestionsForEntity.mockReset()
+    mockState.columnAvailability = null
+    mockState.refreshColumnAvailability.mockReset()
     mockState.showError.mockReset()
+    mockState.showWarning.mockReset()
     mockState.getEntity.mockReset()
     mockState.getValues.mockReset()
     mockState.updateValues.mockReset()
     mockState.syncCachedEntity.mockReset()
+  })
+
+  it('loads persisted replacements into the ReplacementsEditor when the edit dialog opens', async () => {
+    const entityWithReplacements = createEntity('locations', {
+      type: 'entity',
+      public_id: 'location_id',
+      keys: ['location_name'],
+      columns: ['socken', 'landskap'],
+      replacements: {
+        landskap: [{ map: { Bo: 'Bohuslan', Vg: 'Vastergotland' } }],
+      },
+    })
+
+    const wrapper = mountEntityFormDialog({ mode: 'edit', entity: entityWithReplacements })
+    await flushPromises()
+    await nextTick()
+
+    const replacementsEditor = wrapper.findComponent({ name: 'ReplacementsEditor' })
+    expect(replacementsEditor.props('modelValue')).toEqual({
+      landskap: [{ map: { Bo: 'Bohuslan', Vg: 'Vastergotland' } }],
+    })
   })
 
   it('shows the branches tab when type changes to merged, enables it in create mode, and hides append', async () => {
@@ -325,7 +441,101 @@ describe('EntityFormDialog', () => {
     expect(branchesTab?.props('disabled')).toBe(false)
   })
 
-  it('shows the columns picker for merged entities and seeds it with branch-union columns', async () => {
+  it('enables the source field when switching an existing merged entity to the derived entity type', async () => {
+    const wrapper = mountEntityFormDialog({ mode: 'edit', entity: mergedEntity })
+    await flushPromises()
+    await nextTick()
+
+    const findSourceField = () =>
+      wrapper
+        .findAllComponents({ name: 'VAutocomplete' })
+        .find((component) => component.props('label') === 'Source Entity')
+
+    // A merged entity has no top-level source field.
+    expect(findSourceField()).toBeUndefined()
+
+    const typeSelect = findSelectByLabel(wrapper, 'Type *')
+    expect(typeSelect).toBeTruthy()
+    typeSelect!.vm.$emit('update:modelValue', 'entity')
+    await flushPromises()
+    await nextTick()
+
+    const sourceField = findSourceField()
+    expect(sourceField).toBeTruthy()
+    expect(sourceField?.props('disabled')).not.toBe(true)
+  })
+
+  it('keeps the source field locked for an already-derived entity in edit mode', async () => {
+    const wrapper = mountEntityFormDialog({ mode: 'edit', entity: sourceEntities[0]! })
+    await flushPromises()
+    await nextTick()
+
+    const sourceField = wrapper
+      .findAllComponents({ name: 'VAutocomplete' })
+      .find((component) => component.props('label') === 'Source Entity')
+
+    expect(sourceField).toBeTruthy()
+    expect(sourceField?.props('disabled')).toBe(true)
+  })
+
+  it('focuses the entity name field when the create dialog opens', async () => {
+    const wrapper = mountEntityFormDialog({ modelValue: false, mode: 'create' })
+    await flushPromises()
+
+    const nameField = wrapper
+      .findAllComponents({ name: 'VTextField' })
+      .find((component) => component.props('label') === 'Entity Name *')
+    expect(nameField).toBeTruthy()
+
+    const focusSpy = vi.spyOn(nameField!.find('input').element as HTMLInputElement, 'focus')
+
+    await wrapper.setProps({ modelValue: true })
+    await flushPromises()
+    await nextTick()
+
+    expect(focusSpy).toHaveBeenCalled()
+  })
+
+  it('does not move focus to the entity name field when the edit dialog opens', async () => {
+    const wrapper = mountEntityFormDialog({ modelValue: false, mode: 'edit', entity: sourceEntities[0]! })
+    await flushPromises()
+
+    const nameField = wrapper
+      .findAllComponents({ name: 'VTextField' })
+      .find((component) => component.props('label') === 'Entity Name *')
+    expect(nameField).toBeTruthy()
+
+    const focusSpy = vi.spyOn(nameField!.find('input').element as HTMLInputElement, 'focus')
+
+    await wrapper.setProps({ modelValue: true })
+    await flushPromises()
+    await nextTick()
+
+    expect(focusSpy).not.toHaveBeenCalled()
+  })
+
+  it('maps operation-specific candidates and saves values absent from suggestions', async () => {
+    mockState.update.mockResolvedValue({ warnings: [] })
+    mockState.columnAvailability = {
+      columns: ['server_column'],
+      business_keys: ['server_key'],
+      replacements: ['replacement_column'],
+      drop_duplicates: ['dedupe_column'],
+      drop_empty_rows: ['empty_check_column'],
+      extra_columns: { sources: ['extra_source_column'] },
+      filters: { extract: ['filter_column'] },
+      foreign_keys: [
+        {
+          index: 0,
+          entity: 'abundance_source',
+          local_keys_before_unnest: ['child_key'],
+          local_keys_after_unnest: ['measurement_type'],
+          remote_keys: ['sample_name', 'system_id'],
+          extra_column_sources: ['source_value'],
+        },
+      ],
+      unnest: { id_vars: ['id_candidate'], value_vars: ['value_candidate'] },
+    }
     const wrapper = mountEntityFormDialog({
       mode: 'edit',
       entity: mergedEntity,
@@ -334,20 +544,100 @@ describe('EntityFormDialog', () => {
     await flushPromises()
     await nextTick()
 
-    const columnsCombobox = wrapper.findAllComponents({ name: 'VCombobox' }).find((component) => component.props('label') === 'Columns')
+    const columnsCombobox = wrapper
+      .findAllComponents({ name: 'VCombobox' })
+      .find((component) => component.props('label') === 'Columns')
+    const keysCombobox = wrapper
+      .findAllComponents({ name: 'VCombobox' })
+      .find((component) => component.props('label') === 'Business Keys *')
+    const dedupeCombobox = wrapper
+      .findAllComponents({ name: 'VCombobox' })
+      .find((component) => component.props('label') === 'Deduplication Columns')
+    const emptyRowsCombobox = wrapper
+      .findAllComponents({ name: 'VCombobox' })
+      .find((component) => component.props('label') === 'Columns to Check for Empty Values')
+    const unnestEditor = wrapper.findComponent({ name: 'UnnestEditor' })
+    const extraColumnsEditor = wrapper.findComponent({ name: 'ExtraColumnsEditor' })
+    const replacementsEditor = wrapper.findComponent({ name: 'ReplacementsEditor' })
 
     expect(columnsCombobox).toBeTruthy()
-    expect(columnsCombobox?.props('items')).toEqual(
-      expect.arrayContaining([
-        'analysis_entity_branch',
-        'sample_name',
-        'abundance_value',
-        'dating_value',
-        'abundance_id',
-        'relative_dating_id',
-      ])
-    )
+    expect(columnsCombobox?.props('items')).toEqual(['server_column'])
+    expect(keysCombobox?.props('items')).toEqual(['server_key'])
+    expect(dedupeCombobox?.props('items')).toEqual(['dedupe_column'])
+    expect(emptyRowsCombobox?.props('items')).toEqual(['empty_check_column'])
+    expect(unnestEditor.props('idVarColumns')).toEqual(['id_candidate'])
+    expect(unnestEditor.props('valueVarColumns')).toEqual(['value_candidate'])
+    expect(extraColumnsEditor.props('availableColumns')).toEqual(['extra_source_column'])
+    expect(replacementsEditor.props('availableColumns')).toEqual(['replacement_column'])
     expect(wrapper.text()).toContain('Available post-merge: columns')
+
+    const foreignKeyEditor = wrapper.findComponent({ name: 'ForeignKeyEditor' })
+    expect(foreignKeyEditor.props('columnCandidates')).toEqual(mockState.columnAvailability.foreign_keys)
+    foreignKeyEditor.vm.$emit('update:modelValue', [
+      { entity: 'abundance_source', local_keys: ['sample_name'], remote_keys: ['sample_name'] },
+    ])
+    columnsCombobox!.vm.$emit('update:modelValue', ['unlisted_column'])
+    await flushPromises()
+    await nextTick()
+
+    const latestRequest = mockState.refreshColumnAvailability.mock.calls.at(-1)
+    expect(latestRequest?.[2].entity_draft.foreign_keys).toEqual([
+      expect.objectContaining({ entity: 'abundance_source' }),
+    ])
+    expect(latestRequest?.[2].entity_draft.columns).toEqual(['unlisted_column'])
+    expect(columnsCombobox?.props('modelValue')).toEqual(['unlisted_column'])
+
+    const saveButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Save')
+    expect(saveButton?.element.disabled).toBe(false)
+    await saveButton!.trigger('click')
+    await flushPromises()
+
+    expect(mockState.update).toHaveBeenCalledWith(
+      'analysis_entity',
+      expect.objectContaining({
+        entity_data: expect.objectContaining({ columns: ['unlisted_column'] }),
+      })
+    )
+  })
+
+  it('does not treat a business key as a reserved extra-column name', async () => {
+    // Regression for #506: an extra column may also be used as a business key.
+    const entity = createEntity('sample', {
+      type: 'entity',
+      public_id: 'sample_id',
+      columns: ['sample_name'],
+      keys: ['sample_name', 'derived_key'],
+      extra_columns: { derived_key: 'sample_name' },
+      unnest: {
+        id_vars: ['sample_name'],
+        value_vars: ['reading'],
+        var_name: 'measurement_type',
+        value_name: 'measurement_value',
+      },
+    })
+
+    const wrapper = mountEntityFormDialog({
+      mode: 'edit',
+      entity,
+    })
+
+    await flushPromises()
+    await nextTick()
+
+    const reservedNames = wrapper.findComponent({ name: 'ExtraColumnsEditor' }).props('reservedNames') as string[]
+
+    // Real result columns stay reserved.
+    expect(reservedNames).toEqual(
+      expect.arrayContaining(['system_id', 'sample_id', 'sample_name', 'measurement_type', 'measurement_value'])
+    )
+    // The business key must not be reserved, because keys add no result column.
+    expect(reservedNames).not.toContain('derived_key')
+
+    const diagnostics = getExtraColumnDiagnostics([{ column: 'derived_key', source: 'sample_name' }], 0, {
+      reservedNames,
+      availableColumns: ['sample_name'],
+    })
+    expect(diagnostics.some((diagnostic) => diagnostic.severity === 'error')).toBe(false)
   })
 
   it('supports toggling preview between merged rows and branch source rows', async () => {
@@ -407,6 +697,420 @@ describe('EntityFormDialog', () => {
           label: 'int',
           created_at: 'date',
         },
+      }),
+    })
+  })
+
+  it('hydrates the fixed grid with backend metadata order, not business-key order', async () => {
+    const wrapper = mountEntityFormDialog({
+      mode: 'edit',
+      entity: orderedFixedEntity,
+    })
+
+    await flushPromises()
+    await nextTick()
+
+    const fixedValuesGrid = wrapper.findComponent({ name: 'FixedValuesGrid' })
+    expect(fixedValuesGrid.props('columns')).toEqual(['system_id', 'method_id', 'created_at', 'label'])
+    expect(fixedValuesGrid.props('modelValue')).toEqual([[1, 53, '2026-05-19', 'Sampling']])
+  })
+
+  it('does not create a fixed grid column when a business key has no produced field', async () => {
+    const wrapper = mountEntityFormDialog({
+      mode: 'edit',
+      entity: orderedFixedEntity,
+    })
+
+    await flushPromises()
+    await nextTick()
+
+    const keysCombobox = wrapper
+      .findAllComponents({ name: 'VCombobox' })
+      .find((component) => component.props('label') === 'Business Keys *')
+    expect(keysCombobox).toBeTruthy()
+    keysCombobox!.vm.$emit('update:modelValue', ['label', 'ghost_key'])
+    await flushPromises()
+    await nextTick()
+
+    const fixedValuesGrid = wrapper.findComponent({ name: 'FixedValuesGrid' })
+    expect(fixedValuesGrid.props('columns')).toEqual(['system_id', 'method_id', 'created_at', 'label'])
+    expect(fixedValuesGrid.props('modelValue')).toEqual([[1, 53, '2026-05-19', 'Sampling']])
+  })
+
+  it('derives fixed grid columns from stored columns, not keys, when metadata is absent', async () => {
+    const legacyFixedEntity = createEntity('legacy_fixed', {
+      type: 'fixed',
+      public_id: 'legacy_id',
+      keys: ['ghost_key'],
+      columns: ['sample_name', 'abundance_value'],
+      values: [['S1', 12]],
+    })
+
+    const wrapper = mountEntityFormDialog({
+      mode: 'edit',
+      entity: legacyFixedEntity,
+    })
+
+    await flushPromises()
+    await nextTick()
+
+    const fixedValuesGrid = wrapper.findComponent({ name: 'FixedValuesGrid' })
+    expect(fixedValuesGrid.props('columns')).toEqual(['system_id', 'legacy_id', 'sample_name', 'abundance_value'])
+    expect(fixedValuesGrid.props('columns')).not.toContain('ghost_key')
+    expect(fixedValuesGrid.props('modelValue')).toEqual([[1, null, 'S1', 12]])
+  })
+
+  it('saves fixed config as produced data columns and external values in full order', async () => {
+    mockState.getValues.mockResolvedValue({
+      columns: ['system_id', 'method_id', 'created_at', 'label'],
+      values: [[1, 53, '2026-05-19', 'Sampling']],
+      format: 'parquet',
+      row_count: 1,
+      etag: 'values-etag',
+    })
+    mockState.updateValues.mockResolvedValue({ etag: 'new-values-etag' })
+    mockState.update.mockResolvedValue(createEntity('method', externalFixedEntity.entity_data))
+
+    const wrapper = mountEntityFormDialog({
+      mode: 'edit',
+      entity: externalFixedEntity,
+    })
+
+    await flushPromises()
+    await nextTick()
+
+    const fixedValuesGrid = wrapper.findComponent({ name: 'FixedValuesGrid' })
+    fixedValuesGrid.vm.$emit('update:modelValue', [[1, 53, '2026-05-20', 'Sampling']])
+    await flushPromises()
+    await nextTick()
+
+    const saveButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Save')
+    expect(saveButton?.element.disabled).toBe(false)
+    await saveButton!.trigger('click')
+    await flushPromises()
+
+    expect(mockState.update).toHaveBeenCalledWith('method', {
+      entity_data: expect.objectContaining({
+        columns: ['created_at', 'label'],
+      }),
+    })
+    expect(mockState.updateValues).toHaveBeenCalledWith(
+      'arbodat',
+      'method',
+      {
+        columns: ['system_id', 'method_id', 'created_at', 'label'],
+        values: [[1, 53, '2026-05-20', 'Sampling']],
+      },
+      'values-etag'
+    )
+  })
+
+  it('saves external values in full order through Save & Close', async () => {
+    mockState.getValues.mockResolvedValue({
+      columns: ['system_id', 'method_id', 'created_at', 'label'],
+      values: [[1, 53, '2026-05-19', 'Sampling']],
+      format: 'parquet',
+      row_count: 1,
+      etag: 'values-etag',
+    })
+    mockState.updateValues.mockResolvedValue({ etag: 'new-values-etag' })
+    mockState.update.mockResolvedValue(createEntity('method', externalFixedEntity.entity_data))
+
+    const wrapper = mountEntityFormDialog({
+      mode: 'edit',
+      entity: externalFixedEntity,
+    })
+
+    await flushPromises()
+    await nextTick()
+
+    const fixedValuesGrid = wrapper.findComponent({ name: 'FixedValuesGrid' })
+    fixedValuesGrid.vm.$emit('update:modelValue', [[1, 53, '2026-05-20', 'Sampling']])
+    await flushPromises()
+    await nextTick()
+
+    const saveAndCloseButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Save & Close')
+    expect(saveAndCloseButton?.element.disabled).toBe(false)
+    await saveAndCloseButton!.trigger('click')
+    await flushPromises()
+
+    expect(mockState.update).toHaveBeenCalledWith('method', {
+      entity_data: expect.objectContaining({
+        columns: ['created_at', 'label'],
+      }),
+    })
+    expect(mockState.updateValues).toHaveBeenCalledWith(
+      'arbodat',
+      'method',
+      {
+        columns: ['system_id', 'method_id', 'created_at', 'label'],
+        values: [[1, 53, '2026-05-20', 'Sampling']],
+      },
+      'values-etag'
+    )
+  })
+
+  it('round-trips a materialized fixed entity through open, edit, save, and reopen', async () => {
+    const fullOrder = ['system_id', 'method_id', 'created_at', 'label']
+    const savedEntity: EntityResponse = {
+      name: 'method',
+      etag: 'etag-method-saved',
+      fixed_schema: externalFixedEntity.fixed_schema,
+      entity_data: { ...externalFixedEntity.entity_data },
+    }
+
+    mockState.getValues.mockResolvedValueOnce({
+      columns: fullOrder,
+      values: [[1, 53, '2026-05-19', 'Sampling']],
+      format: 'parquet',
+      row_count: 1,
+      etag: 'values-etag',
+    })
+    mockState.updateValues.mockResolvedValue({ etag: 'new-values-etag' })
+    mockState.update.mockResolvedValue(savedEntity)
+
+    const wrapper = mountEntityFormDialog({
+      mode: 'edit',
+      entity: externalFixedEntity,
+    })
+
+    await flushPromises()
+    await nextTick()
+
+    // Open: the grid hydrates from backend metadata in the authoritative order.
+    const fixedValuesGrid = wrapper.findComponent({ name: 'FixedValuesGrid' })
+    expect(fixedValuesGrid.props('columns')).toEqual(fullOrder)
+    expect(fixedValuesGrid.props('modelValue')).toEqual([[1, 53, '2026-05-19', 'Sampling']])
+
+    // Edit one named field: created_at changes, the label value stays with its own column.
+    fixedValuesGrid.vm.$emit('update:modelValue', [[1, 53, '2026-05-20', 'Sampling']])
+    await flushPromises()
+    await nextTick()
+
+    const keysCombobox = wrapper
+      .findAllComponents({ name: 'VCombobox' })
+      .find((component) => component.props('label') === 'Business Keys *')
+    expect(keysCombobox).toBeTruthy()
+    keysCombobox!.vm.$emit('update:modelValue', ['label', 'ghost_key'])
+    await flushPromises()
+    await nextTick()
+
+    // Selecting a key that no producer creates must not add a grid position.
+    expect(fixedValuesGrid.props('columns')).toEqual(fullOrder)
+
+    const saveButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Save')
+    expect(saveButton?.element.disabled).toBe(false)
+    await saveButton!.trigger('click')
+    await flushPromises()
+
+    // The saved config keeps produced columns only; the request uses full order and the GET ETag.
+    expect(mockState.update).toHaveBeenCalledWith('method', {
+      entity_data: expect.objectContaining({
+        columns: ['created_at', 'label'],
+      }),
+    })
+    expect(mockState.updateValues).toHaveBeenCalledWith(
+      'arbodat',
+      'method',
+      {
+        columns: fullOrder,
+        values: [[1, 53, '2026-05-20', 'Sampling']],
+      },
+      'values-etag'
+    )
+
+    // Reopen from the returned entity and the values the backend would return next.
+    mockState.getValues.mockResolvedValueOnce({
+      columns: fullOrder,
+      values: [[1, 53, '2026-05-20', 'Sampling']],
+      format: 'parquet',
+      row_count: 1,
+      etag: 'new-values-etag',
+    })
+    const reopened = mountEntityFormDialog({
+      mode: 'edit',
+      entity: savedEntity,
+    })
+
+    await flushPromises()
+    await nextTick()
+
+    const reopenedGrid = reopened.findComponent({ name: 'FixedValuesGrid' })
+    expect(reopenedGrid.props('columns')).toEqual(fullOrder)
+    expect(reopenedGrid.props('modelValue')).toEqual([[1, 53, '2026-05-20', 'Sampling']])
+  })
+
+  it('remaps inline fixed values by name when a produced column is reordered', async () => {
+    mockState.update.mockResolvedValue(createEntity('method', orderedFixedEntity.entity_data))
+
+    const wrapper = mountEntityFormDialog({
+      mode: 'edit',
+      entity: orderedFixedEntity,
+    })
+
+    await flushPromises()
+    await nextTick()
+
+    const columnsCombobox = wrapper
+      .findAllComponents({ name: 'VCombobox' })
+      .find((component) => component.props('label') === 'Columns')
+    expect(columnsCombobox).toBeTruthy()
+    columnsCombobox!.vm.$emit('update:modelValue', ['label', 'created_at'])
+    await flushPromises()
+    await nextTick()
+
+    // Values follow their column names, not their old positions.
+    const fixedValuesGrid = wrapper.findComponent({ name: 'FixedValuesGrid' })
+    expect(fixedValuesGrid.props('columns')).toEqual(['system_id', 'method_id', 'label', 'created_at'])
+    expect(fixedValuesGrid.props('modelValue')).toEqual([[1, 53, 'Sampling', '2026-05-19']])
+
+    const saveButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Save')
+    expect(saveButton?.element.disabled).toBe(false)
+    await saveButton!.trigger('click')
+    await flushPromises()
+
+    expect(mockState.update).toHaveBeenCalledWith('method', {
+      entity_data: expect.objectContaining({
+        columns: ['label', 'created_at'],
+        values: [[1, 53, 'Sampling', '2026-05-19']],
+      }),
+    })
+  })
+
+  it('rejects external fixed values whose columns do not match the active full order', async () => {
+    const updateCallsBefore = mockState.update.mock.calls.length
+    const valuesUpdateCallsBefore = mockState.updateValues.mock.calls.length
+
+    mockState.getValues.mockResolvedValue({
+      columns: ['system_id', 'method_id', 'label', 'created_at'],
+      values: [[1, 53, 'Sampling', '2026-05-19']],
+      format: 'parquet',
+      row_count: 1,
+      etag: 'bad-etag',
+    })
+
+    const wrapper = mountEntityFormDialog({
+      mode: 'edit',
+      entity: externalFixedEntity,
+    })
+
+    await flushPromises()
+    await nextTick()
+
+    expect(wrapper.text()).toContain('do not match the entity schema')
+    const saveButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Save')
+    // Save is disabled while the fetched order is unsafe, so no write can be sent.
+    expect(saveButton?.element.disabled).toBe(true)
+    expect(mockState.update.mock.calls.length).toBe(updateCallsBefore)
+    expect(mockState.updateValues.mock.calls.length).toBe(valuesUpdateCallsBefore)
+  })
+
+  it('submits an edited entity name as a guarded rename', async () => {
+    const sourceEntity = sourceEntities[0]!
+    const renamedEntity = createEntity('renamed_source', sourceEntity.entity_data)
+    const warning =
+      "Entity 'renamed_source' was saved, but its note could not be moved from 'abundance_source'. The note remains under the old name."
+    mockState.update.mockResolvedValue({ ...renamedEntity, warnings: [warning] })
+    const wrapper = mountEntityFormDialog({ mode: 'edit', entity: sourceEntity })
+
+    await flushPromises()
+    const nameField = wrapper
+      .findAllComponents({ name: 'VTextField' })
+      .find((component) => component.props('label') === 'Entity Name *')
+    expect(nameField).toBeTruthy()
+    expect(nameField?.props('disabled')).not.toBe(true)
+    nameField!.vm.$emit('update:modelValue', 'renamed_source')
+    await flushPromises()
+
+    const saveButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Save')
+    expect(saveButton?.element.disabled).toBe(false)
+    await saveButton!.trigger('click')
+    await flushPromises()
+
+    expect(mockState.update).toHaveBeenCalledWith('abundance_source', {
+      entity_data: expect.any(Object),
+      new_name: 'renamed_source',
+    })
+    expect(mockState.showWarning).toHaveBeenCalledWith(warning)
+    expect(wrapper.emitted('saved')?.at(-1)).toEqual(['renamed_source'])
+  })
+
+  it('shows dependent entities and manual rename guidance on a rename conflict', async () => {
+    mockState.update.mockRejectedValue({
+      response: {
+        data: {
+          detail: {
+            message: "Cannot rename entity 'abundance_source' because other entities refer to it.",
+            context: { conflict_type: 'entity_has_dependents', dependent_entities: ['analysis_entity'] },
+          },
+        },
+      },
+    })
+    const wrapper = mountEntityFormDialog({ mode: 'edit', entity: sourceEntities[0]! })
+
+    await flushPromises()
+    const nameField = wrapper
+      .findAllComponents({ name: 'VTextField' })
+      .find((component) => component.props('label') === 'Entity Name *')
+    nameField!.vm.$emit('update:modelValue', 'renamed_source')
+    await flushPromises()
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text().trim() === 'Save')!
+      .trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('analysis_entity')
+    expect(wrapper.text()).toContain('update the matching task sidecar keys')
+  })
+
+  it('syncs corrected YAML before saving when the previous YAML was invalid', async () => {
+    const wrapper = mountEntityFormDialog({
+      mode: 'edit',
+      entity: sourceEntities[0],
+      initialTab: 'yaml',
+    })
+
+    await flushPromises()
+    await nextTick()
+
+    const columnsCombobox = wrapper
+      .findAllComponents({ name: 'VCombobox' })
+      .find((component) => component.props('label') === 'Columns')
+    columnsCombobox!.vm.$emit('update:modelValue', ['sample_name', 'form_only_edit'])
+    await flushPromises()
+
+    const yamlEditor = wrapper.findComponent({ name: 'YamlEditor' })
+    yamlEditor.vm.$emit('update:modelValue', 'name: [broken')
+    yamlEditor.vm.$emit('change', 'name: [broken')
+    yamlEditor.vm.$emit('validate', false, 'Invalid YAML')
+    await flushPromises()
+
+    const correctedYaml = [
+      'name: abundance_source',
+      'type: entity',
+      'public_id: abundance_id',
+      'keys:',
+      '  - sample_name',
+      'columns:',
+      '  - sample_name',
+      '  - yaml_corrected',
+    ].join('\n')
+    yamlEditor.vm.$emit('update:modelValue', correctedYaml)
+    yamlEditor.vm.$emit('change', correctedYaml)
+    yamlEditor.vm.$emit('validate', true)
+    await flushPromises()
+
+    const saveButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Save')
+    expect(saveButton).toBeTruthy()
+    expect(saveButton!.element.disabled).toBe(false)
+
+    await saveButton!.trigger('click')
+    await flushPromises()
+
+    expect(mockState.update).toHaveBeenCalledWith('abundance_source', {
+      entity_data: expect.objectContaining({
+        columns: ['sample_name', 'yaml_corrected'],
       }),
     })
   })
