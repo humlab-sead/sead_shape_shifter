@@ -11,6 +11,7 @@ from src.types.fixed_entity_types import (
     FixedEntityTypeConvention,
     FixedEntityTypeConventionDeclarationError,
     build_fixed_entity_full_columns,
+    find_duplicate_fixed_entity_columns,
     is_valid_fixed_entity_value,
     normalize_fixed_entity_column_types,
     normalize_fixed_entity_type_conventions,
@@ -111,6 +112,27 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
                         column=col_name,
                     )
 
+    def _validate_fixed_duplicate_columns(self, entity_name: str, entity_cfg: dict[str, Any]) -> None:
+        """Check that a fixed entity does not declare the same column twice.
+
+        ``TableConfig.safe_columns`` removes duplicates silently, which can hide the
+        mistake until a later row-width error. Report the raw duplicates instead.
+        """
+        raw_columns: Any = entity_cfg.get("columns")
+        if not isinstance(raw_columns, list):
+            return
+
+        declared_columns: list[str] = [column for column in raw_columns if isinstance(column, str)]
+        duplicates: list[str] = find_duplicate_fixed_entity_columns(declared_columns)
+        if duplicates:
+            self.add_error(
+                f"Fixed data entity '{entity_name}' declares duplicate columns: {', '.join(duplicates)}. "
+                "Column names in 'columns' must be unique.",
+                entity=entity_name,
+                field="columns",
+                code="DUPLICATE_COLUMNS",
+            )
+
     def _validate_fixed_schema_keys(
         self,
         entity_name: str,
@@ -174,6 +196,7 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
 
         # Note: system_id is always "system_id" (standardized name, auto-generated)
 
+        self._validate_fixed_duplicate_columns(entity_name, entity_cfg)
         self._validate_fixed_schema_keys(entity_name, entity_cfg, public_id)
 
         # A fixed entity can be populated entirely by its append branches. In that
