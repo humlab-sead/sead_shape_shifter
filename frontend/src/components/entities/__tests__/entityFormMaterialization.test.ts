@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  buildFixedValuesColumns,
+  buildFixedFullColumns,
   applyMaterializationRoundTripToFixedEntity,
   extractMaterializationRoundTripState,
   getExternalValuesUpdateColumns,
@@ -106,7 +106,6 @@ describe('entityFormMaterialization', () => {
         'site_name',
         'FustelTyp',
       ],
-      ['Fustel', 'EVNr'],
       'site_id'
     )
 
@@ -124,38 +123,18 @@ describe('entityFormMaterialization', () => {
     ])
   })
 
-  it('builds canonical fixed values column order', () => {
-    const result = buildFixedValuesColumns(
-      [
-        'site_type_id',
-        'altitude',
-        'coordinate_system',
-        'latitude_dd',
-        'longitude_dd',
-        'national_site_identifier',
-        'site_name',
-        'FustelTyp',
-        'KoordSys',
-      ],
-      ['Fustel', 'EVNr'],
-      'site_id'
-    )
+  it('builds the fixed full order as identity plus produced columns only', () => {
+    const result = buildFixedFullColumns(['created_at', 'label', 'label'], 'method_id')
 
-    expect(result).toEqual([
-      'system_id',
-      'site_id',
-      'Fustel',
-      'EVNr',
-      'site_type_id',
-      'altitude',
-      'coordinate_system',
-      'latitude_dd',
-      'longitude_dd',
-      'national_site_identifier',
-      'site_name',
-      'FustelTyp',
-      'KoordSys',
-    ])
+    // Identity leads, a produced key appears once, and business keys never add positions.
+    expect(result).toEqual(['system_id', 'method_id', 'created_at', 'label'])
+  })
+
+  it('does not add positions for business keys that are not produced columns', () => {
+    const result = buildFixedFullColumns(['created_at'], 'method_id')
+
+    expect(result).toEqual(['system_id', 'method_id', 'created_at'])
+    expect(result).not.toContain('ghost_key')
   })
 
   it('expands legacy fixed rows to full grid columns using stored column names', () => {
@@ -165,7 +144,6 @@ describe('entityFormMaterialization', () => {
         [null, 'S2', 'Pine', 8, 'count'],
       ],
       ['abundance_id', 'sample_code', 'taxon_name', 'abundance', 'unit'],
-      ['sample_code', 'taxon_name'],
       'abundance_id'
     )
 
@@ -184,7 +162,6 @@ describe('entityFormMaterialization', () => {
     const result = normalizeFixedValuesRowsForForm(
       rows,
       ['abundance_id', 'sample_code', 'taxon_name', 'abundance', 'unit'],
-      ['sample_code', 'taxon_name'],
       'abundance_id'
     )
 

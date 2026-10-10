@@ -72,6 +72,73 @@ class TestEntityFieldsBaseSpecification:
         assert result is False
         assert len(spec.errors) > 0
 
+    def test_keys_must_name_configured_or_generated_output_fields(self):
+        project_cfg = {
+            "entities": {
+                "parent": {"type": "fixed", "public_id": "parent_id", "columns": ["id"], "keys": []},
+                "generated": {
+                    "type": "entity",
+                    "columns": ["source", "measure"],
+                    "keys": ["copied", "parent_id", "remote_name", "kind", "reading"],
+                    "extra_columns": {"copied": "source"},
+                    "foreign_keys": [
+                        {"entity": "parent", "local_keys": ["source"], "remote_keys": ["id"], "extra_columns": {"remote_name": "name"}}
+                    ],
+                    "unnest": {"id_vars": ["source"], "value_vars": ["measure"], "var_name": "kind", "value_name": "reading"},
+                },
+            }
+        }
+
+        spec = EntityFieldsBaseSpecification(project_cfg)
+
+        assert spec.is_satisfied_by(entity_name="generated") is True
+        assert spec.errors == []
+
+    def test_keys_without_producers_fail_with_actionable_message(self):
+        project_cfg = {"entities": {"unproduced": {"type": "entity", "columns": ["source"], "keys": ["missing"]}}}
+        spec = EntityFieldsBaseSpecification(project_cfg)
+
+        assert spec.is_satisfied_by(entity_name="unproduced") is False
+        error_text = "\n".join(str(error) for error in spec.errors)
+        assert "unproduced" in error_text
+        assert "missing" in error_text
+        assert "'keys' do not create output columns" in error_text
+        assert "'columns'" in error_text
+
+    def test_auto_detected_sql_key_validation_is_deferred_when_columns_are_unknown(self):
+        project_cfg = {
+            "entities": {
+                "dynamic_sql": {
+                    "type": "sql",
+                    "columns": [],
+                    "keys": ["query_discovered_key"],
+                    "data_source": "database",
+                    "query": "SELECT * FROM source_table",
+                    "auto_detect_columns": True,
+                }
+            }
+        }
+        spec = EntityFieldsBaseSpecification(project_cfg)
+
+        assert spec.is_satisfied_by(entity_name="dynamic_sql") is True
+
+    def test_auto_detected_sql_rejects_key_outside_configured_output(self):
+        project_cfg = {
+            "entities": {
+                "dynamic_sql": {
+                    "type": "sql",
+                    "columns": ["known_query_column"],
+                    "keys": ["query_discovered_key"],
+                    "data_source": "database",
+                    "query": "SELECT * FROM source_table",
+                    "auto_detect_columns": True,
+                }
+            }
+        }
+        spec = EntityFieldsBaseSpecification(project_cfg)
+
+        assert spec.is_satisfied_by(entity_name="dynamic_sql") is False
+
 
 class TestFixedEntityFieldsSpecification:
     """Tests for FixedEntityFieldsSpecification."""
@@ -264,6 +331,93 @@ class TestFixedEntityFieldsSpecification:
         result = spec.is_satisfied_by(entity_name="not_fixed")
 
         assert result is False
+
+    def test_fixed_entity_rejects_key_without_producer(self):
+        """Fixed entities should reject a business key that no producer creates."""
+        project_cfg = {
+            "entities": {
+                "broken_fixed": {
+                    "type": "fixed",
+                    "public_id": "broken_fixed_id",
+                    "keys": ["missing_key"],
+                    "columns": ["a", "b"],
+                    "values": [[1, None, "aa", "bb"]],
+                }
+            }
+        }
+        spec = FixedEntityFieldsSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="broken_fixed")
+
+        assert result is False, spec.get_report()
+        error_text = "\n".join(str(error) for error in spec.errors)
+        assert "missing_key" in error_text
+        assert "'keys' do not create output columns" in error_text
+
+    def test_fixed_entity_rejects_key_produced_outside_fixed_schema(self):
+        """A key produced only by extra_columns is not part of the fixed schema and must be rejected."""
+        project_cfg = {
+            "entities": {
+                "broken_fixed": {
+                    "type": "fixed",
+                    "public_id": "broken_fixed_id",
+                    "keys": ["generated_key"],
+                    "columns": ["a"],
+                    "extra_columns": {"generated_key": "a"},
+                    "values": [[1, None, "aa"]],
+                }
+            }
+        }
+        spec = FixedEntityFieldsSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="broken_fixed")
+
+        assert result is False, spec.get_report()
+        error_text = "\n".join(str(error) for error in spec.errors)
+        assert "generated_key" in error_text
+        assert "not part of the fixed schema" in error_text
+        assert "Expected positional column order" in error_text
+
+    def test_fixed_entity_accepts_key_within_fixed_schema(self):
+        """A key that is a declared column remains valid."""
+        project_cfg = {
+            "entities": {
+                "valid_fixed": {
+                    "type": "fixed",
+                    "public_id": "valid_fixed_id",
+                    "keys": ["a"],
+                    "columns": ["a"],
+                    "values": [[1, None, "aa"]],
+                }
+            }
+        }
+        spec = FixedEntityFieldsSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="valid_fixed")
+
+        assert result is True, spec.get_report()
+
+    def test_fixed_entity_rejects_duplicate_columns(self):
+        """Fixed entities must not declare the same column twice."""
+        project_cfg = {
+            "entities": {
+                "broken_fixed": {
+                    "type": "fixed",
+                    "public_id": "broken_fixed_id",
+                    "keys": ["a"],
+                    "columns": ["a", "b", "a"],
+                    "values": [[1, None, "aa", "bb"]],
+                }
+            }
+        }
+        spec = FixedEntityFieldsSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="broken_fixed")
+
+        assert result is False, spec.get_report()
+        error_text = "\n".join(str(error) for error in spec.errors)
+        assert "declares duplicate columns" in error_text
+        assert "a" in error_text
 
     def test_mismatched_column_row_length(self, project_cfg):
         """Test validation fails when row length doesn't match columns."""
@@ -538,7 +692,7 @@ class TestSqlColumnConfigurationSpecification:
         assert result is False
         assert any("contain duplicates" in str(e) for e in spec.errors)
 
-    def test_manual_sql_requires_keys_in_columns(self):
+    def test_manual_sql_key_validation_uses_producer_aware_entity_specification(self):
         project_cfg = {
             "entities": {
                 "sql_entity": {
@@ -553,11 +707,14 @@ class TestSqlColumnConfigurationSpecification:
         }
 
         spec = SqlColumnConfigurationSpecification(project_cfg)
+        entity_spec = EntityFieldsBaseSpecification(project_cfg)
 
-        result = spec.is_satisfied_by(entity_name="sql_entity")
+        assert spec.is_satisfied_by(entity_name="sql_entity") is True
 
-        assert result is False
-        assert any("must be included in the specified columns" in str(e) for e in spec.errors)
+        assert entity_spec.is_satisfied_by(entity_name="sql_entity") is False
+        error_text = "\n".join(str(error) for error in entity_spec.errors)
+        assert "key_col" in error_text
+        assert "'keys' do not create output columns" in error_text
 
     def test_auto_detect_sql_allows_keys_outside_configured_columns(self):
         project_cfg = {

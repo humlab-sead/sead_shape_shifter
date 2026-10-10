@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, Mock, patch
 import pandas as pd
 import pytest
 
+from backend.app.exceptions import SchemaValidationError
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.project import Project
 from backend.app.services.entity_values_service import EntityValuesService
@@ -111,7 +112,7 @@ def sample_dataframe():
 @pytest.fixture
 def small_dataframe():
     """Create small DataFrame (below threshold)."""
-    return pd.DataFrame({"id": [1, 2], "name": ["A", "B"]})
+    return pd.DataFrame({"id": [1, 2], "location_name": ["A", "B"]})
 
 
 @pytest.fixture
@@ -374,6 +375,45 @@ class TestMaterializeEntity:
         assert result is expected
 
     @pytest.mark.asyncio
+    async def test_materialize_missing_key_fails_without_saving(
+        self, tmp_path, materialization_service, mock_project_service, mock_api_project, mock_core_project, mock_table_config
+    ):
+        """Materialization should fail on a missing key before saving and leave persisted files unchanged."""
+        project_dir = tmp_path / "test-project"
+        project_dir.mkdir()
+        project_yaml = project_dir / "shapeshifter.yml"
+        project_yaml.write_text("metadata:\n  name: test-project\nentities: {}\n", encoding="utf-8")
+        sidecar_path = project_dir / "materialized" / "location.csv"
+        sidecar_path.parent.mkdir(parents=True)
+        sidecar_path.write_text("system_id,location_id,country_code\n1,1,NO\n", encoding="utf-8")
+
+        project_yaml_before = project_yaml.read_bytes()
+        sidecar_before = sidecar_path.read_bytes()
+
+        mock_project_service.load_project.return_value = mock_api_project
+        # A real save would rewrite the project YAML; the missing key must prevent that write.
+        mock_project_service.save_project = Mock(
+            side_effect=lambda _project: project_yaml.write_text("rewritten by save", encoding="utf-8")
+        )
+
+        mock_spec = MagicMock(spec=CanMaterializeSpecification)
+        mock_spec.is_satisfied_by.return_value = True
+
+        mock_shapeshifter = MagicMock(spec=ShapeShifter)
+        mock_shapeshifter.table_store = {"location": pd.DataFrame({"location_id": [1], "country_code": ["NO"]})}
+
+        with patch.object(ProjectMapper, "to_core", return_value=mock_core_project):
+            with patch("backend.app.services.materialization_service.CanMaterializeSpecification", return_value=mock_spec):
+                with patch("backend.app.services.materialization_service.ShapeShifter", return_value=mock_shapeshifter):
+                    result = await materialization_service.materialize_entity("test-project", "location", "inline")
+
+        assert not result.success
+        assert any("does not produce" in error for error in result.errors)
+        mock_project_service.save_project.assert_not_called()
+        assert project_yaml.read_bytes() == project_yaml_before
+        assert sidecar_path.read_bytes() == sidecar_before
+
+    @pytest.mark.asyncio
     async def test_materialize_storage_failure(
         self, materialization_service, mock_project_service, mock_api_project, mock_core_project, mock_table_config, sample_dataframe
     ):
@@ -590,7 +630,7 @@ class TestCreateMaterializedEntity:
             assert result["type"] == "fixed"
             assert result["public_id"] == "location_id"
             assert result["keys"] == ["location_name"]
-            assert result["columns"] == ["system_id", "location_id", "location_name", "country_code"]
+            assert result["columns"] == ["location_name", "country_code"]
             assert result["values"] == [[1, 1, "Norway", "NO"], [2, 2, "Sweden", "SE"], [3, 3, "Denmark", "DK"]]
             assert result["materialized"]["enabled"] is True
             assert "source_state" in result["materialized"]
@@ -607,15 +647,22 @@ class TestCreateMaterializedEntity:
     def test_create_materialized_entity_strips_helper_and_duplicate_columns(self, materialization_service, mock_table_config):
         """Materialized entity columns should not include temporary merge helper columns or duplicates."""
         df = pd.DataFrame(
-            [[1, "A", "A-shadow", "both", 10]],
-            columns=["system_id", "name", "name", "_merge_indicator_remote", "location_id"],
+            [[1, "A", "A-shadow", "both", 10, "Norway"]],
+            columns=["system_id", "name", "name", "_merge_indicator_remote", "location_id", "location_name"],
         )
 
         result = materialization_service._create_materialized_entity(
             mock_table_config, df, "@load:test-project/materialized/location.parquet"
         )
 
-        assert result["columns"] == ["system_id", "location_id", "location_name", "name"]
+        assert result["columns"] == ["name", "location_name"]
+
+    def test_create_materialized_entity_rejects_missing_key(self, materialization_service, mock_table_config):
+        """Materialized entities should fail on a key that the produced data does not contain."""
+        df = pd.DataFrame({"location_id": [1, 2], "country_code": ["NO", "SE"]})
+
+        with pytest.raises(SchemaValidationError, match="does not produce"):
+            materialization_service._create_materialized_entity(mock_table_config, df, "@load:test-project/materialized/location.parquet")
 
     def test_create_materialized_entity_empty_saved_state(self, materialization_service, sample_dataframe):
         """Test creating materialized entity when saved_state is empty."""

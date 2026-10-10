@@ -21,10 +21,17 @@ class SubsetService:
         """Initialize SubsetService with ExtraColumnEvaluator."""
         self.extra_col_evaluator = ExtraColumnEvaluator()
 
-    def get_subset_columns(self, table_cfg: TableConfig) -> list[str]:
-        """Get the list of columns to extract from the table configuration.
-        Excludes un-nested columns, extra columns from remote FK tables, and keys added via extra_columns."""
-        columns: list[str] = table_cfg.keys_columns_and_fks
+    def get_subset_columns(self, table_cfg: TableConfig, detected_columns: list[str] | None = None) -> list[str]:
+        """Return source fields required by configured and detected output producers."""
+        if (
+            detected_columns is not None
+            and table_cfg.type == "sql"
+            and table_cfg.auto_detect_columns is not False
+            and not table_cfg.safe_columns
+        ):
+            columns: list[str] = [column for column in detected_columns if column != table_cfg.system_id]
+        else:
+            columns = table_cfg.keys_columns_and_fks
         # Ignore columns that will be added via un-nesting
         if table_cfg.unnest:
             columns = [col for col in columns if col not in table_cfg.unnest_columns]
@@ -49,7 +56,7 @@ class SubsetService:
         if source is None:
             raise ValueError("Source DataFrame must be provided")
 
-        columns: list[str] = unique(self.get_subset_columns(table_cfg))
+        columns: list[str] = unique(self.get_subset_columns(table_cfg, list(source.columns)))
         column_aliases: dict[str, str] = self._get_source_identity_aliases(table_cfg, columns)
         entity_name: str = table_cfg.entity_name or "unspecified"
         extra_columns: dict[str, str] = table_cfg.extra_columns or {}
@@ -155,8 +162,16 @@ class SubsetService:
 
         self._check_if_missing_requested_columns(source, entity_name, raise_if_missing, required_source_cols)
 
-        # Extract only columns that exist (in source order)
-        columns_to_extract: list[str] = [c for c in source.columns if c in required_source_cols]
+        # Select configured fields in their declared order, then append extra dependencies in source order.
+        source_column_set: set[str] = set(source.columns)
+        columns_to_extract: list[str] = unique(
+            selected_aliases.get(column_name, column_name)
+            for column_name in columns
+            if selected_aliases.get(column_name, column_name) in source_column_set
+        )
+        columns_to_extract.extend(
+            column for column in source.columns if column in extra_source_dependencies and column not in columns_to_extract
+        )
         result: pd.DataFrame = source.loc[:, columns_to_extract].copy()
 
         # Add alias columns that should appear as ordinary selected columns in the result.

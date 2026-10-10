@@ -74,3 +74,22 @@ def test_returns_advisory_candidates_for_unknown_parent_and_missing_source_metad
     assert result.columns == ["child_key"]
     assert result.foreign_keys[0].entity == "unknown"
     assert result.foreign_keys[0].remote_keys == []
+
+
+def test_does_not_suggest_a_key_without_a_producer() -> None:
+    project_service = Mock(spec=ProjectService)
+    project_service.load_project.return_value = _project()
+    service = StageAwareColumnService(project_service)
+
+    result: ColumnAvailabilityResponse = service.get_column_availability(
+        "test_project",
+        "child",
+        {
+            "type": "entity",
+            "keys": ["unproduced_key"],
+            "columns": ["draft_value"],
+        },
+    )
+
+    assert result.columns == ["draft_value"]
+    assert "unproduced_key" not in result.business_keys

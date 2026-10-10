@@ -159,7 +159,7 @@ class TestFixedSchemaDerivation:
             "type": "fixed",
             "public_id": "feature_type_id",
             "keys": ["name"],
-            "columns": ["description"],
+            "columns": ["name", "description"],
             "values": [],
         }
 
@@ -174,8 +174,9 @@ class TestFixedSchemaDerivation:
             "editable_columns": ["description"],
             "identity_columns": ["system_id", "feature_type_id"],
             "key_columns": ["name"],
-            "order_source": "stored",
+            "order_source": "derived",
         }
+        assert payload["entity_data"]["columns"] == ["name", "description"]
 
     async def test_update_fixed_entity_returns_authoritative_fixed_schema(self, tmp_path, monkeypatch, reset_services, authorized_client):
         """Updated fixed entities should return normalized, canonical schema metadata."""
@@ -188,7 +189,7 @@ class TestFixedSchemaDerivation:
             "type": "fixed",
             "public_id": "feature_type_id",
             "keys": ["name"],
-            "columns": ["description"],
+            "columns": ["name", "description"],
             "values": [],
         }
 
@@ -209,9 +210,9 @@ class TestFixedSchemaDerivation:
             "editable_columns": ["description"],
             "identity_columns": ["system_id", "feature_type_id"],
             "key_columns": ["name"],
-            "order_source": "stored",
+            "order_source": "derived",
         }
-        assert payload["entity_data"]["columns"] == ["system_id", "feature_type_id", "name", "description"]
+        assert payload["entity_data"]["columns"] == ["name", "description"]
 
     async def test_non_fixed_entity_has_no_fixed_schema(self, tmp_path, monkeypatch, reset_services, sample_entity_data, authorized_client):
         """Non-fixed entities should not expose fixed-schema metadata."""
@@ -339,9 +340,7 @@ class TestEntitiesUpdate:
         project_file.write_text(yaml.safe_dump(project_data), encoding="utf-8")
         sidecar_path = project_file.parent / "shapeshifter.tasks.yml"
         sidecar_path.write_text(
-            yaml.safe_dump(
-                {"task_list": {"todo": ["sample"], "flagged": {"sample": True}}, "notes": {"sample": "Check rows"}}
-            ),
+            yaml.safe_dump({"task_list": {"todo": ["sample"], "flagged": {"sample": True}}, "notes": {"sample": "Check rows"}}),
             encoding="utf-8",
         )
 
@@ -478,7 +477,7 @@ class TestEntityValues:
         materialized_folder.mkdir()
 
         # Create parquet file with test data
-        df = pd.DataFrame({"id": [1, 2, 3], "name": ["A", "B", "C"], "value": [10, 20, 30]})
+        df = pd.DataFrame({"system_id": [1, 2, 3], "id": [101, 102, 103], "name": ["A", "B", "C"], "value": [10, 20, 30]})
         parquet_file = materialized_folder / "test_entity.parquet"
         df.to_parquet(parquet_file, index=False)
 
@@ -500,10 +499,10 @@ class TestEntityValues:
         assert response.status_code == 200
 
         data = response.json()
-        assert data["columns"] == ["id", "name", "value"]
+        assert data["columns"] == ["system_id", "id", "name", "value"]
         assert data["row_count"] == 3
         assert data["format"] == "parquet"
-        assert data["values"] == [[1, "A", 10], [2, "B", 20], [3, "C", 30]]
+        assert data["values"] == [[1, 101, "A", 10], [2, 102, "B", 20], [3, 103, "C", 30]]
 
     async def test_get_entity_values_csv(self, tmp_path, monkeypatch, reset_services, authorized_client):
         """Test getting entity values from CSV file."""
@@ -517,7 +516,7 @@ class TestEntityValues:
         materialized_folder.mkdir()
 
         # Create CSV file with test data
-        df = pd.DataFrame({"id": [1, 2], "name": ["X", "Y"]})
+        df = pd.DataFrame({"system_id": [1, 2], "id": [201, 202], "name": ["X", "Y"]})
         csv_file = materialized_folder / "test_entity.csv"
         df.to_csv(csv_file, index=False)
 
@@ -539,7 +538,7 @@ class TestEntityValues:
         assert response.status_code == 200
 
         data = response.json()
-        assert data["columns"] == ["id", "name"]
+        assert data["columns"] == ["system_id", "id", "name"]
         assert data["row_count"] == 2
         assert data["format"] == "csv"
 
@@ -677,6 +676,107 @@ class TestEntityValues:
         assert links["A"]["target_id"] == 10
         assert links["C"]["target_id"] == 30
 
+    async def test_update_entity_values_remaps_legacy_order_and_syncs_mapping(
+        self, tmp_path, monkeypatch, reset_services, authorized_client
+    ):
+        """PUT should remap the recognized legacy order before writing and mapping sync."""
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+
+        project_folder = tmp_path / "test_project"
+        project_folder.mkdir()
+        materialized_folder = project_folder / "materialized"
+        materialized_folder.mkdir()
+
+        entity_data = {
+            "type": "fixed",
+            "columns": ["name", "country"],
+            "values": "@load:materialized/test_entity.parquet",
+            "public_id": "site_id",
+            "keys": ["country"],
+            "materialized": {
+                "enabled": True,
+                "source_state": {"type": "csv", "public_id": "site_id", "keys": ["country"]},
+                "materialized_at": "2026-06-15T00:00:00Z",
+            },
+        }
+        await authorized_client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "entities": {"test_entity": entity_data}},
+        )
+
+        sidecar_path = project_folder / "test_project-mapping.yml"
+        sidecar_path.write_text(
+            yaml.safe_dump(
+                {
+                    "version": "2.0",
+                    "metadata": {
+                        "project": "test_project",
+                        "created_at": "2026-06-15T00:00:00Z",
+                        "updated_at": "2026-06-15T00:00:00Z",
+                    },
+                    "entities": {
+                        "test_entity": {
+                            "local_key": "country",
+                            "public_id": "site_id",
+                            "entity_type": "primary",
+                            "links": {},
+                        }
+                    },
+                },
+                sort_keys=False,
+            ),
+            encoding="utf-8",
+        )
+
+        update_data = {
+            "columns": ["system_id", "site_id", "country", "name"],
+            "values": [[1, 10, "SE", "A"], [2, 20, "NO", "B"]],
+        }
+        response = await authorized_client.put("/api/v1/projects/test_project/entities/test_entity/values", json=update_data)
+        assert response.status_code == 200
+
+        data = response.json()
+        assert data["columns"] == ["system_id", "site_id", "name", "country"]
+        assert data["values"] == [[1, 10, "A", "SE"], [2, 20, "B", "NO"]]
+
+        saved = pd.read_parquet(materialized_folder / "test_entity.parquet")
+        assert saved.columns.tolist() == ["system_id", "site_id", "name", "country"]
+        assert saved.values.tolist() == [[1, 10, "A", "SE"], [2, 20, "B", "NO"]]
+
+        sidecar = yaml.safe_load(sidecar_path.read_text(encoding="utf-8"))
+        links = sidecar["entities"]["test_entity"]["links"]
+        assert set(links) == {"SE", "NO"}
+        assert links["SE"]["target_id"] == 10
+        assert links["NO"]["target_id"] == 20
+
+    async def test_update_entity_values_rejects_invalid_columns_without_writing(
+        self, tmp_path, monkeypatch, reset_services, authorized_client
+    ):
+        """PUT should reject unmappable column orders with 422 and leave values files untouched."""
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+
+        project_folder = tmp_path / "test_project"
+        project_folder.mkdir()
+        materialized_folder = project_folder / "materialized"
+        materialized_folder.mkdir()
+
+        entity_data = {
+            "type": "fixed",
+            "columns": ["name", "country"],
+            "values": "@load:materialized/test_entity.parquet",
+            "public_id": "site_id",
+            "keys": ["name"],
+        }
+        await authorized_client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "entities": {"test_entity": entity_data}},
+        )
+
+        update_data = {"columns": ["country"], "values": [["SE"]]}
+        response = await authorized_client.put("/api/v1/projects/test_project/entities/test_entity/values", json=update_data)
+        assert response.status_code == 422
+        assert not (materialized_folder / "test_entity.parquet").exists()
+
     async def test_patch_from_materialized_replaces_manual_mapping_links(self, tmp_path, monkeypatch, reset_services, authorized_client):
         """PATCH from-materialized should replace manual links from the current saved materialized rows."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
@@ -792,7 +892,7 @@ class TestEntityValues:
         values_dir.mkdir()
 
         # Create parquet file
-        df = pd.DataFrame({"col1": [1, 2]})
+        df = pd.DataFrame({"system_id": [1, 2], "col1": [10, 20]})
         values_file = values_dir / "test.parquet"
         df.to_parquet(values_file, index=False)
 
@@ -831,7 +931,7 @@ class TestEntityValues:
         values_dir.mkdir()
 
         # Create parquet file
-        df = pd.DataFrame({"col1": [1, 2]})
+        df = pd.DataFrame({"system_id": [1, 2], "col1": [10, 20]})
         values_file = values_dir / "test.parquet"
         df.to_parquet(values_file, index=False)
 
@@ -916,7 +1016,7 @@ class TestEntityValues:
         values_dir.mkdir()
 
         # Create parquet file
-        df = pd.DataFrame({"col1": [1, 2]})
+        df = pd.DataFrame({"system_id": [1, 2], "col1": [10, 20]})
         values_file = values_dir / "test.parquet"
         df.to_parquet(values_file, index=False)
 
@@ -942,4 +1042,4 @@ class TestEntityValues:
         response = await authorized_client.get("/api/v1/projects/test_project/entities/test_entity/values?format=csv")
         assert response.status_code == 200
         assert response.json()["format"] == "csv"
-        assert response.json()["columns"] == ["col1"]  # Data unchanged
+        assert response.json()["columns"] == ["system_id", "col1"]  # Data unchanged

@@ -116,6 +116,68 @@ class ColumnExistsValidator:
         ]
 
 
+class BusinessKeyProducedValidator:
+    """Validate that configured business keys are produced by the entity output.
+
+    A business key must reference a field the entity actually produces, such as a
+    configured column, an ``extra_columns`` value, a foreign-key column, or an
+    ``unnest`` output. Keys never create output columns. Running this check during
+    data validation reports a key that the loaded data does not contain, including
+    loader-discovered fields that structural validation could not see.
+    """
+
+    @staticmethod
+    def validate(df: pd.DataFrame, key_columns: list[str], entity_name: str) -> list[ValidationIssue]:
+        """Return one issue for each business key missing from the DataFrame.
+
+        Args:
+            df: DataFrame produced for the entity.
+            key_columns: Configured business keys that must be present.
+            entity_name: Entity name used for error reporting.
+
+        Returns:
+            One issue per key that is absent from the DataFrame columns.
+        """
+        if not key_columns or df.empty:
+            return []
+
+        actual_columns: set[str] = set(df.columns)
+        missing_keys: list[str] = [key for key in key_columns if key not in actual_columns]
+
+        return BusinessKeyProducedValidator.issues_for_missing_keys(entity_name, missing_keys)
+
+    @staticmethod
+    def issues_for_missing_keys(entity_name: str, missing_keys: list[str]) -> list[ValidationIssue]:
+        """Return one key-not-produced issue per missing key.
+
+        Args:
+            entity_name: Entity name used for error reporting.
+            missing_keys: Business keys that the entity does not produce.
+
+        Returns:
+            One issue per key in ``missing_keys``.
+        """
+        return [
+            ValidationIssue(
+                severity="error",
+                entity=entity_name,
+                field="keys",
+                column=key,
+                message=(
+                    f"Entity '{entity_name}': business key '{key}' is not produced by this entity. " "'keys' do not create output columns."
+                ),
+                code="BUSINESS_KEY_NOT_PRODUCED",
+                suggestion=(
+                    f"Add '{key}' to 'columns' or configure the producer " "(extra_columns, foreign_keys, or unnest) that creates it."
+                ),
+                category="data",
+                priority="high",
+                auto_fixable=False,
+            )
+            for key in missing_keys
+        ]
+
+
 class NaturalKeyUniquenessValidator:
     """Validate that natural keys are unique in DataFrame."""
 
@@ -138,7 +200,7 @@ class NaturalKeyUniquenessValidator:
         # Check if all key columns exist
         missing_keys = set(key_columns) - set(df.columns)
         if missing_keys:
-            # Don't report here - ColumnExistsValidator will catch this
+            # Missing keys are reported by BusinessKeyProducedValidator.
             return []
 
         # Check for duplicates

@@ -48,6 +48,7 @@ Rules:
 - FK values are local parent `system_id` values, not external target IDs.
 - FK column names are derived from the parent `public_id`.
 - `public_id` is required for fixed, merged, and FK parent entities.
+- An entity may list `system_id` or `public_id` in `keys`; identity columns are accepted because the entity produces them. Prefer business columns for `keys`; identity columns exist for identity, not matching.
 - Non-fixed entities should not declare/import `system_id` in `columns`.
 - Fixed entities may intentionally preserve explicit `system_id`.
 - Fixed `system_id` values must be positive integers, unique, and non-null.

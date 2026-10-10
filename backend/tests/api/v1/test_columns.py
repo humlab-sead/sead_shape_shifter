@@ -12,12 +12,12 @@ _PROJECT_ENTITIES = {
         "columns": ["parent_key", "source_value"],
         "extra_columns": {"derived_value": "source_value"},
     },
-        "other_parent": {
-            "type": "entity",
-            "public_id": "other_parent_id",
-            "keys": ["other_parent_key"],
-            "columns": ["other_parent_key", "other_value"],
-        },
+    "other_parent": {
+        "type": "entity",
+        "public_id": "other_parent_id",
+        "keys": ["other_parent_key"],
+        "columns": ["other_parent_key", "other_value"],
+    },
     "child": {
         "type": "entity",
         "public_id": "child_id",
@@ -101,6 +101,27 @@ async def test_post_uses_unsaved_draft_and_returns_operation_and_stage_candidate
     saved_entity = await authorized_client.get("/api/v1/projects/test_project/entities/child")
     assert saved_entity.status_code == 200
     assert saved_entity.json()["entity_data"]["columns"] == ["child_key", "saved_value"]
+
+
+@pytest.mark.asyncio
+async def test_post_does_not_suggest_a_key_without_a_producer(authorized_client) -> None:
+    await _create_project(authorized_client)
+
+    response = await authorized_client.post(
+        "/api/v1/projects/test_project/entities/child/column-availability",
+        json={
+            "entity_draft": {
+                "type": "entity",
+                "keys": ["unproduced_key"],
+                "columns": ["draft_value"],
+            }
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["columns"] == ["draft_value"]
+    assert "unproduced_key" not in body["business_keys"]
 
 
 @pytest.mark.asyncio

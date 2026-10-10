@@ -116,6 +116,12 @@ A local sequential integer that serves as the primary key for all Shape Shifter 
 
 Human-meaningful identifiers that uniquely distinguish an entity within a domain, such as a site code or scientific name. Used for matching and deduplication in the keys tier of the three-tier identity system.
 
+### Authoritative Fixed Column Ordering
+
+**Definition:** The one column order Shape Shifter uses for a fixed entity's rows: the managed identity columns first (`system_id`, then `public_id` when the entity defines one), followed by the entity's produced data columns in their declared order. Business keys describe produced fields and add no positions.
+
+**Context:** This is the order exposed as `fixed_schema.full_columns` in entity responses. Stored values, values requests, and the editor grid must match it position for position. A stored file holding the same columns in another order is reordered on read without being written; a values request in another order is rejected. Use this full term rather than the shorter "authoritative order", which is ambiguous.
+
 ## 3. Implementation and Architecture Concepts
 
 ### Adapter
