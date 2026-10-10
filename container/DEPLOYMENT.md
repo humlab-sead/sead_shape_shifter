@@ -254,13 +254,14 @@ Install the user service so the container starts on boot:
 sudo scripts/deploy/install_systemd_service.sh test-shape-shifter.sead.se
 ```
 
-The unit starts the container through `scripts/up.sh` and stops it with
-`scripts/down.sh`, the same scripts an operator runs, so a systemd start and a
-manual `make up` resolve `~/config/deployment.env` identically. The unit sets no
-deployment configuration of its own: a value in the unit environment would
-override the deployment file, because the compose tools prefer the environment
-over the file. The unit only fixes `WorkingDirectory=%h/container`, so the code
-that runs is the code in the checkout.
+The unit starts the container through `scripts/container.sh up` and stops it
+with `scripts/container.sh down`, the same dispatcher an operator runs, so a
+systemd start and a manual `make up` resolve `~/config/deployment.env`
+identically. The unit sets no deployment configuration of its own: a value in
+the unit environment would override the deployment file, because the compose
+tools prefer the environment over the file. The unit only fixes
+`WorkingDirectory=%h/container`, so the code that runs is the code in the
+checkout.
 
 Control it with the `service-*` targets, which call `scripts/service.sh`:
 

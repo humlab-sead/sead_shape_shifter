@@ -69,6 +69,13 @@ SCRIPTS_DIR := ./scripts
 RESOURCES_DIR := ./resources
 ENV_EXAMPLE := $(MAKEFILE_DIR).env.example
 
+# Container lifecycle actions all delegate to scripts/container.sh. The script
+# applies the same defaults when it is run directly, so keep the two lists in
+# step.
+CONTAINER_ENV := DATA_DIR="$(CONTAINER_DATA_DIR)" HOST_PORT="$(HOST_PORT)" \
+	IMAGE_NAME="$(IMAGE_NAME)" COMPOSE_PROJECT_NAME="$(COMPOSE_PROJECT_NAME)" \
+	CONTAINER_NAME="$(CONTAINER_NAME)"
+
 # podman-compose reads runtime configuration from CONFIG_DIR and mutable data
 # from CONTAINER_DATA_DIR.
 export CONFIG_DIR
@@ -231,19 +238,20 @@ build-no-cache: check-podman
 # ===========================================================================
 # Container lifecycle
 # ===========================================================================
+# These targets delegate to scripts/container.sh; CONTAINER_ENV above passes the
+# resolved deployment values.
 
 .PHONY: up
 up: check-podman
-	@DATA_DIR="$(CONTAINER_DATA_DIR)" HOST_PORT="$(HOST_PORT)" IMAGE_NAME="$(IMAGE_NAME)" \
-		COMPOSE_PROJECT_NAME="$(COMPOSE_PROJECT_NAME)" $(SCRIPTS_DIR)/up.sh
+	@$(CONTAINER_ENV) $(SCRIPTS_DIR)/container.sh up
 
 .PHONY: down
 down:
-	@DATA_DIR="$(CONTAINER_DATA_DIR)" COMPOSE_PROJECT_NAME="$(COMPOSE_PROJECT_NAME)" $(SCRIPTS_DIR)/down.sh
+	@$(CONTAINER_ENV) $(SCRIPTS_DIR)/container.sh down
 
 .PHONY: restart
-restart: down up
-	@echo "$(GREEN)+ Container restarted$(NC)"
+restart: check-podman
+	@$(CONTAINER_ENV) $(SCRIPTS_DIR)/container.sh restart
 
 # ===========================================================================
 # Diagnostics
@@ -251,7 +259,7 @@ restart: down up
 
 .PHONY: logs
 logs:
-	@DATA_DIR="$(CONTAINER_DATA_DIR)" COMPOSE_PROJECT_NAME="$(COMPOSE_PROJECT_NAME)" $(SCRIPTS_DIR)/logs.sh
+	@$(CONTAINER_ENV) $(SCRIPTS_DIR)/container.sh logs
 
 .PHONY: ps
 ps:
@@ -259,7 +267,7 @@ ps:
 
 .PHONY: status
 status:
-	@CONTAINER_NAME="$(CONTAINER_NAME)" $(SCRIPTS_DIR)/status.sh
+	@$(CONTAINER_ENV) $(SCRIPTS_DIR)/container.sh status
 
 .PHONY: shell
 shell:
