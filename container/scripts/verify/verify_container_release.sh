@@ -23,6 +23,10 @@
 #   --git-dir DIR         git repository used for tag and ancestry checks
 #                         (default: repository containing the container directory)
 #   --require-main-merged fail unless origin/main is an ancestor of HEAD
+#   --resume-at-head      accept an existing container-v<VERSION> tag only when
+#                         it points at HEAD, so a tag pushed by a failed publish
+#                         run can be resumed; the default still requires a new
+#                         version that strictly increases over the last tag
 #
 # Exit status: 0 when every check passes, 1 on the first failed check.
 
@@ -95,7 +99,7 @@ version_gt() {
 }
 
 check_dir() {
-	local container_dir="$1" git_dir="$2" require_main_merged="$3"
+	local container_dir="$1" git_dir="$2" require_main_merged="$3" resume_at_head="$4"
 	local version previous
 
 	version="$(read_version "$container_dir")"
@@ -109,16 +113,30 @@ check_dir() {
 	ok "all ${#REQUIRED_FILES[@]} required deployment files are present"
 
 	if [[ -n "$git_dir" ]]; then
-		previous="$(highest_tagged_version "$git_dir")"
-		if [[ -n "$previous" ]]; then
-			version_gt "$version" "$previous" ||
-				die "version $version does not strictly increase over the last container-v$previous tag"
-			ok "version $version increases over container-v$previous"
+		local tag="container-v$version"
+		if git -C "$git_dir" rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+			# The tag for this version already exists. In resume mode, accept it
+			# only when it points at the commit being published so a publish run
+			# that failed after tagging can finish; otherwise refuse the version.
+			if [[ "$resume_at_head" == "true" ]]; then
+				local tagged_commit head_commit
+				tagged_commit="$(git -C "$git_dir" rev-parse "${tag}^{commit}")"
+				head_commit="$(git -C "$git_dir" rev-parse HEAD)"
+				[[ "$tagged_commit" == "$head_commit" ]] ||
+					die "tag $tag exists at $tagged_commit, not HEAD ($head_commit); refusing to overwrite it"
+				ok "resuming publication: $tag already points at HEAD"
+			else
+				die "tag $tag already exists; the version must be new"
+			fi
 		else
-			ok "no previous container-v* tag; $version is the first container release"
-		fi
-		if git -C "$git_dir" rev-parse -q --verify "refs/tags/container-v$version" >/dev/null; then
-			die "tag container-v$version already exists; the version must be new"
+			previous="$(highest_tagged_version "$git_dir")"
+			if [[ -n "$previous" ]]; then
+				version_gt "$version" "$previous" ||
+					die "version $version does not strictly increase over the last container-v$previous tag"
+				ok "version $version increases over container-v$previous"
+			else
+				ok "no previous container-v* tag; $version is the first container release"
+			fi
 		fi
 		if [[ "$require_main_merged" == "true" ]]; then
 			git -C "$git_dir" merge-base --is-ancestor origin/main HEAD 2>/dev/null ||
@@ -164,12 +182,13 @@ main() {
 	shift || true
 	case "$mode" in
 	dir)
-		local container_dir="" git_dir="" require_main_merged="false"
+		local container_dir="" git_dir="" require_main_merged="false" resume_at_head="false"
 		while [[ $# -gt 0 ]]; do
 			case "$1" in
 			--container-dir) container_dir="$2"; shift 2 ;;
 			--git-dir) git_dir="$2"; shift 2 ;;
 			--require-main-merged) require_main_merged="true"; shift ;;
+			--resume-at-head) resume_at_head="true"; shift ;;
 			*) die "unknown option for dir mode: $1" ;;
 			esac
 		done
@@ -177,7 +196,7 @@ main() {
 		if [[ -z "$git_dir" ]]; then
 			git_dir="$(git -C "$container_dir" rev-parse --show-toplevel 2>/dev/null || true)"
 		fi
-		check_dir "$container_dir" "$git_dir" "$require_main_merged"
+		check_dir "$container_dir" "$git_dir" "$require_main_merged" "$resume_at_head"
 		;;
 	archive)
 		local archive="${1:-}"
