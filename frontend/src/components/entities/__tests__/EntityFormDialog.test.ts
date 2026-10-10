@@ -850,6 +850,96 @@ describe('EntityFormDialog', () => {
     )
   })
 
+  it('round-trips a materialized fixed entity through open, edit, save, and reopen', async () => {
+    const fullOrder = ['system_id', 'method_id', 'created_at', 'label']
+    const savedEntity: EntityResponse = {
+      name: 'method',
+      etag: 'etag-method-saved',
+      fixed_schema: externalFixedEntity.fixed_schema,
+      entity_data: { ...externalFixedEntity.entity_data },
+    }
+
+    mockState.getValues.mockResolvedValueOnce({
+      columns: fullOrder,
+      values: [[1, 53, '2026-05-19', 'Sampling']],
+      format: 'parquet',
+      row_count: 1,
+      etag: 'values-etag',
+    })
+    mockState.updateValues.mockResolvedValue({ etag: 'new-values-etag' })
+    mockState.update.mockResolvedValue(savedEntity)
+
+    const wrapper = mountEntityFormDialog({
+      mode: 'edit',
+      entity: externalFixedEntity,
+    })
+
+    await flushPromises()
+    await nextTick()
+
+    // Open: the grid hydrates from backend metadata in the authoritative order.
+    const fixedValuesGrid = wrapper.findComponent({ name: 'FixedValuesGrid' })
+    expect(fixedValuesGrid.props('columns')).toEqual(fullOrder)
+    expect(fixedValuesGrid.props('modelValue')).toEqual([[1, 53, '2026-05-19', 'Sampling']])
+
+    // Edit one named field: created_at changes, the label value stays with its own column.
+    fixedValuesGrid.vm.$emit('update:modelValue', [[1, 53, '2026-05-20', 'Sampling']])
+    await flushPromises()
+    await nextTick()
+
+    const keysCombobox = wrapper
+      .findAllComponents({ name: 'VCombobox' })
+      .find((component) => component.props('label') === 'Business Keys *')
+    expect(keysCombobox).toBeTruthy()
+    keysCombobox!.vm.$emit('update:modelValue', ['label', 'ghost_key'])
+    await flushPromises()
+    await nextTick()
+
+    // Selecting a key that no producer creates must not add a grid position.
+    expect(fixedValuesGrid.props('columns')).toEqual(fullOrder)
+
+    const saveButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Save')
+    expect(saveButton?.element.disabled).toBe(false)
+    await saveButton!.trigger('click')
+    await flushPromises()
+
+    // The saved config keeps produced columns only; the request uses full order and the GET ETag.
+    expect(mockState.update).toHaveBeenCalledWith('method', {
+      entity_data: expect.objectContaining({
+        columns: ['created_at', 'label'],
+      }),
+    })
+    expect(mockState.updateValues).toHaveBeenCalledWith(
+      'arbodat',
+      'method',
+      {
+        columns: fullOrder,
+        values: [[1, 53, '2026-05-20', 'Sampling']],
+      },
+      'values-etag'
+    )
+
+    // Reopen from the returned entity and the values the backend would return next.
+    mockState.getValues.mockResolvedValueOnce({
+      columns: fullOrder,
+      values: [[1, 53, '2026-05-20', 'Sampling']],
+      format: 'parquet',
+      row_count: 1,
+      etag: 'new-values-etag',
+    })
+    const reopened = mountEntityFormDialog({
+      mode: 'edit',
+      entity: savedEntity,
+    })
+
+    await flushPromises()
+    await nextTick()
+
+    const reopenedGrid = reopened.findComponent({ name: 'FixedValuesGrid' })
+    expect(reopenedGrid.props('columns')).toEqual(fullOrder)
+    expect(reopenedGrid.props('modelValue')).toEqual([[1, 53, '2026-05-20', 'Sampling']])
+  })
+
   it('remaps inline fixed values by name when a produced column is reordered', async () => {
     mockState.update.mockResolvedValue(createEntity('method', orderedFixedEntity.entity_data))
 
@@ -888,6 +978,9 @@ describe('EntityFormDialog', () => {
   })
 
   it('rejects external fixed values whose columns do not match the active full order', async () => {
+    const updateCallsBefore = mockState.update.mock.calls.length
+    const valuesUpdateCallsBefore = mockState.updateValues.mock.calls.length
+
     mockState.getValues.mockResolvedValue({
       columns: ['system_id', 'method_id', 'label', 'created_at'],
       values: [[1, 53, 'Sampling', '2026-05-19']],
@@ -906,7 +999,10 @@ describe('EntityFormDialog', () => {
 
     expect(wrapper.text()).toContain('do not match the entity schema')
     const saveButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Save')
+    // Save is disabled while the fetched order is unsafe, so no write can be sent.
     expect(saveButton?.element.disabled).toBe(true)
+    expect(mockState.update.mock.calls.length).toBe(updateCallsBefore)
+    expect(mockState.updateValues.mock.calls.length).toBe(valuesUpdateCallsBefore)
   })
 
   it('submits an edited entity name as a guarded rename', async () => {

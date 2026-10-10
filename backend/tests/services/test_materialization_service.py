@@ -376,11 +376,25 @@ class TestMaterializeEntity:
 
     @pytest.mark.asyncio
     async def test_materialize_missing_key_fails_without_saving(
-        self, materialization_service, mock_project_service, mock_api_project, mock_core_project, mock_table_config
+        self, tmp_path, materialization_service, mock_project_service, mock_api_project, mock_core_project, mock_table_config
     ):
-        """Materialization should fail on a missing key before saving the project."""
+        """Materialization should fail on a missing key before saving and leave persisted files unchanged."""
+        project_dir = tmp_path / "test-project"
+        project_dir.mkdir()
+        project_yaml = project_dir / "shapeshifter.yml"
+        project_yaml.write_text("metadata:\n  name: test-project\nentities: {}\n", encoding="utf-8")
+        sidecar_path = project_dir / "materialized" / "location.csv"
+        sidecar_path.parent.mkdir(parents=True)
+        sidecar_path.write_text("system_id,location_id,country_code\n1,1,NO\n", encoding="utf-8")
+
+        project_yaml_before = project_yaml.read_bytes()
+        sidecar_before = sidecar_path.read_bytes()
+
         mock_project_service.load_project.return_value = mock_api_project
-        mock_project_service.save_project = Mock()
+        # A real save would rewrite the project YAML; the missing key must prevent that write.
+        mock_project_service.save_project = Mock(
+            side_effect=lambda _project: project_yaml.write_text("rewritten by save", encoding="utf-8")
+        )
 
         mock_spec = MagicMock(spec=CanMaterializeSpecification)
         mock_spec.is_satisfied_by.return_value = True
@@ -396,6 +410,8 @@ class TestMaterializeEntity:
         assert not result.success
         assert any("does not produce" in error for error in result.errors)
         mock_project_service.save_project.assert_not_called()
+        assert project_yaml.read_bytes() == project_yaml_before
+        assert sidecar_path.read_bytes() == sidecar_before
 
     @pytest.mark.asyncio
     async def test_materialize_storage_failure(
