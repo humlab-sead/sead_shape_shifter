@@ -1,0 +1,121 @@
+name: Container Release
+
+# Publishes reviewed container/ releases independently of the application
+# semantic-release workflow (release.yml). PRs validate only; the merge to
+# container-release publishes one container-vX.Y.Z release.
+
+on:
+  pull_request:
+  push:
+    branches:
+      - container-release
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    if: github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'container-release'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify release inputs
+        run: |
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          bash container/scripts/verify/verify_container_release.sh dir --require-main-merged
+
+      - name: Build release archive from tracked content
+        run: |
+          version="$(tr -d '[:space:]' < container/VERSION)"
+          git archive --format=tar.gz --prefix=container/ HEAD:container \
+            -o "container-v${version}.tar.gz"
+
+      - name: Verify release archive
+        run: |
+          version="$(tr -d '[:space:]' < container/VERSION)"
+          bash container/scripts/verify/verify_container_release.sh archive "container-v${version}.tar.gz"
+
+      - name: Upload archive for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: container-archive
+          path: container-v*.tar.gz
+
+  publish:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify release inputs
+        run: bash container/scripts/verify/verify_container_release.sh dir
+
+      - name: Refuse an existing tag or release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version="$(tr -d '[:space:]' < container/VERSION)"
+          if git ls-remote origin "refs/tags/container-v${version}" | grep -q .; then
+            echo "container-v${version} already exists; refusing to overwrite a published release" >&2
+            exit 1
+          fi
+          if gh release view "container-v${version}" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "a GitHub Release for container-v${version} already exists" >&2
+            exit 1
+          fi
+
+      - name: Build release archive from tracked content
+        run: |
+          version="$(tr -d '[:space:]' < container/VERSION)"
+          git archive --format=tar.gz --prefix=container/ HEAD:container \
+            -o "container-v${version}.tar.gz"
+          sha256sum "container-v${version}.tar.gz" > "container-v${version}.tar.gz.sha256"
+
+      - name: Verify release archive
+        run: |
+          version="$(tr -d '[:space:]' < container/VERSION)"
+          bash container/scripts/verify/verify_container_release.sh archive "container-v${version}.tar.gz"
+
+      - name: Publish tag and release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version="$(tr -d '[:space:]' < container/VERSION)"
+          tag="container-v${version}"
+          commit="$(git rev-parse HEAD)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$tag" -m "Container release ${tag} from ${commit}"
+          if ! git push origin "refs/tags/${tag}"; then
+            echo "Failed to push ${tag}; no release will be created." >&2
+            exit 1
+          fi
+          gh release create "$tag" \
+            "container-v${version}.tar.gz" \
+            "container-v${version}.tar.gz.sha256" \
+            --target "$commit" \
+            --title "$tag" \
+            --notes "Container deployment bundle ${tag}.
+
+            - Source commit: ${commit}
+            - Archive: container-v${version}.tar.gz (complete container/ tree)
+            - Checksum: container-v${version}.tar.gz.sha256 (sha256sum)
+
+            Select this release by its exact tag. This release is independent
+            of the application release stream on main."
+          # Confirm the published release carries both assets; report partial
+          # publication instead of claiming success.
+          assets="$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')"
+          for asset in "container-v${version}.tar.gz" "container-v${version}.tar.gz.sha256"; do
+            if ! printf '%s\n' "$assets" | grep -qxF "$asset"; then
+              echo "Release $tag is missing the published asset $asset." >&2
+              exit 1
+            fi
+          done

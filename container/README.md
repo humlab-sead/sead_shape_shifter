@@ -187,6 +187,56 @@ rebuild. They come from `~/config/deployment.env` and reach the build as
 arguments (see `podman-compose.yml` and `Containerfile`); they are not read from
 `backend.env`.
 
+## Container Releases
+
+The `container/` tree is versioned and published independently of the
+application. Container releases are GitHub Releases tagged `container-vX.Y.Z`,
+created only from merges to the protected `container-release` branch by the
+`container-release` workflow. Application releases (`vX.Y.Z` tags produced by
+semantic-release on `main`) are a separate stream: a container tag says nothing
+about the application version, and publishing or selecting a container release
+never changes `GIT_REF` or `IMAGE_NAME`.
+
+Each container release carries:
+
+- `container-vX.Y.Z.tar.gz` — the complete tracked `container/` tree, unpacking
+  to a single `container/` directory. `.containerignore` filters only the image
+  build context, never this archive.
+- `container-vX.Y.Z.tar.gz.sha256` — a `sha256sum` checksum that detects
+  transfer corruption. It is not an authenticity signature; trust comes from
+  the protected repository and release workflow.
+- Release notes recording the exact source commit. Select releases by their
+  exact tag, not by a branch or "latest".
+
+### Promoting a container release
+
+1. Create a promotion branch from the current tip of `container-release`.
+2. Merge `main` into the promotion branch, so the reviewed tree carries the
+   latest application changes.
+3. Set the next version explicitly in `container/VERSION` as `X.Y.Z`. The value
+   must be a plain three-part version that strictly increases over the highest
+   existing `container-v*` tag.
+4. Open a PR targeting `container-release` and review the resulting `container/`
+   tree, not just the commit list.
+5. The PR run validates the release inputs and builds the archive with
+   read-only permissions. It creates no tag and no Release. A missing, reused,
+   or malformed version, or a missing required deployment file, fails the PR.
+6. After an approved review, merge. The post-merge workflow publishes exactly
+   one `container-vX.Y.Z` tag and Release from the merged commit, and refuses
+   to run when that tag or Release already exists.
+
+To inspect a published release locally:
+
+```bash
+gh release view container-vX.Y.Z --repo humlab-sead/sead_shape_shifter
+sha256sum -c container-vX.Y.Z.tar.gz.sha256
+tar -tzf container-vX.Y.Z.tar.gz | head
+```
+
+Installing a release on a deployment host and selecting it per environment is a
+separate change and is not yet available; until then, keep using the checkout
+placement described in [DEPLOYMENT.md](DEPLOYMENT.md).
+
 ## Documentation
 
 - [DEPLOYMENT.md](DEPLOYMENT.md): initial deployment, multiple environments, NGINX and systemd.
