@@ -2,7 +2,8 @@
 
 ## Status
 
-- **Implemented** (branch `declarative-business-keys`); closes issue [#324](https://github.com/humlab-sead/sead_shape_shifter/issues/324) and [#326](https://github.com/humlab-sead/sead_shape_shifter/issues/326).
+- **Implemented** (branch `declarative-business-keys`); closes issue [#326](https://github.com/humlab-sead/sead_shape_shifter/issues/326).
+- Originated from [issue #324](https://github.com/humlab-sead/sead_shape_shifter/issues/324), which was closed as not planned and superseded by this proposal.
 - Scope: Core extraction and validation, fixed/materialized persistence, API compatibility, and the entity editor.
 - The additive `fixed_schema` API work from [#325](https://github.com/humlab-sead/sead_shape_shifter/issues/325) is complete, and frontend adoption in [#326](https://github.com/humlab-sead/sead_shape_shifter/issues/326) is complete.
 - Goal: make `keys` identify fields that an entity already produces. A key must not select, create, or reorder a result column.
