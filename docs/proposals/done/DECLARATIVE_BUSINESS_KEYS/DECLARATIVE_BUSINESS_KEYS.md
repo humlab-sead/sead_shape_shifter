@@ -2,10 +2,12 @@
 
 ## Status
 
-- Proposed change based on [issue #324](https://github.com/humlab-sead/sead_shape_shifter/issues/324).
+- **Implemented** (branch `declarative-business-keys`); closes issue [#324](https://github.com/humlab-sead/sead_shape_shifter/issues/324) and [#326](https://github.com/humlab-sead/sead_shape_shifter/issues/326).
 - Scope: Core extraction and validation, fixed/materialized persistence, API compatibility, and the entity editor.
-- The additive `fixed_schema` API work from [#325](https://github.com/humlab-sead/sead_shape_shifter/issues/325) is complete. Frontend adoption in [#326](https://github.com/humlab-sead/sead_shape_shifter/issues/326) remains open.
+- The additive `fixed_schema` API work from [#325](https://github.com/humlab-sead/sead_shape_shifter/issues/325) is complete, and frontend adoption in [#326](https://github.com/humlab-sead/sead_shape_shifter/issues/326) is complete.
 - Goal: make `keys` identify fields that an entity already produces. A key must not select, create, or reorder a result column.
+- Validation: phases 1-4 passed their task-plan milestones, including the grouped regression in phase 4 and a survey confirming that no existing project configures an unproduced business key.
+- Remaining follow-up: retiring the legacy fixed-values request-order path is deferred to [#539](https://github.com/humlab-sead/sead_shape_shifter/issues/539). It does not block this change.
 
 ## Summary
 
@@ -56,7 +58,7 @@ The behavior is spread across Core extraction and SQL ordering, fixed-schema der
 
 Check known configurations structurally. When source fields are not known until a loader runs, check the key against the loaded output and return a clear validation error if it is missing. Do not treat a key as valid just because it appears in the `keys` list.
 
-The column-availability resolver should suggest business keys from known source and produced fields, not from configured keys themselves. Suggestions remain free-text and advisory, consistent with the completed [stage-aware column suggestions proposal](../done/STAGE_AWARE_COLUMN_SUGGESTIONS/STAGE_AWARE_COLUMN_SUGGESTIONS.md).
+The column-availability resolver should suggest business keys from known source and produced fields, not from configured keys themselves. Suggestions remain free-text and advisory, consistent with the completed [stage-aware column suggestions proposal](../STAGE_AWARE_COLUMN_SUGGESTIONS/STAGE_AWARE_COLUMN_SUGGESTIONS.md).
 
 ### Fixed and materialized rows
 
@@ -131,8 +133,10 @@ For fixed and materialized data, report the expected `fixed_schema.full_columns`
 
 ## Open Questions
 
-- Should API v1 accept recognized legacy fixed-values column order during the transition, or should old clients be required to upgrade together with the backend? The recommendation is to accept and remap only an exact, unambiguous legacy order for a limited transition period.
-- What is the rollout period for removing the legacy values-order compatibility path? Set it when the deployment and client-upgrade process is known.
+Both questions below were settled during implementation.
+
+- **Resolved:** API v1 accepts and remaps only an exact, unambiguous legacy fixed-values column order. Implemented in phase 2.
+- **Resolved:** No rollout period is required. The frontend bundled with the backend is the only client that sends fixed-values requests, and it already sends the authoritative fixed column ordering, so retiring the legacy path is a code change tracked as [#539](https://github.com/humlab-sead/sead_shape_shifter/issues/539).
 
 ## Final Recommendation
 
