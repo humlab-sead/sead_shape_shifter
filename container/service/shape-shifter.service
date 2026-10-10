@@ -18,8 +18,8 @@ WorkingDirectory=%h/container
 
 Environment=PODMAN_SYSTEMD_UNIT=%n
 
-ExecStart=%h/container/scripts/up.sh
-ExecStop=%h/container/scripts/down.sh
+ExecStart=%h/container/scripts/container.sh up
+ExecStop=%h/container/scripts/container.sh down
 
 # Restart the compose invocation if it fails; container restart policy is set
 # by podman-compose.yml (restart: unless-stopped).
