@@ -2,7 +2,8 @@
 
 ## Status
 
-- Proposed change
+- **Implemented and archived** (2026-10-11); PR #543 merged phases 1-3 to `dev`.
+- Validation: each phase passed its task-plan validation milestones; the release-contract, project-command, and release-bundle test suites pass, with Podman/systemd-touching suites left to CI.
 - Scope: container release contents, deployment scripts, verification ownership, and related documentation
 - Goal: Keep the Shape Shifter container setup small while handing ecosystem runtime checks to SEAD operations
 - Layout: paths name the current `deployment/` tree (`deployment/container/` for the release bundle, `deployment/container-host/` for the source-only host tools); a release archive still unpacks under a single `container/` root
@@ -127,7 +128,7 @@ The host release manager must independently validate downloaded content using tr
 - **Behavior to preserve:** release version/tag policy; archive safety and integrity checks; install/activate/rollback selection; Shape Shifter authorization behavior; explicit safeguards for operations that change state.
 - **Expected validation:** source and archive checks pass; the host manager rejects invalid or unsafe archives without running their code; the runtime bundle excludes host and operations tools; app authorization tests remain; the handoff document defines the operational outcomes.
 - **Other phase decisions:** choose the source-only host-tools directory and wrapper-retirement point; classify any mixed container-configuration checks as application tests or operations checks. SEAD operations selects and implements its own checks outside this proposal.
-- **Depends on:** the completed [CONTAINER_DEPLOY_VERSIONING](../done/CONTAINER_DEPLOY_VERSIONING/CONTAINER_DEPLOY_VERSIONING.md).
+- **Depends on:** the completed [CONTAINER_DEPLOY_VERSIONING](../CONTAINER_DEPLOY_VERSIONING/CONTAINER_DEPLOY_VERSIONING.md).
 - **Related handoff:** [SEAD Runtime Verification Handoff](./OPERATIONS_VERIFICATION_HANDOFF.md).
 
 ## Recommended Delivery Order

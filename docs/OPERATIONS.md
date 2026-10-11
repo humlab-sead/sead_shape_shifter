@@ -198,7 +198,7 @@ SEAD operations is responsible for checks of host exposure, deployed container
 configuration, database access, credentials, logs, proxy identity, application
 grants, and recovery. Shape Shifter no longer ships scripts for these checks.
 
-The [SEAD Runtime Verification Handoff](./proposals/CONTAINER_SETUP_SIMPLIFICATION/OPERATIONS_VERIFICATION_HANDOFF.md)
+The [SEAD Runtime Verification Handoff](./proposals/done/CONTAINER_SETUP_SIMPLIFICATION/OPERATIONS_VERIFICATION_HANDOFF.md)
 states the required outcomes without selecting tools or procedures. It is a
 requirements document, not an operating procedure; use the checks and
 procedures established by SEAD operations for each environment.
