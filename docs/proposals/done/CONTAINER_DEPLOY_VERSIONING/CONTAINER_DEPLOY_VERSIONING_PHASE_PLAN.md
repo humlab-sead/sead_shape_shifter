@@ -16,12 +16,14 @@ This plan covers release publication, per-environment installation and selection
 
 ## Current Position
 
-- Phase 1 is complete: PR #541 published `container-v0.1.0` from merge commit `71f52f8268daed3f04c501e50cf59341fbb1273d`; its archive and checksum were verified against the complete tracked `container/` tree.
-- The user decided not to run the live publication-retry check. The retry-recovery defect found during review remains a follow-up and was not represented as passing validation.
+- All three phases are complete (2026-10-11), and this phase plan is archived with the proposal in `done/`.
+- Phase 1: PR #541 published `container-v0.1.0` from merge commit `71f52f8268daed3f04c501e50cf59341fbb1273d`; its archive and checksum were verified against the complete tracked `container/` tree.
+- Phase 2: the administrator-owned release manager installs, activates, rolls back, and reports a named release per user, and the home-relative path rule is implemented in the Makefile and `load-env.sh`.
+- Phase 3: the lifecycle dispatcher is committed and runs through `~/container`, and every verification script has a documented disposition.
 - The application release workflow remains separate on `main`; branch and tag protections and the `container-release` publication workflow are active.
-- The existing single-environment deployment script fetches a repository archive into the deployment user's directory and writes the fetched ref into application image settings. Local synchronization mirrors into that active directory.
-- Container lifecycle-dispatcher edits are present but uncommitted; treat them as in-progress work rather than validated behavior.
-- The proposal fixes per-environment administrator-owned storage, home-relative overrides, and disposable non-production test users. The host installer and release selection workflow remain to be implemented.
+- The user waived the live publication-retry check (Phase 1 `V-2`) and the live systemd user-service check (Phase 3 `V-3`); neither is claimed as passing.
+- The retry-recovery defect found during review (`F1`) remains an open follow-up and is not fixed in the published workflow.
+- The deployment scripts no longer fetch or replace container files: each environment selects a versioned release whose tag and source commit stay separate from the application image settings.
 
 ## Phase Plan
 
@@ -104,7 +106,7 @@ Install an exact published release and activate or roll it back in one environme
 
 **Readiness**
 
-Ready for a task plan. Phase 1's `container-v0.1.0` asset is published, and the host layout, relative-path rule, and non-production test approach are fixed.
+Complete (2026-10-11). Phase 2's task plan is implemented and validated on two disposable non-production users; the container host has no systemd, recorded as a limit. The host layout, relative-path rule, and non-production test approach are in place.
 
 ### Phase 3: Integrate Lifecycle and Preserve Verification
 
@@ -143,7 +145,7 @@ Run lifecycle commands consistently from the selected release and retain require
 
 **Readiness**
 
-Requires the Phase 2 selection contract and caller review before a task plan can fix compatibility and validation.
+Complete (2026-10-11). Phase 3's task plan is implemented and validated; the live systemd user-service check (`V-3`) was waived by user decision and is not claimed as passing.
 
 ## Cross-Phase Rules
 

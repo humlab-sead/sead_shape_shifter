@@ -102,7 +102,7 @@ The workflow, verifier, and version file are implemented (2026-10-10; see Execut
 | Container PR and publication automation | `.github/workflows/container-release.yml` (`NEW`) | `T1.1`, `T1.2` | PR validation and first approved-merge publication both succeeded; the retry-recovery defect is recorded as `F1`. |
 | Complete-archive verification | `container/scripts/verify/verify_container_release.sh` (`NEW`) | `T1.1`, `T1.2` | PR and published archives passed validation; published archive file list matches the source commit and its checksum verifies. |
 | Publication guidance | `container/README.md` | `T1.3` | Exact-tag selection and separation from application releases were confirmed during `V-3`. |
-| Phase 1 execution record | `docs/proposals/CONTAINER_DEPLOY_VERSIONING/CONTAINER_DEPLOY_VERSIONING_PHASE_1_TASK_PLAN.md` | — | Execution Record updated with PR, release, checksum, archive, application-release separation, and retry-recovery evidence; the live workflow retry is explicitly waived and recorded as not run. |
+| Phase 1 execution record | `docs/proposals/done/CONTAINER_DEPLOY_VERSIONING/CONTAINER_DEPLOY_VERSIONING_PHASE_1_TASK_PLAN.md` | — | Execution Record updated with PR, release, checksum, archive, application-release separation, and retry-recovery evidence; the live workflow retry is explicitly waived and recorded as not run. |
 
 ## Progress Tracker
 
