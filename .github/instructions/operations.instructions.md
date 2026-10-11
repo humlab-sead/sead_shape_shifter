@@ -69,8 +69,8 @@ Those topics belong in developer-facing documentation, design/architecture docum
 
 ## Sources to trust
 
-- `container/podman-compose.yml`, `container/Containerfile` — runtime service definitions
-- `container/Makefile`, `container/scripts/build.sh` — build and deployment scripts
+- `deployment/container/podman-compose.yml`, `deployment/container/Containerfile` — runtime service definitions
+- `deployment/container/Makefile`, `deployment/container/scripts/build.sh` — build and deployment scripts
 - `.github/workflows/` — CI/CD pipeline definitions
 - `backend/app/core/config.py` — runtime configuration and environment variable definitions
 - `AGENTS.md` — canonical architecture and operational rules
