@@ -3,7 +3,7 @@
 **Status:** Phases 1–3 are complete; the task plans record implementation and validation. Existing-data adoption, cutover, and deployment remain separate operational work.
 
 Source proposal: [Target-Model and SIMS Identity Allocation Contract](./SIMS_IDENTITY_ALLOCATION_CONTRACT.md)
-SIMS identity contract: [SIMS `target_id` response proposal](https://github.com/humlab-sead/sead_authority_service/blob/main/docs/proposals/SIMS_TARGET_ID_CONTRACT.md)
+SIMS identity contract: [SIMS `target_id` response proposal](https://github.com/humlab-sead/sead_authority_service/blob/main/docs/proposals/./SIMS_TARGET_ID_CONTRACT/SIMS_TARGET_ID_CONTRACT.md)
 
 ## Summary
 
@@ -33,7 +33,7 @@ Cutover tasks are out of scope: production or intended-deployment validation, ex
 
 | System | Owns | Plan coverage |
 | --- | --- | --- |
-| SEAD Authority Service (SIMS) | Tracked aggregate identities, scoped source-identity associations, generic configured allocation, and uniqueness within its own identity store. SIMS does not map identities to SEAD tables or enforce SEAD database integrity. | Phase 1 development; see the [SIMS identity response proposal](https://github.com/humlab-sead/sead_authority_service/blob/main/docs/proposals/SIMS_TARGET_ID_CONTRACT.md). |
+| SEAD Authority Service (SIMS) | Tracked aggregate identities, scoped source-identity associations, generic configured allocation, and uniqueness within its own identity store. SIMS does not map identities to SEAD tables or enforce SEAD database integrity. | Phase 1 development; see the [SIMS identity response proposal](https://github.com/humlab-sead/sead_authority_service/blob/main/docs/proposals/./SIMS_TARGET_ID_CONTRACT/SIMS_TARGET_ID_CONTRACT.md). |
 | Shape Shifter | Target-model identity intent, SEAD reconciliation and approval, capability preflight, run orchestration, and artifact generation. | Phases 2–3. |
 | SEAD integration and operations | Consume SIMS-issued aggregate identity values under the trust contract; establish that existing tracked entities are represented in SIMS before operational adoption. SEAD database integrity remains SEAD's responsibility. | Separate operational work in the [cutover and deployment proposal](../../CUTOVER_AND_DEPLOYMENT/SIMS_SEAD_TRUST_CONTRACT_ADOPTION_PROPOSAL.md). |
 
