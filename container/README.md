@@ -165,7 +165,7 @@ Production settings raised by the backend configuration:
   `SHAPE_SHIFTER_TRUSTED_PROXY_AUTH_ENABLED=true` and a non-empty
   `SHAPE_SHIFTER_AUTHORIZATION_BOOTSTRAP_ADMIN_PRINCIPALS`.
 - The reverse proxy must send the authenticated username in the
-  `X-Authenticated-User` header (see `scripts/deploy/nginx-shape-shifter.conf.template`).
+  `X-Authenticated-User` header (see `container-host/deploy/nginx-shape-shifter.conf.template`).
 
 Keep `backend.env` and `.pgpass/.pgpass` readable only by the deployment user:
 
@@ -247,7 +247,7 @@ for the full workflow, permissions, and first-transition rules.
 ```bash
 # Once per host, from a reviewed copy of the repository
 sudo install -o root -g root -m 0755 \
-  container/scripts/deploy/manage_container_release.sh \
+  container-host/deploy/manage_container_release.sh \
   /usr/local/sbin/shape-shifter-container-release
 
 # Per user: install an exact release without selecting it, then select it
@@ -261,6 +261,10 @@ sudo shape-shifter-container-release rollback USER
 `~/container` unchanged. `activate` and `rollback` change only that user's
 selection. None of the commands change `GIT_REF`, `IMAGE_NAME`, `~/config`, or
 `~/container-data`.
+
+A release archive carries only deployment-user runtime contents. Host tooling,
+the release-policy checks, and their regression tests live in `container-host/`
+outside the archive, so they are never shipped to a deployment user.
 
 ## Documentation
 

@@ -8,6 +8,8 @@
 #   - every required deployment file is present in the container/ tree;
 #   - the release archive unpacks under a single container/ directory and
 #     contains the same required files, with no .git or secrets inside;
+#   - no host tooling, release checks, or development tests are present in the
+#     container/ tree or the archive;
 #   - optionally, the revision under review already contains origin/main, so a
 #     promotion branch has merged main as the release policy requires.
 #
@@ -19,7 +21,7 @@
 #   verify_container_release.sh archive FILE       check a built archive
 #
 # Options for dir:
-#   --container-dir DIR   container directory to check (default: alongside this script)
+#   --container-dir DIR   container directory to check (default: <repo>/container)
 #   --git-dir DIR         git repository used for tag and ancestry checks
 #                         (default: repository containing the container directory)
 #   --require-main-merged fail unless origin/main is an ancestor of HEAD
@@ -44,7 +46,7 @@ REQUIRED_FILES=(
 	Containerfile
 	.env.example
 	.containerignore
-    scripts/container.sh
+	scripts/container.sh
 	scripts/load-env.sh
 	scripts/env-config.sh
 	scripts/setup.sh
@@ -52,11 +54,19 @@ REQUIRED_FILES=(
 	scripts/backup.sh
 	scripts/healthcheck.sh
 	scripts/service.sh
-	scripts/verify/verify_container_release.sh
 	service/shape-shifter.service
 	resources/backend.env.example
 	resources/.pgpass.example
 	resources/authorization.env.example
+)
+
+# Paths that must never appear in a release bundle. Host tooling and the shell
+# regression tests live in container-host/, outside the archive inputs, so a
+# bundle that carries them is a packaging error.
+FORBIDDEN_PREFIXES=(
+	scripts/deploy
+	scripts/verify
+	tests
 )
 
 die() {
@@ -100,6 +110,28 @@ version_gt() {
 	[[ "$highest" == "$1" && "$1" != "$2" ]]
 }
 
+# Fails when a release bundle carries host tooling or development tests. In dir
+# mode each prefix is a path under the container directory; in archive mode it is
+# matched against the archive's directory entries.
+check_forbidden() {
+	local mode="$1" target="$2" prefix
+	for prefix in "${FORBIDDEN_PREFIXES[@]}"; do
+		case "$mode" in
+		dir)
+			if [[ -e "$target/$prefix" ]]; then
+				die "release bundle must not contain container/$prefix (host tooling and tests are not released)"
+			fi
+			;;
+		archive)
+			if printf '%s\n' "$target" | grep -qE "^container/${prefix}(/|$)"; then
+				die "release archive must not contain container/$prefix/ (host tooling and tests are not released)"
+			fi
+			;;
+		esac
+	done
+	ok "no host tooling or development tests in the release bundle"
+}
+
 check_dir() {
 	local container_dir="$1" git_dir="$2" require_main_merged="$3" resume_at_head="$4"
 	local version previous
@@ -113,6 +145,8 @@ check_dir() {
 			die "required deployment file missing: container/$required_file"
 	done
 	ok "all ${#REQUIRED_FILES[@]} required deployment files are present"
+
+	check_forbidden dir "$container_dir"
 
 	if [[ -n "$git_dir" ]]; then
 		local tag="container-v$version"
@@ -176,6 +210,8 @@ check_archive() {
 		printf '%s\n' "$entries" | grep -qxF "container/$required_file" ||
 			die "archive is missing container/$required_file"
 	done
+
+	check_forbidden archive "$entries"
 	ok "archive container-v layout is valid for version $version with all required files"
 }
 
@@ -194,7 +230,7 @@ main() {
 			*) die "unknown option for dir mode: $1" ;;
 			esac
 		done
-		[[ -n "$container_dir" ]] || container_dir="$(dirname "$(dirname "$(script_dir)")")"
+		[[ -n "$container_dir" ]] || container_dir="$(dirname "$(dirname "$(script_dir)")")/container"
 		if [[ -z "$git_dir" ]]; then
 			git_dir="$(git -C "$container_dir" rev-parse --show-toplevel 2>/dev/null || true)"
 		fi
@@ -206,7 +242,7 @@ main() {
 		check_archive "$archive"
 		;;
 	*)
-		sed -n '3,26p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+		sed -n '3,33p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
 		exit 2
 		;;
 	esac

@@ -8,8 +8,8 @@ container lifecycle helpers, see the Makefile and `scripts/`.
 
 - **Release install and selection**: [Install and select a container release](#install-and-select-a-container-release)
 - **Single environment**: [Single environment deploy](#single-environment-deploy)
-- **Multiple environments**: repeat the single-environment steps, or use
-  `scripts/deploy/deploy_all_environments.sh`
+- **Multiple environments**: repeat the single-environment steps with
+  `container-host/deploy/deploy_environment.sh`
 - **NGINX**: [NGINX reverse proxy](#nginx-reverse-proxy)
 - **Authorization inputs**: [Authorization inputs](#authorization-inputs)
 - **Auto-start**: [Systemd integration](#systemd-integration)
@@ -55,11 +55,13 @@ Container releases are installed and selected with one administrator-owned
 script, `/usr/local/sbin/shape-shifter-container-release`. Install it once per
 host from a reviewed copy of the repository; an administrator updates it
 explicitly after review. The script is never run from, and is never replaced by,
-a user's selected release.
+a user's selected release. The other host tools in this guide run from a
+repository checkout under `container-host/`; they are never read from a user's
+selected release.
 
 ```bash
 sudo install -o root -g root -m 0755 \
-  container/scripts/deploy/manage_container_release.sh \
+  container-host/deploy/manage_container_release.sh \
   /usr/local/sbin/shape-shifter-container-release
 ```
 
@@ -92,9 +94,10 @@ serialized and never change another user's selection.
 `install` resolves the annotated tag's peeled commit, downloads the release
 archive and checksum by the exact `container-vX.Y.Z` tag, verifies the checksum,
 rejects an archive whose version does not match the tag or that contains
-absolute or parent-traversal paths, and validates the extracted bundle with its
-own `scripts/verify/verify_container_release.sh archive` check. Any failure
-leaves the current selection untouched. Reinstalling a tag is accepted only when
+absolute or parent-traversal paths, and checks the extracted bundle against the
+manager's own required-file list. Every check uses the manager's own code; it
+never executes anything from the downloaded archive. Any failure leaves the
+current selection untouched. Reinstalling a tag is accepted only when
 the installed copy already validates; otherwise the existing directory is left
 in place and the command fails.
 
@@ -184,33 +187,23 @@ deploy helper. The user must already have a selected container release; the
 helper does not fetch or replace container files:
 
 ```bash
-sudo scripts/deploy/deploy_single_environment.sh test-shape-shifter.sead.se
-sudo scripts/deploy/deploy_single_environment.sh test-shape-shifter.sead.se --host-port 8013 --ref v2.3.0
+sudo container-host/deploy/deploy_environment.sh test-shape-shifter.sead.se
+sudo container-host/deploy/deploy_environment.sh test-shape-shifter.sead.se --host-port 8013 --ref v2.3.0
 ```
 
 ### Multiple environments
 
-Give each environment its own user and host port, then repeat:
+Give each environment its own user and host port, then run the
+single-environment command once per environment:
 
 ```bash
-sudo scripts/deploy/deploy_all_environments.sh \
-  test-shape-shifter.sead.se:8012 \
-  prod-shape-shifter.sead.se:8013
-```
-
-Environments come from the arguments first, then from `DEPLOY_ENVIRONMENTS`,
-which can be exported or set in the invoking user's
-`~/config/deployment.env`. There is no built-in environment list, so a run with
-neither stops instead of deploying somewhere unrequested:
-
-```bash
-DEPLOY_ENVIRONMENTS='test-shape-shifter.sead.se:8012 prod-shape-shifter.sead.se:8013' \
-  sudo -E scripts/deploy/deploy_all_environments.sh
+sudo container-host/deploy/deploy_environment.sh test-shape-shifter.sead.se --host-port 8012
+sudo container-host/deploy/deploy_environment.sh prod-shape-shifter.sead.se --host-port 8013
 ```
 
 Each target user must already have its own selected container release. Prepare
-each one with the host manager first; `deploy_all_environments.sh` never installs
-or activates a release and never selects a shared version.
+each one with the host manager first; the deploy helper never installs or
+activates a release and never selects a shared version.
 
 `HOST_PORT` selects the published port; the container port stays `8012`. Each
 deployment records its repository, application ref, port, and matching image name
@@ -225,7 +218,7 @@ place.
 Install an HTTPS vhost that forwards to the container:
 
 ```bash
-sudo container/scripts/deploy/install_nginx_reverse_proxy.sh test-shape-shifter.sead.se 8012
+sudo container-host/deploy/install_nginx_reverse_proxy.sh test-shape-shifter.sead.se 8012
 ```
 
 The upstream port defaults to `HOST_PORT` from the invoking user's
@@ -234,7 +227,7 @@ already uses its configured port. Run the helper as the deployment user
 (`sudo -u <user>`) or name that user's configuration directory with
 `CONFIG_DIR=/data/<user>/config`.
 
-The script renders `scripts/deploy/nginx-shape-shifter.conf.template` into
+The script renders `container-host/deploy/nginx-shape-shifter.conf.template` into
 `/etc/nginx/sites-available/`, enables it and reloads NGINX.
 
 The backend authenticates through a trusted proxy in production: NGINX must
@@ -294,7 +287,7 @@ deployment-specific: host-side tools still need the LAN hostname.
 
 ## Authorization inputs
 
-`scripts/deploy/bootstrap-authentication-and-authorization.sh` reads every input
+`container-host/deploy/bootstrap-authentication-and-authorization.sh` reads every input
 from the deployment user's configuration directory, `~/config`, and never from
 the checkout or a repository secrets folder:
 
@@ -339,7 +332,7 @@ or assigns roles, so a missing or unreadable input stops the run without changin
 any account or policy:
 
 ```bash
-sudo CONFIG_DIR=$HOME/config ~/container/scripts/deploy/bootstrap-authentication-and-authorization.sh
+sudo CONFIG_DIR=$HOME/config container-host/deploy/bootstrap-authentication-and-authorization.sh
 ```
 
 The reviewed manifest is authored in the repository under
@@ -353,7 +346,7 @@ bootstrap never reads the repository copy.
 Install the user service so the container starts on boot:
 
 ```bash
-sudo scripts/deploy/install_systemd_service.sh test-shape-shifter.sead.se
+sudo container-host/deploy/install_systemd_service.sh test-shape-shifter.sead.se
 ```
 
 The unit starts the container through `scripts/container.sh up` and stops it
@@ -431,13 +424,13 @@ deployment files, while `GIT_REF` selects the source the image is built from.
 
 ### Isolated local development
 
-`scripts/deploy/sync-to-deploy` synchronizes a working tree for isolated
+`container-host/deploy/sync-to-deploy` synchronizes a working tree for isolated
 development. It refuses a target that the release manager owns: a symlinked
 `~/container` selection or any target that resolves into
 `/opt/shape-shifter/<user>/`. Use an explicit non-production directory instead:
 
 ```bash
-container/scripts/deploy/sync-to-deploy --remote-dir container-dev
+container-host/deploy/sync-to-deploy --remote-dir container-dev
 ```
 
 The production deployment path is the release flow above, not a working-tree

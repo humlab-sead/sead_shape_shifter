@@ -12,7 +12,7 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Usage: scripts/deploy_single_environment.sh <USER> [--repo URL] [--ref REF] [--host-port PORT]
+Usage: container-host/deploy/deploy_environment.sh <USER> [--repo URL] [--ref REF] [--host-port PORT]
 
 Configure one Shape Shifter environment for a dedicated system user.
 
@@ -37,8 +37,8 @@ container release and do not name it. The ~/config and ~/container-data
 directories are never removed, and nothing is written into the selected release.
 
 Examples:
-  scripts/deploy_single_environment.sh test-shape-shifter.sead.se
-  scripts/deploy_single_environment.sh shapeshifter-prod --host-port 8013 --ref v2.3.0
+  container-host/deploy/deploy_environment.sh test-shape-shifter.sead.se
+  container-host/deploy/deploy_environment.sh shapeshifter-prod --host-port 8013 --ref v2.3.0
 EOF
 }
 

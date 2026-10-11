@@ -6,7 +6,7 @@
 # ~/container. Container deployment files are installed as a versioned release
 # with the host release manager (shape-shifter-container-release); see
 # container/DEPLOYMENT.md. Application image settings are configured by
-# scripts/deploy/deploy_single_environment.sh.
+# container-host/deploy/deploy_environment.sh.
 #
 # Usage:
 #   bash get-install.sh

@@ -8,18 +8,16 @@
 #   CONFIG_DIR/authorization-manifest.yaml  reviewed policy manifest
 #   CONFIG_DIR/groups.d/shape-shifter.conf  nginx group membership
 #
-# CONFIG_DIR defaults to the sibling of the checkout this script belongs to,
-# which is ~/config when the checkout is ~/container; set CONFIG_DIR to use
-# another layout. AUTHORIZATION_MANIFEST names a file below CONFIG_DIR, and an
-# absolute path is accepted only when an operator configures one deliberately.
+# CONFIG_DIR names the deployment user's configuration directory and must be set;
+# it is no longer derived from the checkout this script belongs to.
+# AUTHORIZATION_MANIFEST names a file below CONFIG_DIR, and an absolute path is
+# accepted only when an operator configures one deliberately.
 #
 # Run as root, because the script writes the htpasswd file and the nginx group
 # file. Every input is validated before any account, role, or file is changed.
 set -euo pipefail
 
-SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-CHECKOUT_DIR="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
-CONFIG_DIR="${CONFIG_DIR:-$(cd -- "$CHECKOUT_DIR/.." && pwd)/config}"
+CONFIG_DIR="${CONFIG_DIR:?CONFIG_DIR must name the configuration directory for the deployment user; see container-host/README.md and container/DEPLOYMENT.md}"
 
 ENV_FILE="$CONFIG_DIR/authorization.env"
 GROUPS_FILE="$CONFIG_DIR/groups.d/shape-shifter.conf"
