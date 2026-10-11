@@ -1,148 +1,142 @@
-# Simplify the Shape Shifter Container Setup
+# Simplify Container Releases And Separate Operations Checks
 
 ## Status
 
 - Proposed change
-- Scope: `container/` scripts, the Makefile, and the contents of the release archive
-- Goal: Reduce the number of container scripts and remove duplicated sources of truth without changing lifecycle, selection, or verification behavior
+- Scope: container release contents, deployment scripts, verification ownership, and related documentation
+- Goal: Keep the Shape Shifter container setup small while handing ecosystem runtime checks to SEAD operations
 
 ## Summary
 
-Recommend two changes: move host provisioning scripts out of the release archive, and merge the duplicated configuration and dispatch layers.
+Keep the deployable `~/container` bundle focused on running Shape Shifter. Move host provisioning out of the release, hand ecosystem-wide runtime checks to SEAD operations, and simplify duplicated configuration and command dispatch.
 
-The container setup does not do complicated work, but the same deployment defaults are defined in three files, the lifecycle commands have two dispatch scripts plus a Makefile list, and host-only installer scripts ship inside every release. Splitting release contents from host provisioning makes clear what the deployment user actually runs from `~/container`, shortens the release required-file list, and stops provisioning changes from editing release contents.
-
-This is the right time because the release pipeline and the install/activate/rollback selection contract are now in place (`container-v0.1.0`), so the split can be made without changing them.
+Shape Shifter should retain automated tests for its own authorization behavior and source-level release checks. Operators should use the tools and procedures they already manage for runtime checks such as database access, credential rotation, log review, network exposure, and recovery. Do not add a `post-install.sh` layer that only dispatches to other checks.
 
 ## Problem
 
-`container/` holds 36 shell scripts (12 in `scripts/`, 7 in `scripts/deploy/`, 13 in `scripts/verify/`, 4 in `tests/`) plus a 382-line Makefile. Most of the scripts are legitimate, but four specific things make the setup harder to follow than its work justifies:
+The container setup repeats deployment defaults, has overlapping configuration helpers and command dispatch, and includes host provisioning in each release archive.
 
-1. **Three sources of truth for deployment defaults.** The Makefile, `scripts/container.sh`, and `scripts/load-env.sh` each apply defaults for shared values such as `IMAGE_NAME`, `HOST_PORT`, `DATA_DIR`, `CONTAINER_NAME`, and `COMPOSE_PROJECT_NAME`. The Makefile comment instructs maintainers to "keep the two lists in step".
-2. **Two dispatch layers plus the Makefile.** `scripts/container.sh` and `scripts/service.sh` each define their own action list, error handling, and usage text. The Makefile repeats both lists as one-line targets.
-3. **Two sourced configuration helpers.** `scripts/load-env.sh` and `scripts/env-config.sh` are both sourced configuration helpers for the same deployment.
-4. **Host provisioning ships inside the release.** `manage_container_release.sh`, `deploy_single_environment.sh`, `deploy_all_environments.sh`, `install_systemd_service.sh`, `install_nginx_reverse_proxy.sh`, `bootstrap-authentication-and-authorization.sh`, `sync-to-deploy`, and `get-install.sh` run on the host, not from `~/container`, yet they are part of the release archive and the verifier's required-file list.
+The verification directory also mixes application tests with checks for the wider SEAD runtime. Those checks cover firewall exposure, database grants, credentials, logs, proxy identity, application-user grants, and rollback. Shipping them with Shape Shifter makes the application release responsible for operational work that spans multiple services and systems.
 
-What goes wrong: it is hard to tell which files run from the selected release; a provisioning change edits release contents; and several files must be changed together to keep a default or an action list consistent.
+The release manager currently runs the verifier found inside the candidate archive. A candidate must not supply the code trusted to validate that candidate.
 
 ## Scope
 
-- Split `container/` into release contents and host provisioning.
-- Merge the duplicated configuration helpers and the duplicated dispatch entry points.
-- Remove scripts and Makefile targets with no caller.
-- Keep the release archive and `verify_container_release.sh` required-file list in step with the split.
-- Update the documentation that names each moved path.
+- Limit the release archive to files needed from the deployment user's `~/container` directory.
+- Move host provisioning tools outside the release archive.
+- Hand runtime and ecosystem verification requirements to SEAD operations through the [operations verification handoff](./OPERATIONS_VERIFICATION_HANDOFF.md).
+- Keep Shape Shifter authorization behavior covered by automated application tests.
+- Keep release checks outside the deployable bundle and prevent the host release manager from executing candidate-supplied verification code.
+- Consolidate duplicated configuration, defaults, and command dispatch; remove dead scripts and targets.
+- Update active documentation, workflows, and tests to match the new ownership.
 
 ## Non-Goals
 
-- Consolidating verification scripts, including merging `run_deployment_verification.sh` and `complete_test_deployment_verification.sh`; `RELEASE_CYCLE_EVIDENCE_AND_LOCKING` owns that.
-- Changing the release publication workflow, the `container-vX.Y.Z` tag scheme, or the install/activate/rollback selection contract.
-- Changing application image build or source behavior, `GIT_REF`, or `IMAGE_NAME`.
-- Redesigning authorization, NGINX, or systemd behavior.
-- Reducing the release manager's tag, checksum, or archive validation checks.
+- Changing the release tag scheme, publication trigger, or install/activate/rollback selection contract.
+- Changing application image build behavior, `GIT_REF`, or `IMAGE_NAME`.
+- Redesigning authorization policy, NGINX, systemd, database roles, or SEAD operations procedures.
+- Implementing or selecting SEAD operations scripts, procedures, repository, tools, schedule, alerting, or evidence system. The handoff document is the deliverable for this proposal.
+- Removing release-manager checksum, archive-safety, version, or required-content checks.
 
 ## Current Behavior
 
 Verified 2026-10-11 on branch `container-deploy-versioning`, after commit `a3adcbde`.
 
-- The Makefile applies defaults for `CONFIG_DIR`, `DATA_DIR`, `CONTAINER_NAME`, `IMAGE_NAME`, `HOST_PORT`, `COMPOSE_PROJECT_NAME`, `GIT_REPO`, and `GIT_REF`, and passes them to `container.sh` through `CONTAINER_ENV`. `scripts/container.sh` re-applies defaults for `CONTAINER_DATA_DIR`, `HOST_PORT`, `IMAGE_NAME`, `CONTAINER_NAME`, and `COMPOSE_PROJECT_NAME`. `scripts/load-env.sh` re-applies defaults for `CONFIG_DIR` and `DATA_DIR`.
-- `scripts/container.sh` and `scripts/service.sh` each end with a case statement over their actions and a usage function. The Makefile defines one target per action for both.
-- `scripts/load-env.sh` reads `CONFIG_DIR/deployment.env` into the environment and resolves paths. `scripts/env-config.sh` derives image tags from a git ref and writes keys back into `deployment.env`.
-- `scripts/verify/verify_container_release.sh::REQUIRED_FILES` lists 21 files, including `scripts/service.sh` and `scripts/verify/verify_container_release.sh`.
-- Everything under `scripts/deploy/` is host provisioning: `manage_container_release.sh` installs and selects releases, `deploy_single_environment.sh` configures a user and writes `deployment.env`, the `install_*` and `bootstrap-*` scripts run as root, and `sync-to-deploy` is a development-only mirror.
-- `scripts/adopt-project.sh` and `scripts/move-project.sh` call `scripts/authorization.sh`; they are deployment-user tools that run against the running container.
-- Commit `a3adcbde` removed the Makefile `setup-env` and `setup-directories` targets and `scripts/deploy/rebuild-image.sh`; none had a caller.
+- The Makefile, `scripts/container.sh`, and `scripts/load-env.sh` each apply defaults for shared deployment values.
+- `scripts/container.sh` and `scripts/service.sh` both dispatch actions, and the Makefile repeats their target lists.
+- `scripts/load-env.sh` and `scripts/env-config.sh` are sourced helpers with distinct roles: one loads deployment configuration and resolves paths; the other provides image-tag and environment-file functions.
+- Host provisioning scripts under `container/scripts/deploy/` are included in release archives.
+- `.github/workflows/container-release.yml` invokes `verify_container_release.sh` for source and archive checks. The host release manager also invokes the verifier found in the candidate bundle.
+- The verification directory contains release checks, deployed API probes, host checks, and orchestration. The test-environment orchestrator also reconciles authorization by default.
 
 ## Proposed Design
 
-### 1. Split release contents from host provisioning
+### 1. Keep the release focused on running Shape Shifter
 
-Move the host-only scripts to a directory the release archive excludes, for example `container/host/`: the release manager, the deploy scripts, the nginx and systemd installers, the authorization bootstrap, and the development sync script.
+The release archive should contain only files the deployment user needs from `~/container`. Move host provisioning, installer, and release-management tools to a source-only location outside the archive. Keep `shape-shifter-container-release` separate from the deployment user's lifecycle commands.
 
-Keep in place everything that runs from `~/container`: the Makefile, `podman-compose.yml`, `Containerfile`, `resources/`, `service/`, and the `scripts/` files for build, setup, lifecycle, backup, healthcheck, authorization, project management, and verification.
+### 2. Hand runtime verification to SEAD operations
 
-Update the archive job and `verify_container_release.sh::REQUIRED_FILES` in the same change so the required list names only release contents.
+SEAD operations owns checks for firewall and network exposure, deployed container configuration, database accounts and grants, authorization-store protection, credential rotation, log scanning, proxy identity, deployed application-user grants, and rollback/recovery.
 
-Decide in Phase 1 whether the host directory is `container/host/` or a top-level `host/`. `container/host/` keeps the topic together with less documentation churn.
+Use the [operations verification handoff](./OPERATIONS_VERIFICATION_HANDOFF.md) to state required outcomes. This proposal does not implement or select operations tooling. Do not add a new Shape Shifter `post-install.sh` or another wrapper that only sequences existing checks.
 
-### 2. Give host provisioning one entry point
+Remove host-wide operational check scripts and their fixtures from the Shape Shifter release and source tree; do not replace them with new operations scripts here. SEAD operations can use the handoff requirements with its existing tools and procedures. Keep Shape Shifter's application authorization policy and automated tests in its source repository.
 
-Replace `deploy_single_environment.sh`, `deploy_all_environments.sh`, and `install_systemd_service.sh` with one `shape-shifter-provision` script that takes `environment <user>`, `service <user>`, or `all`, using the dispatcher pattern already used by `container.sh`.
+### 3. Keep release validation trusted and outside the bundle
 
-Keep `shape-shifter-container-release` as the separate script for install, activate, rollback, and status. Keep the old provisioning script names as thin wrappers until their documented callers move.
+Move release-policy checks out of `container/scripts/verify/` and the deployable archive. The release workflow should validate the source tree, tag/version policy, required release content, and built archive.
 
-### 3. Merge the configuration helpers
+The host release manager must independently validate downloaded content using trusted code it already owns: checksum, safe archive paths, expected archive root and version, and required files. It must not execute a verifier extracted from the candidate archive. Do not add another standalone verifier solely to dispatch checks between the workflow and the manager.
 
-Combine `load-env.sh` and `env-config.sh` into one sourced `scripts/lib.sh`. Keep reading `deployment.env`, resolving paths, deriving image tags, and writing keys in one place.
+### 4. Simplify configuration and commands
 
-### 4. Keep one source of truth for defaults
-
-Resolve `CONFIG_DIR`, `DATA_DIR`, `CONTAINER_DATA_DIR`, `IMAGE_NAME`, `HOST_PORT`, `CONTAINER_NAME`, and `COMPOSE_PROJECT_NAME` in one place and pass them to the scripts. Remove the per-script re-defaulting and the Makefile-to-script duplication so `make <target>` and a direct script call use identical values.
-
-### 5. Collapse the dispatch scripts
-
-Move the service actions into `container.sh` as `container.sh service <action>`, so one file owns the unit name and the systemd command for each action and the Makefile only passes the action through.
-
-### 6. Leave the release manager and verification alone
-
-Keep `manage_container_release.sh` as-is apart from being host-only; its checksum, tag, and archive checks are what make a selected release trustworthy. Leave every verification script in place.
+- Rename `load-env.sh` and `env-config.sh` to `_load-env.sh` and `_env-config.sh` to mark them as internal sourced helpers. Keep their responsibilities separate: `_load-env.sh` loads deployment configuration and resolves paths; `_env-config.sh` provides image-tag and environment-file functions.
+- Do not replace the two helpers with a generic `_common.sh`. Combining environment-loading side effects with build and deployment utility functions would make callers source unrelated behavior and would obscure each helper's purpose.
+- Resolve shared deployment defaults in one place so Makefile targets and direct script calls use the same values.
+- Move service actions into `container.sh service <action>` and have Makefile targets dispatch through it.
+- Replace `adopt-project.sh` and `move-project.sh` with one `project.sh` command exposing `adopt` and `move`. Share project-path and authorization helpers while preserving each command's distinct validation and safeguards.
+- Rename `deploy_single_environment.sh` to `deploy_environment.sh` and remove `deploy_all_environments.sh`. Configure each environment explicitly rather than using an all-environments command.
+- Remove dead scripts and Makefile targets only after confirming they have no active callers.
 
 ## Alternatives Considered
 
-- **Delete dead files only.** This is what commit `a3adcbde` did. It removes clutter but leaves the duplicated defaults, the two dispatch layers, and host provisioning inside the release.
-- **Move host provisioning to a top-level `host/` directory.** This gives a sharper split but breaks more documented paths and separates the release manager from the release it installs. Phase 1 decides whether the split should be this strong.
-- **One script with every subcommand.** Fewer files, but a large script that mixes host provisioning with container lifecycle and is harder to review and test.
-- **Keep both dispatch layers and document the overlap.** This keeps the duplication the proposal exists to remove.
+- **Keep runtime checks in the Shape Shifter release:** rejected because database, network, credential, logging, and recovery responsibilities span the SEAD runtime.
+- **Add `post-install.sh` as a universal entry point:** rejected because a wrapper that only calls other checks adds another layer below Makefile or the operator's runbook.
+- **Run a verifier supplied by the candidate archive:** rejected because the candidate would provide code used to validate itself.
+- **Delete all authorization checks:** rejected because Shape Shifter authorization still requires automated application tests, and operations may need deployed integration probes.
+- **Keep duplicate operational scripts in both repositories:** rejected because copies can diverge and make ownership unclear.
+- **Put every command in one large dispatcher:** rejected because it mixes deployment-user lifecycle operations, host provisioning, and wider runtime checks.
 
 ## Risks And Tradeoffs
 
-- The archive job and the required-file list must change together. A mismatch either breaks publication or lets an incomplete bundle appear valid. Run the verifier in both `dir` and `archive` modes after the move.
-- Moving paths changes `container/README.md`, `container/DEPLOYMENT.md`, `docs/OPERATIONS.md`, `docs/AUTHORIZATION.md`, and `scripts/README.md`. Update them in the same change. References under `docs/proposals/done/` are historical and stay as they are.
-- `container/tests/test_verify_inventory.sh` asserts the verification inventory and the required-file contract. Keep it aligned with the new required-file list.
-- Merging provisioning commands changes the administrative command line. Keep old names as wrappers until their documented callers move.
-- Simplification must not weaken the release manager's validation. Its size is deliberate.
+- The handoff defines required outcomes but is not an implemented operations procedure. SEAD operations must apply its own tools and procedures; that implementation is outside this proposal.
+- Removing runtime probes from Shape Shifter must not remove automated tests for authentication and authorization behavior.
+- Release workflow and host manager checks cover different execution points. The workflow validates the source and release artifact; the manager validates downloaded archive integrity and installability using trusted code.
+- The release required-content contract must remain aligned with archive construction and host-manager validation.
+- Moving scripts changes active documentation and callers. Update them together; historical proposal references can remain unchanged.
 
 ## Testing And Validation
 
-- Run `bash -n` on every changed script.
-- Run the four `container/tests/*.sh` suites.
-- Run `verify_container_release.sh dir` and `verify_container_release.sh archive` on a built archive.
-- Run `make -n <target>` for every lifecycle, setup, build, maintenance, and service target.
-- Confirm the built release archive contains no host provisioning files and that the required-file list matches the archive.
-- Grep the repository for moved and removed paths and confirm only `docs/proposals/done/` references remain.
-- Provision one disposable non-production user end to end with the merged script and confirm install, activate, status, rollback, systemd start, and health check still work.
+- Run `bash -n` on changed shell scripts and all four `container/tests/*.sh` suites.
+- Update every caller and test to source `_load-env.sh` or `_env-config.sh`; confirm both helpers preserve their existing behavior.
+- Validate source and archive policy in the release workflow, and test the host manager's trusted checks against valid and invalid archives without executing archive-supplied code.
+- Confirm release archives exclude host provisioning and operations checks and contain the required runtime files.
+- Confirm application authorization behavior remains covered by automated tests.
+- Confirm the handoff document defines the operational outcomes; implementation of operations checks is outside this proposal's validation scope.
+- Run `make -n` for each lifecycle, setup, build, maintenance, and service target.
+- Verify `project.sh adopt` and `project.sh move` preserve current dry-run, validation, confirmation, and rollback behavior.
+- Search active documentation, workflows, and scripts for moved paths; confirm each active reference resolves to its authoritative location.
+- Exercise provisioning, release activation, status, rollback, systemd start, and health checks on a disposable non-production user.
 
 ## Acceptance Criteria
 
-- `P-AC-1`: The release archive contains only files that run from `~/container`; host provisioning is excluded, and `verify_container_release.sh` requires exactly the release contents.
-- `P-AC-2`: Host provisioning has at most two scripts (`shape-shifter-container-release` and one provisioning script); the deployment user's commands run through `make`.
-- `P-AC-3`: Each deployment default is defined in one place; `make <target>` and a direct script call resolve identical values for the same inputs.
-- `P-AC-4`: No removed script or target has a caller or a documented reference outside `docs/proposals/done/`.
-- `P-AC-5`: Lifecycle, systemd, release selection, and rollback behavior are unchanged; all `container/tests` suites pass and the verifier passes in both modes.
-- `P-AC-6`: Documentation names the release contents and the host provisioning scripts, and every moved path is updated.
-- `P-AC-7`: No verification script is removed or redefined; consolidating the two verification orchestrators remains with `RELEASE_CYCLE_EVIDENCE_AND_LOCKING`.
-- `P-AC-8`: The release manager's tag, checksum, and archive checks are unchanged.
+- `P-AC-1`: Release archives contain only deployment-user runtime contents; host provisioning and ecosystem runtime checks are outside the archive.
+- `P-AC-2`: The release workflow checks source and archive policy. The host manager checks downloaded archives using trusted code and does not execute candidate-supplied code.
+- `P-AC-3`: The operations handoff defines the required tool-agnostic runtime outcomes. This proposal removes host-wide operational check scripts from Shape Shifter and does not implement replacement operations tooling.
+- `P-AC-4`: Shape Shifter automated tests continue to cover its authentication and authorization behavior; operational deployment probes, if retained, are owned outside the application release.
+- `P-AC-5`: No new `post-install.sh` wrapper is added solely to dispatch checks. Routine checks do not change system state; state-changing procedures are explicit and documented.
+- `P-AC-6`: Shared defaults, configuration loading, and service dispatch are consolidated without changing intended lifecycle behavior; sourced helpers are named `_load-env.sh` and `_env-config.sh` and retain separate responsibilities; project commands use `project.sh adopt|move`; host provisioning uses `deploy_environment.sh` and has no all-environments command.
+- `P-AC-7`: Removed scripts and targets have no active callers, and active documentation and workflows use valid paths.
+- `P-AC-8`: Release selection, checksum and archive-safety checks, service behavior, and rollback behavior are preserved; focused container tests and release checks pass.
 
 ## Planning Handoff
 
-- **Confirmed decision:** split release contents from host provisioning, and remove the duplicated defaults and dispatch layers. The script count and archive size should drop; the exact final count is not fixed.
-- **Rejected:** deleting dead files only (done in `a3adcbde`, insufficient); one mega-script; keeping the duplicated layers.
-- **Behavior to preserve:** the release archive contract; the install/activate/rollback selection contract with immutable per-tag storage and the `~/container` symlink; separation of the container tag from `GIT_REF` and `IMAGE_NAME`; read-only verification scripts; explicit opt-ins for state-changing checks; the release manager's validation.
-- **Expected validation results:** the archive contains no host provisioning; the required-file list matches the archive; the tests and the verifier pass; documentation is consistent; a disposable user provisions, activates, rolls back, and starts under systemd.
-- **Open questions, with the phase that must resolve each:**
-  - Where the host provisioning directory lives (`container/host/` or top-level `host/`) — Phase 1.
-  - Whether the service action merges into `container.sh` or stays in `service.sh` — Phase 1.
-  - How long old provisioning command names remain as wrappers — Phase 1.
-- **Depends on:** the completed [CONTAINER_DEPLOY_VERSIONING](../done/CONTAINER_DEPLOY_VERSIONING/CONTAINER_DEPLOY_VERSIONING.md). That proposal's guidance is to plan implementation anew after the release policy was agreed; this proposal is the input to that new plan.
+- **Confirmed decisions:** keep the container bundle focused on the deployment user's runtime needs; provide the operations handoff as the deliverable for runtime verification; do not implement operations tooling or add a dispatch-only post-install entry point; keep application authorization tests in Shape Shifter; do not trust a candidate-supplied release verifier.
+- **Behavior to preserve:** release version/tag policy; archive safety and integrity checks; install/activate/rollback selection; Shape Shifter authorization behavior; explicit safeguards for operations that change state.
+- **Expected validation:** source and archive checks pass; the host manager rejects invalid or unsafe archives without running their code; the runtime bundle excludes host and operations tools; app authorization tests remain; the handoff document defines the operational outcomes.
+- **Other phase decisions:** choose the source-only host-tools directory and wrapper-retirement point; classify any mixed container-configuration checks as application tests or operations checks. SEAD operations selects and implements its own checks outside this proposal.
+- **Depends on:** the completed [CONTAINER_DEPLOY_VERSIONING](../done/CONTAINER_DEPLOY_VERSIONING/CONTAINER_DEPLOY_VERSIONING.md).
+- **Related handoff:** [SEAD Runtime Verification Handoff](./OPERATIONS_VERIFICATION_HANDOFF.md).
 
 ## Recommended Delivery Order
 
-1. Split release contents from host provisioning, updating the archive job and the required-file list together.
-2. Merge `load-env.sh` and `env-config.sh` into one helper and remove the duplicated defaults.
-3. Collapse the dispatch scripts and update the Makefile targets.
-4. Merge the provisioning commands and keep the old names as wrappers.
-5. Update every documented path and re-run the tests and the verifier.
+1. Confirm the operations handoff defines the required outcomes without prescribing tools.
+2. Move host provisioning out of the release bundle, remove host-wide operational check scripts, rename the single-environment command, and remove the all-environments command.
+3. Update release workflow and host-manager validation so neither relies on a candidate-supplied verifier.
+4. Preserve application authorization tests; leave operations check implementation to SEAD operations.
+5. Consolidate container defaults, configuration helpers, and service dispatch; update active documentation and run validation.
 
 ## Final Recommendation
 
-Do the split and the merges. The dead-code removal is already committed (`a3adcbde`). Next, split release contents from host provisioning with the archive and the required-file list updated in the same change, then merge the configuration helpers and the dispatch entry points, and finally re-check every documented path. Keep the release manager and the verification scripts as they are.
+Keep Shape Shifter's container setup focused on running and testing Shape Shifter. Provide the linked handoff as the runtime verification requirements for SEAD operations, without implementing operations tooling here. Move host-wide checks and provisioning out of Shape Shifter, keep release validation trusted, and simplify the remaining scripts without adding a dispatch-only post-install layer.

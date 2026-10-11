@@ -14,10 +14,10 @@ set -euo pipefail
 
 # Load CONFIG_DIR/deployment.env values that the environment has not already
 # set.
-# shellcheck source=load-env.sh
-. "$(dirname -- "${BASH_SOURCE[0]}")/load-env.sh"
-# shellcheck source=env-config.sh
-. "$(dirname -- "${BASH_SOURCE[0]}")/env-config.sh"
+# shellcheck source=_load-env.sh
+. "$(dirname -- "${BASH_SOURCE[0]}")/_load-env.sh"
+# shellcheck source=_env-config.sh
+. "$(dirname -- "${BASH_SOURCE[0]}")/_env-config.sh"
 
 RED='\e[31m'
 GREEN='\e[32m'
@@ -30,11 +30,13 @@ RESET='\e[0m'
 g_script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 g_script_file="$(basename "${BASH_SOURCE[0]}")"
 
-# Defaults. GIT_REPO, GIT_REF and IMAGE_NAME come from CONFIG_DIR/deployment.env
-# when it sets them; the command-line options below still override those values.
-g_git_repo="${GIT_REPO:-https://github.com/humlab-sead/sead_shape_shifter.git}"
+# GIT_REPO, GIT_REF and IMAGE_NAME come from CONFIG_DIR/deployment.env, or the
+# bundled .env.example template when deployment.env does not set them, so a
+# direct script run and a Make target resolve the same values. The command-line
+# options below still override them.
+g_git_repo="${GIT_REPO:-}"
 g_git_ref="${GIT_REF:-}"
-_shapeshifter_image="${IMAGE_NAME:-shape-shifter:latest}"
+_shapeshifter_image="${IMAGE_NAME:-}"
 g_image_name="${_shapeshifter_image%%:*}"
 if [ "$_shapeshifter_image" = "$g_image_name" ]; then
     g_image_tag="latest"
@@ -164,7 +166,7 @@ if [ "$g_standalone" = true ]; then
 fi
 
 # Derive the image tag from the git ref when one was not supplied. The rule lives
-# in scripts/env-config.sh so the deploy scripts cannot disagree with it.
+# in scripts/_env-config.sh so the deploy scripts cannot disagree with it.
 if [ "$g_source" = "github" ] && [ "$g_image_tag" = "latest" ]; then
     g_image_tag="$(shapeshifter_tag_for_ref "$g_git_ref")"
 fi

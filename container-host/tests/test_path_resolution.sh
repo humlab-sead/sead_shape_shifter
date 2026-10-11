@@ -1,14 +1,18 @@
 #!/usr/bin/env bash
-# Regression test for the home-relative deployment path contract.
+# Regression test for the home-relative deployment path contract and the shared
+# deployment settings.
 #
 # The test never touches the repository or a real deployment home. It builds a
 # temporary home, a versioned release directory shaped like
 # /opt/shape-shifter/<user>/container-releases/<tag>/container, and a ~/container
-# symlink pointing into it. It then checks that scripts/load-env.sh and the
+# symlink pointing into it. It then checks that scripts/_load-env.sh and the
 # Makefile resolve CONFIG_DIR, DATA_DIR and CONTAINER_DATA_DIR identically from
 # the deployment user's home for defaults, relative overrides, absolute
 # overrides, and environment-over-file precedence, and that a relative override
-# never resolves inside the selected release directory.
+# never resolves inside the selected release directory. It also checks that both
+# resolve the same shared deployment settings (container name, image, port,
+# compose project, git repository and ref) from the bundled .env.example
+# template, with deployment.env and the environment overriding it.
 #
 # Usage: bash container-host/tests/test_path_resolution.sh
 set -euo pipefail
@@ -63,20 +67,22 @@ write_deployment_env() {
   printf '%s\n' "$@" > "$dir/deployment.env"
 }
 
-# Resolves the three paths through the sourced loader and prints KEY=value lines.
+# Resolves the deployment values through the sourced loader and prints
+# KEY=value lines. Path variables and shared deployment settings are both
+# included so the comparison with the Makefile covers the whole contract.
 loader_resolve() {
   env HOME="$g_home" "$@" bash -c '
-    . "$1/scripts/load-env.sh" || exit 1
-    printf "CONFIG_DIR=%s\n" "$CONFIG_DIR"
-    printf "DATA_DIR=%s\n" "$DATA_DIR"
-    printf "CONTAINER_DATA_DIR=%s\n" "$CONTAINER_DATA_DIR"
+    . "$1/scripts/_load-env.sh" || exit 1
+    for _key in CONFIG_DIR DATA_DIR CONTAINER_DATA_DIR CONTAINER_NAME IMAGE_NAME HOST_PORT COMPOSE_PROJECT_NAME GIT_REPO GIT_REF; do
+      printf "%s=%s\n" "$_key" "${!_key:-}"
+    done
   ' _ "$g_home/container" | sort
 }
 
-# Resolves the same paths from the Makefile variable database.
+# Resolves the same values from the Makefile variable database.
 make_resolve() {
   env HOME="$g_home" "$@" make --no-print-directory -C "$g_home/container" -p 2>/dev/null \
-    | grep -E '^(CONFIG_DIR|DATA_DIR|CONTAINER_DATA_DIR) :=' \
+    | grep -E '^(CONFIG_DIR|DATA_DIR|CONTAINER_DATA_DIR|CONTAINER_NAME|IMAGE_NAME|HOST_PORT|COMPOSE_PROJECT_NAME|GIT_REPO|GIT_REF) :=' \
     | sed 's/^\([A-Z_]*\) := /\1=/' \
     | sort
 }
@@ -90,9 +96,9 @@ check_case() {
   loader_out="$(loader_resolve "$@")"
   make_out="$(make_resolve "$@")"
   if [[ "$loader_out" == "$make_out" ]]; then
-    pass "$label: load-env.sh and the Makefile agree"
+    pass "$label: _load-env.sh and the Makefile agree"
   else
-    fail "$label: load-env.sh and the Makefile disagree"
+    fail "$label: _load-env.sh and the Makefile disagree"
     printf '  loader:\n%s\n' "$loader_out" >&2
     printf '  make:\n%s\n' "$make_out" >&2
   fi
@@ -113,6 +119,22 @@ check_case "defaults"
 assert_eq "$g_home/config" "$(value_of CONFIG_DIR)" "default CONFIG_DIR is under \$HOME"
 assert_eq "$g_home/container-data" "$(value_of DATA_DIR)" "default DATA_DIR is under \$HOME"
 assert_eq "$g_home/container-data" "$(value_of CONTAINER_DATA_DIR)" "default CONTAINER_DATA_DIR follows DATA_DIR"
+
+# With no deployment.env, both the loader and the Makefile fall back to the
+# bundled .env.example template, so a fresh checkout and a Make target agree.
+assert_eq "shape-shifter" "$(value_of CONTAINER_NAME)" "default CONTAINER_NAME comes from the bundled template"
+assert_eq "shape-shifter:latest" "$(value_of IMAGE_NAME)" "default IMAGE_NAME comes from the bundled template"
+assert_eq "8012" "$(value_of HOST_PORT)" "default HOST_PORT comes from the bundled template"
+assert_eq "shapeshifter" "$(value_of COMPOSE_PROJECT_NAME)" "default COMPOSE_PROJECT_NAME comes from the bundled template"
+assert_eq "main" "$(value_of GIT_REF)" "default GIT_REF comes from the bundled template"
+
+write_deployment_env "$g_home/config" "HOST_PORT=9123" "IMAGE_NAME=shape-shifter:filed"
+check_case "deployment.env beats the template"
+assert_eq "9123" "$(value_of HOST_PORT)" "deployment.env HOST_PORT beats the template"
+assert_eq "shape-shifter:filed" "$(value_of IMAGE_NAME)" "deployment.env IMAGE_NAME beats the template"
+check_case "environment beats deployment.env and the template" HOST_PORT=7000
+assert_eq "7000" "$(value_of HOST_PORT)" "environment HOST_PORT beats both files"
+rm -f "$g_home/config/deployment.env"
 
 echo
 echo "== Relative overrides in deployment.env =="

@@ -4,11 +4,9 @@ set -euo pipefail
 
 # Load CONFIG_DIR/deployment.env values that the environment has not already
 # set, so the container name and host port match the deployed environment.
-# shellcheck source=load-env.sh
-. "$(dirname -- "${BASH_SOURCE[0]}")/load-env.sh"
+# shellcheck source=_load-env.sh
+. "$(dirname -- "${BASH_SOURCE[0]}")/_load-env.sh"
 
-CONTAINER_NAME="${CONTAINER_NAME:-shape-shifter}"
-HOST_PORT="${HOST_PORT:-8012}"
 HEALTHCHECK_TIMEOUT="${HEALTHCHECK_TIMEOUT:-60}"
 
 echo "Running health check (up to ${HEALTHCHECK_TIMEOUT}s)..."

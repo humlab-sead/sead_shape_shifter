@@ -296,13 +296,13 @@ readonly g_required_files=(
 	.env.example
 	.containerignore
 	scripts/container.sh
-	scripts/load-env.sh
-	scripts/env-config.sh
+	scripts/_load-env.sh
+	scripts/_env-config.sh
+	scripts/project.sh
 	scripts/setup.sh
 	scripts/build.sh
 	scripts/backup.sh
 	scripts/healthcheck.sh
-	scripts/service.sh
 	service/shape-shifter.service
 	resources/backend.env.example
 	resources/.pgpass.example

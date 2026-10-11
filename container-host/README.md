@@ -6,7 +6,8 @@ repository checkout as root; they are not shipped to a deployment user.
 
 - `deploy/` — host provisioning, installer, and release-management tools:
   the release manager, `deploy_environment.sh`, the systemd and NGINX
-  installers, the authorization bootstrap, and the development sync tool.
+  installers, the authorization bootstrap, the host prerequisite check
+  (`get-install.sh`), and the development sync tool.
 - `verify/` — the read-only release-policy checker used by the
   `container-release` workflow, and its [README](verify/README.md).
 - `tests/` — shell regression suites for the tools above.

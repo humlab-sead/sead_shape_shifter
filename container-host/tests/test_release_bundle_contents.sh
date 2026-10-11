@@ -45,13 +45,13 @@ runtime_files=(
   .env.example
   .containerignore
   scripts/container.sh
-  scripts/load-env.sh
-  scripts/env-config.sh
+  scripts/_load-env.sh
+  scripts/_env-config.sh
+  scripts/project.sh
   scripts/setup.sh
   scripts/build.sh
   scripts/backup.sh
   scripts/healthcheck.sh
-  scripts/service.sh
   service/shape-shifter.service
   resources/backend.env.example
   resources/.pgpass.example
@@ -76,6 +76,7 @@ host_deploy_files=(
   install_systemd_service.sh
   install_nginx_reverse_proxy.sh
   bootstrap-authentication-and-authorization.sh
+  get-install.sh
   nginx-shape-shifter.conf.template
   sync-to-deploy
 )
@@ -95,11 +96,17 @@ fi
 
 echo
 echo "== the runtime helper a host tool needs is still in the bundle =="
-assert_file "$g_container_dir/scripts/load-env.sh" "container/scripts/load-env.sh exists for the NGINX installer"
+assert_file "$g_container_dir/scripts/_load-env.sh" "container/scripts/_load-env.sh exists for the NGINX installer"
+
+assert_no_path "$g_container_dir/scripts/get-install.sh" "the host prerequisite check is not in the bundle"
+
+for retired in scripts/service.sh scripts/adopt-project.sh scripts/move-project.sh; do
+  assert_no_path "$g_container_dir/$retired" "retired runtime path $retired is absent"
+done
 
 echo
 echo "== no removed tooling hides anywhere in the bundle =="
-for removed in verify_container_release.sh deploy_all_environments.sh deploy_single_environment.sh; do
+for removed in verify_container_release.sh deploy_all_environments.sh deploy_single_environment.sh service.sh adopt-project.sh move-project.sh get-install.sh; do
   if find "$g_container_dir" -name "$removed" -print -quit | grep -q .; then
     fail "container/ still contains $removed"
   else

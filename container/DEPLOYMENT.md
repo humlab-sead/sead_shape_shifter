@@ -137,7 +137,7 @@ mean `~/container-data`; an absolute value is used unchanged. Relative overrides
 resolve from the user's home, not from the selected release directory, so
 configuration, credentials, and runtime data stay outside the release.
 `CONTAINER_DATA_DIR`, which `podman-compose.yml` mounts, follows `DATA_DIR` unless
-it is set explicitly. `scripts/load-env.sh` and the Makefile implement the same
+it is set explicitly. `scripts/_load-env.sh` and the Makefile implement the same
 rule, so a direct script call and a Make target agree.
 
 ---
@@ -358,7 +358,8 @@ tools prefer the environment over the file. The unit only fixes
 `WorkingDirectory=%h/container`, so the code that runs is the code in the
 selected release.
 
-Control it with the `service-*` targets, which call `scripts/service.sh`:
+Control it with the `service-*` targets, which dispatch through
+`scripts/container.sh service <action>`:
 
 ```bash
 make service-status
@@ -366,10 +367,10 @@ make service-restart
 make service-logs
 ```
 
-The script takes one action: `install`, `enable`, `disable`, `start`, `stop`,
-`restart`, `status` or `logs`. It holds the unit name, so
-`SERVICE_NAME=shape-shifter-dev scripts/service.sh status` inspects a unit with
-another name.
+The dispatcher takes one service action: `install`, `enable`, `disable`, `start`,
+`stop`, `restart`, `status` or `logs`. It holds the unit name, so
+`SERVICE_NAME=shape-shifter-dev scripts/container.sh service status` inspects a
+unit with another name.
 
 From an admin account, target another user's session with
 `systemctl --user -M user@ start shape-shifter`.
@@ -465,11 +466,12 @@ sudo -u USER -H bash -lc 'cd ~/container && make service-restart'
 `~/container.pre-release` against the selected release before removing it; keep
 it until health and authorization checks pass.
 
-Check host prerequisites before installing a release. `scripts/get-install.sh` is
-now a host prerequisite check: it verifies Podman, `podman-compose`, lingering,
-and rootless user namespaces, and writes nothing into `~/container`. It no longer
-downloads the deployment files, because a release is installed with
-`shape-shifter-container-release` instead.
+Check host prerequisites before installing a release.
+`container-host/deploy/get-install.sh` is a host-side prerequisite check that
+runs from a repository checkout, not from a user's selected release: it verifies
+Podman, `podman-compose`, lingering, and rootless user namespaces, and writes
+nothing into `~/container`. It no longer downloads the deployment files, because
+a release is installed with `shape-shifter-container-release` instead.
 
 After the move, use `make up`, `make down`, `make restart`, `make logs`, and
 `make status` as before; each runs through the selection. `install_systemd_service.sh`

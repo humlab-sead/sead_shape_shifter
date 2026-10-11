@@ -61,10 +61,10 @@ sead-authorization move-resource \
 
 The command requires a free target locator, refuses a source that is not active, and refuses identical locators. It keeps the resource UUID and its grants, and it records a `resource_locator_changed` audit event containing the previous and new locators. Add `--dry-run` to check the move without changing storage.
 
-In a container deployment, `container/scripts/move-project.sh` moves the project folder and updates the locator in one step, rolling the folder back if the authorization change fails:
+In a container deployment, `container/scripts/project.sh move` moves the project folder and updates the locator in one step, rolling the folder back if the authorization change fails:
 
 ```bash
-container/scripts/move-project.sh --project old-name --to arbodat/new-name
+container/scripts/project.sh move --project old-name --to arbodat/new-name
 ```
 
 Both values accept `/` and `:`. The script requires a running container, because `authorization.sh` runs the command inside it. If the moved project was the active editing project, restart the container after the move so in-memory state does not keep the old locator.
