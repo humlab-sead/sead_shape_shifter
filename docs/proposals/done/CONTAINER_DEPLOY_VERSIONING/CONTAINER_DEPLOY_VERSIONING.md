@@ -7,7 +7,7 @@
 - Goal: Release the complete container deployment files independently of the application and let each environment select or roll back a release
 - Validation: Phase 1 published `container-v0.1.0` from PR #541 with a verified archive and checksum against the tracked `container/` tree; phases 2 and 3 passed their task-plan milestones, including the release-manager, home-relative path, lifecycle, and verification-inventory suites under `container/tests/`.
 - Waived: the live publication-retry check (phase 1 `V-2`) and the live systemd user-service check (phase 3 `V-3`) were waived by user decision and are not claimed as passing.
-- Remaining follow-up: the partial-publication recovery defect (`F1`) is not fixed in the published workflow. Simplification of the container setup continues in [CONTAINER_SETUP_SIMPLIFICATION](../../CONTAINER_SETUP_SIMPLIFICATION/CONTAINER_SETUP_SIMPLIFICATION.md).
+- Remaining follow-up: the partial-publication recovery defect (`F1`) is not fixed in the published workflow. Simplification of the container setup continues in [CONTAINER_SETUP_SIMPLIFICATION](../CONTAINER_SETUP_SIMPLIFICATION/CONTAINER_SETUP_SIMPLIFICATION.md).
 
 ## Summary
 

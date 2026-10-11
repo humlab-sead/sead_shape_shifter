@@ -16,10 +16,9 @@ It does not include implementing operations scripts or procedures, choosing wher
 
 ## Current Position
 
-- The proposal and [SEAD Runtime Verification Handoff](./OPERATIONS_VERIFICATION_HANDOFF.md) define the target ownership split and required operational outcomes.
-- Implementing or selecting operations tools and procedures is outside this proposal; no operations owner or delivery location is a prerequisite.
-- The host release manager currently runs a verifier from the candidate release bundle.
-- Current scripts include separate project commands, configuration helpers, service dispatch, and single- and all-environment deployment scripts.
+- All three phases are complete (2026-10-11), and this phase plan is archived with the proposal in `done/`.
+- PR #543 merged the `container-setup-simplifications` branch to `dev`, delivering phases 1-3: the operational checks and orchestrators are removed, the release bundle is narrowed with host tooling kept source-only under `deployment/container-host/`, and the configuration helpers, service dispatch, and project commands are consolidated.
+- Implementing or selecting operations tools and procedures remains outside this proposal; the handoff states required outcomes for SEAD operations to implement independently.
 
 ## Phase Plan
 
@@ -65,7 +64,7 @@ Keep ecosystem runtime verification outside Shape Shifter while preserving its a
 
 **Readiness**
 
-Ready for a task plan.
+Complete (2026-10-11). PR #543 removed the operational verification scripts and orchestrators while preserving the application authorization tests.
 
 ### Phase 2: Separate Release Contents And Trusted Validation
 
@@ -114,7 +113,7 @@ Exclude host tools from release archives and validate releases without executing
 
 **Readiness**
 
-Ready for a task plan.
+Complete (2026-10-11). PR #543 narrowed the release bundle, moved host tooling to the source-only `deployment/container-host/` tree, and kept the trusted release validation contract.
 
 ### Phase 3: Simplify Remaining Container Commands
 
@@ -161,7 +160,7 @@ Remove duplicated helper names, defaults, and dispatch while preserving current 
 
 **Readiness**
 
-Ready for a task plan.
+Complete (2026-10-11). PR #543 renamed the configuration helpers, consolidated project and service dispatch, and removed dead scripts and targets.
 
 ## Cross-Phase Rules
 
