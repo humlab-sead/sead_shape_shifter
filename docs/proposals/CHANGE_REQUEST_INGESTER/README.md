@@ -71,7 +71,7 @@ For the single consolidated tracker of remaining work, use:
 - Provider-submission lifecycle work is archived under `done/DATA_PROVIDER_SUBMISSION_LIFECYCLE`
 - Shared-data review and operator routing now has a separate proposal folder
 - Frontend issue breakdown records the implemented workflow; stable defaults were delivered separately in the submission metadata work
-- SIMS API and allocator responsibilities are documented in the [Authority Service target-ID proposal](https://github.com/humlab-sead/sead_authority_service/blob/main/docs/proposals/SIMS_TARGET_ID_CONTRACT.md); completed Phases 1–3 are archived under `done`, while adoption and cutover remain separate operational work
+- SIMS API and allocator responsibilities are documented in the [Authority Service target-ID proposal](https://github.com/humlab-sead/sead_authority_service/blob/main/docs/proposals/SIMS_TARGET_ID_CONTRACT/SIMS_TARGET_ID_CONTRACT.md); completed Phases 1–3 are archived under `done`, while adoption and cutover remain separate operational work
 
 ## Remaining Tasks Snapshot
 
