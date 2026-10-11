@@ -22,7 +22,7 @@ sudo loginctl enable-linger <deployment-user>
 Each environment has three sibling directories in the deployment user's home:
 
 ```text
-~/container/            # replaceable checkout: deployment files + build context
+~/container/            # selected container release (administrator-managed symlink)
 ├── .env.example        # tracked template for deployment.env
 ├── Makefile            # build, lifecycle, diagnostic and service targets
 ├── podman-compose.yml  # service definition
@@ -31,7 +31,7 @@ Each environment has three sibling directories in the deployment user's home:
 ├── service/            # systemd user unit
 └── resources/          # generic templates: backend.env, .pgpass, authorization.env, NGINX vhosts
 
-~/config/               # environment configuration, outside the checkout
+~/config/               # environment configuration, outside the release
 ├── deployment.env      # image, ref, port, compose name, path overrides
 ├── backend.env         # runtime environment for the container (chmod 600)
 ├── authorization.env   # authorization bootstrap credentials and rosters (chmod 600)
@@ -49,8 +49,9 @@ Makefile resolves both and exports `CONFIG_DIR` and `CONTAINER_DATA_DIR`, so
 `podman-compose.yml` reads `backend.env` and the read-only `.pgpass` from
 `CONFIG_DIR` and every mutable mount from `CONTAINER_DATA_DIR`.
 
-This checkout holds no live configuration, so a release archive can replace it
-without touching `~/config` or `~/container-data`.
+`~/container` is a symlink into an installed release, so the selected release
+holds no live configuration and can be replaced without touching `~/config` or
+`~/container-data`.
 
 ## Quick Start
 
@@ -99,9 +100,9 @@ Run `make help` for the complete list.
 
 ## Configuration
 
-Configuration lives in the sibling `~/config` directory, not in this checkout.
-`deployment.env` holds the deployment defaults shared by the Makefile, the
-scripts and the compose file. `backend.env` holds the runtime settings the
+Configuration lives in the sibling `~/config` directory, not in the selected
+release. `deployment.env` holds the deployment defaults shared by the Makefile,
+the scripts and the compose file. `backend.env` holds the runtime settings the
 container reads on every start. `authorization.env`, the manifest and the group
 file hold the authorization inputs.
 
@@ -120,9 +121,12 @@ Values resolve with this precedence, highest first:
 3. `~/config/deployment.env`
 4. the fallbacks built into the Makefile
 
-A relative `CONFIG_DIR` or `DATA_DIR` value names a path beside the checkout, so
-`DATA_DIR=container-data` and `DATA_DIR=../container-data` both mean
-`~/container-data`. Explicit overrides exist for tests and alternate layouts:
+A relative `CONFIG_DIR` or `DATA_DIR` value names a path under the deployment
+user's home, so `DATA_DIR=container-data` and `DATA_DIR=./container-data` both
+mean `~/container-data`; an absolute value is used unchanged. Relative values
+resolve from the user's home rather than from the selected release, so the release
+directory is never used for configuration or data. Explicit overrides exist for
+tests and alternate layouts:
 `make CONFIG_DIR=/tmp/shape-config DATA_DIR=/tmp/shape-data config`.
 
 `make build` tags its output from the git ref when the ref is not a release
@@ -233,9 +237,30 @@ sha256sum -c container-vX.Y.Z.tar.gz.sha256
 tar -tzf container-vX.Y.Z.tar.gz | head
 ```
 
-Installing a release on a deployment host and selecting it per environment is a
-separate change and is not yet available; until then, keep using the checkout
-placement described in [DEPLOYMENT.md](DEPLOYMENT.md).
+### Installing and selecting a release on a host
+
+Install the reviewed host manager once per host, then install and select releases
+per user. See
+[Install and select a container release](DEPLOYMENT.md#install-and-select-a-container-release)
+for the full workflow, permissions, and first-transition rules.
+
+```bash
+# Once per host, from a reviewed copy of the repository
+sudo install -o root -g root -m 0755 \
+  container/scripts/deploy/manage_container_release.sh \
+  /usr/local/sbin/shape-shifter-container-release
+
+# Per user: install an exact release without selecting it, then select it
+sudo shape-shifter-container-release install  USER container-vX.Y.Z
+sudo shape-shifter-container-release activate USER container-vX.Y.Z
+sudo shape-shifter-container-release status   USER
+sudo shape-shifter-container-release rollback USER
+```
+
+`install` verifies the archive and checksum, records the source commit, and leaves
+`~/container` unchanged. `activate` and `rollback` change only that user's
+selection. None of the commands change `GIT_REF`, `IMAGE_NAME`, `~/config`, or
+`~/container-data`.
 
 ## Documentation
 

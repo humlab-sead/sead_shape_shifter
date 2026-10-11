@@ -51,6 +51,8 @@ REQUIRED_FILES=(
 	scripts/build.sh
 	scripts/backup.sh
 	scripts/healthcheck.sh
+	scripts/service.sh
+	scripts/verify/verify_container_release.sh
 	service/shape-shifter.service
 	resources/backend.env.example
 	resources/.pgpass.example

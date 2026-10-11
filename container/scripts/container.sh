@@ -75,8 +75,8 @@ check_deployment() {
   if [ ! -d "$CONTAINER_DATA_DIR" ]; then
     echo "error: data directory does not exist: $CONTAINER_DATA_DIR" >&2
     echo "       CONFIG_DIR=$CONFIG_DIR" >&2
-    echo "       A relative DATA_DIR names a path beside the checkout. Run 'make setup', or correct" >&2
-    echo "       DATA_DIR in $CONFIG_DIR/deployment.env." >&2
+    echo "       A relative DATA_DIR names a path under your home directory. Run 'make setup', or" >&2
+    echo "       correct DATA_DIR in $CONFIG_DIR/deployment.env." >&2
     exit 1
   fi
 

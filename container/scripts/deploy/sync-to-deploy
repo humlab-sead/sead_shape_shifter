@@ -27,7 +27,13 @@ Defaults:
   host: DEPLOY_HOST (empty means the current host)
   SSH user: DEPLOY_SSH_USER=$USER (remote mode only)
   path: REMOTE_DIR=container (relative to the remote user's home)
-§
+
+The production release path is not synchronized from a working tree. A managed
+~/container selection is refused, and this command is for isolated development
+only. Use an explicit non-production directory such as:
+
+  --remote-dir container-dev
+
 The service is not restarted or enabled by this command. Use the service
 commands separately after reviewing the synchronized files.
 
@@ -77,6 +83,27 @@ done
 
 command -v rsync >/dev/null || { echo "rsync is required locally." >&2; exit 1; }
 
+# Refuses a local target that the release manager owns, so an isolated
+# development sync cannot overwrite a selected release. The check runs through
+# sudo, because the deployment user's home may not be readable by the caller.
+refuse_managed_target() {
+  local dest="$1" trimmed resolved
+  trimmed="${dest%/}"
+  if sudo test -L "$trimmed"; then
+    echo "error: refusing to synchronize into $trimmed: it is a symlink, which is how the release manager selects a release." >&2
+    echo "       Use --remote-dir container-dev for isolated development." >&2
+    exit 1
+  fi
+  resolved="$(sudo readlink -f -- "$trimmed" 2>/dev/null || true)"
+  case "$resolved" in
+  /opt/shape-shifter/*)
+    echo "error: refusing to synchronize into $trimmed: it resolves into administrator-owned release storage ($resolved)." >&2
+    echo "       Use --remote-dir container-dev for isolated development." >&2
+    exit 1
+    ;;
+  esac
+}
+
 # --no-group keeps the source group off the target; the deployment user's own
 # group is applied after the transfer.
 RSYNC_ARGS=(--archive --no-group --delete --delete-delay --human-readable --itemize-changes --exclude=/.env --exclude="deployment-verification")
@@ -92,6 +119,7 @@ if [[ -z "$g_deploy_host" ]]; then
   deploy_home="$(printf '%s\n' "$deploy_record" | cut -d: -f6)"
   deploy_gid="$(printf '%s\n' "$deploy_record" | cut -d: -f4)"
   destination="$deploy_home/${g_remote_dir%/}/"
+  refuse_managed_target "$destination"
   printf 'Synchronizing %s/ to local %s\n' "$g_container_dir" "$destination"
   sudo rsync "${RSYNC_ARGS[@]}" "$g_container_dir/" "$destination"
   if [[ "$g_dry_run" = false ]]; then
@@ -112,6 +140,19 @@ else
   deploy_home="$(printf '%s\n' "$deploy_record" | cut -d: -f6)"
   deploy_gid="$(printf '%s\n' "$deploy_record" | cut -d: -f4)"
   destination="$deploy_home/${g_remote_dir%/}/"
+  if ssh "$TARGET" "sudo -n test -L '${destination%/}'"; then
+    echo "error: refusing to synchronize into ${destination%/} on $TARGET: it is a symlink, which is how the release manager selects a release." >&2
+    echo "       Use --remote-dir container-dev for isolated development." >&2
+    exit 1
+  fi
+  resolved_remote="$(ssh "$TARGET" "sudo -n readlink -f -- '${destination%/}' 2>/dev/null || true") || true"
+  case "$resolved_remote" in
+  /opt/shape-shifter/*)
+    echo "error: refusing to synchronize into ${destination%/} on $TARGET: it resolves into administrator-owned release storage ($resolved_remote)." >&2
+    echo "       Use --remote-dir container-dev for isolated development." >&2
+    exit 1
+    ;;
+  esac
   printf 'Synchronizing %s/ to %s:%s\n' "$g_container_dir" "$TARGET" "$destination"
   rsync "${RSYNC_ARGS[@]}" --rsync-path="sudo -n rsync" "$g_container_dir/" "$TARGET:$destination"
   if [[ "$g_dry_run" = false ]]; then
