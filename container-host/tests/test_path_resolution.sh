@@ -10,11 +10,11 @@
 # overrides, and environment-over-file precedence, and that a relative override
 # never resolves inside the selected release directory.
 #
-# Usage: bash container/tests/test_path_resolution.sh
+# Usage: bash container-host/tests/test_path_resolution.sh
 set -euo pipefail
 
 g_test_dir="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-g_container_dir="$(CDPATH='' cd -- "$g_test_dir/.." && pwd)"
+g_container_dir="$(CDPATH='' cd -- "$g_test_dir/../../container" && pwd)"
 
 g_failures=0
 g_last_resolution=""

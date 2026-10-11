@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
-# Regression test for container/scripts/deploy/manage_container_release.sh.
+# Regression test for container-host/deploy/manage_container_release.sh.
 #
 # The test runs entirely against temporary directories and local fixtures served
 # through file:// URLs, so it needs no root access and no network. It covers the
 # plan's install, failure, selection, and refusal cases.
 #
-# Usage: bash container/tests/test_release_manager.sh
+# Usage: bash container-host/tests/test_release_manager.sh
 set -euo pipefail
 
 g_test_dir="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-g_container_dir="$(CDPATH='' cd -- "$g_test_dir/.." && pwd)"
-g_manager="$g_container_dir/scripts/deploy/manage_container_release.sh"
+g_repo_root="$(CDPATH='' cd -- "$g_test_dir/../.." && pwd)"
+g_container_dir="$g_repo_root/container"
+g_manager="$g_repo_root/container-host/deploy/manage_container_release.sh"
 
 g_failures=0
 g_last_output=""
@@ -254,6 +255,24 @@ corrupt_checksum() {
     "$tag" > "$g_asset_base/$tag/$tag.tar.gz.sha256"
 }
 
+# Rebuilds a release fixture after adding a candidate-supplied file, so an
+# install must prove it never executes content from the archive. The added file
+# touches SENTINEL if it is ever run.
+add_candidate_file() {
+  local version="$1" rel_path="$2" sentinel="$3"
+  local tag="container-v$version"
+  local build="$g_tmp/build-$version"
+  mkdir -p "$build/container/$(dirname "$rel_path")"
+  {
+    printf '#!/usr/bin/env bash\n'
+    printf 'touch %q\n' "$sentinel"
+    printf 'exit 1\n'
+  } > "$build/container/$rel_path"
+  chmod +x "$build/container/$rel_path"
+  (cd "$build" && tar -czf "$g_asset_base/$tag/$tag.tar.gz" container)
+  (cd "$g_asset_base/$tag" && sha256sum "$tag.tar.gz" > "$tag.tar.gz.sha256")
+}
+
 echo "== Invalid tag syntax is refused =="
 expect_fail "install latest is refused" install user-one latest
 expect_fail "install main is refused" install user-one main
@@ -319,6 +338,7 @@ rm -f "$incomplete_build/container/Makefile"
 write_peeled_api 0.14.0 >/dev/null
 expect_fail "archive missing a required file is refused" install user-one container-v0.14.0
 assert_no_path "$(tag_dir user-one container-v0.14.0)" "incomplete archive installs nothing"
+assert_no_staging "$(releases_dir user-one)" "incomplete archive cleans up staging"
 
 # Absolute path entry.
 abs_build="$g_tmp/abs-0.15.0"
@@ -447,6 +467,23 @@ expect_ok "status works when the selected bundle is missing" status user-one
 assert_contains "$g_last_output" "selected tag:      container-v0.9.0" "status still reports the selected tag"
 assert_contains "$g_last_output" "selected bundle:   missing" "status reports the missing bundle"
 mv "$(tag_dir user-one container-v0.9.0)/container.moved" "$(tag_dir user-one container-v0.9.0)/container"
+
+echo
+echo "== Candidate-supplied code in a bundle is never executed =="
+verify_sentinel="$g_tmp/candidate-verify-executed"
+make_release 0.21.0 >/dev/null
+add_candidate_file 0.21.0 "scripts/verify/verify_container_release.sh" "$verify_sentinel"
+expect_ok "install a bundle that carries a candidate verifier" install user-one container-v0.21.0
+assert_file "$(tag_dir user-one container-v0.21.0)/container/Makefile" "the release installed with its required files"
+assert_contains "$g_last_output" "Installed container-v0.21.0" "install reports the installed tag"
+assert_no_path "$verify_sentinel" "the candidate verifier was not run"
+
+deploy_sentinel="$g_tmp/candidate-deploy-executed"
+make_release 0.22.0 >/dev/null
+add_candidate_file 0.22.0 "scripts/deploy/install.sh" "$deploy_sentinel"
+expect_ok "install a bundle that carries a candidate deploy helper" install user-one container-v0.22.0
+assert_file "$(tag_dir user-one container-v0.22.0)/container/Makefile" "the release installed with its required files"
+assert_no_path "$deploy_sentinel" "the candidate deploy helper was not run"
 
 echo
 echo "== Production mode requires root and ignores test overrides =="

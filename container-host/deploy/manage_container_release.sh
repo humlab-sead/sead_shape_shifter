@@ -18,6 +18,11 @@
 # container tag and source commit are recorded separately from the application
 # image settings (GIT_REF, IMAGE_NAME), which this script never changes.
 #
+# `install` validates a downloaded archive with this script's own code: it
+# verifies the checksum, rejects unsafe paths, checks the expected archive root
+# and the recorded version, and checks a required-file list. It never executes
+# anything from the candidate archive.
+#
 # Usage:
 #   manage_container_release.sh install  USER container-vX.Y.Z
 #   manage_container_release.sh activate USER container-vX.Y.Z
@@ -88,6 +93,10 @@ Commands:
 The container tag names a GitHub container release; it is not the application
 image ref. Installing or selecting a release never changes GIT_REF, IMAGE_NAME,
 ~/config, or ~/container-data.
+
+A downloaded archive is validated with this script's own checksum, path-safety,
+expected-root/version, and required-file checks; no file from the archive is
+ever executed.
 EOF
 }
 
@@ -273,24 +282,37 @@ archive_version() {
   tar -xzOf "$1" container/VERSION | tr -d '[:space:]'
 }
 
-bundle_verifier_path() {
-  printf '%s\n' "$1/scripts/verify/verify_container_release.sh"
-}
-
-# Runs the bundle's own read-only verifier against an archive built from the
-# bundle's contents. Returns non-zero when the verifier is missing or the check
-# fails, so an incomplete installed bundle fails closed.
-run_bundle_archive_check() {
-  local bundle="$1" archive="$2" verifier
-  verifier="$(bundle_verifier_path "$bundle")"
-  [[ -f "$verifier" ]] || return 1
-  bash "$verifier" archive "$archive" >/dev/null
-}
+# Files every release bundle must contain. This is the manager's own trusted copy
+# of the release contract: a downloaded archive is checked against this list, and
+# no file from the candidate archive is ever executed. Keep it in step with the
+# container-release workflow's required-file contract.
+readonly g_required_files=(
+	VERSION
+	README.md
+	DEPLOYMENT.md
+	Makefile
+	podman-compose.yml
+	Containerfile
+	.env.example
+	.containerignore
+	scripts/container.sh
+	scripts/load-env.sh
+	scripts/env-config.sh
+	scripts/setup.sh
+	scripts/build.sh
+	scripts/backup.sh
+	scripts/healthcheck.sh
+	scripts/service.sh
+	service/shape-shifter.service
+	resources/backend.env.example
+	resources/.pgpass.example
+	resources/authorization.env.example
+)
 
 # True when a tag directory holds a complete, tag-consistent, verified release.
 validate_installed() {
   local tag_dir="$1" tag="$2"
-  local bundle="$tag_dir/container" info="$tag_dir/release-info" tmp
+  local bundle="$tag_dir/container" info="$tag_dir/release-info" required_file
 
   [[ -d "$bundle" && -f "$info" ]] || return 1
   [[ "$(sed -n 's/^TAG=//p' "$info" | head -n1)" == "$tag" ]] || return 1
@@ -298,16 +320,9 @@ validate_installed() {
   [[ -f "$bundle/VERSION" ]] || return 1
   [[ "$(tr -d '[:space:]' < "$bundle/VERSION")" == "$(tag_version "$tag")" ]] || return 1
 
-  tmp="$(mktemp)"
-  if ! tar -czf "$tmp" -C "$tag_dir" container 2>/dev/null; then
-    rm -f "$tmp"
-    return 1
-  fi
-  if ! run_bundle_archive_check "$bundle" "$tmp" 2>/dev/null; then
-    rm -f "$tmp"
-    return 1
-  fi
-  rm -f "$tmp"
+  for required_file in "${g_required_files[@]}"; do
+    [[ -e "$bundle/$required_file" ]] || return 1
+  done
   return 0
 }
 
@@ -395,8 +410,11 @@ install_release() {
   commit="$(resolve_source_commit "$tag")" ||
     die "could not resolve the source commit for $tag: git ls-remote and the GitHub API both failed, and the GitHub API may be rate-limited for this network"
 
-  run_bundle_archive_check "$extract_dir/container" "$archive" ||
-    die "release archive for $tag failed the bundle verification check (missing or failing scripts/verify/verify_container_release.sh)"
+  local required_file
+  for required_file in "${g_required_files[@]}"; do
+    [[ -e "$extract_dir/container/$required_file" ]] ||
+      die "release archive for $tag is missing required file: container/$required_file"
+  done
 
   mkdir -p "$tag_dir" || die "could not create $tag_dir"
   g_install_created_tag_dir=true
