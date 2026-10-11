@@ -1,34 +1,44 @@
 #!/usr/bin/env bash
-# Deploy one Shape Shifter environment for a dedicated system user.
+# Configure one Shape Shifter environment for a dedicated system user.
 #
-# Run as root (or a sudo-capable admin) on the deployment host. The script
-# fetches the container/ deployment files into the user's home directory
-# (~/container), keeps the sibling ~/config and ~/container-data directories
-# intact, and runs the initial setup.
+# Run as root (or a sudo-capable admin) on the deployment host. This script does
+# not fetch or replace container files. The deployment user must already have a
+# selected container release, created with the host release manager
+# (/usr/local/sbin/shape-shifter-container-release): ~/container is a symlink to
+# that selection. The script runs the release's setup and records the application
+# image settings (repository, image ref, image name, port) in
+# ~/config/deployment.env. The container release tag is never written there.
 set -euo pipefail
 
 usage() {
   cat <<'EOF'
 Usage: scripts/deploy_single_environment.sh <USER> [--repo URL] [--ref REF] [--host-port PORT]
 
-Deploy a single Shape Shifter environment for a dedicated system user.
+Configure one Shape Shifter environment for a dedicated system user.
+
+The user must already have a selected container release: ~/container must be the
+symlink the host release manager creates. Install and select a release first:
+
+  sudo shape-shifter-container-release install  USER container-vX.Y.Z
+  sudo shape-shifter-container-release activate USER container-vX.Y.Z
 
 Options:
-  --repo, --repository  Git repository URL. Default: https://github.com/humlab-sead/sead_shape_shifter.git
-  --ref                 Git branch or release tag to fetch. Default: main
+  --repo, --repository  Application repository URL for `make build`. Default: https://github.com/humlab-sead/sead_shape_shifter.git
+  --ref                 Application image git ref for `make build`. Default: main
   --branch              Alias for --ref, kept so existing calls keep working
   --host-port           Host port for the container. Default: 8012
-  --no-build            Prepare files only; do not build or start
+  --no-build            Configure only; do not build or start
   -h, --help            Show this help message
 
-The repository, ref, host port, and the matching image name are written to
+The repository, image ref, matching image name, and host port are written to
 ~/config/deployment.env, so later `make build` and `make up` runs keep using
-them. The ~/config and ~/container-data directories are never removed: only
-~/container is refreshed from the archive.
+them. These are application image settings: they are independent of the selected
+container release and do not name it. The ~/config and ~/container-data
+directories are never removed, and nothing is written into the selected release.
 
 Examples:
   scripts/deploy_single_environment.sh test-shape-shifter.sead.se
-  scripts/deploy_single_environment.sh shapeshifter-prod --host-port 8013
+  scripts/deploy_single_environment.sh shapeshifter-prod --host-port 8013 --ref v2.3.0
 EOF
 }
 
@@ -69,38 +79,55 @@ fi
 # lingering is enabled; otherwise `make build` and `make up` fail with a polkit
 # "Access denied" error from crun. Enable lingering here (root can do this) and
 # expose the user's runtime directory to the `sudo -u` commands below.
+user_record="$(getent passwd "$USER" || true)"
+if [[ -z "$user_record" ]]; then
+  echo "No such system user: $USER" >&2
+  exit 1
+fi
+user_home="$(printf '%s\n' "$user_record" | cut -d: -f6)"
+if [[ -z "$user_home" || ! -d "$user_home" ]]; then
+  echo "Cannot resolve the home directory for $USER" >&2
+  exit 1
+fi
+
+# Require a selected release. A real directory is refused: an administrator must
+# review and move it before the release manager can select a version.
+container_link="$user_home/container"
+if [[ ! -L "$container_link" ]]; then
+  echo "error: $container_link is not a selected container release." >&2
+  if [[ -d "$container_link" ]]; then
+    echo "       It is a real directory. An administrator must review and move it, then install" >&2
+    echo "       and activate a release with shape-shifter-container-release." >&2
+  else
+    echo "       Nothing is selected. As root, run:" >&2
+    echo "         shape-shifter-container-release install  $USER container-vX.Y.Z" >&2
+    echo "         shape-shifter-container-release activate $USER container-vX.Y.Z" >&2
+  fi
+  exit 1
+fi
+selected_dir="$(readlink -f -- "$container_link")"
+if [[ ! -d "$selected_dir" || ! -f "$selected_dir/Makefile" || ! -f "$selected_dir/VERSION" ]]; then
+  echo "error: $container_link does not resolve to a complete container release ($selected_dir)" >&2
+  echo "       Reinstall the release with shape-shifter-container-release and try again." >&2
+  exit 1
+fi
+
 loginctl enable-linger "$USER"
 USER_UID="$(id -u "$USER")"
 
-# The archive URL accepts a branch or a tag, so no branch or tag detection is
-# needed. The wildcard matches the top-level directory, whose name differs
-# between the two: GitHub strips the leading 'v' from a tag, so v2.1.0 extracts
-# to sead_shape_shifter-2.1.0/.
-ARCHIVE_URL="${REPO_URL%.git}/archive/${REF}.tar.gz"
-
-echo "Fetching deployment files for $USER (ref $REF)..."
+echo "Using the selected container release at $selected_dir"
+echo "Configuring application image settings for $USER..."
 sudo -u "$USER" \
-  env ARCHIVE_URL="$ARCHIVE_URL" \
-      DEPLOY_REPO="$REPO_URL" DEPLOY_REF="$REF" DEPLOY_PORT="$HOST_PORT" \
+  env DEPLOY_REPO="$REPO_URL" DEPLOY_REF="$REF" DEPLOY_PORT="$HOST_PORT" \
       XDG_RUNTIME_DIR="/run/user/$USER_UID" \
   bash -lc '
 set -euo pipefail
-cd ~
-if [ -d container ]; then
-  tmp_dir="$(mktemp -d)"
-  curl -fsSL "$ARCHIVE_URL" | tar -xz -C "$tmp_dir" --wildcards --strip-components=1 "*/container/*"
-  cp -a "$tmp_dir/container/." "$HOME/container/"
-  rm -rf "$tmp_dir"
-else
-  curl -fsSL "$ARCHIVE_URL" | tar -xz --wildcards --strip-components=1 "*/container/*"
-fi
 cd ~/container
 bash scripts/setup.sh
 
-# Record the repository, branch, image and port in CONFIG_DIR/deployment.env,
-# so later `make build` and `make up` runs use the source this deploy fetched
-# instead of the defaults in .env.example. The file lives outside the checkout,
-# so it survives a later refresh of the deployment files.
+# Record the application image source and port in CONFIG_DIR/deployment.env.
+# These are image settings and are separate from the selected release tag, so
+# later `make build` and `make up` runs use the source this deploy configured.
 . scripts/env-config.sh
 . scripts/load-env.sh
 deployment_env="$CONFIG_DIR/deployment.env"
@@ -126,6 +153,8 @@ fi
 
 echo
 echo "Deployment for $USER is configured."
+echo "Container release: $selected_dir"
+echo "Application image ref: $REF"
 echo "Review the deployment settings and runtime environment before first use:"
 echo "  sudo -u $USER nano ~/config/deployment.env"
 echo "  sudo -u $USER nano ~/config/backend.env"

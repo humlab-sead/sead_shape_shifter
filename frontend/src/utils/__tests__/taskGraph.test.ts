@@ -25,6 +25,10 @@ describe('taskGraph', () => {
     expect(shouldShowNodeForTaskFilter(undefined, 'critical')).toBe(true)
   })
 
+  it('excludes undefined status from the has_note filter', () => {
+    expect(shouldShowNodeForTaskFilter(undefined, 'has_note')).toBe(false)
+  })
+
   it('filters by basic task status', () => {
     expect(shouldShowNodeForTaskFilter(mkStatus({ status: 'todo' as any }), 'todo')).toBe(true)
     expect(shouldShowNodeForTaskFilter(mkStatus({ status: 'ongoing' as any }), 'ongoing')).toBe(true)

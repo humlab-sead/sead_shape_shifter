@@ -6,10 +6,10 @@ SHELL := /bin/bash
 # ---------------------------------------------------------------------------
 # Deployment defaults live in CONFIG_DIR/deployment.env so this Makefile,
 # podman-compose.yml, and the scripts in scripts/ cannot drift apart. The
-# canonical deployment layout keeps config and mutable data next to the
-# checkout: ~/config and ~/container-data for the user that owns ~/container.
+# canonical deployment layout keeps config and mutable data beside the selected
+# release: ~/config and ~/container-data for the user that owns ~/container.
 # Explicit path overrides remain available for tests and controlled alternate
-# layouts. Nothing is read from, or written to, the checkout itself.
+# layouts. Nothing is read from, or written to, the release itself.
 #
 # Precedence for every value, highest first:
 #   1. command line   make IMAGE_NAME=shape-shifter:dev up
@@ -19,15 +19,15 @@ SHELL := /bin/bash
 # The environment is captured before deployment.env is read, because a plain
 # assignment in the included file would otherwise override the environment.
 MAKEFILE_DIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
-CHECKOUT_DIR := $(patsubst %/,%,$(MAKEFILE_DIR))
-CHECKOUT_PARENT := $(dir $(CHECKOUT_DIR))
 
 # Resolve a possibly relative path into an absolute one. A relative override
-# names a path next to the checkout, so DATA_DIR=container-data means the
-# sibling of the checkout directory. scripts/load-env.sh applies the same rule,
-# and the two must stay in step or `make up` and a direct script call would use
-# different directories.
-resolve_path = $(if $(filter /%,$(1)),$(1),$(CHECKOUT_PARENT)$(patsubst ./%,%,$(1)))
+# names a path under the deployment user's home, so DATA_DIR=container-data
+# means $HOME/container-data; an absolute override is used unchanged. Resolving
+# from $HOME rather than from the release directory keeps configuration and data
+# outside the release even when ~/container is a symlink into a versioned
+# release. scripts/load-env.sh applies the same rule, and the two must stay in
+# step or `make up` and a direct script call would use different directories.
+resolve_path = $(if $(filter /%,$(1)),$(1),$(HOME)/$(patsubst ./%,%,$(1)))
 
 ENV_CONFIG_DIR := $(CONFIG_DIR)
 ENV_DATA_DIR := $(DATA_DIR)
@@ -66,8 +66,13 @@ override CONTAINER_DATA_DIR := $(call resolve_path,$(or $(ENV_CONTAINER_DATA_DIR
 
 COMPOSE_FILE := podman-compose.yml
 SCRIPTS_DIR := ./scripts
-RESOURCES_DIR := ./resources
-ENV_EXAMPLE := $(MAKEFILE_DIR).env.example
+
+# Container lifecycle actions all delegate to scripts/container.sh. The script
+# applies the same defaults when it is run directly, so keep the two lists in
+# step.
+CONTAINER_ENV := DATA_DIR="$(CONTAINER_DATA_DIR)" HOST_PORT="$(HOST_PORT)" \
+	IMAGE_NAME="$(IMAGE_NAME)" COMPOSE_PROJECT_NAME="$(COMPOSE_PROJECT_NAME)" \
+	CONTAINER_NAME="$(CONTAINER_NAME)"
 
 # podman-compose reads runtime configuration from CONFIG_DIR and mutable data
 # from CONTAINER_DATA_DIR.
@@ -160,56 +165,6 @@ check-podman:
 setup: check-podman
 	@CONFIG_DIR="$(CONFIG_DIR)" DATA_DIR="$(CONTAINER_DATA_DIR)" $(SCRIPTS_DIR)/setup.sh
 
-.PHONY: setup-directories
-setup-directories: check-podman
-	@mkdir -p "$(CONFIG_DIR)" "$(CONTAINER_DATA_DIR)"/{projects,shared,logs,output,backups,tmp,state}
-	@chmod 700 "$(CONFIG_DIR)"
-	@chmod 755 "$(CONTAINER_DATA_DIR)"
-	@echo "$(GREEN)+ Created config directory in $(CONFIG_DIR)$(NC)"
-	@echo "$(GREEN)+ Created data directories in $(CONTAINER_DATA_DIR)$(NC)"
-
-.PHONY: setup-env
-setup-env: check-podman
-	@mkdir -p "$(CONFIG_DIR)"; \
-	chmod 700 "$(CONFIG_DIR)"; \
-	if [ ! -f "$(CONFIG_DIR)/deployment.env" ]; then \
-		if [ -f "$(ENV_EXAMPLE)" ]; then \
-			cp "$(ENV_EXAMPLE)" "$(CONFIG_DIR)/deployment.env"; \
-			echo "$(GREEN)+ Created $(CONFIG_DIR)/deployment.env$(NC)"; \
-			echo "$(YELLOW)  Review the image, branch, port and frontend build args$(NC)"; \
-		else \
-			echo "$(YELLOW)! $(ENV_EXAMPLE) not found, the built-in defaults apply$(NC)"; \
-		fi \
-	else \
-		echo "$(GREEN)+ $(CONFIG_DIR)/deployment.env already exists$(NC)"; \
-	fi
-	@if [ ! -f "$(CONFIG_DIR)/backend.env" ]; then \
-		if [ -f "$(RESOURCES_DIR)/backend.env.example" ]; then \
-			cp "$(RESOURCES_DIR)/backend.env.example" "$(CONFIG_DIR)/backend.env"; \
-			chmod 600 "$(CONFIG_DIR)/backend.env"; \
-			echo "$(GREEN)+ Created $(CONFIG_DIR)/backend.env$(NC)"; \
-			echo "$(YELLOW)  Edit this file and restart the container to apply changes$(NC)"; \
-		else \
-			echo "$(YELLOW)! $(RESOURCES_DIR)/backend.env.example not found$(NC)"; \
-		fi \
-	else \
-		echo "$(GREEN)+ $(CONFIG_DIR)/backend.env already exists$(NC)"; \
-	fi
-	@mkdir -p "$(CONFIG_DIR)/.pgpass"; \
-	chmod 700 "$(CONFIG_DIR)/.pgpass"; \
-	if [ ! -f "$(CONFIG_DIR)/.pgpass/.pgpass" ]; then \
-		if [ -f "$(RESOURCES_DIR)/.pgpass.example" ]; then \
-			cp "$(RESOURCES_DIR)/.pgpass.example" "$(CONFIG_DIR)/.pgpass/.pgpass"; \
-		else \
-			touch "$(CONFIG_DIR)/.pgpass/.pgpass"; \
-		fi; \
-		chmod 600 "$(CONFIG_DIR)/.pgpass/.pgpass"; \
-		echo "$(GREEN)+ Created $(CONFIG_DIR)/.pgpass/.pgpass$(NC)"; \
-		echo "$(YELLOW)  Edit this file with the PostgreSQL credentials$(NC)"; \
-	else \
-		echo "$(GREEN)+ $(CONFIG_DIR)/.pgpass/.pgpass already exists$(NC)"; \
-	fi
-
 # ===========================================================================
 # Build
 # ===========================================================================
@@ -231,19 +186,20 @@ build-no-cache: check-podman
 # ===========================================================================
 # Container lifecycle
 # ===========================================================================
+# These targets delegate to scripts/container.sh; CONTAINER_ENV above passes the
+# resolved deployment values.
 
 .PHONY: up
 up: check-podman
-	@DATA_DIR="$(CONTAINER_DATA_DIR)" HOST_PORT="$(HOST_PORT)" IMAGE_NAME="$(IMAGE_NAME)" \
-		COMPOSE_PROJECT_NAME="$(COMPOSE_PROJECT_NAME)" $(SCRIPTS_DIR)/up.sh
+	@$(CONTAINER_ENV) $(SCRIPTS_DIR)/container.sh up
 
 .PHONY: down
 down:
-	@DATA_DIR="$(CONTAINER_DATA_DIR)" COMPOSE_PROJECT_NAME="$(COMPOSE_PROJECT_NAME)" $(SCRIPTS_DIR)/down.sh
+	@$(CONTAINER_ENV) $(SCRIPTS_DIR)/container.sh down
 
 .PHONY: restart
-restart: down up
-	@echo "$(GREEN)+ Container restarted$(NC)"
+restart: check-podman
+	@$(CONTAINER_ENV) $(SCRIPTS_DIR)/container.sh restart
 
 # ===========================================================================
 # Diagnostics
@@ -251,7 +207,7 @@ restart: down up
 
 .PHONY: logs
 logs:
-	@DATA_DIR="$(CONTAINER_DATA_DIR)" COMPOSE_PROJECT_NAME="$(COMPOSE_PROJECT_NAME)" $(SCRIPTS_DIR)/logs.sh
+	@$(CONTAINER_ENV) $(SCRIPTS_DIR)/container.sh logs
 
 .PHONY: ps
 ps:
@@ -259,7 +215,7 @@ ps:
 
 .PHONY: status
 status:
-	@CONTAINER_NAME="$(CONTAINER_NAME)" $(SCRIPTS_DIR)/status.sh
+	@$(CONTAINER_ENV) $(SCRIPTS_DIR)/container.sh status
 
 .PHONY: shell
 shell:

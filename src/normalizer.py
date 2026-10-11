@@ -336,13 +336,20 @@ class ShapeShifter:
         )
 
     def _check_duplicate_keys(self, entity: str, table_cfg: TableConfig) -> None:
-        """Check that processed output contains every configured business key."""
+        """Check that processed output contains every configured business key.
+
+        The managed identity columns (system_id and public_id) are permitted as
+        keys even though they are added to the output after this check runs, so
+        they never count as missing. This matches the structural validator,
+        which treats them as produced columns.
+        """
 
         if not table_cfg.keys:
             return
 
         keys: set[str] = set(table_cfg.keys) if table_cfg.keys else set()
-        missing_keys: set[str] = keys - set(self.table_store[entity].columns)
+        managed_keys: set[str] = set(table_cfg.identity_columns)
+        missing_keys: set[str] = keys - set(self.table_store[entity].columns) - managed_keys
 
         if missing_keys:
             raise MissingBusinessKeyError(
@@ -353,7 +360,21 @@ class ShapeShifter:
                 missing_keys=sorted(missing_keys),
             )
 
-        has_duplicate_keys: bool = bool(self.table_store[entity].duplicated(subset=list(table_cfg.keys)).any())
+        # Only keys already present in the processed output can be scanned for
+        # duplicates. Managed identity columns are system-generated (system_id is
+        # unique by construction) and public_id is filled in later, so they carry
+        # no duplicate information and are excluded. Composite keys that mix a
+        # managed identity column with a produced business column are therefore
+        # scanned over just the produced columns instead of raising a KeyError on
+        # the not-yet-added identity column.
+        available_keys: list[str] = [
+            key for key in table_cfg.keys if key not in managed_keys and key in self.table_store[entity].columns
+        ]
+
+        if not available_keys:
+            return
+
+        has_duplicate_keys: bool = bool(self.table_store[entity].duplicated(subset=available_keys).any())
         if has_duplicate_keys:
             # raise ValueError(f"{entity}[keys]: Duplicate keys found for keys {table_cfg.keys}.")
             logger.error(f"{entity}[keys]: DUPLICATE KEYS FOUND FOR KEYS {table_cfg.keys}.")

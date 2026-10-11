@@ -1,3 +1,48 @@
+# [2.3.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v2.2.0...v2.3.0) (2026-10-05)
+
+
+### Bug Fixes
+
+* **projects:** contain project create/copy/delete paths ([9528290](https://github.com/humlab-sead/sead_shape_shifter/commit/95282906c9ec535036ff7d10481c6cd2b3ca0082))
+* **security:** contain SPA catch-all within frontend dist ([4e84e2c](https://github.com/humlab-sead/sead_shape_shifter/commit/4e84e2c26f24b2cc9212faee43a5de78d27f943a))
+* **security:** reject file-capable entity types without a containment mapper ([2c39fe5](https://github.com/humlab-sead/sead_shape_shifter/commit/2c39fe57c614dc89c99ab870380eb97081904b04))
+* **specifications:** report correct dependency name in materialization errors ([b698968](https://github.com/humlab-sead/sead_shape_shifter/commit/b698968dc84804a250cc28b195827d0cd297461d))
+* streamline FastAPI backend launch configurations and update environment variables ([033127c](https://github.com/humlab-sead/sead_shape_shifter/commit/033127ce80a72f15df49429b19068757015d654b))
+* **security:** thread env-var allowlist through resolver boundary ([5f53771](https://github.com/humlab-sead/sead_shape_shifter/commit/5f537719eefd671ae09af4fb30505eb398d25ed9))
+* update identity columns and unique sets in dating material entity ([09f4049](https://github.com/humlab-sead/sead_shape_shifter/commit/09f40490caaa7fd4325ebf25476031b7850a341b))
+* update paths in documentation and settings for consistency ([a03d64c](https://github.com/humlab-sead/sead_shape_shifter/commit/a03d64c6cb6625af2a7aba4b0a630d8f195ab927))
+* update shape-shifter version to 2.2.0 in uv.lock ([ab183c5](https://github.com/humlab-sead/sead_shape_shifter/commit/ab183c51824287b8dbb87dd708ddf42cd042b228))
+
+
+### Features
+
+* **env:** add .env.example template for environment configuration ([6c42a2b](https://github.com/humlab-sead/sead_shape_shifter/commit/6c42a2b711df45bbc0979f7cc83412c533805624))
+* **strategy:** add AI coding model selection strategy documentation ([de64d63](https://github.com/humlab-sead/sead_shape_shifter/commit/de64d63623c7c00238dab4df6450ec7be212f6cc))
+* **security:** add approved-variable gate to env expansion ([813d6de](https://github.com/humlab-sead/sead_shape_shifter/commit/813d6decc5401a94ac4592a837088fc2c804d172))
+* **target-model:** add database-sequence public ID generation ([ab909ed](https://github.com/humlab-sead/sead_shape_shifter/commit/ab909edfa3bdc31fe0bcdce8b658b56b4cf641e5))
+* **auth:** add dev authorization bootstrap hint ([01b6f05](https://github.com/humlab-sead/sead_shape_shifter/commit/01b6f05018e313dbc7b1513b6a701a03659cf1be))
+* add development authorization setup for local resources in Makefile ([3607bbc](https://github.com/humlab-sead/sead_shape_shifter/commit/3607bbc24bf3a450a76227f53c5fa70356214e32))
+* **ingester:** add fail-closed SIMS capability preflight ([bd2132c](https://github.com/humlab-sead/sead_shape_shifter/commit/bd2132ca3fd8621d361eff688292159e1981ab95))
+* **security:** add Phase 2 task plan for root execution removal and credential management ([bc9e0b0](https://github.com/humlab-sead/sead_shape_shifter/commit/bc9e0b0099e0ecd41e15422c520400dc9c3ee69c))
+* **build:** add pnpm workspace configuration for build settings ([568ee30](https://github.com/humlab-sead/sead_shape_shifter/commit/568ee308cff2a75b94131389526eb4a473363d01))
+* **proposals:** add proposal for secure ingester filesystem and destination access ([fb78287](https://github.com/humlab-sead/sead_shape_shifter/commit/fb782878df072afb2793212b129a032f44da945e))
+* **scripts:** add reviewer-approved site no-match recorder ([57b7c17](https://github.com/humlab-sead/sead_shape_shifter/commit/57b7c17196372734bddcb529fdfedb999b4f2094))
+* **ingester:** add run_id and batch resolve entry point ([4957a74](https://github.com/humlab-sead/sead_shape_shifter/commit/4957a74f42ad904961bedd335db11a373353d4ca))
+* **proposals:** add SIMS Identity Allocation Contract and Phase Plan documentation ([959b49d](https://github.com/humlab-sead/sead_shape_shifter/commit/959b49db9050141c591b9ef6cf9393b43ad6748b))
+* add target-model data export functionality to Excel and remove obsolete export script ([c80f53c](https://github.com/humlab-sead/sead_shape_shifter/commit/c80f53cd6b483699cb5897dccb0631afdbe0533e))
+* add user introduction presentation with project workflow and data preparation steps ([9e64619](https://github.com/humlab-sead/sead_shape_shifter/commit/9e64619bda736318e7750e809cd862be0fa1d4be))
+* **ingester:** bind approved SIMS aggregate IDs and reserve sequence IDs ([064224f](https://github.com/humlab-sead/sead_shape_shifter/commit/064224fdce148df5f641e2831de5b31339193f98))
+* **docs:** clarify identity handling and SIMS reference in target model guide ([ad1c801](https://github.com/humlab-sead/sead_shape_shifter/commit/ad1c8011ffb544662177a5b25de8f0520df388b5))
+* **proposals:** create standalone Ingester Authorization proposal ([2aec33d](https://github.com/humlab-sead/sead_shape_shifter/commit/2aec33d2354fa2ca3e8b169ef9cd31d33936c709))
+* **docs:** expand glossary with SEAD and SIMS identity definitions and contexts ([e66de01](https://github.com/humlab-sead/sead_shape_shifter/commit/e66de01740fda36f610d02bbdea72a3d10a13ae1))
+* implement export functionality for *_types tables to Excel workbook ([a276e69](https://github.com/humlab-sead/sead_shape_shifter/commit/a276e69a0e5c5674efbefef3d7a44fa5ed634690))
+* **schemas:** remove surrogate_name from entity schema and add data_provider_code to project schema ([ad02b2a](https://github.com/humlab-sead/sead_shape_shifter/commit/ad02b2a80b25fc110f687544cc181d9ca0eee620))
+* **ingester:** resolve SIMS work in one ordered batch ([d5551a4](https://github.com/humlab-sead/sead_shape_shifter/commit/d5551a47a8b28c9e7db3718011477ad5b6a6b142))
+* **ingester:** stop auto-confirming proposed binding sets ([425142a](https://github.com/humlab-sead/sead_shape_shifter/commit/425142a393302ba11bbd61601840f9c16c8678d0))
+* **tests:** update component stubs to include names for better identification ([eb92780](https://github.com/humlab-sead/sead_shape_shifter/commit/eb927801d3fd10e2ef171d0a33dadfb75dc8c2e1))
+* **proposals:** update historical submission groups and validation references in task plan ([f8aa0d3](https://github.com/humlab-sead/sead_shape_shifter/commit/f8aa0d37b394db4bcbe940f177a17f3a6612e4d3))
+* updated AI conding instructions ([e178c3e](https://github.com/humlab-sead/sead_shape_shifter/commit/e178c3eee0456abd46b80061976d48f56b67abd8))
+
 # [2.2.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v2.1.0...v2.2.0) (2026-09-23)
 
 

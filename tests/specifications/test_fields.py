@@ -12,6 +12,7 @@ from src.specifications.fields import (
     IsEmptyFieldValidator,
     IsExistingEntityValidator,
     IsOfCategoricalValuesValidator,
+    KeysSubsetOfColumnsValidator,
 )
 
 
@@ -454,3 +455,42 @@ class TestIsOfCategoricalValuesValidator:
         validator.is_satisfied_by_field("sample", "status", categories=[])
 
         assert len(validator.errors) == 1  # Any value should fail with empty categories
+
+
+class TestKeysSubsetOfColumnsValidator:
+    """Tests for KeysSubsetOfColumnsValidator."""
+
+    @pytest.fixture
+    def project_cfg(self):
+        """Sample project configuration with a dynamic entity."""
+        return {
+            "entities": {
+                "sample": {
+                    "type": "sql",
+                    "public_id": "sample_id",
+                    "columns": ["source_value"],
+                    "keys": ["source_value"],
+                    "data_source": "database",
+                    "query": "SELECT source_value FROM t",
+                }
+            }
+        }
+
+    def test_managed_identity_keys_pass(self, project_cfg):
+        """system_id and public_id count as produced keys for dynamic entities."""
+        project_cfg["entities"]["sample"]["keys"] = ["system_id", "sample_id"]
+        validator = KeysSubsetOfColumnsValidator(project_cfg, severity="E")
+
+        validator.is_satisfied_by_field("sample", "keys")
+
+        assert len(validator.errors) == 0
+
+    def test_unknown_key_fails(self, project_cfg):
+        """A key that no producer creates fails validation."""
+        project_cfg["entities"]["sample"]["keys"] = ["not_produced"]
+        validator = KeysSubsetOfColumnsValidator(project_cfg, severity="E")
+
+        validator.is_satisfied_by_field("sample", "keys")
+
+        assert len(validator.errors) == 1
+        assert "not_produced" in validator.errors[0].message

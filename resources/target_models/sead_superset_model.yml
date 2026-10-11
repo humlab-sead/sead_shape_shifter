@@ -66,9 +66,9 @@ entities:
         required: true
         type: string
         nullable: false
-      # site_type_id:
-      #   type: integer
-      #   nullable: true
+      site_type_id:
+        type: integer
+        nullable: true
       national_site_identifier:
         type: string
         nullable: true
