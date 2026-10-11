@@ -6,6 +6,7 @@ container lifecycle helpers, see the Makefile and `scripts/`.
 
 ## Quick Navigation
 
+- **Release install and selection**: [Install and select a container release](#install-and-select-a-container-release)
 - **Single environment**: [Single environment deploy](#single-environment-deploy)
 - **Multiple environments**: repeat the single-environment steps, or use
   `scripts/deploy/deploy_all_environments.sh`
@@ -38,10 +39,103 @@ sudo loginctl enable-linger "$USER_NAME"
 The deployment user's home directory holds three sibling directories:
 
 ```text
-~/container/         replaceable code and build context
+~/container/         selected container release (managed symlink)
 ~/config/            environment configuration, credentials and policy
 ~/container-data/    persistent runtime data and state
 ```
+
+Install and select a release before running the commands below; see
+[Install and select a container release](#install-and-select-a-container-release).
+
+---
+
+## Install and select a container release
+
+Container releases are installed and selected with one administrator-owned
+script, `/usr/local/sbin/shape-shifter-container-release`. Install it once per
+host from a reviewed copy of the repository; an administrator updates it
+explicitly after review. The script is never run from, and is never replaced by,
+a user's selected release.
+
+```bash
+sudo install -o root -g root -m 0755 \
+  container/scripts/deploy/manage_container_release.sh \
+  /usr/local/sbin/shape-shifter-container-release
+```
+
+Each environment keeps its own selection. Installing a release does not select
+it, and selecting a release does not change `GIT_REF`, `IMAGE_NAME`, `~/config`,
+or `~/container-data`.
+
+```bash
+# Download, verify, and install an exact release. This does not select it.
+sudo shape-shifter-container-release install USER container-vX.Y.Z
+
+# Select an installed release for USER. This changes only that user.
+sudo shape-shifter-container-release activate USER container-vX.Y.Z
+
+# Show the selected tag, source commit, container link, and image settings.
+sudo shape-shifter-container-release status USER
+
+# Select the release USER used before the current one. No download is needed.
+sudo shape-shifter-container-release rollback USER
+```
+
+Installed releases live under
+`/opt/shape-shifter/<user>/container-releases/<tag>/container` and are owned by
+root: the deployment user can read and execute them but cannot modify them. The
+selected release is chosen through
+`/opt/shape-shifter/<user>/container-current`, and the deployment user's
+`~/container` is a symlink to that selector. Operations on one user are
+serialized and never change another user's selection.
+
+`install` resolves the annotated tag's peeled commit, downloads the release
+archive and checksum by the exact `container-vX.Y.Z` tag, verifies the checksum,
+rejects an archive whose version does not match the tag or that contains
+absolute or parent-traversal paths, and validates the extracted bundle with its
+own `scripts/verify/verify_container_release.sh archive` check. Any failure
+leaves the current selection untouched. Reinstalling a tag is accepted only when
+the installed copy already validates; otherwise the existing directory is left
+in place and the command fails.
+
+The source commit comes from `git ls-remote` on the annotated tag when `git` is
+installed. Without `git`, or when that lookup fails, the script falls back to the
+GitHub API, which is rate-limited per network address and can refuse
+unauthenticated requests. Installing `git` on the host keeps release installation
+working when that limit is reached.
+
+`status` reports the selected tag and source commit separately from `GIT_REF`
+and `IMAGE_NAME`. It reads only those two keys from `~/config/deployment.env` and
+never executes that file, so it still reports a selection whose installed bundle
+is missing or broken.
+
+### First transition to a release
+
+An existing `~/container` may be a real directory from the retired placement
+flow. `activate` refuses to replace a real directory or an unrelated symlink and
+leaves it intact. An administrator must review and move that directory, then
+install and activate a release:
+
+```bash
+sudo -u USER mv ~/container ~/container.pre-release
+sudo shape-shifter-container-release install  USER container-vX.Y.Z
+sudo shape-shifter-container-release activate USER container-vX.Y.Z
+```
+
+`activate` creates `~/container` as a symlink to the selector once the existing
+path has been moved.
+
+### Paths and permissions
+
+`CONFIG_DIR` defaults to `~/config` and `DATA_DIR` to `~/container-data`. A
+relative override in `~/config/deployment.env` names a path under the deployment
+user's home, so `DATA_DIR=container-data` and `DATA_DIR=./container-data` both
+mean `~/container-data`; an absolute value is used unchanged. Relative overrides
+resolve from the user's home, not from the selected release directory, so
+configuration, credentials, and runtime data stay outside the release.
+`CONTAINER_DATA_DIR`, which `podman-compose.yml` mounts, follows `DATA_DIR` unless
+it is set explicitly. `scripts/load-env.sh` and the Makefile implement the same
+rule, so a direct script call and a Make target agree.
 
 ---
 
@@ -69,9 +163,10 @@ GIT_REF=dev
 IMAGE_NAME=shape-shifter:dev
 ```
 
-The deploy helper described below records these values automatically from its
-`--repo`, `--ref` and `--host-port` options. The ref may be a branch or a
-release tag; `--branch` is accepted as an alias.
+The deploy helper described below records these values from its `--repo`,
+`--ref` and `--host-port` options. `--ref` selects the application image ref to
+build (a branch or an application release tag); `--branch` is accepted as an
+alias. It is unrelated to the selected container release.
 
 Before the first start, edit `~/config/backend.env` and set:
 
@@ -84,11 +179,13 @@ PostgreSQL passwords belong in `~/config/.pgpass/.pgpass` (mode 600), not in
 `backend.env`. The authorization inputs described below belong in the same
 directory.
 
-To run the whole flow from an admin account, use the deploy helper:
+To configure the application image settings from an admin account, use the
+deploy helper. The user must already have a selected container release; the
+helper does not fetch or replace container files:
 
 ```bash
 sudo scripts/deploy/deploy_single_environment.sh test-shape-shifter.sead.se
-sudo scripts/deploy/deploy_single_environment.sh test-shape-shifter.sead.se --host-port 8013
+sudo scripts/deploy/deploy_single_environment.sh test-shape-shifter.sead.se --host-port 8013 --ref v2.3.0
 ```
 
 ### Multiple environments
@@ -111,10 +208,15 @@ DEPLOY_ENVIRONMENTS='test-shape-shifter.sead.se:8012 prod-shape-shifter.sead.se:
   sudo -E scripts/deploy/deploy_all_environments.sh
 ```
 
+Each target user must already have its own selected container release. Prepare
+each one with the host manager first; `deploy_all_environments.sh` never installs
+or activates a release and never selects a shared version.
+
 `HOST_PORT` selects the published port; the container port stays `8012`. Each
-deployment records its repository, branch, port, and matching image name in its
-own `~/config/deployment.env`, so later builds keep the source that was
-deployed and a refresh of `~/container` leaves the settings in place.
+deployment records its repository, application ref, port, and matching image name
+in its own `~/config/deployment.env`, so later builds keep the source that was
+configured and selecting a different container release leaves the settings in
+place.
 
 ---
 
@@ -261,7 +363,7 @@ identically. The unit sets no deployment configuration of its own: a value in
 the unit environment would override the deployment file, because the compose
 tools prefer the environment over the file. The unit only fixes
 `WorkingDirectory=%h/container`, so the code that runs is the code in the
-checkout.
+selected release.
 
 Control it with the `service-*` targets, which call `scripts/service.sh`:
 
@@ -293,61 +395,107 @@ daemon-reload`, so no separate reload is needed.
 
 ## Updating a deployment
 
-```bash
-# Refresh deployment files and rebuild the image from GitHub
-sudo scripts/deploy/deploy_single_environment.sh test-shape-shifter.sead.se
+To move an environment to a different container release:
 
-# Or, as the deployment user
-make build && make restart
+```bash
+sudo shape-shifter-container-release install  USER container-vX.Y.Z
+sudo shape-shifter-container-release activate USER container-vX.Y.Z
 ```
 
-`make build` takes the repository and ref from `~/config/deployment.env`,
-defaulting to `GIT_REPO=https://github.com/humlab-sead/sead_shape_shifter.git`
-and `GIT_REF=main`. Set `GIT_REF=v1.2.0` for a release tag, or `make build-local`
-to build from a local checkout. A `VAR=value make build` override takes
-precedence over `~/config/deployment.env`.
+`activate` keeps the release the user was on for `rollback`. Configuration,
+credentials, project data, logs, backups, authorization state, and application
+image settings are unchanged; only the selected release changes.
+
+To rebuild the application image from the configured application ref:
+
+```bash
+sudo -u USER -H bash -lc 'cd ~/container && make build && make restart && make healthcheck'
+```
+
+The deploy helper configures those application image settings from its `--repo`,
+`--ref`, and `--host-port` options; it does not fetch or replace container files
+and requires an already-selected release.
+
+`make build` takes the repository and application ref from
+`~/config/deployment.env`, defaulting to
+`GIT_REPO=https://github.com/humlab-sead/sead_shape_shifter.git` and
+`GIT_REF=main`. Set `GIT_REF=v1.2.0` for an application release tag, or
+`make build-local` to build from a local checkout. A `VAR=value make build`
+override takes precedence over `~/config/deployment.env`.
 
 `make build` tags a branch build after the ref, so `GIT_REF=dev` produces
 `shape-shifter:dev`. Keep `IMAGE_NAME` in `~/config/deployment.env` in step with
-`GIT_REF`, otherwise `make restart` starts the previous image.
+`GIT_REF`, otherwise `make restart` starts the previous image. The application
+image ref and the container release tag are independent: the release supplies the
+deployment files, while `GIT_REF` selects the source the image is built from.
 
-### Replacing the checkout
+### Isolated local development
 
-`~/container` is replaceable: it holds code and the build context, so a release
-can be unpacked over it while `~/config` and `~/container-data` stay in place.
+`scripts/deploy/sync-to-deploy` synchronizes a working tree for isolated
+development. It refuses a target that the release manager owns: a symlinked
+`~/container` selection or any target that resolves into
+`/opt/shape-shifter/<user>/`. Use an explicit non-production directory instead:
 
 ```bash
-# As the admin account, unpack the release archive over the deployment directory
-sudo tar -xzf shape-shifter-release.tar.gz -C /data/test-shape-shifter.sead.se
-
-# Confirm the preserved directories are still there
-sudo -u test-shape-shifter.sead.se ls ~/config ~/container-data
-
-# As the deployment user, rebuild and restart from the configured values
-cd ~/container
-make build && make restart && make healthcheck
+container/scripts/deploy/sync-to-deploy --remote-dir container-dev
 ```
 
-Image identity keeps following the configured values: `make build` reads
-`GIT_REF`, `GIT_REPO`, and `IMAGE_NAME` from `~/config/deployment.env`, passes the
-deployment user's UID/GID, cache-busts branch builds only, and tags a release tag
-with its own name. Configuration, credentials, project data, logs, backups, and
-the authorization database all live outside the checkout, so replacing it leaves
-them unchanged.
+The production deployment path is the release flow above, not a working-tree
+synchronization.
+
+### Migrating from a pre-release deployment copy
+
+An environment deployed before container releases used one mutable `~/container`
+checkout that held the deployment files directly, and a systemd unit that named
+those files. A copy can also predate the consolidated dispatcher, in which case
+it still contains `scripts/up.sh`, `scripts/down.sh`, `scripts/logs.sh`, and
+`scripts/status.sh`. Those four scripts no longer exist in a release: the
+dispatcher `scripts/container.sh` provides `up`, `down`, `restart`, `logs`, and
+`status` through the Make targets.
+
+Move the environment to a selected release:
+
+```bash
+# 1. Preserve the existing directory; do not delete it without review
+sudo -u USER mv ~/container ~/container.pre-release
+
+# 2. Install and select an exact release (creates ~/container as a symlink)
+sudo shape-shifter-container-release install  USER container-vX.Y.Z
+sudo shape-shifter-container-release activate USER container-vX.Y.Z
+
+# 3. Reinstall the unit so it points at the selected release
+sudo -u USER -H bash -lc 'cd ~/container && make service-install'
+sudo -u USER -H bash -lc 'cd ~/container && make service-restart'
+```
+
+`~/config` and `~/container-data` are untouched by every step. Review
+`~/container.pre-release` against the selected release before removing it; keep
+it until health and authorization checks pass.
+
+Check host prerequisites before installing a release. `scripts/get-install.sh` is
+now a host prerequisite check: it verifies Podman, `podman-compose`, lingering,
+and rootless user namespaces, and writes nothing into `~/container`. It no longer
+downloads the deployment files, because a release is installed with
+`shape-shifter-container-release` instead.
+
+After the move, use `make up`, `make down`, `make restart`, `make logs`, and
+`make status` as before; each runs through the selection. `install_systemd_service.sh`
+now requires a selected release and refuses a real `~/container` directory or an
+unrelated symlink, so install the release before reinstalling the unit.
 
 ### Migrating from the retired two-directory layout
 
 Earlier deployments kept their settings in `container/.env`, where `DATA_DIR` was
 spelled relative to the checkout, so the file held `DATA_DIR=../container-data`.
-In `~/config/deployment.env` a relative value names a path *beside* the checkout,
-so the same directory drops the leading `../`:
+In `~/config/deployment.env` a relative value names a path under the deployment
+user's home, so the same directory drops the leading `../`:
 
 ```text
 container/.env                  ~/config/deployment.env
 DATA_DIR=../container-data  ->  DATA_DIR=container-data
 ```
 
-Keeping the old spelling resolves one level above the deployment directory, and
+Keeping the old spelling resolves one level above the home directory, and
 `make up` then stops with a missing data directory. Migrate by moving
 `container/.env` to `~/config/deployment.env`, moving `container-data/backend.env`
 and `container-data/.pgpass/.pgpass` into `~/config`, and rewriting any relative

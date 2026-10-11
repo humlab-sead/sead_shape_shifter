@@ -6,10 +6,10 @@ SHELL := /bin/bash
 # ---------------------------------------------------------------------------
 # Deployment defaults live in CONFIG_DIR/deployment.env so this Makefile,
 # podman-compose.yml, and the scripts in scripts/ cannot drift apart. The
-# canonical deployment layout keeps config and mutable data next to the
-# checkout: ~/config and ~/container-data for the user that owns ~/container.
+# canonical deployment layout keeps config and mutable data beside the selected
+# release: ~/config and ~/container-data for the user that owns ~/container.
 # Explicit path overrides remain available for tests and controlled alternate
-# layouts. Nothing is read from, or written to, the checkout itself.
+# layouts. Nothing is read from, or written to, the release itself.
 #
 # Precedence for every value, highest first:
 #   1. command line   make IMAGE_NAME=shape-shifter:dev up
@@ -19,15 +19,15 @@ SHELL := /bin/bash
 # The environment is captured before deployment.env is read, because a plain
 # assignment in the included file would otherwise override the environment.
 MAKEFILE_DIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
-CHECKOUT_DIR := $(patsubst %/,%,$(MAKEFILE_DIR))
-CHECKOUT_PARENT := $(dir $(CHECKOUT_DIR))
 
 # Resolve a possibly relative path into an absolute one. A relative override
-# names a path next to the checkout, so DATA_DIR=container-data means the
-# sibling of the checkout directory. scripts/load-env.sh applies the same rule,
-# and the two must stay in step or `make up` and a direct script call would use
-# different directories.
-resolve_path = $(if $(filter /%,$(1)),$(1),$(CHECKOUT_PARENT)$(patsubst ./%,%,$(1)))
+# names a path under the deployment user's home, so DATA_DIR=container-data
+# means $HOME/container-data; an absolute override is used unchanged. Resolving
+# from $HOME rather than from the release directory keeps configuration and data
+# outside the release even when ~/container is a symlink into a versioned
+# release. scripts/load-env.sh applies the same rule, and the two must stay in
+# step or `make up` and a direct script call would use different directories.
+resolve_path = $(if $(filter /%,$(1)),$(1),$(HOME)/$(patsubst ./%,%,$(1)))
 
 ENV_CONFIG_DIR := $(CONFIG_DIR)
 ENV_DATA_DIR := $(DATA_DIR)

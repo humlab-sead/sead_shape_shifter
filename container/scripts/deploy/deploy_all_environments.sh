@@ -12,7 +12,14 @@ usage() {
   cat <<'EOF'
 Usage: scripts/deploy_all_environments.sh [USER:PORT ...]
 
-Deploy the project to several dedicated environment users.
+Configure Shape Shifter for several dedicated environment users.
+
+Each target user must already have its own selected container release. This
+helper does not install or activate releases and never selects a shared version:
+prepare each user first with the host release manager.
+
+  sudo shape-shifter-container-release install  USER container-vX.Y.Z
+  sudo shape-shifter-container-release activate USER container-vX.Y.Z
 
 Environments come from the arguments first, then from DEPLOY_ENVIRONMENTS, which
 can be exported or set in CONFIG_DIR/deployment.env. There is no built-in
@@ -48,9 +55,9 @@ for env_pair in "${ENVIRONMENTS[@]}"; do
     exit 1
   fi
 
-  echo "Deploying to: $USER (port $PORT)"
+  echo "Configuring: $USER (host port $PORT)"
   HOST_PORT="$PORT" bash "$SCRIPT_DIR/deploy_single_environment.sh" "$USER"
-  echo "Configured and started for $USER"
+  echo "Configured for $USER"
   echo "  Settings: sudo -u $USER nano ~/config/deployment.env"
   echo "  Runtime:  sudo -u $USER nano ~/config/backend.env"
   echo "  Status:   sudo -u $USER systemctl --user status shape-shifter"

@@ -16,10 +16,12 @@ This plan covers release publication, per-environment installation and selection
 
 ## Current Position
 
-- The application release workflow runs semantic-release on `main`; a separate `container-release` publication workflow is proposed, not implemented.
+- Phase 1 is complete: PR #541 published `container-v0.1.0` from merge commit `71f52f8268daed3f04c501e50cf59341fbb1273d`; its archive and checksum were verified against the complete tracked `container/` tree.
+- The user decided not to run the live publication-retry check. The retry-recovery defect found during review remains a follow-up and was not represented as passing validation.
+- The application release workflow remains separate on `main`; branch and tag protections and the `container-release` publication workflow are active.
 - The existing single-environment deployment script fetches a repository archive into the deployment user's directory and writes the fetched ref into application image settings. Local synchronization mirrors into that active directory.
 - Container lifecycle-dispatcher edits are present but uncommitted; treat them as in-progress work rather than validated behavior.
-- The proposal now fixes reviewed promotion PRs, `container/VERSION`, per-environment administrator-owned storage, home-relative overrides, and disposable non-production test users. Branch/tag protections, a container publication workflow, and a host installer are not yet in place.
+- The proposal fixes per-environment administrator-owned storage, home-relative overrides, and disposable non-production test users. The host installer and release selection workflow remain to be implemented.
 
 ## Phase Plan
 
@@ -58,7 +60,7 @@ Produce a complete, independently versioned GitHub Release from each approved co
 
 **Readiness**
 
-Ready for a task plan. The release rules are fixed; setting up and verifying branch/tag protection belongs to this phase.
+Complete (2026-10-10). PR #541 and `container-v0.1.0` provide the phase output. The live retry check was waived by user decision and remains unrun; the known recovery limitation does not block Phase 2.
 
 ### Phase 2: Install and Select Releases Per Environment
 
@@ -102,7 +104,7 @@ Install an exact published release and activate or roll it back in one environme
 
 **Readiness**
 
-Requires Phase 1's published asset. The host layout, relative-path rule, and non-production test approach are fixed for task planning.
+Ready for a task plan. Phase 1's `container-v0.1.0` asset is published, and the host layout, relative-path rule, and non-production test approach are fixed.
 
 ### Phase 3: Integrate Lifecycle and Preserve Verification
 
