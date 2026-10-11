@@ -26,22 +26,36 @@ Do not treat labels, examples, or placeholder text as input values.
 
 ## References
 
-Before writing or revising a proposal, read:
+Before drafting, read:
 
 - [Proposal writing guide](references/proposal-writing-guide.md)
 - [Proposal document structure](references/proposal-document-structure.md)
 - [Proposal template](references/proposal-template.md)
-- applicable repository instruction files, including `AGENTS.md`
+- the repository root [AGENTS.md](../../../AGENTS.md) and [`.github/AGENTS.md`](../../AGENTS.md)
+- [writing style instructions](../../instructions/writing-style.instructions.md)
+- [proposal writing instructions](../../instructions/proposal-writing-guide.instructions.md)
+- [proposal structure instructions](../../instructions/proposal-document-structure.instructions.md)
+- the repository [proposal template](../../../docs/templates/PROPOSAL_TEMPLATE.md)
+
+Use the repository instructions and template for project-specific rules if they differ from the skill references.
+
+## Proposal Standard
+
+- Keep the proposal focused on one decision. State the problem first, explain why it matters, and recommend a concrete approach.
+- Define scope and non-goals. Explain important alternatives, risks, and tradeoffs without turning the proposal into an implementation plan.
+- Keep it as short as possible while giving readers enough detail to decide. Include optional sections only when they help with the decision.
+- Distinguish verified current behavior from proposed behavior. Mark unverified claims as assumptions or open questions.
+- Make acceptance criteria observable and checkable, using stable IDs such as `P-AC-1`.
+- When a phase plan will follow, include a concise Planning Handoff after Acceptance Criteria with confirmed decisions, constraints and behavior to preserve, expected validation outcomes, and open questions with the phase by which each must be resolved.
 
 ## Workflow
 
-1. Identify the decision the proposal must support.
-2. Inspect the repository only as needed to verify current behavior, feasibility, interfaces, constraints, and migration risks.
-3. Separate verified facts from assumptions and open questions.
-4. Write the proposal using the required structure.
-5. Define observable acceptance criteria with stable `P-AC-*` identifiers.
+1. Confirm the request calls for a proposal and identify the decision it must support.
+2. Inspect the repository only far enough to verify relevant behavior, feasibility, interfaces, constraints, and migration risks. Do not perform task-level implementation discovery.
+3. Select the target path using the naming rule and preserve an existing proposal's path when revising it.
+4. Draft the complete proposal using the required structure, omitting optional sections that do not help the decision.
+5. Check that claims are labeled as verified facts, assumptions, or open questions; acceptance criteria are checkable; and planned behavior is not described as current behavior.
 6. Include a Planning Handoff when later work will require a phase plan.
-7. Check that planned behavior is not described as existing or completed behavior.
 
 ## Limits
 
