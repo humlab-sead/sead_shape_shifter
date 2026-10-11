@@ -110,7 +110,7 @@ tests/output
 **/.env*
 # .env.example templates hold non-secret defaults and are tracked.
 !/.env.example
-!container/.env.example
+!deployment/container/.env.example
 **/chat*.json
 bin
 *.pdf
