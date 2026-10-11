@@ -133,7 +133,7 @@ Keep `manage_container_release.sh` as-is apart from being host-only; its checksu
   - Where the host provisioning directory lives (`container/host/` or top-level `host/`) — Phase 1.
   - Whether the service action merges into `container.sh` or stays in `service.sh` — Phase 1.
   - How long old provisioning command names remain as wrappers — Phase 1.
-- **Depends on:** the completed Phase 1 of [CONTAINER_DEPLOY_VERSIONING](../CONTAINER_DEPLOY_VERSIONING/CONTAINER_DEPLOY_VERSIONING.md). That proposal's guidance is to plan implementation anew after the release policy was agreed; this proposal is the input to that new plan.
+- **Depends on:** the completed [CONTAINER_DEPLOY_VERSIONING](../done/CONTAINER_DEPLOY_VERSIONING/CONTAINER_DEPLOY_VERSIONING.md). That proposal's guidance is to plan implementation anew after the release policy was agreed; this proposal is the input to that new plan.
 
 ## Recommended Delivery Order
 
