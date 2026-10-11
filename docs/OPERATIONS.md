@@ -15,7 +15,7 @@ Runbook for operators and maintainers of deployed Shape Shifter environments. Th
 
 ## Deployment Entry Points
 
-Run the deployment as a dedicated Linux user from `~/container`. Configuration defaults to `~/config` and persistent data to `~/container-data`; `CONFIG_DIR` and `DATA_DIR` select both, and the checkout holds neither. The supported first-start sequence is:
+Run the deployment as a dedicated Linux user from `~/container`, which is a symlink to the container release selected for that environment. Container releases are installed and selected with the administrator-owned host manager; see [Install and select a container release](../container/DEPLOYMENT.md#install-and-select-a-container-release). Configuration defaults to `~/config` and persistent data to `~/container-data`; `CONFIG_DIR` and `DATA_DIR` select both, and the selected release holds neither. The supported first-start sequence is:
 
 ```bash
 make setup
@@ -23,6 +23,8 @@ make build
 make up
 make healthcheck
 ```
+
+Every lifecycle command runs from the selected release through `~/container`: `make up`, `make down`, `make restart`, `make logs`, and `make status` all invoke `scripts/container.sh` in that release, and the systemd user unit calls the same dispatcher. A release is read/execute for the deployment user, so select a new version with the release manager rather than editing files under `~/container`.
 
 Use [container/DEPLOYMENT.md](../container/DEPLOYMENT.md) for dedicated users, lingering, multiple environments, deployment helpers, NGINX installation, systemd services, and release or branch selection. Use [container/README.md](../container/README.md) for the complete Makefile command reference.
 
@@ -204,7 +206,16 @@ The check fails when the backend listens on `0.0.0.0:8012` or any port other tha
 
 After each deployment or image change, run `./scripts/verify/verify_container_config.sh` from the deployment user's `container/` directory as that user, for example `sudo -u test-shape-shifter.sead.se -H bash ./scripts/verify/verify_container_config.sh`. The script prints the mounts, the published ports, the environment variable names (never values), and the image labels and history scan, and fails on a non-loopback port, a sensitive host mount, or a writable `.pgpass` mount. It never changes the container, image, or configuration; record its output with the date and host.
 
-To roll back, set `GIT_REF` and `IMAGE_NAME` to the last known-good release, rebuild or select the corresponding image, and run `make restart`. Keep the current authorization database unless the rollback explicitly requires restoring its recorded state. Re-run health, UI, authorization, and project-read checks after the rollback.
+To move an environment to a different container release, or to roll it back, use the host manager:
+
+```bash
+sudo shape-shifter-container-release install  USER container-vX.Y.Z
+sudo shape-shifter-container-release activate USER container-vX.Y.Z
+sudo shape-shifter-container-release status   USER
+sudo shape-shifter-container-release rollback USER
+```
+
+`rollback` restores the release the environment used before the current one and needs no download. `activate` selects an installed release explicitly, and `install` fetches one without selecting it. Selecting a release changes only that environment's deployment files; it does not change `GIT_REF` or `IMAGE_NAME`, so rebuild or select the application image separately with `make build` and `make restart` when the rollback also requires an earlier image. Keep the current authorization database unless the rollback explicitly requires restoring its recorded state. Re-run health, UI, authorization, and project-read checks after the rollback, and see [Install and select a container release](../container/DEPLOYMENT.md#install-and-select-a-container-release) for permissions, failure behavior, and the first transition.
 
 ## Observability And References
 
