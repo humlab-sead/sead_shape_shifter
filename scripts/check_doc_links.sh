@@ -27,7 +27,11 @@ while IFS= read -r document; do
 done < <(
     {
         printf '%s\n' README.md
-        git -C "$repo_root" ls-files 'docs/*.md' 'container/*.md' | awk -F/ 'NF == 2'
+        # Git pathspec wildcards also cross directory separators, so "docs/*.md"
+        # alone would reach into docs/proposals/. Keep only the documents that
+        # sit directly in docs/ and deployment/container/.
+        git -C "$repo_root" ls-files 'docs/*.md' 'deployment/container/*.md' \
+            | awk -F/ 'NF == 2 || ($1 == "deployment" && NF == 3)'
     } | sort -u
 )
 

@@ -13,19 +13,20 @@ repository checkout as root; they are not shipped to a deployment user.
 - `tests/` — shell regression suites for the tools above.
 
 This tree is not an operations toolkit. The
-[SEAD Runtime Verification Handoff](../docs/proposals/CONTAINER_SETUP_SIMPLIFICATION/OPERATIONS_VERIFICATION_HANDOFF.md)
+[SEAD Runtime Verification Handoff](../../docs/proposals/CONTAINER_SETUP_SIMPLIFICATION/OPERATIONS_VERIFICATION_HANDOFF.md)
 lists the required operational outcomes without prescribing tools.
 
-## Why it is outside `container/`
+## Why it is outside `deployment/container/`
 
 Release archives are built with
-`git archive --format=tar.gz --prefix=container/ HEAD:container`, which can only
-reach tracked files under `container/`. Because `container-host/` is a sibling,
-nothing in it can enter a release archive: an archive carries only
-deployment-user runtime contents, and host tooling never reaches a deployment
-user. The `container-release` workflow runs the checker here against the source
-tree and the built archive, and the host release manager validates a downloaded
-archive with its own trusted code rather than any file from the archive.
+`git archive --format=tar.gz --prefix=container/ HEAD:deployment/container`, which
+can only reach tracked files under `deployment/container/`. Because
+`deployment/container-host/` is a sibling, nothing in it can enter a release
+archive: an archive carries only deployment-user runtime contents, and host
+tooling never reaches a deployment user. The `container-release` workflow runs
+the checker here against the source tree and the built archive, and the host
+release manager validates a downloaded archive with its own trusted code rather
+than any file from the archive.
 
 ## See also
 

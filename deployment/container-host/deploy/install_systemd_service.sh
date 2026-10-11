@@ -4,7 +4,7 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Usage: container-host/deploy/install_systemd_service.sh [USER]
+Usage: deployment/container-host/deploy/install_systemd_service.sh [USER]
 
 Install and enable the Shape Shifter user systemd service for a configured
 environment user (run as root).
@@ -20,8 +20,8 @@ the sibling ~/config directory, so no deployment value is stored in the unit
 itself.
 
 Examples:
-  container-host/deploy/install_systemd_service.sh test-shape-shifter.sead.se
-  USER=test-shape-shifter.sead.se container-host/deploy/install_systemd_service.sh
+  deployment/container-host/deploy/install_systemd_service.sh test-shape-shifter.sead.se
+  USER=test-shape-shifter.sead.se deployment/container-host/deploy/install_systemd_service.sh
 EOF
 }
 

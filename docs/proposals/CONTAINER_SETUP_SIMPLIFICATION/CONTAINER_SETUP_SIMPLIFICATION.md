@@ -5,6 +5,7 @@
 - Proposed change
 - Scope: container release contents, deployment scripts, verification ownership, and related documentation
 - Goal: Keep the Shape Shifter container setup small while handing ecosystem runtime checks to SEAD operations
+- Layout: paths name the current `deployment/` tree (`deployment/container/` for the release bundle, `deployment/container-host/` for the source-only host tools); a release archive still unpacks under a single `container/` root
 
 ## Summary
 
@@ -45,7 +46,7 @@ Verified 2026-10-11 on branch `container-deploy-versioning`, after commit `a3adc
 - The Makefile, `scripts/container.sh`, and `scripts/load-env.sh` each apply defaults for shared deployment values.
 - `scripts/container.sh` and `scripts/service.sh` both dispatch actions, and the Makefile repeats their target lists.
 - `scripts/load-env.sh` and `scripts/env-config.sh` are sourced helpers with distinct roles: one loads deployment configuration and resolves paths; the other provides image-tag and environment-file functions.
-- Host provisioning scripts under `container/scripts/deploy/` are included in release archives.
+- Host provisioning scripts under `deployment/container/scripts/deploy/` are included in release archives.
 - `.github/workflows/container-release.yml` invokes `verify_container_release.sh` for source and archive checks. The host release manager also invokes the verifier found in the candidate bundle.
 - The verification directory contains release checks, deployed API probes, host checks, and orchestration. The test-environment orchestrator also reconciles authorization by default.
 
@@ -65,7 +66,7 @@ Remove host-wide operational check scripts and their fixtures from the Shape Shi
 
 ### 3. Keep release validation trusted and outside the bundle
 
-Move release-policy checks out of `container/scripts/verify/` and the deployable archive. The release workflow should validate the source tree, tag/version policy, required release content, and built archive.
+Move release-policy checks out of `deployment/container/scripts/verify/` and the deployable archive. The release workflow should validate the source tree, tag/version policy, required release content, and built archive.
 
 The host release manager must independently validate downloaded content using trusted code it already owns: checksum, safe archive paths, expected archive root and version, and required files. It must not execute a verifier extracted from the candidate archive. Do not add another standalone verifier solely to dispatch checks between the workflow and the manager.
 
@@ -98,7 +99,7 @@ The host release manager must independently validate downloaded content using tr
 
 ## Testing And Validation
 
-- Run `bash -n` on changed shell scripts and all four `container/tests/*.sh` suites.
+- Run `bash -n` on changed shell scripts and all four `deployment/container/tests/*.sh` suites.
 - Update every caller and test to source `_load-env.sh` or `_env-config.sh`; confirm both helpers preserve their existing behavior.
 - Validate source and archive policy in the release workflow, and test the host manager's trusted checks against valid and invalid archives without executing archive-supplied code.
 - Confirm release archives exclude host provisioning and operations checks and contain the required runtime files.

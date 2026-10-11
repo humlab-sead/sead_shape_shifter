@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Regression test for the consolidated project command, container/scripts/project.sh.
+# Regression test for the consolidated project command,
+# deployment/container/scripts/project.sh.
 #
 # The test never touches a real deployment, container, or authorization store. It
 # builds a temporary home with a fake project tree under
@@ -12,11 +13,11 @@
 #   - move restores the folder when the authorization change fails;
 #   - an unknown or missing action exits without changing anything.
 #
-# Usage: bash container-host/tests/test_project_commands.sh
+# Usage: bash deployment/container-host/tests/test_project_commands.sh
 set -euo pipefail
 
 g_test_dir="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-g_container_dir="$(CDPATH='' cd -- "$g_test_dir/../../container" && pwd)"
+g_container_dir="$(CDPATH='' cd -- "$g_test_dir/../../../deployment/container" && pwd)"
 
 g_failures=0
 g_checks=0

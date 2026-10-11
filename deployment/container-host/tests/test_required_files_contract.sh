@@ -4,13 +4,14 @@
 # same release contract, so a new runtime file must be added to both and to the
 # bundle-contents test. Read-only: it extracts the two lists and compares them.
 #
-# Usage: bash container-host/tests/test_required_files_contract.sh
+# Usage: bash deployment/container-host/tests/test_required_files_contract.sh
 set -euo pipefail
 
 g_test_dir="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-g_repo_root="$(CDPATH='' cd -- "$g_test_dir/../.." && pwd)"
-g_verifier="$g_repo_root/container-host/verify/verify_container_release.sh"
-g_manager="$g_repo_root/container-host/deploy/manage_container_release.sh"
+g_repo_root="$(CDPATH='' cd -- "$g_test_dir/../../.." && pwd)"
+g_deployment_dir="$g_repo_root/deployment"
+g_verifier="$g_deployment_dir/container-host/verify/verify_container_release.sh"
+g_manager="$g_deployment_dir/container-host/deploy/manage_container_release.sh"
 
 g_failures=0
 

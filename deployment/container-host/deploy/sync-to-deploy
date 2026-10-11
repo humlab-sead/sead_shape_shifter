@@ -3,8 +3,9 @@
 set -euo pipefail
 
 g_script_dir="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-# This script lives in the source-only container-host/ tree, outside the runtime
-# bundle, so the bundle it synchronizes is the sibling container/ directory.
+# This script lives in the source-only deployment/container-host/ tree, outside
+# the runtime bundle, so the bundle it synchronizes is the sibling
+# deployment/container/ directory.
 g_container_dir="$(CDPATH= cd -- "$g_script_dir/../../container" && pwd)"
 g_deploy_user="${DEPLOY_USER:-test-shape-shifter.sead.se}"
 g_deploy_host="${DEPLOY_HOST:-}"
@@ -14,7 +15,7 @@ g_dry_run=false
 
 usage() {
   cat <<'EOF'
-Usage: container-host/deploy/sync-to-deploy [--dry-run]
+Usage: deployment/container-host/deploy/sync-to-deploy [--dry-run]
 §
 Synchronize the local container/ directory to the deployment user's
 container directory and install/reload its systemd user unit. With no DEPLOY_HOST, synchronize on the current host.
@@ -48,10 +49,10 @@ Options:
   -h, --help               Show this help message
 
 Examples:
-  container-host/deploy/sync-to-deploy
-  container-host/deploy/sync-to-deploy --dry-run
+  deployment/container-host/deploy/sync-to-deploy
+  deployment/container-host/deploy/sync-to-deploy --dry-run
   DEPLOY_USER=test-shape-shifter.sead.se DEPLOY_HOST=deploy.example.org \
-    DEPLOY_SSH_USER=deploy-admin container-host/deploy/sync-to-deploy
+    DEPLOY_SSH_USER=deploy-admin deployment/container-host/deploy/sync-to-deploy
 EOF
 }
 

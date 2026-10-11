@@ -5,17 +5,17 @@
 # rootless user namespace. It downloads nothing and writes nothing into
 # ~/container. Container deployment files are installed as a versioned release
 # with the host release manager (shape-shifter-container-release); see
-# container/DEPLOYMENT.md. Application image settings are configured by
-# container-host/deploy/deploy_environment.sh.
+# deployment/container/DEPLOYMENT.md. Application image settings are configured by
+# deployment/container-host/deploy/deploy_environment.sh.
 #
 # Usage:
-#   bash container-host/deploy/get-install.sh
+#   bash deployment/container-host/deploy/get-install.sh
 set -euo pipefail
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -h | --help)
-      echo "Usage: bash container-host/deploy/get-install.sh"
+      echo "Usage: bash deployment/container-host/deploy/get-install.sh"
       exit 0
       ;;
     *)

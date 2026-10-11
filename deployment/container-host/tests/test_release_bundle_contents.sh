@@ -1,15 +1,17 @@
 #!/usr/bin/env bash
 # Check that the release bundle carries only deployment-user runtime contents and
-# that host tooling and release checks live in the source-only container-host/
-# tree. Read-only: it inspects the working tree and needs no root or network.
+# that host tooling and release checks live in the source-only
+# deployment/container-host/ tree. Read-only: it inspects the working tree and
+# needs no root or network.
 #
-# Usage: bash container-host/tests/test_release_bundle_contents.sh
+# Usage: bash deployment/container-host/tests/test_release_bundle_contents.sh
 set -euo pipefail
 
 g_test_dir="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-g_repo_root="$(CDPATH='' cd -- "$g_test_dir/../.." && pwd)"
-g_container_dir="$g_repo_root/container"
-g_host_dir="$g_repo_root/container-host"
+g_repo_root="$(CDPATH='' cd -- "$g_test_dir/../../.." && pwd)"
+g_deployment_dir="$g_repo_root/deployment"
+g_container_dir="$g_deployment_dir/container"
+g_host_dir="$g_deployment_dir/container-host"
 
 g_failures=0
 g_checks=0
@@ -31,7 +33,7 @@ assert_no_path() {
 }
 
 echo "== the release bundle carries only runtime contents =="
-for absent in container/scripts/deploy container/scripts/verify container/tests; do
+for absent in deployment/container/scripts/deploy deployment/container/scripts/verify deployment/container/tests; do
   assert_no_path "$g_repo_root/$absent" "$absent is not in the bundle"
 done
 
@@ -60,12 +62,12 @@ runtime_files=(
 missing=0
 for rel in "${runtime_files[@]}"; do
   if [[ ! -f "$g_container_dir/$rel" ]]; then
-    fail "container/$rel is missing from the bundle"
+    fail "deployment/container/$rel is missing from the bundle"
     missing=1
   fi
 done
 if [[ "$missing" -eq 0 ]]; then
-  pass "container/ holds all ${#runtime_files[@]} runtime files"
+  pass "deployment/container/ holds all ${#runtime_files[@]} runtime files"
 fi
 
 echo
@@ -81,13 +83,13 @@ host_deploy_files=(
   sync-to-deploy
 )
 for rel in "${host_deploy_files[@]}"; do
-  assert_file "$g_host_dir/deploy/$rel" "container-host/deploy/$rel exists"
+  assert_file "$g_host_dir/deploy/$rel" "deployment/container-host/deploy/$rel exists"
 done
 assert_no_path "$g_host_dir/deploy/deploy_all_environments.sh" "deploy_all_environments.sh is removed"
 assert_no_path "$g_host_dir/deploy/deploy_single_environment.sh" "deploy_single_environment.sh is renamed"
 
-assert_file "$g_host_dir/verify/verify_container_release.sh" "container-host/verify holds the release checker"
-assert_file "$g_host_dir/verify/README.md" "container-host/verify holds its README"
+assert_file "$g_host_dir/verify/verify_container_release.sh" "deployment/container-host/verify holds the release checker"
+assert_file "$g_host_dir/verify/README.md" "deployment/container-host/verify holds its README"
 if grep -qF -- 'verify_container_release.sh' "$g_host_dir/verify/README.md"; then
   pass "the verification README names the release checker"
 else
@@ -96,7 +98,7 @@ fi
 
 echo
 echo "== the runtime helper a host tool needs is still in the bundle =="
-assert_file "$g_container_dir/scripts/_load-env.sh" "container/scripts/_load-env.sh exists for the NGINX installer"
+assert_file "$g_container_dir/scripts/_load-env.sh" "deployment/container/scripts/_load-env.sh exists for the NGINX installer"
 
 assert_no_path "$g_container_dir/scripts/get-install.sh" "the host prerequisite check is not in the bundle"
 
@@ -108,9 +110,9 @@ echo
 echo "== no removed tooling hides anywhere in the bundle =="
 for removed in verify_container_release.sh deploy_all_environments.sh deploy_single_environment.sh service.sh adopt-project.sh move-project.sh get-install.sh; do
   if find "$g_container_dir" -name "$removed" -print -quit | grep -q .; then
-    fail "container/ still contains $removed"
+    fail "deployment/container/ still contains $removed"
   else
-    pass "container/ contains no $removed"
+    pass "deployment/container/ contains no $removed"
   fi
 done
 

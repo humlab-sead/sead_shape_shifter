@@ -3,13 +3,14 @@
 #
 # Checks used by the container-release workflow, before PR validation and again
 # before publication:
-#   - container/VERSION exists and holds a plain X.Y.Z version;
+#   - the bundle VERSION (container/VERSION) exists and holds a plain X.Y.Z
+#     version;
 #   - the version strictly increases over the highest existing container-v* tag;
-#   - every required deployment file is present in the container/ tree;
+#   - every required deployment file is present in the deployment/container/ tree;
 #   - the release archive unpacks under a single container/ directory and
 #     contains the same required files, with no .git or secrets inside;
 #   - no host tooling, release checks, or development tests are present in the
-#     container/ tree or the archive;
+#     deployment/container/ tree or the archive;
 #   - optionally, the revision under review already contains origin/main, so a
 #     promotion branch has merged main as the release policy requires.
 #
@@ -17,11 +18,12 @@
 # changes anything.
 #
 # Usage:
-#   verify_container_release.sh dir [options]      check the container/ tree
+#   verify_container_release.sh dir [options]      check the deployment/container/ tree
 #   verify_container_release.sh archive FILE       check a built archive
 #
 # Options for dir:
-#   --container-dir DIR   container directory to check (default: <repo>/container)
+#   --container-dir DIR   container directory to check
+#                         (default: <repo>/deployment/container)
 #   --git-dir DIR         git repository used for tag and ancestry checks
 #                         (default: repository containing the container directory)
 #   --require-main-merged fail unless origin/main is an ancestor of HEAD
@@ -34,9 +36,9 @@
 
 set -euo pipefail
 
-# Files that must appear in both the container/ tree and the release archive.
-# The archive is the complete tracked container/ bundle, so .containerignore
-# (image-build context only) must not be applied to it.
+# Files that must appear in both the deployment/container/ tree and the release
+# archive. The archive is the complete tracked deployment/container/ bundle, so
+# .containerignore (image-build context only) must not be applied to it.
 REQUIRED_FILES=(
 	VERSION
 	README.md
@@ -61,8 +63,8 @@ REQUIRED_FILES=(
 )
 
 # Paths that must never appear in a release bundle. Host tooling and the shell
-# regression tests live in container-host/, outside the archive inputs, so a
-# bundle that carries them is a packaging error.
+# regression tests live in deployment/container-host/, outside the archive
+# inputs, so a bundle that carries them is a packaging error.
 FORBIDDEN_PREFIXES=(
 	scripts/deploy
 	scripts/verify

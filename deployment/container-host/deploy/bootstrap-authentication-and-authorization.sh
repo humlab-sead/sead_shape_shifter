@@ -17,7 +17,7 @@
 # file. Every input is validated before any account, role, or file is changed.
 set -euo pipefail
 
-CONFIG_DIR="${CONFIG_DIR:?CONFIG_DIR must name the configuration directory for the deployment user; see container-host/README.md and container/DEPLOYMENT.md}"
+CONFIG_DIR="${CONFIG_DIR:?CONFIG_DIR must name the configuration directory for the deployment user; see deployment/container-host/README.md and deployment/container/DEPLOYMENT.md}"
 
 ENV_FILE="$CONFIG_DIR/authorization.env"
 GROUPS_FILE="$CONFIG_DIR/groups.d/shape-shifter.conf"

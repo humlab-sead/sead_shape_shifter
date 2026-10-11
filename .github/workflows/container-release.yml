@@ -1,8 +1,11 @@
 name: Container Release
 
-# Publishes reviewed container/ releases independently of the application
-# semantic-release workflow (release.yml). PRs validate only; the merge to
-# container-release publishes one container-vX.Y.Z release.
+# Publishes reviewed deployment/container/ releases independently of the
+# application semantic-release workflow (release.yml). PRs validate only; the
+# merge to container-release publishes one container-vX.Y.Z release.
+#
+# The archive root inside the tarball stays container/ because a release
+# installs to the deployment user's ~/container directory.
 
 on:
   pull_request:
@@ -25,18 +28,18 @@ jobs:
       - name: Verify release inputs
         run: |
           git fetch --no-tags origin main:refs/remotes/origin/main
-          bash container-host/verify/verify_container_release.sh dir --require-main-merged
+          bash deployment/container-host/verify/verify_container_release.sh dir --require-main-merged
 
       - name: Build release archive from tracked content
         run: |
-          version="$(tr -d '[:space:]' < container/VERSION)"
-          git archive --format=tar.gz --prefix=container/ HEAD:container \
+          version="$(tr -d '[:space:]' < deployment/container/VERSION)"
+          git archive --format=tar.gz --prefix=container/ HEAD:deployment/container \
             -o "container-v${version}.tar.gz"
 
       - name: Verify release archive
         run: |
-          version="$(tr -d '[:space:]' < container/VERSION)"
-          bash container-host/verify/verify_container_release.sh archive "container-v${version}.tar.gz"
+          version="$(tr -d '[:space:]' < deployment/container/VERSION)"
+          bash deployment/container-host/verify/verify_container_release.sh archive "container-v${version}.tar.gz"
 
       - name: Upload archive for review
         uses: actions/upload-artifact@v4
@@ -55,11 +58,11 @@ jobs:
           fetch-depth: 0
 
       - name: Verify release inputs
-        run: bash container-host/verify/verify_container_release.sh dir --resume-at-head
+        run: bash deployment/container-host/verify/verify_container_release.sh dir --resume-at-head
 
       - name: Allow an existing tag only at this commit
         run: |
-          version="$(tr -d '[:space:]' < container/VERSION)"
+          version="$(tr -d '[:space:]' < deployment/container/VERSION)"
           tag="container-v${version}"
           commit="$(git rev-parse HEAD)"
           if git ls-remote --exit-code origin "refs/tags/${tag}" >/dev/null; then
@@ -74,21 +77,21 @@ jobs:
 
       - name: Build release archive from tracked content
         run: |
-          version="$(tr -d '[:space:]' < container/VERSION)"
-          git archive --format=tar.gz --prefix=container/ HEAD:container \
+          version="$(tr -d '[:space:]' < deployment/container/VERSION)"
+          git archive --format=tar.gz --prefix=container/ HEAD:deployment/container \
             -o "container-v${version}.tar.gz"
           sha256sum "container-v${version}.tar.gz" > "container-v${version}.tar.gz.sha256"
 
       - name: Verify release archive
         run: |
-          version="$(tr -d '[:space:]' < container/VERSION)"
-          bash container-host/verify/verify_container_release.sh archive "container-v${version}.tar.gz"
+          version="$(tr -d '[:space:]' < deployment/container/VERSION)"
+          bash deployment/container-host/verify/verify_container_release.sh archive "container-v${version}.tar.gz"
 
       - name: Publish tag and release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          version="$(tr -d '[:space:]' < container/VERSION)"
+          version="$(tr -d '[:space:]' < deployment/container/VERSION)"
           tag="container-v${version}"
           commit="$(git rev-parse HEAD)"
           git config user.name "github-actions[bot]"

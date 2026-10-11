@@ -1,17 +1,18 @@
 #!/usr/bin/env bash
-# Regression test for container-host/deploy/manage_container_release.sh.
+# Regression test for deployment/container-host/deploy/manage_container_release.sh.
 #
 # The test runs entirely against temporary directories and local fixtures served
 # through file:// URLs, so it needs no root access and no network. It covers the
 # plan's install, failure, selection, and refusal cases.
 #
-# Usage: bash container-host/tests/test_release_manager.sh
+# Usage: bash deployment/container-host/tests/test_release_manager.sh
 set -euo pipefail
 
 g_test_dir="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-g_repo_root="$(CDPATH='' cd -- "$g_test_dir/../.." && pwd)"
-g_container_dir="$g_repo_root/container"
-g_manager="$g_repo_root/container-host/deploy/manage_container_release.sh"
+g_repo_root="$(CDPATH='' cd -- "$g_test_dir/../../.." && pwd)"
+g_deployment_dir="$g_repo_root/deployment"
+g_container_dir="$g_deployment_dir/container"
+g_manager="$g_deployment_dir/container-host/deploy/manage_container_release.sh"
 
 g_failures=0
 g_last_output=""
