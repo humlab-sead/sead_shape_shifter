@@ -25,7 +25,7 @@ jobs:
       - name: Verify release inputs
         run: |
           git fetch --no-tags origin main:refs/remotes/origin/main
-          bash container/scripts/verify/verify_container_release.sh dir --require-main-merged
+          bash container-host/verify/verify_container_release.sh dir --require-main-merged
 
       - name: Build release archive from tracked content
         run: |
@@ -36,7 +36,7 @@ jobs:
       - name: Verify release archive
         run: |
           version="$(tr -d '[:space:]' < container/VERSION)"
-          bash container/scripts/verify/verify_container_release.sh archive "container-v${version}.tar.gz"
+          bash container-host/verify/verify_container_release.sh archive "container-v${version}.tar.gz"
 
       - name: Upload archive for review
         uses: actions/upload-artifact@v4
@@ -55,7 +55,7 @@ jobs:
           fetch-depth: 0
 
       - name: Verify release inputs
-        run: bash container/scripts/verify/verify_container_release.sh dir --resume-at-head
+        run: bash container-host/verify/verify_container_release.sh dir --resume-at-head
 
       - name: Allow an existing tag only at this commit
         run: |
@@ -82,7 +82,7 @@ jobs:
       - name: Verify release archive
         run: |
           version="$(tr -d '[:space:]' < container/VERSION)"
-          bash container/scripts/verify/verify_container_release.sh archive "container-v${version}.tar.gz"
+          bash container-host/verify/verify_container_release.sh archive "container-v${version}.tar.gz"
 
       - name: Publish tag and release
         env:

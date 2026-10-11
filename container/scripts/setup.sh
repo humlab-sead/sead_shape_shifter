@@ -9,8 +9,8 @@ set -euo pipefail
 
 # Load CONFIG_DIR/deployment.env values that the environment has not already
 # set, and resolve the CONFIG_DIR and DATA_DIR defaults.
-# shellcheck source=load-env.sh
-. "$(dirname -- "${BASH_SOURCE[0]}")/load-env.sh"
+# shellcheck source=_load-env.sh
+. "$(dirname -- "${BASH_SOURCE[0]}")/_load-env.sh"
 
 SCRIPT_DIR="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"

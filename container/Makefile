@@ -25,7 +25,7 @@ MAKEFILE_DIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 # means $HOME/container-data; an absolute override is used unchanged. Resolving
 # from $HOME rather than from the release directory keeps configuration and data
 # outside the release even when ~/container is a symlink into a versioned
-# release. scripts/load-env.sh applies the same rule, and the two must stay in
+# release. scripts/_load-env.sh applies the same rule, and the two must stay in
 # step or `make up` and a direct script call would use different directories.
 resolve_path = $(if $(filter /%,$(1)),$(1),$(HOME)/$(patsubst ./%,%,$(1)))
 
@@ -41,16 +41,22 @@ ENV_GIT_REF := $(GIT_REF)
 
 ENV_FILE ?= $(if $(ENV_CONFIG_DIR),$(call resolve_path,$(ENV_CONFIG_DIR))/deployment.env,$(HOME)/config/deployment.env)
 
+# Shared fallback values come from the deployment template that setup.sh copies
+# to CONFIG_DIR/deployment.env, so the Makefile and scripts/_load-env.sh resolve
+# the same defaults from one place. Include the template first, then
+# deployment.env, so the deployed file wins; the ENV_* capture above keeps the
+# environment above both.
+-include $(MAKEFILE_DIR).env.example
 -include $(ENV_FILE)
 
 CONFIG_DIR := $(or $(ENV_CONFIG_DIR),$(CONFIG_DIR),$(HOME)/config)
-CONTAINER_NAME := $(or $(ENV_CONTAINER_NAME),$(CONTAINER_NAME),shape-shifter)
-IMAGE_NAME := $(or $(ENV_IMAGE_NAME),$(IMAGE_NAME),shape-shifter:latest)
-HOST_PORT := $(or $(ENV_HOST_PORT),$(HOST_PORT),8012)
 DATA_DIR := $(or $(ENV_DATA_DIR),$(DATA_DIR),$(HOME)/container-data)
-COMPOSE_PROJECT_NAME := $(or $(ENV_COMPOSE_PROJECT_NAME),$(COMPOSE_PROJECT_NAME),shapeshifter)
-GIT_REPO := $(or $(ENV_GIT_REPO),$(GIT_REPO),https://github.com/humlab-sead/sead_shape_shifter.git)
-GIT_REF := $(or $(ENV_GIT_REF),$(GIT_REF),main)
+CONTAINER_NAME := $(or $(ENV_CONTAINER_NAME),$(CONTAINER_NAME))
+IMAGE_NAME := $(or $(ENV_IMAGE_NAME),$(IMAGE_NAME))
+HOST_PORT := $(or $(ENV_HOST_PORT),$(HOST_PORT))
+COMPOSE_PROJECT_NAME := $(or $(ENV_COMPOSE_PROJECT_NAME),$(COMPOSE_PROJECT_NAME))
+GIT_REPO := $(or $(ENV_GIT_REPO),$(GIT_REPO))
+GIT_REF := $(or $(ENV_GIT_REF),$(GIT_REF))
 
 # Rootless Podman keeps the deployment user, so build with the current UID/GID.
 USER_UID ?= $(shell id -u)
@@ -316,40 +322,41 @@ system-prune:
 # Systemd user service
 # ===========================================================================
 
-# Every target delegates to scripts/service.sh, which owns the unit name and the
-# systemd command for each action. Edit that script to change either.
+# Every target delegates to scripts/container.sh service <action>, which owns
+# the unit name and the systemd command for each action. Edit that script to
+# change either.
 
 .PHONY: service-install
 service-install:
-	@$(SCRIPTS_DIR)/service.sh install
+	@$(SCRIPTS_DIR)/container.sh service install
 
 .PHONY: service-enable
 service-enable:
-	@$(SCRIPTS_DIR)/service.sh enable
+	@$(SCRIPTS_DIR)/container.sh service enable
 
 .PHONY: service-disable
 service-disable:
-	@$(SCRIPTS_DIR)/service.sh disable
+	@$(SCRIPTS_DIR)/container.sh service disable
 
 .PHONY: service-start
 service-start:
-	@$(SCRIPTS_DIR)/service.sh start
+	@$(SCRIPTS_DIR)/container.sh service start
 
 .PHONY: service-stop
 service-stop:
-	@$(SCRIPTS_DIR)/service.sh stop
+	@$(SCRIPTS_DIR)/container.sh service stop
 
 .PHONY: service-restart
 service-restart:
-	@$(SCRIPTS_DIR)/service.sh restart
+	@$(SCRIPTS_DIR)/container.sh service restart
 
 .PHONY: service-status
 service-status:
-	@$(SCRIPTS_DIR)/service.sh status
+	@$(SCRIPTS_DIR)/container.sh service status
 
 .PHONY: service-logs
 service-logs:
-	@$(SCRIPTS_DIR)/service.sh logs
+	@$(SCRIPTS_DIR)/container.sh service logs
 
 # ===========================================================================
 # Utilities

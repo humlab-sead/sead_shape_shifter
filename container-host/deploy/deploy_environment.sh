@@ -128,10 +128,12 @@ bash scripts/setup.sh
 # Record the application image source and port in CONFIG_DIR/deployment.env.
 # These are image settings and are separate from the selected release tag, so
 # later `make build` and `make up` runs use the source this deploy configured.
-. scripts/env-config.sh
-. scripts/load-env.sh
+. scripts/_env-config.sh
+. scripts/_load-env.sh
 deployment_env="$CONFIG_DIR/deployment.env"
-env_image="${IMAGE_NAME:-shape-shifter:latest}"
+# _load-env.sh supplies IMAGE_NAME from deployment.env or the bundled
+# .env.example template, so only the image name without its tag is derived here.
+env_image="$IMAGE_NAME"
 shapeshifter_env_file_set "$deployment_env" GIT_REPO "$DEPLOY_REPO"
 shapeshifter_env_file_set "$deployment_env" GIT_REF "$DEPLOY_REF"
 shapeshifter_env_file_set "$deployment_env" IMAGE_NAME "$(shapeshifter_image_for_ref "$DEPLOY_REF" "${env_image%%:*}")"

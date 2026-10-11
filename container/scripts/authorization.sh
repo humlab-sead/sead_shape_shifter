@@ -4,11 +4,11 @@ set -euo pipefail
 
 SCRIPT_DIR="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
-# shellcheck source=load-env.sh
-. "$SCRIPT_DIR/load-env.sh"
+# shellcheck source=_load-env.sh
+. "$SCRIPT_DIR/_load-env.sh"
 
 CONTAINER_NAME="${CONTAINER_NAME:-shape-shifter}"
-# load-env.sh resolves CONFIG_DIR (runtime configuration and credentials) and
+# _load-env.sh resolves CONFIG_DIR (runtime configuration and credentials) and
 # DATA_DIR (mutable data, state and backups) into absolute paths.
 BACKUP_DIR="${AUTHORIZATION_BACKUP_DIR:-$DATA_DIR/backups}"
 CONTAINER_BACKUP_DIR="/app/backups"

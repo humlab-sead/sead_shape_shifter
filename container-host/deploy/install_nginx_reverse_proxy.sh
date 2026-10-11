@@ -7,8 +7,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # CONFIG_DIR/deployment.env. The runtime helper is the one in the sibling
 # container/ bundle, because this script lives in the source-only container-host/
 # tree.
-# shellcheck source=../../container/scripts/load-env.sh
-. "$SCRIPT_DIR/../../container/scripts/load-env.sh"
+# shellcheck source=../../container/scripts/_load-env.sh
+. "$SCRIPT_DIR/../../container/scripts/_load-env.sh"
 
 usage() {
   cat <<'EOF'

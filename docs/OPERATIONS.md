@@ -101,7 +101,7 @@ location / {
 }
 ```
 
-`container/scripts/deploy/nginx-shape-shifter.conf.template` and the site files under `container/resources/` already contain both blocks. Enable the header on the backend in `~/config/backend.env`:
+`container-host/deploy/nginx-shape-shifter.conf.template` and the site files under `container/resources/` already contain both blocks. Enable the header on the backend in `~/config/backend.env`:
 
 ```bash
 SHAPE_SHIFTER_TRUSTED_PROXY_GROUPS_ENABLED=true
@@ -192,19 +192,16 @@ Confirm the UI loads, the project list is available, API documentation is reacha
 podman inspect shape-shifter --format '{{index .Config.Labels "org.opencontainers.image.revision"}}'
 ```
 
-### Firewall and network exposure verification
+### Runtime verification ownership
 
-After each deployment, run `./scripts/verify/verify_firewall.sh` from the deployment user's `container/` directory. The script prints the listeners, the firewall rules for the active backend, and the loopback and LAN-address connection checks, then prints the cross-host commands to run from a second machine. The firewall-listing step needs `sudo`; the script never changes rules or service state.
+SEAD operations is responsible for checks of host exposure, deployed container
+configuration, database access, credentials, logs, proxy identity, application
+grants, and recovery. Shape Shifter no longer ships scripts for these checks.
 
-```bash
-./scripts/verify/verify_firewall.sh
-```
-
-The check fails when the backend listens on `0.0.0.0:8012` or any port other than the proxy is reachable from outside. Record the listener output, the firewall listing, and the cross-host result with the date and host.
-
-### Container configuration re-inspection
-
-After each deployment or image change, run `./scripts/verify/verify_container_config.sh` from the deployment user's `container/` directory as that user, for example `sudo -u test-shape-shifter.sead.se -H bash ./scripts/verify/verify_container_config.sh`. The script prints the mounts, the published ports, the environment variable names (never values), and the image labels and history scan, and fails on a non-loopback port, a sensitive host mount, or a writable `.pgpass` mount. It never changes the container, image, or configuration; record its output with the date and host.
+The [SEAD Runtime Verification Handoff](./proposals/CONTAINER_SETUP_SIMPLIFICATION/OPERATIONS_VERIFICATION_HANDOFF.md)
+states the required outcomes without selecting tools or procedures. It is a
+requirements document, not an operating procedure; use the checks and
+procedures established by SEAD operations for each environment.
 
 To move an environment to a different container release, or to roll it back, use the host manager:
 

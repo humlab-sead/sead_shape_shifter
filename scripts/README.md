@@ -68,18 +68,18 @@ python3 scripts/generate_user_release_notes.py --version 1.26.0 --force-heuristi
 
 ## Deployment Scripts
 
-These scripts package the deployment steps from the container deployment guide into reusable command-line helpers.
+These scripts package the deployment steps from the container deployment guide into reusable command-line helpers. They are host tools: run them from a repository checkout. They live in `container-host/`, outside the `container/` release bundle, so they are never shipped in a release archive.
 
-### `deploy_single_environment.sh`
+### `deploy_environment.sh`
 
 Deploy the project for a dedicated environment user and start the container stack.
 
 ```bash
 # Deploy a single environment user
-container/scripts/deploy/deploy_single_environment.sh shapeshifter-test
+container-host/deploy/deploy_environment.sh shapeshifter-test
 
 # Override the repository branch and host port
-container/scripts/deploy/deploy_single_environment.sh shapeshifter-prod --branch main --host-port 8013
+container-host/deploy/deploy_environment.sh shapeshifter-prod --branch main --host-port 8013
 ```
 
 ### `install_nginx_reverse_proxy.sh`
@@ -88,7 +88,7 @@ Install an NGINX vhost for HTTPS traffic to the Podman service.
 
 ```bash
 # Run as root
-sudo container/scripts/deploy/install_nginx_reverse_proxy.sh shapeshifter.example.com 8012
+sudo container-host/deploy/install_nginx_reverse_proxy.sh shapeshifter.example.com 8012
 ```
 
 ### `install_systemd_service.sh`
@@ -96,7 +96,7 @@ sudo container/scripts/deploy/install_nginx_reverse_proxy.sh shapeshifter.exampl
 Install and enable the user-level systemd service for the container.
 
 ```bash
-container/scripts/deploy/install_systemd_service.sh shapeshifter-test
+container-host/deploy/install_systemd_service.sh shapeshifter-test
 ```
 
 ## Auto-Reconcile Script

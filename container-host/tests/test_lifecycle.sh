@@ -117,6 +117,14 @@ STUB
 
 chmod +x "$g_stub_bin/podman" "$g_stub_bin/podman-compose"
 
+cat > "$g_stub_bin/systemctl" <<'STUB'
+#!/usr/bin/env bash
+printf 'systemctl %s\n' "$*" >> "${STUB_LOG}"
+exit 0
+STUB
+
+chmod +x "$g_stub_bin/systemctl"
+
 # Every invocation runs with the stubs first on PATH, the temporary home, and the
 # marker paths exported. HOME matters because the loader and the Makefile resolve
 # configuration and data paths from it.
@@ -125,7 +133,7 @@ chmod +x "$g_stub_bin/podman" "$g_stub_bin/podman-compose"
 # can re-export PATH and drop the stub directory, which would send the test at
 # the real Podman. Unsetting them is a no-op where they are already unset.
 dsn() {
-  env -u BASH_ENV -u ENV \
+  env -u BASH_ENV -u ENV -u XDG_CONFIG_HOME \
     HOME="$g_home" PATH="$g_stub_bin:$PATH" \
     STUB_LOG="$g_stub_log" STUB_PID="$g_stub_pid" \
     STUB_LOGS_MARKER="$g_logs_marker" STUB_INT_MARKER="$g_int_marker" \
@@ -146,6 +154,18 @@ run_make() {
   local output status
   set +e
   output="$(cd "$g_home" && dsn make --no-print-directory -C "$g_home/container" "$@" 2>&1)"
+  status=$?
+  set -e
+  g_last_output="$output"
+  g_last_status="$status"
+}
+
+# Runs an arbitrary command with the same stubbed environment, used for env
+# overrides such as a custom SERVICE_NAME.
+run_with_stubs() {
+  local output status
+  set +e
+  output="$(cd "$g_home" && dsn "$@" 2>&1)"
   status=$?
   set -e
   g_last_output="$output"
@@ -346,6 +366,77 @@ else
 fi
 assert_contains "$g_last_output" "data directory does not exist" "make up surfaces the dispatcher diagnostic"
 mv "$g_home/container-data.moved" "$g_home/container-data"
+
+echo
+echo "== service actions dispatch through the single entry point =="
+reset_log
+run_dispatcher service status
+assert_eq "0" "$g_last_status" "service status exits 0"
+if log_has "systemctl --user status shape-shifter"; then
+  pass "service status runs systemctl --user status"
+else
+  fail "service status did not run the systemd status command"
+  cat "$g_stub_log" >&2
+fi
+if grep -q '^podman \|^podman-compose ' "$g_stub_log"; then
+  fail "service status invoked Podman"
+  cat "$g_stub_log" >&2
+else
+  pass "service status does not invoke Podman"
+fi
+
+reset_log
+rm -rf "$g_home/.config/systemd"
+run_dispatcher service install
+assert_eq "0" "$g_last_status" "service install exits 0"
+if log_has "systemctl --user daemon-reload"; then
+  pass "service install reloads systemd"
+else
+  fail "service install did not reload systemd"
+  cat "$g_stub_log" >&2
+fi
+if [[ -f "$g_home/.config/systemd/user/shape-shifter.service" ]]; then
+  pass "service install copies the unit into the user unit directory"
+else
+  fail "service install did not install the unit file"
+fi
+if grep -q '^podman \|^podman-compose ' "$g_stub_log"; then
+  fail "service install invoked Podman"
+  cat "$g_stub_log" >&2
+else
+  pass "service install does not invoke Podman"
+fi
+
+reset_log
+run_with_stubs env SERVICE_NAME=shape-shifter-dev bash "$g_release/scripts/container.sh" service status
+assert_eq "0" "$g_last_status" "service status with a custom unit name exits 0"
+if log_has "systemctl --user status shape-shifter-dev"; then
+  pass "SERVICE_NAME selects the unit to control"
+else
+  fail "the custom SERVICE_NAME was not used"
+fi
+
+reset_log
+run_dispatcher service
+assert_eq "64" "$g_last_status" "a missing service action exits 64"
+assert_contains "$g_last_output" "Usage:" "a missing service action prints usage"
+assert_eq "" "$(cat "$g_stub_log")" "a missing service action runs no systemd command"
+
+reset_log
+run_dispatcher service bogus
+assert_eq "64" "$g_last_status" "an unknown service action exits 64"
+assert_contains "$g_last_output" "unknown service action 'bogus'" "an unknown service action names it"
+assert_eq "" "$(cat "$g_stub_log")" "an unknown service action runs no systemd command"
+
+reset_log
+run_make service-status
+assert_eq "0" "$g_last_status" "make service-status exits 0"
+if log_has "systemctl --user status shape-shifter"; then
+  pass "make service-status dispatches through container.sh"
+else
+  fail "make service-status did not reach the systemd dispatcher"
+  cat "$g_stub_log" >&2
+fi
 
 echo
 echo "== lifecycle commands write nothing into the release =="

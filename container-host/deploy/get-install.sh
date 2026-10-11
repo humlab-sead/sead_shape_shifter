@@ -9,13 +9,13 @@
 # container-host/deploy/deploy_environment.sh.
 #
 # Usage:
-#   bash get-install.sh
+#   bash container-host/deploy/get-install.sh
 set -euo pipefail
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -h | --help)
-      echo "Usage: bash get-install.sh"
+      echo "Usage: bash container-host/deploy/get-install.sh"
       exit 0
       ;;
     *)

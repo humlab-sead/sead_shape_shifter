@@ -67,8 +67,10 @@ else
 fi
 
 echo
-echo "== neither list carries host tooling or tests =="
-for forbidden in scripts/verify/verify_container_release.sh scripts/deploy tests; do
+echo "== neither list carries host tooling, tests, or retired entries =="
+for forbidden in scripts/verify/verify_container_release.sh scripts/deploy tests \
+  scripts/service.sh scripts/adopt-project.sh scripts/move-project.sh \
+  scripts/get-install.sh scripts/load-env.sh scripts/env-config.sh; do
   assert_list_excludes "the verifier" "$verifier_list" "$forbidden"
   assert_list_excludes "the manager" "$manager_list" "$forbidden"
 done

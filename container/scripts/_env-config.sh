@@ -2,10 +2,10 @@
 # Configuration helpers shared by the build, bootstrap and deploy scripts.
 #
 # Source this file; it defines functions and changes no variables:
-#     # shellcheck source=env-config.sh
-#     . "$(dirname "${BASH_SOURCE[0]}")/env-config.sh"
+#     # shellcheck source=_env-config.sh
+#     . "$(dirname "${BASH_SOURCE[0]}")/_env-config.sh"
 #
-# It complements load-env.sh, which reads CONFIG_DIR/deployment.env into the
+# It complements _load-env.sh, which reads CONFIG_DIR/deployment.env into the
 # environment. This file derives values from a git ref and writes values into
 # that file, so a deployment keeps the repository, branch, image and port it was
 # created with instead of falling back to the defaults on the next `make build`.
