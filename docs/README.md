@@ -36,8 +36,8 @@ This directory contains the active guides, references, deployment runbooks, and 
 
 | Document | Purpose |
 |---|---|
-| [container/README.md](../container/README.md) | Supported Podman deployment quick start, configuration, lifecycle commands, and diagnostics. |
-| [container/DEPLOYMENT.md](../container/DEPLOYMENT.md) | Deployment-host setup, environment deployment, reverse proxy, systemd, and multi-environment procedures. |
+| [deployment/container/README.md](../deployment/container/README.md) | Supported Podman deployment quick start, configuration, lifecycle commands, and diagnostics. |
+| [deployment/container/DEPLOYMENT.md](../deployment/container/DEPLOYMENT.md) | Deployment-host setup, environment deployment, reverse proxy, systemd, and multi-environment procedures. |
 
 ## Proposals
 
@@ -57,7 +57,7 @@ See the [proposal index](proposals/README.md) for proposal status groups and cur
 
 - **Use Shape Shifter:** [USER_GUIDE.md](USER_GUIDE.md) and [CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md)
 - **Develop:** [DEVELOPMENT.md](DEVELOPMENT.md), [DESIGN.md](DESIGN.md), and [TESTING.md](TESTING.md)
-- **Operate:** [OPERATIONS.md](OPERATIONS.md), [container/README.md](../container/README.md), and [container/DEPLOYMENT.md](../container/DEPLOYMENT.md)
+- **Operate:** [OPERATIONS.md](OPERATIONS.md), [deployment/container/README.md](../deployment/container/README.md), and [deployment/container/DEPLOYMENT.md](../deployment/container/DEPLOYMENT.md)
 - **Understand requirements:** [REQUIREMENTS.md](REQUIREMENTS.md) and [GLOSSARY.md](GLOSSARY.md)
 - **Configure relationships:** [Foreign Key Constraints](CONFIGURATION_GUIDE.md#foreign-key-constraints) and [Append Project](CONFIGURATION_GUIDE.md#append-project-unionconcatenation)
 - **Validate projects:** [Project Validation](CONFIGURATION_GUIDE.md#project-validation)

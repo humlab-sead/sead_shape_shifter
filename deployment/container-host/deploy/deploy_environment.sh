@@ -12,7 +12,7 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Usage: container-host/deploy/deploy_environment.sh <USER> [--repo URL] [--ref REF] [--host-port PORT]
+Usage: deployment/container-host/deploy/deploy_environment.sh <USER> [--repo URL] [--ref REF] [--host-port PORT]
 
 Configure one Shape Shifter environment for a dedicated system user.
 
@@ -37,8 +37,8 @@ container release and do not name it. The ~/config and ~/container-data
 directories are never removed, and nothing is written into the selected release.
 
 Examples:
-  container-host/deploy/deploy_environment.sh test-shape-shifter.sead.se
-  container-host/deploy/deploy_environment.sh shapeshifter-prod --host-port 8013 --ref v2.3.0
+  deployment/container-host/deploy/deploy_environment.sh test-shape-shifter.sead.se
+  deployment/container-host/deploy/deploy_environment.sh shapeshifter-prod --host-port 8013 --ref v2.3.0
 EOF
 }
 
@@ -160,5 +160,5 @@ echo "Application image ref: $REF"
 echo "Review the deployment settings and runtime environment before first use:"
 echo "  sudo -u $USER nano ~/config/deployment.env"
 echo "  sudo -u $USER nano ~/config/backend.env"
-echo "Provision the authorization inputs described in container/DEPLOYMENT.md, then verify with:"
+echo "Provision the authorization inputs described in deployment/container/DEPLOYMENT.md, then verify with:"
 echo "  curl http://localhost:$HOST_PORT/api/v1/health"

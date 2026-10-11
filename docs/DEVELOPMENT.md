@@ -15,7 +15,7 @@ This guide covers everything a developer needs to set up, run, modify, and valid
 - Git
 
 **Optional:**
-- Podman and `podman-compose` (for containerized runs; see [container/README.md](../container/README.md))
+- Podman and `podman-compose` (for containerized runs; see [deployment/container/README.md](../deployment/container/README.md))
 - Java JRE (`default-jre-headless`) — required to query MS Access sources via UCanAccess
 - PostgreSQL — required when using SQL data sources
 
@@ -82,7 +82,7 @@ sead_shape_shifter/
 ├── tests/                  # Core tests
 ├── backend/tests/          # Backend API tests
 ├── docs/                   # Documentation
-├── container/              # Podman build and deploy scripts
+├── deployment/              # container release bundle and host deployment tooling
 ├── scripts/                # Developer and admin scripts
 ├── pyproject.toml          # Python dependencies and tool config
 └── Makefile                # All supported development commands

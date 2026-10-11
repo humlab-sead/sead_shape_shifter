@@ -55,7 +55,7 @@ holds no live configuration and can be replaced without touching `~/config` or
 
 ## Quick Start
 
-Run these as the deployment user from the `container/` directory:
+Run these as the deployment user from `~/container`:
 
 ```bash
 make setup                # create ~/config, ~/container-data and the templates
@@ -135,9 +135,10 @@ same tag: `make up` starts `IMAGE_NAME`, not the image that was just built, and
 `make build` warns when the two differ. `GIT_REF` accepts a branch or a release
 tag.
 
-`~/config/deployment.env` is never tracked by git, and `container/.env.example`
-is tracked and holds the defaults. There is no fallback to `container/.env` or
-`container-data/backend.env`; those paths are retired.
+`~/config/deployment.env` is never tracked by git, and
+`deployment/container/.env.example` is tracked and holds the defaults. There is
+no fallback to `deployment/container/.env` or `container-data/backend.env`;
+those paths are retired.
 
 ### Image identity
 
@@ -165,7 +166,8 @@ Production settings raised by the backend configuration:
   `SHAPE_SHIFTER_TRUSTED_PROXY_AUTH_ENABLED=true` and a non-empty
   `SHAPE_SHIFTER_AUTHORIZATION_BOOTSTRAP_ADMIN_PRINCIPALS`.
 - The reverse proxy must send the authenticated username in the
-  `X-Authenticated-User` header (see `container-host/deploy/nginx-shape-shifter.conf.template`).
+  `X-Authenticated-User` header (see
+  `deployment/container-host/deploy/nginx-shape-shifter.conf.template`).
 
 Keep `backend.env` and `.pgpass/.pgpass` readable only by the deployment user:
 
@@ -193,7 +195,7 @@ arguments (see `podman-compose.yml` and `Containerfile`); they are not read from
 
 ## Container Releases
 
-The `container/` tree is versioned and published independently of the
+The `deployment/container/` tree is versioned and published independently of the
 application. Container releases are GitHub Releases tagged `container-vX.Y.Z`,
 created only from merges to the protected `container-release` branch by the
 `container-release` workflow. Application releases (`vX.Y.Z` tags produced by
@@ -203,9 +205,9 @@ never changes `GIT_REF` or `IMAGE_NAME`.
 
 Each container release carries:
 
-- `container-vX.Y.Z.tar.gz` — the complete tracked `container/` tree, unpacking
-  to a single `container/` directory. `.containerignore` filters only the image
-  build context, never this archive.
+- `container-vX.Y.Z.tar.gz` — the complete tracked `deployment/container/` tree,
+  unpacking to a single `container/` directory. `.containerignore` filters only
+  the image build context, never this archive.
 - `container-vX.Y.Z.tar.gz.sha256` — a `sha256sum` checksum that detects
   transfer corruption. It is not an authenticity signature; trust comes from
   the protected repository and release workflow.
@@ -217,11 +219,11 @@ Each container release carries:
 1. Create a promotion branch from the current tip of `container-release`.
 2. Merge `main` into the promotion branch, so the reviewed tree carries the
    latest application changes.
-3. Set the next version explicitly in `container/VERSION` as `X.Y.Z`. The value
-   must be a plain three-part version that strictly increases over the highest
-   existing `container-v*` tag.
-4. Open a PR targeting `container-release` and review the resulting `container/`
-   tree, not just the commit list.
+3. Set the next version explicitly in `deployment/container/VERSION` as `X.Y.Z`.
+   The value must be a plain three-part version that strictly increases over the
+   highest existing `container-v*` tag.
+4. Open a PR targeting `container-release` and review the resulting
+   `deployment/container/` tree, not just the commit list.
 5. The PR run validates the release inputs and builds the archive with
    read-only permissions. It creates no tag and no Release. A missing, reused,
    or malformed version, or a missing required deployment file, fails the PR.
@@ -247,7 +249,7 @@ for the full workflow, permissions, and first-transition rules.
 ```bash
 # Once per host, from a reviewed copy of the repository
 sudo install -o root -g root -m 0755 \
-  container-host/deploy/manage_container_release.sh \
+  deployment/container-host/deploy/manage_container_release.sh \
   /usr/local/sbin/shape-shifter-container-release
 
 # Per user: install an exact release without selecting it, then select it
@@ -263,8 +265,9 @@ selection. None of the commands change `GIT_REF`, `IMAGE_NAME`, `~/config`, or
 `~/container-data`.
 
 A release archive carries only deployment-user runtime contents. Host tooling,
-the release-policy checks, and their regression tests live in `container-host/`
-outside the archive, so they are never shipped to a deployment user.
+the release-policy checks, and their regression tests live in
+`deployment/container-host/` outside the archive, so they are never shipped to a
+deployment user.
 
 ## Documentation
 

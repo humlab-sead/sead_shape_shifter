@@ -29,7 +29,7 @@
 #   manage_container_release.sh rollback USER
 #   manage_container_release.sh status   USER
 #
-# Run as root. See container/DEPLOYMENT.md for the operator workflow.
+# Run as root. See deployment/container/DEPLOYMENT.md for the operator workflow.
 #
 # Requires curl, tar, sha256sum, mktemp, flock and bash. `git` is optional: it
 # resolves the tag's source commit without the GitHub API, which is rate-limited

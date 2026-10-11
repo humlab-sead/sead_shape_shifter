@@ -5,20 +5,21 @@
 # The test never touches the repository or a real deployment home. It builds a
 # temporary home, a versioned release directory shaped like
 # /opt/shape-shifter/<user>/container-releases/<tag>/container, and a ~/container
-# symlink pointing into it. It then checks that scripts/_load-env.sh and the
-# Makefile resolve CONFIG_DIR, DATA_DIR and CONTAINER_DATA_DIR identically from
-# the deployment user's home for defaults, relative overrides, absolute
-# overrides, and environment-over-file precedence, and that a relative override
-# never resolves inside the selected release directory. It also checks that both
-# resolve the same shared deployment settings (container name, image, port,
-# compose project, git repository and ref) from the bundled .env.example
-# template, with deployment.env and the environment overriding it.
+# symlink pointing into it. It then checks that
+# deployment/container/scripts/_load-env.sh and the Makefile resolve CONFIG_DIR,
+# DATA_DIR and CONTAINER_DATA_DIR identically from the deployment user's home for
+# defaults, relative overrides, absolute overrides, and environment-over-file
+# precedence, and that a relative override never resolves inside the selected
+# release directory. It also checks that both resolve the same shared deployment
+# settings (container name, image, port, compose project, git repository and ref)
+# from the bundled .env.example template, with deployment.env and the environment
+# overriding it.
 #
-# Usage: bash container-host/tests/test_path_resolution.sh
+# Usage: bash deployment/container-host/tests/test_path_resolution.sh
 set -euo pipefail
 
 g_test_dir="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-g_container_dir="$(CDPATH='' cd -- "$g_test_dir/../../container" && pwd)"
+g_container_dir="$(CDPATH='' cd -- "$g_test_dir/../../../deployment/container" && pwd)"
 
 g_failures=0
 g_last_resolution=""

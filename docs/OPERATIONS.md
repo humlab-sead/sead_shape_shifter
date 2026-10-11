@@ -1,6 +1,6 @@
 # Shape Shifter Operations Guide
 
-Runbook for operators and maintainers of deployed Shape Shifter environments. The supported deployment uses rootless Podman; setup, lifecycle commands, multi-environment deployment, NGINX, and systemd procedures are documented in [container/README.md](../container/README.md) and [container/DEPLOYMENT.md](../container/DEPLOYMENT.md).
+Runbook for operators and maintainers of deployed Shape Shifter environments. The supported deployment uses rootless Podman; setup, lifecycle commands, multi-environment deployment, NGINX, and systemd procedures are documented in [deployment/container/README.md](../deployment/container/README.md) and [deployment/container/DEPLOYMENT.md](../deployment/container/DEPLOYMENT.md).
 
 ## Operational Invariants
 
@@ -11,11 +11,11 @@ Runbook for operators and maintainers of deployed Shape Shifter environments. Th
 - NGINX is the authentication boundary. It must authenticate the user, overwrite `X-Authenticated-User` with the verified identity, and proxy to the application port.
 - Group grants need group IDs from the proxy. On a site that authenticates with `auth_basic`, NGINX derives `X-Authenticated-Groups` from the user name and a membership file, so a membership change needs a reload and is not recorded in the authorization audit log. See [NGINX group header](#nginx-group-header).
 - `/api/v1/health` is the only unauthenticated API path. Keep the application port private to the proxy host.
-- Java is required when projects use MS Access sources. Install UCanAccess with `make install-ucanaccess` from `container/` when the deployment image does not already contain the required JARs.
+- Java is required when projects use MS Access sources. Install UCanAccess with `make install-ucanaccess` from `deployment/container/` when the deployment image does not already contain the required JARs.
 
 ## Deployment Entry Points
 
-Run the deployment as a dedicated Linux user from `~/container`, which is a symlink to the container release selected for that environment. Container releases are installed and selected with the administrator-owned host manager; see [Install and select a container release](../container/DEPLOYMENT.md#install-and-select-a-container-release). Configuration defaults to `~/config` and persistent data to `~/container-data`; `CONFIG_DIR` and `DATA_DIR` select both, and the selected release holds neither. The supported first-start sequence is:
+Run the deployment as a dedicated Linux user from `~/container`, which is a symlink to the container release selected for that environment. Container releases are installed and selected with the administrator-owned host manager; see [Install and select a container release](../deployment/container/DEPLOYMENT.md#install-and-select-a-container-release). Configuration defaults to `~/config` and persistent data to `~/container-data`; `CONFIG_DIR` and `DATA_DIR` select both, and the selected release holds neither. The supported first-start sequence is:
 
 ```bash
 make setup
@@ -26,7 +26,7 @@ make healthcheck
 
 Every lifecycle command runs from the selected release through `~/container`: `make up`, `make down`, `make restart`, `make logs`, and `make status` all invoke `scripts/container.sh` in that release, and the systemd user unit calls the same dispatcher. A release is read/execute for the deployment user, so select a new version with the release manager rather than editing files under `~/container`.
 
-Use [container/DEPLOYMENT.md](../container/DEPLOYMENT.md) for dedicated users, lingering, multiple environments, deployment helpers, NGINX installation, systemd services, and release or branch selection. Use [container/README.md](../container/README.md) for the complete Makefile command reference.
+Use [deployment/container/DEPLOYMENT.md](../deployment/container/DEPLOYMENT.md) for dedicated users, lingering, multiple environments, deployment helpers, NGINX installation, systemd services, and release or branch selection. Use [deployment/container/README.md](../deployment/container/README.md) for the complete Makefile command reference.
 
 Each environment records its repository, ref, image, port, and path overrides in `~/config/deployment.env`. A build from `GIT_REF=dev` produces a `shape-shifter:dev` image; keep `IMAGE_NAME` aligned with that ref before `make up`. Image labels record the source commit, ref, repository, and build date.
 
@@ -101,7 +101,7 @@ location / {
 }
 ```
 
-`container-host/deploy/nginx-shape-shifter.conf.template` and the site files under `container/resources/` already contain both blocks. Enable the header on the backend in `~/config/backend.env`:
+`deployment/container-host/deploy/nginx-shape-shifter.conf.template` and the site files under `deployment/container/resources/` already contain both blocks. Enable the header on the backend in `~/config/backend.env`:
 
 ```bash
 SHAPE_SHIFTER_TRUSTED_PROXY_GROUPS_ENABLED=true
@@ -123,7 +123,7 @@ Notes:
 
 ## Data Layout And Backups
 
-`container/podman-compose.yml` mounts the following paths. Runtime configuration
+`deployment/container/podman-compose.yml` mounts the following paths. Runtime configuration
 comes from `CONFIG_DIR` and every mutable path from `CONTAINER_DATA_DIR`:
 
 | Host path | Container path | Contents |
@@ -148,7 +148,7 @@ application hosts.
 
 Project saves create timestamped YAML backups before writing. Loading a project does not modify its file. Copy project backups to operator-controlled storage and retain the release, project, and backup identifiers together. Restore a project only while following the normal review and validation process.
 
-For authorization administration, use `container/scripts/authorization.sh` from the deployment user's `container/` directory. The wrapper runs the tested CLI inside the deployed image and uses the persistent authorization database; do not edit SQLite directly because direct edits bypass audit records and final-owner protections.
+For authorization administration, use `~/container/scripts/authorization.sh` from the deployment user's `~/container` directory. The wrapper runs the tested CLI inside the deployed image and uses the persistent authorization database; do not edit SQLite directly because direct edits bypass audit records and final-owner protections.
 
 Use these commands for routine review and backup:
 
@@ -212,14 +212,14 @@ sudo shape-shifter-container-release status   USER
 sudo shape-shifter-container-release rollback USER
 ```
 
-`rollback` restores the release the environment used before the current one and needs no download. `activate` selects an installed release explicitly, and `install` fetches one without selecting it. Selecting a release changes only that environment's deployment files; it does not change `GIT_REF` or `IMAGE_NAME`, so rebuild or select the application image separately with `make build` and `make restart` when the rollback also requires an earlier image. Keep the current authorization database unless the rollback explicitly requires restoring its recorded state. Re-run health, UI, authorization, and project-read checks after the rollback, and see [Install and select a container release](../container/DEPLOYMENT.md#install-and-select-a-container-release) for permissions, failure behavior, and the first transition.
+`rollback` restores the release the environment used before the current one and needs no download. `activate` selects an installed release explicitly, and `install` fetches one without selecting it. Selecting a release changes only that environment's deployment files; it does not change `GIT_REF` or `IMAGE_NAME`, so rebuild or select the application image separately with `make build` and `make restart` when the rollback also requires an earlier image. Keep the current authorization database unless the rollback explicitly requires restoring its recorded state. Re-run health, UI, authorization, and project-read checks after the rollback, and see [Install and select a container release](../deployment/container/DEPLOYMENT.md#install-and-select-a-container-release) for permissions, failure behavior, and the first transition.
 
 ## Observability And References
 
 Application logs are written under `logs/`, rotate at the configured size, and are retained according to `SHAPE_SHIFTER_LOG_RETENTION`. Fixed-entity load normalizations produce warning logs and a UI banner; inspect the listed entity, row, and column before saving normalized values. No alerting infrastructure is currently configured.
 
-- [container/README.md](../container/README.md): Podman setup, configuration, lifecycle, and diagnostics.
-- [container/DEPLOYMENT.md](../container/DEPLOYMENT.md): deployment hosts, multiple environments, NGINX, systemd, and updates.
+- [deployment/container/README.md](../deployment/container/README.md): Podman setup, configuration, lifecycle, and diagnostics.
+- [deployment/container/DEPLOYMENT.md](../deployment/container/DEPLOYMENT.md): deployment hosts, multiple environments, NGINX, systemd, and updates.
 - [DEVELOPMENT.md](DEVELOPMENT.md): local development and contributor workflow.
 - [DESIGN.md](DESIGN.md): architecture and single-worker rationale.
 - [DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](DATA_PROVIDER_SUBMISSION_LIFECYCLE.md): provider-submission lifecycle policy.

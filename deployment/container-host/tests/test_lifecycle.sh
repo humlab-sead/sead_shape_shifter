@@ -11,11 +11,11 @@
 # constructs, its exit status, its diagnostics, and that it writes nothing into
 # the release.
 #
-# Usage: bash container-host/tests/test_lifecycle.sh
+# Usage: bash deployment/container-host/tests/test_lifecycle.sh
 set -euo pipefail
 
 g_test_dir="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-g_container_dir="$(CDPATH='' cd -- "$g_test_dir/../../container" && pwd)"
+g_container_dir="$(CDPATH='' cd -- "$g_test_dir/../../../deployment/container" && pwd)"
 
 g_failures=0
 g_checks=0
