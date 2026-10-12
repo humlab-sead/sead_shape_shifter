@@ -367,9 +367,7 @@ class ShapeShifter:
         # managed identity column with a produced business column are therefore
         # scanned over just the produced columns instead of raising a KeyError on
         # the not-yet-added identity column.
-        available_keys: list[str] = [
-            key for key in table_cfg.keys if key not in managed_keys and key in self.table_store[entity].columns
-        ]
+        available_keys: list[str] = [key for key in table_cfg.keys if key not in managed_keys and key in self.table_store[entity].columns]
 
         if not available_keys:
             return
