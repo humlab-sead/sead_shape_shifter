@@ -8,19 +8,19 @@
 
 ## Summary
 
-Delivery 1 is closed on the current MVP baseline.
+The MVP Delivery is closed on the current MVP baseline.
 
 The repository still has several capabilities that matter for a fuller operational replacement of the legacy SEAD path, but those capabilities should no longer be described as one accepted Delivery 2. They are candidates for the next delivery and still need prioritization, scoping, and acceptance decisions.
 
-This proposal records that candidate set so the closed Delivery 1 baseline can stay closed without losing the backlog context.
+This proposal records that candidate set so the closed MVP Delivery baseline can stay closed without losing the backlog context.
 
 Provider-update scope and existing-row update handling are tracked separately in the lifecycle proposal set and are no longer part of this candidate backlog.
 
-Frontend workflow integration is tracked separately in [FRONTEND_UX_INTEGRATION_CR.md](../done/FRONTEND_UX_INTEGRATION_CR.md), with GitHub-ready issue drafts in [FRONTEND_UX_INTEGRATION_ISSUES.md](../done/FRONTEND_UX_INTEGRATION_ISSUES.md). The closed post-Delivery-1 follow-up record now lives in [done/CHANGE_REQUEST_INGESTER_DELIVERY_1/DELIVERY_1_FOLLOWUP_CR.md](../done/CHANGE_REQUEST_INGESTER_DELIVERY_1/DELIVERY_1_FOLLOWUP_CR.md).
+Frontend workflow integration is tracked separately in [FRONTEND_UX_INTEGRATION_CR.md](../done/FRONTEND_UX_INTEGRATION_CR.md), with GitHub-ready issue drafts in [FRONTEND_UX_INTEGRATION_ISSUES.md](../done/FRONTEND_UX_INTEGRATION_ISSUES.md). The closed post-Delivery-1 follow-up record now lives in [done/CHANGE_REQUEST_INGESTER_MVP/MVP_FOLLOWUP_CR.md](../done/CHANGE_REQUEST_INGESTER_MVP/MVP_FOLLOWUP_CR.md).
 
 ## Problem
 
-The old Delivery 1 proposal carried a Delivery 2 section.
+The old MVP Delivery proposal carried a post-MVP Delivery section.
 
 That was useful while the baseline was still open, but it is now misleading in two ways.
 
@@ -40,14 +40,14 @@ This proposal covers:
 
 - committing to all candidate items as one release
 - choosing the final next-delivery scope in this document
-- reopening the closed Delivery 1 baseline
+- reopening the closed MVP Delivery baseline
 - covering frontend workflow integration, which is tracked separately
 
 ## Candidate Areas
 
 | Candidate | Why it matters | Current state |
 |-----------|----------------|---------------|
-| Functional rollback support | Delivery 1 is explicitly non-revertible | Candidate, not accepted |
+| Functional rollback support | MVP Delivery is explicitly non-revertible | Candidate, not accepted |
 | Stronger idempotency and re-submission behavior | Current guarantees are intentionally narrow | Candidate, not accepted |
 | Change detection | Useful for reruns and update planning | Candidate, not accepted |
 | More precise ordering when deferred constraints are insufficient | Needed only if deferred FK assumptions fail in broader practice | Candidate, not accepted |
@@ -75,7 +75,7 @@ That keeps the next delivery concrete and prevents the repository from silently 
 
 ## Validation And Acceptance Criteria
 
-- the closed Delivery 1 baseline no longer carries committed later-delivery scope
+- the closed MVP Delivery baseline no longer carries committed later-delivery scope
 - the remaining capability areas are visible without being treated as accepted scope
 - this document makes the undecided state explicit
 - the document points to separate proposals for artifact hardening and frontend UX integration

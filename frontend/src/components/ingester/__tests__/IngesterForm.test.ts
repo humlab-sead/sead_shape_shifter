@@ -149,7 +149,7 @@ describe('IngesterForm', () => {
       {
         key: 'sead_change_request',
         name: 'SEAD Change Request',
-        description: 'Emit a Delivery 1 change package',
+        description: 'Emit an MVP Delivery change package',
         version: '1.0.0',
         supported_formats: ['xlsx'],
       },

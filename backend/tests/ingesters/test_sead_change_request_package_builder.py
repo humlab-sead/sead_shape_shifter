@@ -15,7 +15,7 @@ class TestBuildChangeRequestPackage:
     """Tests for selecting insertable rows into the first in-memory package."""
 
     def test_includes_only_insertable_row_states(self):
-        """Only newly allocated entities and derived bridge rows should enter the Delivery 1 package."""
+        """Only newly allocated entities and derived bridge rows should enter the MVP Delivery package."""
         sample_frame = pd.DataFrame(
             {
                 "system_id": [1, 2, 3],

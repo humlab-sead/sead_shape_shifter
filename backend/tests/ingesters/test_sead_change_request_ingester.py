@@ -316,7 +316,7 @@ class TestSeadChangeRequestIngesterValidation:
 
     @pytest.mark.asyncio
     async def test_validate_accepts_tables_from_config_extra(self):
-        """Validation should accept the Delivery 1 in-memory table bundle from config.extra."""
+        """Validation should accept the MVP Delivery in-memory table bundle from config.extra."""
         ingester = SeadChangeRequestIngester(
             IngesterConfig(
                 host="localhost",
@@ -668,7 +668,7 @@ class TestSeadChangeRequestIngesterValidation:
         result = await ingester.validate("submission.xlsx")
 
         assert result.is_valid is True
-        assert result.warnings == ["Bridge entity 'sample_taxon' has no unique_sets metadata; Delivery 1 uniqueness checks will be blocked"]
+        assert result.warnings == ["Bridge entity 'sample_taxon' has no unique_sets metadata; MVP Delivery uniqueness checks will be blocked"]
         assert any("1 evaluate_bridge" in info for info in result.infos)
 
     @pytest.mark.asyncio
@@ -906,7 +906,7 @@ class TestSeadChangeRequestIngesterIngest:
 
     @pytest.mark.asyncio
     async def test_ingest_emits_empty_artifact_bundle_for_valid_reference_only_bundle(self, tmp_path):
-        """Ingest should emit an artifact bundle even when no rows enter the Delivery 1 insert package."""
+        """Ingest should emit an artifact bundle even when no rows enter the MVP Delivery insert package."""
         ingester = SeadChangeRequestIngester(
             IngesterConfig(
                 host="localhost",
@@ -1171,7 +1171,7 @@ class TestSeadChangeRequestIngesterIngest:
 
     @pytest.mark.asyncio
     async def test_ingest_accepts_resolved_identity_assignments(self, tmp_path):
-        """Ingest should emit the Delivery 1 artifact bundle when assignments are present."""
+        """Ingest should emit the MVP Delivery artifact bundle when assignments are present."""
         ingester = SeadChangeRequestIngester(
             IngesterConfig(
                 host="localhost",

@@ -8,11 +8,11 @@ This document consolidates the provider-lifecycle work that is complete and reco
 
 ## Current State
 
-- Delivery 1 baseline is closed and archived under `done/CHANGE_REQUEST_INGESTER_DELIVERY_1/`.
-- Delivery 1 follow-up issue slices are resolved or implemented on the current branch.
+- The MVP Delivery baseline is closed and archived under `done/CHANGE_REQUEST_INGESTER_MVP/`.
+- MVP Delivery follow-up issue slices are resolved or implemented on the current branch.
 - Frontend UX integration CR is implemented, with one deferred metadata-defaults follow-up.
 - Provider-update lifecycle policy gate is accepted through [DATA_PROVIDER_UPDATE_SCOPING_CR.md](./DATA_PROVIDER_UPDATE_SCOPING_CR.md).
-- Lifecycle rules are promoted to durable docs at [../../../../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../../../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md).
+- Lifecycle rules are promoted to durable docs at [../../../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md).
 - Lifecycle Phase 1 and Phase 2 prerequisites are implemented on the current branch, including outcome classification diagnostics and integration coverage.
 - Existing-row update handling is implemented on the current branch, including both SQL/artifact rendering and the engine-path allowlist/orchestration guard.
 - Shared-data review ownership and operator routing now live in a separate proposal.
@@ -20,8 +20,8 @@ This document consolidates the provider-lifecycle work that is complete and reco
 
 ## Completed Work
 
-- Delivery 1 implementation and hardening documents are closed artifacts.
-- Delivery 1 follow-up issue slices are marked resolved or implemented in [done/DELIVERY_1_FOLLOWUP_ISSUES.md](./done/DELIVERY_1_FOLLOWUP_ISSUES.md).
+- MVP Delivery implementation and hardening documents are closed artifacts.
+- MVP Delivery follow-up issue slices are marked resolved or implemented in [MVP_FOLLOWUP_ISSUES.md](../MVP_FOLLOWUP_ISSUES.md).
 - Frontend workflow integration is implemented in `done/FRONTEND_UX_INTEGRATION_CR.md` and tracked issue-by-issue in `done/FRONTEND_UX_INTEGRATION_ISSUES.md`.
 - Ingester readability refactor plan is complete and explicitly stopped at a stable boundary.
 - The provider-lifecycle proposal set is archived under [README.md](./README.md).
@@ -29,19 +29,19 @@ This document consolidates the provider-lifecycle work that is complete and reco
 ## Key References
 
 - Decision proposal: [DATA_PROVIDER_UPDATE_SCOPING_CR.md](./DATA_PROVIDER_UPDATE_SCOPING_CR.md)
-- Durable lifecycle rules: [../../../../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../../../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md)
+- Durable lifecycle rules: [../../../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md)
 - Proposal-era lifecycle baseline record: [DATA_PROVIDER_SUBMISSION_LIFECYCLE_SPECIFICATION.md](./DATA_PROVIDER_SUBMISSION_LIFECYCLE_SPECIFICATION.md)
 - Lifecycle sequencing plan: [DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md](./DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md)
 - Lifecycle phase issue drafts: [LIFECYCLE_PHASE_1_2_ISSUES.md](./LIFECYCLE_PHASE_1_2_ISSUES.md)
 - Lifecycle phase 3 issue drafts: [LIFECYCLE_PHASE_3_ISSUES.md](./LIFECYCLE_PHASE_3_ISSUES.md)
 - Existing-row update proposal: [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](../../future/UPDATE_HANDLING_FOR_EXISTING_ROWS.md)
-- Candidate backlog scope: [NEXT_DELIVERY_CANDIDATES.md](./future/NEXT_DELIVERY_CANDIDATES.md)
+- Candidate backlog scope: [NEXT_DELIVERY_CANDIDATES.md](../../future/NEXT_DELIVERY_CANDIDATES.md)
 
 ## Next Actions
 
 1. Record and carry forward lifecycle policy acceptance.
 - Acceptance decision is complete for `DATA_PROVIDER_UPDATE_SCOPING_CR.md`.
-- Durable lifecycle doc created: [../../../../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../../../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md).
+- Durable lifecycle doc created: [../../../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md).
 - Promotion note completed: [LIFECYCLE_SPEC_PROMOTION_NOTE.md](./LIFECYCLE_SPEC_PROMOTION_NOTE.md).
 - Lifecycle baseline promotion is complete; keep [LIFECYCLE_SPEC_PROMOTION_NOTE.md](./LIFECYCLE_SPEC_PROMOTION_NOTE.md) as the handoff record.
 
@@ -57,7 +57,7 @@ This document consolidates the provider-lifecycle work that is complete and reco
 - Keep ambiguous existing-row changes blocked or review-routed.
 
 4. Define shared-data review ownership and path in the separate proposal.
-- Track the draft in [../../../SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT/SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT.md](../../../SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT/SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT.md).
+- Track the draft in [SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT.md](../../SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT/SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT.md).
 - Confirm authority owner for new shared-term requests.
 - Confirm owner for corrections to existing shared terms.
 - Confirm boundary between provider-owned reference updates and shared-row governance changes.
@@ -118,7 +118,7 @@ Dependency guardrails:
 - Keep lifecycle sequencing updates in `DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md`.
 - Keep issue-level execution details in dedicated issue docs or GitHub issues.
 - Use [LIFECYCLE_SPEC_PROMOTION_NOTE.md](./LIFECYCLE_SPEC_PROMOTION_NOTE.md) as the promotion handoff for moving lifecycle rules into durable docs.
-- Use [../../../../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../../../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md) as the active lifecycle policy reference.
+- Use [../../../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md) as the active lifecycle policy reference.
 
 ## Restart Prompt
 

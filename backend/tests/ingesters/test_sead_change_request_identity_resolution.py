@@ -18,7 +18,7 @@ def minimal_target_model(**extra_entities: dict) -> TargetModel:
 
 
 class TestResolvePlannedTables:
-    """Tests for resolving planned rows into Delivery 1 states."""
+    """Tests for resolving planned rows into MVP Delivery states."""
 
     def test_existing_rows_resolve_from_public_id(self):
         """Reference-existing rows should resolve directly from the public_id column."""

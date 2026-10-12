@@ -31,7 +31,7 @@ This proposal covers the frontend-facing integration work needed to make the ing
 
 ## Problem
 
-Delivery 1 closed the backend ingester baseline, but it did not define the full user-facing workflow.
+The MVP Delivery closed the backend ingester baseline, but it did not define the full user-facing workflow.
 
 That gap matters because this ingester may require the user to:
 

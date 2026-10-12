@@ -1,12 +1,12 @@
-# Delivery 1 Implementation Plan
+# MVP Delivery Implementation Plan
 
 ## Purpose
 
-This document turns the accepted Delivery 1 proposal decisions into an implementation plan and execution order.
+This document turns the accepted MVP Delivery proposal decisions into an implementation plan and execution order.
 
 It is not a new design proposal. It assumes the design decisions in [SEAD_CHANGE_REQUEST_INGESTER.md](./SEAD_CHANGE_REQUEST_INGESTER.md) are the current baseline.
 
-## Delivery 1 Goal
+## MVP Delivery Goal
 
 Deliver a new ingester registered as `sead_change_request` that:
 
@@ -16,7 +16,7 @@ Deliver a new ingester registered as `sead_change_request` that:
 - emits forward-only change-package artifacts only after Binding Set confirmation is complete
 - stops with diagnostics and no partial artifacts when rows become `blocked_unresolved`
 
-## Delivery 1 Non-Goals
+## MVP Delivery Non-Goals
 
 - rollback implementation
 - `UPDATE` or `DELETE` SQL generation
@@ -29,12 +29,12 @@ Deliver a new ingester registered as `sead_change_request` that:
 - Keep the ingester DataFrame-first internally even if a path-based adapter is required at the framework edge.
 - Keep identity planning separate from SQL generation.
 - Treat `blocked_unresolved` as a hard stop before any deploy, revert, or verify artifacts are emitted.
-- Keep Delivery 1 synchronous at the change-package boundary.
+-- Keep the MVP Delivery synchronous at the change-package boundary.
 - Use metadata-defined identity, unique, or composite-key rules where available. Do not guess when metadata is insufficient.
 
 ## Progress Checklist
 
-Current implementation status as of 2026-05-24:
+Current MVP Delivery implementation status as of 2026-05-24:
 
 - [x] Workstream 1. Ingester scaffold
 - [x] Workstream 2. Input contract and boundary types
@@ -49,13 +49,13 @@ Current implementation status as of 2026-05-24:
 
 Notes:
 
-- Delivery 1 is now closed on the current implementation baseline.
+- The MVP Delivery is now closed on the current implementation baseline.
 - Workstream 4 is complete. Row-state classification, reconciliation, real SIMS allocation for new entities and allocatable classifiers, and the real backend runtime path for derived bridge rows now work end to end.
-- Workstream 2 is now complete for the current Delivery 1 boundary. The ingester accepts in-memory table bundles and path-based Excel workbook input, and it adapts workbook sheets into the internal source-bundle contract.
+- Workstream 2 is now complete for the current MVP Delivery boundary. The ingester accepts in-memory table bundles and path-based Excel workbook input, and it adapts workbook sheets into the internal source-bundle contract.
 - Workstream 5 is now implemented for the current runtime contract. The ingester reads Binding Set state, attempts synchronous confirmation, and falls back to a pending confirmation report when confirmation still cannot complete.
 - Workstream 8 now emits the generated artifact bundle to the configured output folder, including deploy SQL, metadata, and fail-loud revert and verify placeholders.
 - Workstream 9 now associates the requested change request name with the confirmed Binding Set when both are available during the run.
-- Workstream 10 is closed for Delivery 1. Focused tests cover the executable mixed pilot and the current artifact shape with deploy, revert, verify, and metadata outputs. Post-Delivery-1 improvements and further operational hardening now move to [./DELIVERY_1_FOLLOWUP_CR.md](./DELIVERY_1_FOLLOWUP_CR.md).
+- Workstream 10 is closed for the MVP Delivery. Focused tests cover the executable mixed pilot and the current artifact shape with deploy, revert, verify, and metadata outputs. Post-MVP-Delivery improvements and further operational hardening now move to [./MVP_FOLLOWUP_CR.md](./MVP_FOLLOWUP_CR.md).
 
 ## Detailed Workstream Checklist
 
@@ -75,14 +75,14 @@ Notes:
 
 ### Workstream 3 Checklist
 
-- [x] Extract entity role, target table, public ID, and FK metadata needed by Delivery 1
+- [x] Extract entity role, target table, public ID, and FK metadata needed by the MVP Delivery
 - [x] Partition entity rows by populated versus missing `public_id`
 - [x] Build deterministic per-row work plans
 - [x] Surface early diagnostics when metadata is insufficient for bridge handling
 
 ### Workstream 4 Checklist
 
-- [x] Implement Delivery 1 row-state classification
+- [x] Implement the MVP Delivery row-state classification
 - [x] Resolve existing entities through `public_id`
 - [x] Reconcile classifiers where existing matches are expected
 - [x] Allocate new entities and allocatable classifiers through a real SIMS path that returns target-facing integer IDs
@@ -91,10 +91,10 @@ Notes:
 
 ### Workstream 5 Checklist
 
-- [x] Read Binding Set state inside the Delivery 1 run
+- [x] Read Binding Set state inside the MVP Delivery run
 - [x] Stop before SQL generation when confirmation is still pending
 - [x] Emit a pending confirmation report instead of partial artifacts
-- [x] Confirm the Binding Set synchronously during the Delivery 1 run when the workflow allows it
+- [x] Confirm the Binding Set synchronously during the MVP Delivery run when the workflow allows it
 
 ### Workstream 6 Checklist
 
@@ -130,7 +130,7 @@ Notes:
 - [x] Add confirmation-block coverage for pending Binding Set cases
 - [x] Add collision-check coverage
 - [x] Run a mixed pilot with existing references, new provider-owned entities, classifiers, and bridge rows
-- [x] Close Delivery 1 on the current artifact shape and move follow-up hardening to a separate CR
+- [x] Close the MVP Delivery on the current artifact shape and move follow-up hardening to a separate CR
 
 ## Workstreams
 
@@ -194,7 +194,7 @@ Dependencies:
 
 Scope:
 
-- implement Delivery 1 row-state classification
+- implement the MVP Delivery row-state classification
 - resolve existing entities through `public_id`
 - reconcile classifiers where existing matches are expected
 - allocate new entities and allocatable classifiers through SIMS
@@ -214,7 +214,7 @@ Dependencies:
 
 Scope:
 
-- confirm Binding Set status inside the Delivery 1 run
+- confirm Binding Set status inside the MVP Delivery run
 - stop before SQL generation when manual confirmation is still pending
 - emit a pending confirmation report instead of partial artifacts
 
@@ -258,7 +258,7 @@ Scope:
 Outputs:
 
 - collision diagnostics by table and key set
-- explicit Delivery 1 idempotency boundary in output messages
+- explicit MVP Delivery idempotency boundary in output messages
 
 Dependencies:
 
@@ -312,7 +312,7 @@ Scope:
 
 Outputs:
 
-- executable confidence for Delivery 1 acceptance criteria
+- executable confidence for the MVP Delivery acceptance criteria
 - pilot evidence for artifact compatibility and operator workflow
 
 Dependencies:
@@ -464,12 +464,12 @@ Includes:
 
 Exit criteria:
 
-- Delivery 1 acceptance criteria are satisfied
+- the MVP Delivery acceptance criteria are satisfied
 - pilot confirms artifact contract and exposes later-delivery gaps
 
-## Exit Gate For Delivery 1
+## Exit Gate For the MVP Delivery
 
-Delivery 1 is ready when all of the following are true:
+The MVP Delivery is ready when all of the following are true:
 
 - the ingester is registered as `sead_change_request`
 - the DataFrame-first contract is documented and exercised in tests
@@ -479,7 +479,7 @@ Delivery 1 is ready when all of the following are true:
 - package metadata is explicitly non-revertible when placeholders are used
 - the mixed pilot succeeds or produces understood blocking diagnostics
 
-Delivery 1 is now closed on that basis. Follow-up work on deploy-artifact strategy, templating, and target-model/schema review is tracked in [./DELIVERY_1_FOLLOWUP_CR.md](./DELIVERY_1_FOLLOWUP_CR.md).
+The MVP Delivery is now closed on that basis. Follow-up work on deploy-artifact strategy, templating, and target-model/schema review is tracked in [./MVP_FOLLOWUP_CR.md](./MVP_FOLLOWUP_CR.md).
 
 ## Risks To Watch During Implementation
 
@@ -490,7 +490,7 @@ Delivery 1 is now closed on that basis. Follow-up work on deploy-artifact strate
 
 ## Out Of Scope Follow-Up
 
-These items belong after Delivery 1 unless pilot results force reprioritization:
+These items belong after the MVP Delivery unless pilot results force reprioritization:
 
 - rollback implementation
 - `UPDATE` generation
