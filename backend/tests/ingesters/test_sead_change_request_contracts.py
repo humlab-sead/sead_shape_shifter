@@ -17,10 +17,10 @@ from ingesters.sead_change_request.contracts import (
 
 
 class TestChangeRowState:
-    """Tests for Delivery 1 row-state definitions."""
+    """Tests for MVP Delivery row-state definitions."""
 
     def test_row_state_values(self):
-        """Row-state enum should match the accepted Delivery 1 design names."""
+        """Row-state enum should match the accepted MVP Delivery design names."""
         assert ChangeRowState.EXISTING_ENTITY == "existing_entity"
         assert ChangeRowState.NEWLY_ALLOCATED_ENTITY == "newly_allocated_entity"
         assert ChangeRowState.RECONCILED_CLASSIFIER == "reconciled_classifier"
@@ -66,10 +66,10 @@ class TestChangeRequestPackage:
 
 
 class TestSubmissionContext:
-    """Tests for submission-scoped Delivery 1 metadata."""
+    """Tests for submission-scoped MVP Delivery metadata."""
 
     def test_submission_context_preserves_fields(self):
-        """Submission context should keep the traceability fields needed by Delivery 1."""
+        """Submission context should keep the traceability fields needed by MVP Delivery."""
         timestamp = datetime(2026, 5, 23, 22, 0, 0)
 
         context = SubmissionContext(

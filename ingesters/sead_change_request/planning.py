@@ -61,7 +61,7 @@ def plan_table(
         missing_action = PlannedRowAction.RESERVE_DATABASE_ID
     elif effective.identity_tracking == "derived":
         if not entity_spec.unique_sets:
-            diagnostics.append(f"Bridge entity '{entity_name}' has no unique_sets metadata; Delivery 1 uniqueness checks will be blocked")
+            diagnostics.append(f"Bridge entity '{entity_name}' has no unique_sets metadata; MVP Delivery uniqueness checks will be blocked")
         planned_actions = pd.Series([PlannedRowAction.EVALUATE_BRIDGE] * len(frame.index), index=frame.index, name="_planned_action")
         return PlannedTable(entity_name=entity_name, frame=frame, planned_actions=planned_actions, diagnostics=diagnostics)
     else:

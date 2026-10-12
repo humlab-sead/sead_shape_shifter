@@ -34,7 +34,7 @@
 
         <template v-if="isSeadChangeRequest">
           <v-alert type="info" variant="tonal" class="mt-4" data-test="sead-change-request-workflow">
-            This workflow collects the operator context needed to validate identities, wait for Binding Set confirmation when required, and emit a Delivery 1 deploy package.
+            This workflow collects the operator context needed to validate identities, wait for Binding Set confirmation when required, and emit an MVP change package.
           </v-alert>
 
           <v-text-field

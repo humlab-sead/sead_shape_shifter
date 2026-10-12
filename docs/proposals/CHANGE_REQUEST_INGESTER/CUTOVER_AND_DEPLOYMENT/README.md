@@ -20,4 +20,4 @@ This folder collects the operational decisions and validation gates for adopting
 7. Prevent a regenerated package from becoming eligible until the earlier package for the same logical submission has been withdrawn or superseded. SIMS Binding Set status does not revoke generated SQL.
 8. Run SEAD-to-SIMS coverage, UUID parity, allocator, sequence-safety, and SEAD persistence checks before adoption. Do not use SIMS as the enforcement mechanism for SEAD database integrity.
 
-Closed artifact-format and renderer work remains documented under [done/CHANGE_REQUEST_INGESTER_DELIVERY_1](../done/CHANGE_REQUEST_INGESTER_DELIVERY_1); it describes implementation history, not cutover approval.
+Closed artifact-format and renderer work remains documented under [done/CHANGE_REQUEST_INGESTER_MVP](../done/CHANGE_REQUEST_INGESTER_MVP); it describes implementation history, not cutover approval.
