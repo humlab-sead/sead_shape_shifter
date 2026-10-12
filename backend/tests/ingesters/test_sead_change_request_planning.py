@@ -15,7 +15,7 @@ from src.target_model.models import EntitySpec
 
 
 class TestPlanTable:
-    """Tests for deterministic Delivery 1 work planning."""
+    """Tests for deterministic MVP Delivery work planning."""
 
     def test_fact_rows_split_between_reference_and_allocate(self):
         """Fact rows should use public_id presence to separate reference-only rows from allocation candidates."""
@@ -187,7 +187,7 @@ class TestPlanTable:
 
         assert plan.planned_actions.tolist() == [PlannedRowAction.EVALUATE_BRIDGE]
         assert plan.diagnostics == [
-            "Bridge entity 'sample_taxon' has no unique_sets metadata; Delivery 1 uniqueness checks will be blocked"
+            "Bridge entity 'sample_taxon' has no unique_sets metadata; MVP Delivery uniqueness checks will be blocked"
         ]
 
     def test_non_bridge_entities_require_public_id_metadata(self):

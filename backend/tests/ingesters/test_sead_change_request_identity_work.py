@@ -9,7 +9,7 @@ class TestBuildIdentityWorkPlan:
     """Tests for partitioning planned rows into identity work queues."""
 
     def test_partitions_rows_by_planned_action(self):
-        """Rows should be split into the Delivery 1 queues without re-deriving actions."""
+        """Rows should be split into the MVP Delivery queues without re-deriving actions."""
         sample_frame = pd.DataFrame({"sample_id": [1, None], "sample_name": ["A", "B"]})
         sample_actions = pd.Series(
             [PlannedRowAction.REFERENCE_EXISTING, PlannedRowAction.ALLOCATE],

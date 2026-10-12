@@ -1,4 +1,4 @@
-# Delivery 1 Hardening: `copy_csv` Artifact Contract
+# MVP Delivery Hardening: `copy_csv` Artifact Contract
 
 ## Status
 
@@ -12,7 +12,7 @@ The current `copy_csv` renderer proves that a second deploy strategy can work.
 
 This document records the first hardened contract for `copy_csv` bundles as implemented on the current branch. It keeps the integration with the SEAD Change Control System (SCCS) simple. Shape Shifter produces a bundle in a known layout. SCCS consumes that bundle and remains responsible for creating and managing the Sqitch change request.
 
-The goal is to make the bundle deterministic, inspectable, and testable without reopening Delivery 1 planning, identity, materialization, or collision logic.
+The goal is to make the bundle deterministic, inspectable, and testable without reopening the MVP Delivery planning, identity, materialization, or collision logic.
 
 ## Problem
 
@@ -48,7 +48,7 @@ This note does not cover:
 
 ### 1. Integration Boundary
 
-Delivery 1 keeps the integration simple.
+The MVP Delivery keeps the integration simple.
 
 Shape Shifter is responsible for creating a complete change-request bundle in a target folder.
 
@@ -60,7 +60,7 @@ Future releases may tighten the integration. This contract assumes file handoff 
 
 The canonical contract is an unpacked directory tree.
 
-Delivery 1 hardening should emit only the unpacked directory form. Tar packaging is out of scope for this contract.
+The MVP Delivery hardening should emit only the unpacked directory form. Tar packaging is out of scope for this contract.
 
 The canonical root folder name is `CR_NAME`.
 
@@ -78,7 +78,7 @@ Rules:
 - `issue_identifier`: optional metadata field; defaults to `NNN` when absent
 - `description`: required SQL-header field; when absent it resolves to `submission_name`, and the resolved value must be single line and shorter than 80 characters
 
-Approved `datatype` values for Delivery 1 hardening:
+Approved `datatype` values for the MVP Delivery hardening:
 
 - `mal`
 - `archaeobotany`
@@ -163,7 +163,7 @@ For each payload file, deploy SQL should emit a `\copy` statement aligned with t
 Rules:
 
 - the hardened contract should preserve the historical SEAD pattern unless there is a documented reason to differ
-- SCCS is treated as requiring a `psql` execution environment with `zcat`, because Delivery 1 hardening requires compressed payload files and `\copy`
+- SCCS is treated as requiring a `psql` execution environment with `zcat`, because the MVP Delivery hardening requires compressed payload files and `\copy`
 - any intentional deviation from the historical pattern must be recorded in the manifest or companion documentation
 - the current renderer targets the resolved table name directly and does not hardcode `public.` schema qualification in the emitted `\copy` statement
 - deploy SQL should include only rendering and loading concerns, not identity or planning logic
@@ -171,13 +171,13 @@ Rules:
 Alternative noted but not adopted here:
 
 - a future contract could unpack `.gz` files before execution and use plain file paths instead of `from program 'zcat -qac ...'`
-- Delivery 1 hardening keeps the current compressed-file plus `zcat` pattern because it is closer to historical SEAD practice and satisfies the current SCCS expectation
+- The MVP Delivery hardening keeps the current compressed-file plus `zcat` pattern because it is closer to historical SEAD practice and satisfies the current SCCS expectation
 
 ### 7. Revert And Verify Files
 
 `revert/CR_NAME.sql` and `verify/CR_NAME.sql` are part of the required bundle layout.
 
-For Delivery 1 hardening, they may remain placeholders, but they must:
+For the MVP Delivery hardening, they may remain placeholders, but they must:
 
 - exist for every emitted bundle
 - use the same CR metadata header format as deploy SQL
@@ -230,7 +230,7 @@ At minimum it should include:
 
 The manifest is the primary operator-facing summary. An operator should be able to inspect the manifest and understand what the bundle contains without opening every payload file.
 
-For Delivery 1 hardening, the manifest should also record:
+For the MVP Delivery hardening, the manifest should also record:
 
 - the approved `datatype` value used for validation
 - the payload null rule
@@ -267,7 +267,7 @@ This hardening contract tightens that prototype in four ways:
 
 ## Resolved Decisions
 
-The following points are fixed for Delivery 1 hardening:
+The following points are fixed for the MVP Delivery hardening:
 
 - emit only the unpacked directory form
 - use an unquoted empty field as the payload null representation
@@ -280,7 +280,7 @@ The following points are fixed for Delivery 1 hardening:
 
 The historical example in [docs/proposals/CHANGE_REQUEST_INGESTER/example/20240119_DML_SUBMISSION_DENDROCHRONOLOGY_COMMIT.sql](../../example/20240119_DML_SUBMISSION_DENDROCHRONOLOGY_COMMIT.sql) is a useful operational reference.
 
-Delivery 1 hardening does not adopt that script wholesale.
+The MVP Delivery hardening does not adopt that script wholesale.
 
 The current contract intentionally keeps these differences:
 
@@ -289,9 +289,9 @@ The current contract intentionally keeps these differences:
 - emitted `\copy` statements target the resolved table name directly and do not hardcode `public.` schema qualification
 - Shape Shifter emits the artifact bundle only; it does not emit historical SCCS runtime setup such as `\cd`, sequence reset calls, temp-table DDL, or other session-scoped wrapper SQL
 - the SQL header is limited to the metadata owned by the current contract instead of reproducing every historical SCCS header field
-- `revert` and `verify` files are required placeholders in Delivery 1 hardening, not claims that rollback or verification are already implemented
+- `revert` and `verify` files are required placeholders in the MVP Delivery hardening, not claims that rollback or verification are already implemented
 
-These are accepted contract choices for Delivery 1 hardening. If a later SCCS integration requires the historical staging pattern, that should be proposed as a new contract revision rather than treated as an unspoken default.
+These are accepted contract choices for the MVP Delivery hardening. If a later SCCS integration requires the historical staging pattern, that should be proposed as a new contract revision rather than treated as an unspoken default.
 
 ## Recommendation
 
