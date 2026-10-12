@@ -486,7 +486,7 @@ class TestBuildDeployArtifact:
         artifact = build_deploy_artifact(package, target_model, submission_context)
 
         assert artifact.statements == ['INSERT INTO "site" ("site_id") VALUES (501);']
-        assert artifact.metadata_artifact["artifact_type"] == "delivery_1_change_package"
+        assert artifact.metadata_artifact["artifact_type"] == "mvp_delivery_change_package"
         assert artifact.metadata_artifact["deploy_strategy"] == "inline_insert"
 
     def test_builds_update_statement_for_accepted_existing_row(self):

@@ -40,7 +40,7 @@ class FakeCollisionChecker:
 
 
 class TestCheckProjectedCollisions:
-    """Tests for Delivery 1 target-side collision checks."""
+    """Tests for MVP Delivery target-side collision checks."""
 
     @pytest.mark.asyncio
     async def test_reports_entity_target_id_collision(self):

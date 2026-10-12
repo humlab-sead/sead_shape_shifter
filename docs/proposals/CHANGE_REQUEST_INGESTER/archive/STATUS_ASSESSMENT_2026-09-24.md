@@ -7,13 +7,13 @@
 
 ## Recommended Overall Status
 
-**Core implementation complete; follow-up proposals remain active.** This directory is a portfolio of related proposals and plans, not one change request with a single completion state. Delivery 1, frontend workflow integration, provider lifecycle work, and persisted submission defaults are implemented. Do not mark the entire portfolio complete: upstream PostgreSQL validation for the submission metadata work remains outstanding, and separate proposals still contain unresolved scope or ownership decisions.
+**Core implementation complete; follow-up proposals remain active.** This directory is a portfolio of related proposals and plans, not one change request with a single completion state. The MVP Delivery, frontend workflow integration, provider lifecycle work, and persisted submission defaults are implemented. Do not mark the entire portfolio complete: upstream PostgreSQL validation for the submission metadata work remains outstanding, and separate proposals still contain unresolved scope or ownership decisions.
 
 ## Status By Area
 
 | Area | Status | Notes |
 |---|---|---|
-| Delivery 1 baseline and follow-ups | Complete | Closed and archived under `done/CHANGE_REQUEST_INGESTER_DELIVERY_1/`. |
+| MVP Delivery baseline and follow-ups | Complete | Closed and archived under `done/CHANGE_REQUEST_INGESTER_MVP/`. |
 | Frontend workflow integration | Complete | Issues 1–4 shipped in PR #456. Stable defaults were delivered separately in the submission metadata work. |
 | Provider submission lifecycle | Complete | Implemented and recorded in the durable lifecycle documentation and archived proposal set. |
 | Submission metadata and persisted defaults | Repository implementation complete; PostgreSQL validation pending | Code, focused tests, and target-model updates are recorded in [the proposal](../REFACTOR_SEAD_SUBMISSION_METADATA.md). Execution against the revised upstream schema is still unchecked in its task plan. |

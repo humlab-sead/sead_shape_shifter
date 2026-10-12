@@ -173,7 +173,7 @@ def _build_revert_placeholder_sql() -> str:
         [
             "BEGIN;",
             "DO $$ BEGIN",
-            "    RAISE EXCEPTION 'Rollback is not implemented for this Delivery 1 change package.';",
+            "    RAISE EXCEPTION 'Rollback is not implemented for this MVP Delivery change package.';",
             "END $$;",
             "ROLLBACK;",
         ]
@@ -186,7 +186,7 @@ def _build_verify_placeholder_sql() -> str:
         [
             "BEGIN;",
             "DO $$ BEGIN",
-            "    RAISE EXCEPTION 'Verification is not implemented for this Delivery 1 change package.';",
+            "    RAISE EXCEPTION 'Verification is not implemented for this MVP Delivery change package.';",
             "END $$;",
             "ROLLBACK;",
         ]
@@ -242,7 +242,7 @@ def _base_deploy_metadata(submission_context: SubmissionContext, strategy_name: 
 def _base_deploy_artifact_metadata(submission_context: SubmissionContext, strategy_name: str) -> dict[str, object]:
     """Build the shared persisted metadata artifact payload for a rendered deploy artifact."""
     return {
-        "artifact_type": "delivery_1_change_package",
+        "artifact_type": "mvp_delivery_change_package",
         "contract_version": 1,
         "deploy_strategy": strategy_name,
         "non_revertible": True,

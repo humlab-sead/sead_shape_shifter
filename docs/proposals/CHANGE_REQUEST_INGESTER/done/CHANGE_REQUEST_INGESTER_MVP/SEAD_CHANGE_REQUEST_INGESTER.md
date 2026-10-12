@@ -8,13 +8,13 @@
 
 ## Summary
 
-Replace the current SEAD Clearinghouse ingester with a new ingester that generates SEAD Change Control System-ready SQL directly from normalized DataFrames. The new ingester resolves identities before SQL generation by using SIMS for provider-owned entities and for classifier entities that require Delivery 1 allocation, while still using the existing reconciliation API where matching existing SEAD-managed entities is appropriate.
+Replace the current SEAD Clearinghouse ingester with a new ingester that generates SEAD Change Control System-ready SQL directly from normalized DataFrames. The new ingester resolves identities before SQL generation by using SIMS for provider-owned entities and for classifier entities that require MVP Delivery allocation, while still using the existing reconciliation API where matching existing SEAD-managed entities is appropriate.
 
-The recommendation was to deliver this in two stages. Delivery 1 is now closed on the current MVP baseline: forward-only, INSERT-only, no rollback support, no UPDATE handling, and no dependency on topological insert order if the target constraints can be deferred.
+The recommendation was to deliver this in two stages. The MVP Delivery is now closed on the current MVP baseline: forward-only, INSERT-only, no rollback support, no UPDATE handling, and no dependency on topological insert order if the target constraints can be deferred.
 
 This keeps the first delivery small enough to implement and validate while still removing the Clearinghouse staging layer and the Transport System from the main ingestion path.
 
-Post-Delivery-1 hardening is now tracked separately in [./DELIVERY_1_FOLLOWUP_CR.md](./DELIVERY_1_FOLLOWUP_CR.md).
+Post-Delivery-1 hardening is now tracked separately in [./MVP_FOLLOWUP_CR.md](./MVP_FOLLOWUP_CR.md).
 
 Candidate next-delivery capabilities are tracked in [../future/NEXT_DELIVERY_CANDIDATES.md](../../future/NEXT_DELIVERY_CANDIDATES.md), and frontend workflow integration is tracked separately in [../done/FRONTEND_UX_INTEGRATION_CR.md](../../done/FRONTEND_UX_INTEGRATION_CR.md).
 
@@ -47,7 +47,7 @@ This proposal covers:
 - Resolution of foreign keys from local `system_id` values to resolved SEAD integer IDs
 - Generation of SEAD Change Control System SQL DML artifacts from normalized DataFrames
 - Binding Set confirmation and change request association in SIMS
-- A two-delivery plan, with a strict MVP in Delivery 1
+- A two-delivery plan, with a strict MVP in the MVP Delivery
 
 ## Non-Goals
 
@@ -56,7 +56,7 @@ This proposal covers:
 - Generating DDL
 - Writing directly to the SEAD database from Shape Shifter
 - Replacing CSV or Excel dispatchers for non-SEAD targets
-- Solving rollback, UPDATE support, or advanced change detection in Delivery 1
+- Solving rollback, UPDATE support, or advanced change detection in the MVP Delivery
 
 ## Current Behavior
 
@@ -89,13 +89,13 @@ The following building blocks already exist and can be reused.
 | Target-model validators                       | Ensure normalized DataFrames conform before ingestion                                   |
 | Existing ingester framework                   | Registration, discovery, and configuration                                              |
 
-What did not yet exist at proposal time was the ingester-specific orchestration for turning resolved DataFrames into Change Control System artifacts. That Delivery 1 orchestration is now implemented on the current baseline.
+What did not yet exist at proposal time was the ingester-specific orchestration for turning resolved DataFrames into Change Control System artifacts. That MVP Delivery orchestration is now implemented on the current baseline.
 
 ### Upstream SIMS contract dependency
 
 The proposal originally depended on SIMS returning target-facing integer IDs through `ResolutionOutcome.target_id`.
 
-That upstream dependency is now satisfied on the current Delivery 1 baseline. The backend `SimsClient` and the ingester runtime adapter consume `target_id` for SIMS-backed materialization, and the Delivery 1 bridge path is also implemented through the real backend runtime seam.
+That upstream dependency is now satisfied on the current MVP Delivery baseline. The backend `SimsClient` and the ingester runtime adapter consume `target_id` for SIMS-backed materialization, and the MVP Delivery bridge path is also implemented through the real backend runtime seam.
 
 ## Proposed Design
 
@@ -105,13 +105,13 @@ No SQL is generated until all required identities are resolved.
 
 That means:
 
-- Every row that will appear in output SQL has a resolved Delivery 1 identity state and any required target-facing SEAD integer IDs
+- Every row that will appear in output SQL has a resolved the MVP Delivery identity state and any required target-facing SEAD integer IDs
 - Every foreign key in output SQL points to a resolved SEAD integer ID
 - The resolved identities are captured in a confirmed SIMS Binding Set, or the run fails before emitting SQL
 
 If any required identity cannot be resolved, the ingester aborts with diagnostics. No partial change request is emitted.
 
-For Delivery 1, row planning and identity resolution must distinguish at least these states:
+For the MVP Delivery, row planning and identity resolution must distinguish at least these states:
 
 | Case | Meaning | SQL behavior |
 |------|---------|--------------|
@@ -121,9 +121,9 @@ For Delivery 1, row planning and identity resolution must distinguish at least t
 | Derived bridge row | Row identity is derived from already resolved parent IDs and its own uniqueness rule | Insert only if absent |
 | Blocked unresolved | Required SIMS allocation, reconciliation match, bridge uniqueness rule, or Binding Set confirmation is missing | No SQL emission; fail the run with diagnostics |
 
-Delivery 1 should treat these as distinct planning states, not as one generic "resolved ID" bucket. That distinction controls whether a row is inserted, referenced only, checked for bridge-row absence before insertion, or blocks the run before any SQL is emitted.
+The MVP Delivery should treat these as distinct planning states, not as one generic "resolved ID" bucket. That distinction controls whether a row is inserted, referenced only, checked for bridge-row absence before insertion, or blocks the run before any SQL is emitted.
 
-### Delivery 1 Interaction Flow
+### MVP Delivery Interaction Flow
 
 ```mermaid
 flowchart LR
@@ -163,11 +163,11 @@ flowchart LR
     class P output;
 ```
 
-### Delivery 1: MVP
+### MVP Delivery
 
-Delivery 1 was intentionally narrow and is now closed on that basis.
+The MVP Delivery was intentionally narrow and is now closed on that basis.
 
-#### Delivery 1 goals
+#### MVP Delivery goals
 
 - Generate a forward-only SEAD change request from normalized DataFrames
 - Use SIMS and reconciliation before SQL generation
@@ -176,7 +176,7 @@ Delivery 1 was intentionally narrow and is now closed on that basis.
 - Insert only rows that are new to the target system
 - Abort on ambiguity or collision rather than trying to repair or merge data
 
-#### Delivery 1 non-goals
+#### MVP Delivery non-goals
 
 - Rollback support
 - UPDATE statements
@@ -185,7 +185,7 @@ Delivery 1 was intentionally narrow and is now closed on that basis.
 - Sophisticated change detection
 - Complex ordering logic if deferred FK checks are sufficient
 
-#### Delivery 1 flow
+#### MVP Delivery flow
 
 1. Receive a normalized DataFrame bundle, target model, submission context, and ingester config through the ingester handoff contract.
 2. Load target model metadata for entity role, target table, public ID column, and FK definitions.
@@ -193,17 +193,17 @@ Delivery 1 was intentionally narrow and is now closed on that basis.
     - existing entity rows: `public_id` already populated
     - new entity rows: `public_id` missing and therefore candidates for insertion
 4. Evaluate bridge and association rows independently from entity rows using their own identity or composite uniqueness rule.
-5. Build identity requests for new provider-owned rows, any classifier rows that require Delivery 1 allocation, and reconciliation requests for rows expected to match existing SEAD-managed entities.
-6. Resolve each planned row into an explicit Delivery 1 state: existing entity, newly allocated entity, reconciled classifier, derived bridge row, or blocked unresolved.
-7. Confirm the Binding Set inside the same Delivery 1 run. Delivery 1 is synchronous at the change-package boundary: if manual confirmation is required and cannot be completed during the run, mark affected rows as blocked unresolved, stop before SQL generation, and emit diagnostics plus a pending confirmation report rather than a partial change package.
+5. Build identity requests for new provider-owned rows, any classifier rows that require MVP Delivery allocation, and reconciliation requests for rows expected to match existing SEAD-managed entities.
+6. Resolve each planned row into an explicit MVP Delivery state: existing entity, newly allocated entity, reconciled classifier, derived bridge row, or blocked unresolved.
+7. Confirm the Binding Set inside the same MVP Delivery run. The MVP Delivery is synchronous at the change-package boundary: if manual confirmation is required and cannot be completed during the run, mark affected rows as blocked unresolved, stop before SQL generation, and emit diagnostics plus a pending confirmation report rather than a partial change package.
 8. Replace local `system_id` references with resolved SEAD integer IDs in both PK and FK positions.
 9. Run a limited idempotency pre-flight check against the target system for all rows that will be inserted. If any newly allocated target ID already exists, or any derived bridge row is already present under its metadata-defined uniqueness rule, abort the change request and report the collision set.
 10. Emit forward-only deploy SQL only for rows whose resolved state requires insertion.
 11. Associate the generated change request name with the confirmed Binding Set.
 
-#### Delivery 1 SQL strategy
+#### MVP Delivery SQL strategy
 
-Delivery 1 should prefer the simplest safe SQL strategy.
+MVP Delivery should prefer the simplest safe SQL strategy.
 
 - Generate `INSERT` statements only.
 - Wrap the change set in a single transaction.
@@ -212,52 +212,52 @@ Delivery 1 should prefer the simplest safe SQL strategy.
 - Evaluate bridge and association rows independently before excluding them from output.
 - Exclude reconciled classifier rows from `INSERT` generation while still using their resolved IDs in FK positions.
 - Treat blocked unresolved rows as hard failures that prevent any SQL emission.
-- Treat Delivery 1 idempotency as limited to target ID collision detection and explicit bridge uniqueness checks, not as general semantic duplicate detection.
+- Treat MVP Delivery idempotency as limited to target ID collision detection and explicit bridge uniqueness checks, not as general semantic duplicate detection.
 - Fail the whole generation if a new row collides with existing target data.
 
-This keeps the first delivery aligned with current SEAD practice, where releases are applied forward from an empty or controlled baseline and rollback is not part of the normal workflow.
+This keeps the MVP Delivery aligned with current SEAD practice, where releases are applied forward from an empty or controlled baseline and rollback is not part of the normal workflow.
 
-#### Delivery 1 output
+#### MVP Delivery output
 
-Delivery 1 should produce the minimum artifact set required by the SEAD Change Control System.
+MVP Delivery should produce the minimum artifact set required by the SEAD Change Control System.
 
 At minimum:
 
 - deploy SQL
-- metadata linking submission, project, timestamp, Binding Set UUID, and non-revertible Delivery 1 status
+-- metadata linking submission, project, timestamp, Binding Set UUID, and non-revertible MVP Delivery status
 - a CR name associated in SIMS
 
-If the Change Control System requires a revert or verify file to accept a change, Delivery 1 may generate compatibility placeholders only under a strict non-revertible contract. Any placeholder revert script must fail loudly with an explicit message that rollback is not implemented for the change package. Delivery metadata must mark the package as non-revertible. Workflow acceptance of that placeholder artifact shape is now treated as post-Delivery-1 hardening in [./DELIVERY_1_FOLLOWUP_CR.md](./DELIVERY_1_FOLLOWUP_CR.md). Functional rollback is deferred beyond this closed baseline.
+If the Change Control System requires a revert or verify file to accept a change, the MVP Delivery may generate compatibility placeholders only under a strict non-revertible contract. Any placeholder revert script must fail loudly with an explicit message that rollback is not implemented for the change package. Delivery metadata must mark the package as non-revertible. Workflow acceptance of that placeholder artifact shape is now treated as post-MVP Delivery hardening in [./MVP_FOLLOWUP_CR.md](./MVP_FOLLOWUP_CR.md). Functional rollback is deferred beyond this closed baseline.
 
-The current Delivery 1 artifact shape follows that compatibility rule. It emits `deploy.sql`, `revert.sql`, `verify.sql`, and `metadata.json`. The revert and verify files are explicit fail-loud placeholders, and the metadata marks the package as non-revertible and verification-placeholder based.
+The current MVP Delivery artifact shape follows that compatibility rule. It emits `deploy.sql`, `revert.sql`, `verify.sql`, and `metadata.json`. The revert and verify files are explicit fail-loud placeholders, and the metadata marks the package as non-revertible and verification-placeholder based.
 
-Further work on alternative deploy formats, templating, and target-model review is now tracked in [./DELIVERY_1_FOLLOWUP_CR.md](./DELIVERY_1_FOLLOWUP_CR.md) rather than inside this proposal.
+Further work on alternative deploy formats, templating, and target-model review is now tracked in [./MVP_FOLLOWUP_CR.md](./MVP_FOLLOWUP_CR.md) rather than inside this proposal.
 
-If Binding Set confirmation cannot be completed during the run, Delivery 1 should emit no change package. Instead it should return diagnostics and a pending confirmation report that identifies the blocked rows, the outstanding confirmation step, and the exact operator action needed to rerun successfully.
+If Binding Set confirmation cannot be completed during the run, the MVP Delivery should emit no change package. Instead it should return diagnostics and a pending confirmation report that identifies the blocked rows, the outstanding confirmation step, and the exact operator action needed to rerun successfully.
 
-### Post-Delivery-1 follow-up
+### Post-MVP Delivery follow-up
 
-This closed baseline no longer defines a committed Delivery 2 scope.
+This closed baseline no longer defines a committed MVP Delivery 2 scope.
 
 Candidate next-delivery capabilities now live in [../future/NEXT_DELIVERY_CANDIDATES.md](../../future/NEXT_DELIVERY_CANDIDATES.md). User-interaction and frontend workflow requirements now live in [../done/FRONTEND_UX_INTEGRATION_CR.md](../../done/FRONTEND_UX_INTEGRATION_CR.md).
 
 ### Entity handling by role
 
-| Role         | Delivery 1 behavior                                                                                             |
+| Role         | MVP Delivery behavior                                                                                             |
 |--------------|-----------------------------------------------------------------------------------------------------------------|
 | `fact`       | Provider-owned. Resolve through SIMS. Insert if new.                                                            |
 | `lookup`     | Provider-owned. Resolve through SIMS. Insert if new.                                                            |
-| `classifier` | Reconcile to an existing SEAD entity when possible. If no match exists, Delivery 1 may allocate through SIMS and insert the classifier row. |
+| `classifier` | Reconcile to an existing SEAD entity when possible. If no match exists, the MVP Delivery may allocate through SIMS and insert the classifier row. |
 | `bridge`     | Derived from already resolved parent identities. Evaluate independently from parent `public_id` state and insert if new under metadata-defined uniqueness rules where available. |
 
-Classifier entities that cannot be matched are a hard failure in Delivery 1.
+Classifier entities that cannot be matched are a hard failure in the MVP Delivery.
 
 ### Identity model alignment
 
 The ingester bridges Shape Shifter's identity tiers as follows.
 
 ```
-system_id -> identity resolution -> Delivery 1 resolved state -> SQL PK/FK values and insert decisions
+system_id -> identity resolution -> MVP Delivery resolved state -> SQL PK/FK values and insert decisions
             ^
             keys, public_id, reconciliation signals, and bridge uniqueness rules
 ```
@@ -292,7 +292,7 @@ Rejected for now. It preserves the current indirection and does not move SEAD in
 
 ### Build the full rollback and UPDATE solution first
 
-Rejected for Delivery 1. It increases design and testing scope before the basic end-to-end path is proven.
+Rejected for the MVP Delivery. It increases design and testing scope before the basic end-to-end path is proven.
 
 ### Enforce topological insert order from the start
 
@@ -303,22 +303,22 @@ Deferred. It should only be required if deferred FK checks are not sufficient in
 | Risk                                                                  | Impact                                 | Mitigation                                                                      |
 |-----------------------------------------------------------------------|----------------------------------------|---------------------------------------------------------------------------------|
 | SIMS or reconciliation API unavailable                                | No CR can be generated                 | Fail fast with clear diagnostics; keep old ingester available during transition |
-| Target schema does not support deferred FK checks everywhere          | Delivery 1 SQL may fail                | Validate target constraints early; fall back to ordered inserts if required     |
+| Target schema does not support deferred FK checks everywhere          | MVP Delivery SQL may fail                | Validate target constraints early; fall back to ordered inserts if required     |
 | Entity or bridge rows are classified with the wrong new-versus-existing rule | Duplicate inserts, missed associations, or collisions | Separate entity-row `public_id` handling from bridge uniqueness checks, use metadata-defined unique/composite keys where available, and fail when uniqueness rules are incomplete |
-| Delivery 1 idempotency is mistaken for semantic deduplication | Natural-key or composite-key duplicates may still slip through | State the Delivery 1 limit explicitly and defer broader duplicate detection to later-delivery candidate work |
-| Placeholder revert artifacts are mistaken for functional rollback     | Operators may assume a rollback path exists when it does not | Make revert placeholders fail loudly, mark Delivery 1 packages as non-revertible, and confirm operator acceptance in the pilot |
-| Binding Set confirmation requires operator action outside the run | Change package generation may stall or produce ambiguous state | Keep Delivery 1 synchronous, emit a pending confirmation report instead of partial artifacts, and require an explicit rerun after confirmation |
-| Classifier reconciliation or allocation rules are misapplied         | Wrong classifier inserts or blocked submissions | Prefer reconciliation first, allow Delivery 1 SIMS allocation, and surface which path was chosen in diagnostics |
-| Change Control System has stricter artifact requirements than assumed | Delivery 1 packaging may be incomplete | Confirm deploy/revert/verify expectations before implementation starts          |
+| MVP Delivery idempotency is mistaken for semantic deduplication | Natural-key or composite-key duplicates may still slip through | State the MVP Delivery limit explicitly and defer broader duplicate detection to later-delivery candidate work |
+| Placeholder revert artifacts are mistaken for functional rollback     | Operators may assume a rollback path exists when it does not | Make revert placeholders fail loudly, mark MVP Delivery packages as non-revertible, and confirm operator acceptance in the pilot |
+| Binding Set confirmation requires operator action outside the run | Change package generation may stall or produce ambiguous state | Keep the MVP Delivery synchronous, emit a pending confirmation report instead of partial artifacts, and require an explicit rerun after confirmation |
+| Classifier reconciliation or allocation rules are misapplied         | Wrong classifier inserts or blocked submissions | Prefer reconciliation first, allow the MVP Delivery SIMS allocation, and surface which path was chosen in diagnostics |
+| Change Control System has stricter artifact requirements than assumed | MVP Delivery packaging may be incomplete | Confirm deploy/revert/verify expectations before implementation starts          |
 
-The main tradeoff is deliberate scope reduction in Delivery 1. The MVP will not handle every operational case, but it will prove the direct path and the identity model with much lower implementation risk.
+The main tradeoff is deliberate scope reduction in the MVP Delivery. The MVP will not handle every operational case, but it will prove the direct path and the identity model with much lower implementation risk.
 
 ## Testing And Validation
 
-### Delivery 1
+### MVP Delivery
 
 - Unit tests for identity request construction from normalized DataFrames
-- Unit tests for Delivery 1 identity-state classification per row
+- Unit tests for MVP Delivery identity-state classification per row
 - Unit tests for blocked-unresolved rows caused by missing allocation, incomplete classifier resolution, or incomplete Binding Set confirmation
 - Unit tests for PK and FK replacement from `system_id` to resolved target IDs
 - Unit tests for INSERT SQL generation and transaction wrapper generation
@@ -326,10 +326,10 @@ The main tradeoff is deliberate scope reduction in Delivery 1. The MVP will not 
 - Unit tests for exclusion of reconciled classifier rows from entity-table inserts
 - Unit tests for bridge and association row evaluation using metadata-defined unique or composite keys where available
 - Unit tests for collision detection against target-side existing IDs
-- Unit tests that document Delivery 1 idempotency limits for natural-key and composite-key duplicates
+- Unit tests that document MVP Delivery idempotency limits for natural-key and composite-key duplicates
 - Unit tests for placeholder revert artifacts that fail loudly and mark the package as non-revertible
-- Integration test for Binding Set confirmation blocking that emits a pending confirmation report and no SQL artifacts
-- Integration test for end-to-end flow: normalized DataFrames -> identity resolution -> deploy SQL output
+- Integration test for MVP Delivery Binding Set confirmation blocking that emits a pending confirmation report and no SQL artifacts
+- Integration test for MVP Delivery end-to-end flow: normalized DataFrames -> identity resolution -> deploy SQL output
 - Integration test covering both reconciled and SIMS-allocated classifier paths
 - Pilot run on a real project with review of generated SQL, SIMS Binding Set data, and at least one mixed submission containing existing references, new provider-owned entities, classifiers, and bridge rows
 
@@ -337,66 +337,66 @@ Later-delivery validation work is now tracked as candidate scope in [../future/N
 
 ## Acceptance Criteria
 
-### Delivery 1
+### MVP Delivery
 
-Delivery 1 is closed on the implemented MVP baseline.
+The MVP Delivery is closed on the implemented MVP baseline.
 
-Remaining operator-facing artifact hardening, alternative deploy formats, and metadata-review work now live in [./DELIVERY_1_FOLLOWUP_CR.md](./DELIVERY_1_FOLLOWUP_CR.md).
+Remaining operator-facing artifact hardening, alternative deploy formats, and metadata-review work now live in [./MVP_FOLLOWUP_CR.md](./MVP_FOLLOWUP_CR.md).
 
-- [x] A new ingester is registered and can be selected without affecting the current `sead` ingester
-- [x] All rows selected for output have an explicit Delivery 1 identity state before SQL generation starts
-- [x] Resolved target-facing IDs are projected into the target identity columns and FK positions required for Delivery 1 output
+- [x] A new ingester is registered and can be selected without affecting the current `sead` ingester for MVP Delivery
+- [x] All rows selected for output have an explicit MVP Delivery identity state before SQL generation starts
+- [x] Resolved target-facing IDs are projected into the target identity columns and FK positions required for the MVP Delivery output
 - [x] Entity rows with populated `public_id` are treated as existing and are not inserted again
 - [x] Existing entity rows may be referenced by new bridge or association rows without re-inserting the existing entity rows
 - [x] Reconciled classifier rows are reference-only and are not inserted again
-- [x] Unmatched classifier rows may be allocated through SIMS in Delivery 1 and inserted when allocation succeeds
+- [x] Unmatched classifier rows may be allocated through SIMS in MVP Delivery and inserted when allocation succeeds
 - [x] Blocked unresolved rows stop the run before SQL generation and produce actionable diagnostics
 - [x] Bridge and association rows have an explicit identity or uniqueness rule and are emitted when they are new under that rule
 - [x] New rows are emitted as `INSERT` statements only
 - [x] The ingester exposes a documented DataFrame-first handoff contract or adapter boundary
 - [x] Collision diagnostics include primary-key collisions and, where metadata exists, matching composite, unique, or natural-key collisions used by bridge-table decisions
-- [x] Delivery 1 idempotency is explicitly limited to target ID collision detection and defined bridge uniqueness checks
+- [x] MVP Delivery idempotency is explicitly limited to target ID collision detection and defined bridge uniqueness checks
 - [x] Classifier rows that can neither reconcile nor allocate stop the run with clear diagnostics
 - [x] A confirmed Binding Set exists before the change request is finalized
 - [x] Binding Set confirmation behavior is documented for both automatic confirmation and manual-confirmation blocking cases
 - [x] The generated CR name is associated with the Binding Set in SIMS
-- [x] Any required Delivery 1 revert placeholder fails explicitly and the change metadata marks the package as non-revertible
-- [x] The pilot includes at least one mixed submission containing existing references, new provider-owned entities, classifiers, and bridge rows
-- [x] Delivery 1 closes on the documented inline-`INSERT` artifact baseline; operator-facing artifact hardening and SEAD workflow acceptance move to [./DELIVERY_1_FOLLOWUP_CR.md](./DELIVERY_1_FOLLOWUP_CR.md)
+- [x] Any required MVP Delivery revert placeholder fails explicitly and the change metadata marks the package as non-revertible
+- [x] The pilot includes at least one mixed submission containing existing references, new provider-owned entities, classifiers, and bridge rows for MVP Delivery
+- [x] MVP Delivery closes on the documented inline-`INSERT` artifact baseline; operator-facing artifact hardening and SEAD workflow acceptance move to [./MVP_FOLLOWUP_CR.md](./MVP_FOLLOWUP_CR.md)
 
 Closure note as of 2026-05-26:
 
 - The authority-service `ResolutionOutcome.target_id` contract is now implemented, and Shape Shifter consumes it when present.
-- Delivery 1 is now treated as closed on the current MVP baseline described in this proposal.
-- Post-Delivery-1 work on operator-facing artifact hardening, alternative deploy formats, and metadata-source review is tracked in [./DELIVERY_1_FOLLOWUP_CR.md](./DELIVERY_1_FOLLOWUP_CR.md).
+- MVP Delivery is now treated as closed on the current MVP baseline described in this proposal.
+- Post-MVP-Delivery work on operator-facing artifact hardening, alternative deploy formats, and metadata-source review is tracked in [./MVP_FOLLOWUP_CR.md](./MVP_FOLLOWUP_CR.md).
 
 - Candidate next-delivery capabilities are tracked separately in [../future/NEXT_DELIVERY_CANDIDATES.md](../../future/NEXT_DELIVERY_CANDIDATES.md).
 
 - Frontend workflow integration is tracked separately in [../done/FRONTEND_UX_INTEGRATION_CR.md](../../done/FRONTEND_UX_INTEGRATION_CR.md).
 
-## Resolved Delivery 1 Decisions
+## Resolved MVP Delivery Decisions
 
 ### 1. Change request artifact contract
 
-Delivery 1 should generate a Sqitch-style change package with these artifacts:
+MVP Delivery should generate a Sqitch-style change package with these artifacts:
 
 - an executable `deploy/...` SQL script
 - a placeholder `revert/...` script that fails loudly and clearly states rollback is not yet implemented
 - a placeholder `verify/...` script if the SEAD Change Control workflow requires file presence for a valid change package
 
-Delivery 1 metadata must also mark the package as non-revertible so operators are not given false confidence by file presence alone.
+MVP Delivery metadata must also mark the package as non-revertible so operators are not given false confidence by file presence alone.
 
-This keeps Delivery 1 compatible with the existing change-request naming convention already used by SIMS, where associated change requests are recorded as `deploy/...` paths, while still deferring functional rollback beyond this closed baseline. Real SEAD workflow acceptance of the fail-loud placeholder artifact shape is now tracked as post-Delivery-1 hardening in [./DELIVERY_1_FOLLOWUP_CR.md](./DELIVERY_1_FOLLOWUP_CR.md).
+This keeps MVP Delivery compatible with the existing change-request naming convention already used by SIMS, where associated change requests are recorded as `deploy/...` paths, while still deferring functional rollback beyond this closed baseline. Real SEAD workflow acceptance of the fail-loud placeholder artifact shape is now tracked as post-MVP-Delivery hardening in [./MVP_FOLLOWUP_CR.md](./MVP_FOLLOWUP_CR.md).
 
 ### 2. Foreign key execution strategy
 
-Delivery 1 should assume deferred foreign key checks inside a single transaction.
+The MVP Delivery should assume deferred foreign key checks inside a single transaction.
 
-This is the preferred path because it keeps the first implementation simple and avoids building insert-order logic up front. The implementation must still validate this assumption against the target schema during early delivery work. If any required target constraint is not deferrable, the fallback is deterministic topological insert ordering for the affected tables. That fallback belongs inside Delivery 1 implementation and does not require a separate product decision.
+This is the preferred path because it keeps the first implementation simple and avoids building insert-order logic up front. The implementation must still validate this assumption against the target schema during early delivery work. If any required target constraint is not deferrable, the fallback is deterministic topological insert ordering for the affected tables. That fallback belongs inside the MVP Delivery implementation and does not require a separate product decision.
 
 ### 3. Target-side collision checks
 
-Delivery 1 should perform collision checks through a direct, read-only connection to the target database.
+The MVP Delivery should perform collision checks through a direct, read-only connection to the target database.
 
 This is the simplest fit with the current ingester architecture:
 
@@ -404,15 +404,15 @@ This is the simplest fit with the current ingester architecture:
 - the current `sead` ingester already connects directly to PostgreSQL
 - introducing a new validation endpoint or proxy service would add another dependency without reducing MVP risk
 
-The Delivery 1 collision check should stay narrow: for each row planned for insertion, verify that either the resolved target-facing ID does not already exist in the target table or, for derived bridge rows, that the bridge row is absent under metadata-defined unique or composite keys where that metadata exists. If the target metadata does not define a usable bridge uniqueness rule, the row becomes blocked unresolved and the run must stop with diagnostics rather than guess. Delivery 1 idempotency is therefore limited to target ID collision detection and explicit bridge uniqueness checks. It does not guarantee semantic duplicate detection across natural keys, lookup-like rows, or broader composite relationship keys beyond what target metadata explicitly exposes. More advanced change detection remains later-delivery candidate work.
+The MVP Delivery collision check should stay narrow: for each row planned for insertion, verify that either the resolved target-facing ID does not already exist in the target table or, for derived bridge rows, that the bridge row is absent under metadata-defined unique or composite keys where that metadata exists. If the target metadata does not define a usable bridge uniqueness rule, the row becomes blocked unresolved and the run must stop with diagnostics rather than guess. MVP Delivery idempotency is therefore limited to target ID collision detection and explicit bridge uniqueness checks. It does not guarantee semantic duplicate detection across natural keys, lookup-like rows, or broader composite relationship keys beyond what target metadata explicitly exposes. More advanced change detection remains later-delivery candidate work.
 
 ### 4. Existing entities versus bridge and association rows
 
-Delivery 1 should exclude existing entity rows from entity-table inserts, but it must still evaluate bridge and association rows independently.
+The MVP Delivery should exclude existing entity rows from entity-table inserts, but it must still evaluate bridge and association rows independently.
 
 This rule is required before Issue 3 and Issue 5 because parent rows may already exist while the relationship rows derived from them are still new. A populated entity `public_id` is therefore not sufficient to exclude all downstream rows from SQL generation.
 
-For Delivery 1:
+For the MVP Delivery:
 
 - entity tables use populated `public_id` to identify rows that already exist and should not be inserted again
 - bridge and association tables use metadata-defined identity, unique, or composite-key rules to decide whether a row is new when that metadata exists
@@ -420,9 +420,9 @@ For Delivery 1:
 
 ### 5. Resolved identity states
 
-Delivery 1 should define resolved identity states strictly enough to drive SQL behavior without inference.
+The MVP Delivery should define resolved identity states strictly enough to drive SQL behavior without inference.
 
-For Delivery 1:
+For the MVP Delivery:
 
 - existing entity means a populated `public_id` or equivalent lookup identifies a current target row, so the row is reference-only and does not generate an entity insert
 - newly allocated entity means SIMS has allocated and bound a new target-facing ID, so the row is eligible for insertion
@@ -434,31 +434,31 @@ The implementation must carry this state explicitly through planning and SQL gen
 
 ### 6. Binding Set confirmation flow
 
-Delivery 1 should be synchronous at the change-package boundary.
+The MVP Delivery should be synchronous at the change-package boundary.
 
-For Delivery 1:
+For the MVP Delivery:
 
 - if SIMS confirmation can be completed during the run, the ingester continues and may generate a change package
 - if SIMS indicates that manual confirmation is required and that confirmation is not completed during the run, the ingester must not generate deploy, revert, or verify artifacts
 - in that blocked case, affected rows are marked blocked unresolved and the ingester returns a pending confirmation report with Binding Set identifiers, blocked entities, and rerun instructions
-- Delivery 1 does not support resume-in-place; the operator completes confirmation externally and reruns the ingester from the start
+- The MVP Delivery does not support resume-in-place; the operator completes confirmation externally and reruns the ingester from the start
 
-This keeps the MVP simple, avoids partial artifact state, and makes operator workflow explicit without adding long-lived orchestration in Delivery 1.
+This keeps the MVP simple, avoids partial artifact state, and makes operator workflow explicit without adding long-lived orchestration in the MVP Delivery.
 
 ### 7. Classifier allocation rule
 
-Delivery 1 should allow classifier entities to be allocated through SIMS.
+The MVP Delivery should allow classifier entities to be allocated through SIMS.
 
-For Delivery 1:
+For the MVP Delivery:
 
 - classifier resolution should try reconciliation first when an existing SEAD classifier is expected
 - if reconciliation does not yield a match, the ingester may allocate the classifier through SIMS and treat it as a newly allocated entity
 - allocated classifier rows follow the same insert path as other newly allocated rows
 - if a classifier row can neither reconcile nor allocate successfully, it becomes blocked unresolved and the run stops with diagnostics
 
-### 8. Source handoff contract
+### 8. Source handoff contract for the MVP Delivery
 
-Delivery 1 should use an explicit DataFrame-first ingester contract rather than quietly depending on the legacy path-based Excel or CSV workflow.
+The MVP Delivery should use an explicit DataFrame-first ingester contract rather than quietly depending on the legacy path-based Excel or CSV workflow.
 
 The recommended contract is:
 
@@ -471,7 +471,7 @@ SeadCrIngester.ingest(
 ) -> ChangePackage
 ```
 
-For Delivery 1 this means:
+For the MVP Delivery this means:
 
 - `frames` is the authoritative normalized table bundle produced by the core pipeline
 - `target_model` carries the metadata needed for entity roles, table names, identity columns, and foreign keys
@@ -487,11 +487,11 @@ normalized artifact path -> loader -> DataFrame bundle -> SeadCrIngester.ingest(
 
 The orchestration logic in this proposal should depend on the DataFrame-first contract, not on file paths, CSV layouts, or the legacy Excel dispatch flow.
 
-### 9. Delivery 1 new-row rule and ingester key
+### 9. New-row rule and ingester key for the MVP Delivery
 
-Delivery 1 should use missing `public_id` only as the rule for deciding whether an entity row is new.
+The MVP Delivery should use missing `public_id` only as the rule for deciding whether an entity row is new.
 
-For Delivery 1:
+For the MVP Delivery:
 
 - an entity row with populated `public_id` is treated as existing and is not inserted again
 - an entity row with missing `public_id` is treated as new and proceeds to identity resolution and insertion checks
@@ -501,9 +501,9 @@ For Delivery 1:
 
 ## Implementation Handoff
 
-The Delivery 1 work can be broken into these implementation issues.
+The MVP Delivery work can be broken into these implementation issues.
 
-### Issue 1. Scaffold the new ingester
+### Issue 1. Scaffold the new ingester for the MVP Delivery
 
 Scope:
 
@@ -516,7 +516,7 @@ Done when:
 - The ingester appears in registry-backed API and CLI listings
 - It can be instantiated through the existing `IngesterService`
 
-### Issue 2. Decide and implement the source handoff contract
+### Issue 2. Decide and implement the source handoff contract for the MVP Delivery
 
 Scope:
 
@@ -530,7 +530,7 @@ Done when:
 - The DataFrame-first contract is documented in code and tests
 - Any path-based compatibility layer is explicitly limited to adaptation rather than orchestration
 
-### Issue 3. Build target model extraction and row partitioning
+### Issue 3. Build target model extraction and row partitioning for the MVP Delivery
 
 Scope:
 
@@ -544,22 +544,22 @@ Done when:
 - The ingester can produce a deterministic per-entity work plan from normalized DataFrames
 - The work plan distinguishes entity-row exclusion from bridge and association row emission
 
-### Issue 4. Implement identity orchestration
+### Issue 4. Implement identity orchestration for the MVP Delivery
 
 Scope:
 
 - Build SIMS resolution requests for provider-owned rows
-- Reuse reconciliation for classifier rows that already exist and fall back to SIMS allocation for classifier rows that need Delivery 1 creation
-- Classify each planned output row into an explicit Delivery 1 identity state
+- Reuse reconciliation for classifier rows that already exist and fall back to SIMS allocation for classifier rows that need MVP Delivery creation
+- Classify each planned output row into an explicit MVP Delivery identity state
 - Confirm Binding Set status before SQL generation continues and convert incomplete confirmation into blocked-unresolved rows plus a pending confirmation report
 
 Done when:
 
-- Every row selected for SQL emission has a resolved Delivery 1 identity state and any required target-facing IDs
+- Every row selected for SQL emission has a resolved MVP Delivery identity state and any required target-facing IDs
 - Manual-confirmation cases produce a pending confirmation report and no SQL artifacts
 - Classifier rows that can neither reconcile nor allocate fail with actionable diagnostics
 
-### Issue 5. Materialize PK and FK values
+### Issue 5. Materialize PK and FK values for the MVP Delivery
 
 Scope:
 
@@ -573,14 +573,14 @@ Done when:
 - Reference-only rows are excluded from entity-table `INSERT` generation while still supplying resolved FK values where needed
 - No local `system_id` values remain in generated SQL inputs
 
-### Issue 6. Implement Delivery 1 collision checks
+### Issue 6. Implement the MVP Delivery collision checks for the MVP Delivery
 
 Scope:
 
 - Add direct read-only target DB lookups for rows planned for insertion
 - Abort on duplicate target IDs or pre-existing bridge rows before SQL generation
 - Use metadata-defined unique or composite keys for bridge-row checks where that metadata exists
-- Document the Delivery 1 idempotency boundary so callers do not assume semantic duplicate detection
+- Document the MVP Delivery idempotency boundary so callers do not assume semantic duplicate detection
 
 Done when:
 
@@ -588,7 +588,7 @@ Done when:
 - Collision diagnostics identify table and ID set or bridge uniqueness key clearly
 - The implementation and operator-facing output make the limited idempotency guarantee explicit
 
-### Issue 7. Generate Delivery 1 SQL artifacts
+### Issue 7. Generate the MVP Delivery SQL artifacts for the MVP Delivery
 
 Scope:
 
@@ -622,7 +622,7 @@ Scope:
 
 Done when:
 
-- Delivery 1 acceptance criteria pass
+- The MVP Delivery acceptance criteria pass
 - The pilot confirms the artifact contract, including non-revertible placeholder behavior if used, and exposes the concrete later-delivery gaps
 
 ## Recommended Delivery Order
@@ -632,18 +632,18 @@ Done when:
 3. Build target model extraction and row partitioning.
 4. Implement identity and reconciliation orchestration.
 5. Implement PK and FK replacement using resolved SEAD IDs.
-6. Implement Delivery 1 target-side collision checks.
-7. Implement forward-only INSERT SQL generation and CR packaging.
-8. Validate deferred-FK assumptions and fall back to ordered inserts if required.
+- Implement the MVP Delivery target-side collision checks.
+7. Implement the MVP Delivery forward-only INSERT SQL generation and CR packaging.
+8. Validate the MVP Delivery deferred-FK assumptions and fall back to ordered inserts if required.
 9. Associate the CR name with the Binding Set.
 10. Pilot on real project data and use findings to define the next delivery precisely.
-
+## MVP Delivery Semantics
 ## Open Questions
 
-1. What user-facing naming convention should be used for generated DML or change request artifacts in Delivery 1?
+1. What user-facing naming convention should be used for generated DML or change request artifacts in the MVP Delivery?
 
 ## Final Recommendation
 
-Build the new ingester alongside the current `sead` ingester and treat Delivery 1 as a constrained MVP, not as the full end state. Delivery 1 should be forward-only and INSERT-only, should rely on SIMS and reconciliation to resolve all identities before SQL generation, should allow classifier entities to reconcile first and allocate through SIMS when needed, should use an explicit DataFrame-first handoff contract into the ingester core, should treat populated `public_id` values as existing entity rows rather than as a blanket exclusion rule, should treat missing `public_id` only as the rule for entity-row newness, should register the ingester under `sead_change_request`, and should use a direct read-only target DB check for simple collision detection.
+Build the new ingester alongside the current `sead` ingester and treat the MVP Delivery as a constrained MVP, not as the full end state. The MVP Delivery should be forward-only and INSERT-only, should rely on SIMS and reconciliation to resolve all identities before SQL generation, should allow classifier entities to reconcile first and allocate through SIMS when needed, should use an explicit DataFrame-first handoff contract into the ingester core, should treat populated `public_id` values as existing entity rows rather than as a blanket exclusion rule, should treat missing `public_id` only as the rule for entity-row newness, should register the ingester under `sead_change_request`, and should use a direct read-only target DB check for simple collision detection.
 
-Delivery 1 should emit a deploy script plus placeholder change-package companions as needed by the SEAD Change Control workflow, and it should prefer deferred FK checks with ordered inserts as an implementation fallback. Bridge and association rows should be evaluated under metadata-defined uniqueness rules so new relationship rows are not suppressed just because their parent entities already exist. Rows that cannot be resolved safely, including manual-confirmation blocks, should enter a blocked-unresolved state that stops the run and produces actionable diagnostics rather than partial artifacts. Any legacy path-based interface should terminate at an adapter boundary rather than shape the ingester orchestration itself. If placeholder revert artifacts are required, they must fail loudly and the package metadata must mark the change as non-revertible. Delivery 1 idempotency should be described narrowly: it catches target ID collisions and metadata-defined bridge-row collisions, but it does not guarantee semantic duplicate detection across natural or composite keys beyond what target metadata exposes. Do not include functional rollback or UPDATE handling in the first delivery. Those capabilities now move to later-delivery candidate work after the direct path has been piloted. The proposal now provides enough concrete decisions and work breakdown to start implementation.
+The MVP Delivery should emit a deploy script plus placeholder change-package companions as needed by the SEAD Change Control workflow, and it should prefer deferred FK checks with ordered inserts as an implementation fallback. Bridge and association rows should be evaluated under metadata-defined uniqueness rules so new relationship rows are not suppressed just because their parent entities already exist. Rows that cannot be resolved safely, including manual-confirmation blocks, should enter a blocked-unresolved state that stops the run and produces actionable diagnostics rather than partial artifacts. Any legacy path-based interface should terminate at an adapter boundary rather than shape the ingester orchestration itself. If placeholder revert artifacts are required, they must fail loudly and the package metadata must mark the change as non-revertible. The MVP Delivery idempotency should be described narrowly: it catches target ID collisions and metadata-defined bridge-row collisions, but it does not guarantee semantic duplicate detection across natural or composite keys beyond what target metadata exposes. Do not include functional rollback or UPDATE handling in the first delivery. Those capabilities now move to later-delivery candidate work after the direct path has been piloted. The proposal now provides enough concrete decisions and work breakdown to start implementation.
