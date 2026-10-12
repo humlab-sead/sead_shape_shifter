@@ -668,7 +668,9 @@ class TestSeadChangeRequestIngesterValidation:
         result = await ingester.validate("submission.xlsx")
 
         assert result.is_valid is True
-        assert result.warnings == ["Bridge entity 'sample_taxon' has no unique_sets metadata; MVP Delivery uniqueness checks will be blocked"]
+        assert result.warnings == [
+            "Bridge entity 'sample_taxon' has no unique_sets metadata; MVP Delivery uniqueness checks will be blocked"
+        ]
         assert any("1 evaluate_bridge" in info for info in result.infos)
 
     @pytest.mark.asyncio
