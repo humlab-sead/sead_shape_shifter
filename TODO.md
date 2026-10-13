@@ -125,3 +125,19 @@ We need to create a handoff for the next phase of this migration of BugsCEP impo
 1. Create add a new proposal named BUGCEP_IMPORT_MIGRATION.md to new folder sead_shape_shifter/docs/proposals/BUGCEP_IMPORT_MIGRATION/ and using instructions in sead_shape_shifter/.github/instructions/proposal-writing-guide.instructions.md. The goal of the proposal is to create a new BugsCEP importer using the reconciliation policy YAML files.   
 2. Craete a machine-readable document that an AI coding agent can use to more easy get up-to-speed in this migration work.
 
+
+# TODO: POSTGRESQL_CONTRACT_VALIDATION
+
+Action Items
+
+Keep the PostgreSQL validation document as a handoff. No proposal, phase plan, or task plan is needed for these completed checks. The submission metadata task plan already marks them complete and links the validation handoff.
+
+Do not add progress tracking to the proposal. Keep decisions and acceptance criteria in the trust-contract adoption proposal; keep execution status in plans.
+
+Before planning broader adoption, resolve and record the open operational decisions in the operational plan: confirm the tracked-entity set and sample versus physical_sample mapping; decide the missing UUID work; identify upstream schema and compatibility-view ownership; define writer-CR and cutover ordering; and specify the package withdrawal or supersession gate.
+
+Once those decisions are approved, create the operational phase plan described in the proposal’s Planning Handoff. Sequence the Change Control work, backfill, verification, deployment gates, and ownership there.
+
+Create a task plan for each ready phase with mapped acceptance criteria and validation evidence. Update its progress tracker as work proceeds.
+
+Update the PostgreSQL handoff only when there is new validation to record. Add the run’s date, database setup, commands, results, and any changed findings; keep historical failures clearly distinguished from current passing results.
