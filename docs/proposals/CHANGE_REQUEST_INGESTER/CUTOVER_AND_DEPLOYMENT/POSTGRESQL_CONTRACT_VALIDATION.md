@@ -154,15 +154,15 @@ podman exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d "$prepared" -
 
 The first clone was prepared on 2026-09-30 by applying the DDL and current DML function definitions, then copying all six provider identities from `tbl_dataset_masters`. No wrapper or helper was invoked. Confirm that `prepared` has zero submissions, tasks, and linked datasets before making further clones. Before-call snapshots exist for groups 1 through 6 and the combined run (group 0); the template remains unchanged.
 
-| Submission group | Datasets | Expected tasks | New dataset contacts |
-|---|---:|---:|---:|
-| 1 (MAL) | 2967 | 2967 | 0 |
-| 2 (BugsCEP) | 13433 | 14820 | 0 |
-| 3 (ceramics) | 11076 | 22152 | 11996 |
-| 4 (Dendrochronology pilot) | 27032 | 54064 | 24345 |
-| 5 (aDNA) | 10 | 20 | 15 |
-| 6 (Lund Living Trees) | 4534 | 9068 | 4000 |
-| Combined | 59052 | 103091 | 40356 |
+| Submission group           | Datasets | Expected tasks | New dataset contacts |
+|----------------------------|---------:|---------------:|---------------------:|
+| 1 (MAL)                    |     2967 |           2967 |                    0 |
+| 2 (BugsCEP)                |    13433 |          14820 |                    0 |
+| 3 (ceramics)               |    11076 |          22152 |                11996 |
+| 4 (Dendrochronology pilot) |    27032 |          54064 |                24345 |
+| 5 (aDNA)                   |       10 |             20 |                   15 |
+| 6 (Lund Living Trees)      |     4534 |           9068 |                 4000 |
+| Combined                   |    59052 |         103091 |                40356 |
 
 These are before-call counts from independent clones. New contact counts exclude pre-existing matching contacts and duplicate legacy events; they are not the raw count of legacy type 10/11 rows.
 
@@ -210,12 +210,12 @@ The runnable project context is `test-project` in the submission/dataset tests i
 
 Both bundles are under their respective `tmp/contract_serial_ids/test_ingest_*0/20260523_DML_mal_TEST_SUBMISSION/deploy/` directories. Both strategies explicitly insert SIMS-assigned IDs; copy-CSV also emits sidecars. Regeneration replaces the temporary bundles and changes the generated UUID. Run packages only on separate disposable database clones.
 
-| Input | Baseline / expected package result |
-|---|---|
-| Provider | For the 2026-09-30 historical clone, provider 1 has code `SEAD`. For the 2026-10-12 refactored snapshot, provider 51 with code `SEAD` was inserted only into each artifact clone. |
-| Submission | SIMS test double ID 1; Pending state `1`, name `test-submission`, identifier `TEST_SUBMISSION`, issue `NNN`, author `SEAD Expert`, source `test-project`, data types `mal`, upload date `2026-05-23`, null submission date, and native UUID. |
-| New dataset | SIMS test double ID 91924; name `Pilot dataset`, `data_type_id = 8` (`Continuous`), linked to submission 1. The artifact advances the dataset sequence to 91924 with `is_called = true`. |
-| Reference-only dataset | No reference-only dataset is present in the current submission/dataset test fixtures. |
+| Input                  | Baseline / expected package result                                                                                                                                                                                                           |
+|------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Provider               | For the 2026-09-30 historical clone, provider 1 has code `SEAD`. For the 2026-10-12 refactored snapshot, provider 51 with code `SEAD` was inserted only into each artifact clone.                                                            |
+| Submission             | SIMS test double ID 1; Pending state `1`, name `test-submission`, identifier `TEST_SUBMISSION`, issue `NNN`, author `SEAD Expert`, source `test-project`, data types `mal`, upload date `2026-05-23`, null submission date, and native UUID. |
+| New dataset            | SIMS test double ID 91924; name `Pilot dataset`, `data_type_id = 8` (`Continuous`), linked to submission 1. The artifact advances the dataset sequence to 91924 with `is_called = true`.                                                     |
+| Reference-only dataset | No reference-only dataset is present in the current submission/dataset test fixtures.                                                                                                                                                        |
 
 After the six calls have passed on the combined-run clone, set the provider code there before making the two artifact clones:
 

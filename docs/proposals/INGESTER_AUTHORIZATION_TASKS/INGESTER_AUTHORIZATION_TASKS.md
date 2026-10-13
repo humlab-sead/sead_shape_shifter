@@ -43,10 +43,10 @@ The [authorization policy](../../AUTHORIZATION.md) defines deployment roles and 
 
 Use the existing centralized policy without adding a separate ingester role system:
 
-| Operation | Requirement |
-|---|---|
-| Read ingester metadata | Authenticated principal |
-| Validate or execute an ingester | `operator` (`application:run_ingesters`) |
+| Operation                         | Requirement                                 |
+|-----------------------------------|---------------------------------------------|
+| Read ingester metadata            | Authenticated principal                     |
+| Validate or execute an ingester   | `operator` (`application:run_ingesters`)    |
 | Configure or register an ingester | `admin` (`application:configure_ingesters`) |
 
 Apply the requirement at the route and at any service or background entry point that can perform the operation. A request that both executes and performs an admin-only registration must satisfy both requirements; it must not inherit registration permission from `operator`.
