@@ -1,15 +1,17 @@
-# Shape Shifter Target-Model Entity Register (SIMS Reference)
+# Shape Shifter Target-Model Entity Register
 
 > Auto-generated from {{ model.name }} v{{ model.version }}
 >
-> This register reflects Shape Shifter target-model metadata. It is not the SIMS tracked-identity registry or capability configuration. SIMS uses its own validated configuration for tracked aggregate identities and allocation. Target tables, columns, keys, and entity classifications here do not prescribe SIMS implementation details.
+> This register describes Shape Shifter target-model metadata, not the entity types configured in SIMS or the identity records SIMS stores. The `identity_tracking` label below is a target-model property.
+>
+> For current SIMS operation support, see [`config/identity_policy.yml`](../../config/identity_policy.yml). An operation is enabled when its policy entry sets the corresponding `operations` flag to `true`. Policy entries do not show whether SIMS already stores identities for that type.
 
 ## Summary
 
 | Category | Count |
 |----------|-------|
 | Total entities | {{ stats.total_entities }} |
-| Provider-owned (tracked) | {{ stats.tracked_count }} |
+| Target-model `identity_tracking: tracked` | {{ stats.tracked_count }} |
 | Provider-owned (children) | {{ stats.child_count }} |
 | Shared metadata (reconciled) | {{ stats.reconciled_count }} |
 | Relationship (derived) | {{ stats.derived_count }} |

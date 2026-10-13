@@ -488,7 +488,6 @@ class TestSimsDocumentGeneratorGenerate:
         decoded = SimsDocumentGenerator().generate(model).decode("utf-8")
         assert "my_unique_entity" in decoded
 
-
 # ---------------------------------------------------------------------------
 # TargetModelDocumentGenerator
 # ---------------------------------------------------------------------------
@@ -522,7 +521,9 @@ class TestTargetModelDocumentGenerator:
         assert isinstance(result, bytes)
         assert len(result) > 0
         generated = result.decode()
-        assert "not the SIMS tracked-identity registry" in generated
+        assert "not the entity types configured in SIMS or the identity records SIMS stores" in generated
+        assert "[`config/identity_policy.yml`](../../config/identity_policy.yml)" in generated
+        assert "Target-model `identity_tracking: tracked`" in generated
         assert "does not prescribe the SIMS identity value format or allocator implementation" in generated
 
     def test_generate_raises_value_error_for_unknown_format(self):

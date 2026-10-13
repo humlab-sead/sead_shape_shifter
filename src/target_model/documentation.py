@@ -248,10 +248,10 @@ class HTMLDocumentGenerator(TextDocumentGenerator):
 
 @DOCUMENT_GENERATORS.register(key=DocumentFormat.SIMS)
 class SimsDocumentGenerator(TextDocumentGenerator):
-    """Generate SIMS entity register documentation from target model."""
+    """Generate a Shape Shifter target-model reference for SIMS documentation."""
 
     def generate(self, target_model: TargetModel, project: ShapeShiftProject | None = None) -> bytes:
-        """Generate SIMS entity register Markdown."""
+        """Generate target-model reference Markdown for SIMS documentation."""
         env: Environment = self._get_jinja_env()
         template: Template = env.get_template("sims_entity_register.md.j2")
         data: dict[str, Any] = self._prepare_sims_data(target_model)
