@@ -14,6 +14,7 @@ def test_relative_paths_resolve_against_repository_root(monkeypatch) -> None:
     monkeypatch.setenv("SHAPE_SHIFTER_LOG_DIR", "./data/logs")
     monkeypatch.setenv("SHAPE_SHIFTER_GLOBAL_DATA_DIR", "./data/shared/shared-data")
     monkeypatch.setenv("SHAPE_SHIFTER_GLOBAL_DATA_SOURCE_DIR", "./data/shared/data-sources")
+    monkeypatch.setenv("SHAPE_SHIFTER_GLOBAL_TARGET_MODEL_DIR", "./data/shared/target-models")
 
     settings = Settings()
 
@@ -21,3 +22,12 @@ def test_relative_paths_resolve_against_repository_root(monkeypatch) -> None:
     assert settings.LOG_DIR == settings.APPLICATION_ROOT / "data/logs"
     assert settings.GLOBAL_DATA_DIR == settings.APPLICATION_ROOT / "data/shared/shared-data"
     assert settings.GLOBAL_DATA_SOURCE_DIR == settings.APPLICATION_ROOT / "data/shared/data-sources"
+    assert settings.GLOBAL_TARGET_MODEL_DIR == settings.APPLICATION_ROOT / "data/shared/target-models"
+
+
+def test_shared_target_model_directory_defaults_under_application_root(tmp_path) -> None:
+    """The shared target model directory should use the configured default path."""
+    settings = Settings(APPLICATION_ROOT=tmp_path)
+
+    assert settings.GLOBAL_TARGET_MODEL_DIR == tmp_path / "shared/target-models"
+    assert settings.GLOBAL_TARGET_MODEL_DIR.is_dir()

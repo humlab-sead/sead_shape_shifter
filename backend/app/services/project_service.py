@@ -17,7 +17,7 @@ from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.mappers.project_name_mapper import ProjectNameMapper
 from backend.app.middleware.correlation import get_correlation_id
 from backend.app.models.entity import Entity
-from backend.app.models.project import Project, ProjectFileInfo, ProjectMetadata
+from backend.app.models.project import Project, ProjectFileInfo, ProjectMetadata, TargetModelFileOption
 from backend.app.services.project.entity_operations import EntityOperations
 from backend.app.services.project.entity_persistence_strategies import EntityPersistenceStrategyRegistry
 from backend.app.services.project.file_manager import FileManager
@@ -25,6 +25,7 @@ from backend.app.services.project.project_operations import ProjectOperations
 from backend.app.services.project.project_utils import ProjectUtils
 from backend.app.services.task_list_sidecar_manager import TaskListSidecarManager
 from backend.app.services.yaml_service import YamlLoadError, YamlSaveError, YamlService, get_yaml_service
+from src.path_resolution import resolve_contained_path
 
 
 class ProjectYamlSpecification:
@@ -971,6 +972,42 @@ class ProjectService:
             List of file information
         """
         return self.files.list_project_files(project_name, extensions)
+
+    def list_target_model_files(self, project_name: str) -> list[TargetModelFileOption]:
+        """List project-local and shared YAML files available as target models."""
+        local_files = self.list_project_files(project_name, extensions={".yml", ".yaml"})
+        options = [
+            TargetModelFileOption(
+                name=file.name,
+                label=f"Project-local: {file.name}",
+                value=f"@load: {file.name}",
+                location="project",
+            )
+            for file in local_files
+        ]
+        shared_dir: Path = Path(settings.GLOBAL_TARGET_MODEL_DIR)
+
+        if shared_dir.is_dir():
+            for candidate in sorted(shared_dir.glob("*"), key=lambda path: path.name.casefold()):
+                try:
+                    model_path = resolve_contained_path(candidate, shared_dir, allow_absolute=True)
+                except ValueError:
+                    continue
+
+                if not model_path.is_file() or model_path.suffix.lower() not in {".yml", ".yaml"}:
+                    continue
+
+                relative_path = model_path.relative_to(shared_dir).as_posix()
+                options.append(
+                    TargetModelFileOption(
+                        name=model_path.name,
+                        label=f"Shared: {relative_path}",
+                        value=f"@load: ${{GLOBAL_TARGET_MODEL_DIR}}/{relative_path}",
+                        location="shared",
+                    )
+                )
+
+        return options
 
     def save_project_file(
         self,

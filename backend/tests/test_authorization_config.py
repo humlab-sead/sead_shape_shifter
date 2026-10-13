@@ -21,6 +21,14 @@ def test_authorization_database_cannot_be_stored_in_project_data(tmp_path) -> No
         )
 
 
+def test_authorization_database_cannot_be_stored_in_shared_target_models(tmp_path) -> None:
+    with pytest.raises(ValueError, match="AUTHORIZATION_DATABASE_PATH"):
+        Settings(
+            APPLICATION_ROOT=tmp_path,
+            AUTHORIZATION_DATABASE_PATH=tmp_path / "shared/target-models/authorization.sqlite3",
+        )
+
+
 def test_development_principal_is_rejected_in_production(tmp_path) -> None:
     with pytest.raises(ValueError, match="DEVELOPMENT_PRINCIPAL_ID"):
         Settings(
