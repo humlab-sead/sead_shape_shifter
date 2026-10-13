@@ -24,7 +24,7 @@ Validate the submission-model schema and historical `fn_migrate_submission_datas
 
 ## Additional Validation: Refactored Snapshot (2026-10-12)
 
-The user-provided `tmp/sead_backup.tar.gz` was restored into the rootless Podman container `ss-pg-submission-contract-20261012-v2`, using `docker.io/postgis/postgis:18-3.6`, `--network none`, and no published ports. The backup is 108,409,956 bytes of plain PostgreSQL 18.6 SQL, not a gzip or tar archive; its SHA-256 is `b79c07e6d135ad6054d69435c34e3ea65ce20caf397562b7353f99c189c33765`.
+The user-provided `tmp/sead_staging_baseline.sql.gz` was restored into the rootless Podman container `ss-pg-submission-contract-20261012-v2`, using `docker.io/postgis/postgis:18-3.6`, `--network none`, and no published ports. The backup is 108,409,956 bytes of plain PostgreSQL 18.6 SQL, not a gzip or tar archive; its SHA-256 is `b79c07e6d135ad6054d69435c34e3ea65ce20caf397562b7353f99c189c33765`.
 
 The restore filtered the dump's `DROP DATABASE sead_staging`, `CREATE DATABASE sead_staging`, `\connect sead_staging`, and `CREATE SCHEMA public` commands. It created the `postgis` and `uuid-ossp` extensions inside the disposable database and emptied the extension-provided `spatial_ref_sys` rows before restoring the dump data. The refactored schema was already present, so this run did not reapply DDL or execute historical migration calls.
 
@@ -63,15 +63,15 @@ The 2026-09-30 package failure is historical. The current packages passed the se
 
 **Execution results (2026-09-30)**
 
-| Group | Datasets | Tasks | New contacts | Before/after result |
-|---|---:|---:|---:|---|
-| 1 MAL | 2967 | 2967 | 0 | Pass |
-| 2 BugsCEP | 13433 | 14820 | 0 | Pass |
-| 3 ceramics | 11076 | 22152 | 11996 | Pass |
-| 4 Dendrochronology pilot | 27032 | 54064 | 24345 | Pass |
-| 5 aDNA | 10 | 20 | 15 | Pass |
-| 6 Lund Living Trees | 4534 | 9068 | 4000 | Pass |
-| Combined | 59052 | 103091 | 40356 | Pass |
+| Group                    | Datasets |  Tasks | New contacts | Before/after result |
+|--------------------------|---------:|-------:|-------------:|---------------------|
+| 1 MAL                    |     2967 |   2967 |            0 | Pass                |
+| 2 BugsCEP                |    13433 |  14820 |            0 | Pass                |
+| 3 ceramics               |    11076 |  22152 |        11996 | Pass                |
+| 4 Dendrochronology pilot |    27032 |  54064 |        24345 | Pass                |
+| 5 aDNA                   |       10 |     20 |           15 | Pass                |
+| 6 Lund Living Trees      |     4534 |   9068 |         4000 | Pass                |
+| Combined                 |    59052 | 103091 |        40356 | Pass                |
 
 The rolled-back strategies inserted one Pending submission (ID 7) and one dataset (ID 91924) without stale ID sequences. Their comparable values agreed: `Pilot dataset`, type 8, `test-submission`, `TEST_SUBMISSION`, `mal`, upload date `2026-05-23`, provider 1, and unchanged reference dataset 1 linked to submission 1. These results do not validate the current package generator. No shared or source database was used.
 
