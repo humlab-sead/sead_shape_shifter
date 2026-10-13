@@ -2,20 +2,20 @@
 
 ## Overview
 
-A **target model specification** is a YAML file that describes what an external destination system — such as the SEAD Clearinghouse — expects from a Shape Shifter project. It defines which entities are required, what columns and foreign-key relationships they must have, and what naming conventions apply.
+A **target model specification** is a YAML file that describes what a destination system, such as the SEAD Clearinghouse, expects a Shape Shifter project to provide. It lists the kinds of records (entities) a project may or must include, their columns, how they link to one another, and any naming rules.
 
-The field-level schema authority lives in the Pydantic models in `src/target_model/models.py`. Use `TARGET_MODEL_GUIDE.md` (this document) as the narrative guide and `TARGET_MODEL_SCHEMA_REFERENCE.md` as the generated key-by-key reference derived from that schema.
+The accepted fields and values are defined by the Pydantic models in `src/target_model/models.py`. Use this guide for an overview and [TARGET_MODEL_SCHEMA_REFERENCE.md](TARGET_MODEL_SCHEMA_REFERENCE.md) for the complete field-by-field reference, including defaults.
 
-When a project references a target model, Shape Shifter can perform **conformance validation**: checking whether the project entities actually satisfy the requirements described in the spec. This catches semantic modeling errors at configuration time, before you run the pipeline or attempt a dispatch.
+When a project refers to a target model, Shape Shifter can check whether the project's entity definitions include the required record types, fields, and links. This is called **conformance validation**. It can catch configuration problems before the project processes or sends data.
 
-Target model specs are optional. Existing projects without a `target_model` reference continue to work without any changes.
+Target models are optional. Projects without a `target_model` reference continue to work as before.
 
 ---
 
 ## Quick Start
 
-1. Pick or create a spec file — e.g., `resources/target_models/sead_superset_model.yml` (the current bundled SEAD superset spec ships with Shape Shifter).
-2. Add a `target_model` reference to your project's `metadata` section:
+1. Choose a target model file or create one. Shape Shifter includes `resources/target_models/sead_superset_model.yml` as a starting point.
+2. In your project YAML, add a `target_model` entry under `metadata`:
 
 ```yaml
 metadata:
@@ -24,14 +24,14 @@ metadata:
   target_model: "@load: resources/target_models/sead_superset_model.yml"
 ```
 
-3. Open your project in the editor, go to the **Validate** tab, and click **Check Conformance**.
-4. Review any issues in the **Conformance** expansion panel.
+3. Open the project in the editor. On the **Validate** tab, select **Check Conformance**.
+4. Open the **Conformance** panel to see any issues.
 
 ---
 
 ## File Location
 
-The current bundled SEAD spec lives at `resources/target_models/sead_superset_model.yml`. Custom or project-specific specs can live anywhere; reference them with a path relative to the project file or an absolute path.
+The bundled SEAD model is at `resources/target_models/sead_superset_model.yml`. You can store custom models elsewhere. Refer to them with a path relative to the project file or with the full file path.
 
 Recommended layout for project-specific specs:
 
@@ -77,13 +77,13 @@ metadata:
       public_id_suffix: "_id"
 ```
 
-The Metadata Editor in the project workspace surfaces this as a **Target Model** combobox that lists uploaded YAML files in `@load:` format. You can also type a path directly.
+The project workspace's Metadata Editor shows a **Target Model** dropdown with uploaded YAML files in `@load:` format. You can also enter a path directly.
 
 ---
 
 ## Target Model File Format
 
-Target model files are parsed with strict Pydantic models. Unknown keys in these blocks are rejected during load instead of being silently ignored.
+Shape Shifter checks each target model file against a defined schema. It reports unknown fields instead of silently ignoring them.
 
 For the full generated reference of accepted sections, keys, defaults, and enum values, see [TARGET_MODEL_SCHEMA_REFERENCE.md](TARGET_MODEL_SCHEMA_REFERENCE.md).
 
@@ -127,7 +127,7 @@ model:
 
 ### `entities` Block
 
-Each key is an entity name that must match the project entity name. Each value is an **entity spec**.
+Each key is an entity name and must match an entity in the project. The value is an **entity spec**: the requirements for that entity.
 
 ```yaml
 entities:
@@ -174,22 +174,22 @@ entities:
 | `reconciliation`         | No       | `null`  | Matching or allocation mode. When omitted, its effective value can be inferred from identity settings and `role`. |
 | `aggregate_parent`       | No       | `null`  | Parent entity name when this entity inherits aggregate identity.                                                  |
 
-The `Default` column shows the value stored when a field is omitted. `identity_tracking` and `reconciliation` may be resolved to effective values from `role` and `aggregate_parent`; see [Identity And Reconciliation Fields](#identity-and-reconciliation-fields).
+The `Default` column shows what the schema uses when a field is omitted. The ingester may infer effective values for `identity_tracking` and `reconciliation` from `role` and `aggregate_parent`; see [Identity And Reconciliation Fields](#identity-and-reconciliation-fields). A natural key is one or more field values used to recognize a record. A database sequence is an automatic counter that issues IDs. SIMS is the SEAD Identity Management System.
 
 ---
 
 ### Semantic Roles
 
-The `role` field describes the meaning of an entity in the target model. The SEAD Change Request Ingester also uses it to infer effective identity settings when explicit settings are omitted. Explicit `identity_tracking`, `reconciliation`, and `aggregate_parent` values take precedence; the ingester plans from the resolved identity settings.
+The `role` field says what an entity represents. If identity settings are omitted, the SEAD Change Request Ingester uses the role to choose defaults. Any explicit `identity_tracking`, `reconciliation`, or `aggregate_parent` value takes precedence.
 
 | Role         | Meaning                                                                                                                                       |
 |--------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
-| `fact`       | A primary record of an observation, measurement, or event (e.g., a sample or analysis result). Usually depends on surrounding lookups and classifiers. |
+| `fact`       | A record that captures an observation, measurement, or event (for example, a sample or analysis result). Often linked to lookups or classifiers. |
 | `lookup`     | A reference entity whose records provide reusable domain or contextual information to other entities (e.g., sites, locations, or methods). Records may be curated and controlled. |
 | `classifier` | A reference entity whose records provide categories used to classify other entities (e.g., site types or sample types), often as a controlled vocabulary.                     |
 | `bridge`     | An association entity connecting two or more entities in a many-to-many relationship.                                                         |
 
-All four roles describe entities. The distinction is what their records represent and how other entities use them. Controlledness alone does not determine the role: site records may be curated, but sites remain lookups because they represent places; site types are classifiers because they categorize sites. When identity settings are omitted, the ingester defaults lookups to `reconcile-exact` (which can allocate after a miss) and classifiers to `lookup-only`. Set `reconciliation` explicitly when that default does not match the target's policy.
+All four roles describe entities. They differ in what their records represent and how other entities use them. Controlledness alone does not determine the role: site records can be curated and still be lookups because they represent places; site types are classifiers because they categorize sites. If identity settings are omitted, the ingester defaults lookups to `reconcile-exact` (which may assign a new ID when no exact match is found) and classifiers to `lookup-only` (which uses existing matches only). Set `reconciliation` explicitly if that default does not match the target's policy.
 
 ---
 
@@ -211,21 +211,23 @@ columns:
 
 | Field      | Required | Description                                                                                          |
 |------------|----------|------------------------------------------------------------------------------------------------------|
-| `required` | No       | `true` means the project entity must expose this column                                              |
-| `type`     | No       | Hint type such as `string`, `integer`, `decimal`, `boolean`, or `date` (informational in v1)       |
-| `nullable` | No       | Whether the column is expected to allow null values (informational)                                  |
-| `description` | No    | Human-readable note for reviewers, generated docs, and editor help                                   |
+| `required` | No       | If `true`, the project entity must provide this column.                                               |
+| `type`     | No       | A hint such as `string`, `integer`, `decimal`, `boolean`, or `date`; not checked in v1.                |
+| `nullable` | No       | Whether the destination column may contain `null` (no value); not checked in v1.                      |
+| `description` | No    | Note shown to reviewers and in generated documentation or editor help.                               |
 
-Shape Shifter counts a column as present in a project entity when it appears as:
+Shape Shifter treats a column as present if the project defines it directly or a relationship or transformation adds it. For example, a column is present when it appears as:
 - an explicit entry in `columns` or `keys`
 - an entry in `extra_columns`
 - the `public_id` value
-- a column contributed by a foreign key (parent's `public_id`)
-- a column that survives an `unnest` transformation (`id_vars`, `var_name`, `value_name`)
+  - a column added by a foreign key (the related entity's `public_id`)
+  - a column kept or created by an `unnest` transformation (`id_vars`, `var_name`, or `value_name`)
 
 ---
 
 ### Foreign Key Specs
+
+A foreign key (FK) is a link from one entity to another.
 
 ```yaml
 foreign_keys:
@@ -238,40 +240,40 @@ foreign_keys:
 
 | Field      | Required | Description                                                                         |
 |------------|----------|-------------------------------------------------------------------------------------|
-| `entity`   | Yes      | Name of the target entity this FK must point to                                     |
-| `required` | No       | `true` means the project entity must declare a FK to this entity (default: `false`) |
-| `via`      | No       | Bridge entity name for many-to-many relationships such as `site -> site_location -> location` |
+| `entity`   | Yes      | Name of the entity this link points to                                               |
+| `required` | No       | If `true`, the project must declare this link (default: `false`).                    |
+| `via`      | No       | Bridge entity used for a many-to-many link, such as `site -> site_location -> location`. |
 
-Conformance checks whether the project entity has at least one foreign key whose target matches the required entity name.
+Conformance checks that the project entity declares a link to each required target entity.
 
-When `via` is present, conformance first checks the source entity points to the bridge entity, then checks whether the bridge points to the ultimate target entity.
+When `via` is present, conformance checks both parts of the path: the source entity must link to the bridge, and the bridge must link to the final target.
 
 ---
 
 ### Identity And Reconciliation Fields
 
-These fields describe Shape Shifter's identity intent and lookup/allocation workflow for a target-model entity. SIMS applies its generic identity mechanism according to its own validated entity configuration; the target model does not prescribe entity-specific SIMS implementation code.
+These fields describe how records are identified: whether the ingester should match an existing record, assign a new ID, or use an ID inherited from a parent. SIMS performs identity operations according to its own entity configuration; the target model does not configure SIMS directly.
 
-The SEAD Change Request Ingester uses the effective `identity_tracking`, `reconciliation`, and `aggregate_parent` values to plan identity work and check whether SIMS supports the required operations before artifact generation.
+The SEAD Change Request Ingester uses the resolved `identity_tracking`, `reconciliation`, and `aggregate_parent` values to plan this work. Before it creates the change package, it checks whether SIMS supports the needed operations.
 
-Shape Shifter validates these fields together when a target model loads:
+When it loads a target model, Shape Shifter checks that these settings work together:
 
-- if omitted, fact entities default to `identity_tracking: tracked` and `reconciliation: allocate`
-- `aggregate_parent` must name another entity in the same model
-- entities with `aggregate_parent` must also declare a foreign key to that parent
-- `identity_tracking: child` requires `aggregate_parent`
-- `tracked` entities resolve to `allocate`
-- `public_id_generation: database_sequence` requires an explicit non-tracked `identity_tracking` value; tracked IDs must be allocated by SIMS
-- `derived` entities resolve to `derive`
-- `child` entities must not declare a reconciliation strategy
-- `reconciled` entities must resolve to one of `reconcile-exact`, `reconcile-fuzzy`, `lookup-only`, or `lookup-extensible`
+- If omitted, a `fact` entity defaults to `identity_tracking: tracked` and `reconciliation: allocate`.
+- `aggregate_parent` must name another entity in the same model.
+- An entity with `aggregate_parent` must also declare a foreign key to that parent.
+- `identity_tracking: child` requires an `aggregate_parent`.
+- A `tracked` entity uses `reconciliation: allocate`.
+- `public_id_generation: database_sequence` requires an explicit, non-tracked `identity_tracking` value. SIMS assigns IDs to tracked entities.
+- A `derived` entity uses `reconciliation: derive`.
+- A `child` entity must not declare a reconciliation strategy.
+- A `reconciled` entity must use `reconcile-exact`, `reconcile-fuzzy`, `lookup-only`, or `lookup-extensible`.
 
 | Field | Allowed values | Description |
 |-------|----------------|-------------|
-| `identity_tracking` | `tracked`, `reconciled`, `derived`, `child` | Declares whether the entity gets its own tracked identity, is matched by business keys, derives identity from related rows, or inherits from an aggregate parent |
-| `reconciliation` | `allocate`, `reconcile-exact`, `reconcile-fuzzy`, `lookup-only`, `lookup-extensible`, `derive` | Declares the expected matching or allocation mode for this entity |
-| `aggregate_parent` | Entity name | Required when identity is inherited from a parent aggregate such as `analysis_entity` or `sample` |
-| `public_id_generation` | `database_sequence` | Reserves an ID from the target database for an entity explicitly configured as non-tracked |
+| `identity_tracking` | `tracked`, `reconciled`, `derived`, `child` | Says whether the entity gets its own tracked identity, is matched using business fields, takes an ID from related records, or inherits its parent's identity. |
+| `reconciliation` | `allocate`, `reconcile-exact`, `reconcile-fuzzy`, `lookup-only`, `lookup-extensible`, `derive` | Says how incoming records are matched or how new IDs are assigned. |
+| `aggregate_parent` | Entity name | Names the parent entity whose identity this entity inherits. |
+| `public_id_generation` | `database_sequence` | Gets an ID from the target database when `identity_tracking` is explicitly set to a non-tracked value. |
 
 ---
 
@@ -299,9 +301,9 @@ constraints:
 |-------|----------|-------------|
 | `type` | Yes | Global rule name applied to the whole target model |
 
-Current constraints are modeled as simple typed entries. Add new constraint-specific keys only after extending the Pydantic schema.
+Constraints are named rules that apply to the whole target model. To add new settings for a constraint, first add them to the Pydantic schema.
 
-`no_orphan_facts` is now enforced by the conformance engine when the target model declares it. The rule checks that each fact entity present in the project reaches at least one lookup or classifier through the target-facing FK graph.
+When a target model declares `no_orphan_facts`, conformance checks that each fact entity in the project is linked, through foreign keys, to at least one lookup or classifier.
 
 ---
 
@@ -309,15 +311,15 @@ Current constraints are modeled as simple typed entries. Add new constraint-spec
 
 ### How It Works
 
-When you click **Check Conformance** in the editor, Shape Shifter:
+When you select **Check Conformance** in the editor, Shape Shifter:
 
-1. Loads the project and resolves the `target_model` reference (expanding `@load:` if needed).
-2. Parses the target model spec into a `TargetModel` domain object.
-3. Runs the target-model spec validator to check self-consistency, including unknown FK targets, invalid aggregate-parent relationships, and invalid identity-tracking or reconciliation combinations.
-4. Runs the built-in conformance validators against the resolved project.
-5. Returns a list of `ConformanceIssue` objects, each including a code, message, affected entity and field, and a suggestion.
+1. Loads the project and opens the referenced target model file, including when the reference uses `@load:`.
+2. Reads the target model into the format used for checks.
+3. Checks the model for mistakes, such as links to unknown entities or incompatible identity settings.
+4. Checks the project against the target model's requirements.
+5. Reports each issue with a code, an explanation, the affected entity and field, and a suggested fix.
 
-Conformance results appear in their own **Conformance** panel in the Validate tab, separate from structural and data validation results.
+Results appear in the **Conformance** panel on the **Validate** tab, separately from checks of project structure and data.
 
 ### Issue Codes
 
@@ -332,19 +334,19 @@ Conformance results appear in their own **Conformance** panel in the Validate ta
 
 ### Validators
 
-Five validators run in sequence. All are enabled by default; there is no per-project override mechanism in v1.
+Five validators run in order. All run by default; version 1 does not let a project turn them off individually.
 
 | Validator key       | What it checks                                                                                    |
 |---------------------|---------------------------------------------------------------------------------------------------|
-| `required_entity`   | Checks that every entity with `required: true` exists in the project                              |
-| `public_id`         | Checks that each project entity has (or doesn't have) the `public_id` declared in the target spec |
-| `foreign_key`       | Checks that each required FK target is declared on the project entity                             |
-| `required_columns`  | Checks that each required column is in the project entity's target-facing column set              |
-| `naming_convention` | Checks that all `public_id` values end with `naming.public_id_suffix`                             |
+| `required_entity`   | Checks that the project includes every entity marked `required: true` in the target model.         |
+| `public_id`         | Checks whether project entities have the expected `public_id` values and flags unexpected ones.   |
+| `foreign_key`       | Checks that the project declares every required link to another entity.                            |
+| `required_columns`  | Checks that the project entity provides every required column.                                     |
+| `naming_convention` | Checks that each `public_id` ends with the configured `naming.public_id_suffix`.                   |
 
 ### Checking Conformance Without the UI
 
-The conformance engine can also be used from the CLI for quick checks:
+You can also check conformance from a terminal, without opening the editor:
 
 ```bash
 python -m src.target_model.conformance \
@@ -354,7 +356,7 @@ python -m src.target_model.conformance \
 
 ## Change Request Ingester MVP Field Usage
 
-The SEAD Change Request Ingester uses selected target-model entity fields for identity planning, target projection, collision checks, and artifact generation. This table describes ingester behavior; other consumers, such as conformance validation and scaffold generation, may use fields differently.
+The SEAD Change Request Ingester uses some target-model fields to decide how to match records, assign IDs, link related records, check for duplicates, and build change-request files. Other Shape Shifter tools, such as conformance checks and project scaffold generation, may use fields differently.
 
 | Field(s)                                                        | Effect in Change Request Ingester MVP                                                                                                                                                  |
 |-----------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -371,17 +373,17 @@ The SEAD Change Request Ingester uses selected target-model entity fields for id
 
 ## Reviewing the SEAD Superset Model
 
-This review supports ongoing refinement of `resources/target_models/sead_superset_model.yml` beyond the Change Request Ingester MVP. Review these areas only; record unrelated concerns separately.
+Use this checklist to review `resources/target_models/sead_superset_model.yml` beyond the Change Request Ingester MVP. Focus on these questions and record unrelated concerns separately.
 
-1. **Entity roles:** Check whether each `role` (`fact`, `lookup`, `classifier`, or `bridge`) matches the entity's business purpose and relationships. Recommend a role and explain why. In the ingester, role-derived defaults can affect identity planning when explicit identity settings are absent; explicit settings take precedence.
-2. **Dormant tables:** Establish whether each table is present in the target schema and whether current projects or import workflows use it. Do not treat absence from the MVP as proof that a table is obsolete. Recommend keeping it optional, making it a project requirement, or deferring/removing it, with the reason. An entity's `required: true` means conforming projects must include it; it does not describe database nullability.
-3. **Foreign-key requiredness:** For every `foreign_keys` entry, ask whether every conforming project must declare that relationship. Check the target and any `via` bridge path. Set `required: true` only for relationships expected in every conforming project; use `false` for valid project shapes that can omit the relationship. Conformance uses this to check the project declaration, not a database constraint. The ingester also checks required FK columns and projected row values.
+1. **Entity roles:** Check whether each `role` (`fact`, `lookup`, `classifier`, or `bridge`) fits what the entity represents and how it relates to other entities. Recommend a role and explain why. If identity settings are omitted, the role can affect the ingester's defaults; explicit settings take precedence.
+2. **Tables not used by the MVP:** Check whether each table exists in the target database and whether current projects or import workflows use it. A table's absence from the MVP does not mean it is obsolete. Recommend keeping it optional, requiring it in conforming projects, or postponing/removing it, and explain why. `required: true` means every conforming project must include the entity; it does not describe whether a database column allows empty values.
+3. **Required links:** For each `foreign_keys` entry, ask whether every conforming project must declare the link. Check the target entity and any `via` bridge path. Set `required: true` only when every valid project must have the link; use `false` when valid projects may omit it. Conformance checks the link declared in the project, not a database constraint. The ingester also checks that required link columns and values are present in output rows.
 
-Record each recommendation with the entity/table, current setting, proposed setting, rationale or source, and any unresolved domain question. Mark uncertain facts as questions rather than inferring them from names. Treat recommendations as review input; do not change the model without recording the decision.
+For each recommendation, record the entity or table, its current and proposed settings, the reason or source, and any open domain question. Mark uncertain points as questions instead of guessing from names. Do not change the model until the decision is recorded.
 
 ## Generating a Project Scaffold from a Target Model
 
-The template generator creates a starter project YAML pre-populated with the entities and columns defined in a target model spec:
+The template generator creates a starter project YAML file with the entities and columns listed in a target model:
 
 ```bash
 python -m src.target_model.template_generator \
@@ -401,7 +403,7 @@ python -m src.target_model.template_generator \
   --output minimal.yml
 ```
 
-The generated scaffold has the correct identity fields and foreign keys pre-filled; you only need to add source configuration (`type`, `source`, `data_source`, etc.) for each entity.
+The generated file includes the identity fields and foreign keys from the target model. Add the source settings (`type`, `source`, `data_source`, and others) for each entity.
 
 ---
 
@@ -447,45 +449,45 @@ naming:
 
 ### Tips
 
-- Start minimal: add only the entities and columns you actually want to enforce. Extra entities in the spec that are absent from the project do not cause errors unless they are marked `required: true`.
+- Start with only the entities and columns you need to check. An entity may be absent from the project without causing an error unless the target model marks it `required: true`.
 - Use `required: false` (or omit `required`) for optional/conditional entities that only appear in some project shapes.
-- Set `required: true` on columns only when their absence indicates a genuine configuration error.
-- The `type` and `nullable` column fields are informational in v1 — they are recorded in the spec but not enforced by the conformance validators.
+- Set a column's `required: true` only when the project must provide it.
+- In version 1, conformance records the column's `type` and `nullable` settings but does not check them.
 - Use `domains` tags to group entities so you can generate partial project scaffolds.
 
 ---
 
 ## SEAD Superset Spec (`sead_superset_model.yml`)
 
-The bundled SEAD superset spec at `resources/target_models/sead_superset_model.yml` currently covers 102 entities. It is intended to be the near-complete shared SEAD model from which individual Shape Shifter projects can select curated subsets.
+The bundled SEAD superset model at `resources/target_models/sead_superset_model.yml` currently defines 102 entities. It aims to cover nearly all shared SEAD tables; each Shape Shifter project can select the subset it needs.
 
-Coverage is not yet complete. Of the 136 in-scope SEAD tables in the filtered live-schema snapshot, 42 remain unmapped. Remaining coverage work is tracked in [Define And Verify The SEAD Target Model Coverage Boundary](proposals/SEAD_TARGET_MODEL_COVERAGE_BOUNDARY.md) and [#532](https://github.com/humlab-sead/sead_shape_shifter/issues/532).
+Coverage is incomplete. In the filtered snapshot of the live database, 136 tables are in scope and 42 do not yet have a matching target-model entity. Work to decide and verify coverage is tracked in [Define And Verify The SEAD Target Model Coverage Boundary](proposals/SEAD_TARGET_MODEL_COVERAGE_BOUNDARY.md) and [#532](https://github.com/humlab-sead/sead_shape_shifter/issues/532).
 
 | Domain       | Entities                                                                                                                                                                |
 |--------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `core` | Core context entities such as `location`, `site`, `sample_group`, `sample`, `method`, `dataset`, `analysis_entity`, and provenance lookups |
-| `analysis` | Generic analysis values, value-class lookups, notes, identifiers, categorical, boolean, and numeric typed values, range variants, taxon counts, and analysis-value dimensions attached to `analysis_entity` records |
-| `spatial` | Spatial context and coordinate-related entities such as `location`, `site_location`, `dimension`, site property and national-grid-reference entities, and site, sample, or sample-group coordinate extensions |
-| `sample-metadata` | Sample and sample-group descriptions, sampling-context and horizon lookups, locations, notes, colours, dimensions, qualifier vocabularies, references, and other attached metadata entities |
-| `abundance` | Abundance observations, shared property-type vocabularies, abundance property entities, and related classifiers |
-| `taxonomy` | Taxonomy entities such as `taxa_tree_master`, `taxa_common_names`, synonyms, measured attributes, Red Data Book lookups, and related taxonomy support tables |
-| `dating` | Relative dating, chronology, dating lab, and uncertainty entities |
-| `provenance` | Project, dataset, citation, contact, and dataset-contact provenance entities |
+| `core` | Shared context such as locations, sites, sample groups, samples, methods, datasets, analysis entities, and provenance lookups |
+| `analysis` | Analysis results and related value types, notes, identifiers, categories, numbers, ranges, taxon counts, and dimensions linked to analysis entities |
+| `spatial` | Locations, site-location links, dimensions, site properties, grid references, and coordinates for sites, samples, and sample groups |
+| `sample-metadata` | Descriptions and related details for samples and sample groups, such as sampling context, horizons, notes, colours, dimensions, qualifiers, and references |
+| `abundance` | Abundance records, shared property types, and related categories |
+| `taxonomy` | Taxonomy records and related common names, synonyms, measured attributes, Red Data Book entries, and supporting tables |
+| `dating` | Relative dating, chronology, dating labs, and uncertainty records |
+| `provenance` | Projects, datasets, citations, contacts, and dataset-contact records |
 
-The SEAD superset spec uses `naming.public_id_suffix: "_id"` and declares `constraints: [{type: no_orphan_facts}]`.
+The model uses `naming.public_id_suffix: "_id"`. It also enables `no_orphan_facts`, which checks that each fact entity in a project links to at least one lookup or classifier.
 
 ---
 
 ## Generating Documentation from a Target Model
 
-`scripts/generate_target_model_docs.py` produces human-readable output from any target model YAML spec. Four formats are supported:
+Use `scripts/generate_target_model_docs.py` to create readable documentation from a target model YAML file. It supports four output formats:
 
 | Format     | Best for                              | Output file   |
 |------------|---------------------------------------|---------------|
-| `html`     | Stakeholder presentations, reference  | `<stem>.html` |
-| `excel`    | Review workshops, gap analysis        | `<stem>.xlsx` |
-| `markdown` | GitHub wikis, version-controlled docs | `<stem>.md`   |
-| `sims`     | Shape Shifter target-model reference for SIMS; not a SIMS capability registry | `<stem>.sims.md` |
+| `html`     | Sharing or presenting the model       | `<stem>.html` |
+| `excel`    | Reviewing the model or finding gaps   | `<stem>.xlsx` |
+| `markdown` | Wikis and version-controlled guides   | `<stem>.md`   |
+| `sims`     | Target-model reference for SIMS documentation; not a list of SIMS capabilities | `<stem>.sims.md` |
 
 ```bash
 # Generate all formats (default)
@@ -504,7 +506,7 @@ python scripts/generate_target_model_docs.py resources/target_models/sead_supers
 python scripts/generate_target_model_docs.py my_model.yml --format all --output-dir /tmp/model-docs
 ```
 
-Output files are written to `docs/generated/` by default. Run `python scripts/generate_target_model_docs.py --help` for the full option reference, format descriptions, and badge/relationship-arrow glossary.
+Files are saved to `docs/generated/` by default. Run `python scripts/generate_target_model_docs.py --help` to see all options and format details.
 
 ---
 
