@@ -28,7 +28,7 @@ This plan does not redefine policy, frontend IA, release scheduling, or staffing
 - lifecycle policy scope decision is accepted through [DATA_PROVIDER_UPDATE_SCOPING_CR.md](./DATA_PROVIDER_UPDATE_SCOPING_CR.md)
 - delivery order exists, but implementation tracking is split across multiple proposal documents
 - existing-row update handling is implemented on the current branch and now serves as the baseline for future lifecycle refinements
-- shared-data governance boundaries now live in the separate [../../../SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT/SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT.md](../../../SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT/SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT.md) proposal
+- shared-data governance boundaries now live in the separate [../../../CHANGE_REQUEST_INGESTER_POST_MVP/SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT/SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT.md](../../../CHANGE_REQUEST_INGESTER_POST_MVP/SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT/SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT.md) proposal
 
 ## Phase Entry Status
 
@@ -84,7 +84,7 @@ Implement the narrow accepted existing-row update path for provider-owned data.
 
 **Focus**
 
-- align mutable-field comparison boundaries with [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](../../future/UPDATE_HANDLING_FOR_EXISTING_ROWS.md)
+- align mutable-field comparison boundaries with [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](../../../CHANGE_REQUEST_INGESTER_POST_MVP/UPDATE_HANDLING_FOR_EXISTING_ROWS.md)
 - apply supersession when a new accepted version replaces the current live version
 - block ambiguous or unsupported updates instead of applying speculative mutation
 

@@ -67,7 +67,7 @@ Those two uses need different routing rules. If the system treats all shared-dat
 
 ## Relationship To Provider Lifecycle Docs
 
-- The archived provider lifecycle docs live in [../done/DATA_PROVIDER_SUBMISSION_LIFECYCLE](../done/DATA_PROVIDER_SUBMISSION_LIFECYCLE)
+- The archived provider lifecycle docs live in [DATA_PROVIDER_SUBMISSION_LIFECYCLE](../../CHANGE_REQUEST_INGESTER/done/DATA_PROVIDER_SUBMISSION_LIFECYCLE)
 - The archived lifecycle plan and issue drafts describe the provider-owned path that was completed first
 - The shared-data path is now a separate proposal so the ownership rules stay clear
 

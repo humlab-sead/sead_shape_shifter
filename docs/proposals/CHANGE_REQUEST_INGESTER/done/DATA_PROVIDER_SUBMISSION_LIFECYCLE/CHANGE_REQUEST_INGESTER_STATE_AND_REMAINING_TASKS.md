@@ -34,8 +34,8 @@ This document consolidates the provider-lifecycle work that is complete and reco
 - Lifecycle sequencing plan: [DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md](./DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md)
 - Lifecycle phase issue drafts: [LIFECYCLE_PHASE_1_2_ISSUES.md](./LIFECYCLE_PHASE_1_2_ISSUES.md)
 - Lifecycle phase 3 issue drafts: [LIFECYCLE_PHASE_3_ISSUES.md](./LIFECYCLE_PHASE_3_ISSUES.md)
-- Existing-row update proposal: [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](../../future/UPDATE_HANDLING_FOR_EXISTING_ROWS.md)
-- Candidate backlog scope: [NEXT_DELIVERY_CANDIDATES.md](../../future/NEXT_DELIVERY_CANDIDATES.md)
+- Existing-row update proposal: [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](../../../CHANGE_REQUEST_INGESTER_POST_MVP/UPDATE_HANDLING_FOR_EXISTING_ROWS.md)
+- Candidate backlog scope: [NEXT_DELIVERY_CANDIDATES.md](../../../CHANGE_REQUEST_INGESTER_POST_MVP/NEXT_DELIVERY_CANDIDATES.md)
 
 ## Next Actions
 
@@ -57,7 +57,7 @@ This document consolidates the provider-lifecycle work that is complete and reco
 - Keep ambiguous existing-row changes blocked or review-routed.
 
 4. Define shared-data review ownership and path in the separate proposal.
-- Track the draft in [SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT.md](../../SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT/SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT.md).
+- Track the draft in [SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT.md](../../../CHANGE_REQUEST_INGESTER_POST_MVP/SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT/SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT.md).
 - Confirm authority owner for new shared-term requests.
 - Confirm owner for corrections to existing shared terms.
 - Confirm boundary between provider-owned reference updates and shared-row governance changes.
@@ -111,7 +111,7 @@ Dependency guardrails:
 - Which team owns reviewed shared-data requests and approvals?
 - Which shared-data review and approval path should govern future non-provider existing-row scenarios?
 - Should project YAML carry stable `sead_change_request` submission defaults?
-- Which single candidate from `future/NEXT_DELIVERY_CANDIDATES.md` should become the next accepted proposal slice?
+- Which single candidate from `CHANGE_REQUEST_INGESTER_POST_MVP/NEXT_DELIVERY_CANDIDATES.md` should become the next accepted proposal slice?
 
 ## Suggested Follow-Up Documents
 
