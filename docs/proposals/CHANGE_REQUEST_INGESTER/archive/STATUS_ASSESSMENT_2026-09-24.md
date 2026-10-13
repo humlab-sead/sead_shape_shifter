@@ -16,7 +16,7 @@
 | MVP Delivery baseline and follow-ups | Complete | Closed and archived under `done/CHANGE_REQUEST_INGESTER_MVP/`. |
 | Frontend workflow integration | Complete | Issues 1–4 shipped in PR #456. Stable defaults were delivered separately in the submission metadata work. |
 | Provider submission lifecycle | Complete | Implemented and recorded in the durable lifecycle documentation and archived proposal set. |
-| Submission metadata and persisted defaults | Repository implementation complete; PostgreSQL validation pending | Code, focused tests, and target-model updates are recorded in [the proposal](../REFACTOR_SEAD_SUBMISSION_METADATA.md). Execution against the revised upstream schema is still unchecked in its task plan. |
+| Submission metadata and persisted defaults | Repository implementation complete; PostgreSQL validation pending | Code, focused tests, and target-model updates are recorded in [the proposal](../done/REFACTOR_SEAD_SUBMISSION_METADATA/REFACTOR_SEAD_SUBMISSION_METADATA.md). Execution against the revised upstream schema is still unchecked in its task plan. |
 | Shared-data review and operator contract | Draft; decision blocked | Ownership of review and approval, and the split from provider-owned updates, remain unresolved. |
 | Ingester filesystem boundaries | Proposed | Separate security work; operations must remain disabled until the required path and authorization checks exist. |
 | Stronger idempotency and next-delivery candidates | Candidate; undecided | Do not treat these as accepted delivery scope until a narrower proposal is selected. |

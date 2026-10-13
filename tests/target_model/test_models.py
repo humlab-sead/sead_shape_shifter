@@ -84,6 +84,26 @@ def test_target_model_parses_database_sequence_public_id_generation() -> None:
     assert target_model.entities["submission"].public_id_generation == "database_sequence"
 
 
+def test_target_model_parses_sequence_synchronization_for_sims_ids() -> None:
+    target_model = TargetModel.model_validate(
+        {
+            "model": {"name": "SEAD Clearinghouse", "version": "2.0.0"},
+            "entities": {
+                "submission": {
+                    "role": "fact",
+                    "identity_tracking": "tracked",
+                    "reconciliation": "allocate",
+                    "target_table": "tbl_submissions",
+                    "public_id": "submission_id",
+                    "synchronize_sequence_after_insert": True,
+                }
+            },
+        }
+    )
+
+    assert target_model.entities["submission"].synchronize_sequence_after_insert is True
+
+
 def test_target_model_rejects_unknown_model_fields() -> None:
     with pytest.raises(ValidationError):
         TargetModel.model_validate(

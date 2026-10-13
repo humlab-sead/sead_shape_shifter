@@ -28,7 +28,7 @@ The consequences are measurable. Counting the in-scope tables in [filtered_impor
 
 The filtered snapshot is documented as the working comparison surface, but it does not cover the model:
 
-- 5 model entities target tables the raw snapshot never contained: `tbl_data_providers`, `tbl_submissions`, `tbl_submission_states`, `tbl_submission_tasks`, `tbl_submission_task_types`. These come from a submission surface that is still a proposed upstream DDL change ([REFACTOR_SEAD_SUBMISSION_METADATA.md](CHANGE_REQUEST_INGESTER/REFACTOR_SEAD_SUBMISSION_METADATA.md), "upstream PostgreSQL validation pending") rather than from the deployed SEAD ingestion schema.
+- 5 model entities target tables the raw snapshot never contained: `tbl_data_providers`, `tbl_submissions`, `tbl_submission_states`, `tbl_submission_tasks`, `tbl_submission_task_types`. These come from a submission surface that is still a proposed upstream DDL change ([REFACTOR_SEAD_SUBMISSION_METADATA.md](CHANGE_REQUEST_INGESTER/done/REFACTOR_SEAD_SUBMISSION_METADATA/REFACTOR_SEAD_SUBMISSION_METADATA.md), validated against a supplied refactored snapshot; upstream deployment remains a release dependency) rather than from the deployed SEAD ingestion schema.
 - 2 model entities target tables the earlier review deliberately excluded: `tbl_colours` and `tbl_sample_colours`.
 
 A single snapshot therefore cannot serve as the boundary while the model mixes two schema surfaces.
@@ -104,7 +104,7 @@ surfaces:
     provenance: >
       No committed authoritative DDL reference. Table list taken from the submission
       entities currently in the model. DDL text appears only in
-      CHANGE_REQUEST_INGESTER/REFACTOR_SEAD_SUBMISSION_METADATA.md and in the
+      CHANGE_REQUEST_INGESTER/done/REFACTOR_SEAD_SUBMISSION_METADATA/REFACTOR_SEAD_SUBMISSION_METADATA.md and in the
       historical docs/archive/SEAD_REFACTOR_WORK_IN_PROGRESS.md. See Open Question Q1.
 
 exclusions:

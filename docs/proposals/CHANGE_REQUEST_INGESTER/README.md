@@ -6,7 +6,7 @@ This directory contains the active and archived proposals for the `sead_change_r
 
 ## Current Status
 
-**Overall:** The SEAD Change Request Ingester MVP Delivery (historically, Delivery 1) and provider-submission lifecycle are complete. The submission metadata implementation is present, but its generated-package database contract is blocked on sequence safety. Cutover and separate follow-up proposals remain open or undecided.
+**Overall:** The SEAD Change Request Ingester MVP Delivery (historically, Delivery 1), provider-submission lifecycle, and submission metadata work are complete. The submission package contract passed disposable PostgreSQL validation; upstream schema deployment and legacy compatibility remain release dependencies. Cutover and separate follow-up proposals remain open or undecided.
 
 The MVP delivery includes:
 
@@ -23,7 +23,7 @@ Status reviewed 2026-10-12. No new PostgreSQL validation was run for this update
 | SEAD Change Request Ingester MVP and baseline follow-ups | Complete | Historical MVP Delivery records are under [done/CHANGE_REQUEST_INGESTER_MVP](./done/CHANGE_REQUEST_INGESTER_MVP). |
 | Frontend workflow and persisted defaults | Complete | Frontend integration shipped in PR #456; stable metadata defaults are implemented and covered by the submission metadata work. |
 | Provider-submission lifecycle | Complete | Rules are promoted to the [durable lifecycle reference](../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md); implementation history is under [done/DATA_PROVIDER_SUBMISSION_LIFECYCLE](./done/DATA_PROVIDER_SUBMISSION_LIFECYCLE). |
-| Submission metadata and generated packages | Implemented; database contract blocked | Both current artifact strategies explicitly insert IDs without advancing database sequences. First agree the SIMS/SEAD target-ID and sequence contract, then fix and validate both strategies on disposable database clones. See the [task plan](./REFACTOR_SEAD_SUBMISSION_METADATA_TASK_PLAN.md) and [PostgreSQL validation handoff](./CUTOVER_AND_DEPLOYMENT/POSTGRESQL_CONTRACT_VALIDATION.md). Do not deploy packages until the sequence checks pass. |
+| Submission metadata and generated packages | Complete | Both artifact strategies passed contract checks on separate disposable clones, including PostgreSQL sequence advancement. Upstream schema deployment and legacy compatibility remain release dependencies tracked in the [cutover and deployment workstream](./CUTOVER_AND_DEPLOYMENT/README.md). See the [completed proposal and task plan](./done/REFACTOR_SEAD_SUBMISSION_METADATA/REFACTOR_SEAD_SUBMISSION_METADATA.md). |
 | SIMS-SEAD adoption, cutover, and deployment | Draft; decisions open | Resolve tracked-entity mapping, missing UUIDs, backfill and writer ordering, upstream schema/compatibility ownership, and package supersession. Track in [CUTOVER_AND_DEPLOYMENT](./CUTOVER_AND_DEPLOYMENT/README.md). |
 | Shared-data review and operator contract | Draft; ownership blocked | Decide who owns review and approval, and define its split from provider-owned updates. See the [proposal](./SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT/SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT.md). |
 | Ingester authorization and filesystem access | Proposed; not ready to enable | Define and implement resource authorization and filesystem containment. Keep operations unavailable until required checks are enforced. See the [authorization proposal](../INGESTER_AUTHORIZATION_TASKS/INGESTER_AUTHORIZATION_TASKS.md) and [filesystem proposal](../INGESTER_FILESYSTEM_BOUNDARIES/INGESTER_FILESYSTEM_BOUNDARIES.md). |
@@ -31,7 +31,7 @@ Status reviewed 2026-10-12. No new PostgreSQL validation was run for this update
 
 ### Next Priority
 
-Unblock the submission metadata database contract first. Agree how SIMS-issued target IDs interact with SEAD sequences, implement the agreed behavior without bypassing SIMS, and rerun the inline INSERT and copy-CSV checks on separate disposable clones. Keep the task plan open until both strategies pass, including checks that subsequent default-generated IDs cannot collide.
+Finish the separate SIMS-SEAD cutover decisions and release gates. The submission metadata package contract is complete: inline INSERT and copy-CSV artifacts passed disposable PostgreSQL checks with SIMS-assigned IDs and verified sequence advancement. The broader cutover work still requires upstream schema deployment, compatibility ownership, and identity-coverage checks.
 
 The other open workstreams are separate decisions, not prerequisites for that validation. Do not treat the whole proposal portfolio as complete while cutover and independent proposals remain open.
 
@@ -43,7 +43,6 @@ See the [closed MVP proposal](./done/CHANGE_REQUEST_INGESTER_MVP/SEAD_CHANGE_REQ
 
 ## Active Documents
 
-- [Submission metadata proposal](./REFACTOR_SEAD_SUBMISSION_METADATA.md) and [task plan](./REFACTOR_SEAD_SUBMISSION_METADATA_TASK_PLAN.md)
 - [Cutover and deployment workstream](./CUTOVER_AND_DEPLOYMENT/README.md)
 - [Shared-data review proposal](./SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT/SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT.md)
 - [Ingester authorization proposal](../INGESTER_AUTHORIZATION_TASKS/INGESTER_AUTHORIZATION_TASKS.md)
@@ -56,6 +55,7 @@ See the [closed MVP proposal](./done/CHANGE_REQUEST_INGESTER_MVP/SEAD_CHANGE_REQ
 - [Frontend workflow integration](./done/FRONTEND_UX_INTEGRATION_CR.md) and [issue record](./done/FRONTEND_UX_INTEGRATION_ISSUES.md)
 - [SIMS identity allocation contract](./done/SIMS_IDENTITY_ALLOCATION/SIMS_IDENTITY_ALLOCATION_CONTRACT.md) and [completed phase plan](./done/SIMS_IDENTITY_ALLOCATION/SIMS_IDENTITY_ALLOCATION_PHASE_PLAN.md)
 - [Provider-submission lifecycle archive](./done/DATA_PROVIDER_SUBMISSION_LIFECYCLE/README.md)
+- [Submission metadata proposal](./done/REFACTOR_SEAD_SUBMISSION_METADATA/REFACTOR_SEAD_SUBMISSION_METADATA.md) and [completed task plan](./done/REFACTOR_SEAD_SUBMISSION_METADATA/REFACTOR_SEAD_SUBMISSION_METADATA_TASK_PLAN.md)
 - [September 24, 2026 status assessment](./archive/STATUS_ASSESSMENT_2026-09-24.md), retained as a historical snapshot and superseded by this README
 
 ## Related References

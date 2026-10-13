@@ -3,7 +3,7 @@
 ## Phase Summary
 
 - Status: Proposed next phase; scope acceptance pending
-- Preceding phase: [Sead Change Request Submission Metadata](../CHANGE_REQUEST_INGESTER/REFACTOR_SEAD_SUBMISSION_METADATA_TASK_PLAN.md)
+- Preceding phase: [Sead Change Request Submission Metadata](../CHANGE_REQUEST_INGESTER/done/REFACTOR_SEAD_SUBMISSION_METADATA/REFACTOR_SEAD_SUBMISSION_METADATA_TASK_PLAN.md)
 - Candidate source: [Sead Change Request Next Delivery Candidates](../CHANGE_REQUEST_INGESTER/future/NEXT_DELIVERY_CANDIDATES.md)
 - Design diagrams: [Stronger Idempotency And Re-submission Design Diagrams](STRONGER_IDEMPOTENCY_AND_RESUBMISSION_TASK_DIAGRAMS.md)
 - Goal: make exact reruns and partially overlapping re-submissions produce deterministic outcomes without duplicate target rows or ambiguous change packages
