@@ -345,7 +345,32 @@ python -m src.target_model.conformance \
   --project data/projects/my_project/shapeshifter.yml
 ```
 
+## Change Request Ingester MVP Field Usage
+
+The SEAD Change Request Ingester uses selected target-model entity fields for identity planning, target projection, collision checks, and artifact generation. This table describes ingester behavior; other consumers, such as conformance validation and scaffold generation, may use fields differently.
+
+| Field(s)                                                        | Effect in Change Request Ingester MVP                                                                                                                                                  |
+|-----------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `identity_tracking`<br>`reconciliation`<br>`aggregate_parent`   | Drive identity planning and SIMS capability checks.                                                                                                                                    |
+| `role`                                                          | Supplies defaults when explicit identity settings are absent.                                                                                                                          |
+| `public_id_generation`<br>`target_table`<br>`public_id`         | Affect target ID reservation, key projection, collision checks, and emitted SQL.                                                                                                       |
+| `foreign_keys`                                                  | Affect FK projection and required-FK checks. The ingester does not directly read `via`; bridge entities are handled as their own entities.                                             |
+| `columns.required`<br>`columns.nullable`<br>`columns.generated` | Required and nullable settings affect target-row checks; `generated` controls omission of generated values from inserts. Column `type` and `description` are not used by the ingester. |
+| `unique_sets`                                                   | Support collision checks for derived/bridge rows.                                                                                                                                      |
+| Entity-level `required`                                         | Affects conformance, not ingester planning.                                                                                                                                            |
+| `description`<br>`domains`<br>`identity_columns`                | Have no direct ingester effect. `domains` can still affect generated project scaffolds.                                                                                                |
+
 ---
+
+## Reviewing the SEAD Superset Model
+
+This review supports ongoing refinement of `resources/target_models/sead_superset_model.yml` beyond the Change Request Ingester MVP. Review these areas only; record unrelated concerns separately.
+
+1. **Entity roles:** Check whether each `role` (`fact`, `lookup`, `classifier`, or `bridge`) matches the entity's business purpose and relationships. Recommend a role and explain why. In the ingester, role-derived defaults can affect identity planning when explicit identity settings are absent; explicit settings take precedence.
+2. **Dormant tables:** Establish whether each table is present in the target schema and whether current projects or import workflows use it. Do not treat absence from the MVP as proof that a table is obsolete. Recommend keeping it optional, making it a project requirement, or deferring/removing it, with the reason. An entity's `required: true` means conforming projects must include it; it does not describe database nullability.
+3. **Foreign-key requiredness:** For every `foreign_keys` entry, ask whether every conforming project must declare that relationship. Check the target and any `via` bridge path. Set `required: true` only for relationships expected in every conforming project; use `false` for valid project shapes that can omit the relationship. Conformance uses this to check the project declaration, not a database constraint. The ingester also checks required FK columns and projected row values.
+
+Record each recommendation with the entity/table, current setting, proposed setting, rationale or source, and any unresolved domain question. Mark uncertain facts as questions rather than inferring them from names. Treat recommendations as review input; do not change the model without recording the decision.
 
 ## Generating a Project Scaffold from a Target Model
 
