@@ -189,7 +189,7 @@ All criteria below are met except the three marked otherwise, which are recorded
 6. Redact errors and logs, neutralize spreadsheet formulas, and harden the UCanAccess installation.
 7. Run the complete regression and deployment verification checklist.
 
-Steps 1, 5, and 7 are owned elsewhere: containment and credential rotation in [DEPLOYMENT_VERIFICATION_HANDOFF.md](../../../done/CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md), ingester disposition in [INGESTER_AUTHORIZATION_TASKS.md](../../../CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md), and deployment verification in [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../../../done/CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md). The spreadsheet and UCanAccess items in step 6 are recorded as follow-ups in `SECURITY_CHECK.md`.
+Steps 1, 5, and 7 are owned elsewhere: containment and credential rotation in [DEPLOYMENT_VERIFICATION_HANDOFF.md](../../../done/CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md), ingester disposition in [INGESTER_AUTHORIZATION_TASKS.md](../../../INGESTER_AUTHORIZATION_TASKS/INGESTER_AUTHORIZATION_TASKS.md), and deployment verification in [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../../../done/CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md). The spreadsheet and UCanAccess items in step 6 are recorded as follow-ups in `SECURITY_CHECK.md`.
 
 ## Open Questions
 

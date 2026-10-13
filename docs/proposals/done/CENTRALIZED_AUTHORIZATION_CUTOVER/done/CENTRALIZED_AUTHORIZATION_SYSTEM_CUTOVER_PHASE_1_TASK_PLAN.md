@@ -8,7 +8,7 @@
 - **Goal:** Classify every registered route and background operation that production can reach, and make the route inventory the checked record of that classification.
 - **Readiness:** Validated
 - **Dependencies:** None. The phase plan records `Depends On: No prior phase` and `Readiness: Ready for a task plan`.
-- **Constraints:** Compare against the registered route set, not a hand-maintained list (phase handoff). Ingester capability authorization beyond classification is out of phase scope (phase non-goal) and stays with [INGESTER_AUTHORIZATION_TASKS.md](../../../CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md). Do not change authorization policy, grants, or project YAML.
+- **Constraints:** Compare against the registered route set, not a hand-maintained list (phase handoff). Ingester capability authorization beyond classification is out of phase scope (phase non-goal) and stays with [INGESTER_AUTHORIZATION_TASKS.md](../../../INGESTER_AUTHORIZATION_TASKS/INGESTER_AUTHORIZATION_TASKS.md). Do not change authorization policy, grants, or project YAML.
 
 **Acceptance Criteria**
 
@@ -33,7 +33,7 @@
 | `backend/app/main.py` | `/docs` mount when the docs directory exists; `/assets` mount and SPA catch-all only when `frontend/dist` exists; `/` root only when it does not | Documented rows are build-state conditional; the check must tolerate their absence |
 | `backend/app/api/v1/endpoints/{suggestions,reconciliation,execute,filters,whats_new,ingesters,help_docs}.py` | Handlers return registry metadata, service health or manifest data, filter schemas, release notes, or repository documentation | Classify `authenticated` |
 | `docs/AUTHORIZATION_ROUTE_INVENTORY.md` (`POST /api/v1/data-sources/tables`, `/tables/schema`) | Accepted precedent: client-supplied configuration introspection is authenticated-only with a recorded follow-up | Apply the same disposition to `POST /api/v1/suggestions/analyze` and `/suggestions/entity`, which accept client-supplied entities and an optional `data_source_name` |
-| `docs/AUTHORIZATION.md`; `docs/proposals/CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md` | "Ingester authorization remains proposed work"; that task plan is Not started and its Area 1 is ingester route classification | Record the ingester classification and the enforcement follow-up; add no ingester dependency in this phase |
+| `docs/AUTHORIZATION.md`; `docs/proposals/INGESTER_AUTHORIZATION_TASKS/INGESTER_AUTHORIZATION_TASKS.md` | "Ingester authorization remains proposed work"; that task plan is Not started and its Area 1 is ingester route classification | Record the ingester classification and the enforcement follow-up; add no ingester dependency in this phase |
 | `backend/app/services/project_service.py::assign_project_owner`, `backend/app/api/v1/endpoints/projects.py` (`POST /projects`, `POST /projects/{name}/copy`, `DELETE /projects/{name}`), `backend/app/api/v1/endpoints/data_sources.py` (`POST /data-sources`, `DELETE /data-sources/{filename}`) | Create and copy call `AuthorizationService.register_project`; delete and shared-source delete call `transition_resource` with failure rollback to `active`; shared-source create calls `register_shared_data_source` | Lifecycle coverage is present and should be recorded, not changed |
 | `backend/app/services/project_service.py` (≈line 593) and `backend/app/services/project/project_operations.py` (≈line 277) | Docstrings say "use rename_project() instead", but no rename method exists; `update_metadata` ignores `new_name` and treats the filename as the project name | No rename path needs a lifecycle check; the stale references mislead reviewers and should be corrected |
 | `backend/app/api/v1/endpoints/reconciliation.py::auto_reconcile_entity`; `backend/app/core/operation_manager.py::create_operation` | The only `create_operation` caller records `owner_principal_id` and `project_resource_id` before `asyncio.create_task`; `/operations/{operation_id}/*` uses `require_operation` | Background coverage is present and should be recorded |
@@ -52,7 +52,7 @@
 
 **Out of scope**
 
-- Ingester capability authorization (project, source, database, destination): owned by [INGESTER_AUTHORIZATION_TASKS.md](../../../CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md). This phase records the classification and the follow-up only.
+- Ingester capability authorization (project, source, database, destination): owned by [INGESTER_AUTHORIZATION_TASKS.md](../../../INGESTER_AUTHORIZATION_TASKS/INGESTER_AUTHORIZATION_TASKS.md). This phase records the classification and the follow-up only.
 - Deployment work: manifest preparation (Phase 2), readiness validation (Phase 3), enforcement cutover (Phase 4), Podman verification (Phase 5).
 - New authorization policy, roles, or actions; project YAML changes; frontend changes.
 - Adding a project rename feature.
@@ -82,7 +82,7 @@
 * [x] `T1.3` **Change:** Record the ingester route classification and its enforcement follow-up.
   * **Target:** [AUTHORIZATION_ROUTE_INVENTORY.md](../../../../AUTHORIZATION_ROUTE_INVENTORY.md) rows for `GET /api/v1/ingesters`, `POST /api/v1/ingesters/{key}/validate`, `POST /api/v1/ingesters/{key}/ingest`.
   * **Current → required:** All three read `UNDECLARED`. Required: `authenticated` for the metadata list, and `application:run_ingesters` with project, source, and destination authorization for validation and execution, marked as enforcement pending.
-  * **Implementation:** Record the required requirement from the design resource rules and add a note naming [INGESTER_AUTHORIZATION_TASKS.md](../../../CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md) as the owner of the enforcement work.
+  * **Implementation:** Record the required requirement from the design resource rules and add a note naming [INGESTER_AUTHORIZATION_TASKS.md](../../../INGESTER_AUTHORIZATION_TASKS/INGESTER_AUTHORIZATION_TASKS.md) as the owner of the enforcement work.
   * **Constraints:** Do not add ingester dependencies or change ingester behavior in this phase. Do not describe ingester authorization as implemented.
   * **Validation:** `V-5`.
 
