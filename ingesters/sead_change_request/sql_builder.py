@@ -61,6 +61,7 @@ class InlineInsertDeployStrategy:
                 else:
                     statements.append(_render_insert_statement(table_name, row, generated_columns))
 
+        statements = _add_sequence_synchronization(change_package, target_model, statements)
         deploy_sql_lines = ["BEGIN;", "SET CONSTRAINTS ALL DEFERRED;"]
         deploy_sql_lines.extend(statements)
         deploy_sql_lines.append("COMMIT;")
@@ -114,6 +115,7 @@ class CopyCsvDeployStrategy:
                 for _, row in package_table.frame.loc[update_mask].iterrows():
                     statements.append(_render_update_statement(table_name, row, entity_spec.public_id, package_table.mutable_fields))
 
+        statements = _add_sequence_synchronization(change_package, target_model, statements)
         deploy_sql_lines = ["BEGIN;", "SET CONSTRAINTS ALL DEFERRED;"]
         deploy_sql_lines.extend(statements)
         deploy_sql_lines.append("COMMIT;")
@@ -459,6 +461,70 @@ def _package_row_masks(package_table: ChangeRequestTable) -> tuple[pd.Series, pd
     return insert_mask, update_mask
 
 
+def _add_sequence_synchronization(
+    change_package: ChangeRequestPackage,
+    target_model: TargetModel,
+    data_statements: list[str],
+) -> list[str]:
+    """Lock and advance target sequences for tables receiving SIMS-assigned IDs."""
+    sequence_targets: set[tuple[str, str]] = set()
+    for entity_name, package_table in change_package.tables.items():
+        entity_spec = target_model.entities[entity_name]
+        if not entity_spec.synchronize_sequence_after_insert:
+            continue
+        insert_mask, _ = _package_row_masks(package_table)
+        if not bool(insert_mask.any()):
+            continue
+        if not entity_spec.target_table or not entity_spec.public_id:
+            raise ValueError(
+                f"Entity '{entity_name}' synchronizes a database sequence after insert "
+                "but is missing target_table or public_id metadata"
+            )
+        sequence_targets.add((entity_spec.target_table, entity_spec.public_id))
+
+    if not sequence_targets:
+        return data_statements
+
+    locks = [
+        f"LOCK TABLE {_quote_relation(table_name)} IN SHARE ROW EXCLUSIVE MODE;"
+        for table_name, _ in sorted(sequence_targets)
+    ]
+    synchronization = [
+        _render_sequence_synchronization(table_name, public_id)
+        for table_name, public_id in sorted(sequence_targets)
+    ]
+    return [*locks, *data_statements, *synchronization]
+
+
+def _render_sequence_synchronization(table_name: str, public_id: str) -> str:
+    """Advance a target sequence past the highest row ID after artifact inserts."""
+    table_literal = _quote_string(table_name)
+    column_literal = _quote_string(public_id)
+    return "\n".join(
+        [
+            "DO $shape_shifter_sequence_sync$",
+            "DECLARE",
+            f"    target_table regclass := {table_literal}::regclass;",
+            f"    target_column text := {column_literal};",
+            "    target_sequence text;",
+            "    sequence_value bigint;",
+            "    table_max_id bigint;",
+            "BEGIN",
+            "    target_sequence := pg_get_serial_sequence(target_table::text, target_column);",
+            "    IF target_sequence IS NULL THEN",
+            "        RAISE EXCEPTION 'No PostgreSQL sequence is associated with %.%', target_table, target_column;",
+            "    END IF;",
+            "    EXECUTE format('SELECT last_value FROM %s', target_sequence::regclass) INTO sequence_value;",
+            "    EXECUTE format('SELECT COALESCE(MAX(%I), 0) FROM %s', target_column, target_table) INTO table_max_id;",
+            "    IF sequence_value <= table_max_id THEN",
+            "        PERFORM setval(target_sequence::regclass, table_max_id, true);",
+            "    END IF;",
+            "END",
+            "$shape_shifter_sequence_sync$;",
+        ]
+    )
+
+
 def _is_update_row(package_table: ChangeRequestTable, row_index: object) -> bool:
     """Return True when one packaged row should be rendered as an UPDATE statement."""
     if package_table.planned_actions is None:
@@ -499,6 +565,11 @@ def _update_assignment_columns(row: pd.Series, public_id_column: str, mutable_fi
 def _quote_identifier(identifier: str) -> str:
     escaped = identifier.replace('"', '""')
     return f'"{escaped}"'
+
+
+def _quote_relation(relation_name: str) -> str:
+    """Quote each part of a possibly schema-qualified PostgreSQL relation name."""
+    return ".".join(_quote_identifier(part) for part in relation_name.split("."))
 
 
 def _render_literal(value: object) -> str:

@@ -179,6 +179,41 @@ class TargetModelSpecValidator:
                 )
             )
 
+        if entity_spec.synchronize_sequence_after_insert:
+            if not entity_spec.target_table or not entity_spec.public_id:
+                issues.append(
+                    SpecValidationIssue(
+                        code="SEQUENCE_SYNC_REQUIRES_TARGET_ID",
+                        message=(
+                            f"Entity '{entity_name}' synchronizes a database sequence after insert but must declare "
+                            "target_table and public_id"
+                        ),
+                        entity=entity_name,
+                    )
+                )
+            if identity_tracking != "tracked":
+                issues.append(
+                    SpecValidationIssue(
+                        code="SEQUENCE_SYNC_REQUIRES_TRACKED_IDENTITY",
+                        message=(
+                            f"Entity '{entity_name}' synchronizes a database sequence after insert but does not use "
+                            "tracked identity allocation"
+                        ),
+                        entity=entity_name,
+                    )
+                )
+            if entity_spec.public_id_generation == "database_sequence":
+                issues.append(
+                    SpecValidationIssue(
+                        code="CONFLICTING_PUBLIC_ID_SEQUENCE_RULES",
+                        message=(
+                            f"Entity '{entity_name}' cannot reserve IDs from a database sequence and synchronize "
+                            "that sequence after insert"
+                        ),
+                        entity=entity_name,
+                    )
+                )
+
         if identity_tracking == "child":
             if entity_spec.reconciliation is not None:
                 issues.append(

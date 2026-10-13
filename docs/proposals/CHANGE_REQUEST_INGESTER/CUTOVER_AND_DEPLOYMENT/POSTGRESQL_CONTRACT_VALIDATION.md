@@ -2,9 +2,9 @@
 
 ## Purpose
 
-Validate the submission-model schema, each historical `fn_migrate_submission_datasets` call, and generated submission artifacts against a disposable copy of the baseline database. This is the pre-deployment PostgreSQL gate for the [submission metadata task plan](../REFACTOR_SEAD_SUBMISSION_METADATA_TASK_PLAN.md); it does not define the SEAD release schedule.
+Validate the submission-model schema and historical `fn_migrate_submission_datasets` calls against a disposable legacy baseline, then validate current generated artifacts against a disposable copy of the supplied refactored snapshot. This records the pre-deployment PostgreSQL checks for the [completed submission metadata task plan](../done/REFACTOR_SEAD_SUBMISSION_METADATA/REFACTOR_SEAD_SUBMISSION_METADATA_TASK_PLAN.md); it does not define the SEAD release schedule.
 
-**Status:** Historical calls validated; current artifact generation blocked on the SIMS identity contract
+**Status:** Historical calls and current artifacts validated on disposable PostgreSQL databases
 
 ## Current State
 
@@ -13,31 +13,53 @@ Validate the submission-model schema, each historical `fn_migrate_submission_dat
 - The current DML verify script checks the date parser, but does not assert the individual migration calls or generated submission artifacts.
 - The DDL adds `data_provider_code`, but the legacy provider copy does not populate it. The artifact test needs a provider code set on the disposable database.
 - The six historical submission groups are confirmed as intended: MAL/provider 2, BugsCEP/provider 1, ceramics/provider 3, Dendrochronology pilot/provider 10, aDNA/provider 12, and Lund Living Trees/provider 10.
-- A compressed baseline dump is available at [tmp/sead_staging_baseline.sql.gz](../../../../tmp/sead_staging_baseline.sql.gz). It was created from `sead_staging` in plain SQL format with `--create` and `--clean`; gzip integrity passes. The dump contains definitions of the migration functions but not the new submission tables or `tbl_datasets.submission_id`. Confirm the restored table and column state before using it as the pre-DDL baseline.
+- A compressed baseline dump at `tmp/sead_staging_baseline.sql.gz` was used for the 2026-09-30 checks. It was created from `sead_staging` in plain SQL format with `--create` and `--clean`; gzip integrity passed at the time. The local dump is not stored in this repository. It contains definitions of the migration functions but not the new submission tables or `tbl_datasets.submission_id`. Confirm the restored table and column state before using a local copy as the pre-DDL baseline.
 - Setup gate 1 completed on 2026-09-30: the dump was restored into `ss_contract_20260930_101335` in the network-isolated container `ss-pg-ss-contract-20260930-101335`. The restored database has 6 dataset masters, 143452 legacy dataset submissions, and 59052 datasets. The new submission tables and `tbl_datasets.submission_id` are absent. The initial attempt with `postgres:16-alpine` stopped at the missing PostGIS extension; that disposable container was removed before restoring with `postgis/postgis:16-3.4`. No migration calls were run.
 - Setup gate 2 prepared `ss_contract_prepared_20260930_101335` from the restored baseline. The DDL and current DML function definitions load, six provider identities match the legacy masters, and there are no submissions, submission tasks, or linked datasets. Individual, combined, and artifact assertion scripts are available; no helper call or generated package has run. The verified baseline groups contain 2967, 13433, 11076, 27032, 10, and 4534 datasets (59052 total).
-- Setup gate 3 uses the in-memory `test-project` submission input in the two ingester tests below. Both strategies generated packages with the same new dataset and a reference-only existing dataset. Their rows were checked against the prepared database's required columns and IDs before executing the packages on separate clones.
+- Setup gate 3 used the in-memory `test-project` input. The 2026-09-30 test verified the then-current rows before package execution; the 2026-10-12 test uses a new dataset row with the required data type and explicit SIMS test-double IDs.
 - On 2026-09-30, the six calls passed separately on `ss_contract_group_{1..6}_run_20260930`, and all six passed together on `ss_contract_group_0_run_20260930`. Before and after assertions checked dataset assignments, task rows (including bibliography and event dates), contact rows, submission metadata, and migrated submission/task sequences. The combined run linked all 59052 datasets and created 103091 tasks and 40356 new contacts. The DML date-parser verify passed.
-- Provider code `SEAD` was assigned to provider 1 only on the disposable combined-run clone. The inline INSERT and copy-CSV packages each applied to their own `ss_contract_artifact_{inline,copy}_run_20260930` clone. Submission metadata, dataset-link, and strategy-parity checks passed; reference dataset 1 retained its historical submission link to submission 1. The full artifact after-check now rejects both packages on sequence safety.
-- **Post-package sequence check failed:** both packages explicitly insert submission ID 7 and dataset ID 91924 without advancing their sequences. On each artifact clone, the submission sequence is `6` with `is_called = true`; the dataset sequence is `91924` with `is_called = false`. The next default-generated submission or dataset ID would collide. The strengthened assertion fails on each original clone and passes on `ss_contract_artifact_sequence_control_20260930` after advancing its sequences manually. That control proves the check works, not that the packages are fixed. Keep the original disposable databases for investigation.
-- A temporary generated-ID implementation passed the full artifact after-check on `ss_contract_artifact_serial_{inline,copy}_20260930`, including sequence safety and dependent child references. That implementation was rolled back because it bypassed SIMS for submission and dataset rows and hard-coded entity names. These clones record a past experiment, not a passing result for current artifacts. The original fixed-ID clones still fail the sequence check.
+- Provider code `SEAD` was assigned to provider 1 only on the disposable combined-run clone. The 2026-09-30 inline and copy-CSV packages passed the metadata and dataset-link checks on separate clones, but failed the then-current sequence-safety assertion.
+- **2026-09-30 sequence check (historical implementation):** the then-current packages explicitly inserted submission ID 7 and dataset ID 91924 without advancing their sequences. The assertion failed on those artifact clones and passed on a control clone after manual sequence advancement. The current generator now locks and advances opted-in target sequences after inserting SIMS-assigned IDs; see the passing 2026-10-12 validation below.
+- A temporary generated-ID implementation passed the full artifact after-check on `ss_contract_artifact_serial_{inline,copy}_20260930`, including sequence safety and dependent child references. That implementation was rolled back because it bypassed SIMS for submission and dataset rows and hard-coded entity names. These clones record a past experiment, not a passing result for current artifacts. The original fixed-ID clones from 2026-09-30 still fail the then-current sequence check.
+
+## Additional Validation: Refactored Snapshot (2026-10-12)
+
+The user-provided `tmp/sead_backup.tar.gz` was restored into the rootless Podman container `ss-pg-submission-contract-20261012-v2`, using `docker.io/postgis/postgis:18-3.6`, `--network none`, and no published ports. The backup is 108,409,956 bytes of plain PostgreSQL 18.6 SQL, not a gzip or tar archive; its SHA-256 is `b79c07e6d135ad6054d69435c34e3ea65ce20caf397562b7353f99c189c33765`.
+
+The restore filtered the dump's `DROP DATABASE sead_staging`, `CREATE DATABASE sead_staging`, `\connect sead_staging`, and `CREATE SCHEMA public` commands. It created the `postgis` and `uuid-ossp` extensions inside the disposable database and emptied the extension-provided `spatial_ref_sys` rows before restoring the dump data. The refactored schema was already present, so this run did not reapply DDL or execute historical migration calls.
+
+The restored database `ss_submission_contract_20261012_v2` contains 59,052 datasets and the submission tables. It has zero data providers, submissions, submission tasks, or datasets linked to a submission. Dataset ID 501 already exists and the maximum dataset ID is 91923. Before package execution, the submission sequence was `(last_value=1, is_called=false)` and the dataset sequence was `(last_value=91924, is_called=false)`. Data type 8 (`Continuous`) is present.
+
+The focused package-generation command passed both tests:
+
+```bash
+.venv/bin/pytest backend/tests/ingesters/test_sead_change_request_ingester.py -q \
+  -k 'test_ingest_emits_submission_and_links_new_dataset or test_ingest_copy_csv_emits_submission_and_dataset_payloads' \
+  --basetemp=tmp/contract_postgres_20261012_v2
+```
+
+The fixture supplies `data_type_id = 8` and distinct IDs from a SIMS test double configured to match the snapshot's sequence high-water marks: submission 1 and dataset 91924. Provider 51 with code `SEAD` was inserted only into each disposable artifact clone. The test double models SIMS allocation; the test does not call a live Authority Service.
+
+The inline INSERT artifact ran on `ss_submission_inline_20261012_v2`; copy-CSV ran on `ss_submission_copy_20261012_v2`. Both passed `tests/integration/submission_artifact_contract.sql`, which verified one Pending submission, native UUID storage, provider linkage, null `submission_date`, dataset type 8, the dataset-to-submission link, and unchanged existing dataset links. Both strategies produced the same dataset and submission metadata.
+
+After each package, the submission sequence was `(last_value=1, is_called=true)` and the dataset sequence was `(last_value=91924, is_called=true)`. A subsequent `nextval` returned submission 2 and dataset 91925. The artifact renderer locks each opted-in table during inserts, then advances its PostgreSQL sequence past the rows present in that table.
 
 ## Key References
 
-- [Task plan](../REFACTOR_SEAD_SUBMISSION_METADATA_TASK_PLAN.md)
+- [Completed task plan](../done/REFACTOR_SEAD_SUBMISSION_METADATA/REFACTOR_SEAD_SUBMISSION_METADATA_TASK_PLAN.md)
 - [Submission-model DDL](../../../../../sead_change_control/sead_model/deploy/20260830_DDL_SUBMISSION_MODEL_REFACTOR.sql)
 - [Submission-model DML](../../../../../sead_change_control/sead_model/deploy/20260830_DML_SUBMISSION_MODEL_MIGRATE.sql)
 - [DML verification script](../../../../../sead_change_control/sead_model/verify/20260830_DML_SUBMISSION_MODEL_MIGRATE.sql)
 
 ## Next Actions
 
-**Setup gate (complete before running the validation calls)**
+**Completed checks**
 
 1. Completed: inspect and run the isolated baseline restore procedure below. Keep the source and shared servers out of the container workflow.
-2. Completed: cloned the disposable migration template for each group and the combined run, then passed the [historical-call assertions](../../../../tests/integration/submission_model_contract.sql) before and after each execution. The [artifact assertions](../../../../tests/integration/submission_artifact_contract.sql) fail on current fixed-ID packages at the sequence check.
-3. Blocked: define how SIMS tracking and target integer IDs interact before repeating artifact validation. The prior generated-ID packages used a rolled-back implementation.
+2. Completed: cloned the disposable migration template for each historical group and the combined run, then passed the [historical-call assertions](../../../../tests/integration/submission_model_contract.sql). The current inline and copy-CSV artifacts also pass the [artifact assertions](../../../../tests/integration/submission_artifact_contract.sql) on separate clones.
+3. Completed: SIMS mints submission and dataset IDs. Artifact generation keeps those IDs and advances the matching PostgreSQL sequences after insert; the 2026-10-12 checks verified the next sequence values.
 
-Current fixed-ID packages fail the sequence check. Do not deploy them as a solution to this contract gap.
+The 2026-09-30 package failure is historical. The current packages passed the sequence check against the supplied refactored snapshot.
 
 **Execution results (2026-09-30)**
 
@@ -178,7 +200,7 @@ podman exec -i "$container" psql -X -v ON_ERROR_STOP=1 -v after=1 \
 
 **Setup gate 3: representative artifact input**
 
-The runnable project context is `test-project` in the submission/dataset tests in [the ingester test file](../../../../backend/tests/ingesters/test_sead_change_request_ingester.py). The `submission.xlsx` argument names an in-memory normalized input supplied through `IngesterConfig.extra["tables"]`; no workbook or on-disk project YAML is required. These tests use a fake SIMS client and do not validate target-ID allocation against the live service. Regenerate both strategy bundles for inspection only; do not deploy them while the identity contract is unresolved:
+The runnable project context is `test-project` in the submission/dataset tests in [the ingester test file](../../../../backend/tests/ingesters/test_sead_change_request_ingester.py). The `submission.xlsx` argument names an in-memory normalized input supplied through `IngesterConfig.extra["tables"]`; no workbook or on-disk project YAML is required. The PostgreSQL contract test uses a SIMS test double with submission ID 1 and dataset ID 91924, chosen to match the restored snapshot's allocator starting points. It validates artifact and sequence behavior, not the live Authority Service allocation request. Regenerate the two bundles with:
 
 ```bash
 .venv/bin/pytest backend/tests/ingesters/test_sead_change_request_ingester.py -q \
@@ -186,13 +208,13 @@ The runnable project context is `test-project` in the submission/dataset tests i
    --basetemp=tmp/contract_serial_ids
 ```
 
-Both bundles are under their respective `tmp/contract_serial_ids/test_ingest_*0/20260523_DML_mal_TEST_SUBMISSION/deploy/` directories. The current packages explicitly insert IDs; the copy-CSV strategy emits sidecars. Regeneration replaces these temporary bundles and changes the generated UUID. Do not run these packages against shared or production databases.
+Both bundles are under their respective `tmp/contract_serial_ids/test_ingest_*0/20260523_DML_mal_TEST_SUBMISSION/deploy/` directories. Both strategies explicitly insert SIMS-assigned IDs; copy-CSV also emits sidecars. Regeneration replaces the temporary bundles and changes the generated UUID. Run packages only on separate disposable database clones.
 
 | Input | Baseline / expected package result |
 |---|---|
-| Provider | `data_provider_code = 'SEAD'` resolves to `data_provider_id = 1` (Bugs database). The prepared database has provider 1 with a null code. After the combined migration calls, set `SEAD` on provider 1 **only on the disposable combined-run database**, then clone it for each artifact strategy. Do not change the source or shared database. |
-| Submission | Pending state `1`, name `test-submission`, identifier `TEST_SUBMISSION`, issue `NNN`, author `SEAD Expert`, source `test-project`, data types `mal`, upload date `2026-05-23`, null submission date, and a generated UUID. The rolled-back package test used ID `7`; the current fake SIMS client supplies a fixed test ID. |
-| New dataset | Name `Pilot dataset`, linked to the submission ID. The rolled-back package test used `data_type_id = 8` and database-assigned ID `91924`; current test fixtures do not supply a production target ID. |
+| Provider | For the 2026-09-30 historical clone, provider 1 has code `SEAD`. For the 2026-10-12 refactored snapshot, provider 51 with code `SEAD` was inserted only into each artifact clone. |
+| Submission | SIMS test double ID 1; Pending state `1`, name `test-submission`, identifier `TEST_SUBMISSION`, issue `NNN`, author `SEAD Expert`, source `test-project`, data types `mal`, upload date `2026-05-23`, null submission date, and native UUID. |
+| New dataset | SIMS test double ID 91924; name `Pilot dataset`, `data_type_id = 8` (`Continuous`), linked to submission 1. The artifact advances the dataset sequence to 91924 with `is_called = true`. |
 | Reference-only dataset | No reference-only dataset is present in the current submission/dataset test fixtures. |
 
 After the six calls have passed on the combined-run clone, set the provider code there before making the two artifact clones:
@@ -204,9 +226,11 @@ WHERE data_provider_id = 1 AND data_provider_code IS NULL;
 -- Require one updated row and confirm no other provider has code SEAD.
 ```
 
-The old artifact after-check inputs (`provider_code=SEAD`, `submission_name=test-submission`, `identifier=TEST_SUBMISSION`, `issue_identifier=NNN`, `author=SEAD Expert`, `source_name=test-project`, `data_types=mal`, `upload_date=2026-05-23`, `new_dataset_ids='{91924}'`) apply to the rolled-back test fixture only. Update the fixture and validation parameters after the SIMS identity contract is decided. The full after-check does not pass for current fixed-ID packages.
+The after-check inputs for the 2026-10-12 refactored snapshot were `provider_code=SEAD`, `submission_name=test-submission`, `identifier=TEST_SUBMISSION`, `issue_identifier=NNN`, `author=SEAD Expert`, `source_name=test-project`, `data_types=mal`, `upload_date=2026-05-23`, and `new_dataset_ids='{91924}'`. Both current package strategies passed with these values.
 
-**Execution**
+**Recorded procedure for the 2026-09-30 legacy-baseline checks**
+
+The following steps document the legacy-baseline migration and artifact procedure used on 2026-09-30. They are retained for repeat runs; they are complete and are separate from the 2026-10-12 artifact validation against the refactored snapshot recorded above.
 
 1. Record the baseline dump identifier as `sead_staging_baseline.sql.gz`, the source database as `sead_staging`, and the snapshot's schema state. Read connection settings locally from `tests/.env`; keep passwords in `.pgpass`. Do not copy credentials into commands, logs, or this handoff.
 2. Use the checked restore procedure to load the baseline into the disposable database in the network-isolated container. Never run the unmodified dump against the shared or source server.
@@ -243,4 +267,4 @@ The old artifact after-check inputs (`provider_code=SEAD`, `submission_name=test
 
 ## Suggested Follow-Up Documents
 
-- Record the database baseline, per-call and combined-run results, artifact assertions, and any deviations in the task plan's Progress Tracker and Deliverables sections. Mark the acceptance criterion complete only after the individual calls, combined behavior, and both artifact strategies pass.
+- No document remains for this validation. If the upstream schema or ID-allocation contract changes, record a new disposable-database run and update the task plan and this handoff with its results.
