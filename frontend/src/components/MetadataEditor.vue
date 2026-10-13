@@ -66,9 +66,11 @@
         <v-combobox
           v-model="formData.target_model"
           :items="targetModelItems"
+          item-title="label"
+          item-value="value"
           :loading="yamlFilesLoading"
           label="Target Model"
-          hint="YAML file declaring the target model (e.g. @load: target_model.yml). Select a file or type an @load: path."
+          hint="Select a project-local or shared YAML target model, or type an @load: path. Shared models are read-only."
           persistent-hint
           variant="outlined"
           density="comfortable"
@@ -118,7 +120,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useProjectStore } from '@/stores/project'
 import { storeToRefs } from 'pinia'
 import { projectsApi } from '@/api/projects'
-import type { MetadataUpdateRequest } from '@/api/projects'
+import type { MetadataUpdateRequest, TargetModelFileOption } from '@/api/projects'
 
 const props = defineProps<{
   projectName: string
@@ -132,24 +134,22 @@ const saving = ref(false)
 const error = ref<string | null>(null)
 const successMessage = ref<string | null>(null)
 
-// YAML file list for target model picker
-const yamlFiles = ref<string[]>([])
+// YAML files available to the target model picker
+const targetModelFiles = ref<TargetModelFileOption[]>([])
 const yamlFilesLoading = ref(false)
 
-async function loadYamlFiles() {
+async function loadTargetModelFiles() {
   yamlFilesLoading.value = true
   try {
-    const files = await projectsApi.listFiles(props.projectName, ['yml', 'yaml'])
-    yamlFiles.value = files.map((f) => f.name)
+    targetModelFiles.value = await projectsApi.listTargetModels(props.projectName)
   } catch {
-    yamlFiles.value = []
+    targetModelFiles.value = []
   } finally {
     yamlFilesLoading.value = false
   }
 }
 
-// Build combobox items: format each YAML file as an @load: path
-const targetModelItems = computed(() => yamlFiles.value.map((name) => `@load: ${name}`))
+const targetModelItems = computed(() => targetModelFiles.value)
 
 // Form data
 const formData = ref<{
@@ -274,6 +274,6 @@ watch(
 
 onMounted(() => {
   loadMetadata()
-  loadYamlFiles()
+  loadTargetModelFiles()
 })
 </script>
