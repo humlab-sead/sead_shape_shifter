@@ -19,7 +19,7 @@ Implemented in this PR:
 
 Follow-up delivered separately:
 
-- Stable `sead_change_request` submission defaults are persisted in project metadata by [the submission metadata proposal](../REFACTOR_SEAD_SUBMISSION_METADATA.md). PostgreSQL contract validation remains pending there.
+- Stable `sead_change_request` submission defaults are persisted in project metadata by [the completed submission metadata proposal](./REFACTOR_SEAD_SUBMISSION_METADATA/REFACTOR_SEAD_SUBMISSION_METADATA.md). Its package contract also passed disposable PostgreSQL validation.
 
 ## Summary
 
@@ -124,7 +124,7 @@ On success, the UI should show the operator enough information to understand wha
 
 ## Follow-Up Delivered
 
-The separate submission metadata proposal implemented project-scoped defaults under the ingester-specific project configuration. Its remaining PostgreSQL contract validation is tracked in that proposal's task plan.
+The separate submission metadata proposal implemented project-scoped defaults under the ingester-specific project configuration. Its task plan records passing PostgreSQL contract checks for both package strategies; upstream schema deployment and legacy compatibility remain release dependencies.
 
 ## Validation And Acceptance Criteria
 

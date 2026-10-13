@@ -42,6 +42,13 @@ class EntitySpec(BaseModel):
             "Use only when identity_tracking is explicitly set to a non-tracked value."
         ),
     )
+    synchronize_sequence_after_insert: bool = Field(
+        default=False,
+        description=(
+            "Advance the target column's PostgreSQL sequence after inserting rows with SIMS-assigned IDs, "
+            "so later default-generated IDs do not reuse them."
+        ),
+    )
     identity_columns: list[str] = Field(default_factory=list)
     columns: dict[str, ColumnSpec] = Field(default_factory=dict)
     unique_sets: list[list[str]] = Field(default_factory=list)

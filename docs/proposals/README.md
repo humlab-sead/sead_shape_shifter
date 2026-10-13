@@ -25,7 +25,7 @@ This index covers proposals and initiative records that need attention or provid
 |---|---|---|
 | BugsCEP pilot | Pilot draft implemented and validated on the current branch; importer migration continues. | [Pilot status and next work](BUGSCEP_PILOT_PROJECT.md) |
 | SEAD Change Request Ingester | MVP Delivery is closed; candidate next-delivery capabilities remain undecided. | [Initiative overview and current documents](CHANGE_REQUEST_INGESTER/README.md) |
-| Submission metadata | Repository implementation complete; upstream PostgreSQL validation remains pending. | [Submission metadata proposal](CHANGE_REQUEST_INGESTER/REFACTOR_SEAD_SUBMISSION_METADATA.md) |
+| Submission metadata | Complete; both package strategies passed disposable PostgreSQL validation. Upstream deployment and compatibility remain release dependencies. | [Completed submission metadata work](CHANGE_REQUEST_INGESTER/done/REFACTOR_SEAD_SUBMISSION_METADATA/REFACTOR_SEAD_SUBMISSION_METADATA.md) |
 
 ## Future Proposals
 

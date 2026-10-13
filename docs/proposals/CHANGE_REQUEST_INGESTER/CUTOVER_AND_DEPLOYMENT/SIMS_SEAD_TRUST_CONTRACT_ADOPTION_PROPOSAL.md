@@ -66,7 +66,7 @@ Use SEAD Change Control for writer and schema changes. Include any Sqitch change
 
 Confirm that the submission schema, required legacy migration, and any required compatibility behavior are deployed before generated packages become eligible. The upstream release and compatibility-view owner remain to be confirmed.
 
-The [PostgreSQL contract validation handoff](./POSTGRESQL_CONTRACT_VALIDATION.md) records a current blocker: disposable tests found that both generated artifact strategies explicitly insert submission and dataset IDs without advancing their database sequences. The next default-generated IDs can therefore collide. Do not deploy those test packages. Resolve the identity and sequence contract, then verify sequence safety for both strategies against disposable database clones.
+The [PostgreSQL contract validation handoff](./POSTGRESQL_CONTRACT_VALIDATION.md) records passing inline INSERT and copy-CSV checks on separate disposable clones, including sequence advancement after SIMS-assigned submission and dataset IDs. These checks used a SIMS test double; they do not verify live Authority Service allocation or complete the broader production cutover gates.
 
 Define deployment and package-supersession gates in the operational delivery plan. A regenerated package must not become eligible until its earlier package for the same logical submission has been withdrawn or superseded. SIMS Binding Set state remains audit state and does not revoke generated SQL.
 

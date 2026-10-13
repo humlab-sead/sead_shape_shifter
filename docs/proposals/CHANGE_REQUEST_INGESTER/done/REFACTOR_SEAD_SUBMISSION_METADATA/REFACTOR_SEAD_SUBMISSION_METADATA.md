@@ -2,7 +2,10 @@
 
 ## Status
 
-- Repository implementation complete; upstream PostgreSQL validation pending
+- Status: Complete
+- Repository implementation and disposable PostgreSQL artifact validation complete
+- SIMS remains the sole ID minter for submissions and datasets; generated artifacts synchronize the corresponding PostgreSQL sequences after inserting those IDs
+- Upstream schema deployment and legacy compatibility remain release dependencies
 - Scope: `sead_change_request` submission metadata — persisted defaults plus SEAD submission storage
 - Task plan: [REFACTOR_SEAD_SUBMISSION_METADATA_TASK_PLAN.md](REFACTOR_SEAD_SUBMISSION_METADATA_TASK_PLAN.md)
 - Goal: persist stable submission metadata and map each change request into the initial upstream SEAD submission model
@@ -56,6 +59,7 @@ This proposal covers:
 - Project YAML preserves `metadata.data_provider_code` and `options.ingesters.sead_change_request.defaults` for `datatype`, `deploy_strategy`, and `author`.
 - The frontend applies persisted defaults once when the project and ingester are opened. Operators can still override them for a run.
 - The ingester resolves an existing provider by `data_provider_code`, creates one Pending submission row, and links each new dataset to that submission.
+- SIMS mints the submission and dataset IDs. Generated artifacts insert those IDs and synchronize each corresponding PostgreSQL sequence after insertion.
 - Provider and submission-state rows are references only. The change package does not insert or allocate them.
 - Both inline INSERT and copy-CSV output include submission and linked dataset rows. They do not emit submission tasks.
 - The bundled minimal, standard, and superset target models include providers, submissions, submission states, submission tasks, and submission task types, and retain legacy master-dataset entities for compatibility.
@@ -70,7 +74,7 @@ The initial upstream database redesign introduces:
 - `tbl_datasets.submission_id`, linking each dataset to its submission
 - `tbl_dataset_contacts.event_date`, preserving dates for legacy task types 10 and 11
 
-Deployment of this upstream DDL and legacy compatibility remain outside this repository; track their release prerequisites in the [cutover and deployment workstream](./CUTOVER_AND_DEPLOYMENT/README.md).
+Deployment of this upstream DDL and legacy compatibility remain outside this repository; track their release prerequisites in the [cutover and deployment workstream](../../CUTOVER_AND_DEPLOYMENT/README.md).
 
 Legacy submission types 10 (`Samples collected`) and 11 (`Samples analysed`) do not become submission tasks. The redesign migrates them to `tbl_dataset_contacts` with contact types 4 and 2 respectively.
 
@@ -154,6 +158,10 @@ The redesign replaces the contact-type interpretation of a provider with a dedic
 
 The emitted submission row uses the resolved `data_provider_id`. Each dataset emitted in the same change package uses the submission's local `submission_id` through the new `tbl_datasets.submission_id` foreign key. This models one provider per submission and one submission per dataset, as proposed by the redesign.
 
+SIMS is the sole ID minter for the submission and new datasets. The package inserts the IDs returned by SIMS. For these tracked entities, generated SQL locks the affected table before insertion and advances its PostgreSQL sequence after insertion, so later sequence-generated IDs do not reuse the SIMS-assigned IDs.
+
+PostgreSQL sequence updates are not rolled back with a failed package transaction, so a retry can leave gaps. The sequence update does not change the IDs assigned by SIMS.
+
 ## Alternatives Considered
 
 - Keep metadata transient and only add defaults. This closes the drift gap but leaves submission identity and ownership unrepresented in the stored result, so the second gap remains open.
@@ -181,7 +189,8 @@ The emitted submission row uses the resolved `data_provider_id`. Each dataset em
 - The focused frontend component test covers persisted defaults, provider handoff, and per-run request construction.
 - Inline INSERT and copy-CSV integration tests verify submission and dataset output and confirm that provider, state, and task rows are not emitted.
 - Target-model tests verify the optional task entities, nullable task bibliography and event date, and dated dataset-contact identity.
-- Database execution remains required against a disposable PostgreSQL database containing the revised upstream DDL.
+- Focused backend and frontend checks passed, including the ingester regression suite, target-model tests, the defaults component test, and the frontend build.
+- On 2026-10-12, inline INSERT and copy-CSV artifacts passed contract checks on separate disposable clones of the supplied refactored PostgreSQL snapshot. The fixture supplied required `data_type_id` and used a SIMS test double with IDs matching the snapshot sequence high-water marks. The checks confirmed that later PostgreSQL sequence values did not collide. They did not call a live Authority Service. Full restore details and results are in the [PostgreSQL validation handoff](../../CUTOVER_AND_DEPLOYMENT/POSTGRESQL_CONTRACT_VALIDATION.md).
 
 ## Acceptance Criteria
 
@@ -189,6 +198,7 @@ The emitted submission row uses the resolved `data_provider_id`. Each dataset em
 - The frontend honors persisted defaults on form open, and per-run overrides are preserved.
 - Every ingester metadata field is mapped to a named column or explicitly documented as change-package-only metadata.
 - The change package emits one `tbl_submissions` row with a resolved `data_provider_id`, generated UUID, and agreed initial state.
+- SIMS mints the submission and dataset IDs, and generated artifacts advance their PostgreSQL sequences after insertion.
 - Every delivered dataset references that submission through `tbl_datasets.submission_id`.
 - The ingester does not depend on legacy `tbl_dataset_submissions` or treat task types 10 and 11 as submission tasks.
 - Maintained target models represent submission tasks and dated dataset contacts without requiring the ingester to emit task rows.
@@ -197,11 +207,9 @@ The emitted submission row uses the resolved `data_provider_id`. Each dataset em
 
 ## Recommended Delivery Order
 
-1. Complete the focused and broader repository checks.
-2. Apply the revised upstream DDL to a disposable SEAD PostgreSQL database.
-3. Execute inline INSERT and copy-CSV artifacts against that database.
-4. Resolve any contract differences found by database execution.
-5. Deploy the accepted upstream migration and document operational compatibility requirements.
+1. Complete focused and broader repository checks and record the results — complete in the task plan.
+2. Validate both artifact strategies against a disposable PostgreSQL database with the refactored schema — complete in the PostgreSQL validation handoff.
+3. Deploy the accepted upstream migration and document operational compatibility requirements.
 
 ## Open Questions
 
@@ -210,6 +218,6 @@ The emitted submission row uses the resolved `data_provider_id`. Each dataset em
 
 ## Final Recommendation
 
-Proceed with the implemented project-metadata option and narrow defaults field set (`datatype`, `deploy_strategy`, `author`). Use `metadata.data_provider_code` for lookup-only provider resolution. Emit one Pending submission per run and link each new dataset to it.
+Proceed with the implemented project-metadata option and narrow defaults field set (`datatype`, `deploy_strategy`, `author`). Use `metadata.data_provider_code` for lookup-only provider resolution. Keep SIMS as the sole minter for submission and dataset IDs, emit one Pending submission per run, and link each new dataset to it. Generated artifacts synchronize PostgreSQL sequences after inserting the SIMS-assigned IDs.
 
-Keep database migration and legacy compatibility work in the upstream handoff. Before deployment, execute both artifact strategies against a disposable database containing the revised upstream DDL and resolve any differences found there.
+Keep database migration and legacy compatibility work in the upstream handoff. Both artifact strategies passed against the supplied refactored schema snapshot; upstream release timing and compatibility views remain open.

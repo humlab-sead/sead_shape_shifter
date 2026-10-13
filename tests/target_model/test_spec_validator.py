@@ -273,6 +273,46 @@ def test_validator_requires_database_sequences_to_use_explicit_non_tracked_ident
     ]
 
 
+def test_validator_requires_sims_sequence_sync_to_have_a_tracked_target_id() -> None:
+    target_model = TargetModel.model_validate(
+        {
+            "model": {"name": "SEAD Clearinghouse", "version": "2.0.0"},
+            "entities": {
+                "valid": {
+                    "role": "fact",
+                    "identity_tracking": "tracked",
+                    "reconciliation": "allocate",
+                    "target_table": "tbl_valid",
+                    "public_id": "valid_id",
+                    "synchronize_sequence_after_insert": True,
+                },
+                "missing_target": {
+                    "role": "fact",
+                    "identity_tracking": "tracked",
+                    "reconciliation": "allocate",
+                    "public_id": "missing_target_id",
+                    "synchronize_sequence_after_insert": True,
+                },
+                "untracked": {
+                    "role": "lookup",
+                    "identity_tracking": "reconciled",
+                    "reconciliation": "reconcile-exact",
+                    "target_table": "tbl_untracked",
+                    "public_id": "untracked_id",
+                    "synchronize_sequence_after_insert": True,
+                },
+            },
+        }
+    )
+
+    issues = TargetModelSpecValidator().validate(target_model)
+
+    assert [(issue.code, issue.entity) for issue in issues] == [
+        ("SEQUENCE_SYNC_REQUIRES_TARGET_ID", "missing_target"),
+        ("SEQUENCE_SYNC_REQUIRES_TRACKED_IDENTITY", "untracked"),
+    ]
+
+
 def test_validator_reports_invalid_allowed_values_usage() -> None:
     target_model = TargetModel.model_validate(
         {

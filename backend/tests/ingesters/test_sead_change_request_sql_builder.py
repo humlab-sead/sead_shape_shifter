@@ -462,6 +462,46 @@ class TestBuildDeployArtifact:
         assert artifact.metadata_artifact["deploy_statement_count"] == 1
         assert artifact.metadata_artifact["contract_version"] == 1
 
+    def test_syncs_postgresql_sequence_after_inserting_sims_assigned_id(self):
+        """Deploy SQL should keep a target sequence above explicit SIMS IDs."""
+        package = ChangeRequestPackage(
+            tables={
+                "submission": ChangeRequestTable(
+                    name="submission",
+                    frame=pd.DataFrame({"submission_id": [7], "submission_name": ["Submission A"]}),
+                    row_states=pd.Series([ChangeRowState.NEWLY_ALLOCATED_ENTITY], index=[0], name="_row_state"),
+                )
+            }
+        )
+        target_model = minimal_target_model(
+            submission={
+                "role": "fact",
+                "identity_tracking": "tracked",
+                "reconciliation": "allocate",
+                "public_id": "submission_id",
+                "target_table": "tbl_submissions",
+                "synchronize_sequence_after_insert": True,
+            }
+        )
+        submission_context = SubmissionContext(
+            submission_name="test-submission",
+            project_name="test-project",
+            timestamp=datetime(2026, 5, 23, 23, 0, 0),
+            datatype="mal",
+            identifier="TEST_SUBMISSION",
+        )
+
+        artifact = build_deploy_artifact(package, target_model, submission_context)
+
+        assert artifact.statements[0] == 'LOCK TABLE "tbl_submissions" IN SHARE ROW EXCLUSIVE MODE;'
+        assert artifact.statements[1] == 'INSERT INTO "tbl_submissions" ("submission_id", "submission_name") VALUES (7, \'Submission A\');'
+        sequence_sync = artifact.statements[2]
+        assert "pg_get_serial_sequence(target_table::text, target_column)" in sequence_sync
+        assert "setval(target_sequence::regclass, table_max_id, true)" in sequence_sync
+        assert "SELECT COALESCE(MAX(%I), 0)" in sequence_sync
+        assert artifact.deploy_sql.index("LOCK TABLE") < artifact.deploy_sql.index("INSERT INTO")
+        assert artifact.deploy_sql.index("INSERT INTO") < artifact.deploy_sql.index("pg_get_serial_sequence")
+
     def test_uses_entity_name_when_target_table_missing(self):
         """Deploy SQL should fall back to the entity name when target_table is not declared."""
         frame = pd.DataFrame({"site_id": [501]})

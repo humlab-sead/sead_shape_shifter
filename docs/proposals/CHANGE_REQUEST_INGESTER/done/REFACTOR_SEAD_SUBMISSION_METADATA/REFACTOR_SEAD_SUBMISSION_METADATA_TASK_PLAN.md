@@ -2,9 +2,9 @@
 
 ## Phase Summary
 
-- Status: In progress
+- Status: Complete
 - Proposal: [REFACTOR_SEAD_SUBMISSION_METADATA.md](REFACTOR_SEAD_SUBMISSION_METADATA.md)
-- Upstream schema baseline: [20260830_DDL_SUBMISSION_MODEL_REFACTOR.sql](../../../../sead_change_control/sead_model/deploy/20260830_DDL_SUBMISSION_MODEL_REFACTOR.sql)
+- Upstream schema baseline: [20260830_DDL_SUBMISSION_MODEL_REFACTOR.sql](../../../../../../sead_change_control/sead_model/deploy/20260830_DDL_SUBMISSION_MODEL_REFACTOR.sql)
 - Goal: persist stable change-request defaults and emit one SEAD submission that groups every new dataset delivered by the run
 
 **Acceptance Criteria**
@@ -15,7 +15,7 @@
 - [x] The bundled target models represent submission tasks, task types, task bibliography, and dated dataset contacts.
 - [x] The ingester resolves an existing provider, emits one Pending submission, and links new datasets to it.
 - [x] Both deploy strategies are covered by focused integration tests.
-- [ ] The upstream PostgreSQL contract is validated against a disposable migrated database ([validation handoff](CUTOVER_AND_DEPLOYMENT/POSTGRESQL_CONTRACT_VALIDATION.md)).
+- [x] The upstream PostgreSQL contract is validated against disposable clones of the refactored database snapshot.
 - [x] The proposal describes the implemented contract and remaining upstream work.
 
 ## Work Breakdown
@@ -108,12 +108,20 @@ Confirm generated artifacts execute against the initial upstream schema and clos
 - [x] Run focused mapper, frontend, target-model, derived-table, projection, and inline SQL tests.
 - [x] Run the complete relevant backend and frontend regression checks and record unrelated failures.
 - [x] Apply the upstream DDL to a disposable PostgreSQL database.
-- [ ] Execute current inline INSERT and copy-CSV artifacts on separate disposable clones without sequence collisions.
-- [ ] Verify one Pending submission, native UUID storage, provider linkage, null `submission_date`, and dataset links with current artifacts.
+- [x] Execute current inline INSERT and copy-CSV artifacts on separate disposable clones without sequence collisions.
+- [x] Verify one Pending submission, native UUID storage, provider linkage, null `submission_date`, and dataset links with current artifacts.
 - [x] Verify the six historical submission groups, task bibliography, and task/contact event-date migration.
-- [ ] Resolve tracked-entity ownership and target-ID assignment with SIMS; verify sequence positions after applying each package.
+- [x] Confirm SIMS mints submission and dataset IDs; verify PostgreSQL sequences after applying each package.
 - [x] Update the proposal status, resolved decisions, and remaining upstream dependencies.
 - [x] Confirm no maintained generated target-model artifact requires regeneration.
+
+**PostgreSQL validation record (2026-10-12)**
+
+- Restored the user-provided `tmp/sead_backup.tar.gz` into a rootless `postgis/postgis:18-3.6` container with `--network none`. The file is plain PostgreSQL 18.6 SQL despite its `.tar.gz` suffix. Its refactored schema contains 59,052 datasets and the submission tables, but has no data providers, submissions, submission tasks, or linked datasets.
+- The first artifact attempt found that the test dataset omitted required `data_type_id`, and that its fake SIMS client returned dataset ID 501, already present in the snapshot. The fixture now supplies valid `data_type_id = 8` and distinct simulated SIMS IDs aligned with the snapshot high-water marks: submission 1 and dataset 91924.
+- Submission and dataset target-model entities use tracked SIMS identities and set `synchronize_sequence_after_insert`. Generated SQL locks each opted-in table, inserts the SIMS-assigned ID, then advances its PostgreSQL sequence. Both inline INSERT and copy-CSV artifacts passed `tests/integration/submission_artifact_contract.sql` on separate disposable clones.
+- The contract checks verified one Pending submission with a native UUID, provider linkage, null `submission_date`, and the new dataset link. After each package, the submission sequence was `(1, true)` and the dataset sequence was `(91924, true)`; the next values were 2 and 91925. Both strategies produced the same dataset and submission metadata.
+- These PostgreSQL checks use a SIMS test double configured with IDs consistent with the snapshot. They verify package and sequence behavior, not a live Authority Service allocation request.
 
 **Completion Criteria**
 
@@ -127,7 +135,7 @@ Focused and broader checks pass, generated artifacts execute against the upstrea
 | Frontend defaults and request handoff | Done | Focused Vitest file passes. |
 | Target-model alignment | Done | Structural spec tests cover task entities and dated contacts. |
 | Derived submission output | Done | Inline INSERT, copy-CSV, and provider failure contracts pass. |
-| Database contract and documentation | Blocked | Six individual migration calls and the combined run passed. Current artifacts explicitly insert IDs without advancing sequences; the generated-ID workaround was rolled back pending a SIMS identity contract. |
+| Database contract and documentation | Done | Historical migration calls passed on 2026-09-30. Both artifact strategies passed the 2026-10-12 snapshot checks with SIMS-assigned IDs and synchronized PostgreSQL sequences. |
 
 ## Definition Of Done
 
@@ -138,7 +146,7 @@ Focused and broader checks pass, generated artifacts execute against the upstrea
 - [x] Missing or unknown providers stop validation before artifact generation.
 - [x] Inline SQL emits one submission and links new datasets.
 - [x] Copy-CSV output provides the same rows and relationships.
-- [ ] Current generated artifacts execute successfully against the upstream schema without sequence collisions.
+- [x] Current generated artifacts execute successfully against the supplied refactored schema snapshot without sequence collisions.
 - [x] Relevant regression suites pass or unrelated existing failures are recorded.
 - [x] No maintained generated target-model reference requires synchronization.
 
@@ -149,7 +157,12 @@ Focused and broader checks pass, generated artifacts execute against the upstrea
 - `rtk .venv/bin/pytest backend/tests/ingesters/test_sead_change_request_*.py -q`
 - From `frontend/`: `rtk pnpm exec vitest run src/components/ingester/__tests__/IngesterForm.test.ts`
 - From `frontend/`: `rtk pnpm build`
-- PostgreSQL contract procedure: [POSTGRESQL_CONTRACT_VALIDATION.md](CUTOVER_AND_DEPLOYMENT/POSTGRESQL_CONTRACT_VALIDATION.md)
+- PostgreSQL contract procedure: [POSTGRESQL_CONTRACT_VALIDATION.md](../../CUTOVER_AND_DEPLOYMENT/POSTGRESQL_CONTRACT_VALIDATION.md)
+- 2026-10-12 mapper and metadata tests passed with one skip; target-model and conformance tests passed; the backend ingester regression suite passed with four environment-dependent skips.
+- The focused frontend component test passed (3 tests), and `pnpm build` completed. Vite reported chunk-size and dependency-comment warnings.
+- 2026-10-12 artifact generation: `.venv/bin/pytest backend/tests/ingesters/test_sead_change_request_ingester.py -q -k 'test_ingest_emits_submission_and_links_new_dataset or test_ingest_copy_csv_emits_submission_and_dataset_payloads' --basetemp=tmp/contract_postgres_20261012_v2` — 2 passed.
+- Regression checks after sequence synchronization: `backend/tests/ingesters/test_sead_change_request_*.py` and `tests/target_model` passed; the environment-dependent SIMS/PostgreSQL integration case was skipped.
+- PostgreSQL: both generated bundles passed `tests/integration/submission_artifact_contract.sql` and advanced sequence high-water marks on separate Podman clones. The full restore and results are recorded in [POSTGRESQL_CONTRACT_VALIDATION.md](../../CUTOVER_AND_DEPLOYMENT/POSTGRESQL_CONTRACT_VALIDATION.md).
 
 ## Deliverables
 
@@ -159,7 +172,7 @@ Focused and broader checks pass, generated artifacts execute against the upstrea
 | Frontend defaults handoff | Persisted defaults plus provider context | Done |
 | Target-model contract | Provider, state, submission, and dataset relationship | Done |
 | Derived submission output | Provider resolution and generated submission row | Done |
-| Contract validation record | Migration validated; current artifact identity contract unresolved | Blocked |
+| Contract validation record | Historical migration checks and both current artifact strategies pass; SIMS remains the ID allocator and artifacts advance PostgreSQL sequences | Done |
 | Updated proposal and reference docs | Final behavior and remaining dependencies | Done |
 
 ## Scope
