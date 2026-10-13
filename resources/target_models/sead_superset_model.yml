@@ -175,7 +175,7 @@ entities:
         required: false
 
   sample_group:
-    role: lookup
+    role: fact
     required: true
     description: Collection or contextual grouping that sits between site and physical samples.
     domains: [core]
