@@ -40,11 +40,13 @@ class FakeSimsClient:
         binding_set_state: str = "confirmed",
         confirmed_binding_set_state: str | None = None,
         target_id: int | None = 501,
+        target_ids: dict[str, int] | None = None,
     ) -> None:
         self.binding_set_uuid = binding_set_uuid
         self.binding_set_state = binding_set_state
         self.confirmed_binding_set_state = confirmed_binding_set_state or binding_set_state
         self.target_id = target_id
+        self.target_ids = target_ids or {}
         self.approved_aggregate_ids: list[int] = []
         self.associated_change_requests: list[tuple[str, str]] = []
 
@@ -55,7 +57,7 @@ class FakeSimsClient:
                 self.approved_aggregate_ids.append(item.approved_aggregate_id)
                 outcomes.append({"target_id": item.approved_aggregate_id, "tracked_identity_uuid": None})
             else:
-                outcomes.append({"target_id": self.target_id, "tracked_identity_uuid": None})
+                outcomes.append({"target_id": self.target_ids.get(item.entity_name, self.target_id), "tracked_identity_uuid": None})
         return {
             "outcomes": outcomes,
             "binding_set_uuid": self.binding_set_uuid,
@@ -64,7 +66,7 @@ class FakeSimsClient:
 
     async def allocate_entity(self, entity_name: str, row: dict, submission_context) -> dict:
         return {
-            "target_id": self.target_id,
+            "target_id": self.target_ids.get(entity_name, self.target_id),
             "binding_set_uuid": self.binding_set_uuid,
             "binding_set_state": self.binding_set_state,
             "note": f"Allocated {entity_name}",
@@ -264,6 +266,7 @@ def submission_target_model() -> dict:
             "reconciliation": "allocate",
             "public_id": "submission_id",
             "target_table": "tbl_submissions",
+            "synchronize_sequence_after_insert": True,
             "foreign_keys": [{"entity": "submission_state"}, {"entity": "data_provider"}, {"entity": "citation"}],
         },
         dataset={
@@ -272,6 +275,10 @@ def submission_target_model() -> dict:
             "reconciliation": "allocate",
             "public_id": "dataset_id",
             "target_table": "tbl_datasets",
+            "synchronize_sequence_after_insert": True,
+            "columns": {
+                "data_type_id": {"required": True, "type": "integer", "nullable": False},
+            },
             "foreign_keys": [{"entity": "submission"}],
         },
     )
@@ -748,7 +755,11 @@ class TestSeadChangeRequestIngesterValidation:
                     "tables": {"sample": pd.DataFrame({"sample_id": [None]})},
                     "target_model": minimal_target_model(sample={"role": "fact", "public_id": "sample_id"}),
                     "submission_context": minimal_submission_context(),
-                    "sims_client": FakeSimsClient(binding_set_state="confirmed", target_id=501),
+                    "sims_client": FakeSimsClient(
+                        binding_set_state="confirmed",
+                        target_id=501,
+                        target_ids={"submission": 1, "dataset": 91924},
+                    ),
                 },
             )
         )
@@ -952,13 +963,18 @@ class TestSeadChangeRequestIngesterIngest:
                                 "system_id": [10],
                                 "dataset_id": [None],
                                 "dataset_name": ["Pilot dataset"],
+                                "data_type_id": [8],
                             }
                         )
                     },
                     "target_model": submission_target_model(),
                     "submission_context": minimal_submission_context(),
                     "reconciliation_client": FakeReconciliationClient(target_id=51),
-                    "sims_client": FakeSimsClient(binding_set_state="confirmed", target_id=501),
+                    "sims_client": FakeSimsClient(
+                        binding_set_state="confirmed",
+                        target_id=501,
+                        target_ids={"submission": 1, "dataset": 91924},
+                    ),
                     "target_id_allocator": target_id_allocator,
                 },
             )
@@ -972,6 +988,7 @@ class TestSeadChangeRequestIngesterIngest:
         assert 'INSERT INTO "tbl_submissions"' in deploy_sql
         assert 'INSERT INTO "tbl_datasets"' in deploy_sql
         assert '"submission_id"' in deploy_sql
+        assert '"data_type_id"' in deploy_sql
         assert "tbl_submission_tasks" not in deploy_sql
         assert not target_id_allocator.requests
 
@@ -993,6 +1010,7 @@ class TestSeadChangeRequestIngesterIngest:
                                 "system_id": [10],
                                 "dataset_id": [None],
                                 "dataset_name": ["Pilot dataset"],
+                                "data_type_id": [8],
                             }
                         )
                     },
@@ -1000,7 +1018,11 @@ class TestSeadChangeRequestIngesterIngest:
                     "submission_context": minimal_submission_context(),
                     "deploy_strategy": "copy_csv",
                     "reconciliation_client": FakeReconciliationClient(target_id=51),
-                    "sims_client": FakeSimsClient(binding_set_state="confirmed", target_id=501),
+                    "sims_client": FakeSimsClient(
+                        binding_set_state="confirmed",
+                        target_id=501,
+                        target_ids={"submission": 1, "dataset": 91924},
+                    ),
                     "target_id_allocator": target_id_allocator,
                 },
             )

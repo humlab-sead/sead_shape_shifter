@@ -338,11 +338,14 @@ entities:
 
   dataset:
     role: lookup
+    identity_tracking: tracked
+    reconciliation: allocate
     required: true
     description: Dataset context for imported analytical observations.
     domains: [core]
     target_table: tbl_datasets
     public_id: dataset_id
+    synchronize_sequence_after_insert: true
     identity_columns: [dataset_name]
     columns:
       dataset_name:
@@ -482,6 +485,7 @@ entities:
     domains: [core, provenance]
     target_table: tbl_submissions
     public_id: submission_id
+    synchronize_sequence_after_insert: true
     identity_columns: [submission_uuid]
     columns:
       submission_state_id: {required: true, type: integer, nullable: false}

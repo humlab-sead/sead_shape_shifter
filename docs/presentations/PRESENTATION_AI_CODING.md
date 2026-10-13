@@ -516,13 +516,13 @@ Every acceptance criterion must map to ≥1 work area and ≥1 DoD item.
 
 ## A Live Example: SEAD Submission Metadata Refactor
 
-The current branch's task plan (`REFACTOR_SEAD_SUBMISSION_METADATA_TASK_PLAN.md`) shows the discipline in action:
+The completed task plan (`CHANGE_REQUEST_INGESTER/done/REFACTOR_SEAD_SUBMISSION_METADATA/REFACTOR_SEAD_SUBMISSION_METADATA_TASK_PLAN.md`) shows the discipline in action:
 
-- Proposal `REFACTOR_SEAD_SUBMISSION_METADATA.md` → task plan → work areas (5).
+- Proposal `CHANGE_REQUEST_INGESTER/done/REFACTOR_SEAD_SUBMISSION_METADATA/REFACTOR_SEAD_SUBMISSION_METADATA.md` → task plan → work areas (5).
 - Acceptance criteria tracked with real state:
   - `[x]` stable defaults round-trip; `[x]` one Pending submission emitted; …
-  - `[ ]` "upstream PostgreSQL contract is validated against a disposable migrated database".
-- Progress Tracker is honest: work area **Blocked** with the reason recorded — *no disposable migrated PostgreSQL harness exists in the repository yet*.
+-  - `[x]` both package strategies pass PostgreSQL contract checks on separate disposable clones.
+- The Progress Tracker marks all five work areas done. The PostgreSQL checks used SIMS test-double IDs and verified sequence advancement.
 - Validation lists exact `rtk`-prefixed test commands per area.
 
 Even the upstream SQL migration ships as forward + revert Sqitch artifacts alongside the proposal — plan-first applies to schema work too.

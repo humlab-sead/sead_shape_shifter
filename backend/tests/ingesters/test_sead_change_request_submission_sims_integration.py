@@ -99,6 +99,7 @@ def _submission_target_model() -> dict[str, Any]:
                 "reconciliation": "allocate",
                 "public_id": "submission_id",
                 "target_table": "tbl_submissions",
+                "synchronize_sequence_after_insert": True,
                 "foreign_keys": [
                     {"entity": "submission_state", "required": True},
                     {"entity": "data_provider", "required": True},
@@ -111,6 +112,7 @@ def _submission_target_model() -> dict[str, Any]:
                 "reconciliation": "allocate",
                 "public_id": "dataset_id",
                 "target_table": "tbl_datasets",
+                "synchronize_sequence_after_insert": True,
                 "columns": {
                     "dataset_name": {"required": True, "type": "string", "nullable": False},
                     "data_type_id": {"required": True, "type": "integer", "nullable": False},
@@ -207,11 +209,11 @@ async def test_both_artifacts_use_sims_submission_id_and_rollback(tmp_path: Path
     )
     assert provider_count == 0, "Disposable baseline must not already contain provider ID 1"
     initial_submission_sequence = await _sequence_state(connection_kwargs, "public.tbl_submissions", "submission_id")
+    initial_dataset_sequence = await _sequence_state(connection_kwargs, "public.tbl_datasets", "dataset_id")
     managed_sequence_states = {
         ("public.tbl_physical_samples", "physical_sample_id"): await _sequence_state(
             connection_kwargs, "public.tbl_physical_samples", "physical_sample_id"
         ),
-        ("public.tbl_datasets", "dataset_id"): await _sequence_state(connection_kwargs, "public.tbl_datasets", "dataset_id"),
         ("public.tbl_analysis_entities", "analysis_entity_id"): await _sequence_state(
             connection_kwargs, "public.tbl_analysis_entities", "analysis_entity_id"
         ),
@@ -416,8 +418,20 @@ async def test_both_artifacts_use_sims_submission_id_and_rollback(tmp_path: Path
             == 0
         )
 
+        async with await psycopg.AsyncConnection.connect(**connection_kwargs) as connection:
+            async with connection.cursor() as cursor:
+                await cursor.execute("SELECT nextval('public.tbl_submissions_submission_id_seq')")
+                next_submission_id = int((await cursor.fetchone())[0])
+                await cursor.execute("SELECT nextval('public.tbl_datasets_dataset_id_seq')")
+                next_dataset_id = int((await cursor.fetchone())[0])
+        assert next_submission_id > submission_id
+        assert next_dataset_id > DisposableManagedIdentityAllocator.target_ids["dataset"]
+
     assert len(artifact_names) == 2
     assert not target_database.reserved_ids
-    assert await _sequence_state(connection_kwargs, "public.tbl_submissions", "submission_id") == initial_submission_sequence
+    final_submission_sequence = await _sequence_state(connection_kwargs, "public.tbl_submissions", "submission_id")
+    final_dataset_sequence = await _sequence_state(connection_kwargs, "public.tbl_datasets", "dataset_id")
+    assert final_submission_sequence[0] >= initial_submission_sequence[0]
+    assert final_dataset_sequence[0] >= initial_dataset_sequence[0]
     for sequence, expected_state in managed_sequence_states.items():
         assert await _sequence_state(connection_kwargs, *sequence) == expected_state

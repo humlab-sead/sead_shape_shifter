@@ -68,6 +68,7 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     value_type_item = target_model.entities["value_type_item"]
     sample_group = target_model.entities["sample_group"]
     submission = target_model.entities["submission"]
+    dataset = target_model.entities["dataset"]
     sample_group_coordinate = target_model.entities["sample_group_coordinate"]
     sample_group_dimension = target_model.entities["sample_group_dimension"]
     sample_group_note = target_model.entities["sample_group_note"]
@@ -106,6 +107,10 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     assert submission.identity_tracking == "tracked"
     assert submission.reconciliation == "allocate"
     assert submission.public_id_generation is None
+    assert submission.synchronize_sequence_after_insert is True
+    assert dataset.identity_tracking == "tracked"
+    assert dataset.reconciliation == "allocate"
+    assert dataset.synchronize_sequence_after_insert is True
     assert {
         "analysis_value",
         "analysis_boolean_value",
