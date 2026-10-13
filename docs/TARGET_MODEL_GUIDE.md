@@ -156,35 +156,40 @@ entities:
 
 #### Entity Spec Fields
 
-| Field              | Required | Description                                                                    |
-|--------------------|----------|--------------------------------------------------------------------------------|
-| `role`             | No       | Semantic role: `fact`, `lookup`, `classifier`, or `bridge`                     |
-| `required`         | No       | `true` means the project must include this entity (default: `false`)           |
-| `description`      | No       | Human-readable description for tooling and documentation                       |
-| `domains`          | No       | List of domain tags; used to filter entities when generating project templates |
-| `target_table`     | No       | Physical table name in the target system (informational, e.g. `tbl_sites`)     |
-| `public_id`        | No       | Expected `public_id` value in the project entity                               |
-| `public_id_generation` | No   | `database_sequence` reserves an ID from the target database for an explicitly non-tracked entity |
-| `identity_columns` | No       | Columns that form the natural key in the target system                         |
-| `columns`          | No       | Map of column name → column spec; conformance checks these against the project |
-| `unique_sets`      | No       | List of unique-set column groups                                               |
-| `foreign_keys`     | No       | List of foreign key specs                                                      |
-| `identity_tracking`| No       | Identity handling mode: `tracked`, `reconciled`, `derived`, or `child`        |
-| `reconciliation`   | No       | Expected matching or allocation mode for this entity                           |
-| `aggregate_parent` | No       | Parent entity name when this entity inherits aggregate identity                |
+| Field                    | Required | Default | Description                                                                                                       |
+|--------------------------|----------|---------|-------------------------------------------------------------------------------------------------------------------|
+| `role`                   | No       | `null`  | Semantic role: `fact`, `lookup`, `classifier`, or `bridge`.                                                       |
+| `required`               | No       | `false` | `true` means the project must include this entity.                                                                |
+| `description`            | No       | `null`  | Human-readable description for tooling and documentation.                                                         |
+| `domains`                | No       | `[]`    | Domain tags used to filter entities when generating project templates.                                            |
+| `target_table`           | No       | `null`  | Physical table name in the target system (informational, e.g. `tbl_sites`).                                       |
+| `public_id`              | No       | `null`  | Expected `public_id` value in the project entity.                                                                 |
+| `public_id_generation`   | No       | `null`  | `database_sequence` reserves an ID from the target database for an explicitly non-tracked entity.                 |
+| `synchronize_sequence_after_insert` | No       | `false` | Advance the target column's PostgreSQL sequence after inserting rows with SIMS-assigned IDs.                      |
+| `identity_columns`       | No       | `[]`    | Columns that form the natural key in the target system.                                                           |
+| `columns`                | No       | `{}`    | Map of column name to column spec; conformance checks these against the project.                                  |
+| `unique_sets`            | No       | `[]`    | List of unique-set column groups.                                                                                 |
+| `foreign_keys`           | No       | `[]`    | List of foreign-key specs.                                                                                        |
+| `identity_tracking`      | No       | `null`  | Identity mode. When omitted, its effective value can be inferred from `role` or `aggregate_parent`.               |
+| `reconciliation`         | No       | `null`  | Matching or allocation mode. When omitted, its effective value can be inferred from identity settings and `role`. |
+| `aggregate_parent`       | No       | `null`  | Parent entity name when this entity inherits aggregate identity.                                                  |
+
+The `Default` column shows the value stored when a field is omitted. `identity_tracking` and `reconciliation` may be resolved to effective values from `role` and `aggregate_parent`; see [Identity And Reconciliation Fields](#identity-and-reconciliation-fields).
 
 ---
 
 ### Semantic Roles
 
-The `role` field describes the meaning of an entity in the target model. Roles are informational in v1 and help humans understand the model; future validators will use them for advanced semantic checks.
+The `role` field describes the meaning of an entity in the target model. The SEAD Change Request Ingester also uses it to infer effective identity settings when explicit settings are omitted. Explicit `identity_tracking`, `reconciliation`, and `aggregate_parent` values take precedence; the ingester plans from the resolved identity settings.
 
 | Role         | Meaning                                                                                                                                       |
 |--------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
-| `fact`       | A primary observational or transactional record (e.g., a sample, an analysis result). Usually depends on surrounding lookups and classifiers. |
-| `lookup`     | Reference data providing stable parent context (e.g., locations, sites, methods). Commonly referenced by many facts.                          |
-| `classifier` | A controlled vocabulary or typology entity (e.g., site types, sample types). Best loaded from `fixed` or `sql` sources.                       |
+| `fact`       | A primary record of an observation, measurement, or event (e.g., a sample or analysis result). Usually depends on surrounding lookups and classifiers. |
+| `lookup`     | A reference entity whose records provide reusable domain or contextual information to other entities (e.g., sites, locations, or methods). Records may be curated and controlled. |
+| `classifier` | A reference entity whose records provide categories used to classify other entities (e.g., site types or sample types), often as a controlled vocabulary.                     |
 | `bridge`     | An association entity connecting two or more entities in a many-to-many relationship.                                                         |
+
+All four roles describe entities. The distinction is what their records represent and how other entities use them. Controlledness alone does not determine the role: site records may be curated, but sites remain lookups because they represent places; site types are classifiers because they categorize sites. When identity settings are omitted, the ingester defaults lookups to `reconcile-exact` (which can allocate after a miss) and classifiers to `lookup-only`. Set `reconciliation` explicitly when that default does not match the target's policy.
 
 ---
 
@@ -246,6 +251,8 @@ When `via` is present, conformance first checks the source entity points to the 
 ### Identity And Reconciliation Fields
 
 These fields describe Shape Shifter's identity intent and lookup/allocation workflow for a target-model entity. SIMS applies its generic identity mechanism according to its own validated entity configuration; the target model does not prescribe entity-specific SIMS implementation code.
+
+The SEAD Change Request Ingester uses the effective `identity_tracking`, `reconciliation`, and `aggregate_parent` values to plan identity work and check whether SIMS supports the required operations before artifact generation.
 
 Shape Shifter validates these fields together when a target model loads:
 
