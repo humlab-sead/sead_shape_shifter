@@ -32,6 +32,13 @@ export interface MetadataUpdateRequest {
   target_model?: string | null
 }
 
+export interface TargetModelFileOption {
+  name: string
+  label: string
+  value: string
+  location: 'project' | 'shared'
+}
+
 /**
  * Project API service
  */
@@ -227,6 +234,16 @@ export const projectsApi = {
     return apiRequest<ProjectFileInfo[]>({
       method: 'GET',
       url,
+    })
+  },
+
+  /**
+   * List project-local and shared YAML files available as target models
+   */
+  listTargetModels: async (name: string): Promise<TargetModelFileOption[]> => {
+    return apiRequest<TargetModelFileOption[]>({
+      method: 'GET',
+      url: `/projects/${name}/target-models`,
     })
   },
 

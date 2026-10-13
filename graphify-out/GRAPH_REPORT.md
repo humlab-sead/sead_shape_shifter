@@ -1,16 +1,16 @@
-# Graph Report - sead_shape_shifter  (2026-10-12)
+# Graph Report - sead_shape_shifter  (2026-10-13)
 
 ## Corpus Check
-- 939 files · ~896,204 words
+- 941 files · ~897,594 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 20458 nodes · 47287 edges · 866 communities (680 shown, 186 thin omitted)
-- Extraction: 76% EXTRACTED · 24% INFERRED · 0% AMBIGUOUS · INFERRED: 11277 edges (avg confidence: 0.51)
+- 20512 nodes · 47463 edges · 882 communities (687 shown, 195 thin omitted)
+- Extraction: 76% EXTRACTED · 24% INFERRED · 0% AMBIGUOUS · INFERRED: 11367 edges (avg confidence: 0.51)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `62232ce6`
+- Built from commit: `37409f85`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -546,7 +546,6 @@
 - [[_COMMUNITY_resolve_managed_file_path|resolve_managed_file_path]]
 - [[_COMMUNITY_test-readonly-role.sh|test-readonly-role.sh]]
 - [[_COMMUNITY_ReconciliationDataProvider|ReconciliationDataProvider]]
-- [[_COMMUNITY_.__init__|.__init__]]
 - [[_COMMUNITY_health_check|health_check]]
 - [[_COMMUNITY_download_logs|download_logs]]
 - [[_COMMUNITY_.apply_comments|.apply_comments]]
@@ -769,9 +768,28 @@
 - [[_COMMUNITY_Community 761|Community 761]]
 - [[_COMMUNITY_Community 762|Community 762]]
 - [[_COMMUNITY_Community 763|Community 763]]
+- [[_COMMUNITY_Community 764|Community 764]]
+- [[_COMMUNITY_Community 765|Community 765]]
+- [[_COMMUNITY_Community 766|Community 766]]
+- [[_COMMUNITY_Community 767|Community 767]]
+- [[_COMMUNITY_Community 768|Community 768]]
+- [[_COMMUNITY_Community 769|Community 769]]
+- [[_COMMUNITY_Community 770|Community 770]]
+- [[_COMMUNITY_Community 771|Community 771]]
+- [[_COMMUNITY_Community 772|Community 772]]
 - [[_COMMUNITY_Community 773|Community 773]]
+- [[_COMMUNITY_Community 774|Community 774]]
+- [[_COMMUNITY_Community 775|Community 775]]
+- [[_COMMUNITY_Community 776|Community 776]]
+- [[_COMMUNITY_Community 777|Community 777]]
+- [[_COMMUNITY_Community 778|Community 778]]
+- [[_COMMUNITY_Community 779|Community 779]]
+- [[_COMMUNITY_Community 780|Community 780]]
+- [[_COMMUNITY_Community 781|Community 781]]
+- [[_COMMUNITY_Community 782|Community 782]]
 - [[_COMMUNITY_Community 783|Community 783]]
 - [[_COMMUNITY_Community 784|Community 784]]
+- [[_COMMUNITY_Community 785|Community 785]]
 - [[_COMMUNITY_Community 789|Community 789]]
 - [[_COMMUNITY_Community 790|Community 790]]
 - [[_COMMUNITY_Community 791|Community 791]]
@@ -782,7 +800,6 @@
 - [[_COMMUNITY_Community 796|Community 796]]
 - [[_COMMUNITY_1.11.0(httpsgithub.comhumlab-seadsead_shape_shiftercomparev1.10.0...v1.11.0) (2026-01-19)|[1.11.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.10.0...v1.11.0) (2026-01-19)]]
 - [[_COMMUNITY_Community 829|Community 829]]
-- [[_COMMUNITY_Community 831|Community 831]]
 - [[_COMMUNITY_Community 832|Community 832]]
 - [[_COMMUNITY_Community 833|Community 833]]
 - [[_COMMUNITY_Community 837|Community 837]]
@@ -803,32 +820,30 @@
 - [[_COMMUNITY_Community 852|Community 852]]
 - [[_COMMUNITY_Community 853|Community 853]]
 - [[_COMMUNITY_Community 854|Community 854]]
-- [[_COMMUNITY_Community 882|Community 882]]
-- [[_COMMUNITY_Community 889|Community 889]]
 
 ## God Nodes (most connected - your core abstractions)
 1. `TableConfig` - 722 edges
 2. `ShapeShiftProject` - 592 edges
-3. `Project` - 445 edges
-4. `ProjectService` - 412 edges
+3. `Project` - 449 edges
+4. `ProjectService` - 415 edges
 5. `TableStore` - 358 edges
-6. `Action` - 313 edges
-7. `AuthorizedResource` - 264 edges
-8. `ProjectMapper` - 223 edges
+6. `Action` - 315 edges
+7. `AuthorizedResource` - 265 edges
+8. `ProjectMapper` - 224 edges
 9. `ShapeShifter` - 216 edges
-10. `ProjectMetadata` - 195 edges
+10. `ProjectMetadata` - 200 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `Testing` --references--> `ShapeShifter`  [INFERRED]
   backend/AGENTS.md → src/normalizer.py
 - `Transformation Pipeline` --references--> `ShapeShifter`  [INFERRED]
   docs/DIAGRAMS.md → src/normalizer.py
-- `Purpose` --references--> `validate_read_only_sql()`  [INFERRED]
-  docs/SQL_SAFETY_POLICY.md → src/sql_policy.py
-- `Purpose` --references--> `ensure_read_only_sql()`  [INFERRED]
-  docs/SQL_SAFETY_POLICY.md → src/sql_policy.py
 - `DataSourceConfig` --uses--> `DriverSchema`  [INFERRED]
   backend/app/mappers/data_source_mapper.py → src/loaders/driver_metadata.py
+- `MonkeyPatch` --uses--> `ShapeShiftProject`  [INFERRED]
+  backend/tests/data_providers/arbodat/test_workflow.py → src/model.py
+- `ModuleType` --uses--> `ShapeShiftProject`  [INFERRED]
+  tests/test_validate_project_script.py → src/model.py
 
 ## Import Cycles
 - 1-file cycle: `backend/app/api/dependencies.py -> backend/app/api/dependencies.py`
@@ -839,239 +854,239 @@
 - 1-file cycle: `backend/app/core/state_manager.py -> backend/app/core/state_manager.py`
 - 1-file cycle: `backend/tests/ingesters/test_sead_change_request_runtime.py -> backend/tests/ingesters/test_sead_change_request_runtime.py`
 
-## Communities (866 total, 186 thin omitted)
+## Communities (882 total, 195 thin omitted)
 
 ### Community 0 - "SubmissionContext"
-Cohesion: 0.06
-Nodes (88): Action, AuthorizedResource, Operations that can be authorized., Resource returned after a successful authorization decision., _principal(), Tests for authorization enforcement at sensitive service boundaries., _request(), _resource() (+80 more)
+Cohesion: 0.03
+Nodes (101): get_active_project_locator(), Return the locator of the active project, or None when no project is loaded., AuthenticationAdapter, Adapters from authenticated request state to authorization principals., Convert trusted-proxy identity state into a stable principal., Return the request principal or raise the standard authentication response., authorize_shared_data_source_reference(), _data_source_locator() (+93 more)
 
 ### Community 1 - "ProjectDetailView.vue"
 Cohesion: 0.01
-Nodes (146): Entity schema validation failure.      Common causes:     - Missing required fie, SchemaValidationError, Any, DataFrame, Path, ProjectService, DefaultEntityPersistenceStrategy, EntityPersistenceStrategy (+138 more)
+Nodes (239): Entity schema validation failure.      Common causes:     - Missing required fie, SchemaValidationError, Any, DataFrame, Any, Any, Path, Project (+231 more)
 
 ### Community 2 - "DataSourcesView.vue"
 Cohesion: 0.04
 Nodes (49): DataSourceConfig, DataSourceService, Path, Test files are sorted by name., Test reading valid YAML data source file., Test reading non-existent file returns None., Test reading invalid YAML returns None., Test reading empty file returns None. (+41 more)
 
 ### Community 3 - "ValidationError"
-Cohesion: 0.03
-Nodes (154): ChangeRequestPackage, SubmissionContext, TargetModel, ChangeRequestTable, datetime, DeployArtifact, gzip, Any (+146 more)
+Cohesion: 0.05
+Nodes (76): DeployArtifact, Any, Path, SubmissionContext, ChangeRequestPackage, Series, SubmissionContext, TargetModel (+68 more)
 
 ### Community 4 - "Any"
 Cohesion: 0.05
-Nodes (49): Resolve configuration directives in the provided data dictionary.      Processin, resolve_directives(), Tests for src.configuration.config module., load_config should keep an empty loaded file instead of the directive string., load_config should dereference dotpaths that point to a filename string., Validate config path detection and missing file handling., resolve_references should resolve relative includes from non-YAML source files t, Directive files must remain beneath the supplied project or shared roots. (+41 more)
+Nodes (31): test_from_core_issue_maps_conformance_defaults(), test_from_core_issue_maps_validation_issue(), test_from_core_issue_uses_column_as_field_fallback(), Mapper for translating between domain validation models and API validation model, Any, DataFrame, Return one issue for each business key missing from the DataFrame.          Args, Return one key-not-produced issue per missing key.          Args:             en (+23 more)
 
 ### Community 5 - "SeadChangeRequestIngester"
 Cohesion: 0.02
 Nodes (83): create_valid_config_dict(), Tests for ProjectMapper., Test entity with foreign keys., Helper to create a valid config dict with all required sections., Tests for to_core_dict method., Test converting minimal API config to core dict., Test converting config with options., Test config without options doesn't include options key. (+75 more)
 
 ### Community 7 - "ShapeShifter"
-Cohesion: 0.07
-Nodes (30): apiRequest(), excelMetadataApi, validationApi, longMessage, MessageListWrapper, messages, vuetify, vuetify (+22 more)
+Cohesion: 0.05
+Nodes (48): useCytoscape(), UseCytoscapeOptions, createBaseStyles(), CytoscapeStyleConfig, CytoscapeStyleOptions, darkThemeStyles, getCytoscapeStyles(), lightThemeStyles (+40 more)
 
 ### Community 8 - "ProjectService"
-Cohesion: 0.06
-Nodes (45): DataFrame, Submission, EMPTY_SUBMISSION(), FK_DATAFRAME(), LOOKUP_DATAFRAME(), LOOKUP_SUBMISSION(), Factory for simple single-table submission with new records., Factory for lookup table submission with existing records. (+37 more)
+Cohesion: 0.03
+Nodes (109): Requested resource does not exist.      Used for projects, entities, files, etc., ResourceNotFoundError, Any, AuthorizedResource, Depends, EDIT, ProjectTaskStatus, READ (+101 more)
 
 ### Community 9 - "EntityFormDialog.vue"
 Cohesion: 0.01
 Nodes (137): tbl_abundance_elements, tbl_abundance_ident_levels, tbl_abundance_modifications, tbl_abundance_properties, tbl_abundances, tbl_activity_types, tbl_age_types, tbl_alt_ref_types (+129 more)
 
 ### Community 10 - "pytest"
-Cohesion: 0.04
-Nodes (46): SimsResolveItem, SubmissionContext, EntitySpec, FakeReconciliationClient, FakeSimsClient, FakeTargetIdAllocator, minimal_submission_context(), Tests for SEAD change request client orchestration. (+38 more)
+Cohesion: 0.03
+Nodes (93): SimsResolveItem, SubmissionContext, SubmissionContext, EffectiveIdentity, Any, EntitySpec, IdentityAssignment, PlannedTable (+85 more)
 
 ### Community 11 - "validate_read_only_sql"
-Cohesion: 0.03
-Nodes (66): BaseUploader, Application configuration., importlib, Any, Connection, Any, Connection, Any (+58 more)
+Cohesion: 0.32
+Nodes (7): base64, pickle, struct, encode_sites(), generate_test_excel(), load_test_submission(), Load test data from Excel file, stores and loads pickled data if exists for bett
 
 ### Community 12 - "EntitySpec"
-Cohesion: 0.06
-Nodes (33): DataIntegrityError, Base class for data integrity violations., Project, DependencyService, Service for analyzing entity dependencies., Analyze dependencies in project.         Args:              api_project: Project, Check for circular dependencies in project.          Args:             config: P, Tests for DependencyService - focus on graph analysis.  NOTE: Foreign key valida (+25 more)
+Cohesion: 0.08
+Nodes (40): ChangeRequestPackage, SubmissionContext, TargetModel, datetime, Prepared tables should keep DataFrame content and row-state annotations together, Submission context should keep the traceability fields needed by MVP Delivery., Submission context should persist the batch run ID across retries., bundle_name() (+32 more)
 
 ### Community 14 - "Submission"
-Cohesion: 0.02
-Nodes (172): IngesterConfig, Any, Path, SubmissionContext, SubmissionContext, IngesterConfig, Configuration for an ingester instance.      This is the base configuration clas, Any (+164 more)
+Cohesion: 0.03
+Nodes (80): HTTPStatusError, gzip, hashlib, expected_bundle_name(), FakeBackendSimsClient, FakeCollisionChecker, FakeReconciliationClient, FakeSimsClient (+72 more)
 
 ### Community 15 - "TaskService"
 Cohesion: 0.03
-Nodes (107): TargetModel, TargetModel, DataFrame, EntitySpec, IdentityResolutionResult, TargetModel, TargetProjectionResult, IdentityAssignment (+99 more)
+Nodes (128): TargetModel, TargetModel, IdentityOrchestrationResult, DataFrame, EntitySpec, IdentityResolutionResult, TargetModel, TargetProjectionResult (+120 more)
 
 ### Community 16 - "TableStore"
-Cohesion: 0.03
-Nodes (102): Ingester infrastructure for data ingestion into external systems.  Ingesters are, Any, Path, IngesterMetadata, IngesterRegistry, Ingester, Ingester, IngesterMetadata (+94 more)
+Cohesion: 0.05
+Nodes (99): Tests for preview endpoint error mapping., Null-key FK violations should be converted into friendly structured validation e, Generic FK constraint violations should still map without null-key-specific cont, test_raise_fk_constraint_validation_error_formats_null_key_violation(), test_raise_fk_constraint_validation_error_preserves_generic_fk_violation(), ApiForeignKeyConfig, ConstraintViolationError, Base class for business rule validation errors. (+91 more)
 
 ### Community 17 - "DependencyService"
-Cohesion: 0.07
-Nodes (31): Any, BaseFileSourceNodeExtractor, BaseSourceNodeExtractor, CsvFileSourceNodeExtractor, ExcelFileSourceNodeExtractor, MaterializedFixedSourceNodeExtractor, NullSourceNodeExtractor, Base class for source node extractors. (+23 more)
+Cohesion: 0.18
+Nodes (19): CapabilitiesResponse, PlannedTable, TargetModel, EntityCapabilityResponse, CapabilityPreflightResult, PlannedTable, TargetModel, Return a permissive capability set for the entities used by adapter tests. (+11 more)
 
 ### Community 18 - "FileManager"
-Cohesion: 0.09
-Nodes (17): ExcelFile, DataFrame, SchemaService, SeadSchema, TableStore, SeadSchema, load_excel_sheet(), Writes lookup data to an CSV file.         Lookup tables are identified as havin (+9 more)
+Cohesion: 0.04
+Nodes (59): DataFrame, ShapeShiftProject, ShapeShiftService, TableConfig, ColumnInfo, Information about a column in the preview., PreviewResultBuilder, project_service() (+51 more)
 
 ### Community 19 - "specifications/entity.py"
-Cohesion: 0.07
-Nodes (40): cprofile, import_backend(), JsonTiming, LoadProfiler, LoadSample, main(), _mean(), measure_scan() (+32 more)
+Cohesion: 0.18
+Nodes (13): cprofile, _mean(), milliseconds(), Profile the backend path behind ``GET /projects`` (issue #508).  The Projects pa, Timings for one simulated ``GET /projects`` run., Return ``seconds`` in milliseconds., Build the human-readable profiling report., Build a machine-readable summary of the measured runs. (+5 more)
 
 ### Community 20 - "sead/utility.py"
-Cohesion: 0.01
-Nodes (315): AuthorizedResource, Depends, EDIT, MaterializationResult, MaterializationService, MaterializedMappingSyncResult, READ, require_project (+307 more)
+Cohesion: 0.02
+Nodes (256): Any, AuthorizedResource, Depends, EDIT, MaterializationService, READ, require_project, AuthorizedResource (+248 more)
 
 ### Community 21 - "test_state_management.py"
 Cohesion: 0.10
-Nodes (29): click, openpyxl_cell_cell, openpyxl_styles, openpyxl_worksheet_worksheet, main(), print_results(), AutoReconcileResult, Path (+21 more)
+Nodes (20): TableStore, Tests for translate function., Test translate when translation config is missing required fields., Test translate when target column name already exists., Missing required keys yields empty translation map., Test translating multiple tables., Test translate with custom from_field and to_field parameters., Test that translate only changes column names, not data values. (+12 more)
 
 ### Community 22 - "pandas"
 Cohesion: 0.50
 Nodes (4): Interpolation dependencies should be extracted from source even if not selected, Test _check_if_missing_requested_columns raises ValueError by default., test_check_if_missing_requested_columns_raises_by_default(), test_collect_source_dependencies_includes_interpolation_refs()
 
 ### Community 23 - "test_merged_entity_integration.py"
-Cohesion: 0.04
-Nodes (121): Tests for preview endpoint error mapping., Null-key FK violations should be converted into friendly structured validation e, Generic FK constraint violations should still map without null-key-specific cont, test_raise_fk_constraint_validation_error_formats_null_key_violation(), test_raise_fk_constraint_validation_error_preserves_generic_fk_violation(), ApiForeignKeyConfig, ConstraintViolationError, DependencyError (+113 more)
+Cohesion: 0.02
+Nodes (152): CircularDependencyError, DataIntegrityError, DependencyError, DomainException, ForeignKeyError, MissingDependencyError, Domain Exception Hierarchy for Shape Shifter.  This module defines the exception, Base class for data integrity violations. (+144 more)
 
 ### Community 24 - "IngesterForm.vue"
-Cohesion: 0.03
-Nodes (85): Any, Path, ProjectService, ProjectTaskStatus, ShapeShiftProject, ShapeShiftService, TaskListSidecarManager, ValidationResult (+77 more)
+Cohesion: 0.02
+Nodes (141): Pydantic models for API requests and responses., JoinTestError, JoinTestRequest, Error details when a join test fails., Request model for testing a foreign key join., MappingDeleteResponse, MappingEntityResponse, MappingLinkRecordResponse (+133 more)
 
 ### Community 26 - "resolve_directives"
 Cohesion: 0.04
-Nodes (42): DataSourceConfig, QueryService, Test QueryService for SQL query validation and execution., Create QueryService instance., Return a DataSourceConfig for use in execute_query/introspect calls., Test validation of valid SELECT query., Test validation of SELECT with WHERE clause., Test validation flags missing WHERE clause. (+34 more)
+Nodes (42): DataSourceConfig, QueryService, Set up test fixtures., Test QueryService for SQL query validation and execution., Create QueryService instance., Return a DataSourceConfig for use in execute_query/introspect calls., Test validation of valid SELECT query., Test validation of SELECT with WHERE clause. (+34 more)
 
 ### Community 27 - "SeadChangeRequestSimsAdapter"
-Cohesion: 0.01
-Nodes (296): ColumnType, Resolve effective fixed-value columns and validate shape with entity-aware error, Mapper for translating between domain validation models and API validation model, Entity persistence strategies for type-specific validation and normalization., FieldValidatorRegistry, ProjectSpecification, Get the TableConfig for the specified entity., Get specified types of result columns available.         FIXME: consider moving (+288 more)
+Cohesion: 0.02
+Nodes (98): Project, ShapeShiftProject, Convert API Project to core ShapeShiftProject.          Conditionally resolves @, Validate mapping sidecar entries against resolved entity configuration., decode_local_key(), _decode_single(), Split an encoded compound key on unescaped ``|`` characters., Decode a string key back into individual component values.      Reverses the enc (+90 more)
 
 ### Community 28 - "components.d.ts"
-Cohesion: 0.04
-Nodes (87): Schema introspection failed.      Common causes:     - Data source not connected, SchemaIntrospectionError, Any, AuthorizedResource, Depends, Principal, SchemaIntrospectionService, TableMetadata (+79 more)
+Cohesion: 0.10
+Nodes (43): Schema introspection failed.      Common causes:     - Data source not connected, SchemaIntrospectionError, Any, AuthorizedResource, Depends, Principal, SchemaIntrospectionService, TableMetadata (+35 more)
 
 ### Community 29 - "contracts.py"
 Cohesion: 0.03
-Nodes (115): TargetModel, CapabilitiesResponse, PlannedTable, TargetModel, EffectiveIdentity, EntityCapabilityResponse, IdentityOrchestrationResult, IdentityWorkPlan (+107 more)
+Nodes (156): TargetModel, IngesterConfig, ChangeRequestTable, IngesterConfig, Configuration for an ingester instance.      This is the base configuration clas, IdentityAssignment, IdentityResolutionResult, PlannedTable (+148 more)
 
 ### Community 30 - "ShapeShiftProject"
-Cohesion: 0.06
-Nodes (78): Any, AuthorizedResource, AutoReconcileResult, Depends, EDIT, EntityResolutionCatalog, EntityResolutionListItem, READ (+70 more)
+Cohesion: 0.08
+Nodes (72): Any, AuthorizedResource, AutoReconcileResult, Depends, EDIT, EntityResolutionCatalog, EntityResolutionListItem, READ (+64 more)
 
 ### Community 31 - "LogViewerOverlay.vue"
-Cohesion: 0.05
-Nodes (92): lifespan(), Application lifespan events., Create a dependency that authorizes a shared data source locator for an action., Create a dependency that authorizes the active project for an action.      The l, require_active_project(), require_shared_data_source(), Grant, Role assigned to a typed subject for a resource. (+84 more)
+Cohesion: 0.03
+Nodes (134): Create a dependency that authorizes a shared data source locator for an action., Create a dependency that authorizes an application-scoped action., Authorize access to an operation owned by the current principal and project., Create a dependency that authorizes the active project for an action.      The l, require_active_project(), require_application_action(), require_operation(), require_shared_data_source() (+126 more)
 
 ### Community 32 - "vitest"
-Cohesion: 0.07
-Nodes (43): Any, ShapeShiftProject, ValidationError, _minimal_project(), Classifier source-type mismatches should stay advisory unless overridden., PublicIdConformanceValidator reports MISSING_PUBLIC_ID when the spec declares a, PublicIdConformanceValidator produces no issue when the target spec does not dec, Disabled conformance rules should be skipped by registry key. (+35 more)
+Cohesion: 0.14
+Nodes (30): collections, issue_pairs(), load_project(), load_real_project(), load_target_model(), _minimal_target_model(), PublicIdConformanceValidator reports MISSING_PUBLIC_ID when the spec declares a, PublicIdConformanceValidator produces no issue when the target spec does not dec (+22 more)
 
 ### Community 33 - "sead_change_request/ingester.py"
-Cohesion: 0.04
-Nodes (94): ApplicationRoleAssignment, AuditEvent, Centralized authorization primitives and policy services., GroupMembershipResolver, MembershipLookupStatus, MembershipSnapshot, Trusted group-membership lookup for authorization review., Result states returned by a membership provider. (+86 more)
+Cohesion: 0.05
+Nodes (52): ApplicationRoleAssignment, AuditEvent, MembershipSnapshot, A point-in-time group membership lookup result., ApplicationRole, ApplicationRoleAssignment, AuditEvent, GrantSubjectType (+44 more)
 
 ### Community 34 - ".mock_settings"
-Cohesion: 0.05
-Nodes (40): Path, Settings, FilePathResolver, Test decomposing global file path., Test decomposing global file with subdirectory., Test decomposing local (project-specific) file path., Test decomposing local file with subdirectory., Test decomposing file outside managed directories returns None. (+32 more)
+Cohesion: 0.12
+Nodes (9): Settings, Test decomposing global file path., Test decomposing local (project-specific) file path., Test decomposing local file with subdirectory., Create mock Settings with temporary directories., Test project name with multiple colons converts to nested path., Test resolving file paths in entity config with legacy format., Create FilePathResolver instance with mock settings. (+1 more)
 
 ### Community 37 - "Config"
 Cohesion: 0.01
-Nodes (228): DataLoader, DuckDbLoader, SQL loader over Shape Shifter's internal table_store.      This loader does not, Load an internal DuckDB-derived entity., jaydebeapi, JClass, ConnectTestResult, DataLoader (+220 more)
+Nodes (252): Any, TableSchema, DataSourceConfig, Path, SqlLoader, TableMetadata, TableSchema, DataLoader (+244 more)
 
 ### Community 39 - "TestReconciliationService"
 Cohesion: 0.04
-Nodes (44): AppSettings, DEFAULT_SETTINGS, settings, useSettings(), CustomThemeColors, THEME_PRESETS, ThemePreset, useTheme() (+36 more)
+Nodes (40): fetchManifest(), fetchNote(), getOrLoadManifest(), getOrLoadNote(), md, noteCache, parseNote(), parseSections() (+32 more)
 
 ### Community 40 - "ForeignKeyConfig"
-Cohesion: 0.03
-Nodes (109): Any, Settings, Any, PreviewResult, ProjectService, ShapeShiftProject, TableConfig, TableStore (+101 more)
+Cohesion: 0.02
+Nodes (138): Any, Settings, Entity, Any, PreviewResult, ProjectService, ShapeShiftProject, TableConfig (+130 more)
 
 ### Community 41 - "FixedEntityPersistenceStrategy"
-Cohesion: 0.10
-Nodes (11): Test that a complete overlap is rejected for every conflicting column., Tests for UnnestColumnsSpecification - validates unnest column references., Test that id_vars declared as keys also pass when listed in columns., Test that valid unnest config passes., Test that entities without unnest pass., Test that id_vars can reference extra_columns., Test that id_vars can reference columns added by FK linking., Test that missing id_vars produces error. (+3 more)
+Cohesion: 0.09
+Nodes (12): Test that a complete overlap is rejected for every conflicting column., Test that disjoint id_vars and value_vars pass validation., Tests for UnnestColumnsSpecification - validates unnest column references., Test that id_vars declared as keys also pass when listed in columns., Test that valid unnest config passes., Test that entities without unnest pass., Test that id_vars can reference extra_columns., Test that id_vars can reference columns added by FK linking. (+4 more)
 
 ### Community 42 - "test_link.py"
-Cohesion: 0.08
-Nodes (18): Return primary key column names in correct order., Read SQL query into a DataFrame using the provided connection., Read SQL query that returns a single scalar value., Get approximate row count for a table., Test database connection by attempting to load a simple query.          Args:, Read SQL query that returns a single scalar value., Return cleaned database options., Read SQL query into a DataFrame using the provided connection. (+10 more)
+Cohesion: 0.03
+Nodes (39): Any, Mark entity as complete.          Validates that entity passes validation and ha, Mark entity as ignored.          Args:             project_name: Name of the pro, Reset entity status to todo.          Args:             project_name: Name of th, Mark entity as ongoing.          Args:             project_name: Name of the pro, Mark entity as todo (planned but not yet created).          Args:             pr, Toggle flagged status for an entity.          Args:             project_name: Na, Initialize task list based on project structure.          Args:             proj (+31 more)
 
 ### Community 43 - "TestDataSourceService"
-Cohesion: 0.02
-Nodes (171): AuthorizationService, AuthorizedResource, DataSourceConfig, DataSourceService, DataSourceStatus, DataSourceTestResult, Depends, get_authorization_service (+163 more)
+Cohesion: 0.03
+Nodes (143): Protected resource categories., ResourceType, AuthorizationService, AuthorizedResource, DataSourceConfig, DataSourceService, DataSourceStatus, DataSourceTestResult (+135 more)
 
 ### Community 44 - "replace.py"
 Cohesion: 0.11
 Nodes (39): Pattern, Any, DataFrame, Series, _apply_normalize_op_scalar(), _apply_normalize_op_series(), _apply_replacement_rule(), apply_replacements() (+31 more)
 
 ### Community 45 - "asyncio"
-Cohesion: 0.06
-Nodes (29): Service for analyzing entity dependencies in projects., calculate_depths(), find_cycles(), Find all cycles in dependency graph using DFS.      Args:         dependency_map, Perform topological sort on dependency graph.      Args:         dependency_map:, Calculate depth of each node in dependency graph.      Args:         dependency_, topological_sort(), Utility modules for the backend application.  This package contains reusable uti (+21 more)
+Cohesion: 0.12
+Nodes (16): Service for analyzing entity dependencies in projects., calculate_depths(), find_cycles(), Find all cycles in dependency graph using DFS.      Args:         dependency_map, Perform topological sort on dependency graph.      Args:         dependency_map:, Calculate depth of each node in dependency graph.      Args:         dependency_, topological_sort(), Utility modules for the backend application.  This package contains reusable uti (+8 more)
 
 ### Community 46 - "ShapeShiftService"
 Cohesion: 0.10
-Nodes (16): _format_value(), Convert value to int or return None if conversion fails., Process a primary key or non-foreign-key column value., Process a foreign key column value., Convert value to None if it's NaN or None., Write collected data to CSV files., Format value according to its data type for CSV output., Main dispatch method that processes submission and creates CSV files.          A (+8 more)
+Nodes (15): _format_value(), Convert value to int or return None if conversion fails., Process a primary key or non-foreign-key column value., Process a foreign key column value., Convert value to None if it's NaN or None., Write collected data to CSV files., Format value according to its data type for CSV output., Main dispatch method that processes submission and creates CSV files.          A (+7 more)
 
 ### Community 47 - "DataSourceConfig"
-Cohesion: 0.03
-Nodes (73): Any, Path, Path, Project, ProjectService, Path, YamlService, CommentedMap (+65 more)
+Cohesion: 0.08
+Nodes (24): Any, Path, CommentedMap, CommentedSeq, CommentRegistry, Load YAML file preserving format and comments.          Converts ruamel.yaml wra, Load a YAML file as plain objects for read-only discovery.          Uses a C-bas, Save data to YAML file with atomic write and optional backup.          Uses atom (+16 more)
 
 ### Community 48 - "DummySqlLoader"
-Cohesion: 0.04
-Nodes (66): ForeignKeyConstraintValidator, ForeignKeyRuntimeOptions, Unit tests for DeferredLinkingTracker., Test that DeferredLinkingTracker initializes with empty deferred set., Test that track method uses named parameters correctly., Test that deferred set can be directly manipulated (as it's a public attribute)., Test tracking with empty entity name (edge case)., Test tracking entities with special characters in names. (+58 more)
+Cohesion: 0.05
+Nodes (41): ForeignKeyConstraintValidator, ForeignKeyRuntimeOptions, Unit tests for DeferredLinkingTracker., Test that DeferredLinkingTracker initializes with empty deferred set., Test that track method uses named parameters correctly., Test that deferred set can be directly manipulated (as it's a public attribute)., Test tracking with empty entity name (edge case)., Test tracking entities with special characters in names. (+33 more)
 
 ### Community 49 - "UCanAccessSqlLoader"
-Cohesion: 0.05
-Nodes (53): CoreIssue, GlobalConstraint, test_from_core_issue_maps_conformance_defaults(), test_from_core_issue_maps_validation_issue(), test_from_core_issue_uses_column_as_field_fallback(), SeverityLevel, EntitySpec, ShapeShiftProject (+45 more)
+Cohesion: 0.02
+Nodes (123): CoreIssue, ValidationError, ValidationIssue, Any, ShapeShiftProject, ValidationError, ColumnType, ConformanceIssue (+115 more)
 
 ### Community 50 - "PandasStringBackend"
+Cohesion: 0.04
+Nodes (114): ReconciliationCandidate, AsyncClient, CapabilitiesResponse, ResolveRequest, ResolveResponse, UUID, CapabilitiesResponse, SimsResolveItem (+106 more)
+
+### Community 51 - "ColumnSpec"
+Cohesion: 0.07
+Nodes (22): QueryFilter, Filter to keep rows using Pandas query method.     See https://pandas.pydata.org, Test that missing query returns original dataframe with warning., Test that empty query string returns original dataframe with warning., Tests for QueryFilter class., Test that invalid query raises ValueError., Test that query referencing non-existent column raises ValueError., Test query using isin() method. (+14 more)
+
+### Community 52 - "vue"
+Cohesion: 0.03
+Nodes (94): decimal, Call, ColumnRef, DSLParseError, DSLValidationError, Expr, FunctionSpec, Literal (+86 more)
+
+### Community 53 - "MaterializeDialog.vue"
+Cohesion: 0.04
+Nodes (35): ReconciliationService, Test updating specification preserves mapping., Test updating non-existent specification raises error., Test deleting specification without mappings., Test deleting specification with mappings raises error without force., Test force deleting specification with mappings succeeds., Test deleting non-existent specification raises error., Test deleting last specification removes entity from config. (+27 more)
+
+### Community 54 - "CoreIssue"
+Cohesion: 0.03
+Nodes (64): merged_entity_project(), Tests for merged entity API support., Test updating a merged entity via API., Reset service singletons between tests., Test creating a new merged entity via API., Test that validation endpoint detects merged entity errors., Test deleting a merged entity via API., Sample project configuration with merged entity. (+56 more)
+
+### Community 55 - "SeadSchema"
 Cohesion: 0.15
 Nodes (6): Submission, Check if the given submission satisfies all the specifications defined in the Sp, Foreign key columns must have values, All submission tables MUST have a non null "system_id", All fields in metadata.Table.Fields MUST exist in DataTable.columns, Checks that non-nullable columns have values.         Records that has a public_
 
-### Community 51 - "ColumnSpec"
-Cohesion: 0.04
-Nodes (59): DataFrame, ShapeShiftProject, ShapeShiftService, TableConfig, ColumnInfo, Information about a column in the preview., PreviewResultBuilder, project_service() (+51 more)
-
-### Community 52 - "vue"
-Cohesion: 0.08
-Nodes (44): decimal, Call, ColumnRef, DSLException, DSLParseError, DSLValidationError, FunctionSpec, Literal (+36 more)
-
-### Community 53 - "MaterializeDialog.vue"
-Cohesion: 0.03
-Nodes (108): AuthorizedResource, Depends, READ, require_project, Any, AuthorizedResource, Depends, EDIT (+100 more)
-
-### Community 54 - "CoreIssue"
-Cohesion: 0.02
-Nodes (136): Path, ProjectFileInfo, UploadFile, AsyncClient, FileManager, Path, ProjectUtils, Regression tests for @include and @load directive path confinement.  These tests (+128 more)
-
-### Community 55 - "SeadSchema"
-Cohesion: 0.03
-Nodes (93): ConfigValue, A value that can be resolved from a configuration store., contextlib, DispatcherRegistry, IDispatcher, Registry for dispatcher classes., Dtype, fnmatch (+85 more)
-
 ### Community 56 - "TestReplaceEnvVars"
-Cohesion: 0.06
-Nodes (74): Any, AuthorizedResource, Depends, EDIT, ProjectTaskStatus, READ, require_project, YamlService (+66 more)
+Cohesion: 0.11
+Nodes (23): BackupInfo, MetadataUpdateRequest, ProjectCreateRequest, projectsApi, ProjectUpdateRequest, RestoreBackupRequest, TargetModelFileOption, useDependencies() (+15 more)
 
 ### Community 57 - "ForeignKeyLinker"
-Cohesion: 0.03
-Nodes (141): _core_project(), Load the backend integration test project configuration for each test.      Appl, test_check_circular_dependencies(), test_composite_project_specification_is_satisfied_by(), test_data_validation_orchestrator(), test_target_model_conformance(), CoreIssue, ValidationError (+133 more)
+Cohesion: 0.04
+Nodes (102): _core_project(), Load the backend integration test project configuration for each test.      Appl, test_check_circular_dependencies(), test_composite_project_specification_is_satisfied_by(), test_data_validation_orchestrator(), test_target_model_conformance(), Any, DataValidationMode (+94 more)
 
 ### Community 58 - "IngesterConfig"
-Cohesion: 0.26
-Nodes (26): AuthorizedResource, DataSourceConfig, DataSourceService, Depends, ProjectService, QueryResult, QueryService, QueryValidation (+18 more)
+Cohesion: 0.15
+Nodes (40): QueryExecutionError, QuerySecurityError, Query execution failed.      Common causes:     - Data source connection issues, Query contains prohibited operations.      Occurs when query attempts destructiv, AuthorizedResource, DataSourceConfig, DataSourceService, Depends (+32 more)
 
 ### Community 60 - "AI Project Advisor Proposal"
-Cohesion: 0.07
-Nodes (15): UUID, Find an existing active session for the given project and user., Get all active sessions for a project file., Release a session and clear project if no other sessions., Get the currently active project being edited., Get a specific project from active editing sessions., Set/update the active project.          Args:             project: Project to se, Check if project has unsaved changes. (+7 more)
+Cohesion: 0.14
+Nodes (8): UUID, Find an existing active session for the given project and user., Retrieve and touch a session., Release a session and clear project if no other sessions., Periodically cleanup inactive sessions (30min timeout)., Update last accessed timestamp., Start background tasks., Create a new editing session for a project file.          If a session already e
 
 ### Community 61 - "src/utility.py"
-Cohesion: 0.09
-Nodes (26): get_active_project_locator(), get_authenticated_user(), get_current_session(), get_data_source_service(), get_session_id(), API Dependencies  Provides dependency injection functions for FastAPI endpoints., Return the locator of the active project, or None when no project is loaded., Get DataSourceService instance.      Creates service for managing global data so (+18 more)
+Cohesion: 0.12
+Nodes (29): get_authenticated_user(), get_current_session(), get_data_source_service(), get_schema_service(), get_session_id(), API Dependencies  Provides dependency injection functions for FastAPI endpoints., Get DataSourceService instance.      Creates service for managing global data so, Get SchemaIntrospectionService instance.      Creates service with current confi (+21 more)
 
 ### Community 62 - "typing"
-Cohesion: 0.02
-Nodes (98): EntityResolutionSet, EntityResolutionCatalog, EntityResolutionSet, ReconciliationService, AnotherEntityReconciliationSourceResolver, Executes custom SQL query (implements SourceStrategyType.SQL_QUERY)., Resolve source data based on entity spec source project., Loads data from the target entity itself (implements SourceStrategyType.TARGET_E (+90 more)
+Cohesion: 0.03
+Nodes (86): Reconciliation service module.  This module provides services for entity reconci, Any, AutoReconcileResult, EntityResolutionCatalog, Path, ReconciliationCandidate, ReconciliationClient, EntityResolutionCatalog (+78 more)
 
 ### Community 63 - "Full Manual Checklist"
-Cohesion: 0.06
-Nodes (48): get_schema_service(), Get SchemaIntrospectionService instance.      Creates service with current confi, EntitySuggestions, SchemaIntrospectionService, Any, EntitySuggestions, SchemaIntrospectionService, TableSchema (+40 more)
+Cohesion: 0.07
+Nodes (50): EntitySuggestions, SchemaIntrospectionService, Any, EntitySuggestions, SchemaIntrospectionService, TableSchema, DependencySuggestion, analyze_entities() (+42 more)
 
 ### Community 64 - "constraints.py"
-Cohesion: 0.11
-Nodes (18): AuthorizationPolicy, Evaluate explicit role mappings without implicit allow rules., Return whether a resource role permits an action for its resource type., Return whether a deployment role permits an action., Return whether the principal may perform an action on a resource., Return an authorized resource or None when access is denied., Return whether a principal holds an application role that allows an action., Create a project resource and assign its initial owner. (+10 more)
+Cohesion: 0.12
+Nodes (13): Path, project_dir(), Create a temporary configuration directory., Test ApplicationStateManager convenience methods., Test manager returns active configs when singleton is initialized., Test update refreshes existing config but ignores unknown ones., Test activate sets active config and returns metadata., activate keys the cache by the supplied locator, not metadata.name. (+5 more)
 
 ### Community 65 - "unnest"
 Cohesion: 0.10
@@ -1082,56 +1097,56 @@ Cohesion: 0.08
 Nodes (14): Should extract table names from query., Should extract table names with schema prefix., Test query validation functionality., Set up test fixtures., Should validate SELECT queries as valid., Should reject INSERT queries as destructive., Should reject UPDATE queries as destructive., Should reject DELETE queries as destructive. (+6 more)
 
 ### Community 67 - "documentation.py"
-Cohesion: 0.02
-Nodes (99): Path, Settings, Any, Project, Any, Path, Project, ProjectService (+91 more)
+Cohesion: 0.03
+Nodes (53): Any, Path, Project, ProjectService, _make_project(), mock_state(), Tests for ProjectService state management robustness.  Tests cover the Phase 1 f, Test the per-project locking infrastructure. (+45 more)
 
 ### Community 68 - "normalizer.py"
 Cohesion: 0.02
-Nodes (186): ReconciliationCandidate, Any, AsyncClient, ReconciliationCandidate, AsyncClient, CapabilitiesResponse, ResolveRequest, ResolveResponse (+178 more)
+Nodes (97): Any, AsyncClient, ReconciliationCandidate, Any, CapabilitiesResponse, Identifier, ReconciliationClient, Settings (+89 more)
 
 ### Community 69 - "execute_query"
-Cohesion: 0.03
-Nodes (113): Any, AuthorizedResource, DataValidationMode, Depends, EDIT, READ, require_project, Any (+105 more)
+Cohesion: 0.05
+Nodes (36): Any, IngesterRegistry, IngestionResult, Protocol definitions for data ingesters.  This module defines the standard inter, Build a standard failed ingestion result., Result of ingester validation.      Attributes:         is_valid: Whether valida, Check if validation has errors., Check if validation has warnings. (+28 more)
 
 ### Community 70 - "Full Manual Checklist"
-Cohesion: 0.13
-Nodes (16): _get_series(), NullKeyValidator, Retrieve all registered validators for a given stage., Validates that keys don't contain null values if not allowed., Determine which rows in the local DataFrame are new (i.e., have null public_id), Determine which remote rows still need strict null-key validation.          Remo, Validates that unmatched right rows are allowed., Validate constraints before performing the merge. (+8 more)
+Cohesion: 0.09
+Nodes (52): _apply_administrators(), _apply_grants(), apply_manifest(), _apply_resources(), backup_database(), development_bootstrap_required(), export_manifest(), initialize_database() (+44 more)
 
 ### Community 71 - "QueryEditor.vue"
-Cohesion: 0.18
+Cohesion: 0.20
 Nodes (5): ExtraColumnsExpressionSpecification, Preflight validation for entity-level extra_columns expressions.      This valid, Check that extra_columns expressions are structurally valid., Tests for entity-level extra_columns preflight validation., TestExtraColumnsExpressionSpecification
 
 ### Community 72 - "validate_directive"
-Cohesion: 0.02
-Nodes (93): DirectiveResolver, EnvironmentVariableResolver, IncludeResolver, _is_path_env_var(), load_resolved_yaml(), LoadResolver, Load and resolve a YAML project file.      Returns the fully resolved dict with, Immutable context passed through directive resolution.      Carries all the stat (+85 more)
+Cohesion: 0.06
+Nodes (32): Resolve a file path with environment variable expansion and relative path suppor, _resolve_path(), Test typical @include: directive usage pattern., Test local relative @include: pattern., Test accessing shared resources from nested project., Test that Windows-style absolute paths are recognized., Test complex pattern with multiple env vars and relative paths., Test _resolve_path() basic path resolution. (+24 more)
 
 ### Community 73 - "TestCoerceFixedEntityValues"
-Cohesion: 0.08
-Nodes (14): Test collect_source_dependencies() method for analyzing extra_columns requiremen, Empty extra_columns returns empty set., Non-string constants have no dependencies., Interpolated strings extract column dependencies., DSL formulas extract column dependencies., Column copy identifies source column., Mixed extra_columns collect all dependencies., Case-insensitive mode matches columns regardless of case. (+6 more)
+Cohesion: 0.09
+Nodes (25): AuthorizedResource, Depends, READ, require_project, Any, Project, get_valid_directives(), API endpoints for @value directive validation. (+17 more)
 
 ### Community 74 - "TargetModelValidator"
-Cohesion: 0.06
-Nodes (41): apiClient, dataSourcesApi, EntityTypeInfo, HealthResponse, queryApi, schemaApi, TaskInitializeResponse, TaskNoteResponse (+33 more)
+Cohesion: 0.09
+Nodes (32): dataSourcesApi, EntityTypeInfo, schemaApi, useDataSourceStore, mockApi, mockApiClient, ColumnMetadata, DataSourceConfig (+24 more)
 
 ### Community 75 - "TypeMapping"
-Cohesion: 0.12
-Nodes (17): inspect, Test decorators for configuration management, Decorator to automatically set up and tear down test configuration provider., Parameterized decorator for configuration context management.      This version, with_config_context(), with_test_config(), Integration test for merged entity processing., Test that merged entity can be loaded and processed through the pipeline. (+9 more)
+Cohesion: 0.07
+Nodes (15): Tests for merged entity validation., Test valid merged entity passes validation., Test error when branch is missing name field., Test error when branch is missing source field., Test error when branch source entity doesn't exist., Test error when branch names are duplicated., Test validation of keys field in branches., Test error when keys field is not a list. (+7 more)
 
 ### Community 76 - "TestRegistry"
-Cohesion: 0.10
-Nodes (15): Project, ProjectMetadata, Mark a project as saved (no unsaved changes)., Get ApplicationState, raising error if not initialized., Update project if it's already known, otherwise ignore.          Args:, Update version tracking for a project (for cache invalidation)., Set active project in ApplicationState if initialized.          Args:, Check if project is dirty in ApplicationState if initialized. (+7 more)
+Cohesion: 0.09
+Nodes (16): Project, Get the currently active project being edited., Get a specific project from active editing sessions., Set/update the active project.          Args:             project: Project to se, Mark a project as saved (no unsaved changes)., Check if project has unsaved changes., Get project version for cache invalidation., Increment and return the version number for a project. (+8 more)
 
 ### Community 77 - "TestTaskListSidecarManager"
 Cohesion: 0.04
 Nodes (46): 1. Add API Method, 2. Create Store, 3. Create Composable, 4. Create Component, 5. Add Route, Adding Features, API Client Structure, API Integration (+38 more)
 
 ### Community 78 - "FormulaEngine"
-Cohesion: 0.04
-Nodes (27): DataFrame, _demo(), Expr, FormulaEngine, Parse a formula string into an AST., Base class for all expression nodes., Initialize evaluator with FormulaEngine for DSL formula support., Evaluate simple formula. (+19 more)
+Cohesion: 0.06
+Nodes (38): Force ingester discovery to run for each test in this module., reset_ingester_registry_state(), Ingester infrastructure for data ingestion into external systems.  Ingesters are, Any, IngesterRegistry, IngesterConfig, Context, basic_ingester_config() (+30 more)
 
 ### Community 79 - "FixedLoader"
-Cohesion: 0.08
-Nodes (26): DataFrame, ConfigLike, SchemaService, SeadSchema, Submission, DataFrame, MockSchemaService, Returns foreign key columns from SEAD columns (performance only). (+18 more)
+Cohesion: 0.15
+Nodes (7): DataFrame, Returns foreign key columns from SEAD columns (performance only)., Returns a dataframe of tables from SEAD with attributes., Returns a dataframe of table columns from SEAD with attributes., Returns all unique primary keys for `table_name` in SEAD., Returns a dataframe of tables from SEAD with attributes., Loads the SEAD schema from the database.
 
 ### Community 80 - "TaskList"
 Cohesion: 0.04
@@ -1142,104 +1157,104 @@ Cohesion: 0.04
 Nodes (24): Tests for Type Mapping Service, Should recognize email columns., Should fallback to string for unknown types., Should match type patterns like 'character varying(255)'., Set up test fixtures., Should provide alternative type suggestions., Should generate mappings for all columns in a table., Should assign appropriate confidence levels. (+16 more)
 
 ### Community 82 - "DataSourceConfig"
-Cohesion: 0.09
-Nodes (14): Metadata, Configuration metadata. Read-Only. Wraps metadata section from configuration., Initialize metadata from configuration data., Configuration description., Configuration version., Tests for metadata handling in configurations., Test that mapper prefers filename over metadata.name parameter., Test that mapper uses filename if metadata.name is missing. (+6 more)
+Cohesion: 0.06
+Nodes (28): Authorization for protected work, Change Request Ingester MVP Field Usage, Checking Conformance Without the UI, Conformance Validation, File Location, Generating Documentation from a Target Model, How It Works, Issue Codes (+20 more)
 
 ### Community 83 - ".is_interpolated_string"
-Cohesion: 0.16
-Nodes (20): dist_dir_fixture(), Tests for SPA catch-all path containment (S1).  The frontend build directory is, Create a fake frontend build directory with an index and one asset., A real file under the build directory is served., An unknown client-side route returns index.html, not a 404 file., The root path serves index.html., A '../' path that escapes the build directory is not served., Traversal that re-enters the root after escaping is still rejected. (+12 more)
+Cohesion: 0.08
+Nodes (24): lifespan(), _log_development_authorization_bootstrap_hint(), Print a bootstrap command when the opted-in local authorization store is incompl, Application lifespan events., Path, AsyncClient, get_settings(), Check if foreign key suggestions are enabled. (+16 more)
 
 ### Community 84 - "gis.py"
-Cohesion: 0.12
-Nodes (19): pyproj, Any, DataFrame, Any, DataFrame, Series, Given a mapping dict, transform values in specified columns., Transformer (+11 more)
+Cohesion: 0.11
+Nodes (20): collections_abc, pyproj, Any, DataFrame, Any, DataFrame, Series, Given a mapping dict, transform values in specified columns. (+12 more)
 
 ### Community 85 - "build_table"
 Cohesion: 0.02
-Nodes (119): CsvProcessor, Main class that processes the Submission and produces CSV files directly.      C, IDispatcher, Column, SeadSchema, Table, SeadSchema, SeadSchemaFactory (+111 more)
+Nodes (163): CsvProcessor, Main class that processes the Submission and produces CSV files directly.      C, IDispatcher, Column, SeadSchema, Table, DataFrame, SeadSchema (+155 more)
 
 ### Community 86 - "ForeignKeyConstraints"
-Cohesion: 0.10
-Nodes (19): Any, DataFrame, Series, extract_column_references(), Extract all column references from an expression AST.      Args:         expr: E, Identify extra_columns that could not be evaluated and their missing dependencie, Convert value to string, handling numbers and nulls., Detect if value is an escaped equals literal (starts with '==').          String (+11 more)
+Cohesion: 0.09
+Nodes (19): DataFrame, DataSourceConfig, SchemaIntrospectionService, Settings, Should raise error when data source not found., Should raise error for unsupported driver., Mock the loader's read_sql method., Should preview table data. (+11 more)
 
 ### Community 87 - "convert_ruamel_types"
 Cohesion: 0.08
 Nodes (19): Any, Tests for YAML utility functions., Other Python types (bool, int, float) are preserved., Plain strings are returned as-is., Plain dicts are returned as-is., Plain lists are returned as-is., Empty strings are preserved as-is (not converted to None)., Nested dicts are recursively converted. (+11 more)
 
 ### Community 88 - "Shape Shifter Configuration Editor - Developer Guide"
-Cohesion: 0.08
-Nodes (13): Test get_unresolved_extra_columns() method for tracking evaluation failures., Empty extra_columns returns empty dict., All evaluated columns return empty dict., Unresolved interpolation reports missing columns., Unresolved formula reports missing columns., Formula with multiple missing columns lists all., Column copy to non-existent column is tracked., Mix of resolved and unresolved columns. (+5 more)
+Cohesion: 0.24
+Nodes (9): Any, DataFrame, TableStore, FilterFieldMetadata, FilterSchema, Filter metadata registry for filter configuration schemas.  This module defines, Metadata for a filter configuration field.      Attributes:         name: Field, Schema defining what fields a filter supports.      Attributes:         key: Fil (+1 more)
 
 ### Community 90 - "ForeignKeyConstraintValidator"
-Cohesion: 0.07
-Nodes (18): AllowRowDecreaseValidator, ConstraintValidator, ManyToOneCardinalityValidator, OneToManyCardinalityValidator, OneToOneCardinalityValidator, Validates that left keys are unique., Validates that right keys are unique., Validates one-to-one cardinality (row count stays the same). (+10 more)
+Cohesion: 0.05
+Nodes (34): AllowRowDecreaseValidator, ConstraintValidator, _get_series(), ManyToOneCardinalityValidator, NullKeyValidator, OneToManyCardinalityValidator, OneToOneCardinalityValidator, Retrieve all registered validators for a given stage. (+26 more)
 
 ### Community 91 - "ConnectTestResult"
 Cohesion: 0.05
 Nodes (44): 10. Verify Save/Reopen/YAML Round-Trip, 11. Verify Dependency Graph Behavior, 12. Negative Validation Checks, 12A. Missing `public_id`, 12B. Duplicate Branch Names, 12C. Missing Branch Source Entity, 12D. Invalid Branch Keys, 13. Optional Advanced Checks (+36 more)
 
 ### Community 92 - "Reconciliation Setup Guide"
-Cohesion: 0.02
-Nodes (125): DataFrame, DataSourceConfig, SchemaIntrospectionService, Settings, MonkeyPatch, TableSchema, ColumnMetadata, EntityGeneratorService (+117 more)
+Cohesion: 0.07
+Nodes (36): MonkeyPatch, TableSchema, ColumnMetadata, ColumnMetadata, Metadata about a table column., Complete schema information for a table., TableSchema, Tests for ColumnMetadata model. (+28 more)
 
 ### Community 93 - "UnnestConfig"
 Cohesion: 0.05
 Nodes (42): 10. Verify SEAD Example Fixture with Broad Negative Coverage, 11. Verify Conservative Strictness with the Arbodat-Derived SEAD Fixture, 12. Verify Conformance Presentation in the Validate Tab, 1. Verify the Metadata Editor Target Model Workflow, 2. Verify the Happy Path with an Included Custom Spec, 3. Verify That Target Models Remain Optional, 4. Verify Inline Target Model Definitions, 5. Verify Parse Errors for Invalid Target Model Content (+34 more)
 
 ### Community 94 - "CompositeProjectSpecification"
-Cohesion: 0.16
-Nodes (11): EntitySpec, Shared effective identity resolution for target-model entities.  Computes the ef, Return the effective identity intent for one target-model entity.      Reads the, resolve_effective_identity(), Tests for the shared effective identity resolver., Default resolution from role and aggregate parent., The shared resolver, validator, and documentation generator must agree., _spec() (+3 more)
+Cohesion: 0.10
+Nodes (20): EntitySpec, Protocol, CapabilitiesSource, EntityCapability, Fail-closed SIMS capability preflight for the SEAD change request ingester.  Com, Capability entry for one entity type published by SIMS., Versioned SIMS capability response consumed by preflight., Return the SIMS operations an entity's effective identity mode requires.      Tr (+12 more)
 
 ### Community 95 - "TestDSLIntegration"
-Cohesion: 0.05
-Nodes (27): Tests for ForeignKeyConfig class., Test creating a valid foreign key configuration., Test extra_columns as a dictionary mapping local to remote column names., Test extra_columns as a list (maps column names to themselves)., Test extra_columns as a single string (converted to list, then dict)., Test extra_columns with empty dict returns empty dict., Test that missing extra_columns defaults to empty dict., Test that invalid extra_columns type raises ValueError. (+19 more)
+Cohesion: 0.03
+Nodes (57): Test creating a valid foreign key configuration., Test extra_columns as a dictionary mapping local to remote column names., Test extra_columns as a list (maps column names to themselves)., Test extra_columns as a single string (converted to list, then dict)., Test extra_columns with empty dict returns empty dict., Test that missing extra_columns defaults to empty dict., Test that invalid extra_columns type raises ValueError., Test drop_remote_id set to True. (+49 more)
 
 ### Community 96 - "Reconciliation Workflow - User Guide"
 Cohesion: 0.07
 Nodes (15): Test with mixed numeric types and nulls., Test that system_id is placed as first column., Test that system_id is created with sequential values starting at 1., Test that existing system_id values are preserved., Test that null system_id values are filled with max+1., Test with non-sequential existing IDs (e.g., 1, 5, 8)., Test that nulls are filled starting from max existing value., Test when all system_id values are null. (+7 more)
 
 ### Community 97 - "ReconciliationGrid.vue"
-Cohesion: 0.12
-Nodes (12): ConcreteFieldValidator, Concrete field validator for testing., Check if field value equals 'valid'. Returns True if valid (no error), False if, Tests for FieldValidator base class., Sample project configuration., Test field validator initialization., Test default severity is error., Test validating field with custom target_cfg. (+4 more)
+Cohesion: 0.07
+Nodes (22): pdb, mock_schema_service(), Tests for schema introspection API endpoints., Tests for GET /data-sources/{name}/tables/{table_name}/schema endpoint., Test successful table schema retrieval., Tests for GET /data-sources/{name}/tables/{table_name}/preview endpoint., Test successful table data preview., Test table preview with custom pagination. (+14 more)
 
 ### Community 98 - "TestTypeMappingService"
-Cohesion: 0.07
-Nodes (22): extract_tables(), Extract table names from an SQL query using sqlparse.      Returns a sorted, ded, Tests for SQL utility functions., Test that subqueries are handled., Test that SQL keywords are case insensitive., Test handling empty query., Test query without FROM clause., Test complex real-world query. (+14 more)
+Cohesion: 0.04
+Nodes (53): Identifier, QueryExecution, QueryIntrospection, QueryResult, QueryValidation, Query execution models for the Shape Shifter Configuration Editor., Result of a query execution., Result of query validation. (+45 more)
 
 ### Community 100 - "SpecificationEditor.vue"
 Cohesion: 0.09
 Nodes (17): ConcreteSpecification, Test specification initialization., Test clearing errors and warnings., Test has_errors method., Test has_warnings method., Test merging specifications., Test getting entity configuration., Test getting non-existent entity configuration. (+9 more)
 
 ### Community 101 - "TaskListSidecarManager"
-Cohesion: 0.10
-Nodes (19): 1. Persist stable submission defaults in project YAML, 2. Adopt the proposed SEAD submission container, 3. Map project and run metadata to `tbl_submissions`, 4. Resolve the data provider and dataset ownership, Acceptance Criteria, Alternatives Considered, Current Behavior, Final Recommendation (+11 more)
+Cohesion: 0.09
+Nodes (18): Path, Settings, Test that to_core() handles legacy ${GLOBAL_DATA_DIR}/ format., Test that to_core() resolves a project-local target model include to a dict., Integration tests for ProjectMapper file path resolution., Test that to_core() raises a clear FileNotFoundError for missing target model in, A configured shared target model reference should resolve through @load., Create mock Settings with temporary directories. (+10 more)
 
 ### Community 102 - "Any"
-Cohesion: 0.10
-Nodes (12): Test idempotent evaluation (skipping already-evaluated columns)., Evaluator skips columns that already exist in DataFrame., Calling evaluate_extra_columns multiple times is idempotent., After partial evaluation, can complete with same extra_columns dict., Skipped columns are counted and logged., Test verify_extra_columns method for validation., Test verify returns True when all columns are evaluated., Test verify returns False and logs warning when columns are missing. (+4 more)
+Cohesion: 0.20
+Nodes (6): Tests for resolve_specification function., Test resolving specification when already a dict., Test resolving None returns default specification., Test resolving string resource key., Test resolving non-existent resource returns None., TestResolveSpecification
 
 ### Community 103 - "test_append.py"
 Cohesion: 0.08
 Nodes (24): reconciliationServiceApi, reconciliationSpecApi, [], deleteDialog, deletingSpec, editorDialog, headers, isNewSpec (+16 more)
 
 ### Community 104 - "ResolvedEntityPair"
-Cohesion: 0.06
-Nodes (26): EntityResolutionCatalog, EntityResolutionMetadata, EntityResolutionSet, Get mapping item by source value., Check if this mapping has any items., Get count of mapping items., Complete entity mapping registry for all entities.      Top-level domain model f, Get mapping for an entity and target field. (+18 more)
+Cohesion: 0.05
+Nodes (33): Mappers for converting between reconciliation DTOs and domain models.  This modu, EntityResolutionCatalog, EntityResolutionMetadata, EntityResolutionSet, Domain models for reconciliation system.  These models represent the business do, Get mapping item by source value., Check if this mapping has any items., Get count of mapping items. (+25 more)
 
 ### Community 105 - "CustomLayoutConfig"
-Cohesion: 0.14
-Nodes (8): CustomLayoutConfig, Get custom layout configuration., Convert to dictionary for serialization., Custom graph layout configuration., Get (x, y) position for entity, or None if not set.          Args:             e, Remove position for entity.          Args:             entity_name: Name of the, Convert to dictionary for serialization., Check if no positions are configured.
+Cohesion: 0.08
+Nodes (16): CustomLayoutConfig, LayoutPosition, Initialize layout position from configuration data.          Args:             d, Get custom layout configuration., Convert to dictionary for serialization., Convert position to dictionary for serialization., Custom graph layout configuration., Initialize custom layout from configuration data.          Args:             dat (+8 more)
 
 ### Community 106 - "FixedEntityFieldsSpecification"
-Cohesion: 0.03
-Nodes (79): Config, ConfigLike, load_config(), Create a deep copy of the configuration., Resolve configuration directives in self.data., Container for configuration elements., Save configuration to the YAML file.          This method preserves the raw YAML, Configurable (+71 more)
+Cohesion: 0.02
+Nodes (145): Config, ConfigLike, load_config(), Create a deep copy of the configuration., Resolve configuration directives in self.data., Container for configuration elements., Save configuration to the YAML file.          This method preserves the raw YAML, Configurable (+137 more)
 
 ### Community 107 - "dsl.py"
-Cohesion: 0.10
-Nodes (28): MarkdownDocumentGenerator, SimsDocumentGenerator, DocumentFormat, ExcelGenerator, HTMLDocumentGenerator, MarkdownDocumentGenerator, Generate Markdown documentation., Generate interactive HTML documentation. (+20 more)
+Cohesion: 0.15
+Nodes (23): MarkdownDocumentGenerator, SimsDocumentGenerator, DocumentFormat, HTMLDocumentGenerator, MarkdownDocumentGenerator, Generate Markdown documentation., Generate interactive HTML documentation., Generate a Shape Shifter target-model reference for SIMS documentation. (+15 more)
 
 ### Community 108 - "CONFIGURATION_GUIDE.md"
 Cohesion: 0.06
-Nodes (43): Branch source entities, Check results, Each employee should have unique ID, EntityConfig, Every sample MUST have a non-null type, Example: Employee has one set of details, Example: Many samples reference one sample type, Example: Many students in many courses (+35 more)
+Nodes (42): Branch source entities, Check results, Each employee should have unique ID, EntityConfig, Every sample MUST have a non-null type, Example: Employee has one set of details, Example: Many samples reference one sample type, Example: Many students in many courses (+34 more)
 
 ### Community 109 - "QueryBuilder.vue"
 Cohesion: 0.05
@@ -1247,23 +1262,23 @@ Nodes (38): anyOf, description, title, anyOf, default, description, title, anyOf
 
 ### Community 110 - "settings"
 Cohesion: 0.06
-Nodes (19): Tests for DirectiveValidator., Test FK-specific validation with valid list., Test FK-specific validation fails with non-list value., Test FK validation provides entity-specific suggestions., Test getting all valid directive paths., Test suggestions are provided for invalid paths., Create a sample project for testing., Test resolving deeply nested paths. (+11 more)
+Nodes (18): Tests for DirectiveValidator., Test FK-specific validation with valid list., Test FK-specific validation fails with non-list value., Test FK validation provides entity-specific suggestions., Test getting all valid directive paths., Test suggestions are provided for invalid paths., Create a sample project for testing., Test resolving deeply nested paths. (+10 more)
 
 ### Community 111 - "TestParser"
-Cohesion: 0.04
-Nodes (26): Test save_task_list creates sidecar file., Test save_task_list saves correct format (new format with migration)., Tests for TaskListSidecarManager class., Saving task state should not remove persisted notes., Sidecar manager should load notes independently of task_list., Create temporary directory for test files., Setting a note should write it to the sidecar and preserve line breaks., Whitespace-only notes should be removed instead of stored. (+18 more)
+Cohesion: 0.25
+Nodes (4): Tests for TaskListSidecarManager class., Test TaskList automatically migrates from old format to new format., Test migrate_task_list returns copy of data, not reference., TestTaskListSidecarManager
 
 ### Community 112 - "Any"
 Cohesion: 0.07
 Nodes (23): get_tips(), Centralized error tips registry.  Maps error codes to actionable recovery tips f, Get tips for an error code with optional template formatting.      Args:, Register or update tips for an error code.      Args:         error_code: Error, register_tips(), Truncate large nested values for safe, concise API error payloads., Initialize foreign key error.          Args:             message: Error descript, Initialize schema validation error.          Args:             message: Error de (+15 more)
 
 ### Community 113 - "SourceNode"
-Cohesion: 0.06
-Nodes (45): dataSourceFilesApi, ColumnAvailabilityRequest, ColumnAvailabilityResponse, entitiesApi, EntityCreateRequest, EntityResponse, EntityUpdateRequest, EntityValuesResponse (+37 more)
+Cohesion: 0.07
+Nodes (34): apiRequest(), dataSourceFilesApi, ColumnAvailabilityRequest, ColumnAvailabilityResponse, entitiesApi, EntityCreateRequest, EntityResponse, EntityUpdateRequest (+26 more)
 
 ### Community 114 - "Any"
-Cohesion: 0.16
-Nodes (30): collections, issue_pairs(), load_project(), load_real_project(), load_target_model(), _minimal_target_model(), Project severity overrides should replace the default severity for a conformance, The registry should execute both global and entity validator subclasses. (+22 more)
+Cohesion: 0.08
+Nodes (13): Tests for AppendSpecification., Sample project configuration., Test validation passes for valid fixed append., Test validation passes for valid SQL append., Test validation passes for valid source append (shorthand form)., Test validation passes for source append with type: entity (explicit form)., Test validation fails when type is not 'entity' but source is specified., Test validation fails when neither type nor source specified. (+5 more)
 
 ### Community 115 - "SqliteLoader"
 Cohesion: 0.06
@@ -1271,43 +1286,43 @@ Nodes (31): DispatcherMetadata, executeApi, ExecuteRequest, ExecuteResult, canEx
 
 ### Community 116 - "TableConfig"
 Cohesion: 0.01
-Nodes (283): Materialization, Test parsing of append configurations from YAML-like dictionaries., Test dependency resolution for append configurations., Test that append source is added to depends_on., Test multiple append sources are added to depends_on., Test entity without append configuration., Test that fixed append doesn't add dependencies., Test property inheritance from parent to append items. (+275 more)
+Nodes (223): ProjectService, ShapeShiftProject, Test parsing of append configurations from YAML-like dictionaries., Test dependency resolution for append configurations., Test that append source is added to depends_on., Test multiple append sources are added to depends_on., Test entity without append configuration., Test that fixed append doesn't add dependencies. (+215 more)
 
 ### Community 117 - "FixedValuesGrid.vue"
-Cohesion: 0.08
-Nodes (38): AuthenticationAdapter, AuthenticationAdapter, Adapters from authenticated request state to authorization principals., Convert trusted-proxy identity state into a stable principal., Return the request principal or raise the standard authentication response., authorize_shared_data_source_reference(), _data_source_locator(), get_authorization_repository() (+30 more)
+Cohesion: 0.42
+Nodes (8): AuthenticationAdapter, Tests for the authentication-to-principal adapter., _request(), test_adapter_allows_only_explicit_development_principal(), test_adapter_preserves_trusted_proxy_identity(), test_adapter_preserves_verified_groups_from_request_state(), test_adapter_rejects_missing_identity(), fastapi_exceptions
 
 ### Community 118 - "ExtraColumnsEditor.vue"
-Cohesion: 0.02
-Nodes (154): ConfigurationError, EntityConflictError, Invalid project configuration.      Occurs when project structure violates speci, Base class for resource access/availability errors., Requested resource does not exist.      Used for projects, entities, files, etc., Resource already exists with same identifier.      Used for duplicate names, ID, Entity was concurrently modified; ETag mismatch.      Raised when a PUT /entitie, ResourceConflictError (+146 more)
+Cohesion: 0.03
+Nodes (72): EntityConflictError, Entity was concurrently modified; ETag mismatch.      Raised when a PUT /entitie, Any, Entity, EntityPersistenceStrategyRegistry, Project, Any, EntityOperations (+64 more)
 
 ### Community 120 - "TestEntityValuesService"
 Cohesion: 0.09
 Nodes (23): ingesterApi, { ingesters, selectedIngester, hasIngesters, loading }, ingesterStore, useIngesterStore, dataSourceStore, ingesterStore, projectStore, selectStub (+15 more)
 
 ### Community 121 - "TestExtractTables"
-Cohesion: 0.12
-Nodes (17): Checking Conformance Without the UI, Conformance Validation, File Location, Generating Documentation from a Target Model, How It Works, Issue Codes, Minimal Example, Overview (+9 more)
+Cohesion: 0.04
+Nodes (72): Any, Path, ProjectService, ValidationError, FixAction, FixResult, FixSuggestion, FixAction (+64 more)
 
 ### Community 122 - "USER_GUIDE.md"
 Cohesion: 0.06
 Nodes (33): 1. Use UI Mode, 2. Use Debug Mode, 3. Screenshots and Videos, 4. Playwright Inspector, 5. Console Logs, Adding New Tests, All tests (headless), Check for success/error (+25 more)
 
 ### Community 123 - "YamlService"
-Cohesion: 0.14
-Nodes (12): Path, YamlService, ruamel_yaml_comments, project_file(), Tests for YamlService boundary-based persistence methods.  Verifies that load_co, Comments on the entities section should survive a metadata-only update., Deleting an entity that doesn't exist should not raise., TestLoadCommented (+4 more)
+Cohesion: 0.15
+Nodes (11): Path, YamlService, project_file(), Tests for YamlService boundary-based persistence methods.  Verifies that load_co, Comments on the entities section should survive a metadata-only update., Deleting an entity that doesn't exist should not raise., TestLoadCommented, TestMergeBoundaryEntity (+3 more)
 
 ### Community 124 - "generate_schemas.py"
 Cohesion: 0.17
 Nodes (21): apply_field_patches(), build_loader_options_schema(), build_parser(), build_schema(), check_schemas_in_sync(), clean_schema(), generate_schemas(), main() (+13 more)
 
 ### Community 125 - "._extract_manual_links_from_rows"
-Cohesion: 0.08
-Nodes (24): Environment, ExcelWriter, Any, EntitySpec, Path, ShapeShiftProject, TargetModel, DocumentGenerator (+16 more)
+Cohesion: 0.09
+Nodes (22): Environment, Any, EntitySpec, Path, ShapeShiftProject, TargetModel, DocumentGenerator, Base class for text-based documentation generators (Markdown, HTML). (+14 more)
 
 ### Community 126 - "SourceSpan"
-Cohesion: 0.11
-Nodes (16): Allow an authenticated principal to read the global log without an application r, test_authenticated_principal_without_application_role_can_read_logs(), Verify every declared protected endpoint rejects a request before handler valida, test_declared_authorization_routes_reject_unauthenticated_requests(), Reject every sensitive API and direct application route without proxy identity., Allow health checks without identity while keeping filesystem details private., Allow an authenticated principal to reach generated docs and static documentatio, test_health_check_is_public_without_configuration_details() (+8 more)
+Cohesion: 0.15
+Nodes (12): Path, Project, ProjectService, project_file(), projects_dir(), Tests for ProjectService boundary-based persistence methods.  Verifies that save, Write fixture YAML into the expected path for project 'test-project'., service() (+4 more)
 
 ### Community 127 - "ReconciliationView.vue"
 Cohesion: 0.09
@@ -1318,8 +1333,8 @@ Cohesion: 0.06
 Nodes (32): 00-smoke.spec.ts (Foundation), 01-project-management.spec.ts (Projects), 02-validation-workflow.spec.ts (Validation), 03-entity-management.spec.ts (Entities), 1. Run Your First Test, 1. Use Test Fixtures, 2. Run Tests Headless (CI mode), 2. Wait for Network Idle (+24 more)
 
 ### Community 129 - "preflight_capabilities"
-Cohesion: 0.05
-Nodes (66): build_table_config(), Test that interpolation with missing column is deferred (not an error)., Interpolation should pull required source columns before evaluating extra_column, Escaped leading '=' literals should remain constants during extraction., Test that columns with missing dependencies are silently deferred (logged but no, Test that all columns are evaluated when dependencies are present., Return a fresh TableConfig for the test entity with optional overrides., Test transform rule that coerces all values (no match filter). (+58 more)
+Cohesion: 0.10
+Nodes (38): build_table_config(), Return a fresh TableConfig for the test entity with optional overrides., Test _split_extra_columns with case_sensitive=True., Test interpolated string handles escaped braces., test_get_subset_adds_constant_extra_column(), test_get_subset_advanced_replacements_diagnostics_do_not_change_output(), test_get_subset_applies_advanced_replacements_blank_out_fill_constant(), test_get_subset_applies_advanced_replacements_blank_out_fill_none() (+30 more)
 
 ### Community 130 - "DataSourceService"
 Cohesion: 0.09
@@ -1327,23 +1342,23 @@ Nodes (17): Should strip accents and lowercase to mimic Postgres unaccent behavi
 
 ### Community 131 - "fixture"
 Cohesion: 0.06
-Nodes (33): anyOf, default, title, title, type, properties, anyOf, default (+25 more)
+Nodes (33): anyOf, default, title, properties, title, type, anyOf, default (+25 more)
 
 ### Community 132 - "EntityListCard.vue"
 Cohesion: 0.06
 Nodes (32): Adding New Dispatchers, Adding New Policies, Adding New Specifications, Builder Pattern, Business Logic, Configuration, Configuration Hierarchy, Configuration Injection (+24 more)
 
 ### Community 133 - "ExecuteDialog.vue"
-Cohesion: 0.15
-Nodes (9): ColumnSpec, make_entity_spec(), Tests for target-model-aware data conformance validators., Integers are compatible with float type., nullable=None (unspecified) + required=True → treat as not nullable., Missing columns are a structural conformance issue, not data conformance., TestAllowedValuesConformanceValidator, TestNullabilityConformanceValidator (+1 more)
+Cohesion: 0.10
+Nodes (12): ColumnSpec, make_entity_spec(), Tests for target-model-aware data conformance validators., Integers are compatible with float type., Empty target — not our concern here (orphaned-values check can't run)., Null FK values should not be counted as orphaned., nullable=None (unspecified) + required=True → treat as not nullable., Missing columns are a structural conformance issue, not data conformance. (+4 more)
 
 ### Community 134 - "ProjectDataSources.vue"
-Cohesion: 0.09
-Nodes (17): ForeignKeyDataSpecification, Checks if local and remote keys are present in the actual table data (pandas.Dat, Tests for ForeignKeyDataSpecification., Mock ShapeShiftProject for testing., Sample table store with DataFrames., Test validation passes when all keys exist in data., Test validation fails when local key missing from data., Test validation fails when remote key missing from data. (+9 more)
+Cohesion: 0.11
+Nodes (12): DataFrameGroupBy, Base specification for project validation., Check if the input satisfies this specification.         True if valid, False ot, Add an error message., Add a warning message., Check if there are any errors., Check if there are any warnings., Generate a human-readable validation report. (+4 more)
 
 ### Community 135 - "WorkflowResult"
-Cohesion: 0.07
-Nodes (40): ShapeShiftProject, DataValidationMode, Pydantic models for validation results., Category of validation check., Mode for data validation., Priority level for validation checks., ValidationCategory, ValidationPriority (+32 more)
+Cohesion: 0.06
+Nodes (48): ShapeShiftProject, EntitySpec, TargetModel, TargetModelSpecValidator, Acceptance criterion #5: at least one non-SEAD model can be expressed without sc, test_non_sead_target_model_expresses_cleanly(), test_sead_superset_spec_loads_and_validates(), test_sead_v2_spec_loads_and_validates() (+40 more)
 
 ### Community 136 - "merge_with_null_safety"
 Cohesion: 0.10
@@ -1354,28 +1369,28 @@ Cohesion: 0.07
 Nodes (26): 1. Pin the boundary as named source surfaces, 2. Record one disposition per boundary table, 3. Check coverage in both directions, 4. Generate the coverage report, 5. Enforce it, 6. Then close the gaps in slices, Acceptance Criteria, Alternatives Considered (+18 more)
 
 ### Community 138 - "_format_value"
-Cohesion: 0.07
-Nodes (30): Any, DataFrame, Path, Any, _normalized_isnan_values(), Read values from parquet or CSV file.          Args:             file_path: Path, Build a dataframe with stable dtypes for fixed-entity sidecar storage., Write values to parquet or CSV file.          Args:             file_path: Path (+22 more)
+Cohesion: 0.19
+Nodes (7): Any, Emit structured log details for a load-time fixed-entity normalization., Convert core config dict to API Project.          Note: The filename (name param, Convert API Project to core config dict.          Args:             api_config:, Convert core entity dict to API entity dict.          Uses Entity model schema t, Convert API Entity to core entity dict.          Uses Pydantic model_dump(mode=", Collect non-fatal fixed-entity normalization warnings for project load responses
 
 ### Community 139 - "LinkToRemoteService"
 Cohesion: 0.06
 Nodes (27): LinkToRemoteService, Any, DataFrame, Uses content from mapping.yml to local PK values to target (SEAD) identities., Service to link local local entities' PK values to remote identities based on pr, Test handling of incomplete config missing mapping dict., Test basic mapping of local keys to remote keys., Test handling of config with empty mapping dict. (+19 more)
 
 ### Community 140 - "ProcessState"
-Cohesion: 0.08
-Nodes (22): duckdb, DuckDbWorkspace, Unregister an entity if present., Register many tables, optionally restricted to specific names., Transient DuckDB workspace over Shape Shifter's TableStore.      DataFrames are, Copy a DataFrame into DuckDB as a physical table.          Usually not needed in, Disable DuckDB features that would let untrusted SQL reach files or extensions., Reject DuckDB-specific file and network access that is not needed for the intern (+14 more)
+Cohesion: 0.12
+Nodes (13): DuckDbWorkspace, Unregister an entity if present., Register many tables, optionally restricted to specific names., Transient DuckDB workspace over Shape Shifter's TableStore.      DataFrames are, Copy a DataFrame into DuckDB as a physical table.          Usually not needed in, Disable DuckDB features that would let untrusted SQL reach files or extensions., Reject DuckDB-specific file and network access that is not needed for the intern, Queue an entity DataFrame for registration on the next query. (+5 more)
 
 ### Community 141 - "TestSpecificationManagement"
-Cohesion: 0.06
-Nodes (25): LogDownloadResponse, LogLevel, LogResponse, logsApi, LogType, autoRefresh, cardStyle, cardTextStyle (+17 more)
+Cohesion: 0.03
+Nodes (47): LogDownloadResponse, LogLevel, LogResponse, logsApi, LogType, autoRefresh, cardStyle, cardTextStyle (+39 more)
 
 ### Community 142 - ".auto_reconcile_entity"
 Cohesion: 0.15
-Nodes (11): Filter nested dictionaries using both include and exclude semantics., Recursively filters a dictionary to include only keys in the given set.      Arg, recursive_filter_dict(), Tests for recursive_filter_dict function., Test basic exclude mode filtering., Test basic keep mode filtering., Test exclude mode with nested dicts., Test keep mode with nested dicts. (+3 more)
+Nodes (9): EntityFieldsBaseSpecification, Validates that fields are present for a single entity., Check that fields are for the entity., Tests for EntityFieldsBaseSpecification., Sample project configuration., Test validation passes for valid entity., Test validation fails when columns field missing., Test validation fails when columns is not a list. (+1 more)
 
 ### Community 143 - "Playwright E2E Testing - Quick Start Guide"
-Cohesion: 0.03
-Nodes (55): EntityResolutionCatalog, EntityResolutionSet, ResolutionSource, ResolutionTarget, Mappers for converting between reconciliation DTOs and domain models.  This modu, Convert EntityMapping domain to DTO., Mapper for reconciliation models between API DTOs and domain models., Convert EntityMappingRegistry DTO to domain model. (+47 more)
+Cohesion: 0.09
+Nodes (17): EntityResolutionCatalog, EntityResolutionSet, ResolutionSource, ResolutionTarget, Convert EntityMapping domain to DTO., Convert EntityMappingRegistry DTO to domain model., Convert EntityMappingRegistry domain to DTO., Convert ReconciliationSource DTO to domain model. (+9 more)
 
 ### Community 144 - "ReplacementsEditor.vue"
 Cohesion: 0.06
@@ -1387,15 +1402,15 @@ Nodes (22): CanMaterializeResponse, materializationApi, MaterializationResult, M
 
 ### Community 146 - "add_system_id"
 Cohesion: 0.01
-Nodes (286): DataFrame, Project, ProjectService, ShapeShiftProject, TableConfig, TableStore, Core (`src/`), Test append feature with full normalization pipeline. (+278 more)
+Nodes (227): AuthorizedResource, Depends, EDIT, EntityMapping, Link, READ, require_project, EntityMapping (+219 more)
 
 ### Community 147 - "TestForeignKeyDataSpecification"
-Cohesion: 0.22
-Nodes (13): QueryExecutionError, QuerySecurityError, Query execution failed.      Common causes:     - Data source connection issues, Query contains prohibited operations.      Occurs when query attempts destructiv, DataFrame, DataSourceConfig, QueryResult, QueryValidation (+5 more)
+Cohesion: 0.11
+Nodes (16): Any, Path, Load task list from sidecar file if it exists.          Implements backward comp, Load entity notes from the sidecar file if they exist., Return sidecar data with one entity's note re-keyed., Save task list to sidecar file.          Args:             project_file_path: Pa, Migrate task_list from main project file to sidecar.          One-time migration, Return the note for an entity if one exists. (+8 more)
 
 ### Community 148 - "MergedEntityFieldsSpecification"
-Cohesion: 0.17
-Nodes (14): fetchManifest(), fetchNote(), getOrLoadManifest(), getOrLoadNote(), md, noteCache, parseNote(), parseSections() (+6 more)
+Cohesion: 0.09
+Nodes (16): IdentityWorkPlan, DataFrame, PlannedRowAction, PlannedTable, Tests for SEAD change request identity work partitioning., Rows should be split into the MVP Delivery queues without re-deriving actions., Existing-row update candidates and blocked rows should have dedicated Issue 3A q, Child rows should be grouped into the aggregate-inheritance queue, not allocatio (+8 more)
 
 ### Community 149 - "TestAppendPropertyInheritance"
 Cohesion: 0.07
@@ -1406,28 +1421,28 @@ Cohesion: 0.07
 Nodes (30): default, description, title, type, description, properties, title, type (+22 more)
 
 ### Community 151 - "TestShapeShiftCacheInvalidateProject"
-Cohesion: 0.13
-Nodes (19): EntitySpec, TargetModel, Issue emitted when validating the structure of a target-model specification., Ensure target-model spec issues always carry a machine-readable code., SpecValidationIssue, TargetModelSpecValidator, Acceptance criterion #5: at least one non-SEAD model can be expressed without sc, test_non_sead_target_model_expresses_cleanly() (+11 more)
+Cohesion: 0.07
+Nodes (16): Tests for data source models and service., Test failed connection result., Tests for TableMetadata model., Tests for DataSourceConfig model., Test PostgreSQL data source configuration., Test postgres alias normalization., Test Access database configuration., Test CSV file configuration. (+8 more)
 
 ### Community 152 - "FiltersEditor.vue"
 Cohesion: 0.07
 Nodes (29): default, title, type, anyOf, default, title, anyOf, default (+21 more)
 
 ### Community 154 - "SEAD Clearinghouse Ingester - Architecture Overview"
-Cohesion: 0.04
-Nodes (53): AuthorizedResource, ColumnAvailabilityResponse, Depends, READ, require_project, Project, ProjectService, ProjectService (+45 more)
+Cohesion: 0.07
+Nodes (15): Test extraction of unnested columns., Test extraction of FK columns., Test extraction of system columns., Tests for ColumnIntrospectionService., Test generation of @value directive suggestions., Test getting columns for local entity only., Test getting columns for both local and remote entities., Test analyzing an entity that doesn't exist. (+7 more)
 
 ### Community 155 - "get_excel_metadata"
 Cohesion: 0.07
 Nodes (27): Path, Path, get_excel_metadata(), _parse_cell_range_max_column(), Extract sheet names and column headers from an Excel file.      Args:         fi, Parse Excel cell range to extract maximum column index.      Supports formats li, Test that non-Excel files raise error., Test error when specified sheet doesn't exist. (+19 more)
 
 ### Community 156 - "Any"
-Cohesion: 0.03
-Nodes (127): client(), Integration tests for ingester API endpoints., Test validation response structure (mock successful case)., Validate route should preserve change-request payload fields when calling the se, Test ingestion with non-existent ingester., Test ingestion with invalid request body., Test ingestion response structure., Ingest route should preserve change-request payload fields when calling the serv (+119 more)
+Cohesion: 0.09
+Nodes (54): Integration tests for ingester API endpoints., Integration tests for IngesterService., Test that service can list ingesters., Test IngesterService._create_config method., SEAD change request runtime clients should be injected at the backend service bo, Explicitly supplied runtime clients should not be overwritten by backend injecti, SEAD change request config should inject a DB-backed collision checker when DB c, SEAD change request config should pass submission context and deploy strategy th (+46 more)
 
 ### Community 157 - "FixedEntityTypeConvention"
-Cohesion: 0.22
-Nodes (3): FakeBackendSimsClient, Minimal fake backend SIMS client for adapter-backed ingester tests., Return a permissive capability set for the entities used by adapter tests.
+Cohesion: 0.09
+Nodes (12): Tests for MaterializationSpecification validator., Non-materialized entities should pass (specification is optional)., Materialized entity with @file: directive passes., Materialized entity must have source_state for unmaterialization., Materialized entity should have metadata fields (warning only)., Fully configured materialized entity passes without warnings., Entity with materialized.enabled=false should pass., Materialized entity must have type='fixed'. (+4 more)
 
 ### Community 158 - "target_model/models.py"
 Cohesion: 0.28
@@ -1439,19 +1454,19 @@ Nodes (12): Excel (openpyxl) schema should have correct fields., UCanAccess sche
 
 ### Community 160 - "Shape Shifter – Agent Guide"
 Cohesion: 0.13
-Nodes (11): Any, Series, Backend, DSLEvaluationError, Evaluator, Convert each element to int, passing None/NaN through as None., Convert each element to float, passing None/NaN through as None., Convert each element to str, passing None/NaN through as None. (+3 more)
+Nodes (24): ForeignKeyConstraintValidator, Orchestrates validation of foreign key constraints during and after merging., Return opts required for merge validation., build_fk(), build_project(), Tests for constraint validators and orchestration., Lookup-style runtime options should bypass strict null-key validation., Rows with an existing public_id are treated as simple mappings and are exempt fr (+16 more)
 
 ### Community 161 - "Shape Shifter Project Editor - Appendix"
-Cohesion: 0.14
-Nodes (15): CsvDispatcher, Dispatcher for CSV data., Path, Tests for CSVDispatcher class., Test creating a CSVDispatcher instance., Test that CSVDispatcher creates the output directory., Test that CSVDispatcher creates CSV files for each table., Test that CSV files contain correct data. (+7 more)
+Cohesion: 0.09
+Nodes (12): create_connection_mock(), ExtendedMockConfigProvider, MockRow, Any, Config, Extended MockConfigProvider that allows setting config after initialization, Provide TestConfigProvider with test configuration, Create an async psycopg connection mock whose cursor methods return given values (+4 more)
 
 ### Community 162 - "Testing Appendix - Shape Shifter"
-Cohesion: 0.13
-Nodes (10): DispatchRegistry, Registry for data store implementations., Unit tests for arbodat dispatch module., Tests for Dispatcher Protocol., Test that Dispatcher protocol defines dispatch method., Test that CSVDispatcher implements Dispatcher protocol., Test that ExcelDispatcher implements Dispatcher protocol., Test that DatabaseDispatcher implements Dispatcher protocol. (+2 more)
+Cohesion: 0.08
+Nodes (25): _minimal_project(), Classifier source-type mismatches should stay advisory unless overridden., Disabled conformance rules should be skipped by registry key., No issue when the induced-required entity Y is already present in the project., If X (present) → Y (absent, required FK) → Z (absent, required FK), both Y and Z, A classifier using type: entity should produce CLASSIFIER_WRONG_SOURCE_TYPE., A classifier using type: fixed is correct — no issue., A classifier using type: sql is correct — no issue. (+17 more)
 
 ### Community 163 - "TestTableConfig"
-Cohesion: 0.08
-Nodes (21): vuetify, IngesterProjectConfig, ProjectCreateRequest, ProjectListItem, ProjectLoadRequest, ProjectSaveRequest, SeadChangeRequestDefaults, AppendConfig (+13 more)
+Cohesion: 0.09
+Nodes (20): vuetify, IngesterProjectConfig, ProjectCreateRequest, ProjectListItem, ProjectLoadRequest, ProjectSaveRequest, SeadChangeRequestDefaults, AppendConfig (+12 more)
 
 ### Community 164 - "EntityValuesService"
 Cohesion: 0.07
@@ -1474,16 +1489,16 @@ Cohesion: 0.08
 Nodes (20): FormulaParser, High-level parser interface., Test the parser component., Parse a simple column reference formula., Parse string literals., Parse integer literals., Parse true and false literals., Parse function call with no arguments. (+12 more)
 
 ### Community 170 - "AppendEditor.vue"
-Cohesion: 0.06
-Nodes (34): PandasStringBackend, Backend that evaluates DSL functions against a Pandas DataFrame.      Evaluation, SourceSpan, Test the PandasStringBackend evaluator., Get column should return Series., Get missing column should raise DSLEvaluationError., Literal should return the value unchanged., Test concat function with basic strings. (+26 more)
+Cohesion: 0.04
+Nodes (47): Any, DataFrame, Series, Backend, _demo(), DSLEvaluationError, Evaluator, PandasStringBackend (+39 more)
 
 ### Community 171 - "test_ingesters.py"
-Cohesion: 0.06
-Nodes (19): Test DSL works alongside interpolation., Test DSL works alongside constants., Test processing order: constants → DSL → interpolation → column copy → string., Test DSL error handling with meaningful messages., Test DSL error when missing columns without defer., Test complex scenario with all feature types., Test DSL formula integration with extra_columns., Test is_dsl_formula() detection. (+11 more)
+Cohesion: 0.04
+Nodes (25): Integration tests for DSL formulas in extra_columns.  Tests the integration betw, Test DSL works alongside interpolation., Test DSL works alongside constants., Test processing order: constants → DSL → interpolation → column copy → string., Test DSL error handling with meaningful messages., Test DSL error when missing columns without defer., Test complex scenario with all feature types., Test DSL formula integration with extra_columns. (+17 more)
 
 ### Community 172 - "Shape Shifter - Design"
 Cohesion: 0.06
-Nodes (34): Asynchronous execution, Audience and Scope, Authentication and authorization, Backend (`backend/app/`), Caching, Components and Responsibilities, Constraints and Assumptions, Cross-Cutting Concerns (+26 more)
+Nodes (33): Asynchronous execution, Audience and Scope, Authentication and authorization, Backend (`backend/app/`), Caching, Components and Responsibilities, Constraints and Assumptions, Cross-Cutting Concerns (+25 more)
 
 ### Community 173 - "EntitySpecification"
 Cohesion: 0.07
@@ -1502,16 +1517,16 @@ Cohesion: 0.07
 Nodes (26): 1. Immediate (5 minutes), 2. Short-term (1-2 hours), 3. Medium-term (1 week), "Cannot find element", Configuration, Current Coverage, File Structure, Files Created (+18 more)
 
 ### Community 178 - "asyncio"
-Cohesion: 0.11
-Nodes (16): HttpGroupMembershipResolver, Read group members from a configured trusted HTTP provider., Fetch one group's members without changing authorization state., Tests for trusted group-membership review., test_http_membership_resolver_encodes_group_and_returns_members(), test_http_membership_resolver_reports_missing_group(), test_http_membership_resolver_reports_unavailable_provider(), click_testing (+8 more)
+Cohesion: 0.05
+Nodes (65): GroupMembershipResolver, HttpGroupMembershipResolver, MembershipLookupStatus, Trusted group-membership lookup for authorization review., Result states returned by a membership provider., Resolve group members from a trusted identity authority., Return the current review result for one group., Read group members from a configured trusted HTTP provider. (+57 more)
 
 ### Community 179 - "SpecificationsList.vue"
 Cohesion: 0.14
 Nodes (26): public.tbl_activity_types, public.tbl_age_types, public.tbl_analysis_boolean_values, public.tbl_analysis_categorical_values, public.tbl_analysis_dating_ranges, public.tbl_analysis_identifiers, public.tbl_analysis_integer_ranges, public.tbl_analysis_integer_values (+18 more)
 
 ### Community 180 - ".entity_mapping_to_domain"
-Cohesion: 0.17
-Nodes (10): Recursively updates d1 with values from d2. If a value in d1 is a dictionary,, recursive_update(), Tests for recursive_update function., Test basic dictionary update., Test updating nested dictionaries., Test deeply nested dictionary update., Test update when values are not dicts., Test updating with empty dictionary. (+2 more)
+Cohesion: 0.11
+Nodes (13): EntityGeneratorService, Test basic entity generation from table., Test EntityGeneratorService for generating entity configurations from database t, Test entity generation with custom entity name., Test entity generation with PostgreSQL schema prefix., Create mock schema introspection service., Test error handling when project not found., Test error handling when entity name already exists. (+5 more)
 
 ### Community 181 - "CircularDependencySpecification"
 Cohesion: 0.08
@@ -1522,64 +1537,64 @@ Cohesion: 0.07
 Nodes (24): Path, ProjectUtils, Test Windows-style backslashes are rejected., Test ensuring project exists returns correct path., Test ensuring non-existent project raises error., Test ensuring nested project exists (using colon separator)., A simple name resolves to a contained directory under the root., A namespaced locator resolves to the nested contained directory. (+16 more)
 
 ### Community 183 - "test_route_authentication.py"
-Cohesion: 0.15
-Nodes (13): importlib_util, ModuleType, load_validate_project_module(), Path, Tests for scripts/validate_project.py., Load the validate_project script as a module for unit testing., Tests for load_project()., load_project should pass through the file, env file, and env prefix. (+5 more)
+Cohesion: 0.18
+Nodes (10): ModuleType, load_validate_project_module(), Path, Load the validate_project script as a module for unit testing., Tests for load_project()., load_project should pass through the file, env file, and env prefix., execute should stop early when the project file does not exist., execute should report project-load failures to stderr and return 1. (+2 more)
 
 ### Community 184 - "MappingService"
 Cohesion: 0.08
 Nodes (25): Adding New Policies, Adding New Specifications, Architecture, Code Quality, Configuration, Configuration Options, CSV Output Format, Data Model Conventions (+17 more)
 
 ### Community 185 - "Tokenizer"
-Cohesion: 0.08
-Nodes (14): Test delete_sidecar removes sidecar file., Tests for LayoutSidecarManager class., Create temporary directory for test files., Create YamlService instance., Create LayoutSidecarManager instance., Create project file path., Test get_sidecar_path returns correct sidecar path., Test sidecar_exists returns False when sidecar doesn't exist. (+6 more)
+Cohesion: 0.07
+Nodes (15): Tests for LayoutSidecarManager service., Test delete_sidecar removes sidecar file., Tests for LayoutSidecarManager class., Create temporary directory for test files., Create YamlService instance., Create LayoutSidecarManager instance., Create project file path., Test get_sidecar_path returns correct sidecar path. (+7 more)
 
 ### Community 186 - "devDependencies"
 Cohesion: 0.07
 Nodes (29): devDependencies, eslint, @eslint/js, eslint-plugin-vue, globals, jsdom, markdown-it, @mdi/font (+21 more)
 
 ### Community 187 - "_client_for_principal"
-Cohesion: 0.11
-Nodes (15): ExcelDispatcher, DataFrame, Remove timezone information from datetime columns for Excel compatibility., Dispatcher for Excel data., Remove timezone information from datetime columns for Excel compatibility., Tests for ExcelDispatcher class., Test creating an ExcelDispatcher instance., Test that ExcelDispatcher creates an Excel file. (+7 more)
+Cohesion: 0.10
+Nodes (14): ConcreteFieldValidator, Concrete field validator for testing., Check if field value equals 'valid'. Returns True if valid (no error), False if, Tests for FieldValidator base class., Sample project configuration., Test field validator initialization., Test default severity is error., Test validating multiple fields. (+6 more)
 
 ### Community 188 - "Expr"
-Cohesion: 0.05
-Nodes (58): IngesterConfig, IngesterMetadata, IngestionResult, Path, SeadSchema, ValidationResult, SchemaService, SeadSchema (+50 more)
+Cohesion: 0.02
+Nodes (170): DispatcherRegistry, IDispatcher, Registry for dispatcher classes., Dtype, ExcelFile, Exception, fnmatch, Index (+162 more)
 
 ### Community 189 - "DuckDbLoader"
-Cohesion: 0.22
-Nodes (15): drop_empty_rows(), Drop rows that are completely empty (NA/None/empty strings) in the DataFrame or, drop_empty_rows handles list and dict subset behaviors., test_drop_empty_rows_variants(), test_do_not_treat_empty_strings_as_na_all_columns(), test_missing_subset_columns_logs_warning_and_returns_original(), test_subset_dict_replaces_specified_values_and_drops_all_empty_in_subset(), test_subset_dict_without_treating_empty_strings_as_na() (+7 more)
+Cohesion: 0.13
+Nodes (20): Shared Core issue types used across validation and specification layers., Domain validators for data quality checks., BusinessKeyProducedValidator, ColumnExistsValidator, DataTypeCompatibilityValidator, DuplicateKeysValidator, ForeignKeyDataValidator, ForeignKeyIntegrityValidator (+12 more)
 
 ### Community 190 - "data_source_policy.py"
-Cohesion: 0.09
-Nodes (32): DataSourceConfig, Any, Settings, get_settings(), Get cached settings instance., DriverSchema, download_logs(), get_logs() (+24 more)
+Cohesion: 0.04
+Nodes (62): DataSourceConfig, Any, Settings, Any, DataSourceConfig, Path, DriverSchema, ipaddress (+54 more)
 
 ### Community 191 - "ReconciliationClient"
-Cohesion: 0.03
-Nodes (62): Path, ApplicationState, Path, Project, init_app_state(), Initialize application state (called in lifespan)., app_state(), project_dir() (+54 more)
+Cohesion: 0.08
+Nodes (24): ApplicationState, Project, Test ApplicationState class., Test ApplicationState initialization., Test starting and stopping background tasks., Test creating a new session., Test retrieving a session., Test retrieving a non-existent session. (+16 more)
 
 ### Community 192 - ".normalize"
-Cohesion: 0.09
-Nodes (24): DataFrameGroupBy, FunctionalDependencySpecification, Specification for checking functional dependencies when dropping duplicates., Check functional dependency: for each unique combination of determinant_columns,, DataFrame, Series, Any, DataFrame (+16 more)
+Cohesion: 0.08
+Nodes (35): FunctionalDependencySpecification, Specification for checking functional dependencies when dropping duplicates., Any, DataFrame, drop_duplicate_rows(), drop_empty_rows(), drop_empty_rows_obselete(), missing_columns() (+27 more)
 
 ### Community 193 - "TestLayoutSidecarManager"
 Cohesion: 0.08
 Nodes (25): anyOf, default, description, default, description, title, type, default (+17 more)
 
 ### Community 194 - "test_shapeshift_service_include_bug.py"
-Cohesion: 0.10
-Nodes (15): ForeignKeyConfigSpecification, Specification that tests if a foreign key relationship is resolveble.     Return, Tests for foreign key specifications., Test validation passes for valid join with matching keys., Test validation fails when local key doesn't exist., Test validation fails when remote key doesn't exist., Tests for ForeignKeyConfigSpecification., Test validation passes when local key is in unnest_columns. (+7 more)
+Cohesion: 0.21
+Nodes (6): Check if the foreign key columns already exist in the local entity's data., Check for missing local keys in the local entity data., Check for missing pending keys in the local entity data., Check for missing remote keys in the remote entity data., Return the set of required keys that are missing from found keys., ForeignKeyConfig
 
 ### Community 195 - ".source"
 Cohesion: 0.06
-Nodes (45): AppendSpecification, CircularDependencySpecification, `data_source`, Data Source Properties, DataSourceExistsSpecification, DependsOnSpecification, DropDuplicatesSpecification, Entity-Level Validations (+37 more)
+Nodes (39): Ingester, Filters, Logs, And Release Notes, AppendSpecification, BranchConfig (for merged entities), CircularDependencySpecification, `data_source`, Data Source Properties, DataSourceExistsSpecification, DependsOnSpecification (+31 more)
 
 ### Community 196 - "Playwright E2E Testing Setup - Complete! ✅"
-Cohesion: 0.09
-Nodes (12): Test ResourceConflictError for project is converted to 409., Test generic Exception is converted to 500 with structured response., Test decorator preserves function name and docstring., Test decorator correctly handles different exception types in sequence., Tests for the @handle_endpoint_errors decorator., Test decorator allows successful execution., Test NotFoundError is converted to 404 HTTPException., Test ResourceNotFoundError for project is converted to 404. (+4 more)
+Cohesion: 0.07
+Nodes (24): Any, Get list of tables in a data source.          Args:             data_source: Eit, Get detailed schema for a specific table.          Args:             data_source, Get preview of table data.          Args:             data_source_cfg: Either a, Invalidate all cached data for a data source., Generate entity configuration from a database table.          Args:, Convert value to string or None, handling pandas NaN.      Args:         value:, Simple in-memory cache for schema data. (+16 more)
 
 ### Community 197 - "buildEntityConfigFromFormData"
-Cohesion: 0.11
-Nodes (16): openpyxl, OpenpyxlExcelDispatcher, Dispatcher for Excel data using openpyxl., Convert '#RRGGBB' or 'RRGGBB' to openpyxl ARGB 'FFRRGGBB'.         Accepts 'AARR, Make a string safe for Excel sheet titles and unique within the workbook., Test timezone handling in Excel dispatchers.  This test verifies that timezone-a, Test that sanitization preserves the datetime values themselves., Create sample data with timezone-aware datetime columns. (+8 more)
+Cohesion: 0.13
+Nodes (23): dist_dir_fixture(), Tests for SPA catch-all path containment (S1).  The frontend build directory is, Create a fake frontend build directory with an index and one asset., A real file under the build directory is served., An unknown client-side route returns index.html, not a 404 file., The root path serves index.html., A '../' path that escapes the build directory is not served., Traversal that re-enters the root after escaping is still rejected. (+15 more)
 
 ### Community 198 - "compilerOptions"
 Cohesion: 0.08
@@ -1594,12 +1609,12 @@ Cohesion: 0.11
 Nodes (10): Test that without unnest config, all columns are validated normally., Test that id_vars are validated while value_vars are excluded., Tests for ColumnExistsValidator., Test passes when all configured columns exist., Test reports errors for missing columns., Test empty DataFrame doesn't raise errors., Test no configured columns doesn't raise errors., Test that columns in unnest.value_vars are not validated (they get melted). (+2 more)
 
 ### Community 201 - "FileLoader"
-Cohesion: 0.09
-Nodes (22): DirectiveValidationResult, useDirectiveValidation(), extractColumnDirectives(), getColumnCandidates(), getExtraColumnSourceItems(), getLocalColumnItems(), getRemoteKeyItems(), handleLocalKeysUpdate() (+14 more)
+Cohesion: 0.10
+Nodes (21): ForeignKeyColumnCandidates, extractColumnDirectives(), getColumnCandidates(), getExtraColumnSourceItems(), getLocalColumnItems(), getRemoteKeyItems(), handleLocalKeysUpdate(), handleRemoteKeysUpdate() (+13 more)
 
 ### Community 202 - ".validate"
-Cohesion: 0.13
-Nodes (10): Tests for extra_columns evaluation with interpolated string support., Test deferred evaluation workflow (simulate FK linking)., Deferred interpolation can be evaluated after columns added., Multiple deferred columns can be evaluated together., Some deferred columns resolve, others still missing., Test DSL formula detection and literal escaping., Single leading '=' indicates a DSL formula., Double leading '=' is treated as a literal string, not a DSL formula. (+2 more)
+Cohesion: 0.33
+Nodes (4): Test DSL formula detection and literal escaping., Single leading '=' indicates a DSL formula., Double leading '=' is treated as a literal string, not a DSL formula., TestDslFormulaDetection
 
 ### Community 203 - "SchemaCache"
 Cohesion: 0.15
@@ -1622,8 +1637,8 @@ Cohesion: 0.07
 Nodes (15): Test GET with format query parameter (format negotiation)., Tests for entity external values endpoints., Test getting entity values from parquet file., Test getting entity values from CSV file., Test error when entity has no @load: directive., Test updating fixed entity values with authoritative columns., Saving a materialized entity should replace manual sidecar links from the saved, PUT should remap the recognized legacy order before writing and mapping sync. (+7 more)
 
 ### Community 208 - "ForeignKeyColumnsSpecification"
-Cohesion: 0.14
-Nodes (9): Test edge cases and error handling., Works on empty DataFrame., Interpolation on empty DataFrame works., Special characters in values are handled., Unicode characters are handled., Handles large DataFrames reasonably., Long interpolation pattern works., Can create column with interpolation from non-existent source. (+1 more)
+Cohesion: 0.16
+Nodes (13): EntityResolutionCatalog, Path, Update an existing entity mapping registry.          Works with domain models th, EntityMappingManager, Create a new entity resolution mapping.          Works with domain models throug, Manager for entity resolution catalog and specification CRUD operations.      Ha, Delete an entity-field resolution set from resolution catalog.          Works wi, Initialize entity resolution catalog manager.          Args:             project (+5 more)
 
 ### Community 209 - "UnnestColumnsSpecification"
 Cohesion: 0.09
@@ -1643,11 +1658,11 @@ Nodes (22): Artifact Output, Configuration And Injected Collaborators, Current S
 
 ### Community 213 - "find_cycles"
 Cohesion: 0.09
-Nodes (21): Tests for DataSourceMapper., Test mapping PostgreSQL configuration., Test error when required field is missing., Test that additional options not in schema are preserved., Test server-managed policy rejects custom connection strings., Test server-managed policy rejects disallowed environment variable names., Test PostgreSQL with default values., Test mapping MS Access configuration. (+13 more)
+Nodes (16): DataSourceService, Settings, mock_config(), Test environment variable resolution in data source configurations., Should resolve env vars in options dict., Should preserve password SecretStr during resolution., Should keep env vars unresolved when listing data sources for UI editing., Create a mock configuration object. (+8 more)
 
 ### Community 214 - "ThemeColorPicker.vue"
-Cohesion: 0.13
-Nodes (8): Generate human-readable documentation from target models with optional project c, Generate documentation in specified format.          Args:             format: O, Generate documentation and write to file.          Args:             format: Out, TargetModelDocumentGenerator, Test the shared data preparation used by Markdown and HTML generators., TestPrepareModelData, TestPrepareSImsData, TestTargetModelDocumentGenerator
+Cohesion: 0.22
+Nodes (3): Test the shared data preparation used by Markdown and HTML generators., TestPrepareModelData, TestPrepareSImsData
 
 ### Community 215 - "2 — Write the policy in the current schema"
 Cohesion: 0.09
@@ -1658,12 +1673,12 @@ Cohesion: 0.07
 Nodes (29): 1. Ownership comes first, 2. History must be preserved, 3. Only one live version may exist, 4. Reference changes are not shared-row changes, 5. Shared data does not use the default provider update path, 6. System-managed values are not provider-editable, 7. Ambiguous changes must not be applied silently, Allowed, Restricted, And Blocked Change Classes (+21 more)
 
 ### Community 217 - "test_sead_change_request_submission_sims_integration.py"
-Cohesion: 0.13
-Nodes (16): Parser, A token with position information., Hand-written recursive descent parser., Parse a formula starting with '='., Parse an expression: function_call | column_ref | literal., Parse a function call: NAME "(" [arg_list] ")"., Parse a column reference: NAME., Parse a literal: STRING | INTEGER | null | true | false. (+8 more)
+Cohesion: 0.11
+Nodes (11): FieldValidator, Get the configuration for a specific entity., Check fields based on the specified check type.          Args:             entit, Get specified types of result columns available.         FIXME: consider moving, Validate a specific field in the entity configuration, or target_cfg if provided, Apply the validation rule to the specified field., Log the failure of the validation rule., Return the appropriate method to log based on severity. (+3 more)
 
 ### Community 218 - "resolve_spa_file"
 Cohesion: 0.01
-Nodes (183): ABC, ProjectMapper integration tests that load the real arbodat project files.  These, initialize_jvm(), Initialize JVM once for all tests in this module., check_regression_of_shapes(), initialize_jvm(), _project_environment(), Initialize JVM once for all tests in this module. (+175 more)
+Nodes (271): ABC, ProjectMapper integration tests that load the real arbodat project files.  These, initialize_jvm(), Initialize JVM once for all tests in this module., check_regression_of_shapes(), initialize_jvm(), _project_environment(), Initialize JVM once for all tests in this module. (+263 more)
 
 ### Community 219 - "TestDuplicateColumnBug"
 Cohesion: 0.13
@@ -1674,8 +1689,8 @@ Cohesion: 0.10
 Nodes (16): DataFrame, Rename the last occurrence of each source column in rename_map to the new name., rename_last_occurence(), Test suite for rename_last_occurrence helper function., Test renaming a column that appears once., Test that only the LAST occurrence is renamed when column appears multiple times, Test that rename is skipped when source column doesn't exist., Test that rename is skipped when target name already exists in columns. (+8 more)
 
 ### Community 221 - "TestCorrelationMiddleware"
-Cohesion: 0.10
-Nodes (12): OperationManager, Initialize operation manager., Update operation progress.          Args:             operation_id: Operation ID, Mark operation as completed., Mark operation as failed., Request cancellation of an operation.          Args:             operation_id: O, Check if operation has been cancelled., Get current progress for an operation. (+4 more)
+Cohesion: 0.08
+Nodes (15): Any, OperationManager, Initialize operation manager., Create a new operation and return its ID.          Args:             operation_t, Update operation progress.          Args:             operation_id: Operation ID, Mark operation as completed., Mark operation as failed., Request cancellation of an operation.          Args:             operation_id: O (+7 more)
 
 ### Community 222 - "TestFileManager"
 Cohesion: 0.09
@@ -1686,8 +1701,8 @@ Cohesion: 0.19
 Nodes (14): Path, PlainTextResponse, _build_manifest(), _extract_metadata(), get_whats_new_content(), get_whats_new_manifest(), API endpoints for user-facing release notes metadata., Metadata for a single what's-new markdown file. (+6 more)
 
 ### Community 225 - "drop_empty_rows"
-Cohesion: 0.13
-Nodes (14): 1. Persist Project Metadata And Defaults, 2. Apply Defaults In The Frontend, 3. Align Target Models, 4. Derive And Emit Submission Rows, 5. Validate The Database Contract And Synchronize Documentation, Definition Of Done, Deliverables, Phase Summary (+6 more)
+Cohesion: 0.14
+Nodes (13): Any, Project, Analyze dependencies in project.         Args:              api_project: Project, Check for circular dependencies in project.          Args:             config: P, Base class for source node extractors., Extract source nodes and edges from project entities., Factory method to get appropriate extractor based on entity type., Extract source nodes and edges for an entity. (+5 more)
 
 ### Community 226 - "Sead Change Request Submission Metadata"
 Cohesion: 0.12
@@ -1695,7 +1710,7 @@ Nodes (9): Tests for Registry class., Test registering with string key., Test re
 
 ### Community 227 - "Phase Plan"
 Cohesion: 0.05
-Nodes (29): DataFrame, Should return columns even when result set is empty., Should preserve column order from query., Should introspect columns with aggregate functions., Test query execution functionality., Set up test fixtures., Return a DataSourceConfig for use in execute_query calls., Mock the loader's read_sql method. (+21 more)
+Nodes (29): DataFrame, Should return columns even when result set is empty., Should preserve column order from query., Should introspect columns with aggregate functions., Test query execution functionality., Return a DataSourceConfig for use in execute_query calls., Mock the loader's read_sql method., Should execute SELECT query and return results. (+21 more)
 
 ### Community 228 - "verify_sims_identity_candidates.sh"
 Cohesion: 0.38
@@ -1710,16 +1725,16 @@ Cohesion: 0.09
 Nodes (11): Test saving project file successfully., Test file is saved with default extension validation (.xlsx, .xls)., Test saving file with disallowed extension raises error., Test that CSV files work when explicitly allowed., Test duplicate filenames are renamed with counter., Test file exceeding size limit raises error., Test large file uploaded in chunks., Test saving global file with invalid extension. (+3 more)
 
 ### Community 231 - "SpecificationIssue"
-Cohesion: 0.09
-Nodes (12): Test that getting nonexistent dispatcher raises KeyError., Tests for DispatchRegistry class., Test that DispatchRegistry inherits from Registry., Test that Dispatchers singleton exists., Test that Dispatchers has the expected dispatchers registered., Test that Dispatchers has the expected target types registered., Test that Dispatchers has the expected target types registered., Test that Dispatchers has correct types registered. (+4 more)
+Cohesion: 0.03
+Nodes (88): openpyxl, openpyxl_utils_dataframe, CsvDispatcher, DatabaseDispatcher, Dispatcher, DispatchRegistry, ExcelDispatcher, IDispatcher (+80 more)
 
 ### Community 232 - ".create_upload_file"
-Cohesion: 0.14
-Nodes (8): Test create fixed table using single column from columns list., Test single column with public_id uses the configured column name., Test raises ValueError when row length doesn't match columns length., Test create fixed table with single value., Tests for await FixedLoader(data_source=None).load function., Test that await FixedLoader(data_source=None).load raises ValueError when entity, Test creates fixed table with public_id added., TestCreateFixedTable
+Cohesion: 0.04
+Nodes (42): FixedLoader, Loader for fixed data entities., Create a fixed data entity based on configuration., Normalize loaded fixed values before building the DataFrame., Validate the fixed data entity configuration., Resolve effective fixed-value columns and validate shape with entity-aware error, Tests for FixedLoader.test_connection method., Test create fixed table using single column from columns list. (+34 more)
 
 ### Community 233 - "asyncio"
-Cohesion: 0.08
-Nodes (13): Hand-written tokenizer for the formula DSL., Tokenize the entire source string., Tokenizer, Token positions should be tracked correctly., Invalid characters should raise DSLParseError., EOF token should be added at the end., Empty string should produce only EOF token., Tokenize a simple formula with basic tokens. (+5 more)
+Cohesion: 0.12
+Nodes (15): dict, BaseSourceNodeExtractor, DependencyNode, MaterializedFixedSourceNodeExtractor, NullSourceNodeExtractor, Initialize dependency graph., Base class for specific source node extractors., No-op extractor for unsupported entity types (default fallback). (+7 more)
 
 ### Community 234 - "Phase 1 Task Plan: Core Operation-Aware Resolver"
 Cohesion: 0.10
@@ -1746,8 +1761,8 @@ Cohesion: 0.10
 Nodes (21): description, items, title, type, description, items, title, type (+13 more)
 
 ### Community 240 - "_build_manifest"
-Cohesion: 0.23
-Nodes (4): FilterSpecification, Validates staged filter configuration and basic stage-aware column availability., Tests for staged filter validation., TestFilterSpecification
+Cohesion: 0.02
+Nodes (107): ProjectSpecification, Get the TableConfig for the specified entity., Check if a specific entity exists in the configuration., Check if a specific field exists in the entity configuration., Base specification for project validation., AppendSpecification, DataEntityFieldsSpecification, DependsOnResolvedSpecification (+99 more)
 
 ### Community 241 - "Proposal: Branch-Scoped Consumers For Mixed-Branch Parents"
 Cohesion: 0.10
@@ -1762,32 +1777,32 @@ Cohesion: 0.14
 Nodes (21): public.tbl_biblio, public.tbl_ecocode_definitions, public.tbl_ecocode_groups, public.tbl_ecocode_systems, public.tbl_ecocodes, public.tbl_imported_taxa_replacements, public.tbl_species_association_types, public.tbl_species_associations (+13 more)
 
 ### Community 244 - "API Routes"
-Cohesion: 0.12
-Nodes (16): API Routes, Authorization Route Inventory, Classification Review, Entities, Directives, And Validation, Help And Sessions, Ingester, Filters, Logs, And Release Notes, Lifecycle And Background Coverage, Maintenance (+8 more)
+Cohesion: 0.13
+Nodes (15): API Routes, Authorization Route Inventory, Classification Review, Entities, Directives, And Validation, Help And Sessions, Lifecycle And Background Coverage, Maintenance, Mapping, Execution, And Materialization (+7 more)
 
 ### Community 245 - ".load_catalog"
 Cohesion: 0.15
 Nodes (8): Tests for DataSourceConfig class., Test basic DataSourceConfig initialization., Test DataSourceConfig with missing driver defaults to empty string., Test DataSourceConfig with missing options defaults to empty dict., Test DataSourceConfig with empty config., Test DataSourceConfig with None config., Test ShapeShiftProject with None options triggers ConfigValue resolution., TestDataSourceConfig
 
 ### Community 246 - "DataSourceExistsSpecification"
-Cohesion: 0.08
-Nodes (15): A missing file raises the same error as the full loader., A directory raises the same error as the full loader., An empty file returns an empty dict., A non-mapping root raises the same error as the full loader., Duplicate mapping keys are rejected, matching the full loader., Tests for YAML saving., Test saving creates new file., Test saving creates parent directories. (+7 more)
+Cohesion: 0.11
+Nodes (10): A missing file raises the same error as the full loader., A directory raises the same error as the full loader., An empty file returns an empty dict., A non-mapping root raises the same error as the full loader., Duplicate mapping keys are rejected, matching the full loader., Test saving creates new file., Tests for the fast, discovery-only loader used by project listing., The listing loader returns the same data as the full loader. (+2 more)
 
 ### Community 247 - "TestAppendSpecification"
-Cohesion: 0.03
-Nodes (95): ExtraColumnCandidates, ForeignKeyColumnCandidates, Column candidates for one configured foreign key., Available source columns for extra-column expressions., Current candidates for unnest identifier and value columns., UnnestColumnCandidates, ForeignKeyMetadata, Data source models for Phase 2 data-aware features. (+87 more)
+Cohesion: 0.25
+Nodes (7): ExtraColumnCandidates, ForeignKeyColumnCandidates, Request and response models for operation-aware column candidates., Column candidates for one configured foreign key., Available source columns for extra-column expressions., Current candidates for unnest identifier and value columns., UnnestColumnCandidates
 
 ### Community 248 - "TODO.md"
-Cohesion: 0.11
-Nodes (18): Add PATH for non-interactive shells (needed for vscode Codex extension, remote SSH), Copilot CLI, Copilot Tips, FIXME: Verify that graphify wiki is automatically updated by hook!, Increase Code Quality, Reduce Costs, Resources, rtk installed (+10 more)
+Cohesion: 0.10
+Nodes (19): Add PATH for non-interactive shells (needed for vscode Codex extension, remote SSH), Copilot CLI, Copilot Tips, FIXME: Verify that graphify wiki is automatically updated by hook!, Increase Code Quality, Reduce Costs, Resources, rtk installed (+11 more)
 
 ### Community 249 - "TestFixedEntitySystemIdSpecification"
-Cohesion: 0.14
-Nodes (8): Test the per-project locking infrastructure., _get_lock returns the same Lock instance for the same project name., _get_lock returns different Lock instances for different project names., _remove_lock removes the lock entry from the dict., _remove_lock for unknown project does not raise., After removing a lock, _get_lock creates a fresh one., Multiple threads calling _get_lock for the same project get the same lock., TestProjectLocking
+Cohesion: 0.13
+Nodes (13): ExistsInFilter, Filter to keep rows where a column's value exists in another entity's column., Tests for filter transformations., Tests for ExistsInFilter class., Test basic exists_in filter., Test exists_in filter with different column names., Test exists_in filter with drop_duplicates option., Test that missing 'column' parameter raises ValueError. (+5 more)
 
 ### Community 250 - "ForeignKeyDataSpecification"
-Cohesion: 0.04
-Nodes (175): Principal, Stable identity used for grant lookup., SchemaIntrospectionService, Any, AuthorizationService, AuthorizedResource, Depends, EDIT (+167 more)
+Cohesion: 0.02
+Nodes (330): ConfigurationError, Invalid project configuration.      Occurs when project structure violates speci, Action, Principal, Operations that can be authorized., Stable identity used for grant lookup., AuthorizationService, Evaluate resource and application access using one policy and repository. (+322 more)
 
 ### Community 251 - "FieldValidator"
 Cohesion: 0.14
@@ -1818,28 +1833,28 @@ Cohesion: 0.10
 Nodes (19): ag-Grid Data Preview, Browser-Specific Testing, Chrome DevTools, Core Functionality Checklist, Cross-Browser Testing, Debounced Validation, Feature-Specific Behavior, Firefox DevTools (+11 more)
 
 ### Community 258 - "fixedValuesGridClipboard.ts"
-Cohesion: 0.08
-Nodes (13): Test evaluate_interpolation() actual interpolation., Simple two-column interpolation works., Null values are converted to empty strings., Numeric values are converted to strings., Literal text is preserved., Escaped braces are unescaped after interpolation., ValueError raised if required column missing., Error message includes entity name for context. (+5 more)
+Cohesion: 0.10
+Nodes (11): Test evaluate_interpolation() actual interpolation., Simple two-column interpolation works., Null values are converted to empty strings., Numeric values are converted to strings., Literal text is preserved., Escaped braces are unescaped after interpolation., ValueError raised if required column missing., Error message includes entity name for context. (+3 more)
 
 ### Community 259 - "MappingManager"
 Cohesion: 0.25
 Nodes (13): closeSession(), createSession(), getCurrentSession(), listActiveSessions(), sessionsApi, useSession(), useSessionStore, mockSessionsApi (+5 more)
 
 ### Community 260 - "fixture"
-Cohesion: 0.13
-Nodes (17): DatabaseDispatcher, Dispatcher for Database data., cfg(), Any, Fixture for database dispatcher config., Tests for DatabaseDispatcher class., Fixture for database dispatcher config., Test creating a DatabaseDispatcher instance. (+9 more)
+Cohesion: 0.10
+Nodes (12): Tests for configuration models., Test creating empty configuration., Test adding entity to configuration., Test getting entity by name., Test removing entity from configuration., Test configuration with metadata., Tests for ProjectMetadata model., Test valid metadata creation. (+4 more)
 
 ### Community 261 - "Project Guide - Shape Shifter"
-Cohesion: 0.15
-Nodes (13): Architecture, Basic Entity Structure, Entity Section, Examples, Fields, Key Components, Metadata Section, Optional (+5 more)
+Cohesion: 0.14
+Nodes (14): Architecture, Basic Entity Structure, Entity Section, Examples, Fields, Key Components, Metadata Section, Optional (+6 more)
 
 ### Community 262 - "._get_lock"
 Cohesion: 0.11
 Nodes (10): Path, Test listing files filtered by multiple extensions., Project listings must not expose files through an outside symlink., Test listing data source files when only directories exist., Test listing all data source files., Test resolving relative path to Excel file., Test getting project upload directory., Create a sample project. (+2 more)
 
 ### Community 263 - "TestColumnIntrospectionService"
-Cohesion: 0.06
-Nodes (41): Identifier, Statement, Apply the server result cap while preserving a lower user limit., QueryResult, QueryValidation, Result of a query execution., Result of query validation., test_read_only_policy_preserves_literals_containing_sql_metacharacters() (+33 more)
+Cohesion: 0.08
+Nodes (26): Purpose, Apply the server result cap while preserving a lower user limit., Security regression coverage for SQL policy and internal DuckDB execution., test_duckdb_workspace_rejects_file_functions_network_and_outside_paths(), test_duckdb_workspace_rejects_policy_cases(), test_internal_duckdb_loader_applies_policy_on_read_and_scalar_paths(), test_postgres_loader_rejects_policy_cases_before_connection(), test_query_service_caps_user_limit_with_outer_limit() (+18 more)
 
 ### Community 264 - "export_target_tables.py"
 Cohesion: 0.11
@@ -1855,19 +1870,19 @@ Nodes (18): Acceptance Criteria, Alternatives Considered, Configuration, Current
 
 ### Community 267 - "CoreSchema"
 Cohesion: 0.11
-Nodes (18): additionalProperties, $ref, additionalProperties, description, additionalProperties, title, type, $ref (+10 more)
+Nodes (18): additionalProperties, items, title, type, description, items, $ref, $ref (+10 more)
 
 ### Community 268 - ".extract_column_dependencies"
 Cohesion: 0.16
 Nodes (19): public.tbl_analysis_value_dimensions, public.tbl_coordinate_method_dimensions, public.tbl_data_type_groups, public.tbl_data_types, public.tbl_dataset_methods, public.tbl_datasets, public.tbl_dimensions, public.tbl_method_groups (+11 more)
 
 ### Community 269 - "ShapeShiftCache"
-Cohesion: 0.06
-Nodes (19): Tests for ForeignKeyConstraints class., Test constraints with no data., Test constraints with empty dict., Test cardinality property., Test allow_unmatched_left property., Test allow_unmatched_right property., Test allow_row_decrease property., Test require_unique_left property. (+11 more)
+Cohesion: 0.05
+Nodes (20): ForeignKeyConstraints, Test constraints with no data., Test constraints with empty dict., Test cardinality property., Test allow_unmatched_left property., Test allow_unmatched_right property., Test allow_row_decrease property., Test require_unique_left property. (+12 more)
 
 ### Community 270 - "ExecuteService"
-Cohesion: 0.18
-Nodes (14): EntityOperations, compute_entity_etag(), Compute a stable, content-based ETag for an entity dict.      The ETag is the fi, _make_ops(), _make_project(), Tests for entity-level optimistic locking (ETag / compare-and-swap).  Covers: -, When boundary callback is wired, save_project should NOT be called., force_reload=True must be passed to load_project_callback when expected_etag giv (+6 more)
+Cohesion: 0.17
+Nodes (14): Load ShapeShiftProject from a YAML project file., Resolve and return the ShapeShiftProject for the given project name., main(), Normalize data from various data sources into structured tables.     Write them, Configure loguru logging for CLI/scripts.      This is for standalone scripts an, setup_logging(), ShapeShiftProject, Normalize data from various data sources into structured tables and write them a (+6 more)
 
 ### Community 271 - "_client_for_principal"
 Cohesion: 0.15
@@ -1878,28 +1893,28 @@ Cohesion: 0.20
 Nodes (15): Path, _create_project(), _error_messages(), Cross-layer regressions for declarative business keys.  These tests exercise the, GET, edit one named field, PUT with the ETag, then GET preserves named values an, The exact recognized legacy order is remapped by name before writing., Unsafe layouts, a mismatched row width, and a stale ETag fail without changing t, Reset backend service singletons between tests. (+7 more)
 
 ### Community 273 - ".validate"
-Cohesion: 0.08
-Nodes (24): global_exception_handler(), FastAPI application entry point., Catch all unhandled exceptions and log with full traceback.      This is a last-, Serve SPA for all routes (except API and static assets)., Root endpoint - redirect to docs (API-only mode)., root(), serve_spa(), PlainTextResponse (+16 more)
+Cohesion: 0.12
+Nodes (11): Path, IngesterMetadata, Ingester, Ingester, Protocol defining the standard ingester interface.      All ingesters must imple, Get metadata about this ingester.          Returns:             IngesterMetadata, Initialize ingester with configuration.          Args:             config: Inges, Validate Excel file without ingesting.          This method should check that th (+3 more)
 
 ### Community 274 - "configuration/test_utility.py"
-Cohesion: 0.11
-Nodes (17): merged_entity_project(), Tests for merged entity API support., Test updating a merged entity via API., Reset service singletons between tests., Test creating a new merged entity via API., Test that validation endpoint detects merged entity errors., Test deleting a merged entity via API., Sample project configuration with merged entity. (+9 more)
+Cohesion: 0.12
+Nodes (11): Path, get_app_state(), init_app_state(), Application-level state management for multi-user configuration editing., Get the application state singleton., Initialize application state (called in lifespan)., Test singleton pattern functions., Test initializing global app state. (+3 more)
 
 ### Community 275 - "Ingester Configuration in Shape Shifter Projects"
 Cohesion: 0.11
 Nodes (18): 1. Tokenizer Tests (`TestTokenizer`), 2. Parser Tests (`TestParser`), 3. Validator Tests (`TestValidator`), 4. Evaluator Tests (`TestPandasStringBackend`), 5. Integration Tests (`TestFormulaEngine`), 6. Edge Cases (`TestEdgeCases`), Assertion Style, Coverage Gaps (+10 more)
 
 ### Community 276 - "OpenpyxlExcelDispatcher"
-Cohesion: 0.17
-Nodes (7): Tests for FixedEntityFieldsSpecification., Test validation fails when values field missing., Fixed entities should reject string values in _id columns after coercion boundar, Undeclared non-_id columns should not be forced to string at validation time., Declared int columns should reject string values after coercion boundaries., Provided values must still be a list even when append branches exist., TestFixedEntityFieldsSpecification
+Cohesion: 0.03
+Nodes (34): Tests for FixedEntityFieldsSpecification., Sample project configuration., Test validation passes for valid fixed entity., Test validation fails when public_id missing., Test validation fails when columns is not a list., Test validation fails for non-fixed entities., Fixed entities should reject a business key that no producer creates., A key produced only by extra_columns is not part of the fixed schema and must be (+26 more)
 
 ### Community 277 - "LIFE_SPAN.md"
 Cohesion: 0.19
 Nodes (18): _client_for_principal(), environment(), _file_names(), Authorization tests for data source file listing and Excel metadata endpoints., Provide an isolated file environment and real authorization checks., Create a client that optionally supplies an authenticated principal., Return the file names from a file-listing response., test_data_source_files_list_requires_authentication() (+10 more)
 
 ### Community 278 - "Ingester Idempotency And Re-submission For SEAD Change Requests"
-Cohesion: 0.21
-Nodes (6): Check if the foreign key columns already exist in the local entity's data., Check for missing local keys in the local entity data., Check for missing pending keys in the local entity data., Check for missing remote keys in the remote entity data., Return the set of required keys that are missing from found keys., ForeignKeyConfig
+Cohesion: 0.12
+Nodes (15): _cli_runner(), Unit tests for the ingestion CLI script., Returns exit code 1 when validation fails., Provides a Click runner for invoking CLI commands., Ingests source data and forwards CLI options to the ingestion request., Reads JSON config files into dictionaries., Returns exit code 1 when ingestion fails., Exits with code 1 when JSON parsing fails. (+7 more)
 
 ### Community 279 - "FixedEntityTypeCoercer"
 Cohesion: 0.08
@@ -1910,12 +1925,12 @@ Cohesion: 0.11
 Nodes (17): 1. Define The Re-submission Contract, 2. Validate And Normalize Incoming Rows, 3. Add Prior-Run Lookup And Preflight Classification, 4. Make Artifact Generation And Deployment Replay-Safe, 5. Expose Operator Outcomes, 6. Validate Repeated, Interrupted, And Overlapping Runs, Assumptions, Definition Of Done (+9 more)
 
 ### Community 281 - "Error Scenario Testing - Shape Shifter"
-Cohesion: 0.15
-Nodes (8): Test validation fails when strict_functional_dependency is not bool., Tests for PublicIdSpecification., Sample project configuration., Test validation passes for valid public_id., Test error when public_id doesn't end with _id., Test validation fails for non-string public_id., Test validation fails when derived entity reuses its source public_id., TestPublicIdSpecification
+Cohesion: 0.20
+Nodes (21): AuthorizedResource, ColumnAvailabilityResponse, Depends, READ, require_project, ProjectService, ColumnAvailabilityRequest, get_available_columns() (+13 more)
 
 ### Community 282 - "TestYamlServiceBackup"
-Cohesion: 0.13
-Nodes (8): Get the configuration for a specific entity., Check fields based on the specified check type.          Args:             entit, Validate a specific field in the entity configuration, or target_cfg if provided, Apply the validation rule to the specified field., Log the failure of the validation rule., Clear all errors and warnings., Merge another specification's issues into this one., Any
+Cohesion: 0.16
+Nodes (11): BaseFileSourceNodeExtractor, CsvFileSourceNodeExtractor, ExcelFileSourceNodeExtractor, Base class for file-based source node extractors., Extract source nodes and edges for a file entity.          Subclasses must imple, Create file node if it doesn't exist.          Args:             filename: Path, Extract filename from entity configuration., Extractor for CSV file entities (simple file -> entity). (+3 more)
 
 ### Community 283 - "Feature-Specific Behavior"
 Cohesion: 0.11
@@ -1930,44 +1945,44 @@ Cohesion: 0.04
 Nodes (52): 1. Layer Separation, 2. State Management, 3. Environment Variable Resolution, 4. Preview Caching, API Documentation, API Endpoints, Architecture, Backups (+44 more)
 
 ### Community 286 - "TestDirectiveValidator"
-Cohesion: 0.11
-Nodes (10): Tests for entity materialization functionality., Fixed entities cannot be materialized (already frozen)., Entity depending on materialized entities can be materialized., Entity with foreign key to non-existent entity cannot be materialized., SQL entity without dependencies can be materialized., Materialized entities cannot be materialized again (caught by fixed type check)., SQL entity depending on fixed entities can be materialized., Test TableConfig.can_materialize() validation logic. (+2 more)
+Cohesion: 0.01
+Nodes (216): test_workflow_does_not_use_legacy_project_mappings(), DataFrame, Project, ProjectService, ShapeShiftProject, TableConfig, TableStore, Path (+208 more)
 
 ### Community 287 - "Proposal: Ingester Authorization"
-Cohesion: 0.22
-Nodes (7): DataFrame, TableConfig, Reorder columns in DataFrame to match specified order., Expose the source entity's public_id as a selected column backed by source syste, Return source fields required by configured and detected output producers., Return a subset of the source DataFrame with specified columns, optional extra c, Return a subset of the source DataFrame with specified columns, optional extra c
+Cohesion: 0.21
+Nodes (8): Any, DataFrame, TableConfig, Reorder columns in DataFrame to match specified order., Expose the source entity's public_id as a selected column backed by source syste, Return source fields required by configured and detected output producers., Return a subset of the source DataFrame with specified columns, optional extra c, Return a subset of the source DataFrame with specified columns, optional extra c
 
 ### Community 288 - "Settings"
-Cohesion: 0.11
-Nodes (10): Tests for error handler decorator with structured domain exceptions., ResourceNotFoundError returns 404 with structured detail., ForeignKeyError returns 400 with structured detail., ValidationError returns 400 with structured response., ResourceConflictError returns 409 with structured response., CircularDependencyError returns 500 with structured response., DataIntegrityError returns 400 with structured response., Unexpected errors return 500 with structured response. (+2 more)
+Cohesion: 0.14
+Nodes (10): Project, ColumnIntrospectionService, Extract column names that will be generated by unnesting.          Args:, Extract FK column names inherited from parent entities.          Args:, Generate @value directive suggestions for common patterns.          Args:, Service for analyzing entity configurations to determine available columns., Get available columns for FK editing.          Args:             project_name: N, Analyze a single entity to determine available columns.          Args: (+2 more)
 
 ### Community 289 - "RuleSync For Unified Agent Instructions"
 Cohesion: 0.11
 Nodes (17): Acceptance Criteria, Alternatives Considered, Current Behavior, Final Recommendation, Non-Goals, Open Questions, Planning Handoff, Problem (+9 more)
 
 ### Community 290 - "Proposal Template"
-Cohesion: 0.04
-Nodes (40): ValidationService, Tests for validation service., Test detecting circular dependencies., Test detecting missing required fields., Test detecting foreign key with mismatched number of keys., Stage-aware filter validation should surface invalid stage values., Create ValidationService instance., Tests for entity-specific validation. (+32 more)
+Cohesion: 0.03
+Nodes (42): ValidationService, Tests for validation service., Test detecting circular dependencies., Test detecting missing required fields., Test detecting foreign key with mismatched number of keys., Stage-aware filter validation should surface invalid stage values., Create ValidationService instance., Tests for entity-specific validation. (+34 more)
 
 ### Community 291 - "SEAD Clearinghouse Ingester"
 Cohesion: 0.14
 Nodes (11): Escaped braces {{}} are ignored., Column names starting with a non-ASCII letter are extracted., Pattern with no columns returns empty list., Test extract_column_dependencies() column name extraction., Single column dependency is extracted., Multiple column dependencies are extracted., Column order is preserved., Duplicate columns appear only once. (+3 more)
 
 ### Community 292 - "load_validate_project_module"
-Cohesion: 0.33
-Nodes (3): Empty target — not our concern here (orphaned-values check can't run)., Null FK values should not be counted as orphaned., TestFKReferentialIntegrityConformanceValidator
+Cohesion: 0.12
+Nodes (9): Tests for env2dict function., Test basic environment variable loading., Test when no environment variables match prefix., Test case insensitive prefix matching., Test without lowercasing keys., Test adding to existing dict., Test with empty prefix returns empty dict., Test that underscores create nested paths. (+1 more)
 
 ### Community 293 - "src/model.py"
 Cohesion: 0.10
 Nodes (19): Acceptance Criteria, Alternatives Considered, Authorization-aware project selector, Create Entity dialog prefill, Create Entity From Query Tester, Current Behavior, Data source scope handling, Final Recommendation (+11 more)
 
 ### Community 294 - "patch_config_resolution"
-Cohesion: 0.19
-Nodes (10): contextvars, Request correlation ID middleware for tracing concurrent requests.  Assigns a un, Authentication middleware for identities asserted by a trusted reverse proxy., starlette_applications, starlette_middleware_base, starlette_requests, starlette_responses, starlette_routing (+2 more)
+Cohesion: 0.13
+Nodes (8): Any, GenerateJsonSchema, Get ingester configurations from options., Add or update an entity., Check if the project has any unresolved references., Check if the project has any unresolved references., Get data source configurations from options., Customize JSON schema to exclude fields marked with exclude_from_schema.
 
 ### Community 295 - "TestYamlEntityKeyOrdering"
 Cohesion: 0.14
-Nodes (28): hashlib, build_parser(), find_source_row(), main(), make_notes(), mapping_url(), parse_snapshot_time(), Any (+20 more)
+Nodes (29): argparse, build_parser(), find_source_row(), main(), make_notes(), mapping_url(), parse_snapshot_time(), Any (+21 more)
 
 ### Community 296 - "TestEnvironmentVariableResolution"
 Cohesion: 0.12
@@ -1978,32 +1993,32 @@ Cohesion: 0.30
 Nodes (9): test_project_commands.sh script, assert_contains(), assert_dir(), assert_eq(), assert_no_dir(), fail(), make_project_folder(), pass() (+1 more)
 
 ### Community 298 - "Task Plan: Stronger Idempotency And Re-submission"
-Cohesion: 0.17
-Nodes (8): LayoutPosition, Initialize layout position from configuration data.          Args:             d, Convert position to dictionary for serialization., Initialize custom layout from configuration data.          Args:             dat, Set position for entity.          Args:             entity_name: Name of the ent, Position of a node in custom graph layout., Initialize layout options from configuration data.          Args:             da, Any
+Cohesion: 0.14
+Nodes (10): FieldIsStringListValidator, Validator to check if a field's value is a list of strings., Tests for FieldIsStringListValidator., Sample project configuration., Test that valid string list passes., Test that empty list passes., Test that mixed type list fails., Test that non-list value fails. (+2 more)
 
 ### Community 299 - "FieldIsNonEmptyValidator"
 Cohesion: 0.12
 Nodes (16): Acceptance Criteria, Confine file access, Current Behavior, Enforce checks at execution, Final Recommendation, Non-Goals, Planning Handoff, Problem (+8 more)
 
 ### Community 300 - "Path"
-Cohesion: 0.21
-Nodes (7): BaseAPIException, ConflictError, InternalServerError, Custom exceptions for the backend application., Raised when there is a conflict (e.g., duplicate resource)., Raised when an unexpected internal error occurs., Base exception for API-related errors.
+Cohesion: 0.05
+Nodes (35): asyncio, EntityResolutionSet, EntityResolutionSet, AutoReconcileResult, Result of auto-reconciliation operation., Resolve source data based on entity spec source project., Get preview data for entity with reconciliation mappings applied.          Args:, Resolve source data based on source in entity.          Loads fresh ShapeShiftPr (+27 more)
 
 ### Community 301 - "test_subset_service2.py"
 Cohesion: 0.12
 Nodes (16): Acceptance Criteria, Current Behavior, Final Recommendation, Make authorization and deployment changes recoverable, Make verification results trustworthy, Non-Goals, Planning Handoff, Problem (+8 more)
 
 ### Community 302 - "fixture"
-Cohesion: 0.22
-Nodes (12): _authorization_repository(), _client_for_principal(), _operation_dependencies(), Tests for operation endpoint authorization responses., Create an isolated store with the project that owns an operation., Create an operation and retain the real authorization dependency., Create a client that optionally supplies a trusted-proxy identity., test_editor_owner_can_access_and_cancel_operation() (+4 more)
+Cohesion: 0.14
+Nodes (10): FieldTypeValidator, Validator to check that a field is of a specific type.      Requires 'expected_t, Tests for FieldTypeValidator., Sample project configuration., Test that string type matches., Test that int type matches., Test matching against multiple allowed types., Test that type mismatch fails. (+2 more)
 
 ### Community 303 - "Shape Shifter Documentation"
 Cohesion: 0.25
 Nodes (8): Architecture And Requirements, Deployment, Main Guides, Navigation, Proposals, Security And Data Contracts, Shape Shifter Documentation, Supporting Material
 
 ### Community 304 - "ReconciliationCandidate"
-Cohesion: 0.03
-Nodes (93): FieldValidator, Return the appropriate method to log based on severity., EndsWithIdValidator, FieldExistsValidator, FieldIsNonEmptyValidator, FieldIsNotEmptyStringValidator, FieldIsStringListValidator, FieldTypeValidator (+85 more)
+Cohesion: 0.14
+Nodes (10): FieldIsNonEmptyValidator, Validator to check that a field has a truthy value.      Fails if the field is e, Tests for FieldIsNonEmptyValidator., Sample project configuration., Test that truthy string passes., Test that non-empty list passes., Test that non-zero number passes., Test that False fails. (+2 more)
 
 ### Community 305 - "FilePathResolver"
 Cohesion: 0.29
@@ -2014,8 +2029,8 @@ Cohesion: 0.26
 Nodes (19): DataFrame, TableConfig, process_merged_branch(), Process a single branch for a merged entity.      Adds:     - Branch discriminat, make_sub_table_cfg(), make_table_cfg(), Unit tests for src.transforms.branch.process_merged_branch., Minimal stand-in for TableConfig — only the attributes process_merged_branch rea (+11 more)
 
 ### Community 307 - "Path"
-Cohesion: 0.17
-Nodes (8): CircularDependencyError, Circular dependency detected in entity relationships.      Occurs when entities, Registry for SourceNodeExtractor classes indexed by entity type., Decorator to register a SourceNodeExtractor for specific entity types., SourceNodeExtractorRegistry, CircularDependencyError works without cycle parameter., CircularDependencyError is a DependencyError., CircularDependencyError formats cycle in message.
+Cohesion: 0.14
+Nodes (10): IsEmptyFieldValidator, Validator to check if a field is empty (None, empty string, empty list, or empty, Test that None passes validation., Test that non-empty string fails validation., Test that non-empty list fails validation., Tests for IsEmptyFieldValidator., Sample project configuration., Test that empty string passes validation. (+2 more)
 
 ### Community 308 - "SourceTableBundle"
 Cohesion: 0.15
@@ -2030,32 +2045,32 @@ Cohesion: 0.25
 Nodes (13): EntitySpec, TargetModel, _default_project_name(), _generate_entity_stub(), generate_project_template(), main(), render_project_template_yaml(), _resolve_entity_selection() (+5 more)
 
 ### Community 311 - "json"
-Cohesion: 0.03
-Nodes (48): dotset creates nested dicts; dotget resolves colon/underscore variants., dotset(), env2dict(), get_connection_uri(), import_sub_modules(), load_resource_yaml(), Any, Self (+40 more)
+Cohesion: 0.12
+Nodes (9): Tests for dotset function., Test basic dot notation set., Test setting value in existing path., Test setting when partial path exists., Test colon notation is converted to dots., Test setting single key., Test that dotset returns the modified dict., Test that empty path segments are skipped. (+1 more)
 
 ### Community 312 - "Proposal: Secure Ingester Filesystem And Destination Access"
 Cohesion: 0.12
 Nodes (15): Acceptance-Criteria Coverage, Area 1: Install trusted host scripts and per-domain nginx inputs, Area 2: Provision data-only root configuration and independent credentials, Area 3: Remove convenience root and password argv exposure, Area 4: Document and rehearse the cutover, Definition Of Done, Deliverables, Phase Summary (+7 more)
 
 ### Community 313 - "Security Hardening Follow-up"
-Cohesion: 0.17
-Nodes (6): FixedLoader, Loader for fixed data entities., Test fixed rows with [system_id, public_id, ...data columns] layout., Test create fixed table with mixed type values., Test coordinate_method_dimensions example with multiple columns and nulls., Test raises ValueError when single-column config has no columns.
+Cohesion: 0.14
+Nodes (9): ShapeShiftService, Direct test of DataSourceConfig with an @include string.          This demonstra, Test ShapeShiftProject.get_data_source with unresolved @include.          This s, Test that preview works correctly when @include IS properly resolved.          T, Test to reproduce and debug the @include directive bug., Create mock ProjectService., Create ShapeShiftService instance., Test that reproduces the error when @include directive is not resolved. (+1 more)
 
 ### Community 314 - "What's New"
 Cohesion: 0.12
 Nodes (9): Test entity key ordering in YAML output., Test that key ordering doesn't break special 'values' formatting., Test that configs without 'entities' key don't error., Create YamlService instance., Create temporary file for testing., Test that entity keys are ordered according to canonical schema., Test that all entities in config are ordered., Test that keys not in canonical order are sorted alphabetically at end. (+1 more)
 
 ### Community 315 - "stores/reconciliation.ts"
-Cohesion: 0.18
-Nodes (7): ForeignKeyColumnsSpecification, Validates that foreign key local_keys exist in entity columns.      FK linking h, Check that foreign key configurations reference valid columns., Test runtime error prevention validators.  These validators catch configuration, Test that local_keys declared as keys also pass when listed in columns., Test that entities without foreign keys pass., Test that FK can reference unnest result columns (deferred linking).
+Cohesion: 0.12
+Nodes (16): 1. Define update handling as an explicit planning state, 2. Require a deterministic comparison boundary, 3. Treat no-op updates differently from real changes, 4. Block ambiguous or conflicting updates, 5. Start with a narrow SQL output contract, Current Behavior, Final Recommendation, Non-Goals (+8 more)
 
 ### Community 316 - "Shape Shifter - Developer Guide"
-Cohesion: 0.08
-Nodes (23): AI-Friendly Development, Authorization for protected work, Code Conventions, Code quality, Common Development Commands, Debugging and Troubleshooting, Development Workflow, Extending the System (+15 more)
+Cohesion: 0.10
+Nodes (20): AI-Friendly Development, Code Conventions, Code quality, Common Development Commands, Debugging and Troubleshooting, Development Workflow, Extending the System, Frontend (+12 more)
 
 ### Community 317 - "FieldExistsValidator"
-Cohesion: 0.17
-Nodes (7): Tests for base specification classes and utilities., Tests for FieldValidatorRegistry., Test that FIELD_VALIDATORS is a registry instance., Test that validators are registered., Test getting a validator from registry., Test that registered validators can be instantiated., TestFieldValidatorRegistry
+Cohesion: 0.12
+Nodes (9): Tests for ShapeShiftProject class., Test ShapeShiftProject with provided configuration., Test getting a specific table configuration., Test that getting nonexistent table raises KeyError., Test ShapeShiftProject with empty configuration., Test has_table method., Test table_names property., Test with complex nested configuration. (+1 more)
 
 ### Community 318 - "Shape Shifter - Testing Guide"
 Cohesion: 0.11
@@ -2070,48 +2085,48 @@ Cohesion: 0.17
 Nodes (13): load_example_as_core_project(), load_example_project(), load_target_model(), The canonical minimal example should also run through the validator cleanly., The fixture that deliberately omits sample_group should produce a MISSING_REQUIR, All example YAMLs should run through the conformance engine without crashing., Use TargetModelConformanceValidator to check example projects against sead_stand, The complete arbodat example should produce no critical conformance errors. (+5 more)
 
 ### Community 321 - "IsEmptyFieldValidator"
-Cohesion: 0.14
-Nodes (8): Tests for POST /projects/{name}/tasks/{entity}/complete endpoint., Test successfully marking entity as complete., Test marking non-existent entity as complete., Test that marking complete updates the task list in project file., Test successfully marking entity as ignored., Test that marking ignored updates the task list., Test marking entity as ignored in non-existent project., TestMarkComplete
+Cohesion: 0.06
+Nodes (22): Tests for task management API endpoints., Tests for POST /projects/{name}/tasks/{entity}/complete endpoint., Test successfully marking entity as complete., Reset service singletons between tests., Test marking non-existent entity as complete., Test that marking complete updates the task list in project file., Test successfully marking entity as ignored., Test that marking ignored updates the task list. (+14 more)
 
 ### Community 322 - ".validate"
 Cohesion: 0.13
 Nodes (14): Architecture, Best Practices, Testing, Adding a New Ingester, API (FastAPI), CLI, Components, Configuration (+6 more)
 
 ### Community 323 - "TestGetSubTablesConfigs"
-Cohesion: 0.17
-Nodes (18): MonkeyPatch, Path, ExecuteService, _execute_service(), Tests for execution output path confinement., Create an execution service with an isolated project root., Resolve a nested file target below the project's output directory., Reject targets that leave the authorized project's output directory. (+10 more)
+Cohesion: 0.15
+Nodes (17): MonkeyPatch, Path, ExecuteService, _execute_service(), Create an execution service with an isolated project root., Resolve a nested file target below the project's output directory., Reject targets that leave the authorized project's output directory., Reject an absolute output target before it can select another file. (+9 more)
 
 ### Community 324 - "AuthenticationAdapter"
-Cohesion: 0.06
-Nodes (42): Persist a server-owned resource record., Persist a resource grant., Persist an application role assignment., Change the lifecycle state of a server-owned resource., Move an active resource to a new locator while keeping its UUID and grants., Remove an application role unless it is the final administrator., Create initial administrators only while no application roles exist., Load all application roles for a principal. (+34 more)
+Cohesion: 0.16
+Nodes (9): FieldExistsValidator, Validator to check if a field exists in the configuration.      Fails if the fie, Tests for FieldExistsValidator., Sample project configuration., Test validation passes when field exists., Test validation fails when field missing., Test validation with nested field path., Test validation with warning severity. (+1 more)
 
 ### Community 325 - "Auto-Reconcile Script"
 Cohesion: 0.08
 Nodes (23): Auto-Reconcile Script, `deploy_environment.sh`, Deployment Scripts, Direct Usage, Examples, Exit Codes, `generate_user_release_notes.py`, `install_nginx_reverse_proxy.sh` (+15 more)
 
 ### Community 326 - ".remote_to_domain"
-Cohesion: 0.17
-Nodes (7): Tests for UnnestSpecification., Sample project configuration., Test validation passes for valid unnest config., Test validation fails when required field missing., Test validation fails when value_vars not a list., Test validation passes for string drop_duplicates., TestUnnestSpecification
+Cohesion: 0.20
+Nodes (14): Project severity overrides should replace the default severity for a conformance, The registry should execute both global and entity validator subclasses., If the project entity omits type entirely, emit no issue (cannot determine inten, A fact linked transitively to a required lookup should satisfy the orphan-fact r, test_conformance_registry_runs_global_and_entity_validator_base_types(), test_core_conformance_validator_treats_materialized_entity_as_fixed_view(), test_no_orphan_facts_accepts_transitive_required_lookup_path(), test_rule_severity_override_promotes_phase_four_rule_to_error() (+6 more)
 
 ### Community 327 - "ReconciliationQueryService"
 Cohesion: 0.13
 Nodes (14): D1 — Migration method: backfill SEAD → SIMS, no reconciliation, no remapping, D2 — Cross-schema integrity: verification checks, not hard foreign keys, D3 — Deprecate SEAD sequence minting for tracked entities, D4 — Rollout and cutover are separate CRs, D5 — Add missing UUID fields in SEAD for tracked entities, Decisions, Next Steps, Open Questions (+6 more)
 
 ### Community 328 - "Security Hardening Follow-up - Phase 2 Task Plan"
-Cohesion: 0.11
-Nodes (16): list_filter_types(), Filter API Endpoints  Provides REST API for filter metadata and configuration sc, Get metadata for all available filter types.      Returns schema information for, FilterSchemaResponse, FilterFieldMetadataResponse, FilterSchemaResponse, Filter schema models for API responses., Filter schema for API response. (+8 more)
+Cohesion: 0.13
+Nodes (15): list_filter_types(), Filter API Endpoints  Provides REST API for filter metadata and configuration sc, Get metadata for all available filter types.      Returns schema information for, FilterSchemaResponse, FilterFieldMetadataResponse, FilterSchemaResponse, Filter schema models for API responses., Filter schema for API response. (+7 more)
 
 ### Community 329 - "FixedValuesGridHeader.vue"
-Cohesion: 0.16
-Nodes (12): io, jinja2, jinja2_environment, load_target_model(), main(), Path, TargetModel, Load and parse target model YAML file. (+4 more)
+Cohesion: 0.40
+Nodes (6): load_target_model(), main(), Path, TargetModel, Load and parse target model YAML file., Generate documentation in multiple formats using Core generator.
 
 ### Community 330 - "CreateProjectDialog.vue"
 Cohesion: 0.13
 Nodes (14): 1. Start a disposable environment, 2. Prepare the checkout inside the environment, 3. Copy in the ledger package, 4. Run the package against the checkout, 5. Confirm the host is untouched, 6. Discard the environment, Constraints, Host-untouched assertion (manual check) (+6 more)
 
 ### Community 331 - "2. Shape Shifter Transformation Concepts"
-Cohesion: 0.13
-Nodes (6): Test flatten function with various inputs., Test recursive_update merges dictionaries correctly., Legacy test for basic recursive update., test_flatten(), test_recursive_update(), test_recursive_update_duplicate_basic()
+Cohesion: 0.24
+Nodes (5): LoadProfiler, Any, Stand-in for the ``json`` module that records time spent in dumps/loads.      ``, Record per-file time inside the YAML loaders on one service instance.      Wraps, TimedJson
 
 ### Community 332 - "Authorization"
 Cohesion: 0.18
@@ -2126,8 +2141,8 @@ Cohesion: 0.14
 Nodes (13): 1. Simple Component Usage, 2. Save with Conflict Detection, 3. Detect Concurrent Editors, API Endpoints Available, Documentation, Files Created, Files Updated, Frontend Session Management - Quick Reference (+5 more)
 
 ### Community 335 - "TestCircularDependency"
-Cohesion: 0.06
-Nodes (31): 1. Data Import and Target Domain, 2. Shape Shifter Transformation Concepts, Authoritative Fixed Column Ordering, Business Keys, Directives, Dry Run, Entity/Attribute/Value Mapping, Error Report (+23 more)
+Cohesion: 0.11
+Nodes (18): 2. Shape Shifter Transformation Concepts, Authoritative Fixed Column Ordering, Business Keys, Directives, Dry Run, Entity/Attribute/Value Mapping, Error Report, Foreign Key Resolution (+10 more)
 
 ### Community 336 - "Shape Shifter Ingester System"
 Cohesion: 0.15
@@ -2138,24 +2153,24 @@ Cohesion: 0.11
 Nodes (17): 1. Directory Structure, 2. Implement the Protocol, 3. Register in __init__.py, 4. Enable in Configuration, API Usage, Available Ingesters, CLI Usage, Configuration Issues (+9 more)
 
 ### Community 338 - "derive_fixed_schema"
-Cohesion: 0.04
-Nodes (45): _log_development_authorization_bootstrap_hint(), Print a bootstrap command when the opted-in local authorization store is incompl, Any, Path, Settings, BaseSettings, Require trusted-proxy authentication for production settings., Resolve relative paths against APPLICATION_ROOT and ensure directories exist. (+37 more)
+Cohesion: 0.10
+Nodes (12): Any, Path, Resolve relative paths against APPLICATION_ROOT and ensure directories exist., Resolve a path against the repository root when it is relative., Get full environment variable name with prefix., Get full environment variable name with prefix., Get projects root directory path., Get application root directory path. (+4 more)
 
 ### Community 339 - "TestIngesterServiceIntegration"
 Cohesion: 0.15
 Nodes (14): public.tbl_lithology, public.tbl_sample_description_sample_group_contexts, public.tbl_sample_description_types, public.tbl_sample_descriptions, public.tbl_sample_group_description_type_sampling_contexts, public.tbl_sample_group_description_types, public.tbl_sample_group_descriptions, public.tbl_sample_group_notes (+6 more)
 
 ### Community 340 - "TestMarkComplete"
-Cohesion: 0.10
-Nodes (22): useCytoscape(), UseCytoscapeOptions, createBaseStyles(), CytoscapeStyleConfig, CytoscapeStyleOptions, darkThemeStyles, getCytoscapeStyles(), lightThemeStyles (+14 more)
+Cohesion: 0.22
+Nodes (14): main(), measure_scan(), parse_args(), profile_with_cprofile(), Namespace, Path, Time a recursive discover of ``shapeshifter.yml`` plus one ``stat`` per file., Run the simulated request path ``args.runs`` times and collect timings. (+6 more)
 
 ### Community 341 - "3. Implementation and Architecture Concepts"
-Cohesion: 0.11
-Nodes (19): 3. Implementation and Architecture Concepts, Adapter, API, CLI, Configuration, Idempotency, Integration Test, Loader (+11 more)
+Cohesion: 0.06
+Nodes (35): 3. Implementation and Architecture Concepts, 4. SEAD and Identity Concepts, Adapter, API, Association, Authority Keys, Child Values, CLI (+27 more)
 
 ### Community 342 - "Operational Plan (Draft): SIMS–SEAD Trust-Contract Adoption"
-Cohesion: 0.07
-Nodes (59): _apply_administrators(), _apply_grants(), apply_manifest(), _apply_resources(), backup_database(), development_bootstrap_required(), export_manifest(), initialize_database() (+51 more)
+Cohesion: 0.16
+Nodes (9): FieldIsNotEmptyStringValidator, Validator to check if a field is a non-empty string., Tests for FieldIsNotEmptyStringValidator., Sample project configuration., Test that non-empty string passes., Test that empty string fails., Test that whitespace-only string fails., Test that non-string value fails. (+1 more)
 
 ### Community 343 - "Frontend Session Management - Quick Reference"
 Cohesion: 0.29
@@ -2163,15 +2178,15 @@ Nodes (12): DataFrame, Series, add_system_id(), _build_null_safe_merge_key(), _c
 
 ### Community 344 - "entityFormMaterialization.ts"
 Cohesion: 0.17
-Nodes (7): Tests for EntityReferencesExistSpecification., Sample project configuration., Test validation passes when all references exist., Test validation fails for missing source reference., Test validation fails for missing dependency reference., Test validation fails for missing foreign key reference., TestEntityReferencesExistSpecification
+Nodes (7): Tests for ForeignKeySpecification., Sample project configuration., Test validation passes for valid foreign key., Test validation fails when entity field missing., Test validation fails when key lengths don't match., Test validation fails for invalid extra_columns type., TestForeignKeySpecification
 
 ### Community 345 - "EntityResolutionCatalog"
 Cohesion: 0.17
 Nodes (4): Test that column ranges like 'A:C' are parsed correctly., Test loading data using column range (e.g., 'A:C') in read-only mode., test_excel_openpyxl_column_range_parsing(), test_excel_openpyxl_load_with_column_range()
 
 ### Community 346 - "test_base.py"
-Cohesion: 0.17
-Nodes (7): Tests for ForeignKeyColumnsSpecification - validates FK local_keys exist., Test that valid foreign key passes., Test that missing local_keys produces error., Test that missing local_keys field produces error., Test that local_keys can reference extra_columns., Test that FK can reference extra_columns added by previous FK., TestForeignKeyColumnsSpecification
+Cohesion: 0.10
+Nodes (16): ForeignKeyColumnsSpecification, Validates that foreign key local_keys exist in entity columns.      FK linking h, Check that foreign key configurations reference valid columns., Test runtime error prevention validators.  These validators catch configuration, Tests for ForeignKeyColumnsSpecification - validates FK local_keys exist., Test that valid foreign key passes., Test that missing local_keys produces error., Test that local_keys declared as keys also pass when listed in columns. (+8 more)
 
 ### Community 347 - "TestMappingApi"
 Cohesion: 0.25
@@ -2182,12 +2197,12 @@ Cohesion: 0.21
 Nodes (13): _client_for_principal(), _mock_data_source_service(), _query_dependencies(), Tests for query endpoint authorization responses., Create a client that optionally supplies a trusted-proxy identity., Create a mocked data source service., Override query services while retaining the real authorization dependency., test_execute_query_forwards_limit_and_timeout() (+5 more)
 
 ### Community 349 - "IsOfCategoricalValuesValidator"
-Cohesion: 0.18
-Nodes (6): Any, GenerateJsonSchema, Get ingester configurations from options., Add or update an entity., Get data source configurations from options., Customize JSON schema to exclude fields marked with exclude_from_schema.
+Cohesion: 0.16
+Nodes (9): IsOfCategoricalValuesValidator, Validator to check that a field's value is one of the specified categorical valu, Tests for IsOfCategoricalValuesValidator., Sample project configuration., Test that value in categories passes., Test that value not in categories fails., Test that non-string value passes (doesn't validate)., Test with empty categories list. (+1 more)
 
 ### Community 350 - ".validate"
-Cohesion: 0.17
-Nodes (8): ShapeShiftService, Test ShapeShiftProject.get_data_source with unresolved @include.          This s, Test that preview works correctly when @include IS properly resolved.          T, Test to reproduce and debug the @include directive bug., Create mock ProjectService., Create ShapeShiftService instance., Test that reproduces the error when @include directive is not resolved., TestShapeShiftServiceIncludeBug
+Cohesion: 0.12
+Nodes (9): Test decomposing file outside managed directories returns None., Test suite for FilePathResolver utility class., Test converting to legacy format for local file., Test resolve_in_entity_config with config missing options., Test resolve_in_entity_config with options but no filename., Test that resolving local file without project_name raises ValueError., Test that invalid location raises ValueError., Test that absolute filenames cannot bypass the configured root. (+1 more)
 
 ### Community 351 - "TestMergedEntityConfig"
 Cohesion: 0.20
@@ -2195,31 +2210,31 @@ Nodes (6): Test that entity status has all required fields., Test getting task s
 
 ### Community 352 - "TestAddSurrogateId"
 Cohesion: 0.07
-Nodes (41): useDependencies(), UseDependenciesOptions, ColumnInfo, PreviewResult, PreviewValidationIssue, useEntityPreview(), useErrorHandler(), UseErrorHandlerOptions (+33 more)
+Nodes (38): UseEntitiesOptions, ColumnInfo, PreviewResult, PreviewValidationIssue, useEntityPreview(), useErrorHandler(), UseErrorHandlerOptions, UseErrorHandlerReturn (+30 more)
 
 ### Community 353 - ".registry_to_domain"
 Cohesion: 0.14
 Nodes (13): 1. CONFIGURATION_GUIDE.md - Data Source Append Section, 2. CONFIGURATION_GUIDE.md - Property Inheritance Section, 3. AppendEditor.vue - Info Notice, Benefits, Changes, Migration Impact, Next Steps, Overview (+5 more)
 
 ### Community 354 - "MockRow"
-Cohesion: 0.09
-Nodes (12): create_connection_mock(), ExtendedMockConfigProvider, MockRow, Any, Config, Extended MockConfigProvider that allows setting config after initialization, Provide TestConfigProvider with test configuration, Create an async psycopg connection mock whose cursor methods return given values (+4 more)
+Cohesion: 0.02
+Nodes (93): click, importlib, Any, Connection, Any, DataFrame, Self, Submission (+85 more)
 
 ### Community 355 - ".mapping_item_to_domain"
 Cohesion: 0.15
 Nodes (12): Comparison Table, Copilot and Codex Instruction Comparison, Current Gaps, Practical Follow-Up, Recommended minimum set, Remediation Plan, Step 1: Add repo-level Codex coverage for `.github` **COMPLETED**, Step 2: Add docs-scoped Codex coverage **COMPLETED** (+4 more)
 
 ### Community 356 - "correlation.py"
-Cohesion: 0.13
-Nodes (21): _assembled_routes(), _authorization_requirement(), _concrete_path(), _protected_route_paths(), Regression tests for the application authentication boundary and route inventory, Return method/path entries for the assembled FastAPI API routes., Return authorization metadata attached to a dependency factory., Return API routes with neither declared authorization metadata nor a documented (+13 more)
+Cohesion: 0.03
+Nodes (86): global_exception_handler(), FastAPI application entry point., Catch all unhandled exceptions and log with full traceback.      This is a last-, Root endpoint - redirect to docs (API-only mode)., root(), Allow an authenticated principal to read the global log without an application r, test_authenticated_principal_without_application_role_can_read_logs(), Verify every declared protected endpoint rejects a request before handler valida (+78 more)
 
 ### Community 357 - "SqlSourceNodeExtractor"
-Cohesion: 0.33
-Nodes (6): NamingConventionConformanceValidator, Validate that project entity public_id values conform to the target model naming, Unit tests for NamingConventionConformanceValidator., NamingConventionConformanceValidator is registered and runs via TargetModelConfo, TestNamingConventionConformance, ShapeShiftProject
+Cohesion: 0.13
+Nodes (8): FilePathResolver, Test extracting location from legacy ${GLOBAL_DATA_DIR}/ format., Test extracting location with subdirectory in legacy format., Test converting to legacy format for global file., Test resolving empty filename still returns valid path., Test decomposing directory (not file) path., Test that parent traversal cannot escape the configured root., Test that project-name path variants cannot escape the projects root.
 
 ### Community 358 - "ShapeShiftProjectCache"
-Cohesion: 0.14
-Nodes (14): 4. SEAD and Identity Concepts, Association, Authority Keys, Child Values, Conformance Validation, Ownership, Provider Keys, Reconciliation (+6 more)
+Cohesion: 0.17
+Nodes (12): 1. Data Import and Target Domain, ETL, Identifier, Import, Mapping, Provenance, Record, Source Data (+4 more)
 
 ### Community 359 - "TestReconciliationExportApi"
 Cohesion: 0.21
@@ -2230,8 +2245,8 @@ Cohesion: 0.17
 Nodes (12): 5. Working with Entities, Common Editing Patterns, Common Entity Workflow, Create from Database Source, Create from Scratch, Edit YAML Directly, Entity Editor Modes, Entity Editor Tabs (+4 more)
 
 ### Community 361 - "asyncio"
-Cohesion: 0.18
-Nodes (6): Integration tests for DSL formulas in extra_columns.  Tests the integration betw, Test edge cases and error conditions., Test DSL with special characters in string literals., Test DSL with empty DataFrame., Test DSL is case-sensitive for column names., TestDSLIntegrationEdgeCases
+Cohesion: 0.23
+Nodes (6): Generate human-readable documentation from target models with optional project c, Generate documentation in specified format.          Args:             format: O, Generate documentation and write to file.          Args:             format: Out, TargetModelDocumentGenerator, TestTargetModelDocumentGenerator, Path
 
 ### Community 362 - "TestCreateSpecification"
 Cohesion: 0.15
@@ -2254,12 +2269,12 @@ Cohesion: 0.18
 Nodes (7): Tests for YAML loading., Test loading valid YAML file., Test loading non-existent file raises error., Test loading directory raises error., Test loading empty file returns empty dict., Test that loading preserves key order., TestYamlServiceLoad
 
 ### Community 367 - "run_deployment_verification.sh"
-Cohesion: 0.20
-Nodes (10): _documented_api_routes(), _documented_non_api_paths(), _inventory_route_rows(), Read method/path entries from the maintained authorization route inventory., Read documented paths outside the API prefix, such as generated and mounted rout, Return assembled direct routes and mounts outside the API prefix., Keep the maintained inventory synchronized with direct routes and mounted paths., Read the method and path cell of every route row in the maintained inventory. (+2 more)
+Cohesion: 0.06
+Nodes (28): client(), Test validation response structure (mock successful case)., Validate route should preserve change-request payload fields when calling the se, Test ingestion with non-existent ingester., Test ingestion with invalid request body., Test ingestion response structure., Ingest route should preserve change-request payload fields when calling the serv, Create a fresh TestClient so app startup runs inside the test. (+20 more)
 
 ### Community 368 - "Remediation Plan"
-Cohesion: 0.17
-Nodes (18): argparse, difflib, build_parser(), main(), ArgumentParser, Build the CLI parser for target-model schema reference generation., Generate the target-model schema reference or check it for drift., build_copilot_prompt() (+10 more)
+Cohesion: 0.35
+Nodes (10): importlib_util, build_copilot_prompt(), build_filtered_context(), load_release_notes_module(), main(), parse_args(), Namespace, Path (+2 more)
 
 ### Community 369 - "Logging Architecture"
 Cohesion: 0.15
@@ -2282,27 +2297,27 @@ Cohesion: 0.29
 Nodes (7): 3. Typical Workflow, Step 1 — Load Data, Step 2 — Create Entities, Step 3 — Preview and Validate, Step 4 — Reconcile Values, Step 5 — Execute Export, Step 6 — Dispatch
 
 ### Community 374 - "DataFrame"
-Cohesion: 0.18
-Nodes (9): error, filterSchemas, loading, FilterConfig, FilterFieldMetadata, FilterFieldType, FilterSchema, FilterStage (+1 more)
+Cohesion: 0.06
+Nodes (29): apiClient, healthApi, HealthResponse, queryApi, TaskInitializeResponse, TaskNoteResponse, tasksApi, DirectiveValidationResult (+21 more)
 
 ### Community 375 - "FilterSpecification"
-Cohesion: 0.04
-Nodes (52): Any, ColumnAvailabilityResponse, ExtraColumnEvaluator, Test creating a valid unnest configuration., Test that missing unnest key raises ValueError., Test that missing id_vars is allowed (defaults to empty list)., Test that missing value_vars is allowed (defaults to empty list)., Test that missing var_name raises ValueError. (+44 more)
+Cohesion: 0.19
+Nodes (6): FilterSpecification, Validates staged filter configuration and basic stage-aware column availability., Tests for staged filter validation., TestFilterSpecification, normalize_filter_stage(), Resolve a filter stage, defaulting to the legacy extract timing.
 
 ### Community 376 - "DSL Module Test Documentation"
 Cohesion: 0.14
 Nodes (13): Acceptance Criteria, Current Behavior, Final Recommendation, Non-Goals, Problem, Project Folder Navigation With Breadcrumbs, Proposed Design, Recommended Delivery Order (+5 more)
 
 ### Community 377 - "Any"
-Cohesion: 0.22
-Nodes (6): Any, Path, Decompose absolute path into (filename, location) for API layer.          This i, Extract location from legacy filename format.          Supports backward compati, Resolve file paths in entity config dictionary.          Modifies entity_config, Resolve filename to absolute path based on location.          This is the primar
+Cohesion: 0.15
+Nodes (8): Test validation fails when strict_functional_dependency is not bool., Tests for PublicIdSpecification., Sample project configuration., Test validation passes for valid public_id., Test error when public_id doesn't end with _id., Test validation fails for non-string public_id., Test validation fails when derived entity reuses its source public_id., TestPublicIdSpecification
 
 ### Community 378 - "test_filters_endpoint.py"
 Cohesion: 0.33
-Nodes (3): Create a fixed data entity based on configuration., Normalize loaded fixed values before building the DataFrame., Validate the fixed data entity configuration.
+Nodes (6): NamingConventionConformanceValidator, Validate that project entity public_id values conform to the target model naming, Unit tests for NamingConventionConformanceValidator., NamingConventionConformanceValidator is registered and runs via TargetModelConfo, TestNamingConventionConformance, ShapeShiftProject
 
 ### Community 379 - "TestProjectsUpdate"
-Cohesion: 0.23
+Cohesion: 0.20
 Nodes (14): load_project(), load_target_model(), load_yaml(), main(), print_validation_summary(), Path, ShapeShiftProject, TargetModel (+6 more)
 
 ### Community 380 - "TestProjectsBackups"
@@ -2318,28 +2333,28 @@ Cohesion: 0.18
 Nodes (12): public.tbl_alt_ref_types, public.tbl_colours, public.tbl_feature_types, public.tbl_features, public.tbl_horizons, public.tbl_physical_sample_features, public.tbl_physical_samples, public.tbl_sample_alt_refs (+4 more)
 
 ### Community 383 - "TestValidationServiceErrors"
-Cohesion: 0.06
-Nodes (47): Reconciliation service module.  This module provides services for entity reconci, ProjectService, ShapeShiftProject, Any, AutoReconcileResult, EntityResolutionCatalog, EntityResolutionSet, Path (+39 more)
+Cohesion: 0.21
+Nodes (7): Ingest Excel file into SEAD database.          This performs the complete ingest, Ingester for SEAD Clearinghouse database.      This ingester handles the complet, Initialize SEAD ingester with configuration.          Args:             config:, Get metadata about this ingester.          Returns:             IngesterMetadata, Load SEAD schema from database if not already loaded.          Returns:, Validate Excel file against SEAD schema.          This performs comprehensive va, SeadIngester
 
 ### Community 384 - "TestYamlServiceSave"
 Cohesion: 0.17
 Nodes (12): Create New Entity, Edit Entity, Entity Editor - Advanced Tab, Entity Editor - Basic Tab, Entity Editor - Compact View, Entity Editor - Foreign Keys Tab, Entity Editor - Preview Tab, Entity Editor - Split View (+4 more)
 
 ### Community 385 - "TestYamlServiceLoad"
-Cohesion: 0.22
-Nodes (4): router, routes, app, configureMonacoWorkers()
+Cohesion: 0.17
+Nodes (7): Tests for EntityReferencesExistSpecification., Sample project configuration., Test validation passes when all references exist., Test validation fails for missing source reference., Test validation fails for missing dependency reference., Test validation fails for missing foreign key reference., TestEntityReferencesExistSpecification
 
 ### Community 386 - "test_env_var_allowlist.py"
-Cohesion: 0.24
-Nodes (7): dict, DependencyGraph, DependencyNode, Dependency graph representation., Initialize dependency graph., Dependency graph node representation., Initialize dependency node.
+Cohesion: 0.18
+Nodes (8): EndsWithIdValidator, Validator to check that a field ends with '_id'., Tests for EndsWithIdValidator., Sample project configuration., Test that field ending with _id passes., Test that field not ending with _id fails., Test that non-string value fails., TestEndsWithIdValidator
 
 ### Community 387 - "TestCalculateDepths"
-Cohesion: 0.24
-Nodes (8): CardinalityInfo, JoinStatistics, Models for foreign key join testing., A row that failed to match during the join., Information about join cardinality., Statistics about the join operation., UnmatchedRow, Test a foreign key join to validate the relationship.          Args:
+Cohesion: 0.10
+Nodes (15): IsExistingEntityValidator, KeysSubsetOfColumnsValidator, Validator to check that a field is an existing entity., Validator to check that keys name configured output fields.      Dynamic source, Tests for field-level validators., Tests for IsExistingEntityValidator., Sample project configuration., Test that existing entity passes. (+7 more)
 
 ### Community 388 - "CHANGELOG.md"
-Cohesion: 0.12
-Nodes (16): [1.12.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.11.0...v1.12.0) (2026-01-20), [1.13.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.12.0...v1.13.0) (2026-01-20), [1.14.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.13.0...v1.14.0) (2026-01-21), [1.19.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.18.0...v1.19.0) (2026-01-31), [1.20.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.19.0...v1.20.0) (2026-01-31), [1.6.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.5.0...v1.6.0) (2026-01-14), [1.9.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.8.0...v1.9.0) (2026-01-16), Bug Fixes (+8 more)
+Cohesion: 0.14
+Nodes (13): [1.13.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.12.0...v1.13.0) (2026-01-20), [1.14.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.13.0...v1.14.0) (2026-01-21), [1.19.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.18.0...v1.19.0) (2026-01-31), [1.6.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.5.0...v1.6.0) (2026-01-14), [1.9.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.8.0...v1.9.0) (2026-01-16), [2.1.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v2.0.0...v2.1.0) (2026-09-09), Bug Fixes, Features (+5 more)
 
 ### Community 389 - "Merged Entities"
 Cohesion: 0.15
@@ -2354,8 +2369,8 @@ Cohesion: 0.18
 Nodes (10): compilerOptions, allowSyntheticDefaultImports, composite, lib, module, moduleResolution, skipLibCheck, strict (+2 more)
 
 ### Community 393 - "ValidatorRegistry"
-Cohesion: 0.22
-Nodes (9): items, title, type, items, title, type, $ref, constraints (+1 more)
+Cohesion: 0.17
+Nodes (8): Data Loaders (`src/loaders/`), Shape Shifter – Core (`src/`) Agent Rules, Specifications (`src/specifications/`), Target Model (`src/target_model/`), Testing, Validators (`src/validators/`), Backward-compatible alias for ``entity``., Backward-compatible alias for ``column``.
 
 ### Community 394 - "EndsWithIdValidator"
 Cohesion: 0.17
@@ -2371,27 +2386,27 @@ Nodes (7): Tests for project backup operations., Test listing backups., Test res
 
 ### Community 397 - "TestBraceEscaping"
 Cohesion: 0.04
-Nodes (41): R, Recursively replaces environment variables in data.      Replaces all occurrence, replace_env_vars(), Should resolve environment variables in config dict., Should return empty string for missing env vars., Tests for replace_env_vars function., Test replacing environment variable when it's the whole string., Test replacing environment variable in the middle of a string. (+33 more)
+Nodes (39): R, Recursively replaces environment variables in data.      Replaces all occurrence, replace_env_vars(), Tests for replace_env_vars function., Test replacing environment variable when it's the whole string., Test replacing environment variable in the middle of a string., Test replacing multiple environment variables in one string., Test replacing adjacent environment variables. (+31 more)
 
 ### Community 398 - ".validate"
-Cohesion: 0.06
-Nodes (19): Tests for ForeignKeyDataValidator., Test passes when FK columns exist., Test reports errors for missing FK columns., Test no local_keys doesn't cause errors., Tests for ForeignKeyIntegrityValidator., Test passes when all FK values exist in remote., Test reports warnings for orphaned FK values., Test composite FK validation. (+11 more)
+Cohesion: 0.09
+Nodes (13): Tests for ForeignKeyDataValidator., Test passes when FK columns exist., Test reports errors for missing FK columns., Test no local_keys doesn't cause errors., Tests for ForeignKeyIntegrityValidator., Test passes when all FK values exist in remote., Test reports warnings for orphaned FK values., Test composite FK validation. (+5 more)
 
 ### Community 399 - "TestForeignKeySpecification"
 Cohesion: 0.20
 Nodes (6): Tests for EntitySpecification composite., Sample project configuration., Test that valid entity passes all specifications., Test get_specifications returns proper list., Test that errors from sub-specifications are aggregated., TestEntitySpecification
 
 ### Community 400 - "test_response_logging_redaction.py"
-Cohesion: 0.05
-Nodes (17): Check if a specific entity exists in the configuration., FieldIsAbsentValidator, HasValueValidator, IsInColumnsValidator, Validator to check that a field's value is defined in the `columns` field., Validator to check that a field's value is equal to the expected value., Validator to check if a field is absent in the configuration.      Fails if the, Validate the metadata section of the project configuration. (+9 more)
+Cohesion: 0.19
+Nodes (7): FieldIsAbsentValidator, HasValueValidator, IsInColumnsValidator, Validator to check that a field's value is defined in the `columns` field., Validator to check that a field's value is equal to the expected value., Validator to check if a field is absent in the configuration.      Fails if the, Any
 
 ### Community 401 - "yaml"
-Cohesion: 0.22
-Nodes (8): Path, configure_logging(), format_exception_with_filtered_frames(), Logging configuration for the backend application., Format exception with filtered stack frames (removes framework noise).      Args, Configure application logging with loguru.      Args:         log_dir: Directory, linecache, traceback
+Cohesion: 0.29
+Nodes (5): ExcelWriter, ExcelGenerator, Helper class to generate Excel documentation., Generate Excel spreadsheet for review and annotation.          Returns:, TestExcelGenerator
 
 ### Community 402 - "`backend/tests/` — Agent Guide"
-Cohesion: 0.24
-Nodes (8): error, initialized, loading, schemas, DriverSchema, DriverSchemas, FieldMetadata, FieldType
+Cohesion: 0.31
+Nodes (12): FileLocation, Path, Resolve a managed file path against the configured global or local root., resolve_managed_file_path(), Path, test_resolve_managed_file_path_allows_missing_parent_directories(), test_resolve_managed_file_path_global_relative(), test_resolve_managed_file_path_local_relative() (+4 more)
 
 ### Community 403 - ".source_to_dto"
 Cohesion: 0.18
@@ -2402,8 +2417,8 @@ Cohesion: 0.18
 Nodes (10): $defs, ProjectMetadata, description, description, required, title, type, $schema (+2 more)
 
 ### Community 405 - "_client_for_principal"
-Cohesion: 0.15
-Nodes (9): Data Loaders (`src/loaders/`), Entity System, Shape Shifter – Core (`src/`) Agent Rules, Specifications (`src/specifications/`), Target Model (`src/target_model/`), Testing, Validators (`src/validators/`), Backward-compatible alias for ``entity``. (+1 more)
+Cohesion: 0.11
+Nodes (27): FK Pattern: Pre-existing External IDs, Identity Properties, `public_id`, `surrogate_id` (Deprecated - Use `public_id`), `system_id` (Auto-Managed), Three-Tier Identity System: Complete Example, Mapping Sidecar Design, `system_id` as the universal FK value (+19 more)
 
 ### Community 406 - "Document-specific rules"
 Cohesion: 0.15
@@ -2418,28 +2433,28 @@ Cohesion: 0.18
 Nodes (11): public.tbl_abundance_elements, public.tbl_abundance_ident_levels, public.tbl_abundance_modifications, public.tbl_abundance_properties, public.tbl_abundances, public.tbl_dating_material, public.tbl_identification_levels, public.tbl_modification_types (+3 more)
 
 ### Community 409 - "TestInitializeTaskList"
-Cohesion: 0.18
-Nodes (10): Candidate Workflows, Handoff, Next Step, Non-Goals, Problem, Proposal: Shared Data Review And Operator Contract, Purpose, Relationship To Provider Lifecycle Docs (+2 more)
+Cohesion: 0.10
+Nodes (19): Handoff, Acceptance Criteria, Current Behavior, Final Recommendation, MVP And Post-MVP Boundary, Next Step, Non-Goals, Open Questions (+11 more)
 
 ### Community 410 - "SEAD Change Request Ingester"
 Cohesion: 0.18
 Nodes (11): Data Source List Loading, Database Target Configuration, Dispatcher Selection, Execute Dialog, Execute Dialog State Management, Execute Result Handling, Execute Workflow, Execute Workflow Testing (+3 more)
 
 ### Community 411 - "Execute Workflow Testing"
-Cohesion: 0.29
-Nodes (5): ensureMarkdownPath(), isInternalHelpHref(), renderHelpMarkdown(), resolveHelpHref(), useHelp()
+Cohesion: 0.17
+Nodes (7): Test table listing with specific schema., Test with non-existent data source., Test with unsupported driver., Test with database error., Tests for GET /data-sources/{name}/tables endpoint., Test successful table listing., TestListTablesEndpoint
 
 ### Community 412 - "field_validator"
-Cohesion: 0.36
-Nodes (3): Any, BaseUploader, NullConnection
+Cohesion: 0.14
+Nodes (8): Any, BaseUploader, Connection, NullConnection, Get list of table names in underscored format for a submission.         NOTE: ev, Explode submission into public tables., Delete submission from staging tables., SubmissionRepository
 
 ### Community 413 - "replace_env_vars"
 Cohesion: 0.18
 Nodes (10): Backend Utilities, Design Principles, Graph Algorithms, `graph.py` - Graph Algorithms, Migration Notes, Modules, `sql.py` - SQL Parsing Utilities, SQL Table Extraction (+2 more)
 
 ### Community 414 - "prepare_copilot_release_notes.py"
-Cohesion: 0.22
-Nodes (8): AsyncClient, collections_abc, authorized_client(), disable_ucanaccess_jvm_startup(), isolate_settings_environment(), Remove ambient SHAPE_SHIFTER_* variables so Settings tests see defaults.      So, Disable process-wide runtime initialization in ordinary backend tests., Create an authenticated client backed by an isolated authorization store.      T
+Cohesion: 0.15
+Nodes (12): Acceptance Criteria, Current Behavior, Final Recommendation, Non-Goals, Problem, Proposed Design, Risks And Tradeoffs, Scope (+4 more)
 
 ### Community 415 - "EntityPersistenceStrategy"
 Cohesion: 0.22
@@ -2454,8 +2469,8 @@ Cohesion: 0.47
 Nodes (9): authorization.sh script, backup_database(), container_is_running(), export_manifest(), import_manifest(), require_running_container(), restore_database(), run_cli() (+1 more)
 
 ### Community 418 - "TestProjectsValidate"
-Cohesion: 0.28
-Nodes (8): base64, Submission, pickle, struct, encode_sites(), generate_test_excel(), load_test_submission(), Load test data from Excel file, stores and loads pickled data if exists for bett
+Cohesion: 0.04
+Nodes (17): Any, Self, Get ingester configurations from project options., Get configuration for a specific ingester., Resolve extra columns for the foreign key configuration.          The mapping re, Get list of valid remote columns to select from the remote dataframe based on th, Generate the setup for linking based on the foreign key configuration., Check if the foreign key linking has already been added to the table. (+9 more)
 
 ### Community 419 - "package.json"
 Cohesion: 0.20
@@ -2490,8 +2505,8 @@ Cohesion: 0.25
 Nodes (5): Tests for entity validation endpoint., Test validating specific entity., Test validating non-existent entity., Test validating entity in non-existent configuration., TestEntityValidation
 
 ### Community 428 - "TestTestConnection"
-Cohesion: 0.25
-Nodes (5): Tests for EntityFieldsSpecification., Sample project configuration., Test validation uses FixedEntityFieldsSpecification for fixed type., Test validation uses base specification for data type., TestEntityFieldsSpecification
+Cohesion: 0.18
+Nodes (10): import_backend(), Import backend modules after the application root is fixed.      Importing ``bac, Calls registry discovery only when the registry is uninitialized., Renders available ingesters in the command output., test_discover_ingesters_runs_registry_discovery_when_needed(), test_list_ingesters_prints_available_ingesters(), A file the fast parser cannot handle is retried with the full loader., SimpleNamespace (+2 more)
 
 ### Community 429 - "test_driver_schema.py"
 Cohesion: 0.32
@@ -2514,8 +2529,8 @@ Cohesion: 0.20
 Nodes (9): AI Project Advisor Proposal, Available context, Executive Summary, Explicit Non-Goals, Glossary, Key Recommendation, MVP Use Cases, Problem Statement (+1 more)
 
 ### Community 434 - "Field-Level Validators"
-Cohesion: 0.13
-Nodes (15): BranchConfig (for merged entities), ends_with_id, exists, Field-Level Validators, Foreign Key Runtime Validations, ForeignKeyDataSpecification, is_empty, is_existing_entity (+7 more)
+Cohesion: 0.20
+Nodes (10): ends_with_id, exists, Field-Level Validators, is_empty, is_existing_entity, is_of_categorical_values, is_string_list, not_empty (+2 more)
 
 ### Community 435 - "Reconciliation Testing"
 Cohesion: 0.20
@@ -2534,12 +2549,12 @@ Cohesion: 0.35
 Nodes (11): container.sh script, check_deployment(), down(), logs(), restart(), service(), service_install_unit(), service_usage() (+3 more)
 
 ### Community 439 - "TestEntityFieldsBaseSpecification"
-Cohesion: 0.25
-Nodes (5): Tests for DependsOnSpecification., Sample project configuration., Test validation passes for valid dependency., Test validation fails for nonexistent dependency., TestDependsOnSpecification
+Cohesion: 0.20
+Nodes (6): Tests for FieldValidatorRegistry., Test that FIELD_VALIDATORS is a registry instance., Test that validators are registered., Test getting a validator from registry., Test that registered validators can be instantiated., TestFieldValidatorRegistry
 
 ### Community 440 - "TestEntityFieldsSpecification"
-Cohesion: 0.25
-Nodes (5): Tests for DELETE /projects/{name}/tasks/{entity} endpoint., Test successfully resetting entity status., Test that reset removes entity from ignored list., Test resetting status in non-existent project., TestResetStatus
+Cohesion: 0.22
+Nodes (9): $ref, additionalProperties, title, type, additionalProperties, title, type, columns (+1 more)
 
 ### Community 441 - "TestUnnestSpecification"
 Cohesion: 0.20
@@ -2554,16 +2569,16 @@ Cohesion: 0.20
 Nodes (6): Tests for DELETE /api/v1/reconcile/specifications/{entity_name}/{target_field} e, Test deleting specification without mappings., Test deleting specification with mappings fails without force., Test force deleting specification with mappings succeeds., Test deleting non-existent specification fails., TestDeleteSpecification
 
 ### Community 444 - ".validate_directive"
-Cohesion: 0.25
-Nodes (4): Register a validator with optional sub_key for constraint value mapping., Get a specific validator by constraint key and value (sub_key lookup)., Return opts required for merge validation., Any
+Cohesion: 0.38
+Nodes (4): Register a validator with optional sub_key for constraint value mapping., Get a specific validator by constraint key and value (sub_key lookup)., ValidatorRegistry, Any
 
 ### Community 445 - ".fetch"
 Cohesion: 0.20
 Nodes (6): Test getting dependency graph with no dependencies., Test getting dependency graph with circular dependencies., Test getting dependencies for non-existent configuration., Tests for dependency analysis endpoints., Test getting dependency graph with simple dependencies., TestDependencies
 
 ### Community 446 - "TestEntitiesCreate"
-Cohesion: 0.33
-Nodes (5): find_unresolved_directives(), _raise_on_unresolved_directives(), Recursively find unresolved directive strings like @value:, @include:, @load:., Check if the configuration has any unresolved references., Check if the configuration has any unresolved references.
+Cohesion: 0.17
+Nodes (11): Candidate Areas, Decision Gates, Final Recommendation, Non-Goals, Problem, Proposal: Sead Change Request Next Delivery Candidates, Recommended Use, Scope (+3 more)
 
 ### Community 447 - "TestFindMaterializedDependents"
 Cohesion: 0.22
@@ -2586,8 +2601,8 @@ Cohesion: 0.22
 Nodes (9): API-Based Validation, Column Types Checked, Common Validation Errors, Invalid Property Mapping, Invalid Target Field, Missing Entity, Specification Validation, Validation Checks (+1 more)
 
 ### Community 452 - "Module Map By Workflow Step"
-Cohesion: 0.25
-Nodes (8): 8. Reconciliation and Mapping, How Mappings Are Stored, Mapping Precedence, Mapping Sidecar Management, Materialized Entity Edits, Reconcile Tab Areas, Reconciliation Workflow, What Is Reconciliation?
+Cohesion: 0.17
+Nodes (7): Test business logic methods on domain models., Test adding mapping item to entity mapping., Test removing mapping item from entity mapping., Test getting mapping item by source value., Test adding mapping to registry., Test removing mapping from registry., TestDomainModelMethods
 
 ### Community 453 - "SqlColumnConfigurationSpecification"
 Cohesion: 0.33
@@ -2602,32 +2617,32 @@ Cohesion: 0.25
 Nodes (9): public.tbl_location_types, public.tbl_locations, public.tbl_rdb, public.tbl_rdb_codes, public.tbl_rdb_systems, public.tbl_relative_age_refs, public.tbl_relative_age_types, public.tbl_relative_ages (+1 more)
 
 ### Community 456 - "ValidationIssue"
-Cohesion: 0.22
-Nodes (8): Backend Feature Checklist, Dependency Injection, Layer Boundary, Reconciliation, Shape Shifter – Backend (`backend/`) Agent Rules, Target Model Conformance, Testing, Validation Orchestrator (`backend/app/validators/`)
+Cohesion: 0.14
+Nodes (11): Backend Feature Checklist, Dependency Injection, Layer Boundary, Materialization, Reconciliation, Shape Shifter – Backend (`backend/`) Agent Rules, Target Model Conformance, Testing (+3 more)
 
 ### Community 457 - "test_health.py"
 Cohesion: 0.22
 Nodes (9): 1. Project Context, 2. Shape Shifter Domain Knowledge, 3. Target Model Conformance Knowledge, 4. SEAD Target-System Knowledge, Principle 1: Grounded, not generative, Principle 2: Explicit uncertainty over confident invention, Principle 3: Deterministic code owns all factual claims, Product Principles (+1 more)
 
 ### Community 458 - "TestListSpecifications"
-Cohesion: 0.29
-Nodes (4): Initialize task list from configuration data.          Args:             data: D, Convert to dictionary for serialization (uses new format)., Migrate old format (required_entities/completed) to new format (todo/done)., Any
+Cohesion: 0.22
+Nodes (8): client(), Tests for driver schema API endpoint., Test listing available drivers and their schemas., Test MS Access driver schema., Test that all drivers have required metadata., test_all_drivers_have_required_metadata(), test_list_drivers(), test_ucanaccess_driver_schema()
 
 ### Community 459 - "TestUpdateSpecification"
 Cohesion: 0.22
 Nodes (8): Merged Entity Manual Test Checklist, Overview, Preconditions, Quick Smoke Test, Scope, Smoke Checklist, Suggested Result Log, Test Completion Criteria
 
 ### Community 460 - "ReconciliationService"
-Cohesion: 0.18
-Nodes (8): ShapeShiftProject, _project(), Regression tests for the environment-variable allowlist at the resolver boundary, Return a minimal project whose entity options reference an approved and an unapp, Settings.env_opts must carry the approved-variable set to the resolver., Resolution through env_opts must not expand names outside the allowlist., TestEnvOptsCarriesAllowlist, TestResolveBlocksUnapprovedVars
+Cohesion: 0.05
+Nodes (36): find_unresolved_directives(), _raise_on_unresolved_directives(), Resolve configuration directives in the provided data dictionary.      Processin, Recursively find unresolved directive strings like @value:, @include:, @load:., Resolve @value: cross-references within the resolved configuration.      Unlike, Return the directive key handled by this resolver., Return True when *value* contains an @value: directive., Resolve all @value: references in *data* (post-processing entry point). (+28 more)
 
 ### Community 461 - "[1.21.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.20.2...v1.21.0) (2026-02-21)"
 Cohesion: 0.22
 Nodes (9): [1.20.1](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.20.0...v1.20.1) (2026-01-31), [1.20.2](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.20.1...v1.20.2) (2026-01-31), [1.21.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.20.2...v1.21.0) (2026-02-21), BREAKING CHANGES, Bug Fixes, Bug Fixes, Bug Fixes, Code Refactoring (+1 more)
 
 ### Community 462 - "TestGetMappingCount"
-Cohesion: 0.04
-Nodes (41): client_fixture(), Tests for filter API endpoints., GET /filters/types should return all registered filter schemas., Filter schemas should include complete field metadata., Endpoint should be accessible without authentication., Response should match FilterSchemaResponse model., test_filter_schema_response_structure(), test_filter_schemas_include_all_field_metadata() (+33 more)
+Cohesion: 0.05
+Nodes (36): client_fixture(), Tests for filter API endpoints., GET /filters/types should return all registered filter schemas., Filter schemas should include complete field metadata., Endpoint should be accessible without authentication., Response should match FilterSchemaResponse model., test_filter_schema_response_structure(), test_filter_schemas_include_all_field_metadata() (+28 more)
 
 ### Community 463 - "TestResetStatus"
 Cohesion: 0.22
@@ -2646,24 +2661,24 @@ Cohesion: 0.22
 Nodes (9): 7. Validation, Conformance Validation, Data Validation, Reading Validation Results, Recommended Best Practice, Validation Types, Validation Workflow, Why Validation Matters (+1 more)
 
 ### Community 467 - "basic_ingester_config"
-Cohesion: 0.43
-Nodes (3): ForeignKeyConstraints, ForeignKeyConfig, TableConfig
+Cohesion: 0.31
+Nodes (7): _create_project(), Tests for column availability endpoints., Clear service singletons between API tests., reset_column_test_services(), test_legacy_get_keeps_flat_response_contract(), test_post_does_not_suggest_a_key_without_a_producer(), test_post_uses_unsaved_draft_and_returns_operation_and_stage_candidates()
 
 ### Community 468 - "fixture"
-Cohesion: 0.33
-Nodes (4): Tests for FixedLoader.test_connection method., Test that test_connection always succeeds for fixed loader., Test that test_connection works even with None data source., TestFixedLoaderConnection
+Cohesion: 0.22
+Nodes (8): client_fixture(), Tests for the what's-new manifest endpoint., The what's-new manifest should expose the generated release note archive., Manifest items should be sorted by semantic version descending., The frontend should be able to fetch markdown content through the API., test_whats_new_content_returns_markdown(), test_whats_new_manifest_is_sorted_descending(), test_whats_new_manifest_returns_archive()
 
 ### Community 469 - "TestInvalidateAllCaches"
-Cohesion: 0.33
-Nodes (3): Test validation uses SqlEntityFieldsSpecification for sql type., Sample project configuration., Test validation passes for dict drop_duplicates with columns.
+Cohesion: 0.17
+Nodes (7): Tests for depth calculation., Test depth calculation for linear chain., Test depth for entities with no dependencies., Test depth calculation for diamond dependency., Test depth calculation when cycles exist (uses heuristic)., Test depth calculation for complex graph., TestCalculateDepths
 
 ### Community 470 - ".system_id"
-Cohesion: 0.33
-Nodes (3): Fixed entities should reject a business key that no producer creates., A key produced only by extra_columns is not part of the fixed schema and must be, Test validation fails when row length doesn't match columns.
+Cohesion: 0.25
+Nodes (8): 8. Reconciliation and Mapping, How Mappings Are Stored, Mapping Precedence, Mapping Sidecar Management, Materialized Entity Edits, Reconcile Tab Areas, Reconciliation Workflow, What Is Reconciliation?
 
 ### Community 471 - "TestValidationServiceBasic"
-Cohesion: 0.38
-Nodes (6): Security regression tests for public errors and server log values., _request(), test_global_exception_handler_returns_stable_redacted_response(), test_log_values_redact_credentials_and_escape_newlines(), Return a single-line log value with common credentials redacted., sanitize_log_value()
+Cohesion: 0.29
+Nodes (5): Extract resolution source if present.          Args:             entity_mapping:, Determine which source strategy to use (pure business logic).          Business, Get the entity name to use for data (business logic).          Args:, EntityResolutionSet, ResolutionSource
 
 ### Community 472 - "test_yaml_foreign_keys_formatting.py"
 Cohesion: 0.25
@@ -2706,8 +2721,8 @@ Cohesion: 0.22
 Nodes (3): mockGraphState, mockProjectState, vuetify
 
 ### Community 482 - "What's New in v1.10.0"
-Cohesion: 0.12
-Nodes (9): Tests for DropDuplicatesSpecification., Test validation passes for boolean drop_duplicates., Test validation fails for invalid type., Test validation fails for non-string list items., Test validation passes for dict with functional dependency settings., Test validation passes for dict with bool columns., Test validation passes for dict with string columns., Test validation fails when dict missing columns key. (+1 more)
+Cohesion: 0.05
+Nodes (26): Tests for EntityFieldsSpecification., Sample project configuration., Test validation uses FixedEntityFieldsSpecification for fixed type., Test validation uses SqlEntityFieldsSpecification for sql type., Test validation uses base specification for data type., Tests for UnnestSpecification., Sample project configuration., Test validation passes for valid unnest config. (+18 more)
 
 ### Community 483 - "What's New in v1.11.0"
 Cohesion: 0.40
@@ -2718,8 +2733,8 @@ Cohesion: 0.38
 Nodes (9): verify_container_release.sh script, check_archive(), check_dir(), check_forbidden(), die(), main(), ok(), read_version() (+1 more)
 
 ### Community 485 - "What's New in v1.13.0"
-Cohesion: 0.33
-Nodes (4): Tests for complete task status workflow., Test complete workflow: todo -> ignored -> reset., Test that completion statistics update as entities change status., TestTaskStatusFlow
+Cohesion: 0.25
+Nodes (5): Tests for DependsOnSpecification., Sample project configuration., Test validation passes for valid dependency., Test validation fails for nonexistent dependency., TestDependsOnSpecification
 
 ### Community 486 - "What's New in v1.14.0"
 Cohesion: 0.25
@@ -2750,20 +2765,24 @@ Cohesion: 0.33
 Nodes (6): 14. Troubleshooting, Entity Preview Shows No Data, Execute Succeeds but Output Looks Wrong, Need to Undo Changes?, Project Will Not Save, Validation Fails
 
 ### Community 493 - "Community 493"
-Cohesion: 0.24
-Nodes (10): AsyncClient, _client_for_principal(), _log_dependencies(), Tests for log endpoint authorization responses., Provide temporary log files for the global log endpoints., Create a client that optionally supplies a trusted-proxy identity., Serve the global log to an authenticated principal that holds no application rol, test_authenticated_principal_can_read_and_download_logs() (+2 more)
+Cohesion: 0.31
+Nodes (8): AsyncClient, _client_for_principal(), Tests for log endpoint authorization responses., Create a client that optionally supplies a trusted-proxy identity., Serve the global log to an authenticated principal that holds no application rol, test_authenticated_principal_can_read_and_download_logs(), test_log_endpoints_allow_authenticated_principals_without_application_roles(), test_log_endpoints_require_authentication()
 
 ### Community 494 - "15. FAQ"
 Cohesion: 0.40
 Nodes (5): type, anyOf, default, description, title
+
+### Community 495 - "8. Reconciliation and Mapping"
+Cohesion: 0.24
+Nodes (7): BaseUploader, Any, Connection, CsvUploader, Upload submission file to database using CSV files directly into staging tables., Extraction not needed since these CSV files are uploaded into staging tables., Using the csv files created by to_csv, import the data into the PostgreSQL datab
 
 ### Community 496 - "What's New in v1.20.0"
 Cohesion: 0.33
 Nodes (6): 9. Execute and Export, After Execution, Common Output Types, Execution Options, Recommended Execution Workflow, What Execute Does
 
 ### Community 497 - "[1.16.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.15.0...v1.16.0) (2026-01-29)"
-Cohesion: 0.16
-Nodes (14): Settings, mock_config(), Debug test cases for data source connections.  Run with:     pytest backend/test, Test all existing configured data sources., Test PostgreSQL connection with environment variables (like sead-options.yml)., Debug mapper validation with various configs., Create a mock configuration object., Debug PostgreSQL connection with detailed output. (+6 more)
+Cohesion: 0.22
+Nodes (9): Settings, Test all existing configured data sources., Test PostgreSQL connection with environment variables (like sead-options.yml)., Debug PostgreSQL connection with detailed output., Debug Access connection with detailed output., test_debug_access_connection(), test_debug_existing_data_sources(), test_debug_postgresql_connection() (+1 more)
 
 ### Community 498 - "What's New in v1.21.0"
 Cohesion: 0.40
@@ -2901,10 +2920,6 @@ Nodes (7): Fixes, Highlights, Improvements, Learn More, New Features, Upgrade No
 Cohesion: 0.25
 Nodes (7): Fixes, Highlights, Improvements, Learn More, New Features, Upgrade Notes, What's New in v1.8.0
 
-### Community 532 - ".__init__"
-Cohesion: 0.33
-Nodes (4): Tests for listing projects., Test listing when no projects exist., Test listing projects., TestProjectsList
-
 ### Community 533 - "health_check"
 Cohesion: 0.25
 Nodes (7): Fixes, Highlights, Improvements, Learn More, New Features, Upgrade Notes, What's New in v1.9.0
@@ -2914,24 +2929,24 @@ Cohesion: 0.40
 Nodes (5): anyOf, default, description, title, drop_empty_rows
 
 ### Community 535 - ".apply_comments"
-Cohesion: 0.20
-Nodes (6): Malformed project conventions should surface as configuration errors., Tests for SqlEntityFieldsSpecification., Sample project configuration., Test validation passes for valid SQL entity., Test validation fails when query missing., TestSqlEntityFieldsSpecification
+Cohesion: 0.05
+Nodes (27): Tests for reconciliation mappers., Test converting mapping item DTO to domain., Test converting source DTO to domain., Test converting mapping item domain to DTO., Test DTO -> Domain -> DTO roundtrip., Test EntityResolution DTO <-> Domain mapping., Test converting entity mapping DTO to domain with string source., Test converting entity mapping with custom ReconciliationSource. (+19 more)
 
 ### Community 536 - "TestEntitiesDelete"
 Cohesion: 0.52
 Nodes (6): setup.sh script, check_command(), log_error(), log_info(), log_success(), log_warning()
 
 ### Community 537 - "TestProjectsCreate"
-Cohesion: 0.40
-Nodes (3): FunctionalDependencyError, Any, Raised when functional dependency validation fails.
+Cohesion: 0.25
+Nodes (5): Test edge cases and error conditions., Test releasing a session that doesn't exist., Test having multiple configurations active simultaneously., Test that version tracking is independent per config., TestEdgeCases
 
 ### Community 538 - "TestProjectsDelete"
-Cohesion: 0.33
-Nodes (4): Tests for getting projects., Test getting existing project., Test getting non-existent project returns 404., TestProjectsGet
+Cohesion: 0.20
+Nodes (6): The target model picker should distinguish same-named local and shared files., Shared model references should not expose the project YAML editor endpoints., Tests for getting projects., Test getting existing project., Test getting non-existent project returns 404., TestProjectsGet
 
 ### Community 540 - "TestProjectsList"
-Cohesion: 0.50
-Nodes (4): 16. Additional Documentation, Release Notes, Technical References, User-Oriented References
+Cohesion: 0.20
+Nodes (6): Tests for create_db_uri function., Test creating basic database URI., Test creating URI with custom driver., Test that port can be provided as string., Test URIs with different host names., TestCreateDbUri
 
 ### Community 541 - "TestProjectsGet"
 Cohesion: 0.67
@@ -2940,6 +2955,10 @@ Nodes (6): test-readonly-role.sh script, die(), expect_failure(), expect_success
 ### Community 542 - "TestTaskStatusFlow"
 Cohesion: 0.29
 Nodes (6): Directory structure, Run commands, Scope boundaries, Test patterns, Current status, `frontend/tests/` — Agent Guide
+
+### Community 543 - "Community 543"
+Cohesion: 0.38
+Nodes (6): difflib, build_parser(), main(), ArgumentParser, Build the CLI parser for target-model schema reference generation., Generate the target-model schema reference or check it for drift.
 
 ### Community 544 - "TestGetDataSource"
 Cohesion: 0.29
@@ -2969,13 +2988,29 @@ Nodes (4): Tests for NonEmptyResultValidator., Test passes with data., Test repo
 Cohesion: 0.50
 Nodes (3): Container Host Tooling, See also, Why it is outside `deployment/container/`
 
+### Community 551 - "Project Editor Testing"
+Cohesion: 0.20
+Nodes (6): Tests for filter registry., Test that QueryFilter is registered., Test that ExistsInFilter is registered., Test that expected filter keys are in registry., Document the supported execution stages., TestFilterRegistry
+
+### Community 552 - "Optioonal: Validation Testing"
+Cohesion: 0.29
+Nodes (6): Allowed SQL, Covered Execution Paths, Enforcement Rules, Rejected SQL, SQL Safety Policy, Verification
+
+### Community 553 - "9. Execute and Export"
+Cohesion: 0.20
+Nodes (6): Test complex dependency graph., Tests for topological sorting., Test simple linear dependency chain., Test graph with no dependencies., Test diamond-shaped dependency., TestTopologicalSort
+
 ### Community 554 - "setValidationIssues"
 Cohesion: 0.60
 Nodes (5): bootstrap-authentication-and-authorization.sh script, fail(), grant_application_role(), run_authorization(), target_run()
 
 ### Community 555 - "JSON Schemas for Monaco Editor"
-Cohesion: 0.28
-Nodes (8): main(), Path, Export all *_types tables from a PostgreSQL schema to one Excel workbook., Read the KEY=VALUE credential file for the SEAD staging cluster.      Returns an, Keep sheet names within Excel's 31-character limit by dropping the tbl_ prefix., Export every table named *_types in SCHEMA to an Excel workbook.      OUTPUT is, sheet_name(), _vault()
+Cohesion: 0.22
+Nodes (8): Completed Work, Current State, Handoff: Shared Data Review And Operator Contract, Key References, Next Actions, Open Decisions, Purpose, Risks
+
+### Community 556 - "SEAD Change Request Diagrams"
+Cohesion: 0.53
+Nodes (5): _project(), Tests for draft-aware column candidate resolution., test_does_not_suggest_a_key_without_a_producer(), test_resolves_submitted_draft_and_selected_parent_output_without_mutating_loaded_project(), test_returns_advisory_candidates_for_unknown_parent_and_missing_source_metadata()
 
 ### Community 558 - "GroupMembershipResolver"
 Cohesion: 0.33
@@ -2988,6 +3023,10 @@ Nodes (5): cascade, close(), loading, requiresCascade, unmaterialize()
 ### Community 561 - ".serialize_timestamp"
 Cohesion: 0.33
 Nodes (5): contract_check.before_contacts, contract_check.expected_contacts, contract_check.expected_datasets, contract_check.expected_submissions, contract_check.expected_tasks
+
+### Community 562 - "DirectiveValidationResult"
+Cohesion: 0.27
+Nodes (6): [1.12.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.11.0...v1.12.0) (2026-01-20), [1.20.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.19.0...v1.20.0) (2026-01-31), Bug Fixes, Bug Fixes, Features, Features
 
 ### Community 563 - "merged_entity_project"
 Cohesion: 0.33
@@ -3021,6 +3060,10 @@ Nodes (6): Fixtures and test data, Directory structure, Run commands, Scope boun
 Cohesion: 0.33
 Nodes (5): Auto-Generation, Files, JSON Schemas for Monaco Editor, Source of Truth, Usage
 
+### Community 572 - ".resolve"
+Cohesion: 0.33
+Nodes (4): Tests for listing projects., Test listing when no projects exist., Test listing projects., TestProjectsList
+
 ### Community 573 - "[1.1.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.0.1...v1.1.0) (2026-01-12)"
 Cohesion: 0.40
 Nodes (5): [1.0.1](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.0.0...v1.0.1) (2026-01-07), [1.1.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.0.1...v1.1.0) (2026-01-12), Bug Fixes, Bug Fixes, Features
@@ -3037,6 +3080,10 @@ Nodes (6): Architecture, Backend, Context Redaction and Privacy, Deterministic C
 Cohesion: 0.33
 Nodes (6): Curation Rule, Example Rule, Knowledge Pack Sources, Knowledge Pack Specification, Rule Schema, Versioning
 
+### Community 577 - ".test_validate_project_data_groups_by_severity"
+Cohesion: 0.40
+Nodes (5): target_model, anyOf, default, description, title
+
 ### Community 578 - "yaml_service"
 Cohesion: 0.33
 Nodes (6): Create New Project, Delete Project, Edit Project, Project Editor Testing, Project List View, Save Project
@@ -3050,12 +3097,16 @@ Cohesion: 0.33
 Nodes (6): Entity-Specific Validation, Full Project Validation, Optioonal: Validation Testing, Validation Caching, Validation Error Details, Validation Result Categories
 
 ### Community 581 - "env-config.sh"
-Cohesion: 0.25
-Nodes (8): 15. FAQ, Can I paste spreadsheet data into a fixed entity?, Should I use Graph or Entities to edit?, What does the External badge mean?, What does the Materialized badge mean?, Where do I upload source files?, Where do shared database connections come from?, Why is `system_id` read-only?
+Cohesion: 0.67
+Nodes (4): yaml_path_join(), yaml_str_join(), Loader, SequenceNode
 
 ### Community 582 - "up.sh"
-Cohesion: 0.25
-Nodes (4): Get list of all registered driver names.          Returns:             List of d, Load schemas from registered DataLoader classes.          This method introspect, Get schema for a specific driver.          Args:             driver: Driver iden, Get all registered driver schemas.          Returns:             Dictionary mapp
+Cohesion: 0.50
+Nodes (3): Tests for GET /api/v1/reconcile/available-fields/{entity_name} endpoint., Test getting available fields., TestGetAvailableFields
+
+### Community 583 - "teardown.sh"
+Cohesion: 0.50
+Nodes (3): Tests for DuplicateKeysValidator (alias for NaturalKeyUniquenessValidator)., Test DuplicateKeysValidator is equivalent to NaturalKeyUniquenessValidator., TestDuplicateKeysValidator
 
 ### Community 584 - "Core Application Testing"
 Cohesion: 0.67
@@ -3077,10 +3128,6 @@ Nodes (4): Test that source=None raises ValueError., Test drop_empty_rows with d
 Cohesion: 0.12
 Nodes (17): Authorization inputs, Diagnostics, First transition to a release, Host services from the container, Install and select a container release, Isolated local development, Migrating from a pre-release deployment copy, Migrating from the retired two-directory layout (+9 more)
 
-### Community 599 - "errorAlert.ts"
-Cohesion: 0.20
-Nodes (6): Test that missing columns in drop_empty subset are skipped gracefully., Test get_subset with drop_duplicates as dict with columns., Test mixing constants, copies, and interpolations., test_get_subset_mixed_extra_columns(), test_get_subset_skips_drop_empty_for_missing_subset_columns(), test_get_subset_with_drop_duplicates_as_dict()
-
 ### Community 600 - "create-readonly-role.sh"
 Cohesion: 0.40
 Nodes (5): Complex Multi-Source Example, Custom SQL Query Source, Project Examples, Simple Reconciliation (Using Entity Preview), Using Another Entity's Data
@@ -3089,29 +3136,17 @@ Nodes (5): Complex Multi-Source Example, Custom SQL Query Source, Project Exampl
 Cohesion: 0.50
 Nodes (4): [1.3.1](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.3.0...v1.3.1) (2026-01-13), [1.4.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.3.1...v1.4.0) (2026-01-14), Bug Fixes, Features
 
-### Community 604 - "ForeignKeyConstraintViolation"
-Cohesion: 0.25
-Nodes (5): Test the get_correlation_id helper function., Outside a request context, returns 'no-corr'., When ContextVar is explicitly set, returns the set value., After resetting the ContextVar, returns the default., TestGetCorrelationId
-
 ### Community 605 - ".env_opts"
 Cohesion: 0.40
 Nodes (5): default, description, title, type, check_functional_dependency
-
-### Community 606 - ".folder"
-Cohesion: 0.25
-Nodes (5): Integration tests for dispatcher workflow., Test writing and reading Excel data maintains integrity., Test getting and using dispatchers from registry., Test dispatching multiple related tables to Excel sheets., TestIntegration
-
-### Community 607 - "Community 607"
-Cohesion: 0.25
-Nodes (7): Allowed SQL, Covered Execution Paths, Enforcement Rules, Purpose, Rejected SQL, SQL Safety Policy, Verification
 
 ### Community 608 - "11. Advanced Features"
 Cohesion: 0.29
 Nodes (7): 11. Advanced Features, Backups, Dependencies Graph, Foreign Keys, Materialized Entities, Query Tester, Schema Explorer
 
-### Community 609 - ".calculate_counts"
-Cohesion: 0.67
-Nodes (3): [2.1.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v2.0.0...v2.1.0) (2026-09-09), Bug Fixes, Features
+### Community 611 - "Community 611"
+Cohesion: 0.25
+Nodes (5): Test concurrent access scenarios., Test creating multiple sessions concurrently., Test accessing sessions concurrently., Test releasing sessions concurrently., TestConcurrency
 
 ### Community 613 - "Shape Shifter Podman Deployment"
 Cohesion: 0.13
@@ -3124,6 +3159,10 @@ Nodes (3): 1.0.0 (2026-01-07), Bug Fixes, Features
 ### Community 615 - "[1.10.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.9.0...v1.10.0) (2026-01-18)"
 Cohesion: 0.67
 Nodes (3): [1.10.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.9.0...v1.10.0) (2026-01-18), Bug Fixes, Features
+
+### Community 617 - "Community 617"
+Cohesion: 0.33
+Nodes (5): Boundary, Proposals, Purpose, SEAD Change Request Ingester Post-MVP Proposals, Status
 
 ### Community 618 - ".test_preserves_function_metadata"
 Cohesion: 0.40
@@ -3181,13 +3220,17 @@ Nodes (5): [1.5.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.
 Cohesion: 0.40
 Nodes (4): Running Unit Tests, Test Files, Unit Tests, Writing New Unit Tests
 
+### Community 634 - "[1.18.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.17.0...v1.18.0) (2026-01-31)"
+Cohesion: 0.17
+Nodes (9): app_state(), Tests for application state manager., Create an ApplicationState instance., Reset module-level singletons before and after a test., Test ConfigSession dataclass., Test creating a session., Test that touch() updates last_accessed timestamp., reset_singletons() (+1 more)
+
 ### Community 637 - ".test_not_found_error_returns_404"
 Cohesion: 0.50
 Nodes (3): Active Documents, Cutover And Deployment, Gates To Resolve
 
 ### Community 638 - "Community 638"
-Cohesion: 0.04
-Nodes (24): Fresh sidecar task state should include ignored-only entities in task status., LayoutOptions, Layout options for dependency graph visualization., Get list of ongoing entity names., Get list of ignored entity names., Get mapping of flagged entity statuses., Check if entity is required (in todo or done lists)., Check if entity is marked as todo. (+16 more)
+Cohesion: 0.40
+Nodes (3): MockSchemaService, Test suggestion logic without database., test_suggestions()
 
 ### Community 641 - ".test_bad_request_error_returns_400"
 Cohesion: 0.83
@@ -3226,8 +3269,8 @@ Cohesion: 0.33
 Nodes (4): Tests for debugging configuration resolution issues., Test to detect unresolved @include directives in configuration.          This ca, Test that a properly resolved config doesn't have string data sources., TestConfigurationResolution
 
 ### Community 654 - "sample_data_with_timezones"
-Cohesion: 0.07
-Nodes (16): Test evaluate_extra_columns() full evaluation logic., String constant (not matching column) is added., Quoted integer literals are coerced when treated as string constants., Quoted float literals are coerced when treated as string constants., Escaped strings starting with '=' remain string constants., Column copy is created., Column copy is case-insensitive., Simple interpolation is evaluated. (+8 more)
+Cohesion: 0.02
+Nodes (107): ExtraColumnEvaluator, _apply_extra_columns(), _extra_column_dependencies(), _get_source_candidates(), _link_candidates(), _ordered(), _processed_entity_columns(), Any (+99 more)
 
 ### Community 671 - ".test_write_values_file_creates_parent_directory"
 Cohesion: 0.67
@@ -3241,13 +3284,9 @@ Nodes (3): [1.17.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1
 Cohesion: 0.40
 Nodes (5): default, description, title, type, check_column_names
 
-### Community 712 - "Community 712"
-Cohesion: 0.40
-Nodes (5): target_model, anyOf, default, description, title
-
 ### Community 715 - "Community 715"
-Cohesion: 0.12
-Nodes (25): FakeFK, FakeTableConfig, test_get_subset2_column_aliases_copy_source_columns_under_requested_names(), test_get_subset2_drop_duplicates_list_drops_duplicates_on_subset(), test_get_subset2_drop_duplicates_true_drops_exact_duplicates(), test_get_subset2_drop_empty_list_only_considers_listed_columns(), test_get_subset2_drop_empty_true_drops_rows_all_empty_after_subsetting(), test_get_subset2_extracts_columns_and_adds_extra_source_and_constant_columns() (+17 more)
+Cohesion: 0.17
+Nodes (19): FakeFK, FakeTableConfig, test_get_subset2_column_aliases_copy_source_columns_under_requested_names(), test_get_subset2_drop_duplicates_list_drops_duplicates_on_subset(), test_get_subset2_drop_duplicates_true_drops_exact_duplicates(), test_get_subset2_drop_empty_list_only_considers_listed_columns(), test_get_subset2_drop_empty_true_drops_rows_all_empty_after_subsetting(), test_get_subset2_extracts_columns_and_adds_extra_source_and_constant_columns() (+11 more)
 
 ### Community 716 - "Community 716"
 Cohesion: 0.40
@@ -3258,24 +3297,24 @@ Cohesion: 0.67
 Nodes (3): [1.11.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.10.0...v1.11.0) (2026-01-19), Bug Fixes, Features
 
 ## Knowledge Gaps
-- **2971 isolated node(s):** `PlainTextResponse`, `Path`, `PlainTextResponse`, `Any`, `Path` (+2966 more)
+- **2999 isolated node(s):** `PlainTextResponse`, `Path`, `PlainTextResponse`, `Any`, `Path` (+2994 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **186 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **195 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `TableConfig` connect `TableConfig` to `preflight_capabilities`, `fixture`, `Merged Entities`, `ProjectDataSources.vue`, `ShapeShiftCache`, `test_response_logging_redaction.py`, `add_system_id`, `sead/utility.py`, `Ingester Idempotency And Re-submission For SEAD Change Requests`, `test_merged_entity_integration.py`, `IngesterForm.vue`, `SEAD Clearinghouse Ingester - Architecture Overview`, `SeadChangeRequestSimsAdapter`, `TestYamlServiceBackup`, `TestDirectiveValidator`, `Community 543`, `Proposal: Ingester Authorization`, `Shape Shifter Project Editor - Appendix`, `Testing Appendix - Shape Shifter`, `vitest`, `Config`, `ForeignKeyConfig`, `test_link.py`, `DummySqlLoader`, `UCanAccessSqlLoader`, `ReconciliationCandidate`, `ColumnSpec`, `process_merged_branch`, `ForeignKeyLinker`, `Security Hardening Follow-up`, `stores/reconciliation.ts`, `_client_for_principal`, `.validate_directive`, `typing`, `.test_validate_project_data_groups_by_severity`, `test_shapeshift_service_include_bug.py`, `.source`, `buildEntityConfigFromFormData`, `Full Manual Checklist`, `teardown.sh`, `QueryEditor.vue`, `1. Introduction`, `Unit Tests`, `.unresolved_directives`, `TestFixedSchemaDerivation`, `TestValidationServiceIntegration`, `asyncio`, `Community 591`, `Community 715`, `DuckDbWorkspace`, `basic_ingester_config`, `fixture`, `Data Source Testing`, `resolve_spa_file`, `.normalize_missing_values`, `ForeignKeyConstraintValidator`, `TestDSLIntegration`, `Community 610`, `Community 611`, `Community 612`, `SqlSourceNodeExtractor`, `.create_upload_file`, `Community 617`, `Community 616`, `Community 622`, `_build_manifest`, `Any`, `.load_catalog`, `ExtraColumnsEditor.vue`, `FilterSpecification`, `[1.18.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.17.0...v1.18.0) (2026-01-31)`, `TestValidationServiceErrors`?**
-  _High betweenness centrality (0.097) - this node is a cross-community bridge._
-- **Why does `ShapeShiftProject` connect `add_system_id` to `SubmissionContext`, `test_env_var_allowlist.py`, `fixture`, `Any`, `ProjectDataSources.vue`, `WorkflowResult`, `EntitySpec`, `ShapeShiftCache`, `sync-to-deploy`, `test_response_logging_redaction.py`, `DependencyService`, `sead/utility.py`, `_client_for_principal`, `Ingester Idempotency And Re-submission For SEAD Change Requests`, `test_merged_entity_integration.py`, `IngesterForm.vue`, `SEAD Clearinghouse Ingester - Architecture Overview`, `ShapeShiftProject`, `TestDirectiveValidator`, `vitest`, `Shape Shifter Project Editor - Appendix`, `Testing Appendix - Shape Shifter`, `TestDeleteSpecification`, `Config`, `ForeignKeyConfig`, `asyncio`, `DummySqlLoader`, `UCanAccessSqlLoader`, `DirectiveValidationResult`, `ColumnSpec`, `Path`, `test_route_authentication.py`, `ForeignKeyLinker`, `IngesterConfig`, `_client_for_principal`, `typing`, `TestEntitiesCreate`, `FieldTypeValidator`, `Target Model Schema Reference`, `test_shapeshift_service_include_bug.py`, `buildEntityConfigFromFormData`, `FixedValuesGridHeader.vue`, `TypeMapping`, `ReconciliationService`, `DataSourceConfig`, `ThemeColorPicker.vue`, `resolve_spa_file`, `.validate`, `TestDSLIntegration`, `SqlSourceNodeExtractor`, `dsl.py`, `Any`, `TableConfig`, `.load_catalog`, `FilterSpecification`, `TestExtractTables`, `ForeignKeyDataSpecification`, `TestProjectsUpdate`, `._extract_manual_links_from_rows`, `TestValidationServiceErrors`?**
+- **Why does `TableConfig` connect `TableConfig` to `preflight_capabilities`, `ProjectDetailView.vue`, `Merged Entities`, `ProjectDataSources.vue`, `ProjectService`, `_format_value`, `ShapeShiftCache`, `sample_data_with_timezones`, `.auto_reconcile_entity`, `TableStore`, `add_system_id`, `FileManager`, `sead/utility.py`, `_client_for_principal`, `IngesterForm.vue`, `Error Scenario Testing - Shape Shifter`, `SeadChangeRequestSimsAdapter`, `TestDirectiveValidator`, `Proposal: Ingester Authorization`, `vitest`, `Shape Shifter – Agent Guide`, `TestProjectsValidate`, `Config`, `Project Editor Testing`, `ForeignKeyConfig`, `test_link.py`, `Path`, `DummySqlLoader`, `UCanAccessSqlLoader`, `process_merged_branch`, `ColumnSpec`, `.validate_directive`, `FieldExistsValidator`, `typing`, `test_shapeshift_service_include_bug.py`, `.source`, `.remote_to_domain`, `QueryEditor.vue`, `ValidationIssue`, `Community 715`, `DuckDbWorkspace`, `Shape Shifter Configuration Editor - Developer Guide`, `test_sead_change_request_submission_sims_integration.py`, `resolve_spa_file`, `ForeignKeyConstraintValidator`, `test_base.py`, `TestDSLIntegration`, `SpecificationIssue`, `.create_upload_file`, `_build_manifest`, `.load_catalog`, `ExtraColumnsEditor.vue`, `FilterSpecification`, `TestFixedEntitySystemIdSpecification`, `test_filters_endpoint.py`?**
+  _High betweenness centrality (0.102) - this node is a cross-community bridge._
+- **Why does `ShapeShiftProject` connect `TestDirectiveValidator` to `SubmissionContext`, `WorkflowResult`, `ProjectService`, `ValidatorRegistry`, `_format_value`, `sync-to-deploy`, `sample_data_with_timezones`, `ExecuteService`, `TableStore`, `yaml`, `add_system_id`, `FileManager`, `sead/utility.py`, `test_merged_entity_integration.py`, `IngesterForm.vue`, `Error Scenario Testing - Shape Shifter`, `TestYamlServiceBackup`, `SeadChangeRequestSimsAdapter`, `vitest`, `Shape Shifter – Agent Guide`, `Testing Appendix - Shape Shifter`, `TestProjectsValidate`, `TestDeleteSpecification`, `ForeignKeyConfig`, `test_link.py`, `Path`, `asyncio`, `DummySqlLoader`, `UCanAccessSqlLoader`, `test_route_authentication.py`, `ForeignKeyLinker`, `IngesterConfig`, `Security Hardening Follow-up`, `FieldExistsValidator`, `typing`, `FieldTypeValidator`, `Target Model Schema Reference`, `test_shapeshift_service_include_bug.py`, `.remote_to_domain`, `ReconciliationService`, `DataSourceConfig`, `resolve_spa_file`, `TestDSLIntegration`, `drop_empty_rows`, `SpecificationIssue`, `asyncio`, `asyncio`, `dsl.py`, `test_filters_endpoint.py`, `TableConfig`, `.load_catalog`, `ForeignKeyDataSpecification`, `TestProjectsUpdate`, `._extract_manual_links_from_rows`?**
+  _High betweenness centrality (0.071) - this node is a cross-community bridge._
+- **Why does `Project` connect `sead/utility.py` to `SubmissionContext`, `ProjectDetailView.vue`, `fixture`, `SeadChangeRequestIngester`, `ProjectService`, `TableStore`, `configuration/test_utility.py`, `add_system_id`, `test_merged_entity_integration.py`, `IngesterForm.vue`, `Error Scenario Testing - Shape Shifter`, `TestYamlServiceBackup`, `SEAD Clearinghouse Ingester - Architecture Overview`, `TestProjectsCreate`, `TestDirectiveValidator`, `Settings`, `Proposal Template`, `TestDeleteSpecification`, `patch_config_resolution`, `ForeignKeyConfig`, `test_link.py`, `SEAD Change Request Diagrams`, `asyncio`, `.entity_mapping_to_domain`, `ForeignKeyLinker`, `IngesterConfig`, `AI Project Advisor Proposal`, `src/utility.py`, `typing`, `ReconciliationClient`, `constraints.py`, `documentation.py`, `TestCoerceFixedEntityValues`, `TestRegistry`, `ForeignKeyColumnsSpecification`, `resolve_spa_file`, `drop_empty_rows`, `Community 611`, `TaskListSidecarManager`, `asyncio`, `settings`, `ExtraColumnsEditor.vue`, `[1.18.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.17.0...v1.18.0) (2026-01-31)`, `TestExtractTables`, `ForeignKeyDataSpecification`, `generate_schemas.py`, `SourceSpan`?**
   _High betweenness centrality (0.061) - this node is a cross-community bridge._
-- **Why does `Project` connect `ExtraColumnsEditor.vue` to `SubmissionContext`, `ProjectDetailView.vue`, `test_env_var_allowlist.py`, `SeadChangeRequestIngester`, `_format_value`, `EntitySpec`, `ExecuteService`, `DependencyService`, `add_system_id`, `sead/utility.py`, `test_merged_entity_integration.py`, `IngesterForm.vue`, `SEAD Clearinghouse Ingester - Architecture Overview`, `ShapeShiftProject`, `Proposal Template`, `TestDeleteSpecification`, `ForeignKeyConfig`, `TestDataSourceService`, `asyncio`, `DataSourceConfig`, `core/utility.py`, `DirectiveValidationResult`, `Path`, `MaterializeDialog.vue`, `CoreIssue`, `ForeignKeyLinker`, `IngesterConfig`, `AI Project Advisor Proposal`, `ReconciliationClient`, `documentation.py`, `execute_query`, `TestRegistry`, `DataSourceConfig`, `resolve_spa_file`, `Reconciliation Setup Guide`, `IsOfCategoricalValuesValidator`, `FilterSpecification`, `settings`, `TestAppendSpecification`, `TestFixedEntitySystemIdSpecification`, `ForeignKeyDataSpecification`, `generate_schemas.py`, `TestValidationServiceErrors`?**
-  _High betweenness centrality (0.059) - this node is a cross-community bridge._
 - **Are the 382 inferred relationships involving `TableConfig` (e.g. with `ApiForeignKeyConfig` and `AuthorizedResource`) actually correct?**
   _`TableConfig` has 382 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 366 inferred relationships involving `ShapeShiftProject` (e.g. with `ApiForeignKeyConfig` and `TestProjectMapperIntegration`) actually correct?**
   _`ShapeShiftProject` has 366 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 329 inferred relationships involving `Project` (e.g. with `TestProjectMapperIntegration` and `Any`) actually correct?**
-  _`Project` has 329 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 316 inferred relationships involving `ProjectService` (e.g. with `ApiForeignKeyConfig` and `AuthorizedResource`) actually correct?**
-  _`ProjectService` has 316 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 331 inferred relationships involving `Project` (e.g. with `TestProjectMapperIntegration` and `Any`) actually correct?**
+  _`Project` has 331 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 318 inferred relationships involving `ProjectService` (e.g. with `ApiForeignKeyConfig` and `AuthorizedResource`) actually correct?**
+  _`ProjectService` has 318 INFERRED edges - model-reasoned connections that need verification._

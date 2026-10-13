@@ -96,6 +96,76 @@ class TestProjectsGet:
         response = await authorized_client.get("/api/v1/projects/nonexistent")
         assert response.status_code == 404
 
+    async def test_list_target_models_includes_distinct_local_and_shared_references(
+        self, tmp_path, monkeypatch, reset_services, authorized_client
+    ):
+        """The target model picker should distinguish same-named local and shared files."""
+        projects_dir = tmp_path / "projects"
+        target_models_dir = tmp_path / "shared" / "target-models"
+        monkeypatch.setattr(settings, "PROJECTS_DIR", projects_dir)
+        monkeypatch.setattr(settings, "GLOBAL_TARGET_MODEL_DIR", target_models_dir)
+
+        create_response = await authorized_client.post("/api/v1/projects", json={"name": "test_project"})
+        assert create_response.status_code == 201
+        (projects_dir / "test_project" / "model.yml").write_text("model: {}\nentities: {}\n", encoding="utf-8")
+        target_models_dir.mkdir(parents=True)
+        (target_models_dir / "model.yml").write_text("model: {}\nentities: {}\n", encoding="utf-8")
+
+        response = await authorized_client.get("/api/v1/projects/test_project/target-models")
+
+        assert response.status_code == 200
+        options = response.json()
+        assert [(option["location"], option["value"]) for option in options] == [
+            ("project", "@load: model.yml"),
+            ("shared", "@load: ${GLOBAL_TARGET_MODEL_DIR}/model.yml"),
+        ]
+        assert [option["label"] for option in options] == ["Project-local: model.yml", "Shared: model.yml"]
+
+    async def test_shared_target_model_yaml_cannot_be_read_or_updated_in_project_editor(
+        self, tmp_path, monkeypatch, reset_services, authorized_client
+    ):
+        """Shared model references should not expose the project YAML editor endpoints."""
+        projects_dir = tmp_path / "projects"
+        target_models_dir = tmp_path / "shared" / "target-models"
+        monkeypatch.setattr(settings, "PROJECTS_DIR", projects_dir)
+        monkeypatch.setattr(settings, "GLOBAL_TARGET_MODEL_DIR", target_models_dir)
+        target_models_dir.mkdir(parents=True)
+        (target_models_dir / "model.yml").write_text("model: {}\nentities: {}\n", encoding="utf-8")
+
+        create_response = await authorized_client.post("/api/v1/projects", json={"name": "test_project"})
+        assert create_response.status_code == 201
+        local_model = projects_dir / "test_project" / "local-model.yml"
+        local_model.write_text("model: {name: Local Model}\nentities: {}\n", encoding="utf-8")
+        local_metadata_response = await authorized_client.patch(
+            "/api/v1/projects/test_project/metadata",
+            json={"target_model": "@load: local-model.yml"},
+        )
+        assert local_metadata_response.status_code == 200
+
+        local_read_response = await authorized_client.get("/api/v1/projects/test_project/target-model-yaml")
+        local_update_response = await authorized_client.put(
+            "/api/v1/projects/test_project/target-model-yaml",
+            json={"yaml_content": "model: {name: Updated Local Model}\nentities: {}\n"},
+        )
+        assert local_read_response.status_code == 200
+        assert local_read_response.json()["yaml_content"] == "model: {name: Local Model}\nentities: {}\n"
+        assert local_update_response.status_code == 200
+
+        metadata_response = await authorized_client.patch(
+            "/api/v1/projects/test_project/metadata",
+            json={"target_model": "@load: ${GLOBAL_TARGET_MODEL_DIR}/model.yml"},
+        )
+        assert metadata_response.status_code == 200
+
+        read_response = await authorized_client.get("/api/v1/projects/test_project/target-model-yaml")
+        update_response = await authorized_client.put(
+            "/api/v1/projects/test_project/target-model-yaml",
+            json={"yaml_content": "model: {}\nentities: {}\n"},
+        )
+
+        assert read_response.status_code == 403
+        assert update_response.status_code == 403
+
 
 class TestProjectsCreate:
     """Tests for creating projects."""

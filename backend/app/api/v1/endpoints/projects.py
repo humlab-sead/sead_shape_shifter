@@ -22,7 +22,7 @@ from backend.app.authorization.models import Action, AuthorizedResource, Princip
 from backend.app.authorization.service import AuthorizationService
 from backend.app.core.config import settings
 from backend.app.mappers.project_name_mapper import ProjectNameMapper
-from backend.app.models.project import Project, ProjectFileInfo, ProjectMetadata
+from backend.app.models.project import Project, ProjectFileInfo, ProjectMetadata, TargetModelFileOption
 from backend.app.models.validation import ValidationResult
 from backend.app.services.documentation_service import DocumentationService, get_documentation_service
 from backend.app.services.layout_sidecar_manager import LayoutSidecarManager, get_layout_sidecar_manager
@@ -758,6 +758,9 @@ def _resolve_target_model_path(project: Project, project_name: str) -> Path:
                 rel_path: str = raw[len(prefix) :].lstrip(":").strip()
                 break
 
+    if "${GLOBAL_TARGET_MODEL_DIR}" in rel_path:
+        raise BaseAPIException("Shared target model files are read-only", 403)
+
     # Security: must stay inside the project directory
     project_dir: Path = _project_directory(project_name)
 
@@ -1153,3 +1156,17 @@ async def list_project_files(
         project_name=authorized_project.resource.locator,
         extensions=extensions,
     )
+
+
+@router.get(
+    "/projects/{name}/target-models",
+    response_model=list[TargetModelFileOption],
+    summary="List target model files available to a project",
+)
+@handle_endpoint_errors
+async def list_project_target_models(
+    name: str,  # pylint: disable=unused-argument
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
+) -> list[TargetModelFileOption]:
+    """List project-local and shared YAML files that can be selected as target models."""
+    return get_project_service().list_target_model_files(authorized_project.resource.locator)

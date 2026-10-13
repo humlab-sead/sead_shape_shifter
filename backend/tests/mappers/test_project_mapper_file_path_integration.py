@@ -9,6 +9,7 @@ from backend.app.core.config import Settings
 from backend.app.exceptions import ConfigurationError
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.project import Project, ProjectMetadata
+from backend.app.validators.target_model_validator import TargetModelValidator
 
 
 class TestProjectMapperFilePathIntegration:
@@ -23,12 +24,16 @@ class TestProjectMapperFilePathIntegration:
         settings.PROJECTS_DIR = tmp_path / "projects"
         settings.GLOBAL_DATA_SOURCE_DIR = tmp_path / "shared" / "shared-data-sources"
         settings.global_data_source_dir = settings.GLOBAL_DATA_SOURCE_DIR  # For property access
+        settings.GLOBAL_TARGET_MODEL_DIR = tmp_path / "shared" / "target-models"
+        settings.global_target_model_dir = settings.GLOBAL_TARGET_MODEL_DIR  # For property access
+        settings.resolver_allowed_env_vars = frozenset({"GLOBAL_TARGET_MODEL_DIR"})
         settings.projects_root = settings.PROJECTS_DIR  # For property access
         settings.env_prefix = "SHAPE_SHIFTER_"
         settings.env_file = ".env"
 
         # Create directories
         settings.global_data_dir.mkdir(parents=True, exist_ok=True)
+        settings.GLOBAL_TARGET_MODEL_DIR.mkdir(parents=True, exist_ok=True)
         settings.projects_root.mkdir(parents=True, exist_ok=True)
 
         # Create test files
@@ -185,6 +190,62 @@ class TestProjectMapperFilePathIntegration:
             )
 
             with pytest.raises(FileNotFoundError, match="missing-target-model.yml"):
+                ProjectMapper.to_core(api_project)
+
+    def test_to_core_resolves_shared_target_model_reference(self, mock_settings: Settings) -> None:
+        """A configured shared target model reference should resolve through @load."""
+        with patch("backend.app.mappers.project_mapper.settings", mock_settings):
+            project_dir = mock_settings.projects_root / "test_project"
+            project_file = project_dir / "shapeshifter.yml"
+            project_file.write_text("metadata:\n  name: test_project\nentities: {}\n", encoding="utf-8")
+            target_model_path = mock_settings.GLOBAL_TARGET_MODEL_DIR / "model.yml"
+            target_model_path.write_text(
+                "model:\n  name: Shared Model\n  format_version: '1'\n  version: '1.0.0'\nentities: {}\n",
+                encoding="utf-8",
+            )
+            api_project = Project(
+                metadata=ProjectMetadata(
+                    name="test_project",
+                    file_path=str(project_file),
+                    type="shapeshifter-project",
+                    description="Test project",
+                    version="1.0.0",
+                    entity_count=0,
+                    target_model="@load: ${GLOBAL_TARGET_MODEL_DIR}/model.yml",
+                ),
+                entities={},
+                options={},
+            )
+
+            core_project = ProjectMapper.to_core(api_project)
+
+            assert isinstance(core_project.metadata.target_model, dict)
+            assert core_project.metadata.target_model["model"]["name"] == "Shared Model"
+            assert TargetModelValidator().validate(core_project.metadata.target_model, core_project) == []
+
+    def test_to_core_rejects_target_model_outside_approved_roots(self, mock_settings: Settings, tmp_path: Path) -> None:
+        """A target model outside the project and configured shared roots should be rejected."""
+        with patch("backend.app.mappers.project_mapper.settings", mock_settings):
+            project_dir = mock_settings.projects_root / "test_project"
+            project_file = project_dir / "shapeshifter.yml"
+            project_file.write_text("metadata:\n  name: test_project\nentities: {}\n", encoding="utf-8")
+            outside_path = tmp_path / "outside-model.yml"
+            outside_path.write_text("model: {}\nentities: {}\n", encoding="utf-8")
+            api_project = Project(
+                metadata=ProjectMetadata(
+                    name="test_project",
+                    file_path=str(project_file),
+                    type="shapeshifter-project",
+                    description="Test project",
+                    version="1.0.0",
+                    entity_count=0,
+                    target_model=f"@load: {outside_path}",
+                ),
+                entities={},
+                options={},
+            )
+
+            with pytest.raises(ValueError, match="outside the approved data roots"):
                 ProjectMapper.to_core(api_project)
 
     def test_to_core_raises_configuration_error_for_mapping_public_id_mismatch(self, mock_settings: Settings) -> None:

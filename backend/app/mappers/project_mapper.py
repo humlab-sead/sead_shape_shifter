@@ -268,6 +268,12 @@ class ProjectMapper:
         """
         cfg_dict: dict[str, Any] = ProjectMapper.to_core_dict(api_config=api_config)
 
+        # Use the configured path, including its default, when resolving this approved path variable.
+        metadata: Any = cfg_dict.get("metadata")
+        target_model: Any = metadata.get("target_model") if isinstance(metadata, dict) else None
+        if isinstance(target_model, str):
+            metadata["target_model"] = target_model.replace("${GLOBAL_TARGET_MODEL_DIR}", str(settings.GLOBAL_TARGET_MODEL_DIR))
+
         # Apply type-specific transformations (API → Core) using strategy pattern
         # File-based entities: resolve (filename, location) to absolute paths
         # Other entities: no-op transformation
@@ -304,7 +310,13 @@ class ProjectMapper:
                 filename=api_config.filename,
                 env_prefix=settings.env_prefix,
                 env_filename=settings.env_file,
-                allowed_roots=(project_root, settings.GLOBAL_DATA_DIR, settings.GLOBAL_DATA_SOURCE_DIR),
+                allowed_roots=(
+                    project_root,
+                    settings.GLOBAL_DATA_DIR,
+                    settings.GLOBAL_DATA_SOURCE_DIR,
+                    settings.GLOBAL_TARGET_MODEL_DIR,
+                ),
+                allowed_vars=settings.resolver_allowed_env_vars,
             )
 
         ProjectMapper._validate_mapping_sidecar(project, api_config.filename)
