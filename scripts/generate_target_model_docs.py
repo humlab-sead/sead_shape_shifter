@@ -70,8 +70,8 @@ Output formats
     markdown  Plain-text Markdown grouped by domain. Renders on GitHub/GitLab.
                         Version-controlled and can be converted to PDF or Word.
 
-    sims      Markdown register focused on SIMS identity categories, aggregate
-                        boundaries, business keys, and reconciliation strategy groupings.
+    sims      Markdown reference for Shape Shifter target-model identity metadata,
+                        aggregate boundaries, business keys, and reconciliation groupings.
 
     all       Generates every supported format in one pass (default).
 
@@ -116,7 +116,7 @@ Examples
   # Excel for gap-analysis workshop
     python scripts/generate_target_model_docs.py resources/target_models/sead_superset_model.yml --format excel
 
-    # SIMS entity register for the Authority Service docs
+    # Shape Shifter target-model reference for the Authority Service SIMS docs
     python scripts/generate_target_model_docs.py resources/target_models/sead_superset_model.yml --format sims --output-dir /tmp
 
   # Custom output directory
@@ -128,7 +128,7 @@ Examples
         "--format",
         choices=["html", "markdown", "excel", "sims", "all"],
         default="all",
-        help="Output format: html (interactive), markdown (plain text), excel (spreadsheet), sims (identity register), all (default)",
+        help="Output format: html (interactive), markdown (plain text), excel (spreadsheet), sims (target-model reference for SIMS docs), all (default)",
     )
     parser.add_argument("--output-dir", type=Path, default=Path("docs/generated"), help="Output directory (default: docs/generated)")
 
