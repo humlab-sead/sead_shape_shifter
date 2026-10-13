@@ -69,6 +69,29 @@ describe('projectsApi', () => {
     })
   })
 
+  describe('listTargetModels', () => {
+    it('should list project-local and shared target model choices', async () => {
+      const options = [
+        { name: 'model.yml', label: 'Project-local: model.yml', value: '@load: model.yml', location: 'project' as const },
+        {
+          name: 'model.yml',
+          label: 'Shared: model.yml',
+          value: '@load: ${GLOBAL_TARGET_MODEL_DIR}/model.yml',
+          location: 'shared' as const,
+        },
+      ]
+      vi.mocked(apiRequest).mockResolvedValue(options)
+
+      const result = await projectsApi.listTargetModels('test-project')
+
+      expect(apiRequest).toHaveBeenCalledWith({
+        method: 'GET',
+        url: '/projects/test-project/target-models',
+      })
+      expect(result).toEqual(options)
+    })
+  })
+
   describe('get', () => {
     it('should fetch a specific project', async () => {
       const mockProject: Project = {
