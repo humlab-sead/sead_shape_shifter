@@ -10,7 +10,7 @@ This directory contains the active and archived proposals for the `sead_change_r
 
 The MVP delivery includes:
 
-- Identity-aware row handling: use SIMS to allocate IDs for new provider-owned rows and eligible unmatched classifiers; use reconciliation to find existing classifiers. Existing rows are referenced rather than inserted again.
+- Identity-aware row handling: use SIMS to allocate IDs for new provider-owned aggregates where configured; reconcile and bind existing shared lookups and classifiers. A missing shared lookup does not create a new value in the MVP and blocks that row.
 - Safe relationship handling: resolve local system_id references to SEAD IDs. Evaluate bridge and association rows independently, using metadata-defined uniqueness rules.
 - Fail-closed generation: stop before SQL output if identities are unresolved, Binding Set confirmation is incomplete, or target-side collision checks fail. Return diagnostics rather than a partial package.
 - A forward-only package: generate INSERT statements and package metadata. Revert and verify files, when required, are explicit placeholders; the package is marked non-revertible. Deferred foreign-key checks are the preferred insert strategy.
@@ -25,9 +25,8 @@ Status reviewed 2026-10-12. No new PostgreSQL validation was run for this update
 | Provider-submission lifecycle | Complete | Rules are promoted to the [durable lifecycle reference](../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md); implementation history is under [done/DATA_PROVIDER_SUBMISSION_LIFECYCLE](./done/DATA_PROVIDER_SUBMISSION_LIFECYCLE). |
 | Submission metadata and generated packages | Complete | Both artifact strategies passed contract checks on separate disposable clones, including PostgreSQL sequence advancement. Upstream schema deployment and legacy compatibility remain release dependencies tracked in the [cutover and deployment workstream](./CUTOVER_AND_DEPLOYMENT/README.md). See the [completed proposal and task plan](./done/REFACTOR_SEAD_SUBMISSION_METADATA/REFACTOR_SEAD_SUBMISSION_METADATA.md). |
 | SIMS-SEAD adoption, cutover, and deployment | Draft; decisions open | Resolve tracked-entity mapping, missing UUIDs, backfill and writer ordering, upstream schema/compatibility ownership, and package supersession. Track in [CUTOVER_AND_DEPLOYMENT](./CUTOVER_AND_DEPLOYMENT/README.md). |
-| Shared-data review and operator contract | Draft; ownership blocked | Decide who owns review and approval, and define its split from provider-owned updates. See the [proposal](./SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT/SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT.md). |
 | Ingester authorization and filesystem access | Proposed; not ready to enable | Define and implement resource authorization and filesystem containment. Keep operations unavailable until required checks are enforced. See the [authorization proposal](../INGESTER_AUTHORIZATION_TASKS/INGESTER_AUTHORIZATION_TASKS.md) and [filesystem proposal](../INGESTER_FILESYSTEM_BOUNDARIES/INGESTER_FILESYSTEM_BOUNDARIES.md). |
-| Next-delivery capabilities | Undecided candidates | Select and accept a narrow capability before planning implementation. See [NEXT_DELIVERY_CANDIDATES.md](./future/NEXT_DELIVERY_CANDIDATES.md). |
+| Post-MVP proposals | Deferred; no combined delivery accepted | Select and accept a narrow capability before planning implementation. See the [post-MVP proposal portfolio](../CHANGE_REQUEST_INGESTER_POST_MVP/README.md). |
 
 ### Next Priority
 
@@ -44,11 +43,9 @@ See the [closed MVP proposal](./done/CHANGE_REQUEST_INGESTER_MVP/SEAD_CHANGE_REQ
 ## Active Documents
 
 - [Cutover and deployment workstream](./CUTOVER_AND_DEPLOYMENT/README.md)
-- [Shared-data review proposal](./SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT/SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT.md)
 - [Ingester authorization proposal](../INGESTER_AUTHORIZATION_TASKS/INGESTER_AUTHORIZATION_TASKS.md)
 - [Ingester filesystem proposal](../INGESTER_FILESYSTEM_BOUNDARIES/INGESTER_FILESYSTEM_BOUNDARIES.md)
-- [Next-delivery candidates](./future/NEXT_DELIVERY_CANDIDATES.md)
-- [Stronger idempotency and resubmission proposal](../INGESTER_IDEMPOTENCY_AND_RESUBMISSION/INGESTER_IDEMPOTENCY_AND_RESUBMISSION.md)
+- [Post-MVP proposal portfolio](../CHANGE_REQUEST_INGESTER_POST_MVP/README.md)
 
 ## Completed And Historical Records
 

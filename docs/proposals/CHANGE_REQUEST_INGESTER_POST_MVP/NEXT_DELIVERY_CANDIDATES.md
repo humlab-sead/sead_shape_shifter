@@ -14,9 +14,9 @@ The repository still has several capabilities that matter for a fuller operation
 
 This proposal records that candidate set so the closed MVP Delivery baseline can stay closed without losing the backlog context.
 
-Provider-update scope and existing-row update handling are tracked separately in the lifecycle proposal set and are no longer part of this candidate backlog.
+Provider-update scope remains in the lifecycle proposal set. The focused existing-row update proposal is listed separately in this post-MVP portfolio.
 
-Frontend workflow integration is tracked separately in [FRONTEND_UX_INTEGRATION_CR.md](../done/FRONTEND_UX_INTEGRATION_CR.md), with GitHub-ready issue drafts in [FRONTEND_UX_INTEGRATION_ISSUES.md](../done/FRONTEND_UX_INTEGRATION_ISSUES.md). The closed post-Delivery-1 follow-up record now lives in [done/CHANGE_REQUEST_INGESTER_MVP/MVP_FOLLOWUP_CR.md](../done/CHANGE_REQUEST_INGESTER_MVP/MVP_FOLLOWUP_CR.md).
+Frontend workflow integration is tracked separately in [FRONTEND_UX_INTEGRATION_CR.md](../CHANGE_REQUEST_INGESTER/done/FRONTEND_UX_INTEGRATION_CR.md), with GitHub-ready issue drafts in [FRONTEND_UX_INTEGRATION_ISSUES.md](../CHANGE_REQUEST_INGESTER/done/FRONTEND_UX_INTEGRATION_ISSUES.md). The closed post-Delivery-1 follow-up record now lives in [MVP_FOLLOWUP_CR.md](../CHANGE_REQUEST_INGESTER/done/CHANGE_REQUEST_INGESTER_MVP/MVP_FOLLOWUP_CR.md).
 
 ## Problem
 
@@ -79,7 +79,7 @@ That keeps the next delivery concrete and prevents the repository from silently 
 - the remaining capability areas are visible without being treated as accepted scope
 - this document makes the undecided state explicit
 - the document points to separate proposals for artifact hardening and frontend UX integration
-- provider-update scope and existing-row update handling remain documented in the lifecycle proposal set instead of this candidate backlog
+- provider-update scope remains documented in the lifecycle proposal set; existing-row update handling has its own proposal in the post-MVP portfolio
 
 ## Final Recommendation
 
