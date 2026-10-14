@@ -134,7 +134,7 @@ def test_validator_reports_invalid_public_id_suffix() -> None:
     assert issues[0].code == "INVALID_PUBLIC_ID_SUFFIX"
 
 
-def test_validator_reports_unknown_identity_and_unique_set_columns() -> None:
+def test_validator_reports_unknown_unique_set_columns() -> None:
     target_model = TargetModel.model_validate(
         {
             "model": {
@@ -145,7 +145,6 @@ def test_validator_reports_unknown_identity_and_unique_set_columns() -> None:
                 "site": {
                     "public_id": "site_id",
                     "columns": {"site_name": {"required": True}},
-                    "identity_columns": ["missing_identity"],
                     "unique_sets": [["site_name", "missing_unique"]],
                 }
             },
@@ -156,7 +155,7 @@ def test_validator_reports_unknown_identity_and_unique_set_columns() -> None:
 
     issues = TargetModelSpecValidator().validate(target_model)
 
-    assert [issue.code for issue in issues] == ["UNKNOWN_IDENTITY_COLUMN", "UNKNOWN_UNIQUE_SET_COLUMN"]
+    assert [issue.code for issue in issues] == ["UNKNOWN_UNIQUE_SET_COLUMN"]
 
 
 def test_validator_reports_aggregate_parent_semantic_issues() -> None:

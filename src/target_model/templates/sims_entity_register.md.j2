@@ -2,7 +2,7 @@
 
 > Auto-generated from {{ model.name }} v{{ model.version }}
 >
-> This register describes Shape Shifter target-model metadata, not the entity types configured in SIMS or the identity records SIMS stores. The `identity_tracking` label below is a target-model property.
+> This register describes Shape Shifter target-model metadata, not the entity types configured in SIMS or the identity records SIMS stores. The `identity_tracking` label below is a target-model property. `Target Unique Sets` lists target-side column groups declared unique; it does not define a provider's source key or SIMS matching behavior.
 >
 > For current SIMS operation support, see [`config/identity_policy.yml`](../../config/identity_policy.yml). An operation is enabled when its policy entry sets the corresponding `operations` flag to `true`. Policy entries do not show whether SIMS already stores identities for that type.
 
@@ -34,13 +34,13 @@ Shared reference entities with extensible target-model reconciliation intent; SI
 {% elif group_key == "sead_administered" %}
 Target-model vocabularies marked for controlled lookup; SIMS does not manage consumer records.
 {% elif group_key == "bridges" %}
-Association entities whose target-model identity is derived from their foreign key references; they do not receive independent SIMS identities unless configured as tracked aggregates.
+Association entities connect target entities through foreign keys; they do not receive independent SIMS identities unless configured as tracked aggregates.
 {% endif %}
 
-| Entity | Target Table | Role | Business Key | Required | Reconciliation | Aggregate Parent | Domains |
-|--------|--------------|------|--------------|----------|----------------|------------------|---------|
+| Entity | Target Table | Role | Target Unique Sets | Required | Reconciliation | Aggregate Parent | Domains |
+|--------|--------------|------|--------------------|----------|----------------|------------------|---------|
 {% for e in group_entities %}
-| {{ e.name }} | {{ e.spec.target_table or '-' }} | {{ e.spec.role or '-' }} | {{ e.spec.identity_columns|join(', ') or '-' }} | {{ 'yes' if e.spec.required else 'no' }} | {{ e.reconciliation or '-' }} | {{ e.aggregate_parent or '-' }} | {{ e.spec.domains|join(', ') or '-' }} |
+| {{ e.name }} | {{ e.spec.target_table or '-' }} | {{ e.spec.role or '-' }} | {{ e.spec.unique_sets|map('join', ' + ')|join('; ') or '-' }} | {{ 'yes' if e.spec.required else 'no' }} | {{ e.reconciliation or '-' }} | {{ e.aggregate_parent or '-' }} | {{ e.spec.domains|join(', ') or '-' }} |
 {% endfor %}
 
 {% endif %}

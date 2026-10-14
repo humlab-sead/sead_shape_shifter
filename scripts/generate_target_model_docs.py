@@ -70,8 +70,8 @@ Output formats
     markdown  Plain-text Markdown grouped by domain. Renders on GitHub/GitLab.
                         Version-controlled and can be converted to PDF or Word.
 
-    sims      Markdown reference for Shape Shifter target-model identity metadata,
-                        aggregate boundaries, business keys, and reconciliation groupings.
+    sims      Markdown reference for Shape Shifter target-model unique sets,
+                        aggregate boundaries, and reconciliation groupings.
 
     all       Generates every supported format in one pass (default).
 

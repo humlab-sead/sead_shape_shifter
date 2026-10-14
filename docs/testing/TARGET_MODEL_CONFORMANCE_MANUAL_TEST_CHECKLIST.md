@@ -550,8 +550,7 @@ python -m src.target_model.conformance \
 If you want to directly exercise spec self-consistency checks that are implemented in `src/target_model/spec_validator.py`, run them separately from the normal UI conformance flow.
 
 - [ ] Invalid spec references to unknown FK targets can be detected
-- [ ] Invalid `identity_columns` entries can be detected
-- [ ] Invalid `unique_sets` columns can be detected
+- [ ] Invalid `unique_sets` column references can be detected
 
 ---
 

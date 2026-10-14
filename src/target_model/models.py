@@ -49,9 +49,11 @@ class EntitySpec(BaseModel):
             "so later default-generated IDs do not reuse them."
         ),
     )
-    identity_columns: list[str] = Field(default_factory=list)
     columns: dict[str, ColumnSpec] = Field(default_factory=dict)
-    unique_sets: list[list[str]] = Field(default_factory=list)
+    unique_sets: list[list[str]] = Field(
+        default_factory=list,
+        description="Column groups declared unique for a target entity. Each group is an independent uniqueness rule.",
+    )
     foreign_keys: list[ForeignKeySpec] = Field(default_factory=list)
 
     # SIMS identity properties (defaults derived from role when None)
