@@ -172,7 +172,7 @@ entities:
 | `foreign_keys`           | No       | `[]`    | List of foreign-key specs.                                                                                        |
 | `identity_tracking`      | No       | `null`  | Identity mode. When omitted, its effective value can be inferred from `role` or `aggregate_parent`.               |
 | `reconciliation`         | No       | `null`  | Matching or allocation mode. When omitted, its effective value can be inferred from identity settings and `role`. |
-| `aggregate_parent`       | No       | `null`  | Parent entity name when this entity inherits aggregate identity.                                                  |
+| `aggregate_parent`       | No       | `null`  | Immediate parent entity name (the entity this one points to with a foreign key) when this entity inherits aggregate identity.                                                   |
 
 The `Default` column shows what the schema uses when a field is omitted. The ingester may infer effective values for `identity_tracking` and `reconciliation` from `role` and `aggregate_parent`; see [Identity And Reconciliation Fields](#identity-and-reconciliation-fields). A natural key is one or more field values used to recognize a record. A database sequence is an automatic counter that issues IDs. SIMS is the SEAD Identity Management System.
 
@@ -256,11 +256,21 @@ These fields describe how records are identified: whether the ingester should ma
 
 The SEAD Change Request Ingester uses the resolved `identity_tracking`, `reconciliation`, and `aggregate_parent` values to plan this work. Before it creates the change package, it checks whether SIMS supports the needed operations.
 
+#### Pointing `aggregate_parent` At The Immediate Parent
+
+`aggregate_parent` names the entity's **immediate** parent, that is, the entity it declares a foreign key to. It does not name the aggregate root.
+
+The aggregate root is found by following the `aggregate_parent` links from child to parent until an entity with effective `identity_tracking: tracked` is reached. A tracked root does not set `aggregate_parent` itself.
+
+For example, `analysis_boolean_value` sets `aggregate_parent: analysis_value`, and `analysis_value` sets `aggregate_parent: analysis_entity` (a tracked root). If `aggregate_parent` named the root directly, `analysis_boolean_value` would point at `analysis_entity` and the intermediate link through `analysis_value` would be lost.
+
+To set the field: use the entity this entity's foreign key points to, and leave `aggregate_parent` unset on the tracked root. Validation reports `MISSING_AGGREGATE_PARENT_FOREIGN_KEY` when the named parent is not also a declared foreign-key target.
+
 When it loads a target model, Shape Shifter checks that these settings work together:
 
 - If omitted, a `fact` entity defaults to `identity_tracking: tracked` and `reconciliation: allocate`.
 - `aggregate_parent` must name another entity in the same model.
-- An entity with `aggregate_parent` must also declare a foreign key to that parent.
+- An entity with `aggregate_parent` must also declare a foreign key to that parent; this is what makes the named entity its immediate parent.
 - `identity_tracking: child` requires an `aggregate_parent`.
 - A `tracked` entity uses `reconciliation: allocate`.
 - `public_id_generation: database_sequence` requires an explicit, non-tracked `identity_tracking` value. SIMS assigns IDs to tracked entities.
@@ -272,7 +282,7 @@ When it loads a target model, Shape Shifter checks that these settings work toge
 |-------|----------------|-------------|
 | `identity_tracking` | `tracked`, `reconciled`, `derived`, `child` | Says whether the entity gets its own tracked identity, is matched using business fields, takes an ID from related records, or inherits its parent's identity. |
 | `reconciliation` | `allocate`, `reconcile-exact`, `reconcile-fuzzy`, `lookup-only`, `lookup-extensible`, `derive` | Says how incoming records are matched or how new IDs are assigned. |
-| `aggregate_parent` | Entity name | Names the parent entity whose identity this entity inherits. |
+| `aggregate_parent` | Entity name | Names the immediate parent entity (the entity this one has a foreign key to) whose identity this entity inherits. Follow the `aggregate_parent` links to reach the tracked root. |
 | `public_id_generation` | `database_sequence` | Gets an ID from the target database when `identity_tracking` is explicitly set to a non-tracked value. |
 
 ---
