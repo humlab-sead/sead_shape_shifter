@@ -84,6 +84,24 @@ The process of deciding which target record a source record should match.
 
 The process of finding the correct parent record for a related child record.
 
+### Projection
+
+**Definition:** The step that replaces a row's local values with the values the target system uses: the row's own local identity becomes its target ID, and each link value becomes the target ID of the record it points to.
+
+**Context:** Also called target projection. It runs after identity resolution, so it acts only on rows whose target ID has been decided. It needs a column to write the target ID into, the linked rows present in the same submission, and the local row numbering that joins the two sides. When one of these is absent, Shape Shifter reports a diagnostic instead of writing the value.
+
+### Resolved Table
+
+**Definition:** A submitted table after identity resolution: the same rows, now carrying a row state and, where decided, the target ID for each row.
+
+**Context:** Projection reads link values from a resolved table. A link value is translated only when the linked entity also has a resolved table in the same submission.
+
+### Row State
+
+**Definition:** The outcome identity resolution assigns to one row, such as newly allocated, derived bridge row, existing, reconciled, or blocked.
+
+**Context:** The state decides whether the row is written. Newly allocated and derived bridge rows are inserted; existing rows are written only when an accepted update changes them; reconciled rows are used for reference only; blocked rows stop the submission before any output is produced.
+
 ### Staging
 
 An intermediate step where data is prepared before final loading or export.
