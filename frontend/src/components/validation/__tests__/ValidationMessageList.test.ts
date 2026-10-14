@@ -55,6 +55,13 @@ describe('ValidationMessageList', () => {
     expect(itemAt(wrapper, 0).classes()).not.toContain('validation-message-item--expanded')
   })
 
+  it('marks informational messages with their severity', () => {
+    const wrapper = mountList([{ severity: 'info', message: 'Awaiting reconciliation' }])
+
+    expect(itemAt(wrapper, 0).attributes('data-severity')).toBe('info')
+    expect(wrapper.text()).toContain('Awaiting reconciliation')
+  })
+
   it('expands a row on click and shows the suggestion inline', async () => {
     const wrapper = mountList()
 
