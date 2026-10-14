@@ -703,6 +703,7 @@ entities:
     target_table: tbl_value_type_items
     public_id: value_type_item_id
     identity_columns: [value_type_id, name]
+    aggregate_parent: value_type
     columns:
       value_type_id:
         required: true
@@ -1091,13 +1092,31 @@ entities:
     identity_tracking: reconciled
     reconciliation: lookup-only
     columns:
-      data_provider_code: {type: string, nullable: true}
-      data_provider_uuid: {type: uuid, nullable: false}
-      data_provider_name: {required: true, type: string, nullable: false}
-      notes: {type: string, nullable: true}
-      contact_id: {type: integer, nullable: true}
-      biblio_id: {type: integer, nullable: true}
-      url: {type: string, nullable: true}
+      data_provider_code:
+        required: true
+        type: string
+        nullable: true
+      data_provider_uuid:
+        required: true
+        type: uuid
+        nullable: false
+      data_provider_name:
+        required: true
+        type: string
+        nullable: false
+      notes:
+        type: string
+        nullable: true
+      contact_id:
+        required: true
+        type: integer
+        nullable: true
+      biblio_id:
+        type: integer
+        nullable: true
+      url:
+        type: string
+        nullable: true
     unique_sets:
       - [data_provider_code]
       - [data_provider_uuid]
@@ -1112,8 +1131,13 @@ entities:
     public_id: submission_state_id
     identity_columns: [submission_state]
     columns:
-      submission_state: {required: true, type: string, nullable: false}
-      note: {type: string, nullable: true}
+      submission_state:
+        required: true
+        type: string
+        nullable: false
+      note:
+        type: string
+        nullable: true
     unique_sets:
       - [submission_state]
 
@@ -1129,19 +1153,49 @@ entities:
     synchronize_sequence_after_insert: true
     identity_columns: [submission_uuid]
     columns:
-      submission_state_id: {required: true, type: integer, nullable: false}
-      biblio_id: {type: integer, nullable: true}
-      upload_date: {type: date, nullable: true}
-      submission_date: {type: date, nullable: true}
-      submission_identifier: {type: string, nullable: true}
-      issue_identifier: {type: string, nullable: true}
-      author: {type: string, nullable: true}
-      notes: {type: string, nullable: true}
-      data_provider_id: {required: true, type: integer, nullable: false}
-      submission_name: {required: true, type: string, nullable: false}
-      source_name: {type: string, nullable: true}
-      data_types: {type: string, nullable: true}
-      submission_uuid: {required: true, type: uuid, nullable: false}
+      submission_state_id:
+        required: true
+        type: integer
+        nullable: false
+      biblio_id:
+        type: integer
+        nullable: true
+      upload_date:
+        type: date
+        nullable: true
+      submission_date:
+        type: date
+        nullable: true
+      submission_identifier:
+        type: string
+        nullable: true
+      issue_identifier:
+        type: string
+        nullable: true
+      author:
+        type: string
+        nullable: true
+      notes:
+        type: string
+        nullable: true
+      data_provider_id:
+        required: true
+        type: integer
+        nullable: false
+      submission_name:
+        required: true
+        type: string
+        nullable: false
+      source_name:
+        type: string
+        nullable: true
+      data_types:
+        type: string
+        nullable: true
+      submission_uuid:
+        required: true
+        type: uuid
+        nullable: false
     unique_sets:
       - [submission_uuid]
     foreign_keys:
@@ -1161,8 +1215,13 @@ entities:
     public_id: submission_task_type_id
     identity_columns: [action_task_name]
     columns:
-      action_task_name: {required: true, type: string, nullable: false}
-      description: {type: string, nullable: true}
+      action_task_name:
+        required: true
+        type: string
+        nullable: false
+      description:
+        type: string
+        nullable: true
 
   submission_task:
     role: fact
@@ -1172,12 +1231,27 @@ entities:
     target_table: tbl_submission_tasks
     public_id: submission_task_id
     columns:
-      submission_task_type_id: {required: true, type: integer, nullable: false}
-      contact_id: {required: true, type: integer, nullable: false}
-      submission_id: {required: true, type: integer, nullable: false}
-      biblio_id: {type: integer, nullable: true}
-      event_date: {type: date, nullable: true}
-      notes: {type: string, nullable: true}
+      submission_task_type_id:
+        required: true
+        type: integer
+        nullable: false
+      contact_id:
+        required: true
+        type: integer
+        nullable: false
+      submission_id:
+        required: true
+        type: integer
+        nullable: false
+      biblio_id:
+        type: integer
+        nullable: true
+      event_date:
+        type: date
+        nullable: true
+      notes:
+        type: string
+        nullable: true
     foreign_keys:
       - {entity: submission_task_type, required: true}
       - {entity: contact, required: true}
