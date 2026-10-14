@@ -264,6 +264,18 @@
           ],
           "default": null,
           "title": "Via"
+        },
+        "required_when": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RequiredWhenSpec"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Condition that requires this foreign key after reconciliation."
         }
       },
       "required": [
@@ -355,6 +367,22 @@
         }
       },
       "title": "NamingConventions",
+      "type": "object"
+    },
+    "RequiredWhenSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "has_new_rows": {
+          "description": "Source entity that owns this foreign key. The condition applies only after final reconciliation selects at least one row from this entity for insertion.",
+          "minLength": 1,
+          "title": "Has New Rows",
+          "type": "string"
+        }
+      },
+      "required": [
+        "has_new_rows"
+      ],
+      "title": "RequiredWhenSpec",
       "type": "object"
     }
   },

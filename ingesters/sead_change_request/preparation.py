@@ -101,7 +101,11 @@ async def prepare_change_request(
         inputs.target_model,
         orchestration_result.assignments,
     )
-    projection_result: TargetProjectionResult = project_target_ids(resolution_result, inputs.target_model)
+    projection_result: TargetProjectionResult = project_target_ids(
+        resolution_result,
+        inputs.target_model,
+        planned_tables=planned.tables,
+    )
     pending_confirmation_report = _build_pending_confirmation_report(
         inputs.submission_context,
         orchestration_result,

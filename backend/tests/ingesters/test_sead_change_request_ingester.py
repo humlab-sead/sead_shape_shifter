@@ -284,6 +284,19 @@ def submission_target_model() -> dict:
     )
 
 
+def conditional_location_target_model() -> dict:
+    """Build a target contract with a conditional location -> location_type foreign key."""
+    return minimal_target_model(
+        location_type={"role": "lookup", "public_id": "location_type_id"},
+        location={
+            "role": "fact",
+            "public_id": "location_id",
+            "columns": {"location_type_id": {"type": "integer", "nullable": False}},
+            "foreign_keys": [{"entity": "location_type", "required_when": {"has_new_rows": "location"}}],
+        },
+    )
+
+
 def minimal_submission_context(**overrides: object) -> dict:
     """Build a minimal submission context payload for ingester tests."""
     payload: dict[str, object] = {
@@ -743,6 +756,58 @@ class TestSeadChangeRequestIngesterValidation:
         assert result.warnings == ["Entity 'sample' row '0': Allocated by test harness"]
 
     @pytest.mark.asyncio
+    async def test_validate_accepts_matched_only_rows_for_conditional_foreign_key(self):
+        """A submission whose location rows all match existing records must not trigger the condition."""
+        ingester = SeadChangeRequestIngester(
+            IngesterConfig(
+                host="localhost",
+                port=5432,
+                dbname="test_db",
+                user="test_user",
+                extra={
+                    "tables": {"location": pd.DataFrame({"location_id": [501], "location_type_id": [None], "location_name": ["existing"]})},
+                    "target_model": conditional_location_target_model(),
+                    "submission_context": minimal_submission_context(),
+                },
+            )
+        )
+
+        result = await ingester.validate("submission.xlsx")
+
+        assert result.is_valid is True
+        assert result.errors == []
+
+    @pytest.mark.asyncio
+    async def test_validate_rejects_inserted_row_without_conditional_foreign_key_value(self):
+        """An inserted location row must fail validation when its conditional FK has no value."""
+        ingester = SeadChangeRequestIngester(
+            IngesterConfig(
+                host="localhost",
+                port=5432,
+                dbname="test_db",
+                user="test_user",
+                extra={
+                    "tables": {"location": pd.DataFrame({"location_id": [None], "location_type_id": [None]})},
+                    "target_model": conditional_location_target_model(),
+                    "submission_context": minimal_submission_context(),
+                    "identity_assignments": {
+                        "location": {
+                            0: {
+                                "state": ChangeRowState.NEWLY_ALLOCATED_ENTITY,
+                                "target_id": 601,
+                            }
+                        }
+                    },
+                },
+            )
+        )
+
+        result = await ingester.validate("submission.xlsx")
+
+        assert result.is_valid is False
+        assert result.errors == ["Entity 'location' has 1 missing conditional FK value(s) for 'location_type_id'"]
+
+    @pytest.mark.asyncio
     async def test_validate_accepts_client_orchestrated_assignments(self):
         """Validation should accept assignments produced by the thin client orchestration layer."""
         ingester = SeadChangeRequestIngester(
@@ -1190,6 +1255,40 @@ class TestSeadChangeRequestIngesterIngest:
             "Entity 'sample' has 1 missing required FK value(s) for 'sample_group_id'\n"
             "Entity 'sample' has 1 missing required FK value(s) for 'sample_type_id'"
         )
+        assert result.deploy_artifact is None
+        assert not list(tmp_path.iterdir())
+
+    @pytest.mark.asyncio
+    async def test_ingest_blocks_inserted_row_without_conditional_foreign_key_value(self, tmp_path):
+        """Ingest must not emit artifacts when an inserted row misses its conditional FK value."""
+        ingester = SeadChangeRequestIngester(
+            IngesterConfig(
+                host="localhost",
+                port=5432,
+                dbname="test_db",
+                user="test_user",
+                output_folder=str(tmp_path),
+                extra={
+                    "tables": {"location": pd.DataFrame({"location_id": [None], "location_type_id": [None]})},
+                    "target_model": conditional_location_target_model(),
+                    "submission_context": minimal_submission_context(),
+                    "identity_assignments": {
+                        "location": {
+                            0: {
+                                "state": ChangeRowState.NEWLY_ALLOCATED_ENTITY,
+                                "target_id": 601,
+                            }
+                        }
+                    },
+                },
+            )
+        )
+
+        result = await ingester.ingest("submission.xlsx", validate_first=False)
+
+        assert result.success is False
+        assert result.message == "PK/FK projection incomplete"
+        assert result.error_details == "Entity 'location' has 1 missing conditional FK value(s) for 'location_type_id'"
         assert result.deploy_artifact is None
         assert not list(tmp_path.iterdir())
 

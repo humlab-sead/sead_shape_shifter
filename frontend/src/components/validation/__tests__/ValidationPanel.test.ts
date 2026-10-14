@@ -67,7 +67,16 @@ describe('ValidationPanel', () => {
       ],
       error_count: 1,
       warning_count: 1,
-      info: [],
+      info: [
+        {
+          severity: 'info',
+          entity: 'location',
+          message: 'Conditional foreign key is awaiting reconciliation',
+          code: 'CONDITIONAL_FK_AWAITING_RECONCILIATION',
+          category: 'conformance',
+          priority: 'high',
+        },
+      ],
     }
 
     const wrapper = mountValidationPanel(validationResult)
@@ -76,5 +85,32 @@ describe('ValidationPanel', () => {
     expect(wrapper.text()).toContain('abundance (abundance_source)')
     expect(wrapper.text()).toContain('Branch issue')
     expect(wrapper.text()).toContain('Entity-level warning')
+    expect(wrapper.text()).toContain('Conditional foreign key is awaiting reconciliation')
+    expect(wrapper.text()).toContain('1 informational message')
+    expect(wrapper.text()).toContain('All Issues 3')
+    expect(wrapper.text()).toContain('Validation Failed')
+  })
+
+  it('shows an informational conditional result without calling it passed', () => {
+    const wrapper = mountValidationPanel({
+      is_valid: true,
+      errors: [],
+      warnings: [],
+      info: [
+        {
+          severity: 'info',
+          entity: 'location',
+          message: 'Conditional foreign key is awaiting reconciliation',
+          code: 'CONDITIONAL_FK_AWAITING_RECONCILIATION',
+          category: 'conformance',
+        },
+      ],
+      error_count: 0,
+      warning_count: 0,
+    })
+
+    expect(wrapper.text()).toContain('Conditional checks await reconciliation')
+    expect(wrapper.text()).toContain('Conditional foreign key is awaiting reconciliation')
+    expect(wrapper.text()).not.toContain('Validation Passed')
   })
 })

@@ -675,6 +675,86 @@ def _minimal_project(entities: dict, options: dict | None = None) -> ShapeShiftP
     )
 
 
+def test_conditional_foreign_key_awaits_reconciliation_without_project_only_errors() -> None:
+    target_model = _minimal_target_model(
+        {
+            "location": {
+                "public_id": "location_id",
+                "foreign_keys": [{"entity": "location_type", "required_when": {"has_new_rows": "location"}}],
+            },
+            "location_type": {"public_id": "location_type_id"},
+        }
+    )
+    project = _minimal_project({"location": {"public_id": "location_id", "columns": ["location_name"]}})
+
+    issues = TargetModelConformanceValidator().validate(target_model, project)
+
+    assert [(issue.code, issue.severity, issue.entity) for issue in issues] == [
+        ("CONDITIONAL_FK_AWAITING_RECONCILIATION", "info", "location")
+    ]
+
+
+def test_conditional_foreign_key_status_is_not_promoted_by_severity_override() -> None:
+    target_model = _minimal_target_model(
+        {
+            "location": {
+                "public_id": "location_id",
+                "foreign_keys": [{"entity": "location_type", "required_when": {"has_new_rows": "location"}}],
+            },
+            "location_type": {"public_id": "location_type_id"},
+        }
+    )
+    project = _minimal_project(
+        {"location": {"public_id": "location_id", "columns": ["location_name"]}},
+        options={"validation": {"severity_overrides": {"conditional_foreign_key": "error"}}},
+    )
+
+    issues = TargetModelConformanceValidator().validate(target_model, project)
+
+    assert [(issue.code, issue.severity) for issue in issues] == [("CONDITIONAL_FK_AWAITING_RECONCILIATION", "info")]
+
+
+def test_conditional_foreign_key_status_is_omitted_when_source_is_absent() -> None:
+    target_model = _minimal_target_model(
+        {
+            "location": {
+                "foreign_keys": [{"entity": "location_type", "required_when": {"has_new_rows": "location"}}],
+            },
+            "location_type": {"public_id": "location_type_id"},
+        }
+    )
+
+    issues = TargetModelConformanceValidator().validate(target_model, _minimal_project({}))
+
+    assert issues == []
+
+
+def test_conditional_foreign_key_does_not_change_static_requirements() -> None:
+    target_model = _minimal_target_model(
+        {
+            "location": {
+                "public_id": "location_id",
+                "columns": {"location_name": {"required": True}},
+                "foreign_keys": [
+                    {"entity": "location_type", "required_when": {"has_new_rows": "location"}},
+                    {"entity": "site", "required": True},
+                ],
+            },
+            "location_type": {"public_id": "location_type_id"},
+            "site": {"required": True, "public_id": "site_id"},
+        }
+    )
+    project = _minimal_project({"location": {"public_id": "location_id", "columns": ["location_id"]}})
+
+    issues = TargetModelConformanceValidator().validate(target_model, project)
+    issue_pairs_with_severity = {(issue.code, issue.entity, issue.severity) for issue in issues}
+
+    assert ("CONDITIONAL_FK_AWAITING_RECONCILIATION", "location", "info") in issue_pairs_with_severity
+    assert ("MISSING_REQUIRED_COLUMN", "location", "error") in issue_pairs_with_severity
+    assert ("MISSING_REQUIRED_ENTITY", "site", "error") in issue_pairs_with_severity
+    assert ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "location", "error") in issue_pairs_with_severity
+
+
 def test_public_id_validator_produces_missing_public_id_when_project_entity_has_none() -> None:
     """PublicIdConformanceValidator reports MISSING_PUBLIC_ID when the spec declares a public_id
     but the project entity omits it entirely."""
