@@ -322,7 +322,7 @@ entities:
         required: true
 
   sample_group_reference:
-    role: fact
+    role: bridge
     required: false
     description: Bibliographic reference attached to a sample group.
     aggregate_parent: sample_group
