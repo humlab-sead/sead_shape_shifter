@@ -1014,6 +1014,35 @@ Fix structural problems before investigating data validation.
 
 ---
 
+## Change Request Stops Because a Link Is Missing
+
+A change request stops before it writes any output when a submitted row has no usable link to a related record. A typical example is a new location row with no location type.
+
+Shape Shifter links a row to a related record in two steps. It looks the related record up among the rows in your submission, and it writes the target system's ID for that record into the link column. The link fails when either step has nothing to work with.
+
+The message wording is technical. Use it to identify the cause and who can resolve it:
+
+| If the message mentions | The cause is | Resolved by |
+|------------------------|--------------|-------------|
+| a missing link column, or a missing link | The project does not connect the two entities, so the link column is never produced | The project owner |
+| a missing value | A cell in the source data is empty | The data provider |
+| a value that is unresolved, or that could not be found | The value does not match any row in the related data | The data provider |
+| a related entity that could not be found | The related data was not part of this submission | The project owner or the data provider |
+
+To resolve it:
+
+1. Read the entity, column, and related entity names in the message. They name the link that failed.
+2. Check that the related rows are present in the submission.
+3. Check that the link values are filled in and spelled the same way as the related rows.
+4. If the link column is missing from the submission entirely, ask the project owner to connect the two entities.
+5. Re-run validation after fixing the source data. Correcting values does not need a project change.
+
+Some submissions do not need link values at all. When every row matches a record that already exists in the target system, Shape Shifter inserts nothing and does not require the link. This is why the same project can report a link error for one submission and accept another.
+
+For the rule that decides when a link is required, see [TARGET_MODEL_GUIDE.md](TARGET_MODEL_GUIDE.md).
+
+---
+
 ## Execute Succeeds but Output Looks Wrong
 
 Review:

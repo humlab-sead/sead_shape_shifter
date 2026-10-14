@@ -238,15 +238,77 @@ foreign_keys:
     required: false
 ```
 
-| Field      | Required | Description                                                                         |
-|------------|----------|-------------------------------------------------------------------------------------|
-| `entity`   | Yes      | Name of the entity this link points to                                               |
-| `required` | No       | If `true`, the project must declare this link (default: `false`).                    |
-| `via`      | No       | Bridge entity used for a many-to-many link, such as `site -> site_location -> location`. |
+| Field           | Required | Description                                                                             |
+|-----------------|----------|-----------------------------------------------------------------------------------------|
+| `entity`        | Yes      | Name of the entity this link points to                                                   |
+| `required`      | No       | If `true`, the project must declare this link (default: `false`).                        |
+| `via`           | No       | Bridge entity used for a many-to-many link, such as `site -> site_location -> location`. |
+| `required_when` | No       | Requires this link only after reconciliation selects rows for insertion; see below.      |
 
 Conformance checks that the project entity declares a link to each required target entity.
 
 When `via` is present, conformance checks both parts of the path: the source entity must link to the bridge, and the bridge must link to the final target.
+
+#### Conditional Foreign Keys
+
+Use `required_when` when a link is needed only if the source entity receives new rows:
+
+```yaml
+entities:
+  location:
+    columns:
+      location_type_id:
+        type: integer
+        nullable: false
+    foreign_keys:
+      - entity: location_type
+        required_when:
+          has_new_rows: location
+  location_type:
+    required: false
+    public_id: location_type_id
+```
+
+`has_new_rows` must name the entity that declares the foreign key. The condition becomes true only when the final reconciliation result selects at least one row of that entity for insertion. Rows matched to existing records, rows accepted as updates, and blocked rows do not activate it. A submission whose locations all match existing locations therefore needs no `location_type_id` value, even when those rows looked new before reconciliation.
+
+Project conformance cannot evaluate this rule, because it does not reconcile rows. It reports the rule as awaiting reconciliation instead of failing the project.
+
+The SEAD Change Request Ingester evaluates the rule after reconciliation. When at least one row of the named entity is inserted:
+
+- the project must contain the `location_type` entity and declare the link to it
+- the FK column name comes from the target's `public_id`, so `location_type_id` above is `location_type.public_id`
+- every inserted row needs a non-null `location_type_id` that resolves to a target ID; the ingester rejects the submission before it builds the change package
+
+Because the column requirement applies only to inserted rows, omit unconditional `required: true` on both the lookup entity and the FK column when you use this rule. Keep `nullable: false` on the column to describe the destination constraint, and set the lookup entity to `required: false`; otherwise that entity stays required in every conforming project.
+
+A conditional FK must be a direct link: it cannot also declare `required`, and it cannot use `via`.
+
+#### Inserted-Row Link Errors
+
+When the condition is active, each inserted row's link value must be translated before the row reaches the change request: the source value is replaced by the target system's ID for the record it points to. The messages call this translation *projection*.
+
+Projection needs three things. Each missing one produces a different message.
+
+| Need | Where it comes from |
+|------|---------------------|
+| A column to hold the target ID | The linked entity's `public_id` |
+| The linked rows, present in the same submission | The linked entity's normalized table |
+| A key that joins the two sides | The submission's own row numbering (`system_id`) |
+
+The messages below use a `location` row that links to `location_type` through `location_type_id`.
+
+| Message | Meaning | Where to look |
+|---------|---------|---------------|
+| `Entity 'location' cannot project conditional foreign key to 'location_type' because the target public_id is undefined` | The target model does not name the column that holds the location type ID, so there is no place to write the value. | The `location_type` entity is missing from the target model, or it declares no `public_id`. |
+| `Entity 'location' is missing conditional FK column 'location_type_id' for 'location_type'` | The location rows have no `location_type_id` column. | The project does not link `location` to `location_type`, so the column is never produced. |
+| `Entity 'location' has 1 missing conditional FK value(s) for 'location_type_id'` | A new location row has an empty link value. | A cell in the source data is blank. |
+| `Entity 'location' cannot project conditional foreign key 'location_type_id' because resolved table 'location_type' is missing` | Location type rows were not part of this submission, so there is nothing to translate the values against. | The linked entity's table is absent from the submitted bundle. |
+| `Entity 'location' cannot project conditional foreign key 'location_type_id' because resolved table 'location_type' has no system_id column` | The location type rows carry no row numbering, so they cannot be joined to the locations that point at them. | The linked table was not produced with Shape Shifter's row identity column. |
+| `Entity 'location' has 1 unresolved conditional FK value(s) for 'location_type_id'` | A location points at a location type that is not among the submitted location type rows. | The value does not match any linked row, or the linked row is missing from the submission. |
+
+These messages appear only while the condition is active. A submission whose locations all match existing records inserts nothing, so it receives none of them, even when the location type data is absent or incomplete.
+
+An FK declared with `required: true` produces the same family of messages, with `required` in place of `conditional`. The difference is reach: `required` checks every row submitted for the entity, before reconciliation decides its outcome, while the conditional form checks only the rows that will be inserted. That difference is why the conditional rule is preferred when link values are needed only for new rows.
 
 ---
 
@@ -373,7 +435,7 @@ The SEAD Change Request Ingester uses some target-model fields to decide how to 
 | `identity_tracking`<br>`reconciliation`<br>`aggregate_parent`   | Drive identity planning and SIMS capability checks.                                                                                                                                    |
 | `role`                                                          | Supplies defaults when explicit identity settings are absent.                                                                                                                          |
 | `public_id_generation`<br>`target_table`<br>`public_id`         | Affect target ID reservation, key projection, collision checks, and emitted SQL.                                                                                                       |
-| `foreign_keys`                                                  | Affect FK projection and required-FK checks. The ingester does not directly read `via`; bridge entities are handled as their own entities.                                             |
+| `foreign_keys`                                                  | Affect FK projection and required-FK checks. A `required_when` link is checked after reconciliation against inserted rows only. The ingester does not directly read `via`; bridge entities are handled as their own entities. |
 | `columns.required`<br>`columns.nullable`<br>`columns.generated` | Required and nullable settings affect target-row checks; `generated` controls omission of generated values from inserts. Column `type` and `description` are not used by the ingester. |
 | `unique_sets`                                                   | Support collision checks for derived/bridge rows.                                                                                                                                      |
 | Entity-level `required`                                         | Affects conformance, not ingester planning.                                                                                                                                            |
