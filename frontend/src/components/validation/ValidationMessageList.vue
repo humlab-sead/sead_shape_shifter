@@ -9,14 +9,21 @@
       v-for="(message, index) in messages"
       :key="index"
       :value="index"
+      :data-severity="message.severity"
       class="validation-message-item"
       :class="{ 'validation-message-item--expanded': isExpanded(index) }"
       @click="toggleExpanded(index)"
     >
       <template #prepend>
         <v-icon
-          :icon="message.severity === 'error' ? 'mdi-alert-circle' : 'mdi-alert'"
-          :color="message.severity === 'error' ? 'error' : 'warning'"
+          :icon="
+            message.severity === 'error'
+              ? 'mdi-alert-circle'
+              : message.severity === 'warning'
+                ? 'mdi-alert'
+                : 'mdi-information-outline'
+          "
+          :color="message.severity === 'error' ? 'error' : message.severity === 'warning' ? 'warning' : 'info'"
         />
       </template>
 

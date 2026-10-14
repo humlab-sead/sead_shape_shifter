@@ -23,6 +23,7 @@ class ConformanceIssue(CoreIssue):
 
 
 class ConformanceValidator(ABC):
+    allow_severity_override: bool = True
 
     def get_default_severity(
         self, target_model: TargetModel, project: ShapeShiftProject  # pylint: disable=unused-argument
@@ -247,6 +248,44 @@ class ForeignKeyConformanceValidator(EntityConformanceValidator):
                             entity=bridge_name,
                         )
                     )
+
+        return issues
+
+
+@CONFORMANCE_VALIDATORS.register(key="conditional_foreign_key")
+class ConditionalForeignKeyConformanceValidator(GlobalConformanceValidator):
+    """Report conditional FKs that project conformance cannot evaluate before reconciliation."""
+
+    allow_severity_override = False
+
+    def get_default_severity(
+        self, target_model: TargetModel, project: ShapeShiftProject  # pylint: disable=unused-argument
+    ) -> SeverityLevel:
+        """Return info because final insert decisions are not available during project conformance."""
+        return "info"
+
+    def validate_global(self, target_model: TargetModel, project: ShapeShiftProject) -> list[ConformanceIssue]:
+        """Report conditional FKs for source entities present in the project."""
+        issues: list[ConformanceIssue] = []
+        for entity_name, entity_spec in target_model.entities.items():
+            if not project.has_table(entity_name):
+                continue
+
+            for foreign_key in entity_spec.foreign_keys:
+                if foreign_key.required_when is None:
+                    continue
+
+                issues.append(
+                    ConformanceIssue(
+                        severity="info",
+                        code="CONDITIONAL_FK_AWAITING_RECONCILIATION",
+                        message=(
+                            f"Conditional foreign key from '{entity_name}' to '{foreign_key.entity}' is awaiting "
+                            "reconciliation; project conformance cannot determine whether rows will be inserted."
+                        ),
+                        entity=entity_name,
+                    )
+                )
 
         return issues
 
@@ -624,7 +663,11 @@ class TargetModelConformanceValidator(ConformanceValidator):
             if rule_key in disabled_rule_keys:
                 continue
             validator: ConformanceValidator = validator_cls()
-            issue_severity = self.resolve_rule_severity(rule_key, validator, target_model, project, severity_overrides)
+            issue_severity = (
+                self.resolve_rule_severity(rule_key, validator, target_model, project, severity_overrides)
+                if validator.allow_severity_override
+                else validator.get_default_severity(target_model, project)
+            )
             rule_issues = validator.validate(target_model, project)
             for issue in rule_issues:
                 issue.severity = issue_severity

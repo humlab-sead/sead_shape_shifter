@@ -11,6 +11,10 @@ Unknown keys in these sections are rejected because each model uses `extra="forb
 ## YAML Paths
 
 - `model`: ModelMetadata (required)
+- `model.name`: string (required)
+- `model.format_version`: string (optional)
+- `model.version`: string (required)
+- `model.description`: string | null (optional)
 - `entities`: map[string, EntitySpec] (optional)
 - `entities.<entity_name>`: EntitySpec (map value)
 - `entities.<entity_name>.role`: enum[string] | null (optional)
@@ -38,10 +42,13 @@ Unknown keys in these sections are rejected because each model uses `extra="forb
 - `entities.<entity_name>.foreign_keys[].entity`: string (required)
 - `entities.<entity_name>.foreign_keys[].required`: boolean (optional)
 - `entities.<entity_name>.foreign_keys[].via`: string | null (optional)
+- `entities.<entity_name>.foreign_keys[].required_when`: RequiredWhenSpec | null (optional)
+- `entities.<entity_name>.foreign_keys[].required_when.has_new_rows`: string (required)
 - `entities.<entity_name>.identity_tracking`: enum[string] | null (optional)
 - `entities.<entity_name>.reconciliation`: enum[string] | null (optional)
 - `entities.<entity_name>.aggregate_parent`: string | null (optional)
 - `naming`: NamingConventions | null (optional)
+- `naming.public_id_suffix`: string | null (optional)
 - `constraints`: list[GlobalConstraint] (optional)
 - `constraints[]`: GlobalConstraint (list item)
 - `constraints[].type`: string (required)
@@ -120,6 +127,17 @@ Values under `entities.<entity_name>.foreign_keys[]` for each foreign key requir
 | entity | string | Yes | - | - |
 | required | boolean | No | false | - |
 | via | string \| null | No | null | null |
+| required_when | RequiredWhenSpec \| null | No | null | null |
+
+Additional keys allowed: No
+
+## RequiredWhenSpec
+
+A `has_new_rows` condition applies after reconciliation selects at least one source row for insertion.
+
+| Field | Type | Required | Default | Allowed |
+|---|---|---|---|---|
+| has_new_rows | string | Yes | - | - |
 
 Additional keys allowed: No
 

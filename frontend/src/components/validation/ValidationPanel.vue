@@ -63,7 +63,7 @@
               v-bind="props"
               size="small"
               prepend-icon="mdi-content-copy"
-              :disabled="!validationResult || (errorCount === 0 && warningCount === 0)"
+              :disabled="!validationResult || allMessages.length === 0"
               @click="copyToClipboard"
             >
               Copy
@@ -114,6 +114,9 @@
                 <p class="text-body-2">
                   {{ errorCount }} {{ errorCount === 1 ? 'error' : 'errors' }}, {{ warningCount }}
                   {{ warningCount === 1 ? 'warning' : 'warnings' }}
+                  <span v-if="infoCount > 0">
+                    , {{ infoCount }} informational {{ infoCount === 1 ? 'message' : 'messages' }}
+                  </span>
                 </p>
               </div>
             </div>
@@ -124,7 +127,7 @@
         <v-tabs v-model="activeTab" bg-color="transparent" class="mb-4">
           <v-tab value="all">
             All Issues
-            <v-badge v-if="errorCount + warningCount > 0" :content="errorCount + warningCount" inline class="ml-2" />
+            <v-badge v-if="allMessages.length > 0" :content="allMessages.length" inline class="ml-2" />
           </v-tab>
           <v-tab value="errors">
             Errors
@@ -136,7 +139,7 @@
           </v-tab>
           <v-tab value="by-category">
             By Category
-            <v-badge v-if="errorCount + warningCount > 0" :content="errorCount + warningCount" inline class="ml-2" />
+            <v-badge v-if="allMessages.length > 0" :content="allMessages.length" inline class="ml-2" />
           </v-tab>
           <v-tab value="by-entity">
             By Entity
@@ -339,26 +342,35 @@ const { success, error } = useNotification()
 // Computed
 const errorCount = computed(() => props.validationResult?.error_count ?? 0)
 const warningCount = computed(() => props.validationResult?.warning_count ?? 0)
+const infoMessages = computed(() => props.validationResult?.info ?? [])
+const infoCount = computed(() => infoMessages.value.length)
 const errors = computed(() => props.validationResult?.errors ?? [])
 const warnings = computed(() => props.validationResult?.warnings ?? [])
-const allMessages = computed(() => [...errors.value, ...warnings.value])
+const allMessages = computed(() => [...errors.value, ...warnings.value, ...infoMessages.value])
 const entityScopedIssues = computed(() => groupByEntityScope(allMessages.value))
+const hasConditionalChecksAwaitingReconciliation = computed(() =>
+  infoMessages.value.some((message) => message.code === 'CONDITIONAL_FK_AWAITING_RECONCILIATION')
+)
 
 const summaryColor = computed(() => {
   if (errorCount.value > 0) return 'error'
   if (warningCount.value > 0) return 'warning'
+  if (infoCount.value > 0) return 'info'
   return 'success'
 })
 
 const summaryIcon = computed(() => {
   if (errorCount.value > 0) return 'mdi-alert-circle'
   if (warningCount.value > 0) return 'mdi-alert'
+  if (infoCount.value > 0) return 'mdi-information-outline'
   return 'mdi-check-circle'
 })
 
 const summaryTitle = computed(() => {
   if (errorCount.value > 0) return 'Validation Failed'
+  if (hasConditionalChecksAwaitingReconciliation.value) return 'Conditional checks await reconciliation'
   if (warningCount.value > 0) return 'Validation Passed with Warnings'
+  if (infoCount.value > 0) return 'Validation Passed with Information'
   return 'Validation Passed'
 })
 

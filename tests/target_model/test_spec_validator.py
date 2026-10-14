@@ -111,6 +111,109 @@ def test_validator_reports_unknown_foreign_key_entity() -> None:
     assert issues[0].code == "UNKNOWN_FOREIGN_KEY_ENTITY"
 
 
+@pytest.mark.parametrize(
+    ("entities", "expected_code"),
+    [
+        (
+            {
+                "location": {"foreign_keys": [{"entity": "location_type", "required_when": {"has_new_rows": "missing"}}]},
+                "location_type": {"public_id": "location_type_id"},
+            },
+            "UNKNOWN_CONDITIONAL_FOREIGN_KEY_SOURCE",
+        ),
+        (
+            {
+                "location": {"foreign_keys": [{"entity": "location_type", "required_when": {"has_new_rows": "site"}}]},
+                "site": {},
+                "location_type": {"public_id": "location_type_id"},
+            },
+            "CONDITIONAL_FOREIGN_KEY_SOURCE_MISMATCH",
+        ),
+    ],
+)
+def test_validator_rejects_unknown_or_non_owning_conditional_source(entities: dict, expected_code: str) -> None:
+    target_model = TargetModel.model_validate({"model": {"name": "SEAD Clearinghouse", "version": "2.0.0"}, "entities": entities})
+
+    issues = TargetModelSpecValidator().validate(target_model)
+
+    assert expected_code in {issue.code for issue in issues}
+
+
+def test_validator_rejects_conditional_fk_without_target_public_id() -> None:
+    target_model = TargetModel.model_validate(
+        {
+            "model": {"name": "SEAD Clearinghouse", "version": "2.0.0"},
+            "entities": {
+                "location": {"foreign_keys": [{"entity": "location_type", "required_when": {"has_new_rows": "location"}}]},
+                "location_type": {},
+            },
+        }
+    )
+
+    issues = TargetModelSpecValidator().validate(target_model)
+
+    assert [issue.code for issue in issues] == ["CONDITIONAL_FOREIGN_KEY_TARGET_MISSING_PUBLIC_ID"]
+
+
+@pytest.mark.parametrize("required", [True, False])
+def test_validator_rejects_explicit_required_with_required_when(required: bool) -> None:
+    target_model = TargetModel.model_validate(
+        {
+            "model": {"name": "SEAD Clearinghouse", "version": "2.0.0"},
+            "entities": {
+                "location": {
+                    "foreign_keys": [{"entity": "location_type", "required": required, "required_when": {"has_new_rows": "location"}}]
+                },
+                "location_type": {"public_id": "location_type_id"},
+            },
+        }
+    )
+
+    issues = TargetModelSpecValidator().validate(target_model)
+    round_tripped = TargetModel.model_validate(target_model.model_dump(mode="json"))
+    round_trip_issues = TargetModelSpecValidator().validate(round_tripped)
+
+    assert [issue.code for issue in issues] == ["CONFLICTING_FOREIGN_KEY_REQUIREMENTS"]
+    assert [issue.code for issue in round_trip_issues] == ["CONFLICTING_FOREIGN_KEY_REQUIREMENTS"]
+
+
+def test_validator_accepts_conditional_fk_after_json_round_trip() -> None:
+    target_model = TargetModel.model_validate(
+        {
+            "model": {"name": "SEAD Clearinghouse", "version": "2.0.0"},
+            "entities": {
+                "location": {"foreign_keys": [{"entity": "location_type", "required_when": {"has_new_rows": "location"}}]},
+                "location_type": {"public_id": "location_type_id"},
+            },
+        }
+    )
+
+    round_tripped = TargetModel.model_validate(target_model.model_dump(mode="json"))
+    issues = TargetModelSpecValidator().validate(round_tripped)
+
+    assert issues == []
+
+
+def test_validator_rejects_conditional_bridge_foreign_key() -> None:
+    target_model = TargetModel.model_validate(
+        {
+            "model": {"name": "SEAD Clearinghouse", "version": "2.0.0"},
+            "entities": {
+                "location": {
+                    "foreign_keys": [
+                        {"entity": "location_type", "via": "location_type_bridge", "required_when": {"has_new_rows": "location"}}
+                    ]
+                },
+                "location_type": {"public_id": "location_type_id"},
+            },
+        }
+    )
+
+    issues = TargetModelSpecValidator().validate(target_model)
+
+    assert [issue.code for issue in issues] == ["CONDITIONAL_FOREIGN_KEY_VIA_UNSUPPORTED"]
+
+
 def test_validator_reports_invalid_public_id_suffix() -> None:
     target_model = TargetModel.model_validate(
         {

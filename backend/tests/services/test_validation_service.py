@@ -9,6 +9,7 @@ from backend.app.models.project import Project, ProjectMetadata
 from backend.app.models.validation import ValidationCategory, ValidationPriority
 from backend.app.services import validation_service as validation_service_module
 from backend.app.services.validation_service import ValidationService, get_validation_service
+from src.model import ShapeShiftProject
 from src.validators.data_validators import ValidationIssue
 
 # pylint: disable=redefined-outer-name, unused-argument
@@ -506,6 +507,55 @@ class TestValidateTargetModel:
 
         assert result.is_valid is True
         assert result.errors == []
+
+    @pytest.mark.parametrize("include_static_error", [False, True])
+    def test_conditional_foreign_key_is_returned_as_info(self, validation_service: ValidationService, include_static_error: bool):
+        target_model_data = {
+            "model": {"name": "Test Model", "version": "1.0.0"},
+            "entities": {
+                "location": {
+                    "public_id": "location_id",
+                    "foreign_keys": [{"entity": "location_type", "required_when": {"has_new_rows": "location"}}],
+                },
+                "location_type": {"public_id": "location_type_id"},
+            },
+        }
+        if include_static_error:
+            target_model_data["entities"]["site"] = {"required": True, "public_id": "site_id"}
+
+        mock_api_project = Mock(spec=Project)
+        mock_core_project = ShapeShiftProject(
+            cfg={
+                "metadata": {
+                    "name": "test-project",
+                    "type": "shapeshifter-project",
+                    "target_model": target_model_data,
+                },
+                "entities": {
+                    "location": {
+                        "system_id": "system_id",
+                        "data": {"type": "fixed", "values": []},
+                        "public_id": "location_id",
+                        "columns": ["location_name"],
+                    }
+                },
+                "options": {"validation": {"severity_overrides": {"conditional_foreign_key": "error"}}},
+            },
+            filename="test.yml",
+        )
+
+        with patch("backend.app.services.validation_service.get_project_service") as mock_get_service:
+            mock_project_service = Mock()
+            mock_project_service.load_project.return_value = mock_api_project
+            mock_get_service.return_value = mock_project_service
+
+            with patch("backend.app.services.validation_service.ProjectMapper.to_core", return_value=mock_core_project):
+                result = validation_service.validate_target_model("test-project")
+
+        assert result.is_valid is (not include_static_error)
+        assert [issue.code for issue in result.errors] == (["MISSING_REQUIRED_ENTITY"] if include_static_error else [])
+        assert result.warnings == []
+        assert [issue.code for issue in result.info] == ["CONDITIONAL_FK_AWAITING_RECONCILIATION"]
 
     def test_target_model_validation_groups_warnings_by_severity(self, validation_service: ValidationService):
         """Target-model validation should keep conformance warnings out of the error bucket."""

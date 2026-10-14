@@ -72,6 +72,7 @@ SCHEMA_CONFIG: dict[str, dict[str, Any]] = {
     },
     "targetModelSchema.json": {
         "model": TargetModel,
+        "schema_mode": "validation",
         "title": "ShapeShifter Target Model Specification",
         "description": "Schema for target model specifications defining target database schema constraints and entity relationships",
         "remove_required": [],
@@ -216,7 +217,7 @@ def clean_schema(schema: dict[str, Any], config: dict[str, Any]) -> dict[str, An
 def build_schema(model: type[Any], config: dict[str, Any]) -> dict[str, Any]:
     """Generate and customize JSON schema for a single model."""
     schema = model.model_json_schema(
-        mode="serialization",
+        mode=config.get("schema_mode", "serialization"),
         by_alias=True,
         ref_template=REF_TEMPLATE,
     )
