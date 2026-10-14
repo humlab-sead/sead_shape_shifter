@@ -192,6 +192,7 @@ entities:
         type: integer
         nullable: false
       sample_group_name:
+        required: true
         type: string
         nullable: true
       sample_group_description:
