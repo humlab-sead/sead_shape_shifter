@@ -37,7 +37,6 @@ def test_target_model_parses_richer_entity_payload() -> None:
                     "domains": ["core", "spatial"],
                     "target_table": "tbl_locations",
                     "public_id": "location_id",
-                    "identity_columns": ["location_type_id", "location_name"],
                     "columns": {
                         "location_name": {"required": True, "type": "string", "nullable": False},
                         "location_type_id": {"required": True, "generated": True, "type": "integer", "nullable": False},
@@ -58,7 +57,6 @@ def test_target_model_parses_richer_entity_payload() -> None:
 
     location = target_model.entities["location"]
     assert location.domains == ["core", "spatial"]
-    assert location.identity_columns == ["location_type_id", "location_name"]
     assert list(location.columns) == ["location_name", "location_type_id", "location_kind"]
     assert location.columns["location_name"].required is True
     assert location.columns["location_type_id"].generated is True

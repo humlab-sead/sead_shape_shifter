@@ -138,7 +138,6 @@ entities:
     domains: [core, spatial]
     target_table: tbl_sites
     public_id: site_id
-    identity_columns: [site_name]
     identity_tracking: reconciled
     reconciliation: reconcile-fuzzy
     columns:
@@ -166,15 +165,14 @@ entities:
 | `public_id`              | No       | `null`  | Expected `public_id` value in the project entity.                                                                 |
 | `public_id_generation`   | No       | `null`  | `database_sequence` reserves an ID from the target database for an explicitly non-tracked entity.                 |
 | `synchronize_sequence_after_insert` | No       | `false` | Advance the target column's PostgreSQL sequence after inserting rows with SIMS-assigned IDs.                      |
-| `identity_columns`       | No       | `[]`    | Columns that form the natural key in the target system.                                                           |
 | `columns`                | No       | `{}`    | Map of column name to column spec; conformance checks these against the project.                                  |
-| `unique_sets`            | No       | `[]`    | List of unique-set column groups.                                                                                 |
+| `unique_sets`            | No       | `[]`    | Groups of columns declared unique for the target entity; each group is a separate uniqueness rule.               |
 | `foreign_keys`           | No       | `[]`    | List of foreign-key specs.                                                                                        |
 | `identity_tracking`      | No       | `null`  | Identity mode. When omitted, its effective value can be inferred from `role` or `aggregate_parent`.               |
 | `reconciliation`         | No       | `null`  | Matching or allocation mode. When omitted, its effective value can be inferred from identity settings and `role`. |
 | `aggregate_parent`       | No       | `null`  | Immediate parent entity name (the entity this one points to with a foreign key) when this entity inherits aggregate identity.                                                   |
 
-The `Default` column shows what the schema uses when a field is omitted. The ingester may infer effective values for `identity_tracking` and `reconciliation` from `role` and `aggregate_parent`; see [Identity And Reconciliation Fields](#identity-and-reconciliation-fields). A natural key is one or more field values used to recognize a record. A database sequence is an automatic counter that issues IDs. SIMS is the SEAD Identity Management System.
+The `Default` column shows what the schema uses when a field is omitted. The ingester may infer effective values for `identity_tracking` and `reconciliation` from `role` and `aggregate_parent`; see [Identity And Reconciliation Fields](#identity-and-reconciliation-fields). The target model's `unique_sets` declares target-side column groups that are expected to be unique. This is separate from a project's `keys`, which describe source-side business keys. A unique set does not direct SIMS or the ingester to match source records. A database sequence is an automatic counter that issues IDs. SIMS is the SEAD Identity Management System.
 
 ---
 
@@ -215,6 +213,8 @@ columns:
 | `type`     | No       | A hint such as `string`, `integer`, `decimal`, `boolean`, or `date`; not checked in v1.                |
 | `nullable` | No       | Whether the destination column may contain `null` (no value); not checked in v1.                      |
 | `description` | No    | Note shown to reviewers and in generated documentation or editor help.                               |
+
+Each group in `unique_sets` is a separate target-side uniqueness declaration. A group can contain one column, including a UUID column, or several columns. The structural validator checks that each listed column is declared. Membership in `unique_sets` does not set the column's `required` flag. The Change Request Ingester uses complete, non-null groups for bridge collision checks; the target-model validator does not prove that values are unique in the database or use these groups to match provider records. The `required` setting controls whether a project must declare a column, while `nullable` describes whether the target column may contain null.
 
 Shape Shifter treats a column as present if the project defines it directly or a relationship or transformation adds it. For example, a column is present when it appears as:
 - an explicit entry in `columns` or `keys`
@@ -377,7 +377,7 @@ The SEAD Change Request Ingester uses some target-model fields to decide how to 
 | `columns.required`<br>`columns.nullable`<br>`columns.generated` | Required and nullable settings affect target-row checks; `generated` controls omission of generated values from inserts. Column `type` and `description` are not used by the ingester. |
 | `unique_sets`                                                   | Support collision checks for derived/bridge rows.                                                                                                                                      |
 | Entity-level `required`                                         | Affects conformance, not ingester planning.                                                                                                                                            |
-| `description`<br>`domains`<br>`identity_columns`                | Have no direct ingester effect. `domains` can still affect generated project scaffolds.                                                                                                |
+| `description`<br>`domains`                                     | Have no direct ingester effect. `domains` can still affect generated project scaffolds.                                                                                                |
 
 ---
 

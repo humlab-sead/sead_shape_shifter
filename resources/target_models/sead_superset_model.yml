@@ -12,7 +12,6 @@ entities:
     domains: [core, spatial]
     target_table: tbl_locations
     public_id: location_id
-    identity_columns: [location_type_id, location_name]
     columns:
       location_name:
         required: true
@@ -41,7 +40,6 @@ entities:
     domains: [core, spatial]
     target_table: tbl_location_types
     public_id: location_type_id
-    identity_columns: [location_type]
     columns:
       location_type:
         required: true
@@ -60,7 +58,8 @@ entities:
     domains: [core, spatial]
     target_table: tbl_sites
     public_id: site_id
-    identity_columns: [site_name]
+    unique_sets:
+      - [site_name]
     columns:
       site_name:
         required: true
@@ -98,7 +97,8 @@ entities:
     domains: [core, spatial]
     target_table: tbl_site_locations
     public_id: site_location_id
-    identity_columns: [site_id, location_id]
+    unique_sets:
+      - [site_id, location_id]
     columns:
       site_location_id:
         required: true
@@ -118,7 +118,7 @@ entities:
         required: true
       - entity: location
         required: true
-        
+
   site_type_group:
     role: classifier
     required: false
@@ -126,7 +126,6 @@ entities:
     domains: [core, spatial]
     target_table: tbl_site_type_groups
     public_id: site_type_group_id
-    identity_columns: [site_type_group]
     columns:
       site_type_group:
         required: true
@@ -154,7 +153,8 @@ entities:
     domains: [core, spatial]
     target_table: tbl_site_types
     public_id: site_type_id
-    identity_columns: [site_type]
+    unique_sets:
+      - [site_type]
     columns:
       site_type_group_id:
         required: true
@@ -181,7 +181,6 @@ entities:
     domains: [core]
     target_table: tbl_sample_groups
     public_id: sample_group_id
-    identity_columns: [site_id, sample_group_name]
     columns:
       site_id:
         required: true
@@ -214,11 +213,11 @@ entities:
   sample_group_sampling_context:
     role: classifier
     required: false
-    description: Controlled vocabulary for sampling contexts attached to sample groups and related sample metadata tables.
+    description: Controlled vocabulary for sampling contexts attached to sample groups and related sample metadata 
+      tables.
     domains: [core, sample-metadata]
     target_table: tbl_sample_group_sampling_contexts
     public_id: sampling_context_id
-    identity_columns: [sampling_context]
     columns:
       sampling_context:
         required: true
@@ -241,7 +240,8 @@ entities:
     domains: [spatial, sample-metadata]
     target_table: tbl_sample_group_coordinates
     public_id: sample_group_position_id
-    identity_columns: [sample_group_id, coordinate_method_dimension_id]
+    unique_sets:
+      - [sample_group_id, coordinate_method_dimension_id]
     columns:
       sample_group_id:
         required: true
@@ -272,7 +272,8 @@ entities:
     domains: [sample-metadata, physical-properties]
     target_table: tbl_sample_group_dimensions
     public_id: sample_group_dimension_id
-    identity_columns: [sample_group_id, dimension_id]
+    unique_sets:
+      - [sample_group_id, dimension_id]
     columns:
       sample_group_id:
         required: true
@@ -305,7 +306,6 @@ entities:
     domains: [sample-metadata]
     target_table: tbl_sample_group_notes
     public_id: sample_group_note_id
-    identity_columns: [sample_group_id, note]
     columns:
       sample_group_id:
         required: true
@@ -329,7 +329,6 @@ entities:
     domains: [sample-metadata, provenance, bibliography]
     target_table: tbl_sample_group_references
     public_id: sample_group_reference_id
-    identity_columns: [sample_group_id, biblio_id]
     columns:
       sample_group_id:
         required: true
@@ -354,7 +353,6 @@ entities:
     domains: [core]
     target_table: tbl_physical_samples
     public_id: physical_sample_id
-    identity_columns: [sample_group_id, sample_name]
     columns:
       sample_group_id:
         required: true
@@ -391,7 +389,6 @@ entities:
     domains: [core, sample-metadata]
     target_table: tbl_sample_description_types
     public_id: sample_description_type_id
-    identity_columns: [type_name]
     columns:
       type_name:
         required: true
@@ -411,7 +408,8 @@ entities:
     domains: [core, sample-metadata]
     target_table: tbl_sample_descriptions
     public_id: sample_description_id
-    identity_columns: [physical_sample_id, sample_description_type_id]
+    unique_sets:
+      - [physical_sample_id, sample_description_type_id]
     columns:
       physical_sample_id:
         required: true
@@ -438,7 +436,6 @@ entities:
     domains: [sample-metadata]
     target_table: tbl_sample_colours
     public_id: sample_colour_id
-    identity_columns: [physical_sample_id, colour_id]
     columns:
       physical_sample_id:
         required: true
@@ -463,7 +460,6 @@ entities:
     domains: [core]
     target_table: tbl_sample_types
     public_id: sample_type_id
-    identity_columns: [type_name]
     columns:
       type_name:
         required: true
@@ -484,7 +480,6 @@ entities:
     domains: [spatial, physical-properties]
     target_table: tbl_dimensions
     public_id: dimension_id
-    identity_columns: [dimension_abbrev]
     columns:
       dimension_abbrev:
         required: true
@@ -513,7 +508,6 @@ entities:
     domains: [spatial]
     target_table: tbl_coordinate_method_dimensions
     public_id: coordinate_method_dimension_id
-    identity_columns: [method_id, dimension_id]
     columns:
       method_id:
         required: true
@@ -545,7 +539,8 @@ entities:
     domains: [spatial, sample-metadata]
     target_table: tbl_sample_coordinates
     public_id: sample_coordinate_id
-    identity_columns: [physical_sample_id, coordinate_method_dimension_id]
+    unique_sets:
+      - [physical_sample_id, coordinate_method_dimension_id]
     columns:
       physical_sample_id:
         required: true
@@ -577,7 +572,6 @@ entities:
     domains: [sample-metadata]
     target_table: tbl_alt_ref_types
     public_id: alt_ref_type_id
-    identity_columns: [alt_ref_type]
     columns:
       alt_ref_type:
         required: true
@@ -596,7 +590,6 @@ entities:
     domains: [sample-metadata]
     target_table: tbl_colours
     public_id: colour_id
-    identity_columns: [method_id, colour_name]
     columns:
       method_id:
         required: true
@@ -622,7 +615,6 @@ entities:
     domains: [sample-metadata, analysis]
     target_table: tbl_value_qualifiers
     public_id: qualifier_id
-    identity_columns: [symbol]
     columns:
       symbol:
         required: true
@@ -641,7 +633,6 @@ entities:
     domains: [sample-metadata, analysis]
     target_table: tbl_value_qualifier_symbols
     public_id: qualifier_symbol_id
-    identity_columns: [symbol]
     columns:
       symbol:
         required: true
@@ -664,7 +655,6 @@ entities:
     domains: [analysis]
     target_table: tbl_value_types
     public_id: value_type_id
-    identity_columns: [name]
     columns:
       unit_id:
         type: integer
@@ -702,7 +692,6 @@ entities:
     domains: [analysis]
     target_table: tbl_value_type_items
     public_id: value_type_item_id
-    identity_columns: [value_type_id, name]
     aggregate_parent: value_type
     columns:
       value_type_id:
@@ -729,7 +718,6 @@ entities:
     domains: [analysis]
     target_table: tbl_value_classes
     public_id: value_class_id
-    identity_columns: [value_type_id, method_id, name]
     columns:
       value_type_id:
         required: true
@@ -768,7 +756,6 @@ entities:
     domains: [sample-metadata]
     target_table: tbl_sample_alt_refs
     public_id: sample_alt_ref_id
-    identity_columns: [physical_sample_id, alt_ref_type_id, alt_ref]
     columns:
       physical_sample_id:
         required: true
@@ -798,7 +785,8 @@ entities:
     domains: [sample-metadata, physical-properties]
     target_table: tbl_sample_dimensions
     public_id: sample_dimension_id
-    identity_columns: [physical_sample_id, dimension_id, method_id]
+    unique_sets:
+      - [physical_sample_id, dimension_id, method_id]
     columns:
       physical_sample_id:
         required: true
@@ -836,7 +824,6 @@ entities:
     domains: [sample-metadata, spatial]
     target_table: tbl_sample_location_types
     public_id: sample_location_type_id
-    identity_columns: [location_type]
     columns:
       location_type:
         required: true
@@ -856,7 +843,6 @@ entities:
     domains: [sample-metadata, spatial]
     target_table: tbl_sample_locations
     public_id: sample_location_id
-    identity_columns: [physical_sample_id, sample_location_type_id, location]
     columns:
       physical_sample_id:
         required: true
@@ -886,13 +872,13 @@ entities:
     domains: [sample-metadata]
     target_table: tbl_sample_notes
     public_id: sample_note_id
-    identity_columns: [physical_sample_id, note_type, note]
     columns:
       physical_sample_id:
         required: true
         type: integer
         nullable: false
       note_type:
+        required: true
         type: string
         nullable: true
       note:
@@ -913,7 +899,6 @@ entities:
     domains: [sample-metadata]
     target_table: tbl_sample_horizons
     public_id: sample_horizon_id
-    identity_columns: [physical_sample_id, horizon_id]
     columns:
       physical_sample_id:
         required: true
@@ -938,7 +923,6 @@ entities:
     domains: [sample-metadata]
     target_table: tbl_horizons
     public_id: horizon_id
-    identity_columns: [horizon_name, method_id]
     columns:
       horizon_name:
         required: true
@@ -965,7 +949,6 @@ entities:
     domains: [core]
     target_table: tbl_methods
     public_id: method_id
-    identity_columns: [method_name]
     columns:
       method_name:
         required: true
@@ -1003,7 +986,6 @@ entities:
     target_table: tbl_datasets
     public_id: dataset_id
     synchronize_sequence_after_insert: true
-    identity_columns: [dataset_name]
     columns:
       dataset_name:
         required: true
@@ -1055,7 +1037,6 @@ entities:
     domains: [core, provenance]
     target_table: tbl_dataset_masters
     public_id: master_set_id
-    identity_columns: [master_name]
     columns:
       contact_id:
         type: integer
@@ -1088,7 +1069,6 @@ entities:
     domains: [core, provenance]
     target_table: tbl_data_providers
     public_id: data_provider_id
-    identity_columns: [data_provider_code]
     identity_tracking: reconciled
     reconciliation: lookup-only
     columns:
@@ -1129,7 +1109,6 @@ entities:
     domains: [core, provenance]
     target_table: tbl_submission_states
     public_id: submission_state_id
-    identity_columns: [submission_state]
     columns:
       submission_state:
         required: true
@@ -1151,7 +1130,6 @@ entities:
     target_table: tbl_submissions
     public_id: submission_id
     synchronize_sequence_after_insert: true
-    identity_columns: [submission_uuid]
     columns:
       submission_state_id:
         required: true
@@ -1213,7 +1191,8 @@ entities:
     domains: [core, provenance]
     target_table: tbl_submission_task_types
     public_id: submission_task_type_id
-    identity_columns: [action_task_name]
+    unique_sets:
+      - [action_task_name]
     columns:
       action_task_name:
         required: true
@@ -1258,6 +1237,7 @@ entities:
       - {entity: submission, required: true}
       - {entity: citation, required: false}
 
+    unique_sets: []
   project:
     role: lookup
     required: false
@@ -1265,7 +1245,6 @@ entities:
     domains: [core, provenance]
     target_table: tbl_projects
     public_id: project_id
-    identity_columns: [project_name]
     columns:
       project_name:
         required: true
@@ -1285,6 +1264,7 @@ entities:
         nullable: true
     unique_sets:
       - [project_abbrev_name]
+      - [project_name]
     foreign_keys:
       - entity: project_type
         required: false
@@ -1298,7 +1278,6 @@ entities:
     domains: [core, provenance]
     target_table: tbl_project_types
     public_id: project_type_id
-    identity_columns: [project_type_name]
     columns:
       project_type_name:
         required: true
@@ -1317,7 +1296,6 @@ entities:
     domains: [core, provenance]
     target_table: tbl_project_stages
     public_id: project_stage_id
-    identity_columns: [stage_name]
     columns:
       stage_name:
         required: true
@@ -1337,7 +1315,8 @@ entities:
     domains: [provenance, bibliography]
     target_table: tbl_biblio
     public_id: biblio_id
-    identity_columns: [title, year, authors]
+    unique_sets:
+      - [title, year, authors]
     columns:
       bugs_reference:
         type: string
@@ -1352,12 +1331,15 @@ entities:
         type: string
         nullable: true
       title:
+        required: true
         type: string
         nullable: true
       year:
+        required: true
         type: string
         nullable: true
       authors:
+        required: true
         type: string
         nullable: true
       full_reference:
@@ -1391,6 +1373,7 @@ entities:
       - entity: dataset
         required: true
 
+    unique_sets: []
   analysis_value:
     role: fact
     required: false
@@ -1399,7 +1382,8 @@ entities:
     domains: [analysis]
     target_table: tbl_analysis_values
     public_id: analysis_value_id
-    identity_columns: [analysis_entity_id, value_class_id, analysis_value]
+    unique_sets:
+      - [analysis_entity_id, value_class_id, analysis_value]
     columns:
       analysis_entity_id:
         required: true
@@ -1410,6 +1394,7 @@ entities:
         type: integer
         nullable: false
       analysis_value:
+        required: true
         type: string
         nullable: true
       boolean_value:
@@ -1447,7 +1432,6 @@ entities:
     domains: [analysis]
     target_table: tbl_analysis_notes
     public_id: analysis_note_id
-    identity_columns: [analysis_value_id, value]
     columns:
       analysis_value_id:
         required: true
@@ -1471,7 +1455,6 @@ entities:
     domains: [analysis]
     target_table: tbl_analysis_identifiers
     public_id: analysis_identifier_id
-    identity_columns: [analysis_value_id, value]
     columns:
       analysis_value_id:
         required: true
@@ -1495,13 +1478,15 @@ entities:
     domains: [analysis]
     target_table: tbl_analysis_boolean_values
     public_id: analysis_boolean_value_id
-    identity_columns: [analysis_value_id, qualifier, value]
+    unique_sets:
+      - [analysis_value_id, qualifier, value]
     columns:
       analysis_value_id:
         required: true
         type: integer
         nullable: false
       qualifier:
+        required: true
         type: string
         nullable: true
       value:
@@ -1520,7 +1505,8 @@ entities:
     domains: [analysis]
     target_table: tbl_analysis_categorical_values
     public_id: analysis_categorical_value_id
-    identity_columns: [analysis_value_id, value_type_item_id]
+    unique_sets:
+      - [analysis_value_id, value_type_item_id]
     columns:
       analysis_value_id:
         required: true
@@ -1550,13 +1536,15 @@ entities:
     domains: [analysis]
     target_table: tbl_analysis_integer_values
     public_id: analysis_integer_value_id
-    identity_columns: [analysis_value_id, qualifier, value]
+    unique_sets:
+      - [analysis_value_id, qualifier, value]
     columns:
       analysis_value_id:
         required: true
         type: integer
         nullable: false
       qualifier:
+        required: true
         type: string
         nullable: true
       value:
@@ -1580,7 +1568,8 @@ entities:
     domains: [analysis]
     target_table: tbl_analysis_integer_ranges
     public_id: analysis_integer_range_id
-    identity_columns: [analysis_value_id, low_value, high_value, low_qualifier, high_qualifier]
+    unique_sets:
+      - [analysis_value_id, low_value, high_value, low_qualifier, high_qualifier]
     columns:
       analysis_value_id:
         required: true
@@ -1601,9 +1590,11 @@ entities:
         type: boolean
         nullable: true
       low_qualifier:
+        required: true
         type: string
         nullable: true
       high_qualifier:
+        required: true
         type: string
         nullable: true
       is_variant:
@@ -1623,13 +1614,15 @@ entities:
     domains: [analysis]
     target_table: tbl_analysis_numerical_values
     public_id: analysis_numerical_value_id
-    identity_columns: [analysis_value_id, qualifier, value]
+    unique_sets:
+      - [analysis_value_id, qualifier, value]
     columns:
       analysis_value_id:
         required: true
         type: integer
         nullable: false
       qualifier:
+        required: true
         type: string
         nullable: true
       value:
@@ -1653,7 +1646,8 @@ entities:
     domains: [analysis]
     target_table: tbl_analysis_numerical_ranges
     public_id: analysis_numerical_range_id
-    identity_columns: [analysis_value_id, value, low_qualifier, high_qualifier]
+    unique_sets:
+      - [analysis_value_id, value, low_qualifier, high_qualifier]
     columns:
       analysis_value_id:
         required: true
@@ -1670,9 +1664,11 @@ entities:
         type: boolean
         nullable: true
       low_qualifier:
+        required: true
         type: string
         nullable: true
       high_qualifier:
+        required: true
         type: string
         nullable: true
       is_variant:
@@ -1692,7 +1688,8 @@ entities:
     domains: [analysis, taxonomy]
     target_table: tbl_analysis_taxon_counts
     public_id: analysis_taxon_count_id
-    identity_columns: [analysis_value_id, taxon_id]
+    unique_sets:
+      - [analysis_value_id, taxon_id]
     columns:
       analysis_value_id:
         required: true
@@ -1720,7 +1717,8 @@ entities:
     domains: [analysis]
     target_table: tbl_analysis_value_dimensions
     public_id: analysis_value_dimension_id
-    identity_columns: [analysis_value_id, dimension_id]
+    unique_sets:
+      - [analysis_value_id, dimension_id]
     columns:
       analysis_value_id:
         required: true
@@ -1748,7 +1746,8 @@ entities:
     domains: [analysis, dating]
     target_table: tbl_analysis_dating_ranges
     public_id: analysis_dating_range_id
-    identity_columns: [analysis_value_id, low_value, high_value, low_qualifier, high_qualifier]
+    unique_sets:
+      - [analysis_value_id, low_value, high_value, low_qualifier, high_qualifier]
     columns:
       analysis_value_id:
         required: true
@@ -1769,9 +1768,11 @@ entities:
         type: boolean
         nullable: true
       low_qualifier:
+        required: true
         type: string
         nullable: true
       high_qualifier:
+        required: true
         type: string
         nullable: true
       age_type_id:
@@ -1804,13 +1805,15 @@ entities:
     domains: [abundance, taxonomy]
     target_table: tbl_abundances
     public_id: abundance_id
-    identity_columns: [analysis_entity_id, taxon_id]
+    unique_sets:
+      - [analysis_entity_id, taxon_id]
     columns:
       analysis_entity_id:
         required: true
         type: integer
         nullable: false
       taxon_id:
+        required: true
         type: integer
         nullable: false
       abundance_element_id:
@@ -1836,7 +1839,8 @@ entities:
     domains: [abundance]
     target_table: tbl_abundance_elements
     public_id: abundance_element_id
-    identity_columns: [element_name]
+    unique_sets:
+      - [element_name]
     columns:
       element_name:
         required: true
@@ -1855,7 +1859,8 @@ entities:
     description: Common project-side grouping vocabulary for abundance elements used during SEAD abundance preparation.
     domains: [abundance]
     public_id: abundance_element_group_id
-    identity_columns: [abundance_element_group_name]
+    unique_sets:
+      - [abundance_element_group_name]
     columns:
       abundance_element_group_name:
         required: true
@@ -1872,7 +1877,8 @@ entities:
     domains: [abundance]
     target_table: tbl_abundance_modifications
     public_id: abundance_modification_id
-    identity_columns: [abundance_id, modification_type_id]
+    unique_sets:
+      - [abundance_id, modification_type_id]
     columns:
       abundance_id:
         required: true
@@ -1895,7 +1901,6 @@ entities:
     domains: [abundance]
     target_table: tbl_modification_types
     public_id: modification_type_id
-    identity_columns: [modification_type_name]
     columns:
       modification_type_name:
         required: true
@@ -1915,16 +1920,19 @@ entities:
     domains: [abundance]
     target_table: tbl_abundance_properties
     public_id: abundance_property_id
-    identity_columns: [abundance_id, property_type_id, property_value]
+    unique_sets:
+      - [abundance_id, property_type_id, property_value]
     columns:
       abundance_id:
         required: true
         type: integer
         nullable: false
       property_type_id:
+        required: true
         type: integer
         nullable: false
       property_value:
+        required: true
         type: string
         nullable: false
     foreign_keys:
@@ -1940,7 +1948,6 @@ entities:
     domains: [abundance, spatial]
     target_table: tbl_property_types
     public_id: property_type_id
-    identity_columns: [property_type_name]
     columns:
       property_type_name:
         required: true
@@ -1971,7 +1978,6 @@ entities:
     domains: [taxonomy, abundance]
     target_table: tbl_identification_levels
     public_id: identification_level_id
-    identity_columns: [identification_level_abbrev]
     columns:
       identification_level_abbrev:
         required: true
@@ -1994,7 +2000,6 @@ entities:
     domains: [taxonomy, abundance]
     target_table: tbl_abundance_ident_levels
     public_id: abundance_ident_level_id
-    identity_columns: [abundance_id, identification_level_id]
     columns:
       abundance_id:
         required: true
@@ -2020,7 +2025,8 @@ entities:
     domains: [taxonomy]
     target_table: tbl_taxa_tree_master
     public_id: taxon_id
-    identity_columns: [genus_id, species]
+    unique_sets:
+      - [genus_id, species]
     columns:
       genus_id:
         required: true
@@ -2042,7 +2048,8 @@ entities:
     domains: [taxonomy]
     target_table: tbl_taxa_common_names
     public_id: taxon_common_name_id
-    identity_columns: [taxon_id, common_name]
+    unique_sets:
+      - [taxon_id, common_name]
     columns:
       taxon_id:
         required: true
@@ -2067,7 +2074,9 @@ entities:
     domains: [taxonomy]
     target_table: tbl_taxa_synonyms
     public_id: synonym_id
-    identity_columns: [taxon_id, biblio_id, synonym]
+    unique_sets:
+      - [taxon_id, biblio_id, synonym]
+      - [synonym_uuid]
     columns:
       biblio_id:
         required: true
@@ -2083,12 +2092,14 @@ entities:
         type: string
         nullable: true
       taxon_id:
+        required: true
         type: integer
         nullable: true
       author_id:
         type: integer
         nullable: true
       synonym:
+        required: true
         type: string
         nullable: true
       reference_type:
@@ -2112,12 +2123,15 @@ entities:
     domains: [taxonomy]
     target_table: tbl_taxa_measured_attributes
     public_id: measured_attribute_id
-    identity_columns: [taxon_id, attribute_type, attribute_measure]
+    unique_sets:
+      - [taxon_id, attribute_type, attribute_measure]
     columns:
       attribute_measure:
+        required: true
         type: string
         nullable: true
       attribute_type:
+        required: true
         type: string
         nullable: true
       attribute_units:
@@ -2141,7 +2155,9 @@ entities:
     domains: [taxonomy]
     target_table: tbl_rdb_systems
     public_id: rdb_system_id
-    identity_columns: [location_id, rdb_system, rdb_version]
+    unique_sets:
+      - [location_id, rdb_system, rdb_version]
+      - [rdb_system_uuid]
     columns:
       biblio_id:
         required: true
@@ -2155,12 +2171,14 @@ entities:
         type: integer
         nullable: true
       rdb_system:
+        required: true
         type: string
         nullable: true
       rdb_system_date:
         type: integer
         nullable: true
       rdb_version:
+        required: true
         type: string
         nullable: true
       rdb_system_uuid:
@@ -2180,15 +2198,16 @@ entities:
     domains: [taxonomy]
     target_table: tbl_rdb_codes
     public_id: rdb_code_id
-    identity_columns: [rdb_system_id, rdb_category]
     columns:
       rdb_category:
+        required: true
         type: string
         nullable: true
       rdb_definition:
         type: string
         nullable: true
       rdb_system_id:
+        required: true
         type: integer
         nullable: true
     unique_sets:
@@ -2205,13 +2224,15 @@ entities:
     domains: [taxonomy]
     target_table: tbl_rdb
     public_id: rdb_id
-    identity_columns: [taxon_id, location_id, rdb_code_id]
+    unique_sets:
+      - [taxon_id, location_id, rdb_code_id]
     columns:
       location_id:
         required: true
         type: integer
         nullable: false
       rdb_code_id:
+        required: true
         type: integer
         nullable: true
       taxon_id:
@@ -2233,7 +2254,6 @@ entities:
     domains: [taxonomy]
     target_table: tbl_ecocode_systems
     public_id: ecocode_system_id
-    identity_columns: [name]
     columns:
       biblio_id:
         type: integer
@@ -2253,6 +2273,7 @@ entities:
         nullable: true
     unique_sets:
       - [name]
+      - [ecocode_system_uuid]
     foreign_keys:
       - entity: citation
         required: false
@@ -2264,7 +2285,6 @@ entities:
     domains: [taxonomy]
     target_table: tbl_ecocode_groups
     public_id: ecocode_group_id
-    identity_columns: [ecocode_system_id, name]
     columns:
       ecocode_system_id:
         required: true
@@ -2293,7 +2313,6 @@ entities:
     domains: [taxonomy]
     target_table: tbl_ecocode_definitions
     public_id: ecocode_definition_id
-    identity_columns: [ecocode_group_id, name]
     columns:
       abbreviation:
         type: string
@@ -2329,7 +2348,6 @@ entities:
     domains: [taxonomy]
     target_table: tbl_ecocodes
     public_id: ecocode_id
-    identity_columns: [taxon_id, ecocode_definition_id]
     columns:
       ecocode_definition_id:
         required: true
@@ -2354,7 +2372,6 @@ entities:
     domains: [taxonomy]
     target_table: tbl_taxonomic_order_systems
     public_id: taxonomic_order_system_id
-    identity_columns: [system_name]
     columns:
       system_name:
         required: true
@@ -2368,6 +2385,7 @@ entities:
         nullable: true
     unique_sets:
       - [system_name]
+      - [taxonomic_order_system_uuid]
 
   taxonomic_order:
     role: fact
@@ -2377,7 +2395,6 @@ entities:
     domains: [taxonomy]
     target_table: tbl_taxonomic_order
     public_id: taxonomic_order_id
-    identity_columns: [taxon_id, taxonomic_order_system_id, taxonomic_code]
     columns:
       taxon_id:
         required: true
@@ -2388,6 +2405,7 @@ entities:
         type: integer
         nullable: false
       taxonomic_code:
+        required: true
         type: decimal
         nullable: true
     unique_sets:
@@ -2407,7 +2425,6 @@ entities:
     domains: [dating]
     target_table: tbl_age_types
     public_id: age_type_id
-    identity_columns: [age_type]
     columns:
       age_type:
         required: true
@@ -2426,7 +2443,6 @@ entities:
     domains: [dating]
     target_table: tbl_relative_age_types
     public_id: relative_age_type_id
-    identity_columns: [age_type]
     columns:
       age_type:
         required: true
@@ -2445,7 +2461,6 @@ entities:
     domains: [dating]
     target_table: tbl_chronologies
     public_id: chronology_id
-    identity_columns: [chronology_name]
     columns:
       chronology_name:
         required: true
@@ -2481,7 +2496,6 @@ entities:
     domains: [dating]
     target_table: tbl_dating_uncertainty
     public_id: dating_uncertainty_id
-    identity_columns: [uncertainty]
     columns:
       uncertainty:
         required: true
@@ -2497,7 +2511,6 @@ entities:
     domains: [dating]
     target_table: tbl_dating_material
     public_id: dating_material_id
-    identity_columns: [material_dated]
     columns:
       material_dated:
         required: true
@@ -2522,7 +2535,8 @@ entities:
     domains: [dating]
     target_table: tbl_relative_ages
     public_id: relative_age_id
-    identity_columns: [relative_age_name]
+    unique_sets:
+      - [relative_age_name]
     columns:
       relative_age_name:
         required: true
@@ -2564,18 +2578,21 @@ entities:
   relative_dating:
     role: fact
     required: false
-    description: Relative or archaeological dating observation linked to an analysis entity and optionally to a relative age vocabulary entry; Arbodat archaeological dating facts map here.
+    description: Relative or archaeological dating observation linked to an analysis entity and optionally to a relative
+      age vocabulary entry; Arbodat archaeological dating facts map here.
     aggregate_parent: analysis_entity
     domains: [dating]
     target_table: tbl_relative_dates
     public_id: relative_date_id
-    identity_columns: [analysis_entity_id, relative_age_id]
+    unique_sets:
+      - [analysis_entity_id, relative_age_id]
     columns:
       analysis_entity_id:
         required: true
         type: integer
         nullable: false
       relative_age_id:
+        required: true
         type: integer
         nullable: true
       method_id:
@@ -2600,12 +2617,14 @@ entities:
   geochronology:
     role: fact
     required: false
-    description: Absolute or chronology dating observation linked to an analysis entity and optionally to a dating laboratory; Arbodat chronology/lab dating facts map here even when the project-local entity is named `dating`.
+    description: Absolute or chronology dating observation linked to an analysis entity and optionally to a dating 
+      laboratory; Arbodat chronology/lab dating facts map here even when the project-local entity is named `dating`.
     aggregate_parent: analysis_entity
     domains: [dating]
     target_table: tbl_geochronology
     public_id: geochron_id
-    identity_columns: [analysis_entity_id, lab_number]
+    unique_sets:
+      - [analysis_entity_id, lab_number]
     columns:
       analysis_entity_id:
         required: true
@@ -2615,6 +2634,7 @@ entities:
         type: integer
         nullable: true
       lab_number:
+        required: true
         type: string
         nullable: true
       age:
@@ -2650,7 +2670,8 @@ entities:
     domains: [dating]
     target_table: tbl_dating_labs
     public_id: dating_lab_id
-    identity_columns: [international_lab_id]
+    unique_sets:
+      - [international_lab_id]
     columns:
       international_lab_id:
         required: true
@@ -2673,7 +2694,6 @@ entities:
     domains: [core, contacts]
     target_table: tbl_method_groups
     public_id: method_group_id
-    identity_columns: [group_name]
     columns:
       group_name:
         required: true
@@ -2720,6 +2740,7 @@ entities:
         type: string
         nullable: true
 
+    unique_sets: []
   contact_type:
     role: classifier
     required: false
@@ -2727,9 +2748,9 @@ entities:
     domains: [contacts]
     target_table: tbl_contact_types
     public_id: contact_type_id
-    identity_columns: [contact_type_name]
     columns:
       contact_type_name:
+        required: true
         type: string
         nullable: false
       description:
@@ -2745,7 +2766,8 @@ entities:
     domains: [contacts, provenance]
     target_table: tbl_dataset_contacts
     public_id: dataset_contact_id
-    identity_columns: [dataset_id, contact_id, contact_type_id, event_date]
+    unique_sets:
+      - [dataset_id, contact_id, contact_type_id, event_date]
     columns:
       dataset_id:
         required: true
@@ -2760,6 +2782,7 @@ entities:
         type: integer
         nullable: false
       event_date:
+        required: true
         type: date
         nullable: true
     foreign_keys:
@@ -2777,7 +2800,6 @@ entities:
     domains: [core, excavation]
     target_table: tbl_feature_types
     public_id: feature_type_id
-    identity_columns: [feature_type_name]
     columns:
       feature_type_name:
         required: true
@@ -2796,13 +2818,15 @@ entities:
     domains: [core, excavation]
     target_table: tbl_features
     public_id: feature_id
-    identity_columns: [feature_type_id, feature_name]
+    unique_sets:
+      - [feature_type_id, feature_name]
     columns:
       feature_type_id:
         required: true
         type: integer
         nullable: false
       feature_name:
+        required: true
         type: string
         nullable: true
       feature_description:
@@ -2820,7 +2844,8 @@ entities:
     domains: [spatial]
     target_table: tbl_site_properties
     public_id: site_property_id
-    identity_columns: [site_id, property_type_id, property_value]
+    unique_sets:
+      - [site_id, property_type_id, property_value]
     columns:
       site_id:
         required: true
@@ -2848,7 +2873,8 @@ entities:
     domains: [excavation]
     target_table: tbl_feature_properties
     public_id: feature_property_id
-    identity_columns: [feature_id, property_type_id, property_value]
+    unique_sets:
+      - [feature_id, property_type_id, property_value]
     columns:
       feature_id:
         required: true
@@ -2876,7 +2902,8 @@ entities:
     domains: [spatial]
     target_table: tbl_site_natgridrefs
     public_id: site_natgridref_id
-    identity_columns: [site_id, method_id, natgridref]
+    unique_sets:
+      - [site_id, method_id, natgridref]
     columns:
       site_id:
         required: true
@@ -2903,7 +2930,8 @@ entities:
     domains: [core, excavation]
     target_table: tbl_physical_sample_features
     public_id: physical_sample_feature_id
-    identity_columns: [physical_sample_id, feature_id]
+    unique_sets:
+      - [physical_sample_id, feature_id]
     columns:
       physical_sample_id:
         required: true
@@ -2926,7 +2954,6 @@ entities:
     domains: [core]
     target_table: tbl_data_types
     public_id: data_type_id
-    identity_columns: [data_type_name]
     columns:
       data_type_name:
         required: true
@@ -2945,7 +2972,6 @@ entities:
     domains: [core]
     target_table: tbl_units
     public_id: unit_id
-    identity_columns: [unit_name]
     columns:
       unit_name:
         required: true

@@ -22,8 +22,6 @@ Unknown keys in these sections are rejected because each model uses `extra="forb
 - `entities.<entity_name>.public_id`: string | null (optional)
 - `entities.<entity_name>.public_id_generation`: string | null (optional)
 - `entities.<entity_name>.synchronize_sequence_after_insert`: boolean (optional)
-- `entities.<entity_name>.identity_columns`: list[string] (optional)
-- `entities.<entity_name>.identity_columns[]`: string (list item)
 - `entities.<entity_name>.columns`: map[string, ColumnSpec] (optional)
 - `entities.<entity_name>.columns.<column_name>`: ColumnSpec (map value)
 - `entities.<entity_name>.columns.<column_name>.required`: boolean (optional)
@@ -89,7 +87,6 @@ Values under `entities.<entity_name>` for each target entity.
 | public_id | string \| null | No | null | null |
 | public_id_generation | string \| null | No | null | null |
 | synchronize_sequence_after_insert | boolean | No | false | - |
-| identity_columns | list[string] | No | [] | - |
 | columns | map[string, ColumnSpec] | No | {} | - |
 | unique_sets | list[list[string]] | No | [] | - |
 | foreign_keys | list[ForeignKeySpec] | No | [] | - |

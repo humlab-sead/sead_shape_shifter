@@ -253,7 +253,7 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     assert submission_task.target_table == "tbl_submission_tasks"
     assert submission_task.columns["biblio_id"].nullable is True
     assert submission_task.columns["event_date"].type == "date"
-    assert dataset_contact.identity_columns == ["dataset_id", "contact_id", "contact_type_id", "event_date"]
+    assert ["dataset_id", "contact_id", "contact_type_id", "event_date"] in dataset_contact.unique_sets
     assert dataset_contact.columns["event_date"].nullable is True
     assert any(foreign_key.entity == "sample_group_sampling_context" for foreign_key in sample_group.foreign_keys)
     assert sample_group_coordinate.target_table == "tbl_sample_group_coordinates"
@@ -306,7 +306,6 @@ def test_non_sead_target_model_expresses_cleanly() -> None:
                 "domains": ["core"],
                 "target_table": "tbl_collections",
                 "public_id": "collection_id",
-                "identity_columns": ["collection_name"],
                 "columns": {
                     "collection_name": {"required": True, "type": "string", "nullable": False},
                     "institution_code": {"required": True, "type": "string", "nullable": False},
@@ -320,7 +319,6 @@ def test_non_sead_target_model_expresses_cleanly() -> None:
                 "domains": ["core"],
                 "target_table": "tbl_specimens",
                 "public_id": "specimen_id",
-                "identity_columns": ["catalogue_number"],
                 "columns": {
                     "catalogue_number": {"required": True, "type": "string", "nullable": False},
                     "taxon_id": {"required": True, "type": "integer", "nullable": False},
@@ -336,7 +334,6 @@ def test_non_sead_target_model_expresses_cleanly() -> None:
                 "domains": ["taxonomy"],
                 "target_table": "tbl_taxa",
                 "public_id": "taxon_id",
-                "identity_columns": ["scientific_name"],
                 "columns": {
                     "scientific_name": {"required": True, "type": "string", "nullable": False},
                     "common_name": {"type": "string", "nullable": True},

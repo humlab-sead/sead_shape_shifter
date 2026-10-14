@@ -47,16 +47,6 @@ class TargetModelSpecValidator:
                         )
                     )
 
-            for identity_column in entity_spec.identity_columns:
-                if identity_column not in column_names:
-                    issues.append(
-                        SpecValidationIssue(
-                            code="UNKNOWN_IDENTITY_COLUMN",
-                            message=f"Entity '{entity_name}' references unknown identity column '{identity_column}'",
-                            entity=entity_name,
-                        )
-                    )
-
             for unique_set in entity_spec.unique_sets:
                 for column_name in unique_set:
                     if column_name not in column_names:
