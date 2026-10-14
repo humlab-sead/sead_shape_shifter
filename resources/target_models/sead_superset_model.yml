@@ -1017,15 +1017,18 @@ entities:
         type: integer
         nullable: false
       master_set_id:
+        required: true
         type: integer
         nullable: true
       biblio_id:
         type: integer
         nullable: true
       project_id:
+        required: true
         type: integer
         nullable: true
       submission_id:
+        required: true
         type: integer
         nullable: false
     unique_sets:
@@ -1034,13 +1037,15 @@ entities:
       - entity: method
         required: true
       - entity: master_dataset
-        required: false
+        required: true
       - entity: citation
         required: false
       - entity: project
-        required: false
+        required: true
       - entity: submission
-        required: false
+        required: true
+      - entity: data_type
+        required: true
 
   master_dataset:
     role: lookup
