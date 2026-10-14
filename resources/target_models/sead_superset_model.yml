@@ -1350,11 +1350,10 @@ entities:
         nullable: true
 
   analysis_entity:
-    role: bridge
+    role: fact
     required: true
     description: Analytical observation context connecting sample and dataset.
-    identity_tracking: tracked
-    reconciliation: allocate
+    aggregate_parent: dataset
     domains: [core]
     target_table: tbl_analysis_entities
     public_id: analysis_entity_id
