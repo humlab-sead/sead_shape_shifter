@@ -1,10 +1,22 @@
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, SerializerFunctionWrapHandler, model_serializer
 
 SeverityLevel = Literal["error", "warning", "info"]
+
+
+class RequiredWhenSpec(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    has_new_rows: str = Field(
+        min_length=1,
+        description=(
+            "Source entity that owns this foreign key. The condition applies only after final reconciliation "
+            "selects at least one row from this entity for insertion."
+        ),
+    )
 
 
 class ForeignKeySpec(BaseModel):
@@ -13,6 +25,17 @@ class ForeignKeySpec(BaseModel):
     entity: str
     required: bool = False
     via: str | None = None  # Bridge entity name for many-to-many relationships
+    required_when: RequiredWhenSpec | None = Field(
+        default=None,
+        description="Condition that requires this foreign key after reconciliation.",
+    )
+
+    @model_serializer(mode="wrap")
+    def serialize_foreign_key(self, handler: SerializerFunctionWrapHandler) -> Any:
+        serialized = handler(self)
+        if self.required_when is not None and "required" not in self.model_fields_set:
+            serialized.pop("required", None)
+        return serialized
 
 
 class ColumnSpec(BaseModel):

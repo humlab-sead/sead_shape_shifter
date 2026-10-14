@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from src.issues import CoreIssue
 from src.target_model.effective_identity import resolve_effective_identity
-from src.target_model.models import EntitySpec, TargetModel
+from src.target_model.models import EntitySpec, ForeignKeySpec, TargetModel
 
 
 @dataclass(slots=True, kw_only=True, repr=False)
@@ -47,6 +47,9 @@ class TargetModelSpecValidator:
                         )
                     )
 
+                if foreign_key.required_when is not None:
+                    issues.extend(self._validate_required_when(target_model, entity_name, foreign_key))
+
             for unique_set in entity_spec.unique_sets:
                 for column_name in unique_set:
                     if column_name not in column_names:
@@ -84,6 +87,65 @@ class TargetModelSpecValidator:
 
             issues.extend(self._validate_aggregate_parent(target_model, entity_name, entity_spec))
             issues.extend(self._validate_identity_rules(entity_name, entity_spec))
+
+        return issues
+
+    @staticmethod
+    def _validate_required_when(target_model: TargetModel, entity_name: str, foreign_key: ForeignKeySpec) -> list[SpecValidationIssue]:
+        """Validate that a conditional FK names its owning source and a target with a public ID."""
+        issues: list[SpecValidationIssue] = []
+        source_entity = foreign_key.required_when.has_new_rows
+
+        if "required" in foreign_key.model_fields_set:
+            issues.append(
+                SpecValidationIssue(
+                    code="CONFLICTING_FOREIGN_KEY_REQUIREMENTS",
+                    message=(
+                        f"Entity '{entity_name}' foreign key to '{foreign_key.entity}' cannot declare both "
+                        "'required' and 'required_when'"
+                    ),
+                    entity=entity_name,
+                )
+            )
+
+        if source_entity not in target_model.entities:
+            issues.append(
+                SpecValidationIssue(
+                    code="UNKNOWN_CONDITIONAL_FOREIGN_KEY_SOURCE",
+                    message=(f"Entity '{entity_name}' foreign key condition references unknown source entity '{source_entity}'"),
+                    entity=entity_name,
+                )
+            )
+        elif source_entity != entity_name:
+            issues.append(
+                SpecValidationIssue(
+                    code="CONDITIONAL_FOREIGN_KEY_SOURCE_MISMATCH",
+                    message=(f"Entity '{entity_name}' foreign key condition must name its owning source entity, " f"not '{source_entity}'"),
+                    entity=entity_name,
+                )
+            )
+
+        if foreign_key.via:
+            issues.append(
+                SpecValidationIssue(
+                    code="CONDITIONAL_FOREIGN_KEY_VIA_UNSUPPORTED",
+                    message=(
+                        f"Entity '{entity_name}' foreign key condition cannot use bridge '{foreign_key.via}'; "
+                        "conditional foreign keys must be direct"
+                    ),
+                    entity=entity_name,
+                )
+            )
+
+        target_spec = target_model.entities.get(foreign_key.entity)
+        if target_spec is not None and not target_spec.public_id:
+            issues.append(
+                SpecValidationIssue(
+                    code="CONDITIONAL_FOREIGN_KEY_TARGET_MISSING_PUBLIC_ID",
+                    message=(f"Entity '{entity_name}' conditional foreign key target '{foreign_key.entity}' " "must declare public_id"),
+                    entity=entity_name,
+                )
+            )
 
         return issues
 

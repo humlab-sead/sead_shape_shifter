@@ -1032,7 +1032,7 @@ entities:
 
   master_dataset:
     role: lookup
-    required: false
+    required: true
     description: Master dataset grouping referenced by one or more datasets.
     domains: [core, provenance]
     target_table: tbl_dataset_masters
@@ -1064,7 +1064,7 @@ entities:
 
   data_provider:
     role: lookup
-    required: false
+    required: true
     description: Organization or individual that provides submitted data.
     domains: [core, provenance]
     target_table: tbl_data_providers
@@ -1309,7 +1309,7 @@ entities:
 
   citation:
     role: lookup
-    required: false
+    required: true
     description: Bibliographic reference reused by datasets, methods, and other SEAD entities.
     reconciliation: reconcile-fuzzy
     domains: [provenance, bibliography]
@@ -2708,7 +2708,7 @@ entities:
 
   contact:
     role: lookup
-    required: false
+    required: true
     description: Person or organization contact metadata used by datasets, projects, and dating laboratories.
     reconciliation: lookup-only
     domains: [contacts]

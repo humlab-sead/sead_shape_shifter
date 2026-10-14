@@ -14,6 +14,8 @@ def test_generated_reference_lists_expected_yaml_paths():
     assert "- `model`: ModelMetadata (required)" in rendered
     assert "- `entities.<entity_name>.columns.<column_name>.required`: boolean (optional)" in rendered
     assert "- `entities.<entity_name>.foreign_keys[].via`: string | null (optional)" in rendered
+    assert "- `entities.<entity_name>.foreign_keys[].required_when.has_new_rows`: string (required)" in rendered
+    assert "A `has_new_rows` condition applies after reconciliation selects at least one source row for insertion." in rendered
 
 
 def test_generated_reference_lists_allowed_enum_values():

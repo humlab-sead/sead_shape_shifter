@@ -2,13 +2,33 @@
 
 import pandas as pd
 
-from ingesters.sead_change_request import ChangeRowState, PlannedRowAction, PlannedTable, build_change_request_package
+from ingesters.sead_change_request import ChangeRowState, PlannedRowAction, PlannedTable, build_change_request_package, project_target_ids
 from ingesters.sead_change_request.contracts import (
     IdentityResolutionResult,
     ProjectedTable,
     ResolvedIdentityTable,
     TargetProjectionResult,
 )
+from src.target_model.models import TargetModel
+
+
+def conditional_location_target_model() -> TargetModel:
+    """Build a target model with a conditional location -> location_type foreign key."""
+    return TargetModel.model_validate(
+        {
+            "model": {"name": "SEAD Test Model", "version": "0.1.0"},
+            "entities": {
+                "location_type": {"role": "lookup", "public_id": "location_type_id"},
+                "location": {
+                    "role": "fact",
+                    "public_id": "location_id",
+                    "columns": {"location_type_id": {"type": "integer", "nullable": False}},
+                    "foreign_keys": [{"entity": "location_type", "required_when": {"has_new_rows": "location"}}],
+                },
+            },
+            "constraints": [],
+        }
+    )
 
 
 class TestBuildChangeRequestPackage:
@@ -144,3 +164,45 @@ class TestBuildChangeRequestPackage:
         assert package.tables["sample"].frame["sample_name"].tolist() == ["changed"]
         assert package.tables["sample"].planned_actions is not None
         assert package.tables["sample"].planned_actions.tolist() == [PlannedRowAction.UPDATE_EXISTING_CANDIDATE]
+
+    def test_update_candidate_keeps_projected_conditional_foreign_key_value(self):
+        """An accepted update candidate should carry its projected conditional FK value into the package."""
+        frame = pd.DataFrame({"system_id": [10, 11], "location_id": [None, None], "location_type_id": [99, 1]})
+        identity_result = IdentityResolutionResult(
+            tables={
+                "location": ResolvedIdentityTable(
+                    entity_name="location",
+                    frame=frame,
+                    row_states=pd.Series(
+                        [ChangeRowState.EXISTING_ENTITY, ChangeRowState.EXISTING_ENTITY], index=frame.index, name="_row_state"
+                    ),
+                    resolved_target_ids=pd.Series([501, 502], index=frame.index, dtype="Int64", name="_target_id"),
+                ),
+                "location_type": ResolvedIdentityTable(
+                    entity_name="location_type",
+                    frame=pd.DataFrame({"system_id": [1], "location_type_id": [None]}),
+                    row_states=pd.Series([ChangeRowState.NEWLY_ALLOCATED_ENTITY], index=[0], name="_row_state"),
+                    resolved_target_ids=pd.Series([901], index=[0], dtype="Int64", name="_target_id"),
+                ),
+            }
+        )
+        planned_tables = [
+            PlannedTable(
+                entity_name="location",
+                frame=frame,
+                planned_actions=pd.Series(
+                    [PlannedRowAction.REFERENCE_EXISTING, PlannedRowAction.UPDATE_EXISTING_CANDIDATE],
+                    index=frame.index,
+                    name="_planned_action",
+                ),
+            )
+        ]
+
+        projection_result = project_target_ids(identity_result, conditional_location_target_model(), planned_tables)
+        package = build_change_request_package(projection_result, identity_result, planned_tables)
+
+        assert set(package.tables) == {"location"}
+        assert package.tables["location"].frame["location_id"].tolist() == [502]
+        assert package.tables["location"].frame["location_type_id"].tolist() == [901]
+        assert package.tables["location"].planned_actions is not None
+        assert package.tables["location"].planned_actions.tolist() == [PlannedRowAction.UPDATE_EXISTING_CANDIDATE]

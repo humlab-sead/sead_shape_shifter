@@ -104,6 +104,9 @@ branches-ahead:
 	@echo "✓ Branches ahead of dev listed above"
 
 
+target-model-csv:
+	yq -o=csv '[.entities | to_entries[] | {"entity": .key, "role": .value.role, "required": .value.required, "description": .value.description, "domains": ((.value.domains // []) | join("; ")), "target_table": .value.target_table, "public_id": .value.public_id, "columns": ((.value.columns // {}) | keys | join("; ")), "unique_sets": ((.value.unique_sets // []) | map(join(" + ")) | join("; ")), "foreign_keys": ((.value.foreign_keys // []) | map(.entity) | join("; "))}]' resources/target_models/sead_superset_model.yml
+
 ################################################################################
 # Development authorization for the current local resources. 
 ################################################################################
