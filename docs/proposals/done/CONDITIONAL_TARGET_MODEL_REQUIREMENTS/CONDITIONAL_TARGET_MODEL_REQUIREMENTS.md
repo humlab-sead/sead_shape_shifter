@@ -2,7 +2,11 @@
 
 ## Status
 
-**Proposed change.** Scope: target-model FK requirements and their evaluation for SEAD change requests. Goal: require a lookup, link, and FK value when reconciled rows will be inserted.
+- **Implemented** (branch `conditional-target-model-requirements`); closes issue [#551](https://github.com/humlab-sead/sead_shape_shifter/issues/551).
+- Scope: target-model FK requirements and their evaluation for SEAD change requests.
+- Goal: require a lookup, link, and FK value when reconciled rows will be inserted.
+- Validation: Phase 1 and Phase 2 passed their task-plan milestones. The [phase 2 task plan](CONDITIONAL_TARGET_MODEL_REQUIREMENTS_PHASE_2_TASK_PLAN.md) records milestone `VM-2` and checks `V-1` to `V-7`.
+- Activation in `resources/target_models/sead_superset_model.yml` remains a separate decision; this change provides the format, enforcement, and guidance only.
 
 ## Summary
 
@@ -10,7 +14,7 @@ Add `required_when` to an existing `foreign_keys` entry. `has_new_rows` becomes 
 
 ## Problem
 
-The SEAD target model currently marks `location_type`, the FK from `location`, and `location_type_id` as unconditionally required. A submission whose locations all reconcile to existing rows can therefore receive requirement errors even though it inserts no location. The [superset model](../../resources/target_models/sead_superset_model.yml) contains a commented conditional-FK example, but the format cannot parse or enforce it.
+The SEAD target model currently marks `location_type`, the FK from `location`, and `location_type_id` as unconditionally required. A submission whose locations all reconcile to existing rows can therefore receive requirement errors even though it inserts no location. The [superset model](../../../../resources/target_models/sead_superset_model.yml) contains a commented conditional-FK example, but the format cannot parse or enforce it.
 
 ## Scope
 
@@ -27,7 +31,7 @@ The SEAD target model currently marks `location_type`, the FK from `location`, a
 
 ## Current Behavior
 
-The [target-model schema](../../src/target_model/models.py) accepts only boolean `required` values for entities, columns, and FKs and rejects unknown fields. [Project conformance](../../src/target_model/conformance.py) checks required columns and links using project configuration; it has no reconciliation result. [Data conformance](../../src/target_model/data_validators.py) checks nulls in `required: true`, non-nullable columns on produced rows. [Target projection](../../ingesters/sead_change_request/target_projection.py) also checks required columns and FKs before the [package builder](../../ingesters/sead_change_request/package_builder.py) selects insert rows. The older SEAD [`Submission.has_new_rows()`](../../ingesters/sead/submission.py) checks for missing PK values before reconciliation, so it cannot determine this condition.
+The [target-model schema](../../../../src/target_model/models.py) accepts only boolean `required` values for entities, columns, and FKs and rejects unknown fields. [Project conformance](../../../../src/target_model/conformance.py) checks required columns and links using project configuration; it has no reconciliation result. [Data conformance](../../../../src/target_model/data_validators.py) checks nulls in `required: true`, non-nullable columns on produced rows. [Target projection](../../../../ingesters/sead_change_request/target_projection.py) also checks required columns and FKs before the [package builder](../../../../ingesters/sead_change_request/package_builder.py) selects insert rows. The older SEAD [`Submission.has_new_rows()`](../../../../ingesters/sead/submission.py) checks for missing PK values before reconciliation, so it cannot determine this condition.
 
 ## Proposed Design
 
