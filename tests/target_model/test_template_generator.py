@@ -6,13 +6,13 @@ from src.target_model.models import TargetModel
 from src.target_model.template_generator import generate_project_template, render_project_template_yaml
 
 EXAMPLES_DIR = Path("tests/test_data/examples")
-SPECS_DIR = Path("tests/test_data/specs")
+TARGET_MODELS_DIR = Path("tests/test_data/target_models")
 
-SPEC_PATH: Path = SPECS_DIR / "sead_standard_model.yml"
+TARGET_MODEL_PATH: Path = TARGET_MODELS_DIR / "sead_standard_model.yml"
 
 
 def load_target_model() -> TargetModel:
-    return TargetModel.model_validate(yaml.safe_load(SPEC_PATH.read_text(encoding="utf-8")))
+    return TargetModel.model_validate(yaml.safe_load(TARGET_MODEL_PATH.read_text(encoding="utf-8")))
 
 
 def test_generate_project_template_for_dating_domain_includes_required_dependency_closure() -> None:
