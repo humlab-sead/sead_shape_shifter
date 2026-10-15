@@ -395,7 +395,7 @@ entities:
   submission:
     type: fixed
     public_id: submission_id
-    keys: [submission_code]
+    keys: [submission_identifier]
     columns: 
       - system_id
       - submission_state
