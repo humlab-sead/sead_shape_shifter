@@ -373,6 +373,8 @@ entities:
       local_keys: [Fraktion]
       remote_keys: [arbodat_code]
       how: left
+      extra_columns:
+        method_name: method_name
       constraints:
         allow_unmatched_left: false
         cardinality: many-to-one
