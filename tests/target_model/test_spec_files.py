@@ -41,7 +41,7 @@ def test_sead_v2_spec_loads_and_validates(spec_path: Path) -> None:
 
 
 def test_sead_superset_spec_loads_and_validates() -> None:
-    spec_path = Path("resources/target_models/sead_superset_model.yml")
+    spec_path = Path("resources/target_models/sead_standard_model.yml")
     target_model = TargetModel.model_validate(yaml.safe_load(spec_path.read_text(encoding="utf-8")))
 
     issues = TargetModelSpecValidator().validate(target_model)

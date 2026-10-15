@@ -456,7 +456,7 @@ applies_to:
 
 1. `docs/TARGET_MODEL_GUIDE.md`
 2. `docs/TARGET_MODEL_SCHEMA_REFERENCE.md`
-3. `resources/target_models/sead_superset_model.yml`
+3. `resources/target_models/sead_standard_model.yml`
 4. The active target-model file referenced by `metadata.target_model` in the project being reviewed
 
 **SEAD and SIMS sources:**

@@ -10,7 +10,7 @@
 
 ## Summary
 
-The shared SEAD target model at [resources/target_models/sead_superset_model.yml](../../resources/target_models/sead_superset_model.yml) is described as the near-complete shared SEAD model, but nothing defines or checks what "complete" means. Three documents state different coverage counts for the same file: 23 entities in the [implementation plan](done/SEAD_V2_IMPLEMENTATION_PLAN.md), 61 in the [completeness proposal](done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md), and 92 in [docs/TARGET_MODEL_GUIDE.md](../TARGET_MODEL_GUIDE.md) against an actual 102. The model also now contains tables that its own reference snapshot excludes while missing 42 tables that the snapshot includes.
+The shared SEAD target model at [resources/target_models/sead_standard_model.yml](../../resources/target_models/sead_standard_model.yml) is described as the near-complete shared SEAD model, but nothing defines or checks what "complete" means. Three documents state different coverage counts for the same file: 23 entities in the [implementation plan](done/SEAD_V2_IMPLEMENTATION_PLAN.md), 61 in the [completeness proposal](done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md), and 92 in [docs/TARGET_MODEL_GUIDE.md](../TARGET_MODEL_GUIDE.md) against an actual 102. The model also now contains tables that its own reference snapshot excludes while missing 42 tables that the snapshot includes.
 
 Recommendation: pin the coverage boundary as a versioned list of source surfaces, record every table in those surfaces as either mapped or excluded-with-reason in a coverage manifest, generate the coverage report from that manifest, and fail the test suite when the model and the manifest disagree.
 

@@ -15,7 +15,7 @@ from psycopg import sql
 ROLES = ("bridge", "classifier", "fact", "lookup")
 DEFAULT_FONT_NAME = "Calibri"
 DEFAULT_FONT_SIZE = 10
-DEFAULT_MODEL = Path(__file__).resolve().parent.parent / "resources" / "target_models" / "sead_superset_model.yml"
+DEFAULT_MODEL = Path(__file__).resolve().parent.parent / "resources" / "target_models" / "sead_standard_model.yml"
 
 
 def _vault() -> dict[str, str]:
