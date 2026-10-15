@@ -25,6 +25,15 @@ Read [the configuration instructions](../../../.github/instructions/shapeshifter
 - API and YAML editing preserve `@include:`, `@load:`, `@value:`, and `${ENV_VAR}` strings. The API's `ProjectMapper.to_core()` resolves them for processing. Do not inline or replace directives during a review unless the user requests that change.
 - Materialization saves a fixed snapshot with `materialized.enabled` and `materialized.source_state`, which records the original configuration for restoration. Inspect the saved values or sidecar as snapshot data.
 
+## Common failures to check
+
+- A `keys` field, FK `local_keys` field, or unnest `id_vars` field has no declared producer. Trace the source loader, `columns`, `extra_columns`, earlier FKs, and resolved `@value` lists. A source field used only during extraction need not appear in the final `columns` list.
+- Unnest `id_vars` and `value_vars` overlap after directives expand. In particular, `@value: entities.<entity>.columns` may include identifiers as well as measurements. Check the expanded lists and name the intended value fields explicitly when needed.
+- An FK has empty join-key lists, mismatched key values, or null local keys. Check the actual values and ID tier on both sides; a child FK stores the parent's `system_id`, even when its column is named by the parent's `public_id`. A missing `how` means an inner join, which can remove every child row.
+- FK constraints have an unknown field name or value, such as `contraints` or `many-to-one` instead of `constraints` and `many_to_one`. Check the registered names and values directly; structural validation may not report ignored settings.
+- An identity field conflicts with produced data: a non-fixed entity declares derived `system_id` in `columns`, `extra_columns` redefines `public_id`, or a fixed integer ID is quoted as a string. Check fixed-row positions and YAML value types before changing identity fields.
+- An `extra_columns` string names a field unavailable at that stage and becomes literal text. If a copy is intended, identify the source field and make it available through the appropriate loader or FK output.
+
 ## Validation and reporting
 
 For a changed project, or when validation is requested, start with the structural workflow if the project and its referenced files are available:
