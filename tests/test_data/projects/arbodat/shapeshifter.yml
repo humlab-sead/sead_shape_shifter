@@ -445,14 +445,21 @@ entities:
     - entity: master_dataset
       local_keys: [master_set_id]
       remote_keys: [master_set_id]
+    - entity: submission
+      local_keys: [submission_id]
+      remote_keys: [submission_id]
+    - entity: data_type
+      local_keys: [data_type_name]
+      remote_keys: [data_type_name]
     depends_on: [method, project]
     drop_duplicates: true
     extra_columns:
       dataset_type_id:
       dataset_name: method_name
       master_set_id: 1
-      data_type_id:
+      data_type_name: archeaobotany
       biblio_id:
+      submission_id: 1
   dataset_contacts:
     type: entity
     source: dataset
