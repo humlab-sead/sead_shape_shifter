@@ -294,7 +294,7 @@ entities:
     query: select distinct [ChronoDat], [Beschreibung], [Nummer], [von], [bis] from [ChronoDat] ;
   contact:
     type: entity
-    source: _project_contact
+    source: project_contact_helper
     public_id: contact_id
     keys: []
     columns: [contact_name, contact_type]
@@ -302,7 +302,7 @@ entities:
     - entity: contact_type
       local_keys: [contact_type]
       remote_keys: [arbodat_code]
-    depends_on: [contact_type, _project_contact]
+    depends_on: [contact_type, project_contact_helper]
     drop_duplicates: true
     append:
       source:
@@ -482,7 +482,7 @@ entities:
     keys: [Projekt, Fraktion, contact_id]
     columns: [Projekt, Fraktion]
     foreign_keys:
-    - entity: _project_contact
+    - entity: project_contact_helper
       local_keys: [Projekt]
       remote_keys: [Projekt]
       extra_columns:
@@ -490,7 +490,7 @@ entities:
     - entity: contact
       local_keys: [contact_name]
       remote_keys: [contact_name]
-    depends_on: [_project_contact, contact, dataset, project]
+    depends_on: [project_contact_helper, contact, dataset, project]
     drop_duplicates: [Projekt, Fraktion, contact_id]
   dataset_submission:
     type: entity
@@ -1264,10 +1264,10 @@ entities:
           site_type: FustelTyp
           description: Beschreibung
       materialized_at: '2026-03-13T06:48:45.724589'
-  _pcodes:
+  pcodes_helper:
     type: sql
     source:
-    public_id: _pcodes_id
+    public_id: pcode_id
     keys: [PCODE]
     columns: [PCODE]
     depends_on: []
@@ -1291,11 +1291,11 @@ entities:
     query: |-
       select distinct t.[PCODE], t.[BNam], t.[Name_E], t.[Fam], t.[S_Od], t.[TaxAut], t.[Achtung]
       from [ÖkoSozDaten] t ;
-    depends_on: [_pcodes]
+    depends_on: [pcodes_helper]
     filters:
     - type: exists_in
       column: PCODE
-      other_entity: _pcodes
+      other_entity: pcodes_helper
       other_column: PCODE
     extra_columns:
       author_id:
@@ -1458,7 +1458,7 @@ entities:
     query: |-
       select [PCODE], [F], [F_s], [F_u], [K], [K_u], [L], [L_u], [N], [N_u], [Re], [Re_u], [S], [S_u], [SMet], [T], [T_u]
       from [ÖkoSozDaten];
-  _project_contact:
+  project_contact_helper:
     type: sql
     source:
     public_id: project_contact_id
@@ -1648,7 +1648,7 @@ options:
   reconciliation: '@include: reconciliation.yml'
   finally:
     drop:
-      tables: [_pcodes, _project_contact]
+      tables: [pcodes_helper, project_contact_helper]
       columns:
       - site.public_id
       - project.public_id
