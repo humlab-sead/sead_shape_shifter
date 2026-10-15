@@ -94,6 +94,7 @@ Prefer 3-7 phases. Use parity as an explicit measure when replacing legacy behav
 
 - Use relative links for repository documents.
 - Prefer one clear file per decision or plan.
+- When a proposal is created, add or update its row in the proposals index at `docs/proposals/README.md` with the proposal title, status, and a one-line decision summary. Leave unrelated rows unchanged. The index lists decision documents only; do not add phase plans, task plans, or handoffs to it.
 - Do not duplicate long background sections across related documents.
 - Link related proposals, phase plans, task plans, or handoffs near the top.
 - Make current state and planned state explicit.
@@ -117,3 +118,4 @@ Check that:
 - open questions are real decisions, not filler
 - related phase plans, task plans, or handoff documents are linked when they already exist
 - the document name and location follow the Document Naming rule
+- a newly created proposal has a row in the proposals index at `docs/proposals/README.md`

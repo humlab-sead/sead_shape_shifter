@@ -1,1 +1,0 @@
-../../../instructions/proposal-writing-guide.instructions.md

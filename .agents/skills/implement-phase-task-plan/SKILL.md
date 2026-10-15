@@ -18,37 +18,33 @@ Determine from the user's request or current conversation:
 
 Infer details only when established by the conversation or verified repository content. Do not treat examples or placeholders as input values.
 
-An explicit target from the user or the current conversation takes precedence. Otherwise, locate the task plan beside its phase plan per the Document Naming rule in [Proposal document structure](references/proposal-document-structure.md). If the task plan path or phase is unknown, or more than one candidate matches, ask one concise clarifying question.
+An explicit target from the user or the current conversation takes precedence. Otherwise, locate the task plan beside its phase plan per the Document Naming rule in [Proposal document structure](../../../.github/instructions/proposal-document-structure.instructions.md). If the task plan path or phase is unknown, or more than one candidate matches, ask one concise clarifying question.
 
 ## References
 
 Before implementing, read:
 
-- the repository root [AGENTS.md](../../../AGENTS.md) and [`.github/AGENTS.md`](../../../.github/AGENTS.md)
-- [phase task plan instructions](../../../.github/instructions/task-plan.instructions.md)
-- [Proposal document structure](references/proposal-document-structure.md)
-- [Coding practices](references/coding-practices.md)
+- [Task plan instructions](../../../.github/instructions/task-plan.instructions.md)
+- [Proposal document structure](../../../.github/instructions/proposal-document-structure.instructions.md)
+- [Coding practices](../../../.github/instructions/coding-practices.instructions.md)
 - the task plan and its linked proposal and phase plan
-- applicable subsystem `AGENTS.md` files and path-specific instructions for the named deliverables
-- [writing style instructions](../../../.github/instructions/writing-style.instructions.md) when updating task-plan records or documentation
-
-Use repository instructions for project-specific rules if they differ from this skill.
+- applicable repository instruction files, including `AGENTS.md`
 
 ## Preconditions
 
 1. Confirm the selected phase is marked ready in its phase plan.
 2. Confirm the task plan is marked **Validated**, with no unresolved placeholder or blocking decision affecting the requested work.
 3. Identify the selected `T*` tasks, their dependencies, deliverables, applicable `V*` checks, and `PH*-AC-*` / `P-AC-*` mappings. For selected tasks, confirm that prerequisite tasks are complete or within the authorized scope.
-4. Verify that repository files, symbols, interfaces, dependencies, and expected behavior still match the plan's verified basis. When `graphify-out/graph.json` exists, use `.venv/bin/graphify query "<task question>"` to navigate relevant code, then confirm findings in current source and tests.
+4. Verify that repository files, symbols, interfaces, dependencies, and expected behavior still match the plan's verified basis.
 5. Inspect the working tree. Preserve pre-existing changes; if overlapping edits cannot be safely separated from planned changes, stop and report the conflict.
 
 If a precondition fails, do not edit implementation files. Report the concrete mismatch and affected path, symbol, task, or criterion ID. Do not silently change the plan to make it pass.
 
 ## Workflow
 
-1. Execute only authorized `T*` tasks in dependency order. Change only the plan's named deliverables, following its verified targets and preserving approved contracts, compatibility, migration rules, security requirements, and scope limits.
+1. Execute authorized `T*` tasks in dependency order. Change only the plan's named deliverables, preserving approved contracts, compatibility, migration rules, security requirements, and scope limits.
 2. Make routine low-level coding choices consistent with the plan and repository conventions. Escalate any decision that would change approved behavior, architecture, interfaces, dependencies, acceptance criteria, or scope; do not redesign the solution.
-3. Run the applicable `V*` checks for completed tasks. Before claiming full-phase completion, run all required phase validation checks. Record commands, outcomes, and evidence; distinguish baseline failures from failures introduced by the implementation. After code changes, run `.venv/bin/graphify update .` to refresh the project graph.
+3. Run the applicable `V*` checks for completed tasks. Before claiming full-phase completion, run all required phase validation checks. Record commands, outcomes, and evidence; distinguish baseline failures from failures introduced by the implementation.
 4. Correct implementation-caused failures within the authorized scope, then revalidate. Report unrelated or pre-existing failures without expanding scope. Never mark failed, skipped, or unexecuted checks as passed.
 5. Update only the task plan's progress tracker, validation evidence, and completion records after work has been verified. Preserve planned task definitions, `P-AC-*` / `PH*-AC-*` mappings, validation requirements, and design decisions.
 6. Record which acceptance criteria have supporting implementation and validation evidence. Do not infer criterion satisfaction merely from completed code edits.

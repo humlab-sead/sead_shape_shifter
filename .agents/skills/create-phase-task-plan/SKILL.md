@@ -20,7 +20,7 @@ Determine from the user's request or current conversation:
 
 Infer details when the conversation or verified repository content establishes them.
 
-An explicit target from the user or the current conversation takes precedence. Otherwise, name and place the task plan per the Document Naming rule in [Proposal document structure](references/proposal-document-structure.md). If the source proposal path or phase number is unknown, ask one concise clarifying question.
+An explicit target from the user or the current conversation takes precedence. Otherwise, name and place the task plan per the Document Naming rule in [Proposal document structure](../../../.github/instructions/proposal-document-structure.instructions.md). If the source proposal path or phase number is unknown, ask one concise clarifying question.
 
 Preserve the path of an existing task plan when updating it. If a user-supplied target does not follow the convention, confirm the path before writing.
 
@@ -30,8 +30,8 @@ Do not treat labels, examples, or placeholder text as input values.
 
 Before writing or revising a task plan, read:
 
-- `.github/instructions/task-plan.instructions.md`
-- [Proposal document structure](references/proposal-document-structure.md)
+- [Task plan instructions](../../../.github/instructions/task-plan.instructions.md)
+- [Proposal document structure](../../../.github/instructions/proposal-document-structure.instructions.md)
 - applicable repository instruction files, including `AGENTS.md`
 
 ## Workflow
