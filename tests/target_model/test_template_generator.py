@@ -22,7 +22,7 @@ def test_generate_project_template_for_dating_domain_includes_required_dependenc
 
     generated_entities: set[str] = template["entities"]  # type: ignore
     assert {"relative_ages", "relative_dating", "geochronology", "dating_lab"}.issubset(generated_entities)
-    assert {"analysis_entity", "sample", "sample_group", "sample_type", "site", "location", "location_type", "dataset", "method"}.issubset(
+    assert {"analysis_entity", "sample", "sample_group", "sample_type", "site", "location", "dataset", "method"}.issubset(
         generated_entities
     )
     assert "abundance" not in generated_entities

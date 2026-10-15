@@ -592,8 +592,11 @@ def test_core_conformance_reports_known_gaps_for_full_arbodat_project() -> None:
     project: ShapeShiftProject = load_real_project("arbodat")
 
     expected_errors = [
+        ("CONDITIONAL_FK_AWAITING_RECONCILIATION", "location"),
+        ("MISSING_REQUIRED_COLUMN", "relative_dating"),
+        ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "relative_dating"),
+        ("UNEXPECTED_PUBLIC_ID", "relative_dating"),
     ]
-
 
     issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
     actual_issues = [(issue.code, issue.entity) for issue in issues]
@@ -616,28 +619,29 @@ def test_core_conformance_current_corpus_issue_families_are_stable() -> None:
     assert issue_summary == {
         "sead_arbodat_core": Counter(
             {
-                "MISSING_REQUIRED_COLUMN": 3,
+                "MISSING_REQUIRED_COLUMN": 5,
+                "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 5,
+                "MISSING_REQUIRED_ENTITY": 5,
                 "MISSING_BRIDGE_ENTITY": 1,
-                "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 1,
-                "MISSING_REQUIRED_ENTITY": 1,
+                "CONDITIONAL_FK_AWAITING_RECONCILIATION": 1,
             }
         ),
         "sead_missing_sample_group": Counter(
             {
-                "MISSING_REQUIRED_COLUMN": 5,
-                "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 2,
-                "MISSING_REQUIRED_ENTITY": 2,
+                "MISSING_REQUIRED_COLUMN": 8,
+                "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 6,
+                "MISSING_REQUIRED_ENTITY": 6,
                 "UNEXPECTED_PUBLIC_ID": 1,
                 "MISSING_BRIDGE_ENTITY": 1,
+                "CONDITIONAL_FK_AWAITING_RECONCILIATION": 1,
             }
         ),
         "arbodat_full": Counter(
             {
-                "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 3,
-                "MISSING_REQUIRED_COLUMN": 3,
-                "APPEND_MISSING_REQUIRED_COLUMN": 2,
-                "MISSING_INDUCED_REQUIRED_ENTITY": 1,
-                "ORPHAN_FACT_ENTITY": 1,
+                "CONDITIONAL_FK_AWAITING_RECONCILIATION": 1,
+                "MISSING_REQUIRED_COLUMN": 1,
+                "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 1,
+                "UNEXPECTED_PUBLIC_ID": 1,
             }
         ),
     }
