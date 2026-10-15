@@ -790,7 +790,6 @@ entities:
     depends_on: [sample]
     drop_duplicates: true
     extra_columns:
-      relative_age_id:
       method_id:
       notes:
       dating_uncertainty_id:
