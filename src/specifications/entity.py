@@ -936,10 +936,15 @@ class ExtraColumnsConflictsSpecification(ProjectSpecification):
     - Columns from "columns" field
     - Public ID from "public_id" field
     - System column "system_id"
-    - Unnest columns (value_name, var_name)
+    - Unnest output columns (value_name, var_name)
 
     Business keys from the "keys" field are not checked. A key only marks an
     existing column, so an extra_column name may also be used as a key.
+
+    Unnest "id_vars" are not checked. They are columns that must already exist
+    before unnesting and are carried through unchanged, so an extra_column may
+    supply one. Foreign key output columns and FK local keys are not checked
+    either, because an extra_column may produce a key consumed by a later FK.
     """
 
     def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
@@ -956,11 +961,13 @@ class ExtraColumnsConflictsSpecification(ProjectSpecification):
         if not table_cfg.extra_columns:
             return True
 
-        # Only check actual source columns, not keys (keys can be added via extra_columns)
-        existing_columns: set[str] = set(table_cfg.get_columns(include_fks=False, include_extra=False, include_unnest=True))
+        # Only check produced columns, not keys (keys can be added via extra_columns).
+        # Unnest id_vars are passthrough inputs, not outputs, so they are excluded.
+        existing_columns: set[str] = set(table_cfg.columns)
         existing_columns.add(table_cfg.system_id)
         if table_cfg.public_id:
             existing_columns.add(table_cfg.public_id)
+        existing_columns.update(table_cfg.unnest_columns)
 
         conflicts: set[str] = set(table_cfg.extra_columns.keys()) & existing_columns
 

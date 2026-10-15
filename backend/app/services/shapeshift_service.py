@@ -437,10 +437,13 @@ class PreviewResultBuilder:
         preview_df: pd.DataFrame = table_store[entity_name].head(limit) if limit is not None else table_store[entity_name]
 
         key_columns: set[str] = entity_cfg.get_key_columns()
-        existing_result_columns: set[str] = set(entity_cfg.get_columns(include_fks=False, include_extra=False, include_unnest=True))
+        # Columns produced independently of extra_columns. Unnest id_vars are
+        # passthrough inputs, not outputs, so an extra_columns entry may supply one.
+        existing_result_columns: set[str] = set(entity_cfg.columns)
         existing_result_columns.add(entity_cfg.system_id)
         if entity_cfg.public_id:
             existing_result_columns.add(entity_cfg.public_id)
+        existing_result_columns.update(entity_cfg.unnest_columns)
 
         derived_columns: set[str] = {
             column_name
