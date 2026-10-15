@@ -473,7 +473,7 @@ class SqlColumnConfigurationSpecification(ProjectSpecification):
 
 @ENTITY_SPECIFICATION.register(key="non_fixed_identity_columns")
 class NonFixedIdentityColumnsSpecification(ProjectSpecification):
-    """Validates that non-fixed entities do not declare derived system_id columns in `columns`."""
+    """Warns when non-fixed entities declare system_id in `columns`."""
 
     def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
         self.clear()
@@ -483,12 +483,12 @@ class NonFixedIdentityColumnsSpecification(ProjectSpecification):
             return True
 
         configured_columns: set[str] = set(table.safe_columns)
-        forbidden_columns: list[str] = sorted(configured_columns & {table.system_id})
+        configured_system_ids: list[str] = sorted(configured_columns & {table.system_id})
 
-        if forbidden_columns:
-            self.add_error(
-                f"Entity '{entity_name}': non-fixed entities must not include derived system_id columns in 'columns': {forbidden_columns}. "
-                "These columns are added later in the pipeline.",
+        if configured_system_ids:
+            self.add_warning(
+                f"Entity '{entity_name}': non-fixed entities declare system_id in 'columns': {configured_system_ids}. "
+                "Runtime preserves supplied values, but non-fixed IDs are not checked for positive, unique integer values.",
                 entity=entity_name,
                 field="columns",
             )
