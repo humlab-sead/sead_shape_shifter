@@ -360,6 +360,60 @@ entities:
     drop_duplicates: true
     data_source: arbodat_lookup
     query: select distinct KultGr, Cult_EN from Kulturgruppen;
+  data_provider:
+    type: fixed
+    public_id: data_provider_id
+    keys: [data_provider_code]
+    columns: [system_id, data_provider_code, data_provider_name, notes, contact_id, biblio_id]
+    values:
+    - [1, 'Arbodat pilot', 'DP_CODE', 'Arbodat pilot', null, null]
+  data_type:
+    type: fixed
+    public_id: data_type_id
+    keys: [data_type_name]
+    columns: [data_type_name, definition]
+    column_types:
+      data_type_name: string
+      definition: string
+    values:
+    - [archeaobotany, null]
+  submission:
+    type: fixed
+    public_id: submission_id
+    keys: [submission_code]
+    columns: 
+      - system_id
+      - submission_state
+      - upload_date
+      - submission_date
+      - submission_identifier
+      - issue_identifier
+      - author
+      - notes
+      - data_provider_code
+      - submission_name
+      - source_name
+      - data_types
+    values:
+    - [1, 'PENDING', '2024-06-06', '2024-06-06', 'ARBODAT_PILOT', 'issue', "An author", "Some notes", "DP_CODE", "Arbodat pilot", "datafile.xlsx", "archeaobotany"]
+    foreign_keys:
+    - entity: data_provider
+      local_keys: [data_provider_code]
+      remote_keys: [data_provider_code]
+      how: left
+    - entity: submission_state
+      local_keys: [submission_state]
+      remote_keys: [submission_state]
+      how: left
+  submission_state:
+    type: fixed
+    public_id: submission_state_id
+    keys: []
+    columns: 
+      - system_id
+      - submission_state
+    values:
+    - [1, 'PENDING']
   dataset:
     type: entity
     source: analysis_entity
