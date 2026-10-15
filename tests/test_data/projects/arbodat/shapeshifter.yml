@@ -244,6 +244,9 @@ entities:
       constraints:
         allow_unmatched_left: false
         cardinality: many-to-one
+    - entity: dataset
+      local_keys: [Project, Fraktion]
+      remote_keys: [Project, Fraktion]
     depends_on: [method, taxa, sample]
   archaeological_period:
     type: sql
