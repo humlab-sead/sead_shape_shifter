@@ -629,8 +629,6 @@ entities:
     - Projekt
     - Befu
     - BefuTyp
-    - FuTypVermut
-    - BotBest
     public_id: feature_id
     data_source: arbodat_data
     query: select [Projekt], [Befu], [BefuTyp] from [Befunde]
