@@ -43,7 +43,7 @@ def _core_project(monkeypatch: pytest.MonkeyPatch) -> ShapeShiftProject:
             if value is not None and (override or name not in os.environ):
                 monkeypatch.setenv(name, value)
 
-    config_file: str = "data/projects/arbodat/shapeshifter.yml"
+    config_file: str = "tests/test_data/projects/arbodat/shapeshifter.yml"
 
     return ShapeShiftProject.from_file(config_file)
 
