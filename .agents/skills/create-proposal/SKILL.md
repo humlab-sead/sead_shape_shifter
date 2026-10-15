@@ -18,7 +18,7 @@ Determine from the user's request or current conversation:
 
 Infer proposal details when the conversation or verified repository content establishes them.
 
-An explicit target from the user or the current conversation takes precedence. Otherwise, name and place the proposal per the Document Naming rule in [Proposal document structure](references/proposal-document-structure.md). If the proposed work cannot be named specifically enough to follow that rule, ask one concise clarifying question.
+An explicit target from the user or the current conversation takes precedence. Otherwise, name and place the proposal per the Document Naming rule in [Proposal document structure](../../../.github/instructions/proposal-document-structure.instructions.md). If the proposed work cannot be named specifically enough to follow that rule, ask one concise clarifying question.
 
 Preserve the path of an existing proposal when updating it. If a user-supplied target does not follow the convention, confirm the path before writing.
 
@@ -28,9 +28,9 @@ Do not treat labels, examples, or placeholder text as input values.
 
 Before drafting, read:
 
-- [Proposal writing guide](references/proposal-writing-guide.md)
-- [Proposal document structure](references/proposal-document-structure.md)
-- [Proposal template](references/proposal-template.md)
+- [Proposal writing guide](../../../.github/instructions/proposal-writing-guide.instructions.md)
+- [Proposal document structure](../../../.github/instructions/proposal-document-structure.instructions.md)
+- [Proposal template](../../../docs/templates/PROPOSAL_TEMPLATE.md)
 - the repository root [AGENTS.md](../../../AGENTS.md) and [`.github/AGENTS.md`](../../../.github/AGENTS.md)
 - [writing style instructions](../../../.github/instructions/writing-style.instructions.md)
 - [proposal writing instructions](../../../.github/instructions/proposal-writing-guide.instructions.md)
@@ -56,6 +56,7 @@ Use the repository instructions and template for project-specific rules if they 
 4. Draft the complete proposal using the required structure, omitting optional sections that do not help the decision.
 5. Check that claims are labeled as verified facts, assumptions, or open questions; acceptance criteria are checkable; and planned behavior is not described as current behavior.
 6. Include a Planning Handoff when later work will require a phase plan.
+7. When the proposal is new, add or update its row in the proposals index at `docs/proposals/README.md`. Record the proposal title, its status, and a one-line decision summary. Leave unrelated rows unchanged.
 
 ## Limits
 
@@ -65,7 +66,7 @@ Use the repository instructions and template for project-specific rules if they 
 - Do not invent repository facts, paths, commands, APIs, tests, owners, or dates.
 - Use `TBD` only when a required field cannot be meaningfully completed.
 - Repository inspection outside the target document must be read-only.
-- Modify only the target document.
+- Modify only the target document, plus the proposals index at `docs/proposals/README.md` when adding or updating a row for the proposal. Do not modify other files.
 - If the target already exists, update it only when the user clearly requested an update. Otherwise, ask before replacing it.
 
 ## Output
@@ -73,6 +74,7 @@ Use the repository instructions and template for project-specific rules if they 
 When editing is authorized and filesystem tools are available:
 
 1. Write the proposal to the target document.
-2. Return a concise completion message with the target path.
+2. When the proposal is new, add its row to the proposals index at `docs/proposals/README.md`.
+3. Return a concise completion message with the target path and whether an index row was added.
 
 Otherwise, return the completed proposal Markdown.

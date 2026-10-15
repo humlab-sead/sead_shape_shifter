@@ -8,7 +8,7 @@ argument-hint: 'Path to shapeshifter.yml or describe the configuration problem'
 
 Use this skill for deep analysis, repair, and authoring of Shape Shifter project YAML files.
 
-Before making validation decisions, load [`references/shapeshifter-configuration.instructions.md`](references/shapeshifter-configuration.instructions.md). Treat that file as authoritative. Use project docs only to clarify local intent, naming patterns, and workflow-specific conventions.
+Before making validation decisions, load [Shape Shifter configuration instructions](../../../.github/instructions/shapeshifter-configuration.instructions.md). Treat that file as authoritative. Use project docs only to clarify local intent, naming patterns, and workflow-specific conventions.
 
 Expected input: a path to `shapeshifter.yml`, a `data/projects/*.yml` or `data/projects/*.yaml` file, or a description of a configuration problem.
 
@@ -40,7 +40,7 @@ Prefer deterministic, minimal fixes. Avoid broad rewrites when a local change so
 ## Workflow
 
 1. Identify the config file and intended workflow.
-2. Load `references/shapeshifter-configuration.instructions.md`.
+2. Load [Shape Shifter configuration instructions](../../../.github/instructions/shapeshifter-configuration.instructions.md).
 3. Load nearby project docs only when they clarify local intent or patterns.
 4. Parse YAML structurally before reasoning about business intent.
 5. Validate top-level requirements: `metadata.name`, `metadata.type: shapeshifter-project`, and `entities`.

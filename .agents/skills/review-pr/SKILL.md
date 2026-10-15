@@ -61,10 +61,10 @@ Interpret approval narrowly: publish only the named finding IDs and the previewe
 
 ```bash
 # Dry-run: inspect and validate the draft; does not publish
-python .github/skills/review-pr/scripts/publish_review.py --input /tmp/pr-review-123.json --only F1 F3
+python .agents/skills/review-pr/scripts/publish_review.py --input /tmp/pr-review-123.json --only F1 F3
 
 # Run ONLY after explicit approval to publish exactly F1 and F3
-python .github/skills/review-pr/scripts/publish_review.py --input /tmp/pr-review-123.json --only F1 F3 --publish
+python .agents/skills/review-pr/scripts/publish_review.py --input /tmp/pr-review-123.json --only F1 F3 --publish
 ```
 
 For an explicitly approved summary-only review, use `--summary-only` instead of `--only`. The script enforces PR-head consistency and anchors against patch data before submitting. It always uses `event: COMMENT`; never turn an AI analysis into an approval or change request.
@@ -73,7 +73,7 @@ Report the resulting review URL and number of comments **only after GitHub confi
 
 ## Integration notes
 
-- Install under `.github/skills/review-pr/` for a repository skill, or `~/.copilot/skills/review-pr/` for a personal skill. Invoke in Copilot Chat with a request such as `Use review-pr to review PR #123`.
+- Install under `.agents/skills/review-pr/` for a repository skill, or `~/.copilot/skills/review-pr/` for a personal skill. Invoke in Copilot Chat with a request such as `Use review-pr to review PR #123`.
 - Use the `Local` session target and select the desired BYOK model. Skill instructions do not select or override the model.
 - Run `gh auth status` on the execution host (including Remote Tunnels host) to verify CLI authentication before publication.
 - The GitHub review appears as the **authenticated user**, labeled AI-assisted; it is **not** GitHub's official Copilot reviewer.
