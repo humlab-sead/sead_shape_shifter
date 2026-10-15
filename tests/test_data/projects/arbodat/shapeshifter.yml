@@ -621,7 +621,6 @@ entities:
     check_functional_dependency: false
     data_source: arbodat_lookup
     query: select distinct [Epoche], [Beschreibung], [Epoch_EN], [Nummer] from [Epochen] ;
-  
   # FIXME: What to do with [FuTypVermut] and [BotBest]?
   feature:
     type: sql
