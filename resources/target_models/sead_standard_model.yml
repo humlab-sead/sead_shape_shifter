@@ -1170,11 +1170,9 @@ entities:
         type: string
         nullable: true
       submission_uuid:
-        required: true
+        required: false
         type: uuid
-        nullable: false
-    unique_sets:
-      - [submission_uuid]
+        nullable: true
     foreign_keys:
       - entity: submission_state
         required: true
