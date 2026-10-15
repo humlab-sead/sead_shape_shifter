@@ -261,6 +261,13 @@ entities:
     depends_on: [epoch]
     data_source: arbodat_lookup
     query: select distinct [ArchDat], [Beschreibung], [Epoche], [Nummer] from [ArchDat] ;
+  citation:
+    type: fixed
+    public_id: biblio_id
+    keys: [title, year, authors]
+    columns: [title, year, authors]
+    values:
+    - ["Sample Title", 2024, "Author Name"]
   chronological_period:
     type: sql
     source:
