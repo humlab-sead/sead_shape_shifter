@@ -790,7 +790,6 @@ entities:
     depends_on: [sample]
     drop_duplicates: true
     extra_columns:
-      relative_age_id:
       method_id:
       notes:
       dating_uncertainty_id:
@@ -1016,8 +1015,8 @@ entities:
     columns: '@value: entities.site.keys + @value: entities.location.columns'
     foreign_keys:
     - entity: site
-      local_keys: [EVNr, Fustel]
-      remote_keys: [EVNr, Fustel]
+      local_keys: []
+      remote_keys: []
       constraints:
         cardinality: many_to_one
         require_unique_left: false
@@ -1097,7 +1096,7 @@ entities:
     check_functional_dependency: false
     unnest:
       id_vars: [Fustel, EVNr]
-      value_vars: '@value: entities.site_property.columns'
+      value_vars: [okFustel, Limes, TK, AnmFustel]
       var_name: site_property_type
       value_name: site_property_value
     data_source: arbodat_data
