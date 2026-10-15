@@ -1077,7 +1077,7 @@ entities:
         type: string
         nullable: true
       data_provider_uuid:
-        required: true
+        required: false
         type: uuid
         nullable: false
       data_provider_name:
@@ -1099,7 +1099,6 @@ entities:
         nullable: true
     unique_sets:
       - [data_provider_code]
-      - [data_provider_uuid]
       - [data_provider_name]
 
   submission_state:
