@@ -18,7 +18,6 @@ entities:
         type: string
         nullable: false
       location_type_id:
-        required: true
         type: integer
         nullable: false
       default_lat_dd:
@@ -31,11 +30,12 @@ entities:
       - [location_type_id, location_name]
     foreign_keys:
       - entity: location_type
-        required: true
+        required_when:
+          has_new_rows: location
 
   location_type:
     role: classifier
-    required: true
+    required: false
     description: Controlled vocabulary for location classification.
     domains: [core, spatial]
     target_table: tbl_location_types
