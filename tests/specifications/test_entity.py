@@ -1542,6 +1542,59 @@ class TestExtraColumnsConflictsSpecification:
         assert result is True
         assert spec.errors == []
 
+    def test_extra_column_used_as_unnest_id_var_is_allowed(self):
+        """An extra_column may supply a column that unnest carries through as an id_var."""
+        project_cfg = {
+            "entities": {
+                "abundance_property": {
+                    "type": "entity",
+                    "keys": [],
+                    "columns": ["rAnzahl", "abundance_id"],
+                    "public_id": "abundance_property_id",
+                    "extra_columns": {"property_group": "AbundanceProperty"},
+                    "unnest": {
+                        "id_vars": ["property_group", "abundance_id"],
+                        "value_vars": ["rAnzahl"],
+                        "var_name": "property_type",
+                        "value_name": "property_value",
+                    },
+                }
+            }
+        }
+
+        spec = ExtraColumnsConflictsSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="abundance_property")
+
+        assert result is True, spec.get_report()
+        assert spec.errors == []
+
+    def test_extra_column_conflicting_with_unnest_output_is_error(self):
+        """extra_columns must not override unnest var_name or value_name outputs."""
+        project_cfg = {
+            "entities": {
+                "sample": {
+                    "type": "entity",
+                    "columns": ["value"],
+                    "extra_columns": {"property_type": "value", "property_value": "value"},
+                    "unnest": {
+                        "id_vars": ["value"],
+                        "value_vars": ["other"],
+                        "var_name": "property_type",
+                        "value_name": "property_value",
+                    },
+                }
+            }
+        }
+
+        spec = ExtraColumnsConflictsSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="sample")
+
+        assert result is False
+        conflicting = {error.message.split("'")[1] for error in spec.errors}
+        assert conflicting == {"property_type", "property_value"}
+
 
 class TestAppendSpecification:
     """Tests for AppendSpecification."""
