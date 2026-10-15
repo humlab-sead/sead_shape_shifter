@@ -1633,6 +1633,8 @@ entities:
       ecocode_definition_id: Ökogruppe
       taxon_id:
 options:
+  validation:
+    disabled_rules: [no_orphan_facts]
   translations:
     filename: translations.tsv
     delimiter: "\t"
