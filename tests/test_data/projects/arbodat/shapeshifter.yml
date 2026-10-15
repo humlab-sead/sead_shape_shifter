@@ -1020,8 +1020,8 @@ entities:
     depends_on: []
     drop_duplicates: [ProbTyp]
     extra_columns:
-      sample_type_name: ProbTyp
-      sample_type_description: PrTyp
+      type_name: ProbTyp
+      description: PrTyp
     data_source: arbodat_lookup
     query: select distinct [ProbTyp], [PrTyp], [Nummer] from [Probentypen] ;
   site:
