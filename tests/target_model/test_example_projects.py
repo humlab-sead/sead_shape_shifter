@@ -7,11 +7,11 @@ from src.target_model.conformance import TargetModelConformanceValidator
 from src.target_model.models import TargetModel
 
 EXAMPLES_DIR = Path("tests/test_data/examples")
-SPECS_DIR = Path("tests/test_data/specs")
+TARGET_MODEL_DIR = Path("tests/test_data/target_models")
 
 
 def load_target_model(name: str = "sead_standard_model.yml") -> TargetModel:
-    spec_path = SPECS_DIR / name
+    spec_path = TARGET_MODEL_DIR / name
     return TargetModel.model_validate(yaml.safe_load(spec_path.read_text(encoding="utf-8")))
 
 
