@@ -794,6 +794,7 @@ entities:
     - [8, null, null, Mineral remains 0.25-0.5 mm, 'MIN 0,25', 'MIN 0,25', null, 'MIN 0,25']
     - [9, 105, null, null, Local or unknown grid, null, null, null]
     - [10, 76, null, null, Altitude above sea level, null, null, null]
+    - [11, 8, null, null, Plant macros, Plant macros, null, 'SampleGroupMethod']
     foreign_keys:
     - entity: method_group
       local_keys: [method_group_id]
