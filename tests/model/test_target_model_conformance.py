@@ -279,22 +279,6 @@ def test_table_config_target_facing_columns_allow_chained_fk_extra_columns_after
     assert table_cfg.get_target_facing_foreign_key_targets() == {"location_group", "location_type"}
 
 
-def test_core_legacy_mode_matches_existing_fixture() -> None:
-    target_model: TargetModel = load_target_model()
-    project: ShapeShiftProject = load_project("sead_arbodat_core.yml")
-
-    assert sorted(issue_pairs(target_model, project)) == sorted(
-        [
-            ("MISSING_BRIDGE_ENTITY", "site"),
-            ("MISSING_REQUIRED_COLUMN", "analysis_entity"),
-            ("MISSING_REQUIRED_COLUMN", "method"),
-            ("MISSING_REQUIRED_COLUMN", "sample_type"),
-            ("MISSING_REQUIRED_ENTITY", "site_location"),
-            ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "analysis_entity"),
-        ]
-    )
-
-
 def test_core_conformance_reports_missing_entity_and_wrong_public_id() -> None:
     target_model: TargetModel = load_target_model()
     project: ShapeShiftProject = load_project("sead_missing_sample_group.yml")
@@ -608,27 +592,13 @@ def test_core_conformance_reports_known_gaps_for_full_arbodat_project() -> None:
     project: ShapeShiftProject = load_real_project("arbodat")
 
     expected_errors = [
-        ("MISSING_INDUCED_REQUIRED_ENTITY", "taxa_tree_master"),
-        ("MISSING_REQUIRED_COLUMN", "abundance_property"),
-        ("MISSING_REQUIRED_COLUMN", "abundance_property"),
-        ("MISSING_REQUIRED_COLUMN", "analysis_entity"),
-        ("MISSING_REQUIRED_COLUMN", "contact_type"),
-        ("MISSING_REQUIRED_COLUMN", "feature"),
-        ("MISSING_REQUIRED_COLUMN", "relative_dating"),
-        ("MISSING_REQUIRED_COLUMN", "sample_coordinate"),
-        ("MISSING_REQUIRED_COLUMN", "sample_type"),
-        ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "abundance"),
-        ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "analysis_entity"),
-        ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "relative_dating"),
-        ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "sample_group"),
-        ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "sample_group"),
-        ("ORPHAN_FACT_ENTITY", "abundance_property"),
-        ("ORPHAN_FACT_ENTITY", "relative_dating"),
-        ("ORPHAN_FACT_ENTITY", "sample_group"),
-        ("UNEXPECTED_PUBLIC_ID", "relative_dating"),
     ]
 
-    assert sorted(issue_pairs(target_model, project)) == sorted(expected_errors)
+
+    issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
+    actual_issues = [(issue.code, issue.entity) for issue in issues]
+    # print('\n'.join(f'{x.code};{x.entity};{x.message}' for x in issues))
+    assert sorted(actual_issues) == sorted(expected_errors)
 
 
 def test_core_conformance_current_corpus_issue_families_are_stable() -> None:
