@@ -430,8 +430,8 @@ entities:
     values:
     - [1, 'PENDING']
   dataset:
-    type: entity
-    source: analysis_entity
+    type: sql
+    query: select distinct [Projekt], [Fraktion] from [Details];
     public_id: dataset_id
     keys: [Projekt, Fraktion]
     columns: [Projekt, Fraktion]
