@@ -1469,11 +1469,11 @@ entities:
     - [2, null, null, imprint, 60, Ab, imprint]
     - [3, null, null, kiln-dried/partly charred, 55, ag, kiln-dried/partly charred]
     - [4, null, null, calcinated, 56, ca, calcinated]
-    - [5, '5', null, mineralised, 30, mi, mineralised]
+    - [5, 5, null, mineralised, 30, mi, mineralised]
     - [6, null, null, waterlogged, 20, sf, waterlogged]
     - [7, null, null, others, 999, so, others]
     - [8, null, null, dessicated, 40, st, dessicated]
-    - [9, '1', null, charred, 10, vk, charred]
+    - [9, 1, null, charred, 10, vk, charred]
     - [10, null, null, charred and mineralised, 50, vm, charred and mineralised]
   ecocode_system:
     type: fixed
