@@ -1004,8 +1004,14 @@ entities:
     extra_columns:
       sample_group_name: Befu
       sample_group_description:
-      sampling_context_id:
-      method_id:
+      arbodat_code: 'SampleGroupMethod'
+    foreign_keys:
+    - entity: site
+      local_keys: [site_id]
+      remote_keys: [site_id]
+    - entity: method
+      local_keys: [arbodat_code]
+      remote_keys: [arbodat_code]
   sample_type:
     type: sql
     public_id: sample_type_id
