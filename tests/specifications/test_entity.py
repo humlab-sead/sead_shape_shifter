@@ -741,7 +741,7 @@ class TestSqlColumnConfigurationSpecification:
 class TestNonFixedIdentityColumnsSpecification:
     """Tests for NonFixedIdentityColumnsSpecification."""
 
-    def test_sql_entity_rejects_system_id_in_columns(self):
+    def test_sql_entity_warns_for_system_id_in_columns(self):
         project_cfg = {
             "entities": {
                 "sample": {
@@ -759,8 +759,9 @@ class TestNonFixedIdentityColumnsSpecification:
 
         result = spec.is_satisfied_by(entity_name="sample")
 
-        assert result is False
-        assert any("derived system_id columns" in str(e) for e in spec.errors)
+        assert result is True
+        assert len(spec.errors) == 0
+        assert any("not checked for positive, unique integer values" in str(warning) for warning in spec.warnings)
 
     def test_sql_entity_allows_public_id_in_columns(self):
         project_cfg = {
