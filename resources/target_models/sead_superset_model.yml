@@ -1705,7 +1705,7 @@ entities:
     foreign_keys:
       - entity: analysis_value
         required: true
-      - entity: taxa_tree_master
+      - entity: taxa
         required: true
 
   analysis_value_dimension:
@@ -1827,7 +1827,7 @@ entities:
         required: true
       - entity: abundance_element
         required: false
-      - entity: taxa_tree_master
+      - entity: taxa
         required: true
 
   abundance_element:
@@ -2016,7 +2016,7 @@ entities:
       - entity: identification_level
         required: true
 
-  taxa_tree_master:
+  taxa:
     role: classifier
     required: false
     description: Canonical SEAD taxonomy entity referenced by abundance and other taxon-linked observations.
@@ -2043,7 +2043,7 @@ entities:
     role: lookup
     required: false
     description: Human-readable taxon names associated with SEAD taxonomy records.
-    aggregate_parent: taxa_tree_master
+    aggregate_parent: taxa
     domains: [taxonomy]
     target_table: tbl_taxa_common_names
     public_id: taxon_common_name_id
@@ -2062,14 +2062,14 @@ entities:
         type: integer
         nullable: true
     foreign_keys:
-      - entity: taxa_tree_master
+      - entity: taxa
         required: true
 
   taxa_synonyms:
     role: lookup
     required: false
     description: Alternate taxon names recorded for SEAD taxonomy entries.
-    aggregate_parent: taxa_tree_master
+    aggregate_parent: taxa
     domains: [taxonomy]
     target_table: tbl_taxa_synonyms
     public_id: synonym_id
@@ -2111,14 +2111,14 @@ entities:
     foreign_keys:
       - entity: citation
         required: true
-      - entity: taxa_tree_master
+      - entity: taxa
         required: false
 
   taxa_measured_attributes:
     role: fact
     required: false
     description: Measured attribute values attached to a taxon record.
-    aggregate_parent: taxa_tree_master
+    aggregate_parent: taxa
     domains: [taxonomy]
     target_table: tbl_taxa_measured_attributes
     public_id: measured_attribute_id
@@ -2144,7 +2144,7 @@ entities:
         type: integer
         nullable: false
     foreign_keys:
-      - entity: taxa_tree_master
+      - entity: taxa
         required: true
 
   rdb_system:
@@ -2219,7 +2219,7 @@ entities:
     role: fact
     required: false
     description: Red Data Book status record for a taxon at a location.
-    aggregate_parent: taxa_tree_master
+    aggregate_parent: taxa
     domains: [taxonomy]
     target_table: tbl_rdb
     public_id: rdb_id
@@ -2243,7 +2243,7 @@ entities:
         required: true
       - entity: rdb_code
         required: false
-      - entity: taxa_tree_master
+      - entity: taxa
         required: true
 
   ecocode_system:
@@ -2343,7 +2343,7 @@ entities:
     role: fact
     required: false
     description: Ecocode assignment for a taxon.
-    aggregate_parent: taxa_tree_master
+    aggregate_parent: taxa
     domains: [taxonomy]
     target_table: tbl_ecocodes
     public_id: ecocode_id
@@ -2361,7 +2361,7 @@ entities:
     foreign_keys:
       - entity: ecocode_definition
         required: true
-      - entity: taxa_tree_master
+      - entity: taxa
         required: true
 
   taxonomic_order_system:
@@ -2390,7 +2390,7 @@ entities:
     role: fact
     required: false
     description: Taxonomic ordering code assigned to a taxon under a named order system.
-    aggregate_parent: taxa_tree_master
+    aggregate_parent: taxa
     domains: [taxonomy]
     target_table: tbl_taxonomic_order
     public_id: taxonomic_order_id
@@ -2410,7 +2410,7 @@ entities:
     unique_sets:
       - [taxon_id, taxonomic_order_system_id, taxonomic_code]
     foreign_keys:
-      - entity: taxa_tree_master
+      - entity: taxa
         required: true
       - entity: taxonomic_order_system
         required: true
