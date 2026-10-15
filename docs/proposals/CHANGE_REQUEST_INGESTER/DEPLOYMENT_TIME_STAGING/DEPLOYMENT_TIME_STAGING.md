@@ -20,7 +20,7 @@ Aggregate-child IDs do not need SIMS identity management when they only identify
 
 The current bundle is rendered only after every inserted row has a resolved target ID. This works by reserving sequence IDs during bundle generation, but it requires target-database access at that point. Simply omitting a parent ID from an `INSERT` is not enough when submitted child rows refer to that parent: the generated ID must be captured and mapped back to the child's local FK.
 
-The target-model review identifies `sample_dimension` and `geochronology` as leaf examples, and `analysis_value` and `abundance` as intermediate parents whose IDs are referenced by submitted child rows. See [the aggregate-child review](../../../../resources/target_models/TARGET_MODEL_REVIEW_20261013.md) and [the SEAD target model](../../../../resources/target_models/sead_superset_model.yml).
+The target-model review identifies `sample_dimension` and `geochronology` as leaf examples, and `analysis_value` and `abundance` as intermediate parents whose IDs are referenced by submitted child rows. See [the aggregate-child review](../../../../resources/target_models/TARGET_MODEL_REVIEW_20261013.md) and [the SEAD target model](../../../../resources/target_models/sead_standard_model.yml).
 
 ## Scope
 

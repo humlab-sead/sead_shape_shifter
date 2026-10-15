@@ -1,6 +1,6 @@
 # Target Model Review: 2026-10-13
 
-**Model under review:** [sead_superset_model.yml](sead_superset_model.yml)  
+**Model under review:** [sead_standard_model.yml](sead_standard_model.yml)  
 **Status:** In progress; review entities one at a time.
 
 Whether SEAD needs both standard and superset target models remains undecided. This review examines the current superset model; it does not establish that both variants should continue to exist. The test specifications in `tests/test_data/specs` are symlinks to the resource files, so they use the shared models rather than independent copies.

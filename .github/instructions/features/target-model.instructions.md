@@ -51,7 +51,7 @@ New validators must be decorated `@CONFORMANCE_VALIDATORS.register(key="...")` a
 - Use the `issue_pairs(target_model, project) → list[tuple[code, entity]]` pattern for concise assertions.
 - Test both clean (zero issues) and each specific issue code.
 - Backend adapter tests: test `TargetModelValidator.validate(dict, project)` in isolation; do not spin up `ValidationService`.
-- Fixture YAMLs live in `tests/test_data/examples/`; the reference spec is `tests/test_data/specs/sead_standard_model.yml`.
+- Fixture YAMLs live in `tests/test_data/examples/`; the reference spec is `resources/target_models/sead_standard_model.yml`.
 
 ## Forbidden Shortcuts
 
