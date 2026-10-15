@@ -634,7 +634,7 @@ options:
 
         result = strategy.prepare_for_persistence("method", entity_data)
 
-        assert result["columns"] == ["system_id", "method_id", "name"]
+        assert result["columns"] == ["name"]
         assert result["values"] == [[1, 53, "Sampling"]]
 
     def test_fixed_entity_persistence_accepts_declared_int_columns(self):
@@ -652,6 +652,7 @@ options:
 
         result = strategy.prepare_for_persistence("method", entity_data)
 
+        assert result["columns"] == ["rank", "name"]
         assert result["column_types"] == {"rank": "int"}
         assert result["values"] == [[1, 7, "Sampling"]]
 
@@ -824,14 +825,14 @@ options:
             "type": "fixed",
             "public_id": "site_id",
             "keys": ["Fustel", "EVNr"],
-            "columns": ["site_type_id", "altitude"],
+            "columns": ["site_type_id", "Fustel", "EVNr", "altitude"],
             "values": "@load:materialized/site.parquet",
         }
 
         service.add_entity_by_name("test", "site", entity_data)
 
         config = service.load_project("test")
-        assert config.entities["site"]["columns"] == ["system_id", "site_id", "Fustel", "EVNr", "site_type_id", "altitude"]
+        assert config.entities["site"]["columns"] == ["site_type_id", "Fustel", "EVNr", "altitude"]
 
     def test_update_entity_by_name(self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict):
         """Test updating entity by configuration name."""
