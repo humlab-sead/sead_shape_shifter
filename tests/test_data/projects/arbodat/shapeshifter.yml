@@ -4,7 +4,36 @@ metadata:
   description: Configuration for importing data from ArboDat database into SEAD.
   version: 1.0.0
   default_entity: survey
+  target_model: sead_standard_model.yml
 entities:
+  property_type:
+    type: fixed
+    public_id: property_type_id
+    keys: []
+    columns: [property_group, property_type_name, description, arbodat_code]
+    values:
+    - [FeatureProperty, gebäud, gebäud, gebäud]
+    - [FeatureProperty, okBefu, okBefu, okBefu]
+    - [FeatureProperty, okErh, okErh, okErh]
+    - [FeatureProperty, BestJa, BestJa, BestJa]
+    - [FeatureProperty, FlSchn, FlSchn, FlSchn]
+    - [FeatureProperty, Note, Anmerkung, Anmerkung]
+    - [SiteProperty, Limes, Location relative to the Roman Limes (for Roman Imperial period sites), Limes]
+    - [SiteProperty, okFustel, 'Methodological assessment of the site: adequate or deficient', okFustel]
+    - [SiteProperty, Map sheet, 'TK 25 (Topographic Map 1:25,000)', TK]
+    - [SiteProperty, EVNr, 'LfD excavation record number, according to the State Office for Monument Preservation (LfD)', EVNr]
+    - [SiteProperty, AnmFustel, 'e.g., pollen analysis by NN; soil science by NN; anthropology, etc.', AnmFustel]
+    - [AbundanceProperty, raw_count, Number of plant remains of the corresponding taxon, rAnzahl]
+    - [AbundanceProperty, raw_weight, Weight of plant remains of the corresponding taxon (mainly charcoal), rGewicht]
+    - [AbundanceProperty, estimated_amount, Semi-quantitatively estimated plant remains of the corresponding taxon, geschätzt]
+    - [AbundanceProperty, raw_fragments, Fragments (if present), rFrag]
+    - [AbundanceProperty, multiplier, Total weight / evaluated weight, Multiplikator]
+    - [AbundanceProperty, extrapolated_count, Extrapolated count, FAnzahl]
+    - [AbundanceProperty, extrapolated_fragments, Extrapolated fragments, FFragmente]
+    - [AbundanceProperty, extrapolated_weight, Extrapolated weight, FGewicht]
+    - [AbundanceProperty, entry_date, Entry date, EDatProb]
+    - [AbundanceProperty, note, Note, AnmFrakt]
+    depends_on: []
   abundance:
     type: sql
     source:
@@ -160,16 +189,18 @@ entities:
     - abundance_id
     public_id: abundance_property_id
     source: abundance
+    extra_columns:
+      property_group: AbundanceProperty
     foreign_keys:
-    - entity: abundance_property_type
-      local_keys: [abundance_property_type]
-      remote_keys: [arbodat_code]
-    depends_on: [abundance, abundance_property_type]
+    - entity: property_type
+      local_keys: [property_group, property_type]
+      remote_keys: [property_group, arbodat_code]
+    depends_on: [abundance, property_type]
     drop_duplicates: true
     check_functional_dependency: true
     drop_empty_rows: true
     unnest:
-      id_vars: [abundance_id]
+      id_vars: [property_group, abundance_id]
       value_vars:
       - rAnzahl
       - rGewicht
@@ -181,24 +212,8 @@ entities:
       - FGewicht
       - EDatProb
       - AnmFrakt
-      var_name: abundance_property_type
-      value_name: abundance_property_value
-  abundance_property_type:
-    type: fixed
-    keys: [arbodat_code]
-    columns: [system_id, abundance_property_type_id, arbodat_code, abundance_property_type, description]
-    public_id: abundance_property_type_id
-    values:
-    - [1, null, rAnzahl, raw_count, Number of plant remains of the corresponding taxon]
-    - [2, null, rGewicht, raw_weight, Weight of plant remains of the corresponding taxon (mainly charcoal)]
-    - [3, null, geschätzt, estimated_amount, Semi-quantitatively estimated plant remains of the corresponding taxon]
-    - [4, null, rFrag, raw_fragments, Fragments (if present)]
-    - [5, null, Multiplikator, multiplier, Total weight / evaluated weight]
-    - [6, null, FAnzahl, extrapolated_count, Extrapolated count]
-    - [7, null, FFragmente, extrapolated_fragments, Extrapolated fragments]
-    - [8, null, FGewicht, extrapolated_weight, Extrapolated weight]
-    - [9, null, EDatProb, entry_date, Entry date]
-    - [10, null, AnmFrakt, note, Note]
+      var_name: property_type
+      value_name: property_value
   analysis_entity:
     type: sql
     keys:
@@ -606,24 +621,23 @@ entities:
     check_functional_dependency: false
     data_source: arbodat_lookup
     query: select distinct [Epoche], [Beschreibung], [Epoch_EN], [Nummer] from [Epochen] ;
+  
+  # FIXME: What to do with [FuTypVermut] and [BotBest]?
   feature:
     type: sql
     keys: [Projekt, Befu]
     columns:
     - Projekt
     - Befu
-    - FlSchn
     - BefuTyp
     - FuTypVermut
-    - gebäud
-    - okBefu
-    - okErh
     - BotBest
-    - BestJa
-    - Anmerkung
     public_id: feature_id
     data_source: arbodat_data
-    query: select [Projekt], [Befu], [FlSchn], [BefuTyp], [FuTypVermut], [gebäud], [okBefu], [okErh], [BotBest], [BestJa], [Anmerkung] from [Befunde]
+    query: select [Projekt], [Befu], [BefuTyp] from [Befunde]
+    extra_columns:
+      feature_name: Befu
+      feature_type: BefuTyp
     foreign_keys:
     - entity: project
       local_keys: [Projekt]
@@ -641,42 +655,41 @@ entities:
     type: sql
     source:
     public_id: feature_property_id
-    keys: [Projekt, Befu, feature_property_type]
-    columns: '@value: entities.feature.keys + @value: entities.feature_property_type.values'
+    keys: [Projekt, Befu, property_type]
+    columns: 
+      - Projekt
+      - Befu
+      - gebäud
+      - okBefu
+      - okErh
+      - BestJa
+      - FlSchn
+      - Anmerkung
+    extra_columns:
+      property_group: FeatureProperty
     foreign_keys:
     - entity: feature
-      local_keys: '@value: entities.feature.keys'
-      remote_keys: '@value: entities.feature.keys'
-    - entity: feature_property_type
-      local_keys: [feature_property_type]
-      remote_keys: [arbodat_code]
+      local_keys: [Projekt, Befu]
+      remote_keys: [Projekt, Befu]
+    - entity: property_type
+      local_keys: [property_group, property_type]
+      remote_keys: [property_group, arbodat_code]
       how: left
-    depends_on: [feature, feature_property_type]
-    drop_duplicates: [Projekt, Befu, feature_property_type]
+    depends_on: [feature, property_type]
+    drop_duplicates: [Projekt, Befu, property_type]
     unnest:
-      id_vars: '@value: entities.feature.keys'
-      value_vars: '@value: entities.feature_property_type.values'
-      var_name: feature_property_type
-      value_name: feature_property_value
+      id_vars: [property_group, Projekt, Befu]
+      value_vars:
+        - gebäud
+        - okBefu
+        - okErh
+        - BestJa
+        - FlSchn
+        - Anmerkung
+      var_name: property_type
+      value_name: property_value
     data_source: arbodat_data
     query: select [Projekt], [Befu], [FlSchn], [gebäud], [okBefu], [okErh], [BestJa], [Anmerkung] from [Befunde] ;
-  feature_property_type:
-    type: fixed
-    public_id: feature_property_type_id
-    keys: []
-    columns: [arbodat_code]
-    values:
-    - gebäud
-    - okBefu
-    - okErh
-    - BestJa
-    - FlSchn
-    - Anmerkung
-    extra_columns:
-      feature_property_type: 1
-      feature_property_name: 1
-      feature_property_description: 1
-    surrogate_names: feature_property_type
   feature_type:
     type: fixed
     public_id: feature_type_id
@@ -1138,25 +1151,11 @@ entities:
       select distinct [Fustel], [EVNr], [NaturE]
       from [Projekte]
       where [NaturE] is not null ;
-  site_property_type:
-    type: fixed
-    source:
-    public_id: site_property_type_id
-    keys: []
-    columns: [system_id, site_property_type_id, site_property_type, description, arbodat_code]
-    values:
-    - [1, null, Limes, Location relative to the Roman Limes (for Roman Imperial period sites), Limes]
-    - [2, null, okFustel, 'Methodological assessment of the site: adequate or deficient', okFustel]
-    - [3, null, Map sheet, 'TK 25 (Topographic Map 1:25,000)', TK]
-    - [4, null, EVNr, 'LfD excavation record number, according to the State Office for Monument Preservation (LfD)', EVNr]
-    - [5, null, AnmFustel, 'e.g., pollen analysis by NN; soil science by NN; anthropology, etc.', AnmFustel]
-    depends_on: []
-    surrogate_name: site_property_type
   site_property:
     type: sql
     source:
     public_id: site_property_id
-    keys: [Fustel, EVNr, site_property_type]
+    keys: [Fustel, EVNr, property_type]
     columns:
     - Fustel
     - EVNr
@@ -1164,21 +1163,24 @@ entities:
     - Limes
     - TK
     - AnmFustel
+    extra_columns:
+      property_group: SiteProperty
     foreign_keys:
     - entity: site
-      local_keys: '@value: entities.site.keys'
-      remote_keys: '@value: entities.site.keys'
-    - entity: site_property_type
-      local_keys: ['@value: entities.site_property_type.surrogate_name']
-      remote_keys: [arbodat_code]
-    depends_on: [site, site_property_type]
-    drop_duplicates: [Fustel, EVNr, site_property_type]
+      local_keys: [Fustel, EVNr]
+      remote_keys: [Fustel, EVNr]
+    - entity: property_type
+      local_keys: [property_group, property_type]
+      remote_keys: [property_group, arbodat_code]
+      how: left
+    depends_on: [site, property_type]
+    drop_duplicates: [Fustel, EVNr, property_type]
     check_functional_dependency: false
     unnest:
-      id_vars: [Fustel, EVNr]
+      id_vars: [property_group, Fustel, EVNr]
       value_vars: [okFustel, Limes, TK, AnmFustel]
-      var_name: site_property_type
-      value_name: site_property_value
+      var_name:  property_type
+      value_name: property_value
     data_source: arbodat_data
     query: |-
       select distinct [Fustel], [EVNr], [okFustel], [Limes], [TK], [AnmFustel] from [Projekte] ;
