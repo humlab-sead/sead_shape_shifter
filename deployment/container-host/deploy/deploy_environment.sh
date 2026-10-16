@@ -2,12 +2,12 @@
 # Configure one Shape Shifter environment for a dedicated system user.
 #
 # Run as root (or a sudo-capable admin) on the deployment host. This script does
-# not fetch or replace container files. The deployment user must already have a
-# selected container release, created with the host release manager
-# (/usr/local/sbin/shape-shifter-container-release): ~/container is a symlink to
-# that selection. The script runs the release's setup and records the application
-# image settings (repository, image ref, image name, port) in
-# ~/config/deployment.env. The container release tag is never written there.
+# not fetch or replace container files. The deployment user must already have
+# deployment files in ~/container, placed there by whatever flow the environment
+# uses (until images are published to GHCR, a manual copy or sync of the
+# deployment/container/ tree). The script runs the setup there and records the
+# application image settings (repository, image ref, image name, port) in
+# ~/config/deployment.env.
 set -euo pipefail
 
 usage() {
@@ -16,11 +16,10 @@ Usage: deployment/container-host/deploy/deploy_environment.sh <USER> [--repo URL
 
 Configure one Shape Shifter environment for a dedicated system user.
 
-The user must already have a selected container release: ~/container must be the
-symlink the host release manager creates. Install and select a release first:
-
-  sudo shape-shifter-container-release install  USER container-vX.Y.Z
-  sudo shape-shifter-container-release activate USER container-vX.Y.Z
+The user must already have deployment files in ~/container: a directory (or
+symlink) holding the deployment/container/ tree, including a Makefile and
+VERSION. Place the tree there first, by copying it or with
+deployment/container-host/deploy/sync-to-deploy.
 
 Options:
   --repo, --repository  Application repository URL for `make build`. Default: https://github.com/humlab-sead/sead_shape_shifter.git
@@ -32,9 +31,8 @@ Options:
 
 The repository, image ref, matching image name, and host port are written to
 ~/config/deployment.env, so later `make build` and `make up` runs keep using
-them. These are application image settings: they are independent of the selected
-container release and do not name it. The ~/config and ~/container-data
-directories are never removed, and nothing is written into the selected release.
+them. The ~/config and ~/container-data directories are never removed, and
+nothing is written into ~/container.
 
 Examples:
   deployment/container-host/deploy/deploy_environment.sh test-shape-shifter.sead.se
@@ -90,32 +88,22 @@ if [[ -z "$user_home" || ! -d "$user_home" ]]; then
   exit 1
 fi
 
-# Require a selected release. A real directory is refused: an administrator must
-# review and move it before the release manager can select a version.
-container_link="$user_home/container"
-if [[ ! -L "$container_link" ]]; then
-  echo "error: $container_link is not a selected container release." >&2
-  if [[ -d "$container_link" ]]; then
-    echo "       It is a real directory. An administrator must review and move it, then install" >&2
-    echo "       and activate a release with shape-shifter-container-release." >&2
-  else
-    echo "       Nothing is selected. As root, run:" >&2
-    echo "         shape-shifter-container-release install  $USER container-vX.Y.Z" >&2
-    echo "         shape-shifter-container-release activate $USER container-vX.Y.Z" >&2
-  fi
+# Require deployment files in ~/container. A real directory (the manual layout)
+# or a symlink both pass, as long as the directory holds a Makefile and VERSION.
+container_dir="$user_home/container"
+if [[ ! -d "$container_dir" ]]; then
+  echo "error: $container_dir does not exist. Place the deployment/container/ tree there first." >&2
   exit 1
 fi
-selected_dir="$(readlink -f -- "$container_link")"
-if [[ ! -d "$selected_dir" || ! -f "$selected_dir/Makefile" || ! -f "$selected_dir/VERSION" ]]; then
-  echo "error: $container_link does not resolve to a complete container release ($selected_dir)" >&2
-  echo "       Reinstall the release with shape-shifter-container-release and try again." >&2
+if [[ ! -f "$container_dir/Makefile" || ! -f "$container_dir/VERSION" ]]; then
+  echo "error: $container_dir does not look like a container deployment (no Makefile or VERSION)." >&2
   exit 1
 fi
 
 loginctl enable-linger "$USER"
 USER_UID="$(id -u "$USER")"
 
-echo "Using the selected container release at $selected_dir"
+echo "Using the deployment files at $container_dir"
 echo "Configuring application image settings for $USER..."
 sudo -u "$USER" \
   env DEPLOY_REPO="$REPO_URL" DEPLOY_REF="$REF" DEPLOY_PORT="$HOST_PORT" \
@@ -125,9 +113,8 @@ set -euo pipefail
 cd ~/container
 bash scripts/setup.sh
 
-# Record the application image source and port in CONFIG_DIR/deployment.env.
-# These are image settings and are separate from the selected release tag, so
-# later `make build` and `make up` runs use the source this deploy configured.
+# Record the application image source and port in CONFIG_DIR/deployment.env,
+# so later `make build` and `make up` runs use the source this deploy configured.
 . scripts/_env-config.sh
 . scripts/_load-env.sh
 deployment_env="$CONFIG_DIR/deployment.env"
@@ -155,7 +142,7 @@ fi
 
 echo
 echo "Deployment for $USER is configured."
-echo "Container release: $selected_dir"
+echo "Deployment files: $container_dir"
 echo "Application image ref: $REF"
 echo "Review the deployment settings and runtime environment before first use:"
 echo "  sudo -u $USER nano ~/config/deployment.env"

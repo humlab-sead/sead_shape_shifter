@@ -3,9 +3,9 @@
 #
 # This script only inspects the host: Podman, podman-compose, lingering, and the
 # rootless user namespace. It downloads nothing and writes nothing into
-# ~/container. Container deployment files are installed as a versioned release
-# with the host release manager (shape-shifter-container-release); see
-# deployment/container/DEPLOYMENT.md. Application image settings are configured by
+# ~/container. Place the deployment/container/ tree in the deployment user's
+# ~/container by copying or syncing it; see deployment/container/DEPLOYMENT.md.
+# Application image settings are configured by
 # deployment/container-host/deploy/deploy_environment.sh.
 #
 # Usage:
@@ -68,9 +68,9 @@ echo ""
 echo "Host prerequisites are satisfied for $CURRENT_USER."
 echo ""
 echo "Next steps:"
-echo "  # Install and select a container release (as root):"
-echo "  sudo shape-shifter-container-release install  $CURRENT_USER container-vX.Y.Z"
-echo "  sudo shape-shifter-container-release activate $CURRENT_USER container-vX.Y.Z"
+echo "  # Place the deployment/container/ tree in ~/container (see DEPLOYMENT.md),"
+echo "  # for example from a repository checkout:"
+echo "  deployment/container-host/deploy/sync-to-deploy --deploy-user $CURRENT_USER"
 echo ""
 echo "  # Then configure and start the environment as $CURRENT_USER:"
 echo "  cd ~/container"
