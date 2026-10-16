@@ -314,10 +314,12 @@ async function handleDeleteConfirm() {
   }
 }
 
-async function handleEntitySaved(entityName: string) {
+async function handleEntitySaved(entityName: string, mappingPending = false) {
   const wasCreate = dialogMode.value === 'create'
-  successMessage.value = wasCreate ? 'Entity created' : 'Entity updated'
-  showSuccessSnackbar.value = true
+  if (!mappingPending) {
+    successMessage.value = wasCreate ? 'Entity created' : 'Entity updated'
+    showSuccessSnackbar.value = true
+  }
   emit('entity-updated')
   
   // If we just created an entity, switch to edit mode so tabs become available

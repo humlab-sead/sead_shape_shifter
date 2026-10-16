@@ -1126,7 +1126,7 @@ interface Props {
 
 interface Emits {
   (e: 'update:modelValue', value: boolean): void
-  (e: 'saved', entityName: string): void
+  (e: 'saved', entityName: string, mappingPending?: boolean): void
 }
 
 // Error type that can be a string, an API error response, or null
@@ -3092,8 +3092,6 @@ async function handleSubmit() {
 
       // Keep dialog open after saving in edit mode
       syncDetectedSqlColumnsToFormData()
-      emit('saved', updatedEntity.name)
-
       captureInitialSnapshot()
 
       // Rows are saved but mapping changes remain pending: report a partial save
@@ -3101,9 +3099,11 @@ async function handleSubmit() {
       if (pending) {
         showSaveSuccess.value = false
         setPendingMappingSync(pending)
+        emit('saved', updatedEntity.name, true)
         return
       }
       setPendingMappingSync(null)
+      emit('saved', updatedEntity.name)
 
       // Show success indicator
       showSaveSuccess.value = true
@@ -3192,16 +3192,16 @@ async function handleSubmitAndClose() {
       captureInitialSnapshot()
     }
 
-    emit('saved', savedEntityName)
-
     // Rows are saved but mapping changes remain pending: keep the dialog open
     // instead of closing so the user can retry the pending mapping changes.
     if (pending) {
       showSaveSuccess.value = false
       setPendingMappingSync(pending)
+      emit('saved', savedEntityName, true)
       return
     }
     setPendingMappingSync(null)
+    emit('saved', savedEntityName)
 
     handleClose()
   } catch (err) {

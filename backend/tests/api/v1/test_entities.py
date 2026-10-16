@@ -395,6 +395,41 @@ class TestEntitiesUpdate:
         assert "specimen" in project_data["entities"]
         assert "sample" not in project_data["entities"]
 
+    async def test_rename_rejects_entity_with_mapping_entry(
+        self, tmp_path, monkeypatch, reset_services, sample_entity_data, authorized_client
+    ):
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        await authorized_client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "entities": {"sample": sample_entity_data}},
+        )
+
+        project_dir = tmp_path / "test_project"
+        project_file = project_dir / "shapeshifter.yml"
+        sidecar_file = project_dir / "test_project-mapping.yml"
+        sidecar_file.write_text(
+            yaml.safe_dump(
+                {
+                    "version": "2.0",
+                    "metadata": {"project": "test_project"},
+                    "entities": {"sample": {"local_key": "id", "public_id": "sample_id", "links": {}}},
+                }
+            ),
+            encoding="utf-8",
+        )
+        project_before = project_file.read_bytes()
+        sidecar_before = sidecar_file.read_bytes()
+
+        response = await authorized_client.put(
+            "/api/v1/projects/test_project/entities/sample",
+            json={"new_name": "specimen", "entity_data": sample_entity_data},
+        )
+
+        assert response.status_code == 409
+        assert response.json()["detail"]["context"]["conflict_type"] == "entity_has_mapping"
+        assert project_file.read_bytes() == project_before
+        assert sidecar_file.read_bytes() == sidecar_before
+
     async def test_rename_entity_conflict_returns_dependent_names(
         self, tmp_path, monkeypatch, reset_services, sample_entity_data, authorized_client
     ):
