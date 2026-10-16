@@ -6,16 +6,70 @@ repository checkout as root; they are not shipped to a deployment user.
 
 - `deploy/` — host provisioning and installer tools: `deploy_environment.sh`,
   the systemd and NGINX installers, the authorization bootstrap, the host
-  prerequisite check (`get-install.sh`), and the deployment sync tool
-  (`sync-to-deploy`). The retired release manager
+  prerequisite check (`get-install.sh`), the deployment file sync tool
+  (`sync-to-deploy`), and the project sync tool (`sync_projects.py`). The retired release manager
   (`manage_container_release.sh`) is kept only as a reference.
 - `verify/` — the read-only release-policy checker used by the
   `container-release` workflow, and its [README](verify/README.md).
 - `tests/` — shell regression suites for the tools above.
 
-This tree is not an operations toolkit. The
+Runtime verification is owned by SEAD operations. The
 [SEAD Runtime Verification Handoff](../../docs/proposals/CONTAINER_SETUP_SIMPLIFICATION/OPERATIONS_VERIFICATION_HANDOFF.md)
 lists the required operational outcomes without prescribing tools.
+
+## Copy projects between deployments on one host
+
+`sync_projects.py` copies projects in one direction between two deployment users
+on the same host. Both containers must be running so the script can read their
+authorization records. Run it as root from a repository checkout:
+
+```bash
+sudo python3 deployment/container-host/deploy/sync_projects.py \
+  --source-user test-shape-shifter.sead.se \
+  --target-user shape-shifter.sead.se --dry-run
+sudo python3 deployment/container-host/deploy/sync_projects.py \
+  --source-user test-shape-shifter.sead.se \
+  --target-user shape-shifter.sead.se
+```
+
+To start tracking a project that already exists on the target, name it with
+`--enroll-existing` using its API locator (for example, `arbodat:P`). First
+run with `--dry-run`, then repeat without it. The command requires the same
+single named owner on both deployments and keeps the replaced target folder
+under the target data directory's `backups/project-sync-*` for review. Repeat the option
+for each project to enroll.
+
+The script uses each user's installed `~/container/scripts/_load-env.sh` to
+resolve the mounted data directory. Pass `--source-config-dir` or
+`--target-config-dir` when a deployment uses a configuration directory other
+than `~/config`.
+
+For a new project, it copies the complete project folder and adopts it on the
+target with the source project's single named owner. Existing source projects
+must have exactly one owner grant. For a project copied on an earlier run, it
+replaces the target folder's contents and keeps the target authorization resource
+and grants. A target project edited after the last copy causes a conflict; the
+script leaves it untouched. A same-named project that was not copied by this
+script also causes a conflict unless named with `--enroll-existing`. Nested
+project folders are not supported because replacing a parent folder could
+remove a separate project. The sync records successful copies in the
+target's `state/project-sync/<source-user>.json` file. Keep this file with the
+target's persistent state.
+
+Run the sync when neither deployment is editing the affected projects. The
+script checks that source content stays unchanged while it is copied and
+restarts the target container after a batch that changed projects, clearing
+its project caches. If the source no longer has a project, the target copy and
+its grants remain. Removed files *within* a project disappear when that project
+is updated. The script copies only project folders; arrange any required shared
+data, data sources, external connections, and credentials separately. Both
+deployments may use the same NGINX htpasswd file; the script does not change
+NGINX accounts or group membership.
+
+If adoption or a restart fails, review the reported project and the target's
+authorization records before retrying. A project folder whose authorization
+record was created but whose sync state was not recorded will be reported as a
+name collision. Resolve that state deliberately before another run.
 
 ## Why it is outside `deployment/container/`
 
