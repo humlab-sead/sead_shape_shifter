@@ -2,9 +2,12 @@
 
 ## Status
 
-- Proposed follow-up to [Reconciliation Persistence Consolidation](../done/RECONCILIATION_PERSISTENCE_CONSOLIDATION.md)
-- Scope: Synchronize mapping sidecar links when eligible fixed entity values are saved
-- Goal: Apply fixed-row ID changes without disturbing mappings the user did not edit
+- **Implemented** (branch `materialized-entity-mapping-sync`; merged in [PR #562](https://github.com/humlab-sead/sead_shape_shifter/pull/562)).
+- Follow-up to [Reconciliation Persistence Consolidation](../RECONCILIATION_PERSISTENCE_CONSOLIDATION.md).
+- Scope: Synchronize mapping sidecar links when eligible fixed entity values are saved.
+- Goal: Apply fixed-row ID changes without disturbing mappings the user did not edit.
+- Validation: phases 1-4 passed their task-plan milestones, including the grouped Core/backend regression over `P-AC-1`-`P-AC-9`, the frontend pending/retry suite, and quality checks.
+- Remaining follow-up: the shared project lock is process-local. Deployment with independently writing processes still needs a cross-process file lock before claiming cross-process sidecar serialization. This does not block the implemented single-process behavior.
 
 ## Summary
 
