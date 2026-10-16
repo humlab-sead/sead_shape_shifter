@@ -1,0 +1,30 @@
+# Shape Shifter bootstrap vhost: HTTP only, no TLS, no auth.
+#
+# install_nginx_reverse_proxy.sh --bootstrap renders this so certbot can
+# obtain the certificate with the webroot method before the TLS vhost exists.
+# nginx refuses to start when ssl_certificate points at a missing file, so the
+# full vhost cannot be enabled until the certificate is present.
+#
+#   1. sudo install_nginx_reverse_proxy.sh --bootstrap __DOMAIN__
+#   2. sudo certbot certonly --webroot -w /var/www/html -d __DOMAIN__
+#   3. sudo install_nginx_reverse_proxy.sh __DOMAIN__ <port>   # replaces this file
+#
+# The ACME location must serve the challenge without auth or redirect; the
+# rest of the site redirects to HTTPS, which starts working once step 3 runs.
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name __DOMAIN__;
+
+    access_log /var/log/nginx/__DOMAIN__.access.log;
+    error_log  /var/log/nginx/__DOMAIN__.error.log warn;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}

@@ -215,11 +215,21 @@ place.
 
 ## NGINX reverse proxy
 
-Install an HTTPS vhost that forwards to the container:
+Install an HTTPS vhost that forwards to the container. A certificate must
+exist before the HTTPS vhost can be enabled, so install the HTTP-only
+bootstrap vhost first and obtain the certificate with it:
 
 ```bash
+sudo deployment/container-host/deploy/install_nginx_reverse_proxy.sh --bootstrap test-shape-shifter.sead.se
+sudo certbot certonly --webroot -w /var/www/html -d test-shape-shifter.sead.se
 sudo deployment/container-host/deploy/install_nginx_reverse_proxy.sh test-shape-shifter.sead.se 8012
 ```
+
+Issuing the certificate requires the domain to already resolve to this host
+(or to its NAT address). While the DNS record still points at another
+machine, HTTP-01 validation reaches that machine instead, and the webroot
+method fails; issue with a DNS-01 plugin first or coordinate the DNS change
+with these steps.
 
 The upstream port defaults to `HOST_PORT` from the invoking user's
 `~/config/deployment.env`, so omit the second argument when the deployment
@@ -229,7 +239,13 @@ already uses its configured port. Run the helper as the deployment user
 
 The script renders
 `deployment/container-host/deploy/nginx-shape-shifter.conf.template` into
-`/etc/nginx/sites-available/`, enables it and reloads NGINX.
+`/etc/nginx/sites-available/`, enables it and reloads NGINX. It refuses to
+enable the HTTPS vhost while the certificate is missing, and it removes the
+enable symlink again when `nginx -t` fails, so a broken vhost never breaks
+the next reload. The shared maps (`$connection_upgrade`, `$authz_groups`) are
+installed once to `/etc/nginx/conf.d/shape-shifter-maps.conf`, which lets a
+second Shape Shifter site on the same host enable without duplicate-map
+errors.
 
 The backend authenticates through a trusted proxy in production: NGINX must
 populate `X-Authenticated-User` (the template forwards `$remote_user`). Enable an

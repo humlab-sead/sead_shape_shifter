@@ -94,10 +94,14 @@ deployment/container-host/deploy/deploy_environment.sh shapeshifter-prod --branc
 
 ### `install_nginx_reverse_proxy.sh`
 
-Install an NGINX vhost for HTTPS traffic to the Podman service.
+Install an NGINX vhost for HTTPS traffic to the Podman service. A TLS
+certificate must exist first; until then install the HTTP-only bootstrap
+vhost and obtain the certificate with it:
 
 ```bash
 # Run as root
+sudo deployment/container-host/deploy/install_nginx_reverse_proxy.sh --bootstrap shapeshifter.example.com
+sudo certbot certonly --webroot -w /var/www/html -d shapeshifter.example.com
 sudo deployment/container-host/deploy/install_nginx_reverse_proxy.sh shapeshifter.example.com 8012
 ```
 
