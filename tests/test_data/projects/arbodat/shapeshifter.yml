@@ -472,10 +472,10 @@ entities:
     extra_columns:
       dataset_type_id:
       dataset_name: method_name
-      master_set_id: 1
+      master_set_id: =to_int(1)
       data_type_name: archeaobotany
       biblio_id:
-      submission_id: 1
+      submission_id: =to_int(1)
   dataset_contacts:
     type: entity
     source: dataset
