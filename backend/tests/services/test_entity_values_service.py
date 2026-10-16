@@ -2,12 +2,46 @@
 
 import time
 from pathlib import Path
+from threading import Lock
 from unittest.mock import Mock
 
 import pandas as pd
 import pytest
+import yaml
 
 from backend.app.services.entity_values_service import EntityValuesService, get_entity_values_service
+from backend.app.services.fixed_entity_mapping_sync_service import FixedEntityMappingSyncService
+from src.reconciliation.mapping_manager import MappingManager
+
+
+def _write_mapping_sidecar(
+    base_dir: Path,
+    entity_name: str,
+    *,
+    local_key: str | list[str],
+    public_id: str,
+) -> str:
+    """Write a project config placeholder and a sidecar entry; return the config path."""
+    config_path = base_dir / "shapeshifter.yml"
+    config_path.write_text("metadata:\n  type: shapeshifter\n")
+    sidecar = {
+        "version": "2.0",
+        "metadata": {
+            "project": base_dir.name,
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "updated_at": "2026-01-01T00:00:00+00:00",
+        },
+        "entities": {
+            entity_name: {
+                "local_key": local_key,
+                "public_id": public_id,
+                "entity_type": "primary",
+                "links": {},
+            }
+        },
+    }
+    (base_dir / f"{base_dir.name}-mapping.yml").write_text(yaml.safe_dump(sidecar))
+    return str(config_path)
 
 
 class TestEntityValuesService:
@@ -17,6 +51,7 @@ class TestEntityValuesService:
     def mock_project_service(self):
         """Create mock project service."""
         service = Mock()
+        service._get_lock.return_value = Lock()
         return service
 
     @pytest.fixture
@@ -314,8 +349,11 @@ class TestEntityValuesService:
 
     def test_update_values_remaps_recognized_legacy_order(self, service, mock_project_service, tmp_path):
         """The exact legacy identity/keys/data order should be remapped by column name before saving."""
+        project_file = tmp_path / "shapeshifter.yml"
+        project_file.write_text("metadata:\n  type: shapeshifter\n", encoding="utf-8")
         mock_project = Mock()
         mock_project.folder = tmp_path
+        mock_project.filename = str(project_file)
         mock_project_service.load_project.return_value = mock_project
 
         entity_data = {
@@ -594,3 +632,210 @@ class TestEntityValuesService:
 
         # Verify success (no etag check performed)
         assert result.row_count == 2
+
+    # -----------------------------------------------------------------------
+    # Fixed-row mapping guard: invalid mapping inputs never reach the file
+    # -----------------------------------------------------------------------
+
+    _FIXED_ENTITY = {
+        "type": "fixed",
+        "public_id": "location_id",
+        "keys": ["name"],
+        "columns": ["name", "country"],
+        "values": "@load:materialized/test.parquet",
+    }
+    _FIXED_COLUMNS = ["system_id", "location_id", "name", "country"]
+
+    def _configure_fixed_project(self, mock_project_service, tmp_path, *, local_key="name", public_id="location_id"):
+        config_path = _write_mapping_sidecar(tmp_path, "location", local_key=local_key, public_id=public_id)
+        mock_project = Mock()
+        mock_project.folder = tmp_path
+        mock_project.filename = config_path
+        mock_project_service.load_project.return_value = mock_project
+        mock_project_service.get_entity_by_name.return_value = dict(self._FIXED_ENTITY)
+        return tmp_path / "materialized" / "test.parquet"
+
+    def test_update_values_accepts_valid_fixed_rows(self, service, mock_project_service, tmp_path):
+        """A valid fixed-row save with an existing sidecar entry still writes the file."""
+        file_path = self._configure_fixed_project(mock_project_service, tmp_path)
+
+        result = service.update_values("test_project", "location", self._FIXED_COLUMNS, [[1, 100, "Uppsala", "Sweden"]], "parquet")
+
+        assert result.row_count == 1
+        assert file_path.exists()
+        sidecar = yaml.safe_load((tmp_path / f"{tmp_path.name}-mapping.yml").read_text(encoding="utf-8"))
+        assert sidecar["entities"]["location"]["links"]["Uppsala"]["target_id"] == 100
+
+    def test_update_values_creates_missing_materialized_mapping_entry(self, service, mock_project_service, tmp_path):
+        """A materialized fixed save creates a missing sidecar entry and link."""
+        project_file = tmp_path / "shapeshifter.yml"
+        project_file.write_text("metadata:\n  type: shapeshifter\n", encoding="utf-8")
+        mock_project = Mock()
+        mock_project.folder = tmp_path
+        mock_project.filename = str(project_file)
+        mock_project_service.load_project.return_value = mock_project
+        entity = dict(self._FIXED_ENTITY)
+        entity["materialized"] = {"enabled": True}
+        mock_project_service.get_entity_by_name.return_value = entity
+
+        result = service.update_values("test_project", "location", self._FIXED_COLUMNS, [[1, 100, "Uppsala", "Sweden"]], "parquet")
+
+        sidecar = yaml.safe_load((tmp_path / f"{tmp_path.name}-mapping.yml").read_text(encoding="utf-8"))
+        assert result.row_count == 1
+        assert sidecar["entities"]["location"]["local_key"] == "name"
+        assert sidecar["entities"]["location"]["links"]["Uppsala"]["target_id"] == 100
+
+    @pytest.mark.parametrize("materialized", [False, True])
+    def test_update_values_rejects_fixed_rows_without_project_path(self, service, mock_project_service, tmp_path, materialized):
+        """Missing project metadata must fail before any fixed rows are written."""
+        mock_project = Mock()
+        mock_project.folder = tmp_path
+        mock_project.filename = None
+        mock_project_service.load_project.return_value = mock_project
+        entity = dict(self._FIXED_ENTITY)
+        if materialized:
+            entity["materialized"] = {"enabled": True}
+        mock_project_service.get_entity_by_name.return_value = entity
+        file_path = tmp_path / "materialized" / "test.parquet"
+
+        with pytest.raises(ValueError, match="project file path is missing"):
+            service.update_values("test_project", "location", self._FIXED_COLUMNS, [[1, 100, "Uppsala", "Sweden"]], "parquet")
+
+        assert not file_path.exists()
+
+    def test_update_values_does_not_create_entry_for_nonmaterialized_fixed_entity(self, service, mock_project_service, tmp_path):
+        """A non-materialized fixed save without an entry writes only the values file."""
+        project_file = tmp_path / "shapeshifter.yml"
+        project_file.write_text("metadata:\n  type: shapeshifter\n", encoding="utf-8")
+        mock_project = Mock()
+        mock_project.folder = tmp_path
+        mock_project.filename = str(project_file)
+        mock_project_service.load_project.return_value = mock_project
+        mock_project_service.get_entity_by_name.return_value = dict(self._FIXED_ENTITY)
+
+        result = service.update_values("test_project", "location", self._FIXED_COLUMNS, [[1, 100, "Uppsala", "Sweden"]], "parquet")
+
+        assert result.row_count == 1
+        assert not (tmp_path / f"{tmp_path.name}-mapping.yml").exists()
+
+    def test_update_values_rejects_duplicate_key_without_writing(self, service, mock_project_service, tmp_path):
+        """Two rows with the same encoded key are rejected before any file is written."""
+        file_path = self._configure_fixed_project(mock_project_service, tmp_path)
+        rows = [[1, 100, "Uppsala", "Sweden"], [2, 101, "Uppsala", "Norway"]]
+
+        with pytest.raises(ValueError, match="share the same encoded key"):
+            service.update_values("test_project", "location", self._FIXED_COLUMNS, rows, "parquet")
+
+        assert not file_path.parent.exists()
+
+    def test_update_values_rejects_missing_stored_column_without_writing(self, service, mock_project_service, tmp_path):
+        """A stored mapping column absent from the rows is rejected before any file is written."""
+        file_path = self._configure_fixed_project(mock_project_service, tmp_path, local_key="legacy_name")
+
+        with pytest.raises(ValueError, match="missing stored mapping column"):
+            service.update_values("test_project", "location", self._FIXED_COLUMNS, [[1, 100, "Uppsala", "Sweden"]], "parquet")
+
+        assert not file_path.parent.exists()
+
+    def test_update_values_rejects_invalid_changed_id_without_writing(self, service, mock_project_service, tmp_path):
+        """An invalid non-blank ID is rejected before any file is written."""
+        file_path = self._configure_fixed_project(mock_project_service, tmp_path)
+
+        with pytest.raises(ValueError, match="invalid mapping target"):
+            service.update_values("test_project", "location", self._FIXED_COLUMNS, [[1, "abc", "Uppsala", "Sweden"]], "parquet")
+
+        assert not file_path.parent.exists()
+
+    def test_update_values_rejection_keeps_existing_file_unchanged(self, service, mock_project_service, tmp_path):
+        """A rejected mapping update leaves an existing values file unchanged."""
+        file_path = self._configure_fixed_project(mock_project_service, tmp_path)
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        pd.DataFrame({"system_id": [1], "location_id": [100], "name": ["Uppsala"], "country": ["Sweden"]}).to_parquet(
+            file_path, index=False
+        )
+        original = file_path.read_bytes()
+        rows = [[1, 100, "Uppsala", "Sweden"], [2, 101, "Uppsala", "Norway"]]
+
+        with pytest.raises(ValueError, match="share the same encoded key"):
+            service.update_values("test_project", "location", self._FIXED_COLUMNS, rows, "parquet")
+
+        assert file_path.read_bytes() == original
+
+
+class _FailingSaveManager(MappingManager):
+    """Mapping manager whose save fails after the values file was written."""
+
+    def save(self, catalog, project_path, expected_version=None):
+        raise OSError("sidecar write failed")
+
+
+class TestEntityValuesPartialSave:
+    """A sidecar failure after the file write returns a pending mapping result."""
+
+    FIXED_ENTITY = {
+        "type": "fixed",
+        "public_id": "location_id",
+        "keys": ["name"],
+        "columns": ["name", "country"],
+        "values": "@load:materialized/test.parquet",
+    }
+    FIXED_COLUMNS = ["system_id", "location_id", "name", "country"]
+
+    @pytest.fixture
+    def mock_project_service(self):
+        """Create a mock project service with a real per-project lock."""
+        service = Mock()
+        service._get_lock.return_value = Lock()
+        return service
+
+    def _configure(self, mock_project_service, tmp_path):
+        config_path = _write_mapping_sidecar(tmp_path, "location", local_key="name", public_id="location_id")
+        mock_project = Mock()
+        mock_project.folder = tmp_path
+        mock_project.filename = config_path
+        mock_project_service.load_project.return_value = mock_project
+        mock_project_service.get_entity_by_name.return_value = dict(self.FIXED_ENTITY)
+        return tmp_path / "materialized" / "test.parquet"
+
+    def test_sidecar_failure_returns_pending_after_file_write(self, mock_project_service, tmp_path):
+        service = EntityValuesService(
+            project_service=mock_project_service,
+            mapping_sync_service=FixedEntityMappingSyncService(_FailingSaveManager()),
+        )
+        file_path = self._configure(mock_project_service, tmp_path)
+
+        result = service.update_values("test_project", "location", self.FIXED_COLUMNS, [[1, 100, "Uppsala", "Sweden"]], "parquet")
+
+        assert result.row_count == 1
+        assert file_path.exists()
+        assert result.mapping_sync is not None
+        assert result.mapping_sync.rows_saved is True
+        assert result.mapping_sync.storage_kind == "external"
+        assert result.mapping_sync.project == "test_project"
+        assert result.mapping_sync.entity == "location"
+        assert result.mapping_sync.expected_row_version == result.etag
+        assert result.mapping_sync.operations[0].target_id == 100
+        sidecar = yaml.safe_load((tmp_path / f"{tmp_path.name}-mapping.yml").read_text(encoding="utf-8"))
+        assert sidecar["entities"]["location"]["links"] == {}
+
+    def test_successful_external_save_has_no_pending(self, mock_project_service, tmp_path):
+        service = EntityValuesService(project_service=mock_project_service)
+        self._configure(mock_project_service, tmp_path)
+
+        result = service.update_values("test_project", "location", self.FIXED_COLUMNS, [[1, 100, "Uppsala", "Sweden"]], "parquet")
+
+        assert result.mapping_sync is None
+        sidecar = yaml.safe_load((tmp_path / f"{tmp_path.name}-mapping.yml").read_text(encoding="utf-8"))
+        assert sidecar["entities"]["location"]["links"]["Uppsala"]["target_id"] == 100
+
+    def test_invalid_rows_still_fail_before_writing(self, mock_project_service, tmp_path):
+        service = EntityValuesService(
+            project_service=mock_project_service,
+            mapping_sync_service=FixedEntityMappingSyncService(_FailingSaveManager()),
+        )
+        file_path = self._configure(mock_project_service, tmp_path)
+
+        with pytest.raises(ValueError, match="invalid mapping target"):
+            service.update_values("test_project", "location", self.FIXED_COLUMNS, [[1, "abc", "Uppsala", "Sweden"]], "parquet")
+
+        assert not file_path.parent.exists()

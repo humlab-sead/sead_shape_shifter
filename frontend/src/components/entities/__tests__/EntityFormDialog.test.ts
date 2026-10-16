@@ -28,6 +28,8 @@ const mockState = vi.hoisted(() => ({
   getEntity: vi.fn(),
   getValues: vi.fn(),
   updateValues: vi.fn(),
+  retryFixedEntityMapping: vi.fn(),
+  setMappingSyncPending: vi.fn(),
   introspectQueryColumns: vi.fn(async () => []),
   syncCachedEntity: vi.fn(),
 }))
@@ -81,6 +83,8 @@ vi.mock('@/stores', () => ({
   useEntityStore: () => ({
     overlayInitialTab: 'form',
     syncCachedEntity: mockState.syncCachedEntity,
+    setMappingSyncPending: mockState.setMappingSyncPending,
+    mappingSyncPending: null,
   }),
 }))
 
@@ -90,6 +94,7 @@ vi.mock('@/api', () => ({
       get: mockState.getEntity,
       getValues: mockState.getValues,
       updateValues: mockState.updateValues,
+      retryFixedEntityMapping: mockState.retryFixedEntityMapping,
     },
     dataSources: {
       getEntityTypes: vi.fn(async () => []),
@@ -199,6 +204,33 @@ function createEntity(name: string, entity_data: Record<string, unknown>): Entit
     name,
     entity_data,
     etag: `etag-${name}`,
+  }
+}
+
+function makeMappingPending(overrides: Record<string, unknown> = {}) {
+  return {
+    status: 'pending' as const,
+    rows_saved: true,
+    project: 'arbodat',
+    entity: 'method',
+    storage_kind: 'inline' as const,
+    local_key: 'label',
+    public_id: 'method_id',
+    operations: [
+      {
+        op: 'upsert' as const,
+        key: 'Sampling',
+        target_id: 54,
+        expected_row_present: true,
+        expected_saved_id: 54,
+        prior_link: null,
+        row_index: 0,
+      },
+    ],
+    entry: null,
+    expected_row_version: 'rows-v1',
+    expected_sidecar_version: 'sidecar-v1',
+    ...overrides,
   }
 }
 
@@ -382,6 +414,8 @@ describe('EntityFormDialog', () => {
     mockState.getEntity.mockReset()
     mockState.getValues.mockReset()
     mockState.updateValues.mockReset()
+    mockState.retryFixedEntityMapping.mockReset()
+    mockState.setMappingSyncPending.mockReset()
     mockState.syncCachedEntity.mockReset()
   })
 
@@ -1173,5 +1207,139 @@ describe('EntityFormDialog', () => {
 
     expect(mockState.getEntity).toHaveBeenCalledWith('arbodat', 'abundance_source')
     expect(mockState.syncCachedEntity).toHaveBeenCalledWith(freshEntity)
+  })
+
+  it('reports a partial save and offers retry when the inline save returns pending mapping', async () => {
+    const pending = makeMappingPending()
+    mockState.update.mockResolvedValue({
+      ...createEntity('method', orderedFixedEntity.entity_data),
+      mapping_sync: pending,
+    })
+
+    const wrapper = mountEntityFormDialog({ mode: 'edit', entity: orderedFixedEntity })
+    await flushPromises()
+    await nextTick()
+
+    const columnsCombobox = wrapper
+      .findAllComponents({ name: 'VCombobox' })
+      .find((component) => component.props('label') === 'Columns')
+    columnsCombobox!.vm.$emit('update:modelValue', ['label', 'created_at'])
+    await flushPromises()
+    await nextTick()
+
+    const saveButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Save')
+    await saveButton!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Rows saved; mapping changes pending')
+    expect(wrapper.text()).not.toContain('Saved successfully')
+    expect(wrapper.emitted('saved')?.at(-1)).toEqual(['method', true])
+    expect(wrapper.findAll('button').some((button) => button.text().trim() === 'Retry mapping')).toBe(true)
+    expect(mockState.setMappingSyncPending).toHaveBeenCalledWith(pending)
+  })
+
+  it('retries only the pending mapping changes without resubmitting rows', async () => {
+    const pending = makeMappingPending()
+    mockState.update.mockResolvedValue({
+      ...createEntity('method', orderedFixedEntity.entity_data),
+      mapping_sync: pending,
+    })
+    mockState.retryFixedEntityMapping.mockResolvedValue({
+      status: 'applied',
+      rows_saved: true,
+      changed: true,
+      sidecar_version: 'sidecar-v2',
+      changed_keys: [],
+    })
+
+    const wrapper = mountEntityFormDialog({ mode: 'edit', entity: orderedFixedEntity })
+    await flushPromises()
+    await nextTick()
+
+    const columnsCombobox = wrapper
+      .findAllComponents({ name: 'VCombobox' })
+      .find((component) => component.props('label') === 'Columns')
+    columnsCombobox!.vm.$emit('update:modelValue', ['label', 'created_at'])
+    await flushPromises()
+    await nextTick()
+
+    const saveButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Save')
+    await saveButton!.trigger('click')
+    await flushPromises()
+
+    const updateCallsAfterSave = mockState.update.mock.calls.length
+    const valuesCallsAfterSave = mockState.updateValues.mock.calls.length
+
+    const retryButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Retry mapping')
+    await retryButton!.trigger('click')
+    await flushPromises()
+
+    expect(mockState.retryFixedEntityMapping).toHaveBeenCalledTimes(1)
+    expect(mockState.retryFixedEntityMapping).toHaveBeenCalledWith('arbodat', 'method', pending)
+    expect(mockState.update.mock.calls.length).toBe(updateCallsAfterSave)
+    expect(mockState.updateValues.mock.calls.length).toBe(valuesCallsAfterSave)
+    expect(wrapper.text()).not.toContain('Rows saved; mapping changes pending')
+    expect(wrapper.text()).toContain('Saved successfully')
+  })
+
+  it('shows the changed keys when a retry reports a conflict', async () => {
+    const pending = makeMappingPending()
+    mockState.update.mockResolvedValue({
+      ...createEntity('method', orderedFixedEntity.entity_data),
+      mapping_sync: pending,
+    })
+    mockState.retryFixedEntityMapping.mockRejectedValue({
+      response: { status: 409, data: { detail: { context: { changed_keys: ['Sampling'] } } } },
+    })
+
+    const wrapper = mountEntityFormDialog({ mode: 'edit', entity: orderedFixedEntity })
+    await flushPromises()
+    await nextTick()
+
+    const columnsCombobox = wrapper
+      .findAllComponents({ name: 'VCombobox' })
+      .find((component) => component.props('label') === 'Columns')
+    columnsCombobox!.vm.$emit('update:modelValue', ['label', 'created_at'])
+    await flushPromises()
+    await nextTick()
+
+    const saveButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Save')
+    await saveButton!.trigger('click')
+    await flushPromises()
+
+    const retryButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Retry mapping')
+    await retryButton!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Sampling')
+    expect(wrapper.text()).toContain('Rows saved; mapping changes pending')
+  })
+
+  it('keeps the dialog open when Save & Close leaves mapping changes pending', async () => {
+    const pending = makeMappingPending()
+    mockState.update.mockResolvedValue({
+      ...createEntity('method', orderedFixedEntity.entity_data),
+      mapping_sync: pending,
+    })
+
+    const wrapper = mountEntityFormDialog({ mode: 'edit', entity: orderedFixedEntity })
+    await flushPromises()
+    await nextTick()
+
+    const columnsCombobox = wrapper
+      .findAllComponents({ name: 'VCombobox' })
+      .find((component) => component.props('label') === 'Columns')
+    columnsCombobox!.vm.$emit('update:modelValue', ['label', 'created_at'])
+    await flushPromises()
+    await nextTick()
+
+    const saveAndCloseButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Save & Close')
+    await saveAndCloseButton!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Rows saved; mapping changes pending')
+    expect(wrapper.emitted('saved')?.at(-1)).toEqual(['method', true])
+    const closeEmits = (wrapper.emitted('update:modelValue') ?? []).map((args) => args[0])
+    expect(closeEmits).not.toContain(false)
   })
 })

@@ -36,12 +36,24 @@ from backend.app.models import (
     Project,
     ProjectMetadata,
 )
+from backend.app.models.mapping_sync import (
+    MappingSyncEntry,
+    MappingSyncLink,
+    MappingSyncOperation,
+    MappingSyncPending,
+)
 from backend.app.utils import convert_ruamel_types
 from src.configuration import find_unresolved_directives
 from src.model import ShapeShiftProject, TableConfig
 from src.path_resolution import resolve_contained_path
+from src.reconciliation.fixed_entity_mapping_changes import (
+    FixedRowChangeSet,
+    LinkDelete,
+    LinkUpsert,
+    as_mapping_target_id,
+)
 from src.reconciliation.mapping_manager import MappingManager
-from src.reconciliation.mapping_model import MappingCatalog
+from src.reconciliation.mapping_model import EntityMapping, EntityType, Link, MappingCatalog
 from src.reconciliation.mapping_validator import SidecarValidationError, validate_entity_mapping, validate_local_key
 from src.types.fixed_entity_types import (
     FixedEntityColumnTypeDeclarationError,
@@ -405,3 +417,154 @@ class ProjectMapper:
             entity_dict.pop("drop_empty_rows", None)
 
         return entity_dict
+
+    # ------------------------------------------------------------------
+    # Fixed-row mapping sync conversion
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def fixed_change_set_to_pending(
+        change_set: FixedRowChangeSet,
+        *,
+        project: str,
+        entity: str,
+        storage_kind: str,
+        row_version: str,
+        sidecar_version: str,
+    ) -> MappingSyncPending:
+        """Convert a prepared Core change set to the JSON-safe pending payload.
+
+        Records the exact operations with each affected key's post-save row
+        state and pre-write link so retry applies the supplied changes rather
+        than recomputing them from current rows.
+        """
+        if not change_set.eligible or change_set.local_key is None or change_set.public_id is None:
+            raise ValueError("Cannot build a pending mapping payload from an ineligible change set.")
+
+        operations: list[MappingSyncOperation] = []
+        for delete in change_set.deletes:
+            operations.append(
+                MappingSyncOperation(
+                    op="delete",
+                    key=delete.key,
+                    expected_row_present=not delete.row_removed,
+                    expected_saved_id=None,
+                    prior_link=ProjectMapper._link_to_sync(delete.previous_link),
+                    row_index=delete.row_index,
+                )
+            )
+        for upsert in change_set.upserts:
+            operations.append(
+                MappingSyncOperation(
+                    op="upsert",
+                    key=upsert.key,
+                    target_id=upsert.target_id,
+                    expected_row_present=True,
+                    expected_saved_id=upsert.target_id,
+                    prior_link=ProjectMapper._link_to_sync(upsert.previous_link),
+                    row_index=upsert.row_index,
+                )
+            )
+
+        entry: MappingSyncEntry | None = None
+        if change_set.proposed_entry is not None:
+            entry = MappingSyncEntry(
+                local_key=change_set.proposed_entry.local_key,
+                public_id=change_set.proposed_entry.public_id,
+                prior_entry_exists=False,
+            )
+
+        return MappingSyncPending(
+            project=project,
+            entity=entity,
+            storage_kind=storage_kind,  # type: ignore[arg-type]
+            local_key=change_set.local_key,
+            public_id=change_set.public_id,
+            operations=operations,
+            entry=entry,
+            expected_row_version=row_version,
+            expected_sidecar_version=sidecar_version,
+        )
+
+    @staticmethod
+    def pending_to_fixed_change_set(pending: MappingSyncPending) -> FixedRowChangeSet:
+        """Convert a pending payload back to the Core change set used by retry.
+
+        The recorded pre-write links and post-save row states are preserved so
+        the retry comparison checks the same affected-key preconditions.
+        """
+        upserts: list[LinkUpsert] = []
+        deletes: list[LinkDelete] = []
+        for operation in pending.operations:
+            if operation.op == "upsert":
+                upserts.append(
+                    LinkUpsert(
+                        key=operation.key,
+                        target_id=int(operation.target_id),
+                        previous_saved_id=None,
+                        new_saved_id=operation.expected_saved_id,
+                        previous_link=ProjectMapper._sync_to_link(operation.prior_link),
+                        row_index=operation.row_index,
+                    )
+                )
+            else:
+                deletes.append(
+                    LinkDelete(
+                        key=operation.key,
+                        previous_saved_id=None,
+                        new_saved_id=None,
+                        row_removed=not operation.expected_row_present,
+                        previous_link=ProjectMapper._sync_to_link(operation.prior_link),
+                        row_index=operation.row_index,
+                    )
+                )
+
+        proposed_entry: EntityMapping | None = None
+        if pending.entry is not None:
+            proposed_entry = EntityMapping(
+                local_key=pending.entry.local_key,
+                public_id=pending.entry.public_id,
+                entity_type=EntityType.PRIMARY,
+            )
+
+        return FixedRowChangeSet(
+            entity_name=pending.entity,
+            eligible=True,
+            local_key=pending.local_key,
+            public_id=pending.public_id,
+            proposed_entry=proposed_entry,
+            upserts=tuple(upserts),
+            deletes=tuple(deletes),
+        )
+
+    @staticmethod
+    def _link_to_sync(link: Link | None) -> MappingSyncLink | None:
+        """Convert a Core mapping link to the JSON-safe API link."""
+        if link is None:
+            return None
+        return MappingSyncLink(
+            target_id=as_mapping_target_id(link.target_id) if link.target_id is not None else None,
+            source=link.source.value if hasattr(link.source, "value") else str(link.source),
+            confidence=link.confidence,
+            created_at=link.created_at,
+            committed_at=link.committed_at,
+            notes=link.notes,
+            created_by=link.created_by,
+            reviewed_by=link.reviewed_by,
+        )
+
+    @staticmethod
+    def _sync_to_link(link: MappingSyncLink | None) -> Link | None:
+        """Convert a JSON-safe API link back to a Core mapping link."""
+        if link is None:
+            return None
+        return Link(
+            target_id=link.target_id,
+            source=link.source,  # type: ignore[arg-type]
+            confidence=link.confidence,
+            created_at=link.created_at,
+            committed_at=link.committed_at,
+            notes=link.notes,
+            created_by=link.created_by,
+            reviewed_by=link.reviewed_by,
+        )

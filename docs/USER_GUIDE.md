@@ -523,6 +523,22 @@ Use this workflow when you need to maintain a lookup table directly in the proje
 4. Save the project.
 5. Run validation before executing the full workflow.
 
+### Partial Saves and Mapping Retry
+
+Saving a fixed entity updates the mapping sidecar when the saved rows change a linked ID or row key. The mapping sidecar is a separate file, so the rows can be saved while the mapping update does not happen. When that occurs, the editor reports a partial save instead of a full success:
+
+- The editor shows **Rows saved; mapping changes pending** and a **Retry mapping** button.
+- **Save & Close** keeps the dialog open while changes are pending.
+- The pending result is retained until the retry succeeds or you close and reopen the editor.
+
+Use these steps to recover:
+
+1. Click **Retry mapping**. Shape Shifter applies only the recorded mapping changes; it does not resend the rows.
+2. If the retry succeeds, the pending notice is replaced by the usual save confirmation.
+3. If the retry reports a conflict, the editor lists the changed keys under the notice. Review the current rows and mapping links for those keys, adjust them, and retry, or reload the entity.
+
+A retry does not change rows or links at unaffected keys, so edits you made elsewhere while the mapping was pending are preserved.
+
 ### What Happens to `_id` Columns
 
 Fixed entities treat columns ending in `_id` as integers by default.
@@ -699,6 +715,8 @@ Examples:
 
 Reconciled ID links and manual overrides are persisted in a **mapping sidecar file** (`<project>-mapping.yml`) stored alongside `shapeshifter.yml`. This file is the single source of truth for all entity ID mappings.
 
+Shape Shifter blocks renaming an entity that has a mapping entry, including an entry with no links. Ask a project maintainer to move or remove that entry before renaming the entity.
+
 Legacy `options.mappings` in `shapeshifter.yml` is no longer used for new projects.
 
 The mapping sidecar stores per-entity links with full provenance:
@@ -731,9 +749,10 @@ During normalization, mappings are applied in this order (first match wins):
 
 When editing a materialized entity and assigning `public_id` values:
 
-- Saving the materialized entity automatically syncs manual links to the mapping sidecar
-- Manual links replace any previous manual links for that entity
-- These manual links take highest precedence during normalization
+- Saving fixed rows updates links for ID or row-key changes and adds a missing link for a saved non-blank ID. Links at unaffected keys keep their source and details, even when a saved `public_id` is blank or older.
+- During normalization, committed manual links take precedence over reconciliation and imported links.
+
+Use **Sync from materialized entity** in Mapping Sidecar Management to seed or repair links from all saved rows. A request without options adds links only where no link exists and keeps every existing link. To rebuild manual links and remove stale manual entries, explicitly set `replace_manual_links` to `true`. A rebuilt link can replace another source at the same key because the sidecar stores one link per key.
 
 ## Mapping Sidecar Management
 
@@ -745,6 +764,7 @@ The sidecar file supports full CRUD via API endpoints:
 | Get single link               | `GET /projects/{project}/mapping/{entity}/{key}`               |
 | Create/update link            | `PUT /projects/{project}/mapping/{entity}/{key}`               |
 | Sync from materialized entity | `PATCH /projects/{project}/mapping/from-materialized/{entity}` |
+| Retry pending fixed-entity mapping | `PATCH /projects/{project}/mapping/retry-fixed-entity/{entity}` |
 | Commit draft links            | `POST /projects/{project}/mapping/commit`                      |
 | Delete link                   | `DELETE /projects/{project}/mapping/{entity}/{key}`            |
 | Export to CSV                 | `GET /projects/{project}/mapping/export?format=csv`            |

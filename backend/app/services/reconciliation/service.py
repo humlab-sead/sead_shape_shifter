@@ -215,6 +215,11 @@ class ReconciliationService:
         raise BadRequestError(f"Cannot extract numeric ID from URI: {uri}")
 
     def export_to_mapping(self, project_name: str, entity_name: str, target_field: str) -> tuple[int, int]:
+        """Copy accepted reconciliation links into the mapping sidecar under the project lock."""
+        with self.project_service._get_lock(project_name):
+            return self._export_to_mapping_locked(project_name, entity_name, target_field)
+
+    def _export_to_mapping_locked(self, project_name: str, entity_name: str, target_field: str) -> tuple[int, int]:
         """Copy accepted reconciliation links into the mapping sidecar for one entity."""
         reconciliation_catalog: core.EntityResolutionCatalog = self.catalog_manager.load_catalog(project_name)
         resolution_set: core.EntityResolutionSet | None = reconciliation_catalog.get(entity_name, target_field)
@@ -226,7 +231,8 @@ class ReconciliationService:
             )
 
         mapping_service: MappingService = MappingService(self.project_service)
-        api_project, table, mapping_catalog = mapping_service._load_project_table_and_catalog(project_name, entity_name)
+        api_project, table, snapshot = mapping_service._load_project_table_and_snapshot(project_name, entity_name)
+        mapping_catalog = snapshot.catalog
         entity_mapping: EntityMapping | None = mapping_service.manager.get_entity(mapping_catalog, entity_name)
 
         exported = 0
@@ -262,7 +268,11 @@ class ReconciliationService:
             )
             exported += 1
 
-        mapping_service.manager.save(mapping_catalog, mapping_service._project_path(api_project, project_name))
+        mapping_service.manager.save(
+            mapping_catalog,
+            mapping_service._project_path(api_project, project_name),
+            expected_version=snapshot.content_version,
+        )
         return exported, skipped_manual
 
     async def auto_reconcile_entity(

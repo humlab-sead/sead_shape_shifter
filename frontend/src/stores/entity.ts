@@ -1,7 +1,13 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { api } from '@/api'
-import type { EntityResponse, EntityCreateRequest, EntityUpdateRequest } from '@/api/entities'
+import type {
+  EntityResponse,
+  EntityCreateRequest,
+  EntityUpdateRequest,
+  MappingSyncPending,
+  MappingSyncRetryResult,
+} from '@/api/entities'
 
 export const useEntityStore = defineStore('entity', () => {
   // State
@@ -16,7 +22,10 @@ export const useEntityStore = defineStore('entity', () => {
     currentEtag: string
     currentEntity: Record<string, unknown>
   } | null>(null)
-  
+  // Pending mapping changes from a partial fixed-row save, scoped to one project/entity.
+  const mappingSyncPending = ref<MappingSyncPending | null>(null)
+  const mappingSyncRetrying = ref(false)
+
   // Overlay state
   const showEditorOverlay = ref(false)
   const overlayEntityName = ref<string | null>(null)
@@ -28,7 +37,7 @@ export const useEntityStore = defineStore('entity', () => {
       ...details,
       currentProject: currentProjectName.value,
       entityCount: entities.value.length,
-      entityNames: entities.value.map(e => e.name),
+      entityNames: entities.value.map((e) => e.name),
       timestamp: new Date().toISOString(),
     })
   }
@@ -146,9 +155,9 @@ export const useEntityStore = defineStore('entity', () => {
       entities.value.push(entity)
       selectedEntity.value = entity
       hasUnsavedChanges.value = false
-      
+
       logState('createEntity:after', { projectName, entityName: data.name })
-      
+
       return entity
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to create entity'
@@ -176,17 +185,26 @@ export const useEntityStore = defineStore('entity', () => {
 
       selectedEntity.value = entity
       hasUnsavedChanges.value = false
-      
+
+      // Retain or clear pending mapping changes for this project/entity only.
+      if (entity.mapping_sync) {
+        mappingSyncPending.value = entity.mapping_sync
+      } else if (isPendingFor(projectName, entityName)) {
+        mappingSyncPending.value = null
+      }
+
       // Note: Backend already persists entity to disk.
       // Don't call refreshProjectState() here as it causes component recreation
       // which resets dialog state (closes the entity editor).
-      
+
       return entity
     } catch (err: unknown) {
       const axiosErr = err as {
         response?: {
           status?: number
-          data?: { detail?: { context?: { current_etag?: string; current_entity?: Record<string, unknown> }; message?: string } }
+          data?: {
+            detail?: { context?: { current_etag?: string; current_entity?: Record<string, unknown> }; message?: string }
+          }
         }
       }
       const detail = axiosErr?.response?.data?.detail
@@ -232,6 +250,30 @@ export const useEntityStore = defineStore('entity', () => {
     error.value = null
   }
 
+  function isPendingFor(projectName: string, entityName: string): boolean {
+    const pending = mappingSyncPending.value
+    return !!pending && pending.project === projectName && pending.entity === entityName
+  }
+
+  function setMappingSyncPending(pending: MappingSyncPending | null) {
+    mappingSyncPending.value = pending
+  }
+
+  async function retryMappingSync(projectName: string, entityName: string): Promise<MappingSyncRetryResult | null> {
+    const pending = mappingSyncPending.value
+    if (!pending) {
+      return null
+    }
+    mappingSyncRetrying.value = true
+    try {
+      const result = await api.entities.retryFixedEntityMapping(projectName, entityName, pending)
+      mappingSyncPending.value = null
+      return result
+    } finally {
+      mappingSyncRetrying.value = false
+    }
+  }
+
   function reset() {
     logState('reset:before')
     entities.value = []
@@ -242,16 +284,17 @@ export const useEntityStore = defineStore('entity', () => {
     hasUnsavedChanges.value = false
     showEditorOverlay.value = false
     overlayEntityName.value = null
+    mappingSyncPending.value = null
     logState('reset:after')
   }
-  
+
   // Overlay management
   function openEditorOverlay(entityName: string, initialTab: 'form' | 'yaml' = 'form') {
     overlayEntityName.value = entityName
     overlayInitialTab.value = initialTab
     showEditorOverlay.value = true
   }
-  
+
   function closeEditorOverlay() {
     showEditorOverlay.value = false
     overlayEntityName.value = null
@@ -267,6 +310,8 @@ export const useEntityStore = defineStore('entity', () => {
     error,
     hasUnsavedChanges,
     conflictInfo,
+    mappingSyncPending,
+    mappingSyncRetrying,
     showEditorOverlay,
     overlayEntityName,
     overlayInitialTab,
@@ -287,6 +332,8 @@ export const useEntityStore = defineStore('entity', () => {
     deleteEntity,
     markAsChanged,
     clearError,
+    setMappingSyncPending,
+    retryMappingSync,
     reset,
     openEditorOverlay,
     closeEditorOverlay,
