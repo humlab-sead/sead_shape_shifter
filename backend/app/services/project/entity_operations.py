@@ -3,6 +3,7 @@
 import hashlib
 import json
 import re
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from loguru import logger
@@ -14,8 +15,10 @@ from backend.app.exceptions import (
     ResourceNotFoundError,
     SchemaValidationError,
 )
+from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.middleware.correlation import get_correlation_id
 from backend.app.models.entity import Entity
+from backend.app.models.mapping_sync import MappingSyncPending
 from backend.app.models.project import Project
 from backend.app.services.fixed_entity_mapping_change_service import FixedEntityMappingChangeService
 from backend.app.services.fixed_entity_mapping_sync_service import FixedEntityMappingSyncService
@@ -26,6 +29,19 @@ from src.model import TableConfig
 from src.reconciliation.fixed_entity_mapping_changes import FixedEntityMappingChangeError
 
 _ENTITY_VALUE_REFERENCE_RE = re.compile(r"@value:\s*entities\.([A-Za-z0-9_-]+)(?=\.|\s|$)")
+
+
+@dataclass(frozen=True)
+class EntityUpdateResult:
+    """Outcome of an entity update: warnings plus an optional pending mapping result.
+
+    ``mapping_sync`` is set only when the rows were persisted but the mapping
+    sidecar write did not happen. A caller that receives this result must report
+    a partial save instead of a complete failure or a complete success.
+    """
+
+    warnings: list[str] = field(default_factory=list)
+    mapping_sync: MappingSyncPending | None = None
 
 
 def _iter_config_strings(value: Any):
@@ -329,7 +345,7 @@ class EntityOperations:
         *,
         expected_etag: str | None = None,
         new_name: str | None = None,
-    ) -> list[str]:
+    ) -> EntityUpdateResult:
         """
         Update entity in project by project name.
 
@@ -436,7 +452,7 @@ class EntityOperations:
                 if project.metadata and project.metadata.default_entity == entity_name:
                     project.metadata.default_entity = new_name
                 assert self._save_entity_rename is not None
-                return self._save_entity_rename(project_name, entity_name, new_name, project)
+                return EntityUpdateResult(warnings=self._save_entity_rename(project_name, entity_name, new_name, project))
 
             # Compare the previously saved fixed rows with the new rows before the
             # boundary save so invalid mapping inputs never reach persistence.
@@ -465,14 +481,24 @@ class EntityOperations:
                 self._save_project(project)
 
             if mapping_snapshot is not None and project_path:
-                self._mapping_sync_service.apply_change_set(
+                sync_result = self._mapping_sync_service.apply_change_set(
                     change_set=change_set,
                     snapshot=mapping_snapshot,
                     project_path=project_path,
                     row_version=compute_entity_etag(entity_data),
                     created_by=get_correlation_id(),
                 )
-            return []
+                if sync_result.error is not None:
+                    pending = ProjectMapper.fixed_change_set_to_pending(
+                        change_set,
+                        project=project_name,
+                        entity=entity_name,
+                        storage_kind="inline",
+                        row_version=sync_result.row_version,
+                        sidecar_version=sync_result.sidecar_version,
+                    )
+                    return EntityUpdateResult(warnings=[], mapping_sync=pending)
+            return EntityUpdateResult(warnings=[])
 
     def delete_entity_by_name(self, project_name: str, entity_name: str) -> None:
         """

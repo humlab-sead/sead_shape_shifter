@@ -523,6 +523,22 @@ Use this workflow when you need to maintain a lookup table directly in the proje
 4. Save the project.
 5. Run validation before executing the full workflow.
 
+### Partial Saves and Mapping Retry
+
+Saving a fixed entity updates the mapping sidecar when the saved rows change a linked ID or row key. The mapping sidecar is a separate file, so the rows can be saved while the mapping update does not happen. When that occurs, the editor reports a partial save instead of a full success:
+
+- The editor shows **Rows saved; mapping changes pending** and a **Retry mapping** button.
+- **Save & Close** keeps the dialog open while changes are pending.
+- The pending result is retained until the retry succeeds or you close and reopen the editor.
+
+Use these steps to recover:
+
+1. Click **Retry mapping**. Shape Shifter applies only the recorded mapping changes; it does not resend the rows.
+2. If the retry succeeds, the pending notice is replaced by the usual save confirmation.
+3. If the retry reports a conflict, the editor lists the changed keys under the notice. Review the current rows and mapping links for those keys, adjust them, and retry, or reload the entity.
+
+A retry does not change rows or links at unaffected keys, so edits you made elsewhere while the mapping was pending are preserved.
+
 ### What Happens to `_id` Columns
 
 Fixed entities treat columns ending in `_id` as integers by default.
@@ -745,6 +761,7 @@ The sidecar file supports full CRUD via API endpoints:
 | Get single link               | `GET /projects/{project}/mapping/{entity}/{key}`               |
 | Create/update link            | `PUT /projects/{project}/mapping/{entity}/{key}`               |
 | Sync from materialized entity | `PATCH /projects/{project}/mapping/from-materialized/{entity}` |
+| Retry pending fixed-entity mapping | `PATCH /projects/{project}/mapping/retry-fixed-entity/{entity}` |
 | Commit draft links            | `POST /projects/{project}/mapping/commit`                      |
 | Delete link                   | `DELETE /projects/{project}/mapping/{entity}/{key}`            |
 | Export to CSV                 | `GET /projects/{project}/mapping/export?format=csv`            |

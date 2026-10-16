@@ -10,6 +10,8 @@ import pytest
 import yaml
 
 from backend.app.services.entity_values_service import EntityValuesService, get_entity_values_service
+from backend.app.services.fixed_entity_mapping_sync_service import FixedEntityMappingSyncService
+from src.reconciliation.mapping_manager import MappingManager
 
 
 def _write_mapping_sidecar(
@@ -737,3 +739,82 @@ class TestEntityValuesService:
             service.update_values("test_project", "location", self._FIXED_COLUMNS, rows, "parquet")
 
         assert file_path.read_bytes() == original
+
+
+class _FailingSaveManager(MappingManager):
+    """Mapping manager whose save fails after the values file was written."""
+
+    def save(self, catalog, project_path, expected_version=None):
+        raise OSError("sidecar write failed")
+
+
+class TestEntityValuesPartialSave:
+    """A sidecar failure after the file write returns a pending mapping result."""
+
+    FIXED_ENTITY = {
+        "type": "fixed",
+        "public_id": "location_id",
+        "keys": ["name"],
+        "columns": ["name", "country"],
+        "values": "@load:materialized/test.parquet",
+    }
+    FIXED_COLUMNS = ["system_id", "location_id", "name", "country"]
+
+    @pytest.fixture
+    def mock_project_service(self):
+        """Create a mock project service with a real per-project lock."""
+        service = Mock()
+        service._get_lock.return_value = Lock()
+        return service
+
+    def _configure(self, mock_project_service, tmp_path):
+        config_path = _write_mapping_sidecar(tmp_path, "location", local_key="name", public_id="location_id")
+        mock_project = Mock()
+        mock_project.folder = tmp_path
+        mock_project.filename = config_path
+        mock_project_service.load_project.return_value = mock_project
+        mock_project_service.get_entity_by_name.return_value = dict(self.FIXED_ENTITY)
+        return tmp_path / "materialized" / "test.parquet"
+
+    def test_sidecar_failure_returns_pending_after_file_write(self, mock_project_service, tmp_path):
+        service = EntityValuesService(
+            project_service=mock_project_service,
+            mapping_sync_service=FixedEntityMappingSyncService(_FailingSaveManager()),
+        )
+        file_path = self._configure(mock_project_service, tmp_path)
+
+        result = service.update_values("test_project", "location", self.FIXED_COLUMNS, [[1, 100, "Uppsala", "Sweden"]], "parquet")
+
+        assert result.row_count == 1
+        assert file_path.exists()
+        assert result.mapping_sync is not None
+        assert result.mapping_sync.rows_saved is True
+        assert result.mapping_sync.storage_kind == "external"
+        assert result.mapping_sync.project == "test_project"
+        assert result.mapping_sync.entity == "location"
+        assert result.mapping_sync.expected_row_version == result.etag
+        assert result.mapping_sync.operations[0].target_id == 100
+        sidecar = yaml.safe_load((tmp_path / f"{tmp_path.name}-mapping.yml").read_text(encoding="utf-8"))
+        assert sidecar["entities"]["location"]["links"] == {}
+
+    def test_successful_external_save_has_no_pending(self, mock_project_service, tmp_path):
+        service = EntityValuesService(project_service=mock_project_service)
+        self._configure(mock_project_service, tmp_path)
+
+        result = service.update_values("test_project", "location", self.FIXED_COLUMNS, [[1, 100, "Uppsala", "Sweden"]], "parquet")
+
+        assert result.mapping_sync is None
+        sidecar = yaml.safe_load((tmp_path / f"{tmp_path.name}-mapping.yml").read_text(encoding="utf-8"))
+        assert sidecar["entities"]["location"]["links"]["Uppsala"]["target_id"] == 100
+
+    def test_invalid_rows_still_fail_before_writing(self, mock_project_service, tmp_path):
+        service = EntityValuesService(
+            project_service=mock_project_service,
+            mapping_sync_service=FixedEntityMappingSyncService(_FailingSaveManager()),
+        )
+        file_path = self._configure(mock_project_service, tmp_path)
+
+        with pytest.raises(ValueError, match="invalid mapping target"):
+            service.update_values("test_project", "location", self.FIXED_COLUMNS, [[1, "abc", "Uppsala", "Sweden"]], "parquet")
+
+        assert not file_path.parent.exists()

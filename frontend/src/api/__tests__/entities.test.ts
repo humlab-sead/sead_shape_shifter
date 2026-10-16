@@ -10,6 +10,8 @@ import type {
   EntityResponse,
   EntityCreateRequest,
   EntityUpdateRequest,
+  MappingSyncPending,
+  MappingSyncRetryResult,
 } from '../entities'
 
 // Mock the API client
@@ -281,6 +283,58 @@ describe('entitiesApi', () => {
       }
 
       await expect(entitiesApi.update('test-project', 'entity', request)).rejects.toThrow('Update conflict')
+    })
+  })
+
+  describe('retryFixedEntityMapping', () => {
+    const pending: MappingSyncPending = {
+      status: 'pending',
+      rows_saved: true,
+      project: 'test-project',
+      entity: 'site',
+      storage_kind: 'inline',
+      local_key: 'site_code',
+      public_id: 'site_id',
+      operations: [
+        {
+          op: 'upsert',
+          key: 'A',
+          target_id: 11,
+          expected_row_present: true,
+          expected_saved_id: 11,
+          prior_link: null,
+          row_index: 0,
+        },
+      ],
+      entry: null,
+      expected_row_version: 'rows-v1',
+      expected_sidecar_version: 'sidecar-v1',
+    }
+
+    it('should PATCH the retry endpoint with the unchanged pending payload', async () => {
+      const result: MappingSyncRetryResult = {
+        status: 'applied',
+        rows_saved: true,
+        changed: true,
+        sidecar_version: 'sidecar-v2',
+        changed_keys: [],
+      }
+      vi.mocked(apiRequest).mockResolvedValue(result)
+
+      const response = await entitiesApi.retryFixedEntityMapping('test-project', 'site', pending)
+
+      expect(apiRequest).toHaveBeenCalledWith({
+        method: 'PATCH',
+        url: '/projects/test-project/mapping/retry-fixed-entity/site',
+        data: pending,
+      })
+      expect(response).toEqual(result)
+    })
+
+    it('should propagate a conflict error from retry', async () => {
+      vi.mocked(apiRequest).mockRejectedValue(new Error('conflict'))
+
+      await expect(entitiesApi.retryFixedEntityMapping('test-project', 'site', pending)).rejects.toThrow('conflict')
     })
   })
 })

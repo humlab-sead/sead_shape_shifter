@@ -18,6 +18,71 @@ export interface FixedSchema {
   order_source: 'stored' | 'derived'
 }
 
+/**
+ * A full mapping link recorded as an affected key's pre-write state.
+ */
+export interface MappingSyncLink {
+  target_id: number | null
+  source: string
+  confidence: number | null
+  created_at: string
+  committed_at: string | null
+  notes: string | null
+  created_by: string
+  reviewed_by: string | null
+}
+
+/**
+ * One recorded mapping change with its affected-key preconditions.
+ */
+export interface MappingSyncOperation {
+  op: 'upsert' | 'delete'
+  key: string
+  target_id: number | null
+  expected_row_present: boolean
+  expected_saved_id: number | null
+  prior_link: MappingSyncLink | null
+  row_index: number | null
+}
+
+/**
+ * The proposed sidecar entry recorded by a pending operation.
+ */
+export interface MappingSyncEntry {
+  local_key: string | string[]
+  public_id: string
+  prior_entry_exists: boolean
+}
+
+/**
+ * Pending mapping changes returned when fixed rows were saved but the mapping
+ * sidecar was not written. Submit it unchanged to retry the mapping changes.
+ */
+export interface MappingSyncPending {
+  status: 'pending'
+  rows_saved: boolean
+  project: string
+  entity: string
+  storage_kind: 'inline' | 'external'
+  local_key: string | string[]
+  public_id: string
+  operations: MappingSyncOperation[]
+  entry: MappingSyncEntry | null
+  expected_row_version: string
+  expected_sidecar_version: string
+}
+
+/**
+ * The result of applying a pending mapping request.
+ */
+export interface MappingSyncRetryResult {
+  status: 'applied' | 'noop'
+  rows_saved: boolean
+  changed: boolean
+  sidecar_version: string
+  changed_keys: string[]
+}
+
 export interface EntityResponse {
   name: string
   entity_data: Record<string, unknown>
@@ -25,6 +90,7 @@ export interface EntityResponse {
   materialized?: MaterializedMetadata
   fixed_schema?: FixedSchema | null
   warnings?: string[]
+  mapping_sync?: MappingSyncPending | null
 }
 
 export interface EntityCreateRequest {
@@ -76,6 +142,7 @@ export interface EntityValuesResponse {
   format: string
   row_count: number
   etag: string
+  mapping_sync?: MappingSyncPending | null
 }
 
 export interface EntityValuesUpdateRequest {
@@ -203,6 +270,24 @@ export const entitiesApi = {
       url: `/projects/${projectName}/entities/${entityName}/values`,
       data,
       headers,
+    })
+  },
+
+  /**
+   * Retry the pending mapping changes from a partial fixed-row save.
+   *
+   * The pending payload is submitted unchanged; the server applies only the
+   * remaining changes or returns 409 with the changed affected keys.
+   */
+  retryFixedEntityMapping: async (
+    projectName: string,
+    entityName: string,
+    pending: MappingSyncPending
+  ): Promise<MappingSyncRetryResult> => {
+    return apiRequest<MappingSyncRetryResult>({
+      method: 'PATCH',
+      url: `/projects/${projectName}/mapping/retry-fixed-entity/${entityName}`,
+      data: pending,
     })
   },
 }

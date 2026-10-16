@@ -8,7 +8,9 @@ from typing import Any
 import pandas as pd
 from loguru import logger
 
+from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.middleware.correlation import get_correlation_id
+from backend.app.models.mapping_sync import MappingSyncPending
 from backend.app.models.project import Project
 from backend.app.services.fixed_entity_mapping_change_service import (
     FixedEntityMappingChangeService,
@@ -18,6 +20,7 @@ from backend.app.services.fixed_entity_mapping_sync_service import FixedEntityMa
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.utils.fixed_schema import build_legacy_fixed_full_columns, derive_fixed_schema
 from src.path_resolution import resolve_contained_path
+from src.reconciliation.fixed_entity_mapping_changes import RowSnapshot
 from src.types.fixed_entity_types import normalize_fixed_entity_column_types, resolve_fixed_entity_column_type
 
 
@@ -37,12 +40,14 @@ class EntityValuesData:
         format: str,  # pylint: disable=redefined-builtin
         row_count: int,
         etag: str,
+        mapping_sync: MappingSyncPending | None = None,
     ):
         self.columns: list[str] = columns
         self.values: list[list[Any]] = values
         self.format: str = format
         self.row_count: int = row_count
         self.etag: str = etag
+        self.mapping_sync: MappingSyncPending | None = mapping_sync
 
 
 class EntityValuesService:
@@ -464,9 +469,9 @@ class EntityValuesService:
         # directory is created after a mapping-validation failure.
         change_set = None
         mapping_snapshot = None
+        project_path = self._resolve_project_path(project_name)
         if derive_fixed_schema(entity_data):
             previous_columns, previous_values = self._load_previous_fixed_rows(file_path, entity_name, entity_data)
-            project_path = self._resolve_project_path(project_name)
             if isinstance(project_path, str) and project_path:
                 mapping_snapshot = self.mapping_sync_service.load_snapshot(project_path)
             change_set = self.mapping_change_service.compute_change_set(
@@ -488,15 +493,25 @@ class EntityValuesService:
         # Generate new etag after write
         new_etag: str = self._generate_etag(file_path)
 
-        if change_set is not None and mapping_snapshot is not None:
-            project_path = self._resolve_project_path(project_name)
-            if project_path:
-                self.mapping_sync_service.apply_change_set(
-                    change_set=change_set,
-                    snapshot=mapping_snapshot,
-                    project_path=project_path,
-                    row_version=new_etag,
-                    created_by=get_correlation_id(),
+        # Rows are persisted. A sidecar write failure becomes a pending result
+        # with a retryable mapping_sync payload instead of a failed request.
+        mapping_sync: MappingSyncPending | None = None
+        if change_set is not None and mapping_snapshot is not None and project_path:
+            sync_result = self.mapping_sync_service.apply_change_set(
+                change_set=change_set,
+                snapshot=mapping_snapshot,
+                project_path=project_path,
+                row_version=new_etag,
+                created_by=get_correlation_id(),
+            )
+            if sync_result.error is not None:
+                mapping_sync = ProjectMapper.fixed_change_set_to_pending(
+                    change_set,
+                    project=project_name,
+                    entity=entity_name,
+                    storage_kind="external",
+                    row_version=sync_result.row_version,
+                    sidecar_version=sync_result.sidecar_version,
                 )
 
         return EntityValuesData(
@@ -505,7 +520,22 @@ class EntityValuesService:
             format=actual_format,
             row_count=len(normalized_values),
             etag=new_etag,
+            mapping_sync=mapping_sync,
         )
+
+    def load_saved_fixed_snapshot(self, project_name: str, entity_name: str) -> RowSnapshot:
+        """Read the currently saved external fixed rows for retry comparison.
+
+        The caller must hold the project lock. Returns an empty snapshot when the
+        values file does not exist yet so every written row counts as an addition.
+        """
+        entity_data: dict[str, Any] = self.project_service.get_entity_by_name(project_name, entity_name)
+        filename: str | None = self._parse_load_directive(entity_data.get("values"))
+        if not filename:
+            raise ValueError(f"Entity '{entity_name}' does not have @load: directive (values: {entity_data.get('values')})")
+        file_path: Path = self._resolve_values_path(project_name, filename)
+        columns, values = self._load_previous_fixed_rows(file_path, entity_name, entity_data)
+        return RowSnapshot(columns=list(columns), values=[list(row) for row in values])
 
 
 def get_entity_values_service() -> EntityValuesService:
