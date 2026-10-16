@@ -10,6 +10,7 @@ from backend.app.middleware.correlation import get_correlation_id
 from backend.app.models.project import Project
 from backend.app.services.project_service import ProjectService
 from src.model import ShapeShiftProject, TableConfig
+from src.reconciliation.fixed_entity_mapping_changes import default_local_key
 from src.reconciliation.mapping_manager import MappingManager
 from src.reconciliation.mapping_model import EntityMapping, EntityType, Link, LinkSource, MappingCatalog
 
@@ -23,16 +24,18 @@ class MappingService:
 
     @staticmethod
     def _default_local_key(table: TableConfig) -> str | list[str]:
-        """Return the default local key for a project entity."""
+        """Return the default local key for a project entity.
+
+        Uses the shared ordered ``safe_keys`` rule so mapping entry creation and
+        materialization sync encode compound keys in the same declared order.
+        """
         keys = table.safe_keys
         if not keys:
             raise ValidationError(
                 message=f"Entity '{table.entity_name}' has no entity.keys configuration for mapping operations.",
                 context={"entity": table.entity_name},
             )
-        if len(keys) == 1:
-            return keys[0]
-        return keys
+        return default_local_key(keys)
 
     @staticmethod
     def _project_path(api_project: Project, project_name: str) -> str:

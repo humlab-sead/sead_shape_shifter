@@ -9,6 +9,10 @@ import pandas as pd
 from loguru import logger
 
 from backend.app.models.project import Project
+from backend.app.services.fixed_entity_mapping_change_service import (
+    FixedEntityMappingChangeService,
+    get_fixed_entity_mapping_change_service,
+)
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.utils.fixed_schema import build_legacy_fixed_full_columns, derive_fixed_schema
 from src.path_resolution import resolve_contained_path
@@ -42,9 +46,14 @@ class EntityValuesData:
 class EntityValuesService:
     """Manage external entity values (parquet/csv files)."""
 
-    def __init__(self, project_service: ProjectService | None = None):
+    def __init__(
+        self,
+        project_service: ProjectService | None = None,
+        mapping_change_service: FixedEntityMappingChangeService | None = None,
+    ):
         """Initialize service with optional project service dependency injection."""
         self.project_service: ProjectService = project_service or get_project_service()
+        self.mapping_change_service: FixedEntityMappingChangeService = mapping_change_service or get_fixed_entity_mapping_change_service()
 
     def _generate_etag(self, file_path: Path) -> str:
         """
@@ -104,6 +113,27 @@ class EntityValuesService:
             return resolve_contained_path(filename, project.folder)
         except ValueError as exc:
             raise ValueError(f"Values file path is outside project '{project_name}'") from exc
+
+    def _resolve_project_path(self, project_name: str) -> str | None:
+        """Return the project file path used to load the mapping sidecar."""
+        project: Project = self.project_service.load_project(project_name)
+        return project.filename
+
+    def _load_previous_fixed_rows(
+        self,
+        file_path: Path,
+        entity_name: str,
+        entity_data: dict[str, Any],
+    ) -> tuple[list[str], list[list[Any]]]:
+        """Return the previously stored fixed rows in canonical order, or empty.
+
+        A not-yet-created values file yields an empty prior snapshot so the
+        comparison treats every written row as an addition.
+        """
+        if not file_path.exists():
+            return [], []
+        columns, values, _format_type, _etag = self._read_values_file(file_path)
+        return self._normalize_fixed_stored_values(entity_name, entity_data, columns, values)
 
     def _read_values_file(self, file_path: Path) -> tuple[list[str], list[list[Any]], str, str]:
         """
@@ -402,6 +432,21 @@ class EntityValuesService:
             if not self._validate_etag(file_path, if_match):
                 current_etag: str = self._generate_etag(file_path)
                 raise ValueError(f"ETag mismatch: expected '{if_match}', current '{current_etag}' (409 Conflict)")
+
+        # Validate fixed-row mapping inputs against the stored rows before any write.
+        # Raises ValueError, which the route maps to HTTP 422, so no file or
+        # directory is created after a mapping-validation failure.
+        if derive_fixed_schema(entity_data):
+            previous_columns, previous_values = self._load_previous_fixed_rows(file_path, entity_name, entity_data)
+            self.mapping_change_service.compute_change_set(
+                entity_name=entity_name,
+                project_path=self._resolve_project_path(project_name),
+                entity_config=entity_data,
+                previous_columns=previous_columns,
+                previous_values=previous_values,
+                current_columns=normalized_columns,
+                current_values=normalized_values,
+            )
 
         logger.info(f"Updating values at {file_path}")
 

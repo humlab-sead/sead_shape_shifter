@@ -7,14 +7,22 @@ from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
-from backend.app.exceptions import ConfigurationError, EntityConflictError, ResourceConflictError, ResourceNotFoundError
+from backend.app.exceptions import (
+    ConfigurationError,
+    EntityConflictError,
+    ResourceConflictError,
+    ResourceNotFoundError,
+    SchemaValidationError,
+)
 from backend.app.middleware.correlation import get_correlation_id
 from backend.app.models.entity import Entity
 from backend.app.models.project import Project
+from backend.app.services.fixed_entity_mapping_change_service import FixedEntityMappingChangeService
 from backend.app.services.project.entity_persistence_strategies import EntityPersistenceStrategyRegistry
 from backend.app.utils.entity_name import validate_new_entity_name
 from backend.app.utils.sql import extract_tables
 from src.model import TableConfig
+from src.reconciliation.fixed_entity_mapping_changes import FixedEntityMappingChangeError
 
 _ENTITY_VALUE_REFERENCE_RE = re.compile(r"@value:\s*entities\.([A-Za-z0-9_-]+)(?=\.|\s|$)")
 
@@ -69,6 +77,7 @@ class EntityOperations:
         persistence_strategy_registry: EntityPersistenceStrategyRegistry | None = None,
         save_entity_boundary_callback=None,  # Callable[[str, str, dict | None], None] | None
         save_entity_rename_callback=None,  # Callable[[str, str, str, Project], list[str]] | None
+        mapping_change_service: FixedEntityMappingChangeService | None = None,
     ):
         """Initialize entity operations.
 
@@ -81,6 +90,8 @@ class EntityOperations:
                 Signature: (project_name: str, entity_name: str, entity_dict: dict | None) -> None.
                 When provided, entity mutations use boundary save instead of full project save.
                 Pass None to fall back to whole-project save.
+            mapping_change_service: Read-only preparation of fixed-row mapping changes.
+                Defaults to a service instance so invalid mapping inputs are always rejected.
         """
         self._get_lock = project_lock_getter
         self._load_project = load_project_callback
@@ -88,6 +99,7 @@ class EntityOperations:
         self._save_entity_boundary = save_entity_boundary_callback
         self._save_entity_rename = save_entity_rename_callback
         self._persistence_strategy_registry = persistence_strategy_registry or EntityPersistenceStrategyRegistry()
+        self._mapping_change_service = mapping_change_service or FixedEntityMappingChangeService()
 
     @staticmethod
     def _find_entity_dependents(project: Project, entity_name: str) -> list[str]:
@@ -422,6 +434,19 @@ class EntityOperations:
                     project.metadata.default_entity = new_name
                 assert self._save_entity_rename is not None
                 return self._save_entity_rename(project_name, entity_name, new_name, project)
+
+            # Compare the previously saved fixed rows with the new rows before the
+            # boundary save so invalid mapping inputs never reach persistence.
+            previous_entity = project.entities.get(entity_name)
+            try:
+                self._mapping_change_service.prepare_inline_change_set(
+                    entity_name=entity_name,
+                    project_path=project.filename,
+                    previous_entity=previous_entity,
+                    current_entity=entity_data,
+                )
+            except FixedEntityMappingChangeError as exc:
+                raise SchemaValidationError(message=str(exc), entity=entity_name, field=exc.field) from exc
 
             # Use the model's add_entity method to ensure proper handling
             project.add_entity(entity_name, entity_data)

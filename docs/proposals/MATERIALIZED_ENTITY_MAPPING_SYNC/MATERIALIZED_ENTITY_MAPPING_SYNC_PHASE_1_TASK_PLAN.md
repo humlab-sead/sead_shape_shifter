@@ -12,10 +12,10 @@
 
 **Phase acceptance criteria**
 
-1. [ ] `PH1-AC-1` (from `P-AC-3`): `None`, `NaN`, empty, and whitespace-only IDs compare as missing; zero is valid; invalid changed IDs and unusable keys prevent the row write.
-2. [ ] `PH1-AC-2` (from `P-AC-5`): Both default-entry paths use ordered `TableConfig.safe_keys`; an ordinary save does not rewrite an existing entry's mapping columns.
-3. [ ] `PH1-AC-3` (from `P-AC-4`): The change set excludes unchanged rows, distinguishes a deliberate ID edit from a saved-value/sidecar mismatch, and represents a key change as removal plus addition.
-4. [ ] `PH1-AC-4` (from `P-AC-2`): Only fixed entities qualify; a materialized fixed entity may propose a missing entry, and another fixed entity requires an existing entry.
+1. [x] `PH1-AC-1` (from `P-AC-3`): `None`, `NaN`, empty, and whitespace-only IDs compare as missing; zero is valid; invalid changed IDs and unusable keys prevent the row write.
+2. [x] `PH1-AC-2` (from `P-AC-5`): Both default-entry paths use ordered `TableConfig.safe_keys`; an ordinary save does not rewrite an existing entry's mapping columns.
+3. [x] `PH1-AC-3` (from `P-AC-4`): The change set excludes unchanged rows, distinguishes a deliberate ID edit from a saved-value/sidecar mismatch, and represents a key change as removal plus addition.
+4. [x] `PH1-AC-4` (from `P-AC-2`): Only fixed entities qualify; a materialized fixed entity may propose a missing entry, and another fixed entity requires an existing entry.
 
 ## Repository Findings
 
@@ -54,7 +54,7 @@
 
 **Tasks**
 
-- [ ] `T1.1` **Change:** Add one Core helper that returns a scalar key for one `TableConfig.safe_keys` item and an ordered list for multiple items; use it from both existing default-key methods.
+- [x] `T1.1` **Change:** Add one Core helper that returns a scalar key for one `TableConfig.safe_keys` item and an ordered list for multiple items; use it from both existing default-key methods.
   - **Target:** `src/reconciliation/fixed_entity_mapping_changes.py` **NEW**; `backend/app/services/mapping_service.py::MappingService._default_local_key`; `backend/app/services/materialization_service.py::MaterializationService._default_mapping_local_key`.
   - **Current → required:** Mapping API uses `safe_keys`, while materialization uses unordered `keys` → both use the same ordered rule. An absent key list still raises each service's existing error type.
   - **Implementation:** Keep service-level error translation in the existing wrappers. Do not replace an existing `EntityMapping.local_key` or `public_id`; only build defaults for an absent entry. Update materialization test mocks or use real `TableConfig` objects so `safe_keys` is meaningful.
@@ -73,7 +73,7 @@
 
 **Tasks**
 
-- [ ] `T1.2` **Change:** Define a typed, side-effect-free preparation result for eligibility, an optional proposed entry, and affected-key operations; compare previous and new row snapshots using the selected entry's stored columns.
+- [x] `T1.2` **Change:** Define a typed, side-effect-free preparation result for eligibility, an optional proposed entry, and affected-key operations; compare previous and new row snapshots using the selected entry's stored columns.
   - **Target:** `src/reconciliation/fixed_entity_mapping_changes.py` **NEW**.
   - **Current → required:** The rebuild derives links from only the new saved rows → comparison uses both saved snapshots plus current links, without mutating the catalog or rows.
   - **Implementation:** Qualify only `type: fixed`. Propose a new entry only when materialization is enabled and no entry exists; otherwise return no sync work for a missing non-materialized entry. Require stored `local_key` and `public_id` columns in both usable snapshots. Reject missing key components and duplicate encoded keys, identifying row indexes. Use `is_missing_fixed_entity_value` for both ID snapshots and `is_valid_fixed_entity_value` plus integer conversion for every proposed non-blank upsert, including an unchanged row with a missing link. Record prior and new saved ID states and existing-link state for each affected key so later phases can apply or retry the exact changes.
@@ -92,14 +92,14 @@
 
 **Tasks**
 
-- [ ] `T1.3` **Change:** Add a shared backend preparation service and invoke it before an inline fixed-entity boundary save.
+- [x] `T1.3` **Change:** Add a shared backend preparation service and invoke it before an inline fixed-entity boundary save.
   - **Target:** `backend/app/services/fixed_entity_mapping_change_service.py` **NEW**; `backend/app/services/project/entity_operations.py::EntityOperations.update_entity_by_name`; `backend/app/services/project_service.py::ProjectService.__init__`.
   - **Current → required:** Inline fixed rows are saved after the persistence strategy's shape/type checks without mapping-key comparison → prepare old and new full-column row snapshots and reject invalid mapping inputs before `save_entity_boundary`.
   - **Implementation:** Read the existing sidecar entry without writing it. Use the previously loaded project entity as the before-image and the normalized incoming fixed rows as the after-image; use `derive_fixed_schema` to align positional columns. Inject the preparation service into entity operations rather than importing `ProjectService` into the new module. The helper returns the change set for Phase 2 to consume when save coordination is added. Raise `SchemaValidationError` with the entity, field, and row for invalid ID or key data; the existing route decorator maps it to HTTP 400.
   - **Constraints:** Skip inline row comparison for `@load:`-backed entity-config edits, whose rows are saved through the external values path, and for non-fixed entities. An empty new row list still represents removals and must be compared. Do not change the entity ETag, rename path, or existing persistence strategy. An existing entry's columns take precedence over edited `entity.keys` or `entity.public_id`; do not rewrite its configuration.
   - **Validation:** `V-3`, `V-5`: verify the boundary save is not called on invalid changed ID, missing stored column, or duplicate key; valid and non-fixed updates retain their current behavior; mapper mismatch validation remains unchanged.
 
-- [ ] `T1.4` **Change:** Invoke the same preparation service before writing external fixed values.
+- [x] `T1.4` **Change:** Invoke the same preparation service before writing external fixed values.
   - **Target:** `backend/app/services/entity_values_service.py::EntityValuesService.update_values`; `backend/app/services/fixed_entity_mapping_change_service.py` **NEW**.
   - **Current → required:** External values are written before materialized mapping rebuild and lack mapping-key validation → compare normalized request rows with previously stored rows before `_write_values_file`.
   - **Implementation:** Keep the existing request-order and ETag checks first. Read prior values through the existing normalized read path when the file exists, or use an empty prior snapshot for a new file. Pass existing sidecar metadata and both snapshots to the Core comparison. Report the bad row or missing stored column through the route's current `ValueError` → HTTP 422 path. The helper returns the change set for Phase 2; do not apply it yet.
@@ -123,12 +123,12 @@
 
 | ID | Check and target | Command or method | Covers | Expected result | Baseline |
 |---|---|---|---|---|---|
-| `V-1` | Pure comparison in `tests/reconciliation/test_fixed_entity_mapping_changes.py` **NEW**; existing missing-value and encoder cases in `tests/types/test_fixed_entity_types.py` and `tests/reconciliation/test_mapping_sidecar.py` | `rtk uv run pytest tests/reconciliation/test_fixed_entity_mapping_changes.py tests/types/test_fixed_entity_types.py tests/reconciliation/test_mapping_sidecar.py -q` | `PH1-AC-1`–`PH1-AC-4` | Exact operations, errors with row indexes, immutable inputs; all tests pass. | Not run: new file does not exist. Both existing files passed in the focused baseline. |
+| `V-1` | Pure comparison in `tests/reconciliation/test_fixed_entity_mapping_changes.py` **NEW**; existing missing-value and encoder cases in `tests/types/test_fixed_entity_types.py` and `tests/reconciliation/test_mapping_sidecar.py` | `rtk uv run pytest tests/reconciliation/test_fixed_entity_mapping_changes.py tests/types/test_fixed_entity_types.py tests/reconciliation/test_mapping_sidecar.py -q` | `PH1-AC-1`–`PH1-AC-4` | Exact operations, errors with row indexes, immutable inputs; all tests pass. | Pass: the new Core file and the two existing files all pass. |
 | `V-2` | Default-key behavior in `backend/tests/api/v1/test_mapping.py` and `backend/tests/services/test_materialization_service.py` | `rtk uv run pytest backend/tests/api/v1/test_mapping.py backend/tests/services/test_materialization_service.py -q` | `PH1-AC-2` | Mapping API and materialization choose the same ordered compound key; existing entry and error behavior remain valid. | Pass: both files passed in the focused baseline. |
 | `V-3` | Inline pre-write and API checks in `backend/tests/services/project/test_entity_operations_boundary.py` and `backend/tests/api/v1/test_entities.py` | `rtk uv run pytest backend/tests/services/project/test_entity_operations_boundary.py backend/tests/api/v1/test_entities.py -q` | `PH1-AC-1`, `PH1-AC-2`, `PH1-AC-4` | Invalid rows return HTTP 400 with row/field information and leave entity YAML unchanged; valid/non-fixed cases pass. | Pass: both files passed separately before changes. |
 | `V-4` | External pre-write checks in `backend/tests/services/test_entity_values_service.py` and `backend/tests/api/v1/test_entities.py` | `rtk uv run pytest backend/tests/services/test_entity_values_service.py backend/tests/api/v1/test_entities.py -q` | `PH1-AC-1`, `PH1-AC-4` | Invalid rows return HTTP 422, leave an existing values file unchanged or create no new file, and preserve existing ETag and column-order behavior. | Pass: both files passed before changes. |
 | `V-5` | Existing mapper rule in `backend/tests/mappers/test_project_mapper_file_path_integration.py` | `rtk uv run pytest backend/tests/mappers/test_project_mapper_file_path_integration.py -q` | `PH1-AC-2` preservation | Full Core conversion still rejects a sidecar/config `public_id` mismatch; comparison uses stored columns without migrating them. | Pass before changes. |
-| `V-6` | Non-mutating formatting and lint checks for all changed Python files | Run the commands below. | All phase criteria | All checks pass after implementation. | Not run: code targets have not been changed or created. |
+| `V-6` | Non-mutating formatting and lint checks for all changed Python files | Run the commands below. | All phase criteria | All checks pass after implementation. | Pass: all changed Python files pass `ruff`, `black --check`, and `isort --check-only`. |
 
 ```bash
 phase1_files=(
@@ -155,6 +155,24 @@ rtk uv run isort --check-only "${phase1_files[@]}"
 
 After implementation, run `.venv/bin/graphify update .` as required by the root agent guide, then review the generated file changes. If a verified repository contract differs from this plan, stop and report the source and test results before changing the design or expanding scope.
 
+### Implementation Evidence
+
+Implemented and verified 2026-10-16 on branch `materialized-entity-mapping-sync` (HEAD `0dece8b9`). Commands used the repository virtualenv.
+
+| Validation | Command | Result |
+| --- | --- | --- |
+| `V-1` | `pytest tests/reconciliation/test_fixed_entity_mapping_changes.py tests/types/test_fixed_entity_types.py tests/reconciliation/test_mapping_sidecar.py -q` | Pass |
+| `V-2` | `pytest backend/tests/api/v1/test_mapping.py backend/tests/services/test_materialization_service.py -q` | Pass |
+| `V-3` | `pytest backend/tests/services/project/test_entity_operations_boundary.py backend/tests/api/v1/test_entities.py -q` | Pass |
+| `V-4` | `pytest backend/tests/services/test_entity_values_service.py backend/tests/api/v1/test_entities.py -q` | Pass |
+| `V-5` | `pytest backend/tests/mappers/test_project_mapper_file_path_integration.py -q` | Pass |
+| `V-6` | `ruff check`, `black --check`, `isort --check-only` on the phase file list | Pass |
+| Broader regression | `pytest backend/tests/services backend/tests/api -q` | Pass |
+| Broader baseline | `pytest backend/tests/api/v1/test_entities.py backend/tests/services/test_project_service.py -q` | One pre-existing failure: `TestProjectService::test_load_configuration_multiple_entities`. |
+| Graphify | `.venv/bin/graphify update .` | Ran; the new modules and symbols are present in `graphify-out/graph.json`. |
+
+The recorded broader baseline listed three failures. `test_fixed_entity_persistence_accepts_strict_integer_ids` and `test_add_entity_by_name_normalizes_fixed_columns` now pass, so only `test_load_configuration_multiple_entities` remains. It reproduces with the Phase 1 changes stashed, so it is a pre-existing, test-order-dependent project-cache failure rather than a Phase 1 regression; it fails only when the broader pair runs in one session.
+
 ## Deliverables
 
 | Deliverable | Target | Task IDs | Completion evidence |
@@ -173,19 +191,19 @@ After implementation, run `.venv/bin/graphify update .` as required by the root 
 
 | Area | Status | Dependencies | Notes |
 |---|---|---|---|
-| Area 1: Ordered default key | Not started | None | Preserve existing service error types. |
-| Area 2: Eligible change set | Not started | Area 1 | Pure Core; no sidecar writes. |
-| Area 3: Pre-write guards | Not started | Area 2 | Phase 2 will coordinate the full write sequence. |
+| Area 1: Ordered default key | Done | None | Mapping and materialization defaults share the Core helper; existing service error types retained. |
+| Area 2: Eligible change set | Done | Area 1 | Pure Core comparison in `src/reconciliation/fixed_entity_mapping_changes.py`; no sidecar writes. |
+| Area 3: Pre-write guards | Done | Area 2 | Both save paths call the read-only preparation service before persistence; Phase 2 still owns the coordinated write sequence. |
 
 ## Definition Of Done
 
-- [ ] `PH1-AC-1`–`PH1-AC-4` each have the task and validation results listed above; `VM-1` and `VM-2` are met.
-- [ ] All three areas and listed code/test deliverables are complete.
-- [ ] `V-1`–`V-6` pass; any broader-suite failures are compared with the recorded baseline and reported.
-- [ ] Existing non-fixed saves, ETag checks, mapper mismatch validation, normalization precedence, and mapping sidecar schema remain covered by regression checks.
-- [ ] No sidecar-write, retry, response-model, or mapping-configuration migration work has entered Phase 1.
-- [ ] The required graphify update has run and its generated changes have been reviewed.
-- [ ] Deviations and follow-up work are recorded; no unresolved question affects Phase 1 implementation or validation.
+- [x] `PH1-AC-1`–`PH1-AC-4` each have the task and validation results listed above; `VM-1` and `VM-2` are met.
+- [x] All three areas and listed code/test deliverables are complete.
+- [x] `V-1`–`V-6` pass; any broader-suite failures are compared with the recorded baseline and reported.
+- [x] Existing non-fixed saves, ETag checks, mapper mismatch validation, normalization precedence, and mapping sidecar schema remain covered by regression checks.
+- [x] No sidecar-write, retry, response-model, or mapping-configuration migration work has entered Phase 1.
+- [x] The required graphify update has run and its generated changes have been reviewed.
+- [x] Deviations and follow-up work are recorded; no unresolved question affects Phase 1 implementation or validation.
 
 ## Risks And Open Questions
 
