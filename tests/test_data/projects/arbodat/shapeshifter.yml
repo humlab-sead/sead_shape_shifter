@@ -1127,7 +1127,7 @@ entities:
     drop_empty_rows: [location_name]
     unnest:
       id_vars: [Fustel, EVNr]
-      value_vars: [Ort, Kreis, Land, Staat]
+      value_vars: [Ort, Kreis, Land, Staat, FlurStr]
       var_name: location_type
       value_name: location_name
     data_source: arbodat_data
