@@ -744,6 +744,7 @@ entities:
     depends_on: [location_type]
     drop_duplicates: [location_type, location_name]
     check_functional_dependency: true
+    drop_empty_rows: [location_name]
     unnest:
       value_vars: '@value: entities.location.columns'
       var_name: location_type
@@ -754,8 +755,10 @@ entities:
       default_long_dd:
     data_source: arbodat_data
     query: |-
-      select distinct [Ort], [Kreis], [Land], [Staat], [FlurStr] from [Projekte] where [Projekte].[Projekt] in ('19_0013', '19_0014', '22_0005', '18_0025', '22_0015') 
-      --and [FlurStr] not in ('', '2017/9030'); removes too much
+      select distinct [Ort], [Kreis], [Land], [Staat], [FlurStr]
+      from [Projekte]
+      where [Projekte].[Projekt] in ('19_0013', '19_0014', '22_0005', '18_0025', '22_0015') 
+        and [Fustel] is not NULL;
   location_type:
     type: fixed
     public_id: location_type_id
