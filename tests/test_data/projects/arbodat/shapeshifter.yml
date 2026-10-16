@@ -1124,6 +1124,7 @@ entities:
         allow_null_keys: true
     drop_duplicates: true
     check_functional_dependency: true
+    drop_empty_rows: [location_name]
     unnest:
       id_vars: [Fustel, EVNr]
       value_vars: [Ort, Kreis, Land, Staat]
