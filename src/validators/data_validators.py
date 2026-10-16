@@ -385,6 +385,10 @@ class ForeignKeyIntegrityValidator:
         """
         Check that all local FK values exist in remote entity.
 
+        When the remote key yields no joinable values, the reported issue separates two
+        situations: the remote entity has no rows, or the remote key columns are present
+        but entirely null.
+
         Args:
             local_df: Local DataFrame with foreign key columns
             remote_df: Remote DataFrame with referenced key columns
@@ -415,14 +419,36 @@ class ForeignKeyIntegrityValidator:
         # Get unique remote key values
         remote_key_values: pd.DataFrame = remote_df[remote_keys].dropna()
         if remote_key_values.empty:
+            # An empty remote frame and a remote frame whose key columns are entirely
+            # null both leave nothing to join on, but they need different corrections:
+            # missing rows are a data problem, while all-null keys usually mean the
+            # configured key carries no identity (for example a public_id assigned later).
+            key_list: str = ", ".join(f"'{key}'" for key in remote_keys)
+
+            if remote_df.empty:
+                message = f"Referenced entity '{remote_entity}' has no rows to join on (remote key: {key_list})"
+                suggestion = f"Ensure '{remote_entity}' returns data before validation"
+                field = "foreign_keys[].entity"
+            else:
+                message = (
+                    f"Remote key {key_list} in '{remote_entity}' holds no values: "
+                    f"{len(remote_df)} row(s) present after nulls are removed"
+                )
+                suggestion = (
+                    f"Check that '{remote_entity}' exposes the values the child stores for {key_list}. "
+                    f"A foreign key holds the parent's 'system_id'; the parent's public_id only names the column. "
+                    f"If {key_list} is an identity column, join on '{remote_entity}.system_id' instead."
+                )
+                field = "foreign_keys[].remote_keys"
+
             return [
                 ValidationIssue(
                     severity="warning",
                     entity=entity_name,
-                    field="foreign_keys[].entity",
-                    message=f"Referenced entity '{remote_entity}' has no data",
+                    field=field,
+                    message=message,
                     code="FK_REMOTE_EMPTY",
-                    suggestion=f"Ensure '{remote_entity}' entity returns data before validation",
+                    suggestion=suggestion,
                     category="data",
                     priority="medium",
                 )
