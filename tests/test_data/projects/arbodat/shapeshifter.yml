@@ -1623,13 +1623,13 @@ entities:
     columns: [Ökogruppe, Ökogruppe_u, PCODE]
     foreign_keys:
     - entity: ecocode_definition
-      local_keys: [ecocode_definition_id]
-      remote_keys: [system_id]
-      how: inner
+      local_keys: [Ökogruppe]
+      remote_keys: [Ökogruppe]
+      how: left
       constraints:
         cardinality: many_to_one
         require_unique_left: false
-        allow_null_keys: false
+        allow_null_keys: true
     - entity: taxa
       local_keys: [PCODE]
       remote_keys: [PCODE]
@@ -1639,7 +1639,6 @@ entities:
         require_unique_left: false
         allow_null_keys: false
     extra_columns:
-      ecocode_definition_id: Ökogruppe
       taxon_id:
 options:
   validation:
