@@ -493,30 +493,30 @@ entities:
       remote_keys: [contact_name]
     depends_on: [project_contact_helper, contact, dataset, project]
     drop_duplicates: [Projekt, Fraktion, contact_id]
-  dataset_submission:
-    type: entity
-    source: dataset
-    public_id: dataset_submission_id
-    keys: []
-    columns: [dataset_id]
-    foreign_keys:
-    - entity: dataset_submission_type
-      local_keys: [submission_type_id]
-      remote_keys: [dataset_submission_type_id]
-    depends_on: [dataset]
-    extra_columns:
-      date_submitted:
-      submission_type_id: 1
-      notes:
-  dataset_submission_type:
-    type: fixed
-    source:
-    public_id: dataset_submission_type_id
-    keys: []
-    columns: [system_id, dataset_submission_type_id]
-    values:
-    - [1, 4]
-    depends_on: []
+  # dataset_submission:
+  #   type: entity
+  #   source: dataset
+  #   public_id: dataset_submission_id
+  #   keys: []
+  #   columns: [dataset_id]
+  #   foreign_keys:
+  #   - entity: dataset_submission_type
+  #     local_keys: [submission_type_id]
+  #     remote_keys: [dataset_submission_type_id]
+  #   depends_on: [dataset]
+  #   extra_columns:
+  #     date_submitted:
+  #     submission_type_id: 1
+  #     notes:
+  # dataset_submission_type:
+  #   type: fixed
+  #   source:
+  #   public_id: dataset_submission_type_id
+  #   keys: []
+  #   columns: [system_id, dataset_submission_type_id]
+  #   values:
+  #   - [1, 4]
+  #   depends_on: []
   dating:
     type: sql
     source:
