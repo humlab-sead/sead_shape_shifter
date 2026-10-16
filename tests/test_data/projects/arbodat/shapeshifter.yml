@@ -1022,7 +1022,7 @@ entities:
     foreign_keys:
     - entity: site
       local_keys: [site_id]
-      remote_keys: [site_id]
+      remote_keys: [system_id]
     - entity: method
       local_keys: [arbodat_code]
       remote_keys: [arbodat_code]
