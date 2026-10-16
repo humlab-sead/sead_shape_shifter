@@ -51,6 +51,19 @@ See `backend/app/core/config.py` for all available settings and their defaults. 
 
 For PostgreSQL access, configure `~/.pgpass` rather than putting passwords in environment variables.
 
+### Markdown link updates when moving files
+
+VS Code can rewrite Markdown links when you move a file or folder. To enable it:
+
+```json
+{
+  "markdown.updateLinksOnFileMove.enabled": "always",
+  "markdown.validate.enabled": true
+}
+```
+
+It updates links that point at the moved file and links inside it that point back out, including whole-directory moves, and preserves `#fragment` targets. It fires only for a move VS Code performs (Explorer rename, drag and drop, or F2 on a link), so a terminal `git mv` updates nothing. It rewrites link syntax only, so a path written as prose or in a table still needs a search for the old path. External `http(s)` links are never checked. Run `make check-doc-links` after any move.
+
 ---
 
 ## Project Structure
