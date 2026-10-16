@@ -22,7 +22,8 @@ container directory and install/reload its systemd user unit. With no DEPLOY_HOS
 With DEPLOY_HOST, use DEPLOY_SSH_USER for SSH transport. Files removed
 locally are removed from the target. The target files are owned by
 DEPLOY_USER and grouped to that user's primary group; the source group is
-not copied.
+not copied. A lib/ directory is never copied and any earlier copy on the
+target is removed: the Containerfile downloads UCanAccess at build time.
 
 Defaults:
   owner: DEPLOY_USER=test-shape-shifter.sead.se
@@ -108,8 +109,11 @@ refuse_managed_target() {
 }
 
 # --no-group keeps the source group off the target; the deployment user's own
-# group is applied after the transfer.
-RSYNC_ARGS=(--archive --no-group --delete --delete-delay --human-readable --itemize-changes --exclude=/.env --exclude="deployment-verification")
+# group is applied after the transfer. The /lib exclude keeps a locally staged
+# UCanAccess copy off the target: the Containerfile downloads and pins the JARs
+# at build time, so the build context no longer needs them. Because --delete
+# skips excluded paths, the stale target directory is removed explicitly below.
+RSYNC_ARGS=(--archive --no-group --delete --delete-delay --human-readable --itemize-changes --exclude=/.env --exclude=/lib --exclude="deployment-verification")
 if [[ "$g_dry_run" = true ]]; then
   RSYNC_ARGS+=(--dry-run)
 fi
@@ -126,6 +130,7 @@ if [[ -z "$g_deploy_host" ]]; then
   printf 'Synchronizing %s/ to local %s\n' "$g_container_dir" "$destination"
   sudo rsync "${RSYNC_ARGS[@]}" "$g_container_dir/" "$destination"
   if [[ "$g_dry_run" = false ]]; then
+    sudo rm -rf "${destination%/}/lib"
     sudo chown -R "$g_deploy_user:$deploy_gid" "$destination"
     sudo install -d -o "$g_deploy_user" -g "$deploy_gid" -m 700 "$deploy_home/.config/systemd/user"
     sudo install -o "$g_deploy_user" -g "$deploy_gid" -m 644 \
@@ -159,6 +164,7 @@ else
   printf 'Synchronizing %s/ to %s:%s\n' "$g_container_dir" "$TARGET" "$destination"
   rsync "${RSYNC_ARGS[@]}" --rsync-path="sudo -n rsync" "$g_container_dir/" "$TARGET:$destination"
   if [[ "$g_dry_run" = false ]]; then
+    ssh "$TARGET" "sudo -n rm -rf '${destination%/}/lib'"
     ssh "$TARGET" "sudo -n chown -R '$g_deploy_user:$deploy_gid' '$destination'"
     ssh "$TARGET" "sudo -n install -d -o '$g_deploy_user' -g '$deploy_gid' -m 700 '$deploy_home/.config/systemd/user'"
     ssh "$TARGET" "sudo -n install -o '$g_deploy_user' -g '$deploy_gid' -m 644 '$destination/service/shape-shifter.service' '$deploy_home/.config/systemd/user/shape-shifter.service'"
