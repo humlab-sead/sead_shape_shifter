@@ -22,7 +22,7 @@ sudo loginctl enable-linger <deployment-user>
 Each environment has three sibling directories in the deployment user's home:
 
 ```text
-~/container/            # selected container release (administrator-managed symlink)
+~/container/            # deployment files (manual copy or sync of this tree)
 ├── .env.example        # tracked template for deployment.env
 ├── Makefile            # build, lifecycle, diagnostic and service targets
 ├── podman-compose.yml  # service definition
@@ -31,7 +31,7 @@ Each environment has three sibling directories in the deployment user's home:
 ├── service/            # systemd user unit
 └── resources/          # generic templates: backend.env, .pgpass, authorization.env, NGINX vhosts
 
-~/config/               # environment configuration, outside the release
+~/config/               # environment configuration, outside ~/container
 ├── deployment.env      # image, ref, port, compose name, path overrides
 ├── backend.env         # runtime environment for the container (chmod 600)
 ├── authorization.env   # authorization bootstrap credentials and rosters (chmod 600)
@@ -49,9 +49,8 @@ Makefile resolves both and exports `CONFIG_DIR` and `CONTAINER_DATA_DIR`, so
 `podman-compose.yml` reads `backend.env` and the read-only `.pgpass` from
 `CONFIG_DIR` and every mutable mount from `CONTAINER_DATA_DIR`.
 
-`~/container` is a symlink into an installed release, so the selected release
-holds no live configuration and can be replaced without touching `~/config` or
-`~/container-data`.
+`~/container` holds only deployment files, so refreshing it never touches the
+live configuration in `~/config` or the runtime data in `~/container-data`.
 
 ## Quick Start
 
@@ -100,8 +99,8 @@ Run `make help` for the complete list.
 
 ## Configuration
 
-Configuration lives in the sibling `~/config` directory, not in the selected
-release. `deployment.env` holds the deployment defaults shared by the Makefile,
+Configuration lives in the sibling `~/config` directory, not in `~/container`.
+`deployment.env` holds the deployment defaults shared by the Makefile,
 the scripts and the compose file. `backend.env` holds the runtime settings the
 container reads on every start. `authorization.env`, the manifest and the group
 file hold the authorization inputs.
@@ -124,7 +123,7 @@ Values resolve with this precedence, highest first:
 A relative `CONFIG_DIR` or `DATA_DIR` value names a path under the deployment
 user's home, so `DATA_DIR=container-data` and `DATA_DIR=./container-data` both
 mean `~/container-data`; an absolute value is used unchanged. Relative values
-resolve from the user's home rather than from the selected release, so the release
+resolve from the user's home rather than from `~/container`, so the deployment
 directory is never used for configuration or data. Explicit overrides exist for
 tests and alternate layouts:
 `make CONFIG_DIR=/tmp/shape-config DATA_DIR=/tmp/shape-data config`.
@@ -193,81 +192,26 @@ rebuild. They come from `~/config/deployment.env` and reach the build as
 arguments (see `podman-compose.yml` and `Containerfile`); they are not read from
 `backend.env`.
 
-## Container Releases
+## Deployment File Delivery (Deprecated Release Flow)
 
-The `deployment/container/` tree is versioned and published independently of the
-application. Container releases are GitHub Releases tagged `container-vX.Y.Z`,
-created only from merges to the protected `container-release` branch by the
-`container-release` workflow. Application releases (`vX.Y.Z` tags produced by
-semantic-release on `main`) are a separate stream: a container tag says nothing
-about the application version, and publishing or selecting a container release
-never changes `GIT_REF` or `IMAGE_NAME`.
+Environments keep a manual copy of this `deployment/container/` tree in the
+deployment user's `~/container`, refreshed with
+`deployment/container-host/deploy/sync-to-deploy` and rebuilt with `make build`.
+See [DEPLOYMENT.md](DEPLOYMENT.md#place-the-deployment-files) for the workflow.
 
-Each container release carries:
+The earlier delivery flow is retired:
 
-- `container-vX.Y.Z.tar.gz` — the complete tracked `deployment/container/` tree,
-  unpacking to a single `container/` directory. `.containerignore` filters only
-  the image build context, never this archive.
-- `container-vX.Y.Z.tar.gz.sha256` — a `sha256sum` checksum that detects
-  transfer corruption. It is not an authenticity signature; trust comes from
-  the protected repository and release workflow.
-- Release notes recording the exact source commit. Select releases by their
-  exact tag, not by a branch or "latest".
+- The `shape-shifter-container-release` host manager and its
+  `container-vX.Y.Z` GitHub Release archives are no longer installed or used.
+  `deployment/container-host/deploy/manage_container_release.sh` remains in the
+  repository only as a reference for the archive-verification logic.
+- The `container-release` workflow still publishes `container-vX.Y.Z` tags on
+  the `container-release` branch, but no environment consumes them.
 
-### Promoting a container release
-
-1. Create a promotion branch from the current tip of `container-release`.
-2. Merge `main` into the promotion branch, so the reviewed tree carries the
-   latest application changes.
-3. Set the next version explicitly in `deployment/container/VERSION` as `X.Y.Z`.
-   The value must be a plain three-part version that strictly increases over the
-   highest existing `container-v*` tag.
-4. Open a PR targeting `container-release` and review the resulting
-   `deployment/container/` tree, not just the commit list.
-5. The PR run validates the release inputs and builds the archive with
-   read-only permissions. It creates no tag and no Release. A missing, reused,
-   or malformed version, or a missing required deployment file, fails the PR.
-6. After an approved review, merge. The post-merge workflow publishes exactly
-   one `container-vX.Y.Z` tag and Release from the merged commit, and refuses
-   to run when that tag or Release already exists.
-
-To inspect a published release locally:
-
-```bash
-gh release view container-vX.Y.Z --repo humlab-sead/sead_shape_shifter
-sha256sum -c container-vX.Y.Z.tar.gz.sha256
-tar -tzf container-vX.Y.Z.tar.gz | head
-```
-
-### Installing and selecting a release on a host
-
-Install the reviewed host manager once per host, then install and select releases
-per user. See
-[Install and select a container release](DEPLOYMENT.md#install-and-select-a-container-release)
-for the full workflow, permissions, and first-transition rules.
-
-```bash
-# Once per host, from a reviewed copy of the repository
-sudo install -o root -g root -m 0755 \
-  deployment/container-host/deploy/manage_container_release.sh \
-  /usr/local/sbin/shape-shifter-container-release
-
-# Per user: install an exact release without selecting it, then select it
-sudo shape-shifter-container-release install  USER container-vX.Y.Z
-sudo shape-shifter-container-release activate USER container-vX.Y.Z
-sudo shape-shifter-container-release status   USER
-sudo shape-shifter-container-release rollback USER
-```
-
-`install` verifies the archive and checksum, records the source commit, and leaves
-`~/container` unchanged. `activate` and `rollback` change only that user's
-selection. None of the commands change `GIT_REF`, `IMAGE_NAME`, `~/config`, or
-`~/container-data`.
-
-A release archive carries only deployment-user runtime contents. Host tooling,
-the release-policy checks, and their regression tests live in
-`deployment/container-host/` outside the archive, so they are never shipped to a
-deployment user.
+The planned replacement is CI-built images published to GHCR and pulled by
+digest, described in
+[docs/proposals/GHCR_IMAGE_RELEASE.md](../../docs/proposals/GHCR_IMAGE_RELEASE.md).
+Until then, the manual copy flow above is the supported path.
 
 ## Documentation
 
