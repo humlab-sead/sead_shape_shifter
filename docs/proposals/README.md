@@ -14,7 +14,6 @@ This index covers proposals and initiative records that need attention or provid
 | [Publish Container Images From CI To GHCR And Deploy By Pull](GHCR_IMAGE_RELEASE.md) | Proposed change request | Build images in GitHub Actions, publish to GHCR, and deploy by digest-pinned pull instead of host-side builds and release archives. |
 | [Ingester Authorization](INGESTER_AUTHORIZATION_TASKS/INGESTER_AUTHORIZATION_TASKS.md) | Proposed change | Authorize projects, sources, and destinations used by ingester operations. |
 | [Secure Ingester Filesystem And Destination Access](INGESTER_FILESYSTEM_BOUNDARIES/INGESTER_FILESYSTEM_BOUNDARIES.md) | Proposed change | Restrict ingester file access and database destinations to approved resources. |
-| [Release Cycle Evidence And Locking](RELEASE_CYCLE_EVIDENCE_AND_LOCKING/README.md) | Proposed process change | Define release identity, verification evidence, and comparisons between runs. |
 | [RuleSync For Unified Agent Instructions](future/RULESYNC_AGENT_INSTRUCTIONS_UNIFICATION.md) | Proposed change | Generate shared agent instructions from one source and detect drift. |
 | [Security Hardening Follow-up](SECURITY_HARDENING_FOLLOWUP/SECURITY_HARDENING_FOLLOWUP.md) | Proposed change request | Remediate unresolved application, authorization, deployment, and verification issues. |
 | [Scaffold Project Entities From an Associated Target Model](TARGET_MODEL_GUIDED_ENTITY_CREATION.md) | Proposed feature | Add a target-model picker that prefills missing project entity drafts without guessing source settings. |
@@ -44,6 +43,7 @@ These proposals are deferred or not yet approved. See each document for its deta
 | [Native Application Authentication](future/NATIVE_APPLICATION_AUTHENTICATION.md) | Add application-managed authentication. |
 | [Production Flip To The Authorized Server](future/PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md) | Move production traffic to the authorization-enabled server. |
 | [Query Filter Engine Selection](future/QUERY_FILTER_ENGINE_SELECTION.md) | Make query-filter engine selection explicit. |
+| [Release Cycle Evidence And Locking](future/RELEASE_CYCLE_EVIDENCE_AND_LOCKING/README.md) | Define release identity, verification evidence, and comparisons between runs. |
 | [Server-Owned Resource Identifiers](future/SERVER_OWNED_RESOURCE_IDENTIFIERS.md) | Resolve generated resources through server-owned records rather than client paths. |
 | [Target Model Ecosystem Enhancements](future/TARGET_MODEL_ECOSYSTEM_ENHANCEMENTS.md) | Consider future target-model tooling and distribution improvements. |
 | [Unified File-Backed Entity Type](future/UNIFIED_FILE_BACKED_ENTITY_TYPE.md) | Replace separate file entity types with a unified type and format option. |
