@@ -22,6 +22,7 @@ from backend.app.services.project_service import ProjectService
 from backend.app.utils.fixed_schema import derive_fixed_schema
 from src.model import ShapeShiftProject, TableConfig
 from src.normalizer import ShapeShifter
+from src.reconciliation.fixed_entity_mapping_changes import default_local_key
 from src.reconciliation.mapping_manager import MappingManager
 from src.reconciliation.mapping_model import EntityMapping, EntityType, Link, LinkSource, encode_local_key
 from src.specifications.materialize import CanMaterializeSpecification
@@ -189,13 +190,15 @@ class MaterializationService:
 
     @staticmethod
     def _default_mapping_local_key(table: TableConfig) -> str | list[str]:
-        """Return the default local_key to use when a sidecar entry does not exist yet."""
-        keys = list(table.keys)
+        """Return the default local_key to use when a sidecar entry does not exist yet.
+
+        Uses the shared ordered ``safe_keys`` rule so compound keys encode in the
+        same declared order as mapping entry creation.
+        """
+        keys = table.safe_keys
         if not keys:
             raise MaterializationError(f"Entity '{table.entity_name}' has no entity.keys configuration for mapping sidecar sync.")
-        if len(keys) == 1:
-            return keys[0]
-        return keys
+        return default_local_key(keys)
 
     @staticmethod
     def _ensure_mapping_entity(catalog: Any, table: TableConfig) -> EntityMapping:

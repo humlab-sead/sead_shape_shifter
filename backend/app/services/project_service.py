@@ -18,6 +18,7 @@ from backend.app.mappers.project_name_mapper import ProjectNameMapper
 from backend.app.middleware.correlation import get_correlation_id
 from backend.app.models.entity import Entity
 from backend.app.models.project import Project, ProjectFileInfo, ProjectMetadata, TargetModelFileOption
+from backend.app.services.fixed_entity_mapping_change_service import FixedEntityMappingChangeService
 from backend.app.services.project.entity_operations import EntityOperations
 from backend.app.services.project.entity_persistence_strategies import EntityPersistenceStrategyRegistry
 from backend.app.services.project.file_manager import FileManager
@@ -100,6 +101,7 @@ class ProjectService:
             persistence_strategy_registry=EntityPersistenceStrategyRegistry(),
             save_entity_boundary_callback=self.save_entity_boundary,
             save_entity_rename_callback=self.save_entity_rename_boundary,
+            mapping_change_service=FixedEntityMappingChangeService(),
         )
 
         # Initialize file manager component

@@ -53,6 +53,7 @@ def mock_table_config():
     table.entity_name = "location"
     table.public_id = "location_id"
     table.keys = ["location_name"]
+    table.safe_keys = ["location_name"]
     table.is_materialized = False
     table.entity_cfg = {
         "type": "source",
@@ -72,6 +73,7 @@ def mock_materialized_table_config():
     table.entity_name = "location"
     table.public_id = "location_id"
     table.keys = ["location_name"]
+    table.safe_keys = ["location_name"]
     table.is_materialized = True
     table.materialized = MaterializationConfig(
         data={
@@ -670,6 +672,7 @@ class TestCreateMaterializedEntity:
         mock_table.entity_name = "empty_entity"
         mock_table.public_id = "empty_id"
         mock_table.keys = []
+        mock_table.safe_keys = []
         mock_table.entity_cfg = {}  # Empty config
 
         with patch("backend.app.services.materialization_service.logger") as mock_logger:
