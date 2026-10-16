@@ -10,7 +10,7 @@
 
 This proposal recommends treating the current BugsCEP Shape Shifter draft as an explicit pilot project rather than as a loose experiment.
 
-The pilot already covers a meaningful SEAD-facing slice and has been validated against a real BugsCEP `.mdb` file. It now includes site, location, bibliography, dating-lab, relative-age, sample, dataset, analysis-entity, relative-dating, and geochronology scaffolding in [data/projects/bugs/shapeshifter.yml](../../data/projects/bugs/shapeshifter.yml).
+The pilot already covers a meaningful SEAD-facing slice and has been validated against a real BugsCEP `.mdb` file. It now includes site, location, bibliography, dating-lab, relative-age, sample, dataset, analysis-entity, relative-dating, and geochronology scaffolding in [data/projects/bugs/shapeshifter.yml](../../../tests/test_data/projects/bugs/shapeshifter.yml).
 
 The right next step is not a rewrite. It is to keep extending this pilot in small importer-aligned slices, preserve important Java-only behavior in comments where Shape Shifter does not yet express it directly, and use repeatable validation against the real BugsCEP file after each slice.
 
@@ -31,7 +31,7 @@ Without a concrete pilot, migration discussion stays abstract.
 
 This proposal covers:
 
-- the current pilot baseline in [data/projects/bugs/shapeshifter.yml](../../data/projects/bugs/shapeshifter.yml)
+- the current pilot baseline in [data/projects/bugs/shapeshifter.yml](../../../tests/test_data/projects/bugs/shapeshifter.yml)
 - the design decisions made while building that baseline
 - the work completed so far
 - the next recommended delivery order for future work
@@ -48,7 +48,7 @@ This proposal does not attempt to:
 
 ## Current Behavior
 
-The pilot project lives in [data/projects/bugs/shapeshifter.yml](../../data/projects/bugs/shapeshifter.yml) and the mirrored test-data copy lives in [tests/test_data/projects/bugs/shapeshifter.yml](../../tests/test_data/projects/bugs/shapeshifter.yml).
+The pilot project lives in [data/projects/bugs/shapeshifter.yml](../../../tests/test_data/projects/bugs/shapeshifter.yml) and the mirrored test-data copy lives in [tests/test_data/projects/bugs/shapeshifter.yml](../../../tests/test_data/projects/bugs/shapeshifter.yml).
 
 The current pilot uses UCanAccess against a real BugsCEP `.mdb` file through `BUGS_CEP_MDB_FILE` and validates with:
 
@@ -114,7 +114,7 @@ This keeps the pilot honest.
 
 ## Completed Work Checklist
 
-- [x] Create the initial BugsCEP project file in [data/projects/bugs/shapeshifter.yml](../../data/projects/bugs/shapeshifter.yml)
+- [x] Create the initial BugsCEP project file in [data/projects/bugs/shapeshifter.yml](../../../tests/test_data/projects/bugs/shapeshifter.yml)
 - [x] Configure UCanAccess source access with `BUGS_CEP_MDB_FILE` and `lib/ucanaccess`
 - [x] Add the first `site` entity sourced from `TSite`
 - [x] Keep `bugs_site_code` as the main business key for the site slice
@@ -131,7 +131,7 @@ This keeps the pilot honest.
 - [x] Replace provisional dating methods and data types with importer-aligned method abbreviations and Java-aligned data-type names
 - [x] Add the Java-style `UnknownCal` fallback for blank relative-date methods
 - [x] Add the explicit Shape Shifter `UnknownRadio` policy for blank geochronology methods
-- [x] Mirror the project into [tests/test_data/projects/bugs/shapeshifter.yml](../../tests/test_data/projects/bugs/shapeshifter.yml)
+- [x] Mirror the project into [tests/test_data/projects/bugs/shapeshifter.yml](../../../tests/test_data/projects/bugs/shapeshifter.yml)
 - [x] Validate the pilot repeatedly against `bugsdata_20231219.mdb`
 - [x] Reduce current validation output to accepted review warnings rather than workflow errors
 - [x] Record important implementation notes, including the UCanAccess padded-literal quirk, in repository memory

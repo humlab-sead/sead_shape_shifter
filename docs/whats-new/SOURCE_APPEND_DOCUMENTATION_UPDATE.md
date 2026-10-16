@@ -1,7 +1,7 @@
 # Source-Based Append Documentation Update
 
 **Date**: 2025-01-21  
-**Related Proposal**: [SOURCE_BASED_APPEND_WITH_POSITION_ALIGNMENT.md](../proposals/SOURCE_BASED_APPEND_WITH_POSITION_ALIGNMENT.md)  
+**Related Proposal**: [SOURCE_BASED_APPEND_WITH_POSITION_ALIGNMENT.md](../proposals/done/SOURCE_BASED_APPEND_WITH_POSITION_ALIGNMENT.md)  
 **Implementation**: Step 1 (Fix internal source-append normalization)
 
 ## Overview
@@ -79,7 +79,7 @@ The documentation changes align with the implemented behavior:
 ## Related Documentation
 
 - [CONFIGURATION_GUIDE.md](../CONFIGURATION_GUIDE.md) - Updated sections: "Data Source Append", "Property Inheritance"
-- [SOURCE_BASED_APPEND_WITH_POSITION_ALIGNMENT.md](../proposals/SOURCE_BASED_APPEND_WITH_POSITION_ALIGNMENT.md) - Technical proposal
+- [SOURCE_BASED_APPEND_WITH_POSITION_ALIGNMENT.md](../proposals/done/SOURCE_BASED_APPEND_WITH_POSITION_ALIGNMENT.md) - Technical proposal
 - [USER_GUIDE.md](../USER_GUIDE.md) - No changes needed (high-level overview only)
 
 ## Next Steps

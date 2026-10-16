@@ -7,9 +7,9 @@ This guide provides step-by-step functional testing procedures for the Shape Shi
 > For the testing strategy, automated test levels, and test commands see [../TESTING.md](../TESTING.md).
 
 **Related Guides:**
-- [Non-Functional Testing Guide](testing/NON_FUNCTIONAL_TESTING_GUIDE.md) - Browser compatibility, performance, accessibility
-- [Merged Entity Manual Test Checklist](testing/MERGED_ENTITY_MANUAL_TEST_CHECKLIST.md) - Feature-specific merged entity setup and manual verification steps
-- [Target Model Conformance Manual Test Checklist](testing/TARGET_MODEL_CONFORMANCE_MANUAL_TEST_CHECKLIST.md) - End-to-end conformance validation checks using custom and SEAD-based fixtures
+- [Non-Functional Testing Guide](NON_FUNCTIONAL_TESTING_GUIDE.md) - Browser compatibility, performance, accessibility
+- [Merged Entity Manual Test Checklist](MERGED_ENTITY_MANUAL_TEST_CHECKLIST.md) - Feature-specific merged entity setup and manual verification steps
+- [Target Model Conformance Manual Test Checklist](TARGET_MODEL_CONFORMANCE_MANUAL_TEST_CHECKLIST.md) - End-to-end conformance validation checks using custom and SEAD-based fixtures
 
 
 ## Table of Contents
@@ -26,12 +26,12 @@ This guide provides step-by-step functional testing procedures for the Shape Shi
 - [Data Source Testing](#data-source-testing)
 
 **Additional Testing Resources:**
-- [Error Scenario Testing](testing/ERROR_SCENARIO_TESTING.md) - Error handling and recovery testing
-- [Merged Entity Manual Test Checklist](testing/MERGED_ENTITY_MANUAL_TEST_CHECKLIST.md) - End-to-end merged entity checklist with concrete fixture entities
-- [Target Model Conformance Manual Test Checklist](testing/TARGET_MODEL_CONFORMANCE_MANUAL_TEST_CHECKLIST.md) - Conformance-validation checklist covering include, inline, SEAD, and strictness scenarios
-- [Test Results Template](testing/TEST_RESULTS_TEMPLATE.md) - Documentation templates and checklists
-- [Testing Appendix](testing/APPENDIX.md) - Shortcuts, troubleshooting, tools
-- [Non-Functional Testing Guide](testing/NON_FUNCTIONAL_TESTING_GUIDE.md) - Browser compatibility, performance
+- [Error Scenario Testing](ERROR_SCENARIO_TESTING.md) - Error handling and recovery testing
+- [Merged Entity Manual Test Checklist](MERGED_ENTITY_MANUAL_TEST_CHECKLIST.md) - End-to-end merged entity checklist with concrete fixture entities
+- [Target Model Conformance Manual Test Checklist](TARGET_MODEL_CONFORMANCE_MANUAL_TEST_CHECKLIST.md) - Conformance-validation checklist covering include, inline, SEAD, and strictness scenarios
+- Test Results Template - Documentation templates and checklists
+- [Testing Appendix](APPENDIX.md) - Shortcuts, troubleshooting, tools
+- [Non-Functional Testing Guide](NON_FUNCTIONAL_TESTING_GUIDE.md) - Browser compatibility, performance
 
 ---
 
@@ -1635,10 +1635,10 @@ Before creating entities, verify understanding of three-tier identity:
 
 For comprehensive testing coverage, see:
 
-- **[Error Scenario Testing](testing/ERROR_SCENARIO_TESTING.md)** - Test error handling, validation failures, network errors, and recovery paths
-- **[Test Results Template](testing/TEST_RESULTS_TEMPLATE.md)** - Documentation templates, quick test checklists, and issue reporting
-- **[Testing Appendix](testing/APPENDIX.md)** - Keyboard shortcuts, common issues, troubleshooting, DevTools tips
-- **[Non-Functional Testing Guide](testing/NON_FUNCTIONAL_TESTING_GUIDE.md)** - Browser compatibility, performance metrics, feature-specific behavior
+- **[Error Scenario Testing](ERROR_SCENARIO_TESTING.md)** - Test error handling, validation failures, network errors, and recovery paths
+- **Test Results Template** - Documentation templates, quick test checklists, and issue reporting
+- **[Testing Appendix](APPENDIX.md)** - Keyboard shortcuts, common issues, troubleshooting, DevTools tips
+- **[Non-Functional Testing Guide](NON_FUNCTIONAL_TESTING_GUIDE.md)** - Browser compatibility, performance metrics, feature-specific behavior
 
 ## Optioonal: Validation Testing
 
