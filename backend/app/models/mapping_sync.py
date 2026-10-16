@@ -130,7 +130,7 @@ class MappingSyncRetryResult(BaseModel):
     """The result of applying a pending fixed-entity mapping request."""
 
     status: Literal["applied", "noop"]
-    rows_saved: bool = True
+    rows_saved: Literal[True] = Field(default=True, description="The rows were saved by the original request; retry does not write rows.")
     changed: bool
     sidecar_version: str
     changed_keys: list[str] = Field(default_factory=list)

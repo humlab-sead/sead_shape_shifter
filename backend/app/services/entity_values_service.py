@@ -484,6 +484,8 @@ class EntityValuesService:
                 current_values=normalized_values,
                 mapping_catalog=mapping_snapshot.catalog if mapping_snapshot is not None else None,
             )
+            if not isinstance(project_path, str) or not project_path:
+                raise ValueError(f"Cannot save fixed entity '{entity_name}' because its project file path is missing")
 
         logger.info(f"Updating values at {file_path}")
 

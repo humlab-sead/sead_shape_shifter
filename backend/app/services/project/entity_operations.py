@@ -433,6 +433,19 @@ class EntityOperations:
                         dependent_names=dependent_names,
                     )
 
+                if project.filename:
+                    mapping_snapshot = self._mapping_sync_service.load_snapshot(project.filename)
+                    if entity_name in mapping_snapshot.catalog.entities:
+                        raise ResourceConflictError(
+                            message=(
+                                f"Cannot rename entity '{entity_name}' because it has a mapping sidecar entry. "
+                                "Remove or migrate the mapping entry before renaming the entity."
+                            ),
+                            resource_type="entity",
+                            resource_id=entity_name,
+                            context={"conflict_type": "entity_has_mapping", "new_name": new_name},
+                        )
+
                 if self._save_entity_rename is None:
                     raise ConfigurationError(message="Safe entity rename persistence is not configured.")
 

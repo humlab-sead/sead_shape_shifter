@@ -13,11 +13,19 @@ import pytest
 from pydantic import ValidationError
 
 from backend.app.mappers.project_mapper import ProjectMapper
-from backend.app.models.mapping_sync import MappingSyncOperation, MappingSyncPending
+from backend.app.models.mapping_sync import MappingSyncOperation, MappingSyncPending, MappingSyncRetryResult
 from src.reconciliation.fixed_entity_mapping_changes import FixedRowChangeSet, LinkDelete, LinkUpsert
 from src.reconciliation.mapping_model import EntityMapping, EntityType, Link, LinkSource
 
 CREATED = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+
+def test_retry_result_rows_saved_marks_original_save_only() -> None:
+    result = MappingSyncRetryResult(status="noop", changed=False, sidecar_version="sidecar-v1")
+
+    assert result.rows_saved is True
+    with pytest.raises(ValidationError):
+        MappingSyncRetryResult(status="noop", rows_saved=False, changed=False, sidecar_version="sidecar-v1")
 
 
 def _link(target_id: int, source: LinkSource, *, created_by: str = "tester", reviewed_by: str | None = None) -> Link:

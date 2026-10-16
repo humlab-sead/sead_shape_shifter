@@ -77,7 +77,7 @@ export interface MappingSyncPending {
  */
 export interface MappingSyncRetryResult {
   status: 'applied' | 'noop'
-  rows_saved: boolean
+  rows_saved: true // Rows were saved by the original request; retry only writes mappings.
   changed: boolean
   sidecar_version: string
   changed_keys: string[]

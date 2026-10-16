@@ -349,8 +349,11 @@ class TestEntityValuesService:
 
     def test_update_values_remaps_recognized_legacy_order(self, service, mock_project_service, tmp_path):
         """The exact legacy identity/keys/data order should be remapped by column name before saving."""
+        project_file = tmp_path / "shapeshifter.yml"
+        project_file.write_text("metadata:\n  type: shapeshifter\n", encoding="utf-8")
         mock_project = Mock()
         mock_project.folder = tmp_path
+        mock_project.filename = str(project_file)
         mock_project_service.load_project.return_value = mock_project
 
         entity_data = {
@@ -681,6 +684,24 @@ class TestEntityValuesService:
         assert result.row_count == 1
         assert sidecar["entities"]["location"]["local_key"] == "name"
         assert sidecar["entities"]["location"]["links"]["Uppsala"]["target_id"] == 100
+
+    @pytest.mark.parametrize("materialized", [False, True])
+    def test_update_values_rejects_fixed_rows_without_project_path(self, service, mock_project_service, tmp_path, materialized):
+        """Missing project metadata must fail before any fixed rows are written."""
+        mock_project = Mock()
+        mock_project.folder = tmp_path
+        mock_project.filename = None
+        mock_project_service.load_project.return_value = mock_project
+        entity = dict(self._FIXED_ENTITY)
+        if materialized:
+            entity["materialized"] = {"enabled": True}
+        mock_project_service.get_entity_by_name.return_value = entity
+        file_path = tmp_path / "materialized" / "test.parquet"
+
+        with pytest.raises(ValueError, match="project file path is missing"):
+            service.update_values("test_project", "location", self._FIXED_COLUMNS, [[1, 100, "Uppsala", "Sweden"]], "parquet")
+
+        assert not file_path.exists()
 
     def test_update_values_does_not_create_entry_for_nonmaterialized_fixed_entity(self, service, mock_project_service, tmp_path):
         """A non-materialized fixed save without an entry writes only the values file."""

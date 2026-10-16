@@ -4,7 +4,7 @@ Runbook for operators and maintainers of deployed Shape Shifter environments. Th
 
 ## Operational Invariants
 
-- Run one backend worker. Project caches and in-memory singletons are process-local; multiple workers can serve stale data after writes.
+- Run one backend worker. Project caches, locks, and in-memory singletons are process-local. Multiple workers can serve stale data and overwrite mapping sidecar changes made by another worker.
 - Run the container as the deployment user with rootless Podman. `userns_mode: "keep-id"` maps the host UID/GID into the container for bind-mounted data.
 - Project state is file-backed YAML. Do not edit one project concurrently from multiple operator sessions.
 - The application serves plain HTTP. Terminate TLS at the NGINX reverse proxy or another trusted upstream.

@@ -715,6 +715,8 @@ Examples:
 
 Reconciled ID links and manual overrides are persisted in a **mapping sidecar file** (`<project>-mapping.yml`) stored alongside `shapeshifter.yml`. This file is the single source of truth for all entity ID mappings.
 
+Shape Shifter blocks renaming an entity that has a mapping entry, including an entry with no links. Ask a project maintainer to move or remove that entry before renaming the entity.
+
 Legacy `options.mappings` in `shapeshifter.yml` is no longer used for new projects.
 
 The mapping sidecar stores per-entity links with full provenance:

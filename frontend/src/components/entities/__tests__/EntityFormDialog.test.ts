@@ -1233,6 +1233,7 @@ describe('EntityFormDialog', () => {
 
     expect(wrapper.text()).toContain('Rows saved; mapping changes pending')
     expect(wrapper.text()).not.toContain('Saved successfully')
+    expect(wrapper.emitted('saved')?.at(-1)).toEqual(['method', true])
     expect(wrapper.findAll('button').some((button) => button.text().trim() === 'Retry mapping')).toBe(true)
     expect(mockState.setMappingSyncPending).toHaveBeenCalledWith(pending)
   })
@@ -1337,6 +1338,7 @@ describe('EntityFormDialog', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('Rows saved; mapping changes pending')
+    expect(wrapper.emitted('saved')?.at(-1)).toEqual(['method', true])
     const closeEmits = (wrapper.emitted('update:modelValue') ?? []).map((args) => args[0])
     expect(closeEmits).not.toContain(false)
   })
