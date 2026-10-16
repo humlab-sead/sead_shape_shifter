@@ -1477,7 +1477,9 @@ entities:
       value_name: contact_name
     data_source: arbodat_data
     query: |-
-      select distinct [Projekt], [ArchAusg], [ArchBear], [BotBear] from [Projekte] ;
+      select distinct [Projekt], [ArchAusg], [ArchBear], [BotBear]
+      from [Projekte]
+      where [Fustel] is not NULL;
   relative_ages:
     type: openpyxl
     public_id: relative_age_id
