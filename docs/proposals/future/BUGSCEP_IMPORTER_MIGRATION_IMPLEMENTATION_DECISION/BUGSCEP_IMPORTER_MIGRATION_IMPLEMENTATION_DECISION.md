@@ -57,7 +57,7 @@ This proposal does not attempt to:
 
 ## Current Behavior
 
-The completed policy baseline is documented in [BUGSCEP_POLICY_SCHEMA_MACHINE_READABLE_FIDELITY.md](../done/BUGSCEP_POLICY_GENERATION/BUGSCEP_POLICY_SCHEMA_MACHINE_READABLE_FIDELITY.md).
+The completed policy baseline is documented in [BUGSCEP_POLICY_SCHEMA_MACHINE_READABLE_FIDELITY.md](../../done/BUGSCEP_POLICY_GENERATION/BUGSCEP_POLICY_SCHEMA_MACHINE_READABLE_FIDELITY.md).
 
 Current state:
 
@@ -65,7 +65,7 @@ Current state:
 - 355 validation tests pass
 - schema support exists for direct related-output references, structured resolvers, postprocess merge stages, shared emit blocks, and known divergences
 - representative fixtures define resolver paths, ordered reconciliation results, supporting outputs, related-output graphs, postprocess results, list-output actions, and explicit action labels
-- [BUGSCEP_POLICY_OPTION_MAPPING_NOTES.md](../done/BUGSCEP_POLICY_GENERATION/BUGSCEP_POLICY_OPTION_MAPPING_NOTES.md) keeps both downstream implementation paths open until a real execution-contract mismatch appears
+- [BUGSCEP_POLICY_OPTION_MAPPING_NOTES.md](../../done/BUGSCEP_POLICY_GENERATION/BUGSCEP_POLICY_OPTION_MAPPING_NOTES.md) keeps both downstream implementation paths open until a real execution-contract mismatch appears
 
 The policy set is now the build contract. What is still missing is an implementation path that can execute that contract and prove parity with Java behavior.
 

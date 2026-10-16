@@ -214,5 +214,5 @@ Use `extra` dict for ingester-specific parameters.
 ## See Also
 
 - [AGENTS.md](../../AGENTS.md#ingester-development-pattern) - Complete ingester development guide
-- [Implementation Plan](../../../INGESTER_INTEGRATION_PLAN.md) - Detailed integration plan
-- [Backend API Docs](../../../docs/BACKEND_API.md) - API endpoint reference
+- Implementation Plan - Detailed integration plan
+- Backend API Docs - API endpoint reference

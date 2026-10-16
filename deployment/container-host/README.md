@@ -14,7 +14,7 @@ repository checkout as root; they are not shipped to a deployment user.
 - `tests/` — shell regression suites for the tools above.
 
 Runtime verification is owned by SEAD operations. The
-[SEAD Runtime Verification Handoff](../../docs/proposals/CONTAINER_SETUP_SIMPLIFICATION/OPERATIONS_VERIFICATION_HANDOFF.md)
+[SEAD Runtime Verification Handoff](../../docs/proposals/done/CONTAINER_SETUP_SIMPLIFICATION/OPERATIONS_VERIFICATION_HANDOFF.md)
 lists the required operational outcomes without prescribing tools.
 
 ## Copy projects between deployments on one host

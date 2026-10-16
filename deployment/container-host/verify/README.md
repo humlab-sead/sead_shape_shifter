@@ -21,6 +21,6 @@ a file from the downloaded archive.
 This directory lives outside the `container/` release bundle, so it never ships
 in a release archive, and it provides no host or deployed-runtime verification.
 The
-[SEAD Runtime Verification Handoff](../../../docs/proposals/CONTAINER_SETUP_SIMPLIFICATION/OPERATIONS_VERIFICATION_HANDOFF.md)
+[SEAD Runtime Verification Handoff](../../../docs/proposals/done/CONTAINER_SETUP_SIMPLIFICATION/OPERATIONS_VERIFICATION_HANDOFF.md)
 lists tool-agnostic outcomes for operations; it is not an operating procedure
 or an implementation of those checks.

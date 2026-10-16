@@ -35,4 +35,4 @@ make check-schemas
 
 The **single source of truth** for entity and project structure is the backend Pydantic models. These JSON schemas are derived representations optimized for Monaco editor autocomplete.
 
-See [docs/JSON_SCHEMA_GENERATION.md](../../../docs/JSON_SCHEMA_GENERATION.md) for detailed information.
+See docs/JSON_SCHEMA_GENERATION.md for detailed information.

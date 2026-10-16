@@ -113,7 +113,7 @@ Trigger limit: the feature is wired to `vscode.workspace.onDidRenameFiles`, so i
 
 Replace the `## Status` bullets with the shape that matches the destination:
 
-- `done`: `- **Implemented** (branch \`<branch>\`; merged in [PR #N](url)).` followed by Scope, Goal, Validation, and any real remaining follow-up.
+- `done`: `- **Implemented** (branch \`<branch>\`; merged in [PR #N](https://github.com/owner/repo/pull/N)).` followed by Scope, Goal, Validation, and any real remaining follow-up.
 - `future`: `- Proposed future change` followed by Scope and Goal.
 - `onhold`: `- On hold; <one-line reason>` followed by Scope and Goal.
 
