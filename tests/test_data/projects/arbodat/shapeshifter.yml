@@ -1132,7 +1132,7 @@ entities:
       value_name: location_name
     data_source: arbodat_data
     query: |-
-      select distinct [Fustel], [EVNr], [Ort], [Kreis], [Land], [Staat], [FlurStr] from [Projekte];
+      select distinct [Fustel], Nz([EVNr], '') as [EVNr], [Ort], [Kreis], [Land], [Staat], [FlurStr] from [Projekte] where [Fustel] is not NULL;
   site_natural_region:
     type: sql
     public_id: site_natural_region_id
