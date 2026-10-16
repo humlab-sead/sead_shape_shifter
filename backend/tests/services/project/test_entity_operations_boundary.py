@@ -5,16 +5,21 @@ Verifies that:
 - add_entity_by_name calls save_entity_boundary_callback when provided
 - delete_entity_by_name calls save_entity_boundary_callback(name, entity, None) when provided
 - All three fall back to save_project_callback when boundary callback is absent
+- Fixed-row mapping inputs are validated before the boundary save
 """
 
+from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
+import yaml
 
-from backend.app.exceptions import ConfigurationError, ResourceConflictError
+from backend.app.exceptions import ConfigurationError, ResourceConflictError, SchemaValidationError
 from backend.app.models.project import Project, ProjectMetadata
+from backend.app.services.fixed_entity_mapping_sync_service import FixedEntityMappingSyncService
 from backend.app.services.project.entity_operations import EntityOperations
+from src.reconciliation.mapping_manager import MappingManager
 
 # pylint: disable=redefined-outer-name
 
@@ -55,6 +60,7 @@ def _make_operations(
     load_return: Project,
     *,
     with_boundary: bool,
+    mapping_sync_service: FixedEntityMappingSyncService | None = None,
 ) -> tuple[EntityOperations, MagicMock, MagicMock]:
     """Return (ops, save_project_mock, save_boundary_mock)."""
     load_mock = MagicMock(return_value=load_return)
@@ -71,6 +77,7 @@ def _make_operations(
         load_project_callback=load_mock,
         save_project_callback=save_project_mock,
         save_entity_boundary_callback=save_boundary_mock,
+        mapping_sync_service=mapping_sync_service,
     )
     return ops, save_project_mock, save_boundary_mock
 
@@ -207,3 +214,212 @@ class TestDeleteEntityByNameBoundary:
         ops, save_project, _ = _make_operations(project_with_entities, with_boundary=False)
         ops.delete_entity_by_name("test-project", "sample")
         save_project.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# update_entity_by_name: fixed-row mapping guard
+# ---------------------------------------------------------------------------
+
+
+def _write_mapping_sidecar(
+    base_dir: Path,
+    entity_name: str,
+    *,
+    local_key: str | list[str],
+    public_id: str,
+) -> str:
+    """Write a project config placeholder and a sidecar entry; return the config path."""
+    config_path = base_dir / "shapeshifter.yml"
+    config_path.write_text("metadata:\n  type: shapeshifter\n")
+    sidecar: dict[str, Any] = {
+        "version": "2.0",
+        "metadata": {
+            "project": base_dir.name,
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "updated_at": "2026-01-01T00:00:00+00:00",
+        },
+        "entities": {
+            entity_name: {
+                "local_key": local_key,
+                "public_id": public_id,
+                "entity_type": "primary",
+                "links": {},
+            }
+        },
+    }
+    (base_dir / f"{base_dir.name}-mapping.yml").write_text(yaml.safe_dump(sidecar))
+    return str(config_path)
+
+
+def _make_project_at(file_path: str, entities: dict[str, Any]) -> Project:
+    metadata = ProjectMetadata(
+        name="test-project",
+        description="test",
+        version="1.0.0",
+        file_path=file_path,
+        entity_count=len(entities),
+        created_at=0.0,
+        modified_at=0.0,
+        is_valid=True,
+    )
+    return Project(metadata=metadata, entities=entities, options={})
+
+
+def _fixed_site_entity(values: list[list[Any]]) -> dict[str, Any]:
+    return {
+        "type": "fixed",
+        "public_id": "site_ref",
+        "keys": ["site_code"],
+        "columns": ["site_code", "Fustel"],
+        "values": values,
+    }
+
+
+class TestUpdateEntityByNameMappingGuard:
+    def test_valid_fixed_update_still_calls_boundary_save(self, tmp_path: Path) -> None:
+        config_path = _write_mapping_sidecar(tmp_path, "site", local_key="site_code", public_id="site_ref")
+        entity = _fixed_site_entity([[1, 10, "S", "x"]])
+        project = _make_project_at(config_path, {"site": entity})
+        ops, save_project, save_boundary = _make_operations(project, with_boundary=True)
+
+        ops.update_entity_by_name("test-project", "site", _fixed_site_entity([[1, 10, "S", "x"]]))
+
+        save_boundary.assert_called_once()
+        save_project.assert_not_called()
+
+    def test_duplicate_key_rejects_before_boundary_save(self, tmp_path: Path) -> None:
+        config_path = _write_mapping_sidecar(tmp_path, "site", local_key="site_code", public_id="site_ref")
+        entity = _fixed_site_entity([[1, 10, "S", "x"]])
+        project = _make_project_at(config_path, {"site": entity})
+        ops, save_project, save_boundary = _make_operations(project, with_boundary=True)
+
+        duplicate = _fixed_site_entity([[1, 10, "S", "x"], [2, 11, "S", "y"]])
+        with pytest.raises(SchemaValidationError, match="share the same encoded key"):
+            ops.update_entity_by_name("test-project", "site", duplicate)
+
+        save_boundary.assert_not_called()
+        save_project.assert_not_called()
+
+    def test_successful_fixed_update_applies_only_changed_mapping_links(self, tmp_path: Path) -> None:
+        config_path = _write_mapping_sidecar(tmp_path, "site", local_key="site_code", public_id="site_ref")
+        previous = _fixed_site_entity([[1, 10, "S", "x"], [2, None, "U", "y"]])
+        project = _make_project_at(config_path, {"site": previous})
+        ops, _save_project, save_boundary = _make_operations(project, with_boundary=True)
+        sidecar_path = tmp_path / f"{tmp_path.name}-mapping.yml"
+        sidecar = yaml.safe_load(sidecar_path.read_text(encoding="utf-8"))
+        sidecar["entities"]["site"]["links"]["S"] = {
+            "target_id": 10,
+            "source": "reconciliation",
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "committed_at": "2026-01-01T00:00:00+00:00",
+            "created_by": "reconciler",
+        }
+        sidecar["entities"]["site"]["links"]["U"] = {
+            "target_id": 99,
+            "source": "import",
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "committed_at": "2026-01-01T00:00:00+00:00",
+            "created_by": "importer",
+            "reviewed_by": "reviewer",
+        }
+        sidecar_path.write_text(yaml.safe_dump(sidecar), encoding="utf-8")
+
+        ops.update_entity_by_name("test-project", "site", _fixed_site_entity([[1, 11, "S", "x"], [2, None, "U", "y"]]))
+
+        saved_sidecar = yaml.safe_load(sidecar_path.read_text(encoding="utf-8"))
+        links = saved_sidecar["entities"]["site"]["links"]
+        assert links["S"]["target_id"] == 11
+        assert links["S"]["source"] == "manual"
+        assert links["U"]["target_id"] == 99
+        assert links["U"]["source"] == "import"
+        assert links["U"]["created_by"] == "importer"
+        assert links["U"]["reviewed_by"] == "reviewer"
+        save_boundary.assert_called_once()
+
+    def test_failed_fixed_row_save_does_not_write_mapping_sidecar(self, tmp_path: Path) -> None:
+        config_path = _write_mapping_sidecar(tmp_path, "site", local_key="site_code", public_id="site_ref")
+        project = _make_project_at(config_path, {"site": _fixed_site_entity([[1, 10, "S", "x"]])})
+        ops, _save_project, save_boundary = _make_operations(project, with_boundary=True)
+        save_boundary.side_effect = OSError("row save failed")
+        sidecar_path = tmp_path / f"{tmp_path.name}-mapping.yml"
+        before = sidecar_path.read_bytes()
+
+        with pytest.raises(OSError, match="row save failed"):
+            ops.update_entity_by_name("test-project", "site", _fixed_site_entity([[1, 11, "S", "x"]]))
+
+        assert sidecar_path.read_bytes() == before
+
+    def test_missing_stored_column_rejects_before_boundary_save(self, tmp_path: Path) -> None:
+        config_path = _write_mapping_sidecar(tmp_path, "site", local_key="site_code", public_id="legacy_ref")
+        entity = _fixed_site_entity([[1, 10, "S", "x"]])
+        project = _make_project_at(config_path, {"site": entity})
+        ops, save_project, save_boundary = _make_operations(project, with_boundary=True)
+
+        with pytest.raises(SchemaValidationError, match="missing stored mapping column"):
+            ops.update_entity_by_name("test-project", "site", _fixed_site_entity([[1, 10, "S", "x"]]))
+
+        save_boundary.assert_not_called()
+        save_project.assert_not_called()
+
+    def test_invalid_changed_id_rejects_before_boundary_save(self, tmp_path: Path) -> None:
+        config_path = _write_mapping_sidecar(tmp_path, "site", local_key="site_code", public_id="site_ref")
+        entity = _fixed_site_entity([[1, 10, "S", "x"]])
+        project = _make_project_at(config_path, {"site": entity})
+        ops, save_project, save_boundary = _make_operations(project, with_boundary=True)
+
+        with pytest.raises(SchemaValidationError, match="invalid mapping target"):
+            ops.update_entity_by_name("test-project", "site", _fixed_site_entity([[1, "abc", "S", "x"]]))
+
+        save_boundary.assert_not_called()
+        save_project.assert_not_called()
+
+
+class _FailingSaveManager(MappingManager):
+    """Mapping manager whose save fails after the row write succeeded."""
+
+    def save(self, catalog, project_path, expected_version=None):
+        raise OSError("sidecar write failed")
+
+
+class TestUpdateEntityByNamePartialSave:
+    """A sidecar failure after the row write returns a pending mapping result."""
+
+    def test_sidecar_failure_returns_pending_without_raising(self, tmp_path: Path) -> None:
+        config_path = _write_mapping_sidecar(tmp_path, "site", local_key="site_code", public_id="site_ref")
+        project = _make_project_at(config_path, {"site": _fixed_site_entity([[1, 10, "S", "x"]])})
+        sync_service = FixedEntityMappingSyncService(_FailingSaveManager())
+        ops, _save_project, save_boundary = _make_operations(project, with_boundary=True, mapping_sync_service=sync_service)
+        sidecar_path = tmp_path / f"{tmp_path.name}-mapping.yml"
+        before = sidecar_path.read_bytes()
+
+        result = ops.update_entity_by_name("test-project", "site", _fixed_site_entity([[1, 11, "S", "x"]]))
+
+        save_boundary.assert_called_once()
+        assert result.mapping_sync is not None
+        assert result.mapping_sync.rows_saved is True
+        assert result.mapping_sync.storage_kind == "inline"
+        assert result.mapping_sync.project == "test-project"
+        assert result.mapping_sync.entity == "site"
+        assert result.mapping_sync.operations[0].op == "upsert"
+        assert result.mapping_sync.operations[0].target_id == 11
+        assert result.mapping_sync.expected_sidecar_version != "missing"
+        assert sidecar_path.read_bytes() == before
+
+    def test_successful_save_has_no_pending(self, tmp_path: Path) -> None:
+        config_path = _write_mapping_sidecar(tmp_path, "site", local_key="site_code", public_id="site_ref")
+        project = _make_project_at(config_path, {"site": _fixed_site_entity([[1, 10, "S", "x"]])})
+        ops, _save_project, save_boundary = _make_operations(project, with_boundary=True)
+
+        result = ops.update_entity_by_name("test-project", "site", _fixed_site_entity([[1, 11, "S", "x"]]))
+
+        save_boundary.assert_called_once()
+        assert result.mapping_sync is None
+
+    def test_row_write_failure_is_not_a_partial_save(self, tmp_path: Path) -> None:
+        config_path = _write_mapping_sidecar(tmp_path, "site", local_key="site_code", public_id="site_ref")
+        project = _make_project_at(config_path, {"site": _fixed_site_entity([[1, 10, "S", "x"]])})
+        ops, _save_project, save_boundary = _make_operations(project, with_boundary=True)
+        save_boundary.side_effect = OSError("row save failed")
+
+        with pytest.raises(OSError, match="row save failed"):
+            ops.update_entity_by_name("test-project", "site", _fixed_site_entity([[1, 11, "S", "x"]]))

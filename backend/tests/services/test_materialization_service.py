@@ -18,7 +18,8 @@ from backend.app.services.project.entity_persistence_strategies import EntityPer
 from backend.app.services.project_service import ProjectService
 from src.model import MaterializationConfig, ShapeShiftProject, TableConfig
 from src.normalizer import ShapeShifter
-from src.reconciliation.mapping_model import EntityMapping, EntityType, Link, LinkSource, MappingCatalog, Metadata
+from src.reconciliation.mapping_manager import MISSING_CONTENT_VERSION, MappingSnapshot
+from src.reconciliation.mapping_model import EntityMapping, EntityType, Link, LinkSource, MappingCatalog, Metadata, encode_local_key
 from src.specifications.materialize import CanMaterializeSpecification
 from src.types.fixed_entity_types import FixedEntityTypeConvention
 
@@ -53,6 +54,7 @@ def mock_table_config():
     table.entity_name = "location"
     table.public_id = "location_id"
     table.keys = ["location_name"]
+    table.safe_keys = ["location_name"]
     table.is_materialized = False
     table.entity_cfg = {
         "type": "source",
@@ -72,6 +74,7 @@ def mock_materialized_table_config():
     table.entity_name = "location"
     table.public_id = "location_id"
     table.keys = ["location_name"]
+    table.safe_keys = ["location_name"]
     table.is_materialized = True
     table.materialized = MaterializationConfig(
         data={
@@ -670,6 +673,7 @@ class TestCreateMaterializedEntity:
         mock_table.entity_name = "empty_entity"
         mock_table.public_id = "empty_id"
         mock_table.keys = []
+        mock_table.safe_keys = []
         mock_table.entity_cfg = {}  # Empty config
 
         with patch("backend.app.services.materialization_service.logger") as mock_logger:
@@ -801,9 +805,11 @@ class TestSyncMaterializedEntityMappings:
                 )
             },
         )
-
         with patch.object(ProjectMapper, "to_core", return_value=mock_core_project):
-            with patch("backend.app.services.materialization_service.MappingManager.load", return_value=catalog):
+            with patch(
+                "backend.app.services.materialization_service.MappingManager.load_snapshot",
+                return_value=MappingSnapshot(catalog=catalog, content_version=MISSING_CONTENT_VERSION),
+            ):
                 with patch("backend.app.services.materialization_service.MappingManager.save") as mock_save:
                     result = materialization_service.sync_materialized_entity_mappings(
                         "test-project",
@@ -811,6 +817,7 @@ class TestSyncMaterializedEntityMappings:
                         columns=["system_id", "location_id", "location_name"],
                         values=[[1, 101, "Norway"], [2, None, "Sweden"], [3, 303, "Denmark"]],
                         created_by="corr-123",
+                        replace_manual_links=True,
                     )
 
         assert result.success is True
@@ -822,3 +829,251 @@ class TestSyncMaterializedEntityMappings:
         assert catalog.entities["location"].links["Norway"].created_by == "corr-123"
         assert catalog.entities["location"].links["Denmark"].target_id == 303
         mock_save.assert_called_once()
+
+    def test_sync_materialized_entity_mappings_adds_only_absent_links_and_keeps_existing_metadata(
+        self,
+        materialization_service,
+        mock_project_service,
+        mock_api_project,
+        mock_core_project,
+        mock_table_config,
+    ):
+        """Default sync should preserve all occupied keys and add only missing links."""
+        now = datetime.now(timezone.utc)
+        mock_table_config.is_materialized = True
+        mock_api_project.filename = "/tmp/test-project/shapeshifter.yml"
+        mock_api_project.entities = {
+            "location": {
+                "type": "fixed",
+                "public_id": "location_id",
+                "keys": ["location_name"],
+                "columns": ["system_id", "location_id", "location_name"],
+                "values": "@load:materialized/location.parquet",
+                "materialized": {"enabled": True},
+            }
+        }
+        mock_project_service.load_project.return_value = mock_api_project
+
+        catalog = MappingCatalog(
+            metadata=Metadata(project="test-project", created_at=now, updated_at=now),
+            entities={
+                "location": EntityMapping(
+                    local_key="location_name",
+                    public_id="location_id",
+                    entity_type=EntityType.PRIMARY,
+                    links={
+                        "Norway": Link(
+                            target_id=10,
+                            source=LinkSource.MANUAL,
+                            created_by="original-user",
+                            committed_at=now,
+                            notes="preserve this link",
+                        ),
+                        "Sweden": Link(
+                            target_id=20,
+                            source=LinkSource.RECONCILIATION,
+                            created_by="reconciler",
+                            committed_at=now,
+                        ),
+                        "OldManual": Link(
+                            target_id=1,
+                            source=LinkSource.MANUAL,
+                            created_by="user",
+                            committed_at=now,
+                        ),
+                    },
+                )
+            },
+        )
+        original_norway_link = catalog.entities["location"].links["Norway"].model_copy(deep=True)
+
+        with patch.object(ProjectMapper, "to_core", return_value=mock_core_project):
+            with patch(
+                "backend.app.services.materialization_service.MappingManager.load_snapshot",
+                return_value=MappingSnapshot(catalog=catalog, content_version="sidecar-version"),
+            ):
+                with patch("backend.app.services.materialization_service.MappingManager.save") as mock_save:
+                    result = materialization_service.sync_materialized_entity_mappings(
+                        "test-project",
+                        "location",
+                        columns=["system_id", "location_id", "location_name"],
+                        values=[
+                            [1, 101, "Norway"],
+                            [2, None, "Sweden"],
+                            [3, 0, "Denmark"],
+                            [4, None, "None ID"],
+                            [5, float("nan"), "NaN ID"],
+                            [6, "", "Empty ID"],
+                            [7, "   ", "Whitespace ID"],
+                        ],
+                        created_by="new-user",
+                    )
+
+        assert result.success is True
+        assert result.manual_links_added == 1
+        assert result.manual_links_replaced == 0
+        links = catalog.entities["location"].links
+        assert set(links) == {"Norway", "Sweden", "OldManual", "Denmark"}
+        assert links["Norway"] == original_norway_link
+        assert links["Sweden"].source == LinkSource.RECONCILIATION
+        assert links["Sweden"].target_id == 20
+        assert links["Denmark"].target_id == 0
+        assert links["Denmark"].source == LinkSource.MANUAL
+        assert links["Denmark"].created_by == "new-user"
+        mock_save.assert_called_once_with(catalog, "/tmp/test-project/shapeshifter.yml", expected_version="sidecar-version")
+
+    def test_sync_materialized_entity_mappings_additive_repeat_does_not_write(self, materialization_service, mock_project_service):
+        """An additive sync with no missing links should not rewrite sidecar bytes."""
+        now = datetime.now(timezone.utc)
+        project = Mock()
+        project.filename = "/tmp/test-project/shapeshifter.yml"
+        project.metadata = Mock(name="test-project")
+        project.entities = {
+            "location": {
+                "type": "fixed",
+                "public_id": "location_id",
+                "keys": ["location_name"],
+                "columns": ["system_id", "location_id", "location_name"],
+                "values": "@load:materialized/location.parquet",
+                "materialized": {"enabled": True},
+            }
+        }
+        mock_project_service.load_project.return_value = project
+        table = Mock()
+        table.entity_name = "location"
+        table.public_id = "location_id"
+        table.safe_keys = ["location_name"]
+        core_project = Mock()
+        core_project.get_table.return_value = table
+        catalog = MappingCatalog(
+            metadata=Metadata(project="test-project", created_at=now, updated_at=now),
+            entities={
+                "location": EntityMapping(
+                    local_key="location_name",
+                    public_id="location_id",
+                    links={"Norway": Link(target_id=10, source=LinkSource.MANUAL, created_by="original", committed_at=now)},
+                )
+            },
+        )
+
+        with patch.object(ProjectMapper, "to_core", return_value=core_project):
+            with patch(
+                "backend.app.services.materialization_service.MappingManager.load_snapshot",
+                return_value=MappingSnapshot(catalog=catalog, content_version="sidecar-version"),
+            ):
+                with patch("backend.app.services.materialization_service.MappingManager.save") as mock_save:
+                    result = materialization_service.sync_materialized_entity_mappings(
+                        "test-project",
+                        "location",
+                        columns=["system_id", "location_id", "location_name"],
+                        values=[[1, 10, "Norway"]],
+                    )
+
+        assert result.success is True
+        assert result.manual_links_added == 0
+        assert result.manual_links_replaced == 0
+        mock_save.assert_not_called()
+
+    def test_sync_materialized_entity_mappings_creates_ordered_compound_key_entry(
+        self,
+        materialization_service,
+        mock_project_service,
+        mock_api_project,
+        mock_core_project,
+        mock_table_config,
+    ):
+        """A missing entry should use safe_keys order when it encodes compound keys."""
+        now = datetime.now(timezone.utc)
+        mock_table_config.is_materialized = True
+        mock_table_config.safe_keys = ["country_code", "site_code"]
+        mock_api_project.filename = "/tmp/test-project/shapeshifter.yml"
+        mock_api_project.entities = {
+            "location": {
+                "type": "fixed",
+                "public_id": "location_id",
+                "keys": ["country_code", "site_code"],
+                "columns": ["system_id", "location_id", "country_code", "site_code"],
+                "values": "@load:materialized/location.parquet",
+                "materialized": {"enabled": True},
+            }
+        }
+        mock_project_service.load_project.return_value = mock_api_project
+        catalog = MappingCatalog(metadata=Metadata(project="test-project", created_at=now, updated_at=now))
+
+        with patch.object(ProjectMapper, "to_core", return_value=mock_core_project):
+            with patch(
+                "backend.app.services.materialization_service.MappingManager.load_snapshot",
+                return_value=MappingSnapshot(catalog=catalog, content_version=MISSING_CONTENT_VERSION),
+            ):
+                with patch("backend.app.services.materialization_service.MappingManager.save") as mock_save:
+                    result = materialization_service.sync_materialized_entity_mappings(
+                        "test-project",
+                        "location",
+                        columns=["system_id", "location_id", "country_code", "site_code"],
+                        values=[[1, 12, "SE", "S1"]],
+                    )
+
+        assert result.success is True
+        assert result.manual_links_added == 1
+        entity = catalog.entities["location"]
+        assert entity.local_key == ["country_code", "site_code"]
+        assert set(entity.links) == {encode_local_key(["country_code", "site_code"], ["SE", "S1"])}
+        mock_save.assert_called_once()
+
+    @pytest.mark.parametrize(
+        ("columns", "values", "message"),
+        [
+            (["system_id", "location_id", "location_name"], [[1, 10, ""]], "missing key value"),
+            (["system_id", "location_id", "location_name"], [[1, 10, "Norway"], [2, 11, "Norway"]], "share the same encoded key"),
+            (["system_id", "location_id", "location_name"], [[1, "invalid", "Norway"]], "invalid mapping target"),
+            (["system_id", "location_name"], [[1, "Norway"]], "missing stored mapping column"),
+        ],
+    )
+    def test_sync_materialized_entity_mappings_rejects_invalid_rows_without_writing(
+        self,
+        materialization_service,
+        mock_project_service,
+        mock_api_project,
+        mock_core_project,
+        mock_table_config,
+        columns,
+        values,
+        message,
+    ):
+        """Invalid saved keys or IDs should leave the sidecar unwritten."""
+        now = datetime.now(timezone.utc)
+        mock_table_config.is_materialized = True
+        mock_api_project.filename = "/tmp/test-project/shapeshifter.yml"
+        mock_api_project.entities = {
+            "location": {
+                "type": "fixed",
+                "public_id": "location_id",
+                "keys": ["location_name"],
+                "columns": ["system_id", "location_id", "location_name"],
+                "values": "@load:materialized/location.parquet",
+                "materialized": {"enabled": True},
+            }
+        }
+        mock_project_service.load_project.return_value = mock_api_project
+        entry = EntityMapping(local_key="location_name", public_id="location_id")
+        catalog = MappingCatalog(
+            metadata=Metadata(project="test-project", created_at=now, updated_at=now),
+            entities={"location": entry},
+        )
+
+        with patch.object(ProjectMapper, "to_core", return_value=mock_core_project):
+            with patch(
+                "backend.app.services.materialization_service.MappingManager.load_snapshot",
+                return_value=MappingSnapshot(catalog=catalog, content_version="sidecar-version"),
+            ):
+                with patch("backend.app.services.materialization_service.MappingManager.save") as mock_save:
+                    result = materialization_service.sync_materialized_entity_mappings(
+                        "test-project",
+                        "location",
+                        columns=columns,
+                        values=values,
+                    )
+
+        assert result.success is False
+        assert message in result.errors[0]
+        mock_save.assert_not_called()

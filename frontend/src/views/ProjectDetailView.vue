@@ -1178,7 +1178,7 @@ function getProjectLocalTargetModelPath(targetModel: string | null | undefined):
     return null
   }
   // strip any leading "@load:" or "@include:" prefix and whitespace, then check if the remaining string is a simple filename (no slashes)
-  let rawPath = targetModel;
+  const rawPath = targetModel;
   for (const prefix of ['@load:', '@include:']) {
     if (rawPath.startsWith(prefix)) {
       return rawPath.slice(prefix.length).trim().split(/[\\/]/).length === 1 ? rawPath.slice(prefix.length).trim() : null
@@ -1623,12 +1623,14 @@ function handleEntityEditRequestConsumed(entityName: string) {
   }
 }
 
-async function handleOverlayEntitySaved() {
+async function handleOverlayEntitySaved(_entityName: string, mappingPending = false) {
   // Refresh entity-backed state after saving from overlay without remounting the page.
   await fetchEntities()
 
-  successMessage.value = 'Entity saved successfully'
-  showSuccessSnackbar.value = true
+  if (!mappingPending) {
+    successMessage.value = 'Entity saved successfully'
+    showSuccessSnackbar.value = true
+  }
   
   // Refresh the dependency graph if we're on the dependencies tab
   if (activeTab.value === 'dependencies' && projectName.value) {

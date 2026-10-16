@@ -945,6 +945,24 @@
       </v-card-text>
 
       <v-card-actions>
+        <!-- Pending fixed-row mapping sync notice -->
+        <template v-if="mappingSyncPending">
+          <v-chip color="warning" size="small" prepend-icon="mdi-alert-circle" class="ml-2">
+            Rows saved; mapping changes pending
+          </v-chip>
+          <v-btn
+            color="warning"
+            variant="text"
+            size="small"
+            :loading="mappingSyncRetrying"
+            @click="handleRetryMappingSync"
+          >
+            Retry mapping
+          </v-btn>
+          <span v-if="mappingSyncConflictKeys.length" class="text-caption text-error ml-2">
+            Changed keys: {{ mappingSyncConflictKeys.join(', ') }}
+          </span>
+        </template>
         <!-- Materialization buttons (edit mode only, not create) -->
         <!-- DEBUG: mode={{ mode }}, currentEntity={{ !!currentEntity }}, materialized={{ currentEntity?.materialized?.enabled }} -->
         <template v-if="mode === 'edit' && currentEntity">
@@ -1040,7 +1058,7 @@ import { ref, computed, watch, watchEffect, onMounted, onUnmounted } from 'vue'
 import { useEntities, useSuggestions, useEntityPreview, useSettings, useColumnAvailability } from '@/composables'
 import { useNotification } from '@/composables/useNotification'
 import { useProjectStore, useEntityStore } from '@/stores'
-import type { EntityResponse, FixedSchema } from '@/api/entities'
+import type { EntityResponse, FixedSchema, MappingSyncPending, MappingSyncRetryResult } from '@/api/entities'
 import type { ForeignKeySuggestion, DependencySuggestion } from '@/composables'
 import * as yaml from 'js-yaml'
 import { AgGridVue } from 'ag-grid-vue3'
@@ -1108,7 +1126,7 @@ interface Props {
 
 interface Emits {
   (e: 'update:modelValue', value: boolean): void
-  (e: 'saved', entityName: string): void
+  (e: 'saved', entityName: string, mappingPending?: boolean): void
 }
 
 // Error type that can be a string, an API error response, or null
@@ -1212,6 +1230,10 @@ const loadedFixedSchema = ref<FixedSchema | null>(null)
 // Set when external values cannot be mapped onto the active full order. Blocks a
 // positional save instead of guessing a legacy layout.
 const fixedValuesLayoutError = ref<string | null>(null)
+// Pending fixed-row mapping sync: rows saved but the mapping sidecar was not written.
+const mappingSyncPending = ref<MappingSyncPending | null>(null)
+const mappingSyncRetrying = ref(false)
+const mappingSyncConflictKeys = ref<string[]>([])
 
 interface FormData {
   name: string
@@ -2940,6 +2962,46 @@ function setSaveError(err: unknown) {
   error.value = detail?.message ?? (err instanceof Error ? err.message : 'Failed to save entity')
 }
 
+function setPendingMappingSync(pending: MappingSyncPending | null) {
+  mappingSyncPending.value = pending
+  mappingSyncConflictKeys.value = []
+  entityStore.setMappingSyncPending(pending)
+}
+
+async function handleRetryMappingSync() {
+  const pending = mappingSyncPending.value
+  if (!pending || mappingSyncRetrying.value) return
+
+  mappingSyncRetrying.value = true
+  mappingSyncConflictKeys.value = []
+  error.value = null
+  try {
+    const result: MappingSyncRetryResult = await api.entities.retryFixedEntityMapping(
+      props.projectName,
+      pending.entity,
+      pending
+    )
+    setPendingMappingSync(null)
+    showSaveSuccess.value = true
+    if (saveSuccessTimeout) clearTimeout(saveSuccessTimeout)
+    saveSuccessTimeout = setTimeout(() => {
+      showSaveSuccess.value = false
+    }, 3000)
+    debugEntityForm('[EntityFormDialog] Retried pending mapping changes', result)
+  } catch (err: any) {
+    if (err.response?.status === 409) {
+      const changedKeys = err.response?.data?.detail?.context?.changed_keys
+      mappingSyncConflictKeys.value = Array.isArray(changedKeys) ? changedKeys : []
+      error.value =
+        'Mapping changes conflict with the current rows or links. Review the affected keys and retry, or reload the entity.'
+    } else {
+      error.value = 'Failed to retry mapping changes: ' + (err instanceof Error ? err.message : 'Unknown error')
+    }
+  } finally {
+    mappingSyncRetrying.value = false
+  }
+}
+
 const isSaveDisabled = computed(() => {
   if (!formValid.value) return true
   if (props.mode === 'edit') {
@@ -2991,6 +3053,8 @@ async function handleSubmit() {
         showWarning(warning)
       }
 
+      let pending: MappingSyncPending | null = updatedEntity.mapping_sync ?? null
+
       // Save external values if entity has @load: directive
       if (shouldSaveExternalValues) {
         try {
@@ -3009,6 +3073,7 @@ async function handleSubmit() {
           )
           // Update etag after successful save
           externalValuesEtag.value = response.etag
+          pending = response.mapping_sync ?? pending
           debugEntityForm('[EntityFormDialog] Saved external values')
         } catch (err: any) {
           console.error('Failed to save external values:', err)
@@ -3027,9 +3092,18 @@ async function handleSubmit() {
 
       // Keep dialog open after saving in edit mode
       syncDetectedSqlColumnsToFormData()
-      emit('saved', updatedEntity.name)
-
       captureInitialSnapshot()
+
+      // Rows are saved but mapping changes remain pending: report a partial save
+      // and keep the dialog open so the user can retry without resubmitting rows.
+      if (pending) {
+        showSaveSuccess.value = false
+        setPendingMappingSync(pending)
+        emit('saved', updatedEntity.name, true)
+        return
+      }
+      setPendingMappingSync(null)
+      emit('saved', updatedEntity.name)
 
       // Show success indicator
       showSaveSuccess.value = true
@@ -3057,6 +3131,7 @@ async function handleSubmitAndClose() {
     const valuesField = entityData.values
     const shouldSaveExternalValues = typeof valuesField === 'string' && valuesField.startsWith('@load:')
     let savedEntityName = formData.value.name
+    let pending: MappingSyncPending | null = null
 
     if (props.mode === 'create') {
       await create({
@@ -3073,6 +3148,7 @@ async function handleSubmitAndClose() {
       for (const warning of updatedEntity.warnings ?? []) {
         showWarning(warning)
       }
+      pending = updatedEntity.mapping_sync ?? null
 
       // Save external values if entity has @load: directive
       if (shouldSaveExternalValues) {
@@ -3092,6 +3168,7 @@ async function handleSubmitAndClose() {
           )
           // Update etag after successful save
           externalValuesEtag.value = response.etag
+          pending = response.mapping_sync ?? pending
           debugEntityForm('[EntityFormDialog] Saved external values (close)')
         } catch (err: any) {
           console.error('Failed to save external values:', err)
@@ -3115,7 +3192,17 @@ async function handleSubmitAndClose() {
       captureInitialSnapshot()
     }
 
+    // Rows are saved but mapping changes remain pending: keep the dialog open
+    // instead of closing so the user can retry the pending mapping changes.
+    if (pending) {
+      showSaveSuccess.value = false
+      setPendingMappingSync(pending)
+      emit('saved', savedEntityName, true)
+      return
+    }
+    setPendingMappingSync(null)
     emit('saved', savedEntityName)
+
     handleClose()
   } catch (err) {
     setSaveError(err)
@@ -3137,6 +3224,8 @@ function handleClose() {
   error.value = null
   renameConflictDependents.value = []
   showSaveSuccess.value = false
+  mappingSyncPending.value = null
+  mappingSyncConflictKeys.value = []
   if (saveSuccessTimeout) {
     clearTimeout(saveSuccessTimeout)
     saveSuccessTimeout = null
@@ -3459,6 +3548,14 @@ watch(
       previewError.value = null
       viewMode.value = 'form' // Always reset to form view
       activeTab.value = 'basic' // Always open entity editor on basic tab
+
+      // Restore any pending mapping changes recorded for this project/entity.
+      mappingSyncConflictKeys.value = []
+      const storedPending = entityStore.mappingSyncPending
+      mappingSyncPending.value =
+        storedPending && storedPending.project === props.projectName && storedPending.entity === entityName
+          ? storedPending
+          : null
 
       // Load entity data for edit mode
       if (mode === 'edit' && entityName) {

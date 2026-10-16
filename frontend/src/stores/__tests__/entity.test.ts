@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useEntityStore } from '../entity'
-import type { EntityResponse, EntityCreateRequest, EntityUpdateRequest } from '@/api/entities'
+import type { EntityResponse, EntityCreateRequest, EntityUpdateRequest, MappingSyncPending } from '@/api/entities'
 
 // Mock the API module
 vi.mock('@/api', () => ({
@@ -12,16 +12,34 @@ vi.mock('@/api', () => ({
       create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
+      retryFixedEntityMapping: vi.fn(),
     },
   },
 }))
 
 import { api } from '@/api'
 
+function makePending(overrides: Partial<MappingSyncPending> = {}): MappingSyncPending {
+  return {
+    status: 'pending',
+    rows_saved: true,
+    project: 'test-project',
+    entity: 'test-entity',
+    storage_kind: 'inline',
+    local_key: 'site_code',
+    public_id: 'site_id',
+    operations: [],
+    entry: null,
+    expected_row_version: 'rows-v1',
+    expected_sidecar_version: 'sidecar-v1',
+    ...overrides,
+  }
+}
+
 function makeEntity(
   name: string,
   entity_data: Record<string, unknown> = {},
-  overrides: Partial<EntityResponse> = {},
+  overrides: Partial<EntityResponse> = {}
 ): EntityResponse {
   return {
     name,
@@ -60,10 +78,7 @@ describe('useEntityStore', () => {
       ]
 
       expect(store.entitiesByType).toEqual({
-        table: [
-          makeEntity('entity1', { type: 'table' }),
-          makeEntity('entity3', { type: 'table' }),
-        ],
+        table: [makeEntity('entity1', { type: 'table' }), makeEntity('entity3', { type: 'table' })],
         view: [makeEntity('entity2', { type: 'view' })],
       })
     })
@@ -78,21 +93,14 @@ describe('useEntityStore', () => {
 
     it('should compute entity count', () => {
       const store = useEntityStore()
-      store.entities = [
-        makeEntity('entity1'),
-        makeEntity('entity2'),
-      ]
+      store.entities = [makeEntity('entity1'), makeEntity('entity2')]
 
       expect(store.entityCount).toBe(2)
     })
 
     it('should sort entities alphabetically', () => {
       const store = useEntityStore()
-      store.entities = [
-        makeEntity('zebra'),
-        makeEntity('alpha'),
-        makeEntity('beta'),
-      ]
+      store.entities = [makeEntity('zebra'), makeEntity('alpha'), makeEntity('beta')]
 
       expect(store.sortedEntities.map((e) => e.name)).toEqual(['alpha', 'beta', 'zebra'])
     })
@@ -108,11 +116,7 @@ describe('useEntityStore', () => {
 
     it('should filter root entities (no source)', () => {
       const store = useEntityStore()
-      store.entities = [
-        makeEntity('root1'),
-        makeEntity('child1', { source: 'root1' }),
-        makeEntity('root2'),
-      ]
+      store.entities = [makeEntity('root1'), makeEntity('child1', { source: 'root1' }), makeEntity('root2')]
 
       expect(store.rootEntities).toHaveLength(2)
       expect(store.rootEntities.map((e) => e.name)).toEqual(['root1', 'root2'])
@@ -148,10 +152,7 @@ describe('useEntityStore', () => {
   describe('fetchEntities', () => {
     it('should fetch entities successfully', async () => {
       const store = useEntityStore()
-      const mockEntities = [
-        makeEntity('entity1'),
-        makeEntity('entity2'),
-      ]
+      const mockEntities = [makeEntity('entity1'), makeEntity('entity2')]
 
       vi.mocked(api.entities.list).mockResolvedValue(mockEntities)
 
@@ -231,7 +232,7 @@ describe('useEntityStore', () => {
       const store = useEntityStore()
 
       await expect(store.selectEntity('test-project', 'nonexistent')).rejects.toThrow(
-        "Entity 'nonexistent' not found in cache",
+        "Entity 'nonexistent' not found in cache"
       )
 
       expect(api.entities.get).not.toHaveBeenCalled()
@@ -401,6 +402,7 @@ describe('useEntityStore', () => {
       store.loading = true
       store.error = 'Some error'
       store.hasUnsavedChanges = true
+      store.mappingSyncPending = makePending()
 
       store.reset()
 
@@ -410,6 +412,97 @@ describe('useEntityStore', () => {
       expect(store.loading).toBe(false)
       expect(store.error).toBeNull()
       expect(store.hasUnsavedChanges).toBe(false)
+      expect(store.mappingSyncPending).toBeNull()
+    })
+  })
+
+  describe('mapping sync pending', () => {
+    it('retains a pending result from an inline update', async () => {
+      const store = useEntityStore()
+      const existing = makeEntity('test-entity', { type: 'fixed' })
+      store.entities = [existing]
+      const pending = makePending()
+      const updated = makeEntity('test-entity', { type: 'fixed' }, { mapping_sync: pending })
+      vi.mocked(api.entities.update).mockResolvedValue(updated)
+
+      await store.updateEntity('test-project', 'test-entity', { entity_data: { type: 'fixed' } })
+
+      expect(store.mappingSyncPending).toEqual(pending)
+    })
+
+    it('clears a pending result for the same entity on a later clean save', async () => {
+      const store = useEntityStore()
+      store.entities = [makeEntity('test-entity', { type: 'fixed' })]
+      store.mappingSyncPending = makePending()
+      const updated = makeEntity('test-entity', { type: 'fixed' })
+      vi.mocked(api.entities.update).mockResolvedValue(updated)
+
+      await store.updateEntity('test-project', 'test-entity', { entity_data: { type: 'fixed' } })
+
+      expect(store.mappingSyncPending).toBeNull()
+    })
+
+    it('does not clear pending state during an unrelated entity refresh', async () => {
+      const store = useEntityStore()
+      store.currentProjectName = 'test-project'
+      store.mappingSyncPending = makePending()
+      vi.mocked(api.entities.list).mockResolvedValue([makeEntity('other-entity')])
+
+      await store.fetchEntities('test-project')
+
+      expect(store.mappingSyncPending).not.toBeNull()
+    })
+
+    it('stores an external pending result through setMappingSyncPending', () => {
+      const store = useEntityStore()
+      const pending = makePending({ storage_kind: 'external' })
+
+      store.setMappingSyncPending(pending)
+
+      expect(store.mappingSyncPending).toEqual(pending)
+    })
+
+    it('clears the pending result when retry succeeds', async () => {
+      const store = useEntityStore()
+      store.mappingSyncPending = makePending()
+      vi.mocked(api.entities.retryFixedEntityMapping).mockResolvedValue({
+        status: 'applied',
+        rows_saved: true,
+        changed: true,
+        sidecar_version: 'sidecar-v2',
+        changed_keys: [],
+      })
+
+      const result = await store.retryMappingSync('test-project', 'test-entity')
+
+      expect(api.entities.retryFixedEntityMapping).toHaveBeenCalledWith(
+        'test-project',
+        'test-entity',
+        expect.any(Object)
+      )
+      expect(store.mappingSyncPending).toBeNull()
+      expect(result?.status).toBe('applied')
+    })
+
+    it('retains the pending result when retry fails', async () => {
+      const store = useEntityStore()
+      const pending = makePending()
+      store.mappingSyncPending = pending
+      vi.mocked(api.entities.retryFixedEntityMapping).mockRejectedValue(new Error('conflict'))
+
+      await expect(store.retryMappingSync('test-project', 'test-entity')).rejects.toThrow('conflict')
+
+      expect(store.mappingSyncPending).toEqual(pending)
+      expect(store.mappingSyncRetrying).toBe(false)
+    })
+
+    it('does nothing when no pending result exists', async () => {
+      const store = useEntityStore()
+
+      const result = await store.retryMappingSync('test-project', 'test-entity')
+
+      expect(result).toBeNull()
+      expect(api.entities.retryFixedEntityMapping).not.toHaveBeenCalled()
     })
   })
 })
