@@ -604,7 +604,7 @@ class TestEntityValues:
     async def test_update_entity_values_syncs_manual_mapping_sidecar_for_materialized_entity(
         self, tmp_path, monkeypatch, reset_services, authorized_client
     ):
-        """Saving a materialized entity should replace manual sidecar links from the saved rows."""
+        """Saving materialized rows should apply only their affected mapping links."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         project_folder = tmp_path / "test_project"

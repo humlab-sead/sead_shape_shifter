@@ -18,6 +18,7 @@ from backend.app.services.project.entity_persistence_strategies import EntityPer
 from backend.app.services.project_service import ProjectService
 from src.model import MaterializationConfig, ShapeShiftProject, TableConfig
 from src.normalizer import ShapeShifter
+from src.reconciliation.mapping_manager import MISSING_CONTENT_VERSION, MappingSnapshot
 from src.reconciliation.mapping_model import EntityMapping, EntityType, Link, LinkSource, MappingCatalog, Metadata
 from src.specifications.materialize import CanMaterializeSpecification
 from src.types.fixed_entity_types import FixedEntityTypeConvention
@@ -806,7 +807,10 @@ class TestSyncMaterializedEntityMappings:
         )
 
         with patch.object(ProjectMapper, "to_core", return_value=mock_core_project):
-            with patch("backend.app.services.materialization_service.MappingManager.load", return_value=catalog):
+            with patch(
+                "backend.app.services.materialization_service.MappingManager.load_snapshot",
+                return_value=MappingSnapshot(catalog=catalog, content_version=MISSING_CONTENT_VERSION),
+            ):
                 with patch("backend.app.services.materialization_service.MappingManager.save") as mock_save:
                     result = materialization_service.sync_materialized_entity_mappings(
                         "test-project",

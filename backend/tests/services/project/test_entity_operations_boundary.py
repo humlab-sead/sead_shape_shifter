@@ -296,6 +296,55 @@ class TestUpdateEntityByNameMappingGuard:
         save_boundary.assert_not_called()
         save_project.assert_not_called()
 
+    def test_successful_fixed_update_applies_only_changed_mapping_links(self, tmp_path: Path) -> None:
+        config_path = _write_mapping_sidecar(tmp_path, "site", local_key="site_code", public_id="site_ref")
+        previous = _fixed_site_entity([[1, 10, "S", "x"], [2, None, "U", "y"]])
+        project = _make_project_at(config_path, {"site": previous})
+        ops, _save_project, save_boundary = _make_operations(project, with_boundary=True)
+        sidecar_path = tmp_path / f"{tmp_path.name}-mapping.yml"
+        sidecar = yaml.safe_load(sidecar_path.read_text(encoding="utf-8"))
+        sidecar["entities"]["site"]["links"]["S"] = {
+            "target_id": 10,
+            "source": "reconciliation",
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "committed_at": "2026-01-01T00:00:00+00:00",
+            "created_by": "reconciler",
+        }
+        sidecar["entities"]["site"]["links"]["U"] = {
+            "target_id": 99,
+            "source": "import",
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "committed_at": "2026-01-01T00:00:00+00:00",
+            "created_by": "importer",
+            "reviewed_by": "reviewer",
+        }
+        sidecar_path.write_text(yaml.safe_dump(sidecar), encoding="utf-8")
+
+        ops.update_entity_by_name("test-project", "site", _fixed_site_entity([[1, 11, "S", "x"], [2, None, "U", "y"]]))
+
+        saved_sidecar = yaml.safe_load(sidecar_path.read_text(encoding="utf-8"))
+        links = saved_sidecar["entities"]["site"]["links"]
+        assert links["S"]["target_id"] == 11
+        assert links["S"]["source"] == "manual"
+        assert links["U"]["target_id"] == 99
+        assert links["U"]["source"] == "import"
+        assert links["U"]["created_by"] == "importer"
+        assert links["U"]["reviewed_by"] == "reviewer"
+        save_boundary.assert_called_once()
+
+    def test_failed_fixed_row_save_does_not_write_mapping_sidecar(self, tmp_path: Path) -> None:
+        config_path = _write_mapping_sidecar(tmp_path, "site", local_key="site_code", public_id="site_ref")
+        project = _make_project_at(config_path, {"site": _fixed_site_entity([[1, 10, "S", "x"]])})
+        ops, _save_project, save_boundary = _make_operations(project, with_boundary=True)
+        save_boundary.side_effect = OSError("row save failed")
+        sidecar_path = tmp_path / f"{tmp_path.name}-mapping.yml"
+        before = sidecar_path.read_bytes()
+
+        with pytest.raises(OSError, match="row save failed"):
+            ops.update_entity_by_name("test-project", "site", _fixed_site_entity([[1, 11, "S", "x"]]))
+
+        assert sidecar_path.read_bytes() == before
+
     def test_missing_stored_column_rejects_before_boundary_save(self, tmp_path: Path) -> None:
         config_path = _write_mapping_sidecar(tmp_path, "site", local_key="site_code", public_id="legacy_ref")
         entity = _fixed_site_entity([[1, 10, "S", "x"]])

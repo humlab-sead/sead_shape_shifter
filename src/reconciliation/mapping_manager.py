@@ -8,8 +8,10 @@ file writes plus an in-memory cache keyed by project path.
 
 from __future__ import annotations
 
+import hashlib
 import os
 import tempfile
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -18,6 +20,21 @@ import yaml
 from loguru import logger
 
 from src.reconciliation.mapping_model import EntityMapping, Link, LinkSource, MappingCatalog, Metadata
+
+MISSING_CONTENT_VERSION = "missing"
+
+
+@dataclass(frozen=True)
+class MappingSnapshot:
+    """A catalog parsed from one exact sidecar file version."""
+
+    catalog: MappingCatalog
+    content_version: str
+
+
+class MappingVersionConflictError(RuntimeError):
+    """Raised when the sidecar changed after a writer read it."""
+
 
 if TYPE_CHECKING:
     pass
@@ -41,6 +58,7 @@ class MappingManager:
 
     def __init__(self) -> None:
         self._cache: dict[str, MappingCatalog] = {}
+        self._cache_versions: dict[str, str] = {}
 
     # ------------------------------------------------------------------
     # Path resolution
@@ -75,12 +93,44 @@ class MappingManager:
     # Load / Save
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _content_version(content: bytes | None) -> str:
+        """Return the content hash, or a distinct token for a missing file."""
+        if content is None:
+            return MISSING_CONTENT_VERSION
+        return hashlib.sha256(content).hexdigest()
+
+    @staticmethod
+    def _read_content(sidecar: Path) -> bytes | None:
+        """Read sidecar bytes, returning ``None`` when the file is absent."""
+        try:
+            return sidecar.read_bytes()
+        except FileNotFoundError:
+            return None
+
+    @staticmethod
+    def _parse_catalog(sidecar: Path, content: bytes | None) -> MappingCatalog:
+        """Parse one disk snapshot into a new catalog instance."""
+        if content is None:
+            project_name = sidecar.parent.name
+            now = datetime.now(timezone.utc)
+            return MappingCatalog(metadata=Metadata(project=project_name, created_at=now, updated_at=now))
+
+        data = yaml.safe_load(content.decode("utf-8")) or {}
+        return MappingCatalog.model_validate(data)
+
+    def load_snapshot(self, project_path: str | Path) -> MappingSnapshot:
+        """Read and parse the current sidecar without consulting the catalog cache."""
+        sidecar = self._sidecar_path(project_path)
+        content = self._read_content(sidecar)
+        catalog = self._parse_catalog(sidecar, content)
+        return MappingSnapshot(catalog=catalog, content_version=self._content_version(content))
+
     def load(self, project_path: str | Path) -> MappingCatalog:
         """Load a mapping catalog from the sidecar file.
 
         Returns an empty ``MappingCatalog`` when no sidecar file exists yet.
-        Results are cached; subsequent calls for the same *project_path*
-        return the cached instance without re-reading the file.
+        Cached catalogs are reused only while the exact sidecar bytes are unchanged.
 
         Args:
             project_path: Project directory or ``shapeshifter.yml`` path.
@@ -89,75 +139,93 @@ class MappingManager:
             A ``MappingCatalog`` instance (never ``None``).
         """
         cache_key: str = self._cache_key(project_path)
-
-        if cache_key in self._cache:
+        sidecar = self._sidecar_path(project_path)
+        content = self._read_content(sidecar)
+        content_version = self._content_version(content)
+        if cache_key in self._cache and self._cache_versions.get(cache_key) == content_version:
             logger.debug(f"Mapping catalog cache hit for {cache_key}")
             return self._cache[cache_key]
 
-        sidecar: Path = self._sidecar_path(project_path)
-
-        if not sidecar.exists():
+        if content_version == MISSING_CONTENT_VERSION:
             logger.info(f"No mapping sidecar found at {sidecar}; returning empty catalog")
-            project_name: str = sidecar.parent.name
-            now: datetime = datetime.now(timezone.utc)
-            catalog = MappingCatalog(metadata=Metadata(project=project_name, created_at=now, updated_at=now))
-            self._cache[cache_key] = catalog
-            return catalog
-
-        logger.debug(f"Loading mapping sidecar from {sidecar}")
-        with open(sidecar, "r", encoding="utf-8") as f:
-            data = yaml.safe_load(f) or {}
-
-        catalog: MappingCatalog = MappingCatalog.model_validate(data)
+        catalog = self._parse_catalog(sidecar, content)
         self._cache[cache_key] = catalog
+        self._cache_versions[cache_key] = content_version
         return catalog
 
-    def save(self, catalog: MappingCatalog, project_path: str | Path) -> None:
+    def save(
+        self,
+        catalog: MappingCatalog,
+        project_path: str | Path,
+        expected_version: str | None = None,
+    ) -> str:
         """Persist *catalog* to the sidecar file atomically.
 
         Writes to a temporary file in the same directory, then renames it
-        over the target to avoid partial writes.  Invalidates the in-memory
-        cache entry for *project_path* after a successful write.
+        over the target to avoid partial writes. When *expected_version* is
+        supplied, the write fails if the exact disk bytes have changed.
 
         Args:
             catalog: The catalog to persist.
             project_path: Project directory or ``shapeshifter.yml`` path.
+
+        Returns:
+            The SHA-256 content version of the written sidecar.
+
+        Raises:
+            MappingVersionConflictError: If the current sidecar version differs
+                from *expected_version*.
         """
         sidecar: Path = self._sidecar_path(project_path)
         cache_key: str = self._cache_key(project_path)
 
-        # Refresh updated_at before serialising.
-        catalog.metadata.updated_at = datetime.now(timezone.utc)
+        updated_at = datetime.now(timezone.utc)
+        catalog_to_save = catalog.model_copy(deep=True)
+        catalog_to_save.metadata.updated_at = updated_at
+        content = yaml.dump(
+            catalog_to_save.model_dump(mode="json", exclude_none=True),
+            default_flow_style=False,
+            sort_keys=False,
+            allow_unicode=True,
+        ).encode("utf-8")
+        written_version = self._content_version(content)
 
         sidecar.parent.mkdir(parents=True, exist_ok=True)
 
-        # Write to a temp file in the same directory, then atomic rename.
-        with tempfile.NamedTemporaryFile(
-            mode="w",
-            dir=sidecar.parent,
-            prefix=".tmp-mapping-",
-            suffix=".yml",
-            delete=False,
-            encoding="utf-8",
-        ) as tmp:
-            yaml.dump(
-                catalog.model_dump(mode="json", exclude_none=True),
-                tmp,
-                default_flow_style=False,
-                sort_keys=False,
-                allow_unicode=True,
-            )
-            tmp_path: str = tmp.name
-
+        tmp_path: str | None = None
         try:
+            with tempfile.NamedTemporaryFile(
+                mode="wb",
+                dir=sidecar.parent,
+                prefix=".tmp-mapping-",
+                suffix=".yml",
+                delete=False,
+            ) as tmp:
+                tmp.write(content)
+                tmp_path = tmp.name
+
+            if expected_version is not None:
+                try:
+                    current_content = sidecar.read_bytes()
+                except FileNotFoundError:
+                    current_content = None
+                current_version = self._content_version(current_content)
+                if current_version != expected_version:
+                    raise MappingVersionConflictError(
+                        f"Mapping sidecar changed: expected version '{expected_version}', current '{current_version}'"
+                    )
+
             os.replace(tmp_path, sidecar)
         except Exception:
-            os.unlink(tmp_path, missing_ok=True)  # type: ignore[attr-defined]
+            if tmp_path is not None:
+                Path(tmp_path).unlink(missing_ok=True)
             raise
 
-        # Update cache with the now-persisted catalog.
+        catalog.metadata.updated_at = updated_at
         self._cache[cache_key] = catalog
+        self._cache_versions[cache_key] = written_version
         logger.info(f"Saved mapping sidecar to {sidecar}")
+        return written_version
 
     # ------------------------------------------------------------------
     # Cache management
@@ -170,11 +238,13 @@ class MappingManager:
         """
         cache_key = self._cache_key(project_path)
         self._cache.pop(cache_key, None)
+        self._cache_versions.pop(cache_key, None)
         logger.debug(f"Invalidated mapping cache for {cache_key}")
 
     def clear_cache(self) -> None:
         """Clear all cached catalogs."""
         self._cache.clear()
+        self._cache_versions.clear()
         logger.debug("Cleared entire mapping cache")
 
     # ------------------------------------------------------------------

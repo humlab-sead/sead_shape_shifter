@@ -27,7 +27,7 @@ from src.reconciliation.fixed_entity_mapping_changes import (
     not_eligible_change_set,
 )
 from src.reconciliation.mapping_manager import MappingManager
-from src.reconciliation.mapping_model import EntityMapping
+from src.reconciliation.mapping_model import EntityMapping, MappingCatalog
 
 
 class FixedEntityMappingChangeService:
@@ -44,6 +44,7 @@ class FixedEntityMappingChangeService:
         project_path: str | None,
         previous_entity: Mapping[str, Any] | None,
         current_entity: Mapping[str, Any],
+        mapping_catalog: MappingCatalog | None = None,
     ) -> FixedRowChangeSet:
         """Prepare the change set for an inline fixed-row save.
 
@@ -71,6 +72,7 @@ class FixedEntityMappingChangeService:
             previous_values=previous_rows,
             current_columns=current_columns,
             current_values=current_rows,
+            mapping_catalog=mapping_catalog,
         )
 
     def compute_change_set(
@@ -83,6 +85,7 @@ class FixedEntityMappingChangeService:
         previous_values: list[list[Any]] | None,
         current_columns: list[str] | None,
         current_values: list[list[Any]] | None,
+        mapping_catalog: MappingCatalog | None = None,
     ) -> FixedRowChangeSet:
         """Return the mapping changes implied by two aligned row snapshots.
 
@@ -91,7 +94,7 @@ class FixedEntityMappingChangeService:
         authoritative mapping configuration.
         """
         config: Mapping[str, Any] = entity_config or {}
-        existing_entry: EntityMapping | None = self._load_entry(project_path, entity_name)
+        existing_entry: EntityMapping | None = self._load_entry(project_path, entity_name, mapping_catalog)
         entity_type: str | None = config.get("type") if isinstance(config.get("type"), str) else None
         public_id: str | None = config.get("public_id") if isinstance(config.get("public_id"), str) else None
 
@@ -106,12 +109,19 @@ class FixedEntityMappingChangeService:
             current=_snapshot(current_columns, current_values),
         )
 
-    def _load_entry(self, project_path: str | None, entity_name: str) -> EntityMapping | None:
+    def _load_entry(
+        self,
+        project_path: str | None,
+        entity_name: str,
+        mapping_catalog: MappingCatalog | None = None,
+    ) -> EntityMapping | None:
         """Read the existing sidecar entry for *entity_name*, if any."""
+        if mapping_catalog is not None:
+            return mapping_catalog.entities.get(entity_name)
         if not isinstance(project_path, str) or not project_path:
             return None
-        catalog = self.manager.load(project_path)
-        return catalog.entities.get(entity_name)
+        snapshot = self.manager.load_snapshot(project_path)
+        return snapshot.catalog.entities.get(entity_name)
 
 
 def get_fixed_entity_mapping_change_service() -> FixedEntityMappingChangeService:

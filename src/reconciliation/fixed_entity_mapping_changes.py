@@ -18,9 +18,10 @@ Reuse policy:
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, Sequence
 
-from src.reconciliation.mapping_model import EntityMapping, EntityType, Link, LinkSource, encode_local_key
+from src.reconciliation.mapping_model import EntityMapping, EntityType, Link, LinkSource, MappingCatalog, encode_local_key
 from src.types.fixed_entity_types import is_missing_fixed_entity_value, is_valid_fixed_entity_value
 
 FIXED_ENTITY_TYPE = "fixed"
@@ -297,6 +298,49 @@ def compute_fixed_row_change_set(
     )
 
 
+def apply_fixed_row_change_set(
+    catalog: MappingCatalog,
+    change_set: FixedRowChangeSet,
+    *,
+    created_by: str,
+    committed_at: datetime,
+) -> bool:
+    """Apply only the recorded affected-key changes to a mapping catalog."""
+    if not change_set.eligible:
+        return False
+
+    entity = catalog.entities.get(change_set.entity_name)
+    changed = False
+    if entity is None and change_set.proposed_entry is not None:
+        entity = change_set.proposed_entry.model_copy(deep=True)
+        catalog.entities[change_set.entity_name] = entity
+        changed = True
+
+    if entity is None:
+        return False
+
+    for operation in change_set.deletes:
+        if operation.key in entity.links:
+            del entity.links[operation.key]
+            changed = True
+
+    for operation in change_set.upserts:
+        existing_link = entity.links.get(operation.key)
+        if existing_link is not None and existing_link.source == LinkSource.MANUAL and existing_link.target_id == operation.target_id:
+            continue
+
+        entity.links[operation.key] = Link(
+            target_id=operation.target_id,
+            source=LinkSource.MANUAL,
+            created_at=committed_at,
+            committed_at=committed_at,
+            created_by=created_by,
+        )
+        changed = True
+
+    return changed
+
+
 @dataclass(frozen=True)
 class _IndexedRow:
     """A row's saved ID value and original row index."""
@@ -349,7 +393,8 @@ def _build_row_index(
                     column=column,
                 )
 
-        encoded_key: str = encode_local_key(local_key, key_values)
+        encoded_values = key_values[0] if isinstance(local_key, str) else key_values
+        encoded_key: str = encode_local_key(local_key, encoded_values)
         existing = index.get(encoded_key)
         if existing is not None:
             raise FixedEntityMappingChangeError(

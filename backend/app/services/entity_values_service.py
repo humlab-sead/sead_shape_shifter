@@ -8,11 +8,13 @@ from typing import Any
 import pandas as pd
 from loguru import logger
 
+from backend.app.middleware.correlation import get_correlation_id
 from backend.app.models.project import Project
 from backend.app.services.fixed_entity_mapping_change_service import (
     FixedEntityMappingChangeService,
     get_fixed_entity_mapping_change_service,
 )
+from backend.app.services.fixed_entity_mapping_sync_service import FixedEntityMappingSyncService
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.utils.fixed_schema import build_legacy_fixed_full_columns, derive_fixed_schema
 from src.path_resolution import resolve_contained_path
@@ -50,10 +52,12 @@ class EntityValuesService:
         self,
         project_service: ProjectService | None = None,
         mapping_change_service: FixedEntityMappingChangeService | None = None,
+        mapping_sync_service: FixedEntityMappingSyncService | None = None,
     ):
         """Initialize service with optional project service dependency injection."""
         self.project_service: ProjectService = project_service or get_project_service()
         self.mapping_change_service: FixedEntityMappingChangeService = mapping_change_service or get_fixed_entity_mapping_change_service()
+        self.mapping_sync_service = mapping_sync_service or FixedEntityMappingSyncService(self.mapping_change_service.manager)
 
     def _generate_etag(self, file_path: Path) -> str:
         """
@@ -393,6 +397,28 @@ class EntityValuesService:
         if_match: str | None = None,
         column_types: dict[str, str] | None = None,
     ) -> EntityValuesData:
+        """Update external values and mapping links under the project lock."""
+        with self.project_service._get_lock(project_name):
+            return self._update_values_locked(
+                project_name,
+                entity_name,
+                columns,
+                values,
+                format_type=format_type,
+                if_match=if_match,
+                column_types=column_types,
+            )
+
+    def _update_values_locked(
+        self,
+        project_name: str,
+        entity_name: str,
+        columns: list[str],
+        values: list[list[Any]],
+        format_type: str | None = None,
+        if_match: str | None = None,
+        column_types: dict[str, str] | None = None,
+    ) -> EntityValuesData:
         """
         Update external values for entity with @load: directive.
 
@@ -436,16 +462,22 @@ class EntityValuesService:
         # Validate fixed-row mapping inputs against the stored rows before any write.
         # Raises ValueError, which the route maps to HTTP 422, so no file or
         # directory is created after a mapping-validation failure.
+        change_set = None
+        mapping_snapshot = None
         if derive_fixed_schema(entity_data):
             previous_columns, previous_values = self._load_previous_fixed_rows(file_path, entity_name, entity_data)
-            self.mapping_change_service.compute_change_set(
+            project_path = self._resolve_project_path(project_name)
+            if isinstance(project_path, str) and project_path:
+                mapping_snapshot = self.mapping_sync_service.load_snapshot(project_path)
+            change_set = self.mapping_change_service.compute_change_set(
                 entity_name=entity_name,
-                project_path=self._resolve_project_path(project_name),
+                project_path=project_path,
                 entity_config=entity_data,
                 previous_columns=previous_columns,
                 previous_values=previous_values,
                 current_columns=normalized_columns,
                 current_values=normalized_values,
+                mapping_catalog=mapping_snapshot.catalog if mapping_snapshot is not None else None,
             )
 
         logger.info(f"Updating values at {file_path}")
@@ -455,6 +487,17 @@ class EntityValuesService:
 
         # Generate new etag after write
         new_etag: str = self._generate_etag(file_path)
+
+        if change_set is not None and mapping_snapshot is not None:
+            project_path = self._resolve_project_path(project_name)
+            if project_path:
+                self.mapping_sync_service.apply_change_set(
+                    change_set=change_set,
+                    snapshot=mapping_snapshot,
+                    project_path=project_path,
+                    row_version=new_etag,
+                    created_by=get_correlation_id(),
+                )
 
         return EntityValuesData(
             columns=normalized_columns,
