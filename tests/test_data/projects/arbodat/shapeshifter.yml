@@ -1150,9 +1150,10 @@ entities:
     check_functional_dependency: true
     data_source: arbodat_data
     query: |-
-      select distinct [Fustel], [EVNr], [NaturE]
+      select distinct [Fustel], Nz([EVNr], '') as [EVNr], [NaturE]
       from [Projekte]
-      where [NaturE] is not null ;
+      where [NaturE] is not null
+        and [Fustel] is not NULL;
   site_property:
     type: sql
     source:
