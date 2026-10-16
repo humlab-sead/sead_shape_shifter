@@ -1186,7 +1186,9 @@ entities:
       value_name: property_value
     data_source: arbodat_data
     query: |-
-      select distinct [Fustel], [EVNr], [okFustel], [Limes], [TK], [AnmFustel] from [Projekte] ;
+      select distinct [Fustel], Nz([EVNr], '') as [EVNr], [okFustel], [Limes], [TK], [AnmFustel]
+      from [Projekte]
+      where [Fustel] is not NULL;
   site_type_group:
     type: fixed
     keys: []
