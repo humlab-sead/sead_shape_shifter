@@ -463,7 +463,7 @@ entities:
       remote_keys: [master_set_id]
     - entity: submission
       local_keys: [submission_id]
-      remote_keys: [submission_id]
+      remote_keys: [system_id]
     - entity: data_type
       local_keys: [data_type_name]
       remote_keys: [data_type_name]
