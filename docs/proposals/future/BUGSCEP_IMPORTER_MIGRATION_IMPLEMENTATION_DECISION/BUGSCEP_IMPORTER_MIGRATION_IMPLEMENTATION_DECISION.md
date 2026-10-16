@@ -181,7 +181,7 @@ The decision phase requires these outputs:
 
 Recommended locations:
 
-- proposal, phase plan, and task plan: `docs/proposals/BUGSCEP_IMPORTER_MIGRATION_IMPLEMENTATION_DECISION/`
+- proposal, phase plan, and task plan: `docs/proposals/future/BUGSCEP_IMPORTER_MIGRATION_IMPLEMENTATION_DECISION/`
 - implementation checkpoint inventory: either this proposal folder or `sead_bugs_import/doc/reconciliation_policies/`
 - adapter-boundary reference: either this proposal folder or `sead_bugs_import/doc/reconciliation_policies/`
 

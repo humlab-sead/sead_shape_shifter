@@ -7,7 +7,7 @@ This index covers proposals and initiative records that need attention or provid
 | Proposal | Status | Decision or scope |
 |---|---|---|
 | [Branch-Scoped Consumers For Mixed-Branch Parents](BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md) | Proposed follow-up | Let downstream entities select which branch of a mixed parent they consume. |
-| [BugsCEP Importer Migration Runtime Decision Spike](BUGSCEP_IMPORTER_MIGRATION_IMPLEMENTATION_DECISION/BUGSCEP_IMPORTER_MIGRATION_IMPLEMENTATION_DECISION.md) | Proposed change request | Test candidate runtime paths against the completed policy contract before choosing one. |
+| [BugsCEP Importer Migration Runtime Decision Spike](future/BUGSCEP_IMPORTER_MIGRATION_IMPLEMENTATION_DECISION/BUGSCEP_IMPORTER_MIGRATION_IMPLEMENTATION_DECISION.md) | Proposed change request | Test candidate runtime paths against the completed policy contract before choosing one. |
 | [Create Entity From Query Tester](future/CREATE_ENTITY_FROM_QUERY_TESTER.md) | Proposed feature | Add a Create Entity action in Query Tester with create-mode prefill and an authorization-aware project selector. |
 | [Define And Verify The SEAD Target Model Coverage Boundary](SEAD_TARGET_MODEL_COVERAGE_BOUNDARY.md) | Proposed change request | Pin the target-model coverage boundary, record one disposition per in-scope table, and verify it with a generated report and a lint hook. |
 | [Direct Target-Id Foreign Keys](DIRECT_TARGET_ID_FOREIGN_KEYS.md) | Proposed feature | Let a target-model foreign key declare that its values are already target public ids, so a project need not declare an entity that only translates ids. |
