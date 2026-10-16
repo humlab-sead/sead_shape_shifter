@@ -1105,7 +1105,7 @@ entities:
   site_location:
     type: sql
     public_id: site_location_id
-    keys: [Fustel, EVNr]
+    keys: [Fustel, EVNr, location_type, location_name]
     columns: '@value: entities.site.keys + @value: entities.location.columns'
     foreign_keys:
     - entity: site
