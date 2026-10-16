@@ -47,6 +47,13 @@ from backend.app.models.mapping import (
     MappingLinkResponse,
     MappingLinkUpsertRequest,
 )
+from backend.app.models.mapping_sync import (
+    MappingSyncEntry,
+    MappingSyncLink,
+    MappingSyncOperation,
+    MappingSyncPending,
+    MappingSyncRetryResult,
+)
 from backend.app.models.project import (
     Project,
     ProjectMetadata,

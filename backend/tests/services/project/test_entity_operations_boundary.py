@@ -17,7 +17,9 @@ import yaml
 
 from backend.app.exceptions import ConfigurationError, ResourceConflictError, SchemaValidationError
 from backend.app.models.project import Project, ProjectMetadata
+from backend.app.services.fixed_entity_mapping_sync_service import FixedEntityMappingSyncService
 from backend.app.services.project.entity_operations import EntityOperations
+from src.reconciliation.mapping_manager import MappingManager
 
 # pylint: disable=redefined-outer-name
 
@@ -58,6 +60,7 @@ def _make_operations(
     load_return: Project,
     *,
     with_boundary: bool,
+    mapping_sync_service: FixedEntityMappingSyncService | None = None,
 ) -> tuple[EntityOperations, MagicMock, MagicMock]:
     """Return (ops, save_project_mock, save_boundary_mock)."""
     load_mock = MagicMock(return_value=load_return)
@@ -74,6 +77,7 @@ def _make_operations(
         load_project_callback=load_mock,
         save_project_callback=save_project_mock,
         save_entity_boundary_callback=save_boundary_mock,
+        mapping_sync_service=mapping_sync_service,
     )
     return ops, save_project_mock, save_boundary_mock
 
@@ -368,3 +372,54 @@ class TestUpdateEntityByNameMappingGuard:
 
         save_boundary.assert_not_called()
         save_project.assert_not_called()
+
+
+class _FailingSaveManager(MappingManager):
+    """Mapping manager whose save fails after the row write succeeded."""
+
+    def save(self, catalog, project_path, expected_version=None):
+        raise OSError("sidecar write failed")
+
+
+class TestUpdateEntityByNamePartialSave:
+    """A sidecar failure after the row write returns a pending mapping result."""
+
+    def test_sidecar_failure_returns_pending_without_raising(self, tmp_path: Path) -> None:
+        config_path = _write_mapping_sidecar(tmp_path, "site", local_key="site_code", public_id="site_ref")
+        project = _make_project_at(config_path, {"site": _fixed_site_entity([[1, 10, "S", "x"]])})
+        sync_service = FixedEntityMappingSyncService(_FailingSaveManager())
+        ops, _save_project, save_boundary = _make_operations(project, with_boundary=True, mapping_sync_service=sync_service)
+        sidecar_path = tmp_path / f"{tmp_path.name}-mapping.yml"
+        before = sidecar_path.read_bytes()
+
+        result = ops.update_entity_by_name("test-project", "site", _fixed_site_entity([[1, 11, "S", "x"]]))
+
+        save_boundary.assert_called_once()
+        assert result.mapping_sync is not None
+        assert result.mapping_sync.rows_saved is True
+        assert result.mapping_sync.storage_kind == "inline"
+        assert result.mapping_sync.project == "test-project"
+        assert result.mapping_sync.entity == "site"
+        assert result.mapping_sync.operations[0].op == "upsert"
+        assert result.mapping_sync.operations[0].target_id == 11
+        assert result.mapping_sync.expected_sidecar_version != "missing"
+        assert sidecar_path.read_bytes() == before
+
+    def test_successful_save_has_no_pending(self, tmp_path: Path) -> None:
+        config_path = _write_mapping_sidecar(tmp_path, "site", local_key="site_code", public_id="site_ref")
+        project = _make_project_at(config_path, {"site": _fixed_site_entity([[1, 10, "S", "x"]])})
+        ops, _save_project, save_boundary = _make_operations(project, with_boundary=True)
+
+        result = ops.update_entity_by_name("test-project", "site", _fixed_site_entity([[1, 11, "S", "x"]]))
+
+        save_boundary.assert_called_once()
+        assert result.mapping_sync is None
+
+    def test_row_write_failure_is_not_a_partial_save(self, tmp_path: Path) -> None:
+        config_path = _write_mapping_sidecar(tmp_path, "site", local_key="site_code", public_id="site_ref")
+        project = _make_project_at(config_path, {"site": _fixed_site_entity([[1, 10, "S", "x"]])})
+        ops, _save_project, save_boundary = _make_operations(project, with_boundary=True)
+        save_boundary.side_effect = OSError("row save failed")
+
+        with pytest.raises(OSError, match="row save failed"):
+            ops.update_entity_by_name("test-project", "site", _fixed_site_entity([[1, 11, "S", "x"]]))

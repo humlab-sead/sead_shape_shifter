@@ -75,6 +75,17 @@ class FixedEntityMappingChangeService:
             mapping_catalog=mapping_catalog,
         )
 
+    def saved_inline_snapshot(self, entity_config: Mapping[str, Any] | None) -> RowSnapshot:
+        """Return the currently saved inline fixed rows as a comparison snapshot.
+
+        Used by the retry operation to read the persisted inline rows without
+        recomputing a change set. The rows are aligned to the same canonical
+        column order as the save-time comparison.
+        """
+        values = _inline_values(entity_config)
+        columns, rows = _align_inline_rows(entity_config, values)
+        return RowSnapshot(columns=list(columns), values=[list(row) for row in rows])
+
     def compute_change_set(
         self,
         *,

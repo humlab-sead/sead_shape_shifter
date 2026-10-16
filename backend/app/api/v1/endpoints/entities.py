@@ -9,11 +9,12 @@ from pydantic import BaseModel, Field, field_validator
 
 from backend.app.authorization.dependencies import require_project
 from backend.app.authorization.models import Action, AuthorizedResource
+from backend.app.models.mapping_sync import MappingSyncPending
 from backend.app.models.project import Project
 from backend.app.services.entity_generator_service import EntityGeneratorService, get_entity_generator_service
 from backend.app.services.entity_values_service import EntityValuesData, EntityValuesService, get_entity_values_service
 from backend.app.services.materialization_service import MaterializationService
-from backend.app.services.project.entity_operations import compute_entity_etag
+from backend.app.services.project.entity_operations import EntityUpdateResult, compute_entity_etag
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.utils.entity_name import ENTITY_NAME_PATTERN
 from backend.app.utils.error_handlers import handle_endpoint_errors
@@ -94,9 +95,18 @@ class EntityResponse(BaseModel):
     materialized: dict[str, Any] | None = Field(default=None, description="Materialization metadata (if entity is materialized)")
     fixed_schema: FixedSchema | None = Field(default=None, description="Authoritative fixed-schema metadata for fixed entities")
     warnings: list[str] = Field(default_factory=list, description="Non-fatal warnings from the operation")
+    mapping_sync: MappingSyncPending | None = Field(
+        default=None,
+        description="Pending mapping changes when fixed rows were saved but the mapping sidecar was not written",
+    )
 
 
-def _build_entity_response(name: str, entity_data: dict[str, Any], warnings: list[str] | None = None) -> EntityResponse:
+def _build_entity_response(
+    name: str,
+    entity_data: dict[str, Any],
+    warnings: list[str] | None = None,
+    mapping_sync: MappingSyncPending | None = None,
+) -> EntityResponse:
     """Build a consistent entity response payload."""
     return EntityResponse(
         name=name,
@@ -105,6 +115,7 @@ def _build_entity_response(name: str, entity_data: dict[str, Any], warnings: lis
         materialized=entity_data.get("materialized"),
         fixed_schema=derive_fixed_schema(entity_data),
         warnings=warnings or [],
+        mapping_sync=mapping_sync,
     )
 
 
@@ -127,6 +138,10 @@ class EntityValuesResponse(BaseModel):
     format: str = Field(..., description="Storage format (parquet/csv)")
     row_count: int = Field(..., description="Number of rows")
     etag: str = Field(..., description="Entity tag for optimistic locking (based on file mtime+size)")
+    mapping_sync: MappingSyncPending | None = Field(
+        default=None,
+        description="Pending mapping changes when fixed rows were saved but the mapping sidecar was not written",
+    )
 
     @field_validator("values", mode="before")
     @classmethod
@@ -244,7 +259,7 @@ async def update_entity(
         Updated entity data with a fresh ETag
     """
     project_service: ProjectService = get_project_service()
-    warnings: list[str] = project_service.update_entity_by_name(
+    result: EntityUpdateResult = project_service.update_entity_by_name(
         authorized_project.resource.locator,
         entity_name,
         request.entity_data,
@@ -254,7 +269,7 @@ async def update_entity(
     response_name: str = request.new_name or entity_name
     entity_data: dict[str, Any] = project_service.get_entity_by_name(authorized_project.resource.locator, response_name)
     logger.info(f"Updated entity '{entity_name}' as '{response_name}' in '{project_name}'")
-    return _build_entity_response(response_name, entity_data, warnings)
+    return _build_entity_response(response_name, entity_data, result.warnings, mapping_sync=result.mapping_sync)
 
 
 @router.delete(
@@ -428,4 +443,5 @@ async def update_entity_values(
         format=result.format,
         row_count=result.row_count,
         etag=result.etag,
+        mapping_sync=result.mapping_sync,
     )

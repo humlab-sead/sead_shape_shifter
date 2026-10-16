@@ -6,6 +6,7 @@ import yaml
 
 from backend.app.core.config import settings
 from backend.app.services import project_service, validation_service, yaml_service
+from src.reconciliation.mapping_manager import MappingManager
 
 # pylint: disable=redefined-outer-name, unused-argument
 
@@ -1043,3 +1044,146 @@ class TestEntityValues:
         assert response.status_code == 200
         assert response.json()["format"] == "csv"
         assert response.json()["columns"] == ["system_id", "col1"]  # Data unchanged
+
+
+# ---------------------------------------------------------------------------
+# Partial fixed-row saves: pending mapping_sync response
+# ---------------------------------------------------------------------------
+
+
+def _fail_mapping_save(self, catalog, project_path, expected_version=None):
+    """Raise a sidecar write failure after the row write succeeded."""
+    raise OSError("sidecar write failed")
+
+
+def _write_sidecar_entry(project_folder, entity_name: str, *, local_key: str, public_id: str) -> None:
+    """Write a bare sidecar entry so a fixed entity is eligible for save-time sync."""
+    sidecar_path = project_folder / f"{project_folder.name}-mapping.yml"
+    sidecar_path.write_text(
+        yaml.safe_dump(
+            {
+                "version": "2.0",
+                "metadata": {
+                    "project": project_folder.name,
+                    "created_at": "2026-06-15T00:00:00Z",
+                    "updated_at": "2026-06-15T00:00:00Z",
+                },
+                "entities": {
+                    entity_name: {
+                        "local_key": local_key,
+                        "public_id": public_id,
+                        "entity_type": "primary",
+                        "links": {},
+                    }
+                },
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+
+class TestPartialMappingSave:
+    """Both fixed-row save routes return a pending mapping_sync result."""
+
+    _SITE_ENTITY = {
+        "type": "fixed",
+        "public_id": "site_id",
+        "keys": ["site_code"],
+        "columns": ["system_id", "site_id", "site_code"],
+        "values": [[1, 10, "A"], [2, 20, "B"]],
+    }
+
+    async def test_inline_save_returns_pending_mapping(self, tmp_path, monkeypatch, reset_services, authorized_client):
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        project_folder = tmp_path / "test_project"
+        project_folder.mkdir()
+
+        await authorized_client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "entities": {"site": self._SITE_ENTITY}},
+        )
+        _write_sidecar_entry(project_folder, "site", local_key="site_code", public_id="site_id")
+
+        monkeypatch.setattr(MappingManager, "save", _fail_mapping_save)
+
+        changed = dict(self._SITE_ENTITY)
+        changed["values"] = [[1, 11, "A"], [2, 20, "B"]]
+        response = await authorized_client.put(
+            "/api/v1/projects/test_project/entities/site",
+            json={"entity_data": changed},
+        )
+
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["name"] == "site"
+        assert body["etag"]
+        assert body["mapping_sync"] is not None
+        assert body["mapping_sync"]["status"] == "pending"
+        assert body["mapping_sync"]["rows_saved"] is True
+        assert body["mapping_sync"]["storage_kind"] == "inline"
+        assert body["mapping_sync"]["project"] == "test_project"
+        assert body["mapping_sync"]["entity"] == "site"
+        assert body["mapping_sync"]["operations"][0]["op"] == "upsert"
+        assert body["mapping_sync"]["operations"][0]["target_id"] == 11
+
+    async def test_external_save_returns_pending_mapping(self, tmp_path, monkeypatch, reset_services, authorized_client):
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        project_folder = tmp_path / "test_project"
+        project_folder.mkdir()
+        (project_folder / "materialized").mkdir()
+
+        entity_data = {
+            "type": "fixed",
+            "public_id": "site_id",
+            "keys": ["site_code"],
+            "columns": ["system_id", "site_id", "site_code"],
+            "values": "@load:materialized/site.parquet",
+            "materialized": {"enabled": True},
+        }
+        await authorized_client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "entities": {"site": entity_data}},
+        )
+        _write_sidecar_entry(project_folder, "site", local_key="site_code", public_id="site_id")
+
+        monkeypatch.setattr(MappingManager, "save", _fail_mapping_save)
+
+        response = await authorized_client.put(
+            "/api/v1/projects/test_project/entities/site/values",
+            json={"columns": ["system_id", "site_id", "site_code"], "values": [[1, 10, "A"]]},
+        )
+
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["columns"] == ["system_id", "site_id", "site_code"]
+        assert body["row_count"] == 1
+        assert body["format"] == "parquet"
+        assert body["etag"]
+        assert body["mapping_sync"] is not None
+        assert body["mapping_sync"]["storage_kind"] == "external"
+        assert body["mapping_sync"]["rows_saved"] is True
+        assert body["mapping_sync"]["expected_row_version"] == body["etag"]
+        assert (project_folder / "materialized" / "site.parquet").exists()
+
+    async def test_pre_write_error_is_not_a_partial_save(self, tmp_path, monkeypatch, reset_services, authorized_client):
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        project_folder = tmp_path / "test_project"
+        project_folder.mkdir()
+
+        await authorized_client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "entities": {"site": self._SITE_ENTITY}},
+        )
+        _write_sidecar_entry(project_folder, "site", local_key="legacy_code", public_id="site_id")
+
+        monkeypatch.setattr(MappingManager, "save", _fail_mapping_save)
+
+        changed = dict(self._SITE_ENTITY)
+        changed["values"] = [[1, 11, "A"], [2, 20, "B"]]
+        response = await authorized_client.put(
+            "/api/v1/projects/test_project/entities/site",
+            json={"entity_data": changed},
+        )
+
+        assert response.status_code in (400, 422)

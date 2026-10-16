@@ -205,8 +205,8 @@ def compute_fixed_row_change_set(
     local_key = existing_entry.local_key
     stored_public_id = existing_entry.public_id
 
-    previous_index = _build_row_index(entity_name, previous, local_key, stored_public_id)
-    current_index = _build_row_index(entity_name, current, local_key, stored_public_id)
+    previous_index = build_row_index(entity_name, previous, local_key, stored_public_id)
+    current_index = build_row_index(entity_name, current, local_key, stored_public_id)
 
     ordered_keys: list[str] = list(previous_index.keys())
     ordered_keys.extend(key for key in current_index if key not in previous_index)
@@ -271,7 +271,7 @@ def compute_fixed_row_change_set(
 
         # New row, previously blank row, or deliberate non-blank ID edit. A
         # deliberate edit replaces any link at the key with a manual link.
-        if link is not None and link.source == LinkSource.MANUAL and link.target_id == _as_mapping_target(current_row.saved_id):
+        if link is not None and link.source == LinkSource.MANUAL and link.target_id == as_mapping_target_id(current_row.saved_id):
             # Already-correct manual link: retain its metadata.
             continue
 
@@ -342,20 +342,26 @@ def apply_fixed_row_change_set(
 
 
 @dataclass(frozen=True)
-class _IndexedRow:
+class IndexedRow:
     """A row's saved ID value and original row index."""
 
     saved_id: Any
     row_index: int
 
 
-def _build_row_index(
+def build_row_index(
     entity_name: str,
     snapshot: RowSnapshot | None,
     local_key: str | list[str],
     public_id: str,
-) -> dict[str, _IndexedRow]:
-    """Return a mapping of encoded key to saved ID for a non-empty snapshot."""
+) -> dict[str, IndexedRow]:
+    """Return a mapping of encoded key to saved ID for a non-empty snapshot.
+
+    Shared by save-time change calculation and retry comparison so both use the
+    same encoded-key and missing-value rules. Raises
+    :class:`FixedEntityMappingChangeError` when a required stored column is
+    absent, a key component is blank, or two rows share an encoded key.
+    """
     if snapshot is None or not snapshot.values:
         return {}
 
@@ -373,7 +379,7 @@ def _build_row_index(
     key_positions: list[int] = [columns.index(column) for column in key_columns]
     id_position: int = columns.index(public_id)
 
-    index: dict[str, _IndexedRow] = {}
+    index: dict[str, IndexedRow] = {}
     for row_index, row in enumerate(snapshot.values):
         if len(row) != len(columns):
             raise FixedEntityMappingChangeError(
@@ -404,7 +410,7 @@ def _build_row_index(
                 row_index=row_index,
             )
 
-        index[encoded_key] = _IndexedRow(saved_id=row[id_position], row_index=row_index)
+        index[encoded_key] = IndexedRow(saved_id=row[id_position], row_index=row_index)
 
     return index
 
@@ -414,7 +420,7 @@ def _record_saved_id(value: Any) -> Any:
     return None if is_missing_fixed_entity_value(value) else value
 
 
-def _as_mapping_target(value: Any) -> int | None:
+def as_mapping_target_id(value: Any) -> int | None:
     """Return an integer mapping target for *value*, or ``None`` when unusable."""
     if isinstance(value, bool):
         return None
@@ -428,8 +434,8 @@ def _as_mapping_target(value: Any) -> int | None:
 
 def _saved_ids_equal(previous_id: Any, current_id: Any) -> bool:
     """Return ``True`` when two non-blank saved IDs represent the same target."""
-    previous_target = _as_mapping_target(previous_id)
-    current_target = _as_mapping_target(current_id)
+    previous_target = as_mapping_target_id(previous_id)
+    current_target = as_mapping_target_id(current_id)
     if previous_target is not None and current_target is not None:
         return previous_target == current_target
     return previous_id == current_id

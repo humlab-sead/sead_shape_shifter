@@ -19,7 +19,7 @@ from backend.app.middleware.correlation import get_correlation_id
 from backend.app.models.entity import Entity
 from backend.app.models.project import Project, ProjectFileInfo, ProjectMetadata, TargetModelFileOption
 from backend.app.services.fixed_entity_mapping_change_service import FixedEntityMappingChangeService
-from backend.app.services.project.entity_operations import EntityOperations
+from backend.app.services.project.entity_operations import EntityOperations, EntityUpdateResult
 from backend.app.services.project.entity_persistence_strategies import EntityPersistenceStrategyRegistry
 from backend.app.services.project.file_manager import FileManager
 from backend.app.services.project.project_operations import ProjectOperations
@@ -781,7 +781,7 @@ class ProjectService:
         *,
         expected_etag: str | None = None,
         new_name: str | None = None,
-    ) -> list[str]:
+    ) -> EntityUpdateResult:
         """
         Update entity in project by project name.
 

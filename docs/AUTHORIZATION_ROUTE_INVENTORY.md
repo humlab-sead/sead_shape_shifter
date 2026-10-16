@@ -213,6 +213,7 @@ Every row above except the health check requires an authenticated principal thro
 | `POST`   | `/api/v1/projects/{project_name}/entities/{entity_name}/materialize`      | `project:edit`    |
 | `POST`   | `/api/v1/projects/{project_name}/entities/{entity_name}/unmaterialize`    | `project:edit`    |
 | `PATCH`  | `/api/v1/projects/{project_name}/mapping/from-materialized/{entity_name}` | `project:edit`    |
+| `PATCH`  | `/api/v1/projects/{project_name}/mapping/retry-fixed-entity/{entity_name}` | `project:edit`    |
 
 `GET /api/v1/dispatchers` returns only registered output-dispatcher metadata (key, target type, description, and file extension) and exposes no project data, so it requires an authenticated principal and no project role. The route that consumes those dispatchers, `POST /api/v1/projects/{name}/execute`, requires `project:execute`.
 
