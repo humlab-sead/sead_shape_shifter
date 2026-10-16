@@ -84,32 +84,6 @@ A link from another document into the moved topic takes one change: insert the s
 - Update backticked paths too, such as a `docs/proposals/X/README.md` cell in a table, so the prose still names a real location.
 - A referring document inside the moved folder is outbound, not inbound; handle it with the table above.
 
-## VS Code Built-In Move
-
-VS Code can move a file or folder and rewrite the Markdown links itself. It is more thorough than the Outbound Links table and is the preferred route when a human performs the move. It needs:
-
-```json
-{
-  "markdown.updateLinksOnFileMove.enabled": "always",
-  "markdown.validate.enabled": true
-}
-```
-
-- Values for `enabled` are `always`, `prompt`, and `never` (default). `markdown.updateLinksOnFileMove.enableForDirectories` defaults to true, so folder moves are covered.
-- Validation reports broken local links as diagnostics and covers relative file links and header anchors. It never checks external `http(s)` links.
-
-What it rewrites, verified in the bundled `vscode-markdown-languageservice`:
-
-- Inbound: every workspace Markdown file whose links resolve to the moved target, including links into a moved directory. The link cache is populated from all workspace Markdown files, not just open ones.
-- Outbound: links inside the moved file, or inside a moved directory, that point back out and must be recomputed for the new depth.
-- Fragments and encoded paths are preserved.
-
-Trigger limit: the feature is wired to `vscode.workspace.onDidRenameFiles`, so it fires only for a move VS Code performs, such as an Explorer rename, a drag and drop, or F2 on a link. A `git mv` from a terminal is not observed and updates nothing. Do not assume the settings protect a scripted or agent-run move.
-
-- Prefer the VS Code route when the user drives the move.
-- Run the relative-link checker after either route; it is the only check that holds regardless of who moved the files.
-- Neither route updates the index tables or the Status block. Do those by hand.
-
 ## Index Rules
 
 `docs/proposals/README.md` holds four tables: Open Proposals, Current Initiatives, Future Proposals, and On Hold.
