@@ -46,10 +46,20 @@ class CanMaterializeResponse(BaseModel):
     errors: list[str] = []
 
 
+class MaterializedMappingSyncRequest(BaseModel):
+    """Choose whether an administrative rebuild replaces existing manual links."""
+
+    replace_manual_links: bool = Field(
+        default=False,
+        description="Replace all manual links for the entity instead of adding links only at absent keys.",
+    )
+
+
 class MaterializedMappingSyncResult(BaseModel):
-    """Result of syncing manual mapping links from saved materialized rows."""
+    """Result of seeding or replacing mapping links from saved materialized rows."""
 
     success: bool
     entity_name: str | None = None
+    manual_links_added: int = 0
     manual_links_replaced: int = 0
     errors: list[str] = []

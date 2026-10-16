@@ -248,7 +248,8 @@ entities:
 
 **Write paths**:
 - **Reconciliation export**: user accepts auto-matched links → copied from reconciliation catalog to sidecar with `source: "reconciliation"`
-- **Materialized entity save**: rows with non-null `public_id` are extracted and written as `source: "manual"` links, replacing previous manual links for that entity
+- **Fixed-row save**: ID and row-key changes affect only their keys, and a saved non-blank ID with no link gets one; untouched links and their metadata remain as stored
+- **Administrative materialized rebuild**: the default adds links only at absent keys; an explicit replacement request rebuilds manual links from saved non-blank IDs and removes stale manual links. A generated manual link can replace another source at the same key because the sidecar stores one link per key
 - **Direct API**: `PUT /projects/{project}/mapping/{entity}/{key}` for manual link creation
 - **CSV import/export**: bulk operations via `POST .../mapping/import` and `GET .../mapping/export`
 

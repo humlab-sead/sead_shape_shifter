@@ -3,8 +3,10 @@
 import pandas as pd
 import pytest
 import yaml
+from httpx import ASGITransport, AsyncClient
 
 from backend.app.core.config import settings
+from backend.app.main import app
 from backend.app.services import project_service, validation_service, yaml_service
 from src.reconciliation.mapping_manager import MappingManager
 
@@ -790,7 +792,7 @@ class TestEntityValues:
         pd.DataFrame(
             {
                 "system_id": [1, 2, 3],
-                "site_id": [10, None, 30],
+                "site_id": pd.Series([10, None, 30], dtype="Int64"),
                 "name": ["A", "B", "C"],
             }
         ).to_parquet(materialized_folder / "test_entity.parquet", index=False)
@@ -835,6 +837,13 @@ class TestEntityValues:
                                     "committed_at": "2026-06-15T00:00:00Z",
                                     "created_by": "system",
                                 },
+                                "A": {
+                                    "target_id": 8,
+                                    "source": "import",
+                                    "created_at": "2026-06-15T00:00:00Z",
+                                    "committed_at": "2026-06-15T00:00:00Z",
+                                    "created_by": "importer",
+                                },
                                 "OldManual": {
                                     "target_id": 5,
                                     "source": "manual",
@@ -851,9 +860,13 @@ class TestEntityValues:
             encoding="utf-8",
         )
 
-        response = await authorized_client.patch("/api/v1/projects/test_project/mapping/from-materialized/test_entity")
+        response = await authorized_client.patch(
+            "/api/v1/projects/test_project/mapping/from-materialized/test_entity",
+            json={"replace_manual_links": True},
+        )
         assert response.status_code == 200
         assert response.json()["manual_links_replaced"] == 2
+        assert response.json()["manual_links_added"] == 0
 
         sidecar = yaml.safe_load(sidecar_path.read_text(encoding="utf-8"))
         links = sidecar["entities"]["test_entity"]["links"]
@@ -862,6 +875,211 @@ class TestEntityValues:
         assert links["A"]["source"] == "manual"
         assert links["A"]["target_id"] == 10
         assert links["C"]["target_id"] == 30
+
+    async def test_patch_from_materialized_is_additive_by_default_and_noops_on_repeat(
+        self, tmp_path, monkeypatch, reset_services, authorized_client
+    ):
+        """A bodyless rebuild should preserve occupied keys and add each missing key once."""
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        entity_data = {
+            "type": "fixed",
+            "columns": ["system_id", "site_id", "name"],
+            "values": "@load:materialized/test_entity.parquet",
+            "public_id": "site_id",
+            "keys": ["name"],
+            "materialized": {"enabled": True, "source_state": {"type": "csv"}},
+        }
+        await authorized_client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "entities": {"test_entity": entity_data}},
+        )
+
+        project_folder = tmp_path / "test_project"
+        materialized_folder = project_folder / "materialized"
+        materialized_folder.mkdir()
+        pd.DataFrame(
+            {
+                "system_id": [1, 2, 3],
+                "site_id": pd.Series([11, None, 30], dtype="Int64"),
+                "name": ["A", "B", "C"],
+            }
+        ).to_parquet(materialized_folder / "test_entity.parquet", index=False)
+
+        sidecar_path = project_folder / "test_project-mapping.yml"
+        sidecar_path.write_text(
+            yaml.safe_dump(
+                {
+                    "version": "2.0",
+                    "metadata": {
+                        "project": "test_project",
+                        "created_at": "2026-06-15T00:00:00Z",
+                        "updated_at": "2026-06-15T00:00:00Z",
+                    },
+                    "entities": {
+                        "test_entity": {
+                            "local_key": "name",
+                            "public_id": "site_id",
+                            "entity_type": "primary",
+                            "links": {
+                                "A": {
+                                    "target_id": 10,
+                                    "source": "manual",
+                                    "created_at": "2026-06-15T00:00:00Z",
+                                    "committed_at": "2026-06-15T00:00:00Z",
+                                    "created_by": "original-user",
+                                    "notes": "keep this link",
+                                },
+                                "B": {
+                                    "target_id": 20,
+                                    "source": "import",
+                                    "created_at": "2026-06-15T00:00:00Z",
+                                    "committed_at": "2026-06-15T00:00:00Z",
+                                    "created_by": "importer",
+                                },
+                                "OldManual": {
+                                    "target_id": 5,
+                                    "source": "manual",
+                                    "created_at": "2026-06-15T00:00:00Z",
+                                    "committed_at": "2026-06-15T00:00:00Z",
+                                    "created_by": "user",
+                                },
+                            },
+                        }
+                    },
+                },
+                sort_keys=False,
+            ),
+            encoding="utf-8",
+        )
+
+        url = "/api/v1/projects/test_project/mapping/from-materialized/test_entity"
+        response = await authorized_client.patch(url)
+        assert response.status_code == 200, response.text
+        assert response.json()["manual_links_added"] == 1
+        assert response.json()["manual_links_replaced"] == 0
+
+        sidecar = yaml.safe_load(sidecar_path.read_text(encoding="utf-8"))
+        links = sidecar["entities"]["test_entity"]["links"]
+        assert set(links) == {"A", "B", "OldManual", "C"}
+        assert links["A"]["target_id"] == 10
+        assert links["A"]["created_by"] == "original-user"
+        assert links["A"]["notes"] == "keep this link"
+        assert links["B"]["source"] == "import"
+        assert links["B"]["target_id"] == 20
+        assert links["C"]["source"] == "manual"
+        assert links["C"]["target_id"] == 30
+
+        written_bytes = sidecar_path.read_bytes()
+        repeated = await authorized_client.patch(url, json={})
+        assert repeated.status_code == 200, repeated.text
+        assert repeated.json()["manual_links_added"] == 0
+        assert repeated.json()["manual_links_replaced"] == 0
+        assert sidecar_path.read_bytes() == written_bytes
+
+        repeated_false = await authorized_client.patch(url, json={"replace_manual_links": False})
+        assert repeated_false.status_code == 200, repeated_false.text
+        assert repeated_false.json()["manual_links_added"] == 0
+        assert sidecar_path.read_bytes() == written_bytes
+
+        malformed = await authorized_client.patch(url, json={"replace_manual_links": "not-a-bool"})
+        assert malformed.status_code == 422
+        assert sidecar_path.read_bytes() == written_bytes
+
+    async def test_patch_from_materialized_creates_entry_with_ordered_compound_keys(
+        self, tmp_path, monkeypatch, reset_services, authorized_client
+    ):
+        """A missing mapping entry should use the declared safe_keys order."""
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        entity_data = {
+            "type": "fixed",
+            "columns": ["system_id", "site_id", "country_code", "site_code"],
+            "values": "@load:materialized/test_entity.parquet",
+            "public_id": "site_id",
+            "keys": ["country_code", "site_code"],
+            "materialized": {"enabled": True, "source_state": {"type": "csv"}},
+        }
+        await authorized_client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "entities": {"test_entity": entity_data}},
+        )
+        project_folder = tmp_path / "test_project"
+        materialized_folder = project_folder / "materialized"
+        materialized_folder.mkdir()
+        pd.DataFrame({"system_id": [1], "site_id": [12], "country_code": ["SE"], "site_code": ["S1"]}).to_parquet(
+            materialized_folder / "test_entity.parquet", index=False
+        )
+
+        response = await authorized_client.patch("/api/v1/projects/test_project/mapping/from-materialized/test_entity")
+
+        assert response.status_code == 200, response.text
+        assert response.json()["manual_links_added"] == 1
+        sidecar = yaml.safe_load((project_folder / "test_project-mapping.yml").read_text(encoding="utf-8"))
+        entry = sidecar["entities"]["test_entity"]
+        assert entry["local_key"] == ["country_code", "site_code"]
+        assert entry["links"]["SE|S1"]["target_id"] == 12
+
+    async def test_patch_from_materialized_rejects_duplicate_keys_without_sidecar_write(
+        self, tmp_path, monkeypatch, reset_services, authorized_client
+    ):
+        """Invalid saved materialized keys should not produce mapping links."""
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        entity_data = {
+            "type": "fixed",
+            "columns": ["system_id", "site_id", "name"],
+            "values": "@load:materialized/test_entity.parquet",
+            "public_id": "site_id",
+            "keys": ["name"],
+            "materialized": {"enabled": True, "source_state": {"type": "csv"}},
+        }
+        await authorized_client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "entities": {"test_entity": entity_data}},
+        )
+        project_folder = tmp_path / "test_project"
+        materialized_folder = project_folder / "materialized"
+        materialized_folder.mkdir()
+        pd.DataFrame({"system_id": [1, 2], "site_id": [10, 11], "name": ["Duplicate", "Duplicate"]}).to_parquet(
+            materialized_folder / "test_entity.parquet", index=False
+        )
+
+        response = await authorized_client.patch("/api/v1/projects/test_project/mapping/from-materialized/test_entity")
+
+        assert response.status_code == 400
+        assert "share the same encoded key" in response.json()["detail"]
+        assert not (project_folder / "test_project-mapping.yml").exists()
+
+    async def test_patch_from_materialized_requires_authentication(self, tmp_path, monkeypatch):
+        """The rebuild route rejects unauthenticated requests."""
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+
+        async def anonymous_app(scope, receive, send) -> None:
+            await app(scope, receive, send)
+
+        async with AsyncClient(transport=ASGITransport(app=anonymous_app), base_url="http://testserver") as client:
+            response = await client.patch("/api/v1/projects/test_project/mapping/from-materialized/test_entity")
+
+        assert response.status_code == 401
+
+    async def test_patch_from_materialized_rejects_nonmaterialized_entity(self, tmp_path, monkeypatch, reset_services, authorized_client):
+        """The administrative rebuild remains limited to materialized entities."""
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        entity_data = {
+            "type": "fixed",
+            "columns": ["system_id", "site_id", "name"],
+            "values": [[1, 10, "A"]],
+            "public_id": "site_id",
+            "keys": ["name"],
+        }
+        await authorized_client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "entities": {"test_entity": entity_data}},
+        )
+
+        response = await authorized_client.patch("/api/v1/projects/test_project/mapping/from-materialized/test_entity")
+
+        assert response.status_code == 400
+        assert "not materialized" in response.json()["detail"]
+        assert not (tmp_path / "test_project" / "test_project-mapping.yml").exists()
 
     async def test_update_entity_values_no_load_directive(self, tmp_path, monkeypatch, reset_services, authorized_client):
         """Test error when trying to update entity without @load: directive."""
