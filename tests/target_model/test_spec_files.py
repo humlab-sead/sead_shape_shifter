@@ -7,10 +7,10 @@ from src.target_model.models import TargetModel
 from src.target_model.spec_validator import TargetModelSpecValidator
 
 EXAMPLES_DIR = Path("tests/test_data/examples")
-SPECS_DIR = Path("tests/test_data/specs")
+TARGET_MODELS_DIR = Path("tests/test_data/target_models")
 
 
-@pytest.mark.parametrize("spec_path", list(SPECS_DIR.glob("*.yml")))
+@pytest.mark.parametrize("spec_path", list(TARGET_MODELS_DIR.glob("*.yml")))
 def test_sead_v2_spec_loads_and_validates(spec_path: Path) -> None:
     target_model = TargetModel.model_validate(yaml.safe_load(spec_path.read_text(encoding="utf-8")))
 
@@ -21,7 +21,7 @@ def test_sead_v2_spec_loads_and_validates(spec_path: Path) -> None:
     assert {"abundance", "abundance_element", "abundance_element_group", "abundance_modification", "abundance_property"}.issubset(
         target_model.entities
     )
-    assert {"taxa_tree_master", "taxa_common_names"}.issubset(target_model.entities)
+    assert {"taxa", "taxa_common_names"}.issubset(target_model.entities)
     assert {"relative_ages", "relative_dating", "geochronology", "dating_lab"}.issubset(target_model.entities)
     assert {"method_group", "contact", "contact_type"}.issubset(target_model.entities)
     assert {"project", "feature_type", "feature", "sample_description_type", "sample_description"}.issubset(target_model.entities)
@@ -41,7 +41,7 @@ def test_sead_v2_spec_loads_and_validates(spec_path: Path) -> None:
 
 
 def test_sead_superset_spec_loads_and_validates() -> None:
-    spec_path = Path("resources/target_models/sead_superset_model.yml")
+    spec_path = Path("resources/target_models/sead_standard_model.yml")
     target_model = TargetModel.model_validate(yaml.safe_load(spec_path.read_text(encoding="utf-8")))
 
     issues = TargetModelSpecValidator().validate(target_model)
@@ -190,7 +190,7 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     assert abundance_property.target_table == "tbl_abundance_properties"
     assert any(foreign_key.entity == "property_type" for foreign_key in abundance_property.foreign_keys)
     assert analysis_taxon_count.target_table == "tbl_analysis_taxon_counts"
-    assert any(foreign_key.entity == "taxa_tree_master" for foreign_key in analysis_taxon_count.foreign_keys)
+    assert any(foreign_key.entity == "taxa" for foreign_key in analysis_taxon_count.foreign_keys)
     assert analysis_value_dimension.target_table == "tbl_analysis_value_dimensions"
     assert any(foreign_key.entity == "dimension" for foreign_key in analysis_value_dimension.foreign_keys)
     assert feature_property.target_table == "tbl_feature_properties"
@@ -217,11 +217,11 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     assert any(foreign_key.entity == "project_type" for foreign_key in project.foreign_keys)
     assert any(foreign_key.entity == "project_stage" for foreign_key in project.foreign_keys)
     assert taxa_synonyms.target_table == "tbl_taxa_synonyms"
-    assert taxa_synonyms.aggregate_parent == "taxa_tree_master"
+    assert taxa_synonyms.aggregate_parent == "taxa"
     assert any(foreign_key.entity == "citation" for foreign_key in taxa_synonyms.foreign_keys)
     assert taxa_measured_attributes.target_table == "tbl_taxa_measured_attributes"
-    assert taxa_measured_attributes.aggregate_parent == "taxa_tree_master"
-    assert any(foreign_key.entity == "taxa_tree_master" for foreign_key in taxa_measured_attributes.foreign_keys)
+    assert taxa_measured_attributes.aggregate_parent == "taxa"
+    assert any(foreign_key.entity == "taxa" for foreign_key in taxa_measured_attributes.foreign_keys)
     assert ecocode_system.target_table == "tbl_ecocode_systems"
     assert any(foreign_key.entity == "citation" for foreign_key in ecocode_system.foreign_keys)
     assert ecocode_group.target_table == "tbl_ecocode_groups"
@@ -229,13 +229,13 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     assert ecocode_definition.target_table == "tbl_ecocode_definitions"
     assert any(foreign_key.entity == "ecocode_group" for foreign_key in ecocode_definition.foreign_keys)
     assert ecocode.target_table == "tbl_ecocodes"
-    assert ecocode.aggregate_parent == "taxa_tree_master"
+    assert ecocode.aggregate_parent == "taxa"
     assert any(foreign_key.entity == "ecocode_definition" for foreign_key in ecocode.foreign_keys)
-    assert any(foreign_key.entity == "taxa_tree_master" for foreign_key in ecocode.foreign_keys)
+    assert any(foreign_key.entity == "taxa" for foreign_key in ecocode.foreign_keys)
     assert taxonomic_order_system.target_table == "tbl_taxonomic_order_systems"
     assert taxonomic_order.target_table == "tbl_taxonomic_order"
-    assert taxonomic_order.aggregate_parent == "taxa_tree_master"
-    assert any(foreign_key.entity == "taxa_tree_master" for foreign_key in taxonomic_order.foreign_keys)
+    assert taxonomic_order.aggregate_parent == "taxa"
+    assert any(foreign_key.entity == "taxa" for foreign_key in taxonomic_order.foreign_keys)
     assert any(foreign_key.entity == "taxonomic_order_system" for foreign_key in taxonomic_order.foreign_keys)
     assert rdb_system.target_table == "tbl_rdb_systems"
     assert any(foreign_key.entity == "location" for foreign_key in rdb_system.foreign_keys)
@@ -243,7 +243,7 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     assert rdb_code.target_table == "tbl_rdb_codes"
     assert any(foreign_key.entity == "rdb_system" for foreign_key in rdb_code.foreign_keys)
     assert rdb.target_table == "tbl_rdb"
-    assert rdb.aggregate_parent == "taxa_tree_master"
+    assert rdb.aggregate_parent == "taxa"
     assert any(foreign_key.entity == "rdb_code" for foreign_key in rdb.foreign_keys)
     assert value_type.target_table == "tbl_value_types"
     assert any(foreign_key.entity == "unit" for foreign_key in value_type.foreign_keys)

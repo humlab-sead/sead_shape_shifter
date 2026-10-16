@@ -473,7 +473,7 @@ class SqlColumnConfigurationSpecification(ProjectSpecification):
 
 @ENTITY_SPECIFICATION.register(key="non_fixed_identity_columns")
 class NonFixedIdentityColumnsSpecification(ProjectSpecification):
-    """Validates that non-fixed entities do not declare derived system_id columns in `columns`."""
+    """Warns when non-fixed entities declare system_id in `columns`."""
 
     def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
         self.clear()
@@ -483,12 +483,12 @@ class NonFixedIdentityColumnsSpecification(ProjectSpecification):
             return True
 
         configured_columns: set[str] = set(table.safe_columns)
-        forbidden_columns: list[str] = sorted(configured_columns & {table.system_id})
+        configured_system_ids: list[str] = sorted(configured_columns & {table.system_id})
 
-        if forbidden_columns:
-            self.add_error(
-                f"Entity '{entity_name}': non-fixed entities must not include derived system_id columns in 'columns': {forbidden_columns}. "
-                "These columns are added later in the pipeline.",
+        if configured_system_ids:
+            self.add_warning(
+                f"Entity '{entity_name}': non-fixed entities declare system_id in 'columns': {configured_system_ids}. "
+                "Runtime preserves supplied values, but non-fixed IDs are not checked for positive, unique integer values.",
                 entity=entity_name,
                 field="columns",
             )
@@ -936,10 +936,15 @@ class ExtraColumnsConflictsSpecification(ProjectSpecification):
     - Columns from "columns" field
     - Public ID from "public_id" field
     - System column "system_id"
-    - Unnest columns (value_name, var_name)
+    - Unnest output columns (value_name, var_name)
 
     Business keys from the "keys" field are not checked. A key only marks an
     existing column, so an extra_column name may also be used as a key.
+
+    Unnest "id_vars" are not checked. They are columns that must already exist
+    before unnesting and are carried through unchanged, so an extra_column may
+    supply one. Foreign key output columns and FK local keys are not checked
+    either, because an extra_column may produce a key consumed by a later FK.
     """
 
     def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
@@ -956,11 +961,13 @@ class ExtraColumnsConflictsSpecification(ProjectSpecification):
         if not table_cfg.extra_columns:
             return True
 
-        # Only check actual source columns, not keys (keys can be added via extra_columns)
-        existing_columns: set[str] = set(table_cfg.get_columns(include_fks=False, include_extra=False, include_unnest=True))
+        # Only check produced columns, not keys (keys can be added via extra_columns).
+        # Unnest id_vars are passthrough inputs, not outputs, so they are excluded.
+        existing_columns: set[str] = set(table_cfg.columns)
         existing_columns.add(table_cfg.system_id)
         if table_cfg.public_id:
             existing_columns.add(table_cfg.public_id)
+        existing_columns.update(table_cfg.unnest_columns)
 
         conflicts: set[str] = set(table_cfg.extra_columns.keys()) & existing_columns
 

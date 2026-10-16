@@ -78,7 +78,7 @@ metadata:                             # Metadata definitions (required)
 - **description**: Detailed description of what this configuration does (supports multi-line strings using `|`)
 - **version**: Semantic version string (e.g., "1.0.0", "2.1.3") for tracking configuration changes
 - **default_entity**: Reference to an existing entity used as the default source for `data` type entities
-- **target_model**: Reference to a target model specification. Accepted as a `@load:` directive pointing to a YAML file (`"@load: resources/target_models/sead_superset_model.yml"`) or as an inline mapping. When present, the **Check Conformance** button in the editor validates the project entities against the spec. See [TARGET_MODEL_GUIDE.md](TARGET_MODEL_GUIDE.md) for the workflow and [TARGET_MODEL_SCHEMA_REFERENCE.md](TARGET_MODEL_SCHEMA_REFERENCE.md) for the generated field-level schema reference.
+- **target_model**: Reference to a target model specification. Accepted as a `@load:` directive pointing to a YAML file (`"@load: resources/target_models/sead_standard_model.yml"`) or as an inline mapping. When present, the **Check Conformance** button in the editor validates the project entities against the spec. See [TARGET_MODEL_GUIDE.md](TARGET_MODEL_GUIDE.md) for the workflow and [TARGET_MODEL_SCHEMA_REFERENCE.md](TARGET_MODEL_SCHEMA_REFERENCE.md) for the generated field-level schema reference.
 
 ### Examples
 
@@ -98,7 +98,7 @@ metadata:
     Transforms data to match SEAD Clearinghouse schema.
   version: "2.1.0"
   default_entity: sample_data
-  target_model: "@load: resources/target_models/sead_superset_model.yml"
+  target_model: "@load: resources/target_models/sead_standard_model.yml"
 ```
 
 ## Entity Section
@@ -169,10 +169,10 @@ This architecture separates concerns between:
 - **Type**: `string` (always "system_id")
 - **Required**: Automatically managed by system
 - **Description**: Standardized name for auto-incrementing integer IDs (1, 2, 3...). This column is always added automatically during data loading and is used for internal processing. When data is exported, this column is renamed based on the entity's `public_id` setting.
-- **Import Rule**: For non-fixed entities (`sql`, `csv`, `xlsx`, `openpyxl`, `entity`), `system_id` is an internal Shape Shifter identity and should not be imported from source data or listed in `columns`. The main exception is `type: fixed`, where explicit `system_id` values may be preserved intentionally.
+- **Import Rule**: By default, non-fixed entities (`sql`, `csv`, `xlsx`, `openpyxl`, `entity`) should omit `system_id` and let Shape Shifter generate it. Structural validation warns when a non-fixed entity lists `system_id` in `columns`; runtime preserves supplied values, but currently does not check them for positive, unique integer values. Use source-supplied IDs only when they are intentional and stable. Fixed entities have separate checks for explicit `system_id` values.
 - **Behavior**:
   - Added automatically by all loaders (SQL, fixed, file)
-  - Always numbered sequentially starting from 1
+  - When generated, numbered sequentially starting from 1
   - Column name is always "system_id" during processing
   - Renamed to `public_id` value during export/dispatch
   - Read-only in UI (cannot be edited)

@@ -43,7 +43,7 @@ def _core_project(monkeypatch: pytest.MonkeyPatch) -> ShapeShiftProject:
             if value is not None and (override or name not in os.environ):
                 monkeypatch.setenv(name, value)
 
-    config_file: str = "data/projects/arbodat/shapeshifter.yml"
+    config_file: str = "tests/test_data/projects/arbodat/shapeshifter.yml"
 
     return ShapeShiftProject.from_file(config_file)
 
@@ -105,8 +105,8 @@ async def test_data_validation_orchestrator(project: ShapeShiftProject):
     )
     actual_issues: set[str] = {f"{issue.severity}:{issue.entity}:{issue.code}" for issue in issues}
 
+    print('\n'.join({f"{issue.severity}:{issue.entity}:{issue.code}:{issue.message}" for issue in issues}))
     assert expected_issues == actual_issues, f"Expected issues {expected_issues}, but found {actual_issues}"
-
 
 #############################################################################################################
 # Target model conformance validation

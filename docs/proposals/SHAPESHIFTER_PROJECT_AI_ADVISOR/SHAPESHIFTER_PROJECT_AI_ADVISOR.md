@@ -27,8 +27,9 @@ The advisor needs two kinds of input:
 The safest rollout is phased:
 
 1. Start with a read-only advisor that explains existing project issues.
-2. Add structured proposal generation after the explanation workflow is reliable.
-3. Add approval-based change application only after proposals can be validated and reviewed.
+2. Add investigation, so the advisor can read Shape Shifter source and probe the real pipeline to establish whether a reported problem is genuine and what its true scope is.
+3. Add structured proposal generation after the explanation and investigation workflows are reliable.
+4. Add approval-based change application only after proposals can be validated and reviewed.
 
 ---
 
@@ -52,6 +53,8 @@ This creates common problems:
 4. A modeling choice may create identity or reconciliation problems later.
 5. The editor can report errors, but it does not always explain them in domain terms.
 6. An AI coding agent may hallucinate SEAD rules or invent YAML patterns it was not given, because it has no grounded project context.
+7. A reported error may be wrong. Validators can report false positives when their assumptions do not match a supported configuration, and no current surface establishes that.
+8. A reported error may understate the problem. A check reports what its own comparison observed, which can be a small part of a wider defect in the data.
 
 There is no way to connect these signals without expertise in all seven domains simultaneously.
 
@@ -68,6 +71,8 @@ Shape Shifter already has much of the structured context needed to answer these 
 7. Reconciliation workflows.
 8. Suggestion and auto-fix patterns.
 9. Project-level session handling.
+
+Two inputs are missing from that list. The framework source is not available, so nothing can explain which check produced a message or whether that check is correct. The ability to run the pipeline and inspect its stages is not available either, so nothing can report what actually happened to the data or how far a reported problem extends. Both are needed to move from restating a report to resolving it.
 
 That context exists but is not synthesized automatically. Users have no direct answers to the questions that matter most for project quality:
 
@@ -121,7 +126,13 @@ When the advisor lacks sufficient grounded context to answer a question, it shou
 
 ### Principle 3: Deterministic code owns all factual claims
 
-The model explains what the deterministic layer found. It does not decide what is valid, invent rules, or apply changes. Every factual claim in an advisor response must be traceable to a citation ID assembled before the model was called.
+The model explains what the deterministic layer found. It does not decide what is valid, invent rules, or apply changes. Every factual claim in an advisor response must be traceable to a citation ID that the advisor produced, either assembled before the model was called or derived during investigation and recorded as an evidence artifact.
+
+Facts may be derived on demand as well as pre-computed. What this principle forbids is unchanged: the model may not assert a fact it cannot cite, and it may not present its own inference as a deterministic result.
+
+### Principle 4: Reported state is verified before it is explained
+
+A validation message is one check's observation, not a verdict. Before explaining a reported problem as a defect in the project, the advisor should establish that the check is correct and that the reported scope is complete. Where it cannot, it must say the report is unverified rather than restate it as fact.
 
 ### Required inputs
 
@@ -175,7 +186,103 @@ This is curated, versioned knowledge about SEAD and the related services around 
 7. SEAD Authoritative Service responsibilities versus Shape Shifter responsibilities.
 8. How reconciliation, authority lookup, and identity allocation fit together.
 
+#### 5. Framework Source and Executable Evidence
+
+This input is the ability to read Shape Shifter source and to probe the pipeline against the active project:
+
+1. Shape Shifter source for the checks, transforms, loaders, and registries the project exercises.
+2. The registry contents that determine which checks, filters, and loaders run for an entity.
+3. Read-only access to the real pipeline, so an entity can be loaded and normalized and its stages inspected.
+4. Captured artifacts from those runs, such as column lists, dtypes, row counts, null counts, and distinct values.
+
+This input differs in kind from the first four. Those are curated text, assembled into the prompt. This one is derived: the advisor retrieves source and produces evidence while it works, and both become citations. [Investigation Capability](#investigation-capability) defines how that works and what bounds it.
+
 The target-model and SEAD inputs are both essential. The advisor should answer not only "how do I write this YAML?" but also "does this conform to the target model?" and "is this a good SEAD model?"
+
+---
+
+## Investigation Capability
+
+The advisor's value comes from deriving facts, not only from restating them. The project context and the curated inputs describe what is known. Investigation determines what is true.
+
+### Why narration alone is insufficient
+
+A validation message is one check's observation. Explaining it correctly often requires answering questions the message cannot:
+
+1. **Is the check correct?** Validators can report false positives when their assumptions do not match a supported configuration.
+2. **Is the reported scope complete?** A check reports the values its own comparison observed, which can be a small part of a wider defect.
+3. **What actually happened to the data?** The message describes the configured rule, not the resulting columns, rows, and types.
+4. **Which cause applies?** A message names a symptom, and the causes may sit in different framework stages.
+
+Two patterns from real project work show the difference.
+
+**A false positive.** A check reported that a derived column created by `extra_columns` conflicted with an existing result column. The same column was also listed in `unnest.id_vars`, and the conflict set was built with a helper that includes `id_vars`, so a valid configuration looked invalid. `id_vars` are passthrough inputs that must already exist before unnesting, not outputs. Confirming this required locating the check in source, identifying which column set it built, and running it against a minimal configuration.
+
+**Understated severity.** A foreign key check reported one orphaned value. Investigation showed the entity copied a business code into a foreign key column that was joined against a sequential identity. Eleven distinct values fell inside the identity range and passed validation while resolving to the wrong rows, and only the twelfth fell outside it and was reported. The single low-priority warning was the visible part of a mapping defect that silently mis-assigned most of the entity's rows.
+
+In both cases the useful answer was not "here is what the message means". It was "this message is wrong" or "this message is the smallest part of the problem". Neither conclusion is reachable from the message.
+
+### Capability tiers
+
+| Tier | Capability | New risk | Answers |
+|------|------------|----------|---------|
+| 1 | Source retrieval | Low | Which code produced this message, and what does it check? |
+| 2 | Pipeline probing | Low | What actually happened to the data, and how far does it extend? |
+| 3 | Experiment execution | High | Is the check correct, and what is the smallest reproduction? |
+
+Tiers 1 and 2 use existing deterministic services and add no new execution surface. Tier 2 invokes the same loaders, transforms, and validators the application already runs, with parameters. Tier 3 runs generated code and requires a sandbox.
+
+### The investigation loop
+
+Investigation is a loop over the active project, not a single retrieval:
+
+1. **Retrieve.** Find the source that produced the report: the check that raised it, the transform that shaped the data, or the loader that read it.
+2. **Hypothesize.** State a specific claim about the cause.
+3. **Discriminate.** Design the smallest experiment that separates that claim from its alternatives. Varying one configuration value at a time is usually decisive.
+4. **Observe.** Run the project or check in a read-only environment and capture the result.
+5. **Record.** Persist the experiment, its inputs, and its output as an evidence artifact.
+
+Every step produces something citable. Retrieval produces a source location; discrimination produces an artifact. The conclusion is then a claim about those citations, not a claim about the model's reasoning.
+
+### Investigation tools
+
+A fixed tool set, not general autonomy.
+
+| Tool | Purpose |
+|------|---------|
+| Source search and read | Locate the code path behind a message, validation result, or column |
+| Registry inspection | Determine which checks, loaders, and filters are registered and run |
+| Project load and normalize | Execute the real pipeline against the active project, read-only |
+| Stage inspection | Report intermediate state: columns, dtypes, row counts, null counts, distinct values, key uniqueness |
+| Differential run | Execute the pipeline with one configuration value changed |
+| Cross-entity scan | Apply a check to every entity to test whether a finding is isolated or systemic |
+| Reference comparison | Compare produced values against an authoritative source, such as a lookup table or the target model |
+
+### Evidence artifacts
+
+| Field | Description |
+|-------|-------------|
+| `id` | Stable identifier used in citations |
+| `kind` | `source_location`, `pipeline_state`, `differential_result`, `scan_result`, `reference_comparison` |
+| `source_refs` | Source files and lines the experiment exercised |
+| `inputs` | The project, entity, settings, and any snippet used |
+| `output` | The captured result, such as tables, counts, and value lists |
+| `conclusion` | The claim the artifact supports or refutes |
+| `limitations` | What the experiment did not establish |
+
+`limitations` carries as much weight as `conclusion`. A finding may hold only for the current data snapshot, or only for the entities that were scanned.
+
+### Constraints
+
+1. **No writes.** No project file writes, no database writes, no changes to backend caches or session state.
+2. **Read-only data access.** Database access uses a read-only role, as the existing project tooling does.
+3. **Isolation.** Tier 3 experiments run in a sandbox with no network access and bounded time and memory.
+4. **Reproducibility.** Every artifact records the inputs needed to repeat it.
+5. **Explicit failure.** An inconclusive or failed experiment is reported as such, not omitted.
+
+### Negative results are first-class
+
+Much of the value is in refutation: showing that a report is a false positive, that a proposed check would produce more false positives than true ones, or that a failure already existed before a change. The advisor must be able to state "I tested this and it is not the cause" with the same standing as a confirmed defect, and the evaluation suite must test for it.
 
 ---
 
@@ -265,6 +372,10 @@ The MVP should answer only three kinds of questions:
 These use cases are narrow enough to test well and broad enough to be useful. Open-ended modeling advice should wait until the
 knowledge pack and evaluation suite are in place.
 
+P1 and P3 are also where verification matters most. An error explanation is only as good as the report it explains, and a risk review
+is only as good as the checks it summarizes. [Investigation Capability](#investigation-capability) is what raises both above restating
+existing output.
+
 Typical MVP prompts:
 
 1. "Explain why this project YAML fails validation."
@@ -283,14 +394,16 @@ MVP should not:
 4. Make destructive changes.
 5. Save chat-derived project changes silently.
 6. Provide broad open-ended modeling advice beyond the three MVP use cases.
+7. Read framework source, probe the pipeline, or execute code. Investigation is a later phase, and it never extends to modifying the repository or the running service.
 
 Future phases may add:
 
-1. Structured proposal generation, such as YAML patches with explanations.
-2. Data-to-configuration help, such as source-file exploration and draft YAML.
-3. An approval-based apply workflow.
+1. Investigation, so the advisor can read framework source and probe the pipeline against the active project.
+2. Structured proposal generation, such as YAML patches with explanations.
+3. Data-to-configuration help, such as source-file exploration and draft YAML.
+4. An approval-based apply workflow.
 
-These are out of scope for the first delivery.
+These are out of scope for the first delivery. The advisor is not a general code-execution service or an IDE agent. Investigation is bounded to answering questions about the active project.
 
 ---
 
@@ -300,13 +413,16 @@ These are out of scope for the first delivery.
 
 Add a new backend feature area:
 
-1. `backend/app/models/advisor.py` — Request and response Pydantic models.
+1. `backend/app/models/advisor.py` — Request and response Pydantic models, including evidence artifacts and citations.
 2. `backend/app/services/advisor_service.py` — Receives the question, assembles context, calls the provider, parses the response,
    and returns a structured result.
 3. `backend/app/services/advisor_context_service.py` — Builds deterministic context from project state, validation results,
    dependency summaries, knowledge-pack rules, and citation IDs.
-4. `backend/app/services/llm/` — Provider interfaces and implementations, such as local Ollama and hosted providers.
-5. `backend/app/api/v1/endpoints/advisor.py` — Route handler for advisor requests.
+4. `backend/app/services/advisor_investigation_service.py` — Runs the investigation loop, selects tools, and records evidence artifacts.
+5. `backend/app/services/advisor_source_service.py` — Retrieves framework source locations for checks, transforms, and loaders.
+6. `backend/app/services/advisor_sandbox.py` — Executes tier 3 experiments under isolation and returns captured output.
+7. `backend/app/services/llm/` — Provider interfaces and implementations, such as local Ollama and hosted providers.
+8. `backend/app/api/v1/endpoints/advisor.py` — Route handler for advisor requests.
 
 The service should follow existing backend layering:
 
@@ -328,6 +444,9 @@ The split between normal application code and the LLM must be explicit.
 - secret redaction
 - context assembly
 - citation object generation
+- source retrieval and ranking
+- sandbox execution, including isolation, limits, and output capture
+- evidence artifact construction
 - patch validation when proposal mode is added
 
 **The model should handle:**
@@ -336,6 +455,8 @@ The split between normal application code and the LLM must be explicit.
 - issue prioritization
 - user-facing reasoning summaries
 - suggested next actions
+- choosing which source to read and which experiment to run
+- interpreting captured artifacts
 - draft proposals in future phases
 
 **The model should not be trusted to:**
@@ -345,7 +466,9 @@ The split between normal application code and the LLM must be explicit.
 - apply changes directly
 - infer secrets
 - override validation results
-- reference citation IDs that were not provided in the assembled context
+- reference citation IDs that were not provided in the assembled context or produced as evidence
+- execute code outside the sandbox, or select tools outside the fixed investigation set
+- present an unrepeated or unscanned experiment as evidence about the whole project
 
 ### Frontend
 
@@ -394,6 +517,17 @@ The context assembler should use an explicit whitelist of safe fields instead of
 - dependency graph edges
 - knowledge-pack rule IDs and text
 - citation IDs
+- source locations and evidence artifact summaries
+
+**Execution rules:**
+
+Investigation gives the advisor new ways to reach project data, so redaction covers it too.
+
+1. Executed experiments run in a sandbox with no network access.
+2. Artifacts may contain project data. An artifact sent to a hosted provider follows the same redaction rules as any other context.
+3. Local-provider-only mode also restricts execution to the local host.
+4. Artifacts are retained with the session so a user can see exactly what was read and produced.
+5. Source retrieval reads framework code only. It does not read the user's data sources.
 
 ---
 
@@ -456,7 +590,7 @@ applies_to:
 
 1. `docs/TARGET_MODEL_GUIDE.md`
 2. `docs/TARGET_MODEL_SCHEMA_REFERENCE.md`
-3. `resources/target_models/sead_superset_model.yml`
+3. `resources/target_models/sead_standard_model.yml`
 4. The active target-model file referenced by `metadata.target_model` in the project being reviewed
 
 **SEAD and SIMS sources:**
@@ -569,6 +703,8 @@ Citations are not free text. The deterministic context assembler creates citatio
 | `project.entity`      | `project.entity.site.keys`                             |
 | `validation.message`  | `validation.message.E1023`                             |
 | `dependency.edge`     | `dependency.edge.site.sample_group`                    |
+| `source.code`         | `source.code.src.specifications.entity.extra_columns`  |
+| `evidence.artifact`   | `evidence.artifact.ev-0007`                            |
 | `sead.rule`           | `sead.identity.tracked-entity`                         |
 | `sims.rule`           | `sims.responsibility.allocation`                       |
 | `reconciliation.rule` | `reconciliation.authoritative-service.supported-types` |
@@ -589,13 +725,13 @@ Citations are not free text. The deterministic context assembler creates citatio
 
 **Citation rules:**
 
-1. The backend assembles all available citation IDs before calling the model.
-2. The model may only reference citation IDs that appear in the assembled context.
+1. The backend assembles the citation IDs available before calling the model, and adds the IDs of evidence artifacts produced during investigation.
+2. The model may only reference citation IDs that appear in that set.
 3. The response parser rejects or flags citation IDs that are not in the allowed set.
 4. Citations are persisted with the chat session so users can review them later.
-5. The UI renders citations as clickable chips that navigate to the relevant entity, validation message, or knowledge-pack rule.
+5. The UI renders citations as clickable chips that navigate to the relevant entity, validation message, code location, or knowledge-pack rule.
 
-A vague citation like "SEAD rule" is not enough. A useful citation should point to a specific rule ID, validation message, or YAML path.
+A vague citation like "SEAD rule" is not enough. A useful citation should point to a specific rule ID, validation message, YAML path, source location, or recorded experiment.
 
 ---
 
@@ -612,10 +748,16 @@ Define the evaluation suite before implementation so advisor quality can be meas
 | Tracked/shared/value-object classification | Does the advisor correctly distinguish entity types?                              |
 | SIMS responsibility split                  | Does the advisor avoid claiming that Shape Shifter allocates official identities? |
 | Authoritative-service responsibility split | Does the advisor correctly describe when the authoritative service is involved?   |
+| False-positive detection                   | Does the advisor identify a validator false positive instead of paraphrasing it?  |
+| Severity and scope discovery               | Does the advisor find that a reported problem affects more than it reported?      |
+| Discriminating experiment                  | Does the advisor design a run that separates the candidate causes?                |
+| Negative result reporting                  | Can the advisor state that a candidate cause was tested and ruled out?            |
+| Pre-existing versus introduced failure     | Does the advisor check whether a failure predates a change before attributing it? |
 | YAML patch proposal                        | Phase 2: Are proposed patches valid and minimal?                                  |
 | Refusal and uncertainty                    | Does the advisor say "I don't know" instead of inventing rules?                   |
 | Hallucination                              | Does the advisor avoid inventing SEAD rules or YAML fields?                       |
 | Redaction                                  | Are secrets excluded from context sent to hosted providers?                       |
+| Sandbox isolation                          | Does execution avoid writes, network access, and unbounded resource use?          |
 | Regression                                 | Do known Shape Shifter projects still produce correct advice?                     |
 
 ### Scenario-Based Format
@@ -645,11 +787,44 @@ expected:
     - reconciliation.rule.authoritative-service.supported-types
 ```
 
+Investigation scenarios additionally require evidence:
+
+```yaml
+scenario: reported_conflict_is_a_false_positive
+input:
+  project_yaml: |
+    entities:
+      reading_property:
+        type: entity
+        extra_columns:
+          property_group: ReadingProperty
+        unnest:
+          id_vars: [property_group, reading_id]
+          value_vars: [reading_value]
+          var_name: property_type
+          value_name: property_value
+  validation_messages:
+    - "extra_columns 'property_group' conflicts with an existing result column"
+question: Is this error correct, and how do I fix it?
+expected:
+  must_mention:
+    - id_vars are inputs that survive unnest, not outputs
+    - the report is a false positive
+  must_not_claim:
+    - the configuration must be renamed
+  required_evidence:
+    - kind: source_location
+    - kind: differential_result
+  limitations_must_include:
+    - the finding applies to the current validator version
+```
+
 ### Evaluation Gates
 
 1. Phase 1a, the backend API, must pass all scenario tests before Phase 1b, the frontend, begins.
 2. Phase 2, proposal generation, must pass YAML patch validation tests before user-facing proposal mode is enabled.
-3. Each phase should add regression scenarios that cover previous phases.
+3. Investigation must pass false-positive, scope, and sandbox-isolation scenarios before tier 3 execution is enabled.
+4. Each phase should add regression scenarios that cover previous phases.
 
 ---
 
@@ -702,6 +877,29 @@ If the model can invent citation IDs, citations lose their value.
 2. The model may only reference citation IDs provided in the assembled context.
 3. The response parser rejects unknown citation IDs.
 
+### Risk: Code Execution
+
+Running generated code against a real project adds a failure and security surface: unintended writes, data access, unbounded resource use, and side effects on shared state.
+
+**Mitigation:**
+
+1. Use a closed tool set. All execution goes through the investigation tools, each with a defined input and output shape.
+2. Run experiments in a sandbox with no network access and bounded time and memory.
+3. Keep execution read-only. No project file writes, no database writes, and no mutation of backend caches or session state.
+4. Use a read-only database role, as the existing project tooling does.
+5. Record every experiment and its output so behavior can be audited and reproduced.
+6. Gate tier 3 execution behind sandbox-isolation scenarios before it is enabled.
+
+### Risk: Experiments Overstate Their Scope
+
+An experiment runs against one project and one data snapshot. A finding may not generalize, and a confident conclusion drawn from a narrow run can mislead as much as an invented one.
+
+**Mitigation:**
+
+1. Require every evidence artifact to record its `limitations`.
+2. Require a cross-entity scan before a finding is presented as systemic rather than isolated.
+3. Distinguish a value established for one entity from a value established for the project.
+
 ---
 
 ## Success Criteria
@@ -714,7 +912,8 @@ The feature should be considered successful when it can reliably:
 4. Clearly distinguish confidence from uncertainty.
 5. Review, repair, and author project YAML through explicit proposals in Phase 2 and later.
 6. Help users avoid target modeling mistakes.
-7. Remain safe even when the model is wrong.
+7. Determine whether a reported problem is real, and how far it extends, before advising on it.
+8. Remain safe even when the model is wrong.
 
 ---
 
@@ -725,11 +924,16 @@ General Shape Shifter and SEAD terms are defined in [docs/GLOSSARY.md](../../GLO
 | Term | Definition |
 |------|------------|
 | **Advisor** | The AI Project Advisor feature. A grounded, project-scoped chat interface that explains validation errors, entity risks, and modeling choices using real project data and curated SEAD knowledge. |
-| **Citation** | A structured reference embedded in an advisor response. Points to a specific validation message, YAML path, dependency edge, or knowledge-pack rule. Uses a stable ID format: `<category>.<scope>.<identifier>`. |
+| **Citation** | A structured reference embedded in an advisor response. Points to a specific validation message, YAML path, dependency edge, source location, recorded experiment, or knowledge-pack rule. Uses a stable ID format: `<category>.<scope>.<identifier>`. |
 | **Context assembly** | The process of building a structured, redacted packet of project data, validation results, dependency summaries, and knowledge-pack rules. This packet is sent to the LLM provider as the basis for an advisor response. |
 | **Grounded advisor** | An advisor that answers from known project data and curated rules. It does not invent project state, YAML fields, or SEAD policy. |
+| **Evidence artifact** | A record of one executed experiment: what was run, what it produced, the claim it supports or refutes, and its limitations. Identified by `evidence.artifact.<id>` and citable like any other source. |
+| **Investigation** | Deriving facts about the active project by reading framework source and probing the real pipeline, rather than only restating pre-computed validation output. See [Investigation Capability](#investigation-capability). |
 | **Knowledge pack** | A curated, versioned collection of structured rules about SEAD, SIMS, reconciliation, and target-model conformance. Each rule has an ID, confidence level, source documents, and scope tags. |
+| **Pipeline probe** | A read-only execution of the real pipeline, or one stage of it, used to observe columns, dtypes, row counts, and key values. Tier 2: no generated code involved. |
 | **Provider abstraction** | A backend interface that supports multiple LLM providers (local Ollama, hosted providers) without hardwiring one vendor into the advisor feature logic. |
+| **Sandbox** | The isolated environment for tier 3 experiments, with no network access and bounded time and memory. |
+| **Source retrieval** | Locating the framework code behind a message, validation result, or column, so the check that produced it can be read. Tier 1. |
 
 ---
 
@@ -743,9 +947,14 @@ The most important design choice is to make target-system knowledge explicit and
 explain YAML well while still giving poor advice about the SEAD domain and the external SEAD services that already affect project
 behavior.
 
-With that knowledge layer in place, the feature has a realistic path:
+The next is to let the advisor investigate. An advisor that only explains validation output restates what the user already has,
+including any false positive and any understated severity. Reading the source behind a report and probing the real pipeline is what
+turns "here is your error" into "here is whether the error is right and what it actually affects".
+
+With both layers in place, the feature has a realistic path:
 
 1. Explain.
-2. Recommend.
-3. Propose.
-4. Apply only after approval.
+2. Investigate.
+3. Recommend.
+4. Propose.
+5. Apply only after approval.

@@ -79,10 +79,10 @@ Output files
 ------------
   Files are written to --output-dir (default: docs/generated/) using the input
   file stem as the base name, e.g.:
-    docs/generated/sead_superset_model.html
-    docs/generated/sead_superset_model.md
-    docs/generated/sead_superset_model.xlsx
-    docs/generated/sead_superset_model.sims.md
+    docs/generated/sead_standard_model.html
+    docs/generated/sead_standard_model.md
+    docs/generated/sead_standard_model.xlsx
+    docs/generated/sead_standard_model.sims.md
 
 Understanding entity cards (HTML)
 ----------------------------------
@@ -108,16 +108,16 @@ Understanding entity cards (HTML)
 Examples
 --------
   # Generate all formats from the bundled SEAD spec
-    python scripts/generate_target_model_docs.py resources/target_models/sead_superset_model.yml
+    python scripts/generate_target_model_docs.py resources/target_models/sead_standard_model.yml
 
   # HTML only (recommended for stakeholder review)
-    python scripts/generate_target_model_docs.py resources/target_models/sead_superset_model.yml --format html
+    python scripts/generate_target_model_docs.py resources/target_models/sead_standard_model.yml --format html
 
   # Excel for gap-analysis workshop
-    python scripts/generate_target_model_docs.py resources/target_models/sead_superset_model.yml --format excel
+    python scripts/generate_target_model_docs.py resources/target_models/sead_standard_model.yml --format excel
 
     # Shape Shifter target-model reference for the Authority Service SIMS docs
-    python scripts/generate_target_model_docs.py resources/target_models/sead_superset_model.yml --format sims --output-dir /tmp
+    python scripts/generate_target_model_docs.py resources/target_models/sead_standard_model.yml --format sims --output-dir /tmp
 
   # Custom output directory
   python scripts/generate_target_model_docs.py my_model.yml --format all --output-dir /tmp/model-docs

@@ -741,7 +741,7 @@ class TestSqlColumnConfigurationSpecification:
 class TestNonFixedIdentityColumnsSpecification:
     """Tests for NonFixedIdentityColumnsSpecification."""
 
-    def test_sql_entity_rejects_system_id_in_columns(self):
+    def test_sql_entity_warns_for_system_id_in_columns(self):
         project_cfg = {
             "entities": {
                 "sample": {
@@ -759,8 +759,9 @@ class TestNonFixedIdentityColumnsSpecification:
 
         result = spec.is_satisfied_by(entity_name="sample")
 
-        assert result is False
-        assert any("derived system_id columns" in str(e) for e in spec.errors)
+        assert result is True
+        assert len(spec.errors) == 0
+        assert any("not checked for positive, unique integer values" in str(warning) for warning in spec.warnings)
 
     def test_sql_entity_allows_public_id_in_columns(self):
         project_cfg = {
@@ -1540,6 +1541,59 @@ class TestExtraColumnsConflictsSpecification:
 
         assert result is True
         assert spec.errors == []
+
+    def test_extra_column_used_as_unnest_id_var_is_allowed(self):
+        """An extra_column may supply a column that unnest carries through as an id_var."""
+        project_cfg = {
+            "entities": {
+                "abundance_property": {
+                    "type": "entity",
+                    "keys": [],
+                    "columns": ["rAnzahl", "abundance_id"],
+                    "public_id": "abundance_property_id",
+                    "extra_columns": {"property_group": "AbundanceProperty"},
+                    "unnest": {
+                        "id_vars": ["property_group", "abundance_id"],
+                        "value_vars": ["rAnzahl"],
+                        "var_name": "property_type",
+                        "value_name": "property_value",
+                    },
+                }
+            }
+        }
+
+        spec = ExtraColumnsConflictsSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="abundance_property")
+
+        assert result is True, spec.get_report()
+        assert spec.errors == []
+
+    def test_extra_column_conflicting_with_unnest_output_is_error(self):
+        """extra_columns must not override unnest var_name or value_name outputs."""
+        project_cfg = {
+            "entities": {
+                "sample": {
+                    "type": "entity",
+                    "columns": ["value"],
+                    "extra_columns": {"property_type": "value", "property_value": "value"},
+                    "unnest": {
+                        "id_vars": ["value"],
+                        "value_vars": ["other"],
+                        "var_name": "property_type",
+                        "value_name": "property_value",
+                    },
+                }
+            }
+        }
+
+        spec = ExtraColumnsConflictsSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="sample")
+
+        assert result is False
+        conflicting = {error.message.split("'")[1] for error in spec.errors}
+        assert conflicting == {"property_type", "property_value"}
 
 
 class TestAppendSpecification:

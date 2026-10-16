@@ -411,7 +411,7 @@ describe('ProjectDetailView', () => {
 
   it('hides the target-model yaml tab for shared target models', async () => {
     mockProjectState.selectedProjectRef.value = {
-      metadata: { name: 'arbodat', target_model: '@load: resources/target_models/sead_superset_model.yml' },
+      metadata: { name: 'arbodat', target_model: '@load: resources/target_models/sead_standard_model.yml' },
       options: {},
       entities: {},
     }
