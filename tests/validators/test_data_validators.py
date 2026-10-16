@@ -395,6 +395,40 @@ class TestForeignKeyIntegrityValidator:
 
         assert len(issues) == 1
         assert issues[0].code == "FK_REMOTE_EMPTY"
+        assert "no rows" in issues[0].message
+        assert "'pk'" in issues[0].message
+        assert issues[0].field == "foreign_keys[].entity"
+
+    def test_all_null_remote_key_names_the_column(self):
+        """A remote key that is entirely null should not be reported as an empty entity."""
+        local_df = pd.DataFrame({"fk": [1, 2]})
+        remote_df = pd.DataFrame({"pk": [None, None], "other": ["a", "b"]})
+        fk_config = {"local_keys": ["fk"], "remote_keys": ["pk"], "entity": "remote"}
+
+        issues = ForeignKeyIntegrityValidator.validate(local_df, remote_df, fk_config, "local")
+
+        assert len(issues) == 1
+        issue = issues[0]
+        assert issue.code == "FK_REMOTE_EMPTY"
+        assert issue.severity == "warning"
+        assert issue.field == "foreign_keys[].remote_keys"
+        # The remote entity has rows, so the message must not claim it is empty.
+        assert "no rows" not in issue.message
+        assert "'pk'" in issue.message
+        assert "2 row(s)" in issue.message
+        # The suggestion must point at the system_id convention.
+        assert "system_id" in issue.suggestion
+        assert "public_id" in issue.suggestion
+
+    def test_partially_null_remote_key_is_not_remote_empty(self):
+        """A remote key with at least one value should proceed to normal integrity checks."""
+        local_df = pd.DataFrame({"fk": [1]})
+        remote_df = pd.DataFrame({"pk": [None, 1]})
+        fk_config = {"local_keys": ["fk"], "remote_keys": ["pk"], "entity": "remote"}
+
+        issues = ForeignKeyIntegrityValidator.validate(local_df, remote_df, fk_config, "local")
+
+        assert not issues
 
     def test_null_values_ignored(self):
         """Test null FK values are ignored."""
