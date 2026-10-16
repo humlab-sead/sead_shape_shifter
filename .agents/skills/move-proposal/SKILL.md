@@ -44,7 +44,7 @@ Optimize for a small number of tool calls. A correct move takes roughly six to t
    - file: `git mv docs/proposals/<TOPIC>.md docs/proposals/<TARGET>/<TOPIC>.md`
    - subfolder: `mkdir -p docs/proposals/<TOPIC> && git mv docs/proposals/<TOPIC>.md docs/proposals/<TOPIC>/`
 
-4. Fix relative links inside the moved documents. See Link Depth.
+4. Fix relative links in the moved documents and in the documents that reference them. See Outbound Links and Inbound References.
 
 5. Update `docs/proposals/README.md`. See Index Rules.
 
@@ -54,9 +54,9 @@ Optimize for a small number of tool calls. A correct move takes roughly six to t
 
 8. Commit the move as one commit. See Commit.
 
-## Link Depth
+## Outbound Links (Inside The Moved Document)
 
-Relative links resolve against the containing directory. Count the directory depth before and after the move, then add one `../` per added level to every link that points outside the moved directory.
+Relative links resolve against the containing directory. For a link written inside the document you are moving, count the directory depth before and after the move, then add one `../` per added level to every link that points outside the moved directory.
 
 | Move | Depth change | Link fix |
 |---|---|---|
@@ -70,9 +70,23 @@ Relative links resolve against the containing directory. Count the directory dep
 - Find every link in one pass with `rg -n "\]\(" <moved files>`.
 - `make check-doc-links` does not validate `docs/proposals/`. Do not run it for this move; use the bundled checker.
 
+## Inbound References (Links Into The Moved Topic)
+
+A link from another document into the moved topic takes one change: insert the status folder. The number of `../` stays exactly as it was, because the referring document did not move.
+
+| Referring document | Before | After (topic moved into `future/`) |
+|---|---|---|
+| `docs/proposals/done/A/B.md` | `../../X/README.md` | `../../future/X/README.md` |
+| `docs/proposals/done/A/done/C.md` | `../../../X/README.md` | `../../../future/X/README.md` |
+
+- Do not add a `../`. The `+1` rule above applies only to links inside the document being moved. Adding a level here is the common mistake, and it breaks every inbound reference at once.
+- When unsure, recompute from the referring file's own directory to the new target. The bundled checker is the authority: it reports each link that does not resolve, with the file and target.
+- Update backticked paths too, such as a `docs/proposals/X/README.md` cell in a table, so the prose still names a real location.
+- A referring document inside the moved folder is outbound, not inbound; handle it with the table above.
+
 ## VS Code Built-In Move
 
-VS Code can move a file or folder and rewrite the Markdown links itself. It is more thorough than the Link Depth table and is the preferred route when a human performs the move. It needs:
+VS Code can move a file or folder and rewrite the Markdown links itself. It is more thorough than the Outbound Links table and is the preferred route when a human performs the move. It needs:
 
 ```json
 {
@@ -82,7 +96,7 @@ VS Code can move a file or folder and rewrite the Markdown links itself. It is m
 ```
 
 - Values for `enabled` are `always`, `prompt`, and `never` (default). `markdown.updateLinksOnFileMove.enableForDirectories` defaults to true, so folder moves are covered.
-- Validation reports broken local links as diagnostics and covers relative file links and header anchors. It never checks external `http(s)` links, so it does not replace the optional `gone` check.
+- Validation reports broken local links as diagnostics and covers relative file links and header anchors. It never checks external `http(s)` links.
 
 What it rewrites, verified in the bundled `vscode-markdown-languageservice`:
 
@@ -135,19 +149,7 @@ rg -n "docs/proposals/<TOPIC>" docs README.md ; git status --short --find-rename
 
 The grep should return only references that intentionally point at the new location.
 
-### Optional: check external links with `gone`
-
-`gone` validates `http(s)` URLs only. It ignores relative paths, so it cannot detect move breakage and never replaces the checker above. Use it as an extra check for the issue, PR, and other external URLs in the moved documents, because `scripts/check_doc_links.sh` skips every `http(s)` link.
-
-```bash
-brew install leonardomso/tap/gone   # once
-gone check docs/proposals/<TARGET>/<TOPIC>/ --dead
-```
-
-- Exit code 1 means a dead or unreachable link; the report names the file and line.
-- It needs network access. Skip it when offline, in a sandbox, or in CI without egress; treat a network-wide failure as inconclusive rather than as a broken link.
-- If `gone` is not on `PATH`, run `"$(brew --prefix)/bin/gone"`.
-- Do not gate the move on it. The relative-link checker already covers what a move can break.
+External `http(s)` links are out of scope for a move, and no checker in this repository validates them. `scripts/check_doc_links.sh` and the bundled checker both skip them, and VS Code validation never leaves the workspace. Do not add an external-link check to a move; it needs network access and cannot detect what a move breaks.
 
 ## Commit
 
@@ -174,9 +176,8 @@ These steps made a manual move take over four minutes. Skip them.
 - Hunting for an issue number with `git log --grep`, `git show`, `gh issue list`, or `gh pr view`. One grep of the source document is the limit.
 - Reviewing phase-task-plan checkboxes and validation milestones to confirm completion before moving. The user orders the move; do not re-verify finished work.
 - Running `make check-doc-links` — it does not cover `docs/proposals/` and fails on a pre-existing unrelated break.
-- Replacing the relative-link check with `gone`, or running `gone` over a wide tree. `gone` checks only external `http(s)` URLs, needs network, and took 1.8s on one six-file folder for a single link. It cannot see a broken relative path.
 - Assuming VS Code's `markdown.updateLinksOnFileMove.enabled` will fix a `git mv` the agent ran. It is wired to `onDidRenameFiles`, which a terminal move never fires, so the links are left untouched.
-- Adding `docmv` as a dependency. It is on-topic (link-aware Markdown move plus `audit`), but it covers only the relative-path recalculation that the Link Depth table and bundled checker already handle. It cannot update the index tables or the Status block, which are the repo-specific parts. It is also unvetted: 0 stars, one contributor, one commit. If you ever want broader internal-link coverage, trial `docmv plan` or `docmv audit` read-only first; do not make the move depend on it.
+- Applying the Outbound Links `+1` rule to inbound references. Inbound links keep their `../` prefix and only gain the status folder; adding a level breaks all of them.
 
 ## Limits
 
