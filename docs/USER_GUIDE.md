@@ -747,9 +747,10 @@ During normalization, mappings are applied in this order (first match wins):
 
 When editing a materialized entity and assigning `public_id` values:
 
-- Saving the materialized entity automatically syncs manual links to the mapping sidecar
-- Manual links replace any previous manual links for that entity
-- These manual links take highest precedence during normalization
+- Saving fixed rows updates links for ID or row-key changes and adds a missing link for a saved non-blank ID. Links at unaffected keys keep their source and details, even when a saved `public_id` is blank or older.
+- During normalization, committed manual links take precedence over reconciliation and imported links.
+
+Use **Sync from materialized entity** in Mapping Sidecar Management to seed or repair links from all saved rows. A request without options adds links only where no link exists and keeps every existing link. To rebuild manual links and remove stale manual entries, explicitly set `replace_manual_links` to `true`. A rebuilt link can replace another source at the same key because the sidecar stores one link per key.
 
 ## Mapping Sidecar Management
 
