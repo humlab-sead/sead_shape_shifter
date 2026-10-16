@@ -381,7 +381,7 @@ entities:
     keys: [data_provider_code]
     columns: [system_id, data_provider_code, data_provider_name, notes, contact_id, biblio_id]
     values:
-    - [1, 'Arbodat pilot', 'DP_CODE', 'Arbodat pilot', null, null]
+      - [1, 'DP_CODE', 'Arbodat pilot', 'Arbodat pilot', null, null]
   data_type:
     type: fixed
     public_id: data_type_id
