@@ -1063,7 +1063,7 @@ entities:
     values:
     - [1, null, '224073', Blaker kirkegård, 28, 143.0, .nan, 628472.0, 6653720.0, '224073', Blaker kirkegård, Siedl, .nan, '19_0014', 6653720.0, 628472.0, 143.0]
     - [2, null, 'L1960:2928', Göteborg 342, 30, .nan, .nan, .nan, .nan, 'L1960:2928', Göteborg 342, Stadt, .nan, '22_0005', .nan, .nan, .nan]
-    - [3, null, .nan, Kville 1502, 25, .nan, .nan, .nan, .nan, .nan, Kville 1502, Rin, .nan, '18_0025', .nan, .nan, .nan]
+    - [3, null, 'x', Kville 1502, 25, .nan, .nan, .nan, .nan, .nan, Kville 1502, Rin, '', '18_0025', .nan, .nan, .nan]
     - [4, null, 'L1969:1130', 'Sandarna Gbg 15:1', 9, .nan, .nan, .nan, .nan, 'L1969:1130', 'Sandarna Gbg 15:1', FustelSo, .nan, '22_0015', .nan, .nan, .nan]
     materialized:
       enabled: true
@@ -1081,7 +1081,7 @@ entities:
         - Projekt
         public_id: site_id
         data_source: arbodat_data
-        query: select distinct p.Fustel, p.EVNr, b.FustelTyp, p.KoordSys, p.rWert, p.hWert, p.[üNN], p.[Projekt] from Projekte as p inner join ( select distinct Projekt, FustelTyp from Befunde ) as b on p.Projekt = b.Projekt where p.Projekt in ('19_0013', '19_0014', '22_0005', '18_0025', '22_0015');
+        query: select distinct p.Fustel, Nz(p.EVNr, '') as EVNr, b.FustelTyp, p.KoordSys, p.rWert, p.hWert, p.[üNN], p.[Projekt] from Projekte as p inner join ( select distinct Projekt, FustelTyp from Befunde ) as b on p.Projekt = b.Projekt where p.Projekt in ('19_0013', '19_0014', '22_0005', '18_0025', '22_0015');
         foreign_keys:
         - entity: site_type
           local_keys: [FustelTyp]
