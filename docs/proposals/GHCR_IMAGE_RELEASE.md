@@ -196,10 +196,13 @@ second pattern:
 ### Bundle handling
 
 The deployment bundle (Makefile, scripts, compose file, unit) still needs a
-source. This proposal keeps the existing `container-vX.Y.Z` archive flow for
-the bundle unchanged in the first step, and defers the choice between keeping
-it and simplifying it (git-tag checkout, or shipping the ops scripts inside
-the image) to a follow-up decision once image releases are live.
+source. Update (2026-10-16): the `container-vX.Y.Z` archive flow and the
+`shape-shifter-container-release` manager are retired ahead of this proposal.
+Environments now keep a manual copy of `deployment/container/` in
+`~/container`, refreshed with `deployment/container-host/deploy/sync-to-deploy`,
+until image releases are live. The remaining choice — git-tag checkout, or
+shipping the ops scripts inside the image — stays a follow-up decision once
+image releases are live.
 
 ### Migration
 
@@ -235,9 +238,11 @@ the image) to a follow-up decision once image releases are live.
   package-scoped token, mode 600, same handling as `.pgpass`.
 - **Moving tags are mutable.** Mitigation: `deployment.env` records digests;
   tags are human-readable annotations only.
-- **Losing the release manager's bundle checks if it is retired too early.**
-  Mitigation: this proposal retires it for images only; the bundle flow stays
-  until a separate decision replaces it.
+- **Losing the release manager's bundle checks.** Realized: the manager and
+  the archive flow are retired (2026-10-16) in favor of a manual copy of the
+  reviewed tree, refreshed with `sync-to-deploy`. Mitigation: syncs run from a
+  reviewed repository checkout by an operator, and the digest-pinned registry
+  flow in this proposal restores an integrity-checked artifact for the image.
 - **One-time migration cost** on two live environments. Bounded: each is a
   pull, one config edit, and a restart with a rehearsed rollback.
 - **Free-tier operation depends on the repository staying public.** If it ever
@@ -324,8 +329,8 @@ the image) to a follow-up decision once image releases are live.
   - Base-image sourcing mechanism: authenticated `docker.io` pull versus GHCR
     mirror for `alpine`, `node`, and `python` (Phase 1, before the first CI
     build).
-  - Whether `select-image` is a new script under `deployment/container-host/`
-    or a slimmed role inside the existing manager (Phase 1).
+  - `select-image` will be a new script under `deployment/container-host/`:
+    the release manager it might once have slimmed into is retired (Phase 1).
   - Credential mechanism: org package read token vs per-host fine-grained PAT
     (Phase 1, before the first private pull).
   - Whether the image workflow is written as a GitHub reusable workflow now,
@@ -338,8 +343,10 @@ the image) to a follow-up decision once image releases are live.
 
 - Should `staging`-branch builds publish a moving `:staging` tag, or should
   staging also pin digests from the first CI build?
-- When is `manage_container_release.sh` formally retired versus reduced to
-  bundle selection only?
+
+Resolved (2026-10-16): `manage_container_release.sh` is retired outright, not
+reduced to bundle selection. Environments use a manual copy of
+`deployment/container/` until this proposal lands.
 
 ## Final Recommendation
 

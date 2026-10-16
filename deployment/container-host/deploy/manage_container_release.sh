@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
+# DEPRECATED: this release manager is retired. Environments now keep a manual
+# copy of the deployment/container/ tree in ~/container, and the planned
+# replacement is pulling CI-built images from GHCR by digest
+# (docs/proposals/GHCR_IMAGE_RELEASE.md). No host installs this script any
+# more; it is kept only as a reference for the archive-verification logic the
+# GHCR flow may reuse. Do not extend it.
+#
 # Install, select, and report Shape Shifter container releases for one
 # deployment user per invocation.
 #

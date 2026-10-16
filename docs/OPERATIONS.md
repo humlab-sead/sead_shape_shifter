@@ -15,7 +15,7 @@ Runbook for operators and maintainers of deployed Shape Shifter environments. Th
 
 ## Deployment Entry Points
 
-Run the deployment as a dedicated Linux user from `~/container`, which is a symlink to the container release selected for that environment. Container releases are installed and selected with the administrator-owned host manager; see [Install and select a container release](../deployment/container/DEPLOYMENT.md#install-and-select-a-container-release). Configuration defaults to `~/config` and persistent data to `~/container-data`; `CONFIG_DIR` and `DATA_DIR` select both, and the selected release holds neither. The supported first-start sequence is:
+Run the deployment as a dedicated Linux user from `~/container`, which holds a manual copy of the `deployment/container/` tree. Until images are published to GHCR (see [GHCR_IMAGE_RELEASE.md](./proposals/GHCR_IMAGE_RELEASE.md)), the tree is placed by copying it or refreshing it with `deployment/container-host/deploy/sync-to-deploy`; the `shape-shifter-container-release` manager is retired. See [Place the deployment files](../deployment/container/DEPLOYMENT.md#place-the-deployment-files). Configuration defaults to `~/config` and persistent data to `~/container-data`; `CONFIG_DIR` and `DATA_DIR` select both, and `~/container` holds neither. The supported first-start sequence is:
 
 ```bash
 make setup
@@ -24,7 +24,7 @@ make up
 make healthcheck
 ```
 
-Every lifecycle command runs from the selected release through `~/container`: `make up`, `make down`, `make restart`, `make logs`, and `make status` all invoke `scripts/container.sh` in that release, and the systemd user unit calls the same dispatcher. A release is read/execute for the deployment user, so select a new version with the release manager rather than editing files under `~/container`.
+Every lifecycle command runs from `~/container`: `make up`, `make down`, `make restart`, `make logs`, and `make status` all invoke `scripts/container.sh` there, and the systemd user unit calls the same dispatcher. Update the deployment files by syncing the reviewed tree with `sync-to-deploy` rather than editing files under `~/container` by hand.
 
 Use [deployment/container/DEPLOYMENT.md](../deployment/container/DEPLOYMENT.md) for dedicated users, lingering, multiple environments, deployment helpers, NGINX installation, systemd services, and release or branch selection. Use [deployment/container/README.md](../deployment/container/README.md) for the complete Makefile command reference.
 
@@ -203,16 +203,14 @@ states the required outcomes without selecting tools or procedures. It is a
 requirements document, not an operating procedure; use the checks and
 procedures established by SEAD operations for each environment.
 
-To move an environment to a different container release, or to roll it back, use the host manager:
+To update an environment's deployment files, sync the reviewed tree from a repository checkout and restart the service:
 
 ```bash
-sudo shape-shifter-container-release install  USER container-vX.Y.Z
-sudo shape-shifter-container-release activate USER container-vX.Y.Z
-sudo shape-shifter-container-release status   USER
-sudo shape-shifter-container-release rollback USER
+deployment/container-host/deploy/sync-to-deploy --deploy-user USER
+systemctl --user -M USER@ restart shape-shifter
 ```
 
-`rollback` restores the release the environment used before the current one and needs no download. `activate` selects an installed release explicitly, and `install` fetches one without selecting it. Selecting a release changes only that environment's deployment files; it does not change `GIT_REF` or `IMAGE_NAME`, so rebuild or select the application image separately with `make build` and `make restart` when the rollback also requires an earlier image. Keep the current authorization database unless the rollback explicitly requires restoring its recorded state. Re-run health, UI, authorization, and project-read checks after the rollback, and see [Install and select a container release](../deployment/container/DEPLOYMENT.md#install-and-select-a-container-release) for permissions, failure behavior, and the first transition.
+`sync-to-deploy` replaces only the files under `~/container` and reinstalls the systemd unit; it does not change `GIT_REF` or `IMAGE_NAME`, so rebuild or select the application image separately with `make build` and `make restart` when the update also requires a different image. Because the manual layout keeps no previous version on the host, roll back by syncing a checkout at an earlier commit. Keep the current authorization database unless a rollback explicitly requires restoring its recorded state. Re-run health, UI, authorization, and project-read checks after any update, and see [Place the deployment files](../deployment/container/DEPLOYMENT.md#place-the-deployment-files) for the full workflow.
 
 ## Observability And References
 
