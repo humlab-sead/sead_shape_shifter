@@ -14,14 +14,14 @@ Target models are optional. Projects without a `target_model` reference continue
 
 ## Quick Start
 
-1. Choose a target model file or create one. Shape Shifter includes `resources/target_models/sead_superset_model.yml` as a starting point.
+1. Choose a target model file or create one. Shape Shifter includes `resources/target_models/sead_standard_model.yml` as a starting point.
 2. In your project YAML, add a `target_model` entry under `metadata`:
 
 ```yaml
 metadata:
   type: 'shapeshifter-project'
   name: "Dendrochronology Import"
-  target_model: "@load: resources/target_models/sead_superset_model.yml"
+  target_model: "@load: resources/target_models/sead_standard_model.yml"
 ```
 
 3. Open the project in the editor. On the **Validate** tab, select **Check Conformance**.
@@ -31,14 +31,14 @@ metadata:
 
 ## File Location
 
-The bundled SEAD model is at `resources/target_models/sead_superset_model.yml`. You can store custom models elsewhere. Refer to them with a path relative to the project file or with the full file path.
+The bundled SEAD model is at `resources/target_models/sead_standard_model.yml`. You can store custom models elsewhere. Refer to them with a path relative to the project file or with the full file path.
 
 Recommended layout for project-specific specs:
 
 ```
 target_models/
   specs/
-    sead_superset_model.yml           ← bundled SEAD superset spec
+    sead_standard_model.yml           ← bundled SEAD superset spec
     my_museum.yml         ← custom target model
 ```
 
@@ -52,7 +52,7 @@ Use the `metadata.target_model` field. The value may be either a file reference 
 ```yaml
 metadata:
   type: 'shapeshifter-project'
-  target_model: "@load: resources/target_models/sead_superset_model.yml"
+  target_model: "@load: resources/target_models/sead_standard_model.yml"
 ```
 
 **Inline definition (for small custom models):**
@@ -422,7 +422,7 @@ You can also check conformance from a terminal, without opening the editor:
 
 ```bash
 python -m src.target_model.conformance \
-  --spec resources/target_models/sead_superset_model.yml \
+  --spec resources/target_models/sead_standard_model.yml \
   --project data/projects/my_project/shapeshifter.yml
 ```
 
@@ -445,7 +445,7 @@ The SEAD Change Request Ingester uses some target-model fields to decide how to 
 
 ## Reviewing the SEAD Superset Model
 
-Use this checklist to review `resources/target_models/sead_superset_model.yml` beyond the Change Request Ingester MVP. Focus on these questions and record unrelated concerns separately.
+Use this checklist to review `resources/target_models/sead_standard_model.yml` beyond the Change Request Ingester MVP. Focus on these questions and record unrelated concerns separately.
 
 1. **Entity roles:** Check whether each `role` (`fact`, `lookup`, `classifier`, or `bridge`) fits what the entity represents and how it relates to other entities. Recommend a role and explain why. If identity settings are omitted, the role can affect the ingester's defaults; explicit settings take precedence.
 2. **Tables not used by the MVP:** Check whether each table exists in the target database and whether current projects or import workflows use it. A table's absence from the MVP does not mean it is obsolete. Recommend keeping it optional, requiring it in conforming projects, or postponing/removing it, and explain why. `required: true` means every conforming project must include the entity; it does not describe whether a database column allows empty values.
@@ -459,18 +459,18 @@ The template generator creates a starter project YAML file with the entities and
 
 ```bash
 python -m src.target_model.template_generator \
-  --spec resources/target_models/sead_superset_model.yml \
+  --spec resources/target_models/sead_standard_model.yml \
   --output my_project_scaffold.yml
 
 # Filter to a specific domain
 python -m src.target_model.template_generator \
-  --spec resources/target_models/sead_superset_model.yml \
+  --spec resources/target_models/sead_standard_model.yml \
   --domain core \
   --output core_entities.yml
 
 # Include only specific entities
 python -m src.target_model.template_generator \
-  --spec resources/target_models/sead_superset_model.yml \
+  --spec resources/target_models/sead_standard_model.yml \
   --entities location,site,sample \
   --output minimal.yml
 ```
@@ -529,9 +529,9 @@ naming:
 
 ---
 
-## SEAD Superset Spec (`sead_superset_model.yml`)
+## SEAD Superset Spec (`sead_standard_model.yml`)
 
-The bundled SEAD superset model at `resources/target_models/sead_superset_model.yml` currently defines 102 entities. It aims to cover nearly all shared SEAD tables; each Shape Shifter project can select the subset it needs.
+The bundled SEAD superset model at `resources/target_models/sead_standard_model.yml` currently defines 102 entities. It aims to cover nearly all shared SEAD tables; each Shape Shifter project can select the subset it needs.
 
 Coverage is incomplete. In the filtered snapshot of the live database, 136 tables are in scope and 42 do not yet have a matching target-model entity. Work to decide and verify coverage is tracked in [Define And Verify The SEAD Target Model Coverage Boundary](proposals/SEAD_TARGET_MODEL_COVERAGE_BOUNDARY.md) and [#532](https://github.com/humlab-sead/sead_shape_shifter/issues/532).
 
@@ -563,16 +563,16 @@ Use `scripts/generate_target_model_docs.py` to create readable documentation fro
 
 ```bash
 # Generate all formats (default)
-python scripts/generate_target_model_docs.py resources/target_models/sead_superset_model.yml
+python scripts/generate_target_model_docs.py resources/target_models/sead_standard_model.yml
 
 # HTML only — recommended for sharing with archaeologists and data managers
-python scripts/generate_target_model_docs.py resources/target_models/sead_superset_model.yml --format html
+python scripts/generate_target_model_docs.py resources/target_models/sead_standard_model.yml --format html
 
 # Excel for gap-analysis workshops
-python scripts/generate_target_model_docs.py resources/target_models/sead_superset_model.yml --format excel
+python scripts/generate_target_model_docs.py resources/target_models/sead_standard_model.yml --format excel
 
 # Target-model reference for Authority Service docs
-python scripts/generate_target_model_docs.py resources/target_models/sead_superset_model.yml --format sims
+python scripts/generate_target_model_docs.py resources/target_models/sead_standard_model.yml --format sims
 
 # Custom output directory
 python scripts/generate_target_model_docs.py my_model.yml --format all --output-dir /tmp/model-docs

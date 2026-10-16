@@ -23,7 +23,6 @@ Resume work on the shared-data review proposal without replaying the full sessio
 
 - [Shared-data review proposal](SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT.md)
 - [Standard target model](../../../../resources/target_models/sead_standard_model.yml)
-- [Superset target model](../../../../resources/target_models/sead_superset_model.yml)
 - [Durable provider lifecycle rules](../../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md)
 - Authority Service identity policy: `sead_authority_service/config/identity_policy.yml` in the multi-root workspace.
 

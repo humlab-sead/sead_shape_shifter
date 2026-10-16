@@ -46,7 +46,7 @@ class TestValidationServiceBasic:
         """Test validating valid configuration."""
         config = {
             "metadata": {"type": "shapeshifter-project", "name": "test"},
-            "entities": {"sample": {"type": "entity", "keys": ["sample_id"], "columns": ["name", "value"]}},
+            "entities": {"sample": {"type": "entity", "keys": ["sample_id"], "columns": ["sample_id", "name", "value"]}},
         }
         result = validation_service.validate_project(config)
 
@@ -58,11 +58,11 @@ class TestValidationServiceBasic:
         config = {
             "metadata": {"type": "shapeshifter-project", "name": "test"},
             "entities": {
-                "site": {"type": "entity", "keys": ["site_id"], "columns": ["name"]},
+                "site": {"type": "entity", "keys": ["site_id"], "columns": ["site_id", "name"]},
                 "sample": {
                     "type": "entity",
                     "keys": ["sample_id"],
-                    "columns": ["name", "site_id"],
+                    "columns": ["sample_id", "name", "site_id"],
                     "foreign_keys": [
                         {
                             "entity": "site",
@@ -195,7 +195,7 @@ class TestValidationServiceEntity:
 
     def test_validate_single_entity(self, validation_service):
         """Test validating single entity."""
-        entity_data = {"type": "entity", "keys": ["sample_id"], "columns": ["name", "value"]}
+        entity_data = {"type": "entity", "keys": ["sample_id"], "columns": ["sample_id", "name", "value"]}
         project = Project(
             metadata=ProjectMetadata(type="shapeshifter-project", name="test", entity_count=1), entities={"sample": entity_data}, options={}
         )
@@ -358,17 +358,17 @@ class TestValidationServiceIntegration:
                 "natural_region": {
                     "type": "entity",
                     "keys": ["region_id"],
-                    "columns": ["name"],
+                    "columns": ["region_id", "name"],
                 },
                 "site": {
                     "type": "entity",
                     "keys": ["site_id"],
-                    "columns": ["name", "location"],
+                    "columns": ["site_id", "name", "location"],
                 },
                 "sample": {
                     "type": "entity",
                     "keys": ["sample_id"],
-                    "columns": ["name", "site_id"],
+                    "columns": ["sample_id", "name", "site_id"],
                     "foreign_keys": [
                         {
                             "entity": "site",

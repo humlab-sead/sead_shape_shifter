@@ -146,7 +146,7 @@ layout:
   site_type:
     x: -229.67512365350117
     y: -414.49356569702167
-  _pcodes:
+  pcodes_helper:
     x: 1520.3674182071527
     y: 533.1832375056537
   taxa:
@@ -173,7 +173,7 @@ layout:
   taxa_ecological_behaviour:
     x: 618.8894485913696
     y: -448.6066271602773
-  _project_contact:
+  project_contact_helper:
     x: -1539.852177840247
     y: 533.1832375056539
   relative_ages:

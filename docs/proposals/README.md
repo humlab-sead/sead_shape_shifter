@@ -17,7 +17,8 @@ This index covers proposals and initiative records that need attention or provid
 | [Release Cycle Evidence And Locking](RELEASE_CYCLE_EVIDENCE_AND_LOCKING/README.md) | Proposed process change | Define release identity, verification evidence, and comparisons between runs. |
 | [RuleSync For Unified Agent Instructions](RULESYNC_AGENT_INSTRUCTIONS_UNIFICATION.md) | Proposed change | Generate shared agent instructions from one source and detect drift. |
 | [Security Hardening Follow-up](SECURITY_HARDENING_FOLLOWUP/SECURITY_HARDENING_FOLLOWUP.md) | Proposed change request | Remediate unresolved application, authorization, deployment, and verification issues. |
-| [AI Project Advisor](SHAPESHIFTER_PROJECT_AI_ADVISOR/SHAPESHIFTER_PROJECT_AI_ADVISOR.md) | Feature proposal | Provide project-scoped advice grounded in project state and SEAD knowledge. |
+| [Scaffold Project Entities From an Associated Target Model](TARGET_MODEL_GUIDED_ENTITY_CREATION.md) | Proposed feature | Add a target-model picker that prefills missing project entity drafts without guessing source settings. |
+| [AI Project Advisor](SHAPESHIFTER_PROJECT_AI_ADVISOR/SHAPESHIFTER_PROJECT_AI_ADVISOR.md) | Feature proposal | Provide project-scoped advice grounded in project state, SEAD knowledge, and source-level investigation. |
 
 ## Current Initiatives
 

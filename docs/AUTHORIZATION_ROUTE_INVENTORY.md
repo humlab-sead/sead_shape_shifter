@@ -4,7 +4,7 @@
 
 This inventory records the authorization requirement declared by every registered API route and the direct application routes mounted outside `api_router`. It is derived from the assembled FastAPI route table, `backend/app/api/v1/api.py`, and `backend/app/main.py` on the current branch. Update this document when adding, removing, or changing a route, mount, or authorization dependency.
 
-The current API-only runtime exposes 136 HTTP route entries under `/api/v1`, including the generated OpenAPI, Swagger UI, and ReDoc routes. It also exposes the Swagger OAuth redirect helper at `/docs/oauth2-redirect` and the repository documentation mount at `/docs/*`. The `/assets/*`, frontend SPA catch-all, and API-only `/` route are conditional on the frontend build state described below.
+The current API-only runtime exposes 138 HTTP route entries under `/api/v1`, including the generated OpenAPI, Swagger UI, and ReDoc routes. It also exposes the Swagger OAuth redirect helper at `/docs/oauth2-redirect` and the repository documentation mount at `/docs/*`. The `/assets/*`, frontend SPA catch-all, and API-only `/` route are conditional on the frontend build state described below.
 
 `UNDECLARED` means the route has no `authorization_requirement` metadata. It does not mean the route is anonymously accessible: trusted-proxy middleware requires authentication for all paths except `/api/v1/health` when enabled. An undeclared route still needs classification before authorization cutover; no row currently reads `UNDECLARED`.
 
@@ -82,6 +82,7 @@ Every row above except the health check requires an authenticated principal thro
 | `GET`    | `/api/v1/projects/{name}/target-model-yaml`          | `project:read`                               |
 | `PUT`    | `/api/v1/projects/{name}/target-model-yaml`          | `project:edit`                               |
 | `GET`    | `/api/v1/projects/{name}/target-model-docs`          | `project:read`                               |
+| `GET`    | `/api/v1/projects/{name}/target-models`              | `project:read`                               |
 | `GET`    | `/api/v1/projects/{name}/layout`                     | `project:read`                               |
 | `PUT`    | `/api/v1/projects/{name}/layout`                     | `project:edit`                               |
 | `DELETE` | `/api/v1/projects/{name}/layout`                     | `project:edit`                               |
@@ -105,6 +106,7 @@ Every row above except the health check requires an authenticated principal thro
 | `GET`    | `/api/v1/projects/{project_name}/entities/{entity_name}/values`  | `project:read` |
 | `PUT`    | `/api/v1/projects/{project_name}/entities/{entity_name}/values`  | `project:edit` |
 | `GET`    | `/api/v1/projects/{project_name}/entities/{entity_name}/columns` | `project:read` |
+| `POST`   | `/api/v1/projects/{project_name}/entities/{entity_name}/column-availability` | `project:read` |
 | `POST`   | `/api/v1/projects/{project_name}/validate-directive`             | `project:read` |
 | `GET`    | `/api/v1/projects/{project_name}/valid-directives`               | `project:read` |
 | `POST`   | `/api/v1/projects/{name}/validate/data`                          | `project:read` |
@@ -259,8 +261,8 @@ Routes are not the only entry points that reach protected work. The table below 
 
 Reviewed by Roger Mähler on 2026-09-17. Every route row and every lifecycle or background entry was checked against the implemented policy in [AUTHORIZATION.md](AUTHORIZATION.md), the role and action maps in `backend/app/authorization/policy.py`, the resource types and actions in `backend/app/authorization/models.py`, and the assembled route set read by `backend/tests/authorization/test_route_authentication.py`.
 
-- The inventory holds 141 route rows and no row reads `UNDECLARED`.
-- Resource requirements use only defined resource type and action pairs: `project:read` (43 rows), `project:edit` (48), `project:execute` (1), `project:delete` (1), `shared_data_source:read` (12).
+- The inventory holds 143 route rows and no row reads `UNDECLARED`.
+- Resource requirements use only defined resource type and action pairs: `project:read` (45 rows), `project:edit` (48), `project:execute` (1), `project:delete` (1), `shared_data_source:read` (12).
 - Application requirements use only defined actions, each granted by a deployment role the policy defines: `create_project` through `project_creator`, and `manage_shared_sources` and `run_ingesters` through `operator`. No route requires `read_logs`.
 - The assembled application exposes no unclassified `/api/v1` route, and every documented non-API row is either served by the application or depends on the frontend build.
 

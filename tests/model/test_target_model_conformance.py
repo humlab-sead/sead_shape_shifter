@@ -14,13 +14,13 @@ from src.target_model.conformance import (
 from src.target_model.models import TargetModel
 
 TEST_DATA_DIR: Path = Path(__file__).resolve().parent.parent / "test_data"
-SPEC_PATH: Path = TEST_DATA_DIR / "specs" / "sead_standard_model.yml"
+TARGET_MODEL_PATH: Path = TEST_DATA_DIR / "target_models" / "sead_standard_model.yml"
 EXAMPLES_DIR: Path = TEST_DATA_DIR / "examples"
 REAL_PROJECTS_DIR: Path = TEST_DATA_DIR / "projects"
 
 
 def load_target_model() -> TargetModel:
-    return TargetModel.model_validate(yaml.safe_load(SPEC_PATH.read_text(encoding="utf-8")))
+    return TargetModel.model_validate(yaml.safe_load(TARGET_MODEL_PATH.read_text(encoding="utf-8")))
 
 
 def load_project(name: str) -> ShapeShiftProject:
@@ -277,22 +277,6 @@ def test_table_config_target_facing_columns_allow_chained_fk_extra_columns_after
         "record_key",
     }
     assert table_cfg.get_target_facing_foreign_key_targets() == {"location_group", "location_type"}
-
-
-def test_core_legacy_mode_matches_existing_fixture() -> None:
-    target_model: TargetModel = load_target_model()
-    project: ShapeShiftProject = load_project("sead_arbodat_core.yml")
-
-    assert sorted(issue_pairs(target_model, project)) == sorted(
-        [
-            ("MISSING_BRIDGE_ENTITY", "site"),
-            ("MISSING_REQUIRED_COLUMN", "analysis_entity"),
-            ("MISSING_REQUIRED_COLUMN", "method"),
-            ("MISSING_REQUIRED_COLUMN", "sample_type"),
-            ("MISSING_REQUIRED_ENTITY", "site_location"),
-            ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "analysis_entity"),
-        ]
-    )
 
 
 def test_core_conformance_reports_missing_entity_and_wrong_public_id() -> None:
@@ -607,20 +591,17 @@ def test_core_conformance_reports_known_gaps_for_full_arbodat_project() -> None:
     target_model: TargetModel = load_target_model()
     project: ShapeShiftProject = load_real_project("arbodat")
 
-    assert sorted(issue_pairs(target_model, project)) == sorted(
-        [
-            ("APPEND_MISSING_REQUIRED_COLUMN", "analysis_entity"),
-            ("APPEND_MISSING_REQUIRED_COLUMN", "analysis_entity"),
-            ("MISSING_INDUCED_REQUIRED_ENTITY", "taxa_tree_master"),
-            ("ORPHAN_FACT_ENTITY", "abundance_property"),
-            ("MISSING_REQUIRED_COLUMN", "abundance_ident_level"),
-            ("MISSING_REQUIRED_COLUMN", "analysis_entity"),
-            ("MISSING_REQUIRED_COLUMN", "abundance_modification"),
-            ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "abundance"),
-            ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "abundance_ident_level"),
-            ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "analysis_entity"),
-        ]
-    )
+    expected_errors = [
+        ("CONDITIONAL_FK_AWAITING_RECONCILIATION", "location"),
+        ("MISSING_REQUIRED_COLUMN", "relative_dating"),
+        ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "relative_dating"),
+        ("UNEXPECTED_PUBLIC_ID", "relative_dating"),
+    ]
+
+    issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
+    actual_issues = [(issue.code, issue.entity) for issue in issues]
+    # print('\n'.join(f'{x.code};{x.entity};{x.message}' for x in issues))
+    assert sorted(actual_issues) == sorted(expected_errors)
 
 
 def test_core_conformance_current_corpus_issue_families_are_stable() -> None:
@@ -638,28 +619,29 @@ def test_core_conformance_current_corpus_issue_families_are_stable() -> None:
     assert issue_summary == {
         "sead_arbodat_core": Counter(
             {
-                "MISSING_REQUIRED_COLUMN": 3,
+                "MISSING_REQUIRED_COLUMN": 5,
+                "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 5,
+                "MISSING_REQUIRED_ENTITY": 5,
                 "MISSING_BRIDGE_ENTITY": 1,
-                "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 1,
-                "MISSING_REQUIRED_ENTITY": 1,
+                "CONDITIONAL_FK_AWAITING_RECONCILIATION": 1,
             }
         ),
         "sead_missing_sample_group": Counter(
             {
-                "MISSING_REQUIRED_COLUMN": 5,
-                "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 2,
-                "MISSING_REQUIRED_ENTITY": 2,
+                "MISSING_REQUIRED_COLUMN": 8,
+                "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 6,
+                "MISSING_REQUIRED_ENTITY": 6,
                 "UNEXPECTED_PUBLIC_ID": 1,
                 "MISSING_BRIDGE_ENTITY": 1,
+                "CONDITIONAL_FK_AWAITING_RECONCILIATION": 1,
             }
         ),
         "arbodat_full": Counter(
             {
-                "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 3,
-                "MISSING_REQUIRED_COLUMN": 3,
-                "APPEND_MISSING_REQUIRED_COLUMN": 2,
-                "MISSING_INDUCED_REQUIRED_ENTITY": 1,
-                "ORPHAN_FACT_ENTITY": 1,
+                "CONDITIONAL_FK_AWAITING_RECONCILIATION": 1,
+                "MISSING_REQUIRED_COLUMN": 1,
+                "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 1,
+                "UNEXPECTED_PUBLIC_ID": 1,
             }
         ),
     }

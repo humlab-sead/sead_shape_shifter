@@ -1,6 +1,6 @@
 # Target Model Conditional Foreign Key Candidates
 
-**Model scanned:** [sead_superset_model.yml](sead_superset_model.yml)
+**Model scanned:** [sead_standard_model.yml](sead_standard_model.yml)
 **Feature:** `foreign_keys[].required_when: {has_new_rows: <source entity>}`
 **Generated:** 2026-10-14, by parsing the model with `src.target_model.models.TargetModel` and applying the rules in `src/target_model/spec_validator.py` and [Target Model Guide](../../docs/TARGET_MODEL_GUIDE.md).
 
@@ -314,7 +314,7 @@ from pathlib import Path
 from src.target_model.models import TargetModel
 
 spec = TargetModel.model_validate(
-    yaml.safe_load(Path("resources/target_models/sead_superset_model.yml").read_text())
+    yaml.safe_load(Path("resources/target_models/sead_sta_model.yml").read_text())
 )
 for name, ent in spec.entities.items():
     for fk in ent.foreign_keys:

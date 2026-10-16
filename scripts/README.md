@@ -2,6 +2,16 @@
 
 This directory contains CLI scripts for Shape Shifter workflows.
 
+## Printing a Target Model Entity
+
+`print_target_model_entity.py` prints one entity specification from a target model YAML file:
+
+```bash
+python scripts/print_target_model_entity.py \
+  --spec resources/target_models/sead_standard_model.yml \
+  --entity data_type
+```
+
 ## Release Notes Drafting
 
 The `prepare_copilot_release_notes.py` script prepares a user-facing release-notes draft for refinement with Copilot CLI.
