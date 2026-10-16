@@ -301,6 +301,27 @@ class MaterializationService:
         created_by: str | None = None,
         require_materialized: bool = True,
     ) -> MaterializedMappingSyncResult:
+        """Rebuild materialized mappings while holding the project lock."""
+        with self.project_service._get_lock(project_name):
+            return self._sync_materialized_entity_mappings_locked(
+                project_name,
+                entity_name,
+                columns=columns,
+                values=values,
+                created_by=created_by,
+                require_materialized=require_materialized,
+            )
+
+    def _sync_materialized_entity_mappings_locked(
+        self,
+        project_name: str,
+        entity_name: str,
+        *,
+        columns: list[str] | None = None,
+        values: list[list[Any]] | None = None,
+        created_by: str | None = None,
+        require_materialized: bool = True,
+    ) -> MaterializedMappingSyncResult:
         """Replace manual mapping links for an entity from the currently saved materialized rows."""
         try:
             api_project: Project = self.project_service.load_project(project_name)
@@ -326,7 +347,8 @@ class MaterializationService:
             actor = created_by or get_correlation_id()
             project_path = api_project.filename or project_name
             manager = MappingManager()
-            catalog = manager.load(project_path)
+            snapshot = manager.load_snapshot(project_path)
+            catalog = snapshot.catalog
             entity_mapping = self._ensure_mapping_entity(catalog, table_cfg)
             manual_links = self._extract_manual_links_from_rows(
                 table_cfg,
@@ -336,7 +358,7 @@ class MaterializationService:
                 created_by=actor,
             )
             manual_count = manager.replace_entity_manual_links(catalog, entity_name, manual_links)
-            manager.save(catalog, project_path)
+            manager.save(catalog, project_path, expected_version=snapshot.content_version)
 
             return MaterializedMappingSyncResult(success=True, entity_name=entity_name, manual_links_replaced=manual_count)
 

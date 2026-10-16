@@ -15,11 +15,12 @@ from src.reconciliation.fixed_entity_mapping_changes import (
     LinkDelete,
     LinkUpsert,
     RowSnapshot,
+    apply_fixed_row_change_set,
     compute_fixed_row_change_set,
     default_local_key,
     ordered_key_columns,
 )
-from src.reconciliation.mapping_model import EntityMapping, EntityType, Link, LinkSource, encode_local_key
+from src.reconciliation.mapping_model import EntityMapping, EntityType, Link, LinkSource, MappingCatalog, Metadata, encode_local_key
 
 CREATED = datetime(2026, 1, 1, tzinfo=timezone.utc)
 LOCAL_KEY = ["site_code", "sample_code"]
@@ -43,9 +44,14 @@ def _link(
     )
 
 
-def _entry(links: dict[str, Link] | None = None, *, local_key=LOCAL_KEY, public_id: str = PUBLIC_ID) -> EntityMapping:
+def _entry(
+    links: dict[str, Link] | None = None,
+    *,
+    local_key: str | list[str] | None = None,
+    public_id: str = PUBLIC_ID,
+) -> EntityMapping:
     return EntityMapping(
-        local_key=local_key,
+        local_key=local_key if local_key is not None else LOCAL_KEY,
         public_id=public_id,
         entity_type=EntityType.PRIMARY,
         links=dict(links or {}),
@@ -54,6 +60,13 @@ def _entry(links: dict[str, Link] | None = None, *, local_key=LOCAL_KEY, public_
 
 def _key(site_code: str, sample_code: str) -> str:
     return encode_local_key(LOCAL_KEY, [site_code, sample_code])
+
+
+def _catalog(entry: EntityMapping | None = None) -> MappingCatalog:
+    return MappingCatalog(
+        metadata=Metadata(project="test", created_at=CREATED, updated_at=CREATED),
+        entities={"samples": entry} if entry is not None else {},
+    )
 
 
 def _snapshot(rows: list[list[object]], columns: list[str] | None = None) -> RowSnapshot:
@@ -65,13 +78,15 @@ def _compute(
     current: RowSnapshot | None,
     *,
     existing_entry: object = _UNSET,
-    keys: object = LOCAL_KEY,
+    keys: object = _UNSET,
     public_id: str | None = PUBLIC_ID,
     materialized: bool = False,
     entity_type: str | None = "fixed",
 ):
     if existing_entry is _UNSET:
         existing_entry = _entry()
+    if keys is _UNSET:
+        keys = LOCAL_KEY
     return compute_fixed_row_change_set(
         entity_name="samples",
         entity_type=entity_type,
@@ -307,9 +322,112 @@ class TestChangeClassification:
         assert [upsert.key for upsert in result.upserts] == [_key("S", "B")]
         assert [delete.key for delete in result.deletes] == [_key("S", "A")]
 
+    def test_single_local_key_is_encoded_as_a_scalar(self) -> None:
+        entry = _entry(local_key="site_code")
+        result = compute_fixed_row_change_set(
+            entity_name="samples",
+            entity_type="fixed",
+            materialized=False,
+            keys=["site_code"],
+            public_id=PUBLIC_ID,
+            existing_entry=entry,
+            previous=None,
+            current=RowSnapshot(columns=[PUBLIC_ID, "site_code"], values=[[5, "A"]]),
+        )
+
+        assert [upsert.key for upsert in result.upserts] == ["A"]
+
     def test_input_entry_links_are_not_mutated(self) -> None:
         link = _link(5)
         entry = _entry({_key("S", "A"): link})
         _compute(_snapshot([[5, "S", "A"]]), _snapshot([[6, "S", "A"]]), existing_entry=entry)
         assert entry.links == {_key("S", "A"): link}
         assert link.source == LinkSource.MANUAL
+
+
+class TestApplyFixedRowChangeSet:
+    @pytest.mark.parametrize(
+        ("previous_rows", "current_rows", "initial_links", "expected_keys", "expected_targets", "expected_changed"),
+        [
+            (None, [[5, "S", "A"]], {}, {_key("S", "A")}, {_key("S", "A"): 5}, True),
+            (
+                [[5, "S", "A"]],
+                [[6, "S", "A"]],
+                {_key("S", "A"): _link(5, source=LinkSource.RECONCILIATION)},
+                {_key("S", "A")},
+                {_key("S", "A"): 6},
+                True,
+            ),
+            ([[5, "S", "A"]], [[None, "S", "A"]], {_key("S", "A"): _link(5)}, set(), {}, True),
+            ([[5, "S", "A"]], [], {_key("S", "A"): _link(5)}, set(), {}, True),
+            (
+                [[5, "S", "A"]],
+                [[5, "S", "B"]],
+                {_key("S", "A"): _link(5)},
+                {_key("S", "B")},
+                {_key("S", "B"): 5},
+                True,
+            ),
+        ],
+        ids=["add", "edit", "clear", "remove", "key-change"],
+    )
+    def test_applies_exact_affected_key_operations(
+        self, previous_rows, current_rows, initial_links, expected_keys, expected_targets, expected_changed
+    ) -> None:
+        entry = _entry(initial_links)
+        catalog = _catalog(entry)
+        changes = _compute(
+            _snapshot(previous_rows) if previous_rows is not None else None,
+            _snapshot(current_rows),
+            existing_entry=entry,
+        )
+
+        changed = apply_fixed_row_change_set(catalog, changes, created_by="sync", committed_at=CREATED)
+
+        assert changed is expected_changed
+        assert set(catalog.entities["samples"].links) == expected_keys
+        assert {key: link.target_id for key, link in catalog.entities["samples"].links.items()} == expected_targets
+        for key, link in initial_links.items():
+            if key in expected_keys and link.source != LinkSource.MANUAL:
+                continue
+            if key in expected_keys and expected_targets[key] == link.target_id:
+                assert catalog.entities["samples"].links[key] == link
+
+    def test_creates_proposed_entry_even_when_no_link_is_added(self) -> None:
+        changes = _compute(None, _snapshot([]), materialized=True, existing_entry=None)
+        catalog = _catalog()
+
+        changed = apply_fixed_row_change_set(catalog, changes, created_by="sync", committed_at=CREATED)
+
+        assert changed is True
+        assert catalog.entities["samples"].local_key == LOCAL_KEY
+        assert catalog.entities["samples"].links == {}
+
+    def test_noop_preserves_matching_manual_link_metadata(self) -> None:
+        link = Link(
+            target_id=5,
+            source=LinkSource.MANUAL,
+            confidence=0.8,
+            created_at=CREATED,
+            committed_at=CREATED,
+            notes="keep",
+            created_by="original",
+            reviewed_by="reviewer",
+        )
+        entry = _entry({_key("S", "A"): link})
+        catalog = _catalog(entry)
+        changes = _compute(_snapshot([[None, "S", "A"]]), _snapshot([[5, "S", "A"]]), existing_entry=entry)
+
+        changed = apply_fixed_row_change_set(catalog, changes, created_by="sync", committed_at=datetime(2026, 2, 1, tzinfo=timezone.utc))
+
+        assert changed is False
+        assert catalog.entities["samples"].links[_key("S", "A")] == link
+
+    def test_ineligible_change_set_does_not_change_catalog(self) -> None:
+        catalog = _catalog()
+        changes = _compute(None, None, entity_type="entity", existing_entry=None)
+
+        changed = apply_fixed_row_change_set(catalog, changes, created_by="sync", committed_at=CREATED)
+
+        assert changed is False
+        assert catalog.entities == {}

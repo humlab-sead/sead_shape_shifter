@@ -422,16 +422,6 @@ async def update_entity_values(
 
     logger.info(f"Updated {result.row_count} rows for entity '{entity_name}' in '{project_name}'")
 
-    sync_result = get_materialization_service().sync_materialized_entity_mappings(
-        project_name=authorized_project.resource.locator,
-        entity_name=entity_name,
-        columns=list(result.columns),
-        values=result.values,
-        require_materialized=False,
-    )
-    if not sync_result.success:
-        raise HTTPException(status_code=500, detail=sync_result.errors[0] if sync_result.errors else "Mapping sync failed")
-
     return EntityValuesResponse(
         columns=result.columns,
         values=result.values,

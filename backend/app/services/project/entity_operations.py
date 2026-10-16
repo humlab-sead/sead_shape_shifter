@@ -18,6 +18,7 @@ from backend.app.middleware.correlation import get_correlation_id
 from backend.app.models.entity import Entity
 from backend.app.models.project import Project
 from backend.app.services.fixed_entity_mapping_change_service import FixedEntityMappingChangeService
+from backend.app.services.fixed_entity_mapping_sync_service import FixedEntityMappingSyncService
 from backend.app.services.project.entity_persistence_strategies import EntityPersistenceStrategyRegistry
 from backend.app.utils.entity_name import validate_new_entity_name
 from backend.app.utils.sql import extract_tables
@@ -78,6 +79,7 @@ class EntityOperations:
         save_entity_boundary_callback=None,  # Callable[[str, str, dict | None], None] | None
         save_entity_rename_callback=None,  # Callable[[str, str, str, Project], list[str]] | None
         mapping_change_service: FixedEntityMappingChangeService | None = None,
+        mapping_sync_service: FixedEntityMappingSyncService | None = None,
     ):
         """Initialize entity operations.
 
@@ -100,6 +102,7 @@ class EntityOperations:
         self._save_entity_rename = save_entity_rename_callback
         self._persistence_strategy_registry = persistence_strategy_registry or EntityPersistenceStrategyRegistry()
         self._mapping_change_service = mapping_change_service or FixedEntityMappingChangeService()
+        self._mapping_sync_service = mapping_sync_service or FixedEntityMappingSyncService(self._mapping_change_service.manager)
 
     @staticmethod
     def _find_entity_dependents(project: Project, entity_name: str) -> list[str]:
@@ -438,12 +441,17 @@ class EntityOperations:
             # Compare the previously saved fixed rows with the new rows before the
             # boundary save so invalid mapping inputs never reach persistence.
             previous_entity = project.entities.get(entity_name)
+            mapping_snapshot = None
+            project_path = project.filename
+            if entity_data.get("type") == "fixed" and isinstance(entity_data.get("values"), list) and project_path:
+                mapping_snapshot = self._mapping_sync_service.load_snapshot(project_path)
             try:
-                self._mapping_change_service.prepare_inline_change_set(
+                change_set = self._mapping_change_service.prepare_inline_change_set(
                     entity_name=entity_name,
-                    project_path=project.filename,
+                    project_path=project_path,
                     previous_entity=previous_entity,
                     current_entity=entity_data,
+                    mapping_catalog=mapping_snapshot.catalog if mapping_snapshot is not None else None,
                 )
             except FixedEntityMappingChangeError as exc:
                 raise SchemaValidationError(message=str(exc), entity=entity_name, field=exc.field) from exc
@@ -455,6 +463,15 @@ class EntityOperations:
                 self._save_entity_boundary(project_name, entity_name, entity_data)
             else:
                 self._save_project(project)
+
+            if mapping_snapshot is not None and project_path:
+                self._mapping_sync_service.apply_change_set(
+                    change_set=change_set,
+                    snapshot=mapping_snapshot,
+                    project_path=project_path,
+                    row_version=compute_entity_etag(entity_data),
+                    created_by=get_correlation_id(),
+                )
             return []
 
     def delete_entity_by_name(self, project_name: str, entity_name: str) -> None:

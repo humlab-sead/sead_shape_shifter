@@ -2,6 +2,7 @@
 
 import time
 from pathlib import Path
+from threading import Lock
 from unittest.mock import Mock
 
 import pandas as pd
@@ -48,6 +49,7 @@ class TestEntityValuesService:
     def mock_project_service(self):
         """Create mock project service."""
         service = Mock()
+        service._get_lock.return_value = Lock()
         return service
 
     @pytest.fixture
@@ -656,6 +658,42 @@ class TestEntityValuesService:
 
         assert result.row_count == 1
         assert file_path.exists()
+        sidecar = yaml.safe_load((tmp_path / f"{tmp_path.name}-mapping.yml").read_text(encoding="utf-8"))
+        assert sidecar["entities"]["location"]["links"]["Uppsala"]["target_id"] == 100
+
+    def test_update_values_creates_missing_materialized_mapping_entry(self, service, mock_project_service, tmp_path):
+        """A materialized fixed save creates a missing sidecar entry and link."""
+        project_file = tmp_path / "shapeshifter.yml"
+        project_file.write_text("metadata:\n  type: shapeshifter\n", encoding="utf-8")
+        mock_project = Mock()
+        mock_project.folder = tmp_path
+        mock_project.filename = str(project_file)
+        mock_project_service.load_project.return_value = mock_project
+        entity = dict(self._FIXED_ENTITY)
+        entity["materialized"] = {"enabled": True}
+        mock_project_service.get_entity_by_name.return_value = entity
+
+        result = service.update_values("test_project", "location", self._FIXED_COLUMNS, [[1, 100, "Uppsala", "Sweden"]], "parquet")
+
+        sidecar = yaml.safe_load((tmp_path / f"{tmp_path.name}-mapping.yml").read_text(encoding="utf-8"))
+        assert result.row_count == 1
+        assert sidecar["entities"]["location"]["local_key"] == "name"
+        assert sidecar["entities"]["location"]["links"]["Uppsala"]["target_id"] == 100
+
+    def test_update_values_does_not_create_entry_for_nonmaterialized_fixed_entity(self, service, mock_project_service, tmp_path):
+        """A non-materialized fixed save without an entry writes only the values file."""
+        project_file = tmp_path / "shapeshifter.yml"
+        project_file.write_text("metadata:\n  type: shapeshifter\n", encoding="utf-8")
+        mock_project = Mock()
+        mock_project.folder = tmp_path
+        mock_project.filename = str(project_file)
+        mock_project_service.load_project.return_value = mock_project
+        mock_project_service.get_entity_by_name.return_value = dict(self._FIXED_ENTITY)
+
+        result = service.update_values("test_project", "location", self._FIXED_COLUMNS, [[1, 100, "Uppsala", "Sweden"]], "parquet")
+
+        assert result.row_count == 1
+        assert not (tmp_path / f"{tmp_path.name}-mapping.yml").exists()
 
     def test_update_values_rejects_duplicate_key_without_writing(self, service, mock_project_service, tmp_path):
         """Two rows with the same encoded key are rejected before any file is written."""
