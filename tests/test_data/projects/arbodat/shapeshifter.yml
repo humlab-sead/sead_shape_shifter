@@ -431,7 +431,8 @@ entities:
     - [1, 'PENDING']
   dataset:
     type: sql
-    query: select distinct [Projekt], [Fraktion] from [Details];
+    query: select distinct [Projekt], [Fraktion] from [Details] where [Projekt] in ('19_0013','19_0014', '22_0005', '18_0025', '22_0015');
+    data_source: arbodat_data
     public_id: dataset_id
     keys: [Projekt, Fraktion]
     columns: [Projekt, Fraktion]
