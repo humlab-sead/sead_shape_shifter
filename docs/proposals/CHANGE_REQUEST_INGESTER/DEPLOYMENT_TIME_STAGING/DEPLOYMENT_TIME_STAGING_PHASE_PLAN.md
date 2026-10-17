@@ -14,12 +14,12 @@ This plan covers model-driven aggregate-child eligibility, reference-only ID map
 
 ## Current Position
 
-- The [target-model review](../../../../resources/target_models/TARGET_MODEL_REVIEW_20261013.md) is in progress; aggregate ownership and the eligible-entity inventory are not final. The current model makes `analysis_entity` a child of `dataset`, without SIMS tracked identity.
+- The [target-model review](../../../../resources/target_models/TARGET_MODEL_REVIEW_20261013.md) is in progress. Phase 1 recorded the derived aggregate-child inventory, root-row rules, and deployed generator results; role and requiredness decisions for unrelated entities remain open. The model makes `analysis_entity` a child of `dataset`, without SIMS tracked identity.
 - The ingester currently reserves database-sequence IDs during preparation. Package assembly drops reference-only rows after projection. Inline-INSERT emits static inserts, while copy-CSV loads directly into target tables. Neither strategy carries reference-only ID mappings or maps deployment-generated IDs back to local references.
 - Generation-time collision checks inspect projected target IDs and derived-bridge unique sets against target rows. They do not check duplicates within the submitted bundle and currently reject unresolved child IDs. Staging must retain checks for known values and check complete `unique_sets` after FK resolution, including child facts and derived bridges.
 - The proposal specifies normal transactional, registry-aware Sqitch deployment; this staging behavior is not implemented yet.
 - The current Change Control tag-deploy path checks Sqitch's result before post-deploy hooks. Phase 3 must validate failure propagation through each supported release path before staging is promoted.
-- The existing [Phase 1 task plan](./DEPLOYMENT_TIME_STAGING_PHASE_1_TASK_PLAN.md) predates the revised root-scope and generator rules; align it with this plan before execution.
+- The existing [Phase 1 task plan](./DEPLOYMENT_TIME_STAGING_PHASE_1_TASK_PLAN.md) records Phase 1 as complete, with `V-1`–`V-7` passed and `VM-1` satisfied.
 
 ## Phase Plan
 
@@ -59,7 +59,7 @@ Define which model-derived children can safely receive deployment-time IDs and h
 
 **Readiness**
 
-Ready for an updated Phase 1 task plan. The tracked fact root and child-of-reconciled-parent rules are settled. Phase 1 must finish the relevant aggregate-parent review and obtain a representative deployed schema to complete its inventory and generator checks; unrelated target-model role decisions do not block task planning.
+Complete. The [Phase 1 task plan](./DEPLOYMENT_TIME_STAGING_PHASE_1_TASK_PLAN.md) records every area and `V-1`–`V-7` as passed, so `VM-1` is satisfied. The inventory and target-ID contract are recorded in the [target-model review](../../../../resources/target_models/TARGET_MODEL_REVIEW_20261013.md): section 11 holds the derived chains and root-row rules, and section 13 holds the deployed generator, cache, locking, and clone results. Two results carry into Phase 2 without blocking it: staging has the model's `target_table` names in both `public` and `clearing_house`, and `value_type_item` has no usable ID generator.
 
 ### Phase 2: Resolve IDs And FKs Through Inline Staging
 
@@ -98,7 +98,7 @@ Prove deployment-time ID allocation, reference-only mappings, FK resolution, and
 
 **Readiness**
 
-Requires Phase 1's reviewed eligibility and target-ID contract; no additional design decision is identified.
+Ready for a task plan. Phase 1 delivered the reviewed eligibility, root-row rules, generator dispositions, and lock contract, and no additional design decision is identified. Phase 2 must resolve each target table to one schema-qualified relation and treat `value_type_item` as unsupported before writing target rows.
 
 ### Phase 3: Reach Bundle Parity And Validate Sqitch Deployment
 

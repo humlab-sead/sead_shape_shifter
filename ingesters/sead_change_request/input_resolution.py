@@ -19,7 +19,7 @@ from ingesters.sead_change_request.contracts import (
     normalize_submission_identifier,
 )
 from ingesters.sead_change_request.preparation import ResolvedInputs
-from ingesters.sead_change_request.sql_builder import resolve_deploy_artifact_strategy
+from ingesters.sead_change_request.sql_builder import STAGING_TARGET_SCHEMA_KEY, resolve_deploy_artifact_strategy
 from src.target_model.models import TargetModel
 from src.utility import sanitize_columns
 
@@ -85,7 +85,8 @@ def resolve_inputs(config: IngesterConfig, source: object) -> ResolvedInputs:
         fallback_assignments: dict[str, dict[object, IdentityAssignment]] = _resolve_identity_assignments(config)
         mutable_fields_by_entity: dict[str, list[str]] = _resolve_mutable_fields_by_entity(config)
         existing_row_update_entities: set[str] | None = _resolve_existing_row_update_entities(config)
-        deploy_strategy: Any | None = _resolve_deploy_strategy(config)
+        staging_target_schema: str | None = _resolve_staging_target_schema(config)
+        deploy_strategy: Any | None = _resolve_deploy_strategy(config, staging_target_schema)
     except InputResolutionError as exc:
         raise exc.with_warnings(bundle.warnings) from exc
 
@@ -97,6 +98,7 @@ def resolve_inputs(config: IngesterConfig, source: object) -> ResolvedInputs:
         mutable_fields_by_entity=mutable_fields_by_entity,
         existing_row_update_entities=existing_row_update_entities,
         deploy_strategy=deploy_strategy,
+        staging_target_schema=staging_target_schema,
     )
 
 
@@ -359,11 +361,22 @@ def _resolve_identity_assignment(entity_name: str, row_index: object, assignment
     return IdentityAssignment(state=normalized_state, target_id=target_id, note=note)
 
 
-def _resolve_deploy_strategy(config: IngesterConfig) -> Any | None:
+def _resolve_staging_target_schema(config: IngesterConfig) -> str | None:
+    """Resolve the optional explicit schema used by the inline staging strategy."""
+    extras: dict[str, Any] = config.extra or {}
+    raw_schema = extras.get(STAGING_TARGET_SCHEMA_KEY)
+    if raw_schema is None:
+        return None
+    if not isinstance(raw_schema, str):
+        raise DeployStrategyError(f"'{STAGING_TARGET_SCHEMA_KEY}' must be a string when provided")
+    return raw_schema
+
+
+def _resolve_deploy_strategy(config: IngesterConfig, staging_target_schema: str | None = None) -> Any | None:
     """Resolve the optional deploy-rendering strategy from the ingester input."""
     extras: dict[str, Any] = config.extra or {}
     try:
-        return resolve_deploy_artifact_strategy(extras.get("deploy_strategy"))
+        return resolve_deploy_artifact_strategy(extras.get("deploy_strategy"), staging_target_schema=staging_target_schema)
     except ValueError as exc:
         raise DeployStrategyError(str(exc)) from exc
 

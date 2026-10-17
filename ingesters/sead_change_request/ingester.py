@@ -21,7 +21,7 @@ from ingesters.sead_change_request.input_resolution import (
     TargetModelError,
     resolve_inputs,
 )
-from ingesters.sead_change_request.package_builder import build_change_request_package
+from ingesters.sead_change_request.package_builder import build_change_request_package, build_staging_package
 from ingesters.sead_change_request.planning import plan_bundle
 from ingesters.sead_change_request.preparation import PreparationResult, ResolvedInputs, prepare_change_request
 from ingesters.sead_change_request.result_builders import (
@@ -67,6 +67,7 @@ class SeadChangeRequestIngester:
             inputs.target_model.entities,
             mutable_fields_by_entity=inputs.mutable_fields_by_entity,
             existing_row_update_entities=inputs.existing_row_update_entities,
+            staging=inputs.is_staging,
         )
 
         return await prepare_change_request(
@@ -117,6 +118,22 @@ class SeadChangeRequestIngester:
         return build_validation_result(preparation)
 
     @staticmethod
+    def _build_change_package(preparation: PreparationResult) -> ChangeRequestPackage:
+        """Build the staging or direct package for the selected strategy."""
+        if preparation.inputs.is_staging:
+            return build_staging_package(
+                preparation.resolution_result,
+                preparation.planned.tables,
+                preparation.inputs.target_model,
+                str(preparation.inputs.staging_target_schema),
+            )
+        return build_change_request_package(
+            preparation.projection_result,
+            preparation.resolution_result,
+            preparation.planned.tables,
+        )
+
+    @staticmethod
     def _log_validation(preparation: PreparationResult) -> None:
         """Log the source bundle and target-model counts used during validation."""
         logger.info(
@@ -158,6 +175,7 @@ class SeadChangeRequestIngester:
                 preparation.resolution_result,
                 preparation.inputs.target_model,
                 collision_checker,
+                pending=preparation.pending_deployment if preparation.inputs.is_staging else None,
             )
             if collision_result.has_conflicts:
                 return IngestionResult.create_failed_result(
@@ -165,11 +183,7 @@ class SeadChangeRequestIngester:
                     details=failure_details(collision_result.diagnostics),
                 )
 
-        change_package: ChangeRequestPackage = build_change_request_package(
-            preparation.projection_result,
-            preparation.resolution_result,
-            preparation.planned.tables,
-        )
+        change_package: ChangeRequestPackage = self._build_change_package(preparation)
         package_table_count: int = len(change_package.tables)
         insert_row_count: int = sum(len(table.frame.index) for table in change_package.tables.values())
 

@@ -11,6 +11,7 @@ from ingesters.sead_change_request.contracts import (
     TargetProjectionResult,
 )
 from ingesters.sead_change_request.package_builder import INSERTABLE_ROW_STATES
+from ingesters.sead_change_request.staging_eligibility import PendingDeploymentMap
 from src.target_model.models import EntitySpec, ForeignKeySpec, TargetModel
 
 
@@ -18,12 +19,17 @@ def project_target_ids(
     identity_result: IdentityResolutionResult,
     target_model: TargetModel,
     planned_tables: list[PlannedTable] | None = None,
+    pending: PendingDeploymentMap | None = None,
 ) -> TargetProjectionResult:
     """Replace local identity values with target-facing PK/FK values.
 
     Conditional foreign keys are evaluated from the final reconciled row states, so
     ``planned_tables`` carries the planned row actions that distinguish an accepted
     existing-row update from a reference-only match.
+
+    ``pending`` marks values that are only available after deployment. Those values
+    are left unresolved without adding a diagnostic, because they are intentional
+    rather than missing. Deployment validates them after allocation.
     """
     tables: dict[str, ProjectedTable] = {}
     diagnostics: list[str] = []
@@ -36,7 +42,10 @@ def project_target_ids(
 
         if entity_spec.public_id:
             frame[entity_spec.public_id] = resolved_table.resolved_target_ids.astype("Int64")
-            unresolved_pk_count = int(frame[entity_spec.public_id].isna().sum())
+            unresolved_pk_mask = frame[entity_spec.public_id].isna()
+            if pending is not None:
+                unresolved_pk_mask = unresolved_pk_mask & ~_pending_row_mask(pending, entity_name, frame.index)
+            unresolved_pk_count = int(unresolved_pk_mask.sum())
             if unresolved_pk_count:
                 table_diagnostics.append(
                     f"Entity '{entity_name}' has {unresolved_pk_count} row(s) without a resolved target ID for '{entity_spec.public_id}'"
@@ -77,6 +86,7 @@ def project_target_ids(
                         target_model,
                         identity_result,
                         planned_table_lookup.get(entity_name),
+                        pending,
                     )
                 )
                 continue
@@ -119,7 +129,8 @@ def project_target_ids(
 
             remote_mapping = _build_remote_id_mapping(remote_table.frame["system_id"], remote_table.resolved_target_ids)
             projected_fk = frame[fk_column].map(remote_mapping).astype("Int64")
-            unresolved_fk_count = int(frame[fk_column].notna().sum() - projected_fk.notna().sum())
+            deferred_mask = _pending_foreign_key_mask(pending, entity_name, fk_column, frame.index)
+            unresolved_fk_count = int((frame[fk_column].notna() & projected_fk.isna() & ~deferred_mask).sum())
             frame[fk_column] = projected_fk
             if unresolved_fk_count:
                 table_diagnostics.append(f"Entity '{entity_name}' has {unresolved_fk_count} unresolved FK value(s) for '{fk_column}'")
@@ -138,6 +149,7 @@ def _project_conditional_foreign_key(
     target_model: TargetModel,
     identity_result: IdentityResolutionResult,
     planned_table: PlannedTable | None,
+    pending: PendingDeploymentMap | None = None,
 ) -> list[str]:
     """Project one conditional foreign key and report only the rows that need a value.
 
@@ -195,7 +207,10 @@ def _project_conditional_foreign_key(
 
     remote_mapping = _build_remote_id_mapping(remote_table.frame["system_id"], remote_table.resolved_target_ids)
     projected_fk: pd.Series = frame[fk_column].map(remote_mapping).astype("Int64")
-    unresolved_conditional_fk_count = int(values_needing_projection.notna().sum() - projected_fk.loc[packaged_mask].notna().sum())
+    deferred_mask: pd.Series = _pending_foreign_key_mask(pending, entity_name, fk_column, frame.index)
+    unresolved_conditional_fk_count = int(
+        (values_needing_projection.notna() & projected_fk.loc[packaged_mask].isna() & ~deferred_mask.loc[packaged_mask]).sum()
+    )
     frame[fk_column] = projected_fk
     if unresolved_conditional_fk_count:
         diagnostics.append(
@@ -223,3 +238,33 @@ def _build_remote_id_mapping(system_ids: pd.Series, resolved_target_ids: pd.Seri
             continue
         mapping[system_id] = int(target_id)
     return mapping
+
+
+def _pending_row_mask(pending: PendingDeploymentMap | None, entity_name: str, index: pd.Index) -> pd.Series:
+    """Return a mask of rows whose target ID is not available during generation."""
+    empty = pd.Series(False, index=index)
+    if pending is None:
+        return empty
+
+    mask = empty.copy()
+    for source in (pending.pending_row_mask.get(entity_name), pending.deferred_public_id_mask.get(entity_name)):
+        if source is None:
+            continue
+        mask = mask | source.reindex(index).fillna(False).astype(bool)
+    return mask
+
+
+def _pending_foreign_key_mask(
+    pending: PendingDeploymentMap | None,
+    entity_name: str,
+    column_name: str,
+    index: pd.Index,
+) -> pd.Series:
+    """Return a mask of rows whose foreign key value is pending deployment."""
+    empty = pd.Series(False, index=index)
+    if pending is None:
+        return empty
+    mask = pending.pending_fk_mask.get(entity_name, {}).get(column_name)
+    if mask is None:
+        return empty
+    return mask.reindex(index).fillna(False).astype(bool)
