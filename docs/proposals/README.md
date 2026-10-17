@@ -14,7 +14,7 @@ This index covers proposals and initiative records that need attention or provid
 | [Secure Ingester Filesystem And Destination Access](INGESTER_FILESYSTEM_BOUNDARIES/INGESTER_FILESYSTEM_BOUNDARIES.md) | Proposed change | Restrict ingester file access and database destinations to approved resources. |
 | [Project Folder Navigation With Breadcrumbs](FOLDER_NAVIGATION_WITH_BREADCRUMBS.md) | Proposed feature | Browse projects by their existing folder structure client-side, with breadcrumbs and URL-persisted folder state. |
 | [Security Hardening Follow-up](SECURITY_HARDENING_FOLLOWUP/SECURITY_HARDENING_FOLLOWUP.md) | Proposed change request | Remediate unresolved application, authorization, deployment, and verification issues. |
-| [Scaffold Project Entities From an Associated Target Model](TARGET_MODEL_GUIDED_ENTITY_CREATION.md) | Proposed feature | Add a target-model picker that prefills missing project entity drafts without guessing source settings. |
+| [Scaffold Project Entities From an Associated Target Model](TARGET_MODEL_GUIDED_ENTITY_CREATION/TARGET_MODEL_GUIDED_ENTITY_CREATION.md) | Proposed feature | Add a target-model picker that prefills missing project entity drafts without guessing source settings. |
 | [AI Project Advisor](SHAPESHIFTER_PROJECT_AI_ADVISOR/SHAPESHIFTER_PROJECT_AI_ADVISOR.md) | Feature proposal | Provide project-scoped advice grounded in project state, SEAD knowledge, and source-level investigation. |
 
 ## Current Initiatives
