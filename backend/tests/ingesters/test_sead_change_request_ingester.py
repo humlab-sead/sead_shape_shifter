@@ -2132,7 +2132,7 @@ class TestSeadChangeRequestIngesterStaging:
         result = await ingester.ingest("submission.xlsx")
 
         assert result.success is True, result.error_details
-        assert allocator.requests == []
+        assert not allocator.requests
         deploy_sql = result.deploy_artifact["deploy_sql"]
         assert result.deploy_artifact["metadata"]["deploy_strategy"] == "inline_staging"
         assert '"public"."tbl_analysis_entities"' in deploy_sql

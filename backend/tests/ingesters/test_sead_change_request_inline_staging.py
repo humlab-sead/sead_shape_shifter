@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import os
 from datetime import datetime
-from typing import Any
+from typing import Any, Generator
 from uuid import uuid4
 
 import pandas as pd
@@ -37,7 +37,7 @@ class _SimsClient:
         self.default_target_id = default_target_id
         self.requests: list[str] = []
 
-    async def resolve_batch(self, items, submission_context) -> dict[str, Any]:
+    async def resolve_batch(self, items, submission_context) -> dict[str, Any]:  # pylint: disable=unused-argument
         outcomes = []
         for item in items:
             self.requests.append(item.entity_name)
@@ -76,7 +76,7 @@ class _TargetIdAllocator:
 
 
 def _connection_parameters() -> dict[str, Any]:
-    """Return dispatposable connection parameters or skip the test."""
+    """Return disposable connection parameters or skip the test."""
     host = os.getenv("SEAD_DISPOSABLE_POSTGRES_HOST")
     port = os.getenv("SEAD_DISPOSABLE_POSTGRES_PORT")
     dbname = os.getenv("SEAD_DISPOSABLE_POSTGRES_DB")
@@ -94,7 +94,7 @@ def _connection_parameters() -> dict[str, Any]:
 
 
 @pytest.fixture(name="disposable_schema")
-def _disposable_schema() -> str:
+def _disposable_schema() -> Generator[str, None, None]:
     """Create an isolated schema with staging target tables and drop it afterwards."""
     parameters = _connection_parameters()
     schema_name = f"shifter_staging_{uuid4().hex[:12]}"
