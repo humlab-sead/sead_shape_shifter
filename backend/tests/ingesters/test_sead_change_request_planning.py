@@ -554,4 +554,4 @@ class TestStagingPlanning:
         frame = pd.DataFrame({"system_id": [10], "sample_id": [None], "sample_name": ["A"]})
         planned = plan_table("sample", frame, EntitySpec(role="fact", public_id="sample_id"), staging=True)
 
-        assert staging_scope_errors([planned]) == []
+        assert not staging_scope_errors([planned])
