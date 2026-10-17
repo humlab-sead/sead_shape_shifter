@@ -93,8 +93,8 @@ def _connection_parameters() -> dict[str, Any]:
     return parameters
 
 
-@pytest.fixture()
-def disposable_schema() -> str:
+@pytest.fixture(name="disposable_schema")
+def _disposable_schema() -> str:
     """Create an isolated schema with staging target tables and drop it afterwards."""
     parameters = _connection_parameters()
     schema_name = f"shifter_staging_{uuid4().hex[:12]}"
