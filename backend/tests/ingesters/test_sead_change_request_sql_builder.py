@@ -23,8 +23,9 @@ from ingesters.sead_change_request import (
     resolve_deploy_artifact_strategy,
 )
 from ingesters.sead_change_request.contracts import resolve_bundle_name
+from ingesters.sead_change_request.inline_staging_sql import _remote_entity_for_column
 from ingesters.sead_change_request.sql_builder import InlineStagingDeployStrategy
-from src.target_model.models import TargetModel
+from src.target_model.models import EntitySpec, TargetModel
 
 # pylint: disable=unused-argument, line-too-long
 
@@ -938,6 +939,16 @@ class TestInlineStagingArtifact:
 
 class TestInlineStagingRejections:
     """Explicit failures before any target write."""
+
+    def test_ambiguous_foreign_key_column_is_rejected(self):
+        model = minimal_target_model(
+            dataset={"public_id": "dataset_id"},
+            other_dataset={"public_id": "dataset_id"},
+        )
+        spec = EntitySpec.model_validate({"foreign_keys": [{"entity": "other_dataset"}, {"entity": "dataset"}]})
+
+        with pytest.raises(ValueError, match="dataset_id.*dataset, other_dataset"):
+            _remote_entity_for_column(spec, model, "dataset_id")
 
     def test_selected_insert_cycle_is_rejected(self):
         model = _staging_model(
