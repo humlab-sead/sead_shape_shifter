@@ -13,12 +13,13 @@ from __future__ import annotations
 
 import os
 from datetime import datetime
-from typing import Any, Generator
+from typing import Any, Generator, LiteralString, cast
 from uuid import uuid4
 
 import pandas as pd
 import psycopg
 import pytest
+from psycopg.rows import TupleRow
 
 from backend.app.ingesters.protocol import IngesterConfig
 from ingesters.sead_change_request.ingester import SeadChangeRequestIngester
@@ -27,6 +28,9 @@ pytestmark = pytest.mark.integration
 
 LOOPBACK_HOSTS = {"localhost", "127.0.0.1", "::1"}
 SECOND_SCHEMA = "shifter_secondary"
+
+
+# pylint: disable=unused-argument
 
 
 class _SimsClient:
@@ -122,16 +126,16 @@ def _disposable_schema() -> Generator[str, None, None]:
     with psycopg.connect(**parameters, autocommit=True) as connection:
         with connection.cursor() as cursor:
             for statement in cleanup:
-                cursor.execute(statement)
+                cursor.execute(cast(LiteralString, statement))
             for statement in ddl:
-                cursor.execute(statement)
+                cursor.execute(cast(LiteralString, statement))
     try:
         yield schema_name
     finally:
         with psycopg.connect(**parameters, autocommit=True) as connection:
             with connection.cursor() as cursor:
                 for statement in cleanup:
-                    cursor.execute(statement)
+                    cursor.execute(cast(LiteralString, statement))
 
 
 def _target_model() -> dict[str, Any]:
@@ -270,9 +274,9 @@ def _run_statements(parameters: dict[str, Any], statements: list[str], *, lock_t
         with connection.transaction():
             with connection.cursor() as cursor:
                 if lock_timeout_ms is not None:
-                    cursor.execute(f"SET LOCAL lock_timeout = '{lock_timeout_ms}ms'")
+                    cursor.execute(cast(LiteralString, f"SET LOCAL lock_timeout = '{lock_timeout_ms}ms'"))
                 for statement in statements:
-                    cursor.execute(statement)
+                    cursor.execute(cast(LiteralString, statement))
 
 
 async def _deploy(tables: dict[str, pd.DataFrame], schema: str, output_folder: Any, **kwargs: Any) -> list[str]:
@@ -287,7 +291,7 @@ def _scalar(parameters: dict[str, Any], query: str) -> Any:
     """Return the first column of the first row."""
     with psycopg.connect(**parameters) as connection:
         with connection.cursor() as cursor:
-            cursor.execute(query)
+            cursor.execute(cast(LiteralString, query))
             row = cursor.fetchone()
     return None if row is None else row[0]
 
@@ -309,7 +313,7 @@ class TestInlineStagingDeployment:
 
         _run_statements(parameters, statements)
 
-        assert allocator.requests == []
+        assert not allocator.requests
         dataset_ids = {row[0] for row in _rows(parameters, f'SELECT dataset_id FROM "{disposable_schema}".tbl_datasets')}
         analysis_rows = _rows(parameters, f'SELECT analysis_entity_id, dataset_id FROM "{disposable_schema}".tbl_analysis_entities')
         abundance_rows = _rows(
@@ -322,15 +326,23 @@ class TestInlineStagingDeployment:
         assert analysis_rows[0][1] == 900
         assert [row[2] for row in abundance_rows] == [21, 22]
         assert {row[1] for row in abundance_rows} == {analysis_rows[0][0]}
-        assert bridge_rows == []
+        assert not bridge_rows
 
     @pytest.mark.asyncio
     async def test_reference_only_reconciled_root_supplies_a_known_id(self, disposable_schema: str, tmp_path):
         parameters = _connection_parameters()
         with psycopg.connect(**parameters, autocommit=True) as connection:
             with connection.cursor() as cursor:
-                cursor.execute(f"INSERT INTO \"{disposable_schema}\".tbl_sites (site_name) VALUES ('Existing site') RETURNING site_id")
-                existing_site_id = cursor.fetchone()[0]
+                cursor.execute(
+                    cast(
+                        LiteralString,
+                        f"INSERT INTO \"{disposable_schema}\".tbl_sites (site_name) VALUES ('Existing site') RETURNING site_id",
+                    )
+                )
+
+                row: TupleRow | None = cursor.fetchone()
+                assert row is not None
+                existing_site_id = row[0]
 
         tables = _source_tables()
         tables["site"] = pd.DataFrame({"system_id": [1], "site_id": [existing_site_id]})
@@ -380,7 +392,12 @@ class TestInlineStagingDeployment:
 
         with psycopg.connect(**parameters, autocommit=True) as connection:
             with connection.cursor() as cursor:
-                cursor.execute(f"SELECT setval(pg_get_serial_sequence('\"{disposable_schema}\".tbl_abundances', 'abundance_id'), 1, true)")
+                cursor.execute(
+                    cast(
+                        LiteralString,
+                        f"SELECT setval(pg_get_serial_sequence('\"{disposable_schema}\".tbl_abundances', 'abundance_id'), 1, true)",
+                    )
+                )
 
         second = await _deploy(
             _source_tables(abundance_taxa=(61,), dataset_name="STALE2"),
@@ -402,14 +419,16 @@ class TestInlineStagingDeployment:
             with holder.transaction():
                 with holder.cursor() as holder_cursor:
                     for statement in statements:
-                        holder_cursor.execute(statement)
+                        holder_cursor.execute(cast(LiteralString, statement))
 
                     with psycopg.connect(**parameters) as other:
                         with pytest.raises(psycopg.errors.LockNotAvailable):
                             with other.transaction():
                                 with other.cursor() as other_cursor:
-                                    other_cursor.execute("SET LOCAL lock_timeout = '500ms'")
-                                    other_cursor.execute(f'LOCK TABLE "{disposable_schema}".tbl_abundances IN ROW EXCLUSIVE MODE')
+                                    other_cursor.execute(cast(LiteralString, "SET LOCAL lock_timeout = '500ms'"))
+                                    other_cursor.execute(
+                                        cast(LiteralString, f'LOCK TABLE "{disposable_schema}".tbl_abundances IN ROW EXCLUSIVE MODE')
+                                    )
 
     @pytest.mark.asyncio
     async def test_sims_assigned_sequence_is_advanced_after_insert(self, disposable_schema: str, tmp_path):
@@ -533,7 +552,7 @@ def _rows(parameters: dict[str, Any], query: str) -> list[tuple]:
     """Return all rows for a query."""
     with psycopg.connect(**parameters) as connection:
         with connection.cursor() as cursor:
-            cursor.execute(query)
+            cursor.execute(cast(LiteralString, query))
             return list(cursor.fetchall())
 
 
