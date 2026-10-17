@@ -165,8 +165,7 @@ class InlineStagingDeployStrategy:
         """Render the transactional staging artifact for one explicit schema."""
         if change_package.target_schema not in (None, self.target_schema):
             raise ValueError(
-                f"Staging package targets schema '{change_package.target_schema}' but the deployment schema is "
-                f"'{self.target_schema}'"
+                f"Staging package targets schema '{change_package.target_schema}' but the deployment schema is " f"'{self.target_schema}'"
             )
 
         statements = render_inline_staging_deploy(change_package, target_model, self.target_schema)
@@ -246,9 +245,7 @@ def _validate_staging_target_schema(staging_target_schema: str | None) -> str | 
         raise ValueError("'staging_target_schema' must be a non-empty string when provided")
     normalized = staging_target_schema.strip()
     if not SAFE_SCHEMA_NAME_PATTERN.fullmatch(normalized):
-        raise ValueError(
-            f"Unsafe 'staging_target_schema' value '{normalized}'; expected only letters, digits, and underscores"
-        )
+        raise ValueError(f"Unsafe 'staging_target_schema' value '{normalized}'; expected only letters, digits, and underscores")
     return normalized
 
 
@@ -544,22 +541,15 @@ def _add_sequence_synchronization(
             continue
         if not entity_spec.target_table or not entity_spec.public_id:
             raise ValueError(
-                f"Entity '{entity_name}' synchronizes a database sequence after insert "
-                "but is missing target_table or public_id metadata"
+                f"Entity '{entity_name}' synchronizes a database sequence after insert " "but is missing target_table or public_id metadata"
             )
         sequence_targets.add((entity_spec.target_table, entity_spec.public_id))
 
     if not sequence_targets:
         return data_statements
 
-    locks = [
-        f"LOCK TABLE {_quote_relation(table_name)} IN SHARE ROW EXCLUSIVE MODE;"
-        for table_name, _ in sorted(sequence_targets)
-    ]
-    synchronization = [
-        _render_sequence_synchronization(table_name, public_id)
-        for table_name, public_id in sorted(sequence_targets)
-    ]
+    locks = [f"LOCK TABLE {_quote_relation(table_name)} IN SHARE ROW EXCLUSIVE MODE;" for table_name, _ in sorted(sequence_targets)]
+    synchronization = [_render_sequence_synchronization(table_name, public_id) for table_name, public_id in sorted(sequence_targets)]
     return [*locks, *data_statements, *synchronization]
 
 

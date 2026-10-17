@@ -237,6 +237,7 @@ class TestResolveStagedChildren:
         assert result.assignments == {}
         assert result.diagnostics == []
 
+
 class TestResolvePlannedTables:
     """Tests for resolving planned rows into MVP Delivery states."""
 

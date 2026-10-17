@@ -488,6 +488,7 @@ class TestSimsDocumentGeneratorGenerate:
         decoded = SimsDocumentGenerator().generate(model).decode("utf-8")
         assert "my_unique_entity" in decoded
 
+
 # ---------------------------------------------------------------------------
 # TargetModelDocumentGenerator
 # ---------------------------------------------------------------------------

@@ -711,8 +711,6 @@ class TestStrategyParity:
         assert inline_ids == csv_ids == [501, 502]
 
 
-
-
 def _staging_submission_context() -> SubmissionContext:
     return SubmissionContext(
         submission_name="test-submission",
@@ -892,9 +890,7 @@ class TestInlineStagingArtifact:
 
         assert 'INSERT INTO "_shape_shifter_stage_abundance" ("taxon_id", "_local_system_id", "_local_analysis_entity_id")' in deploy_sql
         assert 'INSERT INTO "_shape_shifter_stage_analysis_entity" ("_local_system_id", "_local_dataset_id")' in deploy_sql
-        assert (
-            'UPDATE "_shape_shifter_stage_abundance" AS staged SET "analysis_entity_id" = mapped.target_id' in deploy_sql
-        )
+        assert 'UPDATE "_shape_shifter_stage_abundance" AS staged SET "analysis_entity_id" = mapped.target_id' in deploy_sql
 
     def test_unique_set_checks_compare_staged_and_target_rows(self):
         deploy_sql = build_deploy_artifact(

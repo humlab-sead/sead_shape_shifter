@@ -320,9 +320,7 @@ def test_sead_superset_model_records_settled_aggregate_ownership() -> None:
 
     child_entities = {entity_name for entity_name, spec in target_model.entities.items() if spec.aggregate_parent}
     insert_set = set(child_entities)
-    insert_set.update(
-        parent_name for entity_name in child_entities if (parent_name := target_model.entities[entity_name].aggregate_parent)
-    )
+    insert_set.update(parent_name for entity_name in child_entities if (parent_name := target_model.entities[entity_name].aggregate_parent))
     plan = build_insert_plan(target_model, insert_set)
 
     assert plan.is_acyclic
