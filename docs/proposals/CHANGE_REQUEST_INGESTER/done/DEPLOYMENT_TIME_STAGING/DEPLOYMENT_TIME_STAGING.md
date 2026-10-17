@@ -2,9 +2,11 @@
 
 ## Status
 
-- Proposed follow-up change request for the Change Request Ingester MVP workstream
-- Scope: model-driven deployment-time ID resolution for non-SIMS aggregate children, including children of resolved reconciled parents
-- Goal: let SEAD generate child primary keys when the release SQL runs while preserving local parent-child references from the submitted bundle
+- **Implemented** (branch `deployment-time-staging`; merged in [PR #565](https://github.com/humlab-sead/sead_shape_shifter/pull/565)).
+- **Scope:** Model-driven deployment-time ID resolution and foreign-key mapping for supported non-SIMS aggregate children using inline staging.
+- **Goal:** Let release SQL generate child IDs while preserving local parent-child references from the submitted bundle.
+- **Validation:** The inline staging SQL-builder test module passed before the PR was merged.
+- **Remaining follow-up:** Copy-CSV staging parity and promotion through the supported Sqitch release path remain separate work.
 
 ## Summary
 
@@ -20,7 +22,7 @@ Aggregate-child IDs do not need SIMS identity management when they only identify
 
 The current bundle is rendered only after every inserted row has a resolved target ID. This works by reserving sequence IDs during bundle generation, but it requires target-database access at that point. Simply omitting a parent ID from an `INSERT` is not enough when submitted child rows refer to that parent: the generated ID must be captured and mapped back to the child's local FK.
 
-The target-model review identifies `sample_dimension` and `geochronology` as leaf examples, and `analysis_value` and `abundance` as intermediate parents whose IDs are referenced by submitted child rows. See [the aggregate-child review](../../../../resources/target_models/TARGET_MODEL_REVIEW_20261013.md) and [the SEAD target model](../../../../resources/target_models/sead_standard_model.yml).
+The target-model review identifies `sample_dimension` and `geochronology` as leaf examples, and `analysis_value` and `abundance` as intermediate parents whose IDs are referenced by submitted child rows. See [the aggregate-child review](../../../../../resources/target_models/TARGET_MODEL_REVIEW_20261013.md) and [the SEAD target model](../../../../../resources/target_models/sead_standard_model.yml).
 
 ## Scope
 
@@ -39,7 +41,7 @@ The target-model review identifies `sample_dimension` and `geochronology` as lea
 - Adding children to or replacing an existing tracked fact aggregate.
 - Applying the bundle during generation or connecting to the target database to reserve child IDs.
 - Removing the existing read-only target collision checks during generation.
-- Handling repeated imports or resubmissions of the same submission. Only one generated bundle for a submission is handed to the Release Cycle. Re-submission and existing-row updates are covered separately by [Ingester Idempotency And Re-submission](../../CHANGE_REQUEST_INGESTER_POST_MVP/INGESTER_IDEMPOTENCY_AND_RESUBMISSION/INGESTER_IDEMPOTENCY_AND_RESUBMISSION.md) and [Sead Change Request Update Handling For Existing Rows](../../CHANGE_REQUEST_INGESTER_POST_MVP/UPDATE_HANDLING_FOR_EXISTING_ROWS.md).
+- Handling repeated imports or resubmissions of the same submission. Only one generated bundle for a submission is handed to the Release Cycle. Re-submission and existing-row updates are covered separately by [Ingester Idempotency And Re-submission](../../../CHANGE_REQUEST_INGESTER_POST_MVP/INGESTER_IDEMPOTENCY_AND_RESUBMISSION/INGESTER_IDEMPOTENCY_AND_RESUBMISSION.md) and [Sead Change Request Update Handling For Existing Rows](../../../CHANGE_REQUEST_INGESTER_POST_MVP/UPDATE_HANDLING_FOR_EXISTING_ROWS.md).
 - Replacing the closed MVP Delivery baseline or reopening its unrelated identity, confirmation, and collision decisions.
 - Implementing a separate revert/rollback artifact, updates, or deletes. Transactional rollback when deployment fails is required.
 
@@ -52,7 +54,7 @@ The target-model review identifies `sample_dimension` and `geochronology` as lea
 - The generated SQL can defer constraints declared deferrable, but deferring FK checks does not provide generated ID values or populate child FKs.
 - Generation runs read-only target collision checks before rendering the bundle. For rows to insert, these check projected `public_id` values; for derived bridge rows, they check configured `unique_sets`. They do not check for duplicate unique sets among submitted rows. The current checks reject unresolved child IDs, so this proposal must limit target-ID checks to IDs known during generation. They can detect conflicts with rows already in the target, but they do not make repeated imports idempotent and do not replace target constraints at deployment.
 
-The completed MVP follow-up deliberately kept the copy-CSV strategy as direct `\copy` into target tables and left temp-table staging outside that artifact contract. This proposal introduces staging as a separate capability for generated-ID resolution; it does not change the historical baseline in place. See [the completed MVP follow-up record](../done/CHANGE_REQUEST_INGESTER_MVP/MVP_FOLLOWUP_CR.md).
+The completed MVP follow-up deliberately kept the copy-CSV strategy as direct `\copy` into target tables and left temp-table staging outside that artifact contract. This proposal introduces staging as a separate capability for generated-ID resolution; it does not change the historical baseline in place. See [the completed MVP follow-up record](../CHANGE_REQUEST_INGESTER_MVP/MVP_FOLLOWUP_CR.md).
 
 ## Proposed Design
 
