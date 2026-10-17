@@ -23,36 +23,38 @@ Optimize for a small number of tool calls. A correct move takes roughly six to t
 - A status destination keeps the source shape: a folder stays a folder, and a standalone file stays a standalone file.
 - The `subfolder` destination requires `docs/proposals/<TOPIC>.md` to exist. If only a folder exists, report that the file is already grouped and stop.
 - An explicit destination in the user's request wins. Ask one concise question only when the source cannot be identified.
+- Treat attached source and destination paths as exact paths. For a nested source and a status name without an attached target path, keep the existing parent and insert the status folder there. For example, `docs/proposals/CHANGE_REQUEST_INGESTER/X/` moves to `docs/proposals/CHANGE_REQUEST_INGESTER/done/X/`, not `docs/proposals/done/X/`.
 - If both `<TOPIC>.md` and `<TOPIC>/` exist, treat the folder as the source and say so.
 
 ## Workflow
 
-1. Resolve the source with one targeted command:
+1. Resolve the exact source and destination with one targeted command. Check `git status --short` in the same initial batch and note existing edits so they remain untouched.
 
    ```bash
-   ls -d docs/proposals/<TOPIC>.md docs/proposals/<TOPIC> 2>/dev/null
+   ls -d <SOURCE> <DESTINATION> 2>/dev/null
    ```
 
-2. Read the moving document's `## Status` block, and find inbound references in one grep:
+2. Read only the moving document's `## Status` block. In one search, find inbound references by the old path or topic name, excluding the source subtree. Also identify the nearest parent README that tracks the proposal or workstream; do not assume the root index owns nested topics.
 
    ```bash
-   rg -n "<TOPIC>" docs README.md --glob '!docs/proposals/<TOPIC>*'
+   rg -n "<OLD_PATH>|<TOPIC>" docs README.md --glob '!<SOURCE>/**'
    ```
 
-3. Move with `git mv` so history is preserved:
-   - folder: `git mv docs/proposals/<TOPIC> docs/proposals/<TARGET>/<TOPIC>`
-   - file: `git mv docs/proposals/<TOPIC>.md docs/proposals/<TARGET>/<TOPIC>.md`
-   - subfolder: `mkdir -p docs/proposals/<TOPIC> && git mv docs/proposals/<TOPIC>.md docs/proposals/<TOPIC>/`
+3. List outbound Markdown links in the source files. Use exact source and destination paths when calculating changed relative paths.
 
-4. Fix relative links in the moved documents and in the documents that reference them. See Outbound Links and Inbound References.
+   ```bash
+   rg -n '\]\(' <SOURCE FILES>
+   ```
 
-5. Update `docs/proposals/README.md`. See Index Rules.
+4. Move with `git mv` so history is preserved:
+   - folder: `git mv <SOURCE> <DESTINATION>`
+   - file: `git mv <SOURCE> <DESTINATION>`
 
-6. Rewrite the moved proposal's `## Status` block. See Status Rewrite.
+5. Run the bundled link checker immediately after the move to identify broken outbound paths. Repair all affected outbound links, inbound references, the status block, and the owning README in one edit. Use complete lines copied from the file when patching; if search output wraps or truncates a line, read only that affected paragraph instead of guessing its context. See Outbound Links, Inbound References, Index Rules, and Status Rewrite.
 
-7. Verify with one command. See Verification.
+6. If link paths changed, rerun the checker after all link edits. This is the final link check described in Verification. A status-only or index-only edit does not require another run.
 
-8. Commit the move as one commit. See Commit.
+7. Verify the old path is gone, review rename tracking and staged scope, then commit the move as one commit. See Verification and Commit.
 
 ## Outbound Links (Inside The Moved Document)
 
@@ -86,7 +88,10 @@ A link from another document into the moved topic takes one change: insert the s
 
 ## Index Rules
 
-`docs/proposals/README.md` holds four tables: Open Proposals, Current Initiatives, Future Proposals, and On Hold.
+Update the nearest README that actually indexes the source proposal or tracks its workstream. A nested proposal portfolio may own its own status table and completed-record list. Update `docs/proposals/README.md` only when it contains an entry affected by the move; do not add a duplicate root entry for a nested proposal.
+
+The root `docs/proposals/README.md` holds four tables: Open Proposals, Current Initiatives, Future Proposals, and On Hold.
+Apply the table below when the source has an entry in this root index. For nested indexes, preserve their existing table format and update only the matching proposal or workstream record.
 
 | Destination | Index change |
 |---|---|
@@ -105,20 +110,21 @@ Replace the `## Status` bullets with the shape that matches the destination:
 - `future`: `- Proposed future change` followed by Scope and Goal.
 - `onhold`: `- On hold; <one-line reason>` followed by Scope and Goal.
 
-State only validation that actually happened. Do not invent branch names, PR numbers, or validation results. Do not hunt for a linked issue with git history or the GitHub API; keep an issue line only when the source document already names one.
+State only validation that actually happened. Do not invent branch names, PR numbers, or validation results. Use branch and merged-PR wording only when confirmed by the source or conversation. If a named PR's merge state is needed but not known, check that PR once; do not search Git history or the GitHub API for an issue. If the merged implementation covers only part of the proposal, describe the delivered scope and list the remaining work rather than claiming the full proposal shipped.
 
 ## Verification
 
-Run the bundled relative-link checker over the moved documents:
+Run the final bundled relative-link check described in Workflow step 6, when link paths changed:
 
 ```bash
-bash .agents/skills/move-proposal/scripts/check_relative_links.sh docs/proposals/<TARGET>/<TOPIC>/*.md
+bash .agents/skills/move-proposal/scripts/check_relative_links.sh <DESTINATION>/*.md
 ```
 
-Then confirm the old path is gone and the move is rename-tracked:
+Then confirm the old path is gone and inspect rename tracking and the worktree:
 
 ```bash
-rg -n "docs/proposals/<TOPIC>" docs README.md ; git status --short --find-renames
+rg -n "<OLD_PATH>" docs README.md || true
+git status --short --find-renames
 ```
 
 The grep should return only references that intentionally point at the new location.
@@ -136,7 +142,7 @@ Commit the move, the inbound reference fixes, and the index change together as o
 | `onhold` | `chore: moved <TOPIC> to onhold` |
 | `subfolder` | `chore: moved <TOPIC> into a subfolder` |
 
-- Stage only the moved files, their inbound references, and `docs/proposals/README.md`.
+- Stage only the moved files, their inbound references, and the README or READMEs that index or track the source. Leave pre-existing unrelated edits unstaged.
 - Add no issue reference; repository archive commits do not use one and the move usually has no tracked issue.
 - Report the commit hash in the completion message.
 
@@ -147,8 +153,11 @@ These steps made a manual move take over four minutes. Skip them.
 - `file_search docs/proposals/**` — it returns the whole proposal tree. Use `ls` on the one topic.
 - Reading `.github/instructions/proposal-document-structure.instructions.md` or other instruction files — they are already injected for `docs/proposals/**/*.md`.
 - Reading archived proposals or listing `done/` to learn the Status shape — it is in Status Rewrite above.
-- Hunting for an issue number with `git log --grep`, `git show`, `gh issue list`, or `gh pr view`. One grep of the source document is the limit.
-- Reviewing phase-task-plan checkboxes and validation milestones to confirm completion before moving. The user orders the move; do not re-verify finished work.
+- Reading phase plans or task checklists to revalidate completion when the user has ordered the move. Use only the status and implementation details needed to describe the move accurately.
+- Searching GitHub or Git history for an issue number. If a named PR's merge state is required and not already known, check only that PR once.
+- Rereading whole documents after a patch-context failure; read only the affected paragraph and use its exact text.
+- Rerunning the link checker after status or index text changes that do not alter links.
+- Assuming every proposal is indexed in the root `docs/proposals/README.md`; inspect the nearest owning README for nested workstreams.
 - Running `make check-doc-links` — it does not cover `docs/proposals/` and fails on a pre-existing unrelated break.
 - Assuming VS Code's `markdown.updateLinksOnFileMove.enabled` will fix a `git mv` the agent ran. It is wired to `onDidRenameFiles`, which a terminal move never fires, so the links are left untouched.
 - Applying the Outbound Links `+1` rule to inbound references. Inbound links keep their `../` prefix and only gain the status folder; adding a level breaks all of them.
@@ -156,7 +165,7 @@ These steps made a manual move take over four minutes. Skip them.
 ## Limits
 
 - Move one proposal per invocation.
-- Change only the moved files, their inbound references, and `docs/proposals/README.md`.
+- Change only the moved files, their inbound references, and the README or READMEs that index or track the source.
 - Do not rewrite proposal content beyond the Status block and link paths.
 - Do not create `done/`, `future/`, or `onhold/`; they already exist.
 - If an instruction conflict prevents the move, report it instead of guessing.
