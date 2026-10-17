@@ -153,7 +153,7 @@ class TestResolveStagedChildren:
 
         assignments = {"sample": {0: IdentityAssignment(ChangeRowState.NEWLY_ALLOCATED_ENTITY, 501)}}
 
-        result = resolve_staged_children([sample, dimension, note], model, assignments)
+        result = resolve_staged_children([sample, dimension, note], model, assignments)  # type: ignore
 
         assert result.assignments["sample_dimension"][0].state == ChangeRowState.PENDING_DEPLOYMENT_ID
         assert result.assignments["sample_dimension_note"][0].state == ChangeRowState.PENDING_DEPLOYMENT_ID
@@ -223,7 +223,11 @@ class TestResolveStagedChildren:
         )
         assignments = {"value_type": {0: IdentityAssignment(ChangeRowState.NEWLY_ALLOCATED_ENTITY, 400)}}
 
-        result = resolve_staged_children([value_type, item], model, assignments)
+        result = resolve_staged_children(
+            [value_type, item],
+            model,
+            assignments,  # type: ignore
+        )
 
         assignment = result.assignments["value_type_item"][0]
         assert assignment.state == ChangeRowState.BLOCKED_UNRESOLVED
@@ -234,8 +238,8 @@ class TestResolveStagedChildren:
 
         result = self._resolve([sample], {})
 
-        assert result.assignments == {}
-        assert result.diagnostics == []
+        assert not result.assignments
+        assert not result.diagnostics
 
 
 class TestResolvePlannedTables:

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import gzip
 from datetime import datetime
+from numbers import Integral, Real
 from typing import Any, cast
 
 import pandas as pd
@@ -39,7 +40,6 @@ def quote_string(value: str) -> str:
 
 def render_literal(value: object) -> str:
     """Render one Python value as a PostgreSQL literal."""
-    from numbers import Integral, Real
 
     scalar_value = cast(Any, value)
     if value is None or pd.isna(scalar_value):

@@ -317,4 +317,4 @@ class TestBuildStagingPackage:
         package = build_change_request_package(projection_result, identity_result, planned_tables)
 
         assert package.is_staging is False
-        assert package.known_id_mappings == []
+        assert not package.known_id_mappings

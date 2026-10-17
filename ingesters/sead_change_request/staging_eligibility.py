@@ -80,7 +80,7 @@ class PendingDeploymentMap:
         mask = self.pending_fk_mask.get(entity_name, {}).get(column_name)
         if mask is None or row_index not in mask.index:
             return False
-        return bool(mask.loc[row_index])
+        return bool(mask.loc[row_index])  # type: ignore
 
 
 def _mask_value(masks: dict[str, pd.Series], entity_name: str, row_index: object) -> bool:
@@ -88,7 +88,7 @@ def _mask_value(masks: dict[str, pd.Series], entity_name: str, row_index: object
     mask = masks.get(entity_name)
     if mask is None or row_index not in mask.index:
         return False
-    return bool(mask.loc[row_index])
+    return bool(mask.loc[row_index])  # type: ignore
 
 
 @dataclass(slots=True)
@@ -173,14 +173,18 @@ def collect_pending_deployment(
             if remote_spec.public_id not in resolved_table.frame.columns:
                 continue
             column_values = resolved_table.frame[remote_spec.public_id]
-            column_masks[remote_spec.public_id] = column_values.map(lambda value: _as_int(value) in remote_keys).fillna(False).astype(bool)
+            column_masks[remote_spec.public_id] = (
+                column_values.map(lambda value: _as_int(value) in remote_keys)  # type: ignore ; pylint: disable=cell-var-from-loop
+                .fillna(False)
+                .astype(bool)
+            )
         if column_masks:
             pending_fk_mask[entity_name] = column_masks
 
     return PendingDeploymentMap(
-        pending_row_mask=pending_row_mask,
-        pending_fk_mask=pending_fk_mask,
-        deferred_public_id_mask=deferred_public_id_mask,
+        pending_row_mask=pending_row_mask,  # type: ignore
+        pending_fk_mask=pending_fk_mask,  # type: ignore
+        deferred_public_id_mask=deferred_public_id_mask,  # type: ignore
     )
 
 
@@ -305,7 +309,7 @@ def _row_state_and_target_id(
     assignments: dict[str, dict[object, IdentityAssignment]],
 ) -> tuple[ChangeRowState | None, int | None]:
     """Return the resolved state and target ID for one submitted row."""
-    planned_action = planned_table.planned_actions.loc[row_index]
+    planned_action = planned_table.planned_actions.loc[row_index]  # type: ignore
     if planned_action == PlannedRowAction.REFERENCE_EXISTING:
         return ChangeRowState.EXISTING_ENTITY, _known_public_id(planned_table, row_index, public_id)
     if planned_action in {PlannedRowAction.UPDATE_EXISTING_CANDIDATE, PlannedRowAction.BLOCK_EXISTING_UPDATE}:
@@ -356,8 +360,8 @@ def _as_int(value: object) -> int | None:
         return None
     if isinstance(value, Integral):
         return int(value)
-    if isinstance(value, Real) and not pd.isna(value) and float(value).is_integer():
-        return int(value)
+    if isinstance(value, Real) and not pd.isna(value) and float(value).is_integer():  # type: ignore
+        return int(value)  # type: ignore
     return None
 
 

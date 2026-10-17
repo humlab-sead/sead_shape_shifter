@@ -25,7 +25,12 @@ def test_retry_result_rows_saved_marks_original_save_only() -> None:
 
     assert result.rows_saved is True
     with pytest.raises(ValidationError):
-        MappingSyncRetryResult(status="noop", rows_saved=False, changed=False, sidecar_version="sidecar-v1")
+        MappingSyncRetryResult(
+            status="noop",
+            rows_saved=False,  # type: ignore
+            changed=False,
+            sidecar_version="sidecar-v1",
+        )
 
 
 def _link(target_id: int, source: LinkSource, *, created_by: str = "tester", reviewed_by: str | None = None) -> Link:
@@ -150,8 +155,8 @@ class TestPendingRoundTrip:
         restored = ProjectMapper.pending_to_fixed_change_set(pending)
 
         assert pending.entry is not None
-        assert pending.entry.public_id == "site_id"
-        assert pending.entry.prior_entry_exists is False
+        assert pending.entry.public_id == "site_id"  # pylint: disable=no-member
+        assert pending.entry.prior_entry_exists is False  # pylint: disable=no-member
         assert pending.operations == []
         assert restored.proposed_entry is not None
         assert restored.proposed_entry.local_key == "site_code"
