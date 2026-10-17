@@ -24,6 +24,11 @@ from ingesters.sead_change_request.orchestration import (
     TargetIdAllocatorPort,
     orchestrate_identity_assignments,
 )
+from ingesters.sead_change_request.staging_eligibility import (
+    PendingDeploymentMap,
+    collect_pending_deployment,
+    resolve_staged_children,
+)
 from ingesters.sead_change_request.target_projection import project_target_ids
 from src.target_model.models import TargetModel
 
@@ -39,6 +44,12 @@ class ResolvedInputs:
     mutable_fields_by_entity: dict[str, list[str]]
     existing_row_update_entities: set[str] | None
     deploy_strategy: Any | None
+    staging_target_schema: str | None = None
+
+    @property
+    def is_staging(self) -> bool:
+        """Return ``True`` when deployment-time staging was selected."""
+        return self.staging_target_schema is not None
 
 
 @dataclass(frozen=True)
@@ -67,6 +78,7 @@ class PreparationResult:
     outcome_summary: SubmissionOutcomeSummary
     pending_confirmation_report: dict[str, Any] | None = None
     preflight_result: CapabilityPreflightResult | None = None
+    pending_deployment: PendingDeploymentMap = field(default_factory=PendingDeploymentMap)
 
 
 async def prepare_change_request(
@@ -96,15 +108,22 @@ async def prepare_change_request(
     if orchestration_result.binding_set_uuid and not inputs.submission_context.binding_set_uuid:
         inputs.submission_context.binding_set_uuid = orchestration_result.binding_set_uuid
 
+    if inputs.is_staging:
+        staged_children = resolve_staged_children(planned.tables, inputs.target_model, orchestration_result.assignments)
+        for entity_name, entity_assignments in staged_children.assignments.items():
+            orchestration_result.assignments.setdefault(entity_name, {}).update(entity_assignments)
+
     resolution_result: IdentityResolutionResult = resolve_planned_tables(
         planned.tables,
         inputs.target_model,
         orchestration_result.assignments,
     )
+    pending_deployment = collect_pending_deployment(resolution_result, inputs.target_model) if inputs.is_staging else PendingDeploymentMap()
     projection_result: TargetProjectionResult = project_target_ids(
         resolution_result,
         inputs.target_model,
         planned_tables=planned.tables,
+        pending=pending_deployment,
     )
     pending_confirmation_report = _build_pending_confirmation_report(
         inputs.submission_context,
@@ -127,6 +146,7 @@ async def prepare_change_request(
         outcome_summary=outcome_summary,
         pending_confirmation_report=pending_confirmation_report,
         preflight_result=preflight_result,
+        pending_deployment=pending_deployment,
     )
 
 

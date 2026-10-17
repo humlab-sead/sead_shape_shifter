@@ -1,6 +1,5 @@
 """Deploy SQL generation for the SEAD change request ingester."""
 
-import gzip
 import re
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
@@ -20,11 +19,21 @@ from ingesters.sead_change_request.contracts import (
     SubmissionContext,
     resolve_bundle_name,
 )
+from ingesters.sead_change_request.inline_staging_sql import render_inline_staging_deploy
+from ingesters.sead_change_request.sql_rendering import encode_bundle_file_content
+from ingesters.sead_change_request.sql_rendering import quote_identifier as _quote_identifier
+from ingesters.sead_change_request.sql_rendering import quote_relation as _quote_relation
+from ingesters.sead_change_request.sql_rendering import quote_string as _quote_string
+from ingesters.sead_change_request.sql_rendering import render_literal as _render_literal
+from ingesters.sead_change_request.sql_rendering import renderable_columns as _renderable_columns
 from src.target_model.models import TargetModel
 
 DEFAULT_DEPLOY_ARTIFACT_STRATEGY = "inline_insert"
 COPY_CSV_DEPLOY_ARTIFACT_STRATEGY = "copy_csv"
+INLINE_STAGING_DEPLOY_ARTIFACT_STRATEGY = "inline_staging"
+STAGING_TARGET_SCHEMA_KEY = "staging_target_schema"
 SAFE_BUNDLE_TABLE_NAME_PATTERN = re.compile(r"^[A-Za-z0-9_]+$")
+SAFE_SCHEMA_NAME_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
 class DeployArtifactStrategy(Protocol):
@@ -139,6 +148,46 @@ class CopyCsvDeployStrategy:
         )
 
 
+class InlineStagingDeployStrategy:
+    """Deploy strategy that stages rows and allocates child IDs during deployment."""
+
+    strategy_name = INLINE_STAGING_DEPLOY_ARTIFACT_STRATEGY
+
+    def __init__(self, *, target_schema: str) -> None:
+        self.target_schema = target_schema
+
+    def build_artifact(
+        self,
+        change_package: ChangeRequestPackage,
+        target_model: TargetModel,
+        submission_context: SubmissionContext,
+    ) -> DeployArtifact:
+        """Render the transactional staging artifact for one explicit schema."""
+        if change_package.target_schema not in (None, self.target_schema):
+            raise ValueError(
+                f"Staging package targets schema '{change_package.target_schema}' but the deployment schema is "
+                f"'{self.target_schema}'"
+            )
+
+        statements = render_inline_staging_deploy(change_package, target_model, self.target_schema)
+        deploy_sql_lines = ["BEGIN;", "SET CONSTRAINTS ALL DEFERRED;"]
+        deploy_sql_lines.extend(statements)
+        deploy_sql_lines.append("COMMIT;")
+        return _build_deploy_artifact_payload(
+            strategy_name=self.strategy_name,
+            submission_context=submission_context,
+            deploy_sql_body="\n".join(deploy_sql_lines),
+            statements=statements,
+            artifact_metadata={
+                "deploy_statement_count": len(statements),
+                "staging_target_schema": self.target_schema,
+                "staged_table_count": len(change_package.tables),
+                "known_id_mapping_count": len(change_package.known_id_mappings),
+                **_common_contract_metadata(submission_context, statements=statements, bundle_files={}),
+            },
+        )
+
+
 def build_deploy_artifact(
     change_package: ChangeRequestPackage,
     target_model: TargetModel,
@@ -146,27 +195,67 @@ def build_deploy_artifact(
     strategy: DeployArtifactStrategy | str | None = None,
 ) -> DeployArtifact:
     """Build the in-memory deploy artifact."""
-    resolved_strategy = resolve_deploy_artifact_strategy(strategy)
+    resolved_strategy = resolve_deploy_artifact_strategy(strategy, staging_target_schema=change_package.target_schema)
     return resolved_strategy.build_artifact(change_package, target_model, submission_context)
 
 
-def resolve_deploy_artifact_strategy(strategy: DeployArtifactStrategy | str | None = None) -> DeployArtifactStrategy:
-    """Resolve the configured deploy artifact strategy to a concrete renderer."""
-    if strategy is None:
+def resolve_deploy_artifact_strategy(
+    strategy: DeployArtifactStrategy | str | None = None,
+    *,
+    staging_target_schema: str | None = None,
+) -> DeployArtifactStrategy:
+    """Resolve the configured deploy artifact strategy to a concrete renderer.
+
+    ``inline_staging`` requires an explicit ``staging_target_schema`` because the
+    deployed database contains the target table names in more than one schema. A
+    schema supplied for any other strategy is rejected so the configuration cannot
+    imply staging while rendering direct inserts.
+    """
+    normalized_schema = _validate_staging_target_schema(staging_target_schema)
+
+    if strategy is None or (isinstance(strategy, str) and strategy.strip().lower() == DEFAULT_DEPLOY_ARTIFACT_STRATEGY):
+        _reject_unexpected_staging_schema(normalized_schema, DEFAULT_DEPLOY_ARTIFACT_STRATEGY)
         return InlineInsertDeployStrategy()
 
     if isinstance(strategy, str):
         normalized_strategy = strategy.strip().lower()
-        if normalized_strategy == DEFAULT_DEPLOY_ARTIFACT_STRATEGY:
-            return InlineInsertDeployStrategy()
         if normalized_strategy == COPY_CSV_DEPLOY_ARTIFACT_STRATEGY:
+            _reject_unexpected_staging_schema(normalized_schema, COPY_CSV_DEPLOY_ARTIFACT_STRATEGY)
             return CopyCsvDeployStrategy()
+        if normalized_strategy == INLINE_STAGING_DEPLOY_ARTIFACT_STRATEGY:
+            if normalized_schema is None:
+                raise ValueError(
+                    "Deploy strategy 'inline_staging' requires a non-empty 'staging_target_schema'; "
+                    "target table names exist in more than one schema"
+                )
+            return InlineStagingDeployStrategy(target_schema=normalized_schema)
         raise ValueError(
             "Unsupported deploy strategy "
-            f"'{strategy}'; expected '{DEFAULT_DEPLOY_ARTIFACT_STRATEGY}' or '{COPY_CSV_DEPLOY_ARTIFACT_STRATEGY}'"
+            f"'{strategy}'; expected '{DEFAULT_DEPLOY_ARTIFACT_STRATEGY}', '{COPY_CSV_DEPLOY_ARTIFACT_STRATEGY}', "
+            f"or '{INLINE_STAGING_DEPLOY_ARTIFACT_STRATEGY}'"
         )
 
     return strategy
+
+
+def _validate_staging_target_schema(staging_target_schema: str | None) -> str | None:
+    """Return a validated schema identifier or ``None``."""
+    if staging_target_schema is None:
+        return None
+    if not isinstance(staging_target_schema, str) or not staging_target_schema.strip():
+        raise ValueError("'staging_target_schema' must be a non-empty string when provided")
+    normalized = staging_target_schema.strip()
+    if not SAFE_SCHEMA_NAME_PATTERN.fullmatch(normalized):
+        raise ValueError(
+            f"Unsafe 'staging_target_schema' value '{normalized}'; expected only letters, digits, and underscores"
+        )
+    return normalized
+
+
+def _reject_unexpected_staging_schema(staging_target_schema: str | None, strategy_name: str) -> None:
+    """Reject a staging schema supplied for a strategy that does not stage."""
+    if staging_target_schema is not None:
+        raise ValueError(f"Deploy strategy '{strategy_name}' does not accept 'staging_target_schema'")
 
 
 def _build_revert_placeholder_sql() -> str:
@@ -430,28 +519,6 @@ def _render_copy_csv_real(value: Real) -> str:
     return "0" if rendered == "-0" else rendered
 
 
-def _renderable_columns(row_like: pd.Series | pd.DataFrame, excluded_columns: set[str] | None = None) -> list[str]:
-    """Return non-internal column names in stable order for artifact rendering."""
-    excluded = excluded_columns or set()
-    if isinstance(row_like, pd.DataFrame):
-        return [
-            str(column)
-            for column in row_like.columns
-            if str(column) not in excluded
-            and not str(column).startswith("_")
-            and not str(column).endswith("__existing")
-            and str(column) != "system_id"
-        ]
-    return [
-        str(column)
-        for column in row_like.index
-        if str(column) not in excluded
-        and not str(column).startswith("_")
-        and not str(column).endswith("__existing")
-        and str(column) != "system_id"
-    ]
-
-
 def _package_row_masks(package_table: ChangeRequestTable) -> tuple[pd.Series, pd.Series]:
     """Return the insert and update masks for one packaged table."""
     insert_mask = package_table.row_states.isin({ChangeRowState.NEWLY_ALLOCATED_ENTITY, ChangeRowState.DERIVED_BRIDGE_ROW})
@@ -562,36 +629,6 @@ def _update_assignment_columns(row: pd.Series, public_id_column: str, mutable_fi
     return columns
 
 
-def _quote_identifier(identifier: str) -> str:
-    escaped = identifier.replace('"', '""')
-    return f'"{escaped}"'
-
-
-def _quote_relation(relation_name: str) -> str:
-    """Quote each part of a possibly schema-qualified PostgreSQL relation name."""
-    return ".".join(_quote_identifier(part) for part in relation_name.split("."))
-
-
-def _render_literal(value: object) -> str:
-    scalar_value = cast(Any, value)
-    if value is None or pd.isna(scalar_value):
-        return "NULL"
-    if isinstance(value, bool):
-        return "TRUE" if value else "FALSE"
-    if isinstance(value, Integral):
-        return str(value)
-    if isinstance(value, Real):
-        return repr(value)
-    if isinstance(value, (datetime, pd.Timestamp)):
-        return _quote_string(value.isoformat())
-    return _quote_string(str(value))
-
-
-def _quote_string(value: str) -> str:
-    escaped = value.replace("'", "''")
-    return f"'{escaped}'"
-
-
 def _quote_copy_path(value: str) -> str:
     """Escape a relative artifact path for use inside a quoted \\copy path literal."""
     return value.replace("'", "''")
@@ -605,14 +642,6 @@ def _quote_copy_csv_text(value: str) -> str:
     needs_quotes = any(character in value for character in ("\t", "\n", "\r", '"'))
     escaped = value.replace('"', '""')
     return f'"{escaped}"' if needs_quotes else escaped
-
-
-def encode_bundle_file_content(relative_path: str, content: str) -> bytes:
-    """Encode bundle content exactly as it will be written to disk."""
-    encoded = content.encode("utf-8")
-    if relative_path.endswith(".gz"):
-        return gzip.compress(encoded, mtime=0)
-    return encoded
 
 
 def _build_bundle_payload_relative_path(bundle_name: str, table_name: str) -> str:

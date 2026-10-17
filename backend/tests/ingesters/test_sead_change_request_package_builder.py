@@ -2,13 +2,20 @@
 
 import pandas as pd
 
-from ingesters.sead_change_request import ChangeRowState, PlannedRowAction, PlannedTable, build_change_request_package, project_target_ids
+from ingesters.sead_change_request import (
+    ChangeRowState,
+    PlannedRowAction,
+    PlannedTable,
+    build_change_request_package,
+    project_target_ids,
+)
 from ingesters.sead_change_request.contracts import (
     IdentityResolutionResult,
     ProjectedTable,
     ResolvedIdentityTable,
     TargetProjectionResult,
 )
+from ingesters.sead_change_request.package_builder import build_staging_package
 from src.target_model.models import TargetModel
 
 
@@ -206,3 +213,108 @@ class TestBuildChangeRequestPackage:
         assert package.tables["location"].frame["location_type_id"].tolist() == [901]
         assert package.tables["location"].planned_actions is not None
         assert package.tables["location"].planned_actions.tolist() == [PlannedRowAction.UPDATE_EXISTING_CANDIDATE]
+
+
+class TestBuildStagingPackage:
+    """Tests for the pre-projection staging package and its reference mappings."""
+
+    def _staging_model(self) -> TargetModel:
+        return TargetModel.model_validate(
+            {
+                "model": {"name": "SEAD Test Model", "version": "0.1.0"},
+                "entities": {
+                    "site": {"role": "lookup", "public_id": "site_id", "target_table": "tbl_sites"},
+                    "dataset": {
+                        "role": "lookup",
+                        "identity_tracking": "tracked",
+                        "reconciliation": "allocate",
+                        "public_id": "dataset_id",
+                        "target_table": "tbl_datasets",
+                        "foreign_keys": [{"entity": "site", "required": True}],
+                    },
+                    "analysis_entity": {
+                        "role": "fact",
+                        "public_id": "analysis_entity_id",
+                        "target_table": "tbl_analysis_entities",
+                        "aggregate_parent": "dataset",
+                        "foreign_keys": [{"entity": "dataset", "required": True}],
+                    },
+                },
+                "constraints": [],
+            }
+        )
+
+    def test_staging_rows_keep_local_keys_and_known_reference_mappings(self):
+        """Staged rows keep local values while reference-only parents become mappings."""
+        site_frame = pd.DataFrame({"system_id": [1], "site_id": [7001]})
+        dataset_frame = pd.DataFrame({"system_id": [10], "dataset_id": [None], "site_id": [1]})
+        analysis_frame = pd.DataFrame({"system_id": [100], "analysis_entity_id": [None], "dataset_id": [10]})
+        identity_result = IdentityResolutionResult(
+            tables={
+                "site": ResolvedIdentityTable(
+                    entity_name="site",
+                    frame=site_frame,
+                    row_states=pd.Series([ChangeRowState.EXISTING_ENTITY], index=site_frame.index),
+                    resolved_target_ids=pd.Series([7001], index=site_frame.index, dtype="Int64"),
+                ),
+                "dataset": ResolvedIdentityTable(
+                    entity_name="dataset",
+                    frame=dataset_frame,
+                    row_states=pd.Series([ChangeRowState.NEWLY_ALLOCATED_ENTITY], index=dataset_frame.index),
+                    resolved_target_ids=pd.Series([900], index=dataset_frame.index, dtype="Int64"),
+                ),
+                "analysis_entity": ResolvedIdentityTable(
+                    entity_name="analysis_entity",
+                    frame=analysis_frame,
+                    row_states=pd.Series([ChangeRowState.PENDING_DEPLOYMENT_ID], index=analysis_frame.index),
+                    resolved_target_ids=pd.Series([pd.NA], index=analysis_frame.index, dtype="Int64"),
+                ),
+            }
+        )
+        planned_tables = [
+            PlannedTable(
+                entity_name=name,
+                frame=identity_result.tables[name].frame,
+                planned_actions=pd.Series([PlannedRowAction.DEFER_TO_DEPLOYMENT] * len(identity_result.tables[name].frame.index)),
+            )
+            for name in ("site", "dataset", "analysis_entity")
+        ]
+
+        package = build_staging_package(identity_result, planned_tables, self._staging_model(), "public")
+
+        assert package.is_staging is True
+        assert package.target_schema == "public"
+        assert set(package.tables) == {"dataset", "analysis_entity"}
+        assert package.tables["analysis_entity"].frame["dataset_id"].tolist() == [10]
+        assert package.tables["analysis_entity"].frame["system_id"].tolist() == [100]
+        assert {(mapping.entity_name, mapping.system_id, mapping.target_id) for mapping in package.known_id_mappings} == {
+            ("site", 1, 7001),
+            ("dataset", 10, 900),
+        }
+
+    def test_direct_package_has_no_staging_fields(self):
+        """A direct package carries no target schema and no mappings."""
+        frame = pd.DataFrame({"sample_taxon_id": [5001], "sample_id": [101], "taxon_id": [9001]})
+        identity_result = IdentityResolutionResult(
+            tables={
+                "sample_taxon": ResolvedIdentityTable(
+                    entity_name="sample_taxon",
+                    frame=frame,
+                    row_states=pd.Series([ChangeRowState.DERIVED_BRIDGE_ROW], index=frame.index),
+                    resolved_target_ids=pd.Series([5001], index=frame.index, dtype="Int64"),
+                )
+            }
+        )
+        projection_result = TargetProjectionResult(tables={"sample_taxon": ProjectedTable(entity_name="sample_taxon", frame=frame.copy())})
+        planned_tables = [
+            PlannedTable(
+                entity_name="sample_taxon",
+                frame=frame,
+                planned_actions=pd.Series([PlannedRowAction.EVALUATE_BRIDGE], index=frame.index),
+            )
+        ]
+
+        package = build_change_request_package(projection_result, identity_result, planned_tables)
+
+        assert package.is_staging is False
+        assert package.known_id_mappings == []
