@@ -190,7 +190,7 @@ PostgreSQL sequence updates are not rolled back with a failed package transactio
 - Inline INSERT and copy-CSV integration tests verify submission and dataset output and confirm that provider, state, and task rows are not emitted.
 - Target-model tests verify the optional task entities, nullable task bibliography and event date, and dated dataset-contact identity.
 - Focused backend and frontend checks passed, including the ingester regression suite, target-model tests, the defaults component test, and the frontend build.
-- On 2026-10-12, inline INSERT and copy-CSV artifacts passed contract checks on separate disposable clones of the supplied refactored PostgreSQL snapshot. The fixture supplied required `data_type_id` and used a SIMS test double with IDs matching the snapshot sequence high-water marks. The checks confirmed that later PostgreSQL sequence values did not collide. They did not call a live Authority Service. Full restore details and results are in the [PostgreSQL validation handoff](../../CUTOVER_AND_DEPLOYMENT/POSTGRESQL_CONTRACT_VALIDATION.md).
+- On 2026-10-12, inline INSERT and copy-CSV artifacts passed contract checks on separate disposable clones of the supplied refactored PostgreSQL snapshot. The fixture supplied required `data_type_id` and used a SIMS test double with IDs matching the snapshot sequence high-water marks. The checks confirmed that later PostgreSQL sequence values did not collide. They did not call a live Authority Service. Full restore details and results are in the [PostgreSQL validation handoff](../POSTGRESQL_CONTRACT_VALIDATION.md).
 
 ## Acceptance Criteria
 
