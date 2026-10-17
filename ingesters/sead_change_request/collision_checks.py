@@ -131,9 +131,7 @@ async def _check_bridge_collisions(
             if any(column not in insert_frame.columns for column in unique_set):
                 continue
             if any(pd.isna(row[column]) for column in unique_set):
-                if pending is not None and any(
-                    pending.is_pending_foreign_key(entity_name, column, row_index) for column in unique_set
-                ):
+                if pending is not None and any(pending.is_pending_foreign_key(entity_name, column, row_index) for column in unique_set):
                     deferred_sets += 1
                 continue
             evaluable_sets.append(unique_set)

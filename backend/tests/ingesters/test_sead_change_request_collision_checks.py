@@ -210,9 +210,7 @@ class TestPendingDeploymentCollisions:
         projection_result = TargetProjectionResult(
             tables={"abundance_ident_level": ProjectedTable(entity_name="abundance_ident_level", frame=frame.copy())}
         )
-        pending = PendingDeploymentMap(
-            pending_fk_mask={"abundance_ident_level": {"abundance_id": pd.Series([True], index=frame.index)}}
-        )
+        pending = PendingDeploymentMap(pending_fk_mask={"abundance_ident_level": {"abundance_id": pd.Series([True], index=frame.index)}})
 
         result = await check_projected_collisions(
             projection_result,

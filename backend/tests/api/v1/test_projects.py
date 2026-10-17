@@ -341,7 +341,12 @@ class TestProjectsValidate:
 
         # Create a fully valid configuration with all required fields
         valid_entities = {
-            "sample": {"type": "entity", "keys": ["sample_id"], "columns": ["name", "value", "sample_id"], "depends_on": []}  # Required field
+            "sample": {
+                "type": "entity",
+                "keys": ["sample_id"],
+                "columns": ["name", "value", "sample_id"],
+                "depends_on": [],
+            }  # Required field
         }
 
         payload = {"name": "test_project", "entities": valid_entities}
