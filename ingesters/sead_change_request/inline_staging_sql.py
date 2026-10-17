@@ -531,8 +531,14 @@ def _local_key(frame: pd.DataFrame, row_index: object) -> object:
 
 def _remote_entity_for_column(spec: EntitySpec, target_model: TargetModel, column: str) -> str | None:
     """Return the entity whose public ID names the given foreign key column."""
+    matches: set[str] = set()
     for foreign_key in spec.foreign_keys:
         remote_spec = target_model.entities.get(foreign_key.entity)
         if remote_spec is not None and remote_spec.public_id == column:
-            return foreign_key.entity
-    return None
+            matches.add(foreign_key.entity)
+
+    if len(matches) > 1:
+        entities = ", ".join(sorted(matches))
+        raise ValueError(f"Foreign key column '{column}' maps to multiple target entities: {entities}")
+
+    return next(iter(matches), None)
