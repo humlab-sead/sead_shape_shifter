@@ -1479,7 +1479,9 @@ class TestSeadChangeRequestIngesterIngest:
 
         assert result.success is False
         assert result.message == "Invalid deploy strategy"
-        assert result.error_details == "Unsupported deploy strategy 'unknown_strategy'; expected 'inline_insert' or 'copy_csv'"
+        assert result.error_details == (
+            "Unsupported deploy strategy 'unknown_strategy'; expected 'inline_insert', 'copy_csv', or 'inline_staging'"
+        )
 
     @pytest.mark.asyncio
     async def test_ingest_accepts_copy_csv_deploy_strategy(self, tmp_path):
@@ -2069,3 +2071,127 @@ class TestSeadChangeRequestIngesterIngest:
         assert result.success is False
         assert result.message == "Validation failed"
         assert result.error_details == "Source table 'sample' is not present in the target model"
+
+
+def staging_target_model() -> dict:
+    """Build an aggregate chain used to exercise the inline staging strategy."""
+    return minimal_target_model(
+        site={"role": "lookup", "public_id": "site_id", "target_table": "tbl_sites"},
+        dataset={
+            "role": "lookup",
+            "identity_tracking": "tracked",
+            "reconciliation": "allocate",
+            "public_id": "dataset_id",
+            "target_table": "tbl_datasets",
+            "synchronize_sequence_after_insert": True,
+            "columns": {"site_id": {"required": True, "type": "integer"}},
+            "foreign_keys": [{"entity": "site", "required": True}],
+        },
+        analysis_entity={
+            "role": "fact",
+            "public_id": "analysis_entity_id",
+            "target_table": "tbl_analysis_entities",
+            "aggregate_parent": "dataset",
+            "columns": {"dataset_id": {"required": True, "type": "integer"}},
+            "foreign_keys": [{"entity": "dataset", "required": True}],
+        },
+    )
+
+
+class TestSeadChangeRequestIngesterStaging:
+    """Tests for the opt-in inline staging strategy."""
+
+    @pytest.mark.asyncio
+    async def test_ingest_emits_staging_artifact_without_child_id_reservation(self, tmp_path):
+        """Staging defers the child ID and never asks the allocator for one."""
+        allocator = FakeTargetIdAllocator(target_id=9999)
+        ingester = SeadChangeRequestIngester(
+            IngesterConfig(
+                host="localhost",
+                port=5432,
+                dbname="test_db",
+                user="test_user",
+                output_folder=str(tmp_path),
+                extra={
+                    "tables": {
+                        "site": pd.DataFrame({"system_id": [1], "site_id": [7001]}),
+                        "dataset": pd.DataFrame({"system_id": [10], "dataset_id": [None], "site_id": [1], "dataset_name": ["D1"]}),
+                        "analysis_entity": pd.DataFrame({"system_id": [100], "analysis_entity_id": [None], "dataset_id": [10]}),
+                    },
+                    "target_model": staging_target_model(),
+                    "submission_context": minimal_submission_context(),
+                    "sims_client": FakeSimsClient(target_id=501),
+                    "reconciliation_client": FakeReconciliationClient(target_id=7001),
+                    "target_id_allocator": allocator,
+                    "deploy_strategy": "inline_staging",
+                    "staging_target_schema": "public",
+                },
+            )
+        )
+
+        result = await ingester.ingest("submission.xlsx")
+
+        assert result.success is True, result.error_details
+        assert allocator.requests == []
+        deploy_sql = result.deploy_artifact["deploy_sql"]
+        assert result.deploy_artifact["metadata"]["deploy_strategy"] == "inline_staging"
+        assert '"public"."tbl_analysis_entities"' in deploy_sql
+        assert "SELECT 'analysis_entity', \"_local_system_id\"," in deploy_sql
+
+    @pytest.mark.asyncio
+    async def test_staging_requires_an_explicit_schema(self):
+        """Validation fails when staging is selected without a schema."""
+        ingester = SeadChangeRequestIngester(
+            IngesterConfig(
+                host="localhost",
+                port=5432,
+                dbname="test_db",
+                user="test_user",
+                extra={
+                    "tables": {"site": pd.DataFrame({"system_id": [1], "site_id": [7001]})},
+                    "target_model": staging_target_model(),
+                    "submission_context": minimal_submission_context(),
+                    "deploy_strategy": "inline_staging",
+                },
+            )
+        )
+
+        result = await ingester.validate("submission.xlsx")
+
+        assert result.is_valid is False
+        assert result.errors == [
+            "Deploy strategy 'inline_staging' requires a non-empty 'staging_target_schema'; "
+            "target table names exist in more than one schema"
+        ]
+
+    @pytest.mark.asyncio
+    async def test_staging_blocks_a_child_of_an_existing_tracked_root(self, tmp_path):
+        """A child of an existing tracked root is rejected before rendering."""
+        ingester = SeadChangeRequestIngester(
+            IngesterConfig(
+                host="localhost",
+                port=5432,
+                dbname="test_db",
+                user="test_user",
+                output_folder=str(tmp_path),
+                extra={
+                    "tables": {
+                        "site": pd.DataFrame({"system_id": [1], "site_id": [7001]}),
+                        "dataset": pd.DataFrame({"system_id": [10], "dataset_id": [900], "site_id": [1], "dataset_name": ["D1"]}),
+                        "analysis_entity": pd.DataFrame({"system_id": [100], "analysis_entity_id": [None], "dataset_id": [10]}),
+                    },
+                    "target_model": staging_target_model(),
+                    "submission_context": minimal_submission_context(),
+                    "sims_client": FakeSimsClient(target_id=501),
+                    "reconciliation_client": FakeReconciliationClient(target_id=7001),
+                    "deploy_strategy": "inline_staging",
+                    "staging_target_schema": "public",
+                },
+            )
+        )
+
+        result = await ingester.ingest("submission.xlsx")
+
+        assert result.success is False
+        assert result.message == "Validation failed"
+        assert "existing tracked root" in result.error_details

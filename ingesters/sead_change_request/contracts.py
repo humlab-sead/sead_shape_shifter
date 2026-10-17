@@ -34,6 +34,7 @@ class ChangeRowState(StrEnum):
     NEWLY_ALLOCATED_ENTITY = "newly_allocated_entity"
     RECONCILED_CLASSIFIER = "reconciled_classifier"
     DERIVED_BRIDGE_ROW = "derived_bridge_row"
+    PENDING_DEPLOYMENT_ID = "pending_deployment_id"
     BLOCKED_UNRESOLVED = "blocked_unresolved"
 
 
@@ -48,6 +49,7 @@ class PlannedRowAction(StrEnum):
     RECONCILE = "reconcile"
     EVALUATE_BRIDGE = "evaluate_bridge"
     INHERIT_AGGREGATE = "inherit_aggregate"
+    DEFER_TO_DEPLOYMENT = "defer_to_deployment"
 
 
 class LifecycleVersionState(StrEnum):
@@ -300,12 +302,37 @@ class ChangeRequestTable:
 
 
 @dataclass(slots=True)
+class KnownIdMapping:
+    """One local reference resolved to an existing or generated target ID.
+
+    Staging keeps these records as rows, not as a dictionary, so duplicate or
+    conflicting local keys can be reported instead of silently overwritten.
+    """
+
+    entity_name: str
+    system_id: int
+    target_id: int
+
+
+@dataclass(slots=True)
 class ChangeRequestPackage:
-    """Generated change-request payload before artifact rendering."""
+    """Generated change-request payload before artifact rendering.
+
+    ``tables`` holds target-write rows for every strategy. Staging packages also
+    carry ``known_id_mappings`` for parent rows that must not be written, and the
+    explicit ``target_schema`` that qualified rendering requires.
+    """
 
     tables: dict[str, ChangeRequestTable] = field(default_factory=dict)
     warnings: list[str] = field(default_factory=list)
     infos: list[str] = field(default_factory=list)
+    known_id_mappings: list[KnownIdMapping] = field(default_factory=list)
+    target_schema: str | None = None
+
+    @property
+    def is_staging(self) -> bool:
+        """Return ``True`` when this package was built for deployment-time staging."""
+        return self.target_schema is not None
 
 
 @dataclass(slots=True)

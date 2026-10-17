@@ -10,6 +10,7 @@ from ingesters.sead_change_request.contracts import (
     ResolvedIdentityTable,
     TargetProjectionResult,
 )
+from ingesters.sead_change_request.staging_eligibility import PendingDeploymentMap
 from src.target_model.models import TargetModel
 
 
@@ -155,4 +156,113 @@ class TestCheckProjectedCollisions:
         assert result.has_conflicts is True
         assert result.diagnostics == [
             "Entity 'analysis_entity' row '0' collides with existing target ID 223430 in 'tbl_analysis_entities.analysis_entity_id'"
+        ]
+
+
+class TestPendingDeploymentCollisions:
+    """Collision checks defer values that only exist after deployment."""
+
+    @pytest.mark.asyncio
+    async def test_pending_rows_are_deferred(self):
+        """A row with a pending target ID is not checked for an ID collision."""
+        frame = pd.DataFrame({"system_id": [1], "analysis_entity_id": [None]})
+        identity_result = IdentityResolutionResult(
+            tables={
+                "analysis_entity": ResolvedIdentityTable(
+                    entity_name="analysis_entity",
+                    frame=frame.copy(),
+                    row_states=pd.Series([ChangeRowState.PENDING_DEPLOYMENT_ID], index=frame.index),
+                    resolved_target_ids=pd.Series([pd.NA], index=frame.index, dtype="Int64"),
+                )
+            }
+        )
+        projection_result = TargetProjectionResult(
+            tables={"analysis_entity": ProjectedTable(entity_name="analysis_entity", frame=frame.copy())}
+        )
+        pending = PendingDeploymentMap(pending_row_mask={"analysis_entity": pd.Series([True], index=frame.index)})
+
+        result = await check_projected_collisions(
+            projection_result,
+            identity_result,
+            minimal_target_model(
+                analysis_entity={"role": "fact", "public_id": "analysis_entity_id", "target_table": "tbl_analysis_entities"}
+            ),
+            FakeCollisionChecker(),
+            pending=pending,
+        )
+
+        assert result.has_conflicts is False
+
+    @pytest.mark.asyncio
+    async def test_bridge_set_with_a_pending_foreign_key_is_deferred(self):
+        """An incomplete set caused only by a pending foreign key waits for deployment."""
+        frame = pd.DataFrame({"system_id": [1], "abundance_id": [None], "identification_level_id": [9]})
+        identity_result = IdentityResolutionResult(
+            tables={
+                "abundance_ident_level": ResolvedIdentityTable(
+                    entity_name="abundance_ident_level",
+                    frame=frame.copy(),
+                    row_states=pd.Series([ChangeRowState.DERIVED_BRIDGE_ROW], index=frame.index),
+                    resolved_target_ids=pd.Series([pd.NA], index=frame.index, dtype="Int64"),
+                )
+            }
+        )
+        projection_result = TargetProjectionResult(
+            tables={"abundance_ident_level": ProjectedTable(entity_name="abundance_ident_level", frame=frame.copy())}
+        )
+        pending = PendingDeploymentMap(
+            pending_fk_mask={"abundance_ident_level": {"abundance_id": pd.Series([True], index=frame.index)}}
+        )
+
+        result = await check_projected_collisions(
+            projection_result,
+            identity_result,
+            minimal_target_model(
+                abundance_ident_level={
+                    "role": "bridge",
+                    "public_id": "abundance_ident_level_id",
+                    "target_table": "tbl_abundance_ident_levels",
+                    "unique_sets": [["abundance_id", "identification_level_id"]],
+                }
+            ),
+            FakeCollisionChecker(),
+            pending=pending,
+        )
+
+        assert result.has_conflicts is False
+
+    @pytest.mark.asyncio
+    async def test_missing_unique_sets_metadata_is_still_reported(self):
+        """Deferral does not hide a missing unique_sets declaration."""
+        frame = pd.DataFrame({"system_id": [1], "abundance_id": [None], "identification_level_id": [9]})
+        identity_result = IdentityResolutionResult(
+            tables={
+                "abundance_ident_level": ResolvedIdentityTable(
+                    entity_name="abundance_ident_level",
+                    frame=frame.copy(),
+                    row_states=pd.Series([ChangeRowState.DERIVED_BRIDGE_ROW], index=frame.index),
+                    resolved_target_ids=pd.Series([pd.NA], index=frame.index, dtype="Int64"),
+                )
+            }
+        )
+        projection_result = TargetProjectionResult(
+            tables={"abundance_ident_level": ProjectedTable(entity_name="abundance_ident_level", frame=frame.copy())}
+        )
+
+        result = await check_projected_collisions(
+            projection_result,
+            identity_result,
+            minimal_target_model(
+                abundance_ident_level={
+                    "role": "bridge",
+                    "public_id": "abundance_ident_level_id",
+                    "target_table": "tbl_abundance_ident_levels",
+                }
+            ),
+            FakeCollisionChecker(),
+            pending=PendingDeploymentMap(),
+        )
+
+        assert result.diagnostics == [
+            "Bridge entity 'abundance_ident_level' cannot run collision checks because unique_sets metadata is missing"
         ]

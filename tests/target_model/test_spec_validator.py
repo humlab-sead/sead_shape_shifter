@@ -440,3 +440,146 @@ def test_validator_reports_invalid_allowed_values_usage() -> None:
         ("ALLOWED_VALUES_REQUIRE_ENUM_TYPE", "sample_kind"),
         ("ENUM_MISSING_ALLOWED_VALUES", "sample_status"),
     ]
+
+
+def test_validator_reports_each_aggregate_cycle_once() -> None:
+    target_model = TargetModel.model_validate(
+        {
+            "model": {"name": "SEAD Clearinghouse", "version": "2.0.0"},
+            "entities": {
+                "alpha": {
+                    "role": "fact",
+                    "public_id": "alpha_id",
+                    "aggregate_parent": "beta",
+                    "foreign_keys": [{"entity": "beta", "required": True}],
+                },
+                "beta": {
+                    "role": "fact",
+                    "public_id": "beta_id",
+                    "aggregate_parent": "alpha",
+                    "foreign_keys": [{"entity": "alpha", "required": True}],
+                },
+            },
+        }
+    )
+
+    issues = TargetModelSpecValidator().validate(target_model)
+
+    assert [(issue.code, issue.entity) for issue in issues] == [("AGGREGATE_PARENT_CYCLE", "alpha")]
+    assert issues[0].message == "Aggregate parents form a cycle: alpha -> beta -> alpha"
+
+
+def test_validator_reports_three_entity_aggregate_cycle_once() -> None:
+    target_model = TargetModel.model_validate(
+        {
+            "model": {"name": "SEAD Clearinghouse", "version": "2.0.0"},
+            "entities": {
+                "alpha": {
+                    "role": "fact",
+                    "public_id": "alpha_id",
+                    "aggregate_parent": "beta",
+                    "foreign_keys": [{"entity": "beta", "required": True}],
+                },
+                "beta": {
+                    "role": "fact",
+                    "public_id": "beta_id",
+                    "aggregate_parent": "gamma",
+                    "foreign_keys": [{"entity": "gamma", "required": True}],
+                },
+                "gamma": {
+                    "role": "fact",
+                    "public_id": "gamma_id",
+                    "aggregate_parent": "alpha",
+                    "foreign_keys": [{"entity": "alpha", "required": True}],
+                },
+            },
+        }
+    )
+
+    issues = TargetModelSpecValidator().validate(target_model)
+
+    assert [(issue.code, issue.entity) for issue in issues] == [("AGGREGATE_PARENT_CYCLE", "alpha")]
+    assert issues[0].message == "Aggregate parents form a cycle: alpha -> beta -> gamma -> alpha"
+
+
+def test_validator_reports_derived_aggregate_root_for_each_child() -> None:
+    target_model = TargetModel.model_validate(
+        {
+            "model": {"name": "SEAD Clearinghouse", "version": "2.0.0"},
+            "entities": {
+                "derived_root": {
+                    "role": "bridge",
+                    "public_id": "derived_root_id",
+                },
+                "child": {
+                    "role": "fact",
+                    "public_id": "child_id",
+                    "aggregate_parent": "derived_root",
+                    "foreign_keys": [{"entity": "derived_root", "required": True}],
+                },
+                "grandchild": {
+                    "role": "fact",
+                    "public_id": "grandchild_id",
+                    "aggregate_parent": "child",
+                    "foreign_keys": [{"entity": "child", "required": True}],
+                },
+            },
+        }
+    )
+
+    issues = TargetModelSpecValidator().validate(target_model)
+
+    assert [(issue.code, issue.entity) for issue in issues] == [
+        ("INVALID_AGGREGATE_ROOT_IDENTITY", "child"),
+        ("INVALID_AGGREGATE_ROOT_IDENTITY", "grandchild"),
+    ]
+
+
+def test_validator_reports_missing_aggregate_root_public_id() -> None:
+    target_model = TargetModel.model_validate(
+        {
+            "model": {"name": "SEAD Clearinghouse", "version": "2.0.0"},
+            "entities": {
+                "root": {"role": "fact"},
+                "child": {
+                    "role": "fact",
+                    "public_id": "child_id",
+                    "aggregate_parent": "root",
+                    "foreign_keys": [{"entity": "root", "required": True}],
+                },
+            },
+        }
+    )
+
+    issues = TargetModelSpecValidator().validate(target_model)
+
+    assert [(issue.code, issue.entity) for issue in issues] == [
+        ("AGGREGATE_ROOT_MISSING_PUBLIC_ID", "child"),
+    ]
+
+
+def test_validator_does_not_duplicate_broken_aggregate_links() -> None:
+    target_model = TargetModel.model_validate(
+        {
+            "model": {"name": "SEAD Clearinghouse", "version": "2.0.0"},
+            "entities": {
+                "child": {
+                    "role": "fact",
+                    "public_id": "child_id",
+                    "aggregate_parent": "missing_parent",
+                },
+                "grandchild": {
+                    "role": "fact",
+                    "public_id": "grandchild_id",
+                    "aggregate_parent": "child",
+                    "foreign_keys": [{"entity": "child", "required": True}],
+                },
+            },
+        }
+    )
+
+    issues = TargetModelSpecValidator().validate(target_model)
+
+    assert [(issue.code, issue.entity) for issue in issues] == [
+        ("UNKNOWN_AGGREGATE_PARENT", "child"),
+    ]
