@@ -2,7 +2,7 @@
 
 ## Summary
 
-Sequence the [Deployment-Time Staging proposal](./DEPLOYMENT_TIME_STAGING.md) from reviewed aggregate ownership through a shared deployment-time ID mapping flow, then promote it only after both bundle strategies and Sqitch deployment are validated. Current direct-to-target output remains the default while staging is validated separately.
+Sequence the [Deployment-Time Staging proposal](./DEPLOYMENT_TIME_STAGING.md) from reviewed aggregate ownership and target ID generators through a shared staging flow. Prove reference-only ID mappings, locked sequence allocation, FK resolution, and `unique_sets` checks with inline output before validating copy-CSV parity and Sqitch deployment. Current direct-to-target output remains the default during isolated validation.
 
 ## Problem
 
@@ -10,15 +10,16 @@ The ingester reserves non-SIMS sequence IDs during bundle generation and writes 
 
 ## Scope
 
-This plan covers model-driven aggregate-child eligibility, staging and FK resolution, inline-INSERT and copy-CSV parity, and transactional Sqitch validation. It does not change SIMS identity rules, remove read-only generation-time collision checks for known IDs and derived bridges, or solve repeated imports, resubmissions, or existing-row updates. Only one generated bundle per submission is handed to the Release Cycle.
+This plan covers model-driven aggregate-child eligibility, reference-only ID mappings in the bundle, staging and FK resolution, deployment-time `unique_sets` checks, locked sequence synchronization, inline-INSERT and copy-CSV parity, and transactional Sqitch validation. A tracked fact root is inserted with its children in the same submission; an existing reconciled root may supply a known ID. The plan does not change SIMS identity rules, extend or replace existing tracked fact aggregates, remove read-only generation-time collision checks for known IDs and fully resolved derived bridges, or solve repeated imports, resubmissions, or existing-row updates. Only one generated bundle per submission is handed to the Release Cycle.
 
 ## Current Position
 
 - The [target-model review](../../../../resources/target_models/TARGET_MODEL_REVIEW_20261013.md) is in progress; aggregate ownership and the eligible-entity inventory are not final. The current model makes `analysis_entity` a child of `dataset`, without SIMS tracked identity.
-- The ingester currently reserves database-sequence IDs during preparation. Inline-INSERT emits static inserts, while copy-CSV loads directly into target tables. Neither strategy maps deployment-generated IDs back to local parent references.
-- Generation-time collision checks inspect projected target IDs and derived-bridge unique sets. The current checks reject unresolved child IDs; they must be narrowed to known IDs when staging is introduced. They remain quality-of-service diagnostics, not a guarantee against duplicate imports.
+- The ingester currently reserves database-sequence IDs during preparation. Package assembly drops reference-only rows after projection. Inline-INSERT emits static inserts, while copy-CSV loads directly into target tables. Neither strategy carries reference-only ID mappings or maps deployment-generated IDs back to local references.
+- Generation-time collision checks inspect projected target IDs and derived-bridge unique sets against target rows. They do not check duplicates within the submitted bundle and currently reject unresolved child IDs. Staging must retain checks for known values and check complete `unique_sets` after FK resolution, including child facts and derived bridges.
 - The proposal specifies normal transactional, registry-aware Sqitch deployment; this staging behavior is not implemented yet.
-- Gate 2 (Change Control failure handling) is resolved for planning by [Change Control issue #459](https://github.com/humlab-sead/sead_change_control/issues/459): the `deploy-staging` change captures Sqitch's exit status directly and checks it before post-deploy hooks. Phase 3 still must validate the release path before staging is promoted.
+- The current Change Control tag-deploy path checks Sqitch's result before post-deploy hooks. Phase 3 must validate failure propagation through each supported release path before staging is promoted.
+- The existing [Phase 1 task plan](./DEPLOYMENT_TIME_STAGING_PHASE_1_TASK_PLAN.md) predates the revised root-scope and generator rules; align it with this plan before execution.
 
 ## Phase Plan
 
@@ -26,13 +27,13 @@ This plan covers model-driven aggregate-child eligibility, staging and FK resolu
 
 **Goal**
 
-Define which model-derived children can safely receive deployment-time IDs.
+Define which model-derived children can safely receive deployment-time IDs and how their target sequences will be synchronized.
 
 **Focus**
 
-- Review the MVP entities' aggregate-parent assignments and use shared effective-identity rules to derive children with valid, acyclic `aggregate_parent` chains ending at tracked or reconciled roots. Each inserted child row must have a resolved root target ID; do not maintain an entity allowlist or infer ownership from role or FK shape.
-- Validate the candidate inventory against deployed sequence or identity metadata, including unsupported or missing ID generators and invalid parent chains. Resolve each target table to one schema-qualified relation and establish how an out-of-date sequence is synchronized before allocation.
-- Replace generation-time reservation for eligible children without requiring the current `public_id_generation: database_sequence` field as an opt-in. New `value_type` roots and the semantic role decision for `value_type_item` remain outside this work; children of an existing `value_type` are not excluded merely because the root is reconciled.
+- Review the MVP entities' aggregate-parent assignments and use shared effective-identity rules to derive children with valid, acyclic `aggregate_parent` chains ending at tracked or reconciled roots. For each inserted child, a tracked fact root must be inserted by the same submission or a reconciled root must have a resolved target ID. Do not maintain an entity allowlist or infer ownership from role or FK shape.
+- Validate the candidate inventory against deployed sequence or identity metadata, including unsupported or missing ID generators, sequence cache behavior, and invalid parent chains. Resolve each target table to one schema-qualified relation and establish stable-order table locking before sequence synchronization and allocation. The release workflow excludes concurrent writes and independent sequence allocation on affected tables.
+- Derive eligibility without requiring `public_id_generation: database_sequence` as an opt-in. New `value_type` roots and the semantic role decision for `value_type_item` remain outside this work; children of an existing `value_type` remain eligible when the root ID is resolved.
 - Establish the schema and dependency conditions required before either bundle strategy can use staging.
 
 **Depends On**
@@ -41,36 +42,36 @@ Define which model-derived children can safely receive deployment-time IDs.
 
 **Outputs**
 
-- Reviewed, derived eligibility inventory and supported/unsupported ID-generation contract for staging, including resolved reconciled roots and sequence synchronization.
+- Reviewed, derived eligibility inventory and supported/unsupported ID-generation contract, including root-row rules, sequence cache checks, and stable-order locking before synchronization.
 
 **Acceptance Criteria**
 
-- `PH1-AC-1` (from `P-AC-10`) Each candidate is derived from effective `child` identity and a valid parent chain ending at a tracked or reconciled root; invalid chains are rejected without a hard-coded allowlist. Each inserted child row requires a resolved root target ID.
-- `PH1-AC-2` (from `P-AC-3`, `P-AC-9`, `P-AC-10`) A missing or unsupported target ID generator, ambiguous target relation, or dependency cycle is identified before the entity is enabled for insertion; an out-of-date sequence can be advanced without reusing an existing ID.
+- `PH1-AC-1` (from `P-AC-10`) Each candidate is derived from effective `child` identity and a valid parent chain ending at a tracked or reconciled root, without an entity allowlist. For each inserted child row, a tracked fact root must be inserted by the same submission or a reconciled root must have a resolved target ID.
+- `PH1-AC-2` (from `P-AC-3`, `P-AC-9`, `P-AC-10`) Missing or unsupported generators, unsafe sequence cache behavior, ambiguous target relations, invalid parent chains, and dependency cycles have explicit failure results. The supported contract specifies stable-order table locking before synchronizing an out-of-date sequence or allocating IDs.
 
 **Validation Milestones**
 
-- `VM-1` The reviewed model and representative deployed schema yield a reproducible candidate inventory and explicit unsupported-case results (`PH1-AC-1`, `PH1-AC-2`).
+- `VM-1` The reviewed model and representative deployed schema yield a reproducible candidate inventory, root-row eligibility results, generator support results, and locking requirements (`PH1-AC-1`, `PH1-AC-2`).
 
 **Task-Plan Handoff**
 
-- Source: `P-AC-3`, `P-AC-9`, `P-AC-10`; preserve tracked-root SIMS identities, allow reconciled roots with known target IDs, and reject ambiguous ownership. Review the MVP entities' remaining aggregate-parent assignments and verify deployed schema metadata before deciding enabled entities.
+- Source: `P-AC-3`, `P-AC-9`, `P-AC-10`; preserve tracked-root SIMS identities, require newly inserted tracked fact roots, allow reconciled roots with known target IDs, and reject ambiguous ownership. Verify deployed generator and cache metadata, table-lock ordering, and the no-concurrent-writes release rule before deciding enabled entities.
 
 **Readiness**
 
-Ready for a Phase 1 task plan. The `analysis_entity` decision and child-of-reconciled-parent rule are settled. Phase 1 must finish the relevant aggregate-parent review and obtain a representative deployed schema to complete its inventory and generator checks; unrelated target-model role decisions do not block task planning.
+Ready for an updated Phase 1 task plan. The tracked fact root and child-of-reconciled-parent rules are settled. Phase 1 must finish the relevant aggregate-parent review and obtain a representative deployed schema to complete its inventory and generator checks; unrelated target-model role decisions do not block task planning.
 
 ### Phase 2: Resolve IDs And FKs Through Inline Staging
 
 **Goal**
 
-Prove deployment-time ID allocation and local-to-target FK mapping with one staged inline-INSERT bundle.
+Prove deployment-time ID allocation, reference-only mappings, FK resolution, and unique-set validation with one staged inline-INSERT bundle.
 
 **Focus**
 
-- Stage submitted `system_id` and local FK values separately from resolved IDs and target FKs; include known references and SIMS-assigned IDs in a unique deployment-local map. Never write local `system_id` values to target tables.
-- Allocate supported child IDs during deployment, resolve multi-row and multi-level relationships without row-order or payload matching, and insert in dependency order.
-- Reject duplicate or ambiguous mappings, missing required FKs, and unsupported generation before commit. Keep sequence allocation out of bundle generation, and allow new child IDs to remain unresolved during generation-time collision checks.
+- Stage insert rows with local `system_id` and FK values separate from target IDs and FKs. Carry `(entity, system_id, target ID)` records for reference-only rows used by staged FKs, without inserting those rows. Seed the map with known references and SIMS assignments; allow different local references to map to the same existing target row. Never write local IDs to target tables.
+- Lock affected tables in stable order, synchronize supported sequences when needed, allocate child IDs during deployment, and resolve multi-row and multi-level relationships without row-order or payload matching.
+- After FK resolution, reject duplicate complete `unique_sets` among staged rows or against target rows, including child facts and derived bridges. Reject duplicate or conflicting mappings, missing required FKs, and unsupported generators before target inserts. Keep sequence allocation out of bundle generation, and retain generation-time collision checks only for known IDs and fully resolved derived-bridge sets.
 
 **Depends On**
 
@@ -78,22 +79,22 @@ Prove deployment-time ID allocation and local-to-target FK mapping with one stag
 
 **Outputs**
 
-- A validated shared ID-resolution flow exercised through an isolated inline staging artifact. The current direct-to-target renderer remains the default until Phase 3 promotion; it is not a fallback for unresolved staged child IDs.
+- A validated shared staging flow exercised through an isolated inline artifact, including known-reference mappings and deployment-time unique-set checks. The current direct-to-target renderer remains the default until Phase 3 promotion; it is not a fallback for unresolved staged child IDs.
 
 **Acceptance Criteria**
 
-- `PH2-AC-1` (from `P-AC-1`, `P-AC-2`, `P-AC-3`, `P-AC-8`) Inline staging allocates child IDs only at deployment, retains local IDs and FKs outside target rows, and maps identical-payload rows correctly regardless of input order.
-- `PH2-AC-2` (from `P-AC-7`, `P-AC-9`) Duplicate or conflicting mappings, unresolved required FKs, unsupported generators, and cycles fail before target rows commit.
-- `PH2-AC-3` (from `P-AC-6`, `P-AC-11`) Existing and SIMS-assigned IDs still resolve, explicit SIMS IDs retain sequence synchronization, and generation-time collision diagnostics remain available for known IDs and derived bridges without rejecting new child IDs awaiting deployment.
+- `PH2-AC-1` (from `P-AC-1`, `P-AC-2`, `P-AC-3`, `P-AC-8`) Inline staging allocates child IDs only at deployment after locking affected tables, retains local IDs and FKs outside target rows, and maps identical-payload rows correctly regardless of input order. Unsupported sequence cache behavior fails before target inserts.
+- `PH2-AC-2` (from `P-AC-7`, `P-AC-9`, `P-AC-11`) Duplicate or conflicting mappings, unresolved required FKs, unsupported generators, cycles, and complete `unique_sets` duplicated among staged rows or matching existing target rows fail before target inserts. Generation-time diagnostics remain available for known IDs and fully resolved derived-bridge sets without rejecting unresolved child IDs.
+- `PH2-AC-3` (from `P-AC-6`, `P-AC-10`) The inline artifact carries reference-only local-to-target mappings without inserting those rows; different local references may resolve to the same existing target row. Children of resolved reconciled roots and newly inserted tracked fact roots resolve; children of existing tracked fact roots are rejected. Explicit SIMS IDs retain sequence synchronization.
 
 **Validation Milestones**
 
-- `VM-2` Disposable PostgreSQL deployment of leaf, multi-row, and multi-level inline cases preserves ID/FK mapping and prior ID behavior (`PH2-AC-1`, `PH2-AC-3`).
-- `VM-3` Invalid-model, mapping, and target-ID cases leave no partial target rows (`PH2-AC-2`).
+- `VM-2` Disposable PostgreSQL deployment of leaf, multi-row, multi-level, and existing-reconciled-root inline cases preserves ID/FK mapping, reference-only mappings to a shared existing target row, and prior SIMS behavior. An out-of-date sequence and a competing writer confirm lock behavior (`PH2-AC-1`, `PH2-AC-3`).
+- `VM-3` Invalid model, mapping, generator, root-row, and unique-set cases fail before target inserts, including child facts and derived bridges under a generated parent ID; generation-time checks skip only values unavailable until deployment (`PH2-AC-2`, `PH2-AC-3`).
 
 **Task-Plan Handoff**
 
-- Source: `P-AC-1`–`P-AC-3`, `P-AC-6`–`P-AC-9`, `P-AC-11`; use Phase 1's supported-entity contract, retain local/target FK separation, and preserve SIMS and known-ID collision behavior. Treat inline staging as isolated validation until copy-CSV parity and Sqitch validation in Phase 3.
+- Source: `P-AC-1`–`P-AC-3`, `P-AC-6`–`P-AC-11`; use Phase 1's generator, root-row, locking, and cache contract. Carry reference-only mappings, retain local/target FK separation, check complete unique sets after FK resolution, and preserve SIMS and known-ID collision behavior. Treat inline staging as isolated validation until copy-CSV parity and Sqitch validation in Phase 3.
 
 **Readiness**
 
@@ -103,14 +104,14 @@ Requires Phase 1's reviewed eligibility and target-ID contract; no additional de
 
 **Goal**
 
-Support both deploy strategies under the same mapping contract and validate release-time atomicity before promotion.
+Support both deploy strategies under the same mapping and validation contract, then validate release-time atomicity before promotion.
 
 **Focus**
 
-- Load copy-CSV payloads into staging and share the ID-map, FK resolution, and target-insert semantics proven by inline staging.
-- Exercise both strategies through the normal transactional, registry-aware Sqitch path, including error-stop behavior, cleanup, failure, and retry.
+- Load copy-CSV payloads and reference-only ID mappings into staging. Share the locking, sequence allocation, ID-map, FK resolution, complete `unique_sets` checks, and target-insert behavior proven by inline staging.
+- Exercise both strategies through normal transactional, registry-aware Sqitch deployment, including SQL and `\copy` error-stop behavior, rollback, temporary-table cleanup, and retry.
 - Promote staging for supported submissions as a bundle-level path. Do not mix staged and direct target inserts within an ID/FK dependency graph; reject unsupported schema mechanisms and cycles rather than silently falling back to generation-time ID reservation.
-- Validate Change Control's corrected Sqitch failure propagation so a failed change cannot trigger post-deploy hooks or appear successful.
+- Validate that the current Change Control tag-deploy path and any other supported release path report Sqitch failures and skip post-deploy hooks after a failed change.
 
 **Depends On**
 
@@ -118,23 +119,23 @@ Support both deploy strategies under the same mapping contract and validate rele
 
 **Outputs**
 
-- Validated inline and copy-CSV staging bundles and release-path checks suitable for replacing generation-time child sequence reservation.
+- Validated inline and copy-CSV staging bundles with matching reference mappings and unique-set checks, plus release-path checks suitable for replacing generation-time child sequence reservation.
 
 **Acceptance Criteria**
 
-- `PH3-AC-1` (from `P-AC-4`, `P-AC-8`) Inline-INSERT and copy-CSV deployments each map every local row to its own generated target ID and valid child FKs for leaf, multi-row, and multi-level cases; sequence values need not match across runs.
-- `PH3-AC-2` (from `P-AC-5`, `P-AC-7`, `P-AC-9`) Sqitch deployment reports SQL or copy errors before post-deploy hooks, rolls back target rows and drops temporary tables; retries do not replay an already-deployed change, and unsupported cases fail explicitly.
-- `PH3-AC-3` (from `P-AC-1`, `P-AC-6`, `P-AC-11`) Promoted bundles no longer reserve supported child IDs during generation while retaining SIMS identity behavior, sequence synchronization, and generation-time collision diagnostics.
+- `PH3-AC-1` (from `P-AC-4`, `P-AC-6`–`P-AC-8`) Inline-INSERT and copy-CSV deployments preserve the same local-to-target mappings and valid child FKs for leaf, multi-row, multi-level, and reference-only-parent cases. Both reject complete `unique_sets` duplicated among staged rows or matching existing target rows after FK resolution; sequence values need not match across runs.
+- `PH3-AC-2` (from `P-AC-5`, `P-AC-7`, `P-AC-9`) Supported release paths report SQL or `\copy` errors before post-deploy hooks, roll back target rows, and drop temporary tables. Sqitch retries consult its registry; unsupported cases fail explicitly.
+- `PH3-AC-3` (from `P-AC-1`, `P-AC-3`, `P-AC-6`, `P-AC-10`, `P-AC-11`) Promoted bundles no longer reserve supported child IDs during generation. They retain root eligibility, locked sequence synchronization, SIMS identity behavior, reference-only mappings, and generation-time collision diagnostics for known values.
 
 **Validation Milestones**
 
-- `VM-4` Equivalent disposable-database deployment cases pass for both bundle strategies (`PH3-AC-1`).
-- `VM-5` Sqitch failure and retry checks confirm atomic target writes, no post-deploy hook after failure, and registry-aware reapplication behavior; sequence gaps after failed deployments are acceptable (`PH3-AC-2`).
-- `VM-6` Regression checks confirm no child sequence reservation in generation and no loss of SIMS or collision-check behavior (`PH3-AC-3`).
+- `VM-4` Equivalent disposable-database relationship, reference-only-parent, and unique-set cases pass or fail alike for both bundle strategies (`PH3-AC-1`).
+- `VM-5` Supported release paths stop on SQL and `\copy` errors, leave no partial target rows or temporary tables, skip hooks after failure, and use Sqitch's registry on retry; sequence gaps after failure are acceptable (`PH3-AC-2`).
+- `VM-6` Regression checks confirm no child sequence reservation during generation and no loss of root eligibility, lock and sequence behavior, SIMS handling, reference mappings, or known-value collision diagnostics (`PH3-AC-3`).
 
 **Task-Plan Handoff**
 
-- Source: `P-AC-1`, `P-AC-4`–`P-AC-9`, `P-AC-11`; use the Phase 2 mapping contract for both strategies. Preserve one-bundle-per-submission handoff; repeated-import idempotency and existing-row updates remain separate work.
+- Source: `P-AC-1`, `P-AC-3`–`P-AC-11`; use the Phase 2 mapping, locking, and unique-set contract for both strategies. Validate the current Change Control tag-deploy behavior and any other supported release path. Preserve one-bundle-per-submission handoff; repeated-import idempotency and existing-row updates remain separate work.
 
 **Readiness**
 
@@ -142,11 +143,13 @@ Requires the Phase 2 inline flow and Phase 1 supported-entity contract to be val
 
 ## Cross-Phase Rules
 
-- Model metadata defines aggregate ownership; the deployed schema defines supported ID generation. Do not guess either from entity names or payload order.
+- Model metadata defines aggregate ownership; the deployed schema defines supported ID generation. A tracked fact root must be inserted with its children; a reconciled root may already exist with a resolved ID. Do not guess ownership or mappings from entity names or payload order.
+- Carry reference-only local-to-target mappings in the bundle for staged FKs, without inserting those rows. Different local references may resolve to the same existing target row.
+- Lock affected target tables in stable order before reading their IDs or synchronizing sequences, and hold locks through insertion. Exclude concurrent writes and independent sequence allocation on those tables; fail closed for unsafe sequence cache behavior.
 - Keep current direct-to-target behavior as the default until the replacement is validated for both strategies. After promotion, never use direct insertion or generation-time child-ID reservation as a fallback for an unresolved staged child.
-- Keep SIMS identity allocation and existing read-only target collision checks separate from deployment-time child-ID allocation. Target constraints remain the final collision safeguard.
-- Use normal transactional Sqitch application. Sequence gaps after a failed deployment are acceptable; partial target rows are not.
+- Keep SIMS identity allocation and generation-time read-only checks for known IDs and fully resolved derived-bridge sets. After FK resolution, check `unique_sets` whose columns are all present and non-null against staged and target rows, even without matching target constraints.
+- Use normal transactional Sqitch application with error-stop behavior. Sequence gaps after a failed deployment are acceptable; partial target rows and post-deploy hooks after failure are not.
 
 ## Validation Strategy
 
-Validate model and schema eligibility first (`VM-1`), including children of resolved reconciled roots and out-of-date sequences. Then validate isolated and disposable-database mapping behavior for inline staging (`VM-2`, `VM-3`). Compare both strategies on the same relationship cases (`VM-4`), exercise Sqitch failure and retry behavior (`VM-5`), and run regression checks before promotion (`VM-6`). Exact fixtures, assertions, and commands belong in the phase task plans.
+Validate model and schema eligibility first (`VM-1`), including tracked and reconciled root rules, generator support, sequence cache behavior, and stable-order locking. Then validate inline staging on a disposable database (`VM-2`, `VM-3`), including reference-only mappings, unique-set conflicts, and an out-of-date sequence. Compare both strategies on the same relationship and collision cases (`VM-4`), exercise supported Sqitch release paths on failure and retry (`VM-5`), and run regression checks before promotion (`VM-6`). Exact fixtures, assertions, and commands belong in the phase task plans.
