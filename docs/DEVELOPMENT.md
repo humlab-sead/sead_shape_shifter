@@ -107,7 +107,7 @@ sead_shape_shifter/
 ├── tests/                  # Core tests
 ├── backend/tests/          # Backend API tests
 ├── docs/                   # Documentation
-├── deployment/             # container release bundle and host deployment tooling
+├── deployment/             # Container release bundle and host deployment tooling
 ├── scripts/                # Developer and admin scripts
 ├── pyproject.toml          # Python dependencies and tool config
 └── Makefile                # All supported development commands
