@@ -62,7 +62,7 @@ def _to_entity_response(entity_name: str, entity_mapping: EntityMapping) -> api.
 )
 @handle_endpoint_errors
 async def retry_fixed_entity_mapping(
-    project_name: str,
+    project_name: str,  # pylint: disable=unused-argument
     entity_name: str,
     request: MappingSyncPending,
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
