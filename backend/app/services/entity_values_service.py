@@ -304,7 +304,7 @@ class EntityValuesService:
             raise ValueError(f"Fixed entity '{entity_name}' values request has duplicate column names; received {columns}")
 
         legacy_columns: list[str] = build_legacy_fixed_full_columns(entity_data)
-        if columns != full_columns and columns != legacy_columns:
+        if columns not in (full_columns, legacy_columns):
             raise ValueError(
                 f"Fixed entity '{entity_name}' must update values using the expected positional column order "
                 f"{full_columns}; received {columns}"
