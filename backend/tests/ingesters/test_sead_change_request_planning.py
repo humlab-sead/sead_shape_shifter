@@ -11,6 +11,7 @@ from ingesters.sead_change_request.contracts import (
     ResolvedIdentityTable,
     classify_submission_outcomes,
 )
+from ingesters.sead_change_request.planning import staging_scope_errors
 from src.target_model.models import EntitySpec
 
 
@@ -472,3 +473,85 @@ class TestSubmissionOutcomeClassification:
         assert summary.no_op_rows == 0
         assert summary.allowed_update_rows == 1
         assert any("No mutable baseline columns were provided" in diagnostic for diagnostic in summary.diagnostics)
+
+
+class TestStagingPlanning:
+    """Tests for planning rows under the inline staging strategy."""
+
+    def test_aggregate_child_is_deferred_when_staging(self):
+        """A staging child should defer its target ID instead of inheriting or reserving one."""
+        frame = pd.DataFrame({"system_id": [10], "analysis_value_id": [None], "analysis_entity_id": [1]})
+        entity_spec = EntitySpec(role="fact", aggregate_parent="analysis_entity", public_id="analysis_value_id")
+
+        plan = plan_table("analysis_value", frame, entity_spec, staging=True)
+
+        assert plan.planned_actions.tolist() == [PlannedRowAction.DEFER_TO_DEPLOYMENT]
+
+    def test_direct_planning_keeps_inherited_aggregate_action(self):
+        """Direct planning keeps the current inherit action for an aggregate child."""
+        frame = pd.DataFrame({"system_id": [10], "analysis_value_id": [None], "analysis_entity_id": [1]})
+        entity_spec = EntitySpec(role="fact", aggregate_parent="analysis_entity", public_id="analysis_value_id")
+
+        plan = plan_table("analysis_value", frame, entity_spec)
+
+        assert plan.planned_actions.tolist() == [PlannedRowAction.INHERIT_AGGREGATE]
+
+    def test_reference_existing_rows_stay_referenced_when_staging(self):
+        """Rows that already carry a target ID keep the reference action."""
+        frame = pd.DataFrame({"system_id": [10, 11], "analysis_value_id": [55, None], "analysis_entity_id": [1, 1]})
+        entity_spec = EntitySpec(role="fact", aggregate_parent="analysis_entity", public_id="analysis_value_id")
+
+        plan = plan_table("analysis_value", frame, entity_spec, staging=True)
+
+        assert plan.planned_actions.tolist() == [PlannedRowAction.REFERENCE_EXISTING, PlannedRowAction.DEFER_TO_DEPLOYMENT]
+
+    def test_tracked_root_still_allocates_when_staging(self):
+        """A tracked root keeps normal SIMS allocation under staging."""
+        frame = pd.DataFrame({"system_id": [1], "dataset_id": [None]})
+        entity_spec = EntitySpec(role="lookup", identity_tracking="tracked", reconciliation="allocate", public_id="dataset_id")
+
+        plan = plan_table("dataset", frame, entity_spec, staging=True)
+
+        assert plan.planned_actions.tolist() == [PlannedRowAction.ALLOCATE]
+
+    def test_database_sequence_child_is_deferred_when_staging(self):
+        """Staging eligibility does not depend on the public_id_generation opt-in."""
+        frame = pd.DataFrame({"system_id": [10], "sample_note_id": [None], "physical_sample_id": [1]})
+        entity_spec = EntitySpec(
+            role="fact",
+            aggregate_parent="sample",
+            identity_tracking="child",
+            public_id="sample_note_id",
+            public_id_generation="database_sequence",
+            target_table="tbl_sample_notes",
+        )
+
+        plan = plan_table("sample_note", frame, entity_spec, staging=True)
+
+        assert plan.planned_actions.tolist() == [PlannedRowAction.DEFER_TO_DEPLOYMENT]
+
+    def test_staging_rejects_existing_row_updates(self):
+        """Existing-row updates stay outside the isolated staging strategy."""
+        frame = pd.DataFrame({"system_id": [10], "sample_id": [5], "sample_name": ["A"]})
+        planned = plan_table(
+            "sample",
+            frame,
+            EntitySpec(role="fact", public_id="sample_id"),
+            mutable_fields=["sample_name"],
+            staging=True,
+        )
+        planned.frame["sample_name__existing"] = ["B"]
+        planned.planned_actions = pd.Series([PlannedRowAction.UPDATE_EXISTING_CANDIDATE], index=frame.index)
+
+        errors = staging_scope_errors([planned])
+
+        assert errors == [
+            "Entity 'sample' has 1 existing-row update row(s); the inline staging strategy does not support existing-row updates"
+        ]
+
+    def test_staging_accepts_purely_inserted_rows(self):
+        """No scope error is reported when every planned row is inserted."""
+        frame = pd.DataFrame({"system_id": [10], "sample_id": [None], "sample_name": ["A"]})
+        planned = plan_table("sample", frame, EntitySpec(role="fact", public_id="sample_id"), staging=True)
+
+        assert staging_scope_errors([planned]) == []
