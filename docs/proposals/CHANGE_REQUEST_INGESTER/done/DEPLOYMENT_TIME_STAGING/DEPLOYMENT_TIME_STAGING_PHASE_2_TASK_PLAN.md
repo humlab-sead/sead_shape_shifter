@@ -2,7 +2,7 @@
 
 ## Phase Summary
 
-**Phase:** 2 — Resolve IDs And FKs Through Inline Staging. **Readiness: Validated for implementation.** The [phase plan](./DEPLOYMENT_TIME_STAGING_PHASE_PLAN.md) requires Phase 1's reviewed child/root inventory and deployed target-ID contract. The [Phase 1 task plan](./DEPLOYMENT_TIME_STAGING_PHASE_1_TASK_PLAN.md) records its work areas, validation, and definition of done as complete; the [target-model review](../../../../resources/target_models/TARGET_MODEL_REVIEW_20261013.md) records the generator, schema, and lock results. Its summary acceptance checkboxes remain unchecked, but the completed work and test results provide the required handoff.
+**Phase:** 2 — Resolve IDs And FKs Through Inline Staging. **Readiness: Validated for implementation.** The [phase plan](./DEPLOYMENT_TIME_STAGING_PHASE_PLAN.md) requires Phase 1's reviewed child/root inventory and deployed target-ID contract. The [Phase 1 task plan](./DEPLOYMENT_TIME_STAGING_PHASE_1_TASK_PLAN.md) records its work areas, validation, and definition of done as complete; the [target-model review](../../../../../resources/target_models/TARGET_MODEL_REVIEW_20261013.md) records the generator, schema, and lock results. Its summary acceptance checkboxes remain unchecked, but the completed work and test results provide the required handoff.
 
 **Goal:** Prove an explicitly selected inline staging artifact that preserves local row IDs and FKs, carries known reference mappings, allocates supported child IDs during deployment, checks complete `unique_sets`, and writes target rows in dependency order. Current direct-to-target rendering remains the default until Phase 3 validates copy-CSV parity and the release path.
 

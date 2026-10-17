@@ -14,7 +14,7 @@ This plan covers model-driven aggregate-child eligibility, reference-only ID map
 
 ## Current Position
 
-- The [target-model review](../../../../resources/target_models/TARGET_MODEL_REVIEW_20261013.md) is in progress. Phase 1 recorded the derived aggregate-child inventory, root-row rules, and deployed generator results; role and requiredness decisions for unrelated entities remain open. The model makes `analysis_entity` a child of `dataset`, without SIMS tracked identity.
+- The [target-model review](../../../../../resources/target_models/TARGET_MODEL_REVIEW_20261013.md) is in progress. Phase 1 recorded the derived aggregate-child inventory, root-row rules, and deployed generator results; role and requiredness decisions for unrelated entities remain open. The model makes `analysis_entity` a child of `dataset`, without SIMS tracked identity.
 - The ingester currently reserves database-sequence IDs during preparation. Package assembly drops reference-only rows after projection. Inline-INSERT emits static inserts, while copy-CSV loads directly into target tables. Neither strategy carries reference-only ID mappings or maps deployment-generated IDs back to local references.
 - Generation-time collision checks inspect projected target IDs and derived-bridge unique sets against target rows. They do not check duplicates within the submitted bundle and currently reject unresolved child IDs. Staging must retain checks for known values and check complete `unique_sets` after FK resolution, including child facts and derived bridges.
 - The proposal specifies normal transactional, registry-aware Sqitch deployment; this staging behavior is not implemented yet.
@@ -59,7 +59,7 @@ Define which model-derived children can safely receive deployment-time IDs and h
 
 **Readiness**
 
-Complete. The [Phase 1 task plan](./DEPLOYMENT_TIME_STAGING_PHASE_1_TASK_PLAN.md) records every area and `V-1`–`V-7` as passed, so `VM-1` is satisfied. The inventory and target-ID contract are recorded in the [target-model review](../../../../resources/target_models/TARGET_MODEL_REVIEW_20261013.md): section 11 holds the derived chains and root-row rules, and section 13 holds the deployed generator, cache, locking, and clone results. Two results carry into Phase 2 without blocking it: staging has the model's `target_table` names in both `public` and `clearing_house`, and `value_type_item` has no usable ID generator.
+Complete. The [Phase 1 task plan](./DEPLOYMENT_TIME_STAGING_PHASE_1_TASK_PLAN.md) records every area and `V-1`–`V-7` as passed, so `VM-1` is satisfied. The inventory and target-ID contract are recorded in the [target-model review](../../../../../resources/target_models/TARGET_MODEL_REVIEW_20261013.md): section 11 holds the derived chains and root-row rules, and section 13 holds the deployed generator, cache, locking, and clone results. Two results carry into Phase 2 without blocking it: staging has the model's `target_table` names in both `public` and `clearing_house`, and `value_type_item` has no usable ID generator.
 
 ### Phase 2: Resolve IDs And FKs Through Inline Staging
 
