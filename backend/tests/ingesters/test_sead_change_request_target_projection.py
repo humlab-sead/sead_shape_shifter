@@ -259,7 +259,7 @@ class TestProjectConditionalForeignKeys:
 
         result = project_target_ids(identity_result, conditional_location_target_model())
 
-        assert result.diagnostics == []
+        assert not result.diagnostics
         assert result.tables["location"].frame["location_type_id"].tolist() == [99]
 
     def test_conditional_foreign_key_adds_no_error_for_matched_rows_with_null_value(self):
@@ -274,7 +274,7 @@ class TestProjectConditionalForeignKeys:
 
         result = project_target_ids(identity_result, conditional_location_target_model())
 
-        assert result.diagnostics == []
+        assert not result.diagnostics
 
     def test_conditional_foreign_key_adds_no_error_for_matched_rows_without_fk_column(self):
         """A matched-only submission must not fail when the conditional FK column is absent."""
@@ -288,7 +288,7 @@ class TestProjectConditionalForeignKeys:
 
         result = project_target_ids(identity_result, conditional_location_target_model())
 
-        assert result.diagnostics == []
+        assert not result.diagnostics
 
     def test_conditional_foreign_key_adds_no_error_for_reference_only_planned_rows(self):
         """A reference-only planned row must not trigger the condition when planned actions are supplied."""
@@ -303,7 +303,7 @@ class TestProjectConditionalForeignKeys:
 
         result = project_target_ids(identity_result, conditional_location_target_model(), planned_tables)
 
-        assert result.diagnostics == []
+        assert not result.diagnostics
 
     def test_reports_missing_conditional_foreign_key_column_for_inserted_rows(self):
         """An inserted row without the target-facing FK column must report the missing project link."""
@@ -376,7 +376,7 @@ class TestProjectConditionalForeignKeys:
 
         result = project_target_ids(identity_result, conditional_location_target_model())
 
-        assert result.diagnostics == []
+        assert not result.diagnostics
         assert result.tables["location"].frame.loc[1, "location_type_id"] == 901
 
     def test_does_not_activate_condition_for_blocked_rows(self):
@@ -410,7 +410,7 @@ class TestProjectConditionalForeignKeys:
 
         result = project_target_ids(identity_result, conditional_location_target_model(), planned_tables)
 
-        assert result.diagnostics == []
+        assert not result.diagnostics
         assert result.tables["location"].frame.loc[1, "location_type_id"] == 901
 
     def test_reports_unresolved_conditional_foreign_key_value_used_by_update_candidate(self):
@@ -472,7 +472,7 @@ class TestProjectPendingDeploymentValues:
 
         result = project_target_ids(identity_result, _staging_model(), pending=pending)
 
-        assert result.diagnostics == []
+        assert not result.diagnostics
 
     def test_pending_foreign_key_is_not_reported(self):
         """A foreign key that points at a pending row should be deferred."""
@@ -514,7 +514,7 @@ class TestProjectPendingDeploymentValues:
 
         result = project_target_ids(identity_result, _staging_model(), pending=pending)
 
-        assert result.diagnostics == []
+        assert not result.diagnostics
 
     def test_known_values_are_still_reported(self):
         """Deferral must not hide a genuine missing value."""
