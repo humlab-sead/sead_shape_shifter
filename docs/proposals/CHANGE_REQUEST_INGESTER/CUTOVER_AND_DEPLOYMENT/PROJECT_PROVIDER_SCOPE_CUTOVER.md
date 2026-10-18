@@ -6,7 +6,7 @@
 - Scope: the operational and data-owner decisions plus per-project deployment data that switch existing projects from `sead-change-request:{project}` scopes to provider-schema scopes. No application code.
 - Goal: enable projects one at a time, with a recorded decision about existing identities, without holding up or blocking the remaining development work.
 
-Related: [Bind Each Project To One Curated Provider Scope](../../PROJECT_DATA_PROVIDER_SCOPE/PROJECT_DATA_PROVIDER_SCOPE.md), [Phase plan](../../PROJECT_DATA_PROVIDER_SCOPE/PROJECT_DATA_PROVIDER_SCOPE_PHASE_PLAN.md) (Phase 4 keeps the remaining development work).
+Related: [Bind Each Project To One Curated Provider Scope](../../done/PROJECT_DATA_PROVIDER_SCOPE/PROJECT_DATA_PROVIDER_SCOPE.md), [Phase plan](../../done/PROJECT_DATA_PROVIDER_SCOPE/PROJECT_DATA_PROVIDER_SCOPE_PHASE_PLAN.md) (Phase 4 completed the remaining development work).
 
 ## Summary
 

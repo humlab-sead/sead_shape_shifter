@@ -2,9 +2,11 @@
 
 ## Status
 
-- Proposed change
-- Scope: project metadata, the approved provider and provider-schema registry, and the SIMS source scope used by Change Request runs
-- Goal: make the identity namespace a curated, declared property of the project instead of an internal project name
+- **Implemented** (Phase 1–4 development complete).
+- Scope: provider-schema registry, project bindings, Change Request identity scope, and project-bound Change Request dispatch.
+- Goal: make the provider-schema pair a curated, declared property of each project instead of deriving identity scope from an internal project name.
+- Validation: Phase 4 V-1 through V-5 and its UI/backend regression gates passed; earlier-phase validation is recorded in the phase task plans.
+- Remaining work: assign approved pairs to existing projects and cut over existing SIMS identities as described in the [project scope cutover](../../CHANGE_REQUEST_INGESTER/CUTOVER_AND_DEPLOYMENT/PROJECT_PROVIDER_SCOPE_CUTOVER.md).
 
 ## Summary
 

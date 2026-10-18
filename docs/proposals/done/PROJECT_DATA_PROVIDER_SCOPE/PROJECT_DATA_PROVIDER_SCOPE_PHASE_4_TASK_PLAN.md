@@ -6,7 +6,7 @@
 **Goal:** close the Change Request entry-point and deploy-strategy validation gaps left after Phase 3.  
 **Readiness:** **Validated**. The phase plan marks Phase 4 ready, the affected paths and test seams exist, and this plan chooses the entry-point behavior.
 
-Sources: [proposal](./PROJECT_DATA_PROVIDER_SCOPE.md), [phase plan](./PROJECT_DATA_PROVIDER_SCOPE_PHASE_PLAN.md#phase-4-remaining-change-request-development-work), and [Phase 3 task plan](./PROJECT_DATA_PROVIDER_SCOPE_PHASE_3_TASK_PLAN.md). The [scope cutover](../CHANGE_REQUEST_INGESTER/CUTOVER_AND_DEPLOYMENT/PROJECT_PROVIDER_SCOPE_CUTOVER.md) is separate operational work.
+Sources: [proposal](./PROJECT_DATA_PROVIDER_SCOPE.md), [phase plan](./PROJECT_DATA_PROVIDER_SCOPE_PHASE_PLAN.md#phase-4-remaining-change-request-development-work), and [Phase 3 task plan](./PROJECT_DATA_PROVIDER_SCOPE_PHASE_3_TASK_PLAN.md). The [scope cutover](../../CHANGE_REQUEST_INGESTER/CUTOVER_AND_DEPLOYMENT/PROJECT_PROVIDER_SCOPE_CUTOVER.md) is separate operational work.
 
 **Entry-point choice:** exclude `sead_change_request` from the top-level Data Ingestion page and direct operators to the saved project's Dispatch tab. The top-level page has no project selector. Keep other ingesters available there. On the project Dispatch tab, use the open project's locator for Change Request requests and show the project and key requirements before a run.
 
