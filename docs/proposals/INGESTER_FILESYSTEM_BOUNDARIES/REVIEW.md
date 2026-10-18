@@ -51,7 +51,7 @@ The declared keys are also unavailable to the ingester. `EntityConfig.keys` are 
 
 **Confidence:** High for the mechanism. Medium for operational impact, which depends on whether projects are aligned with providers and whether duplicate aggregates have already been observed.
 
-The scope half of this finding is now a separate decision: [Bind Each Project To One Curated Data Provider](../PROJECT_DATA_PROVIDER_SCOPE/PROJECT_DATA_PROVIDER_SCOPE.md). The business-key source and serialization remain open.
+The scope half of this finding is now a separate decision: [Bind Each Project To One Curated Data Provider](../done/PROJECT_DATA_PROVIDER_SCOPE/PROJECT_DATA_PROVIDER_SCOPE.md). The business-key source and serialization remain open.
 
 ### F1b — High — `run_id` should be client-minted and operator-visible, and four contract points must change
 

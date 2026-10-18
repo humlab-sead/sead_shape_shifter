@@ -14,10 +14,19 @@ from backend.app.ingesters import IngesterConfig
 from backend.app.models.sims import CapabilitiesResponse, EntityCapabilityResponse
 from backend.app.services.ingester_runtime import SeadChangeRequestSimsAdapter
 from ingesters.sead_change_request import ChangeRowState, DeployArtifact, SourceTableBundle
-from ingesters.sead_change_request.contracts import SimsResolveItem, SubmissionContext, resolve_bundle_name
+from ingesters.sead_change_request.contracts import (
+    FIXED_PROVIDER_TARGET_TABLE,
+    SimsResolveItem,
+    SubmissionContext,
+    TrustedProjectContext,
+    resolve_bundle_name,
+)
 from ingesters.sead_change_request.ingester import SeadChangeRequestIngester
 
 # pylint: disable=unused-argument
+
+TEST_SCOPE_NAME = "provider://mal/test-pilot"
+"""Provider-schema scope used by ingester tests instead of a project-name fallback."""
 
 
 class FakeReconciliationClient:
@@ -49,8 +58,12 @@ class FakeSimsClient:
         self.target_ids = target_ids or {}
         self.approved_aggregate_ids: list[int] = []
         self.associated_change_requests: list[tuple[str, str]] = []
+        self.scope_names: list[str | None] = []
+        self.run_ids: list[str | None] = []
 
     async def resolve_batch(self, items: list[SimsResolveItem], submission_context) -> dict:
+        self.scope_names.append(submission_context.scope_name)
+        self.run_ids.append(submission_context.run_id)
         outcomes = []
         for item in items:
             if item.approved_aggregate_id is not None:
@@ -99,6 +112,18 @@ class FakeSimsClient:
 
     async def associate_change_request(self, binding_set_uuid: str, change_request_name: str) -> None:
         self.associated_change_requests.append((binding_set_uuid, change_request_name))
+
+
+class CountingSimsClient(FakeSimsClient):
+    """Fake SIMS client that counts resolve batches so tests can prove zero calls."""
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self.batch_calls = 0
+
+    async def resolve_batch(self, items, submission_context):
+        self.batch_calls += 1
+        return await super().resolve_batch(items, submission_context)
 
 
 class FakeBackendSimsClient:
@@ -309,9 +334,40 @@ def minimal_submission_context(**overrides: object) -> dict:
         "issue_identifier": "NNN",
         "author": "SEAD Expert",
         "data_provider_code": "SEAD",
+        "scope_name": TEST_SCOPE_NAME,
     }
     payload.update(overrides)
     return payload
+
+
+def minimal_trusted_project_context(
+    *,
+    project_name: str = "test-project",
+    provider_code: str = "SEAD",
+    data_provider_id: int = 51,
+    business_keys: dict[str, tuple[str, ...]] | None = None,
+) -> TrustedProjectContext:
+    """Build the backend-owned project facts used by Change Request ingester tests."""
+    return TrustedProjectContext(
+        project_name=project_name,
+        provider_code=provider_code,
+        provider_schema="test-pilot",
+        scope_name=TEST_SCOPE_NAME,
+        data_provider_id=data_provider_id,
+        business_keys=business_keys if business_keys is not None else {},
+    )
+
+
+def verified_provider_row(provider_code: str = "SEAD", data_provider_id: int = 51) -> FakeCollisionChecker:
+    """Build a collision checker that confirms one SEAD provider row."""
+    return FakeCollisionChecker(
+        rows={
+            (
+                FIXED_PROVIDER_TARGET_TABLE,
+                (("data_provider_code", provider_code), ("data_provider_id", data_provider_id)),
+            )
+        }
+    )
 
 
 def expected_bundle_name(**overrides: object) -> str:
@@ -388,8 +444,8 @@ class TestSeadChangeRequestIngesterValidation:
         assert any("normalized submission" in info for info in result.infos)
 
     @pytest.mark.asyncio
-    async def test_validate_requires_project_data_provider_code_for_submission_target(self):
-        """Submission-aware targets should require stable provider identity from project metadata."""
+    async def test_validate_requires_authorized_project_context_for_submission_target(self):
+        """Submission-aware targets should require the authorized saved project facts."""
         ingester = SeadChangeRequestIngester(
             IngesterConfig(
                 host="localhost",
@@ -408,11 +464,11 @@ class TestSeadChangeRequestIngesterValidation:
         result = await ingester.validate("submission.xlsx")
 
         assert result.is_valid is False
-        assert result.errors == ["Submission context requires data_provider_code from project metadata"]
+        assert result.errors == ["Change Request ingestion requires an authorized saved project with a fixed data provider row"]
 
     @pytest.mark.asyncio
-    async def test_validate_rejects_unknown_project_data_provider_code(self):
-        """Submission-aware targets should not allocate an unknown provider."""
+    async def test_validate_rejects_provider_row_missing_from_sead(self):
+        """Submission-aware targets should not accept a provider row that SEAD does not have."""
         ingester = SeadChangeRequestIngester(
             IngesterConfig(
                 host="localhost",
@@ -423,7 +479,8 @@ class TestSeadChangeRequestIngesterValidation:
                     "tables": {"dataset": pd.DataFrame({"dataset_id": [None]})},
                     "target_model": submission_target_model(),
                     "submission_context": minimal_submission_context(data_provider_code="UNKNOWN"),
-                    "reconciliation_client": FakeReconciliationClient(target_id=None),
+                    "trusted_project_context": minimal_trusted_project_context(provider_code="UNKNOWN", data_provider_id=999),
+                    "collision_checker": verified_provider_row(),
                 },
             )
         )
@@ -431,7 +488,7 @@ class TestSeadChangeRequestIngesterValidation:
         result = await ingester.validate("submission.xlsx")
 
         assert result.is_valid is False
-        assert result.errors == ["No SEAD data provider matched data_provider_code 'UNKNOWN'"]
+        assert result.errors == ["No SEAD data provider row matches data_provider_id 999 and data_provider_code 'UNKNOWN'"]
 
     @pytest.mark.asyncio
     async def test_validate_accepts_excel_path_source(self, tmp_path):
@@ -1034,6 +1091,8 @@ class TestSeadChangeRequestIngesterIngest:
                     },
                     "target_model": submission_target_model(),
                     "submission_context": minimal_submission_context(),
+                    "trusted_project_context": minimal_trusted_project_context(),
+                    "collision_checker": verified_provider_row(),
                     "reconciliation_client": FakeReconciliationClient(target_id=51),
                     "sims_client": FakeSimsClient(
                         binding_set_state="confirmed",
@@ -1082,6 +1141,8 @@ class TestSeadChangeRequestIngesterIngest:
                     "target_model": submission_target_model(),
                     "submission_context": minimal_submission_context(),
                     "deploy_strategy": "copy_csv",
+                    "trusted_project_context": minimal_trusted_project_context(),
+                    "collision_checker": verified_provider_row(),
                     "reconciliation_client": FakeReconciliationClient(target_id=51),
                     "sims_client": FakeSimsClient(
                         binding_set_state="confirmed",
@@ -1968,6 +2029,7 @@ class TestSeadChangeRequestIngesterIngest:
                         },
                     ),
                     "submission_context": minimal_submission_context(change_request_name="deploy/backend-bridge"),
+                    "trusted_project_context": minimal_trusted_project_context(),
                     "sims_client": adapter,
                     "reconciliation_client": FakeReconciliationClient(target_id=9200),
                     "collision_checker": FakeCollisionChecker(),
@@ -2004,6 +2066,7 @@ class TestSeadChangeRequestIngesterIngest:
                     "tables": {"taxon": pd.DataFrame({"taxon_id": [None], "taxon_name": ["Approved taxon"]})},
                     "target_model": minimal_target_model(taxon={"role": "classifier", "public_id": "taxon_id", "target_table": "tbl_taxa"}),
                     "submission_context": minimal_submission_context(),
+                    "trusted_project_context": minimal_trusted_project_context(),
                     "sims_client": adapter,
                     "reconciliation_client": FakeReconciliationClient(target_id=77),
                 },
@@ -2103,8 +2166,9 @@ class TestSeadChangeRequestIngesterStaging:
 
     @pytest.mark.asyncio
     async def test_ingest_emits_staging_artifact_without_child_id_reservation(self, tmp_path):
-        """Staging defers the child ID and never asks the allocator for one."""
+        """Staging defers child IDs and never asks the allocator for one."""
         allocator = FakeTargetIdAllocator(target_id=9999)
+        sims_client = FakeSimsClient(target_id=501)
         ingester = SeadChangeRequestIngester(
             IngesterConfig(
                 host="localhost",
@@ -2120,7 +2184,7 @@ class TestSeadChangeRequestIngesterStaging:
                     },
                     "target_model": staging_target_model(),
                     "submission_context": minimal_submission_context(),
-                    "sims_client": FakeSimsClient(target_id=501),
+                    "sims_client": sims_client,
                     "reconciliation_client": FakeReconciliationClient(target_id=7001),
                     "target_id_allocator": allocator,
                     "deploy_strategy": "inline_staging",
@@ -2133,6 +2197,7 @@ class TestSeadChangeRequestIngesterStaging:
 
         assert result.success is True, result.error_details
         assert not allocator.requests
+        assert result.deploy_artifact is not None
         deploy_sql = result.deploy_artifact["deploy_sql"]
         assert result.deploy_artifact["metadata"]["deploy_strategy"] == "inline_staging"
         assert '"public"."tbl_analysis_entities"' in deploy_sql
@@ -2195,3 +2260,133 @@ class TestSeadChangeRequestIngesterStaging:
         assert result.success is False
         assert result.message == "Validation failed"
         assert "existing tracked root" in result.error_details
+
+
+class TestDeclaredBusinessKeys:
+    """Tracked business keys must pass validation before any SIMS request."""
+
+    @staticmethod
+    def _ingester(
+        tmp_path,
+        *,
+        keys: tuple[str, ...],
+        frame: pd.DataFrame,
+        sims_client: CountingSimsClient,
+        deploy_strategy: str | None = None,
+    ):
+        extra = {
+            "tables": {"sample": frame},
+            "target_model": minimal_target_model(sample={"role": "fact", "public_id": "sample_id", "target_table": "tbl_samples"}),
+            "submission_context": minimal_submission_context(),
+            "trusted_project_context": minimal_trusted_project_context(business_keys={"sample": keys}),
+            "sims_client": sims_client,
+        }
+        if deploy_strategy is not None:
+            extra["deploy_strategy"] = deploy_strategy
+            if deploy_strategy == "inline_staging":
+                extra["staging_target_schema"] = "public"
+        return SeadChangeRequestIngester(
+            IngesterConfig(
+                host="localhost",
+                port=5432,
+                dbname="test_db",
+                user="test_user",
+                output_folder=str(tmp_path),
+                extra=extra,
+            )
+        )
+
+    @pytest.mark.asyncio
+    async def test_rejects_a_tracked_entity_without_declared_keys(self, tmp_path):
+        sims_client = CountingSimsClient(target_id=501)
+        ingester = self._ingester(
+            tmp_path,
+            keys=(),
+            frame=pd.DataFrame({"sample_id": [None], "sample_code": ["S1"]}),
+            sims_client=sims_client,
+        )
+
+        result = await ingester.validate("submission.xlsx")
+
+        assert result.is_valid is False
+        assert any("declares no business keys" in error for error in result.errors)
+        assert sims_client.batch_calls == 0
+
+    @pytest.mark.asyncio
+    async def test_rejects_missing_key_values(self, tmp_path):
+        sims_client = CountingSimsClient(target_id=501)
+        ingester = self._ingester(
+            tmp_path,
+            keys=("sample_code",),
+            frame=pd.DataFrame({"sample_id": [None], "sample_code": [None]}),
+            sims_client=sims_client,
+        )
+
+        result = await ingester.validate("submission.xlsx")
+
+        assert result.is_valid is False
+        assert any("value is missing" in error for error in result.errors)
+        assert sims_client.batch_calls == 0
+
+    @pytest.mark.asyncio
+    async def test_rejects_duplicate_key_values_in_one_delivery(self, tmp_path):
+        sims_client = CountingSimsClient(target_id=501)
+        ingester = self._ingester(
+            tmp_path,
+            keys=("sample_code",),
+            frame=pd.DataFrame({"sample_id": [None, None], "sample_code": ["S1", "S1"]}),
+            sims_client=sims_client,
+        )
+
+        result = await ingester.validate("submission.xlsx")
+
+        assert result.is_valid is False
+        assert any("share one business key value" in error for error in result.errors)
+        assert sims_client.batch_calls == 0
+
+    @pytest.mark.asyncio
+    async def test_rejects_a_key_column_missing_from_the_delivery(self, tmp_path):
+        sims_client = CountingSimsClient(target_id=501)
+        ingester = self._ingester(
+            tmp_path,
+            keys=("sample_code",),
+            frame=pd.DataFrame({"sample_id": [None], "other": ["S1"]}),
+            sims_client=sims_client,
+        )
+
+        result = await ingester.validate("submission.xlsx")
+
+        assert result.is_valid is False
+        assert any("missing declared business key column" in error for error in result.errors)
+        assert sims_client.batch_calls == 0
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("deploy_strategy", ["inline_insert", "copy_csv", "inline_staging"])
+    async def test_accepts_unique_keys_and_reports_the_effective_scope_and_run(self, tmp_path, deploy_strategy):
+        sims_client = CountingSimsClient(target_id=501)
+        ingester = self._ingester(
+            tmp_path,
+            keys=("sample_code",),
+            frame=pd.DataFrame({"sample_id": [None], "sample_code": ["S1"]}),
+            sims_client=sims_client,
+            deploy_strategy=deploy_strategy,
+        )
+
+        result = await ingester.ingest("submission.xlsx")
+
+        assert result.success is True
+        assert sims_client.batch_calls == 1
+        assert result.scope_name == TEST_SCOPE_NAME
+        assert result.run_id
+        assert result.deploy_artifact is not None
+        assert set(sims_client.scope_names) == {result.scope_name}
+        assert set(sims_client.run_ids) == {result.run_id}
+        manifest_metadata = result.deploy_artifact["metadata_artifact"]
+        assert manifest_metadata["scope_name"] == result.scope_name
+        assert manifest_metadata["run_id"] == result.run_id
+        assert result.deploy_artifact["metadata"]["scope_name"] == result.scope_name
+        assert result.deploy_artifact["metadata"]["run_id"] == result.run_id
+        manifest_path = next(tmp_path.rglob("manifest.json"))
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        assert manifest["scope_name"] == result.scope_name
+        assert manifest["run_id"] == result.run_id

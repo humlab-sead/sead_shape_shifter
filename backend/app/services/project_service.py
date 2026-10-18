@@ -1,6 +1,7 @@
 """Project service for managing entities."""
 
 import threading
+from contextlib import ExitStack, nullcontext
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -18,12 +19,18 @@ from backend.app.mappers.project_name_mapper import ProjectNameMapper
 from backend.app.middleware.correlation import get_correlation_id
 from backend.app.models.entity import Entity
 from backend.app.models.project import Project, ProjectFileInfo, ProjectMetadata, TargetModelFileOption
+from backend.app.models.validation import ValidationError
 from backend.app.services.fixed_entity_mapping_change_service import FixedEntityMappingChangeService
 from backend.app.services.project.entity_operations import EntityOperations, EntityUpdateResult
 from backend.app.services.project.entity_persistence_strategies import EntityPersistenceStrategyRegistry
 from backend.app.services.project.file_manager import FileManager
 from backend.app.services.project.project_operations import ProjectOperations
 from backend.app.services.project.project_utils import ProjectUtils
+from backend.app.services.project_provider_binding_service import (
+    ProjectProviderBindingError,
+    ProjectProviderBindingService,
+    ProjectProviderRegistryUnavailable,
+)
 from backend.app.services.task_list_sidecar_manager import TaskListSidecarManager
 from backend.app.services.yaml_service import YamlLoadError, YamlSaveError, YamlService, get_yaml_service
 from src.path_resolution import resolve_contained_path
@@ -68,13 +75,19 @@ class ProjectService:
         with cls._locks_lock:
             cls._project_locks.pop(project_name, None)
 
-    def __init__(self, projects_dir: Path | None = None, state: ApplicationStateManager | None = None) -> None:
+    def __init__(
+        self,
+        projects_dir: Path | None = None,
+        state: ApplicationStateManager | None = None,
+        provider_binding_service: ProjectProviderBindingService | None = None,
+    ) -> None:
         """Initialize project service."""
         self.yaml_service: YamlService = get_yaml_service()
         self.projects_dir: Path = Path(projects_dir or settings.PROJECTS_DIR)
         self.specification = ProjectYamlSpecification()
         self.state: ApplicationStateManager = state or get_app_state_manager()
         self.sidecar_manager: TaskListSidecarManager = TaskListSidecarManager(self.yaml_service)
+        self.provider_binding_service = provider_binding_service or ProjectProviderBindingService()
 
         # Initialize project utilities component
         self.utils = ProjectUtils(projects_dir=self.projects_dir)
@@ -91,6 +104,7 @@ class ProjectService:
             cache_invalidator=self._invalidate_all_caches,
             save_metadata_boundary_callback=self.save_metadata_boundary,
             project_dir_resolver=self.utils.resolve_project_dir,
+            validate_project_pair_callback=self.provider_binding_service.require_registered_pair,
         )
 
         # Initialize entity operations component
@@ -141,6 +155,9 @@ class ProjectService:
                     continue
 
                 entity_count: int = len(data.get("entities", {}))
+                project_metadata = data.get("metadata")
+                if not isinstance(project_metadata, dict):
+                    project_metadata = {}
 
                 # Derive project name from relative path, converting / to : (e.g., "arbodat:arbodat-test")
                 relative_path: Path = yaml_file.relative_to(self.projects_dir)
@@ -149,6 +166,8 @@ class ProjectService:
 
                 metadata = ProjectMetadata(
                     name=project_name,
+                    data_provider_code=project_metadata.get("data_provider_code"),
+                    provider_schema=project_metadata.get("provider_schema"),
                     file_path=str(yaml_file),
                     entity_count=entity_count,
                     created_at=yaml_file.stat().st_ctime,
@@ -290,7 +309,7 @@ class ProjectService:
             logger.info("[{}] load_project: '{}' from DISK entities={}", corr, name, len(project.entities))
             return project
 
-        except ConfigurationError:
+        except (ConfigurationError, ProjectProviderRegistryUnavailable):
             raise
         except YamlLoadError as e:
             raise ConfigurationError(message=f"Invalid YAML in project '{name}': {e}") from e
@@ -298,7 +317,24 @@ class ProjectService:
             logger.error(f"Failed to load project '{name}': {e}")
             raise ConfigurationError(message=f"Failed to load project '{name}': {e}") from e
 
-    def save_project(self, project: Project, *, create_backup: bool = True, original_file_path: Path | None = None) -> Project:
+    def save_project(
+        self,
+        project: Project,
+        *,
+        create_backup: bool = True,
+        original_file_path: Path | None = None,
+        lock_held: bool = False,
+    ) -> Project:
+        """Save a project while preserving its on-disk provider-schema assignment."""
+        if not project.metadata or not project.metadata.name:
+            raise ConfigurationError(message="Project must have metadata with name")
+
+        lock = self._get_lock(project.metadata.name)
+        lock_context = nullcontext() if lock_held else lock
+        with lock_context:
+            return self._save_project_locked(project, create_backup=create_backup, original_file_path=original_file_path)
+
+    def _save_project_locked(self, project: Project, *, create_backup: bool, original_file_path: Path | None) -> Project:
         """
         Save project to file.
 
@@ -322,9 +358,6 @@ class ProjectService:
         # Example: projects_dir/arbodat/arbodat-test/shapeshifter.yml (API name "arbodat:arbodat-test")
         file_path: Path = original_file_path or (self.projects_dir / ProjectNameMapper.to_path(project.metadata.name) / "shapeshifter.yml")
 
-        # Ensure project directory exists
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-
         # The project file path is authoritative for the project locator. Derive the
         # locator from the path so a moved folder updates the state cache key and the
         # stored metadata name even when metadata.name was stale. Fall back to the
@@ -344,6 +377,11 @@ class ProjectService:
         try:
             # Convert to core dict for saving (sparse structure)
             cfg_dict: dict[str, Any] = ProjectMapper.to_core_dict(project)
+
+            self.validate_project_file_write(file_path, cfg_dict)
+
+            # Do not create a project directory until its provider pair passes the write check.
+            file_path.parent.mkdir(parents=True, exist_ok=True)
 
             # Extract task_list to save to sidecar separately
             task_list_data = cfg_dict.pop("task_list", None)
@@ -381,13 +419,98 @@ class ProjectService:
 
             return project
 
-        except ConfigurationError:
+        except (ConfigurationError, ProjectProviderRegistryUnavailable):
             raise
         except YamlSaveError as e:
             raise ConfigurationError(message=f"Failed to save project: {e}") from e
         except Exception as e:
             logger.error(f"Failed to save project: {e}")
             raise ConfigurationError(message=f"Failed to save project: {e}") from e
+
+    def validate_project_file_write(self, file_path: Path, candidate_config: dict[str, Any]) -> None:
+        """Check candidate metadata and key declarations against the current project file.
+
+        A bound project keeps its provider-schema pair and its declared business keys.
+        Both checks run before the file is written, so a rejected write has no effect.
+        """
+        current_config: dict[str, Any] | None = None
+        current_metadata: dict[str, Any] | None = None
+        if file_path.exists():
+            loaded_config = self.yaml_service.load(file_path)
+            current_config = loaded_config if isinstance(loaded_config, dict) else None
+            raw_metadata = current_config.get("metadata") if isinstance(current_config, dict) else None
+            current_metadata = raw_metadata if isinstance(raw_metadata, dict) else {}
+        candidate_metadata = candidate_config.get("metadata") if isinstance(candidate_config, dict) else None
+        self.provider_binding_service.validate_write(current_metadata, candidate_metadata)
+        self._validate_business_key_write(current_config, candidate_config)
+
+    def _validate_business_key_write(
+        self,
+        current_config: dict[str, Any] | None,
+        candidate_config: dict[str, Any],
+    ) -> None:
+        """Reject a tracked business-key declaration change on a bound project."""
+        if not isinstance(current_config, dict) or not isinstance(candidate_config, dict):
+            return
+
+        current_metadata = current_config.get("metadata")
+        if not _is_bound_pair(current_metadata):
+            return
+
+        current_entities = current_config.get("entities") or {}
+        candidate_entities = candidate_config.get("entities") or {}
+        if not isinstance(current_entities, dict) or not isinstance(candidate_entities, dict):
+            return
+
+        errors: list[ValidationError] = []
+        for entity_name, current_entity in current_entities.items():
+            candidate_entity = candidate_entities.get(entity_name)
+            if not isinstance(candidate_entity, dict):
+                continue
+            errors.extend(_key_declaration_errors(entity_name, current_entity, candidate_entity))
+
+        errors.extend(self._shared_pair_key_errors(current_metadata, candidate_entities))
+        if errors:
+            raise ProjectProviderBindingError(errors)
+
+    def _shared_pair_key_errors(
+        self,
+        metadata: Any,
+        candidate_entities: dict[str, Any],
+    ) -> list[ValidationError]:
+        """Reject key declarations that disagree with a project on the same provider schema."""
+        if not isinstance(metadata, dict):
+            return []
+        pair = (metadata.get("data_provider_code"), metadata.get("provider_schema"))
+
+        errors: list[ValidationError] = []
+        for sibling in self.list_projects():
+            if (sibling.data_provider_code, sibling.provider_schema) != pair or not sibling.file_path:
+                continue
+            sibling_config = self.yaml_service.load(Path(sibling.file_path))
+            sibling_entities = sibling_config.get("entities") if isinstance(sibling_config, dict) else None
+            if not isinstance(sibling_entities, dict):
+                continue
+            for entity_name, candidate_entity in candidate_entities.items():
+                sibling_entity = sibling_entities.get(entity_name)
+                if not isinstance(sibling_entity, dict) or not isinstance(candidate_entity, dict):
+                    continue
+                if _ordered_keys(sibling_entity) == _ordered_keys(candidate_entity):
+                    continue
+                errors.append(
+                    ValidationError(
+                        severity="error",
+                        entity=None,
+                        field=f"entities.{entity_name}.keys",
+                        message=(
+                            f"Project '{sibling.name}' shares provider-schema pair "
+                            f"'{pair[0]}' / '{pair[1]}' and declares different business keys for "
+                            f"'{entity_name}'; a shared scope needs one reviewed key meaning."
+                        ),
+                        code="PROJECT_BUSINESS_KEY_INVALID",
+                    )
+                )
+        return errors
 
     # ------------------------------------------------------------------
     # Boundary save methods (preserve comments, replace one section only)
@@ -416,9 +539,13 @@ class ProjectService:
             metadata_dict: New metadata as a plain dict (serialised from ProjectMetadata)
         """
         file_path = self._resolve_project_file_path(project_name)
-        logger.info(f"save_metadata_boundary: '{project_name}'")
-        self.yaml_service.merge_boundary(file_path, "metadata", metadata_dict)
-        self.state.invalidate(project_name)
+        with self._get_lock(project_name):
+            current_config = self.yaml_service.load(file_path)
+            current_metadata = current_config.get("metadata") if isinstance(current_config, dict) else None
+            self.provider_binding_service.validate_write(current_metadata, metadata_dict)
+            logger.info(f"save_metadata_boundary: '{project_name}'")
+            self.yaml_service.merge_boundary(file_path, "metadata", metadata_dict)
+            self.state.invalidate(project_name)
 
     def save_options_boundary(self, project_name: str, options: dict[str, Any]) -> None:
         """
@@ -457,9 +584,25 @@ class ProjectService:
             entity_dict: Replacement entity dict, or ``None`` to delete.
         """
         file_path = self._resolve_project_file_path(project_name)
+        if entity_dict is not None:
+            self._validate_entity_key_write(file_path, entity_name, entity_dict)
         logger.info(f"save_entity_boundary: '{project_name}' entity='{entity_name}' delete={entity_dict is None}")
         self.yaml_service.merge_boundary(file_path, ("entities", entity_name), entity_dict)
         self.state.invalidate(project_name)
+
+    def _validate_entity_key_write(self, file_path: Path, entity_name: str, entity_dict: dict[str, Any]) -> None:
+        """Reject a single-entity write that changes a bound project's declared keys."""
+        current_config = self.yaml_service.load(file_path)
+        if not isinstance(current_config, dict):
+            return
+        current_entities = current_config.get("entities") or {}
+        if not isinstance(current_entities, dict):
+            return
+        candidate_config = dict(current_config)
+        candidate_entities = dict(current_entities)
+        candidate_entities[entity_name] = entity_dict
+        candidate_config["entities"] = candidate_entities
+        self._validate_business_key_write(current_config, candidate_config)
 
     def save_entity_rename_boundary(self, project_name: str, old_name: str, new_name: str, project: Project) -> list[str]:
         """Save an entity rename and best-effort move its note in the task sidecar."""
@@ -475,6 +618,7 @@ class ProjectService:
         if isinstance(metadata_data, dict) and metadata_data.get("default_entity") == old_name:
             metadata_data["default_entity"] = new_name
 
+        self.validate_project_file_write(file_path, project_data)
         self.yaml_service.save_commented(project_data, file_path, create_backup=False)
         self._invalidate_all_caches(project_name, get_correlation_id())
 
@@ -568,7 +712,15 @@ class ProjectService:
                 str(e),
             )
 
-    def create_project(self, name: str, entities: dict[str, Any] | None = None, task_list: dict[str, Any] | None = None) -> Project:
+    def create_project(
+        self,
+        name: str,
+        entities: dict[str, Any] | None = None,
+        task_list: dict[str, Any] | None = None,
+        *,
+        data_provider_code: str | None = None,
+        provider_schema: str | None = None,
+    ) -> Project:
         """
         Create new project.
 
@@ -583,7 +735,17 @@ class ProjectService:
         Raises:
             ResourceConflictError: If project already exists
         """
-        return self.operations.create_project(name, entities, task_list)
+        self.utils.validate_project_name(name)
+        self.provider_binding_service.require_registered_pair(
+            {"data_provider_code": data_provider_code, "provider_schema": provider_schema}
+        )
+        return self.operations.create_project(
+            name,
+            entities,
+            task_list,
+            data_provider_code=data_provider_code,
+            provider_schema=provider_schema,
+        )
 
     def delete_project(self, name: str) -> None:
         """
@@ -625,7 +787,21 @@ class ProjectService:
         """
         safe_source_name: str = self.utils.validate_project_name(source_name)
         safe_target_name: str = self.utils.validate_project_name(target_name)
-        return self.operations.copy_project(safe_source_name, safe_target_name)
+        project_names = sorted({safe_source_name, safe_target_name})
+        with ExitStack() as lock_stack:
+            for project_name in project_names:
+                lock_stack.enter_context(self._get_lock(project_name))
+
+            source_project = self.load_project(safe_source_name, force_reload=True)
+            if not source_project.metadata:
+                raise ConfigurationError(message=f"Project '{safe_source_name}' has no metadata")
+            self.provider_binding_service.require_registered_pair(
+                {
+                    "data_provider_code": source_project.metadata.data_provider_code,
+                    "provider_schema": source_project.metadata.provider_schema,
+                }
+            )
+            return self.operations.copy_project(safe_source_name, safe_target_name, project_locks_held=True)
 
     def update_metadata(
         self,
@@ -636,6 +812,10 @@ class ProjectService:
         default_entity: str | None = None,
         target_model: str | None = None,
         target_model_provided: bool = False,
+        data_provider_code: str | None = None,
+        data_provider_code_provided: bool = False,
+        provider_schema: str | None = None,
+        provider_schema_provided: bool = False,
     ) -> Project:
         """
         Update project metadata.
@@ -670,6 +850,10 @@ class ProjectService:
             default_entity,
             target_model=target_model,
             target_model_provided=target_model_provided,
+            data_provider_code=data_provider_code,
+            data_provider_code_provided=data_provider_code_provided,
+            provider_schema=provider_schema,
+            provider_schema_provided=provider_schema_provided,
         )
 
     @staticmethod
@@ -1129,6 +1313,48 @@ class ProjectService:
             File information for the saved file
         """
         return self.files.save_data_source_file(upload, allowed_extensions=allowed_extensions, max_size_mb=max_size_mb)
+
+
+def _is_bound_pair(metadata: Any) -> bool:
+    """Return whether project metadata carries a complete provider-schema pair."""
+    if not isinstance(metadata, dict):
+        return False
+    return all(
+        isinstance(metadata.get(field), str) and metadata.get(field, "").strip() for field in ("data_provider_code", "provider_schema")
+    )
+
+
+def _ordered_keys(entity: Any) -> tuple[str, ...]:
+    """Return an entity's declared business keys as an ordered tuple."""
+    if not isinstance(entity, dict):
+        return ()
+    keys = entity.get("keys") or []
+    if isinstance(keys, str):
+        return (keys,)
+    return tuple(str(key) for key in keys)
+
+
+def _key_declaration_errors(entity_name: str, current_entity: Any, candidate_entity: dict[str, Any]) -> list[ValidationError]:
+    """Return errors when a bound project's declared keys change for one entity."""
+    current_keys = _ordered_keys(current_entity)
+    candidate_keys = _ordered_keys(candidate_entity)
+    if current_keys == candidate_keys:
+        return []
+    if not current_keys and not candidate_keys:
+        return []
+    return [
+        ValidationError(
+            severity="error",
+            entity=entity_name,
+            field=f"entities.{entity_name}.keys",
+            message=(
+                "An assigned provider-schema pair keeps its declared business keys; "
+                f"change from {list(current_keys)} to {list(candidate_keys)} requires a new provider schema code "
+                "or an explicit identity migration."
+            ),
+            code="PROJECT_BUSINESS_KEY_INVALID",
+        )
+    ]
 
 
 # Singleton instance

@@ -71,6 +71,7 @@ class Settings(BaseSettings):
     # Shared data paths for project portability (converted to absolute in model_post_init)
     GLOBAL_DATA_DIR: Path = Path("shared/shared-data")
     GLOBAL_DATA_SOURCE_DIR: Path = Path("shared/data-sources")
+    GLOBAL_DATA_PROVIDER_DIR: Path = Path("shared/data-providers")
     GLOBAL_TARGET_MODEL_DIR: Path = Path("shared/target-models")
 
     # Logging configuration
@@ -133,6 +134,7 @@ class Settings(BaseSettings):
         self.LOG_DIR = self._resolve_under_root(self.LOG_DIR)
         self.GLOBAL_DATA_DIR = self._resolve_under_root(self.GLOBAL_DATA_DIR)
         self.GLOBAL_DATA_SOURCE_DIR = self._resolve_under_root(self.GLOBAL_DATA_SOURCE_DIR)
+        self.GLOBAL_DATA_PROVIDER_DIR = self._resolve_under_root(self.GLOBAL_DATA_PROVIDER_DIR)
         self.GLOBAL_TARGET_MODEL_DIR = self._resolve_under_root(self.GLOBAL_TARGET_MODEL_DIR)
         self.AUTHORIZATION_DATABASE_PATH = self._resolve_under_root(self.AUTHORIZATION_DATABASE_PATH)
 
@@ -141,10 +143,14 @@ class Settings(BaseSettings):
             self.LOG_DIR,
             self.GLOBAL_DATA_DIR,
             self.GLOBAL_DATA_SOURCE_DIR,
+            self.GLOBAL_DATA_PROVIDER_DIR,
             self.GLOBAL_TARGET_MODEL_DIR,
         )
         if any(self.AUTHORIZATION_DATABASE_PATH.is_relative_to(directory) for directory in protected_directories):
-            raise ValueError("AUTHORIZATION_DATABASE_PATH must be outside project, log, shared-data, and target-model directories")
+            raise ValueError(
+                "AUTHORIZATION_DATABASE_PATH must be outside the project, log, shared-data, "
+                "data-source, data-provider, and target-model directories"
+            )
         self.AUTHORIZATION_DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
 
         for path in (
@@ -152,6 +158,7 @@ class Settings(BaseSettings):
             self.LOG_DIR,
             self.GLOBAL_DATA_DIR,
             self.GLOBAL_DATA_SOURCE_DIR,
+            self.GLOBAL_DATA_PROVIDER_DIR,
             self.GLOBAL_TARGET_MODEL_DIR,
         ):
             path.mkdir(parents=True, exist_ok=True)
@@ -194,6 +201,11 @@ class Settings(BaseSettings):
     def global_data_source_dir(self) -> Path:
         """Get global data source directory path."""
         return self.GLOBAL_DATA_SOURCE_DIR
+
+    @property
+    def global_data_provider_dir(self) -> Path:
+        """Get the curated data provider registry directory path."""
+        return self.GLOBAL_DATA_PROVIDER_DIR
 
     @property
     def global_target_model_dir(self) -> Path:

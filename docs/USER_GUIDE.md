@@ -102,7 +102,16 @@ This section walks through the simplest successful workflow.
 1. Open the **Projects** page.
 2. Click **New Project**.
 3. Enter a project name.
-4. Open the new project.
+4. Select a registered **Data Provider** and one of its **Provider Schemas**.
+5. Click **Create**, then open the new project.
+
+The provider and schema must be a registered pair. If the provider list cannot be loaded or contains no entries, the dialog disables project creation until the registry is available.
+
+### Assign a Pair to an Existing Project
+
+An existing project without a provider pair can receive its first assignment in the **Metadata** tab. Select a registered provider and one of its schemas, then save. After the assignment succeeds, both values are shown as read-only. Application saves and raw YAML edits cannot change or remove the pair; direct file changes require repository review.
+
+Projects already checked into the repository may remain unbound until the planned Phase 4 migration. Run **YAML Validation** to see missing, partial, blank, or unregistered provider values reported under project metadata.
 
 ---
 
@@ -841,7 +850,7 @@ These three actions are distinct:
 |--------------------|------------------------|-------------------------------------------------------------------------------------------------------------|
 | **Execute**        | Header button          | Runs the normalization pipeline and produces output files (CSV, Excel, ZIP, or database)                    |
 | **Dispatch**       | Project → Dispatch tab | Runs a configured ingester directly from the project workspace to deliver processed data to a target system |
-| **Data Ingestion** | Top-level page         | Runs any registered ingester independently of a project                                                     |
+| **Data Ingestion** | Top-level page         | Runs project-independent ingesters without a project                                                       |
 
 ## Dispatch Tab (in Project Workspace)
 
@@ -858,7 +867,8 @@ Dispatch requires that Execute has already produced output, or that a suitable o
 
 ## Data Ingestion Page
 
-The top-level **Data Ingestion** page provides the same ingester capability without being tied to a specific project.
+The top-level **Data Ingestion** page runs ingesters that do not require a saved project. It does not list SEAD Change
+Request because that workflow must use an authorized saved project.
 
 Use it for:
 - one-off ingestion runs
@@ -870,6 +880,32 @@ Workflow:
 2. Select an ingester from the list.
 3. Enter connection and configuration details.
 4. Run the ingester.
+
+To run a SEAD Change Request, open its saved project and use **Project → Dispatch**. That form fixes the project
+locator to the open project and shows the saved-project requirements before validation or ingestion.
+
+## SEAD Change Request Requirements
+
+A SEAD Change Request run works against one saved project, and the saved project must be
+ready before validation or ingestion starts.
+
+The project needs:
+
+1. **A registered provider-schema pair.** `metadata.data_provider_code` and
+   `metadata.provider_schema` must match one reviewed pair in the provider registry. The pair
+   selects the SIMS scope as `provider://<provider-code>/<provider-schema>`.
+2. **One fixed `data_provider` row.** The entity must use `type: fixed`,
+   `public_id: data_provider_id`, `keys: [data_provider_code]`, and exactly one row. Enter the
+   SEAD `data_provider_id` yourself. Before SIMS work, the run confirms the ID and code identify
+   one existing `tbl_data_providers` row.
+3. **Declared business keys.** Every tracked project entity declares its identity columns in
+   `keys`. The run rejects a missing key column, a blank value, or a duplicate value in one
+   delivery before any SIMS request or bundle write.
+4. **A target database connection.** The provider row check reads SEAD, so a run without target
+   database details stops before SIMS.
+
+The response and the emitted `manifest.json` both show the effective `scope_name` and `run_id`.
+A `run_id` is meaningful only together with its scope, so compare the two values together.
 
 ---
 
@@ -1176,4 +1212,3 @@ These focus on:
 
 **Audience**: End Users, Data Managers, Integrators
 **Focus**: Workflow-Oriented User Documentation
-

@@ -64,6 +64,8 @@ metadata:                             # Metadata definitions (required)
   name: string                        # Human-readable project name (optional)
   description: string                 # Detailed project description (optional)
   version: string                     # Semantic version (e.g., "1.0.0") (optional)
+  data_provider_code: string          # Registered provider code (required for new projects)
+  provider_schema: string              # Registered schema code for that provider (required for new projects)
   default_entity: string              # Default entity for `data` entities (optional)
   target_model: string | dict         # Target model spec reference (optional)
 ```
@@ -77,8 +79,27 @@ metadata:                             # Metadata definitions (required)
 - **name**: A human-readable name for the project (if omitted, derived from filename)
 - **description**: Detailed description of what this configuration does (supports multi-line strings using `|`)
 - **version**: Semantic version string (e.g., "1.0.0", "2.1.3") for tracking configuration changes
+- **data_provider_code** and **provider_schema**: A complete pair from the reviewed local provider registry. New projects require both values, and project validation reports missing, partial, blank, or unregistered values on the metadata fields. Once assigned, application saves cannot change or remove either value. Existing checked-in projects may remain unbound until the Phase 4 migration; assigning one requires both registered values.
 - **default_entity**: Reference to an existing entity used as the default source for `data` type entities
 - **target_model**: Reference to a target model specification. Accepted as a `@load:` directive pointing to a YAML file (`"@load: resources/target_models/sead_standard_model.yml"`) or as an inline mapping. When present, the **Check Conformance** button in the editor validates the project entities against the spec. See [TARGET_MODEL_GUIDE.md](TARGET_MODEL_GUIDE.md) for the workflow and [TARGET_MODEL_SCHEMA_REFERENCE.md](TARGET_MODEL_SCHEMA_REFERENCE.md) for the generated field-level schema reference.
+
+Provider and schema values are separate codes. A provider can register more than one schema. For example, the current MAL pilot registry contains these pairs:
+
+```yaml
+metadata:
+  type: shapeshifter-project
+  data_provider_code: mal
+  provider_schema: archeobotany/arbodat-pilot
+```
+
+```yaml
+metadata:
+  type: shapeshifter-project
+  data_provider_code: mal
+  provider_schema: radiocarbon/strucke-pilot
+```
+
+Choose a pair from the project creation dialog. An existing unbound project can receive its first pair in the Metadata tab. After the first successful assignment, both codes are shown as fixed values. Editing project YAML directly does not bypass the save rule and requires repository review.
 
 ### Examples
 
@@ -97,6 +118,8 @@ metadata:
     Imports archaeological site data from multiple sources.
     Transforms data to match SEAD Clearinghouse schema.
   version: "2.1.0"
+  data_provider_code: mal
+  provider_schema: archeobotany/arbodat-pilot
   default_entity: sample_data
   target_model: "@load: resources/target_models/sead_standard_model.yml"
 ```
@@ -4420,4 +4443,3 @@ core_config = DataSourceMapper.to_core_config(api_config)
 result = await service.test_connection(api_config)
 # Internally, test_connection uses mapper to get resolved core config
 ```
-

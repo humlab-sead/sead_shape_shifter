@@ -79,10 +79,18 @@ class IngestionResult:
     error_details: str | None = None
     deploy_artifact: dict[str, Any] | None = None
     pending_confirmation_report: dict[str, Any] | None = None
+    scope_name: str | None = None
+    run_id: str | None = None
 
     @staticmethod
     def create_success_result(
-        *, message: str, tables_processed: int, records_inserted: int, deploy_artifact: dict[str, Any]
+        *,
+        message: str,
+        tables_processed: int,
+        records_inserted: int,
+        deploy_artifact: dict[str, Any],
+        scope_name: str | None = None,
+        run_id: str | None = None,
     ) -> "IngestionResult":
         """Build a standard successful ingestion result."""
         return IngestionResult(
@@ -94,6 +102,8 @@ class IngestionResult:
             error_details=None,
             deploy_artifact=deploy_artifact,
             pending_confirmation_report=None,
+            scope_name=scope_name,
+            run_id=run_id,
         )
 
     @staticmethod
@@ -103,6 +113,8 @@ class IngestionResult:
         details: str,
         deploy_artifact: dict[str, Any] | None = None,
         pending_confirmation_report: dict[str, Any] | None = None,
+        scope_name: str | None = None,
+        run_id: str | None = None,
     ) -> "IngestionResult":
         """Build a standard failed ingestion result."""
         return IngestionResult(
@@ -114,6 +126,8 @@ class IngestionResult:
             error_details=details,
             deploy_artifact=deploy_artifact,
             pending_confirmation_report=pending_confirmation_report,
+            scope_name=scope_name,
+            run_id=run_id,
         )
 
 

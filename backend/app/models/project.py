@@ -51,6 +51,7 @@ class ProjectMetadata(BaseModel):
     description: str | None = Field(default=None, description="Project description")
     version: str | None = Field(default=None, description="Project version")
     data_provider_code: str | None = Field(default=None, description="Stable SEAD data provider code for the project")
+    provider_schema: str | None = Field(default=None, description="Stable schema code for the project's data provider")
     file_path: str | None = Field(default=None, description="File path if loaded from file")
     entity_count: int = Field(
         ...,

@@ -182,6 +182,29 @@ Common inputs include:
 - `tables` or `source_bundle`: in-memory input tables when not reading from Excel
 - `identity_assignments`: optional fallback row assignments
 - `deploy_strategy`: optional deploy renderer name or strategy instance
+- `trusted_project_context`: required for the API path; the backend supplies it from the
+  authorized saved project and the ingester must not take these values from caller input
+
+### Trusted Project Inputs
+
+`trusted_project_context` carries four values the caller cannot set:
+
+- `scope_name`: the registered `provider://<provider-code>/<provider-schema>` scope for the
+  saved pair. SIMS requests use this value, so no `sead-change-request:<project>` fallback
+  remains and a caller-supplied `sims_scope_name` is rejected.
+- `data_provider_id`: the operator-reconciled SEAD provider ID from the project's single
+  fixed `data_provider` row. Before any SIMS work, the ingester confirms the ID and the saved
+  provider code identify one existing `tbl_data_providers` row. A missing target-database
+  connection or an unmatched row blocks the run.
+- `business_keys`: the ordered `EntityConfig.keys` per entity. For every tracked project
+  entity, the transformed delivery must contain each declared key column with a non-blank,
+  unique value. A failure blocks the run before any SIMS request or bundle write.
+- `provider_code` and `provider_schema`: the saved pair, used to reject a conflicting nested
+  `submission_context`.
+
+Declared keys become one deterministic SIMS business key serialized as
+`[1, [[column, type, value], ...]]` in declared order. Entities without declared keys keep the
+field-based identity value.
 
 Optional injected collaborators include:
 
@@ -203,6 +226,10 @@ The emitted directory contains:
 - any strategy-specific bundle files such as `deploy/<bundle_name>/*.gz`
 
 The exact payload shape depends on the selected deploy strategy.
+
+The `metadata` and `metadata_artifact` sections both record the effective `scope_name` and
+`run_id` used for the run. The ingest response returns the same two values, so an operator can
+match an emitted bundle to the SIMS scope and run that produced it.
 
 ## Validation Vs Ingestion
 

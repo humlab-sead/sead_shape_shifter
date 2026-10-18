@@ -28,7 +28,7 @@ from backend.app.services.documentation_service import DocumentationService, get
 from backend.app.services.layout_sidecar_manager import LayoutSidecarManager, get_layout_sidecar_manager
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.services.validation_service import ValidationService, get_validation_service
-from backend.app.services.yaml_service import YamlService, get_yaml_service
+from backend.app.services.yaml_service import YamlService, YamlServiceError, get_yaml_service
 from backend.app.utils.error_handlers import handle_endpoint_errors
 from backend.app.utils.exceptions import BadRequestError, BaseAPIException, NotFoundError
 from src.path_resolution import resolve_contained_path
@@ -80,6 +80,8 @@ class ProjectCreateRequest(BaseModel):
     """Request to create new project."""
 
     name: str = Field(..., description="Project name")
+    data_provider_code: str = Field(..., description="Registered data provider code")
+    provider_schema: str = Field(..., description="Registered provider schema code")
     entities: dict[str, dict[str, Any]] = Field(default_factory=dict, description="Initial entities")
     task_list: dict[str, Any] | None = Field(default=None, description="Task list configuration")
 
@@ -120,6 +122,8 @@ class MetadataUpdateRequest(BaseModel):
     target_model: str | None = Field(
         default=None, description="Target model spec path (e.g. @load: target.yml); empty string clears the field"
     )
+    data_provider_code: str | None = Field(default=None, description="Initial registered data provider code")
+    provider_schema: str | None = Field(default=None, description="Initial registered provider schema code")
 
 
 # Endpoints
@@ -207,7 +211,13 @@ async def create_project(
     project_service: ProjectService = get_project_service()
     project: Project | None = None
     try:
-        project = project_service.create_project(request.name, entities=request.entities, task_list=request.task_list)
+        project = project_service.create_project(
+            request.name,
+            entities=request.entities,
+            task_list=request.task_list,
+            data_provider_code=request.data_provider_code,
+            provider_schema=request.provider_schema,
+        )
         project_service.assign_project_owner(request.name, principal, authorization_service)
     except Exception:
         if project is not None:
@@ -279,6 +289,10 @@ async def update_project_metadata(
         default_entity=request.default_entity,
         target_model=request.target_model if "target_model" in request.model_fields_set else None,
         target_model_provided="target_model" in request.model_fields_set,
+        data_provider_code=request.data_provider_code if "data_provider_code" in request.model_fields_set else None,
+        data_provider_code_provided="data_provider_code" in request.model_fields_set,
+        provider_schema=request.provider_schema if "provider_schema" in request.model_fields_set else None,
+        provider_schema_provided="provider_schema" in request.model_fields_set,
     )
     logger.info(f"Updated metadata for project '{name}'")
     return project
@@ -450,21 +464,17 @@ async def restore_backup(
         raise NotFoundError(f"Backup '{request.backup_name}' not found for project '{name}'")
 
     target_path: Path = resolve_contained_path(PROJECT_CONFIG_FILENAME, project_dir)
-    yaml_service.restore_backup(backup_path, str(target_path), create_backup=True)
-    restored_data: dict[str, Any] = yaml_service.load(target_path)
-    stat = target_path.stat()
-    project = Project(
-        metadata=ProjectMetadata(
-            name=name,
-            file_path=str(target_path),
-            entity_count=len(restored_data.get("entities", {})),
-            created_at=stat.st_ctime,
-            modified_at=stat.st_mtime,
-            is_valid=True,  # Will be validated separately if needed
-        ),
-        entities=restored_data.get("entities", {}),
-        options=restored_data.get("options", {}),
-    )
+    project_service = get_project_service()
+    with project_service._get_lock(authorized_project.resource.locator):
+        try:
+            restored_data: dict[str, Any] = yaml_service.load(backup_path)
+        except YamlServiceError as exc:
+            raise BadRequestError("Selected backup contains invalid project YAML") from exc
+        if not isinstance(restored_data, dict) or not isinstance(restored_data.get("metadata"), dict):
+            raise BadRequestError("Selected backup must contain project metadata")
+        project_service.validate_project_file_write(target_path, restored_data)
+        yaml_service.restore_backup(backup_path, str(target_path), create_backup=True)
+        project = project_service.load_project(authorized_project.resource.locator, force_reload=True)
 
     logger.info(f"Restored project '{name}' from backup")
     return project
@@ -716,15 +726,13 @@ async def update_project_raw_yaml(
     if not project_path.exists():
         raise NotFoundError(f"Project file not found: {project_path}")
 
-    # Create backup before update
-    yaml_service.create_backup(project_path)
-
-    # Write new content
-    project_path.write_text(request.yaml_content, encoding="utf-8")
-
-    # Load and return updated project.
-    # IMPORTANT: Force reload so ApplicationState cache cannot return stale data.
-    updated_project = project_service.load_project(authorized_project.resource.locator, force_reload=True)
+    if not isinstance(parsed_yaml.get("metadata"), dict):
+        raise BadRequestError("YAML must contain project metadata")
+    with project_service._get_lock(authorized_project.resource.locator):
+        project_service.validate_project_file_write(project_path, parsed_yaml)
+        yaml_service.create_backup(project_path)
+        project_path.write_text(request.yaml_content, encoding="utf-8")
+        updated_project = project_service.load_project(authorized_project.resource.locator, force_reload=True)
 
     logger.info(f"Updated project '{name}' from raw YAML")
 

@@ -42,7 +42,12 @@ class TestEntityValidation:
         # Create config
         await authorized_client.post(
             "/api/v1/projects",
-            json={"name": "test_project", "entities": {"sample": sample_entity_data}},
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {"sample": sample_entity_data},
+            },
         )
 
         # Validate entity
@@ -61,7 +66,12 @@ class TestEntityValidation:
         # Create config
         await authorized_client.post(
             "/api/v1/projects",
-            json={"name": "test_project", "entities": {"sample": sample_entity_data}},
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {"sample": sample_entity_data},
+            },
         )
 
         # Validate non-existent entity - returns validation result with no entity-specific errors
@@ -121,7 +131,10 @@ class TestDependencies:
             "source_edges": [],
         }
 
-        await authorized_client.post("/api/v1/projects", json={"name": "test_project", "entities": entities})
+        await authorized_client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "data_provider_code": "test-provider", "provider_schema": "schema-one", "entities": entities},
+        )
 
         # Get dependencies
         response = await authorized_client.get("/api/v1/projects/test_project/dependencies")
@@ -141,7 +154,10 @@ class TestDependencies:
 
         # Create config without dependencies
         entities = {"entity1": sample_entity_data, "entity2": sample_entity_data}
-        await authorized_client.post("/api/v1/projects", json={"name": "test_project", "entities": entities})
+        await authorized_client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "data_provider_code": "test-provider", "provider_schema": "schema-one", "entities": entities},
+        )
 
         # Get dependencies
         response = await authorized_client.get("/api/v1/projects/test_project/dependencies")
@@ -161,7 +177,10 @@ class TestDependencies:
             "entity1": {"type": "entity", "keys": ["id"], "source": "entity2"},
             "entity2": {"type": "entity", "keys": ["id"], "source": "entity1"},
         }
-        await authorized_client.post("/api/v1/projects", json={"name": "test_project", "entities": entities})
+        await authorized_client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "data_provider_code": "test-provider", "provider_schema": "schema-one", "entities": entities},
+        )
 
         # Get dependencies
         response = await authorized_client.get("/api/v1/projects/test_project/dependencies")
@@ -193,7 +212,10 @@ class TestCircularDependencyCheck:
             "base": sample_entity_data,
             "derived": {**sample_entity_data, "source": "base"},
         }
-        await authorized_client.post("/api/v1/projects", json={"name": "test_project", "entities": entities})
+        await authorized_client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "data_provider_code": "test-provider", "provider_schema": "schema-one", "entities": entities},
+        )
 
         # Check dependencies
         response = await authorized_client.post("/api/v1/projects/test_project/dependencies/check")
@@ -213,7 +235,10 @@ class TestCircularDependencyCheck:
             "entity1": {"type": "entity", "keys": ["id"], "source": "entity2"},
             "entity2": {"type": "entity", "keys": ["id"], "source": "entity1"},
         }
-        await authorized_client.post("/api/v1/projects", json={"name": "test_project", "entities": entities})
+        await authorized_client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "data_provider_code": "test-provider", "provider_schema": "schema-one", "entities": entities},
+        )
 
         # Check dependencies
         response = await authorized_client.post("/api/v1/projects/test_project/dependencies/check")
