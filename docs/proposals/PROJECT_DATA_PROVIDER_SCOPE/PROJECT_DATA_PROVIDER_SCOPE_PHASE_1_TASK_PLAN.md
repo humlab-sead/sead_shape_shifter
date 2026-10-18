@@ -6,12 +6,14 @@
 
 **Readiness: Validated.** The phase plan marks Phase 1 ready for a task plan. The initial provider code `mal`, display name `MAL`, and two provider-schema codes are approved. The targets and validation methods below are verified against the repository. BugsCEP is excluded from the initial registry.
 
+**Execution status:** implemented and validated on 2026-10-18, except the deployment-host mount inspection in `V-4`, which requires a test deployment.
+
 Sources: [proposal](./PROJECT_DATA_PROVIDER_SCOPE.md) (`P-AC-1`) and [phase plan](./PROJECT_DATA_PROVIDER_SCOPE_PHASE_PLAN.md) (Phase 1, `VM-1`). The fixed decisions are one scope per provider-schema pair, `scope_name: provider://<provider-code>/<provider-schema>`, code-reviewed files, a read-only interface, no live SIMS check, and no environment-specific target provider ID in the registry.
 
 Acceptance criteria:
 
-1. [ ] `PH1-AC-1` (from `P-AC-1`): provider `mal` has distinct `provider://mal/archeobotany/arbodat-pilot` and `provider://mal/radiocarbon/strucke-pilot` scopes; duplicate provider codes, duplicate schema codes within a provider, duplicate scopes, and mismatched names are rejected. BugsCEP is absent.
-2. [ ] `PH1-AC-2` (from `P-AC-1`): a provider-schema pair or scope already bound to a project cannot be reassigned to a different provider or key contract.
+1. [x] `PH1-AC-1` (from `P-AC-1`): provider `mal` has distinct `provider://mal/archeobotany/arbodat-pilot` and `provider://mal/radiocarbon/strucke-pilot` scopes; duplicate provider codes, duplicate schema codes within a provider, duplicate scopes, and mismatched names are rejected. BugsCEP is absent.
+2. [x] `PH1-AC-2` (from `P-AC-1`): a provider-schema pair or scope already bound to a project cannot be reassigned to a different provider or key contract.
 
 **Implementation handoff:** if verified repository state differs from the findings below, stop and report the difference before changing the design or expanding scope.
 
@@ -49,13 +51,13 @@ The proposed tracked-directory mount is the concrete delivery method for the pro
 
 **Dependencies:** none.
 
-* [ ] `T1.1` **Configure the provider directory.**
+* [x] `T1.1` **Configure the provider directory.**
   * **Target:** `backend/app/core/config.py::Settings` and `Settings.resolve_paths`; `.env.example`; `deployment/container/resources/backend.env.example`; `docs/OPERATIONS.md`; `backend/tests/test_config.py`; `backend/tests/test_authorization_config.py`.
   * **Current → required:** no provider path exists → `GLOBAL_DATA_PROVIDER_DIR` defaults to `shared/data-providers`, resolves under `APPLICATION_ROOT`, is created, and cannot contain `AUTHORIZATION_DATABASE_PATH`.
   * **Implementation:** add the setting and resolved-path accessor for dependency injection; include it in directory creation and authorization database containment checks; document the environment variable and local absolute-path override. Do not add it to directive expansion unless a later phase uses it there.
   * **Constraints:** preserve existing shared paths and their defaults. Never resolve provider data through the target database or SIMS.
   * **Validation:** `V-1` covers default and explicit paths, directory creation, and rejected authorization database placement.
-* [ ] `T1.2` **Deliver reviewed files to the container as read-only data.**
+* [x] `T1.2` **Deliver reviewed files to the container as read-only data.**
   * **Target:** `deployment/container/resources/data-providers/README.md` (**NEW**); `deployment/container/podman-compose.yml`; `deployment/container/DEPLOYMENT.md`.
   * **Current → required:** `data/` is ignored and `/app/shared` is writable → reviewed files ship in the tracked deployment tree and are mounted read-only at `/app/shared/data-providers` inside the existing `/app/shared` mount.
   * **Implementation:** create the tracked directory with a README stating the provider fields, nested schema fields, exact scope formula, review requirement, and no runtime edits. Add the nested read-only bind mount from `./resources/data-providers` in the compose file; document refresh via the existing `sync-to-deploy` workflow and how to verify the effective mount.
@@ -72,7 +74,7 @@ The proposed tracked-directory mount is the concrete delivery method for the pro
 
 **Dependencies:** Area 1's path contract.
 
-* [ ] `T1.3` **Load and validate all provider files.**
+* [x] `T1.3` **Load and validate all provider files.**
   * **Target:** `backend/app/models/data_provider.py` (**NEW**); `backend/app/services/data_provider_service.py` (**NEW**); `backend/app/services/__init__.py`; `backend/tests/services/test_data_provider_service.py` (**NEW**).
   * **Current → required:** no provider reader exists → a service loads one `*.yml` file per provider, returns a sorted provider list and lookup by provider-schema pair, and rejects invalid registry content before returning any entry.
   * **Implementation:** define required provider `code` and `name` plus one or more `schemas` entries with required `provider_schema` and `scope_name`. Reject blank values and extra fields including target IDs. Require `scope_name == f"provider://{code}/{provider_schema}"`; treat a slash inside `provider_schema` as part of that identifier. Reject duplicate provider codes across files, duplicate schema codes within a provider, and duplicate scope names globally. Expose `DataProviderService.list_providers()` and `get_scope(code, provider_schema)`; both validate the complete directory. Read YAML without directive or environment substitution. Distinguish an empty existing directory (empty list) from a missing/unreadable configured directory (error). Report file and reason to operators without exposing filesystem details in the public API. Never add create, update, or delete methods.
@@ -89,7 +91,7 @@ The proposed tracked-directory mount is the concrete delivery method for the pro
 
 **Dependencies:** Area 2's service contract.
 
-* [ ] `T1.4` **Register a read-only list endpoint.**
+* [x] `T1.4` **Register a read-only list endpoint.**
   * **Target:** `backend/app/api/dependencies.py::get_data_provider_service` (**NEW** symbol); `backend/app/api/v1/endpoints/data_providers.py` (**NEW**); `backend/app/api/v1/api.py::api_router`; `backend/tests/api/test_data_provider_api.py` (**NEW**); `backend/tests/authorization/test_route_authentication.py::AUTHENTICATED_ONLY_API_PATHS`; `docs/AUTHORIZATION_ROUTE_INVENTORY.md`.
   * **Current → required:** no provider API route exists → `GET /api/v1/data-providers` returns `code`, `name`, and nested `{provider_schema, scope_name}` entries from the validated registry to an authenticated principal.
   * **Implementation:** inject the service using the configured directory; require `get_principal()`; return a typed list sorted by provider code and schema code. Translate registry failure into a safe server error and log the cause. Register the router, add `/data-providers` to the authenticated-only classification, add its inventory row, and update the inventory route count from the assembled route table.
@@ -106,7 +108,7 @@ The proposed tracked-directory mount is the concrete delivery method for the pro
 
 **Dependencies:** Area 1 delivery path and Area 2 validation contract. The provider and schema values are approved.
 
-* [ ] `T1.5` **Add the approved `mal` entry and review identity changes.**
+* [x] `T1.5` **Add the approved `mal` entry and review identity changes.**
   * **Target:** `deployment/container/resources/data-providers/mal.yml` (**NEW**).
   * **Current → required:** no approved records are checked in → one provider file contains `code: mal`, `name: MAL`, and exactly two schema entries: `archeobotany/arbodat-pilot` → `provider://mal/archeobotany/arbodat-pilot` and `radiocarbon/strucke-pilot` → `provider://mal/radiocarbon/strucke-pilot`.
   * **Implementation:** add those values and run the strict loader against the reviewed directory. For later registry revisions, compare the previous reviewed revision and the project binding inventory; reject removal, code or schema reuse, changed scope, or a display-name edit that actually reassigns `mal` to another provider. A genuine display-name correction is allowed only when review confirms the provider identity is unchanged.
@@ -138,6 +140,22 @@ The proposed tracked-directory mount is the concrete delivery method for the pro
 
 The two focused baseline runs were `rtk uv run pytest backend/tests/test_config.py backend/tests/authorization/test_route_authentication.py -q` and `rtk uv run pytest backend/tests/services/test_data_source_service.py backend/tests/test_data_source_api.py -q`; both exited successfully on this repository basis. Run `rtk make lint` after implementation, following the repository workflow; its baseline was not run for this planning-only change.
 
+## Validation Results
+
+Executed 2026-10-18 on branch `project-data-provider-scope` from a clean working tree.
+
+| ID | Result | Evidence |
+| --- | --- | --- |
+| `V-1` | Pass | `pytest backend/tests/test_config.py backend/tests/test_authorization_config.py` passed. Adds default path creation, the accessor, relative resolution, and rejection of an authorization database under `shared/data-providers`. |
+| `V-2` | Pass | `pytest backend/tests/services/test_data_provider_service.py` passed (18 cases): two scopes from one provider, pair lookup, sorted multi-provider listing, empty registry, missing directory, duplicate provider code, duplicate schema code, duplicate scope name across providers, mismatched scope, blank field, extra fields (`data_provider_id`, `scope_uuid`), no schemas, malformed YAML, non-mapping document, invalid file rejecting valid files, ignored non-YAML files, literal directive text. |
+| `V-3` | Pass | `pytest backend/tests/api/test_data_provider_api.py` passed: authenticated `200` with sorted nested scopes, empty list, invalid registry `500` with the fixed message and no path or content, missing directory `500`, anonymous `401`, and `405` for `POST`, `PUT`, `PATCH`, and `DELETE`. |
+| `V-4` | Partial: compose resolution and local override pass; test-deployment inspection not run | `make -C deployment/container config` resolved `./resources/data-providers:/app/shared/data-providers:ro`. A `Settings` instance with `SHAPE_SHIFTER_GLOBAL_DATA_PROVIDER_DIR` set to the absolute reviewed directory listed `mal` and resolved `provider://mal/radiocarbon/strucke-pilot`. `podman inspect` was not run because no test deployment was available. |
+| `V-5` | Pass | `git ls-files --cached --others --exclude-standard deployment/container/resources/data-providers` lists only `README.md` and `mal.yml`. The strict loader returned one record: `mal` / `MAL` with `archeobotany/arbodat-pilot` and `radiocarbon/strucke-pilot`; no BugsCEP entry. |
+| `V-6` | Pass | `pytest backend/tests/authorization/test_route_authentication.py backend/tests/test_data_source_api.py backend/tests/services/test_data_source_service.py` passed. The inventory now has the `GET /api/v1/data-providers` row, and the documented and runtime API entry counts both equal 143. |
+| `V-7` | Pass | The registry revision is the first one, so no earlier pair or scope exists to reassign. `rg -n 'data_provider_code:|provider_schema:' data/projects -g 'shapeshifter.yml'` found only a blank `data_provider_code` in `data/projects/arbodat-rebecka/shapeshifter.yml` and no `provider_schema` binding. On a temporary copy, changing the provider code while keeping the scope names, and changing one scope to another provider, were both rejected with the `scope_name ... must equal` error. |
+
+Additional checks: `make lint` passed (isort, Black, Ruff, Pylint at 10.00/10, target-model reference, documentation links). The full `backend/tests` suite had one failure, `backend/tests/data_providers/arbodat/test_validation.py::test_data_validation_orchestrator`, which compares expected data-validation warnings against an external data source loaded through `data/test.env` and `data/.env`; it exercises no changed code and is environment-dependent.
+
 ## Deliverables
 
 | Deliverable | Target | Task IDs | Completion evidence |
@@ -153,20 +171,20 @@ The two focused baseline runs were `rtk uv run pytest backend/tests/test_config.
 
 | Area | Status | Dependencies | Notes |
 | --- | --- | --- | --- |
-| Area 1: Configure and deliver registry | Not started | None | Proposed tracked source and read-only mount are based on verified deployment layout. |
-| Area 2: Enforce identity rules | Not started | Area 1 path contract | Synthetic data can be used for tests. |
-| Area 3: Expose provider list | Not started | Area 2 | Route inventory and authentication tests must be updated together. |
-| Area 4: Add approved record | Not started | Areas 1 and 2 | `mal.yml`, `MAL`, and both schema/scope pairs are approved. |
+| Area 1: Configure and deliver registry | Done | None | Settings, env examples, operations and deployment docs, read-only compose mount, and tracked README added. |
+| Area 2: Enforce identity rules | Done | Area 1 path contract | `DataProvider` models and `DataProviderService` added with 18 passing registry tests. |
+| Area 3: Expose provider list | Done | Area 2 | Authenticated `GET /api/v1/data-providers` added; classification, inventory row, and entry count updated. |
+| Area 4: Add approved record | Done | Areas 1 and 2 | `mal.yml` contains `MAL` and both approved schema/scope pairs; reassignment review recorded. |
 
 ## Definition Of Done
 
-* [ ] `mal.yml` contains display name `MAL` and exactly the two approved schema/scope pairs; BugsCEP is absent.
-* [ ] `PH1-AC-1` and `PH1-AC-2` have task and validation results, including the manual identity review required by `VM-1`.
-* [ ] All work areas and deliverables are complete; the read API returns the complete validated registry and has no mutation route.
-* [ ] `V-1` through `V-7` pass or have a recorded, justified environment-specific result; focused regressions and `rtk make lint` pass.
-* [ ] The tracked registry reaches the container as a read-only mount, and operations documentation matches the effective paths.
-* [ ] No SIMS request, target-database request, project binding, or ingestion behavior is added in Phase 1.
-* [ ] Deviations and follow-up work are recorded, and no unresolved question changes implementation or validation.
+* [x] `mal.yml` contains display name `MAL` and exactly the two approved schema/scope pairs; BugsCEP is absent.
+* [x] `PH1-AC-1` and `PH1-AC-2` have task and validation results, including the manual identity review required by `VM-1`.
+* [x] All work areas and deliverables are complete; the read API returns the complete validated registry and has no mutation route.
+* [x] `V-1` through `V-7` pass or have a recorded, justified environment-specific result; focused regressions and `rtk make lint` pass. `V-4` records the deployment-host inspection as not run.
+* [x] The tracked registry reaches the container as a read-only mount, and operations documentation matches the effective paths. The mount mode is verified in compose output only; see the deployment risk below.
+* [x] No SIMS request, target-database request, project binding, or ingestion behavior is added in Phase 1.
+* [x] Deviations and follow-up work are recorded, and no unresolved question changes implementation or validation.
 
 ## Risks And Open Questions
 

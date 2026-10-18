@@ -95,6 +95,29 @@ credentials, and runtime data stay outside the deployment files.
 it is set explicitly. `scripts/_load-env.sh` and the Makefile implement the same
 rule, so a direct script call and a Make target agree.
 
+### Curated provider registry
+
+The provider-schema registry is reviewed data, not runtime data. Reviewed files
+live in `deployment/container/resources/data-providers/`, which `sync-to-deploy`
+copies with the rest of the deployment tree to `~/container/resources/data-providers`.
+`podman-compose.yml` mounts that directory read-only over
+`/app/shared/data-providers`, so the writable `~/container-data/shared` mount
+never supplies or receives provider records.
+
+The default `SHAPE_SHIFTER_GLOBAL_DATA_PROVIDER_DIR=shared/data-providers`
+resolves to `/app/shared/data-providers` because `SHAPE_SHIFTER_APPLICATION_ROOT`
+is `/app`. Do not override it inside a container; the reviewed directory is the
+only source. Refresh it with the existing sync workflow and verify the effective
+mount after a restart:
+
+```bash
+podman inspect shape-shifter --format '{{json .Mounts}}'
+```
+
+The listed mounts must show `/app/shared/data-providers` with `RW: false`.
+For local development, set `SHAPE_SHIFTER_GLOBAL_DATA_PROVIDER_DIR` to the
+absolute path of the reviewed directory instead of mounting it.
+
 ---
 
 ## Single environment deploy
