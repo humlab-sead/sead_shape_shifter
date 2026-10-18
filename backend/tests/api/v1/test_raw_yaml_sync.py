@@ -56,7 +56,15 @@ async def test_update_raw_yaml_forces_reload(tmp_path, monkeypatch, reset_servic
         "site": {"type": "openpyxl", "columns": ["b"], "options": {"filename": "x.xlsx", "sheet_name": "t"}},
     }
 
-    create_resp = await authorized_client.post("/api/v1/projects", json={"name": "test_project", "entities": entities_v1})
+    create_resp = await authorized_client.post(
+        "/api/v1/projects",
+        json={
+            "name": "test_project",
+            "data_provider_code": "test-provider",
+            "provider_schema": "schema-one",
+            "entities": entities_v1,
+        },
+    )
     assert create_resp.status_code == 201
 
     # Prime ApplicationState cache (this is what used to cause staleness)
@@ -71,6 +79,8 @@ metadata:
   type: shapeshifter-project
   description: test
   version: 1.0.0
+  data_provider_code: test-provider
+  provider_schema: schema-one
 entities:
   datasheet:
     type: openpyxl
@@ -127,7 +137,10 @@ async def test_download_schema_reference_target_model_docs(tmp_path, monkeypatch
 
     monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
-    create_resp = await authorized_client.post("/api/v1/projects", json={"name": "test_project", "entities": {}})
+    create_resp = await authorized_client.post(
+        "/api/v1/projects",
+        json={"name": "test_project", "data_provider_code": "test-provider", "provider_schema": "schema-one", "entities": {}},
+    )
     assert create_resp.status_code == 201
 
     yaml_with_target_model = """
@@ -136,6 +149,8 @@ metadata:
   type: shapeshifter-project
   description: test
   version: 1.0.0
+  data_provider_code: test-provider
+  provider_schema: schema-one
   target_model:
     model:
       name: Test Target Model
@@ -156,3 +171,41 @@ entities: {}
     assert response.headers["content-type"].startswith("text/markdown")
     assert response.headers["content-disposition"] == 'attachment; filename="test_project_target_model_schema_reference.md"'
     assert response.text.startswith("# Target Model Schema Reference")
+
+
+@pytest.mark.parametrize(
+    ("old_value", "new_value"),
+    [
+        ("provider_schema: schema-one", "provider_schema: schema-two"),
+        ("data_provider_code: test-provider", "data_provider_code: another-provider"),
+        ("  provider_schema: schema-one\n", ""),
+    ],
+)
+async def test_raw_yaml_rejects_pair_change_before_backup_or_write(
+    tmp_path, monkeypatch, reset_services_and_state, authorized_client, old_value, new_value
+):
+    """Raw YAML cannot change or remove an assigned pair or create a rejection backup."""
+    monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+    create_response = await authorized_client.post(
+        "/api/v1/projects",
+        json={
+            "name": "bound-project",
+            "data_provider_code": "test-provider",
+            "provider_schema": "schema-one",
+            "entities": {},
+        },
+    )
+    assert create_response.status_code == 201
+
+    project_path = tmp_path / "bound-project" / "shapeshifter.yml"
+    original = project_path.read_bytes()
+    altered_yaml = original.decode("utf-8").replace(old_value, new_value)
+
+    response = await authorized_client.put(
+        "/api/v1/projects/bound-project/raw-yaml",
+        json={"yaml_content": altered_yaml},
+    )
+
+    assert response.status_code == 400
+    assert project_path.read_bytes() == original
+    assert not (project_path.parent / "backups").exists()

@@ -29,7 +29,15 @@ _SAMPLE_ENTITY_BLANK_IDS = {
 
 async def _create_project(client, entity_name: str, entity: dict) -> None:
     """Create the test project through the API (registers it as an authorized resource)."""
-    response = await client.post("/api/v1/projects", json={"name": "test_project", "entities": {entity_name: entity}})
+    response = await client.post(
+        "/api/v1/projects",
+        json={
+            "name": "test_project",
+            "data_provider_code": "test-provider",
+            "provider_schema": "schema-one",
+            "entities": {entity_name: entity},
+        },
+    )
     assert response.status_code == 201, response.text
 
 
