@@ -1075,7 +1075,6 @@ entities:
       data_provider_code:
         required: true
         type: string
-        nullable: true
       data_provider_uuid:
         required: false
         type: uuid
