@@ -18,9 +18,7 @@ The scope is part of the business key. `source_identity_keys` is unique per `(so
 2. **Project scope is too narrow.** A provider that delivers the same logical record through two projects using one schema produces two Source Identities and, for `provider_owned` entities, two allocated aggregates. Resubmission and update workflows — the reason SIMS exists — then cannot find the earlier identity.
 3. **Provider-only scope is too broad.** One provider can deliver different kinds of data whose `EntityConfig.keys` have different meanings. A single provider-wide scope could resolve unrelated records to one Source Identity when their entity type and key values happen to match.
 
-There is no declared provider-schema assignment to prevent these failures. `ProjectMetadata.data_provider_code` exists but is optional (`backend/app/models/project.py`), is not edited by `frontend/src/components/MetadataEditor.vue`, is empty in `arbodat-rebecka`, and is absent from the other projects in `data/projects`. No `provider_schema` field or provider registry exists, so no pair can be validated.
-
-Tying a project to a provider is therefore unenforced, and the namespace it produces is implicit.
+The reviewed provider registry and project binding rules are implemented, but existing checked-in projects have no assigned provider-schema pair. Change Request still builds the scope from caller input and the project name, so it does not yet use the saved binding.
 
 ## Scope
 
@@ -31,33 +29,33 @@ Tying a project to a provider is therefore unenforced, and the namespace it prod
 
 ## Non-Goals
 
-- Owning or editing SEAD `tbl_data_providers` rows from Shape Shifter. The provider entity stays `identity_tracking: reconciled` / `reconciliation: lookup-only` in `resources/target_models/sead_standard_model.yml`.
+- Owning or editing SEAD `tbl_data_providers` rows from Shape Shifter. The provider entity stays `identity_tracking: reconciled` / `reconciliation: lookup-only` in `data/specs/sead_standard_model.yml`.
 - Making different providers converge on one shared entity. That remains a reconciliation and review outcome.
 - Teaching SIMS about SEAD data providers. SIMS keeps scopes only.
-- Choosing the business-key columns or their serialization. That is a separate decision that must land before the ingestion work in this proposal is complete; see `../INGESTER_FILESYSTEM_BOUNDARIES/REVIEW.md` finding `F1a`.
+- Changing the business-key columns declared in `EntityConfig.keys` or redesigning FK linking. Phase 3 must validate and serialize those declared keys for SIMS; broader FK use of a computed `business_id` belongs to [issue #507](https://github.com/humlab-sead/sead_shape_shifter/issues/507).
 - Creating scopes from mutable project names, individual submissions, or arbitrary datasets. A provider-schema code names a reviewed key contract that can be reused across projects.
 
 ## Current Behavior
 
 | Concern | Current state |
 |---|---|
-| Project declaration | `ProjectMetadata.data_provider_code` is `str \| None`, round-tripped by `ProjectMapper`, present in `frontend/src/schemas/projectSchema.json`, absent from `MetadataEditor.vue` |
-| Validation | `IsProjectSpecification` (`src/specifications/project.py`) checks only `metadata.type` |
+| Project declaration | `ProjectMetadata` has provider-code and provider-schema fields, and the reviewed `mal` registry lists two pilot schemas; checked-in projects remain unassigned |
+| Validation | Backend project validation checks the registered pair but does not require the fixed provider row |
 | Ingestion gate | `sead_change_request` requires the code and fails when it does not resolve (`ingesters/sead_change_request/ingester.py`) |
 | Resolution | The code is resolved through the reconciliation client, not a local registry |
 | Scope | `sead-change-request:{project_name}` |
 | Ingest request | The caller can supply `project_name` and `data_provider_code` in `submission_context`; `sims_scope_name` can override the runtime scope |
-| Project save | The raw-YAML endpoint writes the submitted YAML without checking whether its provider differs from the saved project |
+| Project save | Application saves reject a changed or removed assigned provider-schema pair; they do not yet protect the tracked key meaning |
 | Bundle metadata | Exactly one `data_provider` row and one `submission` row are derived per run |
 
-Provider resolution cannot succeed against a stock authority service: `data_provider` is absent from `sead_authority_service/config/entities.yml` and `config/identity_policy.yml`, and `src/reconcile.py` rejects an unknown query type. Making the code required would turn a silent gap into a hard failure, which is correct, but the resolution path must be decided first.
+Provider resolution cannot succeed against a stock authority service: `data_provider` is absent from `sead_authority_service/config/entities.yml` and `config/identity_policy.yml`, and `src/reconcile.py` rejects an unknown query type. The fixed project row and target ID/code check replace that lookup for Change Request runs.
 
 ## Proposed Design
 
 ### Split ownership
 
 - **SIMS owns scopes.** `scope_name` is the identity contract. SIMS assigns `scope_uuid`; it is never a registry or resolve input.
-- **Shape Shifter owns the registry.** It maps each approved provider and provider-schema pair to a `scope_name`. The provider code is the stable, human-readable business key used for SEAD provider lookup. The registry does not author SEAD rows.
+- **Shape Shifter owns the registry.** It maps each approved provider and provider-schema pair to a `scope_name`. The provider code identifies the expected SEAD provider when the fixed row is checked. The registry does not author SEAD rows.
 
 ### Provider registry
 
@@ -80,7 +78,7 @@ Rules:
 - Each full slash-separated `scope_name` is one SIMS scope. The slash does not create a SIMS parent scope or set `parent_scope_uuid`.
 - The registry is the approved list of provider-schema pairs and scope names. Project validation checks it locally; SIMS creates a named scope on first resolution if it does not already exist.
 - A provider's code and a used provider-schema pair and scope name cannot be changed or reused for a different provider or key contract after projects have bound to them. The display name may be corrected without changing identity.
-- The registry must not store environment-specific target IDs such as `data_provider_id`. Those differ per deployment and stay an ingestion-time resolution.
+- The registry must not store environment-specific target IDs such as `data_provider_id`. Each project records its operator-reconciled target ID in its fixed `data_provider` entity.
 - Registry changes are code-reviewed files, not runtime state.
 
 ### Project binding
@@ -91,9 +89,11 @@ Once assigned, a project's provider code and provider-schema code cannot be chan
 
 ### Scope derivation
 
-Change Request validation and ingestion identify a project that the caller is authorized to use. The backend loads that project's saved provider code and provider-schema code, verifies the pair against the registry, and passes the saved project name, provider code, and resulting `scope_name` to the ingester. Caller-supplied `data_provider_code`, `provider_schema`, `project_name`, and `sims_scope_name` cannot replace those values. The saved provider code alone supplies the SEAD lookup for the target `data_provider` row. A missing or unregistered saved pair fails closed before any identity work, with no scope derived from the project name.
+Change Request validation and ingestion identify a project that the caller is authorized to use. The backend loads that project's saved provider code and provider-schema code, verifies the pair against the registry, and passes the saved project name, provider code, and resulting `scope_name` to the ingester. Caller-supplied `data_provider_code`, `provider_schema`, `project_name`, and `sims_scope_name` cannot replace those values. A missing or unregistered saved pair fails closed before any identity work, with no scope derived from the project name.
 
-Declared business keys for tracked identities must be unique across all deliveries that use the same provider-schema scope. The separate key-source decision must establish this before ingestion is enabled for that pair. A change to `EntityConfig.keys` that changes identity meaning requires a new provider-schema code or an explicit identity migration; editing the project file alone must not silently reuse the old scope. If a key is only unique within one project, ingestion stays blocked until the key contract or scope assignment is corrected.
+Each project has a fixed `data_provider` entity with exactly one row, `public_id: data_provider_id`, and `data_provider_code` as its key. The operator reconciles the provider against SEAD by entering the correct target `data_provider_id` in that row. Project validation checks the row count, required fields, positive integer ID, and agreement with the saved provider code without a live database call. Before SIMS work, ingestion confirms that the ID and code identify the same existing SEAD provider row. The bundle uses this trusted row as a lookup-only reference and does not create another provider row or accept one from the submitted workbook.
+
+`EntityConfig.keys` is the only declaration of source business-key columns. For each tracked project entity, Shape Shifter derives one `business_id` from the ordered, normalized key values and sends that value as the SIMS business key. A validator checks the complete transformed delivery before any SIMS call: required key values must be present, the computed key must be unique within each entity in that delivery, and projects bound to the same provider-schema pair must use the same reviewed key meaning. Repeating a key in a later delivery means the same source entity and must reuse its SIMS identity. The validator cannot prove that two distinct real-world records never share a key across deliveries; provider-schema approval must establish that rule. A change to `EntityConfig.keys` or serialization that changes identity meaning requires a new provider-schema code or an explicit identity migration.
 
 The effective scope and run ID are recorded together in the ingest response and the bundle manifest, because a `run_id` is unique only within its scope (`resolve_batches` is keyed `(scope_name, run_id)`).
 
@@ -101,10 +101,10 @@ The effective scope and run ID are recorded together in the ingest response and 
 
 | Point | Check | On failure |
 |---|---|---|
-| Project validation | Saved provider and provider-schema pair present and registered | Validation error on the missing or invalid metadata field |
+| Project validation | Saved provider-schema pair registered; one fixed provider row has a positive ID and matching code | Field-specific validation errors without a database call |
 | Project creation | Initial pair present and registered | Creation rejected |
-| Project save | Initial assignment is valid; an assigned pair is unchanged | Save rejected before writing if either code changes or is removed |
-| Ingestion | Authorized project's saved pair is present and registered; no caller override | Fail closed before SIMS work or bundle writes |
+| Project save | Initial assignment is valid; an assigned pair and its tracked key meaning are unchanged | Save rejected before writing if a bound pair or tracked key declaration changes |
+| Ingestion | Authorized saved pair and fixed provider row are valid; tracked business keys are present and unique in the transformed delivery; shared schema key meaning is unchanged | Fail before any SIMS call or bundle write |
 
 ## Alternatives Considered
 
@@ -116,7 +116,8 @@ The effective scope and run ID are recorded together in the ingest response and 
 
 ## Risks And Tradeoffs
 
-- **Schema-scope key collisions.** Projects assigned the same provider schema share a scope. A key that is only unique within one project, such as a per-delivery sample name, would merge distinct records. The key-source decision and uniqueness check within each provider-schema scope are prerequisites to ingestion.
+- **Schema-scope key collisions.** Projects assigned the same provider schema share a scope. A key that is only unique within one project, such as a per-delivery sample name, would merge distinct records. The validator catches missing and duplicate keys within a delivery; provider-schema review must establish that the same key always names the same source entity across deliveries.
+- **Incorrect manual provider ID.** A fixed row can contain an ID for the wrong SEAD provider. Ingestion checks the saved ID and code against the target before SIMS work; project validation remains independent of the target database.
 - **Schema-code changes.** The pilot schema codes become durable identity names once used. Moving an existing project to a new schema code requires an explicit identity migration or a decision to start new identities.
 - **Cross-provider duplicates remain.** Shared metadata converges only through reconciliation and review. Provider scoping prevents accidental merging but does not create convergence.
 - **Scope strings are immutable.** Renaming or reusing a provider code, provider-schema code, or scope name re-identifies records. Registry review must preserve used pairs and their scope names.
@@ -129,19 +130,19 @@ The effective scope and run ID are recorded together in the ingest response and 
 - Register one provider with two pilot schema codes; confirm their scopes are `provider://mal/archeobotany/arbodat-pilot` and `provider://mal/radiocarbon/strucke-pilot`. Confirm two projects sharing a pair share one scope and two schemas of one provider do not.
 - Confirm registry validation rejects duplicate provider codes, duplicate schema codes within a provider, duplicate scope names, and names that do not match their pair. Confirm project validation rejects a missing or unregistered pair.
 - Confirm new projects require a registered pair, existing unbound projects can receive one initial assignment, and subsequent changes or removal of either code are rejected before metadata, raw-YAML, or restore writes.
-- Confirm ingestion fails before any identity request or bundle write when the saved project pair is unresolved, and that caller-supplied project, provider, schema, or scope values cannot override the saved pair or its SEAD provider lookup.
-- Confirm ingestion is blocked until its declared business keys meet the uniqueness rule within the selected provider-schema scope. Confirm the emitted response and manifest record both scope and run ID.
-- Confirm the emitted `data_provider` row still comes from SEAD resolution, not from registry or project data.
+- Confirm ingestion fails before any identity request or bundle write when the saved project pair is unresolved, and that caller-supplied project, provider, schema, or scope values cannot override the saved pair or its fixed provider row.
+- Confirm the transformed delivery rejects absent, blank, or duplicate declared keys before any SIMS call; matching keys in later deliveries reuse identity within a scope, and projects sharing a pair use the same reviewed key meaning. Confirm the emitted response and manifest record both scope and run ID.
+- Confirm each project has exactly one fixed `data_provider` row with the operator-reconciled SEAD ID; ingestion rejects a missing, malformed, or mismatched ID/code before SIMS and emits one lookup-only provider row plus one submission row.
 
 ## Acceptance Criteria
 
 - `P-AC-1` Approved providers are declared in one Shape Shifter registry with a unique `code`, a display `name`, and one or more unique `provider_schema` entries. Each entry has `scope_name` equal to `provider://<code>/<provider_schema>`. Duplicate provider codes, duplicate schema codes within a provider, duplicate scope names, and mismatched names are rejected; used pairs and scopes cannot be reassigned. The initial approved set is provider `mal` with the two stated pilot schemas, excluding BugsCEP.
 - `P-AC-2` Every new project declares exactly one `data_provider_code` and one `provider_schema` that form a registered pair. Existing projects without a complete pair may receive an initial assignment. A missing or unregistered pair fails project validation.
 - `P-AC-3` Any number of projects may bind the same provider-schema pair, and one provider may have several schemas. Once a project has a pair, every application save path rejects a change or removal of either code before writing.
-- `P-AC-4` Change Request runs use the authorized saved project's provider-schema pair and scope for identity resolution and its provider code for target-provider lookup, with no project-name fallback or caller override. The effective scope and run ID appear in the ingest response and the bundle manifest.
+- `P-AC-4` Change Request runs use the authorized saved project's provider-schema pair and scope for identity resolution and its fixed provider row for the target ID, with no project-name fallback or caller override. The effective scope and run ID appear in the ingest response and the bundle manifest.
 - `P-AC-5` A missing or unregistered provider-schema pair blocks validation and ingestion before any identity request, file write, or database access.
-- `P-AC-6` The registry and project metadata contain no target provider ID or row data used to author the target `data_provider` row. That row continues to be resolved from SEAD at ingestion.
-- `P-AC-7` Change Request ingestion uses declared business keys that are unique across deliveries using the bound provider-schema scope. It remains blocked until that key contract is established; changing key meaning requires a new schema code or an explicit identity migration.
+- `P-AC-6` Every project has exactly one fixed `data_provider` row with `data_provider_id` as `public_id`. Its operator-entered ID and provider code must identify the same existing SEAD row before SIMS work. The registry and project metadata contain no target ID, the submitted workbook cannot supply the provider row, and the bundle contains exactly one lookup-only provider row.
+- `P-AC-7` `EntityConfig.keys` supplies the ordered business-key columns for each tracked project entity. A deterministic `business_id` derived from those values is sent to SIMS. Missing, blank, or duplicate keys in the transformed delivery, or incompatible key meaning for projects sharing a provider-schema pair, block all SIMS calls. Repeated keys across deliveries reuse identity; changing key meaning requires a new schema code or explicit identity migration.
 
 ## Planning Handoff
 
@@ -153,23 +154,23 @@ Fixed decisions:
 - The backend uses the authorized saved project to select the provider and scope; request fields and runtime overrides cannot change them.
 - An assigned project provider-schema pair cannot change or be removed through application save paths. Existing unbound projects may be assigned once.
 - The registry holds no environment-specific target IDs.
+- Each project's fixed `data_provider` entity has one operator-reconciled SEAD ID; ingestion verifies its ID/code pair before SIMS work.
+- `EntityConfig.keys` alone declares business-key columns. Key validation runs before every SIMS call, and the computed `business_id` uses a stable serialization.
 - Scope and run ID are emitted together.
 
 Constraints to preserve:
 
 - `data_provider` stays `lookup-only` in the target model.
-- Bundle derivation of exactly one `data_provider` row and one `submission` row is unchanged.
+- Bundle output of exactly one `data_provider` row and one `submission` row is unchanged; the provider row comes from the trusted fixed entity.
 - Validation must remain deterministic and must not depend on a live SIMS or database call.
-- Ingestion requires declared keys that are unique across deliveries using one provider-schema scope; the key-source decision must establish them before ingestion is enabled.
+- Provider-schema review must establish that a key identifies the same source entity across deliveries. Runtime validation rejects missing or duplicate keys within each delivery before SIMS.
 
 Open questions, with the phase by which each must be resolved:
 
 | Question | Resolve by |
 |---|---|
-| How is the target `data_provider_id` resolved now that provider resolution cannot use the reconciliation client? Configure a reconciliation entity, or resolve directly? | Before the ingestion phase |
-| Which declared business keys meet the uniqueness rule within each provider-schema scope for each tracked entity, and how is that rule checked before ingestion? | Before the ingestion phase |
 | Are existing `sead-change-request:*` identities migrated or abandoned at cutover? | Before the scope-switch phase |
 
 ## Final Recommendation
 
-Adopt the split-ownership design: Shape Shifter curates provider-schema pairs and fixes each scope name as `provider://<provider-code>/<provider-schema>`, SIMS owns scopes, and a project declares one pair that cannot change after assignment. Derive the Change Request scope from the authorized saved project. Resolve the target-ID path and the key contract for each schema scope before ingestion begins.
+Adopt the split-ownership design: Shape Shifter curates provider-schema pairs and fixes each scope name as `provider://<provider-code>/<provider-schema>`, SIMS owns scopes, and a project declares one pair that cannot change after assignment. Derive the Change Request scope, fixed provider row, and declared keys from the authorized saved project. Validate the provider ID and keys before SIMS work.

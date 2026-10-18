@@ -2,7 +2,7 @@
 
 ## Summary
 
-This plan sequences the approved decisions in [Project Data Provider Scope](./PROJECT_DATA_PROVIDER_SCOPE.md). Shape Shifter will register providers and their schemas, bind each project to one provider-schema pair, and derive Change Request identity scopes from the saved project. The production scope switch follows validation of keys within each selected scope and a decision about existing SIMS identities.
+This plan sequences the approved decisions in [Project Data Provider Scope](./PROJECT_DATA_PROVIDER_SCOPE.md). Shape Shifter will register providers and their schemas, bind each project to one provider-schema pair, and derive Change Request identity scopes from the saved project. The production scope switch is separate operational work, planned in [Move Existing Projects To Provider-Schema Scopes](../CHANGE_REQUEST_INGESTER/CUTOVER_AND_DEPLOYMENT/PROJECT_PROVIDER_SCOPE_CUTOVER.md).
 
 ## Problem
 
@@ -10,16 +10,15 @@ Change Request runs currently use a project-name scope. That scope changes with 
 
 ## Scope
 
-This plan covers the curated provider-schema registry, project creation and save rules, project validation, the provider-schema picklist, Change Request runtime inputs and output metadata, and the cutover from project scopes to provider-schema scopes.
+This plan covers the curated provider-schema registry, project creation and save rules, project validation, the provider-schema picklist, Change Request runtime inputs, fixed provider reconciliation, business-key validation, output metadata, and the remaining Change Request entry-point work.
 
-It does not create SEAD provider rows, choose or serialize business-key columns, or derive scopes from mutable projects or arbitrary datasets. The key contract for each provider schema and target provider-ID lookup remain prerequisites to the ingestion phase.
+It does not create SEAD provider rows, add a second business-key declaration, redesign FK linking, assign provider-schema pairs to existing projects, decide the treatment of existing SIMS identities, or derive scopes from mutable projects or arbitrary datasets. Phase 3 derives a `business_id` from `EntityConfig.keys`; broader FK use belongs to issue #507. The project assignments, identity decision, per-schema key review, and per-project enablement belong to [Move Existing Projects To Provider-Schema Scopes](../CHANGE_REQUEST_INGESTER/CUTOVER_AND_DEPLOYMENT/PROJECT_PROVIDER_SCOPE_CUTOVER.md).
 
 ## Current Position
 
-- Project metadata has an optional `data_provider_code` and no `provider_schema`; the repository's current project files have no populated provider-schema pair.
-- Project validation does not check the pair, and the raw-YAML save path does not reject identity changes before writing.
+- The reviewed `mal` registry and project binding checks are implemented, but the repository's current project files have no populated provider-schema pair.
 - The Change Request runtime currently uses `sead-change-request:{project_name}` unless a runtime scope override is supplied. Its provider lookup uses the code supplied in submission context.
-- The current provider lookup cannot resolve `data_provider` against the stock authority-service configuration described in the proposal.
+- The current provider lookup cannot resolve `data_provider` against the stock authority-service configuration described in the proposal. Change Request does not read a project's fixed provider row or `EntityConfig.keys`; its SIMS serializer uses every nonempty row field.
 
 ## Phase Plan
 
@@ -104,18 +103,19 @@ Ready for a task plan.
 
 **Goal**
 
-Make Change Request validation and ingestion use the authorized saved project's provider-schema pair, scope, and SEAD provider lookup.
+Make Change Request validation and ingestion use the authorized saved project's provider-schema pair, scope, fixed SEAD provider row, and declared business keys.
 
 **Focus**
 
 - Load the authorized project for each run and prevent request metadata or runtime overrides from selecting its provider, schema, or scope.
-- Resolve the target `data_provider_id` from SEAD through the chosen lookup path; keep the target `data_provider` row lookup-only.
-- Use declared keys that are unique within the selected provider-schema scope and return the effective scope and run ID in the response and bundle manifest.
+- Require exactly one fixed `data_provider` row in the saved project, with `data_provider_id` as `public_id`; verify the operator-entered ID/code pair against SEAD before SIMS and keep the target row lookup-only.
+- Derive `business_id` from ordered `EntityConfig.keys`; reject missing, blank, or duplicate keys within a transformed delivery and incompatible key meaning across projects sharing a provider-schema pair before any SIMS call.
+- Return the effective scope and run ID in the response and bundle manifest.
 
 **Depends On**
 
 - Phase 2 project binding and Phase 1 registry lookup.
-- Decisions on the target provider-ID lookup and on declared keys that are unique across deliveries using each provider schema.
+- Review of a provider schema's declared keys before its first live run, establishing that repeated keys across deliveries name the same source entity.
 
 **Outputs**
 
@@ -124,75 +124,74 @@ Make Change Request validation and ingestion use the authorized saved project's 
 
 **Acceptance Criteria**
 
-- `PH3-AC-1` (from `P-AC-4`) The saved provider-schema pair selects the SIMS scope, while the provider code selects target-provider lookup; caller-supplied project, provider, schema, and scope values cannot override them, and the response and manifest contain the effective scope and run ID.
+- `PH3-AC-1` (from `P-AC-4`) The saved provider-schema pair selects the SIMS scope, while the authorized project supplies the fixed provider row; caller-supplied project, provider, schema, and scope values cannot override them, and the response and manifest contain the effective scope and run ID.
 - `PH3-AC-2` (from `P-AC-5`) A missing or unregistered saved pair fails before an identity request, file write, or target-database access.
-- `PH3-AC-3` (from `P-AC-6`) Exactly one target `data_provider` row is derived from SEAD resolution, with no target ID or row data taken from the registry or project metadata.
-- `PH3-AC-4` (from `P-AC-7`) Tracked identity work is blocked without a declared key contract unique within its provider-schema scope; a changed key meaning requires a new schema code or explicit identity migration, with no project-name fallback.
+- `PH3-AC-3` (from `P-AC-6`) The authorized project's single fixed provider row supplies an operator-reconciled `data_provider_id`; its ID and code match one existing SEAD provider before SIMS, and the bundle emits exactly one lookup-only provider row.
+- `PH3-AC-4` (from `P-AC-7`) `EntityConfig.keys` supplies the tracked business keys and a deterministic `business_id`. Missing, blank, or duplicate keys in the transformed delivery, or incompatible key meaning within a provider-schema scope, block all SIMS calls; changed meaning requires a new schema code or explicit identity migration.
 
 **Validation Milestones**
 
-- `VM-4` Authorized and tampered requests show that the saved project controls scope and provider lookup, and invalid pairs cause no side effects (`PH3-AC-1`, `PH3-AC-2`).
-- `VM-5` Provider lookup, declared-key checks, response metadata, and bundle output meet `PH3-AC-1`, `PH3-AC-3`, and `PH3-AC-4` while preserving the existing one-provider-row and one-submission-row bundle contract.
+- `VM-4` Authorized and tampered requests show that the saved project controls scope and the fixed provider row, and invalid pairs cause no side effects (`PH3-AC-1`, `PH3-AC-2`).
+- `VM-5` Fixed provider-row reconciliation, pre-SIMS key validation, response metadata, and bundle output meet `PH3-AC-1`, `PH3-AC-3`, and `PH3-AC-4` while preserving the one-provider-row and one-submission-row bundle contract.
 
 **Task-Plan Handoff**
 
-- Sources: `P-AC-4` through `P-AC-7`. Preserve one scope per provider-schema pair, `provider://<provider-code>/<provider-schema>`, no caller override, and lookup-only target-provider data. Before a task plan, choose the target provider-ID lookup and the key contract for each schema; the proposal leaves both open.
+- Sources: `P-AC-4` through `P-AC-7`. Preserve one scope per provider-schema pair, `provider://<provider-code>/<provider-schema>`, no caller override, and lookup-only target-provider data. Read the fixed provider row and ordered keys only from the authorized saved project. Validate the full transformed delivery before any SIMS call. Repeated keys across deliveries mean the same source entity; review that promise for each schema before enabling it.
 
 **Readiness**
 
-Requires decisions on target provider-ID resolution and business keys within each provider-schema scope.
+Ready for a task plan.
 
-### Phase 4: Existing Projects And Scope Cutover
+### Phase 4: Remaining Change Request Development Work
 
 **Goal**
 
-Move eligible projects to provider-schema scopes without silently abandoning earlier identities or changing the target bundle contract.
+Close the development gaps left after Phase 3 in the Change Request entry points and validation coverage.
 
 **Focus**
 
-- Assign approved provider-schema pairs to existing unbound projects before enforcing new scopes; keep BugsCEP outside the initial registry and cutover.
-- Decide and apply the treatment of identities under `sead-change-request:{project}` before switching those projects.
-- Compare bundle and provider-lookup behavior with the prior path; defer the switch when assignments, keys, or identity treatment are unresolved.
+- Require an authorized saved project on the project-independent Data Ingestion page, or exclude the Change Request ingester there. The page has no project selector, so the ingester either runs against an unrelated selected project or finds no project at all.
+- Extend response and manifest parity coverage to the `inline_staging` strategy, which carries the same scope and run ID fields as the other two strategies but has no dedicated assertion.
+- Keep project requirement and blocked-key guidance visible in both entry points so an operator sees why a run cannot start.
 
 **Depends On**
 
 - Phases 1–3 and their validation milestones.
-- Approved provider-schema assignments for existing projects and a decision to migrate or abandon existing project-scoped SIMS identities.
+- No cutover decision. The scope switch is planned in [Move Existing Projects To Provider-Schema Scopes](../CHANGE_REQUEST_INGESTER/CUTOVER_AND_DEPLOYMENT/PROJECT_PROVIDER_SCOPE_CUTOVER.md).
 
 **Outputs**
 
-- Projects eligible for provider-schema-scoped ingestion, with a recorded cutover decision for existing identities.
-- A verified provider-schema-scope path with no project-name fallback after cutover.
+- Change Request entry points that cannot run without an authorized saved project.
+- Parity coverage for all three deploy strategies.
 
 **Acceptance Criteria**
 
-- `PH4-AC-1` (from `P-AC-2`) Each project enabled for the new scope has one registered provider-schema assignment; BugsCEP is not enabled by the initial registry.
-- `PH4-AC-2` (from `P-AC-4`) Cutover follows the approved treatment of existing project-scoped identities; enabled runs use only the assigned provider-schema scope and record it with the run ID.
-- `PH4-AC-3` (from `P-AC-5`) An unresolved pair blocks a run before identity, file, or target-database side effects; it never falls back to a project scope.
-- `PH4-AC-4` (from `P-AC-6`) The promoted path still derives one provider row and one submission row, with the provider target ID resolved from SEAD.
-- `PH4-AC-5` (from `P-AC-7`) Key requirements are met within each enabled provider-schema scope before its switch.
+- `PH4-AC-1` (from `P-AC-4`) No Change Request validate or ingest route accepts a run without an authorized saved project, including the project-independent Data Ingestion page.
+- `PH4-AC-2` (from `P-AC-5`) A run started without an authorized project, or with an unresolved saved pair, fails before any identity request, file write, or target-database access.
+- `PH4-AC-3` (from `P-AC-4`) Response, in-memory artifact, and emitted manifest agree on the effective scope and run ID for `inline_insert`, `copy_csv`, and `inline_staging`.
 
 **Validation Milestones**
 
-- `VM-6` Existing-project assignments and the approved identity treatment are checked before any provider-schema scope switch (`PH4-AC-1`, `PH4-AC-2`, `PH4-AC-5`).
-- `VM-7` Cutover checks confirm no project-scope fallback or side effects for blocked runs, and parity for provider and submission rows in completed bundles (`PH4-AC-2`, `PH4-AC-3`, `PH4-AC-4`).
+- `VM-6` Entry-point tests show every Change Request route requires an authorized project and produces no side effects when it is absent (`PH4-AC-1`, `PH4-AC-2`).
+- `VM-7` Parity checks cover all three deploy strategies on scope and run ID (`PH4-AC-3`).
 
 **Task-Plan Handoff**
 
-- Sources: `P-AC-2`, `P-AC-4` through `P-AC-7`. Name the existing projects and approved provider-schema assignments in the phase task plan. The decision to migrate or abandon old SIMS identities must precede that task plan; do not treat a new scope as an implicit migration.
+- Sources: `P-AC-4`, `P-AC-5`. Start from the Phase 3 behavior: the route already authorizes a top-level `project_name` and fails closed on an unresolved pair. Decide per entry point whether to add a project selector or to hide the ingester, and record that choice in the phase task plan. Provider assignments, identity treatment, and the per-schema key review are out of scope here; they belong to the cutover proposal.
 
 **Readiness**
 
-Requires a decision on existing SIMS identities and approved assignments for existing projects.
+Ready for a task plan.
 
 ## Cross-Phase Rules
 
 - Keep `provider://<provider-code>/<provider-schema>` stable and unique for each registered pair; never use `scope_uuid` or a target `data_provider_id` as the scope input.
 - Keep pair validation local and deterministic. SIMS and target-database calls belong to ingestion, after saved-project checks.
-- Preserve the lookup-only target `data_provider` contract and one provider row plus one submission row per bundle.
-- Keep existing project-scope behavior only until an explicit cutover decision. After cutover, fail closed instead of falling back to the project name.
-- Treat direct project-file edits as repository-reviewed changes; application save checks alone cannot prevent them.
+- Preserve the lookup-only target `data_provider` contract and one provider row plus one submission row per bundle; the trusted project fixed row supplies the provider ID.
+- Validate every tracked business key from `EntityConfig.keys` before SIMS. A repeated key across deliveries reuses identity within the same scope; a duplicate within one transformed entity table blocks the run.
+- Keep existing project-scope behavior only until an explicit cutover decision. After cutover, fail closed instead of falling back to the project name. The switch itself is planned in [Move Existing Projects To Provider-Schema Scopes](../CHANGE_REQUEST_INGESTER/CUTOVER_AND_DEPLOYMENT/PROJECT_PROVIDER_SCOPE_CUTOVER.md), not in a development phase.
+- Treat direct project-file edits as repository-reviewed changes; application save checks alone cannot prevent them. Live project files under `data/` are deployment data, so a cutover edit is applied while ingestion for that project is stopped.
 
 ## Validation Strategy
 
-Validate registry and project rules in isolation first (`VM-1` through `VM-3`). Then validate trusted project input, target-provider lookup, keys within each provider-schema scope, and emitted scope/run metadata in Change Request runs (`VM-4`, `VM-5`). Before cutover, verify existing assignments and identity treatment, then compare the promoted bundle contract with the prior path while checking that blocked runs have no side effects (`VM-6`, `VM-7`).
+Validate registry and project rules in isolation first (`VM-1` through `VM-3`). Then validate trusted project input, the fixed provider ID/code against SEAD, keys before SIMS, and emitted scope/run metadata in Change Request runs (`VM-4`, `VM-5`). Then close the remaining entry-point and strategy-parity gaps (`VM-6`, `VM-7`). Project assignments, the identity treatment decision, the per-schema key review, and per-project enablement are validated by the cutover record described in [Move Existing Projects To Provider-Schema Scopes](../CHANGE_REQUEST_INGESTER/CUTOVER_AND_DEPLOYMENT/PROJECT_PROVIDER_SCOPE_CUTOVER.md), not by this plan.
