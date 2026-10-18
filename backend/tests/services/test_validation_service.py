@@ -14,6 +14,15 @@ from src.validators.data_validators import ValidationIssue
 
 # pylint: disable=redefined-outer-name, unused-argument
 
+FIXED_PROVIDER_ENTITY = {
+    "type": "fixed",
+    "public_id": "data_provider_id",
+    "keys": ["data_provider_code"],
+    "columns": ["data_provider_id", "data_provider_code"],
+    "values": [[51, "test-provider"]],
+}
+"""Fixed data provider row required of every project bound to a provider-schema pair."""
+
 
 @pytest.fixture
 def validation_service():
@@ -45,8 +54,16 @@ class TestValidationServiceBasic:
     def test_validate_valid_configuration(self, validation_service):
         """Test validating valid configuration."""
         config = {
-            "metadata": {"type": "shapeshifter-project", "name": "test"},
-            "entities": {"sample": {"type": "entity", "keys": ["sample_id"], "columns": ["sample_id", "name", "value"]}},
+            "metadata": {
+                "type": "shapeshifter-project",
+                "name": "test",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+            },
+            "entities": {
+                "data_provider": FIXED_PROVIDER_ENTITY,
+                "sample": {"type": "entity", "keys": ["sample_id"], "columns": ["sample_id", "name", "value"]},
+            },
         }
         result = validation_service.validate_project(config)
 
@@ -56,8 +73,14 @@ class TestValidationServiceBasic:
     def test_validate_project_with_foreign_key(self, validation_service):
         """Test validating configuration with foreign keys."""
         config = {
-            "metadata": {"type": "shapeshifter-project", "name": "test"},
+            "metadata": {
+                "type": "shapeshifter-project",
+                "name": "test",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+            },
             "entities": {
+                "data_provider": FIXED_PROVIDER_ENTITY,
                 "site": {"type": "entity", "keys": ["site_id"], "columns": ["site_id", "name"]},
                 "sample": {
                     "type": "entity",
@@ -86,7 +109,12 @@ class TestValidationServiceErrors:
     def test_missing_entity_reference(self, validation_service):
         """Test detecting missing entity reference in foreign key."""
         config = {
-            "metadata": {"type": "shapeshifter-project", "name": "test"},
+            "metadata": {
+                "type": "shapeshifter-project",
+                "name": "test",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+            },
             "entities": {
                 "sample": {
                     "type": "entity",
@@ -115,7 +143,12 @@ class TestValidationServiceErrors:
     def test_circular_dependency(self, validation_service):
         """Test detecting circular dependencies."""
         config = {
-            "metadata": {"type": "shapeshifter-project", "name": "test"},
+            "metadata": {
+                "type": "shapeshifter-project",
+                "name": "test",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+            },
             "entities": {
                 "entity_a": {"type": "entity", "columns": [], "keys": ["id"], "depends_on": ["entity_b"]},
                 "entity_b": {"type": "entity", "columns": [], "keys": ["id"], "depends_on": ["entity_a"]},
@@ -130,7 +163,12 @@ class TestValidationServiceErrors:
     def test_missing_required_fields(self, validation_service):
         """Test detecting missing required fields."""
         config = {
-            "metadata": {"type": "shapeshifter-project", "name": "test"},
+            "metadata": {
+                "type": "shapeshifter-project",
+                "name": "test",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+            },
             "entities": {
                 "sample": {
                     "type": "entity"
@@ -146,7 +184,12 @@ class TestValidationServiceErrors:
     def test_invalid_foreign_key_mismatched_keys(self, validation_service):
         """Test detecting foreign key with mismatched number of keys."""
         config = {
-            "metadata": {"type": "shapeshifter-project", "name": "test"},
+            "metadata": {
+                "type": "shapeshifter-project",
+                "name": "test",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+            },
             "entities": {
                 "site": {"type": "entity", "keys": ["site_id"], "columns": ["name"]},
                 "sample": {
@@ -173,7 +216,12 @@ class TestValidationServiceErrors:
     def test_invalid_filter_stage_is_reported(self, validation_service):
         """Stage-aware filter validation should surface invalid stage values."""
         config = {
-            "metadata": {"type": "shapeshifter-project", "name": "test"},
+            "metadata": {
+                "type": "shapeshifter-project",
+                "name": "test",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+            },
             "entities": {
                 "sample": {
                     "type": "entity",
@@ -197,7 +245,15 @@ class TestValidationServiceEntity:
         """Test validating single entity."""
         entity_data = {"type": "entity", "keys": ["sample_id"], "columns": ["sample_id", "name", "value"]}
         project = Project(
-            metadata=ProjectMetadata(type="shapeshifter-project", name="test", entity_count=1), entities={"sample": entity_data}, options={}
+            metadata=ProjectMetadata(
+                type="shapeshifter-project",
+                name="test",
+                entity_count=1,
+                data_provider_code="test-provider",
+                provider_schema="schema-one",
+            ),
+            entities={"sample": entity_data},
+            options={},
         )
 
         result = validation_service.validate_entity(project, "sample")
@@ -212,7 +268,15 @@ class TestValidationServiceEntity:
             # Missing required 'keys' field
         }
         project: Project = Project(
-            metadata=ProjectMetadata(type="shapeshifter-project", name="test", entity_count=1), entities={"sample": entity_data}, options={}
+            metadata=ProjectMetadata(
+                type="shapeshifter-project",
+                name="test",
+                entity_count=1,
+                data_provider_code="test-provider",
+                provider_schema="schema-one",
+            ),
+            entities={"sample": entity_data},
+            options={},
         )
 
         result = validation_service.validate_entity(project, "sample")
@@ -223,7 +287,12 @@ class TestValidationServiceEntity:
     def test_validate_entity_filters_errors(self, validation_service):
         """Test that entity validation only returns errors for that entity."""
         project_cfg = {
-            "metadata": {"type": "shapeshifter-project", "name": "test"},
+            "metadata": {
+                "type": "shapeshifter-project",
+                "name": "test",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+            },
             "entities": {
                 "natural_region": {"type": "entity", "keys": ["region_id"], "columns": ["name"]},
                 "site": {
@@ -262,7 +331,12 @@ class TestValidationServiceErrorParsing:
     def test_parse_entity_from_error(self, validation_service):
         """Test parsing entity name from error message."""
         config = {
-            "metadata": {"type": "shapeshifter-project", "name": "test"},
+            "metadata": {
+                "type": "shapeshifter-project",
+                "name": "test",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+            },
             "entities": {
                 "sample": {
                     "type": "entity",
@@ -280,7 +354,12 @@ class TestValidationServiceErrorParsing:
     def test_error_codes_assigned(self, validation_service):
         """Test that error codes are assigned."""
         config = {
-            "metadata": {"type": "shapeshifter-project", "name": "test"},
+            "metadata": {
+                "type": "shapeshifter-project",
+                "name": "test",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+            },
             "entities": {
                 "sample": {
                     "type": "entity",
@@ -298,7 +377,12 @@ class TestValidationServiceErrorParsing:
     def test_extra_columns_errors_include_entity_field_and_expression_context(self, validation_service):
         """Derived-value validation messages should include entity, field, and expression context."""
         config = {
-            "metadata": {"type": "shapeshifter-project", "name": "test"},
+            "metadata": {
+                "type": "shapeshifter-project",
+                "name": "test",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+            },
             "entities": {
                 "sample": {
                     "type": "entity",
@@ -321,7 +405,12 @@ class TestValidationServiceErrorParsing:
     def test_merged_entity_branch_errors_include_branch_metadata(self, validation_service):
         """Merged entity branch-scoped validation should expose branch metadata for UI grouping."""
         config = {
-            "metadata": {"type": "shapeshifter-project", "name": "test"},
+            "metadata": {
+                "type": "shapeshifter-project",
+                "name": "test",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+            },
             "entities": {
                 "source": {
                     "type": "entity",
@@ -353,8 +442,14 @@ class TestValidationServiceIntegration:
     def test_complex_valid_configuration(self, validation_service):
         """Test complex but valid configuration."""
         config = {
-            "metadata": {"type": "shapeshifter-project", "name": "test"},
+            "metadata": {
+                "type": "shapeshifter-project",
+                "name": "test",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+            },
             "entities": {
+                "data_provider": FIXED_PROVIDER_ENTITY,
                 "natural_region": {
                     "type": "entity",
                     "keys": ["region_id"],

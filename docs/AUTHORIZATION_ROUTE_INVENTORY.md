@@ -4,7 +4,7 @@
 
 This inventory records the authorization requirement declared by every registered API route and the direct application routes mounted outside `api_router`. It is derived from the assembled FastAPI route table, `backend/app/api/v1/api.py`, and `backend/app/main.py` on the current branch. Update this document when adding, removing, or changing a route, mount, or authorization dependency.
 
-The current API-only runtime exposes 138 HTTP route entries under `/api/v1`, including the generated OpenAPI, Swagger UI, and ReDoc routes. It also exposes the Swagger OAuth redirect helper at `/docs/oauth2-redirect` and the repository documentation mount at `/docs/*`. The `/assets/*`, frontend SPA catch-all, and API-only `/` route are conditional on the frontend build state described below.
+The current API-only runtime exposes 143 HTTP route entries under `/api/v1`, including the generated OpenAPI, Swagger UI, and ReDoc routes. It also exposes the Swagger OAuth redirect helper at `/docs/oauth2-redirect` and the repository documentation mount at `/docs/*`. The `/assets/*`, frontend SPA catch-all, and API-only `/` route are conditional on the frontend build state described below.
 
 `UNDECLARED` means the route has no `authorization_requirement` metadata. It does not mean the route is anonymously accessible: trusted-proxy middleware requires authentication for all paths except `/api/v1/health` when enabled. An undeclared route still needs classification before authorization cutover; no row currently reads `UNDECLARED`.
 
@@ -139,6 +139,7 @@ Every row above except the health check requires an authenticated principal thro
 
 | Method   | Path                                                            | Requirement                         | Notes                                                                                                               |
 |----------|-----------------------------------------------------------------|-------------------------------------|---------------------------------------------------------------------------------------------------------------------|
+| `GET`    | `/api/v1/data-providers`                                        | `authenticated`                     | Read-only curated provider-schema registry; no mutation route and no stored resource                                |
 | `GET`    | `/api/v1/data-sources/drivers`                                  | `authenticated`                     | Non-sensitive driver metadata                                                                                       |
 | `GET`    | `/api/v1/data-sources/entity-types`                             | `authenticated`                     | Non-sensitive entity-type metadata                                                                                  |
 | `GET`    | `/api/v1/data-sources`                                          | `authenticated`                     | Returns only shared data sources the principal can read (`shared_data_source:read`)                                 |

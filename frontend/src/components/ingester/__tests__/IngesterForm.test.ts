@@ -91,7 +91,7 @@ const slotStub = (name: string) => ({
 
 const textFieldStub = {
   name: 'VTextField',
-  props: ['modelValue', 'label', 'rules', 'hint', 'type'],
+  props: ['modelValue', 'label', 'rules', 'hint', 'type', 'readonly'],
   template: '<div class="v-text-field-stub" />',
 }
 
@@ -121,13 +121,14 @@ const stubs = {
   VExpansionPanel: slotStub('VExpansionPanel'),
   VExpansionPanelText: slotStub('VExpansionPanelText'),
   VSwitch: slotStub('VSwitch'),
-  VBtn: slotStub('VBtn'),
+  VBtn: { name: 'VBtn', props: ['disabled'], template: '<button><slot /></button>' },
   VIcon: true,
   VSpacer: true,
 }
 
-function mountForm() {
+function mountForm(props: { excludedIngesterKeys?: string[]; projectName?: string; projectLoading?: boolean } = {}) {
   return shallowMount(IngesterForm, {
+    props,
     global: {
       renderStubDefaultSlot: true,
       stubs,
@@ -185,6 +186,7 @@ describe('IngesterForm', () => {
     expect(wrapper.text()).toContain('Binding Set Confirmation Required')
     expect(wrapper.text()).toContain('binding-123')
     expect(wrapper.text()).toContain('Confirm the Binding Set in SIMS')
+    expect(wrapper.text()).toContain('Every tracked entity needs declared business keys')
   })
 
   it('renders deploy artifact summary and handoff guidance for successful change-package output', () => {
@@ -193,9 +195,13 @@ describe('IngesterForm', () => {
       records_processed: 2,
       message: 'Deploy artifact emitted to output/pilot-bugs-001',
       output_path: 'output/pilot-bugs-001',
+      scope_name: 'provider://mal/archeobotany/arbodat-pilot',
+      run_id: 'run-abc-123',
       deploy_artifact: {
         metadata: {
           deploy_strategy: 'copy_csv',
+          scope_name: 'provider://mal/archeobotany/arbodat-pilot',
+          run_id: 'run-abc-123',
           binding_set_uuid: 'binding-123',
           change_request_name: 'CR-2026-001',
           non_revertible: true,
@@ -216,7 +222,22 @@ describe('IngesterForm', () => {
     expect(wrapper.text()).toContain('copy_csv')
     expect(wrapper.text()).toContain('Bundle name:')
     expect(wrapper.text()).toContain('pilot-bugs-001')
+    expect(wrapper.text()).toContain('provider://mal/archeobotany/arbodat-pilot')
+    expect(wrapper.text()).toContain('run-abc-123')
     expect(wrapper.text()).toContain('Review the emitted SQL, manifest, and compressed table payload files')
+  })
+
+  it('shows backend errors for blocked Change Request business keys', () => {
+    ingesterStore.validationResult = {
+      is_valid: false,
+      errors: ["Entity 'sample' has duplicate values for declared business key 'sample_code'."],
+      warnings: [],
+      infos: [],
+    }
+
+    const wrapper = mountForm()
+
+    expect(wrapper.text()).toContain("Entity 'sample' has duplicate values for declared business key 'sample_code'.")
   })
 
   it('prefills project-derived submission context fields and exposes backend-matched validation rules', async () => {
@@ -252,11 +273,62 @@ describe('IngesterForm', () => {
     expect(descriptionRules[0]?.('line one\nline two')).toBe('Use a single line shorter than 80 characters')
 
     const request = (wrapper.vm as unknown as { buildValidateRequest: () => ValidateRequest }).buildValidateRequest()
+    expect(request.project_name).toBe('pilot_bugs')
     expect(request.deploy_strategy).toBe('copy_csv')
     expect(request.submission_context).toMatchObject({
       data_provider_code: 'SEAD',
       datatype: 'mal',
       author: 'SEAD Lab',
     })
+  })
+
+  it('fixes the Change Request locator to the loaded route project and waits for that project', async () => {
+    const wrapper = mountForm({ projectName: 'route_project', projectLoading: true })
+    const vm = wrapper.vm as unknown as {
+      formValid: boolean
+      buildValidateRequest: () => ValidateRequest
+    }
+    vm.formValid = true
+    await nextTick()
+
+    const projectField = findTextField(wrapper, 'Project Name *')
+    expect(projectField?.props('modelValue')).toBe('route_project')
+    expect(projectField?.props('readonly')).toBe(true)
+    expect(vm.buildValidateRequest().project_name).toBe('route_project')
+    expect(vm.buildValidateRequest().submission_context?.project_name).toBe('route_project')
+    const actionButtons = wrapper.findAllComponents({ name: 'VBtn' }).slice(0, 2)
+    expect(actionButtons.every((button) => button.props('disabled'))).toBe(true)
+
+    projectStore.selectedProject.metadata.name = 'route_project'
+    await wrapper.setProps({ projectLoading: false })
+    await nextTick()
+
+    expect(actionButtons.every((button) => button.props('disabled'))).toBe(false)
+  })
+
+  it('filters excluded ingesters and keeps ordinary ingesters actionable', async () => {
+    const ordinaryIngester: IngesterMetadata = {
+      key: 'ordinary',
+      name: 'Ordinary Ingester',
+      description: 'Project-independent',
+      version: '1.0.0',
+      supported_formats: ['xlsx'],
+    }
+    ingesterStore.ingesters.push(ordinaryIngester)
+    ingesterStore.selectedIngester = ordinaryIngester
+
+    const wrapper = mountForm({ excludedIngesterKeys: ['sead_change_request'] })
+    const vm = wrapper.vm as unknown as { formValid: boolean }
+    vm.formValid = true
+    await nextTick()
+
+    const workflowSelector = wrapper.findComponent({ name: 'VSelect' })
+    expect(workflowSelector.props('items')).toEqual([ordinaryIngester])
+
+    await (wrapper.vm as unknown as { handleValidate: () => Promise<void> }).handleValidate()
+    await (wrapper.vm as unknown as { handleIngest: () => Promise<void> }).handleIngest()
+
+    expect(ingesterStore.validate).toHaveBeenCalledOnce()
+    expect(ingesterStore.ingest).toHaveBeenCalledOnce()
   })
 })

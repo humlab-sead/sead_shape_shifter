@@ -13,6 +13,7 @@ import pytest
 from psycopg import sql
 
 from backend.app.clients.sims_client import SimsClient
+from backend.app.ingesters.protocol import IngesterConfig
 from backend.app.models.reconciliation import ReconciliationCandidate
 from backend.app.models.sims import ResolveRequest, ResolveResponse
 from backend.app.services.ingester_runtime import (
@@ -22,8 +23,12 @@ from backend.app.services.ingester_runtime import (
 )
 from ingesters.sead_change_request import ChangeRowState, orchestrate_identity_assignments
 from ingesters.sead_change_request.contracts import PlannedRowAction, PlannedTable, SimsResolveItem, SubmissionContext
+from ingesters.sead_change_request.input_resolution import SubmissionContextError, resolve_inputs
 
 # pylint: disable=unused-argument
+
+TEST_SCOPE_NAME = "provider://mal/test-pilot"
+"""Provider-schema scope used by adapter tests instead of a project-name fallback."""
 
 
 class FakeBackendReconciliationClient:
@@ -93,6 +98,7 @@ def minimal_submission_context() -> SubmissionContext:
         submission_name="test-submission",
         project_name="test-project",
         timestamp=datetime.fromisoformat("2026-05-23T23:10:00"),
+        scope_name=TEST_SCOPE_NAME,
     )
 
 
@@ -166,6 +172,7 @@ class TestSeadChangeRequestSimsAdapter:
                 submission_name="test-submission",
                 project_name="test-project",
                 timestamp=datetime.fromisoformat("2026-05-23T23:10:00"),
+                scope_name=TEST_SCOPE_NAME,
             ),
         )
 
@@ -186,6 +193,7 @@ class TestSeadChangeRequestSimsAdapter:
                 submission_name="test-submission",
                 project_name="test-project",
                 timestamp=datetime.fromisoformat("2026-05-23T23:10:00"),
+                scope_name=TEST_SCOPE_NAME,
             ),
         )
 
@@ -203,6 +211,7 @@ class TestSeadChangeRequestSimsAdapter:
             project_name="test-project",
             timestamp=datetime.fromisoformat("2026-05-23T23:10:00"),
             run_id="run-123",
+            scope_name=TEST_SCOPE_NAME,
         )
 
         result = await adapter.resolve_batch(
@@ -228,6 +237,7 @@ class TestSeadChangeRequestSimsAdapter:
             submission_name="test-submission",
             project_name="test-project",
             timestamp=datetime.fromisoformat("2026-05-23T23:10:00"),
+            scope_name=TEST_SCOPE_NAME,
         )
 
         await adapter.resolve_batch([SimsResolveItem(entity_name="sample", row={"name": "A"})], context)
@@ -347,7 +357,7 @@ async def test_approved_site_match_through_real_sims_service():
     source_key = f"shape-shifter-approved-site-{uuid4().hex}"
     scope_name = f"sead://test-integration/shape-shifter/{uuid4().hex}"
     sims_client = RecordingSimsClient(base_url)
-    adapter = SeadChangeRequestSimsAdapter(sims_client, scope_name=scope_name, created_by="local-disposable-verification")
+    adapter = SeadChangeRequestSimsAdapter(sims_client, created_by="local-disposable-verification")
 
     async def resolve_site(submission_name: str, target_id: int):
         frame = pd.DataFrame({"site_name": [source_key]})
@@ -360,6 +370,7 @@ async def test_approved_site_match_through_real_sims_service():
             submission_name=submission_name,
             project_name="shape-shifter-disposable-verification",
             timestamp=datetime.now(),
+            scope_name=scope_name,
         )
         return await orchestrate_identity_assignments(
             [planned_table],
@@ -408,7 +419,7 @@ async def test_reconciliation_miss_allocates_site_through_real_sims_service():
     source_key = f"ss-verify-site-{uuid4().hex}"
     scope_name = f"sead://test-integration/shape-shifter/{uuid4().hex}"
     sims_client = RecordingSimsClient(base_url)
-    adapter = SeadChangeRequestSimsAdapter(sims_client, scope_name=scope_name, created_by="local-disposable-verification")
+    adapter = SeadChangeRequestSimsAdapter(sims_client, created_by="local-disposable-verification")
     reconciliation_client = FakeReconciliationClient(target_id=None)
 
     async def resolve_site(submission_name: str):
@@ -422,6 +433,7 @@ async def test_reconciliation_miss_allocates_site_through_real_sims_service():
             submission_name=submission_name,
             project_name="shape-shifter-disposable-verification",
             timestamp=datetime.now(),
+            scope_name=scope_name,
         )
         return await orchestrate_identity_assignments(
             [planned_table],
@@ -506,3 +518,71 @@ async def test_target_sequence_reservation_uses_loopback_disposable_postgres():
     assert reserved_id == expected_id
     assert current_value == reserved_id
     assert is_called is True
+
+
+class TestTrustedScopeAndBusinessKeys:
+    """Tests for the trusted scope input and declared-key identity values."""
+
+    @pytest.mark.asyncio
+    async def test_adapter_requires_the_trusted_scope_instead_of_a_project_fallback(self):
+        sims_client = FakeBackendSimsClient(lifecycle_state="confirmed", target_id=501)
+        adapter = SeadChangeRequestSimsAdapter(cast(Any, sims_client))
+
+        with pytest.raises(ValueError, match="provider-schema pair must supply it"):
+            await adapter.allocate_entity(
+                "sample",
+                {"name": "A"},
+                SubmissionContext(
+                    submission_name="test-submission",
+                    project_name="test-project",
+                    timestamp=datetime.fromisoformat("2026-05-23T23:10:00"),
+                ),
+            )
+
+        assert sims_client.resolve_requests == []
+
+    def test_caller_scope_override_is_rejected_before_any_source_read(self, tmp_path):
+        config = IngesterConfig(
+            host="localhost",
+            port=5432,
+            dbname="",
+            user="",
+            extra={
+                "target_model": {"model": {"name": "Test", "version": "1"}, "entities": {}, "constraints": []},
+                "submission_context": {
+                    "submission_name": "test-submission",
+                    "project_name": "test-project",
+                    "timestamp": "2026-05-23T23:10:00",
+                    "datatype": "mal",
+                    "identifier": "TEST_SUBMISSION",
+                },
+                "sims_scope_name": "provider://other/scope",
+            },
+        )
+
+        with pytest.raises(SubmissionContextError, match="cannot select the Change Request scope"):
+            resolve_inputs(config, {"site": pd.DataFrame({"site_id": [1]})})
+
+    @pytest.mark.asyncio
+    async def test_declared_business_keys_serialize_the_identity_value(self):
+        sims_client = FakeBackendSimsClient(lifecycle_state="confirmed", target_id=501)
+        adapter = SeadChangeRequestSimsAdapter(cast(Any, sims_client), business_keys={"site": ("site_name", "site_code")})
+
+        await adapter.allocate_entity(
+            "site",
+            {"site_name": "A", "site_code": 7, "unrelated": "ignored"},
+            minimal_submission_context(),
+        )
+
+        identity_value = sims_client.resolve_requests[0].requests[0].primary_signal.identity_value
+        assert identity_value == '[1,[["site_name","string","A"],["site_code","number","7"]]]'
+
+    @pytest.mark.asyncio
+    async def test_entity_without_declared_keys_keeps_the_field_based_identity(self):
+        sims_client = FakeBackendSimsClient(lifecycle_state="confirmed", target_id=501)
+        adapter = SeadChangeRequestSimsAdapter(cast(Any, sims_client), business_keys={})
+
+        await adapter.allocate_entity("sample", {"sample_id": None, "name": "A"}, minimal_submission_context())
+
+        identity_value = sims_client.resolve_requests[0].requests[0].primary_signal.identity_value
+        assert identity_value == "sample:name=A"

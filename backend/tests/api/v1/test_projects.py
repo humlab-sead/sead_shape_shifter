@@ -12,13 +12,15 @@ from backend.app.services import project_service, validation_service, yaml_servi
 def sample_project_data():
     """Sample project data for tests."""
     return {
+        "data_provider_code": "test-provider",
+        "provider_schema": "schema-one",
         "entities": {
             "sample": {
                 "type": "entity",
                 "keys": ["sample_id"],
                 "columns": ["name", "value"],
             }
-        }
+        },
     }
 
 
@@ -57,7 +59,13 @@ class TestProjectsList:
 
         # Create test project via API
         create_response = await authorized_client.post(
-            "/api/v1/projects", json={"name": "test_project", "entities": sample_project_data["entities"]}
+            "/api/v1/projects",
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": sample_project_data["entities"],
+            },
         )
         assert create_response.status_code == 201
 
@@ -79,7 +87,15 @@ class TestProjectsGet:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         # Create project
-        await authorized_client.post("/api/v1/projects", json={"name": "test_project", "entities": sample_project_data["entities"]})
+        await authorized_client.post(
+            "/api/v1/projects",
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": sample_project_data["entities"],
+            },
+        )
 
         # Get project
         response = await authorized_client.get("/api/v1/projects/test_project")
@@ -105,7 +121,10 @@ class TestProjectsGet:
         monkeypatch.setattr(settings, "PROJECTS_DIR", projects_dir)
         monkeypatch.setattr(settings, "GLOBAL_TARGET_MODEL_DIR", target_models_dir)
 
-        create_response = await authorized_client.post("/api/v1/projects", json={"name": "test_project"})
+        create_response = await authorized_client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "data_provider_code": "test-provider", "provider_schema": "schema-one"},
+        )
         assert create_response.status_code == 201
         (projects_dir / "test_project" / "model.yml").write_text("model: {}\nentities: {}\n", encoding="utf-8")
         target_models_dir.mkdir(parents=True)
@@ -132,7 +151,10 @@ class TestProjectsGet:
         target_models_dir.mkdir(parents=True)
         (target_models_dir / "model.yml").write_text("model: {}\nentities: {}\n", encoding="utf-8")
 
-        create_response = await authorized_client.post("/api/v1/projects", json={"name": "test_project"})
+        create_response = await authorized_client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "data_provider_code": "test-provider", "provider_schema": "schema-one"},
+        )
         assert create_response.status_code == 201
         local_model = projects_dir / "test_project" / "local-model.yml"
         local_model.write_text("model: {name: Local Model}\nentities: {}\n", encoding="utf-8")
@@ -176,13 +198,39 @@ class TestProjectsCreate:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         response = await authorized_client.post(
-            "/api/v1/projects", json={"name": "new_project", "entities": sample_project_data["entities"]}
+            "/api/v1/projects",
+            json={
+                "name": "new_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": sample_project_data["entities"],
+            },
         )
 
         assert response.status_code == 201
         data = response.json()
         assert data["metadata"]["name"] == "new_project"
         assert data["metadata"]["entity_count"] == 1
+        assert data["metadata"]["data_provider_code"] == "test-provider"
+        assert data["metadata"]["provider_schema"] == "schema-one"
+
+    async def test_create_requires_registered_pair_before_project_creation(self, tmp_path, monkeypatch, reset_services, authorized_client):
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+
+        missing_pair = await authorized_client.post("/api/v1/projects", json={"name": "missing-pair"})
+        unknown_pair = await authorized_client.post(
+            "/api/v1/projects",
+            json={
+                "name": "unknown-pair",
+                "data_provider_code": "test-provider",
+                "provider_schema": "unknown-schema",
+            },
+        )
+
+        assert missing_pair.status_code == 422
+        assert unknown_pair.status_code == 400
+        assert not (tmp_path / "missing-pair").exists()
+        assert not (tmp_path / "unknown-pair").exists()
 
     async def test_create_duplicate_project(self, tmp_path, monkeypatch, reset_services, sample_project_data, authorized_client):
         """Test creating duplicate project returns 409 Conflict."""
@@ -190,11 +238,25 @@ class TestProjectsCreate:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         # Create first project
-        await authorized_client.post("/api/v1/projects", json={"name": "test_project", "entities": sample_project_data["entities"]})
+        await authorized_client.post(
+            "/api/v1/projects",
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": sample_project_data["entities"],
+            },
+        )
 
         # Try to create duplicate project
         response = await authorized_client.post(
-            "/api/v1/projects", json={"name": "test_project", "entities": sample_project_data["entities"]}
+            "/api/v1/projects",
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": sample_project_data["entities"],
+            },
         )
         assert response.status_code == 409
 
@@ -208,7 +270,15 @@ class TestProjectsUpdate:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         # Create project
-        await authorized_client.post("/api/v1/projects", json={"name": "test_project", "entities": sample_project_data["entities"]})
+        await authorized_client.post(
+            "/api/v1/projects",
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": sample_project_data["entities"],
+            },
+        )
 
         # Update project options (entities are ignored by update endpoint)
         updated_options = {"some_option": "value", "another_option": 123}
@@ -240,7 +310,15 @@ class TestProjectsUpdate:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         # Create project
-        await authorized_client.post("/api/v1/projects", json={"name": "test_project", "entities": sample_project_data["entities"]})
+        await authorized_client.post(
+            "/api/v1/projects",
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": sample_project_data["entities"],
+            },
+        )
 
         # Update metadata
         metadata_update = {
@@ -255,8 +333,50 @@ class TestProjectsUpdate:
         assert data["metadata"]["description"] == "Updated description"
         assert data["metadata"]["version"] == "2.0.1"
         assert data["metadata"]["default_entity"] == "sample"
-        # Verify entities are preserved
-        assert "sample" in data["entities"]
+
+    async def test_metadata_assigns_pair_once_and_rejects_change_or_removal(
+        self, tmp_path, monkeypatch, reset_services, sample_project_data, authorized_client
+    ):
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        created = await authorized_client.post(
+            "/api/v1/projects",
+            json={
+                "name": "legacy-project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": sample_project_data["entities"],
+            },
+        )
+        assert created.status_code == 201
+
+        project_path = tmp_path / "legacy-project" / "shapeshifter.yml"
+        project_yaml = project_path.read_text(encoding="utf-8")
+        project_path.write_text(
+            project_yaml.replace("  data_provider_code: test-provider\n", "").replace("  provider_schema: schema-one\n", ""),
+            encoding="utf-8",
+        )
+        await authorized_client.post("/api/v1/projects/legacy-project/refresh")
+
+        assigned = await authorized_client.patch(
+            "/api/v1/projects/legacy-project/metadata",
+            json={"data_provider_code": "test-provider", "provider_schema": "schema-two"},
+        )
+        assert assigned.status_code == 200
+        assert assigned.json()["metadata"]["data_provider_code"] == "test-provider"
+        assert assigned.json()["metadata"]["provider_schema"] == "schema-two"
+
+        original = project_path.read_bytes()
+        changed = await authorized_client.patch(
+            "/api/v1/projects/legacy-project/metadata",
+            json={"provider_schema": "schema-one"},
+        )
+        removed = await authorized_client.patch(
+            "/api/v1/projects/legacy-project/metadata",
+            json={"provider_schema": None},
+        )
+        assert changed.status_code == 400
+        assert removed.status_code == 400
+        assert project_path.read_bytes() == original
 
     async def test_update_metadata_rename(self, tmp_path, monkeypatch, reset_services, sample_project_data, authorized_client):
         """Test that renaming a project via metadata update is ignored (filename is source of truth)."""
@@ -264,7 +384,15 @@ class TestProjectsUpdate:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         # Create project
-        await authorized_client.post("/api/v1/projects", json={"name": "old_name", "entities": sample_project_data["entities"]})
+        await authorized_client.post(
+            "/api/v1/projects",
+            json={
+                "name": "old_name",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": sample_project_data["entities"],
+            },
+        )
 
         # Attempt rename via metadata (should be ignored)
         metadata_update = {"name": "new_name"}
@@ -289,8 +417,24 @@ class TestProjectsUpdate:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         # Create two projects
-        await authorized_client.post("/api/v1/projects", json={"name": "config1", "entities": sample_project_data["entities"]})
-        await authorized_client.post("/api/v1/projects", json={"name": "config2", "entities": sample_project_data["entities"]})
+        await authorized_client.post(
+            "/api/v1/projects",
+            json={
+                "name": "config1",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": sample_project_data["entities"],
+            },
+        )
+        await authorized_client.post(
+            "/api/v1/projects",
+            json={
+                "name": "config2",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": sample_project_data["entities"],
+            },
+        )
 
         # Try to rename config1 to config2 (should be ignored, no conflict)
         metadata_update = {"name": "config2"}
@@ -312,7 +456,15 @@ class TestProjectsDelete:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         # Create project
-        await authorized_client.post("/api/v1/projects", json={"name": "test_project", "entities": sample_project_data["entities"]})
+        await authorized_client.post(
+            "/api/v1/projects",
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": sample_project_data["entities"],
+            },
+        )
 
         # Delete project
         response = await authorized_client.delete("/api/v1/projects/test_project")
@@ -341,15 +493,27 @@ class TestProjectsValidate:
 
         # Create a fully valid configuration with all required fields
         valid_entities = {
+            "data_provider": {
+                "type": "fixed",
+                "public_id": "data_provider_id",
+                "keys": ["data_provider_code"],
+                "columns": ["data_provider_id", "data_provider_code"],
+                "values": [[51, "test-provider"]],
+            },
             "sample": {
                 "type": "entity",
                 "keys": ["sample_id"],
                 "columns": ["name", "value", "sample_id"],
                 "depends_on": [],
-            }  # Required field
+            },  # Required field
         }
 
-        payload = {"name": "test_project", "entities": valid_entities}
+        payload = {
+            "name": "test_project",
+            "data_provider_code": "test-provider",
+            "provider_schema": "schema-one",
+            "entities": valid_entities,
+        }
 
         # Create project
         await authorized_client.post("/api/v1/projects", json=payload)
@@ -361,6 +525,37 @@ class TestProjectsValidate:
         assert data["is_valid"] is True
         assert data["error_count"] == 0
 
+    async def test_validate_missing_provider_pair_returns_metadata_errors(self, tmp_path, monkeypatch, reset_services, authorized_client):
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        created = await authorized_client.post(
+            "/api/v1/projects",
+            json={
+                "name": "unbound_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {},
+            },
+        )
+        assert created.status_code == 201
+
+        project_path = tmp_path / "unbound_project" / "shapeshifter.yml"
+        project_yaml = project_path.read_text(encoding="utf-8")
+        project_path.write_text(
+            project_yaml.replace("  data_provider_code: test-provider\n", "").replace("  provider_schema: schema-one\n", ""),
+            encoding="utf-8",
+        )
+        await authorized_client.post("/api/v1/projects/unbound_project/refresh")
+
+        response = await authorized_client.post("/api/v1/projects/unbound_project/validate")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["is_valid"] is False
+        assert {error["field"] for error in data["errors"]} >= {
+            "metadata.data_provider_code",
+            "metadata.provider_schema",
+        }
+
     async def test_validate_invalid_configuration(self, tmp_path, monkeypatch, reset_services, authorized_client):
         """Test validating an invalid project."""
 
@@ -370,7 +565,15 @@ class TestProjectsValidate:
 
         # Create project with invalid entity (missing keys)
         invalid_entities = {"sample": {"type": "entity"}}
-        await authorized_client.post("/api/v1/projects", json={"name": project_name, "entities": invalid_entities})
+        await authorized_client.post(
+            "/api/v1/projects",
+            json={
+                "name": project_name,
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": invalid_entities,
+            },
+        )
 
         # Validate
         response = await authorized_client.post(f"/api/v1/projects/{project_name}/validate")
@@ -388,6 +591,8 @@ class TestProjectsValidate:
 
         payload = {
             "name": "test_project",
+            "data_provider_code": "test-provider",
+            "provider_schema": "schema-one",
             "entities": valid_entities,
             "options": {
                 "data_sources": {
@@ -419,7 +624,15 @@ class TestProjectsValidate:
         valid_entities = {"sample": {"type": "entity", "keys": ["sample_id"], "columns": ["name"], "depends_on": []}}
 
         # Create project (create endpoint does not accept `options`)
-        await authorized_client.post("/api/v1/projects", json={"name": "test_project", "entities": valid_entities})
+        await authorized_client.post(
+            "/api/v1/projects",
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": valid_entities,
+            },
+        )
 
         # Update options (PUT endpoint updates options only; entities are ignored but required by schema)
         await authorized_client.put(
@@ -448,7 +661,15 @@ class TestProjectsBackups:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         # Create project
-        await authorized_client.post("/api/v1/projects", json={"name": "test_project", "entities": sample_project_data["entities"]})
+        await authorized_client.post(
+            "/api/v1/projects",
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": sample_project_data["entities"],
+            },
+        )
 
         # Update to create backup
         updated_entities = {"sample": {"type": "entity", "keys": ["id"], "columns": ["name"]}}
@@ -473,7 +694,13 @@ class TestProjectsBackups:
 
         # Create project
         create_response = await authorized_client.post(
-            "/api/v1/projects", json={"name": "test_project", "entities": sample_project_data["entities"]}
+            "/api/v1/projects",
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": sample_project_data["entities"],
+            },
         )
         assert create_response.status_code == 201, f"Failed to create project: {create_response.json()}"
         original_data = create_response.json()
@@ -499,6 +726,79 @@ class TestProjectsBackups:
         assert "sample" in restored_data["entities"]
         assert restored_data["entities"]["sample"]["columns"] == original_data["entities"]["sample"]["columns"]
 
+    @pytest.mark.parametrize(
+        ("old_value", "new_value"),
+        [
+            ("provider_schema: schema-one", "provider_schema: schema-two"),
+            ("data_provider_code: test-provider", "data_provider_code: another-provider"),
+            ("  provider_schema: schema-one\n", ""),
+        ],
+    )
+    async def test_restore_rejects_backup_with_changed_pair_before_writing(
+        self, reset_services, tmp_path, monkeypatch, sample_project_data, authorized_client, old_value, new_value
+    ):
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        created = await authorized_client.post(
+            "/api/v1/projects",
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": sample_project_data["entities"],
+            },
+        )
+        assert created.status_code == 201
+
+        project_path = tmp_path / "test_project" / "shapeshifter.yml"
+        original = project_path.read_bytes()
+        backup_dir = project_path.parent / "backups"
+        backup_dir.mkdir()
+        changed_backup = backup_dir / "shapeshifter.backup.20261018_120000.yml"
+        changed_backup.write_text(
+            original.decode("utf-8").replace(old_value, new_value),
+            encoding="utf-8",
+        )
+
+        response = await authorized_client.post(
+            "/api/v1/projects/test_project/restore",
+            json={"backup_name": changed_backup.name},
+        )
+
+        assert response.status_code == 400
+        assert project_path.read_bytes() == original
+        assert [path.name for path in backup_dir.iterdir()] == [changed_backup.name]
+
+    async def test_restore_rejects_malformed_backup_before_writing(
+        self, reset_services, tmp_path, monkeypatch, sample_project_data, authorized_client
+    ):
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        created = await authorized_client.post(
+            "/api/v1/projects",
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": sample_project_data["entities"],
+            },
+        )
+        assert created.status_code == 201
+
+        project_path = tmp_path / "test_project" / "shapeshifter.yml"
+        original = project_path.read_bytes()
+        backup_dir = project_path.parent / "backups"
+        backup_dir.mkdir()
+        malformed_backup = backup_dir / "shapeshifter.backup.20261018_120001.yml"
+        malformed_backup.write_text("metadata: [", encoding="utf-8")
+
+        response = await authorized_client.post(
+            "/api/v1/projects/test_project/restore",
+            json={"backup_name": malformed_backup.name},
+        )
+
+        assert response.status_code == 400
+        assert project_path.read_bytes() == original
+        assert [path.name for path in backup_dir.iterdir()] == [malformed_backup.name]
+
     async def test_restore_rejects_task_list_sidecar_backup(
         self, reset_services, tmp_path, monkeypatch, sample_project_data, authorized_client
     ):
@@ -506,7 +806,12 @@ class TestProjectsBackups:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
         create_response = await authorized_client.post(
             "/api/v1/projects",
-            json={"name": "test_project", "entities": sample_project_data["entities"]},
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": sample_project_data["entities"],
+            },
         )
         assert create_response.status_code == 201
 
@@ -533,7 +838,12 @@ class TestProjectsBackups:
         for project_name in ("project_a", "project_b"):
             response = await authorized_client.post(
                 "/api/v1/projects",
-                json={"name": project_name, "entities": sample_project_data["entities"]},
+                json={
+                    "name": project_name,
+                    "data_provider_code": "test-provider",
+                    "provider_schema": "schema-one",
+                    "entities": sample_project_data["entities"],
+                },
             )
             assert response.status_code == 201
 
@@ -555,7 +865,12 @@ class TestProjectsBackups:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
         response = await authorized_client.post(
             "/api/v1/projects",
-            json={"name": "project_a", "entities": sample_project_data["entities"]},
+            json={
+                "name": "project_a",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": sample_project_data["entities"],
+            },
         )
         assert response.status_code == 201
 

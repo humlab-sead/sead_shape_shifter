@@ -3,14 +3,17 @@ Unit tests for auto-fix service.
 """
 
 import asyncio
+import threading
 from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
 
 from backend.app.models.fix import FixAction, FixActionType, FixSuggestion
+from backend.app.models.project import Project, ProjectMetadata
 from backend.app.models.validation import ValidationCategory, ValidationError, ValidationPriority
 from backend.app.services.auto_fix_service import AutoFixService
+from backend.app.services.project_provider_binding_service import ProjectProviderBindingError
 
 # pylint: disable=redefined-outer-name, unused-argument
 
@@ -21,6 +24,9 @@ def mock_config_service():
     service = Mock()
     service.load_project = Mock()
     service.save_project = Mock()  # sync, not async
+    service._get_lock.return_value = threading.RLock()
+    service._resolve_project_file_path.return_value = Path("/tmp/test_project/shapeshifter.yml")
+    service.validate_project_file_write = Mock()
     return service
 
 
@@ -42,6 +48,20 @@ def sample_config():
             }
         }
     }
+
+
+def bound_project(sample_config):
+    """Create a project model with the registered pair required by project saves."""
+    return Project(
+        metadata=ProjectMetadata(
+            name="test_project",
+            entity_count=len(sample_config["entities"]),
+            data_provider_code="test-provider",
+            provider_schema="schema-one",
+        ),
+        entities=sample_config["entities"],
+        options={},
+    )
 
 
 class TestAutoFixService:
@@ -199,6 +219,7 @@ class TestAutoFixService:
         ]
 
         # Mock backup creation
+        mock_config_service.load_project.return_value = bound_project(sample_config)
         with patch.object(service, "_create_backup") as mock_backup:
             mock_backup.return_value = Path("/tmp/backup.yml")
 
@@ -216,7 +237,7 @@ class TestAutoFixService:
     async def test_apply_fixes_with_rollback_on_error(self, mock_config_service, sample_config):
         """Test rollback when fix application fails."""
         # Setup
-        mock_config_service.load_project.return_value = sample_config.copy()
+        mock_config_service.load_project.return_value = bound_project(sample_config)
         service = AutoFixService(mock_config_service)
 
         suggestions = [
@@ -284,6 +305,9 @@ class TestAutoFixService:
         # Setup
         service = AutoFixService(mock_config_service)
         backup_path = Path("/tmp/test_project.backup.20240101_120000.yml")
+        service.yaml_service.load = Mock(
+            return_value={"metadata": {"data_provider_code": "test-provider", "provider_schema": "schema-one"}}
+        )
 
         # Mock file operations
         with patch("shutil.copy2") as mock_copy:
@@ -293,6 +317,29 @@ class TestAutoFixService:
 
             # Assert
             assert mock_copy.called
+
+    def test_rollback_rejects_changed_pair_before_copy(self, mock_config_service):
+        service = AutoFixService(mock_config_service)
+        backup_path = Path("/tmp/test_project.backup.20240101_120000.yml")
+        backup_config = {"metadata": {"data_provider_code": "test-provider", "provider_schema": "schema-two"}}
+        service.yaml_service.load = Mock(return_value=backup_config)
+        binding_error = ProjectProviderBindingError(
+            [
+                ValidationError(
+                    severity="error",
+                    field="metadata.provider_schema",
+                    message="An assigned provider-schema pair cannot be changed.",
+                )
+            ]
+        )
+        mock_config_service.validate_project_file_write.side_effect = binding_error
+
+        with patch("shutil.copy2") as mock_copy, pytest.raises(ProjectProviderBindingError):
+            service._rollback("test_project", backup_path)
+
+        mock_config_service.validate_project_file_write.assert_called_once()
+        assert mock_config_service.validate_project_file_write.call_args.args[1] == backup_config
+        mock_copy.assert_not_called()
 
     def test_apply_remove_column_action(self, mock_config_service, sample_config):
         """Test applying remove column action."""
@@ -339,7 +386,7 @@ class TestAutoFixService:
     def test_skip_non_auto_fixable_suggestions(self, mock_config_service, sample_config):
         """Test that non-auto-fixable suggestions are skipped during apply."""
         # Setup
-        mock_config_service.load_project.return_value = sample_config.copy()
+        mock_config_service.load_project.return_value = bound_project(sample_config)
         service = AutoFixService(mock_config_service)
 
         suggestions = [

@@ -45,6 +45,7 @@ Backend settings use the `SHAPE_SHIFTER_` prefix and are loaded from
 | `SHAPE_SHIFTER_PROJECTS_DIR` | `projects` | Project YAML and project-managed files. |
 | `SHAPE_SHIFTER_GLOBAL_DATA_DIR` | `shared/shared-data` | Shared reference data. |
 | `SHAPE_SHIFTER_GLOBAL_DATA_SOURCE_DIR` | `shared/data-sources` | Shared uploaded data sources. |
+| `SHAPE_SHIFTER_GLOBAL_DATA_PROVIDER_DIR` | `shared/data-providers` | Curated provider-schema registry. Point it at `deployment/container/resources/data-providers` for local development; the container mounts that directory read-only. |
 | `SHAPE_SHIFTER_LOG_DIR` | `logs` | Application logs. |
 | `SHAPE_SHIFTER_LOG_LEVEL` | `INFO` | Loguru log level. |
 | `SHAPE_SHIFTER_TRUSTED_PROXY_AUTH_ENABLED` | `false` | Require the identity forwarded by NGINX. |

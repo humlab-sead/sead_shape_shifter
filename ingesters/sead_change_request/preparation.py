@@ -15,6 +15,7 @@ from ingesters.sead_change_request.contracts import (
     SubmissionContext,
     SubmissionOutcomeSummary,
     TargetProjectionResult,
+    TrustedProjectContext,
     classify_submission_outcomes,
 )
 from ingesters.sead_change_request.identity_resolution import resolve_planned_tables
@@ -45,6 +46,7 @@ class ResolvedInputs:
     existing_row_update_entities: set[str] | None
     deploy_strategy: Any | None
     staging_target_schema: str | None = None
+    trusted_project_context: TrustedProjectContext | None = None
 
     @property
     def is_staging(self) -> bool:
