@@ -2,7 +2,7 @@
 
 ## Summary
 
-This plan sequences the approved decisions in [Project Data Provider Scope](./PROJECT_DATA_PROVIDER_SCOPE.md). Shape Shifter will register providers and their schemas, bind each project to one provider-schema pair, and derive Change Request identity scopes from the saved project. The production scope switch is separate operational work, planned in [Move Existing Projects To Provider-Schema Scopes](../CHANGE_REQUEST_INGESTER/CUTOVER_AND_DEPLOYMENT/PROJECT_PROVIDER_SCOPE_CUTOVER.md).
+This plan sequences the approved decisions in [Project Data Provider Scope](./PROJECT_DATA_PROVIDER_SCOPE.md). Shape Shifter will register providers and their schemas, bind each project to one provider-schema pair, and derive Change Request identity scopes from the saved project. The production scope switch is separate operational work, planned in [Move Existing Projects To Provider-Schema Scopes](../../CHANGE_REQUEST_INGESTER/CUTOVER_AND_DEPLOYMENT/PROJECT_PROVIDER_SCOPE_CUTOVER.md).
 
 ## Problem
 
@@ -12,7 +12,7 @@ Change Request runs currently use a project-name scope. That scope changes with 
 
 This plan covers the curated provider-schema registry, project creation and save rules, project validation, the provider-schema picklist, Change Request runtime inputs, fixed provider reconciliation, business-key validation, output metadata, and the remaining Change Request entry-point work.
 
-It does not create SEAD provider rows, add a second business-key declaration, redesign FK linking, assign provider-schema pairs to existing projects, decide the treatment of existing SIMS identities, or derive scopes from mutable projects or arbitrary datasets. Phase 3 derives a `business_id` from `EntityConfig.keys`; broader FK use belongs to issue #507. The project assignments, identity decision, per-schema key review, and per-project enablement belong to [Move Existing Projects To Provider-Schema Scopes](../CHANGE_REQUEST_INGESTER/CUTOVER_AND_DEPLOYMENT/PROJECT_PROVIDER_SCOPE_CUTOVER.md).
+It does not create SEAD provider rows, add a second business-key declaration, redesign FK linking, assign provider-schema pairs to existing projects, decide the treatment of existing SIMS identities, or derive scopes from mutable projects or arbitrary datasets. Phase 3 derives a `business_id` from `EntityConfig.keys`; broader FK use belongs to issue #507. The project assignments, identity decision, per-schema key review, and per-project enablement belong to [Move Existing Projects To Provider-Schema Scopes](../../CHANGE_REQUEST_INGESTER/CUTOVER_AND_DEPLOYMENT/PROJECT_PROVIDER_SCOPE_CUTOVER.md).
 
 ## Current Position
 
@@ -157,7 +157,7 @@ Close the development gaps left after Phase 3 in the Change Request entry points
 **Depends On**
 
 - Phases 1–3 and their validation milestones.
-- No cutover decision. The scope switch is planned in [Move Existing Projects To Provider-Schema Scopes](../CHANGE_REQUEST_INGESTER/CUTOVER_AND_DEPLOYMENT/PROJECT_PROVIDER_SCOPE_CUTOVER.md).
+- No cutover decision. The scope switch is planned in [Move Existing Projects To Provider-Schema Scopes](../../CHANGE_REQUEST_INGESTER/CUTOVER_AND_DEPLOYMENT/PROJECT_PROVIDER_SCOPE_CUTOVER.md).
 
 **Outputs**
 
@@ -189,9 +189,9 @@ Ready for a task plan.
 - Keep pair validation local and deterministic. SIMS and target-database calls belong to ingestion, after saved-project checks.
 - Preserve the lookup-only target `data_provider` contract and one provider row plus one submission row per bundle; the trusted project fixed row supplies the provider ID.
 - Validate every tracked business key from `EntityConfig.keys` before SIMS. A repeated key across deliveries reuses identity within the same scope; a duplicate within one transformed entity table blocks the run.
-- Keep existing project-scope behavior only until an explicit cutover decision. After cutover, fail closed instead of falling back to the project name. The switch itself is planned in [Move Existing Projects To Provider-Schema Scopes](../CHANGE_REQUEST_INGESTER/CUTOVER_AND_DEPLOYMENT/PROJECT_PROVIDER_SCOPE_CUTOVER.md), not in a development phase.
+- Keep existing project-scope behavior only until an explicit cutover decision. After cutover, fail closed instead of falling back to the project name. The switch itself is planned in [Move Existing Projects To Provider-Schema Scopes](../../CHANGE_REQUEST_INGESTER/CUTOVER_AND_DEPLOYMENT/PROJECT_PROVIDER_SCOPE_CUTOVER.md), not in a development phase.
 - Treat direct project-file edits as repository-reviewed changes; application save checks alone cannot prevent them. Live project files under `data/` are deployment data, so a cutover edit is applied while ingestion for that project is stopped.
 
 ## Validation Strategy
 
-Validate registry and project rules in isolation first (`VM-1` through `VM-3`). Then validate trusted project input, the fixed provider ID/code against SEAD, keys before SIMS, and emitted scope/run metadata in Change Request runs (`VM-4`, `VM-5`). Then close the remaining entry-point and strategy-parity gaps (`VM-6`, `VM-7`). Project assignments, the identity treatment decision, the per-schema key review, and per-project enablement are validated by the cutover record described in [Move Existing Projects To Provider-Schema Scopes](../CHANGE_REQUEST_INGESTER/CUTOVER_AND_DEPLOYMENT/PROJECT_PROVIDER_SCOPE_CUTOVER.md), not by this plan.
+Validate registry and project rules in isolation first (`VM-1` through `VM-3`). Then validate trusted project input, the fixed provider ID/code against SEAD, keys before SIMS, and emitted scope/run metadata in Change Request runs (`VM-4`, `VM-5`). Then close the remaining entry-point and strategy-parity gaps (`VM-6`, `VM-7`). Project assignments, the identity treatment decision, the per-schema key review, and per-project enablement are validated by the cutover record described in [Move Existing Projects To Provider-Schema Scopes](../../CHANGE_REQUEST_INGESTER/CUTOVER_AND_DEPLOYMENT/PROJECT_PROVIDER_SCOPE_CUTOVER.md), not by this plan.
