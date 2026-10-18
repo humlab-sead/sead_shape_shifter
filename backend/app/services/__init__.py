@@ -28,6 +28,7 @@ Data Classes:
 """
 
 from backend.app.services.auto_fix_service import AutoFixService
+from backend.app.services.data_provider_service import DataProviderRegistryError, DataProviderService
 from backend.app.services.data_source_service import DataSourceService
 from backend.app.services.dependency_service import DependencyGraph, DependencyNode, DependencyService, SourceNode
 from backend.app.services.project import ProjectServiceError
@@ -60,6 +61,7 @@ __all__ = [
     "AutoFixService",
     "ProjectService",
     "DataSourceService",
+    "DataProviderService",
     "DependencyService",
     "ShapeShiftService",
     "QueryService",
@@ -70,6 +72,7 @@ __all__ = [
     "YamlService",
     # Generic service exception
     "ProjectServiceError",
+    "DataProviderRegistryError",
     # Dependency classes
     "DependencyNode",
     "DependencyGraph",
