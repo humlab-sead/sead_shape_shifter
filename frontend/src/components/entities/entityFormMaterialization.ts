@@ -107,11 +107,7 @@ export function normalizeFixedValuesRowsForForm(
  * names. When produced columns move in or out of the fixed schema, rebuild rows
  * by column name so surviving fields keep their values.
  */
-export function remapFixedValuesRowsToColumns(
-  values: any[][],
-  fromColumns: string[],
-  toColumns: string[]
-): any[][] {
+export function remapFixedValuesRowsToColumns(values: any[][], fromColumns: string[], toColumns: string[]): any[][] {
   if (!Array.isArray(values) || values.length === 0) {
     return values
   }
@@ -148,8 +144,7 @@ export function extractMaterializationRoundTripState(entityData: Record<string, 
   const rawValues = entityData.values
 
   return {
-    externalValuesDirective:
-      typeof rawValues === 'string' && rawValues.startsWith('@load:') ? rawValues : null,
+    externalValuesDirective: typeof rawValues === 'string' && rawValues.startsWith('@load:') ? rawValues : null,
     materializedConfig:
       entityData.materialized && typeof entityData.materialized === 'object'
         ? (entityData.materialized as Record<string, any>)

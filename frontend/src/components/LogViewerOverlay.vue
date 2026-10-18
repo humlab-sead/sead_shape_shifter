@@ -10,10 +10,7 @@
     content-class="log-viewer-dialog"
   >
     <v-card :style="cardStyle" class="resizable-card">
-      <v-card-title 
-        class="d-flex align-center justify-space-between pa-2 drag-handle" 
-        @mousedown="startDrag"
-      >
+      <v-card-title class="d-flex align-center justify-space-between pa-2 drag-handle" @mousedown="startDrag">
         <div class="d-flex align-center">
           <v-icon icon="mdi-console-line" class="mr-2" />
           <span>Application Logs</span>
@@ -33,13 +30,7 @@
             density="compact"
             @click.stop="toggleMaximize"
           />
-          <v-btn
-            icon="mdi-close"
-            variant="text"
-            size="small"
-            density="compact"
-            @click.stop="close"
-          />
+          <v-btn icon="mdi-close" variant="text" size="small" density="compact" @click.stop="close" />
         </div>
       </v-card-title>
 
@@ -83,19 +74,8 @@
           </v-col>
           <v-col cols="12" sm="3">
             <div class="d-flex gap-1">
-              <v-btn
-                size="small"
-                variant="tonal"
-                icon="mdi-refresh"
-                :loading="logsLoading"
-                @click="refreshLogs"
-              />
-              <v-btn
-                size="small"
-                variant="tonal"
-                icon="mdi-download"
-                @click="downloadLogs"
-              />
+              <v-btn size="small" variant="tonal" icon="mdi-refresh" :loading="logsLoading" @click="refreshLogs" />
+              <v-btn size="small" variant="tonal" icon="mdi-download" @click="downloadLogs" />
               <v-tooltip location="top">
                 <template #activator="{ props }">
                   <v-btn
@@ -136,21 +116,9 @@
       </v-card-text>
 
       <!-- Resize handles -->
-      <div 
-        v-if="!isMaximized"
-        class="resize-handle resize-handle-right"
-        @mousedown="startResize($event, 'right')"
-      />
-      <div 
-        v-if="!isMaximized"
-        class="resize-handle resize-handle-bottom"
-        @mousedown="startResize($event, 'bottom')"
-      />
-      <div 
-        v-if="!isMaximized"
-        class="resize-handle resize-handle-corner"
-        @mousedown="startResize($event, 'corner')"
-      />
+      <div v-if="!isMaximized" class="resize-handle resize-handle-right" @mousedown="startResize($event, 'right')" />
+      <div v-if="!isMaximized" class="resize-handle resize-handle-bottom" @mousedown="startResize($event, 'bottom')" />
+      <div v-if="!isMaximized" class="resize-handle resize-handle-corner" @mousedown="startResize($event, 'corner')" />
     </v-card>
   </v-dialog>
 </template>
@@ -170,7 +138,7 @@ const emit = defineEmits<{
 
 const isOpen = computed({
   get: () => props.modelValue,
-  set: (value) => emit('update:modelValue', value)
+  set: (value) => emit('update:modelValue', value),
 })
 
 // Dialog state
@@ -238,7 +206,7 @@ const cardTextStyle = computed(() => {
     return { height: '0px', overflow: 'hidden' as const }
   }
   // Make content area flexible - it will fill available space
-  return { 
+  return {
     display: 'flex',
     flexDirection: 'column' as const,
     overflow: 'hidden' as const,
@@ -310,13 +278,13 @@ function startDrag(event: MouseEvent) {
   // Store initial mouse position
   initialMousePos.value = {
     x: event.clientX,
-    y: event.clientY
+    y: event.clientY,
   }
 
   // Store current dialog position
   initialDialogPos.value = {
     x: dialogPosition.value.x,
-    y: dialogPosition.value.y
+    y: dialogPosition.value.y,
   }
 
   isDragging.value = true
@@ -327,16 +295,16 @@ function startDrag(event: MouseEvent) {
 
 function onDrag(event: MouseEvent) {
   if (!isDragging.value) return
-  
+
   requestAnimationFrame(() => {
     // Calculate how far the mouse has moved
     const deltaX = event.clientX - initialMousePos.value.x
     const deltaY = event.clientY - initialMousePos.value.y
-    
+
     // Apply delta to initial dialog position
     dialogPosition.value = {
       x: initialDialogPos.value.x + deltaX,
-      y: initialDialogPos.value.y + deltaY
+      y: initialDialogPos.value.y + deltaY,
     }
   })
 }
@@ -350,21 +318,21 @@ function stopDrag() {
 // Resize functionality
 function startResize(event: MouseEvent, direction: 'right' | 'bottom' | 'corner') {
   if (isMaximized.value) return
-  
+
   resizeDirection.value = direction
-  
+
   // Store initial mouse position
   initialMousePos.value = {
     x: event.clientX,
-    y: event.clientY
+    y: event.clientY,
   }
-  
+
   // Store current dialog size
   initialSize.value = {
     width: dialogWidth.value,
-    height: dialogHeight.value
+    height: dialogHeight.value,
   }
-  
+
   isResizing.value = true
   document.addEventListener('mousemove', onResize)
   document.addEventListener('mouseup', stopResize)
@@ -374,14 +342,14 @@ function startResize(event: MouseEvent, direction: 'right' | 'bottom' | 'corner'
 
 function onResize(event: MouseEvent) {
   if (!isResizing.value) return
-  
+
   const deltaX = event.clientX - initialMousePos.value.x
   const deltaY = event.clientY - initialMousePos.value.y
-  
+
   if (resizeDirection.value === 'right' || resizeDirection.value === 'corner') {
     dialogWidth.value = Math.max(400, initialSize.value.width + deltaX)
   }
-  
+
   if (resizeDirection.value === 'bottom' || resizeDirection.value === 'corner') {
     dialogHeight.value = Math.max(300, initialSize.value.height + deltaY)
   }

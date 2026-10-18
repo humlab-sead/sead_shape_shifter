@@ -25,7 +25,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
   const loading = ref(false)
   const error = ref<string | null>(null)
   const selectedTarget = ref<string | null>(null) // Currently selected target field
-  
+
   // Specification management state
   const specifications = ref<EntityResolutionListItem[]>([])
   const selectedSpec = ref<EntityResolutionListItem | null>(null)
@@ -35,16 +35,12 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
   // Getters
   const reconcilableEntities = computed(() => {
     if (!reconciliationConfig.value) return []
-    return Object.keys(reconciliationConfig.value.entities).filter(
-      (entityName) => {
-        const targetFields = reconciliationConfig.value!.entities[entityName]
-        if (!targetFields) return false
-        // Entity is reconcilable if it has at least one target with a service_type
-        return Object.values(targetFields).some(
-          (spec) => spec?.remote?.service_type != null
-        )
-      }
-    )
+    return Object.keys(reconciliationConfig.value.entities).filter((entityName) => {
+      const targetFields = reconciliationConfig.value!.entities[entityName]
+      if (!targetFields) return false
+      // Entity is reconcilable if it has at least one target with a service_type
+      return Object.values(targetFields).some((spec) => spec?.remote?.service_type != null)
+    })
   })
 
   // Get available targets for a specific entity
@@ -103,7 +99,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     error.value = null
     try {
       const response = await apiClient.put(`/projects/${projectName}/reconciliation/raw`, yamlContent, {
-        headers: { 'Content-Type': 'text/plain' }
+        headers: { 'Content-Type': 'text/plain' },
       })
       reconciliationConfig.value = response.data
     } catch (e: any) {
@@ -181,11 +177,14 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await apiClient.post(`/projects/${projectName}/reconciliation/${entityName}/${targetField}/mapping`, {
-        source_value: sourceValue,
-        target_id: targetId,
-        notes,
-      })
+      const response = await apiClient.post(
+        `/projects/${projectName}/reconciliation/${entityName}/${targetField}/mapping`,
+        {
+          source_value: sourceValue,
+          target_id: targetId,
+          notes,
+        }
+      )
       reconciliationConfig.value = response.data
     } catch (e: any) {
       error.value = e.response?.data?.detail || 'Failed to update mapping'
@@ -200,9 +199,12 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await apiClient.delete(`/projects/${projectName}/reconciliation/${entityName}/${targetField}/mapping`, {
-        params: { source_value: JSON.stringify(sourceValue) },
-      })
+      const response = await apiClient.delete(
+        `/projects/${projectName}/reconciliation/${entityName}/${targetField}/mapping`,
+        {
+          params: { source_value: JSON.stringify(sourceValue) },
+        }
+      )
       reconciliationConfig.value = response.data
     } catch (e: any) {
       error.value = e.response?.data?.detail || 'Failed to delete mapping'
@@ -224,9 +226,12 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     }
 
     try {
-      const response = await apiClient.get(`/projects/${projectName}/reconciliation/${entityName}/${targetField}/suggest`, {
-        params: { query },
-      })
+      const response = await apiClient.get(
+        `/projects/${projectName}/reconciliation/${entityName}/${targetField}/suggest`,
+        {
+          params: { query },
+        }
+      )
       return response.data
     } catch (e: any) {
       error.value = e.response?.data?.detail || 'Failed to get suggestions'
@@ -238,8 +243,10 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
   async function loadPreviewData(projectName: string, entityName: string, targetField: string) {
     try {
       console.log(`[Reconciliation Store] Loading preview data for ${entityName}.${targetField}`)
-      const response = await apiClient.get(`/projects/${projectName}/reconciliation/${entityName}/${targetField}/preview`)
-      
+      const response = await apiClient.get(
+        `/projects/${projectName}/reconciliation/${entityName}/${targetField}/preview`
+      )
+
       // Response is already enriched with reconciliation data
       previewData.value[entityName] = response.data
       console.log(`[Reconciliation Store] Loaded ${response.data.length} preview rows for ${entityName}.${targetField}`)
@@ -318,17 +325,11 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     }
   }
 
-  async function createSpecification(
-    projectName: string,
-    request: EntityResolutionCatalogCreateRequest
-  ) {
+  async function createSpecification(projectName: string, request: EntityResolutionCatalogCreateRequest) {
     loadingSpecs.value = true
     specsError.value = null
     try {
-      const updatedConfig = await reconciliationSpecApi.createSpecification(
-        projectName,
-        request
-      )
+      const updatedConfig = await reconciliationSpecApi.createSpecification(projectName, request)
       reconciliationConfig.value = updatedConfig
       // Reload specifications list
       await loadSpecifications(projectName)
@@ -377,20 +378,12 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     loadingSpecs.value = true
     specsError.value = null
     try {
-      const updatedConfig = await reconciliationSpecApi.deleteSpecification(
-        projectName,
-        entityName,
-        targetField,
-        force
-      )
+      const updatedConfig = await reconciliationSpecApi.deleteSpecification(projectName, entityName, targetField, force)
       reconciliationConfig.value = updatedConfig
       // Reload specifications list
       await loadSpecifications(projectName)
       // Clear selected spec if it was deleted
-      if (
-        selectedSpec.value?.entity_name === entityName &&
-        selectedSpec.value?.target_field === targetField
-      ) {
+      if (selectedSpec.value?.entity_name === entityName && selectedSpec.value?.target_field === targetField) {
         selectedSpec.value = null
       }
     } catch (e: any) {
@@ -411,11 +404,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     }
   }
 
-  async function getMappingCount(
-    projectName: string,
-    entityName: string,
-    targetField: string
-  ): Promise<number> {
+  async function getMappingCount(projectName: string, entityName: string, targetField: string): Promise<number> {
     try {
       return await reconciliationSpecApi.getMappingCount(projectName, entityName, targetField)
     } catch (e: any) {
@@ -423,7 +412,6 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
       throw e
     }
   }
-
 
   return {
     // State
@@ -457,7 +445,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     exportToMapping,
     clearError,
     $reset,
-    
+
     // Specification management actions
     loadSpecifications,
     createSpecification,

@@ -94,14 +94,14 @@ export interface UseCytoscapeOptions {
    * Node click handler
    */
   onNodeClick?: (nodeId: string) => void
-  
+
   /**
    * Node double-click handler
    * @param nodeId - ID of the clicked node
    * @param isCtrlKey - Whether Ctrl/Cmd key was pressed (power user mode)
    */
   onNodeDoubleClick?: (nodeId: string, isCtrlKey: boolean) => void
-  
+
   /**
    * Node right-click handler
    */
@@ -138,7 +138,7 @@ export function useCytoscape(options: UseCytoscapeOptions) {
   const cy = ref<Core | null>(null)
   const isInitialized = ref(false)
   const isAnimating = ref(false)
-  
+
   // Track single-click timeout for preventing conflicts with double-click
   let singleClickTimeout: number | null = null
   const CLICK_DELAY = 375 // milliseconds
@@ -175,27 +175,27 @@ export function useCytoscape(options: UseCytoscapeOptions) {
           const nodeId = event.target.id()
           const originalEvent = event.originalEvent as MouseEvent | undefined
           const isCtrlClick = originalEvent?.ctrlKey || originalEvent?.metaKey
-          
+
           console.debug('[useCytoscape] Node double-click:', nodeId, { ctrlKey: isCtrlClick })
-          
+
           // Cancel any pending single-click action
           if (singleClickTimeout !== null) {
             clearTimeout(singleClickTimeout)
             singleClickTimeout = null
           }
-          
+
           onNodeDoubleClick?.(nodeId, isCtrlClick || false)
         })
-        
+
         // Single tap/click - delay to allow double-click to cancel it
         cy.value.on('tap', 'node', (event) => {
           const nodeId = event.target.id()
-          
+
           // Cancel previous timeout if exists
           if (singleClickTimeout !== null) {
             clearTimeout(singleClickTimeout)
           }
-          
+
           // Delay single-click action to see if double-click occurs
           singleClickTimeout = window.setTimeout(() => {
             console.debug('[useCytoscape] Node single-click:', nodeId)
@@ -203,27 +203,27 @@ export function useCytoscape(options: UseCytoscapeOptions) {
             singleClickTimeout = null
           }, CLICK_DELAY)
         })
-        
+
         // Right-click (context menu) - using cxttap event
         cy.value.on('cxttap', 'node', (event) => {
           console.debug('[useCytoscape] cxttap event fired!', event)
           const nodeId = event.target.id()
-          
+
           // Get the graph container's position
           const containerRect = container.value?.getBoundingClientRect()
           if (!containerRect) return
-          
+
           // Get the rendered position (position on screen relative to container)
           const renderedPosition = event.renderedPosition
-          
+
           // Calculate absolute screen coordinates
           const x = containerRect.left + renderedPosition.x
           const y = containerRect.top + renderedPosition.y
-          
+
           console.debug('[useCytoscape] Node right-click:', nodeId, 'at screen position', { x, y })
-          
+
           onNodeRightClick?.(nodeId, x, y)
-          
+
           // Prevent default context menu
           event.preventDefault()
         })
@@ -250,7 +250,7 @@ export function useCytoscape(options: UseCytoscapeOptions) {
       hasGraphData: !!graphData.value,
       nodesCount: graphData.value?.nodes?.length ?? 0,
     })
-    
+
     if (!cy.value || !graphData.value) {
       console.warn('[useCytoscape] updateElements early return:', {
         hasCy: !!cy.value,
@@ -272,7 +272,7 @@ export function useCytoscape(options: UseCytoscapeOptions) {
 
     const currentElements = cy.value.elements()
     const isInitialRender = currentElements.length === 0
-    
+
     console.log('[useCytoscape] Updating elements:', {
       newElementsCount: newElements.length,
       currentElementsCount: currentElements.length,
@@ -315,22 +315,18 @@ export function useCytoscape(options: UseCytoscapeOptions) {
       if (toAdd.length > 0) {
         console.log('[useCytoscape] Adding', toAdd.length, 'new elements')
         const added = cy.value.add(toAdd)
-        
+
         // Run layout only on new nodes
         const newNodes = added.nodes()
         if (newNodes.length > 0) {
           console.log('[useCytoscape] Running layout for', newNodes.length, 'new nodes')
-          
+
           // For custom layout, run on all nodes to trigger smart positioning
           if (layoutType.value === 'custom') {
             applyLayout(true)
           } else {
             // For other layouts, only layout new nodes
-            const layoutConfig = getLayoutConfig(
-              layoutType.value,
-              true,
-              undefined
-            )
+            const layoutConfig = getLayoutConfig(layoutType.value, true, undefined)
             newNodes.layout(layoutConfig as LayoutOptions).run()
           }
         }
@@ -349,7 +345,7 @@ export function useCytoscape(options: UseCytoscapeOptions) {
     const layoutConfig = getLayoutConfig(
       layoutType.value,
       animate,
-      layoutType.value === 'custom' ? customPositions.value ?? undefined : undefined
+      layoutType.value === 'custom' ? (customPositions.value ?? undefined) : undefined
     )
 
     isAnimating.value = true
@@ -455,7 +451,7 @@ export function useCytoscape(options: UseCytoscapeOptions) {
       hasGraphData: !!graphData.value,
       nodesCount: graphData.value?.nodes?.length ?? 0,
     })
-    
+
     if (!container.value) {
       console.warn('[useCytoscape] render() early return: no container')
       return
@@ -499,7 +495,7 @@ export function useCytoscape(options: UseCytoscapeOptions) {
     // Case 1: Initial creation (no cy instance yet)
     if (!isInitialized.value) {
       initialize()
-      
+
       // If graphData is already available (race condition after component remount), render it
       if (graphData.value) {
         nextTick(() => render())
@@ -518,7 +514,6 @@ export function useCytoscape(options: UseCytoscapeOptions) {
       }
     }
   })
-
 
   // Watch for graph data changes
   watch(
@@ -576,7 +571,6 @@ export function useCytoscape(options: UseCytoscapeOptions) {
 
   // Cleanup on unmount
   onBeforeUnmount(() => {
-
     destroy()
   })
 

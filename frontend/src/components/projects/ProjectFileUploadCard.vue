@@ -4,13 +4,7 @@
       <v-icon icon="mdi-file-upload" class="mr-2" />
       Data Files
       <v-spacer />
-      <v-btn
-        icon="mdi-refresh"
-        size="small"
-        variant="text"
-        :loading="loading"
-        @click="loadFiles"
-      />
+      <v-btn icon="mdi-refresh" size="small" variant="text" :loading="loading" @click="loadFiles" />
     </v-card-title>
 
     <v-card-text>
@@ -24,12 +18,8 @@
         @click="() => fileInput?.click()"
       >
         <v-icon icon="mdi-cloud-upload" size="48" class="mb-2" color="primary" />
-        <p class="text-body-1 mb-2">
-          Drag and drop files here or click to browse
-        </p>
-        <p class="text-caption text-grey">
-          Supported: Excel (.xlsx, .xls), CSV (.csv)
-        </p>
+        <p class="text-body-1 mb-2">Drag and drop files here or click to browse</p>
+        <p class="text-caption text-grey">Supported: Excel (.xlsx, .xls), CSV (.csv)</p>
         <input
           ref="fileInput"
           type="file"
@@ -55,7 +45,14 @@
         {{ uploadError }}
       </v-alert>
 
-      <v-alert v-if="uploadSuccess" type="success" variant="tonal" class="mt-4" closable @click:close="uploadSuccess = null">
+      <v-alert
+        v-if="uploadSuccess"
+        type="success"
+        variant="tonal"
+        class="mt-4"
+        closable
+        @click:close="uploadSuccess = null"
+      >
         {{ uploadSuccess }}
       </v-alert>
 

@@ -65,7 +65,9 @@
           <template #bottom>
             <div class="d-flex align-center justify-space-between pa-3">
               <div class="text-caption text-grey">
-                {{ result.row_count }} {{ result.row_count === 1 ? 'row' : 'rows' }} total • Showing {{ startRow }}-{{ endRow }}
+                {{ result.row_count }} {{ result.row_count === 1 ? 'row' : 'rows' }} total • Showing {{ startRow }}-{{
+                  endRow
+                }}
               </div>
               <v-pagination v-model="page" :length="totalPages" :total-visible="7" size="small" />
               <v-select

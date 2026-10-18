@@ -30,14 +30,19 @@
                     </div>
                     <div class="text-h4 mb-3 hero-title">{{ latestNote.title }}</div>
                     <div class="text-body-1 hero-copy mb-6">
-                      User-visible improvements, workflow refinements, and fixes collected into a readable release archive.
+                      User-visible improvements, workflow refinements, and fixes collected into a readable release
+                      archive.
                     </div>
 
                     <v-row>
                       <v-col cols="12" md="7">
                         <div class="text-overline mb-2 text-medium-emphasis">Highlights</div>
                         <v-list bg-color="transparent" density="comfortable" class="pa-0">
-                          <v-list-item v-for="highlight in latestNote.highlights.slice(0, 5)" :key="highlight" class="px-0">
+                          <v-list-item
+                            v-for="highlight in latestNote.highlights.slice(0, 5)"
+                            :key="highlight"
+                            class="px-0"
+                          >
                             <template #prepend>
                               <v-icon size="small" color="primary">mdi-sparkles</v-icon>
                             </template>
@@ -65,7 +70,9 @@
               <div class="d-flex align-center justify-space-between mb-3 flex-wrap ga-2">
                 <div>
                   <div class="text-h6">Release Archive</div>
-                  <div class="text-body-2 text-medium-emphasis">Browse the generated notes for each published version.</div>
+                  <div class="text-body-2 text-medium-emphasis">
+                    Browse the generated notes for each published version.
+                  </div>
                 </div>
               </div>
 

@@ -18,10 +18,7 @@ let yamlConfigured = false
  * @param monacoInstance - Monaco editor instance
  * @param options - Configuration options
  */
-export function setupYamlIntelligence(
-  monacoInstance: typeof monaco,
-  options: YamlIntelligenceOptions
-) {
+export function setupYamlIntelligence(monacoInstance: typeof monaco, options: YamlIntelligenceOptions) {
   // Only configure monaco-yaml once globally to avoid worker conflicts
   if (yamlConfigured) {
     return
@@ -49,11 +46,11 @@ export function setupYamlIntelligence(
         {
           uri: `http://shapeshifter/${options.mode}-schema.json`,
           fileMatch: ['*.yml', '*.yaml'],
-          schema: schema as any
-        }
-      ]
+          schema: schema as any,
+        },
+      ],
     })
-    
+
     yamlConfigured = true
   } catch (error) {
     console.warn('Failed to configure Monaco YAML:', error)

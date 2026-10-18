@@ -41,10 +41,7 @@ export const executeApi = {
    * Execute full workflow for a project
    */
   async executeWorkflow(projectName: string, request: ExecuteRequest): Promise<ExecuteResult> {
-    const response = await apiClient.post<ExecuteResult>(
-      `/projects/${projectName}/execute`,
-      request
-    )
+    const response = await apiClient.post<ExecuteResult>(`/projects/${projectName}/execute`, request)
     return response.data
-  }
+  },
 }

@@ -1,18 +1,10 @@
 <template>
-  <v-card
-    v-if="taskStatus"
-    variant="flat"
-    class="task-completion-card"
-  >
+  <v-card v-if="taskStatus" variant="flat" class="task-completion-card">
     <v-card-text class="pa-2">
       <v-row no-gutters align="center">
         <!-- Icon -->
         <v-col cols="auto" class="mr-2">
-          <v-icon 
-            :icon="completionIcon" 
-            :color="completionColor"
-            size="small"
-          />
+          <v-icon :icon="completionIcon" :color="completionColor" size="small" />
         </v-col>
 
         <!-- Stats text -->
@@ -27,11 +19,7 @@
 
         <!-- Percentage badge -->
         <v-col cols="auto" class="ml-2">
-          <v-chip
-            :color="completionColor"
-            size="small"
-            variant="flat"
-          >
+          <v-chip :color="completionColor" size="small" variant="flat">
             {{ Math.round(stats.completion_percentage) }}%
           </v-chip>
         </v-col>
@@ -74,7 +62,7 @@ interface Props {
    * Task status data
    */
   taskStatus: ProjectTaskStatus | null
-  
+
   /**
    * Whether to show detailed breakdown
    */
@@ -82,7 +70,7 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  showDetails: false
+  showDetails: false,
 })
 
 // Completion stats
@@ -96,7 +84,7 @@ const stats = computed(() => {
       required_total: 0,
       required_done: 0,
       required_todo: 0,
-      completion_percentage: 0
+      completion_percentage: 0,
     }
   }
   return props.taskStatus.completion_stats

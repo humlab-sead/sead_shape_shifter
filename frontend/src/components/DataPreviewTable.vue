@@ -14,7 +14,7 @@
       />
     </v-card-title>
 
-    <v-card-text class="d-flex flex-column flex-grow-1 pa-0" style="overflow: hidden;">
+    <v-card-text class="d-flex flex-column flex-grow-1 pa-0" style="overflow: hidden">
       <!-- Loading State -->
       <div v-if="loading" class="text-center py-4">
         <v-progress-circular indeterminate color="primary" />
@@ -22,7 +22,15 @@
       </div>
 
       <!-- Error Display -->
-      <v-alert v-else-if="error" type="error" variant="tonal" density="compact" closable class="ma-4" @click:close="clearError">
+      <v-alert
+        v-else-if="error"
+        type="error"
+        variant="tonal"
+        density="compact"
+        closable
+        class="ma-4"
+        @click:close="clearError"
+      >
         {{ error }}
       </v-alert>
 
@@ -32,7 +40,11 @@
       </v-alert>
 
       <!-- Data Table - use v-show to avoid unmount/remount race conditions -->
-      <div v-show="!loading && !error && previewData" class="d-flex flex-column flex-grow-1" style="min-height: 0; max-height: 100%; overflow: hidden;">
+      <div
+        v-show="!loading && !error && previewData"
+        class="d-flex flex-column flex-grow-1"
+        style="min-height: 0; max-height: 100%; overflow: hidden"
+      >
         <!-- Info Bar -->
         <div class="d-flex align-center mb-3 flex-shrink-0 px-4 pt-4">
           <v-chip size="small" variant="text"> {{ previewData?.total_rows?.toLocaleString() ?? 0 }} total rows </v-chip>
@@ -46,7 +58,12 @@
             variant="outlined"
             hide-details
             style="max-width: 150px"
-            @update:model-value="() => { offset = 0; loadPreview(); }"
+            @update:model-value="
+              () => {
+                offset = 0
+                loadPreview()
+              }
+            "
           />
         </div>
 
@@ -146,7 +163,7 @@ async function loadPreview() {
       limit: limit.value,
       offset: offset.value,
     })
-    
+
     // Only update if still mounted
     if (isMounted.value) {
       previewData.value = result
@@ -229,12 +246,12 @@ watch(
     // Reset state
     error.value = null
     offset.value = 0
-    
+
     // Only set loading if we have a valid table to load
     if (props.dataSource && props.tableName) {
       // Set loading state first to prevent component unmounting during transition
       loading.value = true
-      
+
       if (props.autoLoad && isMounted.value) {
         // Don't clear previewData immediately - let loading state take precedence
         // and new data will replace it

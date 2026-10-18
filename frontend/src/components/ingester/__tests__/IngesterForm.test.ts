@@ -26,7 +26,7 @@ const ingesterStore = reactive({
   validate: vi.fn(async () => {}),
   ingest: vi.fn(async () => {}),
   selectIngester: vi.fn((key: string) => {
-    ingesterStore.selectedIngester = ingesterStore.ingesters.find(ingester => ingester.key === key) ?? null
+    ingesterStore.selectedIngester = ingesterStore.ingesters.find((ingester) => ingester.key === key) ?? null
   }),
   clearError: vi.fn(() => {
     ingesterStore.error = null
@@ -43,7 +43,7 @@ const dataSourceStore = reactive({
   dataSources: [{ name: 'sead_staging', host: 'db.local', port: 5432, database: 'sead_staging' }],
   fetchDataSources: vi.fn(async () => {}),
   dataSourceByName: vi.fn((name: string) => {
-    return dataSourceStore.dataSources.find(dataSource => dataSource.name === name) ?? null
+    return dataSourceStore.dataSources.find((dataSource) => dataSource.name === name) ?? null
   }),
 })
 
@@ -136,11 +136,11 @@ function mountForm() {
 }
 
 function findTextField(wrapper: ReturnType<typeof mountForm>, label: string) {
-  return wrapper.findAllComponents({ name: 'VTextField' }).find(node => node.props('label') === label)
+  return wrapper.findAllComponents({ name: 'VTextField' }).find((node) => node.props('label') === label)
 }
 
 function findTextarea(wrapper: ReturnType<typeof mountForm>, label: string) {
-  return wrapper.findAllComponents({ name: 'VTextarea' }).find(node => node.props('label') === label)
+  return wrapper.findAllComponents({ name: 'VTextarea' }).find((node) => node.props('label') === label)
 }
 
 describe('IngesterForm', () => {
@@ -233,7 +233,9 @@ describe('IngesterForm', () => {
     expect(submissionNameField?.props('modelValue')).toBe('pilot_bugs_mal')
     expect(findTextField(wrapper, 'Submission Identifier *')?.props('modelValue')).toBe('PILOT_BUGS')
     expect(descriptionField?.props('modelValue')).toBe('Pilot bugs change package')
-    expect(wrapper.text()).toContain('Auto-derived from the active project and selected datatype until you override it.')
+    expect(wrapper.text()).toContain(
+      'Auto-derived from the active project and selected datatype until you override it.'
+    )
     expect(wrapper.text()).toContain('Auto-derived from the active project.')
     expect(wrapper.text()).toContain('Auto-derived from the active project name until you override it.')
     expect(wrapper.text()).toContain('Auto-derived from project metadata until you override it.')

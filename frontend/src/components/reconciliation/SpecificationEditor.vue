@@ -1,5 +1,11 @@
 <template>
-  <v-dialog :model-value="modelValue" max-width="900px" persistent scrollable @update:model-value="$emit('update:modelValue', $event)">
+  <v-dialog
+    :model-value="modelValue"
+    max-width="900px"
+    persistent
+    scrollable
+    @update:model-value="$emit('update:modelValue', $event)"
+  >
     <v-card>
       <v-toolbar color="primary" density="compact">
         <v-toolbar-title>
@@ -18,12 +24,7 @@
 
       <v-card-text class="pt-6">
         <!-- Validation Errors Alert -->
-        <v-alert
-          v-if="!isNew && validationErrors.length > 0"
-          type="error"
-          variant="tonal"
-          class="mb-4"
-        >
+        <v-alert v-if="!isNew && validationErrors.length > 0" type="error" variant="tonal" class="mb-4">
           <v-alert-title class="d-flex align-center">
             <v-icon start>mdi-alert-circle</v-icon>
             Configuration Issues Detected
@@ -31,18 +32,11 @@
           <ul class="mt-2">
             <li v-for="(error, idx) in validationErrors" :key="idx">{{ error }}</li>
           </ul>
-          <div class="text-caption mt-2">
-            Please fix these issues before the specification can be used.
-          </div>
+          <div class="text-caption mt-2">Please fix these issues before the specification can be used.</div>
         </v-alert>
 
         <!-- Validation Warnings Alert -->
-        <v-alert
-          v-if="!isNew && validationWarnings.length > 0"
-          type="warning"
-          variant="tonal"
-          class="mb-4"
-        >
+        <v-alert v-if="!isNew && validationWarnings.length > 0" type="warning" variant="tonal" class="mb-4">
           <v-alert-title class="d-flex align-center">
             <v-icon start>mdi-alert</v-icon>
             Configuration Warnings
@@ -55,220 +49,230 @@
         <v-window v-model="activeTab">
           <v-window-item value="form">
             <v-form ref="form" v-model="valid">
-          <!-- Entity and Target Field Selection (only for new) -->
-          <template v-if="isNew">
-            <v-row class="mt-2">
-              <v-col cols="6">
-                <v-autocomplete
-                  v-model="formData.entity_name"
-                  :items="availableEntities"
-                  label="Entity *"
-                  variant="outlined"
-                  density="comfortable"
-                  :rules="[required]"
-                  prepend-inner-icon="mdi-table"
-                  @update:model-value="onEntityChange"
-                >
-                  <template #no-data>
-                    <v-list-item>
-                      <v-list-item-title class="text-grey">No entities available</v-list-item-title>
-                    </v-list-item>
-                  </template>
-                </v-autocomplete>
-              </v-col>
+              <!-- Entity and Target Field Selection (only for new) -->
+              <template v-if="isNew">
+                <v-row class="mt-2">
+                  <v-col cols="6">
+                    <v-autocomplete
+                      v-model="formData.entity_name"
+                      :items="availableEntities"
+                      label="Entity *"
+                      variant="outlined"
+                      density="comfortable"
+                      :rules="[required]"
+                      prepend-inner-icon="mdi-table"
+                      @update:model-value="onEntityChange"
+                    >
+                      <template #no-data>
+                        <v-list-item>
+                          <v-list-item-title class="text-grey">No entities available</v-list-item-title>
+                        </v-list-item>
+                      </template>
+                    </v-autocomplete>
+                  </v-col>
 
-              <v-col cols="6">
-                <v-autocomplete
-                  v-model="formData.target_field"
-                  :items="availableFields"
-                  label="Target Field *"
-                  variant="outlined"
-                  density="comfortable"
-                  :rules="[required, uniqueTargetField]"
-                  :loading="loadingFields"
-                  :disabled="!formData.entity_name"
-                  prepend-inner-icon="mdi-target"
-                >
-                  <template #no-data>
-                    <v-list-item>
-                      <v-list-item-title class="text-grey">
-                        {{ formData.entity_name ? 'No fields available' : 'Select an entity first' }}
-                      </v-list-item-title>
-                    </v-list-item>
-                  </template>
-                </v-autocomplete>
-              </v-col>
-            </v-row>
-          </template>
+                  <v-col cols="6">
+                    <v-autocomplete
+                      v-model="formData.target_field"
+                      :items="availableFields"
+                      label="Target Field *"
+                      variant="outlined"
+                      density="comfortable"
+                      :rules="[required, uniqueTargetField]"
+                      :loading="loadingFields"
+                      :disabled="!formData.entity_name"
+                      prepend-inner-icon="mdi-target"
+                    >
+                      <template #no-data>
+                        <v-list-item>
+                          <v-list-item-title class="text-grey">
+                            {{ formData.entity_name ? 'No fields available' : 'Select an entity first' }}
+                          </v-list-item-title>
+                        </v-list-item>
+                      </template>
+                    </v-autocomplete>
+                  </v-col>
+                </v-row>
+              </template>
 
-          <!-- Read-only for existing -->
-          <v-text-field
-            v-else
-            :model-value="`${specification?.entity_name} → ${specification?.target_field}`"
-            label="Entity → Target Field"
-            variant="outlined"
-            density="comfortable"
-            readonly
-            prepend-inner-icon="mdi-lock"
-          />
-
-          <!-- Data Source Configuration -->
-          <h4 class="text-subtitle-1 mb-4">
-            <v-icon start size="small">mdi-database</v-icon>
-            Data Source
-          </h4>
-
-          <v-row>
-            <v-col cols="6">
-              <v-select
-                v-model="sourceType"
-                :items="sourceTypes"
-                label="Source Type"
+              <!-- Read-only for existing -->
+              <v-text-field
+                v-else
+                :model-value="`${specification?.entity_name} → ${specification?.target_field}`"
+                label="Entity → Target Field"
                 variant="outlined"
                 density="comfortable"
+                readonly
+                prepend-inner-icon="mdi-lock"
               />
-            </v-col>
-            <v-col cols="6">
-              <v-autocomplete
-                v-if="sourceType === 'Other Entity'"
-                v-model="otherEntityName"
-                :items="availableEntities.filter(e => e !== formData.entity_name)"
-                label="Source Entity"
-                variant="outlined"
-                density="comfortable"
-              />
-            </v-col>
-          </v-row>
 
-          <v-textarea
-            v-if="sourceType === 'SQL Query'"
-            v-model="sqlQuery"
-            label="SQL Query"
-            variant="outlined"
-            rows="4"
-            class="mb-4"
-            hint="Write a custom SQL query to fetch reconciliation data"
-          />
+              <!-- Data Source Configuration -->
+              <h4 class="text-subtitle-1 mb-4">
+                <v-icon start size="small">mdi-database</v-icon>
+                Data Source
+              </h4>
 
-          <!-- Remote Configuration -->
-          <h4 class="text-subtitle-1 mb-4">
-            <v-icon start size="small">mdi-cloud</v-icon>
-            Remote Entity Configuration
-          </h4>
-
-          <v-autocomplete
-            v-model="formData.spec.remote.service_type"
-            :items="availableRemoteTypes"
-            label="Remote Type *"
-            variant="outlined"
-            density="comfortable"
-            :rules="[required]"
-            :loading="loadingRemoteTypes"
-            clearable
-            @update:model-value="onRemoteTypeChange"
-          >
-            <template #no-data>
-              <v-list-item>
-                <v-list-item-title class="text-grey">No remote types available</v-list-item-title>
-                <v-list-item-subtitle>Check reconciliation service status</v-list-item-subtitle>
-              </v-list-item>
-            </template>
-          </v-autocomplete>
-
-          <!-- Property Mappings -->
-          <h4 class="text-subtitle-1 mb-4">
-            <v-icon start size="small">mdi-link-variant</v-icon>
-            Property Mappings
-            <v-chip size="x-small" class="ml-2">{{ Object.keys(formData.spec.property_mappings).length }}</v-chip>
-          </h4>
-
-          <v-card variant="flat" class="mb-4">
-            <v-card-text v-if="availableProperties.length > 0">
-              <v-row v-for="prop in availableProperties" :key="prop" dense>
-                <v-col cols="12">
-                  <v-autocomplete
-                    :model-value="formData.spec.property_mappings[prop]"
-                    :items="availableFields"
-                    :label="prop"
+              <v-row>
+                <v-col cols="6">
+                  <v-select
+                    v-model="sourceType"
+                    :items="sourceTypes"
+                    label="Source Type"
                     variant="outlined"
-                    density="compact"
-                    clearable
-                    :hint="`Map property '${prop}' to a source column`"
-                    persistent-hint
-                    :error="!isNew && isMissingColumn(formData.spec.property_mappings[prop])"
-                    :error-messages="!isNew && isMissingColumn(formData.spec.property_mappings[prop]) ? `Column '${formData.spec.property_mappings[prop]}' not found in entity` : undefined"
-                    :loading="loadingFields"
-                    :disabled="availableFields.length === 0"
-                    @update:model-value="(value) => updatePropertyMapping(prop, value)"
-                  >
-                    <template #prepend-inner>
-                      <v-icon size="small" :color="!isNew && isMissingColumn(formData.spec.property_mappings[prop]) ? 'error' : 'primary'">mdi-arrow-left</v-icon>
-                    </template>
-                    <template #no-data>
-                      <v-list-item>
-                        <v-list-item-title class="text-grey">
-                          {{ formData.entity_name ? 'No columns available' : 'Select an entity first' }}
-                        </v-list-item-title>
-                      </v-list-item>
-                    </template>
-                  </v-autocomplete>
+                    density="comfortable"
+                  />
+                </v-col>
+                <v-col cols="6">
+                  <v-autocomplete
+                    v-if="sourceType === 'Other Entity'"
+                    v-model="otherEntityName"
+                    :items="availableEntities.filter((e) => e !== formData.entity_name)"
+                    label="Source Entity"
+                    variant="outlined"
+                    density="comfortable"
+                  />
                 </v-col>
               </v-row>
-            </v-card-text>
-            <v-card-text v-else class="text-center text-grey">
-              <p>Select a remote type to see available properties</p>
-            </v-card-text>
-          </v-card>
 
-          <h4 class="text-subtitle-1 mb-4">
-            <v-icon start size="small">mdi-tune</v-icon>
-            Match Thresholds
-          </h4>
+              <v-textarea
+                v-if="sourceType === 'SQL Query'"
+                v-model="sqlQuery"
+                label="SQL Query"
+                variant="outlined"
+                rows="4"
+                class="mb-4"
+                hint="Write a custom SQL query to fetch reconciliation data"
+              />
 
-          <v-row>
-            <v-col cols="6">
-              <v-slider
-                v-model="formData.spec.auto_accept_threshold"
-                label="Auto-accept Threshold"
-                :min="0"
-                :max="1"
-                :step="0.05"
-                thumb-label="always"
-                color="success"
+              <!-- Remote Configuration -->
+              <h4 class="text-subtitle-1 mb-4">
+                <v-icon start size="small">mdi-cloud</v-icon>
+                Remote Entity Configuration
+              </h4>
+
+              <v-autocomplete
+                v-model="formData.spec.remote.service_type"
+                :items="availableRemoteTypes"
+                label="Remote Type *"
+                variant="outlined"
+                density="comfortable"
+                :rules="[required]"
+                :loading="loadingRemoteTypes"
+                clearable
+                @update:model-value="onRemoteTypeChange"
               >
-                <template #append>
-                  <v-text-field
-                    :model-value="(formData.spec.auto_accept_threshold * 100).toFixed(0) + '%'"
-                    density="compact"
-                    style="width: 70px"
-                    readonly
-                    hide-details
-                  />
+                <template #no-data>
+                  <v-list-item>
+                    <v-list-item-title class="text-grey">No remote types available</v-list-item-title>
+                    <v-list-item-subtitle>Check reconciliation service status</v-list-item-subtitle>
+                  </v-list-item>
                 </template>
-              </v-slider>
-            </v-col>
-            <v-col cols="6">
-              <v-slider
-                v-model="formData.spec.review_threshold"
-                label="Review Threshold"
-                :min="0"
-                :max="1"
-                :step="0.05"
-                thumb-label="always"
-                color="warning"
-              >
-                <template #append>
-                  <v-text-field
-                    :model-value="(formData.spec.review_threshold * 100).toFixed(0) + '%'"
-                    density="compact"
-                    style="width: 70px"
-                    readonly
-                    hide-details
-                  />
-                </template>
-              </v-slider>
-            </v-col>
-          </v-row>
+              </v-autocomplete>
+
+              <!-- Property Mappings -->
+              <h4 class="text-subtitle-1 mb-4">
+                <v-icon start size="small">mdi-link-variant</v-icon>
+                Property Mappings
+                <v-chip size="x-small" class="ml-2">{{ Object.keys(formData.spec.property_mappings).length }}</v-chip>
+              </h4>
+
+              <v-card variant="flat" class="mb-4">
+                <v-card-text v-if="availableProperties.length > 0">
+                  <v-row v-for="prop in availableProperties" :key="prop" dense>
+                    <v-col cols="12">
+                      <v-autocomplete
+                        :model-value="formData.spec.property_mappings[prop]"
+                        :items="availableFields"
+                        :label="prop"
+                        variant="outlined"
+                        density="compact"
+                        clearable
+                        :hint="`Map property '${prop}' to a source column`"
+                        persistent-hint
+                        :error="!isNew && isMissingColumn(formData.spec.property_mappings[prop])"
+                        :error-messages="
+                          !isNew && isMissingColumn(formData.spec.property_mappings[prop])
+                            ? `Column '${formData.spec.property_mappings[prop]}' not found in entity`
+                            : undefined
+                        "
+                        :loading="loadingFields"
+                        :disabled="availableFields.length === 0"
+                        @update:model-value="(value) => updatePropertyMapping(prop, value)"
+                      >
+                        <template #prepend-inner>
+                          <v-icon
+                            size="small"
+                            :color="
+                              !isNew && isMissingColumn(formData.spec.property_mappings[prop]) ? 'error' : 'primary'
+                            "
+                            >mdi-arrow-left</v-icon
+                          >
+                        </template>
+                        <template #no-data>
+                          <v-list-item>
+                            <v-list-item-title class="text-grey">
+                              {{ formData.entity_name ? 'No columns available' : 'Select an entity first' }}
+                            </v-list-item-title>
+                          </v-list-item>
+                        </template>
+                      </v-autocomplete>
+                    </v-col>
+                  </v-row>
+                </v-card-text>
+                <v-card-text v-else class="text-center text-grey">
+                  <p>Select a remote type to see available properties</p>
+                </v-card-text>
+              </v-card>
+
+              <h4 class="text-subtitle-1 mb-4">
+                <v-icon start size="small">mdi-tune</v-icon>
+                Match Thresholds
+              </h4>
+
+              <v-row>
+                <v-col cols="6">
+                  <v-slider
+                    v-model="formData.spec.auto_accept_threshold"
+                    label="Auto-accept Threshold"
+                    :min="0"
+                    :max="1"
+                    :step="0.05"
+                    thumb-label="always"
+                    color="success"
+                  >
+                    <template #append>
+                      <v-text-field
+                        :model-value="(formData.spec.auto_accept_threshold * 100).toFixed(0) + '%'"
+                        density="compact"
+                        style="width: 70px"
+                        readonly
+                        hide-details
+                      />
+                    </template>
+                  </v-slider>
+                </v-col>
+                <v-col cols="6">
+                  <v-slider
+                    v-model="formData.spec.review_threshold"
+                    label="Review Threshold"
+                    :min="0"
+                    :max="1"
+                    :step="0.05"
+                    thumb-label="always"
+                    color="warning"
+                  >
+                    <template #append>
+                      <v-text-field
+                        :model-value="(formData.spec.review_threshold * 100).toFixed(0) + '%'"
+                        density="compact"
+                        style="width: 70px"
+                        readonly
+                        hide-details
+                      />
+                    </template>
+                  </v-slider>
+                </v-col>
+              </v-row>
             </v-form>
           </v-window-item>
 
@@ -300,13 +304,7 @@
       <v-card-actions class="pa-4">
         <v-spacer />
         <v-btn @click="cancel">Cancel</v-btn>
-        <v-btn
-          color="primary"
-          variant="elevated"
-          :disabled="!valid || !isDirty"
-          :loading="saving"
-          @click="save"
-        >
+        <v-btn color="primary" variant="elevated" :disabled="!valid || !isDirty" :loading="saving" @click="save">
           {{ isNew ? 'Create' : 'Save' }}
         </v-btn>
       </v-card-actions>
@@ -319,11 +317,7 @@ import { ref, watch, onMounted } from 'vue'
 import { useReconciliationStore } from '@/stores/reconciliation'
 import { useProjectStore } from '@/stores/project'
 import { useNotification } from '@/composables/useNotification'
-import type {
-  EntityResolutionListItem,
-  EntityResolutionSet,
-  ReconciliationSource,
-} from '@/types/reconciliation'
+import type { EntityResolutionListItem, EntityResolutionSet, ReconciliationSource } from '@/types/reconciliation'
 import * as yaml from 'js-yaml'
 import YamlEditor from '../common/YamlEditor.vue'
 
@@ -386,7 +380,7 @@ const formData = ref<{
       service_type: null,
     },
     auto_accept_threshold: 0.95,
-    review_threshold: 0.70,
+    review_threshold: 0.7,
     mapping: [],
   },
 })
@@ -428,17 +422,13 @@ async function validateSpecification() {
   let entityColumns: string[] = []
   try {
     entityColumns = await reconciliationStore.getAvailableFields(props.projectName, entityForValidation)
-  } catch (error) {
-    validationErrors.value.push(
-      `Entity '${entityForValidation}' not found or has no columns`
-    )
+  } catch {
+    validationErrors.value.push(`Entity '${entityForValidation}' not found or has no columns`)
     return
   }
 
   if (entityColumns.length === 0) {
-    validationErrors.value.push(
-      `Entity '${entityForValidation}' not found or has no columns`
-    )
+    validationErrors.value.push(`Entity '${entityForValidation}' not found or has no columns`)
     return
   }
 
@@ -458,15 +448,13 @@ async function validateSpecification() {
   })
 
   if (missingColumns.length > 0) {
-    validationErrors.value.push(
-      `Property mappings reference missing columns: ${missingColumns.join(', ')}`
-    )
+    validationErrors.value.push(`Property mappings reference missing columns: ${missingColumns.join(', ')}`)
   }
 }
 
 function isMissingColumn(columnName: string | undefined): boolean {
   if (!columnName || props.isNew) return false
-  
+
   // Check against availableFields (includes keys, columns, extra_columns, FK joins, unnest)
   // This is the same source used to populate the dropdown
   if (availableFields.value.length === 0) {
@@ -482,7 +470,7 @@ function updatePropertyMapping(property: string, value: string | null) {
   // Ensure reactive update by creating a new object
   formData.value.spec.property_mappings = {
     ...formData.value.spec.property_mappings,
-    [property]: value || ''
+    [property]: value || '',
   }
 }
 
@@ -524,7 +512,7 @@ async function onRemoteTypeChange(remoteType: string | null) {
     }
     availableProperties.value = propertyDefaults[remoteType.toLowerCase()] || []
   }
-  
+
   isDirty.value = true
 }
 
@@ -597,7 +585,7 @@ function resetForm() {
         service_type: null,
       },
       auto_accept_threshold: 0.95,
-      review_threshold: 0.70,
+      review_threshold: 0.7,
       mapping: [],
     },
   }
@@ -626,12 +614,15 @@ async function loadRemoteTypes() {
   try {
     // Fetch from reconciliation service /reconcile endpoint
     const manifest = await reconciliationStore.getServiceManifest()
-    
+
     // Extract entity types from manifest
     // OpenRefine manifest has defaultTypes array with {id, name} objects
     if (manifest.defaultTypes && Array.isArray(manifest.defaultTypes)) {
       availableRemoteTypes.value = manifest.defaultTypes.map((type: any) => type.id)
-      console.log(`[SpecificationEditor] Loaded ${availableRemoteTypes.value.length} entity types from service:`, availableRemoteTypes.value)
+      console.log(
+        `[SpecificationEditor] Loaded ${availableRemoteTypes.value.length} entity types from service:`,
+        availableRemoteTypes.value
+      )
     } else {
       console.warn('[SpecificationEditor] No defaultTypes found in manifest, using fallback')
       // Fallback to common types if manifest doesn't have them
@@ -676,7 +667,7 @@ watch(
       }
 
       // Load available fields for the entity
-      const entityForFields = (typeof spec.source === 'string') ? spec.source : spec.entity_name
+      const entityForFields = typeof spec.source === 'string' ? spec.source : spec.entity_name
       try {
         loadingFields.value = true
         availableFields.value = await reconciliationStore.getAvailableFields(props.projectName, entityForFields)
@@ -714,9 +705,13 @@ watch(
 )
 
 // Track changes for dirty state
-watch(formData, () => {
-  isDirty.value = true
-}, { deep: true })
+watch(
+  formData,
+  () => {
+    isDirty.value = true
+  },
+  { deep: true }
+)
 
 // Watch for tab changes to sync YAML
 watch(activeTab, (newTab) => {
@@ -730,7 +725,7 @@ watch([sourceType, otherEntityName], async ([newSourceType, newOtherEntity]) => 
   if (!formData.value.entity_name) return
 
   let entityForFields = formData.value.entity_name
-  
+
   // Determine which entity's fields to load
   if (newSourceType === 'Other Entity' && newOtherEntity) {
     entityForFields = newOtherEntity
@@ -752,7 +747,7 @@ watch([sourceType, otherEntityName], async ([newSourceType, newOtherEntity]) => 
     // SQL Query - no predefined fields
     availableFields.value = []
   }
-  
+
   // Re-validate after fields change
   if (!props.isNew) {
     await validateSpecification()
@@ -760,19 +755,25 @@ watch([sourceType, otherEntityName], async ([newSourceType, newOtherEntity]) => 
 })
 
 // Watch for property mappings changes to re-validate
-watch(() => formData.value.spec.property_mappings, async () => {
-  if (!props.isNew && availableFields.value.length > 0) {
-    await validateSpecification()
-  }
-}, { deep: true })
+watch(
+  () => formData.value.spec.property_mappings,
+  async () => {
+    if (!props.isNew && availableFields.value.length > 0) {
+      await validateSpecification()
+    }
+  },
+  { deep: true }
+)
 
 // Watch for remote type changes to re-validate
-watch(() => formData.value.spec.remote?.service_type, async () => {
-  if (!props.isNew) {
-    await validateSpecification()
+watch(
+  () => formData.value.spec.remote?.service_type,
+  async () => {
+    if (!props.isNew) {
+      await validateSpecification()
+    }
   }
-})
-
+)
 
 // YAML Editor Functions
 function formDataToYaml(): string {

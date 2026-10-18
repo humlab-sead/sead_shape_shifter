@@ -3,9 +3,7 @@
     <v-row>
       <v-col cols="12">
         <h1 class="text-h4 mb-4">Data Ingestion</h1>
-        <p class="text-body-1 mb-6">
-          Import Shape Shifter output to a database using registered ingesters.
-        </p>
+        <p class="text-body-1 mb-6">Import Shape Shifter output to a database using registered ingesters.</p>
       </v-col>
     </v-row>
 

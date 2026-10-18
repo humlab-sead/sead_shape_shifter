@@ -69,13 +69,7 @@
         Save Changes
       </v-btn>
 
-      <v-btn
-        variant="tonal"
-        color="info"
-        prepend-icon="mdi-table-eye"
-        @click="previewDialog = true"
-        class="ml-2"
-      >
+      <v-btn variant="tonal" color="info" prepend-icon="mdi-table-eye" @click="previewDialog = true" class="ml-2">
         Preview
       </v-btn>
     </v-toolbar>
@@ -198,12 +192,7 @@
         <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="unmatchedDialog = false"> Cancel </v-btn>
-          <v-btn 
-            variant="tonal" 
-            color="warning" 
-            @click="confirmMarkUnmatched"
-            :loading="markingUnmatched"
-          >
+          <v-btn variant="tonal" color="warning" @click="confirmMarkUnmatched" :loading="markingUnmatched">
             Mark as Local-Only
           </v-btn>
         </v-card-actions>
@@ -243,12 +232,7 @@
         <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="bulkAcceptDialog = false"> Cancel </v-btn>
-          <v-btn 
-            variant="tonal" 
-            color="success" 
-            @click="confirmBulkAccept"
-            :loading="bulkProcessing"
-          >
+          <v-btn variant="tonal" color="success" @click="confirmBulkAccept" :loading="bulkProcessing">
             Accept {{ selectedRows.length }} Items
           </v-btn>
         </v-card-actions>
@@ -283,12 +267,7 @@
         <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="bulkRejectDialog = false"> Cancel </v-btn>
-          <v-btn 
-            variant="tonal" 
-            color="error" 
-            @click="confirmBulkReject"
-            :loading="bulkProcessing"
-          >
+          <v-btn variant="tonal" color="error" @click="confirmBulkReject" :loading="bulkProcessing">
             Reject {{ selectedRows.length }} Items
           </v-btn>
         </v-card-actions>
@@ -309,7 +288,6 @@ import { ref, computed, watch } from 'vue'
 import { AgGridVue } from 'ag-grid-vue3'
 import type { GridApi, ColDef, CellValueChangedEvent } from 'ag-grid-community'
 import type { EntityResolutionSet, ReconciliationPreviewRow, ReconciliationCandidate } from '@/types'
-import AlternativeSearchDialog from './AlternativeSearchDialog.vue'
 import PreviewMatchedDataDialog from './PreviewMatchedDataDialog.vue'
 
 // AG Grid Community styles
@@ -540,21 +518,21 @@ const stats = computed(() => {
 
 // Enriched preview data with matched names from candidates
 const enrichedPreviewData = computed(() => {
-  return props.previewData.map(row => {
+  return props.previewData.map((row) => {
     // Find matched name from candidates if we have a SEAD ID
     let matched_name: string | undefined
-    
+
     if (row.target_id && row.candidates) {
-      const matchedCandidate = row.candidates.find(c => {
+      const matchedCandidate = row.candidates.find((c) => {
         const candidateId = extractIdFromUri(c.id)
         return candidateId === row.target_id
       })
-      
+
       if (matchedCandidate) {
         matched_name = matchedCandidate.name
       }
     }
-    
+
     return {
       ...row,
       matched_name,
@@ -570,17 +548,17 @@ function onGridReady(params: any) {
 // Row styling based on confidence and will_not_match flag
 function getRowStyle(params: any) {
   const row = params.data as ReconciliationPreviewRow
-  
+
   // Gray out items marked as "will not match"
   if (row.will_not_match) {
-    return { 
-      background: '#f5f5f5', 
+    return {
+      background: '#f5f5f5',
       color: '#999',
       textDecoration: 'line-through',
-      opacity: 0.7
+      opacity: 0.7,
     }
   }
-  
+
   if (!row.confidence) {
     return { background: '#ffebee' } // Light red for unmatched
   }
@@ -674,26 +652,26 @@ function getRowDisplayText(row: ReconciliationPreviewRow): string {
 // Handle clicks on action buttons in the grid
 function handleGridClick(event: MouseEvent) {
   const target = event.target as HTMLElement
-  
+
   // Find the button that was clicked
   const button = target.closest('button[data-action]') as HTMLButtonElement
   if (!button) return
-  
+
   const action = button.getAttribute('data-action')
   const rowIndex = button.getAttribute('data-row-index')
-  
+
   console.log('[ReconciliationGrid] Button clicked - action:', action, 'rowIndex:', rowIndex)
-  
+
   if (rowIndex === null) return
-  
+
   const row = filteredRowData.value[parseInt(rowIndex)]
   if (!row) {
     console.warn('[ReconciliationGrid] No row found at index:', rowIndex)
     return
   }
-  
+
   console.log('[ReconciliationGrid] Row data:', row)
-  
+
   if (action === 'review' && row.candidates && row.candidates.length > 0) {
     showCandidates(row)
   } else if (action === 'search') {
