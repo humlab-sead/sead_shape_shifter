@@ -88,6 +88,12 @@ check-imports:
 check-doc-links:
 	@scripts/check_doc_links.sh
 
+.PHONY: check-doc-links-lychee
+check-doc-links-lychee:
+	@echo "Checking documentation links with lychee..."
+	@lychee --offline --no-progress --root-dir . --extensions md docs
+	@echo "✓ Documentation links checked with lychee"
+
 ################################################################################
 # Git related checks
 ################################################################################
