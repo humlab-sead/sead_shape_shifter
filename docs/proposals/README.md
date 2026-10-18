@@ -13,6 +13,7 @@ This index covers proposals and initiative records that need attention or provid
 | [Ingester Authorization](INGESTER_AUTHORIZATION_TASKS/INGESTER_AUTHORIZATION_TASKS.md) | Proposed change | Authorize projects, sources, and destinations used by ingester operations. |
 | [Secure Ingester Filesystem And Destination Access](INGESTER_FILESYSTEM_BOUNDARIES/INGESTER_FILESYSTEM_BOUNDARIES.md) | Proposed change | Restrict ingester file access and database destinations to approved resources. |
 | [Bind Each Project To One Curated Provider Scope](PROJECT_DATA_PROVIDER_SCOPE/PROJECT_DATA_PROVIDER_SCOPE.md) | Proposed change | Bind each project to a provider-schema pair and derive its SIMS scope from that pair. |
+| [Move Existing Projects To Provider-Schema Scopes](CHANGE_REQUEST_INGESTER/CUTOVER_AND_DEPLOYMENT/PROJECT_PROVIDER_SCOPE_CUTOVER.md) | Proposed cutover | Inventory old project scopes, decide migrate or abandon, assign one approved pair per project, and enable projects one at a time as operational work. |
 | [Project Folder Navigation With Breadcrumbs](FOLDER_NAVIGATION_WITH_BREADCRUMBS.md) | Proposed feature | Browse projects by their existing folder structure client-side, with breadcrumbs and URL-persisted folder state. |
 | [Security Hardening Follow-up](SECURITY_HARDENING_FOLLOWUP/SECURITY_HARDENING_FOLLOWUP.md) | Proposed change request | Remediate unresolved application, authorization, deployment, and verification issues. |
 | [Scaffold Project Entities From an Associated Target Model](TARGET_MODEL_GUIDED_ENTITY_CREATION/TARGET_MODEL_GUIDED_ENTITY_CREATION.md) | Proposed feature | Add a target-model picker that prefills missing project entity drafts without guessing source settings. |
@@ -22,7 +23,6 @@ This index covers proposals and initiative records that need attention or provid
 
 | Initiative | Status | Reference |
 |---|---|---|
-| BugsCEP pilot | Pilot draft implemented and validated on the current branch; importer migration continues. | [Pilot status and next work](future/BUGSCEP_PILOT_PROJECT.md) |
 | SEAD Change Request Ingester | MVP Delivery is closed; post-MVP proposals remain deferred. | [Initiative overview](CHANGE_REQUEST_INGESTER/README.md); [post-MVP proposal portfolio](CHANGE_REQUEST_INGESTER_POST_MVP/README.md) |
 | Submission metadata | Complete; both package strategies passed disposable PostgreSQL validation. Upstream deployment and compatibility remain release dependencies. | [Completed submission metadata work](CHANGE_REQUEST_INGESTER/done/REFACTOR_SEAD_SUBMISSION_METADATA/REFACTOR_SEAD_SUBMISSION_METADATA.md) |
 
@@ -32,6 +32,7 @@ These proposals are deferred or not yet approved. See each document for its deta
 
 | Proposal | Topic |
 |---|---|
+| BugsCEP pilot | Pilot draft implemented and validated on the current branch; importer migration continues. | [Pilot status and next work](future/BUGSCEP_PILOT_PROJECT.md) |
 | [SEAD Change Request Ingester Post-MVP](CHANGE_REQUEST_INGESTER_POST_MVP/README.md) | Deferred capability proposals for the change request ingester; no combined delivery is accepted. |
 | [Advanced FK Validation Modes](future/ADVANCED_FK_VALIDATION_MODES.md) | Direct, transitive, and path-based foreign-key validation. |
 | [App-Managed Team Membership](future/APP_MANAGED_TEAM_MEMBERSHIP.md) | Manage team membership in the authorization database. |
