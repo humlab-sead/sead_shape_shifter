@@ -364,7 +364,6 @@ describe('ProjectDetailView', () => {
 
     await flushPromises()
     mockProjectState.getRawYaml.mockClear()
-
     ;(wrapper.vm as any).rawYamlContent = 'stale yaml'
     ;(wrapper.vm as any).originalYamlContent = 'stale yaml'
     ;(wrapper.vm as any).yamlHasChanges = false
@@ -381,9 +380,7 @@ describe('ProjectDetailView', () => {
       metadata: { name: 'arbodat' },
       options: {},
       entities: {},
-      load_warnings: [
-        "Entity 'method', row 1, column 'method_id': normalized '53' to 53 (int)",
-      ],
+      load_warnings: ["Entity 'method', row 1, column 'method_id': normalized '53' to 53 (int)"],
     }
 
     const wrapper = mountProjectDetailView()

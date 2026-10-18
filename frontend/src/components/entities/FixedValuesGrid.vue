@@ -4,8 +4,14 @@
       <span class="text-caption">Fixed Values Data</span>
       <div>
         <v-btn size="small" variant="outlined" prepend-icon="mdi-plus" @click="addRow" class="mr-2"> Add Row </v-btn>
-        <v-btn size="small" variant="outlined" prepend-icon="mdi-delete" color="error" @click="deleteSelectedRows"
-          :disabled="!hasSelection">
+        <v-btn
+          size="small"
+          variant="outlined"
+          prepend-icon="mdi-delete"
+          color="error"
+          @click="deleteSelectedRows"
+          :disabled="!hasSelection"
+        >
           Delete Selected
         </v-btn>
       </div>
@@ -15,11 +21,25 @@
       <div v-for="error in validationSummary" :key="error" class="text-caption">{{ error }}</div>
     </v-alert>
 
-    <ag-grid-vue class="ag-theme-alpine compact-grid" :style="{ height: gridHeight }" :columnDefs="columnDefs"
-      :rowData="rowData" :getRowId="getRowId" :defaultColDef="defaultColDef" :components="gridComponents"
-      :rowSelection="'multiple'" :suppressRowClickSelection="true" :animateRows="true" :headerHeight="48" :rowHeight="26" :singleClickEdit="true"
-      :stopEditingWhenCellsLoseFocus="true" @grid-ready="onGridReady" @cell-value-changed="onCellValueChanged"
-      @selection-changed="onSelectionChanged" />
+    <ag-grid-vue
+      class="ag-theme-alpine compact-grid"
+      :style="{ height: gridHeight }"
+      :columnDefs="columnDefs"
+      :rowData="rowData"
+      :getRowId="getRowId"
+      :defaultColDef="defaultColDef"
+      :components="gridComponents"
+      :rowSelection="'multiple'"
+      :suppressRowClickSelection="true"
+      :animateRows="true"
+      :headerHeight="48"
+      :rowHeight="26"
+      :singleClickEdit="true"
+      :stopEditingWhenCellsLoseFocus="true"
+      @grid-ready="onGridReady"
+      @cell-value-changed="onCellValueChanged"
+      @selection-changed="onSelectionChanged"
+    />
   </div>
 </template>
 
@@ -87,7 +107,9 @@ const gridComponents = {
 
 const gridHeight = computed(() => props.height)
 const systemIdColumnIndex = computed(() => props.columns.findIndex((col) => col === 'system_id'))
-const normalizedColumnTypes = computed<Record<string, FixedGridColumnTypeName>>(() => normalizeGridColumnTypes(props.columnTypes))
+const normalizedColumnTypes = computed<Record<string, FixedGridColumnTypeName>>(() =>
+  normalizeGridColumnTypes(props.columnTypes)
+)
 
 const defaultColDef: ColDef = {
   editable: true,
@@ -226,21 +248,23 @@ const columnDefs = computed<ColDef[]>(() => {
         resizable: true,
         minWidth: 100,
         flex: 1,
-        valueParser: isSystemId ? undefined : (params: any) => {
-          const result = coerceGridValue(col, params.newValue, params.oldValue, props.columnTypes)
+        valueParser: isSystemId
+          ? undefined
+          : (params: any) => {
+              const result = coerceGridValue(col, params.newValue, params.oldValue, props.columnTypes)
 
-          if (result.error) {
-            setValidationIssues([{ rowIndex: params.node?.rowIndex ?? 0, columnName: col, message: result.error }])
-            return params.oldValue
-          }
+              if (result.error) {
+                setValidationIssues([{ rowIndex: params.node?.rowIndex ?? 0, columnName: col, message: result.error }])
+                return params.oldValue
+              }
 
-          return result.value
-        },
-        cellClass: isSystemId ? 'system-id-column' : (isPublicId ? 'public-id-column' : ''),
+              return result.value
+            },
+        cellClass: isSystemId ? 'system-id-column' : isPublicId ? 'public-id-column' : '',
         cellClassRules: {
           'invalid-fixed-value-cell': (params: any) => hasValidationIssue(params.node?.rowIndex ?? -1, col),
         },
-        headerClass: isSystemId ? 'system-id-header' : (isPublicId ? 'public-id-header' : ''),
+        headerClass: isSystemId ? 'system-id-header' : isPublicId ? 'public-id-header' : '',
         tooltipValueGetter: (params: any) => getValidationIssueMessage(params.node?.rowIndex ?? -1, col) || null,
       }
     }),
@@ -489,7 +513,7 @@ watch(
       gridApi.value.setGridOption('rowData', rowData.value)
     }
   },
-  { deep: true, immediate: true },
+  { deep: true, immediate: true }
 )
 </script>
 

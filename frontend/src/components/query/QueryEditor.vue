@@ -81,13 +81,7 @@
         </ul>
       </v-alert>
 
-      <v-alert
-        v-if="visibleWarnings.length > 0"
-        type="warning"
-        variant="tonal"
-        density="compact"
-        class="mb-4"
-      >
+      <v-alert v-if="visibleWarnings.length > 0" type="warning" variant="tonal" density="compact" class="mb-4">
         <div class="text-subtitle-2 mb-2">Warnings:</div>
         <ul class="pl-4">
           <li v-for="(warning, idx) in visibleWarnings" :key="idx">
@@ -253,7 +247,6 @@ async function runValidation(showWarnings: boolean) {
 async function validateQueryOnly() {
   await runValidation(true)
 }
-
 
 function clearQuery() {
   query.value = ''

@@ -8,45 +8,35 @@
             <span class="text-body-2 font-weight-medium">Context Help</span>
           </div>
         </v-expansion-panel-title>
-        
+
         <v-expansion-panel-text>
           <div v-if="helpContent" class="help-content">
             <div v-if="helpContent.title" class="text-subtitle-2 font-weight-bold mb-2">
               {{ helpContent.title }}
             </div>
-            
+
             <div v-if="helpContent.description" class="text-caption mb-3">
               {{ helpContent.description }}
             </div>
-            
+
             <div v-if="helpContent.tips && helpContent.tips.length > 0" class="tips-section mt-3">
               <div class="text-caption font-weight-medium mb-1 text-medium-emphasis">Tips</div>
-              <div
-                v-for="(tip, index) in helpContent.tips"
-                :key="index"
-                class="tip-item"
-              >
+              <div v-for="(tip, index) in helpContent.tips" :key="index" class="tip-item">
                 <span class="tip-bullet">•</span>
                 <span class="tip-text" v-html="tip" />
               </div>
             </div>
-            
+
             <div v-if="helpContent.shortcuts && helpContent.shortcuts.length > 0" class="shortcuts-section mt-3">
               <div class="text-caption font-weight-medium mb-1 text-medium-emphasis">Shortcuts</div>
-              <div
-                v-for="(shortcut, index) in helpContent.shortcuts"
-                :key="index"
-                class="shortcut-item"
-              >
+              <div v-for="(shortcut, index) in helpContent.shortcuts" :key="index" class="shortcut-item">
                 <div class="shortcut-keys">{{ shortcut.keys }}</div>
                 <div class="shortcut-action">{{ shortcut.action }}</div>
               </div>
             </div>
           </div>
-          
-          <div v-else class="text-caption text-grey">
-            No help available for this view.
-          </div>
+
+          <div v-else class="text-caption text-grey">No help available for this view.</div>
         </v-expansion-panel-text>
       </v-expansion-panel>
     </v-expansion-panels>
@@ -75,25 +65,19 @@ const expanded = ref(true)
 
 // Help content for different contexts
 const helpContentMap: Record<string, HelpContent> = {
-  'home': {
+  home: {
     title: 'Welcome to SEAD Shape Shifter',
     description: 'A tool for transforming and normalizing data for the SEAD database.',
-    tips: [
-      'Create a new project to get started'
-    ]
+    tips: ['Create a new project to get started'],
   },
-  'projects': {
+  projects: {
     title: 'Project Management',
     description: 'Manage your data transformation projects.',
-    tips: [
-      'Click a project to open it',
-      'Use the search bar to filter projects',
-      'Projects are stored as YAML files'
-    ],
+    tips: ['Click a project to open it', 'Use the search bar to filter projects', 'Projects are stored as YAML files'],
     shortcuts: [
       { keys: 'Ctrl+N', action: 'New Project' },
-      { keys: 'Ctrl+S', action: 'Save Changes' }
-    ]
+      { keys: 'Ctrl+S', action: 'Save Changes' },
+    ],
   },
   'project-detail-dependencies': {
     title: 'Dependency Graph',
@@ -110,15 +94,15 @@ const helpContentMap: Record<string, HelpContent> = {
       'Use <strong>Color By</strong> to switch between entity type and task status. In task mode, a centered dot marks entities with notes.',
       'The floating buttons on the right let you fit, zoom, reset the view, create a new entity, and export PNG.',
       'Solid edges show entity dependencies, dotted edges show source lineage, and dashed green edges show frozen dependencies from materialized entities.',
-      '<span style="color: #4CAF50; font-weight: 600;">Double green borders</span> mark materialized entities with cached data.'
+      '<span style="color: #4CAF50; font-weight: 600;">Double green borders</span> mark materialized entities with cached data.',
     ],
     shortcuts: [
       { keys: 'Click', action: 'Open quick YAML drawer' },
       { keys: 'Double-click', action: 'Open full entity editor' },
       { keys: 'Ctrl/Cmd + Double-click', action: 'Open YAML tab in editor' },
       { keys: 'Right-click', action: 'Open context menu and task actions' },
-      { keys: 'Drag', action: 'Move node in custom layout mode' }
-    ]
+      { keys: 'Drag', action: 'Move node in custom layout mode' },
+    ],
   },
   'project-detail-entities': {
     title: 'Entity Configuration',
@@ -132,12 +116,12 @@ const helpContentMap: Record<string, HelpContent> = {
       'Use the <strong>Foreign Keys</strong>, <strong>Filters</strong>, <strong>Unnest</strong>, <strong>Append</strong>, <strong>Extra Columns</strong>, and <strong>Replace</strong> tabs to model each transformation step explicitly.',
       'Use preview to verify columns, row shape, and source data before saving larger changes.',
       'Fixed entities can be edited as grid values, and some entities may load values from external storage instead of inline YAML.',
-      'Materialized badges indicate cached entity data; materialize or unmaterialize from the editor when you need to freeze or refresh derived output.'
+      'Materialized badges indicate cached entity data; materialize or unmaterialize from the editor when you need to freeze or refresh derived output.',
     ],
     shortcuts: [
       { keys: 'Esc', action: 'Close the entity editor' },
-      { keys: 'Ctrl+Shift+P', action: 'Toggle split preview view in the entity editor' }
-    ]
+      { keys: 'Ctrl+Shift+P', action: 'Toggle split preview view in the entity editor' },
+    ],
   },
   'project-detail-validation': {
     title: 'Validation',
@@ -146,8 +130,8 @@ const helpContentMap: Record<string, HelpContent> = {
       'Red errors must be fixed before execution',
       'Yellow warnings should be reviewed',
       'Click errors to see details and fixes',
-      'Validate data to check actual values'
-    ]
+      'Validate data to check actual values',
+    ],
   },
   'project-detail-data-sources': {
     title: 'Data Sources',
@@ -156,16 +140,13 @@ const helpContentMap: Record<string, HelpContent> = {
       'Add multiple data sources',
       'Test connections before use',
       'Use environment variables for credentials',
-      'Supported: PostgreSQL, SQLite, MS Access, CSV, Excel'
-    ]
+      'Supported: PostgreSQL, SQLite, MS Access, CSV, Excel',
+    ],
   },
   'data-sources': {
     title: 'Data Source Management',
     description: 'Manage database connections across projects.',
-    tips: [
-      'Shared data sources available to all projects',
-      'Test connections to verify settings'
-    ]
+    tips: ['Shared data sources available to all projects', 'Test connections to verify settings'],
   },
   'schema-explorer': {
     title: 'Schema Explorer',
@@ -174,8 +155,8 @@ const helpContentMap: Record<string, HelpContent> = {
       'Select a data source to explore',
       'View table structures and columns',
       'Use this to plan your entities',
-      'Check data types and constraints'
-    ]
+      'Check data types and constraints',
+    ],
   },
   'query-tester': {
     title: 'Query Tester',
@@ -184,29 +165,29 @@ const helpContentMap: Record<string, HelpContent> = {
       'Write and test queries safely',
       'Preview results before adding to entities',
       'Use this to debug query issues',
-      'Check column names and data'
-    ]
+      'Check column names and data',
+    ],
   },
   'whats-new': {
-    title: 'What\'s New',
+    title: "What's New",
     description: 'Browse recent user-facing updates and workflow improvements.',
     tips: [
       'Open the latest release first for the most relevant changes.',
       'Use this archive to scan feature additions, improvements, and fixes by version.',
-      'The home page and startup dialog both link back here if you dismiss them.'
-    ]
-  }
+      'The home page and startup dialog both link back here if you dismiss them.',
+    ],
+  },
 }
 
 const helpContent = computed(() => {
   const routeName = route.name as string
-  
+
   // For project detail views, include the active tab
   if (routeName === 'project-detail' && route.query.tab) {
     const tabKey = `project-detail-${route.query.tab}`
     return helpContentMap[tabKey] || null
   }
-  
+
   return helpContentMap[routeName] || null
 })
 </script>

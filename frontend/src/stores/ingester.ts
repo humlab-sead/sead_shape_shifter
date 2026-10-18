@@ -10,7 +10,7 @@ import type {
   ValidateRequest,
   ValidateResponse,
   IngestRequest,
-  IngestResponse
+  IngestResponse,
 } from '@/types/ingester'
 
 export const useIngesterStore = defineStore('ingester', () => {
@@ -57,10 +57,7 @@ export const useIngesterStore = defineStore('ingester', () => {
     validationResult.value = null
 
     try {
-      validationResult.value = await ingesterApi.validate(
-        selectedIngester.value.key,
-        request
-      )
+      validationResult.value = await ingesterApi.validate(selectedIngester.value.key, request)
     } catch (e: any) {
       error.value = e.response?.data?.detail || e.message || 'Validation failed'
       console.error('Validation error:', e)
@@ -80,10 +77,7 @@ export const useIngesterStore = defineStore('ingester', () => {
     ingestionResult.value = null
 
     try {
-      ingestionResult.value = await ingesterApi.ingest(
-        selectedIngester.value.key,
-        request
-      )
+      ingestionResult.value = await ingesterApi.ingest(selectedIngester.value.key, request)
     } catch (e: any) {
       error.value = e.response?.data?.detail || e.message || 'Ingestion failed'
       console.error('Ingestion error:', e)
@@ -93,7 +87,7 @@ export const useIngesterStore = defineStore('ingester', () => {
   }
 
   function selectIngester(key: string) {
-    selectedIngester.value = ingesters.value.find(i => i.key === key) ?? null
+    selectedIngester.value = ingesters.value.find((i) => i.key === key) ?? null
   }
 
   function clearValidation() {
@@ -129,6 +123,6 @@ export const useIngesterStore = defineStore('ingester', () => {
     selectIngester,
     clearValidation,
     clearIngestion,
-    clearError
+    clearError,
   }
 })

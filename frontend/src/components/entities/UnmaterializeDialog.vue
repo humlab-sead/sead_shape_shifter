@@ -8,16 +8,15 @@
 
       <v-card-text>
         <v-alert type="warning" variant="tonal" class="mb-4">
-          This will restore the entity to its original dynamic state (SQL/entity/file-based).
-          Any materialized data will be discarded.
+          This will restore the entity to its original dynamic state (SQL/entity/file-based). Any materialized data will
+          be discarded.
         </v-alert>
 
         <div v-if="requiresCascade" class="mb-4">
           <v-alert type="error" variant="tonal">
             <div class="text-subtitle-2 mb-2">Dependent Entities Found</div>
             <p class="mb-2">
-              The following materialized entities depend on this entity and must be unmaterialized
-              first:
+              The following materialized entities depend on this entity and must be unmaterialized first:
             </p>
             <ul class="ml-4">
               <li v-for="dep in affectedEntities" :key="dep">
@@ -34,8 +33,8 @@
           />
 
           <v-alert v-if="cascade" type="info" variant="text" density="compact" class="mt-2">
-            All {{ affectedEntities.length }} dependent
-            {{ affectedEntities.length === 1 ? 'entity' : 'entities' }} will be unmaterialized.
+            All {{ affectedEntities.length }} dependent {{ affectedEntities.length === 1 ? 'entity' : 'entities' }} will
+            be unmaterialized.
           </v-alert>
         </div>
 
@@ -77,7 +76,7 @@ const props = defineProps<Props>()
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
-  'unmaterialized': [entities: string[]]
+  unmaterialized: [entities: string[]]
 }>()
 
 const dialog = ref(props.modelValue)
@@ -106,21 +105,17 @@ watch(dialog, (val) => {
 async function unmaterialize() {
   loading.value = true
   try {
-    const result = await materializationApi.unmaterialize(
-      props.projectName,
-      props.entityName,
-      cascade.value
-    )
-    
+    const result = await materializationApi.unmaterialize(props.projectName, props.entityName, cascade.value)
+
     const count = result.unmaterialized_entities?.length || 1
     const entityList = result.unmaterialized_entities?.join(', ') || props.entityName
-    
+
     if (count > 1) {
       success(`Successfully unmaterialized ${count} entities: ${entityList}`)
     } else {
       success(`Successfully unmaterialized entity: ${entityList}`)
     }
-    
+
     emit('unmaterialized', result.unmaterialized_entities || [props.entityName])
     close()
   } catch (err: any) {

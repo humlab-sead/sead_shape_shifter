@@ -78,52 +78,52 @@
                 <v-select
                   v-if="filePickerMode === 'existing'"
                   v-model="form.options[field.name]"
-                    :items="projectFileItems"
-                    label="Select existing file"
+                  :items="projectFileItems"
+                  label="Select existing file"
+                  variant="outlined"
+                  class="mb-2"
+                  :loading="projectFilesLoading"
+                  :disabled="projectFilesLoading"
+                  item-title="title"
+                  item-value="value"
+                  :rules="field.required ? [rules.required] : []"
+                >
+                  <template #item="{ props, item }">
+                    <v-list-item v-bind="props">
+                      <v-list-item-title>{{ item.raw.title }}</v-list-item-title>
+                      <v-list-item-subtitle class="text-caption">{{ item.raw.subtitle }}</v-list-item-subtitle>
+                    </v-list-item>
+                  </template>
+                </v-select>
+
+                <div v-else>
+                  <v-file-input
+                    v-model="uploadSelection"
+                    label="Upload file"
+                    :placeholder="field.placeholder || 'Choose file'"
+                    :rules="field.required ? [rules.required] : []"
                     variant="outlined"
                     class="mb-2"
-                    :loading="projectFilesLoading"
-                    :disabled="projectFilesLoading"
-                    item-title="title"
-                    item-value="value"
-                    :rules="field.required ? [rules.required] : []"
-                  >
-                    <template #item="{ props, item }">
-                      <v-list-item v-bind="props">
-                        <v-list-item-title>{{ item.raw.title }}</v-list-item-title>
-                        <v-list-item-subtitle class="text-caption">{{ item.raw.subtitle }}</v-list-item-subtitle>
-                      </v-list-item>
-                    </template>
-                  </v-select>
-
-                  <div v-else>
-                    <v-file-input
-                      v-model="uploadSelection"
-                      label="Upload file"
-                      :placeholder="field.placeholder || 'Choose file'"
-                      :rules="field.required ? [rules.required] : []"
-                      variant="outlined"
-                      class="mb-2"
-                      :accept="fileAccept"
-                      :loading="fileUploadInProgress"
-                      @update:model-value="(files) => handleFileUpload(files, field.name)"
-                    />
-                    <div v-if="form.options[field.name]" class="text-caption text-success">
-                      Selected: {{ form.options[field.name] }}
-                    </div>
+                    :accept="fileAccept"
+                    :loading="fileUploadInProgress"
+                    @update:model-value="(files) => handleFileUpload(files, field.name)"
+                  />
+                  <div v-if="form.options[field.name]" class="text-caption text-success">
+                    Selected: {{ form.options[field.name] }}
                   </div>
-
-                  <div class="d-flex align-center justify-space-between mt-1">
-                    <v-btn size="small" variant="text" prepend-icon="mdi-refresh" @click="fetchProjectFiles">
-                      Refresh list
-                    </v-btn>
-                    <div class="text-caption text-grey">Files saved in workspace projects folder</div>
-                  </div>
-
-                  <v-alert v-if="projectFilesError" type="error" variant="tonal" density="compact" class="mt-2">
-                    {{ projectFilesError }}
-                  </v-alert>
                 </div>
+
+                <div class="d-flex align-center justify-space-between mt-1">
+                  <v-btn size="small" variant="text" prepend-icon="mdi-refresh" @click="fetchProjectFiles">
+                    Refresh list
+                  </v-btn>
+                  <div class="text-caption text-grey">Files saved in workspace projects folder</div>
+                </div>
+
+                <v-alert v-if="projectFilesError" type="error" variant="tonal" density="compact" class="mt-2">
+                  {{ projectFilesError }}
+                </v-alert>
+              </div>
 
               <!-- Password Field -->
               <!-- <v-text-field
@@ -443,20 +443,18 @@ function loadDataSource(dataSource: DataSourceConfig) {
   // Load options object and handle aliases
   if (dataSource.options) {
     const schema = getSchema(dataSource.driver)
-    
+
     for (const [key, value] of Object.entries(dataSource.options)) {
       // Find the canonical field name by checking if this key is an alias
       let canonicalName = key
-      
+
       if (schema) {
-        const field = schema.fields.find(
-          (f) => f.name === key || (f.aliases && f.aliases.includes(key))
-        )
+        const field = schema.fields.find((f) => f.name === key || (f.aliases && f.aliases.includes(key)))
         if (field) {
           canonicalName = field.name
         }
       }
-      
+
       // Set the value using the canonical field name
       options[canonicalName] = value
     }

@@ -1,6 +1,6 @@
 /**
  * Composable for managing filter schemas.
- * 
+ *
  * Provides access to filter metadata for dynamic form generation.
  * Schemas are loaded once and cached for the session.
  */
@@ -39,7 +39,7 @@ export function useFilterSchema() {
 
   /**
    * Get schema for a specific filter type.
-   * 
+   *
    * @param key - Filter identifier (e.g., 'query', 'exists_in')
    * @returns Filter schema or undefined if not found
    */
@@ -49,7 +49,7 @@ export function useFilterSchema() {
 
   /**
    * Get all available filter schemas.
-   * 
+   *
    * @returns Array of all filter schemas
    */
   function getAllFilterSchemas(): FilterSchema[] {
@@ -58,7 +58,7 @@ export function useFilterSchema() {
 
   /**
    * Get filter types formatted for v-select.
-   * 
+   *
    * @returns Array of {title, value} objects for dropdown
    */
   function getFilterTypes(): Array<{ title: string; value: string }> {

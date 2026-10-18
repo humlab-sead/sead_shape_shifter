@@ -24,13 +24,9 @@ export const tasksApi = {
    * Initialize task list for a project
    */
   initialize: async (projectName: string, strategy: string = 'dependency-order'): Promise<TaskInitializeResponse> => {
-    const response = await apiClient.post<TaskInitializeResponse>(
-      `/projects/${projectName}/tasks/initialize`,
-      null,
-      {
-        params: { strategy }
-      }
-    )
+    const response = await apiClient.post<TaskInitializeResponse>(`/projects/${projectName}/tasks/initialize`, null, {
+      params: { strategy },
+    })
     return response.data
   },
 
@@ -38,9 +34,7 @@ export const tasksApi = {
    * Get note for an entity
    */
   getNote: async (projectName: string, entityName: string): Promise<TaskNoteResponse> => {
-    const response = await apiClient.get<TaskNoteResponse>(
-      `/projects/${projectName}/tasks/${entityName}/note`
-    )
+    const response = await apiClient.get<TaskNoteResponse>(`/projects/${projectName}/tasks/${entityName}/note`)
     return response.data
   },
 
@@ -48,10 +42,9 @@ export const tasksApi = {
    * Create or update note for an entity
    */
   setNote: async (projectName: string, entityName: string, note: string): Promise<TaskNoteResponse> => {
-    const response = await apiClient.put<TaskNoteResponse>(
-      `/projects/${projectName}/tasks/${entityName}/note`,
-      { note }
-    )
+    const response = await apiClient.put<TaskNoteResponse>(`/projects/${projectName}/tasks/${entityName}/note`, {
+      note,
+    })
     return response.data
   },
 
@@ -59,9 +52,7 @@ export const tasksApi = {
    * Remove note from an entity
    */
   removeNote: async (projectName: string, entityName: string): Promise<TaskNoteResponse> => {
-    const response = await apiClient.delete<TaskNoteResponse>(
-      `/projects/${projectName}/tasks/${entityName}/note`
-    )
+    const response = await apiClient.delete<TaskNoteResponse>(`/projects/${projectName}/tasks/${entityName}/note`)
     return response.data
   },
 }

@@ -88,27 +88,15 @@
             <v-chip size="x-small" variant="outlined" class="mx-2">
               {{ entity.entity_data.type || 'entity' }}
             </v-chip>
-            <v-chip
-              v-if="entity.materialized?.enabled"
-              size="x-small"
-              color="primary"
-              variant="flat"
-              class="mr-2"
-            >
+            <v-chip v-if="entity.materialized?.enabled" size="x-small" color="primary" variant="flat" class="mr-2">
               <v-icon size="x-small" class="mr-1">mdi-database-check</v-icon>
               Materialized
             </v-chip>
-            <v-chip
-              v-if="hasExternalStorage(entity)"
-              size="x-small"
-              color="info"
-              variant="tonal"
-              class="mr-2"
-            >
+            <v-chip v-if="hasExternalStorage(entity)" size="x-small" color="info" variant="tonal" class="mr-2">
               <v-icon size="x-small" class="mr-1">mdi-file-sync-outline</v-icon>
               <v-tooltip activator="parent" location="top">
                 <div class="text-caption">
-                  <strong>External Storage</strong><br>
+                  <strong>External Storage</strong><br />
                   Values loaded from: <code>{{ getStoragePath(entity) }}</code>
                 </div>
               </v-tooltip>
@@ -321,7 +309,7 @@ async function handleEntitySaved(entityName: string, mappingPending = false) {
     showSuccessSnackbar.value = true
   }
   emit('entity-updated')
-  
+
   // If we just created an entity, switch to edit mode so tabs become available
   if (wasCreate) {
     // Entity is already in the list via reactive computed from store.createEntity()

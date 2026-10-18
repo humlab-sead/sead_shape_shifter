@@ -158,7 +158,9 @@ describe('useValidationStore', () => {
           branch_source: 'abundance_source',
         } as ValidationError,
       ]
-      const warnings = [{ message: 'Entity warning', severity: 'warning', entity: 'analysis_entity' } as ValidationError]
+      const warnings = [
+        { message: 'Entity warning', severity: 'warning', entity: 'analysis_entity' } as ValidationError,
+      ]
 
       store.validationResult = { errors, warnings } as ValidationResult
 
