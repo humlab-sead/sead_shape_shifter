@@ -14,6 +14,15 @@ from src.validators.data_validators import ValidationIssue
 
 # pylint: disable=redefined-outer-name, unused-argument
 
+FIXED_PROVIDER_ENTITY = {
+    "type": "fixed",
+    "public_id": "data_provider_id",
+    "keys": ["data_provider_code"],
+    "columns": ["data_provider_id", "data_provider_code"],
+    "values": [[51, "test-provider"]],
+}
+"""Fixed data provider row required of every project bound to a provider-schema pair."""
+
 
 @pytest.fixture
 def validation_service():
@@ -51,7 +60,10 @@ class TestValidationServiceBasic:
                 "data_provider_code": "test-provider",
                 "provider_schema": "schema-one",
             },
-            "entities": {"sample": {"type": "entity", "keys": ["sample_id"], "columns": ["sample_id", "name", "value"]}},
+            "entities": {
+                "data_provider": FIXED_PROVIDER_ENTITY,
+                "sample": {"type": "entity", "keys": ["sample_id"], "columns": ["sample_id", "name", "value"]},
+            },
         }
         result = validation_service.validate_project(config)
 
@@ -68,6 +80,7 @@ class TestValidationServiceBasic:
                 "provider_schema": "schema-one",
             },
             "entities": {
+                "data_provider": FIXED_PROVIDER_ENTITY,
                 "site": {"type": "entity", "keys": ["site_id"], "columns": ["site_id", "name"]},
                 "sample": {
                     "type": "entity",
@@ -436,6 +449,7 @@ class TestValidationServiceIntegration:
                 "provider_schema": "schema-one",
             },
             "entities": {
+                "data_provider": FIXED_PROVIDER_ENTITY,
                 "natural_region": {
                     "type": "entity",
                     "keys": ["region_id"],

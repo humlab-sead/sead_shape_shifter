@@ -193,9 +193,13 @@ describe('IngesterForm', () => {
       records_processed: 2,
       message: 'Deploy artifact emitted to output/pilot-bugs-001',
       output_path: 'output/pilot-bugs-001',
+      scope_name: 'provider://mal/archeobotany/arbodat-pilot',
+      run_id: 'run-abc-123',
       deploy_artifact: {
         metadata: {
           deploy_strategy: 'copy_csv',
+          scope_name: 'provider://mal/archeobotany/arbodat-pilot',
+          run_id: 'run-abc-123',
           binding_set_uuid: 'binding-123',
           change_request_name: 'CR-2026-001',
           non_revertible: true,
@@ -216,6 +220,8 @@ describe('IngesterForm', () => {
     expect(wrapper.text()).toContain('copy_csv')
     expect(wrapper.text()).toContain('Bundle name:')
     expect(wrapper.text()).toContain('pilot-bugs-001')
+    expect(wrapper.text()).toContain('provider://mal/archeobotany/arbodat-pilot')
+    expect(wrapper.text()).toContain('run-abc-123')
     expect(wrapper.text()).toContain('Review the emitted SQL, manifest, and compressed table payload files')
   })
 
@@ -252,6 +258,7 @@ describe('IngesterForm', () => {
     expect(descriptionRules[0]?.('line one\nline two')).toBe('Use a single line shorter than 80 characters')
 
     const request = (wrapper.vm as unknown as { buildValidateRequest: () => ValidateRequest }).buildValidateRequest()
+    expect(request.project_name).toBe('pilot_bugs')
     expect(request.deploy_strategy).toBe('copy_csv')
     expect(request.submission_context).toMatchObject({
       data_provider_code: 'SEAD',

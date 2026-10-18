@@ -15,7 +15,9 @@ from backend.app.clients.reconciliation_client import ReconciliationClient, Reco
 from backend.app.clients.sims_client import SimsClient
 from backend.app.core.config import Settings
 from backend.app.models.sims import CapabilitiesResponse, IdentitySignal, IdentityType, ResolutionRequest, ResolveRequest
-from ingesters.sead_change_request.contracts import SimsResolveItem, SubmissionContext
+from ingesters.sead_change_request.contracts import SimsResolveItem, SubmissionContext, TrustedProjectContext
+from ingesters.sead_change_request.input_resolution import TRUSTED_PROJECT_CONTEXT_KEY
+from src.business_keys import BusinessKeyError, business_id_for_row
 
 
 def inject_ingester_runtime_dependencies(ingester_key: str | None, extra: dict[str, Any], settings: Settings) -> dict[str, Any]:
@@ -24,12 +26,13 @@ def inject_ingester_runtime_dependencies(ingester_key: str | None, extra: dict[s
         return extra
 
     resolved_extra = dict(extra)
+    trusted_project_context: TrustedProjectContext | None = resolved_extra.get(TRUSTED_PROJECT_CONTEXT_KEY)
     resolved_extra.setdefault(
         "sims_client",
         SeadChangeRequestSimsAdapter(
             SimsClient(base_url=settings.SIMS_SERVICE_URL),
-            scope_name=resolved_extra.get("sims_scope_name"),
             created_by=resolved_extra.get("sims_created_by"),
+            business_keys=trusted_project_context.business_keys if trusted_project_context is not None else None,
         ),
     )
     resolved_extra.setdefault(
@@ -66,12 +69,27 @@ def inject_ingester_database_dependencies(ingester_key: str | None, extra: dict[
 
 
 class SeadChangeRequestSimsAdapter:
-    """Thin adapter from the ingester orchestration seam to the backend SIMS client."""
+    """Thin adapter from the ingester orchestration seam to the backend SIMS client.
 
-    def __init__(self, sims_client: SimsClient, *, scope_name: str | None = None, created_by: str | None = None) -> None:
+    The scope comes from the resolved submission context, which the backend fills from the
+    authorized saved project's registered provider-schema pair. This adapter never accepts
+    a caller-supplied scope and never falls back to a project-name scope.
+
+    ``business_keys`` carries the saved project's ordered ``EntityConfig.keys`` per entity.
+    When an entity declares keys, the adapter serializes them into one deterministic
+    ``business_id``; otherwise it keeps the earlier field-based identity value.
+    """
+
+    def __init__(
+        self,
+        sims_client: SimsClient,
+        *,
+        created_by: str | None = None,
+        business_keys: dict[str, tuple[str, ...]] | None = None,
+    ) -> None:
         self._sims_client = sims_client
-        self._scope_name = scope_name
         self._created_by = created_by
+        self._business_keys = business_keys or {}
 
     async def allocate_entity(self, entity_name: str, row: dict[str, Any], submission_context: SubmissionContext) -> dict[str, Any]:
         """Resolve the row in SIMS as a new or already-bound identity."""
@@ -246,15 +264,33 @@ class SeadChangeRequestSimsAdapter:
         await self._sims_client.associate_change_request(UUID(binding_set_uuid), change_request_name)
 
     def _build_scope_name(self, submission_context: SubmissionContext) -> str:
-        if self._scope_name:
-            return self._scope_name
-        return f"sead-change-request:{submission_context.project_name}"
+        """Return the provider-schema scope bound to the authorized saved project."""
+        scope_name = submission_context.scope_name
+        if not scope_name or not scope_name.strip():
+            raise ValueError(
+                "Change Request SIMS scope is not configured; the authorized saved project's provider-schema pair must supply it"
+            )
+        return scope_name.strip()
 
     def _run_id_for(self, submission_context: SubmissionContext) -> str:
         """Return the persisted run ID, minting a fallback when absent."""
         return submission_context.run_id or str(uuid4())
 
     def _build_identity_value(self, entity_name: str, row: dict[str, Any]) -> str:
+        """Return the SIMS business key for one row.
+
+        A tracked entity with declared business keys uses the stable serialized
+        ``business_id``. An entity without declared keys keeps the earlier field-based
+        value so other entities are unchanged.
+        """
+        declared_keys = self._business_keys.get(entity_name)
+        if declared_keys:
+            try:
+                return business_id_for_row(declared_keys, row)
+            except BusinessKeyError as exc:
+                logger.warning("Cannot serialize business key for '{}': {}", entity_name, exc)
+                return entity_name
+
         serialized_pairs: list[str] = []
         for key in sorted(row):
             value = row[key]

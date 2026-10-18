@@ -42,6 +42,7 @@ export interface DeployArtifact {
 
 export interface ValidateRequest {
   source: string
+  project_name?: string
   config?: Record<string, any>
   submission_context?: SubmissionContextInput
   deploy_strategy?: string
@@ -57,6 +58,7 @@ export interface ValidateResponse {
 
 export interface IngestRequest {
   source: string
+  project_name?: string
   config?: Record<string, any>
   submission_name: string
   data_types: string
@@ -74,6 +76,8 @@ export interface IngestResponse {
   submission_id?: number
   output_path?: string
   error_details?: string
+  scope_name?: string | null
+  run_id?: string | null
   deploy_artifact?: DeployArtifact
   pending_confirmation_report?: PendingConfirmationReport
 }

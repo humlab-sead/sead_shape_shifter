@@ -880,6 +880,29 @@ Workflow:
 3. Enter connection and configuration details.
 4. Run the ingester.
 
+## SEAD Change Request Requirements
+
+A SEAD Change Request run works against one saved project, and the saved project must be
+ready before validation or ingestion starts.
+
+The project needs:
+
+1. **A registered provider-schema pair.** `metadata.data_provider_code` and
+   `metadata.provider_schema` must match one reviewed pair in the provider registry. The pair
+   selects the SIMS scope as `provider://<provider-code>/<provider-schema>`.
+2. **One fixed `data_provider` row.** The entity must use `type: fixed`,
+   `public_id: data_provider_id`, `keys: [data_provider_code]`, and exactly one row. Enter the
+   SEAD `data_provider_id` yourself. Before SIMS work, the run confirms the ID and code identify
+   one existing `tbl_data_providers` row.
+3. **Declared business keys.** Every tracked project entity declares its identity columns in
+   `keys`. The run rejects a missing key column, a blank value, or a duplicate value in one
+   delivery before any SIMS request or bundle write.
+4. **A target database connection.** The provider row check reads SEAD, so a run without target
+   database details stops before SIMS.
+
+The response and the emitted `manifest.json` both show the effective `scope_name` and `run_id`.
+A `run_id` is meaningful only together with its scope, so compare the two values together.
+
 ---
 
 # 11. Advanced Features
