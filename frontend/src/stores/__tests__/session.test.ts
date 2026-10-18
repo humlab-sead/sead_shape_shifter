@@ -114,9 +114,7 @@ describe('useSessionStore', () => {
 
       mockSessionsApi.create.mockRejectedValue(error)
 
-      await expect(store.createSession({ project_name: 'test-project' })).rejects.toThrow(
-        'Session creation failed'
-      )
+      await expect(store.createSession({ project_name: 'test-project' })).rejects.toThrow('Session creation failed')
 
       expect(store.error).toBe('Session creation failed')
       expect(store.currentSession).toBeNull()
@@ -417,10 +415,7 @@ describe('useSessionStore', () => {
 
       await store.refreshActiveSessions()
 
-      expect(consoleError).toHaveBeenCalledWith(
-        'Failed to refresh active sessions:',
-        expect.any(Error)
-      )
+      expect(consoleError).toHaveBeenCalledWith('Failed to refresh active sessions:', expect.any(Error))
       consoleError.mockRestore()
     })
   })

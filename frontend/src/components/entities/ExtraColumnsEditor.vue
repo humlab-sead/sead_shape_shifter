@@ -4,7 +4,9 @@
       <span class="text-caption text-medium-emphasis">Quick patterns:</span>
       <v-chip size="small" variant="outlined" color="primary" @click="insertExample('copy')">Copy</v-chip>
       <v-chip size="small" variant="outlined" color="primary" @click="insertExample('constant')">Constant</v-chip>
-      <v-chip size="small" variant="outlined" color="primary" @click="insertExample('interpolation')">Interpolation</v-chip>
+      <v-chip size="small" variant="outlined" color="primary" @click="insertExample('interpolation')"
+        >Interpolation</v-chip
+      >
       <v-chip size="small" variant="outlined" color="primary" @click="insertExample('formula')">Formula</v-chip>
       <v-chip size="small" variant="outlined" color="primary" @click="insertExample('escaped')">Literal =</v-chip>
     </div>
@@ -78,23 +80,23 @@
       Add Extra Column
     </v-btn>
 
-    <v-alert
-      type="info"
-      variant="tonal"
-      density="compact"
-      class="mt-3 text-caption"
-    >
-      <strong>Extra columns</strong> are the canonical way to add lightweight derived values to an entity.
-      Use them for copies, constants, interpolation, and small formulas:
+    <v-alert type="info" variant="tonal" density="compact" class="mt-3 text-caption">
+      <strong>Extra columns</strong> are the canonical way to add lightweight derived values to an entity. Use them for
+      copies, constants, interpolation, and small formulas:
       <ul class="mt-2 mb-0 pl-4">
         <li><strong>Copy:</strong> <code>existing_column</code> - Reuse a source column under a new name</li>
         <li><strong>Constant:</strong> <code>"literal_value"</code>, <code>123</code>, or leave empty for null</li>
-        <li><strong>Interpolation:</strong> <code>"{first_name} {last_name}"</code> - Build a label from multiple columns</li>
-        <li><strong>Formula:</strong> <code>=concat(upper(code), '-', trim(name))</code> - Apply a lightweight transformation</li>
+        <li>
+          <strong>Interpolation:</strong> <code>"{first_name} {last_name}"</code> - Build a label from multiple columns
+        </li>
+        <li>
+          <strong>Formula:</strong> <code>=concat(upper(code), '-', trim(name))</code> - Apply a lightweight
+          transformation
+        </li>
         <li><strong>Null values:</strong> Leave empty for null</li>
       </ul>
-      Interpolated strings are null-safe and can reference FK columns added during linking.
-      If you need a literal value that starts with <code>=</code>, escape it as <code>==value</code>.
+      Interpolated strings are null-safe and can reference FK columns added during linking. If you need a literal value
+      that starts with <code>=</code>, escape it as <code>==value</code>.
     </v-alert>
   </div>
 </template>
@@ -208,9 +210,11 @@ function suggestionColor(category: ExtraColumnSuggestion['category']): string {
 }
 
 function columnMessages(index: number): string[] {
-  return rowDiagnostics.value[index]
-    ?.filter((diagnostic) => diagnostic.severity === 'error')
-    .map((diagnostic) => diagnostic.message) ?? []
+  return (
+    rowDiagnostics.value[index]
+      ?.filter((diagnostic) => diagnostic.severity === 'error')
+      .map((diagnostic) => diagnostic.message) ?? []
+  )
 }
 
 function expressionHint(index: number): string {
@@ -220,9 +224,11 @@ function expressionHint(index: number): string {
 }
 
 function expressionMessages(index: number): string[] {
-  return rowDiagnostics.value[index]
-    ?.filter((diagnostic) => diagnostic.severity !== 'error')
-    .map((diagnostic) => diagnostic.message) ?? []
+  return (
+    rowDiagnostics.value[index]
+      ?.filter((diagnostic) => diagnostic.severity !== 'error')
+      .map((diagnostic) => diagnostic.message) ?? []
+  )
 }
 
 watch(
@@ -256,7 +262,7 @@ watch(
 <style scoped>
 /* Component-specific dense input styling */
 :deep(.v-field__input) {
-  min-height: max(20px, 1.rem + var(--v-field-input-padding-top) + var(--v-field-input-padding-bottom)) !important;
+  min-height: max(20px, 1rem + var(--v-field-input-padding-top) + var(--v-field-input-padding-bottom)) !important;
 }
 
 :deep(.v-field__field) {

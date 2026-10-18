@@ -81,7 +81,14 @@ describe('entityFormMaterialization', () => {
       ['system_id', 'feature_type_id', 'description', 'feature_type_name', 'Befundtyp', 'Beschreibung']
     )
 
-    expect(result).toEqual(['system_id', 'feature_type_id', 'description', 'feature_type_name', 'Befundtyp', 'Beschreibung'])
+    expect(result).toEqual([
+      'system_id',
+      'feature_type_id',
+      'description',
+      'feature_type_name',
+      'Befundtyp',
+      'Beschreibung',
+    ])
   })
 
   it('uses form columns for non-fixed external updates', () => {

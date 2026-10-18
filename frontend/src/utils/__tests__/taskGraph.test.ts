@@ -66,7 +66,10 @@ describe('taskGraph', () => {
     expect(getTaskStatusNodeClasses(mkStatus({ blocked_by: ['dep_a'] }))).toEqual(['task-blocked'])
     expect(getTaskStatusNodeClasses(mkStatus({ priority: 'critical' as any }))).toEqual(['task-critical'])
     expect(getTaskStatusNodeClasses(mkStatus({ priority: 'ready' as any }))).toEqual(['task-ready'])
-    expect(getTaskStatusNodeClasses(mkStatus({ status: 'done' as any, flagged: true }))).toEqual(['task-done', 'task-flagged'])
+    expect(getTaskStatusNodeClasses(mkStatus({ status: 'done' as any, flagged: true }))).toEqual([
+      'task-done',
+      'task-flagged',
+    ])
     expect(getTaskStatusNodeClasses(undefined)).toEqual([])
   })
 })

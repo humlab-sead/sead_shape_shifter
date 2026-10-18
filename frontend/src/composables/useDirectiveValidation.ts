@@ -40,15 +40,12 @@ export function useDirectiveValidation() {
     error.value = null
 
     try {
-      const response = await apiClient.post<DirectiveValidationResult>(
-        `/projects/${projectName}/validate-directive`,
-        {
-          directive,
-          local_entity: options?.localEntity,
-          remote_entity: options?.remoteEntity,
-          is_local_keys: options?.isLocalKeys,
-        }
-      )
+      const response = await apiClient.post<DirectiveValidationResult>(`/projects/${projectName}/validate-directive`, {
+        directive,
+        local_entity: options?.localEntity,
+        remote_entity: options?.remoteEntity,
+        is_local_keys: options?.isLocalKeys,
+      })
       return response.data
     } catch (e: any) {
       error.value = e.response?.data?.detail || e.message || 'Failed to validate directive'

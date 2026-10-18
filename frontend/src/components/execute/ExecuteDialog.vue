@@ -27,9 +27,7 @@
                 <template v-slot:prepend>
                   <v-icon :icon="getDispatcherIcon(item.raw.target_type)" />
                 </template>
-                <template v-slot:subtitle>
-                  {{ item.raw.key }} ({{ item.raw.target_type }})
-                </template>
+                <template v-slot:subtitle> {{ item.raw.key }} ({{ item.raw.target_type }}) </template>
               </v-list-item>
             </template>
           </v-select>
@@ -88,7 +86,7 @@
 
           <!-- Options -->
           <v-divider class="my-4" />
-          
+
           <v-switch
             v-model="runValidation"
             label="Run validation before execution"
@@ -121,7 +119,7 @@
 
           <!-- Error Display -->
           <v-alert v-if="error" type="error" variant="tonal" class="mt-4">
-            <div style="white-space: pre-wrap;">{{ error }}</div>
+            <div style="white-space: pre-wrap">{{ error }}</div>
           </v-alert>
 
           <!-- Success Display -->
@@ -212,12 +210,12 @@ const projectName = computed(() => props.projectName || '')
 
 const selectedTargetType = computed(() => {
   if (!selectedDispatcher.value) return null
-  const dispatcher = dispatchers.value.find(d => d.key === selectedDispatcher.value)
+  const dispatcher = dispatchers.value.find((d) => d.key === selectedDispatcher.value)
   return dispatcher?.target_type || null
 })
 
 const dataSourceNames = computed(() => {
-  return dataSources.value.map(ds => ds.name)
+  return dataSources.value.map((ds) => ds.name)
 })
 
 const targetValue = computed(() => {
@@ -251,7 +249,7 @@ const downloadLinkVisible = computed(() => {
 
 const selectedDispatcherMetadata = computed(() => {
   if (!selectedDispatcher.value) return null
-  return dispatchers.value.find(d => d.key === selectedDispatcher.value) || null
+  return dispatchers.value.find((d) => d.key === selectedDispatcher.value) || null
 })
 
 const dispatcherExtension = computed(() => {
@@ -261,9 +259,7 @@ const dispatcherExtension = computed(() => {
 })
 
 const filePathRules = computed(() => {
-  const rules: Array<(value: string) => boolean | string> = [
-    (value: string) => !!value || 'File path is required',
-  ]
+  const rules: Array<(value: string) => boolean | string> = [(value: string) => !!value || 'File path is required']
 
   if (dispatcherExtension.value) {
     rules.push((value: string) => {
@@ -349,27 +345,30 @@ function resetForm() {
 }
 
 // Watch dialog open to fetch data
-watch(() => props.modelValue, async (isOpen) => {
-  if (isOpen) {
-    // Fetch dispatchers
-    if (dispatchers.value.length === 0) {
-      await executeStore.fetchDispatchers()
+watch(
+  () => props.modelValue,
+  async (isOpen) => {
+    if (isOpen) {
+      // Fetch dispatchers
+      if (dispatchers.value.length === 0) {
+        await executeStore.fetchDispatchers()
+      }
+
+      // Fetch data sources
+      if (dataSources.value.length === 0) {
+        await dataSourceStore.fetchDataSources()
+      }
+
+      // Set default file/folder targets
+      if (projectName.value) {
+        fileTarget.value = `${projectName.value}.xlsx`
+        folderTarget.value = projectName.value
+      }
+    } else {
+      resetForm()
     }
-    
-    // Fetch data sources
-    if (dataSources.value.length === 0) {
-      await dataSourceStore.fetchDataSources()
-    }
-    
-    // Set default file/folder targets
-    if (projectName.value) {
-      fileTarget.value = `${projectName.value}.xlsx`
-      folderTarget.value = projectName.value
-    }
-  } else {
-    resetForm()
   }
-})
+)
 
 // Auto-select first dispatcher if only one available
 watch(dispatchers, (newDispatchers) => {

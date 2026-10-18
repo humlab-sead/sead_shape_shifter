@@ -158,7 +158,10 @@ export function getExtraColumnDiagnostics(
   }
 
   if (reservedNames.has(columnName)) {
-    diagnostics.push({ severity: 'error', message: `'${columnName}' conflicts with an existing or reserved result column.` })
+    diagnostics.push({
+      severity: 'error',
+      message: `'${columnName}' conflicts with an existing or reserved result column.`,
+    })
   }
 
   const analysis = analyzeExtraColumnExpression(expression, [...availableColumns])

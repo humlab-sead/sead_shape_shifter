@@ -23,82 +23,82 @@
               <v-card-subtitle> Choose a theme preset </v-card-subtitle>
 
               <v-card-text>
-            <v-row>
-              <v-col v-for="preset in theme.presets" :key="preset.name" cols="12" sm="6" md="2">
-                <v-card
-                  :variant="theme.currentThemeName.value === preset.name ? 'tonal' : 'plain'"
-                  :color="theme.currentThemeName.value === preset.name ? 'primary' : undefined"
-                  class="theme-preset-card"
-                  @click="selectTheme(preset.name)"
-                >
-                  <v-card-text class="text-center">
-                    <v-icon
-                      :icon="preset.icon"
-                      size="48"
+                <v-row>
+                  <v-col v-for="preset in theme.presets" :key="preset.name" cols="12" sm="6" md="2">
+                    <v-card
+                      :variant="theme.currentThemeName.value === preset.name ? 'tonal' : 'plain'"
                       :color="theme.currentThemeName.value === preset.name ? 'primary' : undefined"
-                      class="mb-2"
-                    />
-                    <div class="text-h6">{{ preset.displayName }}</div>
-                    <div class="text-caption text-medium-emphasis">
-                      {{ preset.description }}
-                    </div>
-
-                    <!-- Current theme indicator -->
-                    <v-chip
-                      v-if="theme.currentThemeName.value === preset.name"
-                      size="x-small"
-                      color="primary"
-                      class="mt-2"
+                      class="theme-preset-card"
+                      @click="selectTheme(preset.name)"
                     >
-                      Current
-                    </v-chip>
-                  </v-card-text>
-                </v-card>
-              </v-col>
-            </v-row>
+                      <v-card-text class="text-center">
+                        <v-icon
+                          :icon="preset.icon"
+                          size="48"
+                          :color="theme.currentThemeName.value === preset.name ? 'primary' : undefined"
+                          class="mb-2"
+                        />
+                        <div class="text-h6">{{ preset.displayName }}</div>
+                        <div class="text-caption text-medium-emphasis">
+                          {{ preset.description }}
+                        </div>
 
-            <v-divider class="my-4" />
+                        <!-- Current theme indicator -->
+                        <v-chip
+                          v-if="theme.currentThemeName.value === preset.name"
+                          size="x-small"
+                          color="primary"
+                          class="mt-2"
+                        >
+                          Current
+                        </v-chip>
+                      </v-card-text>
+                    </v-card>
+                  </v-col>
+                </v-row>
 
-            <!-- Quick Actions -->
-            <div class="d-flex flex-wrap gap-2">
-              <v-btn
-                :color="theme.isDark.value ? 'primary' : undefined"
-                variant="outlined"
-                :prepend-icon="theme.isDark.value ? 'mdi-moon-waning-crescent' : 'mdi-white-balance-sunny'"
-                @click="theme.toggleDarkMode()"
-              >
-                {{ theme.isDark.value ? 'Dark Mode' : 'Light Mode' }}
-              </v-btn>
+                <v-divider class="my-4" />
 
-              <v-btn
-                v-if="theme.currentThemeName.value !== 'light'"
-                variant="outlined"
-                prepend-icon="mdi-restore"
-                @click="handleResetToDefault"
-              >
-                Reset to Default
-              </v-btn>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
+                <!-- Quick Actions -->
+                <div class="d-flex flex-wrap gap-2">
+                  <v-btn
+                    :color="theme.isDark.value ? 'primary' : undefined"
+                    variant="outlined"
+                    :prepend-icon="theme.isDark.value ? 'mdi-moon-waning-crescent' : 'mdi-white-balance-sunny'"
+                    @click="theme.toggleDarkMode()"
+                  >
+                    {{ theme.isDark.value ? 'Dark Mode' : 'Light Mode' }}
+                  </v-btn>
 
-    <!-- Additional Settings -->
-    <v-row>
-      <v-col cols="12" md="6">
-        <v-card>
-          <v-card-title>Interface</v-card-title>
-          <v-card-subtitle> Customize the interface density and behavior </v-card-subtitle>
-          <v-card-text>
-            <v-switch
-              v-model="appSettings.compactMode.value"
-              label="Compact mode"
-              color="primary"
-              hide-details
-              class="mb-3"
-            >
-              <!-- <template #append>
+                  <v-btn
+                    v-if="theme.currentThemeName.value !== 'light'"
+                    variant="outlined"
+                    prepend-icon="mdi-restore"
+                    @click="handleResetToDefault"
+                  >
+                    Reset to Default
+                  </v-btn>
+                </div>
+              </v-card-text>
+            </v-card>
+          </v-col>
+        </v-row>
+
+        <!-- Additional Settings -->
+        <v-row>
+          <v-col cols="12" md="6">
+            <v-card>
+              <v-card-title>Interface</v-card-title>
+              <v-card-subtitle> Customize the interface density and behavior </v-card-subtitle>
+              <v-card-text>
+                <v-switch
+                  v-model="appSettings.compactMode.value"
+                  label="Compact mode"
+                  color="primary"
+                  hide-details
+                  class="mb-3"
+                >
+                  <!-- <template #append>
                 <v-tooltip location="top">
                   <template #activator="{ props }">
                     <v-icon icon="mdi-information-outline" size="small" v-bind="props" />
@@ -106,16 +106,16 @@
                   Reduces spacing and component sizes throughout the interface
                 </v-tooltip>
               </template> -->
-            </v-switch>
+                </v-switch>
 
-            <v-switch
-              v-model="appSettings.animationsEnabled.value"
-              label="Enable animations"
-              color="primary"
-              hide-details
-              class="mb-3"
-            >
-              <!-- <template #append>
+                <v-switch
+                  v-model="appSettings.animationsEnabled.value"
+                  label="Enable animations"
+                  color="primary"
+                  hide-details
+                  class="mb-3"
+                >
+                  <!-- <template #append>
                 <v-tooltip location="top">
                   <template #activator="{ props }">
                     <v-icon icon="mdi-information-outline" size="small" v-bind="props" />
@@ -123,15 +123,15 @@
                   Enable smooth transitions and animations
                 </v-tooltip>
               </template> -->
-            </v-switch>
+                </v-switch>
 
-            <v-switch
-              v-model="appSettings.railNavigation.value"
-              label="Auto-collapse navigation"
-              color="primary"
-              hide-details
-            >
-              <!-- <template #append>
+                <v-switch
+                  v-model="appSettings.railNavigation.value"
+                  label="Auto-collapse navigation"
+                  color="primary"
+                  hide-details
+                >
+                  <!-- <template #append>
                 <v-tooltip location="top">
                   <template #activator="{ props }">
                     <v-icon icon="mdi-information-outline" size="small" v-bind="props" />
@@ -139,49 +139,49 @@
                   Automatically collapse navigation drawer to icons only
                 </v-tooltip>
               </template> -->
-            </v-switch>
+                </v-switch>
 
-            <v-switch
-              v-model="appSettings.enableFkSuggestions.value"
-              label="Enable foreign key suggestions"
-              color="primary"
-              hide-details
-              class="mt-3"
-            />
+                <v-switch
+                  v-model="appSettings.enableFkSuggestions.value"
+                  label="Enable foreign key suggestions"
+                  color="primary"
+                  hide-details
+                  class="mt-3"
+                />
 
-            <v-divider class="my-4" />
+                <v-divider class="my-4" />
 
-            <div class="d-flex gap-2">
-              <v-btn variant="outlined" size="small" prepend-icon="mdi-restore" @click="handleResetSettings">
-                Reset Interface Settings
-              </v-btn>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
+                <div class="d-flex gap-2">
+                  <v-btn variant="outlined" size="small" prepend-icon="mdi-restore" @click="handleResetSettings">
+                    Reset Interface Settings
+                  </v-btn>
+                </div>
+              </v-card-text>
+            </v-card>
+          </v-col>
 
-      <v-col cols="12" md="6">
-        <v-card>
-          <v-card-title>About</v-card-title>
-          <v-card-text>
-            <div class="d-flex align-center mb-2">
-              <v-icon icon="mdi-information" class="mr-2" />
-              <span class="text-body-2">SEAD Shape Shifter Project Editor</span>
-            </div>
-            <div class="d-flex align-center mb-2">
-              <v-icon icon="mdi-tag" class="mr-2" />
-              <span class="text-body-2">Version: {{ version }}</span>
-            </div>
-            <div class="d-flex align-center">
-              <v-icon icon="mdi-github" class="mr-2" />
-              <a href="https://github.com/humlab-sead/sead_shape_shifter" target="_blank" class="text-body-2">
-                GitHub Repository
-              </a>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
+          <v-col cols="12" md="6">
+            <v-card>
+              <v-card-title>About</v-card-title>
+              <v-card-text>
+                <div class="d-flex align-center mb-2">
+                  <v-icon icon="mdi-information" class="mr-2" />
+                  <span class="text-body-2">SEAD Shape Shifter Project Editor</span>
+                </div>
+                <div class="d-flex align-center mb-2">
+                  <v-icon icon="mdi-tag" class="mr-2" />
+                  <span class="text-body-2">Version: {{ version }}</span>
+                </div>
+                <div class="d-flex align-center">
+                  <v-icon icon="mdi-github" class="mr-2" />
+                  <a href="https://github.com/humlab-sead/sead_shape_shifter" target="_blank" class="text-body-2">
+                    GitHub Repository
+                  </a>
+                </div>
+              </v-card-text>
+            </v-card>
+          </v-col>
+        </v-row>
       </v-window-item>
 
       <!-- Logs Tab -->
@@ -201,12 +201,7 @@
                   >
                     Refresh
                   </v-btn>
-                  <v-btn
-                    size="small"
-                    variant="tonal"
-                    prepend-icon="mdi-download"
-                    @click="downloadLogs"
-                  >
+                  <v-btn size="small" variant="tonal" prepend-icon="mdi-download" @click="downloadLogs">
                     Download
                   </v-btn>
                 </div>
@@ -408,7 +403,7 @@ onMounted(async () => {
     console.error('Failed to fetch version:', err)
     version.value = 'unknown'
   }
-  
+
   refreshLogs()
 })
 

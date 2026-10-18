@@ -8,7 +8,7 @@ import type {
   ValidateRequest,
   ValidateResponse,
   IngestRequest,
-  IngestResponse
+  IngestResponse,
 } from '@/types/ingester'
 
 export const ingesterApi = {
@@ -24,10 +24,7 @@ export const ingesterApi = {
    * Validate data using specified ingester
    */
   async validate(key: string, request: ValidateRequest): Promise<ValidateResponse> {
-    const response = await apiClient.post<ValidateResponse>(
-      `/ingesters/${key}/validate`,
-      request
-    )
+    const response = await apiClient.post<ValidateResponse>(`/ingesters/${key}/validate`, request)
     return response.data
   },
 
@@ -35,10 +32,7 @@ export const ingesterApi = {
    * Ingest data using specified ingester
    */
   async ingest(key: string, request: IngestRequest): Promise<IngestResponse> {
-    const response = await apiClient.post<IngestResponse>(
-      `/ingesters/${key}/ingest`,
-      request
-    )
+    const response = await apiClient.post<IngestResponse>(`/ingesters/${key}/ingest`, request)
     return response.data
-  }
+  },
 }

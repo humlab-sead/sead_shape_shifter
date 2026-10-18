@@ -19,7 +19,6 @@ export interface QueryValidation {
   tables: string[]
 }
 
-
 export interface QueryExecution {
   query: string
   limit?: number

@@ -130,9 +130,6 @@ describe('EntityListCard', () => {
     await wrapper.setProps({ entityToEdit: 'sample_type' })
     await nextTick()
 
-    expect(wrapper.emitted('entity-edit-request-consumed')).toEqual([
-      ['sample_type'],
-      ['sample_type'],
-    ])
+    expect(wrapper.emitted('entity-edit-request-consumed')).toEqual([['sample_type'], ['sample_type']])
   })
 })

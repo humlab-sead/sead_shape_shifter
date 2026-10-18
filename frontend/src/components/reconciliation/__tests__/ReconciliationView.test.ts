@@ -105,7 +105,8 @@ async function mountView() {
       stubs: {
         ReconciliationGrid: { template: '<div data-testid="reconciliation-grid" />' },
         SpecificationsList: {
-          template: '<button data-testid="open-reconcile" @click="$emit(\'reconcile\', \'site\', \'site_code\')">Open</button>',
+          template:
+            "<button data-testid=\"open-reconcile\" @click=\"$emit('reconcile', 'site', 'site_code')\">Open</button>",
         },
         YamlEditor: { template: '<div data-testid="yaml-editor" />' },
         VTabs: { template: '<div data-testid="tabs"><slot /></div>' },
@@ -132,7 +133,12 @@ describe('ReconciliationView', () => {
   beforeEach(() => {
     reconciliationStore.loading = false
     reconciliationStore.previewData = { site: [] }
-    reconciliationStore.exportToMapping = vi.fn(async () => ({ exported: 2, skipped_manual: 1, entity: 'site', field: 'site_code' }))
+    reconciliationStore.exportToMapping = vi.fn(async () => ({
+      exported: 2,
+      skipped_manual: 1,
+      entity: 'site',
+      field: 'site_code',
+    }))
   })
 
   it('exports reconciliation links and shows the result counts', async () => {
