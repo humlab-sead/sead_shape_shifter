@@ -69,7 +69,7 @@ function buildIndexFromContext(context: ValidationContext): DocIndex {
   return {
     entityNames: context.entityNames,
     dataSourceNames: context.dataSourceNames,
-    entities: {}
+    entities: {},
   }
 }
 
@@ -80,7 +80,7 @@ function buildIndex(data: any): DocIndex {
   return {
     entityNames: Object.keys(data.entities || {}),
     dataSourceNames: Object.keys(data.options?.data_sources || {}),
-    entities: data.entities || {}
+    entities: data.entities || {},
   }
 }
 
@@ -97,9 +97,10 @@ function validateEntityReferences(
 
   // In single-entity mode, data IS the entity
   // In full-project mode, iterate through entities
-  const entitiesToCheck = index.entities && Object.keys(index.entities).length > 0 
-    ? Object.entries(index.entities)
-    : [[currentEntityName || 'entity', data]]
+  const entitiesToCheck =
+    index.entities && Object.keys(index.entities).length > 0
+      ? Object.entries(index.entities)
+      : [[currentEntityName || 'entity', data]]
 
   for (const [entityName, entity] of entitiesToCheck) {
     if (!entity || typeof entity !== 'object') continue
@@ -170,11 +171,7 @@ function validateEntityReferences(
 /**
  * Validate task list entity references (full project mode only)
  */
-function validateTaskListReferences(
-  data: any,
-  index: DocIndex,
-  doc: YAML.Document
-): monaco.editor.IMarkerData[] {
+function validateTaskListReferences(data: any, index: DocIndex, doc: YAML.Document): monaco.editor.IMarkerData[] {
   const markers: monaco.editor.IMarkerData[] = []
   const taskList = data.task_list
 
@@ -207,11 +204,7 @@ function validateTaskListReferences(
 /**
  * Validate @value expressions for entity references
  */
-function validateValueExpressions(
-  data: any,
-  index: DocIndex,
-  _doc: YAML.Document
-): monaco.editor.IMarkerData[] {
+function validateValueExpressions(data: any, index: DocIndex, _doc: YAML.Document): monaco.editor.IMarkerData[] {
   const markers: monaco.editor.IMarkerData[] = []
 
   // Simple regex to extract entity references from @value expressions
@@ -230,7 +223,7 @@ function validateValueExpressions(
         startLineNumber: 1,
         startColumn: 1,
         endLineNumber: 1,
-        endColumn: 1
+        endColumn: 1,
       })
     }
   }
@@ -252,7 +245,7 @@ function createMarker(
     startLineNumber: position?.line || 1,
     startColumn: position?.col || 1,
     endLineNumber: position?.line || 1,
-    endColumn: position?.col || 100
+    endColumn: position?.col || 100,
   }
 }
 
@@ -262,10 +255,7 @@ function createMarker(
  * @param path - Path to the node (e.g., ['entities', 'sample', 'depends_on'])
  * @returns Position object with line and column, or null if not found
  */
-function findNodePosition(
-  doc: YAML.Document,
-  path: string[]
-): { line: number; col: number } | null {
+function findNodePosition(doc: YAML.Document, path: string[]): { line: number; col: number } | null {
   try {
     // Walk the YAML document to find the node
     let node: any = doc.contents

@@ -141,17 +141,17 @@ const dataSourceConfig = computed(() => {
   if (!project?.options?.data_sources) {
     return props.dataSource // Fallback to name
   }
-  
+
   const dsConfig = project.options.data_sources[props.dataSource]
   if (!dsConfig) {
     return props.dataSource // Fallback to name
   }
-  
+
   // If it's already a resolved dict, return it
   if (typeof dsConfig === 'object') {
     return { ...dsConfig, name: props.dataSource }
   }
-  
+
   // If it's a string like "@include: ${GLOBAL_DATA_SOURCE_DIR}/file.yml"
   // Look up the data source in the store to get its clean name
   if (typeof dsConfig === 'string') {
@@ -159,19 +159,21 @@ const dataSourceConfig = computed(() => {
     if (includeMatch) {
       const fullPath = (includeMatch[1] || '').trim()
       // Extract filename from path
-      const filename = fullPath.split('/').pop()?.replace(/\.yml$/, '') || ''
-      
+      const filename =
+        fullPath
+          .split('/')
+          .pop()
+          ?.replace(/\.yml$/, '') || ''
+
       // Look up data source in store by filename match
-      const dataSource = dataSourceStore.dataSources.find(
-        (ds) => ds.name === filename
-      )
-      
+      const dataSource = dataSourceStore.dataSources.find((ds) => ds.name === filename)
+
       // Return the clean name from the store, or fallback to extracted filename
       return dataSource?.name || filename
     }
     return dsConfig
   }
-  
+
   return props.dataSource
 })
 

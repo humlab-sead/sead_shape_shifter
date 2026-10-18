@@ -59,7 +59,9 @@
                 </v-card-title>
                 <v-card-text>
                   <div v-if="latestNote.date" class="text-caption text-medium-emphasis mb-2">{{ latestNote.date }}</div>
-                  <div class="text-body-2 mb-3">{{ latestNote.highlights[0] || 'Recent workflow and UI improvements are available.' }}</div>
+                  <div class="text-body-2 mb-3">
+                    {{ latestNote.highlights[0] || 'Recent workflow and UI improvements are available.' }}
+                  </div>
                   <v-list bg-color="transparent" density="compact" class="pa-0 mb-2">
                     <v-list-item v-for="highlight in latestNote.highlights.slice(1, 3)" :key="highlight" class="px-0">
                       <template #prepend>
@@ -68,9 +70,7 @@
                       <v-list-item-title class="text-body-2 home-highlight">{{ highlight }}</v-list-item-title>
                     </v-list-item>
                   </v-list>
-                  <v-btn variant="outlined" size="small" :to="{ name: 'whats-new' }">
-                    View What's New
-                  </v-btn>
+                  <v-btn variant="outlined" size="small" :to="{ name: 'whats-new' }"> View What's New </v-btn>
                 </v-card-text>
               </v-card>
             </v-col>
@@ -153,7 +153,6 @@ onMounted(async () => {
     console.error('Failed to check backend health:', error)
   }
 })
-
 </script>
 
 <style scoped>

@@ -287,7 +287,13 @@ describe('graphAdapter', () => {
         ],
         edges: [
           { source: 'parent', target: 'child', type: 'provides', label: 'provides' },
-          { source: 'child', target: 'parent', local_keys: ['parent_id'], remote_keys: ['id'], label: 'parent_id → id' },
+          {
+            source: 'child',
+            target: 'parent',
+            local_keys: ['parent_id'],
+            remote_keys: ['id'],
+            label: 'parent_id → id',
+          },
         ],
         has_cycles: false,
         cycles: [],

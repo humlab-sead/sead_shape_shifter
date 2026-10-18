@@ -15,11 +15,7 @@ import {
 
 describe('fixedValuesGridClipboard', () => {
   it('removes only trailing empty clipboard rows', () => {
-    expect(parseClipboardTable('a\tb\n\nc\td\n')).toEqual([
-      ['a', 'b'],
-      [''],
-      ['c', 'd'],
-    ])
+    expect(parseClipboardTable('a\tb\n\nc\td\n')).toEqual([['a', 'b'], [''], ['c', 'd']])
   })
 
   it('extends rows, preserves system_id, and normalizes blank pasted cells to null', () => {
@@ -47,9 +43,7 @@ describe('fixedValuesGridClipboard', () => {
   })
 
   it('builds grid row ids from stable system_id values', () => {
-    expect(buildGridRowData([[10, 'oak']], 0)).toEqual([
-      { id: 10, col_0: 10, col_1: 'oak' },
-    ])
+    expect(buildGridRowData([[10, 'oak']], 0)).toEqual([{ id: 10, col_0: 10, col_1: 'oak' }])
   })
 
   it('infers _id columns as numeric and other columns as string', () => {
@@ -93,9 +87,7 @@ describe('fixedValuesGridClipboard', () => {
     })
 
     expect(updated.rows).toEqual([[1, 53, 'alpha']])
-    expect(updated.errors).toEqual([
-      'Row 1, column method_group_id: Expected integer ID',
-    ])
+    expect(updated.errors).toEqual(['Row 1, column method_group_id: Expected integer ID'])
   })
 
   it('coerces valid _id values and preserves strings elsewhere', () => {
@@ -160,12 +152,12 @@ describe('fixedValuesGridClipboard', () => {
   })
 
   it('summarizes validation issues per column', () => {
-    expect(summarizeValidationIssues([
-      { rowIndex: 0, columnName: 'rank', message: 'Expected integer value' },
-      { rowIndex: 2, columnName: 'rank', message: 'Expected integer value' },
-    ])).toEqual([
-      'Column rank: 2 invalid values (rows 1, 3)',
-    ])
+    expect(
+      summarizeValidationIssues([
+        { rowIndex: 0, columnName: 'rank', message: 'Expected integer value' },
+        { rowIndex: 2, columnName: 'rank', message: 'Expected integer value' },
+      ])
+    ).toEqual(['Column rank: 2 invalid values (rows 1, 3)'])
   })
 
   it('normalizes only supported fixed column types', () => {

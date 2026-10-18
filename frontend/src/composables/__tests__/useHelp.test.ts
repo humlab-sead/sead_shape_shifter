@@ -12,15 +12,11 @@ describe('useHelp markdown rendering', () => {
   })
 
   it('rewrites relative top-level docs links to internal help routes', () => {
-    expect(resolveHelpHref('CONFIGURATION_GUIDE.md', 'USER_GUIDE')).toBe(
-      '/help?doc=CONFIGURATION_GUIDE'
-    )
+    expect(resolveHelpHref('CONFIGURATION_GUIDE.md', 'USER_GUIDE')).toBe('/help?doc=CONFIGURATION_GUIDE')
   })
 
   it('rewrites nested docs links to internal help routes', () => {
-    expect(resolveHelpHref('other/USER_GUIDE_APPENDIX.md', 'USER_GUIDE')).toBe(
-      '/help?doc=other%2FUSER_GUIDE_APPENDIX'
-    )
+    expect(resolveHelpHref('other/USER_GUIDE_APPENDIX.md', 'USER_GUIDE')).toBe('/help?doc=other%2FUSER_GUIDE_APPENDIX')
   })
 
   it('rewrites parent-relative root doc links correctly', () => {

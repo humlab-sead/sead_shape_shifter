@@ -94,14 +94,11 @@ function handleMount(editorInstance: monacoType.editor.IStandaloneCodeEditor, mo
   if (!intelligenceInitialized.value && monacoRef) {
     setupYamlIntelligence(monacoRef, {
       mode: props.mode,
-      context: props.validationContext
+      context: props.validationContext,
     })
 
     // Register custom completions with context provider
-    registerProjectCompletions(
-      monacoRef,
-      props.validationContext ? () => props.validationContext : undefined
-    )
+    registerProjectCompletions(monacoRef, props.validationContext ? () => props.validationContext : undefined)
 
     intelligenceInitialized.value = true
   }
@@ -115,11 +112,7 @@ function handleMount(editorInstance: monacoType.editor.IStandaloneCodeEditor, mo
 function runCustomValidation(monaco: typeof monacoType) {
   if (!model.value) return
 
-  const markers = validateProjectYaml(
-    content.value,
-    model.value,
-    props.validationContext
-  )
+  const markers = validateProjectYaml(content.value, model.value, props.validationContext)
 
   monaco.editor.setModelMarkers(model.value, 'yaml-custom', markers)
 }

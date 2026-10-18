@@ -85,15 +85,13 @@
           </v-list-item>
         </template>
       </v-select>
-      
+
       <!-- Slot for additional content (e.g., column details) -->
       <slot name="details" />
     </v-card-text>
 
     <v-card-actions v-if="tables.length > 0">
-      <v-chip size="small" variant="text">
-        {{ tables.length }} table{{ tables.length !== 1 ? 's' : '' }}
-      </v-chip>
+      <v-chip size="small" variant="text"> {{ tables.length }} table{{ tables.length !== 1 ? 's' : '' }} </v-chip>
     </v-card-actions>
   </v-card>
 </template>

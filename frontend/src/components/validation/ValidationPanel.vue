@@ -160,12 +160,20 @@
 
           <!-- Errors Only -->
           <v-window-item value="errors">
-            <validation-message-list :messages="errors" :empty-message="'No errors found'" @open-entity="handleOpenEntity" />
+            <validation-message-list
+              :messages="errors"
+              :empty-message="'No errors found'"
+              @open-entity="handleOpenEntity"
+            />
           </v-window-item>
 
           <!-- Warnings Only -->
           <v-window-item value="warnings">
-            <validation-message-list :messages="warnings" :empty-message="'No warnings found'" @open-entity="handleOpenEntity" />
+            <validation-message-list
+              :messages="warnings"
+              :empty-message="'No warnings found'"
+              @open-entity="handleOpenEntity"
+            />
           </v-window-item>
 
           <!-- By Category -->
@@ -277,11 +285,17 @@
                   />
 
                   <v-expansion-panels v-if="group.branchGroups.length > 0" variant="accordion" class="mt-3">
-                    <v-expansion-panel v-for="branchGroup in group.branchGroups" :key="branchGroup.key" :value="branchGroup.key">
+                    <v-expansion-panel
+                      v-for="branchGroup in group.branchGroups"
+                      :key="branchGroup.key"
+                      :value="branchGroup.key"
+                    >
                       <v-expansion-panel-title>
                         <div class="d-flex align-center flex-wrap ga-2">
                           <v-icon icon="mdi-source-branch" color="teal" class="mr-2" />
-                          <span class="font-weight-medium">{{ formatBranchGroupLabel(branchGroup.branchName, branchGroup.branchSource) }}</span>
+                          <span class="font-weight-medium">{{
+                            formatBranchGroupLabel(branchGroup.branchName, branchGroup.branchSource)
+                          }}</span>
                           <v-chip size="small">{{ branchGroup.messages.length }}</v-chip>
                         </div>
                       </v-expansion-panel-title>
@@ -424,7 +438,18 @@ async function copyToClipboard() {
 
   try {
     // Create tabular format with headers
-    const headers = ['Severity', 'Entity', 'Branch', 'Branch Source', 'Field', 'Category', 'Priority', 'Code', 'Message', 'Suggestion']
+    const headers = [
+      'Severity',
+      'Entity',
+      'Branch',
+      'Branch Source',
+      'Field',
+      'Category',
+      'Priority',
+      'Code',
+      'Message',
+      'Suggestion',
+    ]
     const separator = '\t'
     const headerRow = headers.join(separator)
 

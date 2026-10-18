@@ -1,6 +1,6 @@
 /**
  * Test Fixtures - Sample Project Configurations
- * 
+ *
  * These fixtures provide reusable test data for E2E tests.
  * They represent different project configurations for testing various scenarios.
  */

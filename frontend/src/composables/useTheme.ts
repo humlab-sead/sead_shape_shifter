@@ -124,7 +124,7 @@ export function useTheme() {
     // Apply to current theme
     Object.entries(colors).forEach(([key, value]) => {
       if (value) {
-        // @ts-ignore
+        // @ts-expect-error dynamic theme color key is not in the Vuetify color type
         vuetifyTheme.current.value.colors[key] = value
       }
     })

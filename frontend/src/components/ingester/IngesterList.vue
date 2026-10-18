@@ -17,16 +17,12 @@
           <v-list-item-subtitle>{{ ingester.description }}</v-list-item-subtitle>
 
           <template v-slot:append>
-            <v-chip size="small" variant="outlined">
-              v{{ ingester.version }}
-            </v-chip>
+            <v-chip size="small" variant="outlined"> v{{ ingester.version }} </v-chip>
           </template>
         </v-list-item>
       </v-list>
 
-      <v-alert v-if="!hasIngesters && !loading" type="info" variant="tonal">
-        No ingesters available
-      </v-alert>
+      <v-alert v-if="!hasIngesters && !loading" type="info" variant="tonal"> No ingesters available </v-alert>
     </v-card-text>
   </v-card>
 </template>

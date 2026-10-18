@@ -28,9 +28,7 @@ describe('FixedValuesGrid', () => {
 
     await nextTick()
 
-    expect(wrapper.emitted('update:modelValue')).toEqual([
-      [[[1, 53, 'Sampling']]],
-    ])
+    expect(wrapper.emitted('update:modelValue')).toEqual([[[[1, 53, 'Sampling']]]])
     expect(wrapper.emitted('validation-errors')).toBeUndefined()
   })
 
@@ -52,9 +50,7 @@ describe('FixedValuesGrid', () => {
     await nextTick()
 
     expect(wrapper.emitted('update:modelValue')).toBeUndefined()
-    expect(wrapper.emitted('validation-errors')).toEqual([
-      [['Column method_id: 1 invalid value (row 1)']],
-    ])
+    expect(wrapper.emitted('validation-errors')).toEqual([[['Column method_id: 1 invalid value (row 1)']]])
   })
 
   it('uses declared int column types for non-_id columns', async () => {
@@ -74,9 +70,7 @@ describe('FixedValuesGrid', () => {
 
     await nextTick()
 
-    expect(wrapper.emitted('update:modelValue')).toEqual([
-      [[[1, 7, 'Sampling']]],
-    ])
+    expect(wrapper.emitted('update:modelValue')).toEqual([[[[1, 7, 'Sampling']]]])
   })
 
   it('uses declared float column types for non-_id columns', async () => {
@@ -96,9 +90,7 @@ describe('FixedValuesGrid', () => {
 
     await nextTick()
 
-    expect(wrapper.emitted('update:modelValue')).toEqual([
-      [[[1, 7.25, 'Sampling']]],
-    ])
+    expect(wrapper.emitted('update:modelValue')).toEqual([[[[1, 7.25, 'Sampling']]]])
   })
 
   it('does not coerce unsupported declared types on load', async () => {

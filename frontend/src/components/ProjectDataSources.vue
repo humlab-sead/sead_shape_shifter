@@ -59,13 +59,7 @@
               <v-icon>mdi-table-arrow-right</v-icon>
               <v-tooltip activator="parent" location="top"> Create Entity from Table </v-tooltip>
             </v-btn>
-            <v-btn
-              icon="mdi-link-off"
-              variant="text"
-              color="error"
-              size="small"
-              @click="handleDisconnect(source.name)"
-            >
+            <v-btn icon="mdi-link-off" variant="text" color="error" size="small" @click="handleDisconnect(source.name)">
               <v-icon>mdi-link-off</v-icon>
               <v-tooltip activator="parent" location="top"> Disconnect </v-tooltip>
             </v-btn>
@@ -218,16 +212,11 @@ const showCreateEntityDialog = ref(false)
 const createEntityDataSource = ref<string>('')
 
 function getInlineSourceDetails(config: Record<string, unknown>): ConnectedSourceDetails {
-  const options = typeof config.options === 'object' && config.options !== null
-    ? (config.options as Record<string, unknown>)
-    : null
+  const options =
+    typeof config.options === 'object' && config.options !== null ? (config.options as Record<string, unknown>) : null
 
   const driver = typeof config.driver === 'string' ? config.driver : 'unknown'
-  const host = typeof config.host === 'string'
-    ? config.host
-    : typeof options?.host === 'string'
-      ? options.host
-      : null
+  const host = typeof config.host === 'string' ? config.host : typeof options?.host === 'string' ? options.host : null
 
   return { driver, host }
 }

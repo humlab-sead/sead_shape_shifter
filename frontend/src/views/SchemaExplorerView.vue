@@ -71,15 +71,16 @@
           <div class="mb-4">
             <p class="font-weight-medium mb-1">2. Browse Tables</p>
             <p class="text-body-2 text-grey-darken-1">
-              Tables will load automatically. Select a table from the dropdown to view its details. For PostgreSQL, you can
-              specify a schema (defaults to 'public').
+              Tables will load automatically. Select a table from the dropdown to view its details. For PostgreSQL, you
+              can specify a schema (defaults to 'public').
             </p>
           </div>
 
           <div class="mb-4">
             <p class="font-weight-medium mb-1">3. View Table Details</p>
             <p class="text-body-2 text-grey-darken-1">
-              Select a table to automatically view its column details below the table selector and preview data in the right panel. You'll see:
+              Select a table to automatically view its column details below the table selector and preview data in the
+              right panel. You'll see:
             </p>
             <ul class="text-body-2 text-grey-darken-1 ml-4">
               <li>Column names and data types</li>
@@ -94,15 +95,17 @@
           <div class="mb-4">
             <p class="font-weight-medium mb-1">4. Preview Data</p>
             <p class="text-body-2 text-grey-darken-1">
-              The right panel automatically shows sample rows from the selected table. Use pagination controls to navigate through the
-              data. You can adjust rows per page (10, 25, 50, or 100). Data preview clears when switching tables.
+              The right panel automatically shows sample rows from the selected table. Use pagination controls to
+              navigate through the data. You can adjust rows per page (10, 25, 50, or 100). Data preview clears when
+              switching tables.
             </p>
           </div>
 
           <div class="mb-4">
             <p class="font-weight-medium mb-1">5. Refresh Data</p>
             <p class="text-body-2 text-grey-darken-1">
-              Use the refresh button in each panel to reload data manually. The "Refresh All" button at the top clears the cache and reloads everything.
+              Use the refresh button in each panel to reload data manually. The "Refresh All" button at the top clears
+              the cache and reloads everything.
             </p>
           </div>
 

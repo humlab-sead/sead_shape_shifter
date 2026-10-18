@@ -17,7 +17,7 @@ export function registerProjectCompletions(
         startLineNumber: position.lineNumber,
         startColumn: 1,
         endLineNumber: position.lineNumber,
-        endColumn: position.column
+        endColumn: position.column,
       })
 
       const suggestions: monaco.languages.CompletionItem[] = []
@@ -30,7 +30,7 @@ export function registerProjectCompletions(
         if (context) {
           index = {
             entityNames: context.entityNames,
-            dataSourceNames: context.dataSourceNames
+            dataSourceNames: context.dataSourceNames,
           }
         } else {
           index = { entityNames: [], dataSourceNames: [] }
@@ -55,10 +55,6 @@ export function registerProjectCompletions(
       else if (line.match(/entity:\s*$/)) {
         suggestions.push(...createEntitySuggestions(index.entityNames, monacoInstance))
       }
-      // Suggest entity names in filters.exists_in.entity
-      else if (line.includes('exists_in') && line.match(/entity:\s*$/)) {
-        suggestions.push(...createEntitySuggestions(index.entityNames, monacoInstance))
-      }
       // Suggest entity names in append arrays
       else if (line.includes('append:') || line.match(/append:\s*$/)) {
         suggestions.push(...createEntitySuggestions(index.entityNames, monacoInstance))
@@ -77,7 +73,7 @@ export function registerProjectCompletions(
       }
 
       return { suggestions }
-    }
+    },
   })
 }
 
@@ -89,7 +85,7 @@ function extractEntityNames(text: string): { entityNames: string[]; dataSourceNa
     const data = YAML.parse(text)
     return {
       entityNames: Object.keys(data?.entities || {}),
-      dataSourceNames: Object.keys(data?.options?.data_sources || {})
+      dataSourceNames: Object.keys(data?.options?.data_sources || {}),
     }
   } catch {
     return { entityNames: [], dataSourceNames: [] }
@@ -109,7 +105,7 @@ function createEntitySuggestions(
     insertText: name,
     documentation: `Entity: ${name}`,
     sortText: `0_${name}`, // Prioritize entity suggestions
-    range: undefined as any // Monaco will fill in range from context
+    range: undefined as any, // Monaco will fill in range from context
   }))
 }
 
@@ -126,7 +122,7 @@ function createDataSourceSuggestions(
     insertText: name,
     documentation: `Data source: ${name}`,
     sortText: `0_${name}`, // Prioritize data source suggestions
-    range: undefined as any // Monaco will fill in range from context
+    range: undefined as any, // Monaco will fill in range from context
   }))
 }
 
@@ -141,7 +137,7 @@ function createJoinTypeSuggestions(monacoEditor: typeof monaco): monaco.language
       insertText: 'left',
       documentation: 'Left join: keep all records from local entity',
       sortText: '0_left',
-      range: undefined as any
+      range: undefined as any,
     },
     {
       label: 'inner',
@@ -149,7 +145,7 @@ function createJoinTypeSuggestions(monacoEditor: typeof monaco): monaco.language
       insertText: 'inner',
       documentation: 'Inner join: keep only matching records',
       sortText: '0_inner',
-      range: undefined as any
+      range: undefined as any,
     },
     {
       label: 'outer',
@@ -157,8 +153,8 @@ function createJoinTypeSuggestions(monacoEditor: typeof monaco): monaco.language
       insertText: 'outer',
       documentation: 'Outer join: keep all records from both entities',
       sortText: '0_outer',
-      range: undefined as any
-    }
+      range: undefined as any,
+    },
   ]
 }
 
@@ -173,7 +169,7 @@ function createCardinalitySuggestions(monacoEditor: typeof monaco): monaco.langu
       insertText: 'many-to-one',
       documentation: 'Many local records map to one remote record',
       sortText: '0_many-to-one',
-      range: undefined as any
+      range: undefined as any,
     },
     {
       label: 'one-to-many',
@@ -181,7 +177,7 @@ function createCardinalitySuggestions(monacoEditor: typeof monaco): monaco.langu
       insertText: 'one-to-many',
       documentation: 'One local record maps to many remote records',
       sortText: '0_one-to-many',
-      range: undefined as any
+      range: undefined as any,
     },
     {
       label: 'one-to-one',
@@ -189,7 +185,7 @@ function createCardinalitySuggestions(monacoEditor: typeof monaco): monaco.langu
       insertText: 'one-to-one',
       documentation: 'One local record maps to one remote record',
       sortText: '0_one-to-one',
-      range: undefined as any
+      range: undefined as any,
     },
     {
       label: 'many-to-many',
@@ -197,8 +193,8 @@ function createCardinalitySuggestions(monacoEditor: typeof monaco): monaco.langu
       insertText: 'many-to-many',
       documentation: 'Many-to-many relationship',
       sortText: '0_many-to-many',
-      range: undefined as any
-    }
+      range: undefined as any,
+    },
   ]
 }
 
@@ -213,7 +209,7 @@ function createEntityTypeSuggestions(monacoEditor: typeof monaco): monaco.langua
       insertText: 'sql',
       documentation: 'SQL query entity: load data by executing SQL query',
       sortText: '0_sql',
-      range: undefined as any
+      range: undefined as any,
     },
     {
       label: 'fixed',
@@ -221,7 +217,7 @@ function createEntityTypeSuggestions(monacoEditor: typeof monaco): monaco.langua
       insertText: 'fixed',
       documentation: 'Fixed values entity: hardcoded data defined in values array',
       sortText: '0_fixed',
-      range: undefined as any
-    }
+      range: undefined as any,
+    },
   ]
 }
