@@ -217,7 +217,7 @@ class ProjectOperations:
         self._remove_lock(name)
         logger.info("[{}] delete_project: completed for '{}'", corr, name)
 
-    def copy_project(self, source_name: str, target_name: str) -> Project:
+    def copy_project(self, source_name: str, target_name: str, *, project_locks_held: bool = False) -> Project:
         """
         Copy a project and its entire directory to a new name.
 
@@ -231,6 +231,7 @@ class ProjectOperations:
         Args:
             source_name: Source project name (can include path separators)
             target_name: Target project name (can include path separators)
+            project_locks_held: Whether the caller already holds both project locks
 
         Returns:
             New project with updated metadata
@@ -292,7 +293,12 @@ class ProjectOperations:
 
             # Save updated metadata to target project
             logger.info(f"Updating metadata for copied project '{target_name}'")
-            new_project: Project = self._save_project(source_project, create_backup=False, original_file_path=target_file)
+            new_project: Project = self._save_project(
+                source_project,
+                create_backup=False,
+                original_file_path=target_file,
+                lock_held=project_locks_held,
+            )
 
             logger.info(f"Successfully copied project '{source_name}' to '{target_name}'")
             return new_project

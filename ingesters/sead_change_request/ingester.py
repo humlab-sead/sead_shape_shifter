@@ -112,7 +112,7 @@ class SeadChangeRequestIngester:
         return replace(inputs, bundle=bundle)
 
     def _validate_business_keys(self, inputs: ResolvedInputs) -> None:
-        """Reject a delivery whose tracked project entities lack usable business keys.
+        """Reject a delivery whose tracked or reconciled project entities lack usable business keys.
 
         Runs on the complete transformed bundle before any target-database check or SIMS
         request, so an invalid key contract has no external effect.
@@ -127,7 +127,10 @@ class SeadChangeRequestIngester:
             entity_spec = inputs.target_model.entities.get(entity_name)
             if frame is None or entity_spec is None:
                 continue
-            if resolve_effective_identity(entity_spec).identity_tracking != "tracked":
+            identity_tracking = resolve_effective_identity(entity_spec).identity_tracking
+            if identity_tracking == "reconciled" and not declared_keys:
+                continue
+            if identity_tracking not in {"tracked", "reconciled"}:
                 continue
             errors.extend(
                 business_key_errors(
@@ -135,6 +138,7 @@ class SeadChangeRequestIngester:
                     declared_keys,
                     frame,
                     public_id=entity_spec.public_id,
+                    entity_label="Reconciled entity" if identity_tracking == "reconciled" else "Tracked entity",
                 )
             )
 
