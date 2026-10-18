@@ -86,9 +86,9 @@ def test_check_circular_dependencies(project: ShapeShiftProject):
 async def test_data_validation_orchestrator(project: ShapeShiftProject):
 
     expected_issues: set[str] = {
+        "warning:dating_period:FK_ALL_NULL",
+        "warning:method:FK_ALL_NULL",
         "warning:dating:EMPTY_RESULT",
-        "warning:dating_chronological_period:EMPTY_RESULT",
-        "warning:relative_dating:FK_DATA_INTEGRITY",
         "warning:site_natural_region:EMPTY_RESULT",
     }
 

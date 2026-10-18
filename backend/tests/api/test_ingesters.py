@@ -8,7 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 from httpx import Response
 
-from backend.app.api.v1.endpoints.ingesters import ingester_operator_dependency
+from backend.app.api.v1.endpoints.ingesters import ingester_operator_dependency, ingester_project_dependency
 from backend.app.authorization.models import Principal
 from backend.app.ingesters.protocol import IngesterConfig
 from backend.app.ingesters.registry import get_ingester_registry
@@ -42,6 +42,8 @@ def client() -> Iterator[TestClient]:
         authentication_provider="test",
         authenticated_at=datetime.now(UTC),
     )
+    # The saved-project locator applies only to the SEAD Change Request ingester.
+    app.dependency_overrides[ingester_project_dependency] = lambda: None
     with TestClient(app) as test_client:
         try:
             yield test_client
@@ -131,7 +133,7 @@ class TestIngestersEndpoints:
         """Validate route should preserve change-request payload fields when calling the service."""
         captured: dict[str, str | ValidateRequest] = {}
 
-        async def fake_validate(key: str, request: ValidateRequest) -> ValidateResponse:
+        async def fake_validate(key: str, request: ValidateRequest, *, project_name: str | None = None) -> ValidateResponse:
             captured["key"] = key
             captured["request"] = request
             return ValidateResponse(
@@ -239,7 +241,7 @@ class TestIngestersEndpoints:
         """Ingest route should preserve change-request payload fields when calling the service."""
         captured: dict[str, str | IngestRequest] = {}
 
-        async def fake_ingest(key: str, request: IngestRequest) -> IngestResponse:
+        async def fake_ingest(key: str, request: IngestRequest, *, project_name: str | None = None) -> IngestResponse:
             captured["key"] = key
             captured["request"] = request
             return IngestResponse(

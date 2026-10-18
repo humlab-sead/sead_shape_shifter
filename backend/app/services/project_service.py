@@ -19,6 +19,7 @@ from backend.app.mappers.project_name_mapper import ProjectNameMapper
 from backend.app.middleware.correlation import get_correlation_id
 from backend.app.models.entity import Entity
 from backend.app.models.project import Project, ProjectFileInfo, ProjectMetadata, TargetModelFileOption
+from backend.app.models.validation import ValidationError
 from backend.app.services.fixed_entity_mapping_change_service import FixedEntityMappingChangeService
 from backend.app.services.project.entity_operations import EntityOperations, EntityUpdateResult
 from backend.app.services.project.entity_persistence_strategies import EntityPersistenceStrategyRegistry
@@ -26,6 +27,7 @@ from backend.app.services.project.file_manager import FileManager
 from backend.app.services.project.project_operations import ProjectOperations
 from backend.app.services.project.project_utils import ProjectUtils
 from backend.app.services.project_provider_binding_service import (
+    ProjectProviderBindingError,
     ProjectProviderBindingService,
     ProjectProviderRegistryUnavailable,
 )
@@ -426,14 +428,89 @@ class ProjectService:
             raise ConfigurationError(message=f"Failed to save project: {e}") from e
 
     def validate_project_file_write(self, file_path: Path, candidate_config: dict[str, Any]) -> None:
-        """Check candidate metadata against the current project file before a write."""
+        """Check candidate metadata and key declarations against the current project file.
+
+        A bound project keeps its provider-schema pair and its declared business keys.
+        Both checks run before the file is written, so a rejected write has no effect.
+        """
+        current_config: dict[str, Any] | None = None
         current_metadata: dict[str, Any] | None = None
         if file_path.exists():
-            current_config = self.yaml_service.load(file_path)
+            loaded_config = self.yaml_service.load(file_path)
+            current_config = loaded_config if isinstance(loaded_config, dict) else None
             raw_metadata = current_config.get("metadata") if isinstance(current_config, dict) else None
             current_metadata = raw_metadata if isinstance(raw_metadata, dict) else {}
         candidate_metadata = candidate_config.get("metadata") if isinstance(candidate_config, dict) else None
         self.provider_binding_service.validate_write(current_metadata, candidate_metadata)
+        self._validate_business_key_write(current_config, candidate_config)
+
+    def _validate_business_key_write(
+        self,
+        current_config: dict[str, Any] | None,
+        candidate_config: dict[str, Any],
+    ) -> None:
+        """Reject a tracked business-key declaration change on a bound project."""
+        if not isinstance(current_config, dict) or not isinstance(candidate_config, dict):
+            return
+
+        current_metadata = current_config.get("metadata")
+        if not _is_bound_pair(current_metadata):
+            return
+
+        current_entities = current_config.get("entities") or {}
+        candidate_entities = candidate_config.get("entities") or {}
+        if not isinstance(current_entities, dict) or not isinstance(candidate_entities, dict):
+            return
+
+        errors: list[ValidationError] = []
+        for entity_name, current_entity in current_entities.items():
+            candidate_entity = candidate_entities.get(entity_name)
+            if not isinstance(candidate_entity, dict):
+                continue
+            errors.extend(_key_declaration_errors(entity_name, current_entity, candidate_entity))
+
+        errors.extend(self._shared_pair_key_errors(current_metadata, candidate_entities))
+        if errors:
+            raise ProjectProviderBindingError(errors)
+
+    def _shared_pair_key_errors(
+        self,
+        metadata: Any,
+        candidate_entities: dict[str, Any],
+    ) -> list[ValidationError]:
+        """Reject key declarations that disagree with a project on the same provider schema."""
+        if not isinstance(metadata, dict):
+            return []
+        pair = (metadata.get("data_provider_code"), metadata.get("provider_schema"))
+
+        errors: list[ValidationError] = []
+        for sibling in self.list_projects():
+            if (sibling.data_provider_code, sibling.provider_schema) != pair or not sibling.file_path:
+                continue
+            sibling_config = self.yaml_service.load(Path(sibling.file_path))
+            sibling_entities = sibling_config.get("entities") if isinstance(sibling_config, dict) else None
+            if not isinstance(sibling_entities, dict):
+                continue
+            for entity_name, candidate_entity in candidate_entities.items():
+                sibling_entity = sibling_entities.get(entity_name)
+                if not isinstance(sibling_entity, dict) or not isinstance(candidate_entity, dict):
+                    continue
+                if _ordered_keys(sibling_entity) == _ordered_keys(candidate_entity):
+                    continue
+                errors.append(
+                    ValidationError(
+                        severity="error",
+                        entity=None,
+                        field=f"entities.{entity_name}.keys",
+                        message=(
+                            f"Project '{sibling.name}' shares provider-schema pair "
+                            f"'{pair[0]}' / '{pair[1]}' and declares different business keys for "
+                            f"'{entity_name}'; a shared scope needs one reviewed key meaning."
+                        ),
+                        code="PROJECT_BUSINESS_KEY_INVALID",
+                    )
+                )
+        return errors
 
     # ------------------------------------------------------------------
     # Boundary save methods (preserve comments, replace one section only)
@@ -507,9 +584,25 @@ class ProjectService:
             entity_dict: Replacement entity dict, or ``None`` to delete.
         """
         file_path = self._resolve_project_file_path(project_name)
+        if entity_dict is not None:
+            self._validate_entity_key_write(file_path, entity_name, entity_dict)
         logger.info(f"save_entity_boundary: '{project_name}' entity='{entity_name}' delete={entity_dict is None}")
         self.yaml_service.merge_boundary(file_path, ("entities", entity_name), entity_dict)
         self.state.invalidate(project_name)
+
+    def _validate_entity_key_write(self, file_path: Path, entity_name: str, entity_dict: dict[str, Any]) -> None:
+        """Reject a single-entity write that changes a bound project's declared keys."""
+        current_config = self.yaml_service.load(file_path)
+        if not isinstance(current_config, dict):
+            return
+        current_entities = current_config.get("entities") or {}
+        if not isinstance(current_entities, dict):
+            return
+        candidate_config = dict(current_config)
+        candidate_entities = dict(current_entities)
+        candidate_entities[entity_name] = entity_dict
+        candidate_config["entities"] = candidate_entities
+        self._validate_business_key_write(current_config, candidate_config)
 
     def save_entity_rename_boundary(self, project_name: str, old_name: str, new_name: str, project: Project) -> list[str]:
         """Save an entity rename and best-effort move its note in the task sidecar."""
@@ -1216,6 +1309,48 @@ class ProjectService:
             File information for the saved file
         """
         return self.files.save_data_source_file(upload, allowed_extensions=allowed_extensions, max_size_mb=max_size_mb)
+
+
+def _is_bound_pair(metadata: Any) -> bool:
+    """Return whether project metadata carries a complete provider-schema pair."""
+    if not isinstance(metadata, dict):
+        return False
+    return all(
+        isinstance(metadata.get(field), str) and metadata.get(field, "").strip() for field in ("data_provider_code", "provider_schema")
+    )
+
+
+def _ordered_keys(entity: Any) -> tuple[str, ...]:
+    """Return an entity's declared business keys as an ordered tuple."""
+    if not isinstance(entity, dict):
+        return ()
+    keys = entity.get("keys") or []
+    if isinstance(keys, str):
+        return (keys,)
+    return tuple(str(key) for key in keys)
+
+
+def _key_declaration_errors(entity_name: str, current_entity: Any, candidate_entity: dict[str, Any]) -> list[ValidationError]:
+    """Return errors when a bound project's declared keys change for one entity."""
+    current_keys = _ordered_keys(current_entity)
+    candidate_keys = _ordered_keys(candidate_entity)
+    if current_keys == candidate_keys:
+        return []
+    if not current_keys and not candidate_keys:
+        return []
+    return [
+        ValidationError(
+            severity="error",
+            entity=entity_name,
+            field=f"entities.{entity_name}.keys",
+            message=(
+                "An assigned provider-schema pair keeps its declared business keys; "
+                f"change from {list(current_keys)} to {list(candidate_keys)} requires a new provider schema code "
+                "or an explicit identity migration."
+            ),
+            code="PROJECT_BUSINESS_KEY_INVALID",
+        )
+    ]
 
 
 # Singleton instance

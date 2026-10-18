@@ -339,6 +339,10 @@
               <div class="text-caption mt-2">
                 <strong>Deploy strategy:</strong> {{ deployArtifactMetadata.deploy_strategy || deployStrategy }}
               </div>
+              <div v-if="effectiveScopeName" class="text-caption">
+                <strong>SIMS scope:</strong> {{ effectiveScopeName }}
+              </div>
+              <div v-if="effectiveRunId" class="text-caption"><strong>Run ID:</strong> {{ effectiveRunId }}</div>
               <div v-if="deployArtifactMetadata.binding_set_uuid" class="text-caption">
                 <strong>Binding Set:</strong> {{ deployArtifactMetadata.binding_set_uuid }}
               </div>
@@ -525,6 +529,18 @@ const deployArtifact = computed<DeployArtifact | null>(() => {
 
 const deployArtifactMetadata = computed<Record<string, any> | null>(() => {
   return deployArtifact.value?.metadata ?? null
+})
+
+const effectiveScopeName = computed<string>(() => {
+  const artifactScope = deployArtifactMetadata.value?.scope_name
+  if (typeof artifactScope === 'string' && artifactScope.trim()) return artifactScope
+  return ingestionResult.value?.scope_name?.trim() || ''
+})
+
+const effectiveRunId = computed<string>(() => {
+  const artifactRunId = deployArtifactMetadata.value?.run_id
+  if (typeof artifactRunId === 'string' && artifactRunId.trim()) return artifactRunId
+  return ingestionResult.value?.run_id?.trim() || ''
 })
 
 const deployArtifactManifest = computed<Record<string, any> | null>(() => {
@@ -838,6 +854,7 @@ function buildSubmissionContext(): SubmissionContextInput | undefined {
 function buildValidateRequest(): ValidateRequest {
   return {
     source: form.value.source,
+    project_name: isSeadChangeRequest.value ? seadChangeRequest.value.project_name.trim() || undefined : undefined,
     config: form.value.config,
     submission_context: buildSubmissionContext(),
     deploy_strategy: isSeadChangeRequest.value ? deployStrategy.value : undefined,
@@ -847,6 +864,7 @@ function buildValidateRequest(): ValidateRequest {
 function buildIngestRequest(): IngestRequest {
   return {
     ...form.value,
+    project_name: isSeadChangeRequest.value ? seadChangeRequest.value.project_name.trim() || undefined : undefined,
     submission_name: normalizeSubmissionName(form.value.submission_name),
     data_types: isSeadChangeRequest.value ? seadChangeRequest.value.datatype : form.value.data_types.trim(),
     config: form.value.config,

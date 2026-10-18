@@ -325,3 +325,64 @@ class TestSaveEntityRenameBoundary:
         assert "specimen" in saved_project["entities"]
         assert saved_sidecar["notes"] == {"sample": "Original note", "specimen": "Existing note"}
         assert warnings and "note could not be moved" in warnings[0]
+
+
+# ---------------------------------------------------------------------------
+# Tracked business keys on a bound project
+# ---------------------------------------------------------------------------
+
+
+class TestBoundProjectBusinessKeys:
+    """A bound project keeps its declared tracked business keys."""
+
+    @staticmethod
+    def _bind(project_file: Path) -> None:
+        project_file.write_text(
+            FIXTURE_YAML.replace(
+                "  version: 1.0.0\n",
+                "  version: 1.0.0\n  data_provider_code: test-provider\n  provider_schema: schema-one\n",
+            ),
+            encoding="utf-8",
+        )
+
+    def test_rejects_a_key_change_before_writing(self, service: ProjectService, project_file: Path) -> None:
+        self._bind(project_file)
+        original = project_file.read_bytes()
+
+        with pytest.raises(ProjectProviderBindingError):
+            service.save_entity_boundary(
+                "test-project",
+                "sample",
+                {"type": "entity", "keys": ["name"], "columns": ["name", "value"]},
+            )
+
+        assert project_file.read_bytes() == original
+
+    def test_rejects_removing_a_key_on_a_bound_project(self, service: ProjectService, project_file: Path) -> None:
+        self._bind(project_file)
+        original = project_file.read_bytes()
+
+        with pytest.raises(ProjectProviderBindingError):
+            service.save_entity_boundary("test-project", "sample", {"type": "entity", "columns": ["name", "value"]})
+
+        assert project_file.read_bytes() == original
+
+    def test_allows_a_non_key_change_on_a_bound_project(self, service: ProjectService, project_file: Path) -> None:
+        self._bind(project_file)
+
+        service.save_entity_boundary(
+            "test-project",
+            "sample",
+            {"type": "entity", "keys": ["sample_id"], "columns": ["name", "value", "extra"]},
+        )
+
+        assert YamlService().load(project_file)["entities"]["sample"]["columns"] == ["name", "value", "extra"]
+
+    def test_allows_a_key_change_on_an_unbound_project(self, service: ProjectService, project_file: Path) -> None:
+        service.save_entity_boundary(
+            "test-project",
+            "sample",
+            {"type": "entity", "keys": ["name"], "columns": ["name", "value"]},
+        )
+
+        assert YamlService().load(project_file)["entities"]["sample"]["keys"] == ["name"]

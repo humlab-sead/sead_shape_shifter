@@ -14,8 +14,14 @@ from backend.app.ingesters.protocol import IngesterConfig, IngesterMetadata, Ing
 from backend.app.ingesters.registry import get_ingester_registry
 from ingesters.sead_change_request.artifact_writer import write_artifact_bundle
 from ingesters.sead_change_request.collision_checks import CollisionCheckResult, check_projected_collisions
-from ingesters.sead_change_request.contracts import ChangeRequestPackage, DeployArtifact
+from ingesters.sead_change_request.contracts import (
+    FIXED_PROVIDER_TARGET_TABLE,
+    ChangeRequestPackage,
+    DeployArtifact,
+    TrustedProjectContext,
+)
 from ingesters.sead_change_request.input_resolution import (
+    BusinessKeyValidationError,
     InputResolutionError,
     SubmissionContextError,
     TargetModelError,
@@ -33,6 +39,8 @@ from ingesters.sead_change_request.result_builders import (
 )
 from ingesters.sead_change_request.sql_builder import build_deploy_artifact
 from ingesters.sead_change_request.submission_tables import DERIVED_SUBMISSION_TABLES, build_submission_source_bundle
+from src.business_keys import business_key_errors
+from src.target_model.effective_identity import resolve_effective_identity
 
 
 @get_ingester_registry().register(key="sead_change_request")
@@ -61,7 +69,9 @@ class SeadChangeRequestIngester:
     async def _prepare_change_request(self, source: Path | str) -> PreparationResult:
         """Run the shared preparation workflow after inputs are resolved."""
         inputs: ResolvedInputs = resolve_inputs(self.config, source)
-        inputs = await self._add_submission_tables(inputs)
+        inputs = self._add_submission_tables(inputs)
+        self._validate_business_keys(inputs)
+        await self._verify_provider_row(inputs)
         planned = plan_bundle(
             inputs.bundle,
             inputs.target_model.entities,
@@ -78,8 +88,8 @@ class SeadChangeRequestIngester:
             target_id_allocator=self._get_client("target_id_allocator") or self._get_client("collision_checker"),
         )
 
-    async def _add_submission_tables(self, inputs: ResolvedInputs) -> ResolvedInputs:
-        """Resolve the project provider and add rows required by the submission target contract."""
+    def _add_submission_tables(self, inputs: ResolvedInputs) -> ResolvedInputs:
+        """Add the submission rows required by the target contract, using the trusted provider row."""
         if "submission" not in inputs.target_model.entities:
             return inputs
 
@@ -87,26 +97,75 @@ class SeadChangeRequestIngester:
         if missing_entities:
             raise TargetModelError("Submission target contract is missing entity or entities: " + ", ".join(missing_entities))
 
-        provider_code = inputs.submission_context.data_provider_code
-        if not provider_code:
-            raise SubmissionContextError("Submission context requires data_provider_code from project metadata")
-
-        reconciliation_client = self._get_client("reconciliation_client")
-        if reconciliation_client is None:
-            raise SubmissionContextError("Data provider resolution requires a reconciliation client")
-
-        data_provider_id = await reconciliation_client.reconcile_entity(
-            "data_provider",
-            {"data_provider_code": provider_code},
-        )
-        if data_provider_id is None:
-            raise SubmissionContextError(f"No SEAD data provider matched data_provider_code '{provider_code}'")
+        trusted_project_context: TrustedProjectContext | None = inputs.trusted_project_context
+        if trusted_project_context is None:
+            raise SubmissionContextError("Change Request ingestion requires an authorized saved project with a fixed data provider row")
 
         try:
-            bundle = build_submission_source_bundle(inputs.bundle, inputs.submission_context, data_provider_id)
+            bundle = build_submission_source_bundle(
+                inputs.bundle,
+                inputs.submission_context,
+                trusted_project_context.data_provider_id,
+            )
         except ValueError as exc:
             raise SubmissionContextError(str(exc)) from exc
         return replace(inputs, bundle=bundle)
+
+    def _validate_business_keys(self, inputs: ResolvedInputs) -> None:
+        """Reject a delivery whose tracked project entities lack usable business keys.
+
+        Runs on the complete transformed bundle before any target-database check or SIMS
+        request, so an invalid key contract has no external effect.
+        """
+        trusted_project_context: TrustedProjectContext | None = inputs.trusted_project_context
+        if trusted_project_context is None:
+            return
+
+        errors: list[str] = []
+        for entity_name, declared_keys in trusted_project_context.business_keys.items():
+            frame = inputs.bundle.tables.get(entity_name)
+            entity_spec = inputs.target_model.entities.get(entity_name)
+            if frame is None or entity_spec is None:
+                continue
+            if resolve_effective_identity(entity_spec).identity_tracking != "tracked":
+                continue
+            errors.extend(
+                business_key_errors(
+                    entity_name,
+                    declared_keys,
+                    frame,
+                    public_id=entity_spec.public_id,
+                )
+            )
+
+        if errors:
+            raise BusinessKeyValidationError("\n".join(errors))
+
+    async def _verify_provider_row(self, inputs: ResolvedInputs) -> None:
+        """Confirm the trusted provider ID and code identify one existing SEAD provider row."""
+        if "submission" not in inputs.target_model.entities:
+            return
+
+        trusted_project_context: TrustedProjectContext | None = inputs.trusted_project_context
+        if trusted_project_context is None:
+            raise SubmissionContextError("Change Request ingestion requires an authorized saved project with a fixed data provider row")
+
+        collision_checker = self._get_client("collision_checker")
+        if collision_checker is None:
+            raise SubmissionContextError(
+                "Change Request ingestion requires a target database connection to confirm the fixed data provider row"
+            )
+
+        provider_id = trusted_project_context.data_provider_id
+        provider_code = trusted_project_context.provider_code
+        matched = await collision_checker.row_exists(
+            FIXED_PROVIDER_TARGET_TABLE,
+            {"data_provider_id": provider_id, "data_provider_code": provider_code},
+        )
+        if not matched:
+            raise SubmissionContextError(
+                f"No SEAD data provider row matches data_provider_id {provider_id} and data_provider_code '{provider_code}'"
+            )
 
     async def validate(self, excel_file: Path | str) -> ValidationResult:
         try:
@@ -162,6 +221,8 @@ class SeadChangeRequestIngester:
                 return IngestionResult.create_failed_result(
                     message="Validation failed",
                     details=failure_details(validation.errors),
+                    scope_name=preparation.inputs.submission_context.scope_name,
+                    run_id=preparation.inputs.submission_context.run_id,
                 )
 
         precondition_failure = check_ingestion_preconditions(preparation)
@@ -181,6 +242,8 @@ class SeadChangeRequestIngester:
                 return IngestionResult.create_failed_result(
                     message="Target collision checks failed",
                     details=failure_details(collision_result.diagnostics),
+                    scope_name=preparation.inputs.submission_context.scope_name,
+                    run_id=preparation.inputs.submission_context.run_id,
                 )
 
         change_package: ChangeRequestPackage = self._build_change_package(preparation)
@@ -228,4 +291,6 @@ class SeadChangeRequestIngester:
             tables_processed=package_table_count,
             records_inserted=insert_row_count,
             deploy_artifact=deploy_artifact_payload,
+            scope_name=preparation.inputs.submission_context.scope_name,
+            run_id=preparation.inputs.submission_context.run_id,
         )

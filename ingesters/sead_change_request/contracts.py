@@ -26,6 +26,9 @@ APPROVED_DATATYPES: frozenset[str] = frozenset(
     }
 )
 
+FIXED_PROVIDER_TARGET_TABLE = "tbl_data_providers"
+"""SEAD table that holds the operator-reconciled data provider row."""
+
 
 class ChangeRowState(StrEnum):
     """Resolved row states used when building a change request."""
@@ -96,6 +99,32 @@ class SubmissionContext:
     issue_identifier: str | None = None
     author: str | None = None
     data_provider_code: str | None = None
+    scope_name: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class TrustedProjectContext:
+    """Backend-owned project facts for one Change Request run.
+
+    The backend builds this value from the authorized saved project, after checking the
+    registered provider-schema pair and the fixed provider row. It carries the values the
+    ingester must not take from caller input:
+
+    - ``scope_name`` is the registered SIMS scope for the saved pair;
+    - ``data_provider_id`` is the operator-reconciled SEAD provider ID from the project's
+      fixed row;
+    - ``business_keys`` maps each tracked entity to its ordered ``EntityConfig.keys``.
+
+    The ingester rejects conflicting caller values and never derives these values from
+    request metadata.
+    """
+
+    project_name: str
+    provider_code: str
+    provider_schema: str
+    scope_name: str
+    data_provider_id: int
+    business_keys: dict[str, tuple[str, ...]] = field(default_factory=dict)
 
 
 @dataclass(slots=True)

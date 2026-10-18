@@ -40,6 +40,10 @@ class ValidateRequest(BaseModel):
     )
 
     source: str = Field(..., description="Path to source file or data to validate")
+    project_name: str | None = Field(
+        default=None,
+        description="Authorized saved project name for ingesters that act on one project, such as SEAD Change Request",
+    )
     config: dict[str, Any] = Field(default_factory=dict, description="Optional configuration parameters for validation")
     submission_context: dict[str, Any] | None = Field(
         default=None, description="Optional submission context for ingesters that need operator metadata"
@@ -98,6 +102,10 @@ class IngestRequest(BaseModel):
     )
 
     source: str = Field(..., description="Path to source file or data to ingest")
+    project_name: str | None = Field(
+        default=None,
+        description="Authorized saved project name for ingesters that act on one project, such as SEAD Change Request",
+    )
     config: dict[str, Any] = Field(default_factory=dict, description="Configuration parameters for ingestion")
     submission_name: str = Field(..., description="Name for this submission")
     data_types: str = Field(..., description="Type of data being ingested (e.g., 'dendro', 'ceramics')")
@@ -133,6 +141,8 @@ class IngestResponse(BaseModel):
     submission_id: int | None = Field(None, description="Database submission ID if registered")
     output_path: str | None = Field(None, description="Path to output files")
     error_details: str | None = Field(None, description="Detailed error information when ingestion is incomplete or failed")
+    scope_name: str | None = Field(default=None, description="Effective SIMS scope used for this run")
+    run_id: str | None = Field(default=None, description="Effective run ID within the SIMS scope")
     deploy_artifact: dict[str, Any] | None = Field(
         default=None,
         description="In-memory deploy artifact containing SQL statements and package metadata",

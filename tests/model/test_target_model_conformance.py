@@ -594,6 +594,8 @@ def test_core_conformance_reports_known_gaps_for_full_arbodat_project() -> None:
     expected_errors = [
         ("CONDITIONAL_FK_AWAITING_RECONCILIATION", "location"),
         ("MISSING_REQUIRED_COLUMN", "relative_dating"),
+        ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "abundance_modification"),
+        ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "abundance_property"),
         ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "relative_dating"),
         ("UNEXPECTED_PUBLIC_ID", "relative_dating"),
     ]
@@ -619,8 +621,8 @@ def test_core_conformance_current_corpus_issue_families_are_stable() -> None:
     assert issue_summary == {
         "sead_arbodat_core": Counter(
             {
-                "MISSING_REQUIRED_COLUMN": 5,
                 "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 5,
+                "MISSING_REQUIRED_COLUMN": 5,
                 "MISSING_REQUIRED_ENTITY": 5,
                 "MISSING_BRIDGE_ENTITY": 1,
                 "CONDITIONAL_FK_AWAITING_RECONCILIATION": 1,
@@ -638,10 +640,10 @@ def test_core_conformance_current_corpus_issue_families_are_stable() -> None:
         ),
         "arbodat_full": Counter(
             {
+                "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 3,
+                "UNEXPECTED_PUBLIC_ID": 1,
                 "CONDITIONAL_FK_AWAITING_RECONCILIATION": 1,
                 "MISSING_REQUIRED_COLUMN": 1,
-                "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 1,
-                "UNEXPECTED_PUBLIC_ID": 1,
             }
         ),
     }
