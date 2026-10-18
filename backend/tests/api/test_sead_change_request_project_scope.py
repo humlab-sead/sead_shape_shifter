@@ -5,6 +5,7 @@ SIMS client and the target-database checker are replaced, so a failed check show
 an external effect happened.
 """
 
+import json
 from types import SimpleNamespace
 from typing import Any
 from uuid import UUID
@@ -25,6 +26,7 @@ from backend.app.services.project_provider_binding_service import ProjectProvide
 # pylint: disable=redefined-outer-name, unused-argument
 
 VALIDATE_PATH = "/api/v1/ingesters/sead_change_request/validate"
+INGEST_PATH = "/api/v1/ingesters/sead_change_request/ingest"
 
 TARGET_MODEL: dict[str, Any] = {
     "model": {"name": "Scope Test Model", "version": "0.1.0"},
@@ -54,6 +56,7 @@ class RecordingSimsClient:
         self.base_url = base_url
         self.scope_names: list[str] = []
         self.run_ids: list[str | None] = []
+        self.associated_change_requests: list[tuple[str, str]] = []
         RecordingSimsClient.instances.append(self)
 
     async def resolve(self, request: Any) -> Any:
@@ -71,7 +74,7 @@ class RecordingSimsClient:
         )
 
     async def associate_change_request(self, binding_set_uuid: str, change_request_name: str) -> None:  # pragma: no cover
-        raise AssertionError("validate must not associate a change request")
+        self.associated_change_requests.append((binding_set_uuid, change_request_name))
 
     async def get_capabilities(self) -> CapabilitiesResponse:
         """Return a permissive capability set for the entities used by these tests."""
@@ -192,6 +195,29 @@ def _validate_payload(project_name: str, source_path, *, nested_project_name: st
     }
 
 
+def _ingest_payload(
+    project_name: str,
+    source_path,
+    output_folder,
+    *,
+    deploy_strategy: str = "inline_insert",
+    staging_target_schema: str | None = "public",
+) -> dict[str, Any]:
+    """Build one Change Request ingest body with an isolated artifact directory."""
+    payload = _validate_payload(project_name, source_path)
+    payload.update(
+        {
+            "submission_name": "scope_delivery_1",
+            "data_types": "mal",
+            "output_folder": str(output_folder),
+            "deploy_strategy": deploy_strategy,
+        }
+    )
+    if deploy_strategy == "inline_staging" and staging_target_schema is not None:
+        payload["config"]["staging_target_schema"] = staging_target_schema
+    return payload
+
+
 async def _create_project(client: AsyncClient, payload: dict[str, Any]) -> None:
     response = await client.post("/api/v1/projects", json=payload)
     assert response.status_code == 201, response.text
@@ -272,3 +298,155 @@ async def test_unknown_project_is_rejected_without_metadata(tmp_path, monkeypatc
     assert response.status_code == 404
     assert "missing_project" not in response.text
     assert all(not client.scope_names for client in RecordingSimsClient.instances)
+
+
+@pytest.mark.parametrize("operation", ["validate", "ingest"])
+@pytest.mark.parametrize("locator", [None, "inaccessible_project"])
+@pytest.mark.asyncio
+async def test_change_request_routes_require_a_top_level_authorized_project(
+    tmp_path, monkeypatch, authorized_client, operation: str, locator: str | None
+):
+    """Nested project, provider, and scope values cannot authorize either route."""
+    monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+    source_path = _write_source_workbook(tmp_path)
+    output_folder = tmp_path / "rejected-output"
+    payload = (
+        _validate_payload(locator or "scope_alpha", source_path)
+        if operation == "validate"
+        else _ingest_payload(locator or "scope_alpha", source_path, output_folder)
+    )
+    if locator is None:
+        payload.pop("project_name")
+    else:
+        payload["project_name"] = locator
+    payload["submission_context"].update(
+        {
+            "project_name": "scope_alpha",
+            "data_provider_code": "test-provider",
+            "scope_name": "provider://test-provider/schema-one",
+        }
+    )
+    payload["config"]["sims_scope_name"] = "provider://spoofed/schema"
+    payload["config"]["data_provider_code"] = "test-provider"
+    path = VALIDATE_PATH if operation == "validate" else INGEST_PATH
+
+    response = await authorized_client.post(path, json=payload)
+
+    assert response.status_code == 404
+    assert "scope_alpha" not in response.text
+    assert all(not client.scope_names for client in RecordingSimsClient.instances)
+    assert all(not checker.row_exists_calls for checker in RecordingCollisionChecker.instances)
+    assert not output_folder.exists()
+
+
+@pytest.mark.parametrize("operation", ["validate", "ingest"])
+@pytest.mark.parametrize("pair_state", ["missing", "unregistered"])
+@pytest.mark.asyncio
+async def test_unresolved_saved_pair_fails_both_routes_before_side_effects(
+    tmp_path, monkeypatch, authorized_client, operation: str, pair_state: str
+):
+    """An incomplete or unregistered saved pair cannot reach external services or artifact writing."""
+    monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+    await _create_project(authorized_client, _project_payload("scope_gamma"))
+    project_file = tmp_path / "scope_gamma" / "shapeshifter.yml"
+    project_yaml = project_file.read_text(encoding="utf-8")
+    if pair_state == "missing":
+        project_yaml = project_yaml.replace("  provider_schema: schema-one\n", "", 1)
+    else:
+        project_yaml = project_yaml.replace("provider_schema: schema-one", "provider_schema: ghost-schema", 1)
+    project_file.write_text(project_yaml, encoding="utf-8")
+
+    source_path = _write_source_workbook(tmp_path)
+    output_folder = tmp_path / "unresolved-output"
+    payload = (
+        _validate_payload("scope_gamma", source_path)
+        if operation == "validate"
+        else _ingest_payload("scope_gamma", source_path, output_folder)
+    )
+    path = VALIDATE_PATH if operation == "validate" else INGEST_PATH
+
+    response = await authorized_client.post(path, json=payload)
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    if operation == "validate":
+        assert body["is_valid"] is False
+        assert body["errors"]
+    else:
+        assert body["success"] is False
+        assert body["error_details"]
+    assert all(not client.scope_names for client in RecordingSimsClient.instances)
+    assert all(not checker.row_exists_calls for checker in RecordingCollisionChecker.instances)
+    assert not output_folder.exists()
+
+
+@pytest.mark.parametrize("deploy_strategy", ["inline_insert", "copy_csv", "inline_staging"])
+@pytest.mark.asyncio
+async def test_ingest_response_artifact_manifest_and_sims_request_share_scope_and_run(
+    tmp_path, monkeypatch, authorized_client, deploy_strategy: str
+):
+    """All supported strategies write the same effective scope and run ID to every output."""
+    monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+    monkeypatch.chdir(tmp_path)
+    await _create_project(authorized_client, _project_payload(f"project_{deploy_strategy}"))
+    source_path = _write_source_workbook(tmp_path, f"{deploy_strategy}.xlsx")
+    output_folder = tmp_path / f"output_{deploy_strategy}"
+    payload = _ingest_payload(
+        f"project_{deploy_strategy}",
+        source_path,
+        output_folder,
+        deploy_strategy=deploy_strategy,
+    )
+
+    response = await authorized_client.post(INGEST_PATH, json=payload)
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["success"] is True, body.get("error_details")
+    scope_name = body["scope_name"]
+    run_id = body["run_id"]
+    assert scope_name == "provider://test-provider/schema-one"
+    assert run_id
+
+    artifact = body["deploy_artifact"]
+    assert artifact["metadata"]["scope_name"] == scope_name
+    assert artifact["metadata"]["run_id"] == run_id
+    assert artifact["metadata_artifact"]["scope_name"] == scope_name
+    assert artifact["metadata_artifact"]["run_id"] == run_id
+
+    manifest_paths = list((tmp_path / "output").rglob("manifest.json"))
+    assert len(manifest_paths) == 1
+    manifest = json.loads(manifest_paths[0].read_text(encoding="utf-8"))
+    assert manifest["scope_name"] == scope_name
+    assert manifest["run_id"] == run_id
+
+    sims_client = RecordingSimsClient.instances[-1]
+    assert sims_client.scope_names
+    assert set(sims_client.scope_names) == {scope_name}
+    assert sims_client.run_ids
+    assert set(sims_client.run_ids) == {run_id}
+
+
+@pytest.mark.asyncio
+async def test_inline_staging_without_schema_fails_without_writing_artifact(tmp_path, monkeypatch, authorized_client):
+    """A missing staging schema fails before an artifact bundle is written."""
+    monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+    await _create_project(authorized_client, _project_payload("scope_staging"))
+    source_path = _write_source_workbook(tmp_path)
+    output_folder = tmp_path / "missing-staging-schema"
+    payload = _ingest_payload(
+        "scope_staging",
+        source_path,
+        output_folder,
+        deploy_strategy="inline_staging",
+        staging_target_schema=None,
+    )
+
+    response = await authorized_client.post(INGEST_PATH, json=payload)
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["success"] is False
+    assert body["deploy_artifact"] is None
+    assert "staging_target_schema" in (body["error_details"] or "")
+    assert not output_folder.exists()

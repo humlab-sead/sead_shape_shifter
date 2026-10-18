@@ -850,7 +850,7 @@ These three actions are distinct:
 |--------------------|------------------------|-------------------------------------------------------------------------------------------------------------|
 | **Execute**        | Header button          | Runs the normalization pipeline and produces output files (CSV, Excel, ZIP, or database)                    |
 | **Dispatch**       | Project → Dispatch tab | Runs a configured ingester directly from the project workspace to deliver processed data to a target system |
-| **Data Ingestion** | Top-level page         | Runs any registered ingester independently of a project                                                     |
+| **Data Ingestion** | Top-level page         | Runs project-independent ingesters without a project                                                       |
 
 ## Dispatch Tab (in Project Workspace)
 
@@ -867,7 +867,8 @@ Dispatch requires that Execute has already produced output, or that a suitable o
 
 ## Data Ingestion Page
 
-The top-level **Data Ingestion** page provides the same ingester capability without being tied to a specific project.
+The top-level **Data Ingestion** page runs ingesters that do not require a saved project. It does not list SEAD Change
+Request because that workflow must use an authorized saved project.
 
 Use it for:
 - one-off ingestion runs
@@ -879,6 +880,9 @@ Workflow:
 2. Select an ingester from the list.
 3. Enter connection and configuration details.
 4. Run the ingester.
+
+To run a SEAD Change Request, open its saved project and use **Project → Dispatch**. That form fixes the project
+locator to the open project and shows the saved-project requirements before validation or ingestion.
 
 ## SEAD Change Request Requirements
 

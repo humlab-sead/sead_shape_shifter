@@ -639,7 +639,7 @@
                   </div>
                 </v-alert>
 
-                <ingester-form />
+                <ingester-form :project-name="projectName" :project-loading="projectLoading" />
               </v-card-text>
             </v-card>
           </v-window-item>

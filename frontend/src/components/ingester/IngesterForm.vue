@@ -5,7 +5,7 @@
     </v-card-title>
 
     <v-card-text>
-      <v-alert v-if="!selectedIngester" type="info" variant="tonal" class="mb-4">
+      <v-alert v-if="!selectedIngesterAllowed" type="info" variant="tonal" class="mb-4">
         Select a target workflow from the list below to configure dispatch settings.
       </v-alert>
 
@@ -22,7 +22,18 @@
         class="mb-4"
       />
 
-      <v-form v-if="selectedIngester" ref="formRef" v-model="formValid">
+      <v-alert
+        v-if="isSeadChangeRequest"
+        type="info"
+        variant="tonal"
+        class="mb-4"
+        data-test="change-request-requirements"
+      >
+        Change Request uses this saved project's registered provider-schema pair and fixed provider row. Every tracked
+        entity needs declared business keys; missing, blank, or duplicate keys block the run.
+      </v-alert>
+
+      <v-form v-if="selectedIngesterAllowed" ref="formRef" v-model="formValid">
         <v-text-field
           v-model="form.source"
           :label="isSeadChangeRequest ? 'Normalized Workbook Path *' : 'Source File Path *'"
@@ -60,16 +71,26 @@
           </div>
 
           <v-text-field
-            v-model="seadChangeRequest.project_name"
+            :model-value="effectiveProjectName"
             label="Project Name *"
-            hint="Used in deploy package metadata and bundle naming"
+            :hint="
+              hasRouteProject
+                ? 'Fixed to the saved project open in this Dispatch tab.'
+                : 'Used in deploy package metadata and bundle naming'
+            "
             persistent-hint
             :rules="[rules.required]"
             prepend-icon="mdi-folder-outline"
+            :readonly="hasRouteProject"
+            @update:model-value="updateProjectName"
           />
           <div class="text-caption text-medium-emphasis mb-2">
             {{
-              isProjectNameProjectDerived ? 'Auto-derived from the active project.' : 'Operator override for this run.'
+              hasRouteProject
+                ? 'Project locator is fixed to the open saved project.'
+                : isProjectNameProjectDerived
+                  ? 'Auto-derived from the active project.'
+                  : 'Operator override for this run.'
             }}
           </div>
 
@@ -385,14 +406,19 @@
         color="primary"
         variant="outlined"
         :loading="isValidating"
-        :disabled="!formValid || !selectedIngester"
+        :disabled="!formValid || !selectedIngesterAllowed || !canRunSelectedIngester"
         @click="handleValidate"
       >
         <v-icon start>mdi-check-circle</v-icon>
         Validate
       </v-btn>
 
-      <v-btn color="success" :loading="isIngesting" :disabled="!formValid || !selectedIngester" @click="handleIngest">
+      <v-btn
+        color="success"
+        :loading="isIngesting"
+        :disabled="!formValid || !selectedIngesterAllowed || !canRunSelectedIngester"
+        @click="handleIngest"
+      >
         <v-icon start>mdi-send</v-icon>
         Dispatch
       </v-btn>
@@ -418,6 +444,17 @@ import type {
   SubmissionContextInput,
   ValidateRequest,
 } from '@/types/ingester'
+
+interface Props {
+  excludedIngesterKeys?: string[]
+  projectName?: string
+  projectLoading?: boolean
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  excludedIngesterKeys: () => [],
+  projectLoading: false,
+})
 
 const ingesterStore = useIngesterStore()
 const dataSourceStore = useDataSourceStore()
@@ -496,8 +533,26 @@ const deployStrategy = ref('inline_insert')
 
 const ignoreColumnsText = ref('date_updated\n*_uuid\n(*')
 
-const availableIngesters = computed(() => ingesterStore.ingesters)
+const availableIngesters = computed(() =>
+  ingesterStore.ingesters.filter((ingester) => !props.excludedIngesterKeys.includes(ingester.key))
+)
 const isSeadChangeRequest = computed(() => selectedIngester.value?.key === 'sead_change_request')
+const selectedIngesterAllowed = computed(
+  () => !!selectedIngester.value && !props.excludedIngesterKeys.includes(selectedIngester.value.key)
+)
+const hasRouteProject = computed(() => props.projectName !== undefined)
+const routeProjectName = computed(() => props.projectName?.trim() ?? '')
+const effectiveProjectName = computed(() =>
+  hasRouteProject.value ? routeProjectName.value : seadChangeRequest.value.project_name.trim()
+)
+const projectMatchesRoute = computed(
+  () =>
+    !hasRouteProject.value ||
+    (!props.projectLoading && selectedProject.value?.metadata?.name?.trim() === routeProjectName.value)
+)
+const canRunSelectedIngester = computed(
+  () => !isSeadChangeRequest.value || (!!effectiveProjectName.value && projectMatchesRoute.value)
+)
 const ingesterConfig = computed<IngesterProjectConfig | null>(() => {
   if (!selectedProject.value || !selectedIngester.value) return null
   const ingesters = selectedProject.value.options?.ingesters || {}
@@ -833,6 +888,12 @@ function applyIngesterDefaults() {
   }
 }
 
+function updateProjectName(value: string | null) {
+  if (!hasRouteProject.value && value !== null) {
+    seadChangeRequest.value.project_name = value
+  }
+}
+
 function buildSubmissionContext(): SubmissionContextInput | undefined {
   if (!isSeadChangeRequest.value) {
     return undefined
@@ -840,7 +901,7 @@ function buildSubmissionContext(): SubmissionContextInput | undefined {
 
   return {
     submission_name: normalizeSubmissionName(form.value.submission_name),
-    project_name: seadChangeRequest.value.project_name.trim(),
+    project_name: effectiveProjectName.value,
     data_provider_code: dataProviderCode.value,
     timestamp: seadChangeRequest.value.timestamp,
     datatype: seadChangeRequest.value.datatype,
@@ -854,7 +915,7 @@ function buildSubmissionContext(): SubmissionContextInput | undefined {
 function buildValidateRequest(): ValidateRequest {
   return {
     source: form.value.source,
-    project_name: isSeadChangeRequest.value ? seadChangeRequest.value.project_name.trim() || undefined : undefined,
+    project_name: isSeadChangeRequest.value ? effectiveProjectName.value || undefined : undefined,
     config: form.value.config,
     submission_context: buildSubmissionContext(),
     deploy_strategy: isSeadChangeRequest.value ? deployStrategy.value : undefined,
@@ -864,7 +925,7 @@ function buildValidateRequest(): ValidateRequest {
 function buildIngestRequest(): IngestRequest {
   return {
     ...form.value,
-    project_name: isSeadChangeRequest.value ? seadChangeRequest.value.project_name.trim() || undefined : undefined,
+    project_name: isSeadChangeRequest.value ? effectiveProjectName.value || undefined : undefined,
     submission_name: normalizeSubmissionName(form.value.submission_name),
     data_types: isSeadChangeRequest.value ? seadChangeRequest.value.datatype : form.value.data_types.trim(),
     config: form.value.config,
