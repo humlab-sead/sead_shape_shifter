@@ -103,6 +103,7 @@ def business_key_errors(
     *,
     public_id: str | None = None,
     system_id_column: str = MANAGED_IDENTIFIER_COLUMN,
+    entity_label: str = "Tracked entity",
 ) -> list[str]:
     """Return validation messages for one entity table's declared business keys.
 
@@ -112,14 +113,20 @@ def business_key_errors(
 
     Returns an empty list when the table passes. Never raises for bad data.
     """
-    messages = _declaration_errors(entity_name, keys, public_id=public_id, system_id_column=system_id_column)
+    messages = _declaration_errors(
+        entity_name,
+        keys,
+        public_id=public_id,
+        system_id_column=system_id_column,
+        entity_label=entity_label,
+    )
     if messages:
         return messages
 
     missing_columns = [column for column in keys if column not in frame.columns]
     if missing_columns:
         return [
-            f"Tracked entity '{entity_name}' is missing declared business key column(s) "
+            f"{entity_label} '{entity_name}' is missing declared business key column(s) "
             + ", ".join(f"'{column}'" for column in missing_columns)
             + " in the transformed delivery"
         ]
@@ -131,14 +138,14 @@ def business_key_errors(
         try:
             business_id = business_id_for_row(keys, row)
         except BusinessKeyError as exc:
-            return [f"Tracked entity '{entity_name}' row '{row_index}': {exc}"]
+            return [f"{entity_label} '{entity_name}' row '{row_index}': {exc}"]
 
         previous_row = first_row_by_business_id.get(business_id)
         if previous_row is not None:
             if business_id not in seen_duplicates:
                 seen_duplicates.add(business_id)
                 messages.append(
-                    f"Tracked entity '{entity_name}' rows '{previous_row}' and '{row_index}' share one business key value; "
+                    f"{entity_label} '{entity_name}' rows '{previous_row}' and '{row_index}' share one business key value; "
                     "the transformed delivery must identify each row uniquely"
                 )
             continue
@@ -153,24 +160,25 @@ def _declaration_errors(
     *,
     public_id: str | None,
     system_id_column: str,
+    entity_label: str,
 ) -> list[str]:
     """Return validation messages for a declared key list itself."""
     messages: list[str] = []
     if not keys:
-        return [f"Tracked entity '{entity_name}' declares no business keys; declare ordered 'keys' in the project entity configuration"]
+        return [f"{entity_label} '{entity_name}' declares no business keys; declare ordered 'keys' in the project entity configuration"]
 
     blank_keys = [column for column in keys if not isinstance(column, str) or not column.strip()]
     if blank_keys:
-        messages.append(f"Tracked entity '{entity_name}' declares a blank business key column")
+        messages.append(f"{entity_label} '{entity_name}' declares a blank business key column")
 
     trimmed = [column.strip() for column in keys if isinstance(column, str) and column.strip()]
     duplicates = sorted({column for column in trimmed if trimmed.count(column) > 1})
     if duplicates:
-        messages.append(f"Tracked entity '{entity_name}' declares duplicate business key column(s): " + ", ".join(duplicates))
+        messages.append(f"{entity_label} '{entity_name}' declares duplicate business key column(s): " + ", ".join(duplicates))
 
     managed = [column for column in trimmed if column == system_id_column or (public_id and column == public_id)]
     if managed:
-        messages.append(f"Tracked entity '{entity_name}' cannot use managed identifier column(s) as business keys: " + ", ".join(managed))
+        messages.append(f"{entity_label} '{entity_name}' cannot use managed identifier column(s) as business keys: " + ", ".join(managed))
     return messages
 
 

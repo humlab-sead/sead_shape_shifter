@@ -1,7 +1,7 @@
 """Project service for managing entities."""
 
 import threading
-from contextlib import nullcontext
+from contextlib import ExitStack, nullcontext
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -787,7 +787,11 @@ class ProjectService:
         """
         safe_source_name: str = self.utils.validate_project_name(source_name)
         safe_target_name: str = self.utils.validate_project_name(target_name)
-        with self._get_lock(safe_source_name):
+        project_names = sorted({safe_source_name, safe_target_name})
+        with ExitStack() as lock_stack:
+            for project_name in project_names:
+                lock_stack.enter_context(self._get_lock(project_name))
+
             source_project = self.load_project(safe_source_name, force_reload=True)
             if not source_project.metadata:
                 raise ConfigurationError(message=f"Project '{safe_source_name}' has no metadata")
@@ -797,7 +801,7 @@ class ProjectService:
                     "provider_schema": source_project.metadata.provider_schema,
                 }
             )
-            return self.operations.copy_project(safe_source_name, safe_target_name)
+            return self.operations.copy_project(safe_source_name, safe_target_name, project_locks_held=True)
 
     def update_metadata(
         self,
