@@ -10,15 +10,18 @@
     <v-row>
       <!-- Ingester List (Left Column) -->
       <v-col cols="12" md="4">
-        <IngesterList />
+        <IngesterList :excluded-ingester-keys="excludedIngesterKeys" />
       </v-col>
 
       <!-- Ingester Form (Right Column) -->
       <v-col cols="12" md="8">
-        <v-alert v-if="!selectedIngester" type="info" variant="tonal">
+        <v-alert type="info" variant="tonal" class="mb-4" data-test="change-request-dispatch-link">
+          SEAD Change Request runs require a saved project. Open that project and use its Dispatch tab.
+        </v-alert>
+        <v-alert v-if="!selectedAvailableIngester" type="info" variant="tonal">
           Select an ingester from the list to begin
         </v-alert>
-        <IngesterForm v-else />
+        <IngesterForm v-else :excluded-ingester-keys="excludedIngesterKeys" />
       </v-col>
     </v-row>
 
@@ -30,7 +33,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useIngesterStore } from '@/stores/ingester'
 import IngesterList from '@/components/ingester/IngesterList.vue'
@@ -39,6 +42,25 @@ import IngesterForm from '@/components/ingester/IngesterForm.vue'
 const ingesterStore = useIngesterStore()
 const { selectedIngester, loading } = storeToRefs(ingesterStore)
 const { fetchIngesters } = ingesterStore
+const excludedIngesterKeys = ['sead_change_request']
+const availableIngesters = computed(() =>
+  ingesterStore.ingesters.filter((ingester) => !excludedIngesterKeys.includes(ingester.key))
+)
+const selectedAvailableIngester = computed(
+  () => availableIngesters.value.find((ingester) => ingester.key === selectedIngester.value?.key) ?? null
+)
+
+watch(
+  [availableIngesters, selectedIngester],
+  ([available, selected]) => {
+    if (selected && available.some((ingester) => ingester.key === selected.key)) {
+      return
+    }
+
+    ingesterStore.selectIngester(available[0]?.key ?? '')
+  },
+  { immediate: true }
+)
 
 onMounted(async () => {
   await fetchIngesters()

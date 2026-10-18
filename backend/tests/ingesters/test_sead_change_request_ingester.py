@@ -58,8 +58,12 @@ class FakeSimsClient:
         self.target_ids = target_ids or {}
         self.approved_aggregate_ids: list[int] = []
         self.associated_change_requests: list[tuple[str, str]] = []
+        self.scope_names: list[str | None] = []
+        self.run_ids: list[str | None] = []
 
     async def resolve_batch(self, items: list[SimsResolveItem], submission_context) -> dict:
+        self.scope_names.append(submission_context.scope_name)
+        self.run_ids.append(submission_context.run_id)
         outcomes = []
         for item in items:
             if item.approved_aggregate_id is not None:
@@ -2162,8 +2166,9 @@ class TestSeadChangeRequestIngesterStaging:
 
     @pytest.mark.asyncio
     async def test_ingest_emits_staging_artifact_without_child_id_reservation(self, tmp_path):
-        """Staging defers the child ID and never asks the allocator for one."""
+        """Staging defers child IDs and never asks the allocator for one."""
         allocator = FakeTargetIdAllocator(target_id=9999)
+        sims_client = FakeSimsClient(target_id=501)
         ingester = SeadChangeRequestIngester(
             IngesterConfig(
                 host="localhost",
@@ -2179,7 +2184,7 @@ class TestSeadChangeRequestIngesterStaging:
                     },
                     "target_model": staging_target_model(),
                     "submission_context": minimal_submission_context(),
-                    "sims_client": FakeSimsClient(target_id=501),
+                    "sims_client": sims_client,
                     "reconciliation_client": FakeReconciliationClient(target_id=7001),
                     "target_id_allocator": allocator,
                     "deploy_strategy": "inline_staging",
@@ -2192,6 +2197,7 @@ class TestSeadChangeRequestIngesterStaging:
 
         assert result.success is True, result.error_details
         assert not allocator.requests
+        assert result.deploy_artifact is not None
         deploy_sql = result.deploy_artifact["deploy_sql"]
         assert result.deploy_artifact["metadata"]["deploy_strategy"] == "inline_staging"
         assert '"public"."tbl_analysis_entities"' in deploy_sql
@@ -2260,7 +2266,25 @@ class TestDeclaredBusinessKeys:
     """Tracked business keys must pass validation before any SIMS request."""
 
     @staticmethod
-    def _ingester(tmp_path, *, keys: tuple[str, ...], frame: pd.DataFrame, sims_client: CountingSimsClient):
+    def _ingester(
+        tmp_path,
+        *,
+        keys: tuple[str, ...],
+        frame: pd.DataFrame,
+        sims_client: CountingSimsClient,
+        deploy_strategy: str | None = None,
+    ):
+        extra = {
+            "tables": {"sample": frame},
+            "target_model": minimal_target_model(sample={"role": "fact", "public_id": "sample_id", "target_table": "tbl_samples"}),
+            "submission_context": minimal_submission_context(),
+            "trusted_project_context": minimal_trusted_project_context(business_keys={"sample": keys}),
+            "sims_client": sims_client,
+        }
+        if deploy_strategy is not None:
+            extra["deploy_strategy"] = deploy_strategy
+            if deploy_strategy == "inline_staging":
+                extra["staging_target_schema"] = "public"
         return SeadChangeRequestIngester(
             IngesterConfig(
                 host="localhost",
@@ -2268,13 +2292,7 @@ class TestDeclaredBusinessKeys:
                 dbname="test_db",
                 user="test_user",
                 output_folder=str(tmp_path),
-                extra={
-                    "tables": {"sample": frame},
-                    "target_model": minimal_target_model(sample={"role": "fact", "public_id": "sample_id"}),
-                    "submission_context": minimal_submission_context(),
-                    "trusted_project_context": minimal_trusted_project_context(business_keys={"sample": keys}),
-                    "sims_client": sims_client,
-                },
+                extra=extra,
             )
         )
 
@@ -2343,13 +2361,15 @@ class TestDeclaredBusinessKeys:
         assert sims_client.batch_calls == 0
 
     @pytest.mark.asyncio
-    async def test_accepts_unique_keys_and_reports_the_effective_scope_and_run(self, tmp_path):
+    @pytest.mark.parametrize("deploy_strategy", ["inline_insert", "copy_csv", "inline_staging"])
+    async def test_accepts_unique_keys_and_reports_the_effective_scope_and_run(self, tmp_path, deploy_strategy):
         sims_client = CountingSimsClient(target_id=501)
         ingester = self._ingester(
             tmp_path,
             keys=("sample_code",),
             frame=pd.DataFrame({"sample_id": [None], "sample_code": ["S1"]}),
             sims_client=sims_client,
+            deploy_strategy=deploy_strategy,
         )
 
         result = await ingester.ingest("submission.xlsx")
@@ -2359,8 +2379,14 @@ class TestDeclaredBusinessKeys:
         assert result.scope_name == TEST_SCOPE_NAME
         assert result.run_id
         assert result.deploy_artifact is not None
-        manifest = result.deploy_artifact["metadata_artifact"]
-        assert manifest["scope_name"] == result.scope_name
-        assert manifest["run_id"] == result.run_id
+        assert set(sims_client.scope_names) == {result.scope_name}
+        assert set(sims_client.run_ids) == {result.run_id}
+        manifest_metadata = result.deploy_artifact["metadata_artifact"]
+        assert manifest_metadata["scope_name"] == result.scope_name
+        assert manifest_metadata["run_id"] == result.run_id
         assert result.deploy_artifact["metadata"]["scope_name"] == result.scope_name
         assert result.deploy_artifact["metadata"]["run_id"] == result.run_id
+        manifest_path = next(tmp_path.rglob("manifest.json"))
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        assert manifest["scope_name"] == result.scope_name
+        assert manifest["run_id"] == result.run_id

@@ -1014,8 +1014,12 @@ class TestInlineStagingRejections:
         assert artifact.statements == []
 
 
-def test_manifest_records_the_effective_scope_and_run_id():
-    """The persisted manifest carries the same scope and run ID as the runtime metadata."""
+@pytest.mark.parametrize(
+    ("deploy_strategy", "target_schema"),
+    [("inline_insert", None), ("copy_csv", None), ("inline_staging", "public")],
+)
+def test_manifest_records_the_effective_scope_and_run_id(deploy_strategy: str, target_schema: str | None):
+    """Every deploy strategy carries the same scope and run ID in its runtime and manifest metadata."""
     submission_context = SubmissionContext(
         submission_name="test-submission",
         project_name="test-project",
@@ -1034,10 +1038,11 @@ def test_manifest_records_the_effective_scope_and_run_id():
                 frame=frame,
                 row_states=pd.Series([ChangeRowState.NEWLY_ALLOCATED_ENTITY], index=frame.index, name="_row_state"),
             )
-        }
+        },
+        target_schema=target_schema,
     )
 
-    artifact = build_deploy_artifact(package, target_model, submission_context, strategy="inline_insert")
+    artifact = build_deploy_artifact(package, target_model, submission_context, strategy=deploy_strategy)
 
     assert artifact.metadata["scope_name"] == "provider://mal/archeobotany/arbodat-pilot"
     assert artifact.metadata["run_id"] == "run-abc-123"
