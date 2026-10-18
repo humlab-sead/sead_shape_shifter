@@ -267,6 +267,8 @@ describe('useProjects', () => {
       const store = useProjectStore()
       const createRequest: ProjectCreateRequest = {
         name: 'new-project',
+        data_provider_code: 'test-provider',
+        provider_schema: 'schema-one',
       }
       const mockProject: Project = {
         entities: {},
@@ -297,6 +299,8 @@ describe('useProjects', () => {
       const { create } = useProjects({ autoFetch: false })
       const createRequest: ProjectCreateRequest = {
         name: 'invalid',
+        data_provider_code: 'test-provider',
+        provider_schema: 'schema-one',
       }
 
       await expect(create(createRequest)).rejects.toThrow('Create failed')

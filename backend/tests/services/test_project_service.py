@@ -18,6 +18,7 @@ from backend.app.services.project.entity_persistence_strategies import (
     EntityPersistenceStrategyRegistry,
     FixedEntityPersistenceStrategy,
 )
+from backend.app.services.project_provider_binding_service import ProjectProviderBindingError
 from backend.app.services.project_service import (
     ProjectService,
     get_project_service,
@@ -45,6 +46,8 @@ class TestProjectService:
             "name": "test",
             "description": "Test configuration",
             "version": "1.0.0",
+            "data_provider_code": "test-provider",
+            "provider_schema": "schema-one",
             "default_entity": "sample",
             "file_path": "test.yml",
             "entity_count": 1,
@@ -380,17 +383,107 @@ options:
 
     def test_create_configuration_success(self, service: ProjectService):
         """Test creating new configuration."""
-        config = service.create_project("newconfig")
+        config = service.create_project("newconfig", data_provider_code="test-provider", provider_schema="schema-one")
 
         assert config.metadata
         assert config.metadata.name == "newconfig"
         # New structure: project_name/shapeshifter.yml
         assert (service.projects_dir / "newconfig" / "shapeshifter.yml").exists()
 
+    def test_create_rejects_unregistered_pair_before_creating_directory(self, service: ProjectService):
+        with pytest.raises(ProjectProviderBindingError):
+            service.create_project("invalid-pair", data_provider_code="test-provider", provider_schema="unknown-schema")
+
+        assert not (service.projects_dir / "invalid-pair").exists()
+
+    def test_create_rejects_missing_pair_before_creating_directory(self, service: ProjectService):
+        with pytest.raises(ProjectProviderBindingError):
+            service.create_project("missing-pair")
+
+        assert not (service.projects_dir / "missing-pair").exists()
+
+    def test_projects_can_share_provider_and_use_distinct_schemas(self, service: ProjectService):
+        first = service.create_project("first", data_provider_code="test-provider", provider_schema="schema-one")
+        second = service.create_project("second", data_provider_code="test-provider", provider_schema="schema-two")
+
+        assert first.metadata and first.metadata.provider_schema == "schema-one"
+        assert second.metadata and second.metadata.provider_schema == "schema-two"
+
+    def test_copy_rejects_unbound_source_before_creating_target(self, service: ProjectService):
+        source_dir = service.projects_dir / "unbound"
+        source_dir.mkdir()
+        (source_dir / "shapeshifter.yml").write_text(
+            "metadata:\n  type: shapeshifter-project\n  name: unbound\nentities: {}\noptions: {}\n",
+            encoding="utf-8",
+        )
+
+        with pytest.raises(ProjectProviderBindingError):
+            service.copy_project("unbound", "unbound-copy")
+
+        assert not (service.projects_dir / "unbound-copy").exists()
+
+    def test_save_allows_first_assignment_to_legacy_project(self, service: ProjectService):
+        service.state.get.return_value = None
+        project_dir = service.projects_dir / "legacy"
+        project_dir.mkdir()
+        (project_dir / "shapeshifter.yml").write_text(
+            "metadata:\n  type: shapeshifter-project\n  name: legacy\nentities: {}\noptions: {}\n",
+            encoding="utf-8",
+        )
+        project = service.load_project("legacy")
+        assert project.metadata
+        project.metadata.data_provider_code = "test-provider"
+        project.metadata.provider_schema = "schema-one"
+
+        service.save_project(project, create_backup=False)
+
+        saved = yaml.safe_load((project_dir / "shapeshifter.yml").read_text(encoding="utf-8"))
+        assert saved["metadata"]["data_provider_code"] == "test-provider"
+        assert saved["metadata"]["provider_schema"] == "schema-one"
+
+    def test_save_rejects_changed_pair_without_backup_or_file_change(self, service: ProjectService):
+        project = service.create_project("bound", data_provider_code="test-provider", provider_schema="schema-one")
+        assert project.metadata
+        project_path = service.projects_dir / "bound" / "shapeshifter.yml"
+        original = project_path.read_bytes()
+        project.metadata.provider_schema = "schema-two"
+
+        with pytest.raises(ProjectProviderBindingError):
+            service.save_project(project, create_backup=True)
+
+        assert project_path.read_bytes() == original
+        assert not (project_path.parent / "backups").exists()
+
+    def test_save_rejects_stale_unbound_snapshot_after_first_assignment(self, service: ProjectService):
+        service.state.get.return_value = None
+        project_dir = service.projects_dir / "legacy"
+        project_dir.mkdir()
+        project_path = project_dir / "shapeshifter.yml"
+        project_path.write_text(
+            "metadata:\n  type: shapeshifter-project\n  name: legacy\nentities: {}\noptions: {}\n",
+            encoding="utf-8",
+        )
+
+        first_snapshot = service.load_project("legacy")
+        stale_snapshot = deepcopy(first_snapshot)
+        assert first_snapshot.metadata and stale_snapshot.metadata
+        first_snapshot.metadata.data_provider_code = "test-provider"
+        first_snapshot.metadata.provider_schema = "schema-one"
+        service.save_project(first_snapshot, create_backup=False)
+        after_assignment = project_path.read_bytes()
+
+        stale_snapshot.metadata.data_provider_code = "test-provider"
+        stale_snapshot.metadata.provider_schema = "schema-two"
+        with pytest.raises(ProjectProviderBindingError):
+            service.save_project(stale_snapshot, create_backup=True)
+
+        assert project_path.read_bytes() == after_assignment
+        assert not (project_dir / "backups").exists()
+
     def test_create_configuration_with_entities(self, service: ProjectService):
         """Test creating configuration with initial entities."""
         entities = {"entity1": {"source": "table1"}}
-        config = service.create_project("newconfig", entities=entities)
+        config = service.create_project("newconfig", entities=entities, data_provider_code="test-provider", provider_schema="schema-one")
 
         assert "entity1" in config.entities
         assert config.metadata
@@ -404,11 +497,11 @@ options:
         (existing_dir / "shapeshifter.yml").touch()
 
         with pytest.raises(ResourceConflictError, match="already exists"):
-            service.create_project("existing")
+            service.create_project("existing", data_provider_code="test-provider", provider_schema="schema-one")
 
     def test_create_configuration_sets_metadata(self, service: ProjectService):
         """Test create sets proper metadata."""
-        config = service.create_project("test")
+        config = service.create_project("test", data_provider_code="test-provider", provider_schema="schema-one")
         assert config.metadata
         assert config.metadata.version == "1.0.0"
         assert config.metadata.entity_count == 0
@@ -431,7 +524,7 @@ options:
         ]
 
         for name in test_names:
-            config = service.create_project(name)
+            config = service.create_project(name, data_provider_code="test-provider", provider_schema="schema-one")
 
             # Verify filename is correct (not truncated) - new structure
             expected_file = service.projects_dir / name / "shapeshifter.yml"
@@ -1091,6 +1184,8 @@ metadata:
   name: test_project
   description: Test project
   version: 1.0.0
+  data_provider_code: test-provider
+  provider_schema: schema-one
 
 entities:
   sample:
@@ -1158,6 +1253,8 @@ metadata:
   type: shapeshifter-project
   name: category/source_project
   version: 1.0.0
+  data_provider_code: test-provider
+  provider_schema: schema-one
 entities: {}
 options: {}
 """)
@@ -1580,7 +1677,7 @@ class TestProjectServicePathContainment:
 
     def test_create_namespaced_locator_works(self, service: ProjectService, temp_config_dir: Path):
         """A namespaced locator (arbodat:arbodat-copy) still creates the nested directory."""
-        config = service.create_project("arbodat:arbodat-copy")
+        config = service.create_project("arbodat:arbodat-copy", data_provider_code="test-provider", provider_schema="schema-one")
         assert config.metadata
         assert config.metadata.name == "arbodat:arbodat-copy"
         assert (temp_config_dir / "arbodat" / "arbodat-copy" / "shapeshifter.yml").exists()

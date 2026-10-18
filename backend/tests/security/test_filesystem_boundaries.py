@@ -42,7 +42,10 @@ def reset_execution_services() -> Iterator[None]:
 async def project_with_outputs(authorized_client, reset_execution_services) -> tuple[AsyncClient, Path]:
     """Create a project and seed its outputs directory."""
     client = authorized_client
-    create_response = await client.post("/api/v1/projects", json={"name": "demo", "entities": {}})
+    create_response = await client.post(
+        "/api/v1/projects",
+        json={"name": "demo", "data_provider_code": "test-provider", "provider_schema": "schema-one", "entities": {}},
+    )
     assert create_response.status_code in (200, 201), create_response.text
 
     # authorized_client points PROJECTS_DIR at its tmp_path; resolve the same way.

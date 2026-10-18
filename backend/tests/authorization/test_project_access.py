@@ -100,7 +100,11 @@ async def test_project_creation_removes_filesystem_project_when_owner_registrati
     monkeypatch.setattr(projects, "get_project_service", lambda: project_service)
 
     with pytest.raises(HTTPException) as error:
-        await projects.create_project(ProjectCreateRequest(name="project-a"), _principal(), MagicMock())
+        await projects.create_project(
+            ProjectCreateRequest(name="project-a", data_provider_code="test-provider", provider_schema="schema-one"),
+            _principal(),
+            MagicMock(),
+        )
 
     assert error.value.status_code == 500
     project_service.delete_project.assert_called_once_with("project-a")

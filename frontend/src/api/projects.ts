@@ -7,6 +7,8 @@ import { apiClient, apiRequest } from './client'
 
 export interface ProjectCreateRequest {
   name: string
+  data_provider_code: string
+  provider_schema: string
   entities?: Record<string, unknown>
 }
 
@@ -30,6 +32,8 @@ export interface MetadataUpdateRequest {
   version?: string | null
   default_entity?: string | null
   target_model?: string | null
+  data_provider_code?: string | null
+  provider_schema?: string | null
 }
 
 export interface TargetModelFileOption {
@@ -65,7 +69,7 @@ export const projectsApi = {
 
   /**
    * Force reload project from disk, invalidating server-side cache
-   * 
+   *
    * Useful when YAML file has been modified externally (manual edit, git pull, etc.)
    */
   refresh: async (name: string): Promise<Project> => {
@@ -227,7 +231,7 @@ export const projectsApi = {
     if (extensions && extensions.length > 0) {
       extensions.forEach((ext) => params.append('ext', ext))
     }
-    
+
     const query = params.toString()
     const url = query ? `/projects/${name}/files?${query}` : `/projects/${name}/files`
 
@@ -305,7 +309,10 @@ export const projectsApi = {
   /**
    * Download target model documentation in specified format
    */
-  downloadTargetModelDocs: async (name: string, format: 'html' | 'markdown' | 'excel' | 'schema-reference'): Promise<Blob> => {
+  downloadTargetModelDocs: async (
+    name: string,
+    format: 'html' | 'markdown' | 'excel' | 'schema-reference'
+  ): Promise<Blob> => {
     const response = await apiClient.get(`/projects/${name}/target-model-docs`, {
       params: { format },
       responseType: 'blob',

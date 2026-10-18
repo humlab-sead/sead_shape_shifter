@@ -102,7 +102,16 @@ This section walks through the simplest successful workflow.
 1. Open the **Projects** page.
 2. Click **New Project**.
 3. Enter a project name.
-4. Open the new project.
+4. Select a registered **Data Provider** and one of its **Provider Schemas**.
+5. Click **Create**, then open the new project.
+
+The provider and schema must be a registered pair. If the provider list cannot be loaded or contains no entries, the dialog disables project creation until the registry is available.
+
+### Assign a Pair to an Existing Project
+
+An existing project without a provider pair can receive its first assignment in the **Metadata** tab. Select a registered provider and one of its schemas, then save. After the assignment succeeds, both values are shown as read-only. Application saves and raw YAML edits cannot change or remove the pair; direct file changes require repository review.
+
+Projects already checked into the repository may remain unbound until the planned Phase 4 migration. Run **YAML Validation** to see missing, partial, blank, or unregistered provider values reported under project metadata.
 
 ---
 
@@ -1176,4 +1185,3 @@ These focus on:
 
 **Audience**: End Users, Data Managers, Integrators
 **Focus**: Workflow-Oriented User Documentation
-

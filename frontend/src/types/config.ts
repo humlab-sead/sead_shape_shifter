@@ -9,6 +9,7 @@ export interface ProjectMetadata {
   description?: string | null
   version?: string | null
   data_provider_code?: string | null
+  provider_schema?: string | null
   file_path?: string | null
   entity_count: number
   created_at?: string | null
@@ -59,6 +60,8 @@ export interface ProjectListItem {
 
 export interface ProjectCreateRequest {
   name: string
+  data_provider_code: string
+  provider_schema: string
   entities?: Record<string, Entity>
   options?: Record<string, any>
 }

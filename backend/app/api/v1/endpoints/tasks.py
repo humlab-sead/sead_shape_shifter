@@ -9,6 +9,7 @@ from loguru import logger
 from backend.app.authorization.dependencies import require_project
 from backend.app.authorization.models import Action, AuthorizedResource
 from backend.app.core.config import settings
+from backend.app.exceptions import ConfigurationError
 from backend.app.mappers.project_name_mapper import ProjectNameMapper
 from backend.app.models.task import ProjectTaskStatus, TaskNoteRequest, TaskNoteResponse, TaskUpdateResponse
 from backend.app.services.project_service import get_project_service  # pylint: disable=import-outside-toplevel
@@ -518,43 +519,39 @@ async def migrate_tasks_to_sidecar(
         yaml_service = get_yaml_service()
         sidecar_manager = TaskListSidecarManager(yaml_service)
 
-        # Check if sidecar already exists
-        if sidecar_manager.sidecar_exists(filename):
-            logger.info(f"Sidecar already exists for '{name}' - skipping migration")
-            return {
-                "success": True,
-                "project_name": name,
-                "sidecar_path": str(sidecar_manager.get_sidecar_path(filename)),
-                "migrated": False,
-                "message": "Sidecar already exists - no migration needed",
-            }
-
-        # Load project data
-        yaml_service = get_yaml_service()
-        project_data = yaml_service.load(filename)
-
-        # Check if task_list exists in main file
-        if "task_list" not in project_data:
-            logger.info(f"No task_list in main file for '{name}' - skipping migration")
-            return {
-                "success": True,
-                "project_name": name,
-                "sidecar_path": str(sidecar_manager.get_sidecar_path(filename)),
-                "migrated": False,
-                "message": "No task_list in main file - no migration needed",
-            }
-
-        # Perform migration
-        sidecar_manager.save_task_list(filename, __import__("src.model", fromlist=["TaskList"]).TaskList(project_data.get("task_list", {})))
-
-        # Update main project file (remove task_list)
-        project_data_updated = dict(project_data)
-        del project_data_updated["task_list"]
-        yaml_service.save(project_data_updated, filename, create_backup=True)
-
-        # Invalidate cache to force reload
         project_service = get_project_service()
-        project_service.state.invalidate(authorized_project.resource.locator)
+        with project_service._get_lock(authorized_project.resource.locator):
+            if sidecar_manager.sidecar_exists(filename):
+                logger.info(f"Sidecar already exists for '{name}' - skipping migration")
+                return {
+                    "success": True,
+                    "project_name": name,
+                    "sidecar_path": str(sidecar_manager.get_sidecar_path(filename)),
+                    "migrated": False,
+                    "message": "Sidecar already exists - no migration needed",
+                }
+
+            project_data = yaml_service.load(filename)
+            if "task_list" not in project_data:
+                logger.info(f"No task_list in main file for '{name}' - skipping migration")
+                return {
+                    "success": True,
+                    "project_name": name,
+                    "sidecar_path": str(sidecar_manager.get_sidecar_path(filename)),
+                    "migrated": False,
+                    "message": "No task_list in main file - no migration needed",
+                }
+
+            project_data_updated = dict(project_data)
+            del project_data_updated["task_list"]
+            project_service.validate_project_file_write(filename, project_data_updated)
+
+            sidecar_manager.save_task_list(
+                filename,
+                __import__("src.model", fromlist=["TaskList"]).TaskList(project_data.get("task_list", {})),
+            )
+            yaml_service.save(project_data_updated, filename, create_backup=True)
+            project_service.state.invalidate(authorized_project.resource.locator)
 
         logger.info(f"Successfully migrated task_list to sidecar for '{name}'")
 
@@ -568,6 +565,8 @@ async def migrate_tasks_to_sidecar(
 
     except HTTPException:
         raise
+    except ConfigurationError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Migration failed for '{name}': {e}")
         raise HTTPException(status_code=500, detail=f"Migration failed: {str(e)}") from e

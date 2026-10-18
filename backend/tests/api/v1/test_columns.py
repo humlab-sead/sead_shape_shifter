@@ -40,7 +40,15 @@ def reset_column_test_services():
 
 
 async def _create_project(client) -> None:
-    response = await client.post("/api/v1/projects", json={"name": "test_project", "entities": _PROJECT_ENTITIES})
+    response = await client.post(
+        "/api/v1/projects",
+        json={
+            "name": "test_project",
+            "data_provider_code": "test-provider",
+            "provider_schema": "schema-one",
+            "entities": _PROJECT_ENTITIES,
+        },
+    )
     assert response.status_code == 201, response.text
 
 

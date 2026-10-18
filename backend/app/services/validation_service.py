@@ -9,6 +9,7 @@ from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.mappers.validation_mapper import ValidationMapper
 from backend.app.models.project import Project
 from backend.app.models.validation import DataValidationMode, ValidationError, ValidationResult
+from backend.app.services.project_provider_binding_service import ProjectProviderBindingService
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.services.shapeshift_service import ShapeShiftService
 from src.configuration import resolve_directives
@@ -29,6 +30,7 @@ class ValidationService:
     def __init__(
         self,
         data_orchestrator_factory: Callable[[], "DataValidationOrchestrator"] | None = None,
+        project_provider_binding_service: ProjectProviderBindingService | None = None,
     ) -> None:
         """
         Initialize validation service.
@@ -38,6 +40,7 @@ class ValidationService:
                                       If None, uses default factory (lazy import to avoid circular dependency).
         """
         self._data_orchestrator_factory = data_orchestrator_factory
+        self._project_provider_binding_service = project_provider_binding_service or ProjectProviderBindingService()
 
     async def validate_project_data(
         self,
@@ -128,6 +131,7 @@ class ValidationService:
             ValidationResult with errors and warnings
         """
         logger.debug("Validating project")
+        provider_errors = self._project_provider_binding_service.validation_errors((project_cfg or {}).get("metadata"))
 
         # Resolve directives before validation (Core layer requirement)
         # Specifications expect fully resolved config
@@ -147,7 +151,8 @@ class ValidationService:
             # not as a 500 internal server error.
             return ValidationResult(
                 is_valid=False,
-                errors=[
+                errors=provider_errors
+                + [
                     ValidationError(
                         severity="error",
                         entity=None,
@@ -160,17 +165,18 @@ class ValidationService:
             )
 
         specification = CompositeProjectSpecification(project_cfg)
-        is_valid: bool = specification.is_satisfied_by()
+        specification.is_satisfied_by()
+        validation_errors = [self._map_issue(error) for error in specification.errors] + provider_errors
 
         result = ValidationResult(
-            is_valid=is_valid,
-            errors=[self._map_issue(error) for error in specification.errors],
+            is_valid=not validation_errors,
+            errors=validation_errors,
             warnings=[self._map_issue(warning) for warning in specification.warnings],
             error_count=len(specification.errors),
             warning_count=len(specification.warnings),
         )
 
-        if is_valid:
+        if result.is_valid:
             logger.info("Configuration validation passed")
         else:
             error_count: int = len(specification.errors)

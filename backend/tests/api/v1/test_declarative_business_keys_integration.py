@@ -41,7 +41,15 @@ def _error_messages(payload: dict) -> list[str]:
 
 async def _create_project(client, name: str, entities: dict) -> Path:
     """Create a project through the protected API and return its YAML path."""
-    response = await client.post("/api/v1/projects", json={"name": name, "entities": entities})
+    response = await client.post(
+        "/api/v1/projects",
+        json={
+            "name": name,
+            "data_provider_code": "test-provider",
+            "provider_schema": "schema-one",
+            "entities": entities,
+        },
+    )
     assert response.status_code == 201, response.text
     return settings.PROJECTS_DIR / name / "shapeshifter.yml"
 

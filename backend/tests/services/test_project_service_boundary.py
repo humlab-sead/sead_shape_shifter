@@ -13,6 +13,7 @@ import pytest
 
 from backend.app.core.config import settings
 from backend.app.models.project import Project, ProjectMetadata
+from backend.app.services.project_provider_binding_service import ProjectProviderBindingError
 from backend.app.services.project_service import ProjectService
 from backend.app.services.yaml_service import YamlService
 
@@ -109,6 +110,31 @@ class TestSaveMetadataBoundary:
         service.save_metadata_boundary("test-project", {"name": "test-project"})
         cast(MagicMock, service.state.invalidate).assert_called_once_with("test-project")
 
+    def test_preserves_pair_and_rejects_pair_changes(self, service: ProjectService, project_file: Path) -> None:
+        bound_yaml = FIXTURE_YAML.replace(
+            "  version: 1.0.0\n",
+            "  version: 1.0.0\n  data_provider_code: test-provider\n  provider_schema: schema-one\n",
+        )
+        project_file.write_text(bound_yaml, encoding="utf-8")
+        metadata = {
+            "name": "test-project",
+            "version": "2.0.0",
+            "description": "Updated",
+            "data_provider_code": "test-provider",
+            "provider_schema": "schema-one",
+        }
+
+        service.save_metadata_boundary("test-project", metadata)
+        data = YamlService().load(project_file)
+        assert data["metadata"]["data_provider_code"] == "test-provider"
+        assert data["metadata"]["provider_schema"] == "schema-one"
+
+        original = project_file.read_bytes()
+        metadata["provider_schema"] = "schema-two"
+        with pytest.raises(ProjectProviderBindingError):
+            service.save_metadata_boundary("test-project", metadata)
+        assert project_file.read_bytes() == original
+
 
 # ---------------------------------------------------------------------------
 # save_options_boundary
@@ -140,6 +166,21 @@ class TestSaveOptionsBoundary:
     def test_invalidates_state_cache(self, service: ProjectService, project_file: Path) -> None:  # pylint: disable=unused-argument
         service.save_options_boundary("test-project", {})
         cast(MagicMock, service.state.invalidate).assert_called_once_with("test-project")
+
+    def test_preserves_provider_pair(self, service: ProjectService, project_file: Path) -> None:
+        project_file.write_text(
+            FIXTURE_YAML.replace(
+                "  version: 1.0.0\n",
+                "  version: 1.0.0\n  data_provider_code: test-provider\n  provider_schema: schema-one\n",
+            ),
+            encoding="utf-8",
+        )
+
+        service.save_options_boundary("test-project", {"output": "tsv"})
+
+        metadata = YamlService().load(project_file)["metadata"]
+        assert metadata["data_provider_code"] == "test-provider"
+        assert metadata["provider_schema"] == "schema-one"
 
 
 # ---------------------------------------------------------------------------
@@ -188,6 +229,21 @@ class TestSaveEntityBoundary:
     def test_invalidates_state_cache(self, service: ProjectService, project_file: Path) -> None:  # pylint: disable=unused-argument
         service.save_entity_boundary("test-project", "sample", {"type": "entity", "keys": ["x"]})
         cast(MagicMock, service.state.invalidate).assert_called_once_with("test-project")
+
+    def test_preserves_provider_pair(self, service: ProjectService, project_file: Path) -> None:
+        project_file.write_text(
+            FIXTURE_YAML.replace(
+                "  version: 1.0.0\n",
+                "  version: 1.0.0\n  data_provider_code: test-provider\n  provider_schema: schema-one\n",
+            ),
+            encoding="utf-8",
+        )
+
+        service.save_entity_boundary("test-project", "sample", {"type": "entity", "keys": ["sample_id"]})
+
+        metadata = YamlService().load(project_file)["metadata"]
+        assert metadata["data_provider_code"] == "test-provider"
+        assert metadata["provider_schema"] == "schema-one"
 
 
 class TestSaveEntityRenameBoundary:

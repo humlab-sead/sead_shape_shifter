@@ -5,11 +5,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { projectsApi } from '../projects'
 import type {
-  // @ts-ignore
+  // @ts-expect-error Legacy test fixtures use shapes that differ from public types.
   Project,
-  // @ts-ignore
+  // @ts-expect-error Legacy test fixtures use shapes that differ from public types.
   ProjectMetadata,
-  // @ts-ignore
+  // @ts-expect-error Legacy test fixtures use shapes that differ from public types.
   ValidationResult,
   ProjectCreateRequest,
   ProjectUpdateRequest,
@@ -72,7 +72,12 @@ describe('projectsApi', () => {
   describe('listTargetModels', () => {
     it('should list project-local and shared target model choices', async () => {
       const options = [
-        { name: 'model.yml', label: 'Project-local: model.yml', value: '@load: model.yml', location: 'project' as const },
+        {
+          name: 'model.yml',
+          label: 'Project-local: model.yml',
+          value: '@load: model.yml',
+          location: 'project' as const,
+        },
         {
           name: 'model.yml',
           label: 'Shared: model.yml',
@@ -139,6 +144,8 @@ describe('projectsApi', () => {
     it('should create a new project with minimal data', async () => {
       const createData: ProjectCreateRequest = {
         name: 'new-project',
+        data_provider_code: 'test-provider',
+        provider_schema: 'schema-one',
       }
 
       const mockResponse: Project = {
@@ -164,6 +171,8 @@ describe('projectsApi', () => {
     it('should create a new project with entities', async () => {
       const createData: ProjectCreateRequest = {
         name: 'new-project',
+        data_provider_code: 'test-provider',
+        provider_schema: 'schema-one',
         entities: {
           entity1: { field: 'value' },
           entity2: { field: 'value' },
@@ -527,8 +536,8 @@ describe('projectsApi', () => {
           options: {
             host: 'localhost',
             port: 5432,
-            dbname: 'testdb'
-          }
+            dbname: 'testdb',
+          },
         },
         'csv-imports': '@include: csv-imports.yml',
       }

@@ -12,6 +12,7 @@ from typing import Any
 from loguru import logger
 
 from backend.app.core.config import settings
+from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.mappers.project_name_mapper import ProjectNameMapper
 from backend.app.models.fix import FixAction, FixActionType, FixResult, FixSuggestion
 from backend.app.models.project import Project
@@ -276,48 +277,43 @@ class AutoFixService:
             Result of applying fixes
         """
         try:
-            project: Project = self.project_service.load_project(project_name)
-            if not project:
-                return FixResult(success=False, fixes_applied=0, errors=[f"Configuration '{project_name}' not found"])
+            with self.project_service._get_lock(project_name):
+                project: Project = self.project_service.load_project(project_name, force_reload=True)
+                if not project:
+                    return FixResult(success=False, fixes_applied=0, errors=[f"Configuration '{project_name}' not found"])
+                project_path = self.project_service._resolve_project_file_path(project_name)
+                self.project_service.validate_project_file_write(project_path, ProjectMapper.to_core_dict(project))
 
-            # Create backup before applying fixes
-            backup_path: Path = self._create_backup(project_name)
+                backup_path: Path = self._create_backup(project_name)
+                fixes_applied = 0
+                errors: list[str] = []
+                warnings: list[str] = []
 
-            # Track applied fixes
-            fixes_applied: int = 0
-            errors = []
-            warnings = []
+                for suggestion in suggestions:
+                    if not suggestion.auto_fixable:
+                        warnings.append(f"Skipping non-auto-fixable issue in entity '{suggestion.entity}'")
+                        continue
+                    for action in suggestion.actions:
+                        try:
+                            self._apply_action(project, action)
+                            fixes_applied += 1
+                        except Exception as e:  # pylint: disable=broad-except
+                            logger.error(f"Failed to apply fix: {e}")
+                            errors.append(f"Failed to apply fix for {action.entity}: {str(e)}")
 
-            # Apply each fix
-            for suggestion in suggestions:
-                if not suggestion.auto_fixable:
-                    warnings.append(f"Skipping non-auto-fixable issue in entity '{suggestion.entity}'")
-                    continue
-                for action in suggestion.actions:
-                    try:
-                        self._apply_action(project, action)
-                        fixes_applied += 1
-                    except Exception as e:  # pylint: disable=broad-except
-                        logger.error(f"Failed to apply fix: {e}")
-                        errors.append(f"Failed to apply fix for {action.entity}: {str(e)}")
+                if not errors:
+                    project_dict = project.model_dump(exclude_none=True, by_alias=True)
+                    self.project_service.save_project(project, create_backup=True, lock_held=True)
+                    return FixResult(
+                        success=True,
+                        fixes_applied=fixes_applied,
+                        warnings=warnings,
+                        backup_path=str(backup_path),
+                        updated_config=project_dict,
+                    )
 
-            if not errors:
-                # Save updated project
-                # Project is already a dict, no need to call model_dump
-                project_dict = project if isinstance(project, dict) else project.model_dump(exclude_none=True, by_alias=True)
-
-                self.project_service.save_project(project, create_backup=True)
-
-                return FixResult(
-                    success=True,
-                    fixes_applied=fixes_applied,
-                    warnings=warnings,
-                    backup_path=str(backup_path),
-                    updated_config=project_dict,
-                )
-            # Rollback on error
-            self._rollback(project_name, backup_path)
-            return FixResult(success=False, fixes_applied=0, errors=errors, warnings=warnings)
+                self._rollback(project_name, backup_path)
+                return FixResult(success=False, fixes_applied=0, errors=errors, warnings=warnings)
 
         except Exception as e:  # pylint: disable=broad-except
             logger.error(f"Auto-fix failed: {e}")
@@ -347,7 +343,10 @@ class AutoFixService:
         project_dir = settings.PROJECTS_DIR / ProjectNameMapper.to_path(project_name)
         project_path = project_dir / "shapeshifter.yml"
 
+        backup_config = self.yaml_service.load(backup_path)
+        self.project_service.validate_project_file_write(project_path, backup_config)
         shutil.copy2(backup_path, project_path)
+        self.project_service.state.invalidate(project_name)
         logger.info(f"Rolled back project from {backup_path}")
 
     def _apply_action(self, project: Any, action: FixAction):
