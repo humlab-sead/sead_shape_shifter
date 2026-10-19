@@ -6,13 +6,10 @@ import { useProjectStore } from '@/stores'
 import type { Project, ProjectMetadata } from '@/types'
 import type { ProjectCreateRequest, ProjectUpdateRequest } from '@/api/projects'
 
-// Mock console methods
-const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
-
 describe('useProjects', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
-    consoleError.mockClear()
+    vi.spyOn(console, 'error').mockImplementation(() => {})
   })
 
   afterEach(() => {
