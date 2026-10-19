@@ -143,6 +143,7 @@ async def test_project_routes_require_authentication_and_both_permissions(
                 submission_id=14,
                 output_path=None,
                 deploy_artifact={"bundle_files": {"deploy.sql": "SQL"}},
+                error_details=None,
             ),
         ),
     ],
@@ -165,6 +166,7 @@ async def test_project_routes_forward_authorized_resource_request_and_response(
     assert response.status_code == 200
     assert response.json() == response_model.model_dump()
     helper_method.assert_awaited_once()
+    assert helper_method.await_args is not None
     ingester_key, authorized_project, request = helper_method.await_args.args
     assert ingester_key == "sead_change_request"
     assert authorized_project.resource.locator == "project-a"
@@ -254,6 +256,7 @@ async def test_project_route_query_body_mismatch_is_concealed_before_project_wor
                 output_path=None,
                 error_details="Invalid normalized rows",
                 deploy_artifact=None,
+                submission_id=None,
             ),
         ),
     ],
