@@ -67,7 +67,7 @@ class FakeAuthorizationService:
         self.allowed = allowed
         self.actions: list[Action] = []
 
-    def can_perform_application_action(self, principal: Principal, action: Action) -> bool:
+    def can_perform_application_action(self, principal: Principal, action: Action) -> bool:  # pylint: disable=unused-argument
         self.actions.append(action)
         return self.allowed
 
@@ -139,7 +139,7 @@ class FakeRegistry:
     def __init__(self, ingester_class) -> None:
         self.ingester_class = ingester_class
 
-    def get(self, key: str):
+    def get(self, key: str):  # pylint: disable=unused-argument
         return self.ingester_class
 
 
@@ -194,7 +194,7 @@ def install_common_mocks(
     monkeypatch.setattr(project_ingester_module.ProjectMapper, "to_core", staticmethod(lambda project: mapped))
 
     class FakeSpecification:
-        def __init__(self, cfg) -> None:
+        def __init__(self, cfg) -> None:  # pylint: disable=unused-argument
             self.errors = specification_errors or []
             self.warnings = specification_warnings or []
 
@@ -252,7 +252,7 @@ async def test_invalid_project_resource_is_rejected_before_project_load(monkeypa
         await service.validate_project_tables("sead_change_request", authorized, request())
 
     assert project_service.loaded == []
-    assert calls == []
+    assert not calls
 
 
 @pytest.mark.asyncio
@@ -281,7 +281,7 @@ async def test_application_permission_is_required_before_project_load(monkeypatc
 
     assert authorization_service.actions == [Action.RUN_INGESTERS]
     assert project_service.loaded == []
-    assert calls == []
+    assert not calls
 
 
 @pytest.mark.asyncio
@@ -294,7 +294,7 @@ async def test_direct_call_rejects_unvalidated_request_object_before_loading(mon
         await service.validate_project_tables("sead_change_request", authorized_project(), {"project_name": "pilot"})
 
     assert project_service.loaded == []
-    assert calls == []
+    assert not calls
 
 
 @pytest.mark.asyncio
@@ -311,7 +311,7 @@ async def test_project_specification_failure_stops_before_normalization(monkeypa
 
     assert result.is_valid is False
     assert result.errors == ["Project configuration validation failed"]
-    assert calls == []
+    assert not calls
 
 
 @pytest.mark.asyncio
@@ -337,7 +337,7 @@ async def test_project_specification_exception_returns_project_error(monkeypatch
     assert result.success is False
     assert result.message == "Project validation failed"
     assert "bad project" in (result.error_details or "")
-    assert calls == []
+    assert not calls
 
 
 @pytest.mark.asyncio
@@ -382,7 +382,7 @@ async def test_file_only_ingester_returns_file_input_error_without_normalization
     assert ingestion.success is False
     assert ingestion.message == "File input required"
     assert "file input" in (ingestion.error_details or "").lower()
-    assert calls == []
+    assert not calls
 
 
 @pytest.mark.asyncio
@@ -422,7 +422,7 @@ async def test_missing_backend_settings_stop_before_provider_or_normalization(mo
     assert result.errors
     assert provider_service.projects == []
     assert injections == []
-    assert calls == []
+    assert not calls
 
 
 @pytest.mark.asyncio
@@ -502,7 +502,7 @@ async def test_missing_target_model_stops_before_provider_or_normalization(monke
     assert result.is_valid is False
     assert "metadata.target_model" in result.errors[0]
     assert provider_service.projects == []
-    assert calls == []
+    assert not calls
 
 
 @pytest.mark.asyncio
@@ -528,7 +528,7 @@ async def test_invalid_target_model_stops_before_provider_or_normalization(monke
     assert result.is_valid is False
     assert result.errors
     assert provider_service.projects == []
-    assert calls == []
+    assert not calls
 
 
 @pytest.mark.asyncio
@@ -563,7 +563,7 @@ async def test_provider_binding_failure_stops_before_runtime_injection(monkeypat
     assert result.is_valid is False
     assert "not registered" in result.errors[0]
     assert injections == []
-    assert calls == []
+    assert not calls
 
 
 @pytest.mark.asyncio
