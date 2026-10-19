@@ -19,10 +19,35 @@ class Ingester(Protocol):
     async def ingest(self, source: str) -> IngestionResult: ...
 ```
 
+### Optional Table Input
+
+Ingesters that accept normalized tables in memory implement the separate `TableSourceIngester` protocol.
+Callers discover this capability with a runtime check. The shared `Ingester` protocol and the shared file
+request and response models stay unchanged.
+
+```python
+@runtime_checkable
+class TableSourceIngester(Protocol):
+    async def validate_tables(
+        self, tables: Mapping[str, pd.DataFrame], *, source_name: str = ""
+    ) -> ValidationResult: ...
+
+    async def ingest_tables(
+        self,
+        tables: Mapping[str, pd.DataFrame],
+        *,
+        source_name: str = "",
+        validate_first: bool = True,
+    ) -> IngestionResult: ...
+```
+
+`source_name` is diagnostic text for messages. It is never opened or resolved as a file path.
+`sead_change_request` implements this capability; the deprecated `sead` ingester does not.
+
 ## Components
 
 ### Core Infrastructure
-- **`protocol.py`**: Defines the `Ingester` protocol and result types
+- **`protocol.py`**: Defines the `Ingester` protocol, the optional `TableSourceIngester` protocol, and the result types
 - **`registry.py`**: Auto-discovery registry for ingesters
 - **`__init__.py`**: Triggers registration of all ingesters
 

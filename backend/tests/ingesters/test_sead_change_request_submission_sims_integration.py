@@ -15,16 +15,14 @@ from psycopg import sql
 
 from backend.app.ingesters import IngesterConfig
 from backend.app.services.ingester_runtime import SeadChangeRequestTargetCollisionChecker
-from ingesters.sead_change_request.contracts import SourceTableBundle, SubmissionContext, resolve_bundle_name
+from ingesters.sead_change_request.contracts import SubmissionContext, resolve_bundle_name
 from ingesters.sead_change_request.ingester import SeadChangeRequestIngester
-from ingesters.sead_change_request.input_resolution import _build_source_bundle
 
 
 async def _ingest(ingester: SeadChangeRequestIngester) -> Any:
-    """Ingest the configured tables through the internal bundle handoff."""
+    """Ingest the configured tables through the public table method."""
     extras = ingester.config.extra or {}
-    bundle: SourceTableBundle = _build_source_bundle(extras["tables"])
-    return await ingester._ingest_bundle(bundle)
+    return await ingester.ingest_tables(extras["tables"])
 
 
 class DisposableProviderResolver:

@@ -32,6 +32,7 @@ from ingesters.sead_change_request.sql_rendering import (
     quote_string,
     render_literal,
     renderable_columns,
+    validate_target_temporal_types,
 )
 from src.target_model.insert_dependencies import build_insert_plan
 from src.target_model.models import EntitySpec, TargetModel
@@ -151,6 +152,8 @@ def _build_entity_plans(
         spec = target_model.entities.get(entity_name)
         if spec is None or not spec.target_table or not spec.public_id:
             raise ValueError(f"Entity '{entity_name}' needs target_table and public_id metadata for inline staging")
+
+        validate_target_temporal_types(entity_name, table.frame.columns, _declared_column_types(spec))
 
         pending_rows = tuple(table.frame.index[table.row_states.isin(PENDING_ROW_STATES)])
         foreign_key_columns = _foreign_key_columns(spec, target_model, table)
@@ -301,7 +304,7 @@ def _render_load_staging_rows(plan: StagedEntityPlan) -> str:
 
     value_rows: list[str] = []
     for row_index in plan.table.frame.index:
-        row_values = [render_literal(plan.table.frame.at[row_index, column]) for column in loaded_columns]
+        row_values = [render_literal(plan.table.frame.at[row_index, column], _column_type(plan.spec, column)) for column in loaded_columns]
         row_values.append(render_literal(_local_key(plan.table.frame, row_index)))
         row_values.extend(render_literal(plan.table.frame.at[row_index, column]) for column in plan.foreign_key_columns)
         value_rows.append("(" + ", ".join(row_values) + ")")
@@ -527,6 +530,17 @@ def _local_key(frame: pd.DataFrame, row_index: object) -> object:
     if "system_id" in frame.columns:
         return frame.at[row_index, "system_id"]
     return row_index
+
+
+def _declared_column_types(spec: EntitySpec) -> dict[str, str | None]:
+    """Return the declared target type for each column of one entity."""
+    return {column_name: column_spec.type for column_name, column_spec in spec.columns.items()}
+
+
+def _column_type(spec: EntitySpec, column: str) -> str | None:
+    """Return the declared target type of one staged column, when known."""
+    column_spec = spec.columns.get(column)
+    return column_spec.type if column_spec is not None else None
 
 
 def _remote_entity_for_column(spec: EntitySpec, target_model: TargetModel, column: str) -> str | None:

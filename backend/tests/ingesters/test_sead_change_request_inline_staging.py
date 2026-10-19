@@ -22,9 +22,7 @@ import pytest
 from psycopg.rows import TupleRow
 
 from backend.app.ingesters.protocol import IngesterConfig, IngestionResult
-from ingesters.sead_change_request.contracts import SourceTableBundle
 from ingesters.sead_change_request.ingester import SeadChangeRequestIngester
-from ingesters.sead_change_request.input_resolution import _build_source_bundle
 
 pytestmark = pytest.mark.integration
 
@@ -270,15 +268,17 @@ def _ingester(
     )
 
 
-def _source_bundle(ingester: SeadChangeRequestIngester) -> SourceTableBundle:
-    """Build the in-memory bundle declared by the ingester configuration."""
+def _source_tables(ingester: SeadChangeRequestIngester) -> dict[str, pd.DataFrame]:
+    """Return the in-memory tables declared by the ingester configuration."""
     extras = ingester.config.extra or {}
-    return _build_source_bundle(extras["tables"])
+    tables = extras["tables"]
+    assert isinstance(tables, dict)
+    return tables
 
 
 async def _ingest(ingester: SeadChangeRequestIngester) -> IngestionResult:
-    """Ingest the configured tables through the internal bundle handoff."""
-    return await ingester._ingest_bundle(_source_bundle(ingester))
+    """Ingest the configured tables through the public table method."""
+    return await ingester.ingest_tables(_source_tables(ingester))
 
 
 def _run_statements(parameters: dict[str, Any], statements: list[str], *, lock_timeout_ms: int | None = None) -> None:

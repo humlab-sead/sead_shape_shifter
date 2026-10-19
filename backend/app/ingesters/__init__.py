@@ -10,6 +10,7 @@ from backend.app.ingesters.protocol import (
     IngesterConfig,
     IngesterMetadata,
     IngestionResult,
+    TableSourceIngester,
     ValidationResult,
 )
 from backend.app.ingesters.registry import IngesterRegistry, get_ingester_registry
@@ -22,6 +23,7 @@ __all__ = [
     "IngesterConfig",
     "IngesterMetadata",
     "IngestionResult",
+    "TableSourceIngester",
     "ValidationResult",
     "get_ingester_registry",
     "IngesterRegistry",

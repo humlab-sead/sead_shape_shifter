@@ -4,10 +4,36 @@ This document gives a high-level view of the core runtime flow in the `sead_chan
 
 The diagrams follow the current implementation in `ingester.py` and `preparation.py`:
 
+- `validate_tables()` and `ingest_tables()` are the public table entry points; they copy and sanitize the supplied frames before reusing the bundle workflow
 - the public `validate()` and `ingest()` methods reject the retired file input before any preparation
-- the private `_validate_bundle()` and `_ingest_bundle()` methods reuse the same preparation path
+- the private `_validate_bundle()` and `_ingest_bundle()` methods reuse the same preparation path for an already prepared `SourceTableBundle`
 - the preparation path stops after identity resolution and PK/FK target projection
 - `_ingest_bundle()` continues with collision checks, package assembly, artifact rendering, and bundle emission
+
+## Public Table Input Flow
+
+This sequence shows how normalized tables reach the shared workflow.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Caller
+    participant Ingester as SeadChangeRequestIngester
+    participant Adapter as Input resolution adapter
+    participant Bundle as _validate_bundle() or _ingest_bundle()
+
+    Caller->>Ingester: validate_tables(tables, source_name) or ingest_tables(tables, source_name, validate_first)
+    Ingester->>Adapter: _build_source_bundle(tables, source_name)
+    note over Adapter: copy each DataFrame,<br/>sanitize caller-visible column labels,<br/>keep entity names, values, dtypes, and timezones
+    alt Invalid mapping
+        Adapter-->>Ingester: SourceBundleError
+        Ingester-->>Caller: structured ValidationResult or IngestionResult failure
+    else Bundle built
+        Adapter-->>Ingester: SourceTableBundle
+        Ingester->>Bundle: validate or ingest
+        Bundle-->>Caller: ValidationResult or IngestionResult
+    end
+```
 
 ## Retired File Input Flow
 
@@ -31,7 +57,7 @@ path-shaped source cannot select `source_bundle` or `tables`.
 
 ## Shared Preparation Flow
 
-This sequence shows the common path reused by both `_validate_bundle()` and `_ingest_bundle()`.
+This sequence shows the common path reused by the table methods and the private bundle methods.
 
 ```mermaid
 sequenceDiagram
@@ -46,7 +72,7 @@ sequenceDiagram
     participant Project as PK/FK target projection
     participant Confirm as Pending confirmation report
 
-    Caller->>Ingester: _validate_bundle(bundle) or _ingest_bundle(bundle)
+    Caller->>Ingester: validate_tables(tables) or _validate_bundle(bundle) or _ingest_bundle(bundle)
     Ingester->>Inputs: resolve_inputs(config, bundle)
     Inputs-->>Ingester: ResolvedInputs
     Ingester->>Planning: plan_bundle(bundle, target_model.entities)
@@ -79,7 +105,7 @@ sequenceDiagram
     participant Prep as Shared preparation flow
     participant Result as ValidationResult
 
-    Caller->>Ingester: _validate_bundle(bundle)
+    Caller->>Ingester: validate_tables(tables) or _validate_bundle(bundle)
     Ingester->>Prep: _prepare_change_request(bundle)
     Prep-->>Ingester: PreparationResult
 
@@ -113,7 +139,7 @@ sequenceDiagram
     participant SIMS as SIMS client
     participant Files as Bundle writer
 
-    Caller->>Ingester: _ingest_bundle(bundle, validate_first)
+    Caller->>Ingester: ingest_tables(tables, validate_first) or _ingest_bundle(bundle, validate_first)
 
     alt validate_first is true
         Ingester->>Validate: _validate_bundle(bundle)
@@ -153,3 +179,11 @@ sequenceDiagram
         end
     end
 ```
+
+## Deploy Rendering Rules
+
+`inline_insert`, `copy_csv`, and `inline_staging` render the same prepared values:
+
+- a `date` target renders the normalized calendar date only
+- a timezone-naive timestamp target keeps the normalized calendar and clock fields and drops timezone metadata without conversion
+- an explicitly timezone-aware target type fails with `ValueError` before the bundle writer runs

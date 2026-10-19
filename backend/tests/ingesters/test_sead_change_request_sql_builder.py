@@ -653,6 +653,156 @@ class TestBuildDeployArtifact:
         ]
 
 
+class TestTemporalLiteralRendering:
+    """Temporal literals keep their normalized calendar and clock fields in every strategy."""
+
+    @staticmethod
+    def _submission_context() -> SubmissionContext:
+        return SubmissionContext(
+            submission_name="temporal-submission",
+            project_name="test-project",
+            timestamp=datetime(2026, 5, 23, 23, 0, 0),
+            datatype="mal",
+            identifier="TEST_SUBMISSION",
+        )
+
+    @staticmethod
+    def _temporal_target_model(column_type: str | None) -> TargetModel:
+        column_specs: dict[str, dict] = {
+            "sample_id": {"type": "integer"},
+            "sample_date": {"type": "date"},
+        }
+        if column_type is not None:
+            column_specs["collected_at"] = {"type": column_type}
+        return minimal_target_model(
+            sample={"role": "fact", "public_id": "sample_id", "target_table": "tbl_sample", "columns": column_specs}
+        )
+
+    @staticmethod
+    def _package(frame: pd.DataFrame) -> ChangeRequestPackage:
+        return ChangeRequestPackage(
+            tables={
+                "sample": ChangeRequestTable(
+                    name="sample",
+                    frame=frame,
+                    row_states=pd.Series(
+                        [ChangeRowState.NEWLY_ALLOCATED_ENTITY] * len(frame.index),
+                        index=frame.index,
+                        name="_row_state",
+                    ),
+                )
+            }
+        )
+
+    def test_inline_insert_keeps_clock_fields_and_drops_timezone_metadata(self):
+        """An aware timestamp should keep its written clock reading without an offset."""
+        frame = pd.DataFrame(
+            {
+                "sample_id": [101],
+                "collected_at": [pd.Timestamp("2026-05-23 10:15:00", tz="Europe/Stockholm")],
+                "sample_date": [pd.Timestamp("2026-05-21 00:00:00", tz="Europe/Stockholm")],
+            }
+        )
+
+        artifact = build_deploy_artifact(
+            self._package(frame),
+            self._temporal_target_model("timestamp without time zone"),
+            self._submission_context(),
+        )
+
+        assert artifact.statements == [
+            'INSERT INTO "tbl_sample" ("sample_id", "collected_at", "sample_date") ' "VALUES (101, '2026-05-23T10:15:00', '2026-05-21');"
+        ]
+        assert "+02:00" not in artifact.deploy_sql
+
+    def test_inline_insert_keeps_each_input_clock_reading_for_the_same_instant(self):
+        """Two aware values for the same instant should not be converted to one zone."""
+        stockholm_value = pd.Timestamp("2026-05-23 10:15:00", tz="Europe/Stockholm")
+        utc_value = pd.Timestamp("2026-05-23 08:15:00", tz="UTC")
+        frame = pd.DataFrame(
+            {
+                "sample_id": [101, 102],
+                "collected_at": pd.Series([stockholm_value, utc_value], dtype="object"),
+            }
+        )
+
+        artifact = build_deploy_artifact(
+            self._package(frame),
+            self._temporal_target_model("timestamp"),
+            self._submission_context(),
+        )
+
+        assert artifact.statements == [
+            'INSERT INTO "tbl_sample" ("sample_id", "collected_at") VALUES (101, \'2026-05-23T10:15:00\');',
+            'INSERT INTO "tbl_sample" ("sample_id", "collected_at") VALUES (102, \'2026-05-23T08:15:00\');',
+        ]
+
+    def test_copy_csv_keeps_date_and_clock_fields_without_offsets(self):
+        """The copy_csv payload should render the target temporal types without conversion."""
+        frame = pd.DataFrame(
+            {
+                "sample_id": [101],
+                "collected_at": [pd.Timestamp("2026-05-23 10:15:00", tz="Europe/Stockholm")],
+                "sample_date": [pd.Timestamp("2026-05-21 00:00:00", tz="Europe/Stockholm")],
+            }
+        )
+
+        artifact = build_deploy_artifact(
+            self._package(frame),
+            self._temporal_target_model("timestamp without time zone"),
+            self._submission_context(),
+            strategy="copy_csv",
+        )
+
+        payload = artifact.bundle_files[f"deploy/{bundle_name(self._submission_context())}/tbl_sample.gz"]
+        assert payload == "101\t2026-05-23T10:15:00\t2026-05-21\n"
+        assert "+02:00" not in payload
+
+    def test_inline_staging_keeps_date_and_clock_fields_without_offsets(self):
+        """The inline staging load should render the same literal date and clock fields."""
+        frame = pd.DataFrame(
+            {
+                "sample_id": [101],
+                "collected_at": [pd.Timestamp("2026-05-23 10:15:00", tz="Europe/Stockholm")],
+                "sample_date": [pd.Timestamp("2026-05-21 00:00:00", tz="Europe/Stockholm")],
+            }
+        )
+
+        artifact = build_deploy_artifact(
+            self._package(frame),
+            self._temporal_target_model("timestamp without time zone"),
+            self._submission_context(),
+            strategy=InlineStagingDeployStrategy(target_schema="staging"),
+        )
+
+        rendered_sql = "\n".join(artifact.statements)
+        assert "'2026-05-23T10:15:00'" in rendered_sql
+        assert "'2026-05-21'" in rendered_sql
+        assert "+02:00" not in rendered_sql
+
+    @pytest.mark.parametrize("strategy", ["inline_insert", "copy_csv", "inline_staging"])
+    @pytest.mark.parametrize("column_type", ["timestamp with time zone", "timestamptz"])
+    def test_explicit_timezone_aware_target_types_are_rejected(self, strategy: str, column_type: str):
+        """An explicitly timezone-aware target column should fail before any payload is rendered."""
+        frame = pd.DataFrame(
+            {
+                "sample_id": [101],
+                "collected_at": [pd.Timestamp("2026-05-23 10:15:00", tz="Europe/Stockholm")],
+            }
+        )
+        selected_strategy: str | InlineStagingDeployStrategy = (
+            InlineStagingDeployStrategy(target_schema="staging") if strategy == "inline_staging" else strategy
+        )
+
+        with pytest.raises(ValueError, match="timezone-aware"):
+            build_deploy_artifact(
+                self._package(frame),
+                self._temporal_target_model(column_type),
+                self._submission_context(),
+                strategy=selected_strategy,
+            )
+
+
 class TestStrategyParity:
     """Both deploy strategies must emit the same SIMS-issued identity values."""
 

@@ -3,7 +3,7 @@
 import pytest
 
 from backend.app.ingesters import IngesterConfig, IngesterMetadata, get_ingester_registry
-from backend.app.ingesters.protocol import Ingester, IngestionResult, ValidationResult
+from backend.app.ingesters.protocol import Ingester, IngestionResult, TableSourceIngester, ValidationResult
 from backend.app.ingesters.registry import IngesterRegistry
 from ingesters.sead import SeadIngester
 from ingesters.sead_change_request import SeadChangeRequestIngester
@@ -52,6 +52,37 @@ class TestIngesterRegistry:
         ingester_cls: None | type[Ingester] = registry.get("sead_change_request")
         assert ingester_cls is not None
         assert ingester_cls == SeadChangeRequestIngester
+
+
+class TestTableSourceCapability:
+    """Table input is an optional capability beside the shared file protocol."""
+
+    @staticmethod
+    def _change_request_ingester() -> SeadChangeRequestIngester:
+        return SeadChangeRequestIngester(IngesterConfig(host="localhost", port=5432, dbname="test_db", user="test_user"))
+
+    def test_change_request_ingester_supports_table_sources(self):
+        """The Change Request ingester should satisfy both the file and table protocols."""
+        ingester = self._change_request_ingester()
+
+        assert isinstance(ingester, Ingester)
+        assert isinstance(ingester, TableSourceIngester)
+        assert isinstance(SeadChangeRequestIngester, TableSourceIngester)
+
+    def test_sead_ingester_keeps_file_only_capability(self):
+        """An ingester without table methods should not satisfy the table protocol."""
+        ingester = SeadIngester(
+            IngesterConfig(
+                host="localhost",
+                port=5432,
+                dbname="test_db",
+                user="test_user",
+                extra={"ignore_columns": []},
+            )
+        )
+
+        assert isinstance(ingester, Ingester)
+        assert not isinstance(ingester, TableSourceIngester)
 
 
 class TestSeadIngester:
