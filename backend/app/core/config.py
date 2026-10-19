@@ -5,7 +5,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Import version from package
@@ -106,8 +106,19 @@ class Settings(BaseSettings):
     # Ingester configuration
     INGESTER_PATHS: list[str] = ["ingesters"]
     ENABLED_INGESTERS: list[str] | None = None  # None = all discovered ingesters
+    INGEST_TARGET_HOST: str | None = None
+    INGEST_TARGET_PORT: int = Field(default=5432, ge=1, le=65535)
+    INGEST_TARGET_DBNAME: str | None = None
+    INGEST_TARGET_USER: str | None = None
+    INGEST_OUTPUT_DIR: Path | None = None
 
     MATERIALIZATION_INLINE_THRESHOLD: int = 20  # Rows below which data is stored inline in YAML
+
+    @field_validator("INGEST_OUTPUT_DIR", mode="before")
+    @classmethod
+    def blank_ingest_output_dir_is_unset(cls, value: Any) -> Any:
+        """Treat an empty output directory setting as unconfigured."""
+        return None if isinstance(value, str) and not value.strip() else value
 
     @model_validator(mode="after")
     def validate_production_authentication(self) -> "Settings":
@@ -137,6 +148,8 @@ class Settings(BaseSettings):
         self.GLOBAL_DATA_PROVIDER_DIR = self._resolve_under_root(self.GLOBAL_DATA_PROVIDER_DIR)
         self.GLOBAL_TARGET_MODEL_DIR = self._resolve_under_root(self.GLOBAL_TARGET_MODEL_DIR)
         self.AUTHORIZATION_DATABASE_PATH = self._resolve_under_root(self.AUTHORIZATION_DATABASE_PATH)
+        if self.INGEST_OUTPUT_DIR is not None:
+            self.INGEST_OUTPUT_DIR = self._resolve_under_root(self.INGEST_OUTPUT_DIR)
 
         protected_directories = (
             self.PROJECTS_DIR,

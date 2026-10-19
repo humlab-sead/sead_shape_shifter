@@ -2,7 +2,7 @@
 
 ## Summary
 
-This plan sequences [the in-memory handoff proposal](./IN_MEMORY_INGESTER_HANDOFF.md). Phase 1 retired unused Change Request file input and Phase 2 added the shared no-write normalization step. The remaining phases add table-input support, a guarded backend helper, and project-only routes used by the operator client. The [target-bundle access proposal](../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md) follows this handoff and owns the later permission change and per-run output rules.
+This plan sequences [the in-memory handoff proposal](./IN_MEMORY_INGESTER_HANDOFF.md). Phases 1–3 retired Change Request file input and added no-write normalization and table-input support. Phase 4 added and validated the guarded backend helper. Phase 5 remains to expose project-only routes and connect them to the operator client. The [target-bundle access proposal](../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md) owns the later permission change and per-run output rules.
 
 ## Problem
 
@@ -18,8 +18,9 @@ It leaves Excel dispatch and file input for other ingesters unchanged. It does n
 
 - `normalize_project()` applies normalization options and returns the completed tables without writing; `workflow()` calls it before its dispatcher write and shape log.
 - `sead_change_request` advertises no file formats. Its file routes, service calls, and file-oriented methods reject Change Request input; its source resolver rejects a path-shaped input before checking `config.extra`.
-- Shared ingester requests require `source`; the current service copies caller configuration. There is no dedicated project-only route or backend helper with the proposed trusted-input and project-validation rules.
-- Phase 1 retirement and the Phase 2 no-write normalization step are complete, as recorded in the [Phase 1 task plan](./IN_MEMORY_INGESTER_HANDOFF_PHASE_1_TASK_PLAN.md) and the [Phase 2 task plan](./IN_MEMORY_INGESTER_HANDOFF_PHASE_2_TASK_PLAN.md). Bundle generation remains unavailable until the replacement operator path ships.
+- `TableSourceIngester` and the Change Request table methods are implemented. The adapter copies and sanitizes normalized tables; artifact rendering keeps date and clock fields without timezone conversion and rejects incompatible target column types.
+- Shared ingester requests still require `source` and use the existing file-oriented service. The internal `ProjectIngesterService` now validates authorization and project configuration, then passes normalized tables and trusted settings to table-capable ingesters; project-only routes do not yet expose it.
+- Phases 1–4 are complete, as recorded in the [Phase 1](./IN_MEMORY_INGESTER_HANDOFF_PHASE_1_TASK_PLAN.md), [Phase 2](./IN_MEMORY_INGESTER_HANDOFF_PHASE_2_TASK_PLAN.md), [Phase 3](./IN_MEMORY_INGESTER_HANDOFF_PHASE_3_TASK_PLAN.md), and [Phase 4](./IN_MEMORY_INGESTER_HANDOFF_PHASE_4_TASK_PLAN.md) task plans. Bundle generation remains unavailable through the operator client until Phase 5 ships the project-only path.
 
 ## Phase Plan
 
@@ -140,7 +141,7 @@ Make table validation and ingestion explicit without using Excel as the input co
 
 **Readiness**
 
-Ready for a task plan. The no-conversion rule is specified; the task plan should verify literal rendering and reject incompatible target types before artifact writing.
+Completed. The [Phase 3 task plan](./IN_MEMORY_INGESTER_HANDOFF_PHASE_3_TASK_PLAN.md) records the table-method, literal-rendering, and incompatible-target validation results.
 
 ### Phase 4: Build the guarded project composition helper
 
@@ -156,7 +157,7 @@ Compose authorized project normalization and table ingestion with server-selecte
 
 **Depends On**
 
-- Phases 2 and 3 provide the no-write step and table methods.
+- Phases 2 and 3 provide the no-write step and table methods (both complete).
 
 **Outputs**
 
@@ -184,7 +185,7 @@ Compose authorized project normalization and table ingestion with server-selecte
 
 **Readiness**
 
-Blocked on Phases 2 and 3, including the timezone decision.
+Completed. The [Phase 4 task plan](./IN_MEMORY_INGESTER_HANDOFF_PHASE_4_TASK_PLAN.md) records implementation and validation for `PH4-AC-1`–`PH4-AC-6`. The helper retains the interim application permission check; the companion proposal's output and database rules remain prerequisites for removing it.
 
 ### Phase 5: Expose project-only routes and switch the operator client
 
@@ -226,7 +227,7 @@ Let an authorized operator validate and generate a Change Request from a saved p
 
 **Readiness**
 
-Blocked on Phase 4. The later permission change remains in the companion plan.
+Ready for a task plan. Phase 4's guarded helper and trusted input construction are complete. Keep both permissions until the companion proposal's exclusive output and read-only database rules ship.
 
 ## Cross-Phase Rules
 
