@@ -31,8 +31,8 @@ PROJECT_REQUEST = {
 }
 
 
-@pytest.fixture
-def authorization_repository(tmp_path, monkeypatch) -> Iterator[SQLiteAuthorizationRepository]:
+@pytest.fixture(name="authorization_repository")
+def _authorization_repository(tmp_path, monkeypatch) -> Iterator[SQLiteAuthorizationRepository]:
     """Create an isolated authorization store and project directory."""
     projects_dir = tmp_path / "projects"
     projects_dir.mkdir()
