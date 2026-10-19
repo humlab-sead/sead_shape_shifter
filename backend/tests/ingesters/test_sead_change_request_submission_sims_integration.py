@@ -15,8 +15,16 @@ from psycopg import sql
 
 from backend.app.ingesters import IngesterConfig
 from backend.app.services.ingester_runtime import SeadChangeRequestTargetCollisionChecker
-from ingesters.sead_change_request.contracts import SubmissionContext, resolve_bundle_name
+from ingesters.sead_change_request.contracts import SourceTableBundle, SubmissionContext, resolve_bundle_name
 from ingesters.sead_change_request.ingester import SeadChangeRequestIngester
+from ingesters.sead_change_request.input_resolution import _build_source_bundle
+
+
+async def _ingest(ingester: SeadChangeRequestIngester) -> Any:
+    """Ingest the configured tables through the internal bundle handoff."""
+    extras = ingester.config.extra or {}
+    bundle: SourceTableBundle = _build_source_bundle(extras["tables"])
+    return await ingester._ingest_bundle(bundle)
 
 
 class DisposableProviderResolver:
@@ -308,7 +316,7 @@ async def test_both_artifacts_use_sims_submission_id_and_rollback(tmp_path: Path
             )
         )
 
-        result = await ingester.ingest("disposable-sequence-verification.xlsx")
+        result = await _ingest(ingester)
         assert result.success is True, result.error_details
         assert result.deploy_artifact is not None
         artifact = result.deploy_artifact

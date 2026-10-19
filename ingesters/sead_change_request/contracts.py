@@ -29,6 +29,12 @@ APPROVED_DATATYPES: frozenset[str] = frozenset(
 FIXED_PROVIDER_TARGET_TABLE = "tbl_data_providers"
 """SEAD table that holds the operator-reconciled data provider row."""
 
+CHANGE_REQUEST_FILE_INPUT_RETIRED_MESSAGE = (
+    "SEAD Change Request file input is retired; it no longer accepts workbooks or file paths. "
+    "Normalized tables must reach the ingester in memory."
+)
+"""Caller-facing reason returned when a retired Change Request file entry point is used."""
+
 
 class ChangeRowState(StrEnum):
     """Resolved row states used when building a change request."""

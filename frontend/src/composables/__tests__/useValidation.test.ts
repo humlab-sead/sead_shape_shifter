@@ -4,13 +4,10 @@ import { useValidation } from '../useValidation'
 import { useValidationStore } from '@/stores'
 import type { ValidationResult } from '@/types'
 
-// Mock console methods
-const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
-
 describe('useValidation', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
-    consoleError.mockClear()
+    vi.spyOn(console, 'error').mockImplementation(() => {})
   })
 
   afterEach(() => {
@@ -233,6 +230,7 @@ describe('useValidation', () => {
       const { validateEntity } = useValidation()
 
       await expect(validateEntity('test-project', 'entity')).rejects.toThrow()
+      expect(console.error).toHaveBeenCalledWith('Failed to validate entity "entity":', error)
     })
   })
 

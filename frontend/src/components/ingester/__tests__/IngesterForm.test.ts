@@ -161,7 +161,7 @@ describe('IngesterForm', () => {
     ingesterStore.error = null
   })
 
-  it('renders the dedicated sead_change_request workflow and pending confirmation guidance', () => {
+  it('blocks submission of the retired Change Request workbook workflow', async () => {
     ingesterStore.validationResult = {
       is_valid: false,
       errors: [],
@@ -181,12 +181,30 @@ describe('IngesterForm', () => {
     }
 
     const wrapper = mountForm()
+    const vm = wrapper.vm as unknown as {
+      formValid: boolean
+      handleValidate: () => Promise<void>
+      handleIngest: () => Promise<void>
+    }
+    vm.formValid = true
 
-    expect(wrapper.text()).toContain('This workflow collects the operator context needed')
+    ingesterStore.validate.mockClear()
+    ingesterStore.ingest.mockClear()
+
+    expect(wrapper.text()).toContain('File-based Change Request validation and dispatch are retired.')
     expect(wrapper.text()).toContain('Binding Set Confirmation Required')
     expect(wrapper.text()).toContain('binding-123')
     expect(wrapper.text()).toContain('Confirm the Binding Set in SIMS')
     expect(wrapper.text()).toContain('Every tracked entity needs declared business keys')
+
+    const actionButtons = wrapper.findAllComponents({ name: 'VBtn' }).slice(0, 2)
+    expect(actionButtons.every((button) => button.props('disabled'))).toBe(true)
+
+    await vm.handleValidate()
+    await vm.handleIngest()
+
+    expect(ingesterStore.validate).not.toHaveBeenCalled()
+    expect(ingesterStore.ingest).not.toHaveBeenCalled()
   })
 
   it('renders deploy artifact summary and handoff guidance for successful change-package output', () => {
@@ -282,7 +300,7 @@ describe('IngesterForm', () => {
     })
   })
 
-  it('fixes the Change Request locator to the loaded route project and waits for that project', async () => {
+  it('keeps retired Change Request actions disabled when the route project loads', async () => {
     const wrapper = mountForm({ projectName: 'route_project', projectLoading: true })
     const vm = wrapper.vm as unknown as {
       formValid: boolean
@@ -303,7 +321,8 @@ describe('IngesterForm', () => {
     await wrapper.setProps({ projectLoading: false })
     await nextTick()
 
-    expect(actionButtons.every((button) => button.props('disabled'))).toBe(false)
+    expect(vm.buildValidateRequest().project_name).toBe('route_project')
+    expect(actionButtons.every((button) => button.props('disabled'))).toBe(true)
   })
 
   it('filters excluded ingesters and keeps ordinary ingesters actionable', async () => {

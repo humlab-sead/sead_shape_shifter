@@ -133,7 +133,7 @@ class TestSeadChangeRequestIngester:
         assert metadata.name == "SEAD Change Request"
         assert metadata.version == "0.1.0"
         assert metadata.requires_config is True
-        assert metadata.supported_formats == ["xlsx", "xls"]
+        assert metadata.supported_formats == []
 
     def test_ingester_creation(self):
         """Test creating the scaffold ingester instance."""

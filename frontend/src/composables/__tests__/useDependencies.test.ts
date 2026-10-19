@@ -4,13 +4,10 @@ import { useDependencies } from '../useDependencies'
 import { useValidationStore } from '@/stores'
 import type { DependencyGraph } from '@/types'
 
-// Mock console methods
-const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
-
 describe('useDependencies', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
-    consoleError.mockClear()
+    vi.spyOn(console, 'error').mockImplementation(() => {})
   })
 
   afterEach(() => {
@@ -216,6 +213,7 @@ describe('useDependencies', () => {
       const { fetch } = useDependencies()
 
       await expect(fetch('test-project')).rejects.toThrow('Fetch failed')
+      expect(console.error).toHaveBeenCalledWith('Failed to fetch dependencies for "test-project":', error)
     })
   })
 
@@ -245,6 +243,7 @@ describe('useDependencies', () => {
       const { checkCircularDependencies } = useDependencies()
 
       await expect(checkCircularDependencies('test-project')).rejects.toThrow('Check failed')
+      expect(console.error).toHaveBeenCalledWith('Failed to check circular dependencies for "test-project":', error)
     })
   })
 
