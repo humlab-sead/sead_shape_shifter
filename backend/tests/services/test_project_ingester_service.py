@@ -226,9 +226,9 @@ def project_ingester_service(
 ) -> ProjectIngesterService:
     """Construct the service with fake dependencies."""
     return ProjectIngesterService(
-        authorization_service or FakeAuthorizationService(),
-        project_service=project_service,
-        project_data_provider_service=provider_service or FakeProjectDataProviderService(),
+        authorization_service or FakeAuthorizationService(),  # type: ignore
+        project_service=project_service,  # type: ignore
+        project_data_provider_service=provider_service or FakeProjectDataProviderService(),  # type: ignore
         settings=runtime_settings or settings(Path("/tmp/project-ingester-tests")),
     )
 
@@ -292,7 +292,11 @@ async def test_direct_call_rejects_unvalidated_request_object_before_loading(mon
     service = project_ingester_service(project_service)
 
     with pytest.raises(TypeError, match="ProjectIngesterRequest"):
-        await service.validate_project_tables("sead_change_request", authorized_project(), {"project_name": "pilot"})
+        await service.validate_project_tables(
+            "sead_change_request",
+            authorized_project(),
+            {"project_name": "pilot"},  # type: ignore
+        )
 
     assert project_service.loaded == []
     assert not calls
