@@ -24,7 +24,7 @@ It does not include task-level file inventories, exact commands, or test names (
 - PR #501 merged `dev` into `main` as `2.2.0`, so the pre-hardening half of item 11 is retired; the unpinned moving-default build remains.
 - Items C1, C2, 15 are fixed and retained as guards; 33 is green; 32 is decided policy. The route-classification test exists but no CI workflow runs it (`.github/workflows/` holds only `release.yml`).
 - The ledger's external test package lives in `secrets/` and is not a CI asset; its root-only tests must not run on a workstation.
-- Fixed decisions carried from the proposal: preserve `namespace:project` locators by containing the mapped path, not banning colons; keep the global `project_maintainer` role as documented; do not require `read_logs` on log routes but do limit sensitive log content; constrain dangerous inputs for other ingester operations behind the existing `run_ingesters` gate. Any authenticated operator may create a Change Request target bundle under the separate [proposal](../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md), which does not connect to or write to a target database.
+- Fixed decisions carried from the proposal: preserve `namespace:project` locators by containing the mapped path, not banning colons; keep the global `project_maintainer` role as documented; do not require `read_logs` on log routes but do limit sensitive log content; constrain dangerous inputs for other ingester operations behind the existing `run_ingesters` gate. An authenticated principal holding `project:execute` on the saved project may create a Change Request target bundle under the separate [proposal](../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md); bundle creation may run read-only verification queries but performs no target-database write and consumes no sequence value.
 - The two decisions gating phase 2 are recorded below (D-1, D-2). The phase 5 decisions (SQL read forms; masked-YAML edit contract) remain open.
 
 ## Recorded Decisions
@@ -209,7 +209,7 @@ Make preview, restore, shared-source authorization, Change Request target-bundle
 
 - Authorize the shared source named in the request body, not the locator, keeping fail-closed behavior (D)
 - Invalidate shared application state after backup restore so cache-backed routes serve restored content (G)
-- Allow any authenticated operator to create a Change Request target bundle without `run_ingesters`; confine its output and make no target-database connection or write
+- Allow an authenticated principal holding `project:execute` on the saved project to create a Change Request target bundle without `run_ingesters`; confine its output, allow only read-only verification queries, and perform no target-database write or sequence allocation
 - Limit exception details and diagnostic logging so global logs cannot expose credentials, configuration values, or another tenant's request data
 
 **Depends On**
@@ -224,14 +224,14 @@ Make preview, restore, shared-source authorization, Change Request target-bundle
 
 - `PH4-AC-1` (from `P-AC-2`) A shared-source request is authorized against the body's source reference; a mismatch fails closed.
 - `PH4-AC-2` (from `P-AC-2`) After restore, every cache-backed route serves the restored content without a per-route reload.
-- `PH4-AC-3` (from `P-AC-2`) Any authenticated operator can create a Change Request target bundle without `run_ingesters`; output stays in its managed location, the operation makes no target-database connection or write, and other ingester operations retain their existing authorization.
+- `PH4-AC-3` (from `P-AC-2`) An authenticated principal holding `project:execute` on the saved project can create a Change Request target bundle without `run_ingesters`; output stays in its managed location, the operation runs only read-only verification queries and performs no target-database write or sequence allocation, and other ingester operations retain their existing authorization.
 - `PH4-AC-4` (from `P-AC-2`) Log downloads and error responses for an authenticated reader of one project contain no credentials, absolute-path configuration values, or other tenants' request data.
 
 **Validation Milestones**
 
 - `VM-4.1` API tests with two role-scoped principals prove authorization follows the body reference and isolation holds in log content (covers `PH4-AC-1`, `PH4-AC-4`).
 - `VM-4.2` Restore-then-read sequence across both compared routes (covers `PH4-AC-2`).
-- `VM-4.3` Operator-access, managed-output, and no-target-database checks for Change Request target-bundle creation (covers `PH4-AC-3`).
+- `VM-4.3` Project-executor access, managed-output, and read-only-target-database checks for Change Request target-bundle creation, including a negative arm proving no target-table write and no `nextval` (covers `PH4-AC-3`).
 
 **Task-Plan Handoff**
 
@@ -372,7 +372,7 @@ Ready for a task plan
 
 - Reproduce root-only and deployment-script tests only in the disposable environment from phase 1; never on a workstation.
 - Contain the mapped path at the service boundary; never ban colons outright — `namespace:project` locators are a shipped convention.
-- Keep `run_ingesters` for other ingester operations. Allow any authenticated operator to create Change Request target bundles under the separate proposal's managed-output and no-target-database constraints.
+- Keep `run_ingesters` for other ingester operations. Allow an authenticated principal holding `project:execute` on the saved project to create Change Request target bundles under the separate proposal's managed-output and read-only-verification constraints: no target-row write and no sequence allocation.
 - Keep the documented global log-access policy and the approved PostgreSQL rotation exception; address their content and visibility, not their classification.
 - A green deployment record is not evidence of a code fix; each phase validates its own changes.
 - Resolve a blocking decision and record it in this plan before starting the phase it gates.
