@@ -711,7 +711,10 @@ class TestTemporalLiteralRendering:
         )
 
         assert artifact.statements == [
-            'INSERT INTO "tbl_sample" ("sample_id", "collected_at", "sample_date") ' "VALUES (101, '2026-05-23T10:15:00', '2026-05-21');"
+            (
+                'INSERT INTO "tbl_sample" ("sample_id", "collected_at", "sample_date") '
+                "VALUES (101, '2026-05-23T10:15:00', '2026-05-21');"
+            )
         ]
         assert "+02:00" not in artifact.deploy_sql
 
