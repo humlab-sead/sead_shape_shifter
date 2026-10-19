@@ -48,9 +48,9 @@
         />
 
         <template v-if="isSeadChangeRequest">
-          <v-alert type="info" variant="tonal" class="mt-4" data-test="sead-change-request-workflow">
-            This workflow collects the operator context needed to validate identities, wait for Binding Set confirmation
-            when required, and emit an MVP change package.
+          <v-alert type="warning" variant="tonal" class="mt-4" data-test="sead-change-request-workflow">
+            File-based Change Request validation and dispatch are retired. The project-based replacement is not
+            available yet.
           </v-alert>
 
           <v-text-field
@@ -406,7 +406,7 @@
         color="primary"
         variant="outlined"
         :loading="isValidating"
-        :disabled="!formValid || !selectedIngesterAllowed || !canRunSelectedIngester"
+        :disabled="!formValid || !selectedIngesterAllowed || !canRunSelectedIngester || isRetiredFileIngester"
         @click="handleValidate"
       >
         <v-icon start>mdi-check-circle</v-icon>
@@ -416,7 +416,7 @@
       <v-btn
         color="success"
         :loading="isIngesting"
-        :disabled="!formValid || !selectedIngesterAllowed || !canRunSelectedIngester"
+        :disabled="!formValid || !selectedIngesterAllowed || !canRunSelectedIngester || isRetiredFileIngester"
         @click="handleIngest"
       >
         <v-icon start>mdi-send</v-icon>
@@ -537,6 +537,7 @@ const availableIngesters = computed(() =>
   ingesterStore.ingesters.filter((ingester) => !props.excludedIngesterKeys.includes(ingester.key))
 )
 const isSeadChangeRequest = computed(() => selectedIngester.value?.key === 'sead_change_request')
+const isRetiredFileIngester = computed(() => isSeadChangeRequest.value)
 const selectedIngesterAllowed = computed(
   () => !!selectedIngester.value && !props.excludedIngesterKeys.includes(selectedIngester.value.key)
 )
@@ -935,6 +936,8 @@ function buildIngestRequest(): IngestRequest {
 }
 
 async function handleValidate() {
+  if (isRetiredFileIngester.value) return
+
   const validationState = await formRef.value?.validate?.()
   if (validationState && validationState.valid === false) return
   if (!formValid.value) return
@@ -946,6 +949,8 @@ async function handleValidate() {
 }
 
 async function handleIngest() {
+  if (isRetiredFileIngester.value) return
+
   const validationState = await formRef.value?.validate?.()
   if (validationState && validationState.valid === false) return
   if (!formValid.value) return

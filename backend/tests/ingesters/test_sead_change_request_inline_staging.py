@@ -21,8 +21,10 @@ import psycopg
 import pytest
 from psycopg.rows import TupleRow
 
-from backend.app.ingesters.protocol import IngesterConfig
+from backend.app.ingesters.protocol import IngesterConfig, IngestionResult
+from ingesters.sead_change_request.contracts import SourceTableBundle
 from ingesters.sead_change_request.ingester import SeadChangeRequestIngester
+from ingesters.sead_change_request.input_resolution import _build_source_bundle
 
 pytestmark = pytest.mark.integration
 
@@ -268,6 +270,17 @@ def _ingester(
     )
 
 
+def _source_bundle(ingester: SeadChangeRequestIngester) -> SourceTableBundle:
+    """Build the in-memory bundle declared by the ingester configuration."""
+    extras = ingester.config.extra or {}
+    return _build_source_bundle(extras["tables"])
+
+
+async def _ingest(ingester: SeadChangeRequestIngester) -> IngestionResult:
+    """Ingest the configured tables through the internal bundle handoff."""
+    return await ingester._ingest_bundle(_source_bundle(ingester))
+
+
 def _run_statements(parameters: dict[str, Any], statements: list[str], *, lock_timeout_ms: int | None = None) -> None:
     """Execute the staged statements in one transaction."""
     with psycopg.connect(**parameters) as connection:
@@ -281,7 +294,7 @@ def _run_statements(parameters: dict[str, Any], statements: list[str], *, lock_t
 
 async def _deploy(tables: dict[str, pd.DataFrame], schema: str, output_folder: Any, **kwargs: Any) -> list[str]:
     """Render the staging artifact and return its statements."""
-    result = await _ingester(tables, schema=schema, output_folder=output_folder, **kwargs).ingest("submission.xlsx")
+    result = await _ingest(_ingester(tables, schema=schema, output_folder=output_folder, **kwargs))
     assert result.success is True, result.error_details
     assert result.deploy_artifact["metadata"]["deploy_strategy"] == "inline_staging"
     return list(result.deploy_artifact["statements"])
@@ -448,7 +461,7 @@ class TestInlineStagingRejections:
 
     @pytest.mark.asyncio
     async def test_ambiguous_relation_without_a_schema_is_rejected(self, disposable_schema: str, tmp_path):
-        result = await _ingester(_source_tables(), schema=None, output_folder=tmp_path).ingest("submission.xlsx")
+        result = await _ingest(_ingester(_source_tables(), schema=None, output_folder=tmp_path))
 
         assert result.success is False
         assert result.message == "Validation failed"
@@ -493,9 +506,7 @@ class TestInlineStagingRejections:
 
     @pytest.mark.asyncio
     async def test_child_of_an_existing_tracked_root_is_rejected(self, disposable_schema: str, tmp_path):
-        result = await _ingester(_source_tables(dataset_public_id=910), schema=disposable_schema, output_folder=tmp_path).ingest(
-            "submission.xlsx"
-        )
+        result = await _ingest(_ingester(_source_tables(dataset_public_id=910), schema=disposable_schema, output_folder=tmp_path))
 
         assert result.success is False
         assert "existing tracked root" in result.error_details
@@ -510,13 +521,15 @@ class TestInlineStagingRejections:
         tables = _source_tables()
         tables["site"] = pd.DataFrame({"system_id": [1], "site_id": [None]})
 
-        result = await _ingester(
-            tables,
-            schema=disposable_schema,
-            output_folder=tmp_path,
-            reconciliation=_ReconciliationClient({}),
-            target_model=model,
-        ).ingest("submission.xlsx")
+        result = await _ingest(
+            _ingester(
+                tables,
+                schema=disposable_schema,
+                output_folder=tmp_path,
+                reconciliation=_ReconciliationClient({}),
+                target_model=model,
+            )
+        )
 
         assert result.success is False
         assert "site_id" in result.error_details

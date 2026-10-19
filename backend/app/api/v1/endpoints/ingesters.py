@@ -13,7 +13,8 @@ from backend.app.models.ingester import (
     ValidateRequest,
     ValidateResponse,
 )
-from backend.app.services.ingester_service import get_ingester_service
+from backend.app.services.ingester_service import CHANGE_REQUEST_INGESTER_KEY, get_ingester_service
+from ingesters.sead_change_request.contracts import CHANGE_REQUEST_FILE_INPUT_RETIRED_MESSAGE
 
 router = APIRouter()
 ingester_operator_dependency = require_application_action(Action.RUN_INGESTERS)
@@ -49,8 +50,12 @@ async def validate_data(
 
     Raises:
         HTTPException: 403 if the principal lacks run_ingesters, 404 if the ingester or
-        project is not found, 500 if validation fails critically
+        project is not found, 400 for the retired Change Request file input,
+        500 if validation fails critically
     """
+    if key == CHANGE_REQUEST_INGESTER_KEY:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=CHANGE_REQUEST_FILE_INPUT_RETIRED_MESSAGE)
+
     try:
         result = await get_ingester_service().validate(
             key,
@@ -83,8 +88,12 @@ async def ingest_data(
 
     Raises:
         HTTPException: 403 if the principal lacks run_ingesters, 404 if the ingester or
-        project is not found, 500 if ingestion fails
+        project is not found, 400 for the retired Change Request file input,
+        500 if ingestion fails
     """
+    if key == CHANGE_REQUEST_INGESTER_KEY:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=CHANGE_REQUEST_FILE_INPUT_RETIRED_MESSAGE)
+
     try:
         return await get_ingester_service().ingest(
             key,

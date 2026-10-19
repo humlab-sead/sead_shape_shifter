@@ -23,7 +23,7 @@ from backend.app.models.ingester import (
 )
 from backend.app.services.ingester_runtime import inject_ingester_database_dependencies, inject_ingester_runtime_dependencies
 from backend.app.services.project_data_provider_service import ProjectDataProviderError, ProjectDataProviderService
-from ingesters.sead_change_request.contracts import TrustedProjectContext
+from ingesters.sead_change_request.contracts import CHANGE_REQUEST_FILE_INPUT_RETIRED_MESSAGE, TrustedProjectContext
 
 CHANGE_REQUEST_INGESTER_KEY = "sead_change_request"
 
@@ -68,6 +68,9 @@ class IngesterService:
         Raises:
             ValueError: If ingester not found or validation fails critically
         """
+        if key == CHANGE_REQUEST_INGESTER_KEY:
+            return self._reject_retired_change_request_validation()
+
         # Get ingester class
         ingester_cls: None | type[Ingester] = get_ingester_registry().get(key)
         if ingester_cls is None:
@@ -127,6 +130,9 @@ class IngesterService:
         Raises:
             ValueError: If ingester not found or ingestion fails
         """
+        if key == CHANGE_REQUEST_INGESTER_KEY:
+            return self._reject_retired_change_request_ingestion()
+
         # Get ingester class
         ingester_cls: None | type[Ingester] = get_ingester_registry().get(key)
         if ingester_cls is None:
@@ -195,6 +201,29 @@ class IngesterService:
                 deploy_artifact=None,
                 pending_confirmation_report=None,
             )
+
+    def _reject_retired_change_request_validation(self) -> ValidateResponse:
+        """Reject the retired Change Request file input before loading any project data."""
+        logger.warning("Ingester '{}' rejected retired file input before project configuration", CHANGE_REQUEST_INGESTER_KEY)
+        return ValidateResponse(
+            is_valid=False,
+            errors=[CHANGE_REQUEST_FILE_INPUT_RETIRED_MESSAGE],
+            warnings=[],
+            infos=[],
+            pending_confirmation_report=None,
+        )
+
+    def _reject_retired_change_request_ingestion(self) -> IngestResponse:
+        """Reject the retired Change Request file input before loading any project data."""
+        logger.warning("Ingester '{}' rejected retired file input before project configuration", CHANGE_REQUEST_INGESTER_KEY)
+        return IngestResponse(
+            success=False,
+            records_processed=0,
+            message="File input retired",
+            submission_id=None,
+            output_path=None,
+            error_details=CHANGE_REQUEST_FILE_INPUT_RETIRED_MESSAGE,
+        )
 
     def _trusted_project_context(self, key: str, project_name: str | None) -> TrustedProjectContext | None:
         """Return the backend-owned project facts for a project-scoped ingester.

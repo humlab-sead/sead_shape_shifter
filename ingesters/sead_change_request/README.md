@@ -10,18 +10,23 @@ This ingester produces deployable change-request artifacts rather than loading r
 
 It does not load rows directly into a live SEAD database. Instead, it prepares a change package and renders that package as a bundle containing deploy SQL, placeholder revert and verify SQL, a manifest, and any payload sidecar files required by the selected deploy strategy.
 
-The package currently supports two main entry points defined by the Shape Shifter ingester protocol:
+The Shape Shifter ingester protocol still defines `validate()` and `ingest()`, but their file input is retired:
 
-- `validate()` checks the source bundle, target model, submission context, identity workflow, and target-projection path without emitting a final bundle
-- `ingest()` runs the same preparation path, then performs collision checks, builds the change package, renders a deploy artifact, and writes the bundle to the configured output folder
+- `get_metadata()` reports no supported file formats
+- `validate()` and `ingest()` return structured input failures before resolving a source, and a `Path` or `str` cannot select tables from `config.extra`
+- the shared preparation path runs on an explicit in-memory `SourceTableBundle` through the private `_validate_bundle()` and `_ingest_bundle()` methods
+
+Private bundle validation checks the source bundle, target model, submission context, identity workflow, and target-projection path without emitting a final bundle. Private bundle ingestion runs the same preparation path, then performs collision checks, builds the change package, renders a deploy artifact, and writes the bundle to the configured output folder.
+
+Change Request generation has no operator entry point in this state. Project-only table methods and routes are planned follow-up work and are not shipped here.
 
 ## Pipeline
 
 The implementation follows this high-level flow:
 
 ```text
-load source tables or an Excel workbook
-  -> normalize and validate the inputs
+receive normalized tables in memory as a SourceTableBundle
+  -> validate the resolved config inputs
   -> plan each table against the target model
   -> orchestrate identity work via injected clients
   -> project PK/FK values
@@ -32,7 +37,7 @@ load source tables or an Excel workbook
 ```
 
 The shared workflow up to target projection lives in `prepare_change_request()` in [preparation.py](./preparation.py).
-Helper result shaping for `validate()` and `ingest()` lives in [result_builders.py](./result_builders.py).
+Helper result shaping for bundle validation and ingestion lives in [result_builders.py](./result_builders.py).
 
 ## Module Dependencies
 
@@ -138,7 +143,7 @@ The ingester resolves the requested strategy from `IngesterConfig.extra["deploy_
 
 ### Step 1: Resolve Inputs
 
-- [input_resolution.py](./input_resolution.py): loads Excel or in-memory tables, validates ingester config inputs, resolves the target model, submission context, fallback identity assignments, and deploy strategy
+- [input_resolution.py](./input_resolution.py): resolves in-memory tables, rejects retired file input before reading `config.extra`, validates ingester config inputs, resolves the target model, submission context, fallback identity assignments, and deploy strategy
 
 ### Step 2: Plan Work
 
@@ -147,7 +152,7 @@ The ingester resolves the requested strategy from `IngesterConfig.extra["deploy_
 
 ### Step 3: Run The Shared Preparation Path
 
-- [preparation.py](./preparation.py): shared workflow hub used by both `validate()` and `ingest()`
+- [preparation.py](./preparation.py): shared workflow hub used by both private bundle methods
 - [orchestration.py](./orchestration.py): thin orchestration over injected SIMS and reconciliation clients
 - [identity_resolution.py](./identity_resolution.py): applies identity assignments back onto planned tables
 - [target_projection.py](./target_projection.py): rewrites local working IDs into target-facing PK/FK values
@@ -165,7 +170,7 @@ The ingester resolves the requested strategy from `IngesterConfig.extra["deploy_
 
 ### Runtime Entry Point
 
-- [ingester.py](./ingester.py): protocol adapter that coordinates the workflow, converts expected failures into protocol results, and invokes file emission
+- [ingester.py](./ingester.py): protocol adapter that rejects the retired file input, coordinates the bundle workflow, converts expected failures into protocol results, and invokes file emission
 
 ### Package Documentation
 
@@ -179,7 +184,7 @@ Common inputs include:
 
 - `target_model`: required `TargetModel` or raw target-model payload
 - `submission_context`: required submission metadata
-- `tables` or `source_bundle`: in-memory input tables when not reading from Excel
+- `tables` or `source_bundle`: in-memory input tables used by the private bundle methods; the retired public file methods never read them
 - `identity_assignments`: optional fallback row assignments
 - `deploy_strategy`: optional deploy renderer name or strategy instance
 - `trusted_project_context`: required for the API path; the backend supplies it from the
@@ -231,14 +236,30 @@ The `metadata` and `metadata_artifact` sections both record the effective `scope
 `run_id` used for the run. The ingest response returns the same two values, so an operator can
 match an emitted bundle to the SIMS scope and run that produced it.
 
+## Retired File Input
+
+The public protocol methods keep their signatures so the shared request and response models stay
+unchanged, but they no longer accept file input.
+
+- `validate(source)` returns `is_valid=False` with an input-retirement error
+- `ingest(source, validate_first)` returns `success=False` with the same error for both values of `validate_first`
+- `_resolve_source_bundle()` raises `SourceBundleError` for a `Path` or `str` before it reads `config.extra`, so a path-shaped source cannot select `source_bundle` or `tables`
+
+No preparation, SIMS request, target-database call, or bundle write happens for a rejected file
+call. Build a `SourceTableBundle` and call the private bundle methods when in-memory tables must
+be prepared.
+
 ## Validation Vs Ingestion
 
-`validate()` and `ingest()` intentionally remain separate.
+The private bundle methods intentionally remain separate.
 
-- `validate()` reports input-resolution failures, planning issues, blocked identity work, and projection problems as structured validation output
-- `ingest()` can optionally call `validate()` first, then continues into collision checks, package assembly, artifact rendering, and bundle emission
+- `_validate_bundle()` reports input-resolution failures, planning issues, blocked identity work, and projection problems as structured validation output
+- `_ingest_bundle()` can optionally validate first, then continues into collision checks, package assembly, artifact rendering, and bundle emission
 
 This separation keeps validation side-effect free while allowing ingestion to perform file emission and collaborator callbacks such as change-request association.
+
+The retired public `validate()` and `ingest()` methods do no preparation at all; they return a
+structured input failure immediately.
 
 ## Testing
 
@@ -254,6 +275,6 @@ PYTHONPATH=.:backend pytest backend/tests/ingesters -q
 
 ## Current Scope
 
-The current implementation focuses on preparing and emitting change-request artifacts from normalized Shape Shifter output.
+The current implementation focuses on preparing and emitting change-request artifacts from normalized Shape Shifter output supplied in memory. It does not read workbooks, and it has no operator-facing entry point until the project-only table methods and routes ship.
 
 It is designed to keep business rules around planning, identity resolution, target projection, and deploy rendering explicit and testable, while leaving downstream execution of the generated artifacts outside this package.

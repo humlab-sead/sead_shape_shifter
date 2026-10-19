@@ -16,8 +16,8 @@ It does not cover per-source authorization, new project authorization beyond the
 
 ## Current Position
 
-- The `sead_change_request` ingester currently writes deploy, revert, and verify SQL files plus a manifest under `IngesterConfig.output_folder`. The handoff first provides a backend-owned `INGEST_OUTPUT_DIR` root for project-only runs. Phase 1 applies that root to Change Request bundle writes and adds exclusive per-run folders.
-- Ingester API operations use the `application:run_ingesters` action. The current `sead_change_request` file-ingest route also requires `project:execute` on the saved project named in the request body. The handoff retires that file input; its project-only routes keep `project:execute`.
+- The `sead_change_request` ingester writes deploy, revert, and verify SQL files plus a manifest under `IngesterConfig.output_folder`. Phase 1 replaces that caller-supplied root with the `INGEST_OUTPUT_DIR` managed root for this ingester only.
+- Ingester API operations use the `application:run_ingesters` action. The `sead_change_request` ingest route also requires `project:execute` on the saved project named in the request body; that check stays.
 - The header writer removes an existing bundle directory with the same generated name before writing; the proposed exclusive run folder and fail-on-collision rule replace this behavior.
 - Bundle output currently lands under the caller-supplied `output_folder`, and the bundle name (`<date>_DML_<datatype>_<identifier>`) also serves as the manifest `cr_name`, the SQL file names, and the paths inside generated `\copy` statements. The managed root therefore adds only a timestamped run folder above the existing bundle directory, so the artifact contract is unchanged.
 - The ingester rejects database-sequence ID generation for SIMS-tracked entities. Phase 1 will not allocate database-sequence IDs for non-SIMS entities either; those IDs must be pre-resolved or generation must reject the affected input.
@@ -34,7 +34,7 @@ Allow an authenticated principal holding `project:execute` on an authorized save
 
 **Focus**
 
-- Remove `application:run_ingesters` only from the composed path's dedicated project-only validation and ingest routes and helper. Keep `project:execute` on both routes, the helper's project-resource guard, and the file-route gates for other ingesters. Change Request file input is retired by the handoff.
+- Remove the `application:run_ingesters` requirement only from Change Request target-bundle creation through the composed in-memory path, and keep the `project:execute` check.
 - Write each run to its own UTC-timestamped run folder under the `INGEST_OUTPUT_DIR` managed root, keeping the existing bundle name inside it; create the folder exclusively and fail on collision without modifying existing files.
 - Confirm bundle creation runs only read-only verification queries against the target database and performs no writes or sequence allocation.
 - Preserve stable, idempotent SIMS identity resolution across retries and runs; do not allocate a fresh ID for a previously resolved source identity.
@@ -43,7 +43,7 @@ Allow an authenticated principal holding `project:execute` on an authorized save
 
 **Depends On**
 
-- [Hand Normalized Tables To The Ingester In Memory](../IN_MEMORY_INGESTER_HANDOFF/IN_MEMORY_INGESTER_HANDOFF.md), which is still proposed and not implemented. Its `P-AC-6` first retires Change Request file input. It then supplies separate project-only validation and ingest routes, client requests, backend-selected ingester inputs, and a guarded helper that validates the project before ingester work, initially gated by both permissions. This phase cannot start before that proposal's `P-AC-1`, `P-AC-8`, `P-AC-10`, `P-AC-11`, `P-AC-12`, and `P-AC-13` ship; removing `application:run_ingesters` from a caller-path route is not an acceptable substitute.
+- [Hand Normalized Tables To The Ingester In Memory](../IN_MEMORY_INGESTER_HANDOFF/IN_MEMORY_INGESTER_HANDOFF.md), which is still proposed and not implemented. The permission exception applies only to its composed path, so this phase cannot start before that proposal's `P-AC-1` and `P-AC-8` ship. Removing `application:run_ingesters` from the caller-path route is not an acceptable substitute.
 
 **Outputs**
 
@@ -52,7 +52,7 @@ Allow an authenticated principal holding `project:execute` on an authorized save
 
 **Acceptance Criteria**
 
-- `PH1-AC-1` (from `P-AC-1`) An authenticated principal holding `project:execute` on an authorized saved project can validate and create a Change Request target bundle through the project-only routes without `application:run_ingesters`; the helper accepts the same authorized project without that application action. Unauthenticated callers and principals without `project:execute` are rejected.
+- `PH1-AC-1` (from `P-AC-1`) An authenticated principal holding `project:execute` on an authorized saved project can create a Change Request target bundle from that project through the composed path without `application:run_ingesters`; unauthenticated callers and principals without `project:execute` are rejected.
 - `PH1-AC-2` (from `P-AC-2`) Each run writes to its own UTC-timestamped run folder under the `INGEST_OUTPUT_DIR` managed root, keeping the existing bundle name inside it. An existing destination fails before any file is written and no existing directory is deleted or replaced; bundle creation does not overwrite or remove unrelated files, and `output_path` returns the written bundle directory.
 - `PH1-AC-3` (from `P-AC-3`) Bundle creation limits target-database access to read-only verification queries; it does not modify target rows or consume sequence values.
 - `PH1-AC-5` (from `P-AC-5`) Repeating a bundle run for a previously resolved identity based on the entity's configured business `keys` reuses its SIMS target ID. For one submission attempt the operator client reuses a single run ID across validation, ingestion, and retries, mints a new run ID when the submission identity changes or a bundle has been written, and that run ID appears in the response and the bundle manifest.

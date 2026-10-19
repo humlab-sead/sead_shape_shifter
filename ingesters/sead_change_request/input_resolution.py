@@ -11,6 +11,7 @@ import pandas as pd
 from backend.app.ingesters.protocol import IngesterConfig
 from ingesters.sead_change_request.contracts import (
     APPROVED_DATATYPES,
+    CHANGE_REQUEST_FILE_INPUT_RETIRED_MESSAGE,
     ChangeRowState,
     IdentityAssignment,
     SourceTableBundle,
@@ -22,7 +23,6 @@ from ingesters.sead_change_request.contracts import (
 from ingesters.sead_change_request.preparation import ResolvedInputs
 from ingesters.sead_change_request.sql_builder import STAGING_TARGET_SCHEMA_KEY, resolve_deploy_artifact_strategy
 from src.target_model.models import TargetModel
-from src.utility import sanitize_columns
 
 TRUSTED_PROJECT_CONTEXT_KEY = "trusted_project_context"
 """Config-extra key that carries the backend-owned project facts for one run."""
@@ -119,11 +119,14 @@ def resolve_inputs(config: IngesterConfig, source: object) -> ResolvedInputs:
 
 
 def _resolve_source_bundle(config: IngesterConfig, source: object) -> SourceTableBundle:
-    """Resolve the current protocol edge into the internal bundle contract."""
-    extras: dict[str, Any] = config.extra or {}
-
+    """Resolve the internal bundle contract and reject the retired file input."""
     if isinstance(source, SourceTableBundle):
         return source
+
+    if isinstance(source, (Path, str)):
+        raise SourceBundleError(CHANGE_REQUEST_FILE_INPUT_RETIRED_MESSAGE)
+
+    extras: dict[str, Any] = config.extra or {}
 
     source_bundle = extras.get("source_bundle")
     if isinstance(source_bundle, SourceTableBundle):
@@ -131,43 +134,12 @@ def _resolve_source_bundle(config: IngesterConfig, source: object) -> SourceTabl
 
     table_mapping = source if isinstance(source, dict) else extras.get("tables")
     if isinstance(table_mapping, dict):
-        source_name = str(source) if isinstance(source, (Path, str)) else ""
-        return _build_source_bundle(table_mapping, source_name=source_name)
-
-    if isinstance(source, (Path, str)):
-        return _load_source_bundle_from_path(Path(source))
+        return _build_source_bundle(table_mapping)
 
     raise SourceBundleError("Unsupported source type for sead_change_request ingestion")
 
 
-def _load_source_bundle_from_path(source_path: Path) -> SourceTableBundle:
-    """Load an Excel workbook into the internal source-bundle contract."""
-    if not source_path.exists():
-        raise SourceBundleError(f"Source file does not exist: {source_path}")
-    if source_path.suffix.lower() not in {".xlsx", ".xls"}:
-        raise SourceBundleError(f"Unsupported source file format '{source_path.suffix}'; expected .xlsx or .xls")
-
-    with pd.ExcelFile(source_path) as workbook:
-        table_mapping: dict[str, pd.DataFrame] = {}
-        warnings: list[str] = []
-
-        for sheet_name in workbook.sheet_names:
-            normalized_sheet_name = str(sheet_name)
-            if normalized_sheet_name == "data_table_index":
-                warnings.append("Ignored sheet 'data_table_index' from Excel source bundle")
-                continue
-
-            frame: pd.DataFrame = pd.read_excel(workbook, sheet_name=normalized_sheet_name)
-            frame.columns = sanitize_columns(list(frame.columns))
-            table_mapping[normalized_sheet_name] = frame
-
-    if not table_mapping:
-        raise SourceBundleError(f"No usable sheets were found in source file: {source_path}")
-
-    return SourceTableBundle(tables=table_mapping, source_name=str(source_path), warnings=warnings)
-
-
-def _build_source_bundle(tables: dict[object, object], source_name: str = "") -> SourceTableBundle:
+def _build_source_bundle(tables: dict[object, object]) -> SourceTableBundle:
     """Build a validated source bundle from a raw table mapping."""
     if not tables:
         raise SourceBundleError("No source tables were provided")
@@ -181,7 +153,7 @@ def _build_source_bundle(tables: dict[object, object], source_name: str = "") ->
 
         normalized_tables[table_name] = frame
 
-    return SourceTableBundle(tables=normalized_tables, source_name=source_name)
+    return SourceTableBundle(tables=normalized_tables)
 
 
 def _resolve_target_model(config: IngesterConfig) -> TargetModel:
