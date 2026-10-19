@@ -2,7 +2,7 @@
 
 ## Summary
 
-This plan sequences [the in-memory handoff proposal](./IN_MEMORY_INGESTER_HANDOFF.md). Phases 1–3 retired Change Request file input and added no-write normalization and table-input support. Phase 4 added and validated the guarded backend helper. Phase 5 remains to expose project-only routes and connect them to the operator client. The [target-bundle access proposal](../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md) owns the later permission change and per-run output rules.
+This plan sequences [the in-memory handoff proposal](./IN_MEMORY_INGESTER_HANDOFF.md). Phases 1–3 retired Change Request file input and added no-write normalization and table-input support. Phase 4 added the guarded backend helper, and Phase 5 exposed its project-only routes and connected the saved-project operator client. The [target-bundle access proposal](../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md) owns the later permission change and per-run output rules.
 
 ## Problem
 
@@ -19,8 +19,8 @@ It leaves Excel dispatch and file input for other ingesters unchanged. It does n
 - `normalize_project()` applies normalization options and returns the completed tables without writing; `workflow()` calls it before its dispatcher write and shape log.
 - `sead_change_request` advertises no file formats. Its file routes, service calls, and file-oriented methods reject Change Request input; its source resolver rejects a path-shaped input before checking `config.extra`.
 - `TableSourceIngester` and the Change Request table methods are implemented. The adapter copies and sanitizes normalized tables; artifact rendering keeps date and clock fields without timezone conversion and rejects incompatible target column types.
-- Shared ingester requests still require `source` and use the existing file-oriented service. The internal `ProjectIngesterService` now validates authorization and project configuration, then passes normalized tables and trusted settings to table-capable ingesters; project-only routes do not yet expose it.
-- Phases 1–4 are complete, as recorded in the [Phase 1](./IN_MEMORY_INGESTER_HANDOFF_PHASE_1_TASK_PLAN.md), [Phase 2](./IN_MEMORY_INGESTER_HANDOFF_PHASE_2_TASK_PLAN.md), [Phase 3](./IN_MEMORY_INGESTER_HANDOFF_PHASE_3_TASK_PLAN.md), and [Phase 4](./IN_MEMORY_INGESTER_HANDOFF_PHASE_4_TASK_PLAN.md) task plans. Bundle generation remains unavailable through the operator client until Phase 5 ships the project-only path.
+- Shared ingester requests still require `source` and use the existing file-oriented service. The internal `ProjectIngesterService` validates authorization and project configuration, then passes normalized tables and trusted settings to table-capable ingesters. The project-only routes now expose this helper, and the saved-project Dispatch form uses those routes.
+- Phases 1–5 are complete, as recorded in the [Phase 1](./IN_MEMORY_INGESTER_HANDOFF_PHASE_1_TASK_PLAN.md), [Phase 2](./IN_MEMORY_INGESTER_HANDOFF_PHASE_2_TASK_PLAN.md), [Phase 3](./IN_MEMORY_INGESTER_HANDOFF_PHASE_3_TASK_PLAN.md), [Phase 4](./IN_MEMORY_INGESTER_HANDOFF_PHASE_4_TASK_PLAN.md), and [Phase 5](./IN_MEMORY_INGESTER_HANDOFF_PHASE_5_TASK_PLAN.md) task plans. Project-only bundle generation is available through the saved-project operator path; both interim permissions remain required.
 
 ## Phase Plan
 
@@ -227,7 +227,7 @@ Let an authorized operator validate and generate a Change Request from a saved p
 
 **Readiness**
 
-Ready for a task plan. Phase 4's guarded helper and trusted input construction are complete. Keep both permissions until the companion proposal's exclusive output and read-only database rules ship.
+Completed. The [Phase 5 task plan](./IN_MEMORY_INGESTER_HANDOFF_PHASE_5_TASK_PLAN.md) records implementation and passing validation for `PH5-AC-1`–`PH5-AC-4`. Both `project:execute` and the interim `application:run_ingesters` permission remain required. The companion proposal still owns exclusive per-run output and read-only target-database access before the application permission can be removed.
 
 ## Cross-Phase Rules
 

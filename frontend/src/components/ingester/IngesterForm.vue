@@ -35,22 +35,19 @@
 
       <v-form v-if="selectedIngesterAllowed" ref="formRef" v-model="formValid">
         <v-text-field
+          v-if="!isSeadChangeRequest"
           v-model="form.source"
-          :label="isSeadChangeRequest ? 'Normalized Workbook Path *' : 'Source File Path *'"
-          :hint="
-            isSeadChangeRequest
-              ? 'Path to the normalized workbook that will be turned into a change package'
-              : 'Path to the Excel file to ingest'
-          "
+          label="Source File Path *"
+          hint="Path to the Excel file to ingest"
           persistent-hint
           :rules="[rules.required]"
           prepend-icon="mdi-file-excel"
         />
 
         <template v-if="isSeadChangeRequest">
-          <v-alert type="warning" variant="tonal" class="mt-4" data-test="sead-change-request-workflow">
-            File-based Change Request validation and dispatch are retired. The project-based replacement is not
-            available yet.
+          <v-alert type="info" variant="tonal" class="mt-4" data-test="sead-change-request-workflow">
+            Change Request uses the normalized tables from this saved project. Validate the project, then generate and
+            review the deploy bundle. Project Execute and application ingester permissions are required.
           </v-alert>
 
           <v-text-field
@@ -73,26 +70,13 @@
           <v-text-field
             :model-value="effectiveProjectName"
             label="Project Name *"
-            :hint="
-              hasRouteProject
-                ? 'Fixed to the saved project open in this Dispatch tab.'
-                : 'Used in deploy package metadata and bundle naming'
-            "
+            :hint="'Fixed to the saved project open in this Dispatch tab.'"
             persistent-hint
             :rules="[rules.required]"
             prepend-icon="mdi-folder-outline"
-            :readonly="hasRouteProject"
-            @update:model-value="updateProjectName"
+            readonly
           />
-          <div class="text-caption text-medium-emphasis mb-2">
-            {{
-              hasRouteProject
-                ? 'Project locator is fixed to the open saved project.'
-                : isProjectNameProjectDerived
-                  ? 'Auto-derived from the active project.'
-                  : 'Operator override for this run.'
-            }}
-          </div>
+          <div class="text-caption text-medium-emphasis mb-2">Project locator is fixed to the open saved project.</div>
 
           <v-text-field
             v-model="seadChangeRequest.timestamp"
@@ -203,58 +187,61 @@
           />
         </template>
 
-        <v-alert v-if="targetDataSourceName" type="info" variant="tonal" density="compact" class="mt-4">
-          <div class="text-caption">
-            <strong>Target Database:</strong> {{ targetDataSourceName }}
-            <span v-if="targetDataSourceInfo">
-              <span v-if="targetDataSourceInfo.host">
-                • {{ targetDataSourceInfo.host }}{{ targetDataSourceInfo.port ? ':' + targetDataSourceInfo.port : '' }}
+        <template v-if="!isSeadChangeRequest">
+          <v-alert v-if="targetDataSourceName" type="info" variant="tonal" density="compact" class="mt-4">
+            <div class="text-caption">
+              <strong>Target Database:</strong> {{ targetDataSourceName }}
+              <span v-if="targetDataSourceInfo">
+                <span v-if="targetDataSourceInfo.host">
+                  • {{ targetDataSourceInfo.host
+                  }}{{ targetDataSourceInfo.port ? ':' + targetDataSourceInfo.port : '' }}
+                </span>
+                <span v-if="targetDataSourceInfo.database || targetDataSourceInfo.dbname">
+                  • {{ targetDataSourceInfo.database || targetDataSourceInfo.dbname }}
+                </span>
               </span>
-              <span v-if="targetDataSourceInfo.database || targetDataSourceInfo.dbname">
-                • {{ targetDataSourceInfo.database || targetDataSourceInfo.dbname }}
-              </span>
-            </span>
-          </div>
-          <div v-if="!targetDataSourceInfo" class="text-caption error--text mt-1">
-            ⚠️ Data source "{{ targetDataSourceName }}" not found in project configuration
-          </div>
-        </v-alert>
+            </div>
+            <div v-if="!targetDataSourceInfo" class="text-caption error--text mt-1">
+              ⚠️ Data source "{{ targetDataSourceName }}" not found in project configuration
+            </div>
+          </v-alert>
 
-        <v-alert v-else type="warning" variant="tonal" density="compact" class="mt-4">
-          No target database configured for this ingester in the project file. Please configure the "ingesters.{{
-            selectedIngester?.key
-          }}.data_source" option.
-        </v-alert>
+          <v-alert v-else type="warning" variant="tonal" density="compact" class="mt-4">
+            No target database configured for this ingester in the project file. Please configure the "ingesters.{{
+              selectedIngester?.key
+            }}.data_source" option.
+          </v-alert>
 
-        <v-expansion-panels class="mt-4">
-          <v-expansion-panel :title="isSeadChangeRequest ? 'Input Options' : 'Advanced Options'">
-            <v-expansion-panel-text>
-              <v-textarea
-                v-model="ignoreColumnsText"
-                label="Ignore Columns"
-                hint="One pattern per line (e.g., 'date_updated', '*_uuid')"
-                persistent-hint
-                rows="3"
-              />
+          <v-expansion-panels class="mt-4">
+            <v-expansion-panel title="Advanced Options">
+              <v-expansion-panel-text>
+                <v-textarea
+                  v-model="ignoreColumnsText"
+                  label="Ignore Columns"
+                  hint="One pattern per line (e.g., 'date_updated', '*_uuid')"
+                  persistent-hint
+                  rows="3"
+                />
 
-              <v-switch
-                v-if="!isSeadChangeRequest"
-                v-model="form.do_register"
-                label="Register in Database"
-                color="primary"
-                hide-details
-              />
+                <v-switch
+                  v-if="!isSeadChangeRequest"
+                  v-model="form.do_register"
+                  label="Register in Database"
+                  color="primary"
+                  hide-details
+                />
 
-              <v-switch
-                v-if="!isSeadChangeRequest"
-                v-model="form.explode"
-                label="Explode to Public Tables"
-                color="primary"
-                hide-details
-              />
-            </v-expansion-panel-text>
-          </v-expansion-panel>
-        </v-expansion-panels>
+                <v-switch
+                  v-if="!isSeadChangeRequest"
+                  v-model="form.explode"
+                  label="Explode to Public Tables"
+                  color="primary"
+                  hide-details
+                />
+              </v-expansion-panel-text>
+            </v-expansion-panel>
+          </v-expansion-panels>
+        </template>
 
         <v-alert
           v-if="validationPendingConfirmationReport"
@@ -406,7 +393,7 @@
         color="primary"
         variant="outlined"
         :loading="isValidating"
-        :disabled="!formValid || !selectedIngesterAllowed || !canRunSelectedIngester || isRetiredFileIngester"
+        :disabled="!formValid || !selectedIngesterAllowed || !canRunSelectedIngester"
         @click="handleValidate"
       >
         <v-icon start>mdi-check-circle</v-icon>
@@ -416,7 +403,7 @@
       <v-btn
         color="success"
         :loading="isIngesting"
-        :disabled="!formValid || !selectedIngesterAllowed || !canRunSelectedIngester || isRetiredFileIngester"
+        :disabled="!formValid || !selectedIngesterAllowed || !canRunSelectedIngester"
         @click="handleIngest"
       >
         <v-icon start>mdi-send</v-icon>
@@ -441,6 +428,7 @@ import type {
   DeployArtifact,
   IngestRequest,
   PendingConfirmationReport,
+  ProjectIngesterRequest,
   SubmissionContextInput,
   ValidateRequest,
 } from '@/types/ingester'
@@ -462,7 +450,7 @@ const projectStore = useProjectStore()
 
 const { selectedIngester, validationResult, ingestionResult, error, isValidating, isIngesting } =
   storeToRefs(ingesterStore)
-const { validate, ingest, clearError, clearValidation, clearIngestion } = ingesterStore
+const { validate, ingest, validateProject, ingestProject, clearError, clearValidation, clearIngestion } = ingesterStore
 const { selectedProject } = storeToRefs(projectStore)
 
 const formRef = ref()
@@ -537,23 +525,18 @@ const availableIngesters = computed(() =>
   ingesterStore.ingesters.filter((ingester) => !props.excludedIngesterKeys.includes(ingester.key))
 )
 const isSeadChangeRequest = computed(() => selectedIngester.value?.key === 'sead_change_request')
-const isRetiredFileIngester = computed(() => isSeadChangeRequest.value)
 const selectedIngesterAllowed = computed(
   () => !!selectedIngester.value && !props.excludedIngesterKeys.includes(selectedIngester.value.key)
 )
-const hasRouteProject = computed(() => props.projectName !== undefined)
 const routeProjectName = computed(() => props.projectName?.trim() ?? '')
-const effectiveProjectName = computed(() =>
-  hasRouteProject.value ? routeProjectName.value : seadChangeRequest.value.project_name.trim()
-)
+const effectiveProjectName = computed(() => routeProjectName.value)
 const projectMatchesRoute = computed(
   () =>
-    !hasRouteProject.value ||
-    (!props.projectLoading && selectedProject.value?.metadata?.name?.trim() === routeProjectName.value)
+    !!routeProjectName.value &&
+    !props.projectLoading &&
+    selectedProject.value?.metadata?.name?.trim() === routeProjectName.value
 )
-const canRunSelectedIngester = computed(
-  () => !isSeadChangeRequest.value || (!!effectiveProjectName.value && projectMatchesRoute.value)
-)
+const canRunSelectedIngester = computed(() => !isSeadChangeRequest.value || projectMatchesRoute.value)
 const ingesterConfig = computed<IngesterProjectConfig | null>(() => {
   if (!selectedProject.value || !selectedIngester.value) return null
   const ingesters = selectedProject.value.options?.ingesters || {}
@@ -622,9 +605,6 @@ const projectDerivedSubmissionName = computed(() =>
   createSubmissionNameDefault(defaultProjectName.value, seadChangeRequest.value.datatype)
 )
 const projectDerivedIdentifier = computed(() => createProjectIdentifierDefault(defaultProjectName.value))
-const isProjectNameProjectDerived = computed(() => {
-  return !!defaultProjectName.value && seadChangeRequest.value.project_name.trim() === defaultProjectName.value
-})
 const isSubmissionNameProjectDerived = computed(() => {
   return (
     !!projectDerivedSubmissionName.value &&
@@ -889,12 +869,6 @@ function applyIngesterDefaults() {
   }
 }
 
-function updateProjectName(value: string | null) {
-  if (!hasRouteProject.value && value !== null) {
-    seadChangeRequest.value.project_name = value
-  }
-}
-
 function buildSubmissionContext(): SubmissionContextInput | undefined {
   if (!isSeadChangeRequest.value) {
     return undefined
@@ -910,6 +884,22 @@ function buildSubmissionContext(): SubmissionContextInput | undefined {
     description: seadChangeRequest.value.description.trim() || undefined,
     issue_identifier: seadChangeRequest.value.issue_identifier.trim() || undefined,
     author: seadChangeRequest.value.author.trim() || undefined,
+  }
+}
+
+function buildProjectRequest(): ProjectIngesterRequest {
+  return {
+    project_name: routeProjectName.value,
+    submission_context: {
+      submission_name: normalizeSubmissionName(form.value.submission_name),
+      timestamp: seadChangeRequest.value.timestamp,
+      datatype: seadChangeRequest.value.datatype,
+      identifier: normalizeSubmissionIdentifier(seadChangeRequest.value.identifier),
+      description: seadChangeRequest.value.description.trim() || undefined,
+      issue_identifier: seadChangeRequest.value.issue_identifier.trim() || undefined,
+      author: seadChangeRequest.value.author.trim() || undefined,
+    },
+    deploy_strategy: deployStrategy.value,
   }
 }
 
@@ -936,7 +926,7 @@ function buildIngestRequest(): IngestRequest {
 }
 
 async function handleValidate() {
-  if (isRetiredFileIngester.value) return
+  if (!selectedIngesterAllowed.value || !canRunSelectedIngester.value) return
 
   const validationState = await formRef.value?.validate?.()
   if (validationState && validationState.valid === false) return
@@ -945,11 +935,15 @@ async function handleValidate() {
   clearValidation()
   clearError()
 
-  await validate(buildValidateRequest())
+  if (isSeadChangeRequest.value) {
+    await validateProject(buildProjectRequest())
+  } else {
+    await validate(buildValidateRequest())
+  }
 }
 
 async function handleIngest() {
-  if (isRetiredFileIngester.value) return
+  if (!selectedIngesterAllowed.value || !canRunSelectedIngester.value) return
 
   const validationState = await formRef.value?.validate?.()
   if (validationState && validationState.valid === false) return
@@ -959,7 +953,11 @@ async function handleIngest() {
   clearIngestion()
   clearError()
 
-  await ingest(buildIngestRequest())
+  if (isSeadChangeRequest.value) {
+    await ingestProject(buildProjectRequest())
+  } else {
+    await ingest(buildIngestRequest())
+  }
 }
 
 function resetForm() {

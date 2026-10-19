@@ -4,21 +4,38 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from backend.app.authorization.dependencies import require_application_action, require_ingester_project
+from backend.app.authorization.dependencies import (
+    get_authorization_service,
+    require_application_action,
+    require_ingester_project,
+    require_project,
+)
 from backend.app.authorization.models import Action, AuthorizedResource, Principal
+from backend.app.authorization.service import AuthorizationService
 from backend.app.models.ingester import (
     IngesterMetadataResponse,
     IngestRequest,
     IngestResponse,
+    ProjectIngesterRequest,
     ValidateRequest,
     ValidateResponse,
 )
 from backend.app.services.ingester_service import CHANGE_REQUEST_INGESTER_KEY, get_ingester_service
+from backend.app.services.project_ingester_service import ProjectIngesterService
 from ingesters.sead_change_request.contracts import CHANGE_REQUEST_FILE_INPUT_RETIRED_MESSAGE
 
 router = APIRouter()
 ingester_operator_dependency = require_application_action(Action.RUN_INGESTERS)
 ingester_project_dependency = require_ingester_project(Action.EXECUTE)
+project_ingester_operator_dependency = require_application_action(Action.RUN_INGESTERS)
+project_ingester_project_dependency = require_project(Action.EXECUTE, body_locator=True)
+
+
+def get_project_ingester_service(
+    authorization_service: Annotated[AuthorizationService, Depends(get_authorization_service)],
+) -> ProjectIngesterService:
+    """Build the project-only ingester service with the request authorization service."""
+    return ProjectIngesterService(authorization_service)
 
 
 @router.get("", response_model=list[IngesterMetadataResponse])
@@ -29,6 +46,46 @@ async def list_ingesters() -> list[IngesterMetadataResponse]:
         List of ingester metadata including key, name, description, version, and supported formats
     """
     return get_ingester_service().list_ingesters()
+
+
+@router.post("/sead_change_request/from-project/validate", response_model=ValidateResponse)
+async def validate_project_ingester(
+    request: ProjectIngesterRequest,
+    _: Annotated[Principal, Depends(project_ingester_operator_dependency)],
+    authorized_project: Annotated[AuthorizedResource, Depends(project_ingester_project_dependency)],
+    project_ingester_service: Annotated[ProjectIngesterService, Depends(get_project_ingester_service)],
+) -> ValidateResponse:
+    """Validate the authorized project's normalized tables for a Change Request."""
+    try:
+        return await project_ingester_service.validate_project_tables(
+            CHANGE_REQUEST_INGESTER_KEY,
+            authorized_project,
+            request,
+        )
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from exc
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Validation failed: {exc}") from exc
+
+
+@router.post("/sead_change_request/from-project/ingest", response_model=IngestResponse)
+async def ingest_project_ingester(
+    request: ProjectIngesterRequest,
+    _: Annotated[Principal, Depends(project_ingester_operator_dependency)],
+    authorized_project: Annotated[AuthorizedResource, Depends(project_ingester_project_dependency)],
+    project_ingester_service: Annotated[ProjectIngesterService, Depends(get_project_ingester_service)],
+) -> IngestResponse:
+    """Ingest the authorized project's normalized tables as a Change Request."""
+    try:
+        return await project_ingester_service.ingest_project_tables(
+            CHANGE_REQUEST_INGESTER_KEY,
+            authorized_project,
+            request,
+        )
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from exc
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Ingestion failed: {exc}") from exc
 
 
 @router.post("/{key}/validate", response_model=ValidateResponse)

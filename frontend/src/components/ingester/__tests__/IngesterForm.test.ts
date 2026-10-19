@@ -3,7 +3,7 @@ import { nextTick, reactive, toRefs } from 'vue'
 import { shallowMount } from '@vue/test-utils'
 
 import IngesterForm from '../IngesterForm.vue'
-import type { IngestResponse, IngesterMetadata, ValidateRequest, ValidateResponse } from '@/types/ingester'
+import type { IngestResponse, IngesterMetadata, ProjectIngesterRequest, ValidateResponse } from '@/types/ingester'
 
 vi.mock('pinia', async () => {
   const actual = await vi.importActual<typeof import('pinia')>('pinia')
@@ -25,6 +25,8 @@ const ingesterStore = reactive({
   fetchIngesters: vi.fn(async () => {}),
   validate: vi.fn(async () => {}),
   ingest: vi.fn(async () => {}),
+  validateProject: vi.fn(async () => {}),
+  ingestProject: vi.fn(async () => {}),
   selectIngester: vi.fn((key: string) => {
     ingesterStore.selectedIngester = ingesterStore.ingesters.find((ingester) => ingester.key === key) ?? null
   }),
@@ -146,13 +148,39 @@ function findTextarea(wrapper: ReturnType<typeof mountForm>, label: string) {
 
 describe('IngesterForm', () => {
   beforeEach(() => {
+    ingesterStore.validate.mockClear()
+    ingesterStore.ingest.mockClear()
+    ingesterStore.validateProject.mockClear()
+    ingesterStore.ingestProject.mockClear()
+    projectStore.selectedProject = {
+      metadata: {
+        name: 'pilot_bugs',
+        description: 'Pilot bugs change package',
+        data_provider_code: 'SEAD',
+      },
+      options: {
+        ingesters: {
+          sead_change_request: {
+            data_source: 'sead_staging',
+            defaults: {
+              datatype: 'mal',
+              deploy_strategy: 'copy_csv',
+              author: 'SEAD Lab',
+            },
+            options: {
+              ignore_columns: ['date_updated'],
+            },
+          },
+        },
+      },
+    }
     ingesterStore.ingesters = [
       {
         key: 'sead_change_request',
         name: 'SEAD Change Request',
         description: 'Emit an MVP Delivery change package',
         version: '1.0.0',
-        supported_formats: ['xlsx'],
+        supported_formats: [],
       },
     ]
     ingesterStore.selectedIngester = ingesterStore.ingesters[0] ?? null
@@ -161,7 +189,7 @@ describe('IngesterForm', () => {
     ingesterStore.error = null
   })
 
-  it('blocks submission of the retired Change Request workbook workflow', async () => {
+  it('uses project-only actions for Change Request and keeps pending-confirmation guidance', async () => {
     ingesterStore.validationResult = {
       is_valid: false,
       errors: [],
@@ -180,29 +208,45 @@ describe('IngesterForm', () => {
       },
     }
 
-    const wrapper = mountForm()
+    const wrapper = mountForm({ projectName: 'pilot_bugs' })
     const vm = wrapper.vm as unknown as {
       formValid: boolean
+      canRunSelectedIngester: boolean
+      selectedIngesterAllowed: boolean
       handleValidate: () => Promise<void>
       handleIngest: () => Promise<void>
+      buildProjectRequest: () => ProjectIngesterRequest
     }
     vm.formValid = true
+    await nextTick()
 
     ingesterStore.validate.mockClear()
     ingesterStore.ingest.mockClear()
+    ingesterStore.validateProject.mockClear()
+    ingesterStore.ingestProject.mockClear()
 
-    expect(wrapper.text()).toContain('File-based Change Request validation and dispatch are retired.')
+    expect(wrapper.text()).toContain('Change Request uses the normalized tables from this saved project.')
     expect(wrapper.text()).toContain('Binding Set Confirmation Required')
     expect(wrapper.text()).toContain('binding-123')
     expect(wrapper.text()).toContain('Confirm the Binding Set in SIMS')
     expect(wrapper.text()).toContain('Every tracked entity needs declared business keys')
+    expect(findTextField(wrapper, 'Source File Path *')).toBeUndefined()
+    expect(wrapper.text()).not.toContain('Ignore Columns')
+    expect(wrapper.text()).not.toContain('Target Database:')
 
-    const actionButtons = wrapper.findAllComponents({ name: 'VBtn' }).slice(0, 2)
-    expect(actionButtons.every((button) => button.props('disabled'))).toBe(true)
+    const actionButtons = wrapper
+      .findAllComponents({ name: 'VBtn' })
+      .filter((button) => button.text().includes('Validate') || button.text().includes('Dispatch'))
+    expect(actionButtons).toHaveLength(2)
+    expect(vm.canRunSelectedIngester).toBe(true)
+    expect(vm.selectedIngesterAllowed).toBe(true)
+    expect(actionButtons.every((button) => !button.props('disabled'))).toBe(true)
 
     await vm.handleValidate()
     await vm.handleIngest()
 
+    expect(ingesterStore.validateProject).toHaveBeenCalledWith(vm.buildProjectRequest())
+    expect(ingesterStore.ingestProject).toHaveBeenCalledWith(vm.buildProjectRequest())
     expect(ingesterStore.validate).not.toHaveBeenCalled()
     expect(ingesterStore.ingest).not.toHaveBeenCalled()
   })
@@ -259,7 +303,7 @@ describe('IngesterForm', () => {
   })
 
   it('prefills project-derived submission context fields and exposes backend-matched validation rules', async () => {
-    const wrapper = mountForm()
+    const wrapper = mountForm({ projectName: 'pilot_bugs' })
     await nextTick()
 
     const projectField = findTextField(wrapper, 'Project Name *')
@@ -275,7 +319,6 @@ describe('IngesterForm', () => {
     expect(wrapper.text()).toContain(
       'Auto-derived from the active project and selected datatype until you override it.'
     )
-    expect(wrapper.text()).toContain('Auto-derived from the active project.')
     expect(wrapper.text()).toContain('Auto-derived from the active project name until you override it.')
     expect(wrapper.text()).toContain('Auto-derived from project metadata until you override it.')
     expect(wrapper.text()).toContain('Operator-entered for this run.')
@@ -290,39 +333,62 @@ describe('IngesterForm', () => {
     expect(timestampRules[1]?.('not-a-date')).toBe('Enter a valid ISO-8601 local datetime')
     expect(descriptionRules[0]?.('line one\nline two')).toBe('Use a single line shorter than 80 characters')
 
-    const request = (wrapper.vm as unknown as { buildValidateRequest: () => ValidateRequest }).buildValidateRequest()
-    expect(request.project_name).toBe('pilot_bugs')
-    expect(request.deploy_strategy).toBe('copy_csv')
-    expect(request.submission_context).toMatchObject({
-      data_provider_code: 'SEAD',
-      datatype: 'mal',
-      author: 'SEAD Lab',
+    const request = (
+      wrapper.vm as unknown as { buildProjectRequest: () => ProjectIngesterRequest }
+    ).buildProjectRequest()
+    expect(request).toMatchObject({
+      project_name: 'pilot_bugs',
+      deploy_strategy: 'copy_csv',
+      submission_context: {
+        submission_name: 'pilot_bugs_mal',
+        datatype: 'mal',
+        identifier: 'PILOT_BUGS',
+        description: 'Pilot bugs change package',
+        author: 'SEAD Lab',
+      },
     })
+    expect(request).not.toHaveProperty('source')
+    expect(request).not.toHaveProperty('config')
+    expect(request.submission_context).not.toHaveProperty('project_name')
+    expect(request.submission_context).not.toHaveProperty('data_provider_code')
   })
 
-  it('keeps retired Change Request actions disabled when the route project loads', async () => {
+  it('enables Change Request actions only after the route project is loaded and matches', async () => {
     const wrapper = mountForm({ projectName: 'route_project', projectLoading: true })
     const vm = wrapper.vm as unknown as {
       formValid: boolean
-      buildValidateRequest: () => ValidateRequest
+      buildProjectRequest: () => ProjectIngesterRequest
     }
     vm.formValid = true
     await nextTick()
 
     const projectField = findTextField(wrapper, 'Project Name *')
     expect(projectField?.props('modelValue')).toBe('route_project')
-    expect(projectField?.props('readonly')).toBe(true)
-    expect(vm.buildValidateRequest().project_name).toBe('route_project')
-    expect(vm.buildValidateRequest().submission_context?.project_name).toBe('route_project')
-    const actionButtons = wrapper.findAllComponents({ name: 'VBtn' }).slice(0, 2)
+    expect(projectField?.props('readonly')).toBe('')
+    expect(vm.buildProjectRequest().project_name).toBe('route_project')
+    const actionButtons = wrapper
+      .findAllComponents({ name: 'VBtn' })
+      .filter((button) => button.text().includes('Validate') || button.text().includes('Dispatch'))
     expect(actionButtons.every((button) => button.props('disabled'))).toBe(true)
 
     projectStore.selectedProject.metadata.name = 'route_project'
     await wrapper.setProps({ projectLoading: false })
     await nextTick()
 
-    expect(vm.buildValidateRequest().project_name).toBe('route_project')
+    expect(vm.buildProjectRequest().project_name).toBe('route_project')
+    expect(actionButtons.every((button) => !button.props('disabled'))).toBe(true)
+  })
+
+  it('keeps Change Request actions disabled when there is no route project', async () => {
+    const wrapper = mountForm()
+    const vm = wrapper.vm as unknown as { formValid: boolean; handleValidate: () => Promise<void> }
+    vm.formValid = true
+    await nextTick()
+
+    const actionButtons = wrapper.findAllComponents({ name: 'VBtn' }).slice(0, 2)
     expect(actionButtons.every((button) => button.props('disabled'))).toBe(true)
+    await vm.handleValidate()
+    expect(ingesterStore.validateProject).not.toHaveBeenCalled()
   })
 
   it('filters excluded ingesters and keeps ordinary ingesters actionable', async () => {
@@ -337,8 +403,9 @@ describe('IngesterForm', () => {
     ingesterStore.selectedIngester = ordinaryIngester
 
     const wrapper = mountForm({ excludedIngesterKeys: ['sead_change_request'] })
-    const vm = wrapper.vm as unknown as { formValid: boolean }
+    const vm = wrapper.vm as unknown as { formValid: boolean; form: { source: string } }
     vm.formValid = true
+    vm.form.source = 'input.xlsx'
     await nextTick()
 
     const workflowSelector = wrapper.findComponent({ name: 'VSelect' })
@@ -349,5 +416,9 @@ describe('IngesterForm', () => {
 
     expect(ingesterStore.validate).toHaveBeenCalledOnce()
     expect(ingesterStore.ingest).toHaveBeenCalledOnce()
+    expect(ingesterStore.validate).toHaveBeenCalledWith(expect.objectContaining({ source: 'input.xlsx' }))
+    expect(ingesterStore.ingest).toHaveBeenCalledWith(expect.objectContaining({ source: 'input.xlsx' }))
+    expect(ingesterStore.validateProject).not.toHaveBeenCalled()
+    expect(ingesterStore.ingestProject).not.toHaveBeenCalled()
   })
 })
