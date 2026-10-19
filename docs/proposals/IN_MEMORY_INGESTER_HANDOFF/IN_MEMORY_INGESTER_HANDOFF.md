@@ -10,12 +10,13 @@ Ingestion: backend helper → normalize → tables → ingester → deploy artif
 - Proposed feature
 - Scope: a reusable normalization step, an optional table-input capability for ingesters, handoff rules, and one backend composition helper
 - Goal: run normalization and change-request generation in one process without writing and re-reading an Excel workbook
+- Depends on [CHANGE_REQUEST_TARGET_BUNDLE_ACCESS](../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md) for the permission that governs Change Request bundle creation; this proposal does not set that permission
 
 ## Summary
 
 The backend currently hands normalized data to the change-request ingester through an Excel workbook. `workflow()` always writes its output, while the ingester reads a caller-supplied file path. Excel changes some names, types, and values during that round trip.
 
-Recommend a shared normalization step that returns the completed `ShapeShifter` without dispatching, plus an explicit table-input capability on the ingester. The backend helper uses these two interfaces and retains the current ingester authorization and configuration rules. The existing file-writing workflow and Excel input remain available.
+Recommend a shared normalization step that returns the completed `ShapeShifter` without dispatching, plus an explicit table-input capability on the ingester. The backend helper uses these two interfaces and retains the current ingester authorization and configuration rules. The file-writing `workflow()` stays unchanged for dispatch. The Excel input to `sead_change_request` stays permitted until R3 closes, but the composed path replaces it as the operator path.
 
 ## Problem
 
@@ -29,7 +30,11 @@ Lower-level calls can already reach the DataFrame-based ingester contract, but t
 
 **The handoff changes data.** The `xlsx` dispatcher removes timezone information, and `pd.read_excel()` infers types and missing values. For example, a text business key such as `"001"` can become the number `1`, and `"NA"` can become null. The separate `openpyxl` dispatcher can also rewrite sheet names. The change-request ingester sanitizes column names after reading the workbook.
 
-**The composed path would require a source-file read.** `_load_source_bundle_from_path` accepts any readable path with a `.xlsx`/`.xls` suffix and has no containment check. [INGESTER_FILESYSTEM_BOUNDARIES](../INGESTER_FILESYSTEM_BOUNDARIES/INGESTER_FILESYSTEM_BOUNDARIES.md) records that issue as R3. This proposal avoids that read in the composed operation; it does not close R3 for file input.
+**The composed path would require a source-file read.** `_load_source_bundle_from_path` accepts any readable path with a `.xlsx`/`.xls` suffix and has no containment check. [CHANGE_REQUEST_TARGET_BUNDLE_ACCESS](../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md) records that issue as R3. This proposal avoids that read in the composed operation; it does not close R3 for file input.
+
+**The Excel workbook is the thing being replaced.** For `sead_change_request`, reading a dispatched workbook is not a convenience kept for operators or a format choice. It is the only current trigger for change-request generation, and it is the route that carries the unconstrained read. Being permitted until R3 closes does not make it the preferred operator path. After the composed path exists, it is a transitional input, not a supported way to work.
+
+**No ingester will need Excel input once `sead` is gone.** `sead_change_request` is the only ingester this proposal changes. The other registered ingester, `sead`, is a file-only direct-to-database importer that is separately deprecated and scheduled for removal ([#569](https://github.com/humlab-sead/sead_shape_shifter/issues/569)). The file-writing `workflow()` and the `xlsx` dispatcher stay unchanged, so dispatched workbooks remain available for review and for any future file-only ingester; they stop being the change-request trigger.
 
 **The existing workflow always writes.** `ShapeShifter.normalize()` exposes the tables, but a caller that bypasses `workflow()` must repeat its `drop_foreign_keys` and `translate` option handling.
 
@@ -42,7 +47,8 @@ Lower-level calls can already reach the DataFrame-based ingester contract, but t
 
 ## Non-Goals
 
-- Removing or restricting the Excel input path. It stays available for operators and for ingesters that only accept files.
+- Removing or restricting the Excel input path everywhere. Its status depends on the ingester: for `sead_change_request` it is the path being replaced and becomes transitional once the composed path exists, staying permitted only until R3 closes; for the deprecated `sead` ingester it is still required and disappears with that ingester ([#569](https://github.com/humlab-sead/sead_shape_shifter/issues/569)). The `xlsx` and `openpyxl` dispatchers are unchanged.
+- Writing an Excel workbook per composed call as an audit artifact. The deploy artifact bundle is the audit record; see Proposed Design §5.
 - Closing R3. The path branch of `_resolve_source_bundle` keeps its current behavior. This proposal removes the filesystem read from the programmatic pipeline, not from the upload route.
 - Changing `IngestRequest`, `IngestResponse`, `ValidateRequest`, or `ValidateResponse`.
 - Adding an HTTP endpoint or UI control for the composed operation.
@@ -115,12 +121,31 @@ The adapter does not promise byte-for-byte equality with an Excel round trip. Fo
 
 Add one internal helper that:
 
-1. requires the current ingester operation permission (`application:run_ingesters`) and project `execute` authorization for the saved project; a project authorization result alone does not prove the application permission;
+1. requires project `execute` authorization for the saved project; the application-level permission for Change Request bundle creation follows [CHANGE_REQUEST_TARGET_BUNDLE_ACCESS](../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md) and is not fixed here;
 2. loads the authorized project through the existing service and `ProjectMapper.to_core()`, then runs the no-write normalization step with the requested options;
 3. constructs the ingester through the existing configuration path so trusted project context, target-model input, submission options, and runtime dependencies are supplied as they are for file input;
 4. checks `TableSourceIngester`, calls `validate_tables` or `ingest_tables`, and returns that result with entity and row counts; an ingester without table support gets a clear file-input-required error.
 
 No source workbook is created or read by this helper. Ingestion still writes its deploy artifact bundle. Any future HTTP route is a separate decision and must apply the authorization policy approved for that route.
+
+### 5. Treat the deploy bundle as the audit record
+
+Do not write an Excel workbook per call for traceability. The bundle is a stronger record of the handover, and it covers a scope the workbook cannot.
+
+Verified in `ingesters/sead_change_request/sql_builder.py` and `artifact_writer.py`. Each bundle contains `deploy/`, `revert/`, and `verify/` SQL files, `manifest.json`, and gzipped TSV payloads of the rows the deploy SQL inserts. The manifest records the submission context, emitted table order, per-table row counts, statement count, payload format, and a `sha256` checksum per payload file.
+
+The two artifacts have different scopes, which is the point:
+
+| Artifact | Records |
+|---|---|
+| Deploy bundle | The rows and statements handed to the target, checksummed and replayable. Rows the change request does not emit are absent. |
+| Dispatched workbook | Every normalized row and column for the project at that moment, including rows the target path excludes, but after Excel converts names, types, and timezones. |
+
+So a workbook is not a superset of the bundle's audit value, and it is a less faithful record than the data it came from. A per-call workbook adds volume and Excel conversions without adding a guarantee the bundle lacks.
+
+If source-level reproducibility is later required, that is a provenance question, not a workbook question: record the project configuration version, source references, and run identifiers. Materializing normalized tables is a debugging aid at most; if it is added, it should be labelled a debug snapshot rather than an audit record.
+
+This proposal does not choose where bundle output lives. That is the managed output location decision in [CHANGE_REQUEST_TARGET_BUNDLE_ACCESS](../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md). Projects currently have `data/`, `materialized/`, and `backups/` sub-folders and no `output/` folder; any new sub-folder would be that decision, and would need containment through `resolve_contained_path`.
 
 ## Alternatives Considered
 
@@ -151,7 +176,7 @@ The shared in-memory tables do allow one output selection later: a single backen
 - Use fixtures containing leading-zero text, `"NA"`, empty strings, nullable integers, and timezone-aware datetimes to verify that the in-memory path preserves normalized data and to document differences from Excel. Check business-key decisions and generated artifact content where those differences matter.
 - Verify `translate` and `drop_foreign_keys` yield the same normalized tables for the file-writing workflow and the no-write step.
 - Verify file and table methods run the same post-preparation checks, including `validate_first`, preconditions, collision checks, and artifact generation. Check that unsupported timezone values fail clearly if downstream rendering cannot preserve them.
-- Verify the helper rejects missing application or project authorization, avoids source-workbook creation and reads, and rejects ingesters without table support.
+- Verify the helper rejects a missing project-execute authorization, avoids source-workbook creation and reads, and rejects ingesters without table support.
 - Confirm existing `workflow()` output, request and response payloads, and `.xlsx`/`.xls` change-request ingestion remain unchanged.
 
 ## Acceptance Criteria
@@ -161,9 +186,10 @@ The shared in-memory tables do allow one output selection later: a single backen
 - `P-AC-3` The adapter passes copied tables with sanitized column names to the ingester while preserving normalized values, dtypes, and timezones. It rejects invalid input with `SourceBundleError`.
 - `P-AC-4` For Excel-representable values and safe names, both methods produce equivalent ingester decisions and generated change-request data. Tests establish the intended differences where Excel changes values, dtypes, timezones, or names.
 - `P-AC-5` The composed operation creates and reads no source workbook; `source_name` is diagnostic only. Successful ingestion may still write its deploy artifact bundle.
-- `P-AC-6` The Excel input path keeps its current behavior, including the `.xlsx`/`.xls` restriction, and remains available to operators.
+- `P-AC-6` The Excel input path keeps its current behavior, including the `.xlsx`/`.xls` restriction. It remains permitted for `sead_change_request` until R3 closes, but it is a transitional input, not the operator path, once the composed path ships.
 - `P-AC-7` An ingester that does not support table input is rejected by the composition helper with an error that names the required file input.
-- `P-AC-8` File and table methods use the same post-preparation validation and ingestion checks. The helper requires both current ingester-operation and project-execute authorization and supplies the same trusted project context and runtime dependencies as file input.
+- `P-AC-8` File and table methods use the same post-preparation validation and ingestion checks. The helper requires project-execute authorization for the saved project, inherits the application-level permission approved for Change Request bundle creation, and supplies the same trusted project context and runtime dependencies as file input.
+- `P-AC-9` The composed operation writes no Excel workbook, and the deploy artifact bundle remains the only audit record for a run.
 
 ## Planning Handoff
 
@@ -174,7 +200,9 @@ Confirmed decisions:
 - Define the handoff through one adapter in `ingesters/sead_change_request/` and reuse existing bundle validation.
 - Preserve normalized values, dtypes, and timezones rather than imitating Excel conversions. Compare decisions on Excel-representable inputs and test intentional differences separately.
 - Keep file and table entry points on the same full validation and ingestion flows.
-- Expose no HTTP route in this work. The internal helper requires the current `application:run_ingesters` and project `execute` permissions.
+- Expose no HTTP route in this work. The internal helper applies project `execute` authorization and inherits the application-level permission approved for Change Request bundle creation in [CHANGE_REQUEST_TARGET_BUNDLE_ACCESS](../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md).
+- Treat the deploy artifact bundle as the audit record for a run. Do not write an Excel workbook per call; do not add an `output/` folder to project folders in this work.
+- Treat the Excel input to `sead_change_request` as transitional: permitted until R3 closes, no longer the operator path once the composed path exists.
 
 Constraints and behavior to preserve:
 
@@ -187,13 +215,14 @@ Expected validation outcomes:
 
 - The file and table paths agree on Excel-representable fixtures and show documented differences on lossy Excel fixtures.
 - The no-write step and `workflow()` apply options identically; existing execute and ingest tests pass unchanged.
-- Both permissions are enforced before the composition helper runs normalization or ingestion.
+- The project-execute check and the application-level permission approved for Change Request bundle creation are enforced before the composition helper runs normalization or ingestion.
 
 Open questions:
 
 - Which target columns and SQL renderers support timezone-aware datetimes? Resolve before completing the table capability; reject unsupported values clearly.
 - Which interface, if any, should expose the composed operation later? Decide its authorization policy before a phase that adds a route.
 - Should one backend output selection later cover both dispatchers and table-source ingesters? Decide before adding a deploy-artifact sink; this proposal keeps the two extension points separate.
+- Should the `sead_change_request` Excel input be removed outright, or kept as a transitional route until R3 closes and `sead` is removed ([#569](https://github.com/humlab-sead/sead_shape_shifter/issues/569))? Decide when the composed path ships; this proposal keeps the route working.
 
 ## Final Recommendation
 
