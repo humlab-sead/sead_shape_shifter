@@ -13,7 +13,12 @@
             <v-icon>mdi-database-import</v-icon>
           </template>
 
-          <v-list-item-title>{{ ingester.name }}</v-list-item-title>
+          <v-list-item-title>
+            {{ ingester.name }}
+            <v-chip v-if="ingester.deprecated" size="x-small" color="warning" variant="tonal" class="ml-2">
+              Deprecated
+            </v-chip>
+          </v-list-item-title>
           <v-list-item-subtitle>{{ ingester.description }}</v-list-item-subtitle>
 
           <template v-slot:append>

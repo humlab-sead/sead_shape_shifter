@@ -25,6 +25,10 @@ class IngesterMetadataResponse(BaseModel):
     description: str = Field(..., description="Description of what the ingester does")
     version: str = Field(..., description="Version of the ingester")
     supported_formats: list[str] = Field(..., description="List of supported file formats")
+    deprecated: bool = Field(default=False, description="Whether the ingester is superseded and kept only for existing callers")
+    deprecation_message: str | None = Field(
+        default=None, description="Operator-facing explanation of the replacement for a deprecated ingester"
+    )
 
 
 class ValidateRequest(BaseModel):

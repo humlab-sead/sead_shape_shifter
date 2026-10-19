@@ -67,6 +67,9 @@ class TestSeadIngester:
         assert metadata.version == "1.0.0"
         assert "xlsx" in metadata.supported_formats
         assert metadata.requires_config is True
+        assert metadata.deprecated is True
+        assert metadata.deprecation_message is not None
+        assert "sead_change_request" in metadata.deprecation_message
 
     def test_ingester_creation(self):
         """Test creating a SeadIngester instance."""

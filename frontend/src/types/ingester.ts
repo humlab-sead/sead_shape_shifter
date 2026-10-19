@@ -8,6 +8,8 @@ export interface IngesterMetadata {
   description: string
   version: string
   supported_formats: string[]
+  deprecated?: boolean
+  deprecation_message?: string | null
 }
 
 export interface SubmissionContextInput {
