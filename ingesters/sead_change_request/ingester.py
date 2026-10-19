@@ -4,10 +4,12 @@ This module resolves external inputs, runs the shared preparation flow, and
 turns the result into validation or ingestion output.
 """
 
+from collections.abc import Mapping
 from dataclasses import asdict, replace
 from pathlib import Path
 from typing import Any
 
+import pandas as pd
 from loguru import logger
 
 from backend.app.ingesters.protocol import IngesterConfig, IngesterMetadata, IngestionResult, ValidationResult
@@ -27,6 +29,7 @@ from ingesters.sead_change_request.input_resolution import (
     InputResolutionError,
     SubmissionContextError,
     TargetModelError,
+    _build_source_bundle,
     resolve_inputs,
 )
 from ingesters.sead_change_request.package_builder import build_change_request_package, build_staging_package
@@ -183,6 +186,18 @@ class SeadChangeRequestIngester:
         self._log_validation(preparation)
         return build_validation_result(preparation)
 
+    async def validate_tables(self, tables: Mapping[str, pd.DataFrame], *, source_name: str = "") -> ValidationResult:
+        """Validate normalized tables through the shared preparation flow.
+
+        The adapter copies and sanitizes the supplied frames before the existing
+        bundle validation runs. ``source_name`` is diagnostic metadata only.
+        """
+        try:
+            bundle: SourceTableBundle = _build_source_bundle(tables, source_name=source_name)
+        except InputResolutionError as exc:
+            return build_validation_input_failure(exc)
+        return await self._validate_bundle(bundle)
+
     async def validate(self, source: Path | str) -> ValidationResult:
         """Reject the retired Change Request file input without opening the source."""
         logger.warning("SEAD change request validation rejected retired file input")
@@ -221,6 +236,31 @@ class SeadChangeRequestIngester:
             message="File input retired",
             details=CHANGE_REQUEST_FILE_INPUT_RETIRED_MESSAGE,
         )
+
+    async def ingest_tables(
+        self,
+        tables: Mapping[str, pd.DataFrame],
+        *,
+        source_name: str = "",
+        validate_first: bool = True,
+    ) -> IngestionResult:
+        """Ingest normalized tables through the shared preparation and artifact flow.
+
+        The adapter copies and sanitizes the supplied frames before the existing
+        bundle workflow runs. ``source_name`` is diagnostic metadata only and is
+        never opened or resolved as a path.
+        """
+        try:
+            bundle: SourceTableBundle = _build_source_bundle(tables, source_name=source_name)
+        except InputResolutionError as exc:
+            if validate_first:
+                validation_failure = build_validation_input_failure(exc)
+                return IngestionResult.create_failed_result(
+                    message="Validation failed",
+                    details=failure_details(validation_failure.errors),
+                )
+            return build_ingestion_input_failure(exc)
+        return await self._ingest_bundle(bundle, validate_first=validate_first)
 
     async def _ingest_bundle(self, bundle: SourceTableBundle, validate_first: bool = True) -> IngestionResult:
         """Ingest an in-memory source bundle through the shared preparation flow."""

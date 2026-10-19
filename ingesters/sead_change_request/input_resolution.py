@@ -1,5 +1,6 @@
 """Input and config resolution for the SEAD change request ingester."""
 
+from collections.abc import Mapping
 from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
@@ -23,6 +24,7 @@ from ingesters.sead_change_request.contracts import (
 from ingesters.sead_change_request.preparation import ResolvedInputs
 from ingesters.sead_change_request.sql_builder import STAGING_TARGET_SCHEMA_KEY, resolve_deploy_artifact_strategy
 from src.target_model.models import TargetModel
+from src.utility import sanitize_columns
 
 TRUSTED_PROJECT_CONTEXT_KEY = "trusted_project_context"
 """Config-extra key that carries the backend-owned project facts for one run."""
@@ -132,15 +134,20 @@ def _resolve_source_bundle(config: IngesterConfig, source: object) -> SourceTabl
     if isinstance(source_bundle, SourceTableBundle):
         return source_bundle
 
-    table_mapping = source if isinstance(source, dict) else extras.get("tables")
-    if isinstance(table_mapping, dict):
+    table_mapping = source if isinstance(source, Mapping) else extras.get("tables")
+    if isinstance(table_mapping, Mapping):
         return _build_source_bundle(table_mapping)
 
     raise SourceBundleError("Unsupported source type for sead_change_request ingestion")
 
 
-def _build_source_bundle(tables: dict[object, object]) -> SourceTableBundle:
-    """Build a validated source bundle from a raw table mapping."""
+def _build_source_bundle(tables: Mapping[object, object], *, source_name: str = "") -> SourceTableBundle:
+    """Build a validated source bundle from a raw table mapping.
+
+    Each accepted DataFrame is deep-copied so the caller keeps ownership of its
+    data, and only the copied column labels are sanitized. Entity names, values,
+    dtypes, and timezone-aware values are preserved.
+    """
     if not tables:
         raise SourceBundleError("No source tables were provided")
 
@@ -151,9 +158,24 @@ def _build_source_bundle(tables: dict[object, object]) -> SourceTableBundle:
         if not isinstance(frame, pd.DataFrame):
             raise SourceBundleError(f"Source table '{table_name}' must be a pandas DataFrame")
 
-        normalized_tables[table_name] = frame
+        copied_frame = frame.copy(deep=True)
+        copied_frame.columns = _sanitized_column_labels(list(copied_frame.columns))
+        normalized_tables[table_name] = copied_frame
 
-    return SourceTableBundle(tables=normalized_tables)
+    return SourceTableBundle(tables=normalized_tables, source_name=source_name)
+
+
+def _sanitized_column_labels(columns: list[object]) -> list[str]:
+    """Sanitize caller-visible column labels and keep workflow-internal labels unchanged.
+
+    Columns that are part of the internal preparation contract start with ``_`` or
+    end with ``__existing``. Renaming them would break row-state, projection, and
+    existing-row update handling, so only the remaining labels are sanitized.
+    """
+    internal_flags = [isinstance(column, str) and (column.startswith("_") or column.endswith("__existing")) for column in columns]
+    public_columns = [column for column, is_internal in zip(columns, internal_flags) if not is_internal]
+    sanitized_columns = iter(sanitize_columns(public_columns))
+    return [str(column) if is_internal else next(sanitized_columns) for column, is_internal in zip(columns, internal_flags)]
 
 
 def _resolve_target_model(config: IngesterConfig) -> TargetModel:

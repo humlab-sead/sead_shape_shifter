@@ -14,18 +14,22 @@ The Shape Shifter ingester protocol still defines `validate()` and `ingest()`, b
 
 - `get_metadata()` reports no supported file formats
 - `validate()` and `ingest()` return structured input failures before resolving a source, and a `Path` or `str` cannot select tables from `config.extra`
-- the shared preparation path runs on an explicit in-memory `SourceTableBundle` through the private `_validate_bundle()` and `_ingest_bundle()` methods
+- normalized tables reach the workflow through the public `validate_tables()` and `ingest_tables()` methods
+- the package also implements the optional `TableSourceIngester` protocol from `backend.app.ingesters`, so callers can discover table support with a runtime check
 
-Private bundle validation checks the source bundle, target model, submission context, identity workflow, and target-projection path without emitting a final bundle. Private bundle ingestion runs the same preparation path, then performs collision checks, builds the change package, renders a deploy artifact, and writes the bundle to the configured output folder.
+`validate_tables()` checks the source bundle, target model, submission context, identity workflow, and target-projection path without emitting a final bundle. `ingest_tables()` runs the same preparation path, then performs collision checks, builds the change package, renders a deploy artifact, and writes the bundle to the configured output folder. Both methods reuse the private `_validate_bundle()` and `_ingest_bundle()` methods after the input adapter runs.
 
-Change Request generation has no operator entry point in this state. Project-only table methods and routes are planned follow-up work and are not shipped here.
+The input adapter deep-copies each supplied DataFrame, sanitizes the copied column labels with `src.utility.sanitize_columns`, and keeps workflow-internal labels (`_`-prefixed or ending in `__existing`) unchanged. Entity names, values, dtypes, and timezone-aware values are preserved. `source_name` is diagnostic metadata only; it is never opened or resolved as a path.
+
+Change Request generation still has no operator entry point. The project-only composition helper and routes are planned follow-up work and are not shipped here.
 
 ## Pipeline
 
 The implementation follows this high-level flow:
 
 ```text
-receive normalized tables in memory as a SourceTableBundle
+receive normalized tables in memory through validate_tables() or ingest_tables()
+  -> copy each table and sanitize the copied column labels
   -> validate the resolved config inputs
   -> plan each table against the target model
   -> orchestrate identity work via injected clients
@@ -96,7 +100,7 @@ flowchart LR
 
 ### Resolved Inputs
 
-The public ingester protocol still accepts file paths and `IngesterConfig` values.
+The public file methods keep their declared file arguments so the shared request and response models stay unchanged, but they reject retired file input. Normalized tables enter through `validate_tables()` and `ingest_tables()`, which accept a `Mapping[str, pd.DataFrame]` plus an optional diagnostic `source_name`.
 
 Inside the package, those inputs are normalized into stable internal contracts defined in [contracts.py](./contracts.py), including:
 
@@ -131,8 +135,11 @@ Current strategies:
 
 - `inline_insert`: renders inline `INSERT` statements into the deploy SQL
 - `copy_csv`: renders payload sidecar files plus `\copy`-based deploy SQL
+- `inline_staging`: stages rows in temporary tables, resolves local foreign keys, and inserts into a named target schema
 
 The ingester resolves the requested strategy from `IngesterConfig.extra["deploy_strategy"]` and passes it into artifact rendering.
+
+All three strategies apply one temporal rule. For a target column declared with type `date`, the rendered literal uses only the normalized calendar date. For a timezone-naive timestamp target, the literal keeps the normalized calendar and clock fields and drops timezone metadata without conversion. An explicitly timezone-aware target type such as `timestamp with time zone` or `timestamptz` fails with a clear `ValueError` before the artifact bundle is written.
 
 ## Module Map By Workflow Step
 
@@ -246,15 +253,16 @@ unchanged, but they no longer accept file input.
 - `_resolve_source_bundle()` raises `SourceBundleError` for a `Path` or `str` before it reads `config.extra`, so a path-shaped source cannot select `source_bundle` or `tables`
 
 No preparation, SIMS request, target-database call, or bundle write happens for a rejected file
-call. Build a `SourceTableBundle` and call the private bundle methods when in-memory tables must
-be prepared.
+call. Call `validate_tables()` or `ingest_tables()` with a `Mapping[str, pd.DataFrame]` when
+normalized tables must be prepared. The private bundle methods remain for callers that already
+hold a `SourceTableBundle`.
 
 ## Validation Vs Ingestion
 
-The private bundle methods intentionally remain separate.
+The validation and ingestion paths remain separate.
 
-- `_validate_bundle()` reports input-resolution failures, planning issues, blocked identity work, and projection problems as structured validation output
-- `_ingest_bundle()` can optionally validate first, then continues into collision checks, package assembly, artifact rendering, and bundle emission
+- `validate_tables()` and `_validate_bundle()` report input-resolution failures, planning issues, blocked identity work, and projection problems as structured validation output
+- `ingest_tables()` and `_ingest_bundle()` can optionally validate first, then continue into collision checks, package assembly, artifact rendering, and bundle emission
 
 This separation keeps validation side-effect free while allowing ingestion to perform file emission and collaborator callbacks such as change-request association.
 
@@ -275,6 +283,6 @@ PYTHONPATH=.:backend pytest backend/tests/ingesters -q
 
 ## Current Scope
 
-The current implementation focuses on preparing and emitting change-request artifacts from normalized Shape Shifter output supplied in memory. It does not read workbooks, and it has no operator-facing entry point until the project-only table methods and routes ship.
+The current implementation prepares and emits change-request artifacts from normalized Shape Shifter output supplied in memory. `validate_tables()` and `ingest_tables()` are the supported entry points; the ingester does not read workbooks, and it has no operator-facing entry point until the project-only composition helper and routes ship.
 
 It is designed to keep business rules around planning, identity resolution, target projection, and deploy rendering explicit and testable, while leaving downstream execution of the generated artifacts outside this package.

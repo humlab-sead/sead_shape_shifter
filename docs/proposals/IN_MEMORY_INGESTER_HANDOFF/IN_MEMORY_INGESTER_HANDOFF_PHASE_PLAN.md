@@ -108,7 +108,7 @@ Make table validation and ingestion explicit without using Excel as the input co
 
 - Add the separate `TableSourceIngester` capability and a Change Request adapter that copies and sanitizes columns while preserving entity names, values, dtypes, and timezones.
 - Reuse the existing post-resolution validation and ingestion checks for table methods. Reject invalid tables and unsupported timezone values clearly.
-- Use representative workbook fixtures to document data changes caused by Excel; compare business-key and generated-artifact behavior where those changes matter.
+- Use normalized table values for business-key decisions and generated artifacts.
 
 **Depends On**
 
@@ -122,23 +122,25 @@ Make table validation and ingestion explicit without using Excel as the input co
 
 - `PH3-AC-1` (from `P-AC-2`) A protocol check discovers table support without changing the shared `Ingester` protocol or shared file request and response models.
 - `PH3-AC-2` (from `P-AC-3`) The adapter copies valid tables, preserves normalized entity names and values, sanitizes columns, and rejects invalid input with `SourceBundleError`.
-- `PH3-AC-3` (from `P-AC-4`) Fixtures document relevant Excel conversion differences, and table-based business-key decisions and artifacts use normalized values.
-- `PH3-AC-4` (from `P-AC-8`) Table validation and ingestion run the existing post-preparation checks and preserve `validate_first` behavior; unsupported timezone values fail clearly.
+- `PH3-AC-3` (from `P-AC-4`) Table-based business-key decisions and generated change-request artifacts use normalized table values.
+- `PH3-AC-4` (from `P-AC-3`, `P-AC-8`) Table validation and ingestion run the existing post-preparation checks and preserve `validate_first` behavior. Date and timestamp values retain their normalized calendar and clock fields in generated literals; timezone metadata is removed without conversion. Incompatible timezone-aware target columns fail clearly.
 
 **Validation Milestones**
 
 - `VM-3.1` Protocol, adapter, and invalid-input checks establish the table contract (covers `PH3-AC-1`, `PH3-AC-2`).
-- `VM-3.2` Table validation and ingestion exercise preconditions, collision checks, SQL rendering, and artifact generation without workbook input (covers `PH3-AC-4`).
-- `VM-3.3` Fixtures show preserved normalized data and the relevant Excel conversion differences (covers `PH3-AC-3`).
+- `VM-3.2` Table validation and ingestion exercise preconditions and collision checks; artifact checks confirm date and clock fields are unchanged, timezone metadata is not converted, and incompatible target column types fail before artifact writing (covers `PH3-AC-4`).
+- `VM-3.3` Fixtures verify business-key decisions and generated change-request artifacts use normalized table values (covers `PH3-AC-3`).
 
 **Task-Plan Handoff**
 
 - Keep source entity names separate from target table names: `TargetModel.entities` identifies the entity, and `target_table` selects the SQL table when present. Do not apply Excel sheet-name rules or require workbook decision parity.
-- Resolve which target columns and SQL renderers support timezone-aware datetimes before completing table support; reject unsupported combinations with a clear error.
+- Here, an input column is a column in a normalized entity DataFrame passed to the table methods. Its target is the same-named column in the destination table for that entity, described by `TargetModel.entities[entity].columns` and `target_table` (or the entity name when `target_table` is unset).
+- For a `date` target, use the calendar date shown in the normalized input value. For a timestamp without time zone target, use its calendar and clock fields as written. Remove any timezone metadata from normalized datetime values without changing those fields; do not convert through UTC or a target/session timezone. Require timezone-naive target columns and reject incompatible target types.
+- Verify that each deploy-artifact strategy (`inline_insert`, `copy_csv`, and `inline_staging`) writes those literal values without shifting the date or clock fields, and rejects incompatible target types before artifact writing.
 
 **Readiness**
 
-Requires Phase 2 output and a decision based on timezone rendering checks before a task plan can be ready.
+Ready for a task plan. The no-conversion rule is specified; the task plan should verify literal rendering and reject incompatible target types before artifact writing.
 
 ### Phase 4: Build the guarded project composition helper
 

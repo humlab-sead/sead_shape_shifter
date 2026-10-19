@@ -26,7 +26,6 @@ from ingesters.sead_change_request.contracts import (
     resolve_bundle_name,
 )
 from ingesters.sead_change_request.ingester import SeadChangeRequestIngester
-from ingesters.sead_change_request.input_resolution import _build_source_bundle
 
 # pylint: disable=unused-argument
 
@@ -392,21 +391,21 @@ def expected_bundle_name(**overrides: object) -> str:
     return resolve_bundle_name(submission_context)
 
 
-def configured_source_bundle(ingester: SeadChangeRequestIngester) -> SourceTableBundle:
-    """Build the in-memory bundle declared by the test ingester configuration."""
+def configured_tables(ingester: SeadChangeRequestIngester) -> dict[str, pd.DataFrame]:
+    """Return the in-memory tables declared by the test ingester configuration."""
     tables = (ingester.config.extra or {}).get("tables")
     assert isinstance(tables, dict), "test ingester config must declare config.extra['tables']"
-    return _build_source_bundle(tables)
+    return tables
 
 
 async def validate_bundle(ingester: SeadChangeRequestIngester) -> ValidationResult:
-    """Validate the ingester's configured tables through the internal bundle handoff."""
-    return await ingester._validate_bundle(configured_source_bundle(ingester))
+    """Validate the ingester's configured tables through the public table method."""
+    return await ingester.validate_tables(configured_tables(ingester))
 
 
 async def ingest_bundle(ingester: SeadChangeRequestIngester, validate_first: bool = True) -> IngestionResult:
-    """Ingest the ingester's configured tables through the internal bundle handoff."""
-    return await ingester._ingest_bundle(configured_source_bundle(ingester), validate_first=validate_first)
+    """Ingest the ingester's configured tables through the public table method."""
+    return await ingester.ingest_tables(configured_tables(ingester), validate_first=validate_first)
 
 
 class TestSeadChangeRequestIngesterValidation:
@@ -464,6 +463,56 @@ class TestSeadChangeRequestIngesterValidation:
         assert result.is_valid is True
         assert result.warnings == ["sample warning"]
         assert any("normalized submission" in info for info in result.infos)
+
+    @pytest.mark.asyncio
+    async def test_validate_tables_reports_the_source_name_as_diagnostics(self):
+        """The public table method should keep the source name separate from the file contract."""
+        ingester = SeadChangeRequestIngester(
+            IngesterConfig(
+                host="localhost",
+                port=5432,
+                dbname="test_db",
+                user="test_user",
+                extra={
+                    "target_model": minimal_target_model(sample={"role": "fact", "public_id": "sample_id"}),
+                    "submission_context": minimal_submission_context(),
+                },
+            )
+        )
+
+        result = await ingester.validate_tables(
+            {"sample": pd.DataFrame({"sample_id": [1]})},
+            source_name="normalized submission",
+        )
+
+        assert result.is_valid is True
+        assert any("Source bundle name: normalized submission" in info for info in result.infos)
+
+    @pytest.mark.asyncio
+    async def test_validate_tables_reports_invalid_table_values_as_a_structured_failure(self):
+        """A non-DataFrame value should become a validation failure, not an exception."""
+        ingester = SeadChangeRequestIngester(IngesterConfig(host="localhost", port=5432, dbname="test_db", user="test_user"))
+
+        result = await ingester.validate_tables({"sample": [{"sample_id": 1}]})  # type: ignore[dict-item]
+
+        assert result.is_valid is False
+        assert result.errors == ["Source table 'sample' must be a pandas DataFrame"]
+        assert result.warnings == []
+
+    @pytest.mark.asyncio
+    async def test_ingest_tables_reports_invalid_table_values_with_and_without_validation(self):
+        """The public table method should follow validate_first for adapter failures."""
+        ingester = SeadChangeRequestIngester(IngesterConfig(host="localhost", port=5432, dbname="test_db", user="test_user"))
+
+        validated_result = await ingester.ingest_tables({"sample": [{"sample_id": 1}]})  # type: ignore[dict-item]
+        bypassed_result = await ingester.ingest_tables({"sample": [{"sample_id": 1}]}, validate_first=False)  # type: ignore[dict-item]
+
+        assert validated_result.success is False
+        assert validated_result.message == "Validation failed"
+        assert validated_result.error_details == "Source table 'sample' must be a pandas DataFrame"
+        assert bypassed_result.success is False
+        assert bypassed_result.message == "Invalid source bundle"
+        assert bypassed_result.error_details == "Source table 'sample' must be a pandas DataFrame"
 
     @pytest.mark.asyncio
     async def test_validate_requires_authorized_project_context_for_submission_target(self):
@@ -1641,6 +1690,49 @@ class TestSeadChangeRequestIngesterIngest:
         )
 
     @pytest.mark.asyncio
+    async def test_ingest_rejects_timezone_aware_target_column_before_writing_bundle(self, tmp_path):
+        """Ingest should fail clearly and emit nothing for a timezone-aware target column."""
+        ingester = SeadChangeRequestIngester(
+            IngesterConfig(
+                host="localhost",
+                port=5432,
+                dbname="test_db",
+                user="test_user",
+                output_folder=str(tmp_path),
+                extra={
+                    "tables": {"sample": pd.DataFrame({"sample_id": [None], "collected_at": [pd.Timestamp("2026-05-23 10:15:00+02:00")]})},
+                    "target_model": minimal_target_model(
+                        sample={
+                            "role": "fact",
+                            "public_id": "sample_id",
+                            "columns": {
+                                "sample_id": {"type": "integer"},
+                                "collected_at": {"type": "timestamp with time zone"},
+                            },
+                        }
+                    ),
+                    "submission_context": minimal_submission_context(),
+                    "identity_assignments": {
+                        "sample": {
+                            0: {
+                                "state": ChangeRowState.NEWLY_ALLOCATED_ENTITY,
+                                "target_id": 501,
+                            }
+                        }
+                    },
+                },
+            )
+        )
+
+        result = await ingest_bundle(ingester, validate_first=False)
+
+        assert result.success is False
+        assert result.message == "Invalid deploy artifact input"
+        assert result.error_details is not None
+        assert "timezone-aware" in result.error_details
+        assert not list(tmp_path.iterdir())
+
+    @pytest.mark.asyncio
     async def test_ingest_rejects_unsafe_copy_csv_target_table_name(self, tmp_path):
         """Ingest should return a structured failure when copy_csv table names are unsafe for bundle paths."""
         ingester = SeadChangeRequestIngester(
@@ -2405,6 +2497,24 @@ class TestDeclaredBusinessKeys:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         assert manifest["scope_name"] == result.scope_name
         assert manifest["run_id"] == result.run_id
+
+    @pytest.mark.asyncio
+    async def test_normalized_string_keys_reach_identity_decisions_and_artifacts(self, tmp_path):
+        """A zero-padded key should stay a string in the identity decision and the emitted artifact."""
+        sims_client = CountingSimsClient(target_id=501)
+        ingester = self._ingester(
+            tmp_path,
+            keys=("sample_code",),
+            frame=pd.DataFrame({"sample_id": [None], "sample_code": ["001"]}),
+            sims_client=sims_client,
+        )
+
+        result = await ingest_bundle(ingester)
+
+        assert result.success is True
+        assert sims_client.batch_calls == 1
+        assert result.deploy_artifact is not None
+        assert "'001'" in result.deploy_artifact["deploy_sql"]
 
 
 class TestRetiredFileInput:
