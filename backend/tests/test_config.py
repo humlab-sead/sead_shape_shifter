@@ -42,3 +42,26 @@ def test_global_data_provider_directory_defaults_under_application_root(tmp_path
     assert settings.GLOBAL_DATA_PROVIDER_DIR == tmp_path / "shared/data-providers"
     assert settings.global_data_provider_dir == settings.GLOBAL_DATA_PROVIDER_DIR
     assert settings.GLOBAL_DATA_PROVIDER_DIR.is_dir()
+
+
+def test_ingester_output_directory_resolves_under_application_root(tmp_path) -> None:
+    """The project-ingester output directory is optional and resolves under the application root."""
+    settings = Settings(APPLICATION_ROOT=tmp_path, INGEST_OUTPUT_DIR=Path("artifacts"))
+
+    assert settings.INGEST_OUTPUT_DIR == tmp_path / "artifacts"
+
+
+def test_blank_ingester_output_directory_is_unconfigured(tmp_path) -> None:
+    """A blank project-ingester output directory must not become the current directory."""
+    settings = Settings(APPLICATION_ROOT=tmp_path, INGEST_OUTPUT_DIR=" ")
+
+    assert settings.INGEST_OUTPUT_DIR is None
+
+
+def test_ingester_target_port_is_validated() -> None:
+    """The project-ingester target port must be a valid TCP port."""
+    import pytest
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        Settings(INGEST_TARGET_PORT=0)
