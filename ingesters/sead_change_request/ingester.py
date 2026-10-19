@@ -198,7 +198,7 @@ class SeadChangeRequestIngester:
             return build_validation_input_failure(exc)
         return await self._validate_bundle(bundle)
 
-    async def validate(self, source: Path | str) -> ValidationResult:
+    async def validate(self, source: Path | str) -> ValidationResult:  # pylint: disable=unused-argument
         """Reject the retired Change Request file input without opening the source."""
         logger.warning("SEAD change request validation rejected retired file input")
         return ValidationResult(is_valid=False, errors=[CHANGE_REQUEST_FILE_INPUT_RETIRED_MESSAGE], warnings=[], infos=[])
@@ -229,7 +229,7 @@ class SeadChangeRequestIngester:
             len(preparation.planned.tables),
         )
 
-    async def ingest(self, source: Path | str, validate_first: bool = True) -> IngestionResult:
+    async def ingest(self, source: Path | str, validate_first: bool = True) -> IngestionResult:  # pylint: disable=unused-argument
         """Reject the retired Change Request file input without opening the source."""
         logger.warning("SEAD change request ingest rejected retired file input")
         return IngestionResult.create_failed_result(
