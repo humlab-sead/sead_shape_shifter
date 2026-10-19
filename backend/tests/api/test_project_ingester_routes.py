@@ -148,7 +148,7 @@ async def test_project_routes_require_authentication_and_both_permissions(
     ],
 )
 async def test_project_routes_forward_authorized_resource_request_and_response(
-    authorization_repository: SQLiteAuthorizationRepository,
+    authorization_repository: SQLiteAuthorizationRepository,  # pylint: disable=unused-argument
     monkeypatch,
     path: str,
     method_name: str,
@@ -189,7 +189,7 @@ async def test_project_routes_forward_authorized_resource_request_and_response(
     ],
 )
 async def test_project_routes_reject_file_and_caller_configuration_fields(
-    authorization_repository: SQLiteAuthorizationRepository,
+    authorization_repository: SQLiteAuthorizationRepository,  # pylint: disable=unused-argument
     monkeypatch,
     path: str,
     method_name: str,
@@ -213,7 +213,7 @@ async def test_project_routes_reject_file_and_caller_configuration_fields(
     [(VALIDATE_PATH, "validate_project_tables"), (INGEST_PATH, "ingest_project_tables")],
 )
 async def test_project_route_query_body_mismatch_is_concealed_before_project_work(
-    authorization_repository: SQLiteAuthorizationRepository,
+    authorization_repository: SQLiteAuthorizationRepository,  # pylint: disable=unused-argument
     monkeypatch,
     path: str,
     method_name: str,
@@ -258,7 +258,7 @@ async def test_project_route_query_body_mismatch_is_concealed_before_project_wor
     ],
 )
 async def test_project_routes_preserve_project_and_data_validation_failures(
-    authorization_repository: SQLiteAuthorizationRepository,
+    authorization_repository: SQLiteAuthorizationRepository,  # pylint: disable=unused-argument
     monkeypatch,
     path: str,
     method_name: str,
