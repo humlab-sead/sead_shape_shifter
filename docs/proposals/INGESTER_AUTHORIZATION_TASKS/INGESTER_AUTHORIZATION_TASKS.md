@@ -10,7 +10,7 @@
 
 Use the centralized authorization policy for ingester application roles and authorize each project, source, and destination used by an operation. Replace caller-selected paths and destinations with approved resource references. Keep operations unavailable until their authorization and containment checks are implemented and tested.
 
-This proposal complements [Secure Ingester Filesystem And Destination Access](../INGESTER_FILESYSTEM_BOUNDARIES/INGESTER_FILESYSTEM_BOUNDARIES.md), which defines the required path containment and server-managed destination controls.
+This proposal complements [Change Request Target Bundle Access](../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md), which defines the permission exception for Change Request bundle creation. Path containment and server-managed destination controls for ingester operations remain in scope here.
 
 ## Problem
 
@@ -55,7 +55,7 @@ Apply the requirement at the route and at any service or background entry point 
 
 Treat the application role as a necessary but insufficient check. Before reading or writing data, resolve each operation's project, source, database, and destination to an approved resource and authorize the requested action. A project-bound operation requires `project:execute`; an `operator` role does not grant access to every project. A source and destination require their own applicable resource checks.
 
-Do not accept a raw filesystem path or caller-selected database connection as proof of authorization. Use uploaded content or a server-managed resource reference and pass authorized resource records or validated handles to the operation implementation. Apply the companion filesystem proposal's containment checks before any file or database side effect.
+Do not accept a raw filesystem path or caller-selected database connection as proof of authorization. Use uploaded content or a server-managed resource reference and pass authorized resource records or validated handles to the operation implementation. Apply source and destination containment before any file or database side effect, as proposed here.
 
 Enforce these checks in the service or operation layer as well as at HTTP routes, so direct calls and background work cannot bypass them. Deny an operation before access or side effects whenever a required resource cannot be resolved, authorized, or contained.
 
@@ -96,7 +96,7 @@ Do not enable the current path-based operation merely because the caller has the
 
 - Preserve the centralized principal contract and existing `operator`/`admin` action mappings.
 - Keep application-role checks separate from authorization of the resources used by each run.
-- Reuse the companion filesystem proposal for approved references, containment, and server-managed database destinations; map this proposal's criteria to that work rather than duplicating it.
+- Own approved references, containment, and server-managed database destinations for ingester operations. [Change Request Target Bundle Access](../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md) covers only that operation's permission exception, managed output location, and read-only target access.
 - Resolve whether each operation is project-scoped and, if so, require a project reference and `project:execute` before enabling it.
 - Resolve whether `do_register` is ingester configuration, data registration, or part of execution, and apply the corresponding role before implementation.
 - Validate that denied operations fail before file reads, database connections, or writes.

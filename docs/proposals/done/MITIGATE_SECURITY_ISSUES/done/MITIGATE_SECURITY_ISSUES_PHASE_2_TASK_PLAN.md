@@ -86,7 +86,7 @@ No project-file, upload, backup, download, or directive path can escape its appr
 
 **Decision**
 
-Defer this work to [Secure Ingester Filesystem Boundaries](../../../INGESTER_FILESYSTEM_BOUNDARIES/INGESTER_FILESYSTEM_BOUNDARIES.md). The ingester remains disabled for operations that lack complete source, project, output, database, authorization, and containment checks.
+Defer this work to [Change Request Target Bundle Access](../../../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md). The ingester remains disabled for operations that lack complete source, project, output, database, authorization, and containment checks.
 
 ## Progress Tracker
 
@@ -95,7 +95,7 @@ Defer this work to [Secure Ingester Filesystem Boundaries](../../../INGESTER_FIL
 | Approved roots and shared containment guard     | Done | Root documentation, shared guard, resolver integration, and escape-case tests are complete |
 | Execution outputs and downloads                 | Done | Output and download paths are confined and escape-case tests pass |
 | Project files, uploads, backups, and directives | Done | Project, upload, backup, materialized-value, directive, and download paths are guarded; focused escape-case tests pass |
-| Ingester boundaries                             | Deferred | Tracked in [Secure Ingester Filesystem Boundaries](../../../INGESTER_FILESYSTEM_BOUNDARIES/INGESTER_FILESYSTEM_BOUNDARIES.md) |
+| Ingester boundaries                             | Deferred | Tracked in [Change Request Target Bundle Access](../../../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md) |
 
 ## Definition Of Done
 
@@ -125,7 +125,7 @@ Defer this work to [Secure Ingester Filesystem Boundaries](../../../INGESTER_FIL
 | Execution and download confinement | Confined outputs and closed arbitrary download | Done         | `backend/app/services/execute_service.py`, `backend/tests/services/test_execute_service_output_paths.py` |
 | Project-file, upload, backup, and directive confinement | Root checks across file endpoints and YAML directives | Done | `backend/app/services/project/file_manager.py`, `backend/app/api/v1/endpoints/projects.py`, `backend/app/services/yaml_service.py`, `src/configuration/resolve.py` |
 | Raw YAML disposition record        | Decision on restricting or removing raw YAML mutation  | Done | Raw YAML mutation remains limited to the authorized project edit operation; paths are confined before persistence or directive resolution |
-| Ingester boundary record           | Disablement or containment evidence for ingester paths | Deferred | [`CHANGE_REQUEST_INGESTER/INGESTER_FILESYSTEM_BOUNDARIES.md`](../../../INGESTER_FILESYSTEM_BOUNDARIES/INGESTER_FILESYSTEM_BOUNDARIES.md) |
+| Ingester boundary record           | Disablement or containment evidence for ingester paths | Deferred | [`CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md`](../../../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md) |
 
 ## Scope
 
@@ -135,7 +135,7 @@ Defer this work to [Secure Ingester Filesystem Boundaries](../../../INGESTER_FIL
 - Path confinement for execution targets, downloads, uploads, backups, project files, and YAML directives (`@include`, `@load`).
 - Symlink and time-of-check/time-of-use protection.
 - Server-generated output destinations and the raw YAML mutation disposition.
-- Ingester boundary work is deferred to [`CHANGE_REQUEST_INGESTER/INGESTER_FILESYSTEM_BOUNDARIES.md`](../../../INGESTER_FILESYSTEM_BOUNDARIES/INGESTER_FILESYSTEM_BOUNDARIES.md).
+- Ingester boundary work is deferred to [`CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md`](../../../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md).
 
 **Out of scope**
 
