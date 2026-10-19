@@ -230,6 +230,7 @@ async def test_project_route_query_body_mismatch_is_concealed_before_project_wor
     assert response.status_code == 404
     assert response.json()["detail"] == "Resource not found"
     helper_method.assert_awaited_once()
+    assert helper_method.await_args is not None
     _, authorized_project, request = helper_method.await_args.args
     assert authorized_project.resource.locator == "project-b"
     assert request.project_name == "project-a"
