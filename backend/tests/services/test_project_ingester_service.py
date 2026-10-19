@@ -18,6 +18,7 @@ from backend.app.services import project_ingester_service as project_ingester_mo
 from backend.app.services.project_data_provider_service import ProjectDataProviderError
 from backend.app.services.project_ingester_service import ProjectIngesterService
 from ingesters.sead_change_request.contracts import TrustedProjectContext
+from ingesters.sead_change_request.ingester import SeadChangeRequestIngester
 
 
 def authorized_project(
@@ -265,8 +266,8 @@ async def test_mismatched_project_name_is_rejected_before_application_check(monk
     with pytest.raises(PermissionError):
         await service.validate_project_tables("sead_change_request", authorized_project(), request("Pilot"))
 
-    assert authorization_service.actions == []
-    assert project_service.loaded == []
+    assert not authorization_service.actions
+    assert not project_service.loaded
 
 
 @pytest.mark.asyncio
@@ -432,12 +433,12 @@ async def test_trusted_config_uses_backend_values_and_only_named_submission_fiel
     provider_service = FakeProjectDataProviderService()
     injection_order: list[str] = []
 
-    def inject_runtime(key, extra, configured_settings):
+    def inject_runtime(key, extra, configured_settings):  # pylint: disable=unused-argument
         injection_order.append("runtime")
         assert set(extra) == {"target_model", "trusted_project_context", "submission_context", "deploy_strategy"}
         return dict(extra)
 
-    def inject_database(key, extra, db_config):
+    def inject_database(key, extra, db_config):  # pylint: disable=unused-argument
         injection_order.append("database")
         assert db_config == {
             "host": "target-db",
@@ -501,7 +502,7 @@ async def test_missing_target_model_stops_before_provider_or_normalization(monke
 
     assert result.is_valid is False
     assert "metadata.target_model" in result.errors[0]
-    assert provider_service.projects == []
+    assert not provider_service.projects
     assert not calls
 
 
@@ -527,7 +528,7 @@ async def test_invalid_target_model_stops_before_provider_or_normalization(monke
 
     assert result.is_valid is False
     assert result.errors
-    assert provider_service.projects == []
+    assert not provider_service.projects
     assert not calls
 
 
@@ -562,14 +563,13 @@ async def test_provider_binding_failure_stops_before_runtime_injection(monkeypat
 
     assert result.is_valid is False
     assert "not registered" in result.errors[0]
-    assert injections == []
+    assert not injections
     assert not calls
 
 
 @pytest.mark.asyncio
 async def test_successful_ingest_writes_only_bundle_under_managed_root(monkeypatch, tmp_path) -> None:
     """The helper passes normalized tables to the real ingester without workbook I/O."""
-    from ingesters.sead_change_request.ingester import SeadChangeRequestIngester
 
     project_service, calls = install_common_mocks(monkeypatch, registry_ingester=SeadChangeRequestIngester)
     provider_service = FakeProjectDataProviderService()
