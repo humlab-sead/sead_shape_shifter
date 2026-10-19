@@ -5,13 +5,14 @@ import shutil
 import subprocess
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, LiteralString, cast
 from uuid import uuid4
 
 import pandas as pd
 import psycopg
 import pytest
 from psycopg import sql
+from psycopg.rows import TupleRow
 
 from backend.app.ingesters import IngesterConfig
 from backend.app.services.ingester_runtime import SeadChangeRequestTargetCollisionChecker
@@ -165,11 +166,15 @@ async def _sequence_state(connection_kwargs: dict[str, Any], table_name: str, co
     async with await psycopg.AsyncConnection.connect(**connection_kwargs) as connection:
         async with connection.cursor() as cursor:
             await cursor.execute("SELECT pg_get_serial_sequence(%s, %s)", (table_name, column_name))
-            sequence_name = (await cursor.fetchone())[0]
+            row: TupleRow | None = await cursor.fetchone()
+            assert row is not None
+            sequence_name = row[0]
             assert sequence_name is not None
             sequence_identifier = sql.Identifier(*(part.strip('"') for part in sequence_name.split(".")))
             await cursor.execute(sql.SQL("SELECT last_value, is_called FROM {}").format(sequence_identifier))
-            last_value, is_called = await cursor.fetchone()
+            row = await cursor.fetchone()
+            assert row is not None
+            last_value, is_called = row
     return int(last_value), bool(is_called)
 
 
@@ -177,19 +182,21 @@ async def _fetch_count(connection_kwargs: dict[str, Any], query: str, params: tu
     """Return one count from the disposable target database."""
     async with await psycopg.AsyncConnection.connect(**connection_kwargs) as connection:
         async with connection.cursor() as cursor:
-            await cursor.execute(query, params)
-            row = await cursor.fetchone()
-    return int(row[0])
+            await cursor.execute(cast(LiteralString, query), params)
+            assert cursor.rowcount == 1
+            row: TupleRow | None = await cursor.fetchone()
+            assert row is not None
+        return int(row[0])
 
 
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_both_artifacts_use_sims_submission_id_and_rollback(tmp_path: Path) -> None:
     """Generate and execute both artifact forms with a SIMS-allocated submission ID."""
-    host = os.getenv("SEAD_DISPOSABLE_POSTGRES_HOST")
-    port = os.getenv("SEAD_DISPOSABLE_POSTGRES_PORT")
-    dbname = os.getenv("SEAD_DISPOSABLE_POSTGRES_DB")
-    user = os.getenv("SEAD_DISPOSABLE_POSTGRES_USER")
+    host = os.getenv("SEAD_DISPOSABLE_POSTGRES_HOST", "some-host")
+    port: str | None = os.getenv("SEAD_DISPOSABLE_POSTGRES_PORT", "0")
+    dbname = os.getenv("SEAD_DISPOSABLE_POSTGRES_DB", "some-db")
+    user = os.getenv("SEAD_DISPOSABLE_POSTGRES_USER", "unknown")
     if not all((host, port, dbname, user)):
         pytest.skip("Set SEAD_DISPOSABLE_POSTGRES_* variables for the loopback disposable database test")
     if host not in {"localhost", "127.0.0.1", "::1"}:
@@ -426,10 +433,14 @@ async def test_both_artifacts_use_sims_submission_id_and_rollback(tmp_path: Path
 
         async with await psycopg.AsyncConnection.connect(**connection_kwargs) as connection:
             async with connection.cursor() as cursor:
-                await cursor.execute("SELECT nextval('public.tbl_submissions_submission_id_seq')")
-                next_submission_id = int((await cursor.fetchone())[0])
-                await cursor.execute("SELECT nextval('public.tbl_datasets_dataset_id_seq')")
-                next_dataset_id = int((await cursor.fetchone())[0])
+                await cursor.execute(cast(LiteralString, "SELECT nextval('public.tbl_submissions_submission_id_seq')"))
+                row = await cursor.fetchone()
+                assert row is not None
+                next_submission_id = int(row[0])
+                await cursor.execute(cast(LiteralString, "SELECT nextval('public.tbl_datasets_dataset_id_seq')"))
+                row = await cursor.fetchone()
+                assert row is not None
+                next_dataset_id = int(row[0])
         assert next_submission_id > submission_id
         assert next_dataset_id > DisposableManagedIdentityAllocator.target_ids["dataset"]
 
