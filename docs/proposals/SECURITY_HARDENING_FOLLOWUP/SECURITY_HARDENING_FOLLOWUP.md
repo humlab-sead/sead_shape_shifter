@@ -69,7 +69,7 @@ Move useful regression cases from the local ledger into maintained tests after r
 ## Acceptance Criteria
 
 - `P-AC-1` Untrusted route and project inputs cannot read or write outside approved roots, expose environment values, or alias another project's file; existing namespaced locators continue to work.
-- `P-AC-2` Preview, restore, shared-source authorization, project responses, and global logs enforce their intended permissions and state consistency, with no secret returned to an unauthorized reader. Any authenticated operator can create a Change Request target bundle without a target-database connection or write; other ingester operations retain their intended permissions.
+- `P-AC-2` Preview, restore, shared-source authorization, project responses, and global logs enforce their intended permissions and state consistency, with no secret returned to an unauthorized reader. An authenticated principal holding `project:execute` on the saved project can create a Change Request target bundle without `run_ingesters`; bundle creation may run read-only verification queries but performs no target-database write and consumes no sequence value. Other ingester operations retain their intended permissions.
 - `P-AC-3` Supported read queries run; unsafe SQL forms and unauthorized database/file access fail before execution, with database privileges independently constrained.
 - `P-AC-4` Root bootstrap cannot execute deployment-user-writable code; each principal has an independent credential, and authenticated actors appear in every lifecycle audit record.
 - `P-AC-5` Invalid manifests change nothing, failed applications preserve or restore the previous store, and imported/exported inventory remains owner-only with no failure residue.
