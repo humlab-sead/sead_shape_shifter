@@ -50,14 +50,14 @@ export const useProjectStore = defineStore('project', () => {
   const lastFetchedAt = ref<number | null>(null)
 
   // Diagnostic logging helper for state sync debugging
-  function logState(action: string, details: Record<string, unknown> = {}) {
-    console.info(`[ProjectStore] ${action}`, {
-      ...details,
-      selectedProject: selectedProject.value?.metadata?.name ?? null,
-      projectCount: projects.value.length,
-      timestamp: new Date().toISOString(),
-    })
-  }
+    // function logState(action: string, details: Record<string, unknown> = {}) {
+    //   console.info(`[ProjectStore] ${action}`, {
+    //     ...details,
+    //     selectedProject: selectedProject.value?.metadata?.name ?? null,
+    //     projectCount: projects.value.length,
+    //     timestamp: new Date().toISOString(),
+    //   })
+    // }
 
   // Getters
   const currentProjectName = computed(() => {
@@ -117,7 +117,7 @@ export const useProjectStore = defineStore('project', () => {
   }
 
   async function selectProject(name: string) {
-    logState('selectProject:before', { name })
+    // logState('selectProject:before', { name })
     loading.value = true
     error.value = null
     try {
@@ -126,14 +126,14 @@ export const useProjectStore = defineStore('project', () => {
       // recreated with same name) from appearing.
       const entityStore = useEntityStore()
       if (entityStore.currentProjectName !== name) {
-        logState('selectProject:resettingEntityStore', { name, previousProject: entityStore.currentProjectName })
+        // logState('selectProject:resettingEntityStore', { name, previousProject: entityStore.currentProjectName })
         entityStore.reset()
       }
 
       // Activate project in backend (loads into ApplicationState)
       selectedProject.value = await api.projects.activate(name)
       hasUnsavedChanges.value = false
-      logState('selectProject:after', { name })
+      // logState('selectProject:after', { name })
       return selectedProject.value
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to load project'
@@ -160,7 +160,7 @@ export const useProjectStore = defineStore('project', () => {
   }
 
   async function createProject(data: ProjectCreateRequest) {
-    logState('createProject:before', { name: data.name })
+    // logState('createProject:before', { name: data.name })
     loading.value = true
     error.value = null
     try {
@@ -180,7 +180,7 @@ export const useProjectStore = defineStore('project', () => {
       markProjectsStale()
       selectedProject.value = project
       hasUnsavedChanges.value = false
-      logState('createProject:after', { name: data.name })
+      // logState('createProject:after', { name: data.name })
       return project
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to create project'
@@ -259,7 +259,7 @@ export const useProjectStore = defineStore('project', () => {
   }
 
   async function deleteProject(name: string) {
-    logState('deleteProject:before', { name })
+    // logState('deleteProject:before', { name })
     loading.value = true
     // Don't clear global error - operation errors should be handled by caller
     try {
@@ -277,7 +277,7 @@ export const useProjectStore = defineStore('project', () => {
 
       // Reset entity store again after delete completes
       entityStore.reset()
-      logState('deleteProject:after', { name })
+      // logState('deleteProject:after', { name })
     } catch (err) {
       // Extract detailed error message and re-throw with better message
       const errorMessage = extractErrorMessage(err, 'Failed to delete project')
