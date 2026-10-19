@@ -2,11 +2,11 @@
 
 ## Summary
 
-This plan sequences [the in-memory handoff proposal](./IN_MEMORY_INGESTER_HANDOFF.md). Retire unused Change Request file input first, then add a shared no-write normalization step, table-input support, a guarded backend helper, and project-only routes used by the operator client. The [target-bundle access proposal](../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md) follows this handoff and owns the later permission change and per-run output rules.
+This plan sequences [the in-memory handoff proposal](./IN_MEMORY_INGESTER_HANDOFF.md). Phase 1 retired unused Change Request file input and Phase 2 added the shared no-write normalization step. The remaining phases add table-input support, a guarded backend helper, and project-only routes used by the operator client. The [target-bundle access proposal](../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md) follows this handoff and owns the later permission change and per-run output rules.
 
 ## Problem
 
-Change Request generation currently reads a workbook written by normalization. That read accepts caller-supplied paths and can change names, values, types, and timezones. The proposed project-only operation needs normalized tables in memory, trusted ingester settings, project validation, and authorization before any ingester work.
+Change Request generation previously read a workbook written by normalization. That read accepted caller-supplied paths and could change names, values, types, and timezones. Phase 1 retired that input. The proposed project-only operation needs normalized tables in memory, trusted ingester settings, project validation, and authorization before any ingester work.
 
 ## Scope
 
@@ -16,10 +16,10 @@ It leaves Excel dispatch and file input for other ingesters unchanged. It does n
 
 ## Current Position
 
-- `workflow()` applies normalization options and then writes through a dispatcher; it has no shared no-write step.
-- `sead_change_request` still advertises Excel formats. Its source resolver can select `config.extra` tables before checking a path-shaped input, and its file routes remain callable.
+- `normalize_project()` applies normalization options and returns the completed tables without writing; `workflow()` calls it before its dispatcher write and shape log.
+- `sead_change_request` advertises no file formats. Its file routes, service calls, and file-oriented methods reject Change Request input; its source resolver rejects a path-shaped input before checking `config.extra`.
 - Shared ingester requests require `source`; the current service copies caller configuration. There is no dedicated project-only route or backend helper with the proposed trusted-input and project-validation rules.
-- The handoff proposal deliberately retires Change Request file input before the replacement operator path is available. Bundle generation is unavailable during that interval.
+- Phase 1 retirement and the Phase 2 no-write normalization step are complete, as recorded in the [Phase 1 task plan](./IN_MEMORY_INGESTER_HANDOFF_PHASE_1_TASK_PLAN.md) and the [Phase 2 task plan](./IN_MEMORY_INGESTER_HANDOFF_PHASE_2_TASK_PLAN.md). Bundle generation remains unavailable until the replacement operator path ships.
 
 ## Phase Plan
 
@@ -59,7 +59,7 @@ Close the unused Change Request workbook entry points before building the projec
 
 **Readiness**
 
-Ready for a task plan; the retirement rule is decided in the source proposal.
+Completed. The [Phase 1 task plan](./IN_MEMORY_INGESTER_HANDOFF_PHASE_1_TASK_PLAN.md) records acceptance and validation results.
 
 ### Phase 2: Share normalization without writing output
 
@@ -74,7 +74,7 @@ Let a caller obtain the completed normalized tables with the same options as `wo
 
 **Depends On**
 
-- Phase 1 retirement, to preserve the agreed delivery order.
+- Phase 1 retirement (complete), preserving the agreed delivery order.
 
 **Outputs**
 
@@ -96,7 +96,7 @@ Let a caller obtain the completed normalized tables with the same options as `wo
 
 **Readiness**
 
-Blocked on Phase 1 retirement; no further design decision is recorded for this phase.
+Completed. The [Phase 2 task plan](./IN_MEMORY_INGESTER_HANDOFF_PHASE_2_TASK_PLAN.md) records acceptance and validation results.
 
 ### Phase 3: Accept normalized tables in the Change Request ingester
 
