@@ -20,6 +20,8 @@ class IngesterMetadata:
         version: Ingester version string
         supported_formats: List of supported file formats (e.g., ['xlsx', 'xls'])
         requires_config: Whether ingester requires configuration
+        deprecated: Whether the ingester is superseded and kept only for existing callers
+        deprecation_message: Operator-facing explanation of the replacement for a deprecated ingester
     """
 
     key: str
@@ -28,6 +30,8 @@ class IngesterMetadata:
     version: str
     supported_formats: list[str]
     requires_config: bool
+    deprecated: bool = False
+    deprecation_message: str | None = None
 
 
 @dataclass

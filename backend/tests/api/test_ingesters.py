@@ -69,6 +69,8 @@ class TestIngestersEndpoints:
         assert sead_ingester["name"] == "SEAD Clearinghouse"
         assert sead_ingester["version"] == "1.0.0"
         assert "xlsx" in sead_ingester["supported_formats"]
+        assert sead_ingester["deprecated"] is True
+        assert "sead_change_request" in sead_ingester["deprecation_message"]
 
     def test_list_ingesters_structure(self, client: TestClient):
         """Test that list_ingesters returns properly structured metadata."""

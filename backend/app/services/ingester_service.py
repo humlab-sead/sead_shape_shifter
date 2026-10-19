@@ -48,6 +48,8 @@ class IngesterService:
                 description=metadata.description,
                 version=metadata.version,
                 supported_formats=metadata.supported_formats,
+                deprecated=metadata.deprecated,
+                deprecation_message=metadata.deprecation_message,
             )
             for metadata in metadata_list
         ]

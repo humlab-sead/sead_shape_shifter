@@ -26,8 +26,12 @@ class Ingester(Protocol):
 - **`registry.py`**: Auto-discovery registry for ingesters
 - **`__init__.py`**: Triggers registration of all ingesters
 
-### SEAD Ingester (`sead/`)
-Complete implementation for SEAD Clearinghouse Import system:
+### SEAD Ingester (`sead/`) — Deprecated
+
+Superseded by `sead_change_request`, which resolves identities through SIMS and emits a reviewable
+deploy bundle instead of writing to the target database. This ingester remains registered only for
+existing callers, reports `deprecated: true` through `GET /api/v1/ingesters`, and is scheduled for removal.
+
 - **`ingester.py`**: Main ingester class implementing the protocol
 - **Core modules**: metadata, policies, specification, submission, repository, utility, process
 - **Dispatchers**: csv_processor, xml_processor
