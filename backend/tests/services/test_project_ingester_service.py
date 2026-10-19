@@ -420,8 +420,8 @@ async def test_missing_backend_settings_stop_before_provider_or_normalization(mo
 
     assert result.is_valid is False
     assert result.errors
-    assert provider_service.projects == []
-    assert injections == []
+    assert not provider_service.projects
+    assert not injections
     assert not calls
 
 
