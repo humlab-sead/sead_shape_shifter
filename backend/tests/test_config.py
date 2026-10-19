@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+from pydantic import ValidationError
+
 from backend.app.core.config import Settings
 
 
@@ -60,8 +63,6 @@ def test_blank_ingester_output_directory_is_unconfigured(tmp_path) -> None:
 
 def test_ingester_target_port_is_validated() -> None:
     """The project-ingester target port must be a valid TCP port."""
-    import pytest
-    from pydantic import ValidationError
 
     with pytest.raises(ValidationError):
         Settings(INGEST_TARGET_PORT=0)
