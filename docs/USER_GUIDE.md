@@ -859,11 +859,13 @@ The Dispatch tab lets you configure and run an ingester from within your project
 Workflow:
 1. Open a project and go to the **Dispatch** tab.
 2. Select a registered ingester from the list.
-3. Fill in the ingester configuration (data source, submission name, options).
-4. Run the ingester.
-5. Review the result summary.
+3. For a file-based ingester, use output from **Execute** or enter a suitable configured output path.
+4. For **SEAD Change Request**, enter the submission details and selected deploy output, then run **Validate**.
+5. If validation passes, run **Dispatch** and review the generated deploy bundle.
 
-Dispatch requires that Execute has already produced output, or that a suitable output path is configured.
+SEAD Change Request uses normalized tables from the saved project and does not need a workbook path or a previous
+**Execute** run. The operator must have **Execute** access to the project and the application-level permission to run
+ingesters. Both permissions remain required until the separate output and database safety changes are available.
 
 ## Data Ingestion Page
 
@@ -881,13 +883,13 @@ Workflow:
 3. Enter connection and configuration details.
 4. Run the ingester.
 
-To run a SEAD Change Request, open its saved project and use **Project → Dispatch**. That form fixes the project
-locator to the open project and shows the saved-project requirements before validation or ingestion.
+To run a SEAD Change Request, open its saved project and use **Project → Dispatch**. The form fixes the project
+locator to the open project and sends only the named submission details and selected deploy output.
 
 ## SEAD Change Request Requirements
 
-A SEAD Change Request run works against one saved project, and the saved project must be
-ready before validation or ingestion starts.
+A SEAD Change Request run validates the saved project before it normalizes data or creates a bundle. It uses that
+project's normalized tables directly; it does not read a dispatched workbook.
 
 The project needs:
 
@@ -906,6 +908,9 @@ The project needs:
 
 The response and the emitted `manifest.json` both show the effective `scope_name` and `run_id`.
 A `run_id` is meaningful only together with its scope, so compare the two values together.
+
+The operator needs **Execute** access to the saved project and the application-level permission to run ingesters.
+The application permission is an interim requirement for this route.
 
 ---
 

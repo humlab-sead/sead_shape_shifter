@@ -539,7 +539,7 @@ class TestTrustedScopeAndBusinessKeys:
                 ),
             )
 
-        assert sims_client.resolve_requests == []
+        assert not sims_client.resolve_requests
 
     def test_caller_scope_override_is_rejected_before_any_source_read(self, tmp_path):
         config = IngesterConfig(

@@ -1,5 +1,6 @@
 """Input and config resolution for the SEAD change request ingester."""
 
+from collections.abc import Mapping
 from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
@@ -11,6 +12,7 @@ import pandas as pd
 from backend.app.ingesters.protocol import IngesterConfig
 from ingesters.sead_change_request.contracts import (
     APPROVED_DATATYPES,
+    CHANGE_REQUEST_FILE_INPUT_RETIRED_MESSAGE,
     ChangeRowState,
     IdentityAssignment,
     SourceTableBundle,
@@ -119,56 +121,33 @@ def resolve_inputs(config: IngesterConfig, source: object) -> ResolvedInputs:
 
 
 def _resolve_source_bundle(config: IngesterConfig, source: object) -> SourceTableBundle:
-    """Resolve the current protocol edge into the internal bundle contract."""
-    extras: dict[str, Any] = config.extra or {}
-
+    """Resolve the internal bundle contract and reject the retired file input."""
     if isinstance(source, SourceTableBundle):
         return source
+
+    if isinstance(source, (Path, str)):
+        raise SourceBundleError(CHANGE_REQUEST_FILE_INPUT_RETIRED_MESSAGE)
+
+    extras: dict[str, Any] = config.extra or {}
 
     source_bundle = extras.get("source_bundle")
     if isinstance(source_bundle, SourceTableBundle):
         return source_bundle
 
-    table_mapping = source if isinstance(source, dict) else extras.get("tables")
-    if isinstance(table_mapping, dict):
-        source_name = str(source) if isinstance(source, (Path, str)) else ""
-        return _build_source_bundle(table_mapping, source_name=source_name)
-
-    if isinstance(source, (Path, str)):
-        return _load_source_bundle_from_path(Path(source))
+    table_mapping = source if isinstance(source, Mapping) else extras.get("tables")
+    if isinstance(table_mapping, Mapping):
+        return _build_source_bundle(table_mapping)
 
     raise SourceBundleError("Unsupported source type for sead_change_request ingestion")
 
 
-def _load_source_bundle_from_path(source_path: Path) -> SourceTableBundle:
-    """Load an Excel workbook into the internal source-bundle contract."""
-    if not source_path.exists():
-        raise SourceBundleError(f"Source file does not exist: {source_path}")
-    if source_path.suffix.lower() not in {".xlsx", ".xls"}:
-        raise SourceBundleError(f"Unsupported source file format '{source_path.suffix}'; expected .xlsx or .xls")
+def _build_source_bundle(tables: Mapping[object, object], *, source_name: str = "") -> SourceTableBundle:
+    """Build a validated source bundle from a raw table mapping.
 
-    with pd.ExcelFile(source_path) as workbook:
-        table_mapping: dict[str, pd.DataFrame] = {}
-        warnings: list[str] = []
-
-        for sheet_name in workbook.sheet_names:
-            normalized_sheet_name = str(sheet_name)
-            if normalized_sheet_name == "data_table_index":
-                warnings.append("Ignored sheet 'data_table_index' from Excel source bundle")
-                continue
-
-            frame: pd.DataFrame = pd.read_excel(workbook, sheet_name=normalized_sheet_name)
-            frame.columns = sanitize_columns(list(frame.columns))
-            table_mapping[normalized_sheet_name] = frame
-
-    if not table_mapping:
-        raise SourceBundleError(f"No usable sheets were found in source file: {source_path}")
-
-    return SourceTableBundle(tables=table_mapping, source_name=str(source_path), warnings=warnings)
-
-
-def _build_source_bundle(tables: dict[object, object], source_name: str = "") -> SourceTableBundle:
-    """Build a validated source bundle from a raw table mapping."""
+    Each accepted DataFrame is deep-copied so the caller keeps ownership of its
+    data, and only the copied column labels are sanitized. Entity names, values,
+    dtypes, and timezone-aware values are preserved.
+    """
     if not tables:
         raise SourceBundleError("No source tables were provided")
 
@@ -179,9 +158,24 @@ def _build_source_bundle(tables: dict[object, object], source_name: str = "") ->
         if not isinstance(frame, pd.DataFrame):
             raise SourceBundleError(f"Source table '{table_name}' must be a pandas DataFrame")
 
-        normalized_tables[table_name] = frame
+        copied_frame = frame.copy(deep=True)
+        copied_frame.columns = _sanitized_column_labels(list(copied_frame.columns))
+        normalized_tables[table_name] = copied_frame
 
     return SourceTableBundle(tables=normalized_tables, source_name=source_name)
+
+
+def _sanitized_column_labels(columns: list[object]) -> list[str]:
+    """Sanitize caller-visible column labels and keep workflow-internal labels unchanged.
+
+    Columns that are part of the internal preparation contract start with ``_`` or
+    end with ``__existing``. Renaming them would break row-state, projection, and
+    existing-row update handling, so only the remaining labels are sanitized.
+    """
+    internal_flags = [isinstance(column, str) and (column.startswith("_") or column.endswith("__existing")) for column in columns]
+    public_columns = [column for column, is_internal in zip(columns, internal_flags) if not is_internal]
+    sanitized_columns = iter(sanitize_columns(public_columns))
+    return [str(column) if is_internal else next(sanitized_columns) for column, is_internal in zip(columns, internal_flags)]
 
 
 def _resolve_target_model(config: IngesterConfig) -> TargetModel:

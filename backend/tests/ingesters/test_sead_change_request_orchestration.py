@@ -153,7 +153,7 @@ class TestOrchestrateIdentityAssignments:
         result = await orchestrate_identity_assignments(
             [planned_table],
             minimal_submission_context(),
-            sims_client=sims_client,
+            sims_client=sims_client,  # type: ignore
             reconciliation_client=FakeReconciliationClient(target_id=77),
         )
 
@@ -172,7 +172,7 @@ class TestOrchestrateIdentityAssignments:
         result = await orchestrate_identity_assignments(
             [planned_table],
             minimal_submission_context(),
-            sims_client=FakeSimsClient(binding_set_state="confirmed", target_id=501),
+            sims_client=FakeSimsClient(binding_set_state="confirmed", target_id=501),  # type: ignore
         )
 
         assignment = result.assignments["sample"][0]
@@ -197,7 +197,7 @@ class TestOrchestrateIdentityAssignments:
         result = await orchestrate_identity_assignments(
             [planned_table],
             minimal_submission_context(),
-            sims_client=sims_client,
+            sims_client=sims_client,  # type: ignore
             target_id_allocator=target_id_allocator,
             target_model_entities={"submission": entity_spec},
         )
@@ -226,7 +226,7 @@ class TestOrchestrateIdentityAssignments:
         result = await orchestrate_identity_assignments(
             [planned_table],
             minimal_submission_context(),
-            sims_client=sims_client,
+            sims_client=sims_client,  # type: ignore
             target_id_allocator=target_id_allocator,
             target_model_entities={"submission": entity_spec},
         )
@@ -293,7 +293,11 @@ class TestOrchestrateIdentityAssignments:
         result = await orchestrate_identity_assignments(
             [planned_table],
             minimal_submission_context(),
-            sims_client=FakeSimsClient(binding_set_state="proposed", confirmed_binding_set_state="proposed", target_id=501),
+            sims_client=FakeSimsClient(  # type: ignore
+                binding_set_state="proposed",
+                confirmed_binding_set_state="proposed",
+                target_id=501,
+            ),
         )
 
         assignment = result.assignments["sample"][0]
@@ -311,7 +315,7 @@ class TestOrchestrateIdentityAssignments:
         result = await orchestrate_identity_assignments(
             [planned_table],
             minimal_submission_context(),
-            sims_client=sims_client,
+            sims_client=sims_client,  # type: ignore
         )
 
         assignment = result.assignments["sample"][0]
@@ -330,7 +334,7 @@ class TestOrchestrateIdentityAssignments:
         result = await orchestrate_identity_assignments(
             [planned_table],
             minimal_submission_context(),
-            sims_client=sims_client,
+            sims_client=sims_client,  # type: ignore
         )
 
         assignment = result.assignments["sample"][0]
@@ -346,7 +350,7 @@ class TestOrchestrateIdentityAssignments:
         result = await orchestrate_identity_assignments(
             [planned_table],
             minimal_submission_context(),
-            sims_client=FakeSimsClient(binding_set_state="confirmed", target_id=None),
+            sims_client=FakeSimsClient(binding_set_state="confirmed", target_id=None),  # type: ignore
         )
 
         assignment = result.assignments["sample"][0]
@@ -365,7 +369,7 @@ class TestOrchestrateIdentityAssignments:
         result = await orchestrate_identity_assignments(
             [planned_table],
             minimal_submission_context(),
-            sims_client=FakeSimsClient(binding_set_state="confirmed", target_id=501),
+            sims_client=FakeSimsClient(binding_set_state="confirmed", target_id=501),  # type: ignore
         )
 
         assignment = result.assignments["sample_taxon"][0]
@@ -398,7 +402,7 @@ class TestOrchestrateIdentityAssignments:
         result = await orchestrate_identity_assignments(
             [planned_table],
             minimal_submission_context(),
-            sims_client=sims_client,
+            sims_client=sims_client,  # type: ignore
         )
 
         assert len(sims_client.batch_calls) == 1
@@ -429,7 +433,7 @@ class TestOrchestrateIdentityAssignments:
         result = await orchestrate_identity_assignments(
             [planned_table],
             minimal_submission_context(),
-            sims_client=sims_client,
+            sims_client=sims_client,  # type: ignore
         )
 
         assert result.assignments["sample"][0].target_id == 1001
@@ -451,7 +455,7 @@ class TestOrchestrateIdentityAssignments:
         result = await orchestrate_identity_assignments(
             [planned_table],
             minimal_submission_context(),
-            sims_client=sims_client,
+            sims_client=sims_client,  # type: ignore
             reconciliation_client=FakeReconciliationClient(target_id=None),
             target_model_entities={"taxa_tree_master": entity_spec},
         )
@@ -472,7 +476,7 @@ class TestOrchestrateIdentityAssignments:
         result = await orchestrate_identity_assignments(
             [planned_table],
             minimal_submission_context(),
-            sims_client=sims_client,
+            sims_client=sims_client,  # type: ignore
             reconciliation_client=FakeReconciliationClient(target_id=None),
             target_model_entities={"site": entity_spec},
         )

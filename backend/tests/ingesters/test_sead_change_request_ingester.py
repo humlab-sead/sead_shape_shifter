@@ -4,17 +4,21 @@ import gzip
 import json
 from datetime import datetime
 from hashlib import sha256
+from pathlib import Path
 from typing import Any, cast
+from unittest.mock import patch
 
 import httpx
 import pandas as pd
 import pytest
 
 from backend.app.ingesters import IngesterConfig
+from backend.app.ingesters.protocol import IngestionResult, ValidationResult
 from backend.app.models.sims import CapabilitiesResponse, EntityCapabilityResponse
 from backend.app.services.ingester_runtime import SeadChangeRequestSimsAdapter
 from ingesters.sead_change_request import ChangeRowState, DeployArtifact, SourceTableBundle
 from ingesters.sead_change_request.contracts import (
+    CHANGE_REQUEST_FILE_INPUT_RETIRED_MESSAGE,
     FIXED_PROVIDER_TARGET_TABLE,
     SimsResolveItem,
     SubmissionContext,
@@ -387,6 +391,23 @@ def expected_bundle_name(**overrides: object) -> str:
     return resolve_bundle_name(submission_context)
 
 
+def configured_tables(ingester: SeadChangeRequestIngester) -> dict[str, pd.DataFrame]:
+    """Return the in-memory tables declared by the test ingester configuration."""
+    tables = (ingester.config.extra or {}).get("tables")
+    assert isinstance(tables, dict), "test ingester config must declare config.extra['tables']"
+    return tables
+
+
+async def validate_bundle(ingester: SeadChangeRequestIngester) -> ValidationResult:
+    """Validate the ingester's configured tables through the public table method."""
+    return await ingester.validate_tables(configured_tables(ingester))
+
+
+async def ingest_bundle(ingester: SeadChangeRequestIngester, validate_first: bool = True) -> IngestionResult:
+    """Ingest the ingester's configured tables through the public table method."""
+    return await ingester.ingest_tables(configured_tables(ingester), validate_first=validate_first)
+
+
 class TestSeadChangeRequestIngesterValidation:
     """Tests for DataFrame-first validation handoff."""
 
@@ -407,7 +428,7 @@ class TestSeadChangeRequestIngesterValidation:
             )
         )
 
-        result = await ingester.validate("submission.xlsx")
+        result = await validate_bundle(ingester)
 
         assert result.is_valid is True
         assert result.errors == []
@@ -437,11 +458,61 @@ class TestSeadChangeRequestIngesterValidation:
             warnings=["sample warning"],
         )
 
-        result = await ingester.validate(bundle)
+        result = await ingester._validate_bundle(bundle)
 
         assert result.is_valid is True
         assert result.warnings == ["sample warning"]
         assert any("normalized submission" in info for info in result.infos)
+
+    @pytest.mark.asyncio
+    async def test_validate_tables_reports_the_source_name_as_diagnostics(self):
+        """The public table method should keep the source name separate from the file contract."""
+        ingester = SeadChangeRequestIngester(
+            IngesterConfig(
+                host="localhost",
+                port=5432,
+                dbname="test_db",
+                user="test_user",
+                extra={
+                    "target_model": minimal_target_model(sample={"role": "fact", "public_id": "sample_id"}),
+                    "submission_context": minimal_submission_context(),
+                },
+            )
+        )
+
+        result = await ingester.validate_tables(
+            {"sample": pd.DataFrame({"sample_id": [1]})},
+            source_name="normalized submission",
+        )
+
+        assert result.is_valid is True
+        assert any("Source bundle name: normalized submission" in info for info in result.infos)
+
+    @pytest.mark.asyncio
+    async def test_validate_tables_reports_invalid_table_values_as_a_structured_failure(self):
+        """A non-DataFrame value should become a validation failure, not an exception."""
+        ingester = SeadChangeRequestIngester(IngesterConfig(host="localhost", port=5432, dbname="test_db", user="test_user"))
+
+        result = await ingester.validate_tables({"sample": [{"sample_id": 1}]})  # type: ignore[dict-item]
+
+        assert result.is_valid is False
+        assert result.errors == ["Source table 'sample' must be a pandas DataFrame"]
+        assert result.warnings == []
+
+    @pytest.mark.asyncio
+    async def test_ingest_tables_reports_invalid_table_values_with_and_without_validation(self):
+        """The public table method should follow validate_first for adapter failures."""
+        ingester = SeadChangeRequestIngester(IngesterConfig(host="localhost", port=5432, dbname="test_db", user="test_user"))
+
+        validated_result = await ingester.ingest_tables({"sample": [{"sample_id": 1}]})  # type: ignore[dict-item]
+        bypassed_result = await ingester.ingest_tables({"sample": [{"sample_id": 1}]}, validate_first=False)  # type: ignore[dict-item]
+
+        assert validated_result.success is False
+        assert validated_result.message == "Validation failed"
+        assert validated_result.error_details == "Source table 'sample' must be a pandas DataFrame"
+        assert bypassed_result.success is False
+        assert bypassed_result.message == "Invalid source bundle"
+        assert bypassed_result.error_details == "Source table 'sample' must be a pandas DataFrame"
 
     @pytest.mark.asyncio
     async def test_validate_requires_authorized_project_context_for_submission_target(self):
@@ -461,7 +532,7 @@ class TestSeadChangeRequestIngesterValidation:
             )
         )
 
-        result = await ingester.validate("submission.xlsx")
+        result = await validate_bundle(ingester)
 
         assert result.is_valid is False
         assert result.errors == ["Change Request ingestion requires an authorized saved project with a fixed data provider row"]
@@ -485,18 +556,16 @@ class TestSeadChangeRequestIngesterValidation:
             )
         )
 
-        result = await ingester.validate("submission.xlsx")
+        result = await validate_bundle(ingester)
 
         assert result.is_valid is False
         assert result.errors == ["No SEAD data provider row matches data_provider_id 999 and data_provider_code 'UNKNOWN'"]
 
     @pytest.mark.asyncio
-    async def test_validate_accepts_excel_path_source(self, tmp_path):
-        """Validation should load a workbook path into the source bundle contract."""
+    async def test_validate_rejects_retired_workbook_path_without_reading_it(self, tmp_path):
+        """Validation should reject a workbook path before any workbook is read."""
         workbook_path = tmp_path / "submission.xlsx"
-        with pd.ExcelWriter(workbook_path) as writer:
-            pd.DataFrame({"Sample ID": [1, 2]}).to_excel(writer, sheet_name="sample", index=False)
-            pd.DataFrame({"ignored": [1]}).to_excel(writer, sheet_name="data_table_index", index=False)
+        workbook_path.write_bytes(b"not a workbook")
 
         ingester = SeadChangeRequestIngester(
             IngesterConfig(
@@ -515,18 +584,12 @@ class TestSeadChangeRequestIngesterValidation:
 
         result = await ingester.validate(workbook_path)
 
-        assert result.is_valid is True
-        assert result.errors == []
-        assert result.warnings == ["Ignored sheet 'data_table_index' from Excel source bundle"]
-        assert any(f"Source bundle name: {workbook_path}" in info for info in result.infos)
-        assert any("Planned 'sample': 2 reference_existing" in info for info in result.infos)
+        assert result.is_valid is False
+        assert result.errors == [CHANGE_REQUEST_FILE_INPUT_RETIRED_MESSAGE]
 
     @pytest.mark.asyncio
-    async def test_validate_fails_for_unsupported_path_source_extension(self, tmp_path):
-        """Validation should reject non-Excel path sources at the boundary."""
-        source_path = tmp_path / "submission.csv"
-        source_path.write_text("sample_id\n1\n", encoding="utf-8")
-
+    async def test_validate_rejects_string_source_before_resolution(self):
+        """Validation should reject a string source even when config.extra holds tables."""
         ingester = SeadChangeRequestIngester(
             IngesterConfig(
                 host="localhost",
@@ -534,20 +597,21 @@ class TestSeadChangeRequestIngesterValidation:
                 dbname="test_db",
                 user="test_user",
                 extra={
+                    "tables": {"sample": pd.DataFrame({"sample_id": [1]})},
                     "target_model": minimal_target_model(sample={"role": "fact", "public_id": "sample_id"}),
                     "submission_context": minimal_submission_context(),
                 },
             )
         )
 
-        result = await ingester.validate(source_path)
+        result = await ingester.validate("submission.csv")
 
         assert result.is_valid is False
-        assert result.errors == ["Unsupported source file format '.csv'; expected .xlsx or .xls"]
+        assert result.errors == [CHANGE_REQUEST_FILE_INPUT_RETIRED_MESSAGE]
 
     @pytest.mark.asyncio
-    async def test_validate_fails_for_non_dataframe_table_values(self):
-        """Validation should reject malformed table mappings at the handoff boundary."""
+    async def test_validate_rejects_string_source_before_inspecting_tables(self):
+        """A string source must not select malformed tables from config.extra."""
         ingester = SeadChangeRequestIngester(
             IngesterConfig(
                 host="localhost",
@@ -565,7 +629,7 @@ class TestSeadChangeRequestIngesterValidation:
         result = await ingester.validate("submission.xlsx")
 
         assert result.is_valid is False
-        assert result.errors == ["Source table 'sample' must be a pandas DataFrame"]
+        assert result.errors == [CHANGE_REQUEST_FILE_INPUT_RETIRED_MESSAGE]
 
     @pytest.mark.asyncio
     async def test_validate_fails_when_target_model_missing(self):
@@ -580,7 +644,7 @@ class TestSeadChangeRequestIngesterValidation:
             )
         )
 
-        result = await ingester.validate("submission.xlsx")
+        result = await validate_bundle(ingester)
 
         assert result.is_valid is False
         assert result.errors == ["Target model is required; provide config.extra['target_model'] as a dict or TargetModel"]
@@ -601,7 +665,7 @@ class TestSeadChangeRequestIngesterValidation:
             )
         )
 
-        result = await ingester.validate("submission.xlsx")
+        result = await validate_bundle(ingester)
 
         assert result.is_valid is False
         assert result.errors == ["Submission context is required; provide config.extra['submission_context']"]
@@ -623,7 +687,7 @@ class TestSeadChangeRequestIngesterValidation:
             )
         )
 
-        result = await ingester.validate("submission.xlsx")
+        result = await validate_bundle(ingester)
 
         assert result.is_valid is False
         assert result.errors == ["Submission context timestamp must be a valid ISO-8601 datetime string"]
@@ -645,7 +709,7 @@ class TestSeadChangeRequestIngesterValidation:
             )
         )
 
-        result = await ingester.validate("submission.xlsx")
+        result = await validate_bundle(ingester)
 
         assert result.is_valid is False
         assert result.errors == ["Submission context description must be a single line"]
@@ -667,7 +731,7 @@ class TestSeadChangeRequestIngesterValidation:
             )
         )
 
-        result = await ingester.validate("submission.xlsx")
+        result = await validate_bundle(ingester)
 
         assert result.is_valid is False
         assert result.errors == ["Submission context description must be shorter than 80 characters"]
@@ -690,7 +754,7 @@ class TestSeadChangeRequestIngesterValidation:
             )
         )
 
-        result = await ingester.validate("submission.xlsx")
+        result = await validate_bundle(ingester)
 
         assert result.is_valid is False
         assert result.errors == ["Identity assignment for 'sample' row '0' has invalid state 'not-a-state'"]
@@ -712,7 +776,7 @@ class TestSeadChangeRequestIngesterValidation:
             )
         )
 
-        result = await ingester.validate("submission.xlsx")
+        result = await validate_bundle(ingester)
 
         assert result.is_valid is False
         assert result.errors == ["Source table 'sample' is not present in the target model"]
@@ -742,7 +806,7 @@ class TestSeadChangeRequestIngesterValidation:
             )
         )
 
-        result = await ingester.validate("submission.xlsx")
+        result = await validate_bundle(ingester)
 
         assert result.is_valid is True
         assert result.warnings == [
@@ -767,7 +831,7 @@ class TestSeadChangeRequestIngesterValidation:
             )
         )
 
-        result = await ingester.validate("submission.xlsx")
+        result = await validate_bundle(ingester)
 
         assert result.is_valid is False
         assert any("Blocked rows after identity resolution: 1" in info for info in result.infos)
@@ -804,7 +868,7 @@ class TestSeadChangeRequestIngesterValidation:
             )
         )
 
-        result = await ingester.validate("submission.xlsx")
+        result = await validate_bundle(ingester)
 
         assert result.is_valid is True
         assert any("Blocked rows after identity resolution: 0" in info for info in result.infos)
@@ -829,7 +893,7 @@ class TestSeadChangeRequestIngesterValidation:
             )
         )
 
-        result = await ingester.validate("submission.xlsx")
+        result = await validate_bundle(ingester)
 
         assert result.is_valid is True
         assert result.errors == []
@@ -859,7 +923,7 @@ class TestSeadChangeRequestIngesterValidation:
             )
         )
 
-        result = await ingester.validate("submission.xlsx")
+        result = await validate_bundle(ingester)
 
         assert result.is_valid is False
         assert result.errors == ["Entity 'location' has 1 missing conditional FK value(s) for 'location_type_id'"]
@@ -886,7 +950,7 @@ class TestSeadChangeRequestIngesterValidation:
             )
         )
 
-        result = await ingester.validate("submission.xlsx")
+        result = await validate_bundle(ingester)
 
         assert result.is_valid is True
         assert result.pending_confirmation_report is None
@@ -911,7 +975,7 @@ class TestSeadChangeRequestIngesterValidation:
             )
         )
 
-        result = await ingester.validate("submission.xlsx")
+        result = await validate_bundle(ingester)
 
         assert result.is_valid is False
         assert result.pending_confirmation_report is not None
@@ -946,7 +1010,7 @@ class TestSeadChangeRequestIngesterValidation:
             )
         )
 
-        result = await ingester.validate("submission.xlsx")
+        result = await validate_bundle(ingester)
 
         assert result.is_valid is True
         assert any(
@@ -991,7 +1055,7 @@ class TestSeadChangeRequestIngesterValidation:
             )
         )
 
-        result = await ingester.validate("submission.xlsx")
+        result = await validate_bundle(ingester)
 
         assert result.is_valid is False
         assert any("Planned 'sample': 2 update_existing_candidate" in info for info in result.infos)
@@ -1029,7 +1093,7 @@ class TestSeadChangeRequestIngesterValidation:
             )
         )
 
-        result = await ingester.validate("submission.xlsx")
+        result = await validate_bundle(ingester)
 
         assert result.is_valid is False
         assert any("outside the first existing-row update slice" in warning for warning in result.warnings)
@@ -1057,7 +1121,7 @@ class TestSeadChangeRequestIngesterIngest:
             )
         )
 
-        result = await ingester.ingest("submission.xlsx")
+        result = await ingest_bundle(ingester)
 
         assert result.success is True
         assert "Deploy artifact emitted to" in result.message
@@ -1104,7 +1168,7 @@ class TestSeadChangeRequestIngesterIngest:
             )
         )
 
-        result = await ingester.ingest("submission.xlsx")
+        result = await ingest_bundle(ingester)
 
         assert result.success is True
         assert result.deploy_artifact is not None
@@ -1154,7 +1218,7 @@ class TestSeadChangeRequestIngesterIngest:
             )
         )
 
-        result = await ingester.ingest("submission.xlsx")
+        result = await ingest_bundle(ingester)
 
         assert result.success is True
         assert result.deploy_artifact is not None
@@ -1166,8 +1230,8 @@ class TestSeadChangeRequestIngesterIngest:
         assert not target_id_allocator.requests
 
     @pytest.mark.asyncio
-    async def test_ingest_returns_validation_failure_for_invalid_bundle(self):
-        """Ingest should stop at the validation boundary when the input contract is not met."""
+    async def test_ingest_rejects_retired_file_input(self):
+        """Ingest should reject the retired file input before resolving any source."""
         ingester = SeadChangeRequestIngester(
             IngesterConfig(
                 host="localhost",
@@ -1180,8 +1244,8 @@ class TestSeadChangeRequestIngesterIngest:
         result = await ingester.ingest("submission.xlsx")
 
         assert result.success is False
-        assert result.message == "Validation failed"
-        assert result.error_details == "Source file does not exist: submission.xlsx"
+        assert result.message == "File input retired"
+        assert result.error_details == CHANGE_REQUEST_FILE_INPUT_RETIRED_MESSAGE
 
     @pytest.mark.asyncio
     async def test_ingest_returns_invalid_submission_context_error(self):
@@ -1200,7 +1264,7 @@ class TestSeadChangeRequestIngesterIngest:
             )
         )
 
-        result = await ingester.ingest("submission.xlsx", validate_first=False)
+        result = await ingest_bundle(ingester, validate_first=False)
 
         assert result.success is False
         assert result.message == "Invalid submission context"
@@ -1224,7 +1288,7 @@ class TestSeadChangeRequestIngesterIngest:
             )
         )
 
-        result = await ingester.ingest("submission.xlsx", validate_first=False)
+        result = await ingest_bundle(ingester, validate_first=False)
 
         assert result.success is False
         assert result.message == "Invalid submission context"
@@ -1248,7 +1312,7 @@ class TestSeadChangeRequestIngesterIngest:
             )
         )
 
-        result = await ingester.ingest("submission.xlsx", validate_first=False)
+        result = await ingest_bundle(ingester, validate_first=False)
 
         assert result.success is False
         assert result.message == "Identity resolution incomplete"
@@ -1307,7 +1371,7 @@ class TestSeadChangeRequestIngesterIngest:
             )
         )
 
-        result = await ingester.ingest("submission.xlsx", validate_first=False)
+        result = await ingest_bundle(ingester, validate_first=False)
 
         assert result.success is False
         assert result.message == "PK/FK projection incomplete"
@@ -1345,7 +1409,7 @@ class TestSeadChangeRequestIngesterIngest:
             )
         )
 
-        result = await ingester.ingest("submission.xlsx", validate_first=False)
+        result = await ingest_bundle(ingester, validate_first=False)
 
         assert result.success is False
         assert result.message == "PK/FK projection incomplete"
@@ -1379,7 +1443,7 @@ class TestSeadChangeRequestIngesterIngest:
             )
         )
 
-        result = await ingester.ingest("submission.xlsx", validate_first=False)
+        result = await ingest_bundle(ingester, validate_first=False)
 
         assert result.success is True
         assert "Deploy artifact emitted to" in result.message
@@ -1429,7 +1493,7 @@ class TestSeadChangeRequestIngesterIngest:
             )
         )
 
-        result = await ingester.ingest("submission.xlsx", validate_first=False)
+        result = await ingest_bundle(ingester, validate_first=False)
 
         assert result.success is True
         assert result.deploy_artifact is not None
@@ -1464,7 +1528,7 @@ class TestSeadChangeRequestIngesterIngest:
             )
         )
 
-        result = await ingester.ingest("submission.xlsx")
+        result = await ingest_bundle(ingester)
 
         assert result.success is True
         assert result.tables_processed == 1
@@ -1502,7 +1566,7 @@ class TestSeadChangeRequestIngesterIngest:
             )
         )
 
-        result = await ingester.ingest("submission.xlsx", validate_first=False)
+        result = await ingest_bundle(ingester, validate_first=False)
 
         assert result.success is True
         assert result.deploy_artifact is not None
@@ -1536,7 +1600,7 @@ class TestSeadChangeRequestIngesterIngest:
             )
         )
 
-        result = await ingester.ingest("submission.xlsx", validate_first=False)
+        result = await ingest_bundle(ingester, validate_first=False)
 
         assert result.success is False
         assert result.message == "Invalid deploy strategy"
@@ -1571,7 +1635,7 @@ class TestSeadChangeRequestIngesterIngest:
             )
         )
 
-        result = await ingester.ingest("submission.xlsx", validate_first=False)
+        result = await ingest_bundle(ingester, validate_first=False)
 
         assert result.success is True
         assert result.deploy_artifact is not None
@@ -1615,7 +1679,7 @@ class TestSeadChangeRequestIngesterIngest:
             )
         )
 
-        result = await ingester.ingest("submission.xlsx", validate_first=False)
+        result = await ingest_bundle(ingester, validate_first=False)
 
         assert result.success is True
         bundle_name = expected_bundle_name()
@@ -1624,6 +1688,49 @@ class TestSeadChangeRequestIngesterIngest:
         assert gzip.decompress((tmp_path / bundle_name / "deploy" / bundle_name / "sample.gz").read_bytes()).decode("utf-8") == (
             "501\t2026-05-23\n"
         )
+
+    @pytest.mark.asyncio
+    async def test_ingest_rejects_timezone_aware_target_column_before_writing_bundle(self, tmp_path):
+        """Ingest should fail clearly and emit nothing for a timezone-aware target column."""
+        ingester = SeadChangeRequestIngester(
+            IngesterConfig(
+                host="localhost",
+                port=5432,
+                dbname="test_db",
+                user="test_user",
+                output_folder=str(tmp_path),
+                extra={
+                    "tables": {"sample": pd.DataFrame({"sample_id": [None], "collected_at": [pd.Timestamp("2026-05-23 10:15:00+02:00")]})},
+                    "target_model": minimal_target_model(
+                        sample={
+                            "role": "fact",
+                            "public_id": "sample_id",
+                            "columns": {
+                                "sample_id": {"type": "integer"},
+                                "collected_at": {"type": "timestamp with time zone"},
+                            },
+                        }
+                    ),
+                    "submission_context": minimal_submission_context(),
+                    "identity_assignments": {
+                        "sample": {
+                            0: {
+                                "state": ChangeRowState.NEWLY_ALLOCATED_ENTITY,
+                                "target_id": 501,
+                            }
+                        }
+                    },
+                },
+            )
+        )
+
+        result = await ingest_bundle(ingester, validate_first=False)
+
+        assert result.success is False
+        assert result.message == "Invalid deploy artifact input"
+        assert result.error_details is not None
+        assert "timezone-aware" in result.error_details
+        assert not list(tmp_path.iterdir())
 
     @pytest.mark.asyncio
     async def test_ingest_rejects_unsafe_copy_csv_target_table_name(self, tmp_path):
@@ -1654,7 +1761,7 @@ class TestSeadChangeRequestIngesterIngest:
             )
         )
 
-        result = await ingester.ingest("submission.xlsx", validate_first=False)
+        result = await ingest_bundle(ingester, validate_first=False)
 
         assert result.success is False
         assert result.message == "Invalid deploy artifact input"
@@ -1689,7 +1796,7 @@ class TestSeadChangeRequestIngesterIngest:
             )
         )
 
-        first_result = await ingester.ingest("submission.xlsx", validate_first=False)
+        first_result = await ingest_bundle(ingester, validate_first=False)
 
         assert first_result.success is True
         bundle_name = expected_bundle_name()
@@ -1700,7 +1807,7 @@ class TestSeadChangeRequestIngesterIngest:
         stale_file = bundle_root / "deploy" / bundle_name / "stale.txt"
         stale_file.write_text("stale", encoding="utf-8")
 
-        second_result = await ingester.ingest("submission.xlsx", validate_first=False)
+        second_result = await ingest_bundle(ingester, validate_first=False)
 
         assert second_result.success is True
         assert payload_path.read_bytes() == first_bytes
@@ -1755,7 +1862,7 @@ class TestSeadChangeRequestIngesterIngest:
             )
         )
 
-        result = await ingester.ingest("submission.xlsx", validate_first=False)
+        result = await ingest_bundle(ingester, validate_first=False)
 
         assert result.success is True
         bundle_name = expected_bundle_name()
@@ -1801,7 +1908,7 @@ class TestSeadChangeRequestIngesterIngest:
             )
         )
 
-        result = await ingester.ingest("submission.xlsx", validate_first=False)
+        result = await ingest_bundle(ingester, validate_first=False)
 
         assert result.success is False
         assert result.message == "Target collision checks failed"
@@ -1833,7 +1940,7 @@ class TestSeadChangeRequestIngesterIngest:
             )
         )
 
-        result = await ingester.ingest("submission.xlsx", validate_first=False)
+        result = await ingest_bundle(ingester, validate_first=False)
 
         assert result.success is False
         assert result.message == "Target collision checks failed"
@@ -1861,7 +1968,7 @@ class TestSeadChangeRequestIngesterIngest:
             )
         )
 
-        result = await ingester.ingest("submission.xlsx", validate_first=False)
+        result = await ingest_bundle(ingester, validate_first=False)
 
         assert result.success is False
         assert result.message == "Binding Set confirmation incomplete"
@@ -1891,7 +1998,7 @@ class TestSeadChangeRequestIngesterIngest:
             )
         )
 
-        result = await ingester.ingest("submission.xlsx", validate_first=False)
+        result = await ingest_bundle(ingester, validate_first=False)
 
         assert result.success is False
         assert result.message == "SIMS aggregate ID allocation capability incomplete"
@@ -1954,7 +2061,7 @@ class TestSeadChangeRequestIngesterIngest:
             )
         )
 
-        result = await ingester.ingest("submission.xlsx")
+        result = await ingest_bundle(ingester)
 
         assert result.success is True
         assert result.message.startswith("Deploy artifact emitted to '")
@@ -2037,7 +2144,7 @@ class TestSeadChangeRequestIngesterIngest:
             )
         )
 
-        result = await ingester.ingest("submission.xlsx")
+        result = await ingest_bundle(ingester)
 
         assert result.success is True
         assert result.records_inserted == 2
@@ -2073,7 +2180,7 @@ class TestSeadChangeRequestIngesterIngest:
             )
         )
 
-        result = await ingester.ingest("submission.xlsx", validate_first=False)
+        result = await ingest_bundle(ingester, validate_first=False)
 
         assert result.success is False
         assert result.message == "Identity resolution incomplete"
@@ -2102,7 +2209,7 @@ class TestSeadChangeRequestIngesterIngest:
             )
         )
 
-        result = await ingester.ingest("submission.xlsx", validate_first=False)
+        result = await ingest_bundle(ingester, validate_first=False)
 
         assert result.success is True
         assert "Deploy artifact emitted to" in result.message
@@ -2129,7 +2236,7 @@ class TestSeadChangeRequestIngesterIngest:
             )
         )
 
-        result = await ingester.ingest("submission.xlsx")
+        result = await ingest_bundle(ingester)
 
         assert result.success is False
         assert result.message == "Validation failed"
@@ -2193,7 +2300,7 @@ class TestSeadChangeRequestIngesterStaging:
             )
         )
 
-        result = await ingester.ingest("submission.xlsx")
+        result = await ingest_bundle(ingester)
 
         assert result.success is True, result.error_details
         assert not allocator.requests
@@ -2221,7 +2328,7 @@ class TestSeadChangeRequestIngesterStaging:
             )
         )
 
-        result = await ingester.validate("submission.xlsx")
+        result = await validate_bundle(ingester)
 
         assert result.is_valid is False
         assert result.errors == [
@@ -2255,7 +2362,7 @@ class TestSeadChangeRequestIngesterStaging:
             )
         )
 
-        result = await ingester.ingest("submission.xlsx")
+        result = await ingest_bundle(ingester)
 
         assert result.success is False
         assert result.message == "Validation failed"
@@ -2306,7 +2413,7 @@ class TestDeclaredBusinessKeys:
             sims_client=sims_client,
         )
 
-        result = await ingester.validate("submission.xlsx")
+        result = await validate_bundle(ingester)
 
         assert result.is_valid is False
         assert any("declares no business keys" in error for error in result.errors)
@@ -2322,7 +2429,7 @@ class TestDeclaredBusinessKeys:
             sims_client=sims_client,
         )
 
-        result = await ingester.validate("submission.xlsx")
+        result = await validate_bundle(ingester)
 
         assert result.is_valid is False
         assert any("value is missing" in error for error in result.errors)
@@ -2338,7 +2445,7 @@ class TestDeclaredBusinessKeys:
             sims_client=sims_client,
         )
 
-        result = await ingester.validate("submission.xlsx")
+        result = await validate_bundle(ingester)
 
         assert result.is_valid is False
         assert any("share one business key value" in error for error in result.errors)
@@ -2354,7 +2461,7 @@ class TestDeclaredBusinessKeys:
             sims_client=sims_client,
         )
 
-        result = await ingester.validate("submission.xlsx")
+        result = await validate_bundle(ingester)
 
         assert result.is_valid is False
         assert any("missing declared business key column" in error for error in result.errors)
@@ -2372,7 +2479,7 @@ class TestDeclaredBusinessKeys:
             deploy_strategy=deploy_strategy,
         )
 
-        result = await ingester.ingest("submission.xlsx")
+        result = await ingest_bundle(ingester)
 
         assert result.success is True
         assert sims_client.batch_calls == 1
@@ -2390,3 +2497,73 @@ class TestDeclaredBusinessKeys:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         assert manifest["scope_name"] == result.scope_name
         assert manifest["run_id"] == result.run_id
+
+    @pytest.mark.asyncio
+    async def test_normalized_string_keys_reach_identity_decisions_and_artifacts(self, tmp_path):
+        """A zero-padded key should stay a string in the identity decision and the emitted artifact."""
+        sims_client = CountingSimsClient(target_id=501)
+        ingester = self._ingester(
+            tmp_path,
+            keys=("sample_code",),
+            frame=pd.DataFrame({"sample_id": [None], "sample_code": ["001"]}),
+            sims_client=sims_client,
+        )
+
+        result = await ingest_bundle(ingester)
+
+        assert result.success is True
+        assert sims_client.batch_calls == 1
+        assert result.deploy_artifact is not None
+        assert "'001'" in result.deploy_artifact["deploy_sql"]
+
+
+class TestRetiredFileInput:
+    """The public file methods must reject workbooks and paths without side effects."""
+
+    @staticmethod
+    def _ingester(tmp_path: Path) -> tuple[SeadChangeRequestIngester, CountingSimsClient]:
+        sims_client = CountingSimsClient(target_id=501)
+        ingester = SeadChangeRequestIngester(
+            IngesterConfig(
+                host="localhost",
+                port=5432,
+                dbname="test_db",
+                user="test_user",
+                output_folder=str(tmp_path),
+                extra={
+                    "tables": {"sample": pd.DataFrame({"sample_id": [None]})},
+                    "target_model": minimal_target_model(sample={"role": "fact", "public_id": "sample_id"}),
+                    "submission_context": minimal_submission_context(),
+                    "sims_client": sims_client,
+                },
+            )
+        )
+        return ingester, sims_client
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("source", ["submission.xlsx", Path("submission.xlsx")])
+    async def test_validate_rejects_file_sources_without_preparation(self, tmp_path: Path, source: str | Path):
+        ingester, sims_client = self._ingester(tmp_path)
+
+        with patch.object(SeadChangeRequestIngester, "_prepare_change_request", side_effect=AssertionError("must not prepare")):
+            result = await ingester.validate(source)
+
+        assert result.is_valid is False
+        assert result.errors == [CHANGE_REQUEST_FILE_INPUT_RETIRED_MESSAGE]
+        assert sims_client.batch_calls == 0
+        assert not list(tmp_path.iterdir())
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("validate_first", [True, False])
+    async def test_ingest_rejects_file_sources_without_preparation(self, tmp_path: Path, validate_first: bool):
+        ingester, sims_client = self._ingester(tmp_path)
+
+        with patch.object(SeadChangeRequestIngester, "_prepare_change_request", side_effect=AssertionError("must not prepare")):
+            result = await ingester.ingest("submission.xlsx", validate_first=validate_first)
+
+        assert result.success is False
+        assert result.message == "File input retired"
+        assert result.error_details == CHANGE_REQUEST_FILE_INPUT_RETIRED_MESSAGE
+        assert result.records_inserted == 0
+        assert sims_client.batch_calls == 0
+        assert not list(tmp_path.iterdir())

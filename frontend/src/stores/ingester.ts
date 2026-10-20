@@ -11,6 +11,7 @@ import type {
   ValidateResponse,
   IngestRequest,
   IngestResponse,
+  ProjectIngesterRequest,
 } from '@/types/ingester'
 
 export const useIngesterStore = defineStore('ingester', () => {
@@ -86,6 +87,46 @@ export const useIngesterStore = defineStore('ingester', () => {
     }
   }
 
+  async function validateProject(request: ProjectIngesterRequest) {
+    if (selectedIngester.value?.key !== 'sead_change_request') {
+      error.value = selectedIngester.value ? 'SEAD Change Request must be selected' : 'No ingester selected'
+      return
+    }
+
+    loading.value = true
+    error.value = null
+    validationResult.value = null
+
+    try {
+      validationResult.value = await ingesterApi.validateProject(request)
+    } catch (e: any) {
+      error.value = e.response?.data?.detail || e.message || 'Validation failed'
+      console.error('Validation error:', e)
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function ingestProject(request: ProjectIngesterRequest) {
+    if (selectedIngester.value?.key !== 'sead_change_request') {
+      error.value = selectedIngester.value ? 'SEAD Change Request must be selected' : 'No ingester selected'
+      return
+    }
+
+    loading.value = true
+    error.value = null
+    ingestionResult.value = null
+
+    try {
+      ingestionResult.value = await ingesterApi.ingestProject(request)
+    } catch (e: any) {
+      error.value = e.response?.data?.detail || e.message || 'Ingestion failed'
+      console.error('Ingestion error:', e)
+    } finally {
+      loading.value = false
+    }
+  }
+
   function selectIngester(key: string) {
     selectedIngester.value = ingesters.value.find((i) => i.key === key) ?? null
   }
@@ -120,6 +161,8 @@ export const useIngesterStore = defineStore('ingester', () => {
     fetchIngesters,
     validate,
     ingest,
+    validateProject,
+    ingestProject,
     selectIngester,
     clearValidation,
     clearIngestion,

@@ -1,8 +1,9 @@
 """Pydantic models for ingester API requests and responses."""
 
+from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class IngesterMetadataResponse(BaseModel):
@@ -122,6 +123,42 @@ class IngestRequest(BaseModel):
     deploy_strategy: str | None = Field(
         default=None, description="Optional deploy artifact strategy for ingesters that support multiple outputs"
     )
+
+
+class ProjectSubmissionOptions(BaseModel):
+    """Named submission details accepted by the project-only ingester helper."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    submission_name: str = Field(..., min_length=1)
+    timestamp: datetime
+    datatype: str = Field(..., min_length=1)
+    identifier: str = Field(..., min_length=1)
+    description: str | None = None
+    issue_identifier: str | None = None
+    author: str | None = None
+    run_id: str | None = None
+
+
+class ProjectIngesterRequest(BaseModel):
+    """Strict input for validating or ingesting a saved project's normalized tables."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    project_name: str = Field(..., min_length=1)
+    translate: bool = False
+    drop_foreign_keys: bool = False
+    default_entity: str | None = None
+    submission_context: ProjectSubmissionOptions
+    deploy_strategy: str | None = None
+
+    @field_validator("project_name")
+    @classmethod
+    def project_name_must_not_be_blank(cls, value: str) -> str:
+        """Reject project names that contain only whitespace."""
+        if not value.strip():
+            raise ValueError("project_name must not be blank")
+        return value
 
 
 class IngestResponse(BaseModel):

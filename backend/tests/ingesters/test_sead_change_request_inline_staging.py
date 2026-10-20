@@ -21,7 +21,7 @@ import psycopg
 import pytest
 from psycopg.rows import TupleRow
 
-from backend.app.ingesters.protocol import IngesterConfig
+from backend.app.ingesters.protocol import IngesterConfig, IngestionResult
 from ingesters.sead_change_request.ingester import SeadChangeRequestIngester
 
 pytestmark = pytest.mark.integration
@@ -268,6 +268,19 @@ def _ingester(
     )
 
 
+def __in_memory_source_tables(ingester: SeadChangeRequestIngester) -> dict[str, pd.DataFrame]:
+    """Return the in-memory tables declared by the ingester configuration."""
+    extras = ingester.config.extra or {}
+    tables = extras["tables"]
+    assert isinstance(tables, dict)
+    return tables
+
+
+async def _ingest(ingester: SeadChangeRequestIngester) -> IngestionResult:
+    """Ingest the configured tables through the public table method."""
+    return await ingester.ingest_tables(__in_memory_source_tables(ingester))
+
+
 def _run_statements(parameters: dict[str, Any], statements: list[str], *, lock_timeout_ms: int | None = None) -> None:
     """Execute the staged statements in one transaction."""
     with psycopg.connect(**parameters) as connection:
@@ -281,8 +294,12 @@ def _run_statements(parameters: dict[str, Any], statements: list[str], *, lock_t
 
 async def _deploy(tables: dict[str, pd.DataFrame], schema: str, output_folder: Any, **kwargs: Any) -> list[str]:
     """Render the staging artifact and return its statements."""
-    result = await _ingester(tables, schema=schema, output_folder=output_folder, **kwargs).ingest("submission.xlsx")
+    result = await _ingest(_ingester(tables, schema=schema, output_folder=output_folder, **kwargs))
     assert result.success is True, result.error_details
+    assert result.deploy_artifact is not None
+    assert "metadata" in result.deploy_artifact
+    assert "statements" in result.deploy_artifact
+    assert "deploy_strategy" in result.deploy_artifact["metadata"]
     assert result.deploy_artifact["metadata"]["deploy_strategy"] == "inline_staging"
     return list(result.deploy_artifact["statements"])
 
@@ -448,10 +465,11 @@ class TestInlineStagingRejections:
 
     @pytest.mark.asyncio
     async def test_ambiguous_relation_without_a_schema_is_rejected(self, disposable_schema: str, tmp_path):
-        result = await _ingester(_source_tables(), schema=None, output_folder=tmp_path).ingest("submission.xlsx")
+        result = await _ingest(_ingester(_source_tables(), schema=None, output_folder=tmp_path))
 
         assert result.success is False
         assert result.message == "Validation failed"
+        assert result.error_details is not None
         assert "requires a non-empty 'staging_target_schema'" in result.error_details
 
     @pytest.mark.asyncio
@@ -493,11 +511,10 @@ class TestInlineStagingRejections:
 
     @pytest.mark.asyncio
     async def test_child_of_an_existing_tracked_root_is_rejected(self, disposable_schema: str, tmp_path):
-        result = await _ingester(_source_tables(dataset_public_id=910), schema=disposable_schema, output_folder=tmp_path).ingest(
-            "submission.xlsx"
-        )
+        result = await _ingest(_ingester(_source_tables(dataset_public_id=910), schema=disposable_schema, output_folder=tmp_path))
 
         assert result.success is False
+        assert result.error_details is not None
         assert "existing tracked root" in result.error_details
 
     @pytest.mark.asyncio
@@ -510,15 +527,18 @@ class TestInlineStagingRejections:
         tables = _source_tables()
         tables["site"] = pd.DataFrame({"system_id": [1], "site_id": [None]})
 
-        result = await _ingester(
-            tables,
-            schema=disposable_schema,
-            output_folder=tmp_path,
-            reconciliation=_ReconciliationClient({}),
-            target_model=model,
-        ).ingest("submission.xlsx")
+        result = await _ingest(
+            _ingester(
+                tables,
+                schema=disposable_schema,
+                output_folder=tmp_path,
+                reconciliation=_ReconciliationClient({}),
+                target_model=model,
+            )
+        )
 
         assert result.success is False
+        assert result.error_details is not None
         assert "site_id" in result.error_details
         assert _scalar(parameters, f'SELECT count(*) FROM "{disposable_schema}".tbl_datasets') == 0
 
