@@ -242,6 +242,26 @@ export const projectsApi = {
   },
 
   /**
+   * Return file actions available to the current user for a project
+   */
+  getFileCapabilities: async (name: string): Promise<{ can_share_with_all_projects: boolean }> => {
+    return apiRequest<{ can_share_with_all_projects: boolean }>({
+      method: 'GET',
+      url: `/projects/${name}/files/capabilities`,
+    })
+  },
+
+  /**
+   * Copy a project file into the global shared-data directory
+   */
+  shareFile: async (name: string, filename: string): Promise<ProjectFileInfo> => {
+    return apiRequest<ProjectFileInfo>({
+      method: 'POST',
+      url: `/projects/${name}/files/${encodeURIComponent(filename)}/share`,
+    })
+  },
+
+  /**
    * Delete a project file that is not referenced by a local entity
    */
   deleteFile: async (name: string, filename: string): Promise<void> => {

@@ -2,6 +2,8 @@
 
 import pytest
 
+from backend.app.authorization.models import ResourceType
+from backend.app.authorization.repository import SQLiteAuthorizationRepository
 from backend.app.core.config import settings
 from backend.app.services import project_service, validation_service, yaml_service
 
@@ -887,7 +889,7 @@ class TestProjectsBackups:
 
 
 class TestProjectFileManagement:
-    """Tests for uploading, replacing, and deleting project files."""
+    """Tests for uploading, sharing, listing, and deleting project files."""
 
     async def test_upload_project_file_overwrites_when_requested(
         self, reset_services, tmp_path, monkeypatch, authorized_client
@@ -914,6 +916,92 @@ class TestProjectFileManagement:
         assert replace_response.status_code == 200
         assert replace_response.json()["name"] == "data.xlsx"
         assert (tmp_path / "test_project" / "data.xlsx").read_bytes() == b"new content"
+
+    async def test_share_project_file_registers_global_copy_and_lists_it(
+        self, reset_services, tmp_path, monkeypatch, authorized_client
+    ):
+        """Sharing copies a project file through the global file store and registers it."""
+        projects_dir = tmp_path / "projects"
+        global_data_dir = tmp_path / "shared-data"
+        monkeypatch.setattr(settings, "PROJECTS_DIR", projects_dir)
+        monkeypatch.setattr(settings, "GLOBAL_DATA_DIR", global_data_dir)
+
+        create_response = await authorized_client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "data_provider_code": "test-provider", "provider_schema": "schema-one"},
+        )
+        assert create_response.status_code == 201
+        upload_response = await authorized_client.post(
+            "/api/v1/projects/test_project/files",
+            files={"file": ("data.csv", b"col\nvalue\n", "text/csv")},
+        )
+        assert upload_response.status_code == 200
+
+        response = await authorized_client.post("/api/v1/projects/test_project/files/data.csv/share")
+
+        assert response.status_code == 201
+        assert response.json()["location"] == "global"
+        assert response.json()["name"] == "data.csv"
+        assert (global_data_dir / "data.csv").read_bytes() == b"col\nvalue\n"
+
+        files_response = await authorized_client.get("/api/v1/projects/test_project/files")
+        assert files_response.status_code == 200
+        assert {(file["name"], file["location"]) for file in files_response.json()} == {
+            ("data.csv", "local"),
+            ("data.csv", "global"),
+        }
+
+        capabilities_response = await authorized_client.get("/api/v1/projects/test_project/files/capabilities")
+        assert capabilities_response.status_code == 200
+        assert capabilities_response.json() == {"can_share_with_all_projects": True}
+
+        repository = SQLiteAuthorizationRepository(settings.AUTHORIZATION_DATABASE_PATH)
+        try:
+            resource = repository.get_resource_by_locator(ResourceType.SHARED_DATA_SOURCE, "data.csv")
+        finally:
+            repository.close()
+        assert resource is not None
+
+    async def test_share_project_file_uses_global_collision_handling(
+        self, reset_services, tmp_path, monkeypatch, authorized_client
+    ):
+        """A promoted file with a name already in shared data receives a new name."""
+        projects_dir = tmp_path / "projects"
+        global_data_dir = tmp_path / "shared-data"
+        global_data_dir.mkdir()
+        (global_data_dir / "data.csv").write_bytes(b"existing\n")
+        monkeypatch.setattr(settings, "PROJECTS_DIR", projects_dir)
+        monkeypatch.setattr(settings, "GLOBAL_DATA_DIR", global_data_dir)
+
+        create_response = await authorized_client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "data_provider_code": "test-provider", "provider_schema": "schema-one"},
+        )
+        assert create_response.status_code == 201
+        await authorized_client.post(
+            "/api/v1/projects/test_project/files",
+            files={"file": ("data.csv", b"col\nvalue\n", "text/csv")},
+        )
+
+        response = await authorized_client.post("/api/v1/projects/test_project/files/data.csv/share")
+
+        assert response.status_code == 201
+        assert response.json()["name"] == "data-1.csv"
+        assert (global_data_dir / "data.csv").read_bytes() == b"existing\n"
+        assert (global_data_dir / "data-1.csv").read_bytes() == b"col\nvalue\n"
+
+    async def test_share_project_file_rejects_missing_source(self, reset_services, tmp_path, monkeypatch, authorized_client):
+        """The share endpoint returns not found for a missing project file."""
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path / "projects")
+        create_response = await authorized_client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "data_provider_code": "test-provider", "provider_schema": "schema-one"},
+        )
+        assert create_response.status_code == 201
+
+        response = await authorized_client.post("/api/v1/projects/test_project/files/missing.csv/share")
+
+        assert response.status_code == 404
 
     async def test_delete_project_file_rejects_local_entity_references(
         self, reset_services, tmp_path, monkeypatch, authorized_client
