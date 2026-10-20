@@ -193,12 +193,16 @@ async def _fetch_count(connection_kwargs: dict[str, Any], query: str, params: tu
 @pytest.mark.asyncio
 async def test_both_artifacts_use_sims_submission_id_and_rollback(tmp_path: Path) -> None:
     """Generate and execute both artifact forms with a SIMS-allocated submission ID."""
-    host = os.getenv("SEAD_DISPOSABLE_POSTGRES_HOST", "some-host")
+    host = os.getenv("SEAD_DISPOSABLE_POSTGRES_HOST")
     port: str | None = os.getenv("SEAD_DISPOSABLE_POSTGRES_PORT", "0")
-    dbname = os.getenv("SEAD_DISPOSABLE_POSTGRES_DB", "some-db")
-    user = os.getenv("SEAD_DISPOSABLE_POSTGRES_USER", "unknown")
+    dbname = os.getenv("SEAD_DISPOSABLE_POSTGRES_DB")
+    user = os.getenv("SEAD_DISPOSABLE_POSTGRES_USER")
     if not all((host, port, dbname, user)):
         pytest.skip("Set SEAD_DISPOSABLE_POSTGRES_* variables for the loopback disposable database test")
+    assert port is not None
+    assert host is not None
+    assert dbname is not None
+    assert user is not None
     if host not in {"localhost", "127.0.0.1", "::1"}:
         pytest.fail("The disposable PostgreSQL integration test only accepts a loopback host")
     psql_path = shutil.which("psql")

@@ -141,7 +141,7 @@ async def test_project_routes_require_authentication_and_both_permissions(
                 records_processed=3,
                 message="Bundle created",
                 submission_id=14,
-                output_path=None,
+                output_path="generated/change-requests/run-1/bundle",
                 deploy_artifact={"bundle_files": {"deploy.sql": "SQL"}},
                 error_details=None,
             ),
