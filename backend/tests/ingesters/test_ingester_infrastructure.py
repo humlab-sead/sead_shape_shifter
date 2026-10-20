@@ -150,6 +150,7 @@ class TestSeadIngester:
         assert result.tables_processed == 5
         assert result.records_inserted == 100
         assert result.error_details is None
+        assert result.output_path is None
 
 
 class TestSeadChangeRequestIngester:

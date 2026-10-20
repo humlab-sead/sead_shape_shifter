@@ -27,11 +27,24 @@ const projectRequest: ProjectIngesterRequest = {
 
 const validResult: ValidateResponse = { is_valid: true, errors: [], warnings: [], infos: [] }
 const ingestedResult: IngestResponse = { success: true, records_processed: 2, message: 'Bundle created' }
+let nextRunId = 0
+
+function requestWithRunId(runId: string, request = projectRequest): ProjectIngesterRequest {
+  return {
+    ...request,
+    submission_context: {
+      ...request.submission_context,
+      run_id: runId,
+    },
+  }
+}
 
 describe('useIngesterStore project actions', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
+    nextRunId = 0
+    vi.stubGlobal('crypto', { randomUUID: vi.fn(() => `attempt-${++nextRunId}`) })
   })
 
   it('stores project validation results and clears previous state', async () => {
@@ -46,7 +59,7 @@ describe('useIngesterStore project actions', () => {
 
     await store.validateProject(projectRequest)
 
-    expect(ingesterApi.validateProject).toHaveBeenCalledWith(projectRequest)
+    expect(ingesterApi.validateProject).toHaveBeenCalledWith(requestWithRunId('attempt-1'))
     expect(store.validationResult).toEqual(validResult)
     expect(store.error).toBeNull()
     expect(store.loading).toBe(false)
@@ -80,7 +93,7 @@ describe('useIngesterStore project actions', () => {
 
     await store.ingestProject(projectRequest)
 
-    expect(ingesterApi.ingestProject).toHaveBeenCalledWith(projectRequest)
+    expect(ingesterApi.ingestProject).toHaveBeenCalledWith(requestWithRunId('attempt-1'))
     expect(store.ingestionResult).toEqual(ingestedResult)
     expect(store.error).toBeNull()
     expect(store.loading).toBe(false)
@@ -100,6 +113,58 @@ describe('useIngesterStore project actions', () => {
     expect(store.ingestionResult).toBeNull()
     expect(store.error).toBe('Request failed')
     expect(store.loading).toBe(false)
+  })
+
+  it('reuses attempt IDs through validation and retries, then resets after success or identity change', async () => {
+    const store = useIngesterStore()
+    store.ingesters = [
+      { key: 'sead_change_request', name: 'SEAD Change Request', description: '', version: '', supported_formats: [] },
+    ]
+    store.selectIngester('sead_change_request')
+    vi.mocked(ingesterApi.validateProject).mockResolvedValue(validResult)
+    vi.mocked(ingesterApi.ingestProject)
+      .mockResolvedValueOnce({ success: false, records_processed: 0, message: 'Binding Set confirmation incomplete' })
+      .mockRejectedValueOnce(new Error('Temporary connection failure'))
+      .mockResolvedValueOnce(ingestedResult)
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    await store.validateProject(projectRequest)
+    await store.ingestProject(projectRequest)
+    await store.ingestProject(projectRequest)
+    await store.ingestProject(projectRequest)
+
+    expect(ingesterApi.validateProject).toHaveBeenCalledWith(requestWithRunId('attempt-1'))
+    expect(ingesterApi.ingestProject).toHaveBeenNthCalledWith(1, requestWithRunId('attempt-1'))
+    expect(ingesterApi.ingestProject).toHaveBeenNthCalledWith(2, requestWithRunId('attempt-1'))
+    expect(ingesterApi.ingestProject).toHaveBeenNthCalledWith(3, requestWithRunId('attempt-1'))
+
+    const changedIdentityRequest: ProjectIngesterRequest = {
+      ...projectRequest,
+      submission_context: { ...projectRequest.submission_context, identifier: 'PILOT_BUGS_2' },
+    }
+    vi.mocked(ingesterApi.validateProject).mockClear()
+    await store.validateProject(changedIdentityRequest)
+    expect(ingesterApi.validateProject).toHaveBeenCalledWith(requestWithRunId('attempt-2', changedIdentityRequest))
+
+    vi.mocked(ingesterApi.validateProject).mockClear()
+    await store.validateProject(projectRequest)
+    expect(ingesterApi.validateProject).toHaveBeenCalledWith(requestWithRunId('attempt-3'))
+  })
+
+  it('starts a new project attempt when explicitly reset', async () => {
+    const store = useIngesterStore()
+    store.ingesters = [
+      { key: 'sead_change_request', name: 'SEAD Change Request', description: '', version: '', supported_formats: [] },
+    ]
+    store.selectIngester('sead_change_request')
+    vi.mocked(ingesterApi.validateProject).mockResolvedValue(validResult)
+
+    await store.validateProject(projectRequest)
+    store.resetProjectAttempt()
+    await store.validateProject(projectRequest)
+
+    expect(ingesterApi.validateProject).toHaveBeenNthCalledWith(1, requestWithRunId('attempt-1'))
+    expect(ingesterApi.validateProject).toHaveBeenNthCalledWith(2, requestWithRunId('attempt-2'))
   })
 
   it('keeps file actions on the existing ingester methods', async () => {

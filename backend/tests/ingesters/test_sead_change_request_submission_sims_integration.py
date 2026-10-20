@@ -16,7 +16,7 @@ from psycopg.rows import TupleRow
 
 from backend.app.ingesters import IngesterConfig
 from backend.app.services.ingester_runtime import SeadChangeRequestTargetCollisionChecker
-from ingesters.sead_change_request.contracts import SubmissionContext, resolve_bundle_name
+from ingesters.sead_change_request.contracts import SubmissionContext
 from ingesters.sead_change_request.ingester import SeadChangeRequestIngester
 
 
@@ -55,20 +55,6 @@ class DisposableManagedIdentityAllocator:
             "binding_set_state": "confirmed",
             "note": f"Using the existing disposable SIMS {entity_name} reservation",
         }
-
-
-class RecordingDisposableTargetDatabase(SeadChangeRequestTargetCollisionChecker):
-    """Record sequence IDs reserved while using the real disposable database adapter."""
-
-    def __init__(self, **connection_kwargs: Any) -> None:
-        super().__init__(**connection_kwargs)
-        self.reserved_ids: list[int] = []
-
-    async def reserve_target_id(self, table_name: str, public_id_column: str) -> int | None:
-        target_id = await super().reserve_target_id(table_name, public_id_column)
-        if target_id is not None:
-            self.reserved_ids.append(target_id)
-        return target_id
 
 
 def _submission_target_model() -> dict[str, Any]:
@@ -193,12 +179,16 @@ async def _fetch_count(connection_kwargs: dict[str, Any], query: str, params: tu
 @pytest.mark.asyncio
 async def test_both_artifacts_use_sims_submission_id_and_rollback(tmp_path: Path) -> None:
     """Generate and execute both artifact forms with a SIMS-allocated submission ID."""
-    host = os.getenv("SEAD_DISPOSABLE_POSTGRES_HOST", "some-host")
+    host = os.getenv("SEAD_DISPOSABLE_POSTGRES_HOST")
     port: str | None = os.getenv("SEAD_DISPOSABLE_POSTGRES_PORT", "0")
-    dbname = os.getenv("SEAD_DISPOSABLE_POSTGRES_DB", "some-db")
-    user = os.getenv("SEAD_DISPOSABLE_POSTGRES_USER", "unknown")
+    dbname = os.getenv("SEAD_DISPOSABLE_POSTGRES_DB")
+    user = os.getenv("SEAD_DISPOSABLE_POSTGRES_USER")
     if not all((host, port, dbname, user)):
         pytest.skip("Set SEAD_DISPOSABLE_POSTGRES_* variables for the loopback disposable database test")
+    assert port is not None
+    assert host is not None
+    assert dbname is not None
+    assert user is not None
     if host not in {"localhost", "127.0.0.1", "::1"}:
         pytest.fail("The disposable PostgreSQL integration test only accepts a loopback host")
     psql_path = shutil.which("psql")
@@ -231,7 +221,7 @@ async def test_both_artifacts_use_sims_submission_id_and_rollback(tmp_path: Path
             connection_kwargs, "public.tbl_analysis_entities", "analysis_entity_id"
         ),
     }
-    target_database = RecordingDisposableTargetDatabase(**connection_kwargs)
+    target_database = SeadChangeRequestTargetCollisionChecker(**connection_kwargs)
     psql_environment = os.environ.copy()
     if password:
         psql_environment["PGPASSWORD"] = password
@@ -276,7 +266,7 @@ async def test_both_artifacts_use_sims_submission_id_and_rollback(tmp_path: Path
                         "sample": pd.DataFrame(
                             {
                                 "system_id": [20],
-                                "physical_sample_id": [None],
+                                "physical_sample_id": [63876],
                                 "sample_group_id": [40],
                                 "sample_type_id": [50],
                                 "sample_name": [sample_name],
@@ -294,7 +284,7 @@ async def test_both_artifacts_use_sims_submission_id_and_rollback(tmp_path: Path
                         "analysis_entity": pd.DataFrame(
                             {
                                 "system_id": [60],
-                                "analysis_entity_id": [None],
+                                "analysis_entity_id": [223430],
                                 "physical_sample_id": [20],
                                 "dataset_id": [30],
                             }
@@ -315,7 +305,6 @@ async def test_both_artifacts_use_sims_submission_id_and_rollback(tmp_path: Path
                     "deploy_strategy": strategy,
                     "reconciliation_client": DisposableProviderResolver(),
                     "sims_client": DisposableManagedIdentityAllocator(),
-                    "target_id_allocator": target_database,
                     "collision_checker": target_database,
                 },
             )
@@ -324,11 +313,16 @@ async def test_both_artifacts_use_sims_submission_id_and_rollback(tmp_path: Path
         result = await _ingest(ingester)
         assert result.success is True, result.error_details
         assert result.deploy_artifact is not None
+        assert await _sequence_state(connection_kwargs, "public.tbl_submissions", "submission_id") == initial_submission_sequence
+        assert await _sequence_state(connection_kwargs, "public.tbl_datasets", "dataset_id") == initial_dataset_sequence
+        for sequence, expected_state in managed_sequence_states.items():
+            assert await _sequence_state(connection_kwargs, *sequence) == expected_state
         artifact = result.deploy_artifact
         submission_id = DisposableManagedIdentityAllocator.target_ids["submission"]
         artifact_names.append(submission_name)
 
-        artifact_directory = output_folder / resolve_bundle_name(context)
+        assert result.output_path is not None
+        artifact_directory = Path(result.output_path)
         rollback_script = tmp_path / f"{strategy}-{run_id}-rollback.sql"
         statements = "\n".join(artifact["statements"])
         rollback_script.write_text(
@@ -445,7 +439,6 @@ async def test_both_artifacts_use_sims_submission_id_and_rollback(tmp_path: Path
         assert next_dataset_id > DisposableManagedIdentityAllocator.target_ids["dataset"]
 
     assert len(artifact_names) == 2
-    assert not target_database.reserved_ids
     final_submission_sequence = await _sequence_state(connection_kwargs, "public.tbl_submissions", "submission_id")
     final_dataset_sequence = await _sequence_state(connection_kwargs, "public.tbl_datasets", "dataset_id")
     assert final_submission_sequence[0] >= initial_submission_sequence[0]

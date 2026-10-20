@@ -27,6 +27,7 @@ const ingesterStore = reactive({
   ingest: vi.fn(async () => {}),
   validateProject: vi.fn(async () => {}),
   ingestProject: vi.fn(async () => {}),
+  resetProjectAttempt: vi.fn(),
   selectIngester: vi.fn((key: string) => {
     ingesterStore.selectedIngester = ingesterStore.ingesters.find((ingester) => ingester.key === key) ?? null
   }),
@@ -152,6 +153,7 @@ describe('IngesterForm', () => {
     ingesterStore.ingest.mockClear()
     ingesterStore.validateProject.mockClear()
     ingesterStore.ingestProject.mockClear()
+    ingesterStore.resetProjectAttempt.mockClear()
     projectStore.selectedProject = {
       metadata: {
         name: 'pilot_bugs',
@@ -204,7 +206,24 @@ describe('IngesterForm', () => {
         blocked_rows: 2,
         outstanding_step: 'Confirm the Binding Set before change-package generation can continue',
         operator_action: 'Confirm the Binding Set in SIMS, then rerun the ingester with the same submission context',
-        rerun_instruction: 'Rerun bugs_delivery_1 after confirmation',
+        rerun_instruction: "Rerun bugs_delivery_1 after confirmation with run ID 'run-abc-123'",
+      },
+    }
+    ingesterStore.ingestionResult = {
+      success: false,
+      records_processed: 0,
+      message: 'Binding Set confirmation incomplete',
+      run_id: 'run-abc-123',
+      pending_confirmation_report: {
+        submission_name: 'bugs_delivery_1',
+        project_name: 'pilot_bugs',
+        binding_set_uuid: 'binding-123',
+        binding_set_state: 'proposed',
+        blocked_entities: ['sample'],
+        blocked_rows: 2,
+        outstanding_step: 'Confirm the Binding Set before change-package generation can continue',
+        operator_action: 'Confirm the Binding Set in SIMS, then rerun the ingester with the same submission context',
+        rerun_instruction: "Rerun bugs_delivery_1 after confirmation with run ID 'run-abc-123'",
       },
     }
 
@@ -229,6 +248,8 @@ describe('IngesterForm', () => {
     expect(wrapper.text()).toContain('Binding Set Confirmation Required')
     expect(wrapper.text()).toContain('binding-123')
     expect(wrapper.text()).toContain('Confirm the Binding Set in SIMS')
+    expect(wrapper.find('[data-test="validation-pending-confirmation"]').text()).toContain('run-abc-123')
+    expect(wrapper.find('[data-test="ingestion-pending-confirmation"]').text()).toContain('run-abc-123')
     expect(wrapper.text()).toContain('Every tracked entity needs declared business keys')
     expect(findTextField(wrapper, 'Source File Path *')).toBeUndefined()
     expect(wrapper.text()).not.toContain('Ignore Columns')
@@ -389,6 +410,38 @@ describe('IngesterForm', () => {
     expect(actionButtons.every((button) => button.props('disabled'))).toBe(true)
     await vm.handleValidate()
     expect(ingesterStore.validateProject).not.toHaveBeenCalled()
+  })
+
+  it('resets the stored project attempt when the form is reset', () => {
+    const wrapper = mountForm({ projectName: 'pilot_bugs' })
+    const vm = wrapper.vm as unknown as { resetForm: () => void }
+    vm.resetForm()
+    expect(ingesterStore.resetProjectAttempt).toHaveBeenCalled()
+  })
+
+  it('resets the stored project attempt when any submission identity field changes', async () => {
+    const wrapper = mountForm({ projectName: 'pilot_bugs' })
+    const vm = wrapper.vm as unknown as {
+      form: { submission_name: string }
+      seadChangeRequest: { timestamp: string; datatype: string; identifier: string }
+    }
+    await nextTick()
+
+    vm.form.submission_name = 'new_submission'
+    await nextTick()
+    expect(ingesterStore.resetProjectAttempt).toHaveBeenCalled()
+
+    for (const field of ['timestamp', 'datatype', 'identifier'] as const) {
+      ingesterStore.resetProjectAttempt.mockClear()
+      vm.seadChangeRequest[field] = `${vm.seadChangeRequest[field]}_changed`
+      await nextTick()
+      expect(ingesterStore.resetProjectAttempt).toHaveBeenCalled()
+    }
+
+    ingesterStore.resetProjectAttempt.mockClear()
+    await wrapper.setProps({ projectName: 'different_route_project' })
+    await nextTick()
+    expect(ingesterStore.resetProjectAttempt).toHaveBeenCalled()
   })
 
   it('filters excluded ingesters and keeps ordinary ingesters actionable', async () => {

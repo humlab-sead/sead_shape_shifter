@@ -1,6 +1,5 @@
 """Tests for YAML service."""
 
-import time
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -223,9 +222,8 @@ class TestYamlServiceBackup:
     def test_list_backups(self, yaml_service: YamlService, temp_yaml_file: Path):
         """Test listing backups."""
 
-        # Create multiple backups with time separation to avoid same timestamp
+        # Backup names include microsecond timestamps, so back-to-back calls cannot collide.
         yaml_service.create_backup(temp_yaml_file)
-        time.sleep(1.1)  # Ensure different second in timestamp
         yaml_service.create_backup(temp_yaml_file)
 
         backups = yaml_service.list_backups(project_dir=temp_yaml_file.parent)

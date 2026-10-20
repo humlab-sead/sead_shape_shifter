@@ -21,7 +21,7 @@ The Shape Shifter ingester protocol still defines `validate()` and `ingest()`, b
 
 The input adapter deep-copies each supplied DataFrame, sanitizes the copied column labels with `src.utility.sanitize_columns`, and keeps workflow-internal labels (`_`-prefixed or ending in `__existing`) unchanged. Entity names, values, dtypes, and timezone-aware values are preserved. `source_name` is diagnostic metadata only; it is never opened or resolved as a path.
 
-Change Request generation still has no operator entry point. The project-only composition helper and routes are planned follow-up work and are not shipped here.
+The project-only composition helper and routes in `backend.app` are the operator entry point. They authorize a saved project with `project:execute` and pass its normalized tables through `validate_tables()` and `ingest_tables()`.
 
 ## Pipeline
 
@@ -216,20 +216,41 @@ Common inputs include:
 
 Declared keys become one deterministic SIMS business key serialized as
 `[1, [[column, type, value], ...]]` in declared order. Entities without declared keys keep the
-field-based identity value.
+field-based identity value. Within the same provider-schema scope, matching declared keys resolve
+to the same SIMS identity across runs, even when the run ID changes.
+
+### Target Database Access
+
+Validation and bundle generation use the target database only for read-only provider-row
+confirmation and target-row collision checks. They do not write target rows, call `nextval`, or
+consume target sequence values. A non-SIMS entity with a missing database-sequence public ID must
+be pre-resolved; otherwise, preparation blocks it as unsupported.
+
+Generated deployment SQL keeps its sequence synchronization and inline-staging allocation. Those
+statements run only when the downstream operator executes the emitted artifact.
 
 Optional injected collaborators include:
 
 - `sims_client`: allocates entities, derives bridge rows, and manages Binding Set state
 - `reconciliation_client`: resolves classifier-like rows to existing target IDs
-- `collision_checker`: checks whether rendered rows would collide with target data and reserves configured database-sequence public IDs
-- `target_id_allocator`: optional separate client for reserving configured database-sequence public IDs; defaults to `collision_checker`
+- `collision_checker`: confirms the fixed provider row and checks whether rendered rows would collide with target data
 
 ## Artifact Output
 
-The ingester writes a bundle under `IngesterConfig.output_folder` using the canonical bundle name derived from `SubmissionContext`.
+The ingester writes each bundle into an exclusive run folder under `IngesterConfig.output_folder`, then
+places the canonical bundle name inside it:
 
-The emitted directory contains:
+```text
+<output_folder>/<YYYYMMDDTHHMMSSZ>_<sha256(run_id)>/<bundle_name>/
+```
+
+The run folder combines the UTC start time with the SHA-256 digest of the effective `run_id`, so a raw
+caller-supplied run ID never becomes a path component. The folder is reserved exclusively before SIMS
+identity or Binding Set calls; a repeated run identity under the same clock fails before any file or SIMS
+side effect. A later failure removes only the incomplete output the current invocation reserved, never a
+pre-existing bundle.
+
+The emitted bundle directory contains:
 
 - `deploy/<bundle_name>.sql`
 - `revert/<bundle_name>.sql`
@@ -240,8 +261,16 @@ The emitted directory contains:
 The exact payload shape depends on the selected deploy strategy.
 
 The `metadata` and `metadata_artifact` sections both record the effective `scope_name` and
-`run_id` used for the run. The ingest response returns the same two values, so an operator can
-match an emitted bundle to the SIMS scope and run that produced it.
+`run_id` used for the run. The ingest response returns the same two values plus the written bundle
+directory in `output_path`, so an operator can match an emitted bundle to the SIMS scope, run, and
+on-disk location that produced it.
+
+The client keeps one run ID in its Pinia ingester store for each submission attempt. It reuses the
+ID for validation, bundle creation, and a retry after Binding Set confirmation, including when the
+form is unmounted and opened again during the same page session. Changing the normalized submission
+name, route project, timestamp, datatype, or identifier starts a new attempt; a successful bundle
+also ends the attempt. A page reload starts a new attempt. Other API callers may omit `run_id`; the
+server then creates the effective ID before SIMS resolution and output reservation.
 
 ## Retired File Input
 
@@ -283,6 +312,6 @@ PYTHONPATH=.:backend pytest backend/tests/ingesters -q
 
 ## Current Scope
 
-The current implementation prepares and emits change-request artifacts from normalized Shape Shifter output supplied in memory. `validate_tables()` and `ingest_tables()` are the supported entry points; the ingester does not read workbooks, and it has no operator-facing entry point until the project-only composition helper and routes ship.
+The current implementation prepares and emits change-request artifacts from normalized Shape Shifter output supplied in memory. `validate_tables()` and `ingest_tables()` are the supported entry points; the ingester does not read workbooks. The project-only composition helper and routes in `backend.app` are the operator-facing entry point, and they authorize the saved project with `project:execute`.
 
 It is designed to keep business rules around planning, identity resolution, target projection, and deploy rendering explicit and testable, while leaving downstream execution of the generated artifacts outside this package.
