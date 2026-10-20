@@ -864,8 +864,8 @@ Workflow:
 5. If validation passes, run **Dispatch** and review the generated deploy bundle.
 
 SEAD Change Request uses normalized tables from the saved project and does not need a workbook path or a previous
-**Execute** run. The operator must have **Execute** access to the project and the application-level permission to run
-ingesters. Both permissions remain required until the separate output and database safety changes are available.
+**Execute** run. The operator needs **Execute** access to the saved project. The application-level permission to run
+ingesters is not required for this route; file-based ingesters still require it.
 
 ## Data Ingestion Page
 
@@ -909,8 +909,8 @@ The project needs:
 The response and the emitted `manifest.json` both show the effective `scope_name` and `run_id`.
 A `run_id` is meaningful only together with its scope, so compare the two values together.
 
-The operator needs **Execute** access to the saved project and the application-level permission to run ingesters.
-The application permission is an interim requirement for this route.
+The operator needs **Execute** access to the saved project. This route does not require the application-level
+permission to run ingesters; file-based ingesters still require it.
 
 ---
 

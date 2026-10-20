@@ -21,7 +21,7 @@ The Shape Shifter ingester protocol still defines `validate()` and `ingest()`, b
 
 The input adapter deep-copies each supplied DataFrame, sanitizes the copied column labels with `src.utility.sanitize_columns`, and keeps workflow-internal labels (`_`-prefixed or ending in `__existing`) unchanged. Entity names, values, dtypes, and timezone-aware values are preserved. `source_name` is diagnostic metadata only; it is never opened or resolved as a path.
 
-Change Request generation still has no operator entry point. The project-only composition helper and routes are planned follow-up work and are not shipped here.
+The project-only composition helper and routes in `backend.app` are the operator entry point. They authorize a saved project with `project:execute` and pass its normalized tables through `validate_tables()` and `ingest_tables()`.
 
 ## Pipeline
 
@@ -312,6 +312,6 @@ PYTHONPATH=.:backend pytest backend/tests/ingesters -q
 
 ## Current Scope
 
-The current implementation prepares and emits change-request artifacts from normalized Shape Shifter output supplied in memory. `validate_tables()` and `ingest_tables()` are the supported entry points; the ingester does not read workbooks, and it has no operator-facing entry point until the project-only composition helper and routes ship.
+The current implementation prepares and emits change-request artifacts from normalized Shape Shifter output supplied in memory. `validate_tables()` and `ingest_tables()` are the supported entry points; the ingester does not read workbooks. The project-only composition helper and routes in `backend.app` are the operator-facing entry point, and they authorize the saved project with `project:execute`.
 
 It is designed to keep business rules around planning, identity resolution, target projection, and deploy rendering explicit and testable, while leaving downstream execution of the generated artifacts outside this package.
