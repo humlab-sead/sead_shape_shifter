@@ -70,9 +70,21 @@
               <v-icon :icon="getFileIcon(file.name)" />
             </template>
             <template #append>
-              <v-chip size="small" variant="tonal" color="primary">
-                {{ file.location === 'local' ? 'Project' : 'Shared' }}
-              </v-chip>
+              <div class="d-flex align-center ga-2">
+                <v-chip size="small" variant="tonal" color="primary">
+                  {{ file.location === 'local' ? 'Project' : 'Shared' }}
+                </v-chip>
+                <v-btn
+                  icon="mdi-delete"
+                  size="small"
+                  variant="text"
+                  color="error"
+                  :loading="deletingFileName === file.name"
+                  :disabled="deletingFileName !== null"
+                  :aria-label="`Delete ${file.name}`"
+                  @click.stop="deleteFile(file)"
+                />
+              </div>
             </template>
           </v-list-item>
         </v-list>
@@ -103,6 +115,7 @@ const uploadError = ref<string | null>(null)
 const uploadSuccess = ref<string | null>(null)
 const isDragging = ref(false)
 const fileInput = ref<HTMLInputElement>()
+const deletingFileName = ref<string | null>(null)
 
 onMounted(() => {
   loadFiles()
@@ -143,7 +156,11 @@ async function uploadFiles(filesToUpload: File[]) {
   try {
     const uploadedCount = filesToUpload.length
     for (const file of filesToUpload) {
-      await projectsApi.uploadFile(props.projectName, file)
+      const alreadyExists = files.value.some((existingFile) => existingFile.name === file.name)
+      const overwrite =
+        alreadyExists &&
+        window.confirm(`Replace "${file.name}"? Choose Cancel to keep it and upload this file with a new name.`)
+      await projectsApi.uploadFile(props.projectName, file, overwrite)
     }
     uploadSuccess.value = `Successfully uploaded ${uploadedCount} file${uploadedCount > 1 ? 's' : ''}`
     await loadFiles() // Refresh list
@@ -151,6 +168,23 @@ async function uploadFiles(filesToUpload: File[]) {
     uploadError.value = error instanceof Error ? error.message : 'Upload failed'
   } finally {
     uploading.value = false
+  }
+}
+
+async function deleteFile(file: ProjectFileInfo) {
+  if (!window.confirm(`Delete "${file.name}"? This cannot be undone.`)) return
+
+  deletingFileName.value = file.name
+  uploadError.value = null
+  uploadSuccess.value = null
+  try {
+    await projectsApi.deleteFile(props.projectName, file.name)
+    uploadSuccess.value = `Deleted ${file.name}`
+    await loadFiles()
+  } catch (error) {
+    uploadError.value = error instanceof Error ? error.message : `Failed to delete ${file.name}`
+  } finally {
+    deletingFileName.value = null
   }
 }
 

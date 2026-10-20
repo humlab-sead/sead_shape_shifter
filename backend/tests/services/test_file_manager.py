@@ -196,6 +196,66 @@ class TestFileManager:
         assert (sample_project / "data-1.xlsx").read_bytes() == b"content2"
         assert (sample_project / "data-2.xlsx").read_bytes() == b"content3"
 
+    def test_save_project_file_overwrite_replaces_existing_file(self, file_manager: FileManager, sample_project: Path):
+        """An explicit overwrite keeps the existing filename and replaces its contents."""
+        original_file = sample_project / "data.xlsx"
+        original_file.write_bytes(b"old content")
+        upload = self.create_upload_file("data.xlsx", b"new content")
+
+        result = file_manager.save_project_file("test_project", upload, overwrite=True)
+
+        assert result.name == "data.xlsx"
+        assert original_file.read_bytes() == b"new content"
+        assert list(sample_project.glob(".upload-*.tmp")) == []
+
+    def test_save_project_file_failed_overwrite_preserves_existing_file(self, file_manager: FileManager, sample_project: Path):
+        """A rejected oversized overwrite leaves the existing file unchanged."""
+        original_file = sample_project / "data.xlsx"
+        original_file.write_bytes(b"old content")
+        upload = self.create_upload_file("data.xlsx", b"x" * (2 * 1024 * 1024))
+
+        with pytest.raises(BadRequestError, match="too large"):
+            file_manager.save_project_file("test_project", upload, max_size_mb=1, overwrite=True)
+
+        assert original_file.read_bytes() == b"old content"
+        assert list(sample_project.glob(".upload-*.tmp")) == []
+
+    def test_save_project_file_overwrite_rejects_symlink(self, file_manager: FileManager, sample_project: Path):
+        """An overwrite cannot replace the target of a project-local symlink."""
+        target_file = sample_project / "target.xlsx"
+        target_file.write_bytes(b"original")
+        (sample_project / "alias.xlsx").symlink_to(target_file)
+        upload = self.create_upload_file("alias.xlsx", b"replacement")
+
+        with pytest.raises(BadRequestError, match="symlink"):
+            file_manager.save_project_file("test_project", upload, overwrite=True)
+
+        assert target_file.read_bytes() == b"original"
+
+    def test_delete_project_file_removes_file(self, file_manager: FileManager, sample_project: Path):
+        """Deleting a project file removes only the named file."""
+        project_file = sample_project / "data.xlsx"
+        project_file.write_bytes(b"content")
+
+        file_manager.delete_project_file("test_project", "data.xlsx")
+
+        assert not project_file.exists()
+
+    @pytest.mark.parametrize("filename", ["../outside.xlsx", "shapeshifter.yml"])
+    def test_delete_project_file_rejects_paths_and_project_config(
+        self, file_manager: FileManager, sample_project: Path, filename: str
+    ):
+        """Deletion cannot escape the project directory or remove its configuration."""
+        with pytest.raises(BadRequestError):
+            file_manager.delete_project_file("test_project", filename)
+
+        assert (sample_project / "shapeshifter.yml").exists()
+
+    def test_delete_project_file_missing_file_raises_not_found(self, file_manager: FileManager, sample_project: Path):
+        """Deleting a missing project file returns a not-found error."""
+        with pytest.raises(ResourceNotFoundError):
+            file_manager.delete_project_file("test_project", "missing.xlsx")
+
     def test_save_project_file_size_limit_ok(self, file_manager: FileManager, sample_project: Path):
         """Test file within size limit is saved."""
         content = b"x" * 100  # 100 bytes
