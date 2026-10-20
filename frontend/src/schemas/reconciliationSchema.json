@@ -1,0 +1,264 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Shape Shifter Reconciliation Configuration",
+  "description": "A reconciliation specification or a catalog containing specifications.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/EntityResolutionCatalog"
+    },
+    {
+      "$ref": "#/$defs/EntityResolutionSet"
+    }
+  ],
+  "$defs": {
+    "EntityResolutionSet": {
+      "description": "Entity resolution specification and mappings for a single target field within a project.\n- `source` is the data used for entity resolution (either entity preview or custom query),\n- `property_mappings` define how to map remote (OpenRefine) service properties to columns in `source`\n- `remote` specifies the OpenRefine entity type and additional columns, and mapping contains the individual resolved items.",
+      "properties": {
+        "source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/$defs/ReconciliationSource"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Data source: None (entity preview), entity name (string), or custom query (ReconciliationSource)",
+          "title": "Source"
+        },
+        "property_mappings": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Service property ID -> source column name mapping (e.g., {'latitude': 'lat', 'longitude': 'lon'})",
+          "title": "Property Mappings",
+          "type": "object"
+        },
+        "remote": {
+          "$ref": "#/$defs/ReconciliationRemote",
+          "description": "Remote OpenRefine entity specification"
+        },
+        "auto_accept_threshold": {
+          "default": 0.95,
+          "description": "Score threshold for auto-accepting matches (default 95%)",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Auto Accept Threshold",
+          "type": "number"
+        },
+        "review_threshold": {
+          "default": 0.7,
+          "description": "Score threshold for flagging review needed (default 70%)",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Review Threshold",
+          "type": "number"
+        },
+        "mapping": {
+          "description": "Manual and auto-generated mappings",
+          "items": {
+            "$ref": "#/$defs/ResolvedEntityPair"
+          },
+          "title": "Mapping",
+          "type": "array"
+        }
+      },
+      "required": [
+        "remote"
+      ],
+      "title": "EntityResolutionSet",
+      "type": "object"
+    },
+    "ReconciliationRemote": {
+      "description": "Specification for target system for entity resolution.",
+      "properties": {
+        "service_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Entity resolution service entity type (e.g., 'Site', 'Taxon'). If None, entity resolution is disabled.",
+          "title": "Service Type"
+        },
+        "columns": {
+          "description": "Additional columns for display/matching",
+          "items": {
+            "type": "string"
+          },
+          "title": "Columns",
+          "type": "array"
+        }
+      },
+      "title": "ReconciliationRemote",
+      "type": "object"
+    },
+    "ReconciliationSource": {
+      "description": "Custom data source for entity resolution (alternative to entity preview data).",
+      "properties": {
+        "data_source": {
+          "description": "Data source name from main config",
+          "title": "Data Source",
+          "type": "string"
+        },
+        "type": {
+          "default": "sql",
+          "description": "Query type (currently only 'sql' supported)",
+          "title": "Type",
+          "type": "string"
+        },
+        "query": {
+          "description": "SQL query to fetch reconciliation data",
+          "title": "Query",
+          "type": "string"
+        }
+      },
+      "required": [
+        "data_source",
+        "query"
+      ],
+      "title": "ReconciliationSource",
+      "type": "object"
+    },
+    "ResolvedEntityPair": {
+      "description": "Single entity resolution entry linking source identity to target identity.",
+      "properties": {
+        "source_value": {
+          "description": "Source field value",
+          "title": "Source Value"
+        },
+        "target_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Target entity ID (None if unmatched)",
+          "title": "Target Id"
+        },
+        "confidence": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Mapping confidence (0-1)",
+          "title": "Confidence"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Manual notes or auto-match info",
+          "title": "Notes"
+        },
+        "will_not_match": {
+          "default": false,
+          "description": "User marked as will not match (local-only identifier)",
+          "title": "Will Not Match",
+          "type": "boolean"
+        },
+        "created_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "ISO timestamp",
+          "title": "Created At"
+        },
+        "created_by": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "User who created mapping",
+          "title": "Created By"
+        },
+        "last_modified": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Last modification timestamp",
+          "title": "Last Modified"
+        }
+      },
+      "required": [
+        "source_value"
+      ],
+      "title": "ResolvedEntityPair",
+      "type": "object"
+    },
+    "EntityResolutionCatalog": {
+      "description": "Complete entity resolution catalog for all entities.",
+      "properties": {
+        "version": {
+          "default": "2.0",
+          "description": "Reconciliation format version",
+          "title": "Version",
+          "type": "string"
+        },
+        "service_url": {
+          "description": "Base URL of OpenRefine reconciliation service",
+          "title": "Service Url",
+          "type": "string"
+        },
+        "entities": {
+          "additionalProperties": {
+            "additionalProperties": {
+              "$ref": "#/$defs/EntityResolutionSet"
+            },
+            "type": "object"
+          },
+          "description": "Entity name -> target field -> mapping spec",
+          "title": "Entities",
+          "type": "object"
+        }
+      },
+      "required": [
+        "service_url"
+      ],
+      "title": "EntityResolutionCatalog",
+      "type": "object"
+    }
+  }
+}
