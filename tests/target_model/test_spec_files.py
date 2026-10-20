@@ -3,6 +3,8 @@ from pathlib import Path
 import pytest
 import yaml
 
+from src.target_model.effective_identity import resolve_aggregate_chain, resolve_effective_identity
+from src.target_model.insert_dependencies import build_insert_plan
 from src.target_model.models import TargetModel
 from src.target_model.spec_validator import TargetModelSpecValidator
 
@@ -285,6 +287,48 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     assert sample_horizon.aggregate_parent == "sample"
     assert any(foreign_key.entity == "horizon" for foreign_key in sample_horizon.foreign_keys)
     assert issues == []
+
+
+def test_sead_superset_model_records_settled_aggregate_ownership() -> None:
+    """Settled aggregate chains, root identities, and insert ordering for the shared model."""
+    spec_path = Path("resources/target_models/sead_standard_model.yml")
+    target_model = TargetModel.model_validate(yaml.safe_load(spec_path.read_text(encoding="utf-8")))
+
+    expected_chains = {
+        "analysis_entity": ("dataset", ("dataset",)),
+        "analysis_value": ("dataset", ("analysis_entity", "dataset")),
+        "abundance": ("dataset", ("analysis_entity", "dataset")),
+        "abundance_modification": ("dataset", ("abundance", "analysis_entity", "dataset")),
+        "sample_dimension": ("sample", ("sample",)),
+        "sample_group_reference": ("sample_group", ("sample_group",)),
+        "value_type_item": ("value_type", ("value_type",)),
+    }
+
+    for entity_name, (root_entity, parent_chain) in expected_chains.items():
+        chain = resolve_aggregate_chain(target_model, entity_name)
+
+        assert chain.is_valid, f"{entity_name}: {chain.issues}"
+        assert chain.root_entity == root_entity
+        assert chain.parent_chain == parent_chain
+
+    assert resolve_aggregate_chain(target_model, "dataset").root_identity_tracking == "tracked"
+    assert resolve_aggregate_chain(target_model, "value_type").root_identity_tracking == "reconciled"
+
+    abundance_ident_level = target_model.entities["abundance_ident_level"]
+    assert abundance_ident_level.aggregate_parent is None
+    assert resolve_effective_identity(abundance_ident_level).identity_tracking == "derived"
+
+    child_entities = {entity_name for entity_name, spec in target_model.entities.items() if spec.aggregate_parent}
+    insert_set = set(child_entities)
+    insert_set.update(parent_name for entity_name in child_entities if (parent_name := target_model.entities[entity_name].aggregate_parent))
+    plan = build_insert_plan(target_model, insert_set)
+
+    assert plan.is_acyclic
+    order_index = {entity_name: index for index, entity_name in enumerate(plan.order)}
+    for entity_name in child_entities:
+        parent_name = target_model.entities[entity_name].aggregate_parent
+        assert parent_name is not None
+        assert order_index[parent_name] < order_index[entity_name]
 
 
 def test_non_sead_target_model_expresses_cleanly() -> None:

@@ -3,39 +3,31 @@ import type monaco from 'monaco-editor'
 import projectSchema from '@/schemas/projectSchema.json'
 import entitySchema from '@/schemas/entitySchema.json'
 import targetModelSchema from '@/schemas/targetModelSchema.json'
+import reconciliationSchema from '@/schemas/reconciliationSchema.json'
 import type { ValidationContext } from '@/utils/projectYamlValidator'
 
 export interface YamlIntelligenceOptions {
-  mode: 'project' | 'entity' | 'target-model'
+  mode: 'project' | 'entity' | 'target-model' | 'reconciliation'
   context?: ValidationContext
 }
 
-// Track if YAML has been configured globally
 let yamlConfigured = false
+
+const yamlSchemas = [
+  { mode: 'project', schema: projectSchema },
+  { mode: 'entity', schema: entitySchema },
+  { mode: 'target-model', schema: targetModelSchema },
+  { mode: 'reconciliation', schema: reconciliationSchema },
+] as const
 
 /**
  * Setup YAML intelligence features for Monaco editor
  * @param monacoInstance - Monaco editor instance
  * @param options - Configuration options
  */
-export function setupYamlIntelligence(
-  monacoInstance: typeof monaco,
-  options: YamlIntelligenceOptions
-) {
-  // Only configure monaco-yaml once globally to avoid worker conflicts
+export function setupYamlIntelligence(monacoInstance: typeof monaco, _options: YamlIntelligenceOptions) {
   if (yamlConfigured) {
     return
-  }
-
-  let schema
-  if (options.mode === 'project') {
-    schema = projectSchema
-  } else if (options.mode === 'entity') {
-    schema = entitySchema
-  } else if (options.mode === 'target-model') {
-    schema = targetModelSchema
-  } else {
-    schema = projectSchema // default fallback
   }
 
   try {
@@ -45,15 +37,13 @@ export function setupYamlIntelligence(
       completion: true,
       validate: false, // Disable - we use custom validation
       format: true,
-      schemas: [
-        {
-          uri: `http://shapeshifter/${options.mode}-schema.json`,
-          fileMatch: ['*.yml', '*.yaml'],
-          schema: schema as any
-        }
-      ]
+      schemas: yamlSchemas.map(({ mode, schema }) => ({
+        uri: `http://shapeshifter/${mode}-schema.json`,
+        fileMatch: [`inmemory://shapeshifter/${mode}-*.yml`, `inmemory://shapeshifter/${mode}-*.yaml`],
+        schema: schema as any,
+      })),
     })
-    
+
     yamlConfigured = true
   } catch (error) {
     console.warn('Failed to configure Monaco YAML:', error)

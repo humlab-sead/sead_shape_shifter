@@ -66,7 +66,8 @@
                   persistent-hint
                   :rules="[
                     (v: string) => !!v || 'Branch name is required',
-                    (v: string) => /^[a-z][a-z0-9_]*$/.test(v) || 'Must be snake_case (lowercase letters, digits, underscores)',
+                    (v: string) =>
+                      /^[a-z][a-z0-9_]*$/.test(v) || 'Must be snake_case (lowercase letters, digits, underscores)',
                     (v: string) => !isDuplicateName(v, index) || 'Branch names must be unique',
                   ]"
                   @update:model-value="handleBranchNameUpdate(index, $event)"
@@ -159,7 +160,9 @@
         <strong>Merged Entity</strong> combines rows from multiple source entities into a single table.
         <ul class="mt-2">
           <li>Each <strong>Branch</strong> contributes rows from one source entity</li>
-          <li>A <strong>discriminator column</strong> (<code>{{ parentEntity }}_branch</code>) identifies the origin</li>
+          <li>
+            A <strong>discriminator column</strong> (<code>{{ parentEntity }}_branch</code>) identifies the origin
+          </li>
           <li>Sparse <strong>FK columns</strong> provide data lineage back to each branch source</li>
           <li>Columns are aligned by <strong>name</strong> — branch-only columns are null-filled for other branches</li>
         </ul>

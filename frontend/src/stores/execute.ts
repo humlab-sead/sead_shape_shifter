@@ -53,11 +53,11 @@ export const useExecuteStore = defineStore('execute', () => {
     loading,
     error,
     lastResult,
-    
+
     // Actions
     fetchDispatchers,
     executeWorkflow,
     clearError,
-    clearLastResult
+    clearLastResult,
   }
 })

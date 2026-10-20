@@ -9,6 +9,8 @@ from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.mappers.validation_mapper import ValidationMapper
 from backend.app.models.project import Project
 from backend.app.models.validation import DataValidationMode, ValidationError, ValidationResult
+from backend.app.services.project_data_provider_service import ProjectDataProviderService
+from backend.app.services.project_provider_binding_service import ProjectProviderBindingService
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.services.shapeshift_service import ShapeShiftService
 from src.configuration import resolve_directives
@@ -29,6 +31,8 @@ class ValidationService:
     def __init__(
         self,
         data_orchestrator_factory: Callable[[], "DataValidationOrchestrator"] | None = None,
+        project_provider_binding_service: ProjectProviderBindingService | None = None,
+        project_data_provider_service: ProjectDataProviderService | None = None,
     ) -> None:
         """
         Initialize validation service.
@@ -38,6 +42,10 @@ class ValidationService:
                                       If None, uses default factory (lazy import to avoid circular dependency).
         """
         self._data_orchestrator_factory = data_orchestrator_factory
+        self._project_provider_binding_service = project_provider_binding_service or ProjectProviderBindingService()
+        self._project_data_provider_service = project_data_provider_service or ProjectDataProviderService(
+            binding_service=self._project_provider_binding_service
+        )
 
     async def validate_project_data(
         self,
@@ -128,6 +136,7 @@ class ValidationService:
             ValidationResult with errors and warnings
         """
         logger.debug("Validating project")
+        provider_errors = self._project_provider_binding_service.validation_errors((project_cfg or {}).get("metadata"))
 
         # Resolve directives before validation (Core layer requirement)
         # Specifications expect fully resolved config
@@ -147,7 +156,8 @@ class ValidationService:
             # not as a 500 internal server error.
             return ValidationResult(
                 is_valid=False,
-                errors=[
+                errors=provider_errors
+                + [
                     ValidationError(
                         severity="error",
                         entity=None,
@@ -160,17 +170,19 @@ class ValidationService:
             )
 
         specification = CompositeProjectSpecification(project_cfg)
-        is_valid: bool = specification.is_satisfied_by()
+        specification.is_satisfied_by()
+        provider_errors = provider_errors + self._data_provider_errors(project_cfg, provider_errors)
+        validation_errors = [self._map_issue(error) for error in specification.errors] + provider_errors
 
         result = ValidationResult(
-            is_valid=is_valid,
-            errors=[self._map_issue(error) for error in specification.errors],
+            is_valid=not validation_errors,
+            errors=validation_errors,
             warnings=[self._map_issue(warning) for warning in specification.warnings],
             error_count=len(specification.errors),
             warning_count=len(specification.warnings),
         )
 
-        if is_valid:
+        if result.is_valid:
             logger.info("Configuration validation passed")
         else:
             error_count: int = len(specification.errors)
@@ -183,6 +195,17 @@ class ValidationService:
             logger.warning(f"Configuration validation failed with {', '.join(parts)}")
 
         return result
+
+    def _data_provider_errors(self, project_cfg: dict[str, Any], binding_errors: list[ValidationError]) -> list[ValidationError]:
+        """Return fixed provider-row errors for a project that already has a registered pair.
+
+        A project without a complete, registered provider-schema pair keeps receiving only
+        the binding errors from the first check. The fixed-row rule therefore applies to
+        bound projects and stays independent of any live target-database call.
+        """
+        if binding_errors:
+            return []
+        return self._project_data_provider_service.fixed_row_errors(project_cfg)
 
     def _map_issue(self, issue: SpecificationIssue) -> ValidationError:
         """Parse error message to extract entity and field information."""

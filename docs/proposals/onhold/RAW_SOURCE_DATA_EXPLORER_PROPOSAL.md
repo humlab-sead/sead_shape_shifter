@@ -50,14 +50,14 @@ The current Schema Explorer already provides:
 
 Relevant files:
 
-1. [frontend/src/views/SchemaExplorerView.vue](frontend/src/views/SchemaExplorerView.vue)
-2. [frontend/src/components/SchemaTreeView.vue](frontend/src/components/SchemaTreeView.vue)
-3. [frontend/src/components/TableDetailsPanel.vue](frontend/src/components/TableDetailsPanel.vue)
-4. [frontend/src/components/DataPreviewTable.vue](frontend/src/components/DataPreviewTable.vue)
-5. [frontend/src/stores/data-source.ts](frontend/src/stores/data-source.ts)
-6. [frontend/src/api/schema.ts](frontend/src/api/schema.ts)
-7. [backend/app/api/v1/endpoints/schema.py](backend/app/api/v1/endpoints/schema.py)
-8. [backend/app/services/schema_service.py](backend/app/services/schema_service.py)
+1. [frontend/src/views/SchemaExplorerView.vue](../../../frontend/src/views/SchemaExplorerView.vue)
+2. [frontend/src/components/SchemaTreeView.vue](../../../frontend/src/components/SchemaTreeView.vue)
+3. [frontend/src/components/TableDetailsPanel.vue](../../../frontend/src/components/TableDetailsPanel.vue)
+4. [frontend/src/components/DataPreviewTable.vue](../../../frontend/src/components/DataPreviewTable.vue)
+5. [frontend/src/stores/data-source.ts](../../../frontend/src/stores/data-source.ts)
+6. [frontend/src/api/schema.ts](../../../frontend/src/api/schema.ts)
+7. [backend/app/api/v1/endpoints/schema.py](../../../backend/app/api/v1/endpoints/schema.py)
+8. [backend/app/services/schema_service.py](../../../backend/app/services/schema_service.py)
 
 ### Existing limitations
 
@@ -81,7 +81,7 @@ AG Grid is a good rendering foundation, but the real user value comes from pairi
 
 ### Phase 1: Stronger client-side preview experience
 
-Replace the current preview renderer in [frontend/src/components/DataPreviewTable.vue](frontend/src/components/DataPreviewTable.vue) with AG Grid while keeping the current preview API.
+Replace the current preview renderer in [frontend/src/components/DataPreviewTable.vue](../../../frontend/src/components/DataPreviewTable.vue) with AG Grid while keeping the current preview API.
 
 This phase should include:
 
@@ -144,9 +144,9 @@ AG Grid is already present in the frontend and used elsewhere in the application
 
 Relevant existing examples:
 
-1. [frontend/src/components/entities/FixedValuesGrid.vue](frontend/src/components/entities/FixedValuesGrid.vue)
-2. [frontend/src/components/reconciliation/ReconciliationGrid.vue](frontend/src/components/reconciliation/ReconciliationGrid.vue)
-3. [frontend/src/components/entities/EntityFormDialog.vue](frontend/src/components/entities/EntityFormDialog.vue)
+1. [frontend/src/components/entities/FixedValuesGrid.vue](../../../frontend/src/components/entities/FixedValuesGrid.vue)
+2. [frontend/src/components/reconciliation/ReconciliationGrid.vue](../../../frontend/src/components/reconciliation/ReconciliationGrid.vue)
+3. [frontend/src/components/entities/EntityFormDialog.vue](../../../frontend/src/components/entities/EntityFormDialog.vue)
 
 That means the frontend does not need a new grid dependency or a new styling strategy from scratch.
 
@@ -175,7 +175,7 @@ That means:
 
 Likely frontend changes include:
 
-1. refactoring [frontend/src/components/DataPreviewTable.vue](frontend/src/components/DataPreviewTable.vue) to use AG Grid,
+1. refactoring [frontend/src/components/DataPreviewTable.vue](../../../frontend/src/components/DataPreviewTable.vue) to use AG Grid,
 2. adding dynamic column definitions from the preview payload,
 3. translating current formatting logic into grid formatters and cell classes,
 4. adding selection and optional export actions for loaded rows,
@@ -186,8 +186,8 @@ Likely frontend changes include:
 
 Later phases would likely require changes to:
 
-1. [backend/app/api/v1/endpoints/schema.py](backend/app/api/v1/endpoints/schema.py)
-2. [backend/app/services/schema_service.py](backend/app/services/schema_service.py)
+1. [backend/app/api/v1/endpoints/schema.py](../../../backend/app/api/v1/endpoints/schema.py)
+2. [backend/app/services/schema_service.py](../../../backend/app/services/schema_service.py)
 3. any relevant loader support used by `load_table()` and row counting
 
 Key backend additions may include:

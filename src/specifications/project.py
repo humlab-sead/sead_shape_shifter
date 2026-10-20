@@ -9,6 +9,7 @@ from src.utility import dotget
 
 from .base import ProjectSpecification
 from .entity import EntitySpecification
+from .foreign_key import ForeignKeyRemotePublicIdSpecification
 
 if TYPE_CHECKING:
     from src.reconciliation.mapping_model import MappingCatalog
@@ -203,8 +204,14 @@ class CompositeProjectSpecification(ProjectSpecification):
     This is the main entry point for validating entire project configurations.
     """
 
-    def __init__(self, project_cfg: dict[str, Any], specifications: list[ProjectSpecification] | None = None) -> None:
+    def __init__(
+        self,
+        project_cfg: dict[str, Any],
+        specifications: list[ProjectSpecification] | None = None,
+        mapping_catalog: MappingCatalog | None = None,
+    ) -> None:
         super().__init__(project_cfg)
+        self._mapping_catalog: MappingCatalog | None = mapping_catalog
         self.specifications: list[ProjectSpecification] = specifications or self.get_default_specifications()
 
     def get_default_specifications(self) -> list[ProjectSpecification]:
@@ -219,7 +226,8 @@ class CompositeProjectSpecification(ProjectSpecification):
             EntitiesSpecification(self.project_cfg),
             CircularDependencySpecification(self.project_cfg),
             DataSourceExistsSpecification(self.project_cfg),
-            MappingSidecarSpecification(self.project_cfg),
+            MappingSidecarSpecification(self.project_cfg, self._mapping_catalog),
+            ForeignKeyRemotePublicIdSpecification(self.project_cfg, self._mapping_catalog),
         ]
 
     def is_satisfied_by(self, **kwargs) -> bool:

@@ -10,7 +10,7 @@ It is intentionally:
 - easy to follow by using one small custom fixture plus two existing SEAD example projects
 - specific about expected issue codes, exact mutations, and what should still be treated as non-conformant
 
-Use this together with [../TESTING.md](../TESTING.md), [../TARGET_MODEL_GUIDE.md](../TARGET_MODEL_GUIDE.md), and [TEST_RESULTS_TEMPLATE.md](TEST_RESULTS_TEMPLATE.md) if you need to record outcomes.
+Use this together with [../TESTING.md](../TESTING.md), [../TARGET_MODEL_GUIDE.md](../TARGET_MODEL_GUIDE.md), and TEST_RESULTS_TEMPLATE.md if you need to record outcomes.
 
 ---
 
@@ -142,7 +142,7 @@ Why this fixture matters:
 
 ### Fixture B: Built-In SEAD Negative Fixture
 
-Use the existing file [target_models/examples/sead_missing_sample_group.yml](../../target_models/examples/sead_missing_sample_group.yml).
+Use the existing file [target_models/examples/sead_missing_sample_group.yml](../../tests/test_data/examples/sead_missing_sample_group.yml).
 
 Before testing, add this field to the `metadata` block:
 
@@ -157,7 +157,7 @@ Why this fixture matters:
 
 ### Fixture C: Built-In SEAD Conservative-Rule Fixture
 
-Use the existing file [target_models/examples/sead_arbodat_core.yml](../../target_models/examples/sead_arbodat_core.yml).
+Use the existing file [target_models/examples/sead_arbodat_core.yml](../../tests/test_data/examples/sead_arbodat_core.yml).
 
 Before testing, add this field to the `metadata` block:
 
@@ -448,7 +448,7 @@ This section confirms both a missing direct target relationship and the loss of 
 
 ### Steps
 
-1. Open Fixture B: [target_models/examples/sead_missing_sample_group.yml](../../target_models/examples/sead_missing_sample_group.yml).
+1. Open Fixture B: [target_models/examples/sead_missing_sample_group.yml](../../tests/test_data/examples/sead_missing_sample_group.yml).
 2. Ensure the metadata block includes `target_model: "@include: resources/target_models/sead_standard_model.yml"`.
 3. Save the project under a disposable test name if you do not want to edit the example directly.
 4. Run **Check Conformance**.
@@ -474,7 +474,7 @@ This fixture is the main manual regression check for the proposal's core rule fa
 
 ### Steps
 
-1. Open Fixture C: [target_models/examples/sead_arbodat_core.yml](../../target_models/examples/sead_arbodat_core.yml).
+1. Open Fixture C: [target_models/examples/sead_arbodat_core.yml](../../tests/test_data/examples/sead_arbodat_core.yml).
 2. Ensure the metadata block includes `target_model: "@include: resources/target_models/sead_standard_model.yml"`.
 3. Save the project under a disposable name if needed.
 4. Run **Check Conformance**.

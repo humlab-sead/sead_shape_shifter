@@ -62,7 +62,20 @@ black:
 
 .PHONY: pylint
 pylint:
-	@uv run pylint src tests backend ingesters
+	@uv run pylint -j 0 src tests backend ingesters
+
+# Lint only Python files changed against HEAD, including untracked files.
+.PHONY: pylint-changed
+pylint-changed:
+	@files="$$( { git diff --name-only --diff-filter=d HEAD -- '*.py'; \
+		git ls-files --others --exclude-standard -- '*.py'; } \
+		| grep -vE '^(\.venv|frontend|node_modules|docs|graphify-out)/' | sort -u)"; \
+	if [ -z "$$files" ]; then \
+		echo "pylint-changed: no changed Python files"; \
+	else \
+		echo "pylint-changed: checking $$(echo "$$files" | wc -l) file(s)"; \
+		echo "$$files" | xargs uv run pylint -j 0; \
+	fi
 
 .PHONY: pyright
 pyright:
@@ -87,6 +100,12 @@ check-imports:
 .PHONY: check-doc-links
 check-doc-links:
 	@scripts/check_doc_links.sh
+
+.PHONY: check-doc-links-lychee
+check-doc-links-lychee:
+	@echo "Checking documentation links with lychee..."
+	@lychee --offline --no-progress --root-dir . --extensions md docs
+	@echo "✓ Documentation links checked with lychee"
 
 ################################################################################
 # Git related checks

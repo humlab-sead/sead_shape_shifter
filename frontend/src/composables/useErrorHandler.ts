@@ -62,13 +62,7 @@ export interface UseErrorHandlerReturn {
  * Composable for consistent error handling
  */
 export function useErrorHandler(options: UseErrorHandlerOptions = {}): UseErrorHandlerReturn {
-  const {
-    defaultActionText,
-    showTips = true,
-    showContext = false,
-    onError,
-    onClear,
-  } = options
+  const { defaultActionText, showTips = true, showContext = false, onError, onClear } = options
 
   // State
   const error = ref<FormattedError | null>(null)

@@ -6,7 +6,7 @@ This folder collects the operational decisions and validation gates for adopting
 
 - [SIMS-SEAD trust-contract adoption proposal](./SIMS_SEAD_TRUST_CONTRACT_ADOPTION_PROPOSAL.md) — adoption scope, cutover rules, deployment gates, and acceptance criteria.
 - [SIMS identity allocation operational plan](./SIMS_IDENTITY_ALLOCATION_OPERATIONAL_PLAN.md) — backfill, cross-schema coverage, sequence ownership, and missing UUID decisions.
-- [PostgreSQL contract validation handoff](./POSTGRESQL_CONTRACT_VALIDATION.md) — disposable-database procedure and passing checks for both generated-artifact strategies.
+- [PostgreSQL contract validation handoff](../done/POSTGRESQL_CONTRACT_VALIDATION.md) — disposable-database procedure and passing checks for both generated-artifact strategies.
 - [Completed submission metadata proposal](../done/REFACTOR_SEAD_SUBMISSION_METADATA/REFACTOR_SEAD_SUBMISSION_METADATA.md) — implemented package contract; upstream schema deployment and compatibility remain release dependencies.
 
 ## Gates To Resolve

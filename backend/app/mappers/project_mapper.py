@@ -170,6 +170,7 @@ class ProjectMapper:
             description=metadata_dict.get("description", ""),
             version=metadata_dict.get("version", "1.0.0"),
             data_provider_code=metadata_dict.get("data_provider_code"),
+            provider_schema=metadata_dict.get("provider_schema"),
             default_entity=metadata_dict.get("default_entity"),
             target_model=metadata_dict.get("target_model"),
             file_path=filename,
@@ -229,6 +230,7 @@ class ProjectMapper:
             "description": api_config.metadata.description,
             "version": api_config.metadata.version,
             "data_provider_code": api_config.metadata.data_provider_code,
+            "provider_schema": api_config.metadata.provider_schema,
             "default_entity": api_config.metadata.default_entity,
         }
         if api_config.metadata.target_model is not None:

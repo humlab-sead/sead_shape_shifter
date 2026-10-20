@@ -3,7 +3,7 @@
 - **Source proposal:** [Centralized Authorization System](../../../done/MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM.md)
 - **Source phase plan:** [Centralized Authorization System Cutover Plan](../CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md) - [Phase 5: Verify Podman Deployment And Update Security Record](../CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md#phase-5-verify-podman-deployment-and-update-security-record)
 - **Prerequisite records:** [UAT-ready deployment record](./UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md), [Podman deployment verification handoff](../DEPLOYMENT_VERIFICATION_HANDOFF.md), [test environment cutover handoff](../TEST_ENVIRONMENT_AUTHORIZATION_CUTOVER_HANDOFF.md)
-- **Related, not required:** [Release Cycle Evidence And Locking](../../../RELEASE_CYCLE_EVIDENCE_AND_LOCKING/README.md). That proposal owns evidence tooling, result locking, and run deltas. This phase uses the scripts that exist and does not wait for it.
+- **Related, not required:** [Release Cycle Evidence And Locking](../../../future/RELEASE_CYCLE_EVIDENCE_AND_LOCKING/README.md). That proposal owns evidence tooling, result locking, and run deltas. This phase uses the scripts that exist and does not wait for it.
 - **Goal:** Verify the authorization release in the Podman deployment and record security results for that release.
 - **Plan readiness:** Validated. Every command below exists in the repository or in the recorded operator output. The release unit is frozen and its identity is confirmed on the host. One dependency sits outside the plan: whether an operator with the principal passwords is available.
 - **Dependencies:** Phases 1–4 complete; the frozen release unit decided; Roger Mähler named as the rollback decision owner.
@@ -63,7 +63,7 @@
 
 **Out of scope**
 
-- Evidence tooling, result locking, and run deltas; owned by [Release Cycle Evidence And Locking](../../../RELEASE_CYCLE_EVIDENCE_AND_LOCKING/README.md).
+- Evidence tooling, result locking, and run deltas; owned by [Release Cycle Evidence And Locking](../../../future/RELEASE_CYCLE_EVIDENCE_AND_LOCKING/README.md).
 - Building or rebuilding the image, changing the deployment layout, or selecting the production Podman service model.
 - Authorization policy, grants, route reclassification, and the deferred cleanups.
 - The production flip to the authorized server.

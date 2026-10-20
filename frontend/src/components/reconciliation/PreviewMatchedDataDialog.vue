@@ -8,9 +8,7 @@
         <v-btn icon="mdi-close" variant="text" @click="show = false" />
       </v-card-title>
 
-      <v-card-subtitle class="py-3">
-        Preview of final output with SEAD IDs and matched names
-      </v-card-subtitle>
+      <v-card-subtitle class="py-3"> Preview of final output with SEAD IDs and matched names </v-card-subtitle>
 
       <v-divider />
 
@@ -67,21 +65,12 @@
             </tr>
           </thead>
           <tbody>
-            <tr
-              v-for="(row, idx) in filteredPreviewData"
-              :key="idx"
-              :class="getRowClass(row)"
-            >
+            <tr v-for="(row, idx) in filteredPreviewData" :key="idx" :class="getRowClass(row)">
               <td v-for="column in displayColumns" :key="column">
                 {{ row[column] ?? '—' }}
               </td>
               <td>
-                <v-chip
-                  v-if="row.target_id"
-                  size="small"
-                  color="primary"
-                  variant="tonal"
-                >
+                <v-chip v-if="row.target_id" size="small" color="primary" variant="tonal">
                   {{ row.target_id }}
                 </v-chip>
                 <span v-else class="text-grey">—</span>
@@ -104,11 +93,7 @@
                 <span v-else class="text-grey">—</span>
               </td>
               <td>
-                <v-chip
-                  size="small"
-                  :color="getStatusColor(row)"
-                  variant="flat"
-                >
+                <v-chip size="small" :color="getStatusColor(row)" variant="flat">
                   {{ getStatusLabel(row) }}
                 </v-chip>
               </td>
@@ -173,10 +158,10 @@ const showOnlyChanged = ref(false)
 // Display columns from entity spec
 const displayColumns = computed(() => {
   if (!props.entitySpec) return []
-  
+
   // Show property-mapped columns (source columns from property_mappings)
   const columns = Array.from(new Set(Object.values(props.entitySpec.property_mappings)))
-  
+
   return columns
 })
 
@@ -185,11 +170,11 @@ const filteredPreviewData = computed(() => {
   let filtered = props.previewData
 
   if (showOnlyMatched.value) {
-    filtered = filtered.filter(row => row.target_id != null && !row.will_not_match)
+    filtered = filtered.filter((row) => row.target_id != null && !row.will_not_match)
   }
 
   if (showOnlyChanged.value) {
-    filtered = filtered.filter(row => row.target_id != null || row.will_not_match)
+    filtered = filtered.filter((row) => row.target_id != null || row.will_not_match)
   }
 
   return filtered
@@ -197,8 +182,8 @@ const filteredPreviewData = computed(() => {
 
 // Statistics
 const stats = computed(() => {
-  const matched = props.previewData.filter(row => row.target_id != null && !row.will_not_match).length
-  const willNotMatch = props.previewData.filter(row => row.will_not_match).length
+  const matched = props.previewData.filter((row) => row.target_id != null && !row.will_not_match).length
+  const willNotMatch = props.previewData.filter((row) => row.will_not_match).length
   const unmatched = props.previewData.length - matched - willNotMatch
 
   return { matched, unmatched, willNotMatch }
@@ -208,7 +193,7 @@ const stats = computed(() => {
 function formatColumnName(column: string): string {
   return column
     .split('_')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ')
 }
 
@@ -216,7 +201,7 @@ function getRowClass(row: ReconciliationPreviewRow): string {
   if (row.will_not_match) {
     return 'bg-grey-lighten-3 text-decoration-line-through'
   }
-  
+
   if (row.target_id) {
     const autoAcceptThreshold = props.entitySpec?.auto_accept_threshold || 95
     if ((row.confidence ?? 0) >= autoAcceptThreshold) {
@@ -224,7 +209,7 @@ function getRowClass(row: ReconciliationPreviewRow): string {
     }
     return 'bg-orange-lighten-5'
   }
-  
+
   return 'bg-red-lighten-5'
 }
 
@@ -245,7 +230,7 @@ function getStatusColor(row: ReconciliationPreviewRow): string {
 }
 
 function getStatusLabel(row: ReconciliationPreviewRow): string {
-  if (row.will_not_match) return 'Won\'t Match'
+  if (row.will_not_match) return "Won't Match"
   if (row.target_id) {
     const autoAcceptThreshold = props.entitySpec?.auto_accept_threshold || 95
     if ((row.confidence ?? 0) >= autoAcceptThreshold) return 'Auto-Matched'
@@ -259,17 +244,11 @@ function exportPreview() {
   if (filteredPreviewData.value.length === 0) return
 
   // Build CSV header
-  const headers = [
-    ...displayColumns.value,
-    'target_id',
-    'matched_name',
-    'confidence',
-    'status',
-  ]
+  const headers = [...displayColumns.value, 'target_id', 'matched_name', 'confidence', 'status']
 
   // Build CSV rows
-  const csvRows = filteredPreviewData.value.map(row => {
-    const values = displayColumns.value.map(col => {
+  const csvRows = filteredPreviewData.value.map((row) => {
+    const values = displayColumns.value.map((col) => {
       const value = row[col]
       // Escape quotes and wrap in quotes if contains comma or quote
       if (value == null) return ''

@@ -9,11 +9,11 @@ Usage: deployment/container-host/deploy/install_systemd_service.sh [USER]
 Install and enable the Shape Shifter user systemd service for a configured
 environment user (run as root).
 
-The user must already have a selected container release: ~/container is the
-symlink the host release manager creates. Install and select a release first:
-
-  sudo shape-shifter-container-release install  USER container-vX.Y.Z
-  sudo shape-shifter-container-release activate USER container-vX.Y.Z
+The user must already have deployment files in ~/container, placed there by
+whatever flow the environment uses. Until container images are published to
+GHCR (see docs/proposals/GHCR_IMAGE_RELEASE.md), that is a manual copy or
+sync of the deployment/container/ tree; the retired
+shape-shifter-container-release manager is no longer required.
 
 The unit runs the lifecycle scripts in ~/container, which read configuration from
 the sibling ~/config directory, so no deployment value is stored in the unit
@@ -48,26 +48,15 @@ if [[ -z "$USER_HOME" || ! -d "$USER_HOME" ]]; then
   exit 1
 fi
 
-# Require a selected release, the same way the single-environment helper does.
-# A real directory or an unrelated symlink is refused: an administrator must
-# review and move it before the release manager can select a version.
-CONTAINER_LINK="$USER_HOME/container"
-if [[ ! -L "$CONTAINER_LINK" ]]; then
-  echo "error: $CONTAINER_LINK is not a selected container release." >&2
-  if [[ -d "$CONTAINER_LINK" ]]; then
-    echo "       It is a real directory. An administrator must review and move it, then install" >&2
-    echo "       and activate a release:" >&2
-  else
-    echo "       Nothing is selected. As root, run:" >&2
-  fi
-  echo "         shape-shifter-container-release install  $USER container-vX.Y.Z" >&2
-  echo "         shape-shifter-container-release activate $USER container-vX.Y.Z" >&2
+# Require deployment files in ~/container. A real directory (the manual layout)
+# or a symlink both pass, as long as the directory holds a Makefile and VERSION.
+CONTAINER_DIR="$USER_HOME/container"
+if [[ ! -d "$CONTAINER_DIR" ]]; then
+  echo "error: $CONTAINER_DIR does not exist. Place the deployment/container/ tree there first." >&2
   exit 1
 fi
-SELECTED_DIR="$(readlink -f -- "$CONTAINER_LINK")"
-if [[ ! -d "$SELECTED_DIR" || ! -f "$SELECTED_DIR/Makefile" || ! -f "$SELECTED_DIR/VERSION" ]]; then
-  echo "error: $CONTAINER_LINK does not resolve to a complete container release ($SELECTED_DIR)" >&2
-  echo "       Reinstall and activate the release with shape-shifter-container-release." >&2
+if [[ ! -f "$CONTAINER_DIR/Makefile" || ! -f "$CONTAINER_DIR/VERSION" ]]; then
+  echo "error: $CONTAINER_DIR does not look like a container deployment (no Makefile or VERSION)." >&2
   exit 1
 fi
 

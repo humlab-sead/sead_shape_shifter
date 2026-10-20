@@ -31,11 +31,11 @@ The feature spans both the current backend boundary and the core configuration m
 
 Relevant files:
 
-- [backend/app/services/validation_service.py](../../backend/app/services/validation_service.py)
-- [backend/app/mappers/project_mapper.py](../../backend/app/mappers/project_mapper.py)
-- [backend/app/models](../../backend/app/models)
-- [src/model.py](../../src/model.py)
-- [src/configuration/config.py](../../src/configuration/config.py)
+- [backend/app/services/validation_service.py](../../../backend/app/services/validation_service.py)
+- [backend/app/mappers/project_mapper.py](../../../backend/app/mappers/project_mapper.py)
+- [backend/app/models](../../../backend/app/models)
+- [src/model.py](../../../src/model.py)
+- [src/configuration/config.py](../../../src/configuration/config.py)
 
 The intended relationship is:
 

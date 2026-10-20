@@ -60,6 +60,19 @@
           "description": "Stable SEAD data provider code for the project",
           "title": "Data Provider Code"
         },
+        "provider_schema": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Stable schema code for the project's data provider",
+          "title": "Provider Schema"
+        },
         "file_path": {
           "anyOf": [
             {

@@ -17,8 +17,8 @@ Currently, reconciled links and ID mappings are persisted in separate places wit
 ### 1. Reconciliation Catalog → `<project>-reconciliation.yml`
 
 **Read/Write Path**:
-- Write: [backend/app/services/reconciliation/mapping_manager.py:92](backend/app/services/reconciliation/mapping_manager.py#L92) — YAML dump after auto-reconcile
-- Read: [backend/app/services/reconciliation/mapping_manager.py:74](backend/app/services/reconciliation/mapping_manager.py#L74) — EntityMappingManager.load_catalog()
+- Write: [backend/app/services/reconciliation/mapping_manager.py:92](../../../backend/app/services/reconciliation/mapping_manager.py#L92) — YAML dump after auto-reconcile
+- Read: [backend/app/services/reconciliation/mapping_manager.py:74](../../../backend/app/services/reconciliation/mapping_manager.py#L74) — EntityMappingManager.load_catalog()
 - Fields persisted: `metadata` (source, target, thresholds), `links` array (source_value → target_id + confidence)
 
 **Current Behavior**:
@@ -57,8 +57,8 @@ options:
 ### 3. Materialized Entity public_id Assignment
 
 **Read/Write Path**:
-- Write: [backend/app/services/materialization_service.py:296](backend/app/services/materialization_service.py#L296) writes `public_id` to materialized entity config in shapeshifter.yml
-- Read: [backend/app/services/materialization_service.py:72](backend/app/services/materialization_service.py#L72) (in unmaterialize_entity) reads original config to restore it
+- Write: [backend/app/services/materialization_service.py:296](../../../backend/app/services/materialization_service.py#L296) writes `public_id` to materialized entity config in shapeshifter.yml
+- Read: [backend/app/services/materialization_service.py:72](../../../backend/app/services/materialization_service.py#L72) (in unmaterialize_entity) reads original config to restore it
 
 **Current Behavior**:
 - When materializing entity E with columns [id, name, value, SEAD_taxon_id]:
@@ -173,7 +173,7 @@ mapping_record = {"local_key": "system_id", ...}  # <- Bad, allows reuse
   2. System copies links to mapping sidecar with reconciliation provenance.
   3. Normalization uses sidecar links per precedence rules.
 
-**Implementation Note**: Draft/committed states, review UI, status model changes, audit logging, and rollback are deferred to [docs/proposals/RECONCILIATION_FUTURE_IMPROVEMENTS.md](docs/proposals/RECONCILIATION_FUTURE_IMPROVEMENTS.md).
+**Implementation Note**: Draft/committed states, review UI, status model changes, audit logging, and rollback are deferred to [docs/proposals/RECONCILIATION_FUTURE_IMPROVEMENTS.md](../RECONCILIATION_FUTURE_IMPROVEMENTS.md).
 
 ---
 
@@ -708,7 +708,7 @@ Your proposal addresses a real data-loss gap in the materialization workflow. Th
 3. ✅ Validate remote_key and local_key at config load time (REQ #3, #4).
 4. ✅ Extract user edits from materialized entities and persist to mapping (REQ #6).
 5. ✅ Keep reconciliation workflow in this proposal to explicit export only.
-6. ⚠️ Defer advanced reconciliation lifecycle features to [docs/proposals/RECONCILIATION_FUTURE_IMPROVEMENTS.md](docs/proposals/RECONCILIATION_FUTURE_IMPROVEMENTS.md).
+6. ⚠️ Defer advanced reconciliation lifecycle features to [docs/proposals/RECONCILIATION_FUTURE_IMPROVEMENTS.md](../RECONCILIATION_FUTURE_IMPROVEMENTS.md).
 
 **Note**: Since reconciliation workflows and project-specific mappings have not been used in production projects yet, there is **no backward compatibility requirement**. The sidecar file is a fresh start, and `options.mapping` is out of scope for this design.
 

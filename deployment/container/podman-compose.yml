@@ -81,6 +81,13 @@ services:
     volumes:
       - ${CONTAINER_DATA_DIR}/projects:/app/projects:rw
       - ${CONTAINER_DATA_DIR}/shared:/app/shared:rw
+
+      # Curated provider-schema registry. The reviewed files travel with this
+      # deployment tree, so this nested mount hides the writable shared-data
+      # path at the same location and the application can never rewrite an
+      # established provider or scope identity.
+      - ./resources/data-providers:/app/shared/data-providers:ro
+
       - ${CONTAINER_DATA_DIR}/logs:/app/logs:rw
       - ${CONTAINER_DATA_DIR}/output:/app/output:rw
       - ${CONTAINER_DATA_DIR}/backups:/app/backups:rw

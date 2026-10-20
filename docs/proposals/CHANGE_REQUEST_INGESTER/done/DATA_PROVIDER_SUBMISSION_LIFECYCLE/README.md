@@ -19,4 +19,4 @@
 
 ## Note
 
-Use the durable lifecycle reference at [../../../../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../../../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md) for the active lifecycle policy record.
+Use the durable lifecycle reference at [../../../../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md) for the active lifecycle policy record.

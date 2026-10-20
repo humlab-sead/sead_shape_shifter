@@ -5,10 +5,10 @@
 **✅ Implemented** (March 2026)
 
 - Scope: implementation approach for the tiny DSL proposed in [docs/proposals/done/INTRODUCE_TINY_DSL_IN_EXTRA_COLUMNS.md](INTRODUCE_TINY_DSL_IN_EXTRA_COLUMNS.md)
-- Goal: describe a concrete, low-risk implementation path for extending [src/transforms/extra_columns.py](src/transforms/extra_columns.py)
-- **Actual Implementation**: [src/transforms/dsl.py](../../src/transforms/dsl.py) (821 lines, standalone module)
-- **Tests**: [tests/transforms/test_dsl.py](../../tests/transforms/test_dsl.py) (73 tests, 91% coverage)
-- **Integration**: Used by [src/transforms/extra_columns.py](../../src/transforms/extra_columns.py) via `FormulaEngine`
+- Goal: describe a concrete, low-risk implementation path for extending [src/transforms/extra_columns.py](../../../src/transforms/extra_columns.py)
+- **Actual Implementation**: [src/transforms/dsl.py](../../../src/transforms/dsl.py) (821 lines, standalone module)
+- **Tests**: [tests/transforms/test_dsl.py](../../../tests/transforms/test_dsl.py) (73 tests, 91% coverage)
+- **Integration**: Used by [src/transforms/extra_columns.py](../../../src/transforms/extra_columns.py) via `FormulaEngine`
 
 ## Summary
 
@@ -47,11 +47,11 @@ In short:
 - **Comprehensive tests**: 73 tests (sketch suggested ~10 cases) with 91% coverage
 - **Position tracking**: Tokenizer tracks line/column for better error messages
 
-See [tests/transforms/README_DSL_TESTS.md](../../tests/transforms/README_DSL_TESTS.md) for test coverage details.
+See [tests/transforms/README_DSL_TESTS.md](../../../tests/transforms/README_DSL_TESTS.md) for test coverage details.
 
 ## Relationship To Existing Code
 
-The current implementation in [src/transforms/extra_columns.py](src/transforms/extra_columns.py) already supports:
+The current implementation in [src/transforms/extra_columns.py](../../../src/transforms/extra_columns.py) already supports:
 
 1. constants,
 2. direct column copies,
@@ -151,7 +151,7 @@ Implemented grammar does not support (as recommended):
 
 ## Implemented Internal Types
 
-Actual internal expression model (from [src/transforms/dsl.py](../../src/transforms/dsl.py)):
+Actual internal expression model (from [src/transforms/dsl.py](../../../src/transforms/dsl.py)):
 
 ```python
 from dataclasses import dataclass
@@ -183,7 +183,7 @@ These nodes proved sufficient for the initial DSL. The actual implementation mat
 
 ## Implemented Supporting Types
 
-Actual runtime context (from [src/transforms/dsl.py](../../src/transforms/dsl.py)):
+Actual runtime context (from [src/transforms/dsl.py](../../../src/transforms/dsl.py)):
 
 ```python
 from dataclasses import dataclass
@@ -233,7 +233,7 @@ class DslArgumentError(DslError):
 
 The implementation chose a **separate module** approach instead of extending extra_columns.py directly. This provides better separation of concerns.
 
-**Actual implementation** in [src/transforms/dsl.py](../../src/transforms/dsl.py):
+**Actual implementation** in [src/transforms/dsl.py](../../../src/transforms/dsl.py):
 
 ```python
 # Tokenizer - lexical analysis
@@ -275,7 +275,7 @@ class FormulaEngine:
     ) -> pd.DataFrame: ...
 ```
 
-**Integration point** in [src/transforms/extra_columns.py](../../src/transforms/extra_columns.py):
+**Integration point** in [src/transforms/extra_columns.py](../../../src/transforms/extra_columns.py):
 
 ```python
 from src.transforms.dsl import FormulaEngine
@@ -297,7 +297,7 @@ The separate module approach (`src/transforms/dsl.py`) proved cleaner than embed
 
 ## Implemented Parser Strategy
 
-✅ **Implemented**: Small hand-written recursive-descent parser in [src/transforms/dsl.py](../../src/transforms/dsl.py)
+✅ **Implemented**: Small hand-written recursive-descent parser in [src/transforms/dsl.py](../../../src/transforms/dsl.py)
 
 Reasons (validated):
 
@@ -450,7 +450,7 @@ Actual implemented rules:
 4. ✅ string literals are never null
 5. ✅ boolean literals include explicit `null` keyword
 
-This has been tested explicitly in [tests/transforms/test_dsl.py](../../tests/transforms/test_dsl.py) (see TestPandasStringBackend test class).
+This has been tested explicitly in [tests/transforms/test_dsl.py](../../../tests/transforms/test_dsl.py) (see TestPandasStringBackend test class).
 
 ## Integration With Existing evaluate_extra_columns
 
@@ -503,7 +503,7 @@ Bad examples:
 
 ## Implemented Test Plan
 
-✅ **73 comprehensive tests** implemented in [tests/transforms/test_dsl.py](../../tests/transforms/test_dsl.py) with **91.39% code coverage**.
+✅ **73 comprehensive tests** implemented in [tests/transforms/test_dsl.py](../../../tests/transforms/test_dsl.py) with **91.39% code coverage**.
 
 Test categories:
 
@@ -556,7 +556,7 @@ Suggested cases (coverage):
 9. ✅ unknown helper name
 10. ✅ malformed expression
 
-See [tests/transforms/README_DSL_TESTS.md](../../tests/transforms/README_DSL_TESTS.md) for detailed coverage breakdown.
+See [tests/transforms/README_DSL_TESTS.md](../../../tests/transforms/README_DSL_TESTS.md) for detailed coverage breakdown.
 
 ## Actual Implementation Order (Completed)
 
@@ -592,7 +592,7 @@ For adding new features, see [docs/other/DSL_EXTENSIBILITY_GUIDE.md](../../other
 
 ✅ **Implementation completed successfully** following the recommended path:
 
-1. ✅ Created separate module [src/transforms/dsl.py](../../src/transforms/dsl.py) (cleaner than embedding in extra_columns.py)
+1. ✅ Created separate module [src/transforms/dsl.py](../../../src/transforms/dsl.py) (cleaner than embedding in extra_columns.py)
 2. ✅ Assumes pandas as the execution backend
 3. ✅ Evaluates expressions as vectorized column operations
 4. ✅ Integrates with the current deferred-evaluation model
@@ -607,7 +607,7 @@ For adding new features, see [docs/other/DSL_EXTENSIBILITY_GUIDE.md](../../other
 - Clean separation of concerns (tokenizer, parser, validator, backend)
 - Extensible design for future enhancements
 
-The implementation fits the current codebase, preserves existing `extra_columns` behavior, and aligns with later branch-scoping follow-up work in [docs/proposals/BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md](docs/proposals/BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md).
+The implementation fits the current codebase, preserves existing `extra_columns` behavior, and aligns with later branch-scoping follow-up work in [docs/proposals/BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md](../BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md).
 
 **Next steps** for future enhancements:
 - Add `replace()` function if user demand emerges

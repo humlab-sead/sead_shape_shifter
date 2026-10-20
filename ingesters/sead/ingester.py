@@ -45,6 +45,10 @@ class SeadIngester:
         Args:
             config: Ingester configuration including database connection details
         """
+        logger.warning(
+            "The 'sead' ingester is deprecated and writes directly to the target database. "
+            "Use 'sead_change_request' to generate a reviewable deploy bundle."
+        )
         self.config = config
 
         # Build database URI
@@ -74,6 +78,12 @@ class SeadIngester:
             version="1.0.0",
             supported_formats=["xlsx"],
             requires_config=True,
+            deprecated=True,
+            deprecation_message=(
+                "Superseded by the SEAD Change Request ingester (sead_change_request), which resolves identities "
+                "through SIMS and emits a reviewable deploy bundle instead of writing to the target database. "
+                "This ingester remains available only for existing callers."
+            ),
         )
 
     async def _load_schema(self) -> SeadSchema:

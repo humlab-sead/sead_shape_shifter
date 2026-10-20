@@ -21,19 +21,13 @@ export const logsApi = {
   /**
    * Fetch application logs
    */
-  getLogs: async (
-    logType: LogType,
-    lines: number = 500,
-    level?: LogLevel
-  ): Promise<LogResponse> => {
+  getLogs: async (logType: LogType, lines: number = 500, level?: LogLevel): Promise<LogResponse> => {
     const params = new URLSearchParams({ lines: lines.toString() })
     if (level) {
       params.append('level', level)
     }
 
-    const response = await apiClient.get<LogResponse>(
-      `/logs/${logType}?${params.toString()}`
-    )
+    const response = await apiClient.get<LogResponse>(`/logs/${logType}?${params.toString()}`)
     return response.data
   },
 
@@ -41,9 +35,7 @@ export const logsApi = {
    * Download log file
    */
   downloadLogs: async (logType: LogType): Promise<LogDownloadResponse> => {
-    const response = await apiClient.get<LogDownloadResponse>(
-      `/logs/${logType}/download`
-    )
+    const response = await apiClient.get<LogDownloadResponse>(`/logs/${logType}/download`)
     return response.data
   },
 }

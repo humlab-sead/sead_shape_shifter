@@ -1,5 +1,6 @@
 """Tests for task management API endpoints."""
 
+from pathlib import Path
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -35,6 +36,8 @@ def sample_project_data():
     """Sample project data for tests (using new task list format)."""
     return {
         "name": "test_project",
+        "data_provider_code": "test-provider",
+        "provider_schema": "schema-one",
         "entities": {
             "location": {
                 "type": "entity",
@@ -62,6 +65,71 @@ def sample_project_data():
             "ignored": [],
         },
     }
+
+
+class TestTaskMigration:
+    """Tests for moving task lists to the project sidecar."""
+
+    async def test_migration_preserves_pair_and_moves_task_list_to_sidecar(
+        self, tmp_path, monkeypatch, reset_services, sample_project_data, authorized_client
+    ):
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        created = await authorized_client.post("/api/v1/projects", json=sample_project_data)
+        assert created.status_code == 201
+
+        project_path = tmp_path / "test_project" / "shapeshifter.yml"
+        sidecar_path = tmp_path / "test_project" / "shapeshifter.tasks.yml"
+        sidecar_path.unlink()
+        project_yaml_service = yaml_service.get_yaml_service()
+        project_data = project_yaml_service.load(project_path)
+        project_data["task_list"] = sample_project_data["task_list"]
+        project_yaml_service.save(project_data, project_path, create_backup=False)
+
+        response = await authorized_client.post("/api/v1/projects/test_project/tasks/migrate-to-sidecar")
+
+        assert response.status_code == 200
+        assert response.json()["migrated"] is True
+        migrated_project = project_yaml_service.load(project_path)
+        migrated_sidecar = project_yaml_service.load(sidecar_path)
+        assert "task_list" not in migrated_project
+        assert migrated_project["metadata"]["data_provider_code"] == "test-provider"
+        assert migrated_project["metadata"]["provider_schema"] == "schema-one"
+        assert migrated_sidecar["task_list"]["todo"] == sample_project_data["task_list"]["todo"]
+
+    async def test_migration_rejects_changed_pair_before_sidecar_or_backup_write(
+        self, tmp_path, monkeypatch, reset_services, sample_project_data, authorized_client
+    ):
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        created = await authorized_client.post("/api/v1/projects", json=sample_project_data)
+        assert created.status_code == 201
+
+        project_path = tmp_path / "test_project" / "shapeshifter.yml"
+        sidecar_path = tmp_path / "test_project" / "shapeshifter.tasks.yml"
+        sidecar_path.unlink()
+        project_yaml_service = yaml_service.get_yaml_service()
+        project_data = project_yaml_service.load(project_path)
+        project_data["task_list"] = sample_project_data["task_list"]
+        project_yaml_service.save(project_data, project_path, create_backup=False)
+        original = project_path.read_bytes()
+        original_load = project_yaml_service.load
+        changed_candidate = False
+
+        def load_with_changed_candidate(path):
+            nonlocal changed_candidate
+            data = original_load(path)
+            if Path(path) == project_path and not changed_candidate:
+                data["metadata"]["provider_schema"] = "schema-two"
+                changed_candidate = True
+            return data
+
+        monkeypatch.setattr(project_yaml_service, "load", load_with_changed_candidate)
+        response = await authorized_client.post("/api/v1/projects/test_project/tasks/migrate-to-sidecar")
+
+        assert response.status_code == 400
+        assert changed_candidate
+        assert project_path.read_bytes() == original
+        assert not sidecar_path.exists()
+        assert not (project_path.parent / "backups").exists()
 
 
 class TestGetTaskStatus:

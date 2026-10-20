@@ -768,6 +768,7 @@ class TestTableConfig:
         assert "description" in cols
         assert "created_at" in cols
         assert "location_id" in cols
+        assert "system_id" in cols
         assert "row_id" in cols
         assert "var" in cols
         assert "value" in cols
@@ -781,6 +782,7 @@ class TestTableConfig:
 
         assert "id" not in cols
         assert "name" in cols
+        assert "system_id" in cols
 
     def test_get_columns_exclude_fks(self):
         """Test get_columns excluding foreign keys."""

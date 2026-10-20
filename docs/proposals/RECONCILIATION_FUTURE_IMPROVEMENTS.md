@@ -8,7 +8,7 @@
 
 ## Summary
 
-This placeholder proposal tracks reconciliation workflow improvements that are intentionally out of scope for [RECONCILIATION_PERSISTENCE_CONSOLIDATION.md](RECONCILIATION_PERSISTENCE_CONSOLIDATION.md).
+This placeholder proposal tracks reconciliation workflow improvements that are intentionally out of scope for [RECONCILIATION_PERSISTENCE_CONSOLIDATION.md](done/RECONCILIATION_PERSISTENCE_CONSOLIDATION.md).
 
 The consolidation proposal keeps REQ #5 to explicit "Export to Mapping" copy only. This document captures the next-stage enhancements.
 

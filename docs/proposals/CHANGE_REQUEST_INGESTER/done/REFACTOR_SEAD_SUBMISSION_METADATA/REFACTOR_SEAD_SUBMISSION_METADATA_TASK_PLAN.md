@@ -157,12 +157,12 @@ Focused and broader checks pass, generated artifacts execute against the upstrea
 - `rtk .venv/bin/pytest backend/tests/ingesters/test_sead_change_request_*.py -q`
 - From `frontend/`: `rtk pnpm exec vitest run src/components/ingester/__tests__/IngesterForm.test.ts`
 - From `frontend/`: `rtk pnpm build`
-- PostgreSQL contract procedure: [POSTGRESQL_CONTRACT_VALIDATION.md](../../CUTOVER_AND_DEPLOYMENT/POSTGRESQL_CONTRACT_VALIDATION.md)
+- PostgreSQL contract procedure: [POSTGRESQL_CONTRACT_VALIDATION.md](../POSTGRESQL_CONTRACT_VALIDATION.md)
 - 2026-10-12 mapper and metadata tests passed with one skip; target-model and conformance tests passed; the backend ingester regression suite passed with four environment-dependent skips.
 - The focused frontend component test passed (3 tests), and `pnpm build` completed. Vite reported chunk-size and dependency-comment warnings.
 - 2026-10-12 artifact generation: `.venv/bin/pytest backend/tests/ingesters/test_sead_change_request_ingester.py -q -k 'test_ingest_emits_submission_and_links_new_dataset or test_ingest_copy_csv_emits_submission_and_dataset_payloads' --basetemp=tmp/contract_postgres_20261012_v2` — 2 passed.
 - Regression checks after sequence synchronization: `backend/tests/ingesters/test_sead_change_request_*.py` and `tests/target_model` passed; the environment-dependent SIMS/PostgreSQL integration case was skipped.
-- PostgreSQL: both generated bundles passed `tests/integration/submission_artifact_contract.sql` and advanced sequence high-water marks on separate Podman clones. The full restore and results are recorded in [POSTGRESQL_CONTRACT_VALIDATION.md](../../CUTOVER_AND_DEPLOYMENT/POSTGRESQL_CONTRACT_VALIDATION.md).
+- PostgreSQL: both generated bundles passed `tests/integration/submission_artifact_contract.sql` and advanced sequence high-water marks on separate Podman clones. The full restore and results are recorded in [POSTGRESQL_CONTRACT_VALIDATION.md](../POSTGRESQL_CONTRACT_VALIDATION.md).
 
 ## Deliverables
 

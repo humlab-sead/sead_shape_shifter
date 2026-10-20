@@ -3,7 +3,7 @@ import { nextTick, reactive, toRefs } from 'vue'
 import { shallowMount } from '@vue/test-utils'
 
 import IngesterForm from '../IngesterForm.vue'
-import type { IngestResponse, IngesterMetadata, ValidateRequest, ValidateResponse } from '@/types/ingester'
+import type { IngestResponse, IngesterMetadata, ProjectIngesterRequest, ValidateResponse } from '@/types/ingester'
 
 vi.mock('pinia', async () => {
   const actual = await vi.importActual<typeof import('pinia')>('pinia')
@@ -25,8 +25,11 @@ const ingesterStore = reactive({
   fetchIngesters: vi.fn(async () => {}),
   validate: vi.fn(async () => {}),
   ingest: vi.fn(async () => {}),
+  validateProject: vi.fn(async () => {}),
+  ingestProject: vi.fn(async () => {}),
+  resetProjectAttempt: vi.fn(),
   selectIngester: vi.fn((key: string) => {
-    ingesterStore.selectedIngester = ingesterStore.ingesters.find(ingester => ingester.key === key) ?? null
+    ingesterStore.selectedIngester = ingesterStore.ingesters.find((ingester) => ingester.key === key) ?? null
   }),
   clearError: vi.fn(() => {
     ingesterStore.error = null
@@ -43,7 +46,7 @@ const dataSourceStore = reactive({
   dataSources: [{ name: 'sead_staging', host: 'db.local', port: 5432, database: 'sead_staging' }],
   fetchDataSources: vi.fn(async () => {}),
   dataSourceByName: vi.fn((name: string) => {
-    return dataSourceStore.dataSources.find(dataSource => dataSource.name === name) ?? null
+    return dataSourceStore.dataSources.find((dataSource) => dataSource.name === name) ?? null
   }),
 })
 
@@ -91,7 +94,7 @@ const slotStub = (name: string) => ({
 
 const textFieldStub = {
   name: 'VTextField',
-  props: ['modelValue', 'label', 'rules', 'hint', 'type'],
+  props: ['modelValue', 'label', 'rules', 'hint', 'type', 'readonly'],
   template: '<div class="v-text-field-stub" />',
 }
 
@@ -121,13 +124,14 @@ const stubs = {
   VExpansionPanel: slotStub('VExpansionPanel'),
   VExpansionPanelText: slotStub('VExpansionPanelText'),
   VSwitch: slotStub('VSwitch'),
-  VBtn: slotStub('VBtn'),
+  VBtn: { name: 'VBtn', props: ['disabled'], template: '<button><slot /></button>' },
   VIcon: true,
   VSpacer: true,
 }
 
-function mountForm() {
+function mountForm(props: { excludedIngesterKeys?: string[]; projectName?: string; projectLoading?: boolean } = {}) {
   return shallowMount(IngesterForm, {
+    props,
     global: {
       renderStubDefaultSlot: true,
       stubs,
@@ -136,22 +140,49 @@ function mountForm() {
 }
 
 function findTextField(wrapper: ReturnType<typeof mountForm>, label: string) {
-  return wrapper.findAllComponents({ name: 'VTextField' }).find(node => node.props('label') === label)
+  return wrapper.findAllComponents({ name: 'VTextField' }).find((node) => node.props('label') === label)
 }
 
 function findTextarea(wrapper: ReturnType<typeof mountForm>, label: string) {
-  return wrapper.findAllComponents({ name: 'VTextarea' }).find(node => node.props('label') === label)
+  return wrapper.findAllComponents({ name: 'VTextarea' }).find((node) => node.props('label') === label)
 }
 
 describe('IngesterForm', () => {
   beforeEach(() => {
+    ingesterStore.validate.mockClear()
+    ingesterStore.ingest.mockClear()
+    ingesterStore.validateProject.mockClear()
+    ingesterStore.ingestProject.mockClear()
+    ingesterStore.resetProjectAttempt.mockClear()
+    projectStore.selectedProject = {
+      metadata: {
+        name: 'pilot_bugs',
+        description: 'Pilot bugs change package',
+        data_provider_code: 'SEAD',
+      },
+      options: {
+        ingesters: {
+          sead_change_request: {
+            data_source: 'sead_staging',
+            defaults: {
+              datatype: 'mal',
+              deploy_strategy: 'copy_csv',
+              author: 'SEAD Lab',
+            },
+            options: {
+              ignore_columns: ['date_updated'],
+            },
+          },
+        },
+      },
+    }
     ingesterStore.ingesters = [
       {
         key: 'sead_change_request',
         name: 'SEAD Change Request',
         description: 'Emit an MVP Delivery change package',
         version: '1.0.0',
-        supported_formats: ['xlsx'],
+        supported_formats: [],
       },
     ]
     ingesterStore.selectedIngester = ingesterStore.ingesters[0] ?? null
@@ -160,7 +191,7 @@ describe('IngesterForm', () => {
     ingesterStore.error = null
   })
 
-  it('renders the dedicated sead_change_request workflow and pending confirmation guidance', () => {
+  it('uses project-only actions for Change Request and keeps pending-confirmation guidance', async () => {
     ingesterStore.validationResult = {
       is_valid: false,
       errors: [],
@@ -175,16 +206,70 @@ describe('IngesterForm', () => {
         blocked_rows: 2,
         outstanding_step: 'Confirm the Binding Set before change-package generation can continue',
         operator_action: 'Confirm the Binding Set in SIMS, then rerun the ingester with the same submission context',
-        rerun_instruction: 'Rerun bugs_delivery_1 after confirmation',
+        rerun_instruction: "Rerun bugs_delivery_1 after confirmation with run ID 'run-abc-123'",
+      },
+    }
+    ingesterStore.ingestionResult = {
+      success: false,
+      records_processed: 0,
+      message: 'Binding Set confirmation incomplete',
+      run_id: 'run-abc-123',
+      pending_confirmation_report: {
+        submission_name: 'bugs_delivery_1',
+        project_name: 'pilot_bugs',
+        binding_set_uuid: 'binding-123',
+        binding_set_state: 'proposed',
+        blocked_entities: ['sample'],
+        blocked_rows: 2,
+        outstanding_step: 'Confirm the Binding Set before change-package generation can continue',
+        operator_action: 'Confirm the Binding Set in SIMS, then rerun the ingester with the same submission context',
+        rerun_instruction: "Rerun bugs_delivery_1 after confirmation with run ID 'run-abc-123'",
       },
     }
 
-    const wrapper = mountForm()
+    const wrapper = mountForm({ projectName: 'pilot_bugs' })
+    const vm = wrapper.vm as unknown as {
+      formValid: boolean
+      canRunSelectedIngester: boolean
+      selectedIngesterAllowed: boolean
+      handleValidate: () => Promise<void>
+      handleIngest: () => Promise<void>
+      buildProjectRequest: () => ProjectIngesterRequest
+    }
+    vm.formValid = true
+    await nextTick()
 
-    expect(wrapper.text()).toContain('This workflow collects the operator context needed')
+    ingesterStore.validate.mockClear()
+    ingesterStore.ingest.mockClear()
+    ingesterStore.validateProject.mockClear()
+    ingesterStore.ingestProject.mockClear()
+
+    expect(wrapper.text()).toContain('Change Request uses the normalized tables from this saved project.')
     expect(wrapper.text()).toContain('Binding Set Confirmation Required')
     expect(wrapper.text()).toContain('binding-123')
     expect(wrapper.text()).toContain('Confirm the Binding Set in SIMS')
+    expect(wrapper.find('[data-test="validation-pending-confirmation"]').text()).toContain('run-abc-123')
+    expect(wrapper.find('[data-test="ingestion-pending-confirmation"]').text()).toContain('run-abc-123')
+    expect(wrapper.text()).toContain('Every tracked entity needs declared business keys')
+    expect(findTextField(wrapper, 'Source File Path *')).toBeUndefined()
+    expect(wrapper.text()).not.toContain('Ignore Columns')
+    expect(wrapper.text()).not.toContain('Target Database:')
+
+    const actionButtons = wrapper
+      .findAllComponents({ name: 'VBtn' })
+      .filter((button) => button.text().includes('Validate') || button.text().includes('Dispatch'))
+    expect(actionButtons).toHaveLength(2)
+    expect(vm.canRunSelectedIngester).toBe(true)
+    expect(vm.selectedIngesterAllowed).toBe(true)
+    expect(actionButtons.every((button) => !button.props('disabled'))).toBe(true)
+
+    await vm.handleValidate()
+    await vm.handleIngest()
+
+    expect(ingesterStore.validateProject).toHaveBeenCalledWith(vm.buildProjectRequest())
+    expect(ingesterStore.ingestProject).toHaveBeenCalledWith(vm.buildProjectRequest())
+    expect(ingesterStore.validate).not.toHaveBeenCalled()
+    expect(ingesterStore.ingest).not.toHaveBeenCalled()
   })
 
   it('renders deploy artifact summary and handoff guidance for successful change-package output', () => {
@@ -193,9 +278,13 @@ describe('IngesterForm', () => {
       records_processed: 2,
       message: 'Deploy artifact emitted to output/pilot-bugs-001',
       output_path: 'output/pilot-bugs-001',
+      scope_name: 'provider://mal/archeobotany/arbodat-pilot',
+      run_id: 'run-abc-123',
       deploy_artifact: {
         metadata: {
           deploy_strategy: 'copy_csv',
+          scope_name: 'provider://mal/archeobotany/arbodat-pilot',
+          run_id: 'run-abc-123',
           binding_set_uuid: 'binding-123',
           change_request_name: 'CR-2026-001',
           non_revertible: true,
@@ -216,11 +305,26 @@ describe('IngesterForm', () => {
     expect(wrapper.text()).toContain('copy_csv')
     expect(wrapper.text()).toContain('Bundle name:')
     expect(wrapper.text()).toContain('pilot-bugs-001')
+    expect(wrapper.text()).toContain('provider://mal/archeobotany/arbodat-pilot')
+    expect(wrapper.text()).toContain('run-abc-123')
     expect(wrapper.text()).toContain('Review the emitted SQL, manifest, and compressed table payload files')
   })
 
-  it('prefills project-derived submission context fields and exposes backend-matched validation rules', async () => {
+  it('shows backend errors for blocked Change Request business keys', () => {
+    ingesterStore.validationResult = {
+      is_valid: false,
+      errors: ["Entity 'sample' has duplicate values for declared business key 'sample_code'."],
+      warnings: [],
+      infos: [],
+    }
+
     const wrapper = mountForm()
+
+    expect(wrapper.text()).toContain("Entity 'sample' has duplicate values for declared business key 'sample_code'.")
+  })
+
+  it('prefills project-derived submission context fields and exposes backend-matched validation rules', async () => {
+    const wrapper = mountForm({ projectName: 'pilot_bugs' })
     await nextTick()
 
     const projectField = findTextField(wrapper, 'Project Name *')
@@ -233,8 +337,9 @@ describe('IngesterForm', () => {
     expect(submissionNameField?.props('modelValue')).toBe('pilot_bugs_mal')
     expect(findTextField(wrapper, 'Submission Identifier *')?.props('modelValue')).toBe('PILOT_BUGS')
     expect(descriptionField?.props('modelValue')).toBe('Pilot bugs change package')
-    expect(wrapper.text()).toContain('Auto-derived from the active project and selected datatype until you override it.')
-    expect(wrapper.text()).toContain('Auto-derived from the active project.')
+    expect(wrapper.text()).toContain(
+      'Auto-derived from the active project and selected datatype until you override it.'
+    )
     expect(wrapper.text()).toContain('Auto-derived from the active project name until you override it.')
     expect(wrapper.text()).toContain('Auto-derived from project metadata until you override it.')
     expect(wrapper.text()).toContain('Operator-entered for this run.')
@@ -249,12 +354,124 @@ describe('IngesterForm', () => {
     expect(timestampRules[1]?.('not-a-date')).toBe('Enter a valid ISO-8601 local datetime')
     expect(descriptionRules[0]?.('line one\nline two')).toBe('Use a single line shorter than 80 characters')
 
-    const request = (wrapper.vm as unknown as { buildValidateRequest: () => ValidateRequest }).buildValidateRequest()
-    expect(request.deploy_strategy).toBe('copy_csv')
-    expect(request.submission_context).toMatchObject({
-      data_provider_code: 'SEAD',
-      datatype: 'mal',
-      author: 'SEAD Lab',
+    const request = (
+      wrapper.vm as unknown as { buildProjectRequest: () => ProjectIngesterRequest }
+    ).buildProjectRequest()
+    expect(request).toMatchObject({
+      project_name: 'pilot_bugs',
+      deploy_strategy: 'copy_csv',
+      submission_context: {
+        submission_name: 'pilot_bugs_mal',
+        datatype: 'mal',
+        identifier: 'PILOT_BUGS',
+        description: 'Pilot bugs change package',
+        author: 'SEAD Lab',
+      },
     })
+    expect(request).not.toHaveProperty('source')
+    expect(request).not.toHaveProperty('config')
+    expect(request.submission_context).not.toHaveProperty('project_name')
+    expect(request.submission_context).not.toHaveProperty('data_provider_code')
+  })
+
+  it('enables Change Request actions only after the route project is loaded and matches', async () => {
+    const wrapper = mountForm({ projectName: 'route_project', projectLoading: true })
+    const vm = wrapper.vm as unknown as {
+      formValid: boolean
+      buildProjectRequest: () => ProjectIngesterRequest
+    }
+    vm.formValid = true
+    await nextTick()
+
+    const projectField = findTextField(wrapper, 'Project Name *')
+    expect(projectField?.props('modelValue')).toBe('route_project')
+    expect(projectField?.props('readonly')).toBe('')
+    expect(vm.buildProjectRequest().project_name).toBe('route_project')
+    const actionButtons = wrapper
+      .findAllComponents({ name: 'VBtn' })
+      .filter((button) => button.text().includes('Validate') || button.text().includes('Dispatch'))
+    expect(actionButtons.every((button) => button.props('disabled'))).toBe(true)
+
+    projectStore.selectedProject.metadata.name = 'route_project'
+    await wrapper.setProps({ projectLoading: false })
+    await nextTick()
+
+    expect(vm.buildProjectRequest().project_name).toBe('route_project')
+    expect(actionButtons.every((button) => !button.props('disabled'))).toBe(true)
+  })
+
+  it('keeps Change Request actions disabled when there is no route project', async () => {
+    const wrapper = mountForm()
+    const vm = wrapper.vm as unknown as { formValid: boolean; handleValidate: () => Promise<void> }
+    vm.formValid = true
+    await nextTick()
+
+    const actionButtons = wrapper.findAllComponents({ name: 'VBtn' }).slice(0, 2)
+    expect(actionButtons.every((button) => button.props('disabled'))).toBe(true)
+    await vm.handleValidate()
+    expect(ingesterStore.validateProject).not.toHaveBeenCalled()
+  })
+
+  it('resets the stored project attempt when the form is reset', () => {
+    const wrapper = mountForm({ projectName: 'pilot_bugs' })
+    const vm = wrapper.vm as unknown as { resetForm: () => void }
+    vm.resetForm()
+    expect(ingesterStore.resetProjectAttempt).toHaveBeenCalled()
+  })
+
+  it('resets the stored project attempt when any submission identity field changes', async () => {
+    const wrapper = mountForm({ projectName: 'pilot_bugs' })
+    const vm = wrapper.vm as unknown as {
+      form: { submission_name: string }
+      seadChangeRequest: { timestamp: string; datatype: string; identifier: string }
+    }
+    await nextTick()
+
+    vm.form.submission_name = 'new_submission'
+    await nextTick()
+    expect(ingesterStore.resetProjectAttempt).toHaveBeenCalled()
+
+    for (const field of ['timestamp', 'datatype', 'identifier'] as const) {
+      ingesterStore.resetProjectAttempt.mockClear()
+      vm.seadChangeRequest[field] = `${vm.seadChangeRequest[field]}_changed`
+      await nextTick()
+      expect(ingesterStore.resetProjectAttempt).toHaveBeenCalled()
+    }
+
+    ingesterStore.resetProjectAttempt.mockClear()
+    await wrapper.setProps({ projectName: 'different_route_project' })
+    await nextTick()
+    expect(ingesterStore.resetProjectAttempt).toHaveBeenCalled()
+  })
+
+  it('filters excluded ingesters and keeps ordinary ingesters actionable', async () => {
+    const ordinaryIngester: IngesterMetadata = {
+      key: 'ordinary',
+      name: 'Ordinary Ingester',
+      description: 'Project-independent',
+      version: '1.0.0',
+      supported_formats: ['xlsx'],
+    }
+    ingesterStore.ingesters.push(ordinaryIngester)
+    ingesterStore.selectedIngester = ordinaryIngester
+
+    const wrapper = mountForm({ excludedIngesterKeys: ['sead_change_request'] })
+    const vm = wrapper.vm as unknown as { formValid: boolean; form: { source: string } }
+    vm.formValid = true
+    vm.form.source = 'input.xlsx'
+    await nextTick()
+
+    const workflowSelector = wrapper.findComponent({ name: 'VSelect' })
+    expect(workflowSelector.props('items')).toEqual([ordinaryIngester])
+
+    await (wrapper.vm as unknown as { handleValidate: () => Promise<void> }).handleValidate()
+    await (wrapper.vm as unknown as { handleIngest: () => Promise<void> }).handleIngest()
+
+    expect(ingesterStore.validate).toHaveBeenCalledOnce()
+    expect(ingesterStore.ingest).toHaveBeenCalledOnce()
+    expect(ingesterStore.validate).toHaveBeenCalledWith(expect.objectContaining({ source: 'input.xlsx' }))
+    expect(ingesterStore.ingest).toHaveBeenCalledWith(expect.objectContaining({ source: 'input.xlsx' }))
+    expect(ingesterStore.validateProject).not.toHaveBeenCalled()
+    expect(ingesterStore.ingestProject).not.toHaveBeenCalled()
   })
 })

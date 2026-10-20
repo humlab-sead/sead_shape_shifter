@@ -8,7 +8,10 @@ describe('normalizeForeignKeyKeys', () => {
   })
 
   it('normalizes object values from combobox selections', () => {
-    expect(normalizeForeignKeyKeys([{ value: 'alpha' }, { value: 'beta' }, { value: 'alpha' }])).toEqual(['alpha', 'beta'])
+    expect(normalizeForeignKeyKeys([{ value: 'alpha' }, { value: 'beta' }, { value: 'alpha' }])).toEqual([
+      'alpha',
+      'beta',
+    ])
   })
 
   it('wraps a scalar directive string as a single value', () => {

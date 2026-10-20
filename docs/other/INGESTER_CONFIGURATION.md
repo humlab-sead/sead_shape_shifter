@@ -127,7 +127,7 @@ drop_ignored_columns:
 
 ## Complete Example
 
-See [`projects/example-ingester-config.yml`](../projects/example-ingester-config.yml) for a complete example.
+See `projects/example-ingester-config.yml` for a complete example.
 
 ## Usage in UI
 
@@ -180,6 +180,6 @@ The ingestion UI will now automatically use these settings.
 
 ## See Also
 
-- [Ingester System Documentation](../backend/app/ingesters/README.md)
-- [SEAD Ingester Implementation](../ingesters/sead/README.md)
-- [Project Configuration Guide](./CONFIGURATION_GUIDE.md)
+- [Ingester System Documentation](../../backend/app/ingesters/README.md)
+- [SEAD Ingester Implementation](../../ingesters/sead/README.md)
+- [Project Configuration Guide](../CONFIGURATION_GUIDE.md)

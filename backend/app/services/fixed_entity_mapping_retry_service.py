@@ -19,7 +19,7 @@ from backend.app.models.mapping_sync import MappingSyncPending, MappingSyncRetry
 from backend.app.services.entity_values_service import EntityValuesService
 from backend.app.services.fixed_entity_mapping_change_service import FixedEntityMappingChangeService
 from backend.app.services.fixed_entity_mapping_sync_service import FixedEntityMappingSyncService
-from backend.app.services.project_service import ProjectService
+from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.utils.fixed_schema import derive_fixed_schema
 from src.reconciliation.fixed_entity_mapping_changes import FixedRowChangeSet, RowSnapshot
 from src.reconciliation.fixed_entity_mapping_retry import plan_fixed_entity_mapping_retry
@@ -172,6 +172,5 @@ class FixedEntityMappingRetryService:
 
 def get_fixed_entity_mapping_retry_service() -> FixedEntityMappingRetryService:
     """Return a fixed-entity mapping retry service bound to the project service."""
-    from backend.app.services.project_service import get_project_service
 
     return FixedEntityMappingRetryService(get_project_service())

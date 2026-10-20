@@ -32,15 +32,15 @@ export const useEntityStore = defineStore('entity', () => {
   const overlayInitialTab = ref<'form' | 'yaml'>('form')
 
   // Diagnostic logging helper for state sync debugging
-  function logState(action: string, details: Record<string, unknown> = {}) {
-    console.info(`[EntityStore] ${action}`, {
-      ...details,
-      currentProject: currentProjectName.value,
-      entityCount: entities.value.length,
-      entityNames: entities.value.map((e) => e.name),
-      timestamp: new Date().toISOString(),
-    })
-  }
+  // function logState(action: string, details: Record<string, unknown> = {}) {
+  //   console.info(`[EntityStore] ${action}`, {
+  //     ...details,
+  //     currentProject: currentProjectName.value,
+  //     entityCount: entities.value.length,
+  //     entityNames: entities.value.map((e) => e.name),
+  //     timestamp: new Date().toISOString(),
+  //   })
+  // }
 
   function syncSelectedEntityFromList() {
     const selectedName = selectedEntity.value?.name
@@ -109,14 +109,14 @@ export const useEntityStore = defineStore('entity', () => {
 
   // Actions
   async function fetchEntities(projectName: string) {
-    logState('fetchEntities:before', { projectName })
+    // logState('fetchEntities:before', { projectName })
     loading.value = true
     error.value = null
     currentProjectName.value = projectName
     try {
       entities.value = await api.entities.list(projectName)
       syncSelectedEntityFromList()
-      logState('fetchEntities:after', { projectName })
+      // logState('fetchEntities:after', { projectName })
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to fetch entities'
       throw err
@@ -147,7 +147,7 @@ export const useEntityStore = defineStore('entity', () => {
   }
 
   async function createEntity(projectName: string, data: EntityCreateRequest) {
-    logState('createEntity:before', { projectName, entityName: data.name })
+    // logState('createEntity:before', { projectName, entityName: data.name })
     loading.value = true
     error.value = null
     try {
@@ -156,7 +156,7 @@ export const useEntityStore = defineStore('entity', () => {
       selectedEntity.value = entity
       hasUnsavedChanges.value = false
 
-      logState('createEntity:after', { projectName, entityName: data.name })
+      // logState('createEntity:after', { projectName, entityName: data.name })
 
       return entity
     } catch (err) {
@@ -224,7 +224,7 @@ export const useEntityStore = defineStore('entity', () => {
   }
 
   async function deleteEntity(projectName: string, entityName: string) {
-    logState('deleteEntity:before', { projectName, entityName })
+    // logState('deleteEntity:before', { projectName, entityName })
     loading.value = true
     error.value = null
     try {
@@ -233,7 +233,7 @@ export const useEntityStore = defineStore('entity', () => {
       if (selectedEntity.value?.name === entityName) {
         selectedEntity.value = null
       }
-      logState('deleteEntity:after', { projectName, entityName })
+      // logState('deleteEntity:after', { projectName, entityName })
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to delete entity'
       throw err
@@ -275,7 +275,7 @@ export const useEntityStore = defineStore('entity', () => {
   }
 
   function reset() {
-    logState('reset:before')
+    // logState('reset:before')
     entities.value = []
     selectedEntity.value = null
     currentProjectName.value = null
@@ -285,7 +285,7 @@ export const useEntityStore = defineStore('entity', () => {
     showEditorOverlay.value = false
     overlayEntityName.value = null
     mappingSyncPending.value = null
-    logState('reset:after')
+    // logState('reset:after')
   }
 
   // Overlay management

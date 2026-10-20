@@ -174,7 +174,7 @@ These are either:
 
 ## Future Extensions
 
-When adding new functions or expression types (see [DSL_EXTENSIBILITY_GUIDE.md](../../docs/proposals/DSL_EXTENSIBILITY_GUIDE.md)):
+When adding new functions or expression types (see [DSL_EXTENSIBILITY_GUIDE.md](../../docs/other/DSL_EXTENSIBILITY_GUIDE.md)):
 
 1. **Update AST** - Add new `Expr` subclass
 2. **Update Parser** - Add tokenizer patterns and parser methods
@@ -204,5 +204,5 @@ class TestBinaryOperators:
 
 - [src/transforms/dsl.py](../../src/transforms/dsl.py) - Implementation
 - [docs/CONFIGURATION_GUIDE.md](../../docs/CONFIGURATION_GUIDE.md) - User documentation for `extra_columns`
-- [docs/proposals/DSL_EXTENSIBILITY_GUIDE.md](../../docs/proposals/DSL_EXTENSIBILITY_GUIDE.md) - Guide for extending the DSL
+- [docs/proposals/DSL_EXTENSIBILITY_GUIDE.md](../../docs/other/DSL_EXTENSIBILITY_GUIDE.md) - Guide for extending the DSL
 - [docs/archive/DSL_PARSER_COMPARISON.md](../../docs/archive/DSL_PARSER_COMPARISON.md) - Design decision rationale

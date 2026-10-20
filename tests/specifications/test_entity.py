@@ -92,7 +92,7 @@ class TestEntityFieldsBaseSpecification:
         spec = EntityFieldsBaseSpecification(project_cfg)
 
         assert spec.is_satisfied_by(entity_name="generated") is True
-        assert spec.errors == []
+        assert not spec.errors
 
     def test_keys_without_producers_fail_with_actionable_message(self):
         project_cfg = {"entities": {"unproduced": {"type": "entity", "columns": ["source"], "keys": ["missing"]}}}
@@ -1540,7 +1540,7 @@ class TestExtraColumnsConflictsSpecification:
         result = spec.is_satisfied_by(entity_name="sample")
 
         assert result is True
-        assert spec.errors == []
+        assert not spec.errors
 
     def test_extra_column_used_as_unnest_id_var_is_allowed(self):
         """An extra_column may supply a column that unnest carries through as an id_var."""
@@ -1567,7 +1567,7 @@ class TestExtraColumnsConflictsSpecification:
         result = spec.is_satisfied_by(entity_name="abundance_property")
 
         assert result is True, spec.get_report()
-        assert spec.errors == []
+        assert not spec.errors
 
     def test_extra_column_conflicting_with_unnest_output_is_error(self):
         """extra_columns must not override unnest var_name or value_name outputs."""

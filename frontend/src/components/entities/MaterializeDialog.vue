@@ -7,12 +7,7 @@
       </v-card-title>
 
       <v-card-text>
-        <v-alert
-          v-if="!canMaterialize && validationResult"
-          type="error"
-          variant="tonal"
-          class="mb-4"
-        >
+        <v-alert v-if="!canMaterialize && validationResult" type="error" variant="tonal" class="mb-4">
           <div class="text-subtitle-2 mb-2">Cannot Materialize</div>
           <ul class="ml-4">
             <li v-for="(error, idx) in validationResult.errors" :key="idx">
@@ -22,8 +17,8 @@
         </v-alert>
 
         <v-alert v-else type="info" variant="tonal" class="mb-4">
-          This will freeze the current entity data to fixed values, allowing it to be used in
-          reconciliation. The original configuration will be saved for later restoration.
+          This will freeze the current entity data to fixed values, allowing it to be used in reconciliation. The
+          original configuration will be saved for later restoration.
         </v-alert>
 
         <div v-if="canMaterialize">
@@ -46,18 +41,12 @@
             </template>
           </v-select>
         </div>
-
       </v-card-text>
 
       <v-card-actions>
         <v-spacer />
         <v-btn @click="close">Cancel</v-btn>
-        <v-btn
-          color="primary"
-          :disabled="!canMaterialize || loading"
-          :loading="loading"
-          @click="materialize"
-        >
+        <v-btn color="primary" :disabled="!canMaterialize || loading" :loading="loading" @click="materialize">
           Materialize
         </v-btn>
       </v-card-actions>
@@ -83,7 +72,7 @@ const props = defineProps<Props>()
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
-  'materialized': []
+  materialized: []
 }>()
 
 const dialog = ref(props.modelValue)
@@ -153,11 +142,11 @@ async function materialize() {
     const result = await materializationApi.materialize(props.projectName, props.entityName, {
       storage_format: storageFormat.value,
     })
-    
+
     const rowCount = result.rows_materialized?.toLocaleString() || 'unknown'
     const storageInfo = result.storage_file ? ` to ${result.storage_file}` : ' inline'
     success(`Successfully materialized ${rowCount} rows${storageInfo}`)
-    
+
     emit('materialized')
     close()
   } catch (err: any) {

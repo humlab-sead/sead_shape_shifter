@@ -54,9 +54,11 @@ export function renderHelpMarkdown(markdown: string, docPath: string): string {
     breaks: false,
   })
 
-  const defaultHeadingRenderer = md.renderer.rules.heading_open || ((tokens, idx, options, _env, self) => self.renderToken(tokens, idx, options))
+  const defaultHeadingRenderer =
+    md.renderer.rules.heading_open || ((tokens, idx, options, _env, self) => self.renderToken(tokens, idx, options))
 
-  const defaultLinkRenderer = md.renderer.rules.link_open || ((tokens, idx, options, _env, self) => self.renderToken(tokens, idx, options))
+  const defaultLinkRenderer =
+    md.renderer.rules.link_open || ((tokens, idx, options, _env, self) => self.renderToken(tokens, idx, options))
 
   md.renderer.rules.heading_open = (tokens, idx, options, env, self) => {
     const token = tokens[idx]
@@ -116,7 +118,7 @@ export function useHelp() {
 
     try {
       const response = await fetch(`/api/v1/help-docs/${encodeURI(docPath)}`)
-      
+
       if (!response.ok) {
         throw new Error(`Failed to load ${docPath}.md: ${response.statusText}`)
       }
@@ -142,7 +144,7 @@ export function useHelp() {
    */
   async function loadHelpSection(docPath: string, sectionId: string) {
     await loadHelp(docPath)
-    
+
     // Wait for next tick to ensure DOM is updated
     setTimeout(() => {
       const element = document.getElementById(sectionId)

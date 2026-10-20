@@ -104,11 +104,11 @@ From the checkout, `sudo -u test-shape-shifter.sead.se` fails with `cannot chdir
 | [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_2_TASK_PLAN.md](./done/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_2_TASK_PLAN.md) | Phase 2 authorization work and its acceptance criteria |
 | [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md) | Overall cutover phases and release disposition |
 | [DEPLOYMENT_VERIFICATION_HANDOFF.md](./DEPLOYMENT_VERIFICATION_HANDOFF.md) | Earlier deployment verification record |
-| [container/DEPLOYMENT.md](../../../../container/DEPLOYMENT.md) | Layout, authorization inputs, replacing the checkout, image build |
-| [container/scripts/authorization.sh](../../../../container/scripts/authorization.sh) | Operator wrapper: `import-manifest`, `export-manifest`, `backup`, `restore`, and pass-through CLI commands |
-| [container/scripts/deploy/bootstrap-authentication-and-authorization.sh](../../../../container/scripts/deploy/bootstrap-authentication-and-authorization.sh) | Accounts, nginx group file, application roles, manifest import |
-| [container/scripts/verify/verify_authenticated_access.sh](../../../../container/scripts/verify/verify_authenticated_access.sh) | Enforcement check used for the result above |
-| [container/scripts/verify/run_deployment_verification.sh](../../../../container/scripts/verify/run_deployment_verification.sh) | Orchestrated verification runs; `--authenticated` enables the check above |
+| [container/DEPLOYMENT.md](../../../../deployment/container/DEPLOYMENT.md) | Layout, authorization inputs, replacing the checkout, image build |
+| [container/scripts/authorization.sh](../../../../deployment/container/scripts/authorization.sh) | Operator wrapper: `import-manifest`, `export-manifest`, `backup`, `restore`, and pass-through CLI commands |
+| [container/scripts/deploy/bootstrap-authentication-and-authorization.sh](../../../../deployment/container-host/deploy/bootstrap-authentication-and-authorization.sh) | Accounts, nginx group file, application roles, manifest import |
+| container/scripts/verify/verify_authenticated_access.sh | Enforcement check used for the result above |
+| container/scripts/verify/run_deployment_verification.sh | Orchestrated verification runs; `--authenticated` enables the check above |
 | [resources/authorization/test-initial-manifest.yaml](../../../../resources/authorization/test-initial-manifest.yaml) | Reviewed policy that was imported |
 | `secrets/` (local only, gitignored) | `TEST_DEPLOYMENT_RESOURCE_INVENTORY.md`, `STATUS_20260921.md`, and `.env` with the htpasswd passwords |
 
@@ -127,7 +127,7 @@ From the checkout, `sudo -u test-shape-shifter.sead.se` fails with `cannot chdir
 - The four containment resources were removed through the application and are now deleted lifecycle records; `export-manifest` excludes them.
 - `verify_authenticated_access.sh` requires each project to be granted to exactly one principal, and neither principal may be a bootstrap administrator.
 - `bulgaria-arbodat-lookup-options` was resolved on 2026-09-22 by removing the definition: it declared the `access` driver with no data file, the legacy file enumeration of 2026-09-18 lists no Bulgarian dataset, and nothing referenced the source. Three records still name it and the authorization resource remains an inert orphan; a follow-up covers them together. The authenticated access check used temporary colon-qualified projects, so it verifies grant enforcement rather than access to the reviewed dataset.
-- **Container-to-host services need the gateway alias.** The container cannot reach the host's LAN address, so host services must be addressed as `host.docker.internal`. Host-side checks against the LAN address succeed and therefore give a false positive. See [container/DEPLOYMENT.md](../../../../container/DEPLOYMENT.md).
+- **Container-to-host services need the gateway alias.** The container cannot reach the host's LAN address, so host services must be addressed as `host.docker.internal`. Host-side checks against the LAN address succeed and therefore give a false positive. See [container/DEPLOYMENT.md](../../../../deployment/container/DEPLOYMENT.md).
 - The release image is built from merged `dev` at `dbff5ab95459652354c040b9d4fec6e2ead94f96`, so its recorded source revision matches the checkout where the focused and full backend suites passed. The earlier `d27b072c` image built from checkout `e38f4bc6` remains on the host as the rollback target and is no longer the running image.
 
 ## Open Decisions

@@ -1,8 +1,9 @@
 """Pydantic models for ingester API requests and responses."""
 
+from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class IngesterMetadataResponse(BaseModel):
@@ -25,6 +26,10 @@ class IngesterMetadataResponse(BaseModel):
     description: str = Field(..., description="Description of what the ingester does")
     version: str = Field(..., description="Version of the ingester")
     supported_formats: list[str] = Field(..., description="List of supported file formats")
+    deprecated: bool = Field(default=False, description="Whether the ingester is superseded and kept only for existing callers")
+    deprecation_message: str | None = Field(
+        default=None, description="Operator-facing explanation of the replacement for a deprecated ingester"
+    )
 
 
 class ValidateRequest(BaseModel):
@@ -40,6 +45,10 @@ class ValidateRequest(BaseModel):
     )
 
     source: str = Field(..., description="Path to source file or data to validate")
+    project_name: str | None = Field(
+        default=None,
+        description="Authorized saved project name for ingesters that act on one project, such as SEAD Change Request",
+    )
     config: dict[str, Any] = Field(default_factory=dict, description="Optional configuration parameters for validation")
     submission_context: dict[str, Any] | None = Field(
         default=None, description="Optional submission context for ingesters that need operator metadata"
@@ -98,6 +107,10 @@ class IngestRequest(BaseModel):
     )
 
     source: str = Field(..., description="Path to source file or data to ingest")
+    project_name: str | None = Field(
+        default=None,
+        description="Authorized saved project name for ingesters that act on one project, such as SEAD Change Request",
+    )
     config: dict[str, Any] = Field(default_factory=dict, description="Configuration parameters for ingestion")
     submission_name: str = Field(..., description="Name for this submission")
     data_types: str = Field(..., description="Type of data being ingested (e.g., 'dendro', 'ceramics')")
@@ -110,6 +123,42 @@ class IngestRequest(BaseModel):
     deploy_strategy: str | None = Field(
         default=None, description="Optional deploy artifact strategy for ingesters that support multiple outputs"
     )
+
+
+class ProjectSubmissionOptions(BaseModel):
+    """Named submission details accepted by the project-only ingester helper."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    submission_name: str = Field(..., min_length=1)
+    timestamp: datetime
+    datatype: str = Field(..., min_length=1)
+    identifier: str = Field(..., min_length=1)
+    description: str | None = None
+    issue_identifier: str | None = None
+    author: str | None = None
+    run_id: str | None = None
+
+
+class ProjectIngesterRequest(BaseModel):
+    """Strict input for validating or ingesting a saved project's normalized tables."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    project_name: str = Field(..., min_length=1)
+    translate: bool = False
+    drop_foreign_keys: bool = False
+    default_entity: str | None = None
+    submission_context: ProjectSubmissionOptions
+    deploy_strategy: str | None = None
+
+    @field_validator("project_name")
+    @classmethod
+    def project_name_must_not_be_blank(cls, value: str) -> str:
+        """Reject project names that contain only whitespace."""
+        if not value.strip():
+            raise ValueError("project_name must not be blank")
+        return value
 
 
 class IngestResponse(BaseModel):
@@ -133,6 +182,8 @@ class IngestResponse(BaseModel):
     submission_id: int | None = Field(None, description="Database submission ID if registered")
     output_path: str | None = Field(None, description="Path to output files")
     error_details: str | None = Field(None, description="Detailed error information when ingestion is incomplete or failed")
+    scope_name: str | None = Field(default=None, description="Effective SIMS scope used for this run")
+    run_id: str | None = Field(default=None, description="Effective run ID within the SIMS scope")
     deploy_artifact: dict[str, Any] | None = Field(
         default=None,
         description="In-memory deploy artifact containing SQL statements and package metadata",

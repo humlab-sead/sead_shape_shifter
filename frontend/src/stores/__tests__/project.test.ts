@@ -266,6 +266,8 @@ describe('useProjectStore', () => {
       const store = useProjectStore()
       const createData: ProjectCreateRequest = {
         name: 'new-project',
+        data_provider_code: 'test-provider',
+        provider_schema: 'schema-one',
         entities: {},
       }
       const mockProject = {
@@ -292,6 +294,8 @@ describe('useProjectStore', () => {
       const store = useProjectStore()
       const createData: ProjectCreateRequest = {
         name: 'new-project',
+        data_provider_code: 'test-provider',
+        provider_schema: 'schema-one',
         entities: {},
       }
 

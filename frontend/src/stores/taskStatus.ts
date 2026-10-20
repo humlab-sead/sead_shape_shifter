@@ -57,11 +57,11 @@ export const useTaskStatusStore = defineStore('taskStatus', () => {
    */
   async function markComplete(entityName: string): Promise<boolean> {
     const success = await taskComposable.markComplete(entityName)
-    
+
     // Sync state
     taskStatus.value = taskComposable.taskStatus.value
     error.value = taskComposable.error.value
-    
+
     return success
   }
 
@@ -70,11 +70,11 @@ export const useTaskStatusStore = defineStore('taskStatus', () => {
    */
   async function markIgnored(entityName: string): Promise<boolean> {
     const success = await taskComposable.markIgnored(entityName)
-    
+
     // Sync state
     taskStatus.value = taskComposable.taskStatus.value
     error.value = taskComposable.error.value
-    
+
     return success
   }
 
@@ -83,11 +83,11 @@ export const useTaskStatusStore = defineStore('taskStatus', () => {
    */
   async function markOngoing(entityName: string): Promise<boolean> {
     const success = await taskComposable.markOngoing(entityName)
-    
+
     // Sync state
     taskStatus.value = taskComposable.taskStatus.value
     error.value = taskComposable.error.value
-    
+
     return success
   }
 
@@ -96,11 +96,11 @@ export const useTaskStatusStore = defineStore('taskStatus', () => {
    */
   async function markTodo(entityName: string): Promise<boolean> {
     const success = await taskComposable.markTodo(entityName)
-    
+
     // Sync state
     taskStatus.value = taskComposable.taskStatus.value
     error.value = taskComposable.error.value
-    
+
     return success
   }
 
@@ -109,11 +109,11 @@ export const useTaskStatusStore = defineStore('taskStatus', () => {
    */
   async function resetStatus(entityName: string): Promise<boolean> {
     const success = await taskComposable.resetStatus(entityName)
-    
+
     // Sync state
     taskStatus.value = taskComposable.taskStatus.value
     error.value = taskComposable.error.value
-    
+
     return success
   }
 
@@ -122,11 +122,11 @@ export const useTaskStatusStore = defineStore('taskStatus', () => {
    */
   async function toggleFlagged(entityName: string): Promise<boolean> {
     const success = await taskComposable.toggleFlagged(entityName)
-    
+
     // Sync state
     taskStatus.value = taskComposable.taskStatus.value
     error.value = taskComposable.error.value
-    
+
     return success
   }
 
@@ -205,11 +205,9 @@ export const useTaskStatusStore = defineStore('taskStatus', () => {
 
   // Computed properties
   const completionStats = computed(() => taskStatus.value?.completion_stats)
-  
-  const completionPercentage = computed(() => 
-    taskStatus.value?.completion_stats.completion_percentage ?? 0
-  )
-  
+
+  const completionPercentage = computed(() => taskStatus.value?.completion_stats.completion_percentage ?? 0)
+
   const completionSummary = computed(() => {
     if (!taskStatus.value) return 'No data'
     const stats = taskStatus.value.completion_stats
@@ -261,6 +259,6 @@ export const useTaskStatusStore = defineStore('taskStatus', () => {
     isBlocked,
     hasErrors,
     getEntitiesByStatus,
-    $reset
+    $reset,
   }
 })

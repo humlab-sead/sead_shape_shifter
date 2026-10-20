@@ -98,6 +98,6 @@ Ready for integration testing ✅
 
 ## Documentation
 
-📖 **Full Guide**: [docs/FRONTEND_SESSION_MANAGEMENT.md](../docs/FRONTEND_SESSION_MANAGEMENT.md)  
-📖 **Backend Guide**: [docs/STATE_MANAGEMENT_IMPLEMENTATION.md](../docs/STATE_MANAGEMENT_IMPLEMENTATION.md)  
-🎯 **Demo Component**: [frontend/src/components/SessionManager.vue](../frontend/src/components/SessionManager.vue)
+📖 **Full Guide**: docs/FRONTEND_SESSION_MANAGEMENT.md  
+📖 **Backend Guide**: docs/STATE_MANAGEMENT_IMPLEMENTATION.md  
+🎯 **Demo Component**: [frontend/src/components/SessionManager.vue](../src/components/SessionManager.vue)
