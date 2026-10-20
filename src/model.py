@@ -891,17 +891,36 @@ class TableConfig:
 
         if self.unnest:
             targets: list[str] = []
-            avaliable_columns: list[str] = sorted(self.surviving_unnest_columns)
+            available_columns: set[str] = set(self.surviving_unnest_columns)
             for foreign_key in self.foreign_keys:
-                if not set(foreign_key.local_keys).issubset(avaliable_columns):
+                local_keys: set[str] = set(foreign_key.local_keys)
+                if not local_keys.issubset(available_columns):
                     continue
 
                 targets.append(foreign_key.remote_entity)
                 # Add FK remote extra columns to available columns for subsequent FKs in case of chaining
-                avaliable_columns.extend(foreign_key.resolved_extra_columns().values())
+                available_columns.update(foreign_key.resolved_extra_columns().values())
             return set(targets)
 
         return {foreign_key.remote_entity for foreign_key in self.foreign_keys if foreign_key.remote_entity}
+
+    def get_missing_unnest_foreign_key_local_keys(self, remote_entity: str) -> set[str]:
+        """Return local FK keys for a target that are unavailable after unnest."""
+        if not self.unnest:
+            return set()
+
+        missing_keys: set[str] = set()
+        available_columns: set[str] = set(self.surviving_unnest_columns)
+        for foreign_key in self.foreign_keys:
+            local_keys: set[str] = set(foreign_key.local_keys)
+            unavailable_keys: set[str] = local_keys - available_columns
+            if foreign_key.remote_entity == remote_entity:
+                missing_keys.update(unavailable_keys)
+
+            if not unavailable_keys:
+                available_columns.update(foreign_key.resolved_extra_columns().values())
+
+        return missing_keys
 
     def get_target_facing_columns(self) -> list[str]:
         """Return the columns this entity presents to a target model.

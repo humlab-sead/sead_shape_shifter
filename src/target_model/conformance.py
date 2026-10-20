@@ -205,10 +205,20 @@ class ForeignKeyConformanceValidator(EntityConformanceValidator):
                     if foreign_key.entity not in project_targets and not has_target_facing_foreign_key_path(
                         entity_name, foreign_key.entity, project
                     ):
+                        missing_local_keys: set[str] = table_cfg.get_missing_unnest_foreign_key_local_keys(foreign_key.entity)
+                        if missing_local_keys:
+                            local_keys_text: str = ", ".join(f"'{key}'" for key in sorted(missing_local_keys))
+                            message: str = (
+                                f"Entity '{entity_name}' is missing required foreign key target '{foreign_key.entity}' "
+                                f"because local key column(s) {local_keys_text} do not survive unnest. "
+                                "Preserve them in 'id_vars' or otherwise make them available after unnest."
+                            )
+                        else:
+                            message = f"Entity '{entity_name}' is missing required foreign key target '{foreign_key.entity}'"
                         issues.append(
                             ConformanceIssue(
                                 code="MISSING_REQUIRED_FOREIGN_KEY_TARGET",
-                                message=f"Entity '{entity_name}' is missing required foreign key target '{foreign_key.entity}'",
+                                message=message,
                                 entity=entity_name,
                             )
                         )
