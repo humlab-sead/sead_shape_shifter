@@ -1,0 +1,9 @@
+# ARBODAT pilot provider record.
+#
+# Reviewed registry data: see README.md in this directory. The scope names are
+# stable identity contracts and must not change after a project binds to them.
+code: arbodat-pilot
+name: Arbodat Pilot
+schemas:
+  - provider_schema: archeobotany/arbodat-pilot
+    scope_name: provider://archeobotany/arbodat-pilot

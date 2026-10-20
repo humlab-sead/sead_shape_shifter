@@ -1,0 +1,9 @@
+# Strucke pilot provider record.
+#
+# Reviewed registry data: see README.md in this directory. The scope names are
+# stable identity contracts and must not change after a project binds to them.
+code: strucke
+name: Ulf Strucke
+schemas:
+  - provider_schema: radiocarbon/strucke-pilot
+    scope_name: provider://radiocarbon/strucke-pilot
