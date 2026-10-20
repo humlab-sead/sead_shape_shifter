@@ -135,6 +135,28 @@ The authorization database records grant creation and revocation, deployment-rol
 
 Audit records must not contain credentials, SQL text, sensitive filesystem paths, or secret configuration. They are written through the authorization repository with the associated mutation. Operators can review them with `sead-authorization list-audit-events`, using `--json` for automation; do not query or alter the database directly.
 
+## Snapshots And Restores
+
+`sead-authorization export-state` writes the complete stored state to JSON or YAML, and `import-state` replaces the stored records with a snapshot. The file extension selects the format. A snapshot holds every record needed to recreate the database:
+
+| Section | Contents |
+|---------|----------|
+| `schema_version` | Database schema version the snapshot was written from |
+| `resources` | Every resource generation, including inactive ones |
+| `grants` | Every typed grant, with `created_at` and `created_by` |
+| `application_roles` | Every deployment role, not only `admin` |
+| `audit_events` | Audit history, only when `--include-audit` is given |
+
+Resource UUIDs are recorded, so grants keep pointing at the same resources after a restore. Records are sorted and timestamps are written as ISO strings, so a committed snapshot changes only when a stored record changes.
+
+Audit events are excluded by default because they change on every authorization operation and would dominate a version-control diff. A restore from a snapshot without them keeps the existing audit history; a snapshot with them replaces it.
+
+`export-manifest` remains the reviewed-policy format and is not interchangeable with a snapshot: it holds only administrators, active top-level resources, and their grants, and it uses locators instead of UUIDs. Use `export-state` for a backup or a version-controlled record of the deployed state, and `export-manifest` for the policy review that `migrate --manifest` applies.
+
+`import-state` validates the whole snapshot before writing: the schema version must not be newer than the application, resource IDs and active locators must be unique, every grant and parent reference must resolve, and the owner role stays restricted to a principal. The replacement runs in one transaction, so a rejected or failed restore leaves the previous records in place. The final-administrator and final-owner protections that guard individual changes do not apply, because the snapshot already describes the intended state; the restore records one `state_restored` audit event with the actor and record counts.
+
+A restore replaces records, so it is not a routine fix for a single wrong grant. Use `grant`, `revoke`, `grant-application-role`, and `revoke-application-role` for individual changes.
+
 ## Current Coverage
 
 Implemented controls cover project resources and project children, shared data-source access, project references to shared sources, and authenticated access to the global application and error logs. The policy is intentionally deny-by-default.

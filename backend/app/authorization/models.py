@@ -139,3 +139,19 @@ class AuthorizedResource:
     principal: Principal
     action: Action
     resource: ResourceRecord
+
+
+@dataclass(frozen=True, slots=True)
+class AuthorizationState:
+    """Complete stored authorization state used for snapshots and restores.
+
+    ``audit_events`` is ``None`` when a snapshot leaves the audit history alone.
+    An empty tuple means the snapshot holds the whole history, so a restore
+    replaces it.
+    """
+
+    schema_version: int
+    resources: tuple[ResourceRecord, ...]
+    grants: tuple[Grant, ...]
+    application_roles: tuple[ApplicationRoleAssignment, ...]
+    audit_events: tuple[AuditEvent, ...] | None = None
