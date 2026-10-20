@@ -6,7 +6,6 @@ from loguru import logger
 from pydantic import ValidationError as PydanticValidationError
 
 from backend.app.authorization.models import Action, AuthorizedResource, ResourceType
-from backend.app.authorization.service import AuthorizationService
 from backend.app.core.config import Settings, get_settings
 from backend.app.exceptions import ConfigurationError
 from backend.app.ingesters.protocol import IngesterConfig, IngestionResult, TableSourceIngester, ValidationResult
@@ -28,12 +27,10 @@ class ProjectIngesterService:
 
     def __init__(
         self,
-        authorization_service: AuthorizationService,
         project_service: ProjectService | None = None,
         project_data_provider_service: ProjectDataProviderService | None = None,
         settings: Settings | None = None,
     ) -> None:
-        self.authorization_service = authorization_service
         self.project_service = project_service or get_project_service()
         self.project_data_provider_service = project_data_provider_service or ProjectDataProviderService()
         self.settings = settings or get_settings()
@@ -151,8 +148,6 @@ class ProjectIngesterService:
             raise TypeError("Project ingester calls require a validated ProjectIngesterRequest")
         if request.project_name != locator:
             raise PermissionError("Requested project does not match the authorized project")
-        if not self.authorization_service.can_perform_application_action(authorized_project.principal, Action.RUN_INGESTERS):
-            raise PermissionError("Application permission to run ingesters is required")
 
         return locator
 
