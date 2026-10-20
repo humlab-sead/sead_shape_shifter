@@ -287,6 +287,7 @@
             <yaml-editor
               v-model="yamlContent"
               height="500px"
+              mode="reconciliation"
               :validate-on-change="true"
               @validate="handleYamlValidation"
               @change="handleYamlChange"
