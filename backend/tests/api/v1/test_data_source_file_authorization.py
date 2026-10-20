@@ -15,6 +15,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from backend.app.api.v1.endpoints import data_sources as data_source_endpoints
+from backend.app.api.v1.endpoints import projects as project_endpoints
 from backend.app.authorization.dependencies import get_authorization_service
 from backend.app.authorization.models import Grant, ResourceRecord, ResourceType
 from backend.app.authorization.repository import SQLiteAuthorizationRepository
@@ -66,6 +67,7 @@ def environment(tmp_path, monkeypatch, repository: SQLiteAuthorizationRepository
 
     project_service = ProjectService(projects_dir=projects_dir)
     monkeypatch.setattr(data_source_endpoints, "get_project_service", lambda: project_service)
+    monkeypatch.setattr(project_endpoints, "get_project_service", lambda: project_service)
 
     async def override_get_authorization_service():
         auth_repository = SQLiteAuthorizationRepository(repository.path)
@@ -141,6 +143,46 @@ async def test_operator_without_project_grant_gets_only_global_files(environment
 
     assert response.status_code == 200
     assert _file_names(response) == ["global.xlsx"]
+
+
+@pytest.mark.asyncio
+async def test_project_file_listing_includes_shared_files_for_authorized_operator(environment, repository) -> None:
+    """Project Files includes shared references only for a principal who can manage shared sources."""
+    project = repository.get_resource_by_locator(ResourceType.PROJECT, "alpha")
+    assert project is not None
+    repository.add_grant(Grant("operator-user", project.resource_id, "viewer", datetime.now(UTC), "bootstrap"))
+
+    async with _client_for_principal("operator-user") as client:
+        response = await client.get("/api/v1/projects/alpha/files")
+
+    assert response.status_code == 200
+    assert {(file["name"], file["location"]) for file in response.json()} == {
+        ("global.xlsx", "global"),
+        ("local.xlsx", "local"),
+    }
+
+
+@pytest.mark.asyncio
+async def test_share_project_file_requires_shared_source_permission(environment, repository) -> None:
+    """A project editor without shared-source permission cannot promote files."""
+    project = repository.get_resource_by_locator(ResourceType.PROJECT, "alpha")
+    assert project is not None
+    repository.add_grant(Grant("bob", project.resource_id, "editor", datetime.now(UTC), "bootstrap"))
+
+    async with _client_for_principal("bob") as client:
+        response = await client.post("/api/v1/projects/alpha/files/local.xlsx/share")
+
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_project_file_capabilities_hide_sharing_from_unprivileged_user(environment) -> None:
+    """The file capability endpoint does not advertise sharing to project readers without the app role."""
+    async with _client_for_principal("alice") as client:
+        response = await client.get("/api/v1/projects/alpha/files/capabilities")
+
+    assert response.status_code == 200
+    assert response.json() == {"can_share_with_all_projects": False}
 
 
 # GET /api/v1/data-sources/excel/metadata

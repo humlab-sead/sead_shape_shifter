@@ -103,7 +103,12 @@
                 {{ yamlError }}
               </v-alert>
 
-              <yaml-editor v-model="yamlContent" height="600px" @update:model-value="yamlModified = true" />
+              <yaml-editor
+                v-model="yamlContent"
+                mode="reconciliation"
+                height="600px"
+                @update:model-value="yamlModified = true"
+              />
             </div>
           </v-window-item>
 

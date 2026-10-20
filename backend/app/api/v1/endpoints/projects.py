@@ -4,7 +4,7 @@ from io import StringIO
 from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Body, Depends, File, Query, UploadFile, status
+from fastapi import APIRouter, Body, Depends, File, Form, Query, UploadFile, status
 from fastapi.responses import Response
 from loguru import logger
 from pydantic import BaseModel, Field
@@ -1124,6 +1124,7 @@ async def upload_project_file(
     name: str,  # pylint: disable=unused-argument
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
     file: UploadFile = File(...),
+    overwrite: bool = Form(default=False),
 ) -> ProjectFileInfo:
     """Upload data file (Excel, CSV) to project's directory.
 
@@ -1135,7 +1136,61 @@ async def upload_project_file(
         project_name=authorized_project.resource.locator,
         upload=file,
         allowed_extensions={".xlsx", ".xls", ".csv"},
+        overwrite=overwrite,
     )
+
+
+@router.delete(
+    "/projects/{name}/files/{filename}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete an unused project file",
+)
+@handle_endpoint_errors
+async def delete_project_file(
+    name: str,  # pylint: disable=unused-argument
+    filename: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
+) -> None:
+    """Delete a project file that no local entity references."""
+    project_service: ProjectService = get_project_service()
+    project_service.delete_project_file(authorized_project.resource.locator, filename)
+
+
+@router.post(
+    "/projects/{name}/files/{filename}/share",
+    response_model=ProjectFileInfo,
+    status_code=status.HTTP_201_CREATED,
+    summary="Share a project file with all projects",
+)
+@handle_endpoint_errors
+async def promote_project_file(
+    name: str,  # pylint: disable=unused-argument
+    filename: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
+    principal: Annotated[Principal, Depends(require_application_action(Action.MANAGE_SHARED_SOURCES))],
+    authorization_service: Annotated[AuthorizationService, Depends(get_authorization_service)],
+) -> ProjectFileInfo:
+    """Copy a project file to shared data and register its shared-file resource."""
+    project_service = get_project_service()
+    shared_file = project_service.promote_project_file(authorized_project.resource.locator, filename)
+    authorization_service.register_shared_data_source(principal, shared_file.name)
+    return shared_file
+
+
+@router.get(
+    "/projects/{name}/files/capabilities",
+    response_model=dict[str, bool],
+    summary="Get project file actions available to the current user",
+)
+@handle_endpoint_errors
+async def get_project_file_capabilities(
+    name: str,  # pylint: disable=unused-argument
+    _authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
+    principal: Annotated[Principal, Depends(get_principal())],
+    authorization_service: Annotated[AuthorizationService, Depends(get_authorization_service)],
+) -> dict[str, bool]:
+    """Return whether the current user can share project files globally."""
+    return {"can_share_with_all_projects": authorization_service.can_perform_application_action(principal, Action.MANAGE_SHARED_SOURCES)}
 
 
 @router.get(
@@ -1147,20 +1202,25 @@ async def upload_project_file(
 async def list_project_files(
     name: str,  # pylint: disable=unused-argument
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
+    principal: Annotated[Principal, Depends(get_principal())],
+    authorization_service: Annotated[AuthorizationService, Depends(get_authorization_service)],
     ext: list[str] | None = Query(default=None, description="Filter by extension(s), e.g. ext=yml&ext=yaml"),
 ) -> list[ProjectFileInfo]:
-    """List files in project directory.
+    """List project files and global files the principal may access.
 
     By default returns Excel and CSV data files.  Pass one or more ``ext``
     query parameters (without the leading dot) to filter by extension instead,
-    e.g. ``?ext=yml&ext=yaml`` for YAML files only.
+    e.g. ``?ext=yml&ext=yaml`` for YAML files only. Global files are included
+    only when the principal can manage shared sources.
     """
     project_service: ProjectService = get_project_service()
     if ext:
         extensions = [f".{e.lstrip('.')}" for e in ext]
     else:
         extensions = [".xlsx", ".xls", ".csv"]
-    return project_service.list_project_files(
+    return project_service.list_authorized_data_source_files(
+        principal=principal,
+        authorization_service=authorization_service,
         project_name=authorized_project.resource.locator,
         extensions=extensions,
     )
