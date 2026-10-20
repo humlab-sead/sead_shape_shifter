@@ -25,6 +25,8 @@ from backend.app.services.ingester_service import CHANGE_REQUEST_INGESTER_KEY, g
 from backend.app.services.project_ingester_service import ProjectIngesterService
 from ingesters.sead_change_request.contracts import CHANGE_REQUEST_FILE_INPUT_RETIRED_MESSAGE
 
+# pylint: disable=raise-missing-from
+
 router = APIRouter()
 ingester_operator_dependency = require_application_action(Action.RUN_INGESTERS)
 ingester_project_dependency = require_ingester_project(Action.EXECUTE)
