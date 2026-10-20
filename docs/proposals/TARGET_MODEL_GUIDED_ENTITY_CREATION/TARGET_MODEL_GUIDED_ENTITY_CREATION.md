@@ -4,111 +4,101 @@
 
 - Proposed feature
 - Scope: Entity creation in the project editor
-- Goal: Prefill a new project entity from an entity in the project's associated target model.
+- Goal: Start a project entity with its target name and public ID while showing the target requirements.
 
 ## Summary
 
-Add an optional target-model entity picker to the existing Add Entity flow. The picker lists target-model entities that are not yet in the project. Selecting one preloads a Shape Shifter entity draft with the target name, `public_id`, required columns, and required foreign-key targets. The user still chooses how to load and join the source data, reviews the draft, and saves it through the normal entity form.
+Add an optional target-model entity picker to the existing Add Entity form. It lists target-model entities absent from the project. Selecting one fills its exact name and declared `public_id`. The form shows required target columns and links as reference information. The user configures source columns and joins through the existing editors and saves through the normal action.
 
-Use the same project-scaffold generator for the editor and command-line output. The target model describes the destination schema; it does not provide source queries, files, business keys, or data values.
+Target requirements describe output, not source configuration. Selecting an entity must not put target columns or links into project `columns` or `foreign_keys` automatically.
 
 ## Problem
 
-When a project has an associated target model, users can validate project entities against it, but the Add Entity dialog starts blank. Users must copy target names, IDs, required columns, and links by hand. This makes it easy to omit a required field or use the wrong target ID name.
+The Add Entity form starts blank even when a project has an associated target model. Users must look up the target name, public ID, required columns, and links elsewhere. This makes omissions and wrong ID names easy. The target model cannot tell whether a required output column comes from the source, a transformation, or a foreign key.
 
 ## Scope
 
-- Offer missing target-model entities in the existing create form while keeping manual entity naming available.
-- Generate a project entity draft from the selected target-model specification.
-- Show target role and missing required target entities as context.
-- Keep the draft unsaved until the user uses the existing save action.
-- Share the scaffold-generation behavior between the UI and command-line tooling.
+- Offer missing target-model entities in the existing create form while preserving manual creation.
+- Fill the selected target name and declared `public_id`, and show target requirements beside the form.
+- Keep source mapping and project changes under the user's control.
 
 ## Non-Goals
 
-- Guess the source loader, SQL, filename, source columns, project `keys`, FK join columns, fixed values, or data-source settings.
-- Turn target `unique_sets` into project `keys`; they describe different rules.
-- Add the selected entity or its dependencies to the project without an explicit user save.
-- Edit the associated target model or create a new target-model entity.
+- Infer a source type, query, file, source column, business key, FK join, fixed value, or data-source setting.
+- Copy target `unique_sets` into project `keys`, or create dependencies automatically.
+- Change the command-line helper or full project-template generator.
+- Edit the associated target model.
 
 ## Current Behavior
 
-- The Entities page opens `EntityFormDialog` in create mode from **Add Entity**. The form starts with a blank name and defaults to `type: entity`.
-- Project metadata can associate a target model by reference or inline configuration. `ProjectMapper.to_core()` resolves configured directives, and target-model conformance uses the resolved model.
-- The existing target-model YAML endpoint serves project-local files only. It rejects inline models and shared model files, so the browser cannot use that endpoint to support every configured model.
-- `src/target_model/template_generator.py` already creates project scaffolds. For an entity, it emits `type: TODO`, `public_id`, required target columns, and required FK entity names. The current command-line script `scripts/print_target_model_entity.py` prints the target-model specification stanza, not this project entity scaffold.
+- **Add Entity** opens `EntityFormDialog` with a blank name and `type: entity`. Its Foreign Keys tab is unavailable until the entity has been created.
+- Project metadata may contain an inline target model or a reference. `ProjectMapper.to_core()` resolves references for target-model conformance.
+- The existing raw target-model YAML endpoint handles project-local files, but does not serve inline or shared models.
+- The full project-template generator emits required target column names into project `columns` and required FK targets as direct `foreign_keys`. Those fields are not always valid source mappings: target columns can be generated or produced by joins, and a target link can use a `via` bridge.
 
 ## Proposed Design
 
-### Select a target-model entity
+### Choose an entity
 
-When a project has a target model that resolves successfully, show a clearable **Start from target model** picker beside the editable entity name in create mode. Include every target-model entity whose name is not already present in the project. Sort required entities first and label each option with its role and required or optional status. Keep ordinary manual entry available.
+In create mode, show a clearable **Start from target model** picker when the project's associated model resolves. Offer every target-model entity whose name is absent from the project. Sort required entities first and label each option with its role and required or optional status.
 
-Selecting an option fills the entity name and applies its generated project scaffold to the create form. The name remains editable. If the user has already changed the form, ask before replacing those changes. After the entity is saved, refresh the candidate list so the new entity is no longer offered.
+Selecting an option fills the exact entity name and its `public_id`, if declared. While selected, keep the name fixed so the saved entity still matches the target model. If no `public_id` is declared, the user supplies one using the existing form. Clearing the picker removes the target context and makes the name editable; entered form values remain for manual editing. Confirm before selecting an option if that would replace an edited name or `public_id`. Refresh the options after save.
 
-If the project has no target model, or the associated model cannot be resolved, keep the existing manual create flow available. Show a clear picker error when a configured model cannot be loaded; do not block manual entry.
+If no model is configured, keep the manual form. If a configured model cannot be loaded or parsed, show a picker error and keep manual creation usable.
 
-### Prefill only target-model facts
+### Show requirements without inventing mappings
 
-Use the existing project-template rules to prefill:
+Show the selected entity's role, description, target table, required non-generated target columns, and required links near the form. Keep this information separate from saved entity data. A column marked `generated` is not a source-column requirement. Do not add any target column to project `columns`: the user chooses source columns or configures the transformation that produces each output.
 
-- `public_id`, when declared by the target model
-- Required target column names
-- Required FK target entity names
+For a direct required link, show its target entity. For a required link with `via`, show the bridge and final target as a path; do not suggest a direct FK from the selected entity to the final target. Mark any target or bridge in these paths that is absent from the project. The user adds those entities separately from the picker and configures joins in the existing Foreign Keys editor after creating the entity. The create form does not need a new FK editor.
 
-Show the target role, description, and table as reference information; they are not project entity fields. Leave optional target columns out of the initial `columns` list because the target model cannot establish that the source contains them. Do not copy target `unique_sets` into `keys`.
+The target model does not specify a Shape Shifter source type. For a selected entity, require the user to choose a type instead of retaining the form's default without review. For a classifier, allow `fixed` or `sql` and explain the choice. The normal save may leave target requirements unmet; existing structural and conformance validation reports those gaps as the user completes the project.
 
-The target model does not declare a Shape Shifter loader type. Do not save or display `type: TODO`, and do not silently keep the create form's `entity` default when it conflicts with the selected role. Require a valid source type choice for a target-model scaffold. For a classifier, guide the user to choose `fixed` or `sql`. Keep source settings, business keys, FK join columns, and data values for the user to supply.
+### Read the associated model on the server
 
-Required FK targets can be shown in the form before their project entities exist. List any required target entities that are still missing so the user can add them from the same picker. Do not create a dependency closure in the background.
+Add a project-scoped, read-authorized API operation that returns the missing options and their target facts. Resolve the model from project metadata through `ProjectMapper.to_core()`; do not accept a model path from the browser. Return target information separately from project entity fields so it cannot be saved by accident.
 
-### Resolve the model on the server
-
-Add a project-scoped, read-authorized API operation that returns the missing entity options and their project scaffolds. Resolve the model from the project's own metadata using the same resolver used by conformance validation; do not accept an arbitrary path from the browser. Return the target labels separately from the project entity YAML so the form can show context without persisting target-model-only fields.
-
-Move or expose the per-entity scaffold generation as a shared function used by this API, the full project-template generator, and the command-line helper. Make the command-line helper print the same Shape Shifter entity snippet used by the form. Keep target-model parsing and source-specific decisions out of the frontend.
-
-The create dialog submits the completed form through the existing entity-create API. The project remains unchanged until the user saves.
+The dialog submits only the completed entity form through the existing entity-create API. Selecting an option does not write to the project. This feature does not reuse or change the full project-template generator, whose broader scaffolds serve a different workflow.
 
 ## Alternatives Considered
 
-- **Keep template generation separate from the editor.** This avoids changing the entity form but leaves users to copy generated YAML into the project themselves.
-- **Parse the target-model file in the browser.** This duplicates target-model resolution and cannot consistently handle inline and shared model references through the current raw-YAML endpoint.
-- **Automatically add the selected entity and all required dependencies.** This hides multiple project changes behind one selection and may create incomplete entities with no source configuration.
+- **Copy the full project-template scaffold into the form.** This can mistake target output columns for source columns and turn a bridged link into a direct FK.
+- **Enable FK editing during creation.** The existing editor works after save. Showing requirements before save and configuring joins afterward keeps this change smaller.
+- **Parse target-model YAML in the browser.** This duplicates resolution and cannot use the current raw-YAML endpoint for inline or shared models.
+- **Create required dependencies automatically.** Those entities need their own source settings and an explicit save.
 
 ## Risks And Tradeoffs
 
-- A target model cannot provide project-specific source settings or FK join columns, so the scaffold is intentionally incomplete. The form must make those remaining choices clear.
-- Replacing the form draft after the user has started editing can lose work. Protect dirty drafts with a confirmation.
-- Shared and inline model references need the same project-scoped authorization and resolution rules as other project operations.
-- Required FK entity names do not identify source-side join columns. The UI must not imply that a target link is fully configured just because its target name is prefilled.
+- Users still choose how to produce each required output column and link. The form makes requirements visible but does not claim that the source contains them.
+- The project may fail validation between saving an entity and completing its source and FK configuration. Existing validation reports those gaps.
+- Replacing a selected target can discard edits to its name or `public_id`; confirm before doing so.
 
 ## Testing And Validation
 
-- Frontend tests should cover absent and configured target models, candidate filtering, required/optional labels, prefill behavior, dirty-form replacement, and unchanged manual creation.
-- Backend tests should cover project authorization, missing and invalid models, project-local, shared, and inline model resolution, and candidate exclusion for existing entities.
-- Verify that a selected scaffold is submitted only after the normal save action and contains the generated `public_id`, required columns, and required FK targets.
-- Run the existing structural and target-model conformance workflows on a saved example. Confirm that source-specific gaps remain visible until the user supplies those settings.
+- Verify missing-entity filtering, required and role labels, name locking, clearing the picker, replacement confirmation, and unchanged manual creation.
+- Check project authorization and local, shared, inline, absent, missing, and invalid model handling.
+- Use target models with a generated required column and a required `via` link. Confirm neither becomes a project source column or direct FK, while the required bridge path remains visible.
+- Confirm that only the normal save writes the entity, and that structural and conformance validation reports source or link gaps after an incomplete save.
 
 ## Acceptance Criteria
 
-- `P-AC-1`: With a resolvable associated target model, create mode lists all target-model entities absent from the project and labels required entities and roles.
-- `P-AC-2`: The picker is absent or unavailable without a resolvable associated target model, while manual entity creation remains usable.
-- `P-AC-3`: Selecting an entity fills its name, declared `public_id`, required target columns, and required FK target names from the shared project-scaffold generator.
-- `P-AC-4`: The form does not infer source queries, files, data-source settings, business keys, FK join columns, fixed values, or project `keys` from target-model metadata.
-- `P-AC-5`: A selected classifier cannot be saved with an incompatible `type: entity`; the form guides the user to choose `fixed` or `sql`.
-- `P-AC-6`: Selecting a target-model entity does not write to the project. Only the normal create save persists the draft.
+- `P-AC-1`: With a resolvable associated target model, create mode lists every target-model entity absent from the project and labels its role and required status.
+- `P-AC-2`: Without a resolvable associated target model, manual entity creation remains usable; a configured model that fails to load produces a clear picker error.
+- `P-AC-3`: Selecting a target entity fills its exact name and declared `public_id`. The name stays fixed until the picker is cleared, and changing the selection does not silently replace edited values.
+- `P-AC-4`: Selecting an option alone does not populate `columns`, `foreign_keys`, or `keys`. Saving preserves the fields the user configured explicitly.
+- `P-AC-5`: Saving a selected classifier requires `type: fixed` or `type: sql`; the form explains that choice.
+- `P-AC-6`: Selecting a target entity does not write to the project. Only the normal create save persists form data.
 - `P-AC-7`: Existing project entities are not offered, and a newly saved entity is removed from the candidate list.
-- `P-AC-8`: The UI and command-line helper use the same project-scaffold generator and print or submit the same entity fields.
+- `P-AC-8`: The form shows required non-generated target columns and required link paths, including `via` bridges, without turning generated columns or bridged links into direct project mappings.
 
 ## Planning Handoff
 
-- Preserve the manual Add Entity path and normal save behavior.
-- Resolve the target model from project metadata on the server; do not accept a client-supplied model path.
-- Reuse the scaffold rules already used by project-template generation. Leave source-specific mapping to the user.
-- Validate local, shared, and inline target models; confirm that missing target entities are filtered by project entity names and that saved drafts pass through existing structural and conformance validation.
-- No product decision remains open for planning: include all missing target-model entities, mark required ones, and add dependencies only through explicit user actions.
+- Preserve manual Add Entity and the existing save and validation flows.
+- Resolve only the project's associated target model on the server with project read authorization. Return target requirements separately from fields submitted on save.
+- Fill only the exact name and declared `public_id`. Keep the name fixed while selected; clearing selection restores manual name editing.
+- Treat required target columns and FK paths as reference information. Do not modify the full template generator, command-line helper, or create-mode FK editor.
+- Validate direct and bridged links, generated columns, incomplete saves, and all supported model reference forms. No product decision remains open for planning.
 
 ## Final Recommendation
 
-Add the target-model picker to the existing Add Entity create form and back it with a project-scoped API that returns missing entities and their shared-generator scaffolds. This removes repetitive target-schema entry while keeping source configuration and project changes under the user's control.
+Add the target-model picker and show its requirements in the existing create form. Prefill only the identity fields the target model can state without guessing how project data will produce them.
