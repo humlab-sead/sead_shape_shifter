@@ -691,7 +691,6 @@
   "689": ".test_extract_location_from_legacy_global_format",
   "690": ".test_extract_location_from_plain_filename",
   "691": ".test_extract_location_with_subdirectory",
-  "692": "Community 692",
   "693": ".test_roundtrip_local_via_resolve_and_decompose",
   "694": ".test_roundtrip_legacy_format",
   "695": ".test_resolve_empty_filename",
@@ -710,7 +709,6 @@
   "708": "Community 708",
   "709": "Community 709",
   "710": "Community 710",
-  "711": "Community 711",
   "712": "Community 712",
   "713": "Community 713",
   "714": "Community 714",
@@ -781,7 +779,6 @@
   "779": "Community 779",
   "780": "Community 780",
   "781": "Community 781",
-  "782": "Community 782",
   "783": "Community 783",
   "784": "Community 784",
   "785": "Community 785",
@@ -920,11 +917,5 @@
   "918": "Community 918",
   "919": "Community 919",
   "920": "Community 920",
-  "921": "Community 921",
-  "922": "Community 922",
-  "923": "Community 923",
-  "924": "Community 924",
-  "925": "Community 925",
-  "926": "Community 926",
-  "974": "Community 974"
+  "921": "Community 921"
 }
