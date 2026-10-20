@@ -309,6 +309,7 @@ class PendingConfirmationReport:
             blocked_entities.append(entity_name)
             blocked_rows += entity_blocked_rows
 
+        run_id_instruction = f" with run ID '{submission_context.run_id}'" if submission_context.run_id else ""
         return PendingConfirmationReport(
             submission_name=submission_context.submission_name,
             project_name=submission_context.project_name,
@@ -320,7 +321,7 @@ class PendingConfirmationReport:
             operator_action="Confirm the Binding Set in SIMS, then rerun the ingester with the same submission context",
             rerun_instruction=(
                 f"Rerun submission '{submission_context.submission_name}' for project '{submission_context.project_name}' "
-                "after the Binding Set is confirmed"
+                f"after the Binding Set is confirmed{run_id_instruction}"
             ),
         )
 

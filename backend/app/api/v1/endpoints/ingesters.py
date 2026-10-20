@@ -6,13 +6,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from loguru import logger
 
 from backend.app.authorization.dependencies import (
-    get_authorization_service,
     require_application_action,
     require_ingester_project,
     require_project,
 )
 from backend.app.authorization.models import Action, AuthorizedResource, Principal
-from backend.app.authorization.service import AuthorizationService
 from backend.app.models.ingester import (
     IngesterMetadataResponse,
     IngestRequest,
@@ -25,18 +23,17 @@ from backend.app.services.ingester_service import CHANGE_REQUEST_INGESTER_KEY, g
 from backend.app.services.project_ingester_service import ProjectIngesterService
 from ingesters.sead_change_request.contracts import CHANGE_REQUEST_FILE_INPUT_RETIRED_MESSAGE
 
+# pylint: disable=raise-missing-from
+
 router = APIRouter()
 ingester_operator_dependency = require_application_action(Action.RUN_INGESTERS)
 ingester_project_dependency = require_ingester_project(Action.EXECUTE)
-project_ingester_operator_dependency = require_application_action(Action.RUN_INGESTERS)
 project_ingester_project_dependency = require_project(Action.EXECUTE, body_locator=True)
 
 
-def get_project_ingester_service(
-    authorization_service: Annotated[AuthorizationService, Depends(get_authorization_service)],
-) -> ProjectIngesterService:
-    """Build the project-only ingester service with the request authorization service."""
-    return ProjectIngesterService(authorization_service)
+def get_project_ingester_service() -> ProjectIngesterService:
+    """Build the project-only ingester service for the dedicated routes."""
+    return ProjectIngesterService()
 
 
 @router.get("", response_model=list[IngesterMetadataResponse])
@@ -52,7 +49,6 @@ async def list_ingesters() -> list[IngesterMetadataResponse]:
 @router.post("/sead_change_request/from-project/validate", response_model=ValidateResponse)
 async def validate_project_ingester(
     request: ProjectIngesterRequest,
-    _: Annotated[Principal, Depends(project_ingester_operator_dependency)],
     authorized_project: Annotated[AuthorizedResource, Depends(project_ingester_project_dependency)],
     project_ingester_service: Annotated[ProjectIngesterService, Depends(get_project_ingester_service)],
 ) -> ValidateResponse:
@@ -75,7 +71,6 @@ async def validate_project_ingester(
 @router.post("/sead_change_request/from-project/ingest", response_model=IngestResponse)
 async def ingest_project_ingester(
     request: ProjectIngesterRequest,
-    _: Annotated[Principal, Depends(project_ingester_operator_dependency)],
     authorized_project: Annotated[AuthorizedResource, Depends(project_ingester_project_dependency)],
     project_ingester_service: Annotated[ProjectIngesterService, Depends(get_project_ingester_service)],
 ) -> IngestResponse:

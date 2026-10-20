@@ -62,7 +62,7 @@ black:
 
 .PHONY: pylint
 pylint:
-	@uv run pylint src tests backend ingesters
+	@uv run pylint -j 0 src tests backend ingesters
 
 .PHONY: pyright
 pyright:

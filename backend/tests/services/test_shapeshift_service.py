@@ -133,9 +133,9 @@ class TestShapeShiftCache:
         df = pd.DataFrame({"id": [1]})
         cache.set_dataframe(project_name="config1", entity_name="entity1", dataframe=df)
 
-        time.sleep(1.1)  # Wait for expiry
-
-        result = cache.get_dataframe("config1", "entity1")
+        # Move the clock past the TTL instead of sleeping in real time.
+        with patch("backend.app.utils.caches.time.time", return_value=time.time() + 2):
+            result = cache.get_dataframe("config1", "entity1")
         assert result is None
 
     def test_cache_invalidate_specific(self):

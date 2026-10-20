@@ -1,3 +1,4 @@
+import copy
 import os
 from typing import Any
 
@@ -30,22 +31,30 @@ def initialize_jvm():
     yield
 
 
-@pytest.fixture(scope="function", name="project")
-def _core_project(monkeypatch: pytest.MonkeyPatch) -> ShapeShiftProject:
-    """Load the backend integration test project configuration for each test.
+@pytest.fixture(scope="module", name="arbodat_project")
+def _arbodat_project() -> ShapeShiftProject:
+    """Load the backend integration test project configuration once per module.
 
     Applies data/test.env first and the local data/.env second, so a variable defined in
-    both files takes the value from data/.env. The values are applied through monkeypatch
-    so the process environment is restored after each test.
+    both files takes the value from data/.env. The environment is applied only for the
+    duration of the load through a temporary MonkeyPatch; directive values are resolved
+    into the returned project, so tests do not depend on the process environment.
     """
-    for env_file, override in (("data/test.env", False), ("data/.env", True)):
-        for name, value in dotenv_values(env_file).items():
-            if value is not None and (override or name not in os.environ):
-                monkeypatch.setenv(name, value)
+    with pytest.MonkeyPatch.context() as env_patch:
+        for env_file, override in (("data/test.env", False), ("data/.env", True)):
+            for name, value in dotenv_values(env_file).items():
+                if value is not None and (override or name not in os.environ):
+                    env_patch.setenv(name, value)
 
-    config_file: str = "tests/test_data/projects/arbodat/shapeshifter.yml"
+        config_file: str = "tests/test_data/projects/arbodat/shapeshifter.yml"
 
-    return ShapeShiftProject.from_file(config_file)
+        return ShapeShiftProject.from_file(config_file)
+
+
+@pytest.fixture(scope="function", name="project")
+def _project(arbodat_project: ShapeShiftProject) -> ShapeShiftProject:
+    """Provide each test with its own copy of the parsed project."""
+    return copy.deepcopy(arbodat_project)
 
 
 #############################################################################################################

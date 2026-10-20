@@ -165,8 +165,8 @@ warn_return_any = false
 # pytest
 # --------------------
 [tool.pytest.ini_options]
-# addopts = "-q -ra -n 2 --strict-markers"
-addopts = "-qq -rfEx --strict-markers"
+# Run tests in parallel with pytest-xdist; use "-p no:xdist" or "-n 0" to run serially.
+addopts = "-qq -rfEx --strict-markers --durations=10 -n auto"
 testpaths = ["tests", "backend/tests", "ingesters/sead/tests"]
 python_classes = "Test*"
 python_functions = "test_*"
@@ -175,6 +175,10 @@ markers = [
   "integration: marks tests that hit external services (e.g., Ollama, DB)",
   "debug: marks tests for debugging purposes (typically run manually)",
   "manual: marks tests requiring manual setup (e.g., real database)",
+]
+filterwarnings = [
+  # jaydebeapi uses the deprecated jpype._core.isThreadAttachedToJVM; nothing we can fix on our side.
+  "ignore:jpype._core.isThreadAttachedToJVM is deprecated:DeprecationWarning",
 ]
 # python_files = "test_*.py" "*_test.py"
 # Uncomment to see logs during test runs:

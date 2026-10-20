@@ -61,18 +61,6 @@ def valid_target_model() -> dict[str, Any]:
     }
 
 
-class FakeAuthorizationService:
-    """Return a configured application permission decision."""
-
-    def __init__(self, allowed: bool = True) -> None:
-        self.allowed = allowed
-        self.actions: list[Action] = []
-
-    def can_perform_application_action(self, principal: Principal, action: Action) -> bool:  # pylint: disable=unused-argument
-        self.actions.append(action)
-        return self.allowed
-
-
 class FakeProjectService:
     """Record saved-project loads."""
 
@@ -220,13 +208,11 @@ def install_common_mocks(
 def project_ingester_service(
     project_service: FakeProjectService,
     *,
-    authorization_service: FakeAuthorizationService | None = None,
     provider_service: FakeProjectDataProviderService | None = None,
     runtime_settings: Settings | None = None,
 ) -> ProjectIngesterService:
     """Construct the service with fake dependencies."""
     return ProjectIngesterService(
-        authorization_service or FakeAuthorizationService(),  # type: ignore
         project_service=project_service,  # type: ignore
         project_data_provider_service=provider_service or FakeProjectDataProviderService(),  # type: ignore
         settings=runtime_settings or settings(Path("/tmp/project-ingester-tests")),
@@ -234,6 +220,7 @@ def project_ingester_service(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("method_name", ["validate_project_tables", "ingest_project_tables"])
 @pytest.mark.parametrize(
     "authorized",
     [
@@ -244,55 +231,62 @@ def project_ingester_service(
         authorized_project(locator=" "),
     ],
 )
-async def test_invalid_project_resource_is_rejected_before_project_load(monkeypatch, authorized) -> None:
+async def test_invalid_project_resource_is_rejected_before_project_load(monkeypatch, method_name, authorized) -> None:
     """Invalid resource authorization must not load a project or invoke downstream work."""
     project_service, calls = install_common_mocks(monkeypatch)
     service = project_ingester_service(project_service)
+    method = getattr(service, method_name)
 
     with pytest.raises(PermissionError):
-        await service.validate_project_tables("sead_change_request", authorized, request())
+        await method("sead_change_request", authorized, request())
 
     assert project_service.loaded == []
     assert not calls
 
 
 @pytest.mark.asyncio
-async def test_mismatched_project_name_is_rejected_before_application_check(monkeypatch) -> None:
+@pytest.mark.parametrize("method_name", ["validate_project_tables", "ingest_project_tables"])
+async def test_mismatched_project_name_is_rejected_before_project_load(monkeypatch, method_name) -> None:
     """The request locator must exactly match the authorized project locator."""
-    project_service, _ = install_common_mocks(monkeypatch)
-    authorization_service = FakeAuthorizationService()
-    service = project_ingester_service(project_service, authorization_service=authorization_service)
+    project_service, calls = install_common_mocks(monkeypatch)
+    service = project_ingester_service(project_service)
+    method = getattr(service, method_name)
 
     with pytest.raises(PermissionError):
-        await service.validate_project_tables("sead_change_request", authorized_project(), request("Pilot"))
+        await method("sead_change_request", authorized_project(), request("Pilot"))
 
-    assert not authorization_service.actions
     assert not project_service.loaded
-
-
-@pytest.mark.asyncio
-async def test_application_permission_is_required_before_project_load(monkeypatch) -> None:
-    """The interim RUN_INGESTERS application action is mandatory."""
-    project_service, calls = install_common_mocks(monkeypatch)
-    authorization_service = FakeAuthorizationService(allowed=False)
-    service = project_ingester_service(project_service, authorization_service=authorization_service)
-
-    with pytest.raises(PermissionError, match="RUN_INGESTERS|permission"):
-        await service.ingest_project_tables("sead_change_request", authorized_project(), request())
-
-    assert authorization_service.actions == [Action.RUN_INGESTERS]
-    assert project_service.loaded == []
     assert not calls
 
 
 @pytest.mark.asyncio
-async def test_direct_call_rejects_unvalidated_request_object_before_loading(monkeypatch) -> None:
+@pytest.mark.parametrize("method_name", ["validate_project_tables", "ingest_project_tables"])
+async def test_authorized_project_executor_needs_no_application_role(monkeypatch, tmp_path, method_name) -> None:
+    """A valid project executor reaches both operations without an application role."""
+    project_service, calls = install_common_mocks(monkeypatch)
+    service = project_ingester_service(project_service, runtime_settings=settings(tmp_path))
+    method = getattr(service, method_name)
+
+    result = await method("sead_change_request", authorized_project(), request())
+
+    if method_name == "validate_project_tables":
+        assert result.is_valid is True
+    else:
+        assert result.success is True
+    assert project_service.loaded == ["pilot"]
+    assert calls[0][0] == "normalize"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("method_name", ["validate_project_tables", "ingest_project_tables"])
+async def test_direct_call_rejects_unvalidated_request_object_before_loading(monkeypatch, method_name) -> None:
     """Raw mappings cannot bypass strict request-model validation."""
     project_service, calls = install_common_mocks(monkeypatch)
     service = project_ingester_service(project_service)
+    method = getattr(service, method_name)
 
     with pytest.raises(TypeError, match="ProjectIngesterRequest"):
-        await service.validate_project_tables(
+        await method(
             "sead_change_request",
             authorized_project(),
             {"project_name": "pilot"},  # type: ignore
@@ -606,9 +600,13 @@ async def test_successful_ingest_writes_only_bundle_under_managed_root(monkeypat
     assert result.scope_name == "provider://pilot"
     assert result.run_id is not None
     assert result.deploy_artifact is not None
+    assert result.output_path is not None
     assert calls[0][0] == "normalize"
-    bundle_dirs = [path for path in output_root.iterdir() if path.is_dir()]
+    run_folders = [path for path in output_root.iterdir() if path.is_dir()]
+    assert len(run_folders) == 1
+    bundle_dirs = [path for path in run_folders[0].iterdir() if path.is_dir()]
     assert len(bundle_dirs) == 1
+    assert Path(result.output_path).resolve() == bundle_dirs[0].resolve()
     bundle_files = {path.relative_to(bundle_dirs[0]).as_posix() for path in bundle_dirs[0].rglob("*") if path.is_file()}
     assert any(path.startswith("deploy/") for path in bundle_files)
     assert any(path.startswith("revert/") for path in bundle_files)

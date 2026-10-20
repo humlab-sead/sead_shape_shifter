@@ -21,18 +21,6 @@ class FakeReconciliationClient:
         return self.target_id
 
 
-class FakeTargetIdAllocator:
-    """Return a target sequence value and record the target column requested."""
-
-    def __init__(self, target_id: int | None) -> None:
-        self.target_id = target_id
-        self.requests: list[tuple[str, str]] = []
-
-    async def reserve_target_id(self, table_name: str, public_id_column: str) -> int | None:
-        self.requests.append((table_name, public_id_column))
-        return self.target_id
-
-
 class FakeSimsClient:
     """Simple fake SIMS client for ingester tests."""
 
@@ -191,14 +179,12 @@ class TestOrchestrateIdentityAssignments:
             reconciliation="allocate",
         )
         planned_table = plan_table("submission", frame, entity_spec)
-        target_id_allocator = FakeTargetIdAllocator(702)
         sims_client = FakeSimsClient(target_id=703)
 
         result = await orchestrate_identity_assignments(
             [planned_table],
             minimal_submission_context(),
             sims_client=sims_client,  # type: ignore
-            target_id_allocator=target_id_allocator,
             target_model_entities={"submission": entity_spec},
         )
 
@@ -206,10 +192,9 @@ class TestOrchestrateIdentityAssignments:
         assert assignment.state == ChangeRowState.NEWLY_ALLOCATED_ENTITY
         assert assignment.target_id == 703
         assert sims_client.allocated_entities == ["submission"]
-        assert not target_id_allocator.requests
 
     @pytest.mark.asyncio
-    async def test_explicitly_non_tracked_database_sequence_does_not_call_sims(self):
+    async def test_unresolved_database_sequence_id_is_blocked_without_sims_allocation(self):
         frame = pd.DataFrame({"submission_id": [None], "submission_name": ["Submission A"]})
         entity_spec = EntitySpec(
             role="fact",
@@ -220,50 +205,22 @@ class TestOrchestrateIdentityAssignments:
             reconciliation="derive",
         )
         planned_table = plan_table("submission", frame, entity_spec)
-        target_id_allocator = FakeTargetIdAllocator(702)
         sims_client = FakeSimsClient()
 
         result = await orchestrate_identity_assignments(
             [planned_table],
             minimal_submission_context(),
             sims_client=sims_client,  # type: ignore
-            target_id_allocator=target_id_allocator,
             target_model_entities={"submission": entity_spec},
         )
 
         assignment = result.assignments["submission"][0]
-        assert assignment.state == ChangeRowState.NEWLY_ALLOCATED_ENTITY
-        assert assignment.target_id == 702
-        assert "database sequence" in (assignment.note or "")
-        assert target_id_allocator.requests == [("tbl_submissions", "submission_id")]
+        assert assignment.state == ChangeRowState.BLOCKED_UNRESOLVED
+        assert "pre-resolve it before Change Request validation or bundle generation" in (assignment.note or "")
         assert not sims_client.allocated_entities
 
     @pytest.mark.asyncio
-    async def test_database_sequence_reservation_blocks_when_target_sequence_is_missing(self):
-        frame = pd.DataFrame({"submission_id": [None]})
-        entity_spec = EntitySpec(
-            role="fact",
-            public_id="submission_id",
-            public_id_generation="database_sequence",
-            target_table="tbl_submissions",
-            identity_tracking="derived",
-            reconciliation="derive",
-        )
-        planned_table = plan_table("submission", frame, entity_spec)
-
-        result = await orchestrate_identity_assignments(
-            [planned_table],
-            minimal_submission_context(),
-            target_id_allocator=FakeTargetIdAllocator(None),
-            target_model_entities={"submission": entity_spec},
-        )
-
-        assignment = result.assignments["submission"][0]
-        assert assignment.state == ChangeRowState.BLOCKED_UNRESOLVED
-        assert "No database sequence is associated" in (assignment.note or "")
-
-    @pytest.mark.asyncio
-    async def test_database_sequence_reservation_blocks_when_allocator_is_not_configured(self):
+    async def test_unresolved_database_sequence_id_is_blocked_even_with_valid_target_metadata(self):
         frame = pd.DataFrame({"submission_id": [None]})
         entity_spec = EntitySpec(
             role="fact",
@@ -283,7 +240,7 @@ class TestOrchestrateIdentityAssignments:
 
         assignment = result.assignments["submission"][0]
         assert assignment.state == ChangeRowState.BLOCKED_UNRESOLVED
-        assert "reservation is not configured" in (assignment.note or "")
+        assert "pre-resolve it before Change Request validation or bundle generation" in (assignment.note or "")
 
     @pytest.mark.asyncio
     async def test_proposed_binding_set_blocks_sims_rows(self):

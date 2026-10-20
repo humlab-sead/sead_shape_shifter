@@ -4,17 +4,19 @@ This module resolves external inputs, runs the shared preparation flow, and
 turns the result into validation or ingestion output.
 """
 
+import shutil
 from collections.abc import Mapping
 from dataclasses import asdict, replace
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 import pandas as pd
 from loguru import logger
 
 from backend.app.ingesters.protocol import IngesterConfig, IngesterMetadata, IngestionResult, ValidationResult
 from backend.app.ingesters.registry import get_ingester_registry
-from ingesters.sead_change_request.artifact_writer import write_artifact_bundle
+from ingesters.sead_change_request.artifact_writer import RunFolderCollisionError, reserve_run_folder, write_artifact_bundle
 from ingesters.sead_change_request.collision_checks import CollisionCheckResult, check_projected_collisions
 from ingesters.sead_change_request.contracts import (
     CHANGE_REQUEST_FILE_INPUT_RETIRED_MESSAGE,
@@ -73,10 +75,19 @@ class SeadChangeRequestIngester:
 
     async def _prepare_change_request(self, bundle: SourceTableBundle) -> PreparationResult:
         """Run the shared preparation workflow for an in-memory source bundle."""
+        inputs: ResolvedInputs = await self._resolve_inputs(bundle)
+        return await self._prepare_resolved_inputs(inputs)
+
+    async def _resolve_inputs(self, bundle: SourceTableBundle) -> ResolvedInputs:
+        """Resolve and verify inputs without SIMS identity work or output writes."""
         inputs: ResolvedInputs = resolve_inputs(self.config, bundle)
         inputs = self._add_submission_tables(inputs)
         self._validate_business_keys(inputs)
         await self._verify_provider_row(inputs)
+        return inputs
+
+    async def _prepare_resolved_inputs(self, inputs: ResolvedInputs) -> PreparationResult:
+        """Plan and prepare already-resolved inputs through the shared workflow."""
         planned = plan_bundle(
             inputs.bundle,
             inputs.target_model.entities,
@@ -90,7 +101,6 @@ class SeadChangeRequestIngester:
             planned,
             sims_client=self._get_client("sims_client"),
             reconciliation_client=self._get_client("reconciliation_client"),
-            target_id_allocator=self._get_client("target_id_allocator") or self._get_client("collision_checker"),
         )
 
     def _add_submission_tables(self, inputs: ResolvedInputs) -> ResolvedInputs:
@@ -265,7 +275,7 @@ class SeadChangeRequestIngester:
     async def _ingest_bundle(self, bundle: SourceTableBundle, validate_first: bool = True) -> IngestionResult:
         """Ingest an in-memory source bundle through the shared preparation flow."""
         try:
-            preparation: PreparationResult = await self._prepare_change_request(bundle)
+            inputs: ResolvedInputs = await self._resolve_inputs(bundle)
         except InputResolutionError as exc:
             if validate_first:
                 validation_failure = build_validation_input_failure(exc)
@@ -274,6 +284,34 @@ class SeadChangeRequestIngester:
                     details=failure_details(validation_failure.errors),
                 )
             return build_ingestion_input_failure(exc)
+
+        run_id: str = inputs.submission_context.run_id or str(uuid4())
+        try:
+            run_folder: Path = reserve_run_folder(self.config.output_folder, run_id)
+        except RunFolderCollisionError as exc:
+            return IngestionResult.create_failed_result(
+                message="Output folder collision",
+                details=str(exc),
+                scope_name=inputs.submission_context.scope_name,
+                run_id=run_id,
+            )
+
+        result: IngestionResult | None = None
+        try:
+            result = await self._ingest_resolved(inputs, run_folder, validate_first=validate_first)
+            return result
+        finally:
+            if result is None or not result.success:
+                shutil.rmtree(run_folder, ignore_errors=True)
+
+    async def _ingest_resolved(
+        self,
+        inputs: ResolvedInputs,
+        run_folder: Path,
+        validate_first: bool,
+    ) -> IngestionResult:
+        """Run preparation through bundle emission inside the reserved run folder."""
+        preparation: PreparationResult = await self._prepare_resolved_inputs(inputs)
 
         if validate_first:
             self._log_validation(preparation)
@@ -339,7 +377,7 @@ class SeadChangeRequestIngester:
 
         deploy_artifact_payload: dict[str, Any] = asdict(deploy_artifact)
         artifact_directory: Path = write_artifact_bundle(
-            self.config.output_folder,
+            run_folder,
             deploy_artifact_payload,
             preparation.inputs.submission_context,
         )
@@ -354,4 +392,5 @@ class SeadChangeRequestIngester:
             deploy_artifact=deploy_artifact_payload,
             scope_name=preparation.inputs.submission_context.scope_name,
             run_id=preparation.inputs.submission_context.run_id,
+            output_path=str(artifact_directory),
         )
