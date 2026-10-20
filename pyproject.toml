@@ -165,8 +165,8 @@ warn_return_any = false
 # pytest
 # --------------------
 [tool.pytest.ini_options]
-# addopts = "-q -ra -n 2 --strict-markers"
-addopts = "-qq -rfEx --strict-markers --durations=10"
+# Run tests in parallel with pytest-xdist; use "-p no:xdist" or "-n 0" to run serially.
+addopts = "-qq -rfEx --strict-markers --durations=10 -n auto"
 testpaths = ["tests", "backend/tests", "ingesters/sead/tests"]
 python_classes = "Test*"
 python_functions = "test_*"
