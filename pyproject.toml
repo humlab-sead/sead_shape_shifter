@@ -98,6 +98,12 @@ indent-style = "space"
 docstring-code-format = true
 
 
+[tool.pylint]
+max-line-length = 140
+jobs = 0
+# Pylint matches ignore entries against directory and file base names, not paths.
+ignore = [".venv", "frontend", "node_modules", "docs", "graphify-out"]
+
 [tool.pylint."MESSAGES CONTROL"]
 disable = [
     "C0114",  # missing-module-docstring
@@ -129,10 +135,6 @@ disable = [
 line-length = 140
 target-version = ['py313']
 
-
-[tool.pylint]
-max-line-length = 140
-max-args = 10
 
 # Import sorting (handled by Ruff)
 [tool.isort]
