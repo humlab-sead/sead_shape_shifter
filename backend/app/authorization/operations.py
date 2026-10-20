@@ -19,6 +19,8 @@ from backend.app.authorization.models import (
     GrantSubjectType,
     ResourceRecord,
     ResourceType,
+    StateChange,
+    StateImportPlan,
 )
 from backend.app.authorization.repository import CURRENT_SCHEMA_VERSION, SQLiteAuthorizationRepository
 
@@ -205,22 +207,180 @@ def inspect_state(path: Path) -> dict[str, Any]:
     return counts
 
 
-def import_state(snapshot: Path, database: Path, actor_principal_id: str) -> dict[str, int]:
+def plan_state_import(snapshot: Path, database: Path) -> StateImportPlan:
+    """Compare a validated snapshot with stored records without writing.
+
+    Only access-relevant changes are reported. For a grant that means the subject,
+    resource, and role, so a changed ``created_by`` or ``created_at`` on an
+    otherwise identical grant is not listed.
+    """
+    state = _load_state(snapshot)
+    current = _read_state(database)
+    return StateImportPlan(
+        counts=_state_counts(state),
+        changes=_state_changes(state, current),
+        administrators=_remaining_administrators(state),
+        unowned_projects=_unowned_projects(state),
+        audit_events_replaced=state.audit_events is not None,
+    )
+
+
+def import_state(
+    snapshot: Path,
+    database: Path,
+    actor_principal_id: str,
+    *,
+    allow_no_admin: bool = False,
+    allow_unowned_project: bool = False,
+) -> dict[str, int]:
     """Replace stored authorization records with a validated snapshot.
 
     The snapshot is validated before anything is written, and the replacement
     runs in one transaction, so a rejected or failed restore leaves the previous
     records in place.
+
+    ``allow_no_admin`` and ``allow_unowned_project`` accept a snapshot that would
+    leave the deployment without an administrator, or an active project without
+    an owner. Without them the import raises ``ValueError`` for either condition,
+    because a restore is otherwise the easiest way to lock every user out.
     """
     if not actor_principal_id.strip():
         raise ValueError("An actor principal ID is required")
     state = _load_state(snapshot)
+    _refuse_destructive_state(
+        state,
+        allow_no_admin=allow_no_admin,
+        allow_unowned_project=allow_unowned_project,
+    )
     repository = SQLiteAuthorizationRepository(database)
     try:
         repository.replace_state(state, actor_principal_id.strip())
     finally:
         repository.close()
     return _state_counts(state)
+
+
+def _refuse_destructive_state(
+    state: AuthorizationState,
+    *,
+    allow_no_admin: bool,
+    allow_unowned_project: bool,
+) -> None:
+    """Raise when a snapshot would remove the last administrator or a project owner."""
+    problems: list[str] = []
+    administrators = _remaining_administrators(state)
+    if not allow_no_admin and not administrators:
+        problems.append("the snapshot leaves the deployment without an administrator; pass --allow-no-admin to accept that")
+    unowned = _unowned_projects(state)
+    if not allow_unowned_project and unowned:
+        listed = ", ".join(unowned)
+        problems.append(
+            f"the snapshot leaves {len(unowned)} active project(s) without an owner ({listed}); pass --allow-unowned-project to accept that"
+        )
+    if problems:
+        raise ValueError("; ".join(problems))
+
+
+def _remaining_administrators(state: AuthorizationState) -> tuple[str, ...]:
+    """Return the principals that would hold the admin role after a restore."""
+    return tuple(sorted({assignment.principal_id for assignment in state.application_roles if assignment.role == ApplicationRole.ADMIN}))
+
+
+def _unowned_projects(state: AuthorizationState) -> tuple[str, ...]:
+    """Return the active projects that would have no owner grant after a restore.
+
+    Ownership is checked per project resource, not per child resource, because a
+    project grant applies to its children.
+    """
+    owned = {grant.resource_id for grant in state.grants if grant.role == "owner"}
+    return tuple(
+        sorted(
+            f"{resource.resource_type.value}:{resource.locator}"
+            for resource in state.resources
+            if resource.resource_type == ResourceType.PROJECT and resource.lifecycle_state == "active" and resource.resource_id not in owned
+        )
+    )
+
+
+def _read_state(database: Path) -> AuthorizationState:
+    """Read the stored state for comparison, without audit events.
+
+    A missing database is reported as empty state rather than created, so
+    ``plan_state_import`` and ``--dry-run`` leave no file behind.
+    """
+    if not database.is_file():
+        return AuthorizationState(schema_version=CURRENT_SCHEMA_VERSION, resources=(), grants=(), application_roles=())
+    repository = SQLiteAuthorizationRepository(database)
+    try:
+        return AuthorizationState(
+            schema_version=repository.schema_version(),
+            resources=tuple(repository.list_resources()),
+            grants=tuple(repository.list_all_grants()),
+            application_roles=tuple(repository.list_all_application_roles()),
+        )
+    finally:
+        repository.close()
+
+
+def _state_changes(snapshot: AuthorizationState, current: AuthorizationState) -> tuple[StateChange, ...]:
+    """Describe how a snapshot differs from the stored records."""
+    labels: dict[UUID, str] = {resource.resource_id: _resource_label(resource) for resource in current.resources}
+    labels.update({resource.resource_id: _resource_label(resource) for resource in snapshot.resources})
+    changes: list[StateChange] = []
+
+    current_resources = {resource.resource_id: resource for resource in current.resources}
+    snapshot_resources = {resource.resource_id: resource for resource in snapshot.resources}
+    for resource_id in sorted(snapshot_resources, key=str):
+        incoming = snapshot_resources[resource_id]
+        existing = current_resources.get(resource_id)
+        if existing is None:
+            changes.append(StateChange("add", "resource", f"{_resource_label(incoming)} [{resource_id}]"))
+        elif existing.locator != incoming.locator:
+            changes.append(StateChange("change", "resource", f"{_resource_label(existing)} -> {_resource_label(incoming)} [{resource_id}]"))
+        elif existing.lifecycle_state != incoming.lifecycle_state:
+            changes.append(
+                StateChange(
+                    "change",
+                    "resource",
+                    f"{_resource_label(incoming)} [{resource_id}] lifecycle {existing.lifecycle_state} -> {incoming.lifecycle_state}",
+                )
+            )
+    for resource_id in sorted(current_resources, key=str):
+        if resource_id not in snapshot_resources:
+            changes.append(StateChange("remove", "resource", f"{_resource_label(current_resources[resource_id])} [{resource_id}]"))
+
+    current_grants = {_grant_key(grant): grant for grant in current.grants}
+    snapshot_grants = {_grant_key(grant): grant for grant in snapshot.grants}
+    for key in sorted(snapshot_grants):
+        if key not in current_grants:
+            changes.append(StateChange("add", "grant", _grant_detail(snapshot_grants[key], labels)))
+    for key in sorted(current_grants):
+        if key not in snapshot_grants:
+            changes.append(StateChange("remove", "grant", _grant_detail(current_grants[key], labels)))
+
+    current_roles = {(assignment.principal_id, assignment.role.value) for assignment in current.application_roles}
+    snapshot_roles = {(assignment.principal_id, assignment.role.value) for assignment in snapshot.application_roles}
+    for principal_id, role in sorted(snapshot_roles - current_roles):
+        changes.append(StateChange("add", "application_role", f"{principal_id} {role}"))
+    for principal_id, role in sorted(current_roles - snapshot_roles):
+        changes.append(StateChange("remove", "application_role", f"{principal_id} {role}"))
+
+    order = {"application_role": 0, "resource": 1, "grant": 2}
+    action_order = {"remove": 0, "change": 1, "add": 2}
+    return tuple(sorted(changes, key=lambda change: (order.get(change.record_type, 9), action_order.get(change.action, 9), change.detail)))
+
+
+def _resource_label(resource: ResourceRecord) -> str:
+    return f"{resource.resource_type.value}:{resource.locator}"
+
+
+def _grant_key(grant: Grant) -> tuple[str, str, str, str]:
+    return grant.subject_type.value, grant.subject_id, str(grant.resource_id), grant.role
+
+
+def _grant_detail(grant: Grant, labels: dict[UUID, str]) -> str:
+    target = labels.get(grant.resource_id, str(grant.resource_id))
+    return f"{grant.subject_type.value}:{grant.subject_id} {grant.role} on {target}"
 
 
 def _state_counts(state: AuthorizationState) -> dict[str, int]:

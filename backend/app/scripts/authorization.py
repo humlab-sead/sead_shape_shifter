@@ -15,6 +15,7 @@ from backend.app.authorization.models import (
     GrantSubjectType,
     ResourceRecord,
     ResourceType,
+    StateImportPlan,
 )
 from backend.app.authorization.operations import (
     apply_manifest,
@@ -24,8 +25,8 @@ from backend.app.authorization.operations import (
     import_state,
     initialize_database,
     inspect_manifest,
-    inspect_state,
     integrity_check,
+    plan_state_import,
     reconcile_manifest,
     restore_database,
 )
@@ -211,7 +212,9 @@ def export_state_command(snapshot: Path, database: Path | None, include_audit: b
     help="Authorization database. A missing database is created, so a snapshot can seed a new deployment.",
 )
 @click.option("--actor", required=True, help="Principal recorded on the restore audit event.")
-@click.option("--dry-run", is_flag=True, help="Validate the snapshot and report counts without writing.")
+@click.option("--dry-run", is_flag=True, help="Validate the snapshot and list each record it would add, remove, or change.")
+@click.option("--allow-no-admin", is_flag=True, help="Accept a snapshot that leaves the deployment without an administrator.")
+@click.option("--allow-unowned-project", is_flag=True, help="Accept a snapshot that leaves an active project without an owner.")
 @click.option("--yes", is_flag=True, help="Confirm the destructive operation.")
 @click.option("--non-interactive", is_flag=True, help="Skip confirmation for controlled automation.")
 def import_state_command(
@@ -219,6 +222,8 @@ def import_state_command(
     database: Path | None,
     actor: str,
     dry_run: bool,
+    allow_no_admin: bool,
+    allow_unowned_project: bool,
     yes: bool,
     non_interactive: bool,
 ) -> None:
@@ -227,25 +232,82 @@ def import_state_command(
     Every stored resource, grant, and deployment role is replaced, so this is the
     inverse of export-state. A snapshot without audit events leaves the audit
     history in place.
+
+    The import is refused when the snapshot would leave no administrator, or an
+    active project without an owner. Pass --allow-no-admin or
+    --allow-unowned-project to accept that on purpose.
     """
+    database_path = database or settings.AUTHORIZATION_DATABASE_PATH
     try:
-        counts = inspect_state(snapshot)
+        plan = plan_state_import(snapshot, database_path)
     except ValueError as error:
         raise click.ClickException(str(error)) from error
-    summary = (
-        f"{counts['resources']} resources, {counts['grants']} grants, "
-        f"{counts['application_roles']} application roles, "
-        f"audit events {'replaced' if counts['audit_events_replaced'] else 'retained'}"
-    )
+
     if dry_run:
-        click.echo(f"Dry run: would import {summary}")
+        _print_plan(plan, snapshot)
+        _raise_for_destructive_plan(plan, allow_no_admin=allow_no_admin, allow_unowned_project=allow_unowned_project)
+        click.echo("Dry run: nothing written")
         return
+
+    summary = (
+        f"{plan.counts['resources']} resources, {plan.counts['grants']} grants, "
+        f"{plan.counts['application_roles']} application roles, "
+        f"audit events {'replaced' if plan.audit_events_replaced else 'retained'}, "
+        f"{len(plan.changes)} record change(s)"
+    )
     _confirm_destructive(f"Replace all authorization records with {snapshot} ({summary})?", yes, non_interactive)
-    result = import_state(snapshot, database or settings.AUTHORIZATION_DATABASE_PATH, actor)
+    try:
+        result = import_state(
+            snapshot,
+            database_path,
+            actor,
+            allow_no_admin=allow_no_admin,
+            allow_unowned_project=allow_unowned_project,
+        )
+    except ValueError as error:
+        raise click.ClickException(str(error)) from error
     click.echo(
         f"Imported: {result['resources']} resources, {result['grants']} grants, "
         f"{result['application_roles']} application roles, {result['audit_events']} audit events"
     )
+
+
+def _print_plan(plan: StateImportPlan, snapshot: Path) -> None:
+    """Print each record change and the conditions the snapshot would leave."""
+    if not plan.changes:
+        click.echo(f"Dry run: {snapshot} matches the stored records; no record would change")
+    else:
+        click.echo(f"Dry run: {len(plan.changes)} record change(s) in {snapshot}:")
+        for change in plan.changes:
+            marker = {"add": "+", "remove": "-", "change": "~"}.get(change.action, "?")
+            click.echo(f"  {marker} {change.record_type:<17}{change.detail}")
+    click.echo(
+        f"Result: {plan.counts['resources']} resources, {plan.counts['grants']} grants, "
+        f"{plan.counts['application_roles']} application roles"
+    )
+    if plan.administrators:
+        click.echo(f"Administrators after import: {', '.join(plan.administrators)}")
+    if plan.unowned_projects:
+        click.echo(f"Active projects without an owner after import ({len(plan.unowned_projects)}): {', '.join(plan.unowned_projects)}")
+
+
+def _raise_for_destructive_plan(
+    plan: StateImportPlan,
+    *,
+    allow_no_admin: bool,
+    allow_unowned_project: bool,
+) -> None:
+    """Refuse a plan that would lock the deployment out, unless explicitly allowed."""
+    problems: list[str] = []
+    if not allow_no_admin and not plan.administrators:
+        problems.append("the snapshot leaves the deployment without an administrator; pass --allow-no-admin to accept that")
+    if not allow_unowned_project and plan.unowned_projects:
+        problems.append(
+            f"the snapshot leaves {len(plan.unowned_projects)} active project(s) without an owner; "
+            "pass --allow-unowned-project to accept that"
+        )
+    if problems:
+        raise click.ClickException("; ".join(problems))
 
 
 @cli.command("grant")
