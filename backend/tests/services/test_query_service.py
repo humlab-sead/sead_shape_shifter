@@ -574,9 +574,7 @@ class TestQueryService:
 
                 first_task = asyncio.create_task(service.execute_query(ds_cfg=mock_ds_config, query="SELECT * FROM users", timeout=0.05))
                 await asyncio.wait_for(started.wait(), timeout=1)
-                second_task = asyncio.create_task(
-                    service.execute_query(ds_cfg=mock_ds_config, query="SELECT * FROM users", timeout=0.05)
-                )
+                second_task = asyncio.create_task(service.execute_query(ds_cfg=mock_ds_config, query="SELECT * FROM users", timeout=0.05))
 
                 with pytest.raises(QueryExecutionError):
                     await first_task
