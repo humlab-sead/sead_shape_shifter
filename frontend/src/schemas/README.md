@@ -7,6 +7,7 @@ These JSON Schema files provide **autocomplete and IntelliSense** for the Monaco
 - **entitySchema.json** - Schema for entity definitions
 - **projectSchema.json** - Schema for project configuration
 - **targetModelSchema.json** - Schema for target model specifications
+- **reconciliationSchema.json** - Schema for reconciliation specifications and catalogs
 
 ## Usage
 
@@ -16,7 +17,7 @@ These schemas are consumed by `useMonacoYamlIntelligence.ts` composable to confi
 
 ## Auto-Generation
 
-These files are **automatically generated** from the Pydantic models to ensure they stay in sync with the backend API:
+All schemas are **automatically generated** from Pydantic models to keep them in sync with the application models:
 
 ```bash
 # Regenerate schemas from Pydantic models
@@ -26,13 +27,16 @@ make generate-schemas
 make check-schemas
 ```
 
-**Never edit these files manually** - they will be overwritten. Instead, update the source Pydantic models:
+Do not edit the generated schemas manually; update their source Pydantic models instead:
 - `backend/app/models/entity.py`
 - `backend/app/models/project.py`
+- `backend/app/models/reconciliation.py`
 - `src/target_model/models.py`
+
+`reconciliationSchema.json` combines `EntityResolutionSet` and `EntityResolutionCatalog` into a `oneOf`, so the editor can assist with both a single specification and a full catalog.
 
 ## Source of Truth
 
-The **single source of truth** for entity and project structure is the backend Pydantic models. These JSON schemas are derived representations optimized for Monaco editor autocomplete.
+The backend Pydantic models are the source of truth for entity, project, target model, and reconciliation data. These JSON schemas provide Monaco editor autocomplete.
 
 See docs/JSON_SCHEMA_GENERATION.md for detailed information.

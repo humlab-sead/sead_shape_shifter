@@ -1171,6 +1171,10 @@ If the project shows **Load-Time Normalizations Detected**, Shape Shifter has al
 
 Use the **Files** tab.
 
+Upload Excel or CSV files there. If a file with the same name already exists, confirm **Replace** to update it without changing entity settings. Cancel the prompt to keep the existing file and upload the new file under a suffixed name.
+
+Use the delete button beside a file to remove it when it is no longer needed. Shape Shifter will prevent deletion while a local entity references that file; update the entity configuration first.
+
 ---
 
 ## Where do shared database connections come from?
