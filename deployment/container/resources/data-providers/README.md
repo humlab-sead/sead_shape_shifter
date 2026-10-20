@@ -15,11 +15,11 @@ These files are reviewed data, not runtime data:
 Use one `*.yml` file per provider, named after the provider code.
 
 ```yaml
-code: mal # required, stable provider code
-name: MAL # required, human-readable display name
-schemas: # required, one or more entries
-  - provider_schema: archeobotany/arbodat-pilot # required, stable schema code
-    scope_name: provider://mal/archeobotany/arbodat-pilot # required, derived scope
+code: mal
+name: MAL
+schemas:
+  - provider_schema: archeobotany/mal
+    scope_name: provider://archeobotany/mal
 ```
 
 | Field | Required | Rule |
