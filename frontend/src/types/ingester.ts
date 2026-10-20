@@ -8,6 +8,8 @@ export interface IngesterMetadata {
   description: string
   version: string
   supported_formats: string[]
+  deprecated?: boolean
+  deprecation_message?: string | null
 }
 
 export interface SubmissionContextInput {
@@ -42,6 +44,7 @@ export interface DeployArtifact {
 
 export interface ValidateRequest {
   source: string
+  project_name?: string
   config?: Record<string, any>
   submission_context?: SubmissionContextInput
   deploy_strategy?: string
@@ -57,6 +60,7 @@ export interface ValidateResponse {
 
 export interface IngestRequest {
   source: string
+  project_name?: string
   config?: Record<string, any>
   submission_name: string
   data_types: string
@@ -67,6 +71,26 @@ export interface IngestRequest {
   deploy_strategy?: string
 }
 
+export interface ProjectSubmissionOptions {
+  submission_name: string
+  timestamp: string
+  datatype: string
+  identifier: string
+  description?: string | null
+  issue_identifier?: string | null
+  author?: string | null
+  run_id?: string | null
+}
+
+export interface ProjectIngesterRequest {
+  project_name: string
+  translate?: boolean
+  drop_foreign_keys?: boolean
+  default_entity?: string | null
+  submission_context: ProjectSubmissionOptions
+  deploy_strategy?: string | null
+}
+
 export interface IngestResponse {
   success: boolean
   records_processed: number
@@ -74,6 +98,8 @@ export interface IngestResponse {
   submission_id?: number
   output_path?: string
   error_details?: string
+  scope_name?: string | null
+  run_id?: string | null
   deploy_artifact?: DeployArtifact
   pending_confirmation_report?: PendingConfirmationReport
 }

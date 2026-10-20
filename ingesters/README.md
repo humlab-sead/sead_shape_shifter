@@ -2,6 +2,13 @@
 
 This directory contains ingester implementations for Shape Shifter. Ingesters are pluggable modules that handle ingestion of Shape Shifter output into external systems.
 
+## Available Ingesters
+
+| Key | Status | Purpose |
+|---|---|---|
+| `sead_change_request` | Active | Resolves identities through SIMS and emits a reviewable Change Request deploy bundle. |
+| `sead` | **Deprecated** | Legacy direct-to-database importer. Does not use SIMS. Kept only for existing callers; scheduled for removal. |
+
 ## Architecture
 
 Ingesters are decoupled from the backend API infrastructure:

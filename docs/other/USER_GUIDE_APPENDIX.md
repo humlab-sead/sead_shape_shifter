@@ -263,11 +263,11 @@ A: In `/backups/` directory with timestamp in filename.
 
 ## Related Documentation
 
-- [User Guide](USER_GUIDE.md) - Main workflow documentation
-- [Configuration Guide](CONFIGURATION_GUIDE.md) - Complete YAML reference
+- [User Guide](../USER_GUIDE.md) - Main workflow documentation
+- [Configuration Guide](../CONFIGURATION_GUIDE.md) - Complete YAML reference
 - [Architecture](../DESIGN.md) - Technical architecture
-- [Developer Guide](DEVELOPMENT.md) - Development information
-- [Testing Guide](TESTING.md) - Testing procedures
+- [Developer Guide](../DEVELOPMENT.md) - Development information
+- [Testing Guide](../TESTING.md) - Testing procedures
 
 ---
 

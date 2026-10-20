@@ -3,6 +3,7 @@
     <vue-monaco-editor
       v-model:value="content"
       language="yaml"
+      :path="modelPath"
       :options="editorOptions"
       :height="height"
       @mount="handleMount"
@@ -26,7 +27,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, useId, watch } from 'vue'
 import { VueMonacoEditor } from '@guolao/vue-monaco-editor'
 import * as yaml from 'js-yaml'
 import { setupYamlIntelligence } from '@/composables/useMonacoYamlIntelligence'
@@ -39,7 +40,7 @@ interface Props {
   height?: string
   readonly?: boolean
   validateOnChange?: boolean
-  mode?: 'project' | 'entity' | 'target-model'
+  mode?: 'project' | 'entity' | 'target-model' | 'reconciliation'
   validationContext?: ValidationContext
 }
 
@@ -55,6 +56,8 @@ const props = withDefaults(defineProps<Props>(), {
   validateOnChange: true,
   mode: 'project',
 })
+
+const modelPath = `inmemory://shapeshifter/${props.mode}-${useId()}.yaml`
 
 const emit = defineEmits<Emits>()
 
@@ -94,14 +97,12 @@ function handleMount(editorInstance: monacoType.editor.IStandaloneCodeEditor, mo
   if (!intelligenceInitialized.value && monacoRef) {
     setupYamlIntelligence(monacoRef, {
       mode: props.mode,
-      context: props.validationContext
+      context: props.validationContext,
     })
 
-    // Register custom completions with context provider
-    registerProjectCompletions(
-      monacoRef,
-      props.validationContext ? () => props.validationContext : undefined
-    )
+    if (props.mode !== 'reconciliation') {
+      registerProjectCompletions(monacoRef, props.validationContext ? () => props.validationContext : undefined)
+    }
 
     intelligenceInitialized.value = true
   }
@@ -115,11 +116,7 @@ function handleMount(editorInstance: monacoType.editor.IStandaloneCodeEditor, mo
 function runCustomValidation(monaco: typeof monacoType) {
   if (!model.value) return
 
-  const markers = validateProjectYaml(
-    content.value,
-    model.value,
-    props.validationContext
-  )
+  const markers = validateProjectYaml(content.value, model.value, props.validationContext)
 
   monaco.editor.setModelMarkers(model.value, 'yaml-custom', markers)
 }

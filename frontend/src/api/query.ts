@@ -34,5 +34,4 @@ export const queryApi = {
     )
     return response.data.columns
   },
-
 }

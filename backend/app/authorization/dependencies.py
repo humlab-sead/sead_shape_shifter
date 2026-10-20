@@ -173,6 +173,42 @@ def require_application_action(action: Action) -> Callable:
     return dependency
 
 
+def require_ingester_project(action: Action) -> Callable:
+    """Authorize the saved project named by an ingester request body.
+
+    Only the SEAD Change Request ingester acts on one saved project. That route carries a
+    top-level ``project_name``; a project name nested inside ``submission_context`` is
+    caller metadata and is never used as an authorization locator. Other ingesters return
+    ``None`` so their existing configuration contract is unchanged.
+    """
+
+    async def dependency(
+        request: Request,
+        principal: Annotated[Principal, Depends(get_principal())],
+        service: Annotated[AuthorizationService, Depends(get_authorization_service)],
+        key: str,
+    ) -> AuthorizedResource | None:
+        if key != "sead_change_request":
+            return None
+
+        try:
+            body = await request.json()
+        except (RuntimeError, ValueError):
+            body = None
+        locator = body.get("project_name") if isinstance(body, dict) else None
+        if not isinstance(locator, str) or not locator.strip():
+            locator = None
+
+        resource = service.repository.get_resource_by_locator(ResourceType.PROJECT, locator) if locator is not None else None
+        authorized = service.authorize(principal, action, resource) if resource is not None else None
+        if authorized is None:
+            raise HTTPException(status_code=404, detail="Resource not found")
+        return authorized
+
+    dependency.authorization_requirement = {"resource_type": ResourceType.PROJECT.value, "action": action.value}
+    return dependency
+
+
 def require_authorized_session(action: Action) -> Callable:
     """Create a dependency that checks session ownership and current project access."""
 

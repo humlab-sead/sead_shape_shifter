@@ -1,3 +1,4 @@
+import copy
 import os
 from typing import Any
 
@@ -30,22 +31,30 @@ def initialize_jvm():
     yield
 
 
-@pytest.fixture(scope="function", name="project")
-def _core_project(monkeypatch: pytest.MonkeyPatch) -> ShapeShiftProject:
-    """Load the backend integration test project configuration for each test.
+@pytest.fixture(scope="module", name="arbodat_project")
+def _arbodat_project() -> ShapeShiftProject:
+    """Load the backend integration test project configuration once per module.
 
     Applies data/test.env first and the local data/.env second, so a variable defined in
-    both files takes the value from data/.env. The values are applied through monkeypatch
-    so the process environment is restored after each test.
+    both files takes the value from data/.env. The environment is applied only for the
+    duration of the load through a temporary MonkeyPatch; directive values are resolved
+    into the returned project, so tests do not depend on the process environment.
     """
-    for env_file, override in (("data/test.env", False), ("data/.env", True)):
-        for name, value in dotenv_values(env_file).items():
-            if value is not None and (override or name not in os.environ):
-                monkeypatch.setenv(name, value)
+    with pytest.MonkeyPatch.context() as env_patch:
+        for env_file, override in (("data/test.env", False), ("data/.env", True)):
+            for name, value in dotenv_values(env_file).items():
+                if value is not None and (override or name not in os.environ):
+                    env_patch.setenv(name, value)
 
-    config_file: str = "tests/test_data/projects/arbodat/shapeshifter.yml"
+        config_file: str = "tests/test_data/projects/arbodat/shapeshifter.yml"
 
-    return ShapeShiftProject.from_file(config_file)
+        return ShapeShiftProject.from_file(config_file)
+
+
+@pytest.fixture(scope="function", name="project")
+def _project(arbodat_project: ShapeShiftProject) -> ShapeShiftProject:
+    """Provide each test with its own copy of the parsed project."""
+    return copy.deepcopy(arbodat_project)
 
 
 #############################################################################################################
@@ -86,9 +95,9 @@ def test_check_circular_dependencies(project: ShapeShiftProject):
 async def test_data_validation_orchestrator(project: ShapeShiftProject):
 
     expected_issues: set[str] = {
+        "warning:dating_period:FK_ALL_NULL",
+        "warning:method:FK_ALL_NULL",
         "warning:dating:EMPTY_RESULT",
-        "warning:dating_chronological_period:EMPTY_RESULT",
-        "warning:relative_dating:FK_DATA_INTEGRITY",
         "warning:site_natural_region:EMPTY_RESULT",
     }
 
@@ -105,8 +114,9 @@ async def test_data_validation_orchestrator(project: ShapeShiftProject):
     )
     actual_issues: set[str] = {f"{issue.severity}:{issue.entity}:{issue.code}" for issue in issues}
 
-    print('\n'.join({f"{issue.severity}:{issue.entity}:{issue.code}:{issue.message}" for issue in issues}))
+    print("\n".join({f"{issue.severity}:{issue.entity}:{issue.code}:{issue.message}" for issue in issues}))
     assert expected_issues == actual_issues, f"Expected issues {expected_issues}, but found {actual_issues}"
+
 
 #############################################################################################################
 # Target model conformance validation

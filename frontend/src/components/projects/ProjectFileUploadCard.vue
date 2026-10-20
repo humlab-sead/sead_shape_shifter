@@ -4,13 +4,7 @@
       <v-icon icon="mdi-file-upload" class="mr-2" />
       Data Files
       <v-spacer />
-      <v-btn
-        icon="mdi-refresh"
-        size="small"
-        variant="text"
-        :loading="loading"
-        @click="loadFiles"
-      />
+      <v-btn icon="mdi-refresh" size="small" variant="text" :loading="loading" @click="loadFiles" />
     </v-card-title>
 
     <v-card-text>
@@ -24,12 +18,8 @@
         @click="() => fileInput?.click()"
       >
         <v-icon icon="mdi-cloud-upload" size="48" class="mb-2" color="primary" />
-        <p class="text-body-1 mb-2">
-          Drag and drop files here or click to browse
-        </p>
-        <p class="text-caption text-grey">
-          Supported: Excel (.xlsx, .xls), CSV (.csv)
-        </p>
+        <p class="text-body-1 mb-2">Drag and drop files here or click to browse</p>
+        <p class="text-caption text-grey">Supported: Excel (.xlsx, .xls), CSV (.csv)</p>
         <input
           ref="fileInput"
           type="file"
@@ -55,27 +45,63 @@
         {{ uploadError }}
       </v-alert>
 
-      <v-alert v-if="uploadSuccess" type="success" variant="tonal" class="mt-4" closable @click:close="uploadSuccess = null">
+      <v-alert
+        v-if="uploadSuccess"
+        type="success"
+        variant="tonal"
+        class="mt-4"
+        closable
+        @click:close="uploadSuccess = null"
+      >
         {{ uploadSuccess }}
       </v-alert>
 
       <!-- File List -->
       <div v-if="files.length > 0" class="mt-4">
         <v-list>
-          <v-list-subheader>Uploaded Files ({{ files.length }})</v-list-subheader>
+          <v-list-subheader>Available Files ({{ files.length }})</v-list-subheader>
           <v-list-item
             v-for="file in files"
-            :key="file.name"
+            :key="`${file.location}:${file.name}`"
             :title="file.name"
-            :subtitle="formatFileSize(file.size_bytes)"
+            :subtitle="
+              file.location === 'global'
+                ? `${formatFileSize(file.size_bytes)} · Read-only shared file`
+                : formatFileSize(file.size_bytes)
+            "
           >
             <template #prepend>
               <v-icon :icon="getFileIcon(file.name)" />
             </template>
             <template #append>
-              <v-chip size="small" variant="tonal" color="primary">
-                {{ file.location === 'local' ? 'Project' : 'Shared' }}
-              </v-chip>
+              <div class="d-flex align-center ga-2">
+                <v-chip size="small" variant="tonal" :color="file.location === 'local' ? 'primary' : 'secondary'">
+                  {{ file.location === 'local' ? 'Project' : 'Shared · Read-only' }}
+                </v-chip>
+                <v-btn
+                  v-if="file.location === 'local' && canShareWithAllProjects"
+                  size="small"
+                  variant="text"
+                  prepend-icon="mdi-share-all"
+                  :loading="sharingFileName === file.name"
+                  :disabled="sharingFileName !== null || deletingFileName !== null"
+                  :aria-label="`Share ${file.name} with all projects`"
+                  @click.stop="shareFile(file)"
+                >
+                  Share
+                </v-btn>
+                <v-btn
+                  v-if="file.location === 'local'"
+                  icon="mdi-delete"
+                  size="small"
+                  variant="text"
+                  color="error"
+                  :loading="deletingFileName === file.name"
+                  :disabled="deletingFileName !== null || sharingFileName !== null"
+                  :aria-label="`Delete ${file.name}`"
+                  @click.stop="deleteFile(file)"
+                />
+              </div>
             </template>
           </v-list-item>
         </v-list>
@@ -84,7 +110,8 @@
       <!-- Empty State -->
       <v-alert v-else type="info" variant="tonal" class="mt-4">
         <v-alert-title>No files uploaded yet</v-alert-title>
-        Upload Excel or CSV files to use them in your entity configurations with <code>location: local</code>.
+        Upload Excel or CSV files to use them in your entity configurations with <code>location: local</code>. Shared
+        files you can access will also appear here as read-only references.
       </v-alert>
     </v-card-text>
   </v-card>
@@ -102,10 +129,13 @@ const props = defineProps<{
 const files = ref<ProjectFileInfo[]>([])
 const loading = ref(false)
 const uploading = ref(false)
+const canShareWithAllProjects = ref(false)
 const uploadError = ref<string | null>(null)
 const uploadSuccess = ref<string | null>(null)
 const isDragging = ref(false)
 const fileInput = ref<HTMLInputElement>()
+const deletingFileName = ref<string | null>(null)
+const sharingFileName = ref<string | null>(null)
 
 onMounted(() => {
   loadFiles()
@@ -115,7 +145,12 @@ async function loadFiles() {
   loading.value = true
   uploadError.value = null
   try {
-    files.value = await projectsApi.listFiles(props.projectName)
+    const [projectFiles, capabilities] = await Promise.all([
+      projectsApi.listFiles(props.projectName),
+      projectsApi.getFileCapabilities(props.projectName),
+    ])
+    files.value = projectFiles
+    canShareWithAllProjects.value = capabilities.can_share_with_all_projects
   } catch (error) {
     uploadError.value = error instanceof Error ? error.message : 'Failed to load files'
   } finally {
@@ -146,7 +181,11 @@ async function uploadFiles(filesToUpload: File[]) {
   try {
     const uploadedCount = filesToUpload.length
     for (const file of filesToUpload) {
-      await projectsApi.uploadFile(props.projectName, file)
+      const alreadyExists = files.value.some((existingFile) => existingFile.name === file.name)
+      const overwrite =
+        alreadyExists &&
+        window.confirm(`Replace "${file.name}"? Choose Cancel to keep it and upload this file with a new name.`)
+      await projectsApi.uploadFile(props.projectName, file, overwrite)
     }
     uploadSuccess.value = `Successfully uploaded ${uploadedCount} file${uploadedCount > 1 ? 's' : ''}`
     await loadFiles() // Refresh list
@@ -154,6 +193,40 @@ async function uploadFiles(filesToUpload: File[]) {
     uploadError.value = error instanceof Error ? error.message : 'Upload failed'
   } finally {
     uploading.value = false
+  }
+}
+
+async function deleteFile(file: ProjectFileInfo) {
+  if (!window.confirm(`Delete "${file.name}"? This cannot be undone.`)) return
+
+  deletingFileName.value = file.name
+  uploadError.value = null
+  uploadSuccess.value = null
+  try {
+    await projectsApi.deleteFile(props.projectName, file.name)
+    uploadSuccess.value = `Deleted ${file.name}`
+    await loadFiles()
+  } catch (error) {
+    uploadError.value = error instanceof Error ? error.message : `Failed to delete ${file.name}`
+  } finally {
+    deletingFileName.value = null
+  }
+}
+
+async function shareFile(file: ProjectFileInfo) {
+  if (!window.confirm(`Share "${file.name}" with all projects? A copy will be added to shared files.`)) return
+
+  sharingFileName.value = file.name
+  uploadError.value = null
+  uploadSuccess.value = null
+  try {
+    const sharedFile = await projectsApi.shareFile(props.projectName, file.name)
+    uploadSuccess.value = `Shared ${sharedFile.name} with all projects`
+    await loadFiles()
+  } catch (error) {
+    uploadError.value = error instanceof Error ? error.message : `Failed to share ${file.name}`
+  } finally {
+    sharingFileName.value = null
   }
 }
 

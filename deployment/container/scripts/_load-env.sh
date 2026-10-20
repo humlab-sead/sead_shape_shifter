@@ -24,9 +24,8 @@
 # relative override names a path under the deployment user's home, so
 # DATA_DIR=container-data and DATA_DIR=./container-data both mean
 # ~/container-data, and an absolute override is used unchanged. Resolving
-# relative overrides from $HOME rather than from the selected release directory
-# keeps configuration and data outside the release even when ~/container is a
-# symlink into a versioned release. CONTAINER_DATA_DIR, which
+# relative overrides from $HOME rather than from ~/container keeps
+# configuration and data outside the deployment files. CONTAINER_DATA_DIR, which
 # podman-compose.yml mounts, follows DATA_DIR unless it is set explicitly. The
 # same rule is implemented in container/Makefile (`resolve_path`), and both must
 # stay in step.

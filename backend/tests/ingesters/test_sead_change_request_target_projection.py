@@ -9,7 +9,29 @@ from ingesters.sead_change_request.contracts import (
     PlannedTable,
     ResolvedIdentityTable,
 )
+from ingesters.sead_change_request.staging_eligibility import PendingDeploymentMap
 from src.target_model.models import TargetModel
+
+
+def _staging_model() -> TargetModel:
+    """Build an aggregate chain used by the pending-deployment projection tests."""
+    return minimal_target_model(
+        analysis_entity={
+            "role": "fact",
+            "public_id": "analysis_entity_id",
+            "target_table": "tbl_analysis_entities",
+            "aggregate_parent": "dataset",
+            "foreign_keys": [{"entity": "dataset", "required": True}],
+        },
+        analysis_value={
+            "role": "fact",
+            "public_id": "analysis_value_id",
+            "target_table": "tbl_analysis_values",
+            "aggregate_parent": "analysis_entity",
+            "foreign_keys": [{"entity": "analysis_entity", "required": True}],
+        },
+        dataset={"role": "lookup", "public_id": "dataset_id", "target_table": "tbl_datasets"},
+    )
 
 
 def minimal_target_model(**extra_entities: dict) -> TargetModel:
@@ -237,7 +259,7 @@ class TestProjectConditionalForeignKeys:
 
         result = project_target_ids(identity_result, conditional_location_target_model())
 
-        assert result.diagnostics == []
+        assert not result.diagnostics
         assert result.tables["location"].frame["location_type_id"].tolist() == [99]
 
     def test_conditional_foreign_key_adds_no_error_for_matched_rows_with_null_value(self):
@@ -252,7 +274,7 @@ class TestProjectConditionalForeignKeys:
 
         result = project_target_ids(identity_result, conditional_location_target_model())
 
-        assert result.diagnostics == []
+        assert not result.diagnostics
 
     def test_conditional_foreign_key_adds_no_error_for_matched_rows_without_fk_column(self):
         """A matched-only submission must not fail when the conditional FK column is absent."""
@@ -266,7 +288,7 @@ class TestProjectConditionalForeignKeys:
 
         result = project_target_ids(identity_result, conditional_location_target_model())
 
-        assert result.diagnostics == []
+        assert not result.diagnostics
 
     def test_conditional_foreign_key_adds_no_error_for_reference_only_planned_rows(self):
         """A reference-only planned row must not trigger the condition when planned actions are supplied."""
@@ -281,7 +303,7 @@ class TestProjectConditionalForeignKeys:
 
         result = project_target_ids(identity_result, conditional_location_target_model(), planned_tables)
 
-        assert result.diagnostics == []
+        assert not result.diagnostics
 
     def test_reports_missing_conditional_foreign_key_column_for_inserted_rows(self):
         """An inserted row without the target-facing FK column must report the missing project link."""
@@ -354,7 +376,7 @@ class TestProjectConditionalForeignKeys:
 
         result = project_target_ids(identity_result, conditional_location_target_model())
 
-        assert result.diagnostics == []
+        assert not result.diagnostics
         assert result.tables["location"].frame.loc[1, "location_type_id"] == 901
 
     def test_does_not_activate_condition_for_blocked_rows(self):
@@ -388,7 +410,7 @@ class TestProjectConditionalForeignKeys:
 
         result = project_target_ids(identity_result, conditional_location_target_model(), planned_tables)
 
-        assert result.diagnostics == []
+        assert not result.diagnostics
         assert result.tables["location"].frame.loc[1, "location_type_id"] == 901
 
     def test_reports_unresolved_conditional_foreign_key_value_used_by_update_candidate(self):
@@ -405,3 +427,123 @@ class TestProjectConditionalForeignKeys:
         result = project_target_ids(identity_result, conditional_location_target_model(), planned_tables)
 
         assert result.diagnostics == ["Entity 'location' has 1 unresolved conditional FK value(s) for 'location_type_id'"]
+
+
+class TestProjectPendingDeploymentValues:
+    """Deployment-time values are deferred instead of reported as missing."""
+
+    def test_pending_child_id_is_not_reported(self):
+        """A row whose target ID is allocated at deployment should not report an unresolved PK."""
+        parent_frame = pd.DataFrame({"system_id": [1], "analysis_entity_id": [None], "dataset_id": [701]})
+        frame = pd.DataFrame({"system_id": [10], "analysis_value_id": [None], "analysis_entity_id": [1]})
+        dataset_frame = pd.DataFrame({"system_id": [1], "dataset_id": [701]})
+        identity_result = IdentityResolutionResult(
+            tables={
+                "dataset": ResolvedIdentityTable(
+                    entity_name="dataset",
+                    frame=dataset_frame,
+                    row_states=pd.Series([ChangeRowState.EXISTING_ENTITY], index=dataset_frame.index),
+                    resolved_target_ids=pd.Series([701], index=dataset_frame.index, dtype="Int64"),
+                ),
+                "analysis_entity": ResolvedIdentityTable(
+                    entity_name="analysis_entity",
+                    frame=parent_frame,
+                    row_states=pd.Series([ChangeRowState.PENDING_DEPLOYMENT_ID], index=parent_frame.index),
+                    resolved_target_ids=pd.Series([pd.NA], index=parent_frame.index, dtype="Int64"),
+                ),
+                "analysis_value": ResolvedIdentityTable(
+                    entity_name="analysis_value",
+                    frame=frame,
+                    row_states=pd.Series([ChangeRowState.PENDING_DEPLOYMENT_ID], index=frame.index),
+                    resolved_target_ids=pd.Series([pd.NA], index=frame.index, dtype="Int64"),
+                ),
+            }
+        )
+        pending = PendingDeploymentMap(
+            pending_row_mask={
+                "analysis_entity": pd.Series([True], index=parent_frame.index),
+                "analysis_value": pd.Series([True], index=frame.index),
+            },
+            pending_fk_mask={
+                "analysis_entity": {"dataset_id": pd.Series([True], index=parent_frame.index)},
+                "analysis_value": {"analysis_entity_id": pd.Series([True], index=frame.index)},
+            },
+        )
+
+        result = project_target_ids(identity_result, _staging_model(), pending=pending)
+
+        assert not result.diagnostics
+
+    def test_pending_foreign_key_is_not_reported(self):
+        """A foreign key that points at a pending row should be deferred."""
+        parent_frame = pd.DataFrame({"system_id": [1], "analysis_entity_id": [None], "dataset_id": [701]})
+        child_frame = pd.DataFrame({"system_id": [10], "analysis_value_id": [None], "analysis_entity_id": [1]})
+        dataset_frame = pd.DataFrame({"system_id": [1], "dataset_id": [701]})
+        identity_result = IdentityResolutionResult(
+            tables={
+                "dataset": ResolvedIdentityTable(
+                    entity_name="dataset",
+                    frame=dataset_frame,
+                    row_states=pd.Series([ChangeRowState.EXISTING_ENTITY], index=dataset_frame.index),
+                    resolved_target_ids=pd.Series([701], index=dataset_frame.index, dtype="Int64"),
+                ),
+                "analysis_entity": ResolvedIdentityTable(
+                    entity_name="analysis_entity",
+                    frame=parent_frame,
+                    row_states=pd.Series([ChangeRowState.PENDING_DEPLOYMENT_ID], index=parent_frame.index),
+                    resolved_target_ids=pd.Series([pd.NA], index=parent_frame.index, dtype="Int64"),
+                ),
+                "analysis_value": ResolvedIdentityTable(
+                    entity_name="analysis_value",
+                    frame=child_frame,
+                    row_states=pd.Series([ChangeRowState.PENDING_DEPLOYMENT_ID], index=child_frame.index),
+                    resolved_target_ids=pd.Series([pd.NA], index=child_frame.index, dtype="Int64"),
+                ),
+            }
+        )
+        pending = PendingDeploymentMap(
+            pending_row_mask={
+                "analysis_entity": pd.Series([True], index=parent_frame.index),
+                "analysis_value": pd.Series([True], index=child_frame.index),
+            },
+            pending_fk_mask={
+                "analysis_value": {"analysis_entity_id": pd.Series([True], index=child_frame.index)},
+                "analysis_entity": {"dataset_id": pd.Series([True], index=parent_frame.index)},
+            },
+        )
+
+        result = project_target_ids(identity_result, _staging_model(), pending=pending)
+
+        assert not result.diagnostics
+
+    def test_known_values_are_still_reported(self):
+        """Deferral must not hide a genuine missing value."""
+        parent_frame = pd.DataFrame({"system_id": [1], "analysis_entity_id": [701], "dataset_id": [701]})
+        frame = pd.DataFrame({"system_id": [10], "analysis_value_id": [None], "analysis_entity_id": [99]})
+        dataset_frame = pd.DataFrame({"system_id": [1], "dataset_id": [701]})
+        identity_result = IdentityResolutionResult(
+            tables={
+                "dataset": ResolvedIdentityTable(
+                    entity_name="dataset",
+                    frame=dataset_frame,
+                    row_states=pd.Series([ChangeRowState.EXISTING_ENTITY], index=dataset_frame.index),
+                    resolved_target_ids=pd.Series([701], index=dataset_frame.index, dtype="Int64"),
+                ),
+                "analysis_entity": ResolvedIdentityTable(
+                    entity_name="analysis_entity",
+                    frame=parent_frame,
+                    row_states=pd.Series([ChangeRowState.EXISTING_ENTITY], index=parent_frame.index),
+                    resolved_target_ids=pd.Series([701], index=parent_frame.index, dtype="Int64"),
+                ),
+                "analysis_value": ResolvedIdentityTable(
+                    entity_name="analysis_value",
+                    frame=frame,
+                    row_states=pd.Series([ChangeRowState.NEWLY_ALLOCATED_ENTITY], index=frame.index),
+                    resolved_target_ids=pd.Series([501], index=frame.index, dtype="Int64"),
+                ),
+            }
+        )
+
+        result = project_target_ids(identity_result, _staging_model(), pending=PendingDeploymentMap())
+
+        assert "Entity 'analysis_value' has 1 unresolved FK value(s) for 'analysis_entity_id'" in result.diagnostics

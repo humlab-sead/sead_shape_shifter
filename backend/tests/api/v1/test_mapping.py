@@ -25,7 +25,15 @@ _SITE_ENTITY = {
 
 async def _create_project(client) -> None:
     """Create the test project through the API (registers it as an authorized resource)."""
-    response = await client.post("/api/v1/projects", json={"name": "test_project", "entities": {"site": _SITE_ENTITY}})
+    response = await client.post(
+        "/api/v1/projects",
+        json={
+            "name": "test_project",
+            "data_provider_code": "test-provider",
+            "provider_schema": "schema-one",
+            "entities": {"site": _SITE_ENTITY},
+        },
+    )
     assert response.status_code == 201, response.text
 
 
@@ -206,7 +214,12 @@ _RETRY_SITE_ENTITY = {
 async def _create_retry_project(client, entity: dict | None = None) -> None:
     response = await client.post(
         "/api/v1/projects",
-        json={"name": "test_project", "entities": {"site": entity or _RETRY_SITE_ENTITY}},
+        json={
+            "name": "test_project",
+            "data_provider_code": "test-provider",
+            "provider_schema": "schema-one",
+            "entities": {"site": entity or _RETRY_SITE_ENTITY},
+        },
     )
     assert response.status_code == 201, response.text
 

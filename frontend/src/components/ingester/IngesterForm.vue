@@ -5,7 +5,7 @@
     </v-card-title>
 
     <v-card-text>
-      <v-alert v-if="!selectedIngester" type="info" variant="tonal" class="mb-4">
+      <v-alert v-if="!selectedIngesterAllowed" type="info" variant="tonal" class="mb-4">
         Select a target workflow from the list below to configure dispatch settings.
       </v-alert>
 
@@ -22,11 +22,23 @@
         class="mb-4"
       />
 
-      <v-form v-if="selectedIngester" ref="formRef" v-model="formValid">
+      <v-alert
+        v-if="isSeadChangeRequest"
+        type="info"
+        variant="tonal"
+        class="mb-4"
+        data-test="change-request-requirements"
+      >
+        Change Request uses this saved project's registered provider-schema pair and fixed provider row. Every tracked
+        entity needs declared business keys; missing, blank, or duplicate keys block the run.
+      </v-alert>
+
+      <v-form v-if="selectedIngesterAllowed" ref="formRef" v-model="formValid">
         <v-text-field
+          v-if="!isSeadChangeRequest"
           v-model="form.source"
-          :label="isSeadChangeRequest ? 'Normalized Workbook Path *' : 'Source File Path *'"
-          :hint="isSeadChangeRequest ? 'Path to the normalized workbook that will be turned into a change package' : 'Path to the Excel file to ingest'"
+          label="Source File Path *"
+          hint="Path to the Excel file to ingest"
           persistent-hint
           :rules="[rules.required]"
           prepend-icon="mdi-file-excel"
@@ -34,7 +46,8 @@
 
         <template v-if="isSeadChangeRequest">
           <v-alert type="info" variant="tonal" class="mt-4" data-test="sead-change-request-workflow">
-            This workflow collects the operator context needed to validate identities, wait for Binding Set confirmation when required, and emit an MVP change package.
+            Change Request uses the normalized tables from this saved project. Validate the project, then generate and
+            review the deploy bundle. Project Execute and application ingester permissions are required.
           </v-alert>
 
           <v-text-field
@@ -47,24 +60,23 @@
             class="mt-4"
           />
           <div class="text-caption text-medium-emphasis mb-2">
-            {{ isSubmissionNameProjectDerived
-              ? 'Auto-derived from the active project and selected datatype until you override it.'
-              : 'Operator override for this run.' }}
+            {{
+              isSubmissionNameProjectDerived
+                ? 'Auto-derived from the active project and selected datatype until you override it.'
+                : 'Operator override for this run.'
+            }}
           </div>
 
           <v-text-field
-            v-model="seadChangeRequest.project_name"
+            :model-value="effectiveProjectName"
             label="Project Name *"
-            hint="Used in deploy package metadata and bundle naming"
+            :hint="'Fixed to the saved project open in this Dispatch tab.'"
             persistent-hint
             :rules="[rules.required]"
             prepend-icon="mdi-folder-outline"
+            readonly
           />
-          <div class="text-caption text-medium-emphasis mb-2">
-            {{ isProjectNameProjectDerived
-              ? 'Auto-derived from the active project.'
-              : 'Operator override for this run.' }}
-          </div>
+          <div class="text-caption text-medium-emphasis mb-2">Project locator is fixed to the open saved project.</div>
 
           <v-text-field
             v-model="seadChangeRequest.timestamp"
@@ -75,9 +87,7 @@
             prepend-icon="mdi-calendar-clock"
             type="datetime-local"
           />
-          <div class="text-caption text-medium-emphasis mb-2">
-            Operator-entered for this run.
-          </div>
+          <div class="text-caption text-medium-emphasis mb-2">Operator-entered for this run.</div>
 
           <v-select
             v-model="seadChangeRequest.datatype"
@@ -88,9 +98,7 @@
             :rules="[rules.required]"
             prepend-icon="mdi-shape"
           />
-          <div class="text-caption text-medium-emphasis mb-2">
-            Operator-selected for this run.
-          </div>
+          <div class="text-caption text-medium-emphasis mb-2">Operator-selected for this run.</div>
 
           <v-text-field
             v-model="seadChangeRequest.identifier"
@@ -101,9 +109,11 @@
             prepend-icon="mdi-identifier"
           />
           <div class="text-caption text-medium-emphasis mb-2">
-            {{ isIdentifierProjectDerived
-              ? 'Auto-derived from the active project name until you override it.'
-              : 'Operator override for this run.' }}
+            {{
+              isIdentifierProjectDerived
+                ? 'Auto-derived from the active project name until you override it.'
+                : 'Operator override for this run.'
+            }}
           </div>
 
           <v-textarea
@@ -116,9 +126,11 @@
             auto-grow
           />
           <div class="text-caption text-medium-emphasis mb-2">
-            {{ isDescriptionProjectDerived
-              ? 'Auto-derived from project metadata until you override it.'
-              : 'Operator-entered for this run.' }}
+            {{
+              isDescriptionProjectDerived
+                ? 'Auto-derived from project metadata until you override it.'
+                : 'Operator-entered for this run.'
+            }}
           </div>
 
           <v-text-field
@@ -147,9 +159,7 @@
             persistent-hint
             prepend-icon="mdi-package-variant-closed"
           />
-          <div class="text-caption text-medium-emphasis mb-2">
-            Operator-selected for this run.
-          </div>
+          <div class="text-caption text-medium-emphasis mb-2">Operator-selected for this run.</div>
 
           <v-alert type="info" variant="tonal" density="compact" class="mt-2" data-test="deploy-strategy-guidance">
             {{ currentDeployStrategyGuidance }}
@@ -177,69 +187,61 @@
           />
         </template>
 
-        <v-alert
-          v-if="targetDataSourceName"
-          type="info"
-          variant="tonal"
-          density="compact"
-          class="mt-4"
-        >
-          <div class="text-caption">
-            <strong>Target Database:</strong> {{ targetDataSourceName }}
-            <span v-if="targetDataSourceInfo">
-              <span v-if="targetDataSourceInfo.host">
-                • {{ targetDataSourceInfo.host }}{{ targetDataSourceInfo.port ? ':' + targetDataSourceInfo.port : '' }}
+        <template v-if="!isSeadChangeRequest">
+          <v-alert v-if="targetDataSourceName" type="info" variant="tonal" density="compact" class="mt-4">
+            <div class="text-caption">
+              <strong>Target Database:</strong> {{ targetDataSourceName }}
+              <span v-if="targetDataSourceInfo">
+                <span v-if="targetDataSourceInfo.host">
+                  • {{ targetDataSourceInfo.host
+                  }}{{ targetDataSourceInfo.port ? ':' + targetDataSourceInfo.port : '' }}
+                </span>
+                <span v-if="targetDataSourceInfo.database || targetDataSourceInfo.dbname">
+                  • {{ targetDataSourceInfo.database || targetDataSourceInfo.dbname }}
+                </span>
               </span>
-              <span v-if="targetDataSourceInfo.database || targetDataSourceInfo.dbname">
-                • {{ targetDataSourceInfo.database || targetDataSourceInfo.dbname }}
-              </span>
-            </span>
-          </div>
-          <div v-if="!targetDataSourceInfo" class="text-caption error--text mt-1">
-            ⚠️ Data source "{{ targetDataSourceName }}" not found in project configuration
-          </div>
-        </v-alert>
+            </div>
+            <div v-if="!targetDataSourceInfo" class="text-caption error--text mt-1">
+              ⚠️ Data source "{{ targetDataSourceName }}" not found in project configuration
+            </div>
+          </v-alert>
 
-        <v-alert
-          v-else
-          type="warning"
-          variant="tonal"
-          density="compact"
-          class="mt-4"
-        >
-          No target database configured for this ingester in the project file.
-          Please configure the "ingesters.{{ selectedIngester?.key }}.data_source" option.
-        </v-alert>
+          <v-alert v-else type="warning" variant="tonal" density="compact" class="mt-4">
+            No target database configured for this ingester in the project file. Please configure the "ingesters.{{
+              selectedIngester?.key
+            }}.data_source" option.
+          </v-alert>
 
-        <v-expansion-panels class="mt-4">
-          <v-expansion-panel :title="isSeadChangeRequest ? 'Input Options' : 'Advanced Options'">
-            <v-expansion-panel-text>
-              <v-textarea
-                v-model="ignoreColumnsText"
-                label="Ignore Columns"
-                hint="One pattern per line (e.g., 'date_updated', '*_uuid')"
-                persistent-hint
-                rows="3"
-              />
+          <v-expansion-panels class="mt-4">
+            <v-expansion-panel title="Advanced Options">
+              <v-expansion-panel-text>
+                <v-textarea
+                  v-model="ignoreColumnsText"
+                  label="Ignore Columns"
+                  hint="One pattern per line (e.g., 'date_updated', '*_uuid')"
+                  persistent-hint
+                  rows="3"
+                />
 
-              <v-switch
-                v-if="!isSeadChangeRequest"
-                v-model="form.do_register"
-                label="Register in Database"
-                color="primary"
-                hide-details
-              />
+                <v-switch
+                  v-if="!isSeadChangeRequest"
+                  v-model="form.do_register"
+                  label="Register in Database"
+                  color="primary"
+                  hide-details
+                />
 
-              <v-switch
-                v-if="!isSeadChangeRequest"
-                v-model="form.explode"
-                label="Explode to Public Tables"
-                color="primary"
-                hide-details
-              />
-            </v-expansion-panel-text>
-          </v-expansion-panel>
-        </v-expansion-panels>
+                <v-switch
+                  v-if="!isSeadChangeRequest"
+                  v-model="form.explode"
+                  label="Explode to Public Tables"
+                  color="primary"
+                  hide-details
+                />
+              </v-expansion-panel-text>
+            </v-expansion-panel>
+          </v-expansion-panels>
+        </template>
 
         <v-alert
           v-if="validationPendingConfirmationReport"
@@ -250,12 +252,25 @@
         >
           <div class="text-subtitle-2">Binding Set Confirmation Required</div>
           <div class="text-body-2 mt-2">{{ validationPendingConfirmationReport.outstanding_step }}</div>
-          <div class="text-caption mt-2"><strong>Binding Set:</strong> {{ validationPendingConfirmationReport.binding_set_uuid || 'Not yet assigned' }}</div>
-          <div class="text-caption"><strong>State:</strong> {{ validationPendingConfirmationReport.binding_set_state || 'unknown' }}</div>
-          <div class="text-caption"><strong>Blocked entities:</strong> {{ formatList(validationPendingConfirmationReport.blocked_entities) }}</div>
-          <div class="text-caption"><strong>Blocked rows:</strong> {{ validationPendingConfirmationReport.blocked_rows }}</div>
-          <div class="text-caption mt-2"><strong>Operator action:</strong> {{ validationPendingConfirmationReport.operator_action }}</div>
-          <div class="text-caption"><strong>Rerun:</strong> {{ validationPendingConfirmationReport.rerun_instruction }}</div>
+          <div class="text-caption mt-2">
+            <strong>Binding Set:</strong>
+            {{ validationPendingConfirmationReport.binding_set_uuid || 'Not yet assigned' }}
+          </div>
+          <div class="text-caption">
+            <strong>State:</strong> {{ validationPendingConfirmationReport.binding_set_state || 'unknown' }}
+          </div>
+          <div class="text-caption">
+            <strong>Blocked entities:</strong> {{ formatList(validationPendingConfirmationReport.blocked_entities) }}
+          </div>
+          <div class="text-caption">
+            <strong>Blocked rows:</strong> {{ validationPendingConfirmationReport.blocked_rows }}
+          </div>
+          <div class="text-caption mt-2">
+            <strong>Operator action:</strong> {{ validationPendingConfirmationReport.operator_action }}
+          </div>
+          <div class="text-caption">
+            <strong>Rerun:</strong> {{ validationPendingConfirmationReport.rerun_instruction }}
+          </div>
         </v-alert>
 
         <v-alert
@@ -296,12 +311,25 @@
         >
           <div class="text-subtitle-2">Binding Set Confirmation Incomplete</div>
           <div class="text-body-2 mt-2">{{ ingestionResult?.message }}</div>
-          <div class="text-caption mt-2"><strong>Binding Set:</strong> {{ ingestionPendingConfirmationReport.binding_set_uuid || 'Not yet assigned' }}</div>
-          <div class="text-caption"><strong>State:</strong> {{ ingestionPendingConfirmationReport.binding_set_state || 'unknown' }}</div>
-          <div class="text-caption"><strong>Blocked entities:</strong> {{ formatList(ingestionPendingConfirmationReport.blocked_entities) }}</div>
-          <div class="text-caption"><strong>Blocked rows:</strong> {{ ingestionPendingConfirmationReport.blocked_rows }}</div>
-          <div class="text-caption mt-2"><strong>Operator action:</strong> {{ ingestionPendingConfirmationReport.operator_action }}</div>
-          <div class="text-caption"><strong>Rerun:</strong> {{ ingestionPendingConfirmationReport.rerun_instruction }}</div>
+          <div class="text-caption mt-2">
+            <strong>Binding Set:</strong>
+            {{ ingestionPendingConfirmationReport.binding_set_uuid || 'Not yet assigned' }}
+          </div>
+          <div class="text-caption">
+            <strong>State:</strong> {{ ingestionPendingConfirmationReport.binding_set_state || 'unknown' }}
+          </div>
+          <div class="text-caption">
+            <strong>Blocked entities:</strong> {{ formatList(ingestionPendingConfirmationReport.blocked_entities) }}
+          </div>
+          <div class="text-caption">
+            <strong>Blocked rows:</strong> {{ ingestionPendingConfirmationReport.blocked_rows }}
+          </div>
+          <div class="text-caption mt-2">
+            <strong>Operator action:</strong> {{ ingestionPendingConfirmationReport.operator_action }}
+          </div>
+          <div class="text-caption">
+            <strong>Rerun:</strong> {{ ingestionPendingConfirmationReport.rerun_instruction }}
+          </div>
         </v-alert>
 
         <v-alert
@@ -313,22 +341,37 @@
           <div class="text-subtitle-2">{{ ingestionResult.message }}</div>
           <div v-if="ingestionResult.success" class="mt-2">
             <div>Records Processed: {{ ingestionResult.records_processed }}</div>
-            <div v-if="ingestionResult.submission_id">
-              Submission ID: {{ ingestionResult.submission_id }}
-            </div>
-            <div v-if="ingestionResult.output_path">
-              Output: {{ ingestionResult.output_path }}
-            </div>
+            <div v-if="ingestionResult.submission_id">Submission ID: {{ ingestionResult.submission_id }}</div>
+            <div v-if="ingestionResult.output_path">Output: {{ ingestionResult.output_path }}</div>
             <template v-if="deployArtifactMetadata">
-              <div class="text-caption mt-2"><strong>Deploy strategy:</strong> {{ deployArtifactMetadata.deploy_strategy || deployStrategy }}</div>
-              <div v-if="deployArtifactMetadata.binding_set_uuid" class="text-caption"><strong>Binding Set:</strong> {{ deployArtifactMetadata.binding_set_uuid }}</div>
-              <div v-if="deployArtifactMetadata.change_request_name" class="text-caption"><strong>Change request:</strong> {{ deployArtifactMetadata.change_request_name }}</div>
-              <div class="text-caption"><strong>Revert support:</strong> {{ deployArtifactMetadata.non_revertible ? 'Not implemented in this delivery' : 'Available' }}</div>
+              <div class="text-caption mt-2">
+                <strong>Deploy strategy:</strong> {{ deployArtifactMetadata.deploy_strategy || deployStrategy }}
+              </div>
+              <div v-if="effectiveScopeName" class="text-caption">
+                <strong>SIMS scope:</strong> {{ effectiveScopeName }}
+              </div>
+              <div v-if="effectiveRunId" class="text-caption"><strong>Run ID:</strong> {{ effectiveRunId }}</div>
+              <div v-if="deployArtifactMetadata.binding_set_uuid" class="text-caption">
+                <strong>Binding Set:</strong> {{ deployArtifactMetadata.binding_set_uuid }}
+              </div>
+              <div v-if="deployArtifactMetadata.change_request_name" class="text-caption">
+                <strong>Change request:</strong> {{ deployArtifactMetadata.change_request_name }}
+              </div>
+              <div class="text-caption">
+                <strong>Revert support:</strong>
+                {{ deployArtifactMetadata.non_revertible ? 'Not implemented in this delivery' : 'Available' }}
+              </div>
             </template>
             <template v-if="deployArtifactManifest">
-              <div v-if="deployArtifactManifest.cr_name" class="text-caption"><strong>Bundle name:</strong> {{ deployArtifactManifest.cr_name }}</div>
-              <div v-if="deployArtifactManifest.issue_identifier" class="text-caption"><strong>Issue ID:</strong> {{ deployArtifactManifest.issue_identifier }}</div>
-              <div v-if="deployArtifactBundleFiles.length > 0" class="text-caption"><strong>Bundle files:</strong> {{ deployArtifactBundleFiles.join(', ') }}</div>
+              <div v-if="deployArtifactManifest.cr_name" class="text-caption">
+                <strong>Bundle name:</strong> {{ deployArtifactManifest.cr_name }}
+              </div>
+              <div v-if="deployArtifactManifest.issue_identifier" class="text-caption">
+                <strong>Issue ID:</strong> {{ deployArtifactManifest.issue_identifier }}
+              </div>
+              <div v-if="deployArtifactBundleFiles.length > 0" class="text-caption">
+                <strong>Bundle files:</strong> {{ deployArtifactBundleFiles.join(', ') }}
+              </div>
             </template>
             <div v-if="isSeadChangeRequest" class="text-caption mt-2" data-test="deploy-artifact-guidance">
               <strong>Handoff:</strong> {{ activeDeployArtifactGuidance }}
@@ -350,7 +393,7 @@
         color="primary"
         variant="outlined"
         :loading="isValidating"
-        :disabled="!formValid || !selectedIngester"
+        :disabled="!formValid || !selectedIngesterAllowed || !canRunSelectedIngester"
         @click="handleValidate"
       >
         <v-icon start>mdi-check-circle</v-icon>
@@ -360,7 +403,7 @@
       <v-btn
         color="success"
         :loading="isIngesting"
-        :disabled="!formValid || !selectedIngester"
+        :disabled="!formValid || !selectedIngesterAllowed || !canRunSelectedIngester"
         @click="handleIngest"
       >
         <v-icon start>mdi-send</v-icon>
@@ -369,9 +412,7 @@
 
       <v-spacer />
 
-      <v-btn variant="text" @click="resetForm">
-        Reset
-      </v-btn>
+      <v-btn variant="text" @click="resetForm"> Reset </v-btn>
     </v-card-actions>
   </v-card>
 </template>
@@ -383,21 +424,33 @@ import { useIngesterStore } from '@/stores/ingester'
 import { useDataSourceStore } from '@/stores/data-source'
 import { useProjectStore } from '@/stores/project'
 import type { IngesterProjectConfig } from '@/types/config'
-import type { DeployArtifact, IngestRequest, PendingConfirmationReport, SubmissionContextInput, ValidateRequest } from '@/types/ingester'
+import type {
+  DeployArtifact,
+  IngestRequest,
+  PendingConfirmationReport,
+  ProjectIngesterRequest,
+  SubmissionContextInput,
+  ValidateRequest,
+} from '@/types/ingester'
+
+interface Props {
+  excludedIngesterKeys?: string[]
+  projectName?: string
+  projectLoading?: boolean
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  excludedIngesterKeys: () => [],
+  projectLoading: false,
+})
 
 const ingesterStore = useIngesterStore()
 const dataSourceStore = useDataSourceStore()
 const projectStore = useProjectStore()
 
-const {
-  selectedIngester,
-  validationResult,
-  ingestionResult,
-  error,
-  isValidating,
-  isIngesting
-} = storeToRefs(ingesterStore)
-const { validate, ingest, clearError, clearValidation, clearIngestion } = ingesterStore
+const { selectedIngester, validationResult, ingestionResult, error, isValidating, isIngesting } =
+  storeToRefs(ingesterStore)
+const { validate, ingest, validateProject, ingestProject, clearError, clearValidation, clearIngestion } = ingesterStore
 const { selectedProject } = storeToRefs(projectStore)
 
 const formRef = ref()
@@ -412,12 +465,12 @@ const approvedDatatypes = [
   'dendrochronology',
   'isotope',
   'mal',
-  'radiocarbon'
+  'radiocarbon',
 ]
 
 const deployStrategyOptions = [
   { title: 'Inline SQL Insert Package', value: 'inline_insert' },
-  { title: 'COPY CSV Bundle', value: 'copy_csv' }
+  { title: 'COPY CSV Bundle', value: 'copy_csv' },
 ]
 
 interface SeadChangeRequestFormState {
@@ -439,8 +492,8 @@ function createBaseForm(): IngestRequest {
     explode: false,
     config: {
       data_source_name: '',
-      ignore_columns: []
-    }
+      ignore_columns: [],
+    },
   }
 }
 
@@ -458,7 +511,7 @@ function createSeadChangeRequestState(projectName = ''): SeadChangeRequestFormSt
     identifier: '',
     description: '',
     issue_identifier: '',
-    author: ''
+    author: '',
   }
 }
 
@@ -468,8 +521,22 @@ const deployStrategy = ref('inline_insert')
 
 const ignoreColumnsText = ref('date_updated\n*_uuid\n(*')
 
-const availableIngesters = computed(() => ingesterStore.ingesters)
+const availableIngesters = computed(() =>
+  ingesterStore.ingesters.filter((ingester) => !props.excludedIngesterKeys.includes(ingester.key))
+)
 const isSeadChangeRequest = computed(() => selectedIngester.value?.key === 'sead_change_request')
+const selectedIngesterAllowed = computed(
+  () => !!selectedIngester.value && !props.excludedIngesterKeys.includes(selectedIngester.value.key)
+)
+const routeProjectName = computed(() => props.projectName?.trim() ?? '')
+const effectiveProjectName = computed(() => routeProjectName.value)
+const projectMatchesRoute = computed(
+  () =>
+    !!routeProjectName.value &&
+    !props.projectLoading &&
+    selectedProject.value?.metadata?.name?.trim() === routeProjectName.value
+)
+const canRunSelectedIngester = computed(() => !isSeadChangeRequest.value || projectMatchesRoute.value)
 const ingesterConfig = computed<IngesterProjectConfig | null>(() => {
   if (!selectedProject.value || !selectedIngester.value) return null
   const ingesters = selectedProject.value.options?.ingesters || {}
@@ -503,6 +570,18 @@ const deployArtifactMetadata = computed<Record<string, any> | null>(() => {
   return deployArtifact.value?.metadata ?? null
 })
 
+const effectiveScopeName = computed<string>(() => {
+  const artifactScope = deployArtifactMetadata.value?.scope_name
+  if (typeof artifactScope === 'string' && artifactScope.trim()) return artifactScope
+  return ingestionResult.value?.scope_name?.trim() || ''
+})
+
+const effectiveRunId = computed<string>(() => {
+  const artifactRunId = deployArtifactMetadata.value?.run_id
+  if (typeof artifactRunId === 'string' && artifactRunId.trim()) return artifactRunId
+  return ingestionResult.value?.run_id?.trim() || ''
+})
+
 const deployArtifactManifest = computed<Record<string, any> | null>(() => {
   return deployArtifact.value?.metadata_artifact ?? null
 })
@@ -522,26 +601,44 @@ const lastAutoSubmissionName = ref('')
 const lastAutoDescription = ref('')
 const appliedDefaultsKey = ref('')
 const defaultProjectDescription = computed(() => selectedProject.value?.metadata?.description?.trim() || '')
-const projectDerivedSubmissionName = computed(() => createSubmissionNameDefault(defaultProjectName.value, seadChangeRequest.value.datatype))
+const projectDerivedSubmissionName = computed(() =>
+  createSubmissionNameDefault(defaultProjectName.value, seadChangeRequest.value.datatype)
+)
 const projectDerivedIdentifier = computed(() => createProjectIdentifierDefault(defaultProjectName.value))
-const isProjectNameProjectDerived = computed(() => {
-  return !!defaultProjectName.value && seadChangeRequest.value.project_name.trim() === defaultProjectName.value
-})
 const isSubmissionNameProjectDerived = computed(() => {
-  return !!projectDerivedSubmissionName.value && normalizeSubmissionName(form.value.submission_name) === projectDerivedSubmissionName.value
+  return (
+    !!projectDerivedSubmissionName.value &&
+    normalizeSubmissionName(form.value.submission_name) === projectDerivedSubmissionName.value
+  )
 })
 const isIdentifierProjectDerived = computed(() => {
-  return !!projectDerivedIdentifier.value && normalizeSubmissionIdentifier(seadChangeRequest.value.identifier) === projectDerivedIdentifier.value
+  return (
+    !!projectDerivedIdentifier.value &&
+    normalizeSubmissionIdentifier(seadChangeRequest.value.identifier) === projectDerivedIdentifier.value
+  )
 })
 const isDescriptionProjectDerived = computed(() => {
-  return !!defaultProjectDescription.value && seadChangeRequest.value.description.trim() === defaultProjectDescription.value
+  return (
+    !!defaultProjectDescription.value && seadChangeRequest.value.description.trim() === defaultProjectDescription.value
+  )
 })
+
+watch(
+  () => [
+    normalizeSubmissionName(form.value.submission_name),
+    routeProjectName.value,
+    seadChangeRequest.value.timestamp.trim(),
+    seadChangeRequest.value.datatype.trim().toLowerCase(),
+    normalizeSubmissionIdentifier(seadChangeRequest.value.identifier),
+  ],
+  () => ingesterStore.resetProjectAttempt()
+)
 
 watch(ignoreColumnsText, (newValue) => {
   form.value.config!.ignore_columns = newValue
     .split('\n')
-    .map(s => s.trim())
-    .filter(s => s.length > 0)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0)
 })
 
 watch(selectedIngesterKey, (key) => {
@@ -550,40 +647,61 @@ watch(selectedIngesterKey, (key) => {
   }
 })
 
-watch(selectedIngester, (ingester) => {
-  if (ingester?.key && selectedIngesterKey.value !== ingester.key) {
-    selectedIngesterKey.value = ingester.key
-  }
-}, { immediate: true })
+watch(
+  selectedIngester,
+  (ingester) => {
+    if (ingester?.key && selectedIngesterKey.value !== ingester.key) {
+      selectedIngesterKey.value = ingester.key
+    }
+  },
+  { immediate: true }
+)
 
-watch(defaultProjectName, (projectName) => {
-  if (projectName && !seadChangeRequest.value.project_name) {
-    seadChangeRequest.value.project_name = projectName
-  }
-}, { immediate: true })
+watch(
+  defaultProjectName,
+  (projectName) => {
+    if (projectName && !seadChangeRequest.value.project_name) {
+      seadChangeRequest.value.project_name = projectName
+    }
+  },
+  { immediate: true }
+)
 
-watch(defaultProjectDescription, (description) => {
-  if (!description) {
-    return
-  }
+watch(
+  defaultProjectDescription,
+  (description) => {
+    if (!description) {
+      return
+    }
 
-  const currentDescription = seadChangeRequest.value.description.trim()
-  if (!currentDescription || currentDescription === lastAutoDescription.value) {
-    seadChangeRequest.value.description = description
-    lastAutoDescription.value = description
-  }
-}, { immediate: true })
+    const currentDescription = seadChangeRequest.value.description.trim()
+    if (!currentDescription || currentDescription === lastAutoDescription.value) {
+      seadChangeRequest.value.description = description
+      lastAutoDescription.value = description
+    }
+  },
+  { immediate: true }
+)
 
-watch(() => seadChangeRequest.value.project_name, (projectName, previousProjectName) => {
-  const nextAutoIdentifier = createProjectIdentifierDefault(projectName)
-  const previousAutoIdentifier = createProjectIdentifierDefault(previousProjectName || '')
-  const currentIdentifier = normalizeSubmissionIdentifier(seadChangeRequest.value.identifier)
+watch(
+  () => seadChangeRequest.value.project_name,
+  (projectName, previousProjectName) => {
+    const nextAutoIdentifier = createProjectIdentifierDefault(projectName)
+    const previousAutoIdentifier = createProjectIdentifierDefault(previousProjectName || '')
+    const currentIdentifier = normalizeSubmissionIdentifier(seadChangeRequest.value.identifier)
 
-  if (nextAutoIdentifier && (!currentIdentifier || currentIdentifier === lastAutoIdentifier.value || currentIdentifier === previousAutoIdentifier)) {
-    seadChangeRequest.value.identifier = nextAutoIdentifier
-    lastAutoIdentifier.value = nextAutoIdentifier
-  }
-}, { immediate: true })
+    if (
+      nextAutoIdentifier &&
+      (!currentIdentifier ||
+        currentIdentifier === lastAutoIdentifier.value ||
+        currentIdentifier === previousAutoIdentifier)
+    ) {
+      seadChangeRequest.value.identifier = nextAutoIdentifier
+      lastAutoIdentifier.value = nextAutoIdentifier
+    }
+  },
+  { immediate: true }
+)
 
 watch(
   [() => seadChangeRequest.value.project_name, () => seadChangeRequest.value.datatype],
@@ -593,35 +711,47 @@ watch(
     const currentSubmissionName = normalizeSubmissionName(form.value.submission_name)
 
     if (
-      nextAutoSubmissionName
-      && (!currentSubmissionName || currentSubmissionName === lastAutoSubmissionName.value || currentSubmissionName === previousAutoSubmissionName)
+      nextAutoSubmissionName &&
+      (!currentSubmissionName ||
+        currentSubmissionName === lastAutoSubmissionName.value ||
+        currentSubmissionName === previousAutoSubmissionName)
     ) {
       form.value.submission_name = nextAutoSubmissionName
       lastAutoSubmissionName.value = nextAutoSubmissionName
     }
   },
-  { immediate: true },
+  { immediate: true }
 )
 
-watch(() => seadChangeRequest.value.identifier, (identifier) => {
-  const normalizedIdentifier = normalizeSubmissionIdentifier(identifier)
+watch(
+  () => seadChangeRequest.value.identifier,
+  (identifier) => {
+    const normalizedIdentifier = normalizeSubmissionIdentifier(identifier)
 
-  if (identifier !== normalizedIdentifier) {
-    seadChangeRequest.value.identifier = normalizedIdentifier
+    if (identifier !== normalizedIdentifier) {
+      seadChangeRequest.value.identifier = normalizedIdentifier
+    }
   }
-})
+)
 
-watch(() => form.value.submission_name, (submissionName) => {
-  const normalizedSubmissionName = normalizeSubmissionName(submissionName)
+watch(
+  () => form.value.submission_name,
+  (submissionName) => {
+    const normalizedSubmissionName = normalizeSubmissionName(submissionName)
 
-  if (submissionName !== normalizedSubmissionName) {
-    form.value.submission_name = normalizedSubmissionName
+    if (submissionName !== normalizedSubmissionName) {
+      form.value.submission_name = normalizedSubmissionName
+    }
   }
-})
+)
 
-watch(ingesterConfig, () => {
-  applyIngesterDefaults()
-}, { immediate: true })
+watch(
+  ingesterConfig,
+  () => {
+    applyIngesterDefaults()
+  },
+  { immediate: true }
+)
 
 const rules = {
   required: (v: string) => !!v || 'Required field',
@@ -641,7 +771,7 @@ const rules = {
   },
   singleLineDescription: (value: string) => {
     return isValidDescription(value) || 'Use a single line shorter than 80 characters'
-  }
+  },
 }
 
 function normalizeSubmissionIdentifier(identifier: string): string {
@@ -664,9 +794,7 @@ function createProjectIdentifierDefault(projectName: string): string {
 }
 
 function createSubmissionNameDefault(projectName: string, datatype: string): string {
-  const nameParts = [projectName, datatype]
-    .map(value => normalizeSubmissionName(value))
-    .filter(Boolean)
+  const nameParts = [projectName, datatype].map((value) => normalizeSubmissionName(value)).filter(Boolean)
 
   return nameParts.join('_')
 }
@@ -738,7 +866,10 @@ function applyIngesterDefaults() {
   }
 
   if (!form.value.submission_name && seadChangeRequest.value.project_name) {
-    const autoSubmissionName = createSubmissionNameDefault(seadChangeRequest.value.project_name, seadChangeRequest.value.datatype)
+    const autoSubmissionName = createSubmissionNameDefault(
+      seadChangeRequest.value.project_name,
+      seadChangeRequest.value.datatype
+    )
     form.value.submission_name = autoSubmissionName
     lastAutoSubmissionName.value = autoSubmissionName
   }
@@ -756,38 +887,58 @@ function buildSubmissionContext(): SubmissionContextInput | undefined {
 
   return {
     submission_name: normalizeSubmissionName(form.value.submission_name),
-    project_name: seadChangeRequest.value.project_name.trim(),
+    project_name: effectiveProjectName.value,
     data_provider_code: dataProviderCode.value,
     timestamp: seadChangeRequest.value.timestamp,
     datatype: seadChangeRequest.value.datatype,
     identifier: normalizeSubmissionIdentifier(seadChangeRequest.value.identifier),
     description: seadChangeRequest.value.description.trim() || undefined,
     issue_identifier: seadChangeRequest.value.issue_identifier.trim() || undefined,
-    author: seadChangeRequest.value.author.trim() || undefined
+    author: seadChangeRequest.value.author.trim() || undefined,
+  }
+}
+
+function buildProjectRequest(): ProjectIngesterRequest {
+  return {
+    project_name: routeProjectName.value,
+    submission_context: {
+      submission_name: normalizeSubmissionName(form.value.submission_name),
+      timestamp: seadChangeRequest.value.timestamp,
+      datatype: seadChangeRequest.value.datatype,
+      identifier: normalizeSubmissionIdentifier(seadChangeRequest.value.identifier),
+      description: seadChangeRequest.value.description.trim() || undefined,
+      issue_identifier: seadChangeRequest.value.issue_identifier.trim() || undefined,
+      author: seadChangeRequest.value.author.trim() || undefined,
+    },
+    deploy_strategy: deployStrategy.value,
   }
 }
 
 function buildValidateRequest(): ValidateRequest {
   return {
     source: form.value.source,
+    project_name: isSeadChangeRequest.value ? effectiveProjectName.value || undefined : undefined,
     config: form.value.config,
     submission_context: buildSubmissionContext(),
-    deploy_strategy: isSeadChangeRequest.value ? deployStrategy.value : undefined
+    deploy_strategy: isSeadChangeRequest.value ? deployStrategy.value : undefined,
   }
 }
 
 function buildIngestRequest(): IngestRequest {
   return {
     ...form.value,
+    project_name: isSeadChangeRequest.value ? effectiveProjectName.value || undefined : undefined,
     submission_name: normalizeSubmissionName(form.value.submission_name),
     data_types: isSeadChangeRequest.value ? seadChangeRequest.value.datatype : form.value.data_types.trim(),
     config: form.value.config,
     submission_context: buildSubmissionContext(),
-    deploy_strategy: isSeadChangeRequest.value ? deployStrategy.value : undefined
+    deploy_strategy: isSeadChangeRequest.value ? deployStrategy.value : undefined,
   }
 }
 
 async function handleValidate() {
+  if (!selectedIngesterAllowed.value || !canRunSelectedIngester.value) return
+
   const validationState = await formRef.value?.validate?.()
   if (validationState && validationState.valid === false) return
   if (!formValid.value) return
@@ -795,10 +946,16 @@ async function handleValidate() {
   clearValidation()
   clearError()
 
-  await validate(buildValidateRequest())
+  if (isSeadChangeRequest.value) {
+    await validateProject(buildProjectRequest())
+  } else {
+    await validate(buildValidateRequest())
+  }
 }
 
 async function handleIngest() {
+  if (!selectedIngesterAllowed.value || !canRunSelectedIngester.value) return
+
   const validationState = await formRef.value?.validate?.()
   if (validationState && validationState.valid === false) return
   if (!formValid.value) return
@@ -807,11 +964,16 @@ async function handleIngest() {
   clearIngestion()
   clearError()
 
-  await ingest(buildIngestRequest())
+  if (isSeadChangeRequest.value) {
+    await ingestProject(buildProjectRequest())
+  } else {
+    await ingest(buildIngestRequest())
+  }
 }
 
 function resetForm() {
   formRef.value?.resetValidation?.()
+  ingesterStore.resetProjectAttempt()
   form.value = createBaseForm()
   seadChangeRequest.value = createSeadChangeRequestState(defaultProjectName.value)
   lastAutoIdentifier.value = ''

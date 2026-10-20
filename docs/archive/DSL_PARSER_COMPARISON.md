@@ -147,7 +147,7 @@ Formula: =concat(a @ b)
 ## Recommended Implementation
 
 ### Phase 1: Hand-written Parser (Now)
-Use [src/transforms/dsl_handwritten.py](../../src/transforms/dsl_handwritten.py):
+Use [src/transforms/dsl.py](../../src/transforms/dsl.py):
 - Proven working implementation
 - Zero dependencies
 - Fast and transparent
@@ -235,4 +235,4 @@ The Lark implementation remains valuable as:
 - Useful if grammar complexity grows significantly
 - Educational comparison for understanding trade-offs
 
-**Recommendation**: Proceed with the hand-written parser ([src/transforms/dsl_handwritten.py](../../src/transforms/dsl_handwritten.py)) for production use.
+**Recommendation**: Proceed with the hand-written parser ([src/transforms/dsl.py](../../src/transforms/dsl.py)) for production use.

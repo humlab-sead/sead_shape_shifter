@@ -49,6 +49,8 @@ class TestEntitiesList:
             "/api/v1/projects",
             json={
                 "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
                 "entities": {"entity1": sample_entity_data, "entity2": sample_entity_data},
             },
         )
@@ -67,7 +69,10 @@ class TestEntitiesList:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         # Create empty config
-        await authorized_client.post("/api/v1/projects", json={"name": "test_project", "entities": {}})
+        await authorized_client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "data_provider_code": "test-provider", "provider_schema": "schema-one", "entities": {}},
+        )
 
         # List entities
         response = await authorized_client.get("/api/v1/projects/test_project/entities")
@@ -95,7 +100,12 @@ class TestEntitiesGet:
         # Create config with entity
         await authorized_client.post(
             "/api/v1/projects",
-            json={"name": "test_project", "entities": {"test_entity": sample_entity_data}},
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {"test_entity": sample_entity_data},
+            },
         )
 
         # Get entity
@@ -112,7 +122,10 @@ class TestEntitiesGet:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         # Create empty config
-        await authorized_client.post("/api/v1/projects", json={"name": "test_project", "entities": {}})
+        await authorized_client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "data_provider_code": "test-provider", "provider_schema": "schema-one", "entities": {}},
+        )
 
         # Try to get non-existent entity
         response = await authorized_client.get("/api/v1/projects/test_project/entities/nonexistent")
@@ -133,7 +146,12 @@ class TestEntitiesGet:
 
         await authorized_client.post(
             "/api/v1/projects",
-            json={"name": "test_project", "entities": {"location": entity_data}},
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {"location": entity_data},
+            },
         )
 
         response = await authorized_client.get("/api/v1/projects/test_project/entities/location")
@@ -156,7 +174,10 @@ class TestFixedSchemaDerivation:
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
-        await authorized_client.post("/api/v1/projects", json={"name": "test_project", "entities": {}})
+        await authorized_client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "data_provider_code": "test-provider", "provider_schema": "schema-one", "entities": {}},
+        )
 
         entity_data = {
             "type": "fixed",
@@ -186,7 +207,10 @@ class TestFixedSchemaDerivation:
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
-        await authorized_client.post("/api/v1/projects", json={"name": "test_project", "entities": {}})
+        await authorized_client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "data_provider_code": "test-provider", "provider_schema": "schema-one", "entities": {}},
+        )
 
         entity_data = {
             "type": "fixed",
@@ -224,7 +248,12 @@ class TestFixedSchemaDerivation:
 
         await authorized_client.post(
             "/api/v1/projects",
-            json={"name": "test_project", "entities": {"test_entity": sample_entity_data}},
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {"test_entity": sample_entity_data},
+            },
         )
 
         response = await authorized_client.get("/api/v1/projects/test_project/entities/test_entity")
@@ -241,7 +270,10 @@ class TestEntitiesCreate:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         # Create config
-        await authorized_client.post("/api/v1/projects", json={"name": "test_project", "entities": {}})
+        await authorized_client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "data_provider_code": "test-provider", "provider_schema": "schema-one", "entities": {}},
+        )
 
         # Add entity
         response = await authorized_client.post(
@@ -259,7 +291,10 @@ class TestEntitiesCreate:
 
     async def test_create_entity_rejects_invalid_name(self, tmp_path, monkeypatch, reset_services, sample_entity_data, authorized_client):
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
-        await authorized_client.post("/api/v1/projects", json={"name": "test_project", "entities": {}})
+        await authorized_client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "data_provider_code": "test-provider", "provider_schema": "schema-one", "entities": {}},
+        )
 
         response = await authorized_client.post(
             "/api/v1/projects/test_project/entities",
@@ -278,7 +313,12 @@ class TestEntitiesCreate:
         # Create config with entity
         await authorized_client.post(
             "/api/v1/projects",
-            json={"name": "test_project", "entities": {"existing": sample_entity_data}},
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {"existing": sample_entity_data},
+            },
         )
 
         # Try to add duplicate entity
@@ -311,7 +351,12 @@ class TestEntitiesUpdate:
         # Create config with entity
         await authorized_client.post(
             "/api/v1/projects",
-            json={"name": "test_project", "entities": {"test_entity": sample_entity_data}},
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {"test_entity": sample_entity_data},
+            },
         )
 
         # Update entity
@@ -334,7 +379,12 @@ class TestEntitiesUpdate:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
         await authorized_client.post(
             "/api/v1/projects",
-            json={"name": "test_project", "entities": {"sample": sample_entity_data}},
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {"sample": sample_entity_data},
+            },
         )
 
         project_file = tmp_path / "test_project" / "shapeshifter.yml"
@@ -371,7 +421,12 @@ class TestEntitiesUpdate:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
         await authorized_client.post(
             "/api/v1/projects",
-            json={"name": "test_project", "entities": {"sample": sample_entity_data}},
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {"sample": sample_entity_data},
+            },
         )
 
         def fail_note_rename(*args, **kwargs):
@@ -401,7 +456,12 @@ class TestEntitiesUpdate:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
         await authorized_client.post(
             "/api/v1/projects",
-            json={"name": "test_project", "entities": {"sample": sample_entity_data}},
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {"sample": sample_entity_data},
+            },
         )
 
         project_dir = tmp_path / "test_project"
@@ -437,7 +497,12 @@ class TestEntitiesUpdate:
         dependent = {"type": "entity", "foreign_keys": [{"entity": "sample", "defer_dependency": True}]}
         await authorized_client.post(
             "/api/v1/projects",
-            json={"name": "test_project", "entities": {"sample": sample_entity_data, "dependent": dependent}},
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {"sample": sample_entity_data, "dependent": dependent},
+            },
         )
 
         response = await authorized_client.put(
@@ -455,7 +520,10 @@ class TestEntitiesUpdate:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         # Create empty config
-        await authorized_client.post("/api/v1/projects", json={"name": "test_project", "entities": {}})
+        await authorized_client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "data_provider_code": "test-provider", "provider_schema": "schema-one", "entities": {}},
+        )
 
         # Try to update non-existent entity
         response = await authorized_client.put(
@@ -476,7 +544,12 @@ class TestEntitiesDelete:
         # Create config with entity
         await authorized_client.post(
             "/api/v1/projects",
-            json={"name": "test_project", "entities": {"test_entity": sample_entity_data}},
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {"test_entity": sample_entity_data},
+            },
         )
 
         # Delete entity
@@ -493,7 +566,10 @@ class TestEntitiesDelete:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         # Create empty config
-        await authorized_client.post("/api/v1/projects", json={"name": "test_project", "entities": {}})
+        await authorized_client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "data_provider_code": "test-provider", "provider_schema": "schema-one", "entities": {}},
+        )
 
         # Try to delete non-existent entity
         response = await authorized_client.delete("/api/v1/projects/test_project/entities/nonexistent")
@@ -529,7 +605,12 @@ class TestEntityValues:
         }
         await authorized_client.post(
             "/api/v1/projects",
-            json={"name": "test_project", "entities": {"test_entity": entity_data}},
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {"test_entity": entity_data},
+            },
         )
 
         # Get entity values
@@ -568,7 +649,12 @@ class TestEntityValues:
         }
         await authorized_client.post(
             "/api/v1/projects",
-            json={"name": "test_project", "entities": {"test_entity": entity_data}},
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {"test_entity": entity_data},
+            },
         )
 
         # Get entity values
@@ -588,7 +674,12 @@ class TestEntityValues:
         entity_data = {"type": "fixed", "columns": ["id", "name"], "values": [[1, "A"], [2, "B"]], "public_id": "id", "keys": ["id"]}
         await authorized_client.post(
             "/api/v1/projects",
-            json={"name": "test_project", "entities": {"test_entity": entity_data}},
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {"test_entity": entity_data},
+            },
         )
 
         # Try to get entity values
@@ -616,7 +707,12 @@ class TestEntityValues:
         }
         await authorized_client.post(
             "/api/v1/projects",
-            json={"name": "test_project", "entities": {"test_entity": entity_data}},
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {"test_entity": entity_data},
+            },
         )
 
         # Update entity values
@@ -664,7 +760,12 @@ class TestEntityValues:
         }
         await authorized_client.post(
             "/api/v1/projects",
-            json={"name": "test_project", "entities": {"test_entity": entity_data}},
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {"test_entity": entity_data},
+            },
         )
 
         sidecar_path = project_folder / "test_project-mapping.yml"
@@ -739,7 +840,12 @@ class TestEntityValues:
         }
         await authorized_client.post(
             "/api/v1/projects",
-            json={"name": "test_project", "entities": {"test_entity": entity_data}},
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {"test_entity": entity_data},
+            },
         )
 
         sidecar_path = project_folder / "test_project-mapping.yml"
@@ -807,7 +913,12 @@ class TestEntityValues:
         }
         await authorized_client.post(
             "/api/v1/projects",
-            json={"name": "test_project", "entities": {"test_entity": entity_data}},
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {"test_entity": entity_data},
+            },
         )
 
         update_data = {"columns": ["country"], "values": [["SE"]]}
@@ -846,7 +957,12 @@ class TestEntityValues:
         }
         await authorized_client.post(
             "/api/v1/projects",
-            json={"name": "test_project", "entities": {"test_entity": entity_data}},
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {"test_entity": entity_data},
+            },
         )
 
         sidecar_path = project_folder / "test_project-mapping.yml"
@@ -926,7 +1042,12 @@ class TestEntityValues:
         }
         await authorized_client.post(
             "/api/v1/projects",
-            json={"name": "test_project", "entities": {"test_entity": entity_data}},
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {"test_entity": entity_data},
+            },
         )
 
         project_folder = tmp_path / "test_project"
@@ -1035,7 +1156,12 @@ class TestEntityValues:
         }
         await authorized_client.post(
             "/api/v1/projects",
-            json={"name": "test_project", "entities": {"test_entity": entity_data}},
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {"test_entity": entity_data},
+            },
         )
         project_folder = tmp_path / "test_project"
         materialized_folder = project_folder / "materialized"
@@ -1068,7 +1194,12 @@ class TestEntityValues:
         }
         await authorized_client.post(
             "/api/v1/projects",
-            json={"name": "test_project", "entities": {"test_entity": entity_data}},
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {"test_entity": entity_data},
+            },
         )
         project_folder = tmp_path / "test_project"
         materialized_folder = project_folder / "materialized"
@@ -1107,7 +1238,12 @@ class TestEntityValues:
         }
         await authorized_client.post(
             "/api/v1/projects",
-            json={"name": "test_project", "entities": {"test_entity": entity_data}},
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {"test_entity": entity_data},
+            },
         )
 
         response = await authorized_client.patch("/api/v1/projects/test_project/mapping/from-materialized/test_entity")
@@ -1124,7 +1260,12 @@ class TestEntityValues:
         entity_data = {"type": "fixed", "columns": ["id", "name"], "values": [[1, "A"]], "public_id": "id", "keys": ["id"]}
         await authorized_client.post(
             "/api/v1/projects",
-            json={"name": "test_project", "entities": {"test_entity": entity_data}},
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {"test_entity": entity_data},
+            },
         )
 
         # Try to update entity values
@@ -1160,7 +1301,12 @@ class TestEntityValues:
         }
         await authorized_client.post(
             "/api/v1/projects",
-            json={"name": "test_project", "entities": {"test_entity": entity_data}},
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {"test_entity": entity_data},
+            },
         )
 
         # Get values
@@ -1199,7 +1345,12 @@ class TestEntityValues:
         }
         await authorized_client.post(
             "/api/v1/projects",
-            json={"name": "test_project", "entities": {"test_entity": entity_data}},
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {"test_entity": entity_data},
+            },
         )
 
         # Get current etag
@@ -1244,7 +1395,12 @@ class TestEntityValues:
         }
         await authorized_client.post(
             "/api/v1/projects",
-            json={"name": "test_project", "entities": {"test_entity": entity_data}},
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {"test_entity": entity_data},
+            },
         )
 
         # Update with wrong etag
@@ -1284,7 +1440,12 @@ class TestEntityValues:
         }
         await authorized_client.post(
             "/api/v1/projects",
-            json={"name": "test_project", "entities": {"test_entity": entity_data}},
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {"test_entity": entity_data},
+            },
         )
 
         # Get values without format param (should return parquet)
@@ -1354,7 +1515,12 @@ class TestPartialMappingSave:
 
         await authorized_client.post(
             "/api/v1/projects",
-            json={"name": "test_project", "entities": {"site": self._SITE_ENTITY}},
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {"site": self._SITE_ENTITY},
+            },
         )
         _write_sidecar_entry(project_folder, "site", local_key="site_code", public_id="site_id")
 
@@ -1396,7 +1562,12 @@ class TestPartialMappingSave:
         }
         await authorized_client.post(
             "/api/v1/projects",
-            json={"name": "test_project", "entities": {"site": entity_data}},
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {"site": entity_data},
+            },
         )
         _write_sidecar_entry(project_folder, "site", local_key="site_code", public_id="site_id")
 
@@ -1426,7 +1597,12 @@ class TestPartialMappingSave:
 
         await authorized_client.post(
             "/api/v1/projects",
-            json={"name": "test_project", "entities": {"site": self._SITE_ENTITY}},
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {"site": self._SITE_ENTITY},
+            },
         )
         _write_sidecar_entry(project_folder, "site", local_key="legacy_code", public_id="site_id")
 

@@ -9,6 +9,7 @@ from ingesters.sead_change_request.contracts import (
     IdentityAssignment,
     IdentityResolutionResult,
     IdentityWorkPlan,
+    KnownIdMapping,
     PendingConfirmationReport,
     PlannedRowAction,
     PlannedTable,
@@ -25,17 +26,20 @@ from ingesters.sead_change_request.identity_resolution import resolve_planned_ta
 from ingesters.sead_change_request.identity_work import build_identity_work_plan
 from ingesters.sead_change_request.ingester import SeadChangeRequestIngester
 from ingesters.sead_change_request.orchestration import IdentityOrchestrationResult, orchestrate_identity_assignments
-from ingesters.sead_change_request.package_builder import build_change_request_package
+from ingesters.sead_change_request.package_builder import build_change_request_package, build_staging_package
 from ingesters.sead_change_request.planning import plan_table
 from ingesters.sead_change_request.sql_builder import (
     COPY_CSV_DEPLOY_ARTIFACT_STRATEGY,
     DEFAULT_DEPLOY_ARTIFACT_STRATEGY,
+    INLINE_STAGING_DEPLOY_ARTIFACT_STRATEGY,
     CopyCsvDeployStrategy,
     DeployArtifactStrategy,
     InlineInsertDeployStrategy,
+    InlineStagingDeployStrategy,
     build_deploy_artifact,
     resolve_deploy_artifact_strategy,
 )
+from ingesters.sead_change_request.staging_eligibility import PendingDeploymentMap, resolve_staged_children
 from ingesters.sead_change_request.target_projection import project_target_ids
 
 __all__ = [
@@ -54,6 +58,7 @@ __all__ = [
     "IdentityOrchestrationResult",
     "IdentityResolutionResult",
     "IdentityWorkPlan",
+    "KnownIdMapping",
     "ProjectedTable",
     "TargetProjectionResult",
     "PendingConfirmationReport",
@@ -64,12 +69,17 @@ __all__ = [
     "SourceTableBundle",
     "SubmissionContext",
     "InlineInsertDeployStrategy",
+    "INLINE_STAGING_DEPLOY_ARTIFACT_STRATEGY",
+    "InlineStagingDeployStrategy",
+    "PendingDeploymentMap",
     "build_change_request_package",
+    "build_staging_package",
     "build_deploy_artifact",
     "check_projected_collisions",
     "project_target_ids",
     "orchestrate_identity_assignments",
     "resolve_planned_tables",
+    "resolve_staged_children",
     "classify_submission_outcomes",
     "build_identity_work_plan",
     "plan_table",

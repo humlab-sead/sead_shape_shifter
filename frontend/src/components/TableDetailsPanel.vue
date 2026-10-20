@@ -2,7 +2,7 @@
   <div v-if="embedded">
     <!-- Embedded mode: No outer card, just content with divider -->
     <v-divider class="my-3" />
-    
+
     <!-- Loading State -->
     <div v-if="loading" class="text-center py-4">
       <v-progress-circular indeterminate color="primary" />
@@ -10,7 +10,15 @@
     </div>
 
     <!-- Error Display -->
-    <v-alert v-else-if="error" type="error" variant="tonal" density="compact" closable @click:close="clearError" class="mb-2">
+    <v-alert
+      v-else-if="error"
+      type="error"
+      variant="tonal"
+      density="compact"
+      closable
+      @click:close="clearError"
+      class="mb-2"
+    >
       {{ error }}
     </v-alert>
 
@@ -32,7 +40,12 @@
 
         <div class="column-list-scroll">
           <v-list density="compact" class="column-list">
-            <v-list-item v-for="column in tableSchema?.columns ?? []" :key="column.name" class="column-item" density="compact">
+            <v-list-item
+              v-for="column in tableSchema?.columns ?? []"
+              :key="column.name"
+              class="column-item"
+              density="compact"
+            >
               <template #prepend>
                 <v-icon :icon="getColumnIcon(column)" :color="getColumnColor(column)" size="small" />
               </template>
@@ -122,7 +135,7 @@
       </v-card>
     </div>
   </div>
-  
+
   <v-card v-else>
     <v-card-title class="d-flex align-center">
       <v-icon icon="mdi-table-cog" class="mr-2" />
@@ -168,7 +181,12 @@
 
           <div class="column-list-scroll">
             <v-list density="compact" class="column-list">
-              <v-list-item v-for="column in tableSchema?.columns ?? []" :key="column.name" class="column-item" density="compact">
+              <v-list-item
+                v-for="column in tableSchema?.columns ?? []"
+                :key="column.name"
+                class="column-item"
+                density="compact"
+              >
                 <template #prepend>
                   <v-icon :icon="getColumnIcon(column)" :color="getColumnColor(column)" size="small" />
                 </template>
@@ -305,7 +323,7 @@ async function loadSchema() {
 
   try {
     const result = await dataSourceStore.fetchTableSchema(props.dataSource, props.tableName, props.schema)
-    
+
     // Only update if still mounted
     if (isMounted.value) {
       tableSchema.value = result
@@ -367,7 +385,7 @@ watch(
     // Clear existing data immediately
     tableSchema.value = null
     error.value = null
-    
+
     if (props.autoLoad && isMounted.value) {
       loadSchema()
     }

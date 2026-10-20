@@ -533,10 +533,10 @@ Use this checklist to ensure complete reconciliation:
 
 ## Related Documentation
 
-- [TRACE_LOGGING_GUIDE.md](TRACE_LOGGING_GUIDE.md) - Debugging reconciliation issues
-- [CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md) - Full YAML configuration reference
-- [scripts/README.md](../scripts/README.md) - CLI script usage details
-- [BACKEND_API.md](BACKEND_API.md) - Reconciliation API endpoints
+- TRACE_LOGGING_GUIDE.md - Debugging reconciliation issues
+- [CONFIGURATION_GUIDE.md](../CONFIGURATION_GUIDE.md) - Full YAML configuration reference
+- [scripts/README.md](../../scripts/README.md) - CLI script usage details
+- BACKEND_API.md - Reconciliation API endpoints
 
 ---
 

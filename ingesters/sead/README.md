@@ -1,5 +1,10 @@
 # SEAD Clearinghouse Ingester
 
+> **Deprecated.** This ingester writes directly to the target database and does not use SIMS identity resolution.
+> It is superseded by the [SEAD Change Request ingester](../sead_change_request/README.md), which resolves
+> identities through SIMS and emits a reviewable deploy bundle instead of modifying target data.
+> This ingester remains registered only for existing callers and is scheduled for removal.
+
 Data ingester for the SEAD Clearinghouse database system. This ingester transforms Excel-based data submissions into CSV format and loads them into PostgreSQL following the SEAD ClearingHouse schema.
 
 ## Overview

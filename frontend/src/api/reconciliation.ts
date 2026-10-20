@@ -84,11 +84,7 @@ export const reconciliationSpecApi = {
   /**
    * Get mapping count for a specification
    */
-  getMappingCount: async (
-    projectName: string,
-    entityName: string,
-    targetField: string
-  ): Promise<number> => {
+  getMappingCount: async (projectName: string, entityName: string, targetField: string): Promise<number> => {
     const response = await apiRequest<{ count: number }>({
       method: 'GET',
       url: `/projects/${projectName}/reconciliation/mapping-registry/${entityName}/${targetField}/mapping-count`,

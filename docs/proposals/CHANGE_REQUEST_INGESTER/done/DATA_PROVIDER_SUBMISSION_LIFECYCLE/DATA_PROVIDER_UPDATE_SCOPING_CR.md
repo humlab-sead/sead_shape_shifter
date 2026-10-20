@@ -20,7 +20,7 @@ History should not mean multiple active copies of the same provider-owned record
 
 The existing-row SQL update path described in [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](../../../CHANGE_REQUEST_INGESTER_POST_MVP/UPDATE_HANDLING_FOR_EXISTING_ROWS.md) is one downstream scenario inside this broader problem. It should not define the problem statement for this CR.
 
-This document is the decision record for the problem and recommendation. The durable lifecycle rules now live in [../../../../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../../../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md), and phased delivery planning belongs in [DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md](./DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md).
+This document is the decision record for the problem and recommendation. The durable lifecycle rules now live in [../../../../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md), and phased delivery planning belongs in [DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md](./DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md).
 
 ## Problem
 

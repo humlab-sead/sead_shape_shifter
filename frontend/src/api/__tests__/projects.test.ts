@@ -5,11 +5,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { projectsApi } from '../projects'
 import type {
-  // @ts-ignore
+  // @ts-expect-error Legacy test fixtures use shapes that differ from public types.
   Project,
-  // @ts-ignore
+  // @ts-expect-error Legacy test fixtures use shapes that differ from public types.
   ProjectMetadata,
-  // @ts-ignore
+  // @ts-expect-error Legacy test fixtures use shapes that differ from public types.
   ValidationResult,
   ProjectCreateRequest,
   ProjectUpdateRequest,
@@ -20,10 +20,13 @@ import type {
 
 // Mock the API client
 vi.mock('../client', () => ({
+  apiClient: {
+    post: vi.fn(),
+  },
   apiRequest: vi.fn(),
 }))
 
-import { apiRequest } from '../client'
+import { apiClient, apiRequest } from '../client'
 
 describe('projectsApi', () => {
   beforeEach(() => {
@@ -72,7 +75,12 @@ describe('projectsApi', () => {
   describe('listTargetModels', () => {
     it('should list project-local and shared target model choices', async () => {
       const options = [
-        { name: 'model.yml', label: 'Project-local: model.yml', value: '@load: model.yml', location: 'project' as const },
+        {
+          name: 'model.yml',
+          label: 'Project-local: model.yml',
+          value: '@load: model.yml',
+          location: 'project' as const,
+        },
         {
           name: 'model.yml',
           label: 'Shared: model.yml',
@@ -89,6 +97,77 @@ describe('projectsApi', () => {
         url: '/projects/test-project/target-models',
       })
       expect(result).toEqual(options)
+    })
+  })
+
+  describe('project files', () => {
+    it('should send overwrite as multipart form data when replacing a file', async () => {
+      const fileInfo = {
+        name: 'data.xlsx',
+        path: 'data.xlsx',
+        location: 'local' as const,
+        size_bytes: 12,
+        modified_at: '2024-01-01T00:00:00Z',
+      }
+      vi.mocked(apiClient.post).mockResolvedValue({ data: fileInfo } as never)
+      const file = new File(['updated data'], 'data.xlsx')
+
+      const result = await projectsApi.uploadFile('test-project', file, true)
+
+      expect(apiClient.post).toHaveBeenCalledWith(
+        '/projects/test-project/files',
+        expect.any(FormData),
+        expect.objectContaining({ headers: { 'Content-Type': 'multipart/form-data' } })
+      )
+      const formData = vi.mocked(apiClient.post).mock.calls[0]?.[1]
+      expect(formData).toBeInstanceOf(FormData)
+      if (!(formData instanceof FormData)) throw new Error('Upload request did not use FormData')
+      expect(formData.get('overwrite')).toBe('true')
+      expect(formData.get('file')).toBe(file)
+      expect(result).toEqual(fileInfo)
+    })
+
+    it('should delete the named project file', async () => {
+      vi.mocked(apiRequest).mockResolvedValue(undefined)
+
+      await projectsApi.deleteFile('test-project', 'my data.csv')
+
+      expect(apiRequest).toHaveBeenCalledWith({
+        method: 'DELETE',
+        url: '/projects/test-project/files/my%20data.csv',
+      })
+    })
+
+    it('should fetch project file capabilities', async () => {
+      const capabilities = { can_share_with_all_projects: true }
+      vi.mocked(apiRequest).mockResolvedValue(capabilities)
+
+      const result = await projectsApi.getFileCapabilities('test-project')
+
+      expect(apiRequest).toHaveBeenCalledWith({
+        method: 'GET',
+        url: '/projects/test-project/files/capabilities',
+      })
+      expect(result).toEqual(capabilities)
+    })
+
+    it('should share a project file with all projects', async () => {
+      const sharedFile = {
+        name: 'shared data.csv',
+        path: 'shared data.csv',
+        location: 'global' as const,
+        size_bytes: 12,
+        modified_at: '2024-01-01T00:00:00Z',
+      }
+      vi.mocked(apiRequest).mockResolvedValue(sharedFile)
+
+      const result = await projectsApi.shareFile('test-project', sharedFile.name)
+
+      expect(apiRequest).toHaveBeenCalledWith({
+        method: 'POST',
+        url: '/projects/test-project/files/shared%20data.csv/share',
+      })
+      expect(result).toEqual(sharedFile)
     })
   })
 
@@ -139,6 +218,8 @@ describe('projectsApi', () => {
     it('should create a new project with minimal data', async () => {
       const createData: ProjectCreateRequest = {
         name: 'new-project',
+        data_provider_code: 'test-provider',
+        provider_schema: 'schema-one',
       }
 
       const mockResponse: Project = {
@@ -164,6 +245,8 @@ describe('projectsApi', () => {
     it('should create a new project with entities', async () => {
       const createData: ProjectCreateRequest = {
         name: 'new-project',
+        data_provider_code: 'test-provider',
+        provider_schema: 'schema-one',
         entities: {
           entity1: { field: 'value' },
           entity2: { field: 'value' },
@@ -527,8 +610,8 @@ describe('projectsApi', () => {
           options: {
             host: 'localhost',
             port: 5432,
-            dbname: 'testdb'
-          }
+            dbname: 'testdb',
+          },
         },
         'csv-imports': '@include: csv-imports.yml',
       }

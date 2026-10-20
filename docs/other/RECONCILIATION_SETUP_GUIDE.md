@@ -429,7 +429,7 @@ location:
     materialized_by: "researcher@example.com"
 ```
 
-See [Entity Materialization Guide](ENTITY_MATERIALIZATION.md) for full details.
+See Entity Materialization Guide for full details.
 
 ### 2. Iterative Reconciliation
 
@@ -746,6 +746,6 @@ Autocomplete suggestions for SEAD entity names.
 ## See Also
 
 - [OpenRefine Reconciliation API Specification](https://reconciliation-api.github.io/specs/latest/)
-- [Project Guide](CONFIGURATION_GUIDE.md)
-- [Backend API Documentation](BACKEND_API.md)
-- [Development Guide](DEVELOPMENT_GUIDE.md)
+- [Project Guide](../CONFIGURATION_GUIDE.md)
+- Backend API Documentation
+- [Development Guide](../DEVELOPMENT.md)

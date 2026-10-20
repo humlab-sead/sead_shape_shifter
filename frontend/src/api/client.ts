@@ -21,30 +21,30 @@ export async function retryWithBackoff<T>(
     maxRetries = 3,
     initialDelay = 100,
     maxDelay = 1000,
-    shouldRetry = (err) => err?.response?.status === 404
+    shouldRetry = (err) => err?.response?.status === 404,
   } = options
 
   let lastError: any
-  
+
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       return await fn()
     } catch (error) {
       lastError = error
-      
+
       // Don't retry if this is the last attempt or if error shouldn't be retried
       if (attempt === maxRetries || !shouldRetry(error)) {
         throw error
       }
-      
+
       // Calculate delay with exponential backoff
       const delay = Math.min(initialDelay * Math.pow(2, attempt), maxDelay)
       console.debug(`Retry attempt ${attempt + 1}/${maxRetries} after ${delay}ms`)
-      
-      await new Promise(resolve => setTimeout(resolve, delay))
+
+      await new Promise((resolve) => setTimeout(resolve, delay))
     }
   }
-  
+
   throw lastError
 }
 

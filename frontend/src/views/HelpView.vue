@@ -21,13 +21,7 @@
               </v-chip>
             </v-chip-group>
             <!-- External link -->
-            <v-btn
-              :href="githubDocHref"
-              target="_blank"
-              rel="noopener noreferrer"
-              variant="outlined"
-              size="small"
-            >
+            <v-btn :href="githubDocHref" target="_blank" rel="noopener noreferrer" variant="outlined" size="small">
               <v-icon start size="small">mdi-open-in-new</v-icon>
               View on GitHub
             </v-btn>
@@ -98,7 +92,9 @@ const currentDoc = computed(() => {
 
 const showQuickSections = computed(() => currentDoc.value === 'USER_GUIDE')
 
-const githubDocHref = computed(() => `https://github.com/humlab-sead/sead_shape_shifter/blob/main/docs/${currentDoc.value}.md`)
+const githubDocHref = computed(
+  () => `https://github.com/humlab-sead/sead_shape_shifter/blob/main/docs/${currentDoc.value}.md`
+)
 
 function getSectionFromHash(hash: string): string {
   return hash.startsWith('#') ? decodeURIComponent(hash.slice(1)) : ''

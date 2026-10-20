@@ -243,9 +243,7 @@ describe('sessions API', () => {
 
       await listActiveSessions('project-with-dashes_and_underscores')
 
-      expect(mockApiClient.get).toHaveBeenCalledWith(
-        '/sessions/project-with-dashes_and_underscores/active'
-      )
+      expect(mockApiClient.get).toHaveBeenCalledWith('/sessions/project-with-dashes_and_underscores/active')
     })
 
     it('should handle errors when listing sessions', async () => {

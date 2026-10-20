@@ -229,6 +229,77 @@ def test_table_config_target_facing_columns_collapse_at_unnest_boundary() -> Non
     assert table_cfg.get_target_facing_foreign_key_targets() == {"location_type"}
 
 
+def test_core_conformance_reports_local_foreign_key_keys_dropped_by_unnest() -> None:
+    target_model = _minimal_target_model(
+        {
+            "abundance_property": {
+                "foreign_keys": [{"entity": "property_type", "required": True}],
+            },
+            "property_type": {"public_id": "property_type_id"},
+        }
+    )
+    project = _minimal_project(
+        {
+            "abundance_property": {
+                "columns": ["record_key", "property_group", "property_type_a", "property_type_b"],
+                "foreign_keys": [
+                    {
+                        "entity": "property_type",
+                        "local_keys": ["property_group", "property_type"],
+                        "remote_keys": ["property_group", "property_type"],
+                    }
+                ],
+                "unnest": {
+                    "id_vars": ["record_key"],
+                    "value_vars": ["property_type_a", "property_type_b"],
+                    "var_name": "property_type",
+                    "value_name": "count",
+                },
+            },
+            "property_type": {"public_id": "property_type_id", "columns": ["property_group", "property_type"]},
+        }
+    )
+
+    issues = TargetModelConformanceValidator().validate(target_model, project)
+    fk_issue = next(issue for issue in issues if issue.code == "MISSING_REQUIRED_FOREIGN_KEY_TARGET")
+
+    assert fk_issue.message == (
+        "Entity 'abundance_property' is missing required foreign key target 'property_type' because local key "
+        "column(s) 'property_group' do not survive unnest. Preserve them in 'id_vars' or otherwise make them "
+        "available after unnest."
+    )
+
+
+def test_core_conformance_keeps_generic_missing_foreign_key_message_without_matching_project_fk() -> None:
+    target_model = _minimal_target_model(
+        {
+            "abundance_property": {
+                "foreign_keys": [{"entity": "property_type", "required": True}],
+            },
+            "property_type": {"public_id": "property_type_id"},
+        }
+    )
+    project = _minimal_project(
+        {
+            "abundance_property": {
+                "columns": ["record_key", "property_type_a", "property_type_b"],
+                "unnest": {
+                    "id_vars": ["record_key"],
+                    "value_vars": ["property_type_a", "property_type_b"],
+                    "var_name": "property_type",
+                    "value_name": "count",
+                },
+            },
+            "property_type": {"public_id": "property_type_id"},
+        }
+    )
+
+    issues = TargetModelConformanceValidator().validate(target_model, project)
+    fk_issue = next(issue for issue in issues if issue.code == "MISSING_REQUIRED_FOREIGN_KEY_TARGET")
+
+    assert fk_issue.message == ("Entity 'abundance_property' is missing required foreign key target 'property_type'")
+
+
 def test_table_config_target_facing_columns_allow_chained_fk_extra_columns_after_unnest() -> None:
     entities = {
         "location_type": {
@@ -594,6 +665,8 @@ def test_core_conformance_reports_known_gaps_for_full_arbodat_project() -> None:
     expected_errors = [
         ("CONDITIONAL_FK_AWAITING_RECONCILIATION", "location"),
         ("MISSING_REQUIRED_COLUMN", "relative_dating"),
+        ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "abundance_modification"),
+        ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "abundance_property"),
         ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "relative_dating"),
         ("UNEXPECTED_PUBLIC_ID", "relative_dating"),
     ]
@@ -619,8 +692,8 @@ def test_core_conformance_current_corpus_issue_families_are_stable() -> None:
     assert issue_summary == {
         "sead_arbodat_core": Counter(
             {
-                "MISSING_REQUIRED_COLUMN": 5,
                 "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 5,
+                "MISSING_REQUIRED_COLUMN": 5,
                 "MISSING_REQUIRED_ENTITY": 5,
                 "MISSING_BRIDGE_ENTITY": 1,
                 "CONDITIONAL_FK_AWAITING_RECONCILIATION": 1,
@@ -638,10 +711,10 @@ def test_core_conformance_current_corpus_issue_families_are_stable() -> None:
         ),
         "arbodat_full": Counter(
             {
+                "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 3,
+                "UNEXPECTED_PUBLIC_ID": 1,
                 "CONDITIONAL_FK_AWAITING_RECONCILIATION": 1,
                 "MISSING_REQUIRED_COLUMN": 1,
-                "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 1,
-                "UNEXPECTED_PUBLIC_ID": 1,
             }
         ),
     }

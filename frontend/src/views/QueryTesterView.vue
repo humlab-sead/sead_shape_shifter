@@ -44,9 +44,7 @@
             <!-- Visual Builder Tab -->
             <v-window-item value="builder">
               <div class="pa-4">
-                <v-alert type="info" variant="tonal">
-                  Visual Builder is temporarily unavailable.
-                </v-alert>
+                <v-alert type="info" variant="tonal"> Visual Builder is temporarily unavailable. </v-alert>
               </div>
             </v-window-item>
           </v-window>

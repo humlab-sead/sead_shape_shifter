@@ -6,10 +6,10 @@
 
 - Scope: configuration ergonomics for derived values in `extra_columns`
 - Goal: extend the current interpolation-based `extra_columns` feature with a small, safe expression language for common transforms
-- Relationship to later branch-scoping work: this supports follow-up authoring improvements tracked in [docs/proposals/BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md](docs/proposals/BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md), not as a competing feature
-- **Implementation**: Hand-written recursive descent parser in [src/transforms/dsl.py](../../src/transforms/dsl.py)
-- **Tests**: 73 comprehensive tests in [tests/transforms/test_dsl.py](../../tests/transforms/test_dsl.py) with 91% coverage
-- **Documentation**: DSL syntax documented in [docs/CONFIGURATION_GUIDE.md](../CONFIGURATION_GUIDE.md)
+- Relationship to later branch-scoping work: this supports follow-up authoring improvements tracked in [docs/proposals/BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md](../BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md), not as a competing feature
+- **Implementation**: Hand-written recursive descent parser in [src/transforms/dsl.py](../../../src/transforms/dsl.py)
+- **Tests**: 73 comprehensive tests in [tests/transforms/test_dsl.py](../../../tests/transforms/test_dsl.py) with 91% coverage
+- **Documentation**: DSL syntax documented in [docs/CONFIGURATION_GUIDE.md](../../CONFIGURATION_GUIDE.md)
 
 ## Summary
 
@@ -74,7 +74,7 @@ If the only answer is "write more SQL" or "add a future SQL-only computed-column
 
 ## Current State
 
-The current implementation in [src/transforms/extra_columns.py](src/transforms/extra_columns.py) already supports:
+The current implementation in [src/transforms/extra_columns.py](../../../src/transforms/extra_columns.py) already supports:
 
 1. constants,
 2. direct column copies,
@@ -101,7 +101,7 @@ This proposal should be understood relative to two existing transformation mecha
 
 The existing `translate` step is a column-name translation mechanism.
 
-In [src/transforms/translate.py](src/transforms/translate.py), Shape Shifter applies a lookup map to rename columns such as:
+In [src/transforms/translate.py](../../../src/transforms/translate.py), Shape Shifter applies a lookup map to rename columns such as:
 
 1. source column name A -> target column name B,
 2. source column name C -> target column name D.
@@ -124,7 +124,7 @@ So the tiny DSL is not a replacement for `translate`. It operates at a different
 
 The existing `replacements` feature is closer in spirit, but still solves a narrower problem.
 
-As implemented in [src/transforms/replace.py](src/transforms/replace.py) and documented in [docs/CONFIGURATION_GUIDE.md](docs/CONFIGURATION_GUIDE.md), `replacements` is primarily a value-normalization and find-and-replace mechanism.
+As implemented in [src/transforms/replace.py](../../../src/transforms/replace.py) and documented in [docs/CONFIGURATION_GUIDE.md](../../CONFIGURATION_GUIDE.md), `replacements` is primarily a value-normalization and find-and-replace mechanism.
 
 It is useful for things like:
 
@@ -199,7 +199,7 @@ The implementation follows the derived-value follow-through recommendations:
 
 ### Implementation Architecture
 
-**Parser**: Hand-written recursive descent parser in [src/transforms/dsl.py](../../src/transforms/dsl.py) (821 lines)
+**Parser**: Hand-written recursive descent parser in [src/transforms/dsl.py](../../../src/transforms/dsl.py) (821 lines)
 - Zero dependencies beyond Python stdlib + pandas
 - 4 production rules, 7 token types
 - Builds typed AST (Abstract Syntax Tree)
@@ -216,8 +216,8 @@ The implementation follows the derived-value follow-through recommendations:
 - Type-safe execution
 
 **Testing**: 73 comprehensive tests with 91.39% coverage
-- See [tests/transforms/test_dsl.py](../../tests/transforms/test_dsl.py)
-- See [tests/transforms/README_DSL_TESTS.md](../../tests/transforms/README_DSL_TESTS.md)
+- See [tests/transforms/test_dsl.py](../../../tests/transforms/test_dsl.py)
+- See [tests/transforms/README_DSL_TESTS.md](../../../tests/transforms/README_DSL_TESTS.md)
 
 For extensibility guide, see [docs/other/DSL_EXTENSIBILITY_GUIDE.md](../../other/DSL_EXTENSIBILITY_GUIDE.md).
 
@@ -269,7 +269,7 @@ The initial implementation includes 6 whitelisted functions:
 
 The initial function set favors string manipulation because that is the most common gap between interpolation and SQL.
 
-For complete syntax and examples, see the **DSL Formula Syntax** section in [docs/CONFIGURATION_GUIDE.md](../CONFIGURATION_GUIDE.md).
+For complete syntax and examples, see the **DSL Formula Syntax** section in [docs/CONFIGURATION_GUIDE.md](../../CONFIGURATION_GUIDE.md).
 
 ## Why Not Raw expr: Or eval
 
@@ -315,7 +315,7 @@ The interpolation baseline is preserved and documented.
 
 ### Phase 2: Add A Small Parser ✅
 
-**Completed**: Parser for strings beginning with `=` implemented in [src/transforms/dsl.py](../../src/transforms/dsl.py)
+**Completed**: Parser for strings beginning with `=` implemented in [src/transforms/dsl.py](../../../src/transforms/dsl.py)
 
 The parser:
 
@@ -360,7 +360,7 @@ Tests cover:
 8. ✅ Unknown helper names
 9. ✅ Missing columns
 
-See [tests/transforms/test_dsl.py](../../tests/transforms/test_dsl.py) for details.
+See [tests/transforms/test_dsl.py](../../../tests/transforms/test_dsl.py) for details.
 
 ## Example Transformations
 

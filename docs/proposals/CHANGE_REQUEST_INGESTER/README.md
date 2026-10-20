@@ -16,16 +16,17 @@ The MVP delivery includes:
 - A forward-only package: generate INSERT statements and package metadata. Revert and verify files, when required, are explicit placeholders; the package is marked non-revertible. Deferred foreign-key checks are the preferred insert strategy.
 - It deliberately does not include rollback, updates or deletes, broad semantic duplicate detection, advanced change detection, or immediate retirement of the existing Clearinghouse ingester. Those were left for separate follow-up work or candidate proposals. Frontend integration and persisted submission metadata/defaults were also handled separately, not as part of this closed baseline.
 
-Status reviewed 2026-10-12. No new PostgreSQL validation was run for this update.
+Status reviewed 2026-10-17. No new PostgreSQL validation was run for this update.
 
 | Workstream | Status | Remaining work / next action |
 |---|---|---|
 | SEAD Change Request Ingester MVP and baseline follow-ups | Complete | Historical MVP Delivery records are under [done/CHANGE_REQUEST_INGESTER_MVP](./done/CHANGE_REQUEST_INGESTER_MVP). |
+| Deployment-time staging | Inline staging implemented | The inline staging work merged in [PR #565](https://github.com/humlab-sead/sead_shape_shifter/pull/565); copy-CSV parity and Sqitch promotion remain separate follow-up work. See the [completed proposal and phase plans](./done/DEPLOYMENT_TIME_STAGING/DEPLOYMENT_TIME_STAGING.md). |
 | Frontend workflow and persisted defaults | Complete | Frontend integration shipped in PR #456; stable metadata defaults are implemented and covered by the submission metadata work. |
 | Provider-submission lifecycle | Complete | Rules are promoted to the [durable lifecycle reference](../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md); implementation history is under [done/DATA_PROVIDER_SUBMISSION_LIFECYCLE](./done/DATA_PROVIDER_SUBMISSION_LIFECYCLE). |
 | Submission metadata and generated packages | Complete | Both artifact strategies passed contract checks on separate disposable clones, including PostgreSQL sequence advancement. Upstream schema deployment and legacy compatibility remain release dependencies tracked in the [cutover and deployment workstream](./CUTOVER_AND_DEPLOYMENT/README.md). See the [completed proposal and task plan](./done/REFACTOR_SEAD_SUBMISSION_METADATA/REFACTOR_SEAD_SUBMISSION_METADATA.md). |
 | SIMS-SEAD adoption, cutover, and deployment | Draft; decisions open | Resolve tracked-entity mapping, missing UUIDs, backfill and writer ordering, upstream schema/compatibility ownership, and package supersession. Track in [CUTOVER_AND_DEPLOYMENT](./CUTOVER_AND_DEPLOYMENT/README.md). |
-| Ingester authorization and filesystem access | Proposed; not ready to enable | Define and implement resource authorization and filesystem containment. Keep operations unavailable until required checks are enforced. See the [authorization proposal](../INGESTER_AUTHORIZATION_TASKS/INGESTER_AUTHORIZATION_TASKS.md) and [filesystem proposal](../INGESTER_FILESYSTEM_BOUNDARIES/INGESTER_FILESYSTEM_BOUNDARIES.md). |
+| Ingester authorization and filesystem access | Proposed; not ready to enable | Define and implement resource authorization and filesystem containment. Keep operations unavailable until required checks are enforced. See the [authorization proposal](../INGESTER_AUTHORIZATION_TASKS/INGESTER_AUTHORIZATION_TASKS.md) and the [target-bundle access proposal](../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md). |
 | Post-MVP proposals | Deferred; no combined delivery accepted | Select and accept a narrow capability before planning implementation. See the [post-MVP proposal portfolio](../CHANGE_REQUEST_INGESTER_POST_MVP/README.md). |
 
 ### Next Priority
@@ -44,7 +45,7 @@ See the [closed MVP proposal](./done/CHANGE_REQUEST_INGESTER_MVP/SEAD_CHANGE_REQ
 
 - [Cutover and deployment workstream](./CUTOVER_AND_DEPLOYMENT/README.md)
 - [Ingester authorization proposal](../INGESTER_AUTHORIZATION_TASKS/INGESTER_AUTHORIZATION_TASKS.md)
-- [Ingester filesystem proposal](../INGESTER_FILESYSTEM_BOUNDARIES/INGESTER_FILESYSTEM_BOUNDARIES.md)
+- [Target-bundle access proposal](../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md)
 - [Post-MVP proposal portfolio](../CHANGE_REQUEST_INGESTER_POST_MVP/README.md)
 
 ## Completed And Historical Records
@@ -52,6 +53,7 @@ See the [closed MVP proposal](./done/CHANGE_REQUEST_INGESTER_MVP/SEAD_CHANGE_REQ
 - [Frontend workflow integration](./done/FRONTEND_UX_INTEGRATION_CR.md) and [issue record](./done/FRONTEND_UX_INTEGRATION_ISSUES.md)
 - [SIMS identity allocation contract](./done/SIMS_IDENTITY_ALLOCATION/SIMS_IDENTITY_ALLOCATION_CONTRACT.md) and [completed phase plan](./done/SIMS_IDENTITY_ALLOCATION/SIMS_IDENTITY_ALLOCATION_PHASE_PLAN.md)
 - [Provider-submission lifecycle archive](./done/DATA_PROVIDER_SUBMISSION_LIFECYCLE/README.md)
+- [Deployment-time staging](./done/DEPLOYMENT_TIME_STAGING/DEPLOYMENT_TIME_STAGING.md)
 - [Submission metadata proposal](./done/REFACTOR_SEAD_SUBMISSION_METADATA/REFACTOR_SEAD_SUBMISSION_METADATA.md) and [completed task plan](./done/REFACTOR_SEAD_SUBMISSION_METADATA/REFACTOR_SEAD_SUBMISSION_METADATA_TASK_PLAN.md)
 - [September 24, 2026 status assessment](./archive/STATUS_ASSESSMENT_2026-09-24.md), retained as a historical snapshot and superseded by this README
 

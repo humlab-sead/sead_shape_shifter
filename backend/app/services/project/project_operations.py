@@ -40,6 +40,7 @@ class ProjectOperations:
         cache_invalidator,  # Callable[[str, str], None]
         save_metadata_boundary_callback=None,  # Optional: Callable[[str, dict], None]
         project_dir_resolver=None,  # Optional: Callable[[str], Path] -> validated, contained project dir
+        validate_project_pair_callback=None,  # Callable[[dict], tuple[str, str]]
     ):
         """Initialize project operations.
 
@@ -71,6 +72,7 @@ class ProjectOperations:
         self._invalidate_all_caches = cache_invalidator
         self._save_metadata_boundary = save_metadata_boundary_callback
         self._resolve_project_dir = project_dir_resolver
+        self._validate_project_pair = validate_project_pair_callback
 
     def _contained_project_dir(self, name: str) -> Path:
         """Return the project directory for ``name``, validated and contained.
@@ -86,7 +88,15 @@ class ProjectOperations:
             return self._resolve_project_dir(name)
         return ProjectUtils(self.projects_dir).resolve_project_dir(name)
 
-    def create_project(self, name: str, entities: dict[str, Any] | None = None, task_list: dict[str, Any] | None = None) -> Project:
+    def create_project(
+        self,
+        name: str,
+        entities: dict[str, Any] | None = None,
+        task_list: dict[str, Any] | None = None,
+        *,
+        data_provider_code: str,
+        provider_schema: str,
+    ) -> Project:
         """
         Create new project.
 
@@ -101,6 +111,10 @@ class ProjectOperations:
         Raises:
             ResourceConflictError: If project already exists
         """
+        if self._validate_project_pair is None:
+            raise ConfigurationError(message="Project provider pair validation is not configured")
+        self._validate_project_pair({"data_provider_code": data_provider_code, "provider_schema": provider_schema})
+
         corr: str = get_correlation_id()
         # Validate the name and resolve a directory guaranteed to stay inside
         # projects_dir, so traversal/absolute/colon-alias names cannot alias
@@ -119,6 +133,8 @@ class ProjectOperations:
             name=name,
             description=f"Project for {name}",
             version="1.0.0",
+            data_provider_code=data_provider_code,
+            provider_schema=provider_schema,
             file_path=str(file_path),
             entity_count=len(entities) if entities else 0,
             created_at=0,
@@ -201,7 +217,7 @@ class ProjectOperations:
         self._remove_lock(name)
         logger.info("[{}] delete_project: completed for '{}'", corr, name)
 
-    def copy_project(self, source_name: str, target_name: str) -> Project:
+    def copy_project(self, source_name: str, target_name: str, *, project_locks_held: bool = False) -> Project:
         """
         Copy a project and its entire directory to a new name.
 
@@ -215,6 +231,7 @@ class ProjectOperations:
         Args:
             source_name: Source project name (can include path separators)
             target_name: Target project name (can include path separators)
+            project_locks_held: Whether the caller already holds both project locks
 
         Returns:
             New project with updated metadata
@@ -247,6 +264,14 @@ class ProjectOperations:
         try:
             # Load source project
             source_project: Project = self._load_project(source_name)
+            if not source_project.metadata or self._validate_project_pair is None:
+                raise ConfigurationError(message=f"Project '{source_name}' has no valid provider-schema pair")
+            self._validate_project_pair(
+                {
+                    "data_provider_code": source_project.metadata.data_provider_code,
+                    "provider_schema": source_project.metadata.provider_schema,
+                }
+            )
 
             # Copy entire project directory
             logger.info(f"Copying project directory from {source_dir} to {target_dir}")
@@ -268,7 +293,12 @@ class ProjectOperations:
 
             # Save updated metadata to target project
             logger.info(f"Updating metadata for copied project '{target_name}'")
-            new_project: Project = self._save_project(source_project, create_backup=False, original_file_path=target_file)
+            new_project: Project = self._save_project(
+                source_project,
+                create_backup=False,
+                original_file_path=target_file,
+                lock_held=project_locks_held,
+            )
 
             logger.info(f"Successfully copied project '{source_name}' to '{target_name}'")
             return new_project
@@ -294,6 +324,10 @@ class ProjectOperations:
         default_entity: str | None = None,
         target_model: str | None = None,
         target_model_provided: bool = False,
+        data_provider_code: str | None = None,
+        data_provider_code_provided: bool = False,
+        provider_schema: str | None = None,
+        provider_schema_provided: bool = False,
     ) -> Project:
         """
         Update project metadata.
@@ -310,6 +344,10 @@ class ProjectOperations:
             target_model: Target model path.  Ignored unless ``target_model_provided``
                 is True.  Pass ``None`` or ``""`` to clear the field.
             target_model_provided: Whether target_model was explicitly sent.
+            data_provider_code: Initial provider code for an unbound project.
+            data_provider_code_provided: Whether the provider code was explicitly sent.
+            provider_schema: Initial provider schema for an unbound project.
+            provider_schema_provided: Whether the provider schema was explicitly sent.
 
         Returns:
             Updated project
@@ -336,6 +374,10 @@ class ProjectOperations:
         if target_model_provided:
             # Empty string or null both mean "clear the field"
             project.metadata.target_model = target_model or None
+        if data_provider_code_provided:
+            project.metadata.data_provider_code = data_provider_code
+        if provider_schema_provided:
+            project.metadata.provider_schema = provider_schema
 
         # Ensure metadata.name matches filename (filename is source of truth)
         project.metadata.name = name
@@ -347,6 +389,8 @@ class ProjectOperations:
                 "type": project.metadata.type or "shapeshifter-project",
                 "description": project.metadata.description,
                 "version": project.metadata.version,
+                "data_provider_code": project.metadata.data_provider_code,
+                "provider_schema": project.metadata.provider_schema,
                 "default_entity": project.metadata.default_entity,
             }
             if project.metadata.target_model is not None:

@@ -5,6 +5,7 @@ from unittest.mock import Mock
 import pytest
 
 from src.specifications.base import ProjectSpecification, SpecificationIssue
+from src.specifications.foreign_key import ForeignKeyRemotePublicIdSpecification
 from src.specifications.project import (
     CircularDependencySpecification,
     CompositeProjectSpecification,
@@ -304,7 +305,8 @@ class TestCompositeProjectSpecification:
         specs: list[ProjectSpecification] = spec.get_default_specifications()
 
         assert isinstance(specs, list)
-        assert len(specs) == 4
+        assert len(specs) == 5
+        assert any(isinstance(s, ForeignKeyRemotePublicIdSpecification) for s in specs)
 
     def test_custom_specifications(self, valid_project_cfg):
         """Test using custom specifications."""

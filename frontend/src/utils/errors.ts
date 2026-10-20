@@ -22,13 +22,7 @@ function normalizeForeignKeyLanguage(text: string | undefined): string | undefin
  * Type guard to check if error response is a structured error
  */
 function isStructuredError(data: any): data is StructuredError {
-  return (
-    data &&
-    typeof data === 'object' &&
-    'error_type' in data &&
-    'message' in data &&
-    'recoverable' in data
-  )
+  return data && typeof data === 'object' && 'error_type' in data && 'message' in data && 'recoverable' in data
 }
 
 /**

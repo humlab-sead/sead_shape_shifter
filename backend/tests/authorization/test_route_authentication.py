@@ -31,6 +31,7 @@ PUBLIC_API_PATHS: frozenset[str] = frozenset({"/health"})
 AUTHENTICATED_ONLY_API_PATHS: frozenset[str] = frozenset(
     {
         "/docs",  # FastAPI-generated Swagger UI
+        "/data-providers",  # curated provider-schema registry; read-only
         "/data-sources",  # response narrowed to shared sources the principal can read
         "/data-sources/drivers",  # non-sensitive driver metadata
         "/data-sources/entity-types",  # non-sensitive entity-type metadata

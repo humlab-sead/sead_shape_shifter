@@ -7,6 +7,8 @@ import { apiClient, apiRequest } from './client'
 
 export interface ProjectCreateRequest {
   name: string
+  data_provider_code: string
+  provider_schema: string
   entities?: Record<string, unknown>
 }
 
@@ -30,6 +32,8 @@ export interface MetadataUpdateRequest {
   version?: string | null
   default_entity?: string | null
   target_model?: string | null
+  data_provider_code?: string | null
+  provider_schema?: string | null
 }
 
 export interface TargetModelFileOption {
@@ -65,7 +69,7 @@ export const projectsApi = {
 
   /**
    * Force reload project from disk, invalidating server-side cache
-   * 
+   *
    * Useful when YAML file has been modified externally (manual edit, git pull, etc.)
    */
   refresh: async (name: string): Promise<Project> => {
@@ -227,13 +231,43 @@ export const projectsApi = {
     if (extensions && extensions.length > 0) {
       extensions.forEach((ext) => params.append('ext', ext))
     }
-    
+
     const query = params.toString()
     const url = query ? `/projects/${name}/files?${query}` : `/projects/${name}/files`
 
     return apiRequest<ProjectFileInfo[]>({
       method: 'GET',
       url,
+    })
+  },
+
+  /**
+   * Return file actions available to the current user for a project
+   */
+  getFileCapabilities: async (name: string): Promise<{ can_share_with_all_projects: boolean }> => {
+    return apiRequest<{ can_share_with_all_projects: boolean }>({
+      method: 'GET',
+      url: `/projects/${name}/files/capabilities`,
+    })
+  },
+
+  /**
+   * Copy a project file into the global shared-data directory
+   */
+  shareFile: async (name: string, filename: string): Promise<ProjectFileInfo> => {
+    return apiRequest<ProjectFileInfo>({
+      method: 'POST',
+      url: `/projects/${name}/files/${encodeURIComponent(filename)}/share`,
+    })
+  },
+
+  /**
+   * Delete a project file that is not referenced by a local entity
+   */
+  deleteFile: async (name: string, filename: string): Promise<void> => {
+    return apiRequest<void>({
+      method: 'DELETE',
+      url: `/projects/${name}/files/${encodeURIComponent(filename)}`,
     })
   },
 
@@ -250,9 +284,12 @@ export const projectsApi = {
   /**
    * Upload a file into the project's uploads directory
    */
-  uploadFile: async (name: string, file: File): Promise<ProjectFileInfo> => {
+  uploadFile: async (name: string, file: File, overwrite = false): Promise<ProjectFileInfo> => {
     const formData = new FormData()
     formData.append('file', file)
+    if (overwrite) {
+      formData.append('overwrite', 'true')
+    }
 
     // Use apiClient directly instead of apiRequest to ensure proper FormData handling
     const response = await apiClient.post<ProjectFileInfo>(`/projects/${name}/files`, formData, {
@@ -305,7 +342,10 @@ export const projectsApi = {
   /**
    * Download target model documentation in specified format
    */
-  downloadTargetModelDocs: async (name: string, format: 'html' | 'markdown' | 'excel' | 'schema-reference'): Promise<Blob> => {
+  downloadTargetModelDocs: async (
+    name: string,
+    format: 'html' | 'markdown' | 'excel' | 'schema-reference'
+  ): Promise<Blob> => {
     const response = await apiClient.get(`/projects/${name}/target-model-docs`, {
       params: { format },
       responseType: 'blob',

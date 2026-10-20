@@ -29,6 +29,8 @@ def merged_entity_project():
     """Sample project configuration with merged entity."""
     return {
         "name": "test_merged_api",
+        "data_provider_code": "test-provider",
+        "provider_schema": "schema-one",
         "entities": {
             # Branch source 1: dendro
             "dendro": {
@@ -151,6 +153,8 @@ async def test_create_merged_entity(tmp_path, monkeypatch, reset_services, autho
     # Create base project with source entities
     base_project = {
         "name": "test_project",
+        "data_provider_code": "test-provider",
+        "provider_schema": "schema-one",
         "entities": {
             "source1": {
                 "type": "entity",
@@ -194,6 +198,8 @@ async def test_validation_detects_merged_errors(tmp_path, monkeypatch, reset_ser
     # Create project with invalid merged entity (missing public_id)
     invalid_project = {
         "name": "test_validation",
+        "data_provider_code": "test-provider",
+        "provider_schema": "schema-one",
         "entities": {
             "source": {
                 "type": "entity",

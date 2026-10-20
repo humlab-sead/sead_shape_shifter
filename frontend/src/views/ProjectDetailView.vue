@@ -44,7 +44,13 @@
               Refresh
               <v-tooltip activator="parent">Reload project from disk (force refresh cache)</v-tooltip>
             </v-btn>
-            <v-btn variant="outlined" color="success" prepend-icon="mdi-content-save" :disabled="!hasUnsavedChanges" @click="handleSave">
+            <v-btn
+              variant="outlined"
+              color="success"
+              prepend-icon="mdi-content-save"
+              :disabled="!hasUnsavedChanges"
+              @click="handleSave"
+            >
               Save Changes
               <v-tooltip activator="parent">Save changes to the project configuration</v-tooltip>
             </v-btn>
@@ -79,7 +85,8 @@
         <v-alert v-if="loadWarnings.length > 0" type="warning" variant="tonal" class="mb-4">
           <v-alert-title>Load-Time Normalizations Detected</v-alert-title>
           <div class="text-body-2 mb-2">
-            Coercible fixed-entity values were normalized in memory while loading. Save the project to persist these changes.
+            Coercible fixed-entity values were normalized in memory while loading. Save the project to persist these
+            changes.
           </div>
           <ul class="pl-4 mb-0">
             <li v-for="warning in loadWarnings" :key="warning">{{ warning }}</li>
@@ -184,7 +191,7 @@
                       color="primary"
                       class="text-capitalize"
                     >
-                      {{ colorByOptions.find(opt => opt.value === colorByMode)?.title || 'Task Status' }}
+                      {{ colorByOptions.find((opt) => opt.value === colorByMode)?.title || 'Task Status' }}
                     </v-btn>
                   </template>
 
@@ -203,10 +210,7 @@
                 <v-divider vertical />
 
                 <!-- Graph Display Options -->
-                <graph-display-options-dropdown
-                  :options="displayOptions"
-                  @update:options="updateDisplayOptions"
-                />
+                <graph-display-options-dropdown :options="displayOptions" @update:options="updateDisplayOptions" />
 
                 <v-spacer />
               </v-card-text>
@@ -231,7 +235,7 @@
             <v-card v-else variant="outlined" class="graph-card">
               <v-card-text class="pa-0 graph-card-content">
                 <div ref="graphContainer" class="graph-container" />
-                
+
                 <!-- Stats Overlay (top-left) -->
                 <div class="graph-stats-overlay">
                   <v-card variant="flat" class="stats-card stats-card--summary">
@@ -240,11 +244,7 @@
                       <div v-if="taskStatusStore.taskStatus" class="mb-2">
                         <v-row no-gutters align="center" class="mb-1">
                           <v-col cols="auto" class="mr-2">
-                            <v-icon 
-                              :icon="completionIcon" 
-                              :color="completionColor"
-                              size="small"
-                            />
+                            <v-icon :icon="completionIcon" :color="completionColor" size="small" />
                           </v-col>
                           <v-col>
                             <div class="text-caption task-completion-summary">
@@ -255,12 +255,7 @@
                             </div>
                           </v-col>
                           <v-col cols="auto" class="ml-2">
-                            <v-chip
-                              class="task-completion-chip"
-                              :color="completionColor"
-                              size="x-small"
-                              variant="flat"
-                            >
+                            <v-chip class="task-completion-chip" :color="completionColor" size="x-small" variant="flat">
                               {{ Math.round(taskStats.completion_percentage) }}%
                             </v-chip>
                           </v-col>
@@ -272,7 +267,7 @@
                           rounded
                         />
                       </div>
-                      
+
                       <!-- Node/Edge Counts -->
                       <div class="d-flex gap-1 mb-2">
                         <v-chip size="x-small" variant="flat" color="primary">
@@ -295,93 +290,89 @@
                     <v-card-text class="pa-2">
                       <!-- Task Status Legend -->
                       <div v-if="colorByMode === 'task'" class="text-caption text-medium-emphasis">
-                        <div class="mb-1" style="font-size: 10px; font-weight: 500;">Task Status</div>
+                        <div class="mb-1" style="font-size: 10px; font-weight: 500">Task Status</div>
                         <div class="d-flex align-center gap-1 mb-1">
-                          <div style="width: 10px; height: 10px; background-color: #FDD835; border-radius: 50%;" />
-                          <span style="font-size: 10px;">&nbsp;Todo</span>
+                          <div style="width: 10px; height: 10px; background-color: #fdd835; border-radius: 50%" />
+                          <span style="font-size: 10px">&nbsp;Todo</span>
                         </div>
                         <div class="d-flex align-center gap-1 mb-1">
-                          <div style="width: 10px; height: 10px; background-color: #2196F3; border-radius: 50%;" />
-                          <span style="font-size: 10px;">&nbsp;Ongoing</span>
+                          <div style="width: 10px; height: 10px; background-color: #2196f3; border-radius: 50%" />
+                          <span style="font-size: 10px">&nbsp;Ongoing</span>
                         </div>
                         <div class="d-flex align-center gap-1 mb-1">
-                          <div style="width: 10px; height: 10px; background-color: #43A047; border-radius: 50%;" />
-                          <span style="font-size: 10px;">&nbsp;Done</span>
+                          <div style="width: 10px; height: 10px; background-color: #43a047; border-radius: 50%" />
+                          <span style="font-size: 10px">&nbsp;Done</span>
                         </div>
                         <div class="d-flex align-center gap-1 mb-1">
-                          <div style="width: 10px; height: 10px; background-color: #9E9E9E; border-radius: 50%;" />
-                          <span style="font-size: 10px;">&nbsp;Ignored</span>
+                          <div style="width: 10px; height: 10px; background-color: #9e9e9e; border-radius: 50%" />
+                          <span style="font-size: 10px">&nbsp;Ignored</span>
                         </div>
                         <div class="d-flex align-center gap-1 mb-1">
-                          <div style="position: relative; width: 10px; height: 10px; border-radius: 50%; background-color: #B0BEC5;">
-                            <div style="position: absolute; inset: 3px; border-radius: 50%; background-color: #FFFFFF; border: 1px solid #0F172A;" />
+                          <div
+                            style="
+                              position: relative;
+                              width: 10px;
+                              height: 10px;
+                              border-radius: 50%;
+                              background-color: #b0bec5;
+                            "
+                          >
+                            <div
+                              style="
+                                position: absolute;
+                                inset: 3px;
+                                border-radius: 50%;
+                                background-color: #ffffff;
+                                border: 1px solid #0f172a;
+                              "
+                            />
                           </div>
-                          <span style="font-size: 10px;">&nbsp;Has note</span>
+                          <span style="font-size: 10px">&nbsp;Has note</span>
                         </div>
                       </div>
-                      
+
                       <!-- Entity Type Legend -->
                       <div v-else-if="colorByMode === 'type'" class="text-caption text-medium-emphasis">
-                        <div class="mb-1" style="font-size: 10px; font-weight: 500;">Entity Type</div>
+                        <div class="mb-1" style="font-size: 10px; font-weight: 500">Entity Type</div>
                         <div class="d-flex align-center gap-1 mb-1">
-                          <div style="width: 10px; height: 10px; background-color: #6A1B9A; border-radius: 50%;" />
-                          <span style="font-size: 10px;">&nbsp;Fixed</span>
+                          <div style="width: 10px; height: 10px; background-color: #6a1b9a; border-radius: 50%" />
+                          <span style="font-size: 10px">&nbsp;Fixed</span>
                         </div>
                         <div class="d-flex align-center gap-1 mb-1">
-                          <div style="width: 10px; height: 10px; background-color: #2E7D32; border-radius: 50%;" />
-                          <span style="font-size: 10px;">&nbsp;SQL</span>
+                          <div style="width: 10px; height: 10px; background-color: #2e7d32; border-radius: 50%" />
+                          <span style="font-size: 10px">&nbsp;SQL</span>
                         </div>
                         <div class="d-flex align-center gap-1 mb-1">
-                          <div style="width: 10px; height: 10px; background-color: #1976d2; border-radius: 50%;" />
-                          <span style="font-size: 10px;">&nbsp;Derived</span>
+                          <div style="width: 10px; height: 10px; background-color: #1976d2; border-radius: 50%" />
+                          <span style="font-size: 10px">&nbsp;Derived</span>
                         </div>
                         <div class="d-flex align-center gap-1 mb-1">
-                          <div style="width: 10px; height: 10px; background-color: #ef5350; border-radius: 50%;" />
-                          <span style="font-size: 10px;">&nbsp;Cyclic error</span>
+                          <div style="width: 10px; height: 10px; background-color: #ef5350; border-radius: 50%" />
+                          <span style="font-size: 10px">&nbsp;Cyclic error</span>
                         </div>
                       </div>
                     </v-card-text>
                   </v-card>
                 </div>
-                
+
                 <!-- Floating Action Buttons -->
                 <div class="graph-fab-container">
-                  <v-btn 
-                    icon
-                    size="small"
-                    class="graph-fab"
-                    @click="handleFit"
-                  >
+                  <v-btn icon size="small" class="graph-fab" @click="handleFit">
                     <v-icon>mdi-fit-to-screen</v-icon>
                     <v-tooltip activator="parent" location="left">Fit to Screen</v-tooltip>
                   </v-btn>
-                  
-                  <v-btn 
-                    icon
-                    size="small"
-                    class="graph-fab"
-                    @click="handleZoomIn"
-                  >
+
+                  <v-btn icon size="small" class="graph-fab" @click="handleZoomIn">
                     <v-icon>mdi-magnify-plus</v-icon>
                     <v-tooltip activator="parent" location="left">Zoom In</v-tooltip>
                   </v-btn>
-                  
-                  <v-btn 
-                    icon
-                    size="small"
-                    class="graph-fab"
-                    @click="handleZoomOut"
-                  >
+
+                  <v-btn icon size="small" class="graph-fab" @click="handleZoomOut">
                     <v-icon>mdi-magnify-minus</v-icon>
                     <v-tooltip activator="parent" location="left">Zoom Out</v-tooltip>
                   </v-btn>
-                  
-                  <v-btn 
-                    icon
-                    size="small"
-                    class="graph-fab"
-                    @click="handleResetView"
-                  >
+
+                  <v-btn icon size="small" class="graph-fab" @click="handleResetView">
                     <v-icon>mdi-refresh</v-icon>
                     <v-tooltip activator="parent" location="left">Reset View</v-tooltip>
                   </v-btn>
@@ -411,35 +402,24 @@
                       Increase Label Size ({{ nodeLabelFontSize }}px)
                     </v-tooltip>
                   </v-btn>
-                  
+
                   <v-divider class="my-1" />
-                  
-                  <v-btn 
-                    icon
-                    size="small"
-                    class="graph-fab"
-                    color="primary"
-                    @click="handleCreateNewNode"
-                  >
+
+                  <v-btn icon size="small" class="graph-fab" color="primary" @click="handleCreateNewNode">
                     <v-icon>mdi-plus-circle-outline</v-icon>
                     <v-tooltip activator="parent" location="left">Create New Node</v-tooltip>
                   </v-btn>
-                  
+
                   <v-divider class="my-1" />
-                  
-                  <v-btn 
-                    icon
-                    size="small"
-                    class="graph-fab"
-                    @click="handleExportPNG"
-                  >
+
+                  <v-btn icon size="small" class="graph-fab" @click="handleExportPNG">
                     <v-icon>mdi-download</v-icon>
                     <v-tooltip activator="parent" location="left">Export PNG</v-tooltip>
                   </v-btn>
                 </div>
               </v-card-text>
             </v-card>
-            
+
             <!-- Context Menu -->
             <graph-node-context-menu
               v-model="showContextMenu"
@@ -477,7 +457,13 @@
 
                 <div class="drawer-body">
                   <div class="drawer-alerts">
-                    <v-alert v-if="isInCycle(selectedNode)" type="warning" variant="tonal" density="compact" class="ma-2">
+                    <v-alert
+                      v-if="isInCycle(selectedNode)"
+                      type="warning"
+                      variant="tonal"
+                      density="compact"
+                      class="ma-2"
+                    >
                       <v-icon size="small" class="mr-1">mdi-alert</v-icon>
                       Part of circular dependency
                     </v-alert>
@@ -492,9 +478,9 @@
                         YAML
                       </v-tab>
                     </v-tabs>
-                    
+
                     <v-progress-linear v-if="activeDrawerLoading" indeterminate color="primary" />
-                    
+
                     <v-alert
                       v-if="activeDrawerError"
                       type="error"
@@ -507,7 +493,7 @@
                       {{ activeDrawerError }}
                     </v-alert>
                   </div>
-                  
+
                   <div class="drawer-editor">
                     <v-window v-model="detailsDrawerTab" class="drawer-window" :touch="false">
                       <v-window-item value="note" class="drawer-window-item">
@@ -537,8 +523,8 @@
                           <v-icon size="48" color="grey-lighten-1" class="mb-3">mdi-database</v-icon>
                           <div class="text-subtitle-2 mb-2">Data Source Node</div>
                           <div class="text-caption text-medium-emphasis">
-                            Data sources cannot be edited from the graph view.
-                            Configure data sources in the Data Sources tab.
+                            Data sources cannot be edited from the graph view. Configure data sources in the Data
+                            Sources tab.
                           </div>
                         </div>
                         <yaml-editor
@@ -555,8 +541,8 @@
                 <div v-if="!isSelectedNodeDataSource" class="drawer-footer">
                   <v-divider />
                   <v-card-actions class="pa-3">
-                    <v-btn 
-                      variant="text" 
+                    <v-btn
+                      variant="text"
                       @click="handleCloseQuickEdit"
                       :disabled="drawerYamlSaving || drawerNoteSaving"
                     >
@@ -572,8 +558,8 @@
                       >
                         Remove Note
                       </v-btn>
-                      <v-btn 
-                        color="primary" 
+                      <v-btn
+                        color="primary"
                         variant="flat"
                         prepend-icon="mdi-content-save"
                         :loading="drawerNoteSaving"
@@ -583,9 +569,9 @@
                         Save Note
                       </v-btn>
                     </template>
-                    <v-btn 
+                    <v-btn
                       v-else
-                      color="primary" 
+                      color="primary"
                       variant="flat"
                       prepend-icon="mdi-content-save"
                       :loading="drawerYamlSaving"
@@ -653,7 +639,7 @@
                   </div>
                 </v-alert>
 
-                <ingester-form />
+                <ingester-form :project-name="projectName" :project-loading="projectLoading" />
               </v-card-text>
             </v-card>
           </v-window-item>
@@ -661,12 +647,7 @@
           <!-- YAML Tab -->
           <v-window-item value="yaml">
             <!-- Sub-tab bar: only shown when project has a project-local target model file reference -->
-            <v-tabs
-              v-if="hasEditableTargetModelYaml"
-              v-model="activeYamlSubTab"
-              density="compact"
-              class="mb-3"
-            >
+            <v-tabs v-if="hasEditableTargetModelYaml" v-model="activeYamlSubTab" density="compact" class="mb-3">
               <v-tab value="project-yaml" prepend-icon="mdi-code-braces">Project YAML</v-tab>
               <v-tab value="target-model-yaml" prepend-icon="mdi-target">Target Model</v-tab>
             </v-tabs>
@@ -703,7 +684,15 @@
                     </div>
                   </v-card-title>
                   <v-card-text>
-                    <v-alert v-if="yamlError" type="error" variant="tonal" density="compact" class="mb-4" closable @click:close="yamlError = null">
+                    <v-alert
+                      v-if="yamlError"
+                      type="error"
+                      variant="tonal"
+                      density="compact"
+                      class="mb-4"
+                      closable
+                      @click:close="yamlError = null"
+                    >
                       {{ yamlError }}
                     </v-alert>
 
@@ -725,10 +714,7 @@
               </v-window-item>
 
               <!-- Target Model sub-tab (only mounted when project has a string target_model file reference) -->
-              <v-window-item
-                v-if="hasEditableTargetModelYaml"
-                value="target-model-yaml"
-              >
+              <v-window-item v-if="hasEditableTargetModelYaml" value="target-model-yaml">
                 <v-card variant="outlined">
                   <v-card-title class="d-flex align-center justify-space-between">
                     <div>
@@ -766,7 +752,8 @@
                           </v-list-item>
                           <v-list-item @click="handleDownloadTargetModelDocs('schema-reference')">
                             <v-list-item-title>
-                              <v-icon icon="mdi-file-document-outline" size="small" class="mr-2" />Schema Reference (Markdown)
+                              <v-icon icon="mdi-file-document-outline" size="small" class="mr-2" />Schema Reference
+                              (Markdown)
                             </v-list-item-title>
                           </v-list-item>
                         </v-list>
@@ -793,7 +780,15 @@
                     </div>
                   </v-card-title>
                   <v-card-text>
-                    <v-alert v-if="targetModelYamlError" type="error" variant="tonal" density="compact" class="mb-4" closable @click:close="targetModelYamlError = null">
+                    <v-alert
+                      v-if="targetModelYamlError"
+                      type="error"
+                      variant="tonal"
+                      density="compact"
+                      class="mb-4"
+                      closable
+                      @click:close="targetModelYamlError = null"
+                    >
                       {{ targetModelYamlError }}
                     </v-alert>
 
@@ -916,11 +911,7 @@
     </v-dialog>
 
     <!-- Execute Dialog -->
-    <execute-dialog
-      v-model="showExecuteDialog"
-      :project-name="projectName"
-      @executed="handleExecuted"
-    />
+    <execute-dialog v-model="showExecuteDialog" :project-name="projectName" @executed="handleExecuted" />
 
     <!-- Entity Editor Overlay (for graph double-click) -->
     <entity-form-dialog
@@ -1004,7 +995,11 @@ const {
   markAsChanged,
 } = useProjects({ autoFetch: false })
 
-const { entityCount, entities, fetch: fetchEntities } = useEntities({
+const {
+  entityCount,
+  entities,
+  fetch: fetchEntities,
+} = useEntities({
   projectName: projectName.value,
   autoFetch: true,
 })
@@ -1139,7 +1134,9 @@ const colorByOptions = [
   { title: 'Entity Type', value: 'type' as const },
 ]
 const colorByStorageKey = computed(() => `shapeshifter.graph.colorBy.${projectName.value || 'default'}`)
-const nodeLabelFontSizeStorageKey = computed(() => `shapeshifter.graph.nodeLabelFontSize.${projectName.value || 'default'}`)
+const nodeLabelFontSizeStorageKey = computed(
+  () => `shapeshifter.graph.nodeLabelFontSize.${projectName.value || 'default'}`
+)
 
 function getSavedColorByMode(savedMode: string | null): GraphColorByMode {
   return savedMode === 'type' ? 'type' : defaultColorByMode
@@ -1178,10 +1175,12 @@ function getProjectLocalTargetModelPath(targetModel: string | null | undefined):
     return null
   }
   // strip any leading "@load:" or "@include:" prefix and whitespace, then check if the remaining string is a simple filename (no slashes)
-  const rawPath = targetModel;
+  const rawPath = targetModel
   for (const prefix of ['@load:', '@include:']) {
     if (rawPath.startsWith(prefix)) {
-      return rawPath.slice(prefix.length).trim().split(/[\\/]/).length === 1 ? rawPath.slice(prefix.length).trim() : null
+      return rawPath.slice(prefix.length).trim().split(/[\\/]/).length === 1
+        ? rawPath.slice(prefix.length).trim()
+        : null
     }
   }
   if (!rawPath) {
@@ -1191,7 +1190,9 @@ function getProjectLocalTargetModelPath(targetModel: string | null | undefined):
   return rawPath.includes('/') || rawPath.includes('\\') ? null : rawPath
 }
 
-const editableTargetModelPath = computed(() => getProjectLocalTargetModelPath(selectedProject.value?.metadata?.target_model ?? null))
+const editableTargetModelPath = computed(() =>
+  getProjectLocalTargetModelPath(selectedProject.value?.metadata?.target_model ?? null)
+)
 const hasEditableTargetModelYaml = computed(() => editableTargetModelPath.value !== null)
 
 // Computed
@@ -1249,8 +1250,12 @@ const isSelectedNodeDataSource = computed(() => {
   return sourceNodes.some((sn: any) => sn.name === selectedNode.value)
 })
 
-const activeDrawerLoading = computed(() => detailsDrawerTab.value === 'note' ? drawerNoteLoading.value : drawerYamlLoading.value)
-const activeDrawerError = computed(() => detailsDrawerTab.value === 'note' ? drawerNoteError.value : drawerYamlError.value)
+const activeDrawerLoading = computed(() =>
+  detailsDrawerTab.value === 'note' ? drawerNoteLoading.value : drawerYamlLoading.value
+)
+const activeDrawerError = computed(() =>
+  detailsDrawerTab.value === 'note' ? drawerNoteError.value : drawerYamlError.value
+)
 
 // Cytoscape integration
 const entityStore = useEntityStore()
@@ -1297,7 +1302,7 @@ const taskStats = computed(() => {
       required_total: 0,
       required_done: 0,
       required_todo: 0,
-      completion_percentage: 0
+      completion_percentage: 0,
     }
   }
   return taskStatusStore.taskStatus.completion_stats
@@ -1319,7 +1324,16 @@ const completionIcon = computed(() => {
   return 'mdi-clock-outline'
 })
 
-const { cy, fit, zoomIn, zoomOut, reset, render: renderGraph, exportPNG, getCurrentPositions } = useCytoscape({
+const {
+  cy,
+  fit,
+  zoomIn,
+  zoomOut,
+  reset,
+  render: renderGraph,
+  exportPNG,
+  getCurrentPositions,
+} = useCytoscape({
   container: graphContainer,
   graphData: dependencyGraph,
   layoutType,
@@ -1359,7 +1373,7 @@ const { cy, fit, zoomIn, zoomOut, reset, render: renderGraph, exportPNG, getCurr
       entity: contextMenuEntity.value,
       x: contextMenuX.value,
       y: contextMenuY.value,
-      show: showContextMenu.value
+      show: showContextMenu.value,
     })
   },
   onBackgroundClick: () => {
@@ -1631,7 +1645,7 @@ async function handleOverlayEntitySaved(_entityName: string, mappingPending = fa
     successMessage.value = 'Entity saved successfully'
     showSuccessSnackbar.value = true
   }
-  
+
   // Refresh the dependency graph if we're on the dependencies tab
   if (activeTab.value === 'dependencies' && projectName.value) {
     await fetchDependencies(projectName.value)
@@ -1691,7 +1705,7 @@ async function handleContextMenuDuplicate(entityName: string) {
   console.log('Entity name:', entityName)
   console.log('=========================================')
   console.log('[1] Starting duplicate process')
-  
+
   console.log('[2] Looking for source entity:', entityName)
   const sourceEntity = entityStore.entities.find((e) => e.name === entityName)
   console.log('[3] Source entity found:', sourceEntity ? 'YES' : 'NO')
@@ -1699,7 +1713,7 @@ async function handleContextMenuDuplicate(entityName: string) {
     console.error('Source entity not found:', entityName)
     return
   }
-  
+
   console.log('[4] Generating new entity name')
   // Create a new entity name
   let newName = `${entityName}_copy`
@@ -1708,7 +1722,7 @@ async function handleContextMenuDuplicate(entityName: string) {
     newName = `${entityName}_copy${counter++}`
   }
   console.log('[5] New entity name:', newName)
-  
+
   try {
     console.log('[6] About to create entity...')
     // Create duplicate entity with copied data
@@ -1721,25 +1735,25 @@ async function handleContextMenuDuplicate(entityName: string) {
       },
     })
     console.log('[7] Entity created successfully')
-    
+
     console.log('[8] About to fetch dependencies...')
     // Refresh dependencies to update the graph (silently, without showing loading state)
     await fetchDependencies(projectName.value)
     console.log('[9] Dependencies fetched, graph data:', dependencyGraph.value)
-    
+
     console.log('[10] Setting success message first...')
     successMessage.value = `Entity "${newName}" created from "${entityName}"`
     showSuccessSnackbar.value = true
     markAsChanged()
-    
+
     console.log('[11] Waiting for Vue updates to settle...')
     await nextTick()
-    
+
     console.log('[12] About to render graph...')
     renderGraph()
     console.log('[13] Graph rendered')
     console.log('[14] Duplicate complete!')
-    
+
     // Diagnostic: Check if container/graph still exists after a short delay
     setTimeout(() => {
       console.log('[DIAGNOSTIC] Post-duplicate state:', {
@@ -1748,7 +1762,7 @@ async function handleContextMenuDuplicate(entityName: string) {
         dependencyGraphExists: !!dependencyGraph.value,
         nodesCount: dependencyGraph.value?.nodes?.length ?? 0,
       })
-      
+
       // Additional Cytoscape diagnostics
       if (graphContainer.value) {
         const rect = graphContainer.value.getBoundingClientRect()
@@ -1757,7 +1771,7 @@ async function handleContextMenuDuplicate(entityName: string) {
           height: rect.height,
           visible: rect.width > 0 && rect.height > 0,
         })
-        
+
         // Check for canvas element
         const canvas = graphContainer.value.querySelector('canvas')
         if (canvas) {
@@ -1786,7 +1800,7 @@ async function handleContextMenuDelete(entityName: string) {
   console.log('=========================================')
   const confirmed = confirm(`Are you sure you want to delete entity "${entityName}"?`)
   if (!confirmed) return
-  
+
   try {
     console.debug('[ProjectDetailView] Deleting entity:', entityName)
     await entityStore.deleteEntity(projectName.value, entityName)
@@ -1794,20 +1808,20 @@ async function handleContextMenuDelete(entityName: string) {
     console.log('[ProjectDetailView] Entity deleted, syncing project state...')
     await handleEntityUpdated()
     console.log('[ProjectDetailView] Project state synced, graph data:', dependencyGraph.value)
-    
+
     console.log('[ProjectDetailView] Setting success message first...')
     successMessage.value = `Entity "${entityName}" deleted`
     showSuccessSnackbar.value = true
-    
+
     console.log('[ProjectDetailView] Waiting for Vue updates to settle...')
     await nextTick()
-    
+
     // Force graph re-render after Vue's DOM updates settle
     console.log('[ProjectDetailView] Forcing graph re-render...')
     renderGraph()
     console.log('[ProjectDetailView] Graph rendered')
     console.log('[ProjectDetailView] Delete complete!')
-    
+
     // Diagnostic: Check if container/graph still exists after a short delay
     setTimeout(() => {
       console.log('[DIAGNOSTIC] Post-delete state:', {
@@ -1816,7 +1830,7 @@ async function handleContextMenuDelete(entityName: string) {
         dependencyGraphExists: !!dependencyGraph.value,
         nodesCount: dependencyGraph.value?.nodes?.length ?? 0,
       })
-      
+
       // Additional Cytoscape diagnostics
       if (graphContainer.value) {
         const rect = graphContainer.value.getBoundingClientRect()
@@ -1825,7 +1839,7 @@ async function handleContextMenuDelete(entityName: string) {
           height: rect.height,
           visible: rect.width > 0 && rect.height > 0,
         })
-        
+
         // Check for canvas element
         const canvas = graphContainer.value.querySelector('canvas')
         if (canvas) {
@@ -1852,35 +1866,36 @@ async function handleVerifyEntity(entityName: string) {
   const verifyingMessage = `Verifying entity "${entityName}"...`
   successMessage.value = verifyingMessage
   showSuccessSnackbar.value = true
-  
+
   try {
     // Step 1: Validate the entity
     console.log(`Validating entity "${entityName}"...`)
     const validationResult = await validateEntity(projectName.value, entityName)
-    
+
     if (!validationResult.is_valid) {
       const errorCount = validationResult.errors.length
-      const errorMessages = validationResult.errors.slice(0, 3).map(e => e.message).join('; ')
-      throw new Error(
-        `Validation failed with ${errorCount} error(s): ${errorMessages}`
-      )
+      const errorMessages = validationResult.errors
+        .slice(0, 3)
+        .map((e) => e.message)
+        .join('; ')
+      throw new Error(`Validation failed with ${errorCount} error(s): ${errorMessages}`)
     }
-    
+
     // Step 2: Generate preview (which caches it)
     console.log(`Generating preview for entity "${entityName}"...`)
     const previewResult = await previewEntity(projectName.value, entityName, 1)
-    
+
     if (!previewResult) {
       throw new Error('Preview generation failed')
     }
-    
+
     // Step 3: Refresh task status to update preview_available flag
     console.log(`Refreshing task status for "${projectName.value}"...`)
     await taskStatusStore.refresh()
-    
+
     // Step 4: Check if entity can now be marked as done
     const entityStatus = taskStatusStore.getEntityStatus(entityName)
-    
+
     // Debug logging
     console.log(`Entity status for "${entityName}":`, {
       exists: entityStatus?.exists,
@@ -1888,11 +1903,9 @@ async function handleVerifyEntity(entityName: string) {
       preview_available: entityStatus?.preview_available,
       status: entityStatus?.status,
     })
-    
-    const canMarkDone = entityStatus?.exists && 
-                        entityStatus?.validation_passed && 
-                        entityStatus?.preview_available
-    
+
+    const canMarkDone = entityStatus?.exists && entityStatus?.validation_passed && entityStatus?.preview_available
+
     // Success message with details
     if (canMarkDone) {
       successMessage.value = `✓ Entity "${entityName}" verified successfully. You can now mark it as done!`
@@ -1902,7 +1915,7 @@ async function handleVerifyEntity(entityName: string) {
       if (!entityStatus?.exists) missing.push('entity does not exist')
       if (!entityStatus?.validation_passed) missing.push('validation failed')
       if (!entityStatus?.preview_available) missing.push('preview not available')
-      
+
       if (missing.length > 0) {
         successMessage.value = `Entity "${entityName}" verified, but: ${missing.join(', ')}`
       } else {
@@ -1910,10 +1923,9 @@ async function handleVerifyEntity(entityName: string) {
       }
     }
     showSuccessSnackbar.value = true
-    
+
     // Refresh graph to show updated badges
     applyTaskStatusToNodes()
-    
   } catch (err) {
     console.error('Failed to verify entity:', err)
     successMessage.value = err instanceof Error ? err.message : `Failed to verify entity "${entityName}"`
@@ -1988,14 +2000,14 @@ async function handleResetStatus(entityName: string) {
 async function handleInitializeTaskList() {
   try {
     const result = await api.tasks.initialize(projectName.value, 'dependency-order')
-    
+
     if (result.success) {
       successMessage.value = result.message || 'Task list initialized successfully'
       showSuccessSnackbar.value = true
-      
+
       // Refresh task status to show updated task list
       await taskStatusStore.refresh()
-      
+
       // Refresh graph to show updated badges
       applyTaskStatusToNodes()
     }
@@ -2136,12 +2148,14 @@ async function handleRemoveDrawerNote() {
 function applyTaskStatusToNodes() {
   if (!cy.value || !taskStatusStore.taskStatus) return
 
-  cy.value.nodes().forEach(node => {
+  cy.value.nodes().forEach((node) => {
     const entityName = node.id()
     const status = taskStatusStore.getEntityStatus(entityName)
 
     // Remove existing task classes
-    node.removeClass('task-todo task-done task-ignored task-ongoing task-blocked task-critical task-ready task-flagged task-has-note')
+    node.removeClass(
+      'task-todo task-done task-ignored task-ongoing task-blocked task-critical task-ready task-flagged task-has-note'
+    )
 
     // In type mode, keep default entity/source type color classes only.
     if (colorByMode.value !== 'task' || !status) {
@@ -2234,15 +2248,15 @@ async function loadEntityYamlForDrawer(entityName: string) {
   if (drawerYamlLoadedEntity.value === entityName && drawerYamlContent.value !== null && !drawerYamlLoading.value) {
     return
   }
-  
+
   drawerYamlLoading.value = true
   drawerYamlError.value = null
   try {
-    const entity = entityStore.entities.find(e => e.name === entityName)
+    const entity = entityStore.entities.find((e) => e.name === entityName)
     if (!entity) {
       throw new Error(`Entity '${entityName}' not found`)
     }
-    
+
     // Convert entity data to YAML
     const yaml = await import('js-yaml')
     const yamlContent = yaml.dump(entity.entity_data, { indent: 2, lineWidth: -1 })
@@ -2264,39 +2278,38 @@ function handleDrawerYamlChange() {
 
 async function handleSaveQuickEdit() {
   if (!selectedNode.value || !drawerYamlContent.value) return
-  
+
   drawerYamlSaving.value = true
   drawerYamlError.value = null
-  
+
   try {
     // Parse YAML to validate
     const yaml = await import('js-yaml')
     const entityData = yaml.load(drawerYamlContent.value)
-    
+
     if (typeof entityData !== 'object' || entityData === null) {
       throw new Error('Invalid YAML: must be an object')
     }
-    
+
     // Update entity
     await entityStore.updateEntity(projectName.value, selectedNode.value, {
-      entity_data: entityData as any
+      entity_data: entityData as any,
     })
-    
+
     // Update original content to match saved content
     drawerOriginalYamlContent.value = drawerYamlContent.value
     drawerYamlHasChanges.value = false
-    
+
     // Mark project as changed
     markAsChanged()
-    
+
     // Refresh dependencies and graph
     await fetchDependencies(projectName.value)
     await nextTick()
     renderGraph()
-    
+
     successMessage.value = `Entity '${selectedNode.value}' saved successfully`
     showSuccessSnackbar.value = true
-    
   } catch (err) {
     drawerYamlError.value = err instanceof Error ? err.message : 'Failed to save entity'
     console.error('Failed to save quick edit:', err)
@@ -2311,7 +2324,7 @@ function handleCloseQuickEdit() {
       return
     }
   }
-  
+
   showDetailsDrawer.value = false
   selectedNode.value = null
   detailsDrawerTab.value = 'note'
@@ -2358,13 +2371,13 @@ async function handleSaveYaml() {
     await api.projects.updateRawYaml(projectName.value, rawYamlContent.value)
     originalYamlContent.value = rawYamlContent.value
     yamlHasChanges.value = false
-    
+
     // Refresh project to update selected project
     await handleRefresh()
-    
+
     successMessage.value = 'YAML saved successfully'
     showSuccessSnackbar.value = true
-    
+
     // Optionally re-validate
     await handleValidate()
   } catch (err) {
@@ -2425,12 +2438,12 @@ async function handleDownloadTargetModelDocs(format: 'html' | 'markdown' | 'exce
   targetModelDocsDownloading.value = true
   try {
     const blob = await api.projects.downloadTargetModelDocs(projectName.value, format)
-    
+
     // Create download link
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    
+
     const filenames = {
       html: `${projectName.value}_target_model.html`,
       markdown: `${projectName.value}_target_model.md`,
@@ -2438,12 +2451,12 @@ async function handleDownloadTargetModelDocs(format: 'html' | 'markdown' | 'exce
       'schema-reference': `${projectName.value}_target_model_schema_reference.md`,
     }
     link.download = filenames[format]
-    
+
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
     window.URL.revokeObjectURL(url)
-    
+
     successMessage.value = `Target model documentation downloaded (${format})`
     showSuccessSnackbar.value = true
   } catch (err) {
@@ -2502,18 +2515,18 @@ onMounted(async () => {
     nodeLabelFontSize.value = getSavedNodeLabelFontSize(window.localStorage.getItem(nodeLabelFontSizeStorageKey.value))
 
     console.debug(`ProjectDetailView: Initializing for project "${projectName.value}"`)
-    
+
     // Always load the project on mount to ensure fresh data
     console.debug(`ProjectDetailView: Loading project "${projectName.value}"`)
     await select(projectName.value)
-    
+
     await fetchBackups(projectName.value)
     // Start editing session
     await startSession(projectName.value)
-    
+
     // Initialize task status
     await taskStatusStore.initialize(projectName.value)
-    
+
     console.debug(`ProjectDetailView: Successfully initialized for project "${projectName.value}"`)
   } catch (err) {
     console.error('ProjectDetailView: Failed to initialize project view:', err)
@@ -2528,17 +2541,16 @@ onMounted(async () => {
 watch(
   () => projectName.value,
   async (newName, oldName) => {
-    
     if (!newName) return
-    
+
     // Avoid re-loading on initial mount (onMounted handles that)
     if (!oldName) return
 
-  colorByMode.value = getSavedColorByMode(window.localStorage.getItem(colorByStorageKey.value))
-  nodeLabelFontSize.value = getSavedNodeLabelFontSize(window.localStorage.getItem(nodeLabelFontSizeStorageKey.value))
-    
+    colorByMode.value = getSavedColorByMode(window.localStorage.getItem(colorByStorageKey.value))
+    nodeLabelFontSize.value = getSavedNodeLabelFontSize(window.localStorage.getItem(nodeLabelFontSizeStorageKey.value))
+
     console.debug(`ProjectDetailView: Project changed from "${oldName}" to "${newName}"`)
-    
+
     try {
       // Always load the project to ensure fresh data
       console.debug(`ProjectDetailView: Loading new project "${newName}"`)
@@ -2565,7 +2577,7 @@ watch(activeTab, async (newTab) => {
   if (newTab === 'dependencies') {
     await syncGraphViewState()
   }
-  
+
   // Update route query to enable context-sensitive help
   const currentTab = route.query.tab
   if (currentTab !== newTab) {
@@ -2680,10 +2692,10 @@ function applyTaskFilter() {
 
   const filter = currentTaskFilter.value
 
-  cy.value.nodes().forEach(node => {
+  cy.value.nodes().forEach((node) => {
     const entityName = node.id()
     const status = taskStatusStore.getEntityStatus(entityName)
-    
+
     if (!status) {
       // If no status info, show by default
       node.style('display', 'element')
@@ -2696,12 +2708,12 @@ function applyTaskFilter() {
   })
 
   // Also hide edges connected to hidden nodes
-  cy.value.edges().forEach(edge => {
+  cy.value.edges().forEach((edge) => {
     const source = edge.source()
     const target = edge.target()
     const sourceHidden = source.style('display') === 'none'
     const targetHidden = target.style('display') === 'none'
-    
+
     edge.style('display', sourceHidden || targetHidden ? 'none' : 'element')
   })
 }

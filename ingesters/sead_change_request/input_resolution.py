@@ -1,5 +1,6 @@
 """Input and config resolution for the SEAD change request ingester."""
 
+from collections.abc import Mapping
 from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
@@ -11,17 +12,25 @@ import pandas as pd
 from backend.app.ingesters.protocol import IngesterConfig
 from ingesters.sead_change_request.contracts import (
     APPROVED_DATATYPES,
+    CHANGE_REQUEST_FILE_INPUT_RETIRED_MESSAGE,
     ChangeRowState,
     IdentityAssignment,
     SourceTableBundle,
     SubmissionContext,
+    TrustedProjectContext,
     is_valid_submission_identifier,
     normalize_submission_identifier,
 )
 from ingesters.sead_change_request.preparation import ResolvedInputs
-from ingesters.sead_change_request.sql_builder import resolve_deploy_artifact_strategy
+from ingesters.sead_change_request.sql_builder import STAGING_TARGET_SCHEMA_KEY, resolve_deploy_artifact_strategy
 from src.target_model.models import TargetModel
 from src.utility import sanitize_columns
+
+TRUSTED_PROJECT_CONTEXT_KEY = "trusted_project_context"
+"""Config-extra key that carries the backend-owned project facts for one run."""
+
+SIMS_SCOPE_OVERRIDE_KEY = "sims_scope_name"
+"""Config-extra key a caller must not use to select the Change Request scope."""
 
 
 class InputResolutionError(Exception):
@@ -71,6 +80,13 @@ class DeployStrategyError(InputResolutionError):
     ingest_message = "Invalid deploy strategy"
 
 
+class BusinessKeyValidationError(InputResolutionError):
+    """Raised when the transformed delivery has no usable business keys."""
+
+    scope = "business-keys"
+    ingest_message = "Invalid business keys"
+
+
 def resolve_inputs(config: IngesterConfig, source: object) -> ResolvedInputs:
     """Load and validate all expected inputs for the shared workflow.
 
@@ -81,11 +97,13 @@ def resolve_inputs(config: IngesterConfig, source: object) -> ResolvedInputs:
 
     try:
         target_model: TargetModel = _resolve_target_model(config)
-        submission_context: SubmissionContext = _resolve_submission_context(config)
+        trusted_project_context: TrustedProjectContext | None = _resolve_trusted_project_context(config)
+        submission_context: SubmissionContext = _resolve_submission_context(config, trusted_project_context)
         fallback_assignments: dict[str, dict[object, IdentityAssignment]] = _resolve_identity_assignments(config)
         mutable_fields_by_entity: dict[str, list[str]] = _resolve_mutable_fields_by_entity(config)
         existing_row_update_entities: set[str] | None = _resolve_existing_row_update_entities(config)
-        deploy_strategy: Any | None = _resolve_deploy_strategy(config)
+        staging_target_schema: str | None = _resolve_staging_target_schema(config)
+        deploy_strategy: Any | None = _resolve_deploy_strategy(config, staging_target_schema)
     except InputResolutionError as exc:
         raise exc.with_warnings(bundle.warnings) from exc
 
@@ -97,60 +115,39 @@ def resolve_inputs(config: IngesterConfig, source: object) -> ResolvedInputs:
         mutable_fields_by_entity=mutable_fields_by_entity,
         existing_row_update_entities=existing_row_update_entities,
         deploy_strategy=deploy_strategy,
+        staging_target_schema=staging_target_schema,
+        trusted_project_context=trusted_project_context,
     )
 
 
 def _resolve_source_bundle(config: IngesterConfig, source: object) -> SourceTableBundle:
-    """Resolve the current protocol edge into the internal bundle contract."""
-    extras: dict[str, Any] = config.extra or {}
-
+    """Resolve the internal bundle contract and reject the retired file input."""
     if isinstance(source, SourceTableBundle):
         return source
+
+    if isinstance(source, (Path, str)):
+        raise SourceBundleError(CHANGE_REQUEST_FILE_INPUT_RETIRED_MESSAGE)
+
+    extras: dict[str, Any] = config.extra or {}
 
     source_bundle = extras.get("source_bundle")
     if isinstance(source_bundle, SourceTableBundle):
         return source_bundle
 
-    table_mapping = source if isinstance(source, dict) else extras.get("tables")
-    if isinstance(table_mapping, dict):
-        source_name = str(source) if isinstance(source, (Path, str)) else ""
-        return _build_source_bundle(table_mapping, source_name=source_name)
-
-    if isinstance(source, (Path, str)):
-        return _load_source_bundle_from_path(Path(source))
+    table_mapping = source if isinstance(source, Mapping) else extras.get("tables")
+    if isinstance(table_mapping, Mapping):
+        return _build_source_bundle(table_mapping)
 
     raise SourceBundleError("Unsupported source type for sead_change_request ingestion")
 
 
-def _load_source_bundle_from_path(source_path: Path) -> SourceTableBundle:
-    """Load an Excel workbook into the internal source-bundle contract."""
-    if not source_path.exists():
-        raise SourceBundleError(f"Source file does not exist: {source_path}")
-    if source_path.suffix.lower() not in {".xlsx", ".xls"}:
-        raise SourceBundleError(f"Unsupported source file format '{source_path.suffix}'; expected .xlsx or .xls")
+def _build_source_bundle(tables: Mapping[object, object], *, source_name: str = "") -> SourceTableBundle:
+    """Build a validated source bundle from a raw table mapping.
 
-    with pd.ExcelFile(source_path) as workbook:
-        table_mapping: dict[str, pd.DataFrame] = {}
-        warnings: list[str] = []
-
-        for sheet_name in workbook.sheet_names:
-            normalized_sheet_name = str(sheet_name)
-            if normalized_sheet_name == "data_table_index":
-                warnings.append("Ignored sheet 'data_table_index' from Excel source bundle")
-                continue
-
-            frame: pd.DataFrame = pd.read_excel(workbook, sheet_name=normalized_sheet_name)
-            frame.columns = sanitize_columns(list(frame.columns))
-            table_mapping[normalized_sheet_name] = frame
-
-    if not table_mapping:
-        raise SourceBundleError(f"No usable sheets were found in source file: {source_path}")
-
-    return SourceTableBundle(tables=table_mapping, source_name=str(source_path), warnings=warnings)
-
-
-def _build_source_bundle(tables: dict[object, object], source_name: str = "") -> SourceTableBundle:
-    """Build a validated source bundle from a raw table mapping."""
+    Each accepted DataFrame is deep-copied so the caller keeps ownership of its
+    data, and only the copied column labels are sanitized. Entity names, values,
+    dtypes, and timezone-aware values are preserved.
+    """
     if not tables:
         raise SourceBundleError("No source tables were provided")
 
@@ -161,9 +158,24 @@ def _build_source_bundle(tables: dict[object, object], source_name: str = "") ->
         if not isinstance(frame, pd.DataFrame):
             raise SourceBundleError(f"Source table '{table_name}' must be a pandas DataFrame")
 
-        normalized_tables[table_name] = frame
+        copied_frame = frame.copy(deep=True)
+        copied_frame.columns = _sanitized_column_labels(list(copied_frame.columns))
+        normalized_tables[table_name] = copied_frame
 
     return SourceTableBundle(tables=normalized_tables, source_name=source_name)
+
+
+def _sanitized_column_labels(columns: list[object]) -> list[str]:
+    """Sanitize caller-visible column labels and keep workflow-internal labels unchanged.
+
+    Columns that are part of the internal preparation contract start with ``_`` or
+    end with ``__existing``. Renaming them would break row-state, projection, and
+    existing-row update handling, so only the remaining labels are sanitized.
+    """
+    internal_flags = [isinstance(column, str) and (column.startswith("_") or column.endswith("__existing")) for column in columns]
+    public_columns = [column for column, is_internal in zip(columns, internal_flags) if not is_internal]
+    sanitized_columns = iter(sanitize_columns(public_columns))
+    return [str(column) if is_internal else next(sanitized_columns) for column, is_internal in zip(columns, internal_flags)]
 
 
 def _resolve_target_model(config: IngesterConfig) -> TargetModel:
@@ -182,18 +194,84 @@ def _resolve_target_model(config: IngesterConfig) -> TargetModel:
     raise TargetModelError("Target model is required; provide config.extra['target_model'] as a dict or TargetModel")
 
 
-def _resolve_submission_context(config: IngesterConfig) -> SubmissionContext:
+def _resolve_trusted_project_context(config: IngesterConfig) -> TrustedProjectContext | None:
+    """Return the backend-owned project facts, or None when the caller supplied none.
+
+    A caller-supplied ``sims_scope_name`` is rejected because the scope comes from the
+    saved provider-schema pair, not from request configuration.
+    """
+    extras: dict[str, Any] = config.extra or {}
+    if SIMS_SCOPE_OVERRIDE_KEY in extras:
+        raise SubmissionContextError(
+            f"'{SIMS_SCOPE_OVERRIDE_KEY}' cannot select the Change Request scope; " "the saved project provider-schema pair selects it"
+        )
+
+    raw_context = extras.get(TRUSTED_PROJECT_CONTEXT_KEY)
+    if raw_context is None:
+        return None
+    if isinstance(raw_context, TrustedProjectContext):
+        if not raw_context.scope_name.strip():
+            raise SubmissionContextError("Trusted project context requires a non-empty scope name")
+        return raw_context
+    if not isinstance(raw_context, dict):
+        raise SubmissionContextError(f"'{TRUSTED_PROJECT_CONTEXT_KEY}' must be a TrustedProjectContext")
+
+    project_name = raw_context.get("project_name")
+    provider_code = raw_context.get("provider_code")
+    provider_schema = raw_context.get("provider_schema")
+    scope_name = raw_context.get("scope_name")
+    data_provider_id = raw_context.get("data_provider_id")
+    raw_keys = raw_context.get("business_keys") or {}
+
+    for label, value in (
+        ("project_name", project_name),
+        ("provider_code", provider_code),
+        ("provider_schema", provider_schema),
+        ("scope_name", scope_name),
+    ):
+        if not isinstance(value, str) or not value.strip():
+            raise SubmissionContextError(f"Trusted project context requires a non-empty {label}")
+    if not isinstance(data_provider_id, int) or isinstance(data_provider_id, bool) or data_provider_id <= 0:
+        raise SubmissionContextError("Trusted project context requires a positive integer data_provider_id")
+    if not isinstance(raw_keys, dict):
+        raise SubmissionContextError("Trusted project context business_keys must map entity names to key lists")
+
+    business_keys: dict[str, tuple[str, ...]] = {}
+    for entity_name, key_columns in raw_keys.items():
+        if not isinstance(entity_name, str) or not entity_name.strip():
+            raise SubmissionContextError("Trusted project context business_keys requires non-empty entity names")
+        if not isinstance(key_columns, (list, tuple)):
+            raise SubmissionContextError(f"Trusted project context business_keys['{entity_name}'] must be a list of column names")
+        business_keys[entity_name] = tuple(str(column) for column in key_columns)
+
+    return TrustedProjectContext(
+        project_name=project_name.strip(),
+        provider_code=provider_code.strip(),
+        provider_schema=provider_schema.strip(),
+        scope_name=scope_name.strip(),
+        data_provider_id=data_provider_id,
+        business_keys=business_keys,
+    )
+
+
+def _resolve_submission_context(
+    config: IngesterConfig,
+    trusted_project_context: TrustedProjectContext | None = None,
+) -> SubmissionContext:
     """Load submission-scoped metadata from the ingester config input."""
     extras: dict[str, Any] = config.extra or {}
     context_data = extras.get("submission_context")
 
     if isinstance(context_data, SubmissionContext):
-        if context_data.run_id is None:
-            return replace(context_data, run_id=str(uuid4()))
-        return context_data
+        return _apply_trusted_context(
+            context_data if context_data.run_id is not None else replace(context_data, run_id=str(uuid4())),
+            trusted_project_context,
+        )
 
     if not isinstance(context_data, dict):
         raise SubmissionContextError("Submission context is required; provide config.extra['submission_context']")
+
+    _reject_conflicting_identity_inputs(context_data, trusted_project_context)
 
     submission_name = context_data.get("submission_name") or config.submission_name
     project_name = context_data.get("project_name")
@@ -220,19 +298,82 @@ def _resolve_submission_context(config: IngesterConfig) -> SubmissionContext:
     normalized_identifier: str = _normalize_identifier(identifier)
     normalized_description: str | None = _normalize_description(description)
 
-    return SubmissionContext(
-        submission_name=submission_name.strip(),
-        project_name=project_name.strip(),
-        timestamp=parsed_timestamp,
-        binding_set_uuid=binding_set_uuid,
-        change_request_name=change_request_name,
-        run_id=run_id,
-        datatype=normalized_datatype,
-        identifier=normalized_identifier,
-        description=normalized_description,
-        issue_identifier=issue_identifier.strip() if isinstance(issue_identifier, str) else None,
-        author=author.strip() if isinstance(author, str) else None,
-        data_provider_code=data_provider_code.strip() if isinstance(data_provider_code, str) else None,
+    return _apply_trusted_context(
+        SubmissionContext(
+            submission_name=submission_name.strip(),
+            project_name=project_name.strip(),
+            timestamp=parsed_timestamp,
+            binding_set_uuid=binding_set_uuid,
+            change_request_name=change_request_name,
+            run_id=run_id,
+            datatype=normalized_datatype,
+            identifier=normalized_identifier,
+            description=normalized_description,
+            issue_identifier=issue_identifier.strip() if isinstance(issue_identifier, str) else None,
+            author=author.strip() if isinstance(author, str) else None,
+            data_provider_code=data_provider_code.strip() if isinstance(data_provider_code, str) else None,
+        ),
+        trusted_project_context,
+    )
+
+
+def _reject_conflicting_identity_inputs(
+    context_data: dict[str, Any],
+    trusted_project_context: TrustedProjectContext | None,
+) -> None:
+    """Reject caller identity values that disagree with the authorized saved project."""
+    if trusted_project_context is None:
+        return
+
+    conflicts: list[str] = []
+    provider_schema = context_data.get("provider_schema")
+    if provider_schema is not None and (
+        not isinstance(provider_schema, str) or provider_schema.strip() != trusted_project_context.provider_schema
+    ):
+        conflicts.append(f"provider_schema '{provider_schema}' does not match the saved provider schema")
+    scope_name = context_data.get("scope_name")
+    if scope_name is not None and (not isinstance(scope_name, str) or scope_name.strip() != trusted_project_context.scope_name):
+        conflicts.append(f"scope_name '{scope_name}' does not match the saved provider-schema scope")
+
+    if conflicts:
+        raise SubmissionContextError("Submission context conflicts with the authorized project: " + "; ".join(conflicts))
+
+
+def _apply_trusted_context(
+    submission_context: SubmissionContext,
+    trusted_project_context: TrustedProjectContext | None,
+) -> SubmissionContext:
+    """Replace caller identity values with the trusted project values.
+
+    Caller values that agree with the saved project are accepted; values that disagree
+    are rejected instead of silently replaced, so a tampered request cannot change which
+    project, provider, or scope a run uses.
+    """
+    if trusted_project_context is None:
+        return submission_context
+
+    conflicts: list[str] = []
+    if submission_context.project_name.strip() != trusted_project_context.project_name:
+        conflicts.append(
+            f"project_name '{submission_context.project_name}' does not match the authorized project "
+            f"'{trusted_project_context.project_name}'"
+        )
+    if submission_context.data_provider_code and submission_context.data_provider_code.strip() != trusted_project_context.provider_code:
+        conflicts.append(
+            f"data_provider_code '{submission_context.data_provider_code}' does not match the saved provider "
+            f"'{trusted_project_context.provider_code}'"
+        )
+    if submission_context.scope_name and submission_context.scope_name.strip() != trusted_project_context.scope_name:
+        conflicts.append(f"scope_name '{submission_context.scope_name}' does not match the saved provider-schema scope")
+
+    if conflicts:
+        raise SubmissionContextError("Submission context conflicts with the authorized project: " + "; ".join(conflicts))
+
+    return replace(
+        submission_context,
+        project_name=trusted_project_context.project_name,
+        data_provider_code=trusted_project_context.provider_code,
+        scope_name=trusted_project_context.scope_name,
     )
 
 
@@ -359,11 +500,22 @@ def _resolve_identity_assignment(entity_name: str, row_index: object, assignment
     return IdentityAssignment(state=normalized_state, target_id=target_id, note=note)
 
 
-def _resolve_deploy_strategy(config: IngesterConfig) -> Any | None:
+def _resolve_staging_target_schema(config: IngesterConfig) -> str | None:
+    """Resolve the optional explicit schema used by the inline staging strategy."""
+    extras: dict[str, Any] = config.extra or {}
+    raw_schema = extras.get(STAGING_TARGET_SCHEMA_KEY)
+    if raw_schema is None:
+        return None
+    if not isinstance(raw_schema, str):
+        raise DeployStrategyError(f"'{STAGING_TARGET_SCHEMA_KEY}' must be a string when provided")
+    return raw_schema
+
+
+def _resolve_deploy_strategy(config: IngesterConfig, staging_target_schema: str | None = None) -> Any | None:
     """Resolve the optional deploy-rendering strategy from the ingester input."""
     extras: dict[str, Any] = config.extra or {}
     try:
-        return resolve_deploy_artifact_strategy(extras.get("deploy_strategy"))
+        return resolve_deploy_artifact_strategy(extras.get("deploy_strategy"), staging_target_schema=staging_target_schema)
     except ValueError as exc:
         raise DeployStrategyError(str(exc)) from exc
 

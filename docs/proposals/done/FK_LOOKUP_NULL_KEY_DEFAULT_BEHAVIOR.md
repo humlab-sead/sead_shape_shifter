@@ -66,7 +66,7 @@ This proposal is not in scope for:
 ### Current Behavior
 
 - Pre-merge validation raises on any null values in FK key columns when `allow_null_keys` is `false`.
-- The merge helper in [src/transforms/utility.py](src/transforms/utility.py) has null-safe merge mechanics, but they are currently only activated when `allow_null_keys` is `true`.
+- The merge helper in [src/transforms/utility.py](../../../src/transforms/utility.py) has null-safe merge mechanics, but they are currently only activated when `allow_null_keys` is `true`.
 - The user-facing control is the `allow_null_keys` flag, which is technically accurate but harder to understand in the common case of lookup-style FK resolution.
 
 ### Two Separate Concerns
@@ -122,10 +122,10 @@ The user-facing explanation would become:
 ### Implementation Impact
 
 - Keep the current FK config model in core, backend, and frontend.
-- Relax or bypass strict null-key failure in [src/specifications/constraints.py](src/specifications/constraints.py) for the relevant FK lookup case.
-- Decouple null-safe merge behavior from `allow_null_keys` in [src/transforms/utility.py](src/transforms/utility.py), because the current helper only enables null-safe matching when `allow_null_keys` is `true`.
+- Relax or bypass strict null-key failure in [src/specifications/constraints.py](../../../src/specifications/constraints.py) for the relevant FK lookup case.
+- Decouple null-safe merge behavior from `allow_null_keys` in [src/transforms/utility.py](../../../src/transforms/utility.py), because the current helper only enables null-safe matching when `allow_null_keys` is `true`.
 - Ensure the runtime semantics are explicit: tolerated null keys must still behave as `no_match`, not as regular pandas merge keys.
-- Ensure link behavior preserves the row in the intended workflow, which may require left-join semantics in [src/transforms/link.py](src/transforms/link.py) when the FK is being used for enrichment rather than filtering.
+- Ensure link behavior preserves the row in the intended workflow, which may require left-join semantics in [src/transforms/link.py](../../../src/transforms/link.py) when the FK is being used for enrichment rather than filtering.
 - Update docs and UI wording to explain the behavior in domain terms instead of checkbox terms.
 
 ### Implementation Invariant
@@ -145,7 +145,7 @@ The "alternative-key FK lookup" case should be recognized structurally, not heur
 
 The recommended definition is:
 
-1. The FK is executed through [src/transforms/link.py](src/transforms/link.py) as part of normal foreign key linking.
+1. The FK is executed through [src/transforms/link.py](../../../src/transforms/link.py) as part of normal foreign key linking.
 2. The join type is `left`.
 3. The FK is expected to resolve at most one remote row per local row:
   - `cardinality` is `many_to_one` or `one_to_one`, or
@@ -174,8 +174,8 @@ That is fundamentally left-join behavior. With `inner` joins, "no match" usually
 
 The current model treats `allow_null_keys` as a plain boolean with default `false` in both core and backend models:
 
-- [src/model.py](src/model.py)
-- [backend/app/models/entity.py](backend/app/models/entity.py)
+- [src/model.py](../../../src/model.py)
+- [backend/app/models/entity.py](../../../backend/app/models/entity.py)
 
 That means the system currently cannot distinguish:
 
@@ -212,7 +212,7 @@ To preserve flexibility for non-lookup joins, the following should remain on the
 
 ## Future Work
 
-A future proposal may introduce an explicit missing-key policy field if broader user-facing control is needed. See [docs/proposals/FK_NULL_KEY_POLICY_MODEL.md](docs/proposals/FK_NULL_KEY_POLICY_MODEL.md).
+A future proposal may introduce an explicit missing-key policy field if broader user-facing control is needed. See [docs/proposals/FK_NULL_KEY_POLICY_MODEL.md](../future/FK_NULL_KEY_POLICY_MODEL.md).
 
 That future work is intentionally not specified here. The only constraint this proposal places on future work is that this implementation should not foreclose a later explicit policy model.
 
@@ -257,9 +257,9 @@ If this proposal is approved, the implementation should explicitly cover these w
 ### Core Runtime
 
 1. Separate validation policy from merge semantics in the FK handling path.
-2. Update [src/specifications/constraints.py](src/specifications/constraints.py) so the targeted lookup case no longer raises on null key parts by default.
-3. Update [src/transforms/utility.py](src/transforms/utility.py) so null-safe merge behavior can be enabled independently of `allow_null_keys`.
-4. Confirm [src/transforms/link.py](src/transforms/link.py) preserves unresolved rows only in the intended left-join enrichment case.
+2. Update [src/specifications/constraints.py](../../../src/specifications/constraints.py) so the targeted lookup case no longer raises on null key parts by default.
+3. Update [src/transforms/utility.py](../../../src/transforms/utility.py) so null-safe merge behavior can be enabled independently of `allow_null_keys`.
+4. Confirm [src/transforms/link.py](../../../src/transforms/link.py) preserves unresolved rows only in the intended left-join enrichment case.
 5. Ensure null local keys never match null remote keys in compound joins.
 6. Ensure non-lookup joins are unchanged.
 
@@ -271,14 +271,14 @@ If this proposal is approved, the implementation should explicitly cover these w
 
 ### Frontend and UX
 
-1. Update FK editor wording in [ForeignKeyEditor.vue](frontend/src/components/entities/ForeignKeyEditor.vue) so it no longer describes the old strict default as the only interpretation.
+1. Update FK editor wording in [ForeignKeyEditor.vue](../../../frontend/src/components/entities/ForeignKeyEditor.vue) so it no longer describes the old strict default as the only interpretation.
 2. Update frontend schema/help text if the editor or validation UI exposes this behavior.
 3. Make sure validation and preview messaging describe unresolved links in domain language rather than implementation language.
 4. Make clear in the UI/docs that the new default applies to lookup-style left joins, not all FK joins.
 
 ### Documentation
 
-1. Update [docs/CONFIGURATION_GUIDE.md](docs/CONFIGURATION_GUIDE.md) to explain the new default behavior precisely.
+1. Update [docs/CONFIGURATION_GUIDE.md](../../CONFIGURATION_GUIDE.md) to explain the new default behavior precisely.
 2. Update examples that currently assume `allow_null_keys: false` always means hard failure.
 3. Add one clear example of a left-join alternative-key lookup with missing local key parts and unresolved output.
 
@@ -308,8 +308,8 @@ If this proposal moves forward, the work can be split into a small set of review
 **Primary files**:
 
 - [docs/proposals/done/FK_LOOKUP_NULL_KEY_DEFAULT_BEHAVIOR.md](FK_LOOKUP_NULL_KEY_DEFAULT_BEHAVIOR.md)
-- [src/model.py](src/model.py)
-- [backend/app/models/entity.py](backend/app/models/entity.py)
+- [src/model.py](../../../src/model.py)
+- [backend/app/models/entity.py](../../../backend/app/models/entity.py)
 
 ### Issue 2: Implement core FK null-key behavior (#353)
 
@@ -323,9 +323,9 @@ If this proposal moves forward, the work can be split into a small set of review
 
 **Primary files**:
 
-- [src/specifications/constraints.py](src/specifications/constraints.py)
-- [src/transforms/utility.py](src/transforms/utility.py)
-- [src/transforms/link.py](src/transforms/link.py)
+- [src/specifications/constraints.py](../../../src/specifications/constraints.py)
+- [src/transforms/utility.py](../../../src/transforms/utility.py)
+- [src/transforms/link.py](../../../src/transforms/link.py)
 
 ### Issue 3: Add regression coverage for FK null-key behavior (#356)
 
@@ -340,8 +340,8 @@ If this proposal moves forward, the work can be split into a small set of review
 
 **Primary files**:
 
-- [tests/specifications/test_constraints.py](tests/specifications/test_constraints.py)
-- [tests/transforms/test_link.py](tests/transforms/test_link.py)
+- [tests/specifications/test_constraints.py](../../../tests/specifications/test_constraints.py)
+- [tests/transforms/test_link.py](../../../tests/transforms/test_link.py)
 - Relevant model tests if config semantics change
 
 ### Issue 4: Update frontend wording and editor behavior (#354)
@@ -356,8 +356,8 @@ If this proposal moves forward, the work can be split into a small set of review
 
 **Primary files**:
 
-- [frontend/src/components/entities/ForeignKeyEditor.vue](frontend/src/components/entities/ForeignKeyEditor.vue)
-- [frontend/src/schemas/entitySchema.json](frontend/src/schemas/entitySchema.json)
+- [frontend/src/components/entities/ForeignKeyEditor.vue](../../../frontend/src/components/entities/ForeignKeyEditor.vue)
+- [frontend/src/schemas/entitySchema.json](../../../frontend/src/schemas/entitySchema.json)
 - Relevant frontend validation/help components
 
 ### Issue 5: Update documentation and examples (#355)
@@ -372,8 +372,8 @@ If this proposal moves forward, the work can be split into a small set of review
 
 **Primary files**:
 
-- [docs/CONFIGURATION_GUIDE.md](docs/CONFIGURATION_GUIDE.md)
-- [README.md](README.md)
+- [docs/CONFIGURATION_GUIDE.md](../../CONFIGURATION_GUIDE.md)
+- [README.md](../../../README.md)
 - Existing example YAML files and screenshots as needed
 
 ### Suggested Delivery Order

@@ -3,8 +3,22 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from src.issues import CoreIssue
-from src.target_model.effective_identity import resolve_effective_identity
+from src.target_model.effective_identity import resolve_aggregate_chain, resolve_effective_identity
 from src.target_model.models import EntitySpec, ForeignKeySpec, TargetModel
+
+CHAIN_ISSUE_CODES: frozenset[str] = frozenset(
+    {
+        "AGGREGATE_PARENT_CYCLE",
+        "INVALID_AGGREGATE_ROOT_IDENTITY",
+        "AGGREGATE_CHILD_MISSING_PUBLIC_ID",
+        "AGGREGATE_ROOT_MISSING_PUBLIC_ID",
+    }
+)
+"""Chain-level issue codes that immediate-parent checks cannot report.
+
+Other chain issue codes repeat diagnostics that ``_validate_aggregate_parent``
+already emits for the broken link, so validation drops them to avoid duplicates.
+"""
 
 
 @dataclass(slots=True, kw_only=True, repr=False)
@@ -24,6 +38,7 @@ class TargetModelSpecValidator:
     def validate(self, target_model: TargetModel) -> list[SpecValidationIssue]:
         issues: list[SpecValidationIssue] = []
         suffix = target_model.naming.public_id_suffix if target_model.naming else None
+        reported_cycles: set[tuple[str, ...]] = set()
 
         for entity_name, entity_spec in target_model.entities.items():
             column_names = set(entity_spec.columns)
@@ -85,7 +100,9 @@ class TargetModelSpecValidator:
                         )
                     )
 
-            issues.extend(self._validate_aggregate_parent(target_model, entity_name, entity_spec))
+            aggregate_parent_issues = self._validate_aggregate_parent(target_model, entity_name, entity_spec)
+            issues.extend(aggregate_parent_issues)
+            issues.extend(self._validate_aggregate_chain(target_model, entity_name, entity_spec, aggregate_parent_issues, reported_cycles))
             issues.extend(self._validate_identity_rules(entity_name, entity_spec))
 
         return issues
@@ -211,6 +228,43 @@ class TargetModelSpecValidator:
                 )
             )
 
+        return issues
+
+    @staticmethod
+    def _validate_aggregate_chain(
+        target_model: TargetModel,
+        entity_name: str,
+        entity_spec: EntitySpec,
+        aggregate_parent_issues: list[SpecValidationIssue],
+        reported_cycles: set[tuple[str, ...]],
+    ) -> list[SpecValidationIssue]:
+        """Report chain-level aggregate failures that immediate-parent checks cannot see.
+
+        Skips entities whose immediate parent link is already reported, because a
+        broken first link makes the rest of the chain unresolvable. Reports each
+        canonical cycle once, on the alphabetically first member entity.
+        """
+        if aggregate_parent_issues:
+            return []
+        if entity_spec.aggregate_parent is None and entity_spec.identity_tracking != "child":
+            return []
+
+        chain = resolve_aggregate_chain(target_model, entity_name)
+        issues: list[SpecValidationIssue] = []
+        for chain_issue in chain.issues:
+            if chain_issue.code not in CHAIN_ISSUE_CODES:
+                continue
+            if chain_issue.code == "AGGREGATE_PARENT_CYCLE":
+                if chain_issue.cycle is None or chain_issue.cycle in reported_cycles:
+                    continue
+                reported_cycles.add(chain_issue.cycle)
+            issues.append(
+                SpecValidationIssue(
+                    code=chain_issue.code,
+                    message=chain_issue.message,
+                    entity=chain_issue.entity,
+                )
+            )
         return issues
 
     def _validate_identity_rules(self, entity_name: str, entity_spec: EntitySpec) -> list[SpecValidationIssue]:

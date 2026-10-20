@@ -412,7 +412,7 @@
 
 **In scope**: Export from reconciliation catalog to sidecar, no-overwrite rule for manual links, UI trigger.
 
-**Out of scope**: Draft/committed lifecycle states, review UI, audit logging, rollback — all deferred to [RECONCILIATION_FUTURE_IMPROVEMENTS.md](RECONCILIATION_FUTURE_IMPROVEMENTS.md).
+**Out of scope**: Draft/committed lifecycle states, review UI, audit logging, rollback — all deferred to [RECONCILIATION_FUTURE_IMPROVEMENTS.md](../RECONCILIATION_FUTURE_IMPROVEMENTS.md).
 
 ---
 

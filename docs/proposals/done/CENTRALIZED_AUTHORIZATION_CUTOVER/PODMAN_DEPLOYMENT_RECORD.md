@@ -4,7 +4,7 @@
 - **Source phase plan:** [Centralized Authorization System Cutover Plan](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md) - [Phase 5: Verify Podman Deployment And Update Security Record](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md#phase-5-verify-podman-deployment-and-update-security-record)
 - **Source task plan:** [Phase 5 task plan](./done/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_5_TASK_PLAN.md)
 - **Predecessor records:** [UAT-ready deployment record](./done/UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md), [Podman deployment verification handoff](./DEPLOYMENT_VERIFICATION_HANDOFF.md), [test environment cutover handoff](./TEST_ENVIRONMENT_AUTHORIZATION_CUTOVER_HANDOFF.md)
-- **Related, not required:** [Release Cycle Evidence And Locking](../../RELEASE_CYCLE_EVIDENCE_AND_LOCKING/README.md)
+- **Related, not required:** [Release Cycle Evidence And Locking](../../future/RELEASE_CYCLE_EVIDENCE_AND_LOCKING/README.md)
 
 ## Purpose
 

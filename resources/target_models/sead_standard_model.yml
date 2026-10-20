@@ -1075,7 +1075,6 @@ entities:
       data_provider_code:
         required: true
         type: string
-        nullable: true
       data_provider_uuid:
         required: false
         type: uuid
@@ -1867,10 +1866,11 @@ entities:
         nullable: true
 
   abundance_modification:
-    role: bridge
+    role: fact
     required: false
-    description: Join entity linking an abundance record to one or more modification types.
+    description: Modification applied to an abundance record.
     domains: [abundance]
+    aggregate_parent: abundance
     target_table: tbl_abundance_modifications
     public_id: abundance_modification_id
     unique_sets:
@@ -1886,7 +1886,7 @@ entities:
         nullable: false
     foreign_keys:
       - entity: abundance
-        required: false
+        required: true
       - entity: modification_type
         required: true
 
@@ -1933,7 +1933,7 @@ entities:
         nullable: false
     foreign_keys:
       - entity: abundance
-        required: false
+        required: true
       - entity: property_type
         required: true
 

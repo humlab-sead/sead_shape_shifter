@@ -19,15 +19,44 @@ class Ingester(Protocol):
     async def ingest(self, source: str) -> IngestionResult: ...
 ```
 
+### Optional Table Input
+
+Ingesters that accept normalized tables in memory implement the separate `TableSourceIngester` protocol.
+Callers discover this capability with a runtime check. The shared `Ingester` protocol and the shared file
+request and response models stay unchanged.
+
+```python
+@runtime_checkable
+class TableSourceIngester(Protocol):
+    async def validate_tables(
+        self, tables: Mapping[str, pd.DataFrame], *, source_name: str = ""
+    ) -> ValidationResult: ...
+
+    async def ingest_tables(
+        self,
+        tables: Mapping[str, pd.DataFrame],
+        *,
+        source_name: str = "",
+        validate_first: bool = True,
+    ) -> IngestionResult: ...
+```
+
+`source_name` is diagnostic text for messages. It is never opened or resolved as a file path.
+`sead_change_request` implements this capability; the deprecated `sead` ingester does not.
+
 ## Components
 
 ### Core Infrastructure
-- **`protocol.py`**: Defines the `Ingester` protocol and result types
+- **`protocol.py`**: Defines the `Ingester` protocol, the optional `TableSourceIngester` protocol, and the result types
 - **`registry.py`**: Auto-discovery registry for ingesters
 - **`__init__.py`**: Triggers registration of all ingesters
 
-### SEAD Ingester (`sead/`)
-Complete implementation for SEAD Clearinghouse Import system:
+### SEAD Ingester (`sead/`) — Deprecated
+
+Superseded by `sead_change_request`, which resolves identities through SIMS and emits a reviewable
+deploy bundle instead of writing to the target database. This ingester remains registered only for
+existing callers, reports `deprecated: true` through `GET /api/v1/ingesters`, and is scheduled for removal.
+
 - **`ingester.py`**: Main ingester class implementing the protocol
 - **Core modules**: metadata, policies, specification, submission, repository, utility, process
 - **Dispatchers**: csv_processor, xml_processor
@@ -214,5 +243,5 @@ Use `extra` dict for ingester-specific parameters.
 ## See Also
 
 - [AGENTS.md](../../AGENTS.md#ingester-development-pattern) - Complete ingester development guide
-- [Implementation Plan](../../../INGESTER_INTEGRATION_PLAN.md) - Detailed integration plan
-- [Backend API Docs](../../../docs/BACKEND_API.md) - API endpoint reference
+- Implementation Plan - Detailed integration plan
+- Backend API Docs - API endpoint reference

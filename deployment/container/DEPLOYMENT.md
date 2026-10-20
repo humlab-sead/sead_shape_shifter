@@ -6,7 +6,7 @@ container lifecycle helpers, see the Makefile and `scripts/`.
 
 ## Quick Navigation
 
-- **Release install and selection**: [Install and select a container release](#install-and-select-a-container-release)
+- **Deployment files**: [Place the deployment files](#place-the-deployment-files)
 - **Single environment**: [Single environment deploy](#single-environment-deploy)
 - **Multiple environments**: repeat the single-environment steps with
   `deployment/container-host/deploy/deploy_environment.sh`
@@ -39,94 +39,49 @@ sudo loginctl enable-linger "$USER_NAME"
 The deployment user's home directory holds three sibling directories:
 
 ```text
-~/container/         selected container release (managed symlink)
+~/container/         deployment files (manual copy or sync)
 ~/config/            environment configuration, credentials and policy
 ~/container-data/    persistent runtime data and state
 ```
 
-Install and select a release before running the commands below; see
-[Install and select a container release](#install-and-select-a-container-release).
+Place the deployment files before running the commands below; see
+[Place the deployment files](#place-the-deployment-files).
 
 ---
 
-## Install and select a container release
+## Place the deployment files
 
-Container releases are installed and selected with one administrator-owned
-script, `/usr/local/sbin/shape-shifter-container-release`. Install it once per
-host from a reviewed copy of the repository; an administrator updates it
-explicitly after review. The script is never run from, and is never replaced by,
-a user's selected release. The other host tools in this guide run from a
-repository checkout under `deployment/container-host/`; they are never read from
-a user's selected release.
+Until container images are published to GHCR (see
+[GHCR_IMAGE_RELEASE.md](../../docs/proposals/GHCR_IMAGE_RELEASE.md)), each
+environment keeps a manual copy of the `deployment/container/` tree in the
+deployment user's `~/container`. The `shape-shifter-container-release` manager
+and its `container-vX.Y.Z` release archives are retired: no host installs the
+manager any more, and the host tools in this guide accept a real `~/container`
+directory.
 
-```bash
-sudo install -o root -g root -m 0755 \
-  deployment/container-host/deploy/manage_container_release.sh \
-  /usr/local/sbin/shape-shifter-container-release
-```
-
-Each environment keeps its own selection. Installing a release does not select
-it, and selecting a release does not change `GIT_REF`, `IMAGE_NAME`, `~/config`,
-or `~/container-data`.
+Place the tree from a reviewed repository checkout, as root:
 
 ```bash
-# Download, verify, and install an exact release. This does not select it.
-sudo shape-shifter-container-release install USER container-vX.Y.Z
+# First install: copy the tree and fix ownership
+sudo rsync --archive --no-group --exclude=/.env deployment/container/ \
+  ~USER/container/
+sudo chown -R USER:USER ~USER/container
 
-# Select an installed release for USER. This changes only that user.
-sudo shape-shifter-container-release activate USER container-vX.Y.Z
-
-# Show the selected tag, source commit, container link, and image settings.
-sudo shape-shifter-container-release status USER
-
-# Select the release USER used before the current one. No download is needed.
-sudo shape-shifter-container-release rollback USER
+# Later refreshes: sync the tree (also installs the systemd unit)
+deployment/container-host/deploy/sync-to-deploy --deploy-user USER
 ```
 
-Installed releases live under
-`/opt/shape-shifter/<user>/container-releases/<tag>/container` and are owned by
-root: the deployment user can read and execute them but cannot modify them. The
-selected release is chosen through
-`/opt/shape-shifter/<user>/container-current`, and the deployment user's
-`~/container` is a symlink to that selector. Operations on one user are
-serialized and never change another user's selection.
+`sync-to-deploy` mirrors `deployment/container/` into `~/container`, removes
+files deleted locally, fixes ownership, installs the systemd user unit, and
+reloads the daemon. It never touches `~/config` or `~/container-data`, and it
+does not restart or enable the service. It refuses a symlinked target so a
+sync cannot overwrite an older manager selection.
 
-`install` resolves the annotated tag's peeled commit, downloads the release
-archive and checksum by the exact `container-vX.Y.Z` tag, verifies the checksum,
-rejects an archive whose version does not match the tag or that contains
-absolute or parent-traversal paths, and checks the extracted bundle against the
-manager's own required-file list. Every check uses the manager's own code; it
-never executes anything from the downloaded archive. Any failure leaves the
-current selection untouched. Reinstalling a tag is accepted only when
-the installed copy already validates; otherwise the existing directory is left
-in place and the command fails.
-
-The source commit comes from `git ls-remote` on the annotated tag when `git` is
-installed. Without `git`, or when that lookup fails, the script falls back to the
-GitHub API, which is rate-limited per network address and can refuse
-unauthenticated requests. Installing `git` on the host keeps release installation
-working when that limit is reached.
-
-`status` reports the selected tag and source commit separately from `GIT_REF`
-and `IMAGE_NAME`. It reads only those two keys from `~/config/deployment.env` and
-never executes that file, so it still reports a selection whose installed bundle
-is missing or broken.
-
-### First transition to a release
-
-An existing `~/container` may be a real directory from the retired placement
-flow. `activate` refuses to replace a real directory or an unrelated symlink and
-leaves it intact. An administrator must review and move that directory, then
-install and activate a release:
+After placing or refreshing the files, build and start as the deployment user:
 
 ```bash
-sudo -u USER mv ~/container ~/container.pre-release
-sudo shape-shifter-container-release install  USER container-vX.Y.Z
-sudo shape-shifter-container-release activate USER container-vX.Y.Z
+sudo -u USER -H bash -lc 'cd ~/container && make build && make up && make healthcheck'
 ```
-
-`activate` creates `~/container` as a symlink to the selector once the existing
-path has been moved.
 
 ### Paths and permissions
 
@@ -134,11 +89,34 @@ path has been moved.
 relative override in `~/config/deployment.env` names a path under the deployment
 user's home, so `DATA_DIR=container-data` and `DATA_DIR=./container-data` both
 mean `~/container-data`; an absolute value is used unchanged. Relative overrides
-resolve from the user's home, not from the selected release directory, so
-configuration, credentials, and runtime data stay outside the release.
+resolve from the user's home, not from `~/container`, so configuration,
+credentials, and runtime data stay outside the deployment files.
 `CONTAINER_DATA_DIR`, which `podman-compose.yml` mounts, follows `DATA_DIR` unless
 it is set explicitly. `scripts/_load-env.sh` and the Makefile implement the same
 rule, so a direct script call and a Make target agree.
+
+### Curated provider registry
+
+The provider-schema registry is reviewed data, not runtime data. Reviewed files
+live in `deployment/container/resources/data-providers/`, which `sync-to-deploy`
+copies with the rest of the deployment tree to `~/container/resources/data-providers`.
+`podman-compose.yml` mounts that directory read-only over
+`/app/shared/data-providers`, so the writable `~/container-data/shared` mount
+never supplies or receives provider records.
+
+The default `SHAPE_SHIFTER_GLOBAL_DATA_PROVIDER_DIR=shared/data-providers`
+resolves to `/app/shared/data-providers` because `SHAPE_SHIFTER_APPLICATION_ROOT`
+is `/app`. Do not override it inside a container; the reviewed directory is the
+only source. Refresh it with the existing sync workflow and verify the effective
+mount after a restart:
+
+```bash
+podman inspect shape-shifter --format '{{json .Mounts}}'
+```
+
+The listed mounts must show `/app/shared/data-providers` with `RW: false`.
+For local development, set `SHAPE_SHIFTER_GLOBAL_DATA_PROVIDER_DIR` to the
+absolute path of the reviewed directory instead of mounting it.
 
 ---
 
@@ -169,7 +147,7 @@ IMAGE_NAME=shape-shifter:dev
 The deploy helper described below records these values from its `--repo`,
 `--ref` and `--host-port` options. `--ref` selects the application image ref to
 build (a branch or an application release tag); `--branch` is accepted as an
-alias. It is unrelated to the selected container release.
+alias.
 
 Before the first start, edit `~/config/backend.env` and set:
 
@@ -183,8 +161,8 @@ PostgreSQL passwords belong in `~/config/.pgpass/.pgpass` (mode 600), not in
 directory.
 
 To configure the application image settings from an admin account, use the
-deploy helper. The user must already have a selected container release; the
-helper does not fetch or replace container files:
+deploy helper. The user must already have deployment files in `~/container`;
+the helper does not fetch or replace them:
 
 ```bash
 sudo deployment/container-host/deploy/deploy_environment.sh test-shape-shifter.sead.se
@@ -201,25 +179,33 @@ sudo deployment/container-host/deploy/deploy_environment.sh test-shape-shifter.s
 sudo deployment/container-host/deploy/deploy_environment.sh prod-shape-shifter.sead.se --host-port 8013
 ```
 
-Each target user must already have its own selected container release. Prepare
-each one with the host manager first; the deploy helper never installs or
-activates a release and never selects a shared version.
+Each target user must already have its own deployment files in `~/container`.
+Place them first; the deploy helper never fetches or replaces them.
 
 `HOST_PORT` selects the published port; the container port stays `8012`. Each
 deployment records its repository, application ref, port, and matching image name
 in its own `~/config/deployment.env`, so later builds keep the source that was
-configured and selecting a different container release leaves the settings in
-place.
+configured.
 
 ---
 
 ## NGINX reverse proxy
 
-Install an HTTPS vhost that forwards to the container:
+Install an HTTPS vhost that forwards to the container. A certificate must
+exist before the HTTPS vhost can be enabled, so install the HTTP-only
+bootstrap vhost first and obtain the certificate with it:
 
 ```bash
+sudo deployment/container-host/deploy/install_nginx_reverse_proxy.sh --bootstrap test-shape-shifter.sead.se
+sudo certbot certonly --webroot -w /var/www/html -d test-shape-shifter.sead.se
 sudo deployment/container-host/deploy/install_nginx_reverse_proxy.sh test-shape-shifter.sead.se 8012
 ```
+
+Issuing the certificate requires the domain to already resolve to this host
+(or to its NAT address). While the DNS record still points at another
+machine, HTTP-01 validation reaches that machine instead, and the webroot
+method fails; issue with a DNS-01 plugin first or coordinate the DNS change
+with these steps.
 
 The upstream port defaults to `HOST_PORT` from the invoking user's
 `~/config/deployment.env`, so omit the second argument when the deployment
@@ -229,7 +215,13 @@ already uses its configured port. Run the helper as the deployment user
 
 The script renders
 `deployment/container-host/deploy/nginx-shape-shifter.conf.template` into
-`/etc/nginx/sites-available/`, enables it and reloads NGINX.
+`/etc/nginx/sites-available/`, enables it and reloads NGINX. It refuses to
+enable the HTTPS vhost while the certificate is missing, and it removes the
+enable symlink again when `nginx -t` fails, so a broken vhost never breaks
+the next reload. The shared maps (`$connection_upgrade`, `$authz_groups`) are
+installed once to `/etc/nginx/conf.d/shape-shifter-maps.conf`, which lets a
+second Shape Shifter site on the same host enable without duplicate-map
+errors.
 
 The backend authenticates through a trusted proxy in production: NGINX must
 populate `X-Authenticated-User` (the template forwards `$remote_user`). Enable an
@@ -357,8 +349,8 @@ systemd start and a manual `make up` resolve `~/config/deployment.env`
 identically. The unit sets no deployment configuration of its own: a value in
 the unit environment would override the deployment file, because the compose
 tools prefer the environment over the file. The unit only fixes
-`WorkingDirectory=%h/container`, so the code that runs is the code in the
-selected release.
+`WorkingDirectory=%h/container`, so the code that runs is the code in
+`~/container`.
 
 Control it with the `service-*` targets, which dispatch through
 `scripts/container.sh service <action>`:
@@ -391,16 +383,21 @@ daemon-reload`, so no separate reload is needed.
 
 ## Updating a deployment
 
-To move an environment to a different container release:
+To refresh an environment's deployment files, sync the reviewed tree from a
+repository checkout (see [Place the deployment files](#place-the-deployment-files)):
 
 ```bash
-sudo shape-shifter-container-release install  USER container-vX.Y.Z
-sudo shape-shifter-container-release activate USER container-vX.Y.Z
+deployment/container-host/deploy/sync-to-deploy --deploy-user USER
 ```
 
-`activate` keeps the release the user was on for `rollback`. Configuration,
-credentials, project data, logs, backups, authorization state, and application
-image settings are unchanged; only the selected release changes.
+Configuration, credentials, project data, logs, backups, and authorization
+state are unchanged; only the files under `~/container` are replaced, and the
+systemd unit is reinstalled. Restart the service afterwards to run the new
+scripts:
+
+```bash
+systemctl --user -M USER@ restart shape-shifter
+```
 
 To rebuild the application image from the configured application ref:
 
@@ -409,8 +406,7 @@ sudo -u USER -H bash -lc 'cd ~/container && make build && make restart && make h
 ```
 
 The deploy helper configures those application image settings from its `--repo`,
-`--ref`, and `--host-port` options; it does not fetch or replace container files
-and requires an already-selected release.
+`--ref`, and `--host-port` options; it does not fetch or replace container files.
 
 `make build` takes the repository and application ref from
 `~/config/deployment.env`, defaulting to
@@ -421,65 +417,45 @@ override takes precedence over `~/config/deployment.env`.
 
 `make build` tags a branch build after the ref, so `GIT_REF=dev` produces
 `shape-shifter:dev`. Keep `IMAGE_NAME` in `~/config/deployment.env` in step with
-`GIT_REF`, otherwise `make restart` starts the previous image. The application
-image ref and the container release tag are independent: the release supplies the
-deployment files, while `GIT_REF` selects the source the image is built from.
+`GIT_REF`, otherwise `make restart` starts the previous image.
+
+Before the first build on a host, check prerequisites with
+`deployment/container-host/deploy/get-install.sh`: it verifies Podman,
+`podman-compose`, lingering, and rootless user namespaces, and writes nothing
+into `~/container`.
 
 ### Isolated local development
 
-`deployment/container-host/deploy/sync-to-deploy` synchronizes a working tree for
-the isolated development flow. It refuses a target that the release manager owns: a symlinked
-`~/container` selection or any target that resolves into
-`/opt/shape-shifter/<user>/`. Use an explicit non-production directory instead:
+To test deployment files without touching an environment, synchronize to a
+separate directory instead of the environment's `~/container`:
 
 ```bash
 deployment/container-host/deploy/sync-to-deploy --remote-dir container-dev
 ```
 
-The production deployment path is the release flow above, not a working-tree
-synchronization.
+`sync-to-deploy` refuses a symlinked target and any target that resolves into
+`/opt/shape-shifter/<user>/`, the storage of a retired manager selection, so an
+isolated sync cannot overwrite either.
 
-### Migrating from a pre-release deployment copy
+### Migrating from an older deployment copy
 
-An environment deployed before container releases used one mutable `~/container`
-checkout that held the deployment files directly, and a systemd unit that named
-those files. A copy can also predate the consolidated dispatcher, in which case
+An old `~/container` copy can predate the consolidated dispatcher, in which case
 it still contains `scripts/up.sh`, `scripts/down.sh`, `scripts/logs.sh`, and
-`scripts/status.sh`. Those four scripts no longer exist in a release: the
-dispatcher `scripts/container.sh` provides `up`, `down`, `restart`, `logs`, and
-`status` through the Make targets.
-
-Move the environment to a selected release:
+`scripts/status.sh`. Those four scripts no longer exist: the dispatcher
+`scripts/container.sh` provides `up`, `down`, `restart`, `logs`, and `status`
+through the Make targets. Refresh the tree with `sync-to-deploy` (it removes the
+stale scripts), then reinstall and restart the unit:
 
 ```bash
-# 1. Preserve the existing directory; do not delete it without review
-sudo -u USER mv ~/container ~/container.pre-release
-
-# 2. Install and select an exact release (creates ~/container as a symlink)
-sudo shape-shifter-container-release install  USER container-vX.Y.Z
-sudo shape-shifter-container-release activate USER container-vX.Y.Z
-
-# 3. Reinstall the unit so it points at the selected release
+deployment/container-host/deploy/sync-to-deploy --deploy-user USER
 sudo -u USER -H bash -lc 'cd ~/container && make service-install'
 sudo -u USER -H bash -lc 'cd ~/container && make service-restart'
 ```
 
-`~/config` and `~/container-data` are untouched by every step. Review
-`~/container.pre-release` against the selected release before removing it; keep
-it until health and authorization checks pass.
-
-Check host prerequisites before installing a release.
-`deployment/container-host/deploy/get-install.sh` is a host-side prerequisite
-check that
-runs from a repository checkout, not from a user's selected release: it verifies
-Podman, `podman-compose`, lingering, and rootless user namespaces, and writes
-nothing into `~/container`. It no longer downloads the deployment files, because
-a release is installed with `shape-shifter-container-release` instead.
-
-After the move, use `make up`, `make down`, `make restart`, `make logs`, and
-`make status` as before; each runs through the selection. `install_systemd_service.sh`
-now requires a selected release and refuses a real `~/container` directory or an
-unrelated symlink, so install the release before reinstalling the unit.
+`~/config` and `~/container-data` are untouched by every step. An environment
+whose `~/container` is still a symlink into `/opt/shape-shifter/` (a retired
+manager selection) must be moved first: an administrator reviews and removes the
+symlink, then the steps above place a real directory.
 
 ### Migrating from the retired two-directory layout
 

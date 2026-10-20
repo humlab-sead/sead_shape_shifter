@@ -1,28 +1,16 @@
 <template>
-  <v-alert
-    type="error"
-    variant="tonal"
-    prominent
-    border="start"
-    class="preview-error"
-  >
+  <v-alert type="error" variant="tonal" prominent border="start" class="preview-error">
     <div class="d-flex align-start">
       <v-icon class="mr-3 mt-1">mdi-alert-circle-outline</v-icon>
-      
+
       <div class="flex-grow-1">
         <div class="text-h6 mb-2">Preview Generation Failed</div>
-        
+
         <div class="error-message mb-3">
           {{ errorMessage }}
         </div>
 
-        <v-btn
-          v-if="hasDetails"
-          variant="text"
-          size="small"
-          @click="showDetails = !showDetails"
-          class="px-0"
-        >
+        <v-btn v-if="hasDetails" variant="text" size="small" @click="showDetails = !showDetails" class="px-0">
           {{ showDetails ? 'Hide' : 'Show' }} Technical Details
           <v-icon end>{{ showDetails ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
         </v-btn>
@@ -30,7 +18,7 @@
         <v-expand-transition>
           <div v-if="showDetails" class="technical-details mt-3">
             <v-divider class="my-3"></v-divider>
-            
+
             <div v-if="errorType" class="detail-section">
               <strong>Error Type:</strong> <code>{{ errorType }}</code>
             </div>
@@ -93,7 +81,7 @@ const errorType = computed(() => {
 
 const validationErrors = computed(() => {
   if (!props.error || !Array.isArray(props.error.errors)) return []
-  
+
   return props.error.errors.map((e: any) => {
     if (typeof e === 'string') return e
     if (e.msg) {
@@ -112,19 +100,19 @@ const traceback = computed(() => {
 const rawError = computed(() => {
   if (!props.error) return null
   if (typeof props.error === 'string') return null
-  
+
   // Only show raw error if we have a complex object with extra fields
   const { detail, message, error, msg, type, error_type, traceback, stack, errors, ...rest } = props.error
-  
+
   if (Object.keys(rest).length > 0) {
     return JSON.stringify(rest, null, 2)
   }
-  
+
   // Fallback for simple errors without extracted info
   if (!errorMessage.value || errorMessage.value.includes('unknown')) {
     return JSON.stringify(props.error, null, 2)
   }
-  
+
   return null
 })
 

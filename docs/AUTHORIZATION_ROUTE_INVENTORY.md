@@ -4,7 +4,7 @@
 
 This inventory records the authorization requirement declared by every registered API route and the direct application routes mounted outside `api_router`. It is derived from the assembled FastAPI route table, `backend/app/api/v1/api.py`, and `backend/app/main.py` on the current branch. Update this document when adding, removing, or changing a route, mount, or authorization dependency.
 
-The current API-only runtime exposes 138 HTTP route entries under `/api/v1`, including the generated OpenAPI, Swagger UI, and ReDoc routes. It also exposes the Swagger OAuth redirect helper at `/docs/oauth2-redirect` and the repository documentation mount at `/docs/*`. The `/assets/*`, frontend SPA catch-all, and API-only `/` route are conditional on the frontend build state described below.
+The current API-only runtime exposes 143 HTTP route entries under `/api/v1`, including the generated OpenAPI, Swagger UI, and ReDoc routes. It also exposes the Swagger OAuth redirect helper at `/docs/oauth2-redirect` and the repository documentation mount at `/docs/*`. The `/assets/*`, frontend SPA catch-all, and API-only `/` route are conditional on the frontend build state described below.
 
 `UNDECLARED` means the route has no `authorization_requirement` metadata. It does not mean the route is anonymously accessible: trusted-proxy middleware requires authentication for all paths except `/api/v1/health` when enabled. An undeclared route still needs classification before authorization cutover; no row currently reads `UNDECLARED`.
 
@@ -88,6 +88,9 @@ Every row above except the health check requires an authenticated principal thro
 | `DELETE` | `/api/v1/projects/{name}/layout`                     | `project:edit`                               |
 | `POST`   | `/api/v1/projects/{name}/files`                      | `project:edit`                               |
 | `GET`    | `/api/v1/projects/{name}/files`                      | `project:read`                               |
+| `DELETE` | `/api/v1/projects/{name}/files/{filename}`            | `project:edit`                               |
+| `GET`    | `/api/v1/projects/{name}/files/capabilities`         | `project:read`                               |
+| `POST`   | `/api/v1/projects/{name}/files/{filename}/share`     | `project:edit`; `application:manage_shared_sources` |
 
 `GET /api/v1/projects` returns metadata only for projects the principal can read: `ProjectService.list_authorized_projects` requires an `active` resource record and `project:read` for each entry, so the route narrows its response instead of denying the request. Projects without an authorization record are omitted. The route declares no `authorization_requirement` metadata because the check applies to each listed entry rather than to one request; the authenticated-only classification in the automated check records that distinction.
 
@@ -139,6 +142,7 @@ Every row above except the health check requires an authenticated principal thro
 
 | Method   | Path                                                            | Requirement                         | Notes                                                                                                               |
 |----------|-----------------------------------------------------------------|-------------------------------------|---------------------------------------------------------------------------------------------------------------------|
+| `GET`    | `/api/v1/data-providers`                                        | `authenticated`                     | Read-only curated provider-schema registry; no mutation route and no stored resource                                |
 | `GET`    | `/api/v1/data-sources/drivers`                                  | `authenticated`                     | Non-sensitive driver metadata                                                                                       |
 | `GET`    | `/api/v1/data-sources/entity-types`                             | `authenticated`                     | Non-sensitive entity-type metadata                                                                                  |
 | `GET`    | `/api/v1/data-sources`                                          | `authenticated`                     | Returns only shared data sources the principal can read (`shared_data_source:read`)                                 |
@@ -224,6 +228,8 @@ Every row above except the health check requires an authenticated principal thro
 | `GET`  | `/api/v1/ingesters`                   | `authenticated`                          |
 | `POST` | `/api/v1/ingesters/{key}/validate`    | `application:run_ingesters`                  |
 | `POST` | `/api/v1/ingesters/{key}/ingest`      | `application:run_ingesters`                  |
+| `POST` | `/api/v1/ingesters/sead_change_request/from-project/validate` | `project:execute` |
+| `POST` | `/api/v1/ingesters/sead_change_request/from-project/ingest`   | `project:execute` |
 | `GET`  | `/api/v1/filters/types`               | `authenticated`                          |
 | `GET`  | `/api/v1/logs/{log_type}`             | `authenticated`                          |
 | `GET`  | `/api/v1/logs/{log_type}/download`    | `authenticated`                          |
@@ -236,9 +242,9 @@ Application and error logs are global: no project-scoped log file exists, so any
 
 `GET /api/v1/ingesters` returns registered ingester metadata (key, name, description, version, and supported formats) and `GET /api/v1/filters/types` returns filter configuration schemas, so both require an authenticated principal and no project role.
 
-`POST /api/v1/ingesters/{key}/validate` and `POST /api/v1/ingesters/{key}/ingest` require `application:run_ingesters`, which the `operator` deployment role holds, before the handler looks up or runs the requested ingester. The two routes accept no project locator: `IngestRequest` carries a server file path in `source`, an `output_folder`, and the `do_register` and `explode` flags, so a run is not addressed to a project and cannot be authorized by `project:execute` alone. Source, destination, and database registration containment checks remain owned by [INGESTER_AUTHORIZATION_TASKS.md](proposals/INGESTER_AUTHORIZATION_TASKS/INGESTER_AUTHORIZATION_TASKS.md) and [INGESTER_FILESYSTEM_BOUNDARIES.md](proposals/INGESTER_FILESYSTEM_BOUNDARIES/INGESTER_FILESYSTEM_BOUNDARIES.md).
+`POST /api/v1/ingesters/{key}/validate` and `POST /api/v1/ingesters/{key}/ingest` require `application:run_ingesters`, which the `operator` deployment role holds, before the handler looks up or runs the requested ingester. These generic routes accept no project locator: `IngestRequest` carries a server file path in `source`, an `output_folder`, and the `do_register` and `explode` flags, so a run is not addressed to a project and cannot be authorized by `project:execute` alone. Source, destination, and database registration containment checks remain owned by [INGESTER_AUTHORIZATION_TASKS.md](proposals/INGESTER_AUTHORIZATION_TASKS/INGESTER_AUTHORIZATION_TASKS.md) and [CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md](proposals/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md).
 
-Principals who run and review projects are expected to run these ingesters for that work. Granting `operator` meets that expectation today. If a run must instead be limited to one project, the route needs a project locator plus `project:execute` alongside the containment checks.
+`POST /api/v1/ingesters/sead_change_request/from-project/validate` and `POST /api/v1/ingesters/sead_change_request/from-project/ingest` require `project:execute` for the project named in the request body and no deployment role. They run the Change Request ingester against that authorized project's normalized tables. A principal holding `application:run_ingesters` but no `project:execute` grant on the named project is still denied.
 
 ## Lifecycle And Background Coverage
 
@@ -263,7 +269,7 @@ Routes are not the only entry points that reach protected work. The table below 
 Reviewed by Roger Mähler on 2026-09-17. Every route row and every lifecycle or background entry was checked against the implemented policy in [AUTHORIZATION.md](AUTHORIZATION.md), the role and action maps in `backend/app/authorization/policy.py`, the resource types and actions in `backend/app/authorization/models.py`, and the assembled route set read by `backend/tests/authorization/test_route_authentication.py`.
 
 - The inventory holds 143 route rows and no row reads `UNDECLARED`.
-- Resource requirements use only defined resource type and action pairs: `project:read` (45 rows), `project:edit` (48), `project:execute` (1), `project:delete` (1), `shared_data_source:read` (12).
+- Resource requirements use only defined resource type and action pairs: `project:read` (45 rows), `project:edit` (48), `project:execute` (3), `project:delete` (1), `shared_data_source:read` (12).
 - Application requirements use only defined actions, each granted by a deployment role the policy defines: `create_project` through `project_creator`, and `manage_shared_sources` and `run_ingesters` through `operator`. No route requires `read_logs`.
 - The assembled application exposes no unclassified `/api/v1` route, and every documented non-API row is either served by the application or depends on the frontend build.
 

@@ -6,12 +6,18 @@ from typing import Protocol
 import pandas as pd
 
 from ingesters.sead_change_request.contracts import ChangeRowState, IdentityResolutionResult, ResolvedIdentityTable, TargetProjectionResult
+from ingesters.sead_change_request.staging_eligibility import PendingDeploymentMap
 from src.target_model.effective_identity import resolve_effective_identity
 from src.target_model.models import EntitySpec, TargetModel
 
-INSERTABLE_ROW_STATES: set[ChangeRowState] = {
+GENERATION_TIME_ROW_STATES: set[ChangeRowState] = {
     ChangeRowState.NEWLY_ALLOCATED_ENTITY,
     ChangeRowState.DERIVED_BRIDGE_ROW,
+}
+STAGED_ROW_STATES: set[ChangeRowState] = {
+    ChangeRowState.NEWLY_ALLOCATED_ENTITY,
+    ChangeRowState.DERIVED_BRIDGE_ROW,
+    ChangeRowState.PENDING_DEPLOYMENT_ID,
 }
 
 
@@ -39,9 +45,16 @@ async def check_projected_collisions(
     identity_result: IdentityResolutionResult,
     target_model: TargetModel,
     collision_checker: TargetCollisionChecker,
+    pending: PendingDeploymentMap | None = None,
 ) -> CollisionCheckResult:
-    """Run target-side collision checks for rows that would be inserted."""
+    """Run target-side collision checks for rows that would be inserted.
+
+    Known target IDs and complete derived-bridge sets are always checked. With
+    ``pending``, values that only exist after deployment are deferred to the
+    deployment checks instead of being reported as misses.
+    """
     diagnostics: list[str] = []
+    row_states = STAGED_ROW_STATES if pending is not None else GENERATION_TIME_ROW_STATES
 
     for entity_name, projected_table in projection_result.tables.items():
         resolved_table: ResolvedIdentityTable | None = identity_result.tables.get(entity_name)
@@ -49,7 +62,9 @@ async def check_projected_collisions(
         if resolved_table is None or entity_spec is None:
             continue
 
-        insert_mask: pd.Series = resolved_table.row_states.isin(INSERTABLE_ROW_STATES)
+        insert_mask: pd.Series = resolved_table.row_states.isin(row_states)
+        if pending is not None:
+            insert_mask = insert_mask & ~_pending_row_mask(pending, entity_name, insert_mask.index)
         if not bool(insert_mask.any()):
             continue
 
@@ -58,7 +73,9 @@ async def check_projected_collisions(
 
         effective = resolve_effective_identity(entity_spec)
         if effective.identity_tracking == "derived":
-            diagnostics.extend(await _check_bridge_collisions(entity_name, table_name, entity_spec, insert_frame, collision_checker))
+            diagnostics.extend(
+                await _check_bridge_collisions(entity_name, table_name, entity_spec, insert_frame, collision_checker, pending)
+            )
             continue
 
         diagnostics.extend(await _check_target_id_collisions(entity_name, table_name, entity_spec, insert_frame, collision_checker))
@@ -100,6 +117,7 @@ async def _check_bridge_collisions(
     entity_spec: EntitySpec,
     insert_frame: pd.DataFrame,
     collision_checker: TargetCollisionChecker,
+    pending: PendingDeploymentMap | None = None,
 ) -> list[str]:
     diagnostics: list[str] = []
 
@@ -108,14 +126,19 @@ async def _check_bridge_collisions(
 
     for row_index, row in insert_frame.iterrows():
         evaluable_sets = []
+        deferred_sets = 0
         for unique_set in entity_spec.unique_sets:
             if any(column not in insert_frame.columns for column in unique_set):
                 continue
             if any(pd.isna(row[column]) for column in unique_set):
+                if pending is not None and any(pending.is_pending_foreign_key(entity_name, column, row_index) for column in unique_set):
+                    deferred_sets += 1
                 continue
             evaluable_sets.append(unique_set)
 
         if not evaluable_sets:
+            if deferred_sets:
+                continue
             diagnostics.append(
                 f"Bridge entity '{entity_name}' row '{row_index}' cannot run collision checks "
                 "because no complete unique_set is projected"
@@ -132,3 +155,11 @@ async def _check_bridge_collisions(
                 break
 
     return diagnostics
+
+
+def _pending_row_mask(pending: PendingDeploymentMap, entity_name: str, index: pd.Index) -> pd.Series:
+    """Return a mask of rows whose target ID is pending deployment."""
+    mask = pending.pending_row_mask.get(entity_name)
+    if mask is None:
+        return pd.Series(False, index=index)
+    return mask.reindex(index).fillna(False).astype(bool)

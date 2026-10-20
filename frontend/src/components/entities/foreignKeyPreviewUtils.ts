@@ -37,10 +37,16 @@ export function hasSuspiciousKeyReorder(fk: Pick<ForeignKeyConfig, 'local_keys' 
   const sortedLocal = [...localKeys].sort()
   const sortedRemote = [...remoteKeys].sort()
 
-  return sortedLocal.every((key, index) => key === sortedRemote[index]) && localKeys.some((key, index) => key !== remoteKeys[index])
+  return (
+    sortedLocal.every((key, index) => key === sortedRemote[index]) &&
+    localKeys.some((key, index) => key !== remoteKeys[index])
+  )
 }
 
-export function buildForeignKeySummary(fk: Pick<ForeignKeyConfig, 'local_keys' | 'remote_keys'>, entity: string): string {
+export function buildForeignKeySummary(
+  fk: Pick<ForeignKeyConfig, 'local_keys' | 'remote_keys'>,
+  entity: string
+): string {
   const pairs = getKeyPairRows(fk)
 
   if (pairs.length === 0) {

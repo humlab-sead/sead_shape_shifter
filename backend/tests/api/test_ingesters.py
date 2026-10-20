@@ -8,18 +8,19 @@ import pytest
 from fastapi.testclient import TestClient
 from httpx import Response
 
-from backend.app.api.v1.endpoints.ingesters import ingester_operator_dependency
+from backend.app.api.v1.endpoints.ingesters import ingester_operator_dependency, ingester_project_dependency
 from backend.app.authorization.models import Principal
 from backend.app.ingesters.protocol import IngesterConfig
 from backend.app.ingesters.registry import get_ingester_registry
 from backend.app.main import app
-from backend.app.models.ingester import IngestRequest, IngestResponse, ValidateRequest, ValidateResponse
+from backend.app.models.ingester import IngestRequest, ValidateRequest
 from backend.app.services.ingester_runtime import (
     SeadChangeRequestReconciliationAdapter,
     SeadChangeRequestSimsAdapter,
     SeadChangeRequestTargetCollisionChecker,
 )
-from backend.app.services.ingester_service import get_ingester_service
+from backend.app.services.ingester_service import IngesterService, get_ingester_service
+from ingesters.sead_change_request.contracts import CHANGE_REQUEST_FILE_INPUT_RETIRED_MESSAGE
 
 # pylint: disable=redefined-outer-name
 
@@ -42,6 +43,8 @@ def client() -> Iterator[TestClient]:
         authentication_provider="test",
         authenticated_at=datetime.now(UTC),
     )
+    # The saved-project locator applies only to the SEAD Change Request ingester.
+    app.dependency_overrides[ingester_project_dependency] = lambda: None
     with TestClient(app) as test_client:
         try:
             yield test_client
@@ -67,6 +70,12 @@ class TestIngestersEndpoints:
         assert sead_ingester["name"] == "SEAD Clearinghouse"
         assert sead_ingester["version"] == "1.0.0"
         assert "xlsx" in sead_ingester["supported_formats"]
+        assert sead_ingester["deprecated"] is True
+        assert "sead_change_request" in sead_ingester["deprecation_message"]
+
+        change_request_ingester = next((i for i in data if i["key"] == "sead_change_request"), None)
+        assert change_request_ingester is not None
+        assert change_request_ingester["supported_formats"] == []
 
     def test_list_ingesters_structure(self, client: TestClient):
         """Test that list_ingesters returns properly structured metadata."""
@@ -127,25 +136,9 @@ class TestIngestersEndpoints:
             assert isinstance(data["warnings"], list)
             assert isinstance(data["infos"], list)
 
-    def test_validate_passes_submission_context_and_deploy_strategy_to_service(self, client: TestClient):
-        """Validate route should preserve change-request payload fields when calling the service."""
-        captured: dict[str, str | ValidateRequest] = {}
-
-        async def fake_validate(key: str, request: ValidateRequest) -> ValidateResponse:
-            captured["key"] = key
-            captured["request"] = request
-            return ValidateResponse(
-                is_valid=True,
-                errors=[],
-                warnings=[],
-                infos=[],
-                pending_confirmation_report=None,
-            )
-
+    def test_validate_rejects_retired_change_request_file_input(self, client: TestClient):
+        """The shared validate route must reject the retired Change Request file input."""
         with patch("backend.app.api.v1.endpoints.ingesters.get_ingester_service") as mock_ingester_service:
-            mock_service_instance = mock_ingester_service.return_value
-            mock_service_instance.validate = fake_validate
-
             response = client.post(
                 "/api/v1/ingesters/sead_change_request/validate",
                 json={
@@ -165,17 +158,9 @@ class TestIngestersEndpoints:
                 },
             )
 
-        assert response.status_code == 200
-        assert captured["key"] == "sead_change_request"
-
-        request: ValidateRequest | str = captured["request"]
-
-        assert isinstance(request, ValidateRequest)
-
-        assert request.submission_context is not None
-        assert request.submission_context["project_name"] == "pilot_bugs"
-        assert request.submission_context["identifier"] == "PILOT_BUGS"
-        assert request.deploy_strategy == "copy_csv"
+        assert response.status_code == 400
+        assert response.json()["detail"] == CHANGE_REQUEST_FILE_INPUT_RETIRED_MESSAGE
+        mock_ingester_service.assert_not_called()
 
     def test_ingest_missing_ingester(self, client: TestClient):
         """Test ingestion with non-existent ingester."""
@@ -235,28 +220,9 @@ class TestIngestersEndpoints:
         assert "pending_confirmation_report" in data
         assert data["success"] is False
 
-    def test_ingest_passes_submission_context_and_deploy_strategy_to_service(self, client: TestClient):
-        """Ingest route should preserve change-request payload fields when calling the service."""
-        captured: dict[str, str | IngestRequest] = {}
-
-        async def fake_ingest(key: str, request: IngestRequest) -> IngestResponse:
-            captured["key"] = key
-            captured["request"] = request
-            return IngestResponse(
-                success=True,
-                records_processed=2,
-                message="ok",
-                submission_id=11,
-                output_path="output/pilot-bugs-001",
-                error_details=None,
-                deploy_artifact=None,
-                pending_confirmation_report=None,
-            )
-
+    def test_ingest_rejects_retired_change_request_file_input(self, client: TestClient):
+        """The shared ingest route must reject the retired Change Request file input."""
         with patch("backend.app.api.v1.endpoints.ingesters.get_ingester_service") as mock_ingester_service:
-            mock_service_instance = mock_ingester_service.return_value
-            mock_service_instance.ingest = fake_ingest
-
             response: Response = client.post(
                 "/api/v1/ingesters/sead_change_request/ingest",
                 json={
@@ -281,18 +247,9 @@ class TestIngestersEndpoints:
                 },
             )
 
-        assert response.status_code == 200
-        assert captured["key"] == "sead_change_request"
-
-        request: IngestRequest | str = captured["request"]
-        assert isinstance(request, IngestRequest)
-
-        assert request.submission_name == "bugs_delivery_1"
-        assert request.data_types == "bugs"
-        assert request.submission_context is not None
-        assert request.submission_context["project_name"] == "pilot_bugs"
-        assert request.submission_context["identifier"] == "PILOT_BUGS"
-        assert request.deploy_strategy == "copy_csv"
+        assert response.status_code == 400
+        assert response.json()["detail"] == CHANGE_REQUEST_FILE_INPUT_RETIRED_MESSAGE
+        mock_ingester_service.assert_not_called()
 
 
 class TestIngesterServiceIntegration:
@@ -391,3 +348,40 @@ class TestIngesterServiceIntegration:
         assert config.extra["deploy_strategy"] == "copy_csv"
         assert config.extra["submission_context"]["project_name"] == "pilot_bugs"
         assert config.extra["submission_context"]["identifier"] == "pilot-bugs-001"
+
+    @pytest.mark.asyncio
+    async def test_service_validate_rejects_retired_change_request_input_before_preparation(self):
+        """The service must stop the retired Change Request input before loading project config."""
+        service = IngesterService()
+        request = ValidateRequest(source="/tmp/input.xlsx", config={})
+
+        with (
+            patch.object(IngesterService, "_trusted_project_context", side_effect=AssertionError("project lookup must not run")),
+            patch.object(IngesterService, "_create_config", side_effect=AssertionError("config must not be built")),
+        ):
+            response = await service.validate("sead_change_request", request)
+
+        assert response.is_valid is False
+        assert response.errors == [CHANGE_REQUEST_FILE_INPUT_RETIRED_MESSAGE]
+
+    @pytest.mark.asyncio
+    async def test_service_ingest_rejects_retired_change_request_input_before_preparation(self):
+        """The service must stop the retired Change Request input before loading project config."""
+        service = IngesterService()
+        request = IngestRequest(
+            source="/tmp/input.xlsx",
+            config={},
+            submission_name="bugs_delivery_1",
+            data_types="bugs",
+        )
+
+        with (
+            patch.object(IngesterService, "_trusted_project_context", side_effect=AssertionError("project lookup must not run")),
+            patch.object(IngesterService, "_create_config", side_effect=AssertionError("config must not be built")),
+        ):
+            response = await service.ingest("sead_change_request", request)
+
+        assert response.success is False
+        assert response.records_processed == 0
+        assert response.output_path is None
+        assert response.error_details == CHANGE_REQUEST_FILE_INPUT_RETIRED_MESSAGE

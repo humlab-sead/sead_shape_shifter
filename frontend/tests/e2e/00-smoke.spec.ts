@@ -21,9 +21,9 @@ test.describe.skip('Application Smoke Tests', () => {
     await page.goto('/')
 
     // Should show navigation (sidebar or header)
-    await expect(
-      page.locator('nav, [data-test="navigation"], .v-navigation-drawer').first()
-    ).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('nav, [data-test="navigation"], .v-navigation-drawer').first()).toBeVisible({
+      timeout: 5000,
+    })
   })
 
   test('should navigate to Projects page', async ({ page }) => {
@@ -38,29 +38,30 @@ test.describe.skip('Application Smoke Tests', () => {
 
   test('should not have console errors on load', async ({ page }) => {
     const consoleErrors: string[] = []
-    
+
     page.on('console', (msg) => {
       if (msg.type() === 'error') {
         consoleErrors.push(msg.text())
       }
     })
-    
+
     await page.goto('/')
-    
+
     // Wait for page to fully load
     await page.waitForLoadState('networkidle')
-    
+
     // Should not have critical errors (some warnings are OK)
-    const criticalErrors = consoleErrors.filter(err => 
-      !err.includes('DevTools') && // Ignore DevTools warnings
-      !err.includes('favicon') && // Ignore favicon 404s during dev
-      !err.includes('Extension') // Ignore extension warnings
+    const criticalErrors = consoleErrors.filter(
+      (err) =>
+        !err.includes('DevTools') && // Ignore DevTools warnings
+        !err.includes('favicon') && // Ignore favicon 404s during dev
+        !err.includes('Extension') // Ignore extension warnings
     )
-    
+
     if (criticalErrors.length > 0) {
       console.log('Console errors found:', criticalErrors)
     }
-    
+
     expect(criticalErrors.length).toBe(0)
   })
 
@@ -68,7 +69,7 @@ test.describe.skip('Application Smoke Tests', () => {
     await page.goto('/this-route-does-not-exist-12345')
 
     // Should show 404 message or redirect to home
-    const has404 = await page.locator('text=/404|not found/i').count() > 0
+    const has404 = (await page.locator('text=/404|not found/i').count()) > 0
     const isHome = page.url().endsWith('/') || page.url().includes('/projects')
 
     expect(has404 || isHome).toBe(true)
