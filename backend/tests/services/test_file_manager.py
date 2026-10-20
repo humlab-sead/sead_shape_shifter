@@ -242,9 +242,7 @@ class TestFileManager:
         assert not project_file.exists()
 
     @pytest.mark.parametrize("filename", ["../outside.xlsx", "shapeshifter.yml"])
-    def test_delete_project_file_rejects_paths_and_project_config(
-        self, file_manager: FileManager, sample_project: Path, filename: str
-    ):
+    def test_delete_project_file_rejects_paths_and_project_config(self, file_manager: FileManager, sample_project: Path, filename: str):
         """Deletion cannot escape the project directory or remove its configuration."""
         with pytest.raises(BadRequestError):
             file_manager.delete_project_file("test_project", filename)

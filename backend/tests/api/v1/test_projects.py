@@ -891,9 +891,7 @@ class TestProjectsBackups:
 class TestProjectFileManagement:
     """Tests for uploading, sharing, listing, and deleting project files."""
 
-    async def test_upload_project_file_overwrites_when_requested(
-        self, reset_services, tmp_path, monkeypatch, authorized_client
-    ):
+    async def test_upload_project_file_overwrites_when_requested(self, reset_services, tmp_path, monkeypatch, authorized_client):
         """The upload endpoint replaces a same-named file only when requested."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
         create_response = await authorized_client.post(
@@ -917,9 +915,7 @@ class TestProjectFileManagement:
         assert replace_response.json()["name"] == "data.xlsx"
         assert (tmp_path / "test_project" / "data.xlsx").read_bytes() == b"new content"
 
-    async def test_share_project_file_registers_global_copy_and_lists_it(
-        self, reset_services, tmp_path, monkeypatch, authorized_client
-    ):
+    async def test_share_project_file_registers_global_copy_and_lists_it(self, reset_services, tmp_path, monkeypatch, authorized_client):
         """Sharing copies a project file through the global file store and registers it."""
         projects_dir = tmp_path / "projects"
         global_data_dir = tmp_path / "shared-data"
@@ -962,9 +958,7 @@ class TestProjectFileManagement:
             repository.close()
         assert resource is not None
 
-    async def test_share_project_file_uses_global_collision_handling(
-        self, reset_services, tmp_path, monkeypatch, authorized_client
-    ):
+    async def test_share_project_file_uses_global_collision_handling(self, reset_services, tmp_path, monkeypatch, authorized_client):
         """A promoted file with a name already in shared data receives a new name."""
         projects_dir = tmp_path / "projects"
         global_data_dir = tmp_path / "shared-data"
@@ -1003,9 +997,7 @@ class TestProjectFileManagement:
 
         assert response.status_code == 404
 
-    async def test_delete_project_file_rejects_local_entity_references(
-        self, reset_services, tmp_path, monkeypatch, authorized_client
-    ):
+    async def test_delete_project_file_rejects_local_entity_references(self, reset_services, tmp_path, monkeypatch, authorized_client):
         """A project file referenced by a local entity cannot be deleted."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
         create_response = await authorized_client.post(
