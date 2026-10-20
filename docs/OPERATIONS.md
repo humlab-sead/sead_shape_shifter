@@ -169,7 +169,26 @@ Use these commands for routine review and backup:
 ./scripts/authorization.sh list-audit-events --json
 ./scripts/authorization.sh integrity-check
 ./scripts/authorization.sh backup
+./scripts/authorization.sh export-state authorization-state.yaml
 ```
+
+`export-state` writes the complete authorization state, including resource UUIDs,
+child resources, inactive generations, and every deployment role, and
+`import-state` replaces the stored records with that snapshot:
+
+```bash
+./scripts/authorization.sh export-state authorization-state.yaml
+./scripts/authorization.sh import-state authorization-state.yaml --yes
+```
+
+A YAML snapshot is sorted and uses ISO timestamps, so it diffs cleanly and can be
+committed to version control. Audit events are excluded unless `--include-audit`
+is given; a restore from a snapshot without them keeps the existing history.
+Use `--dry-run` to validate a snapshot before applying it. The `backup` and
+`restore` pair remains the lossless binary backup for recovery, while
+`export-state` is the reviewable text form. See
+[AUTHORIZATION.md](AUTHORIZATION.md#snapshots-and-restores) for the full record
+set and validation rules.
 
 Backups are written to the persistent `backups/` directory with a timestamped
 filename. Restore a backup by filename only:

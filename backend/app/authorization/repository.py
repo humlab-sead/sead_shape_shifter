@@ -13,6 +13,7 @@ from backend.app.authorization.models import (
     ApplicationRole,
     ApplicationRoleAssignment,
     AuditEvent,
+    AuthorizationState,
     Grant,
     GrantSubjectType,
     ResourceRecord,
@@ -68,6 +69,10 @@ class AuthorizationRepository(Protocol):
     def record_membership_lookup(self, actor_principal_id: str, snapshot: MembershipSnapshot) -> None: ...
 
     def bootstrap_admins(self, principal_ids: Sequence[str]) -> bool: ...
+
+    def schema_version(self) -> int: ...
+
+    def replace_state(self, state: AuthorizationState, actor_principal_id: str) -> None: ...
 
 
 class SQLiteAuthorizationRepository:
@@ -326,6 +331,119 @@ class SQLiteAuthorizationRepository:
                 )
             return True
 
+    def schema_version(self) -> int:
+        """Return the stored schema version, or 0 before the schema exists."""
+        return self._connection.execute("SELECT MAX(version) FROM schema_version").fetchone()[0] or 0
+
+    def replace_state(self, state: AuthorizationState, actor_principal_id: str) -> None:
+        """Replace every stored record with a snapshot in one transaction.
+
+        A restore is an administrative action, so the final-administrator and
+        final-owner protections that guard individual changes do not apply; the
+        snapshot already records the intended state. Resources are written
+        parents first and removed children first, because
+        ``resource.parent_resource_id`` is a foreign key. One ``state_restored``
+        audit event records the actor, the counts, and whether the snapshot
+        replaced the audit history or left it in place.
+        """
+        existing_parents = {
+            row["resource_id"]: row["parent_resource_id"]
+            for row in self._connection.execute("SELECT resource_id, parent_resource_id FROM resource")
+        }
+        existing_depths = _resource_depths(existing_parents)
+        snapshot_parents = {
+            str(resource.resource_id): str(resource.parent_resource_id) if resource.parent_resource_id else None
+            for resource in state.resources
+        }
+        snapshot_depths = _resource_depths(snapshot_parents)
+        ordered_resources = sorted(
+            state.resources,
+            key=lambda item: (
+                snapshot_depths[str(item.resource_id)],
+                item.resource_type.value,
+                item.locator,
+                str(item.resource_id),
+            ),
+        )
+        with self._connection:
+            self._connection.execute("DELETE FROM grant_record")
+            self._connection.execute("DELETE FROM application_role")
+            if state.audit_events is not None:
+                self._connection.execute("DELETE FROM audit_event")
+            for resource_id in sorted(existing_parents, key=lambda item: existing_depths[item], reverse=True):
+                self._connection.execute("DELETE FROM resource WHERE resource_id = ?", (resource_id,))
+            for resource in ordered_resources:
+                self._connection.execute(
+                    "INSERT INTO resource(resource_id, resource_type, locator, parent_resource_id, lifecycle_state) VALUES (?, ?, ?, ?, ?)",
+                    (
+                        str(resource.resource_id),
+                        resource.resource_type.value,
+                        resource.locator,
+                        _uuid(resource.parent_resource_id),
+                        resource.lifecycle_state,
+                    ),
+                )
+            for grant in state.grants:
+                self._connection.execute(
+                    "INSERT INTO grant_record(subject_type, subject_id, resource_id, role, created_at, created_by) "
+                    "VALUES (?, ?, ?, ?, ?, ?)",
+                    (
+                        grant.subject_type.value,
+                        grant.subject_id,
+                        str(grant.resource_id),
+                        grant.role,
+                        grant.created_at.isoformat(),
+                        grant.created_by,
+                    ),
+                )
+            for assignment in state.application_roles:
+                self._connection.execute(
+                    "INSERT INTO application_role(principal_id, role, created_at, created_by) VALUES (?, ?, ?, ?)",
+                    (
+                        assignment.principal_id,
+                        assignment.role.value,
+                        assignment.created_at.isoformat(),
+                        assignment.created_by,
+                    ),
+                )
+            for event in state.audit_events or ():
+                self._connection.execute(
+                    "INSERT INTO audit_event("
+                    "event_id, occurred_at, actor_principal_id, event_type, resource_id, action, outcome, correlation_id, "
+                    "subject_type, subject_id, provider, details) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        str(event.event_id),
+                        event.occurred_at.isoformat(),
+                        event.actor_principal_id,
+                        event.event_type,
+                        _uuid(event.resource_id),
+                        event.action,
+                        event.outcome,
+                        event.correlation_id,
+                        event.subject_type.value if event.subject_type else None,
+                        event.subject_id,
+                        event.provider,
+                        event.details,
+                    ),
+                )
+            self._record_audit(
+                actor_principal_id=actor_principal_id,
+                event_type="state_restored",
+                action="restore",
+                outcome="allowed",
+                details=json.dumps(
+                    {
+                        "schema_version": state.schema_version,
+                        "resources": len(state.resources),
+                        "grants": len(state.grants),
+                        "application_roles": len(state.application_roles),
+                        "audit_events": "replaced" if state.audit_events is not None else "retained",
+                    },
+                    sort_keys=True,
+                ),
+            )
+
     def get_resource(self, resource_id: UUID) -> ResourceRecord | None:
         """Load a resource by its generation-specific UUID."""
         row = self._connection.execute("SELECT * FROM resource WHERE resource_id = ?", (str(resource_id),)).fetchone()
@@ -447,6 +565,33 @@ class SQLiteAuthorizationRepository:
 
 def _uuid(value: UUID | None) -> str | None:
     return str(value) if value else None
+
+
+def _resource_depths(parents: dict[str, str | None]) -> dict[str, int]:
+    """Return how many parent links separate each resource from a root.
+
+    Children must be inserted after their parents and removed before them, so
+    both directions need an order. A parent that is absent from ``parents``
+    counts as a root, and a cycle is reported instead of looping.
+    """
+    depths: dict[str, int] = {}
+
+    def depth_of(resource_id: str) -> int:
+        chain: list[str] = []
+        current: str | None = resource_id
+        while current is not None and current in parents and current not in depths:
+            if current in chain:
+                raise ValueError(f"Resource parent cycle detected at {current}")
+            chain.append(current)
+            current = parents[current]
+        base = depths.get(current, -1) if current is not None else -1
+        for offset, item in enumerate(reversed(chain), start=1):
+            depths[item] = base + offset
+        return depths[resource_id]
+
+    for resource_id in parents:
+        depth_of(resource_id)
+    return depths
 
 
 def _resource(row: sqlite3.Row) -> ResourceRecord:

@@ -20,8 +20,11 @@ from backend.app.authorization.operations import (
     apply_manifest,
     backup_database,
     export_manifest,
+    export_state,
+    import_state,
     initialize_database,
     inspect_manifest,
+    inspect_state,
     integrity_check,
     reconcile_manifest,
     restore_database,
@@ -175,6 +178,74 @@ def export_manifest_command(manifest: Path, database: Path | None) -> None:
     """Export active top-level resources and grants as a migration manifest."""
     result = export_manifest(manifest, database or settings.AUTHORIZATION_DATABASE_PATH)
     click.echo(f"Exported: {result['resources']} resources, {result['administrators']} administrators, {result['grants']} grants")
+
+
+@cli.command("export-state")
+@click.argument("snapshot", type=click.Path(path_type=Path))
+@click.option("--database", type=click.Path(exists=True, path_type=Path), default=None)
+@click.option(
+    "--include-audit",
+    is_flag=True,
+    help="Include audit events. They change on every authorization operation, so this output is a backup, not a review file.",
+)
+def export_state_command(snapshot: Path, database: Path | None, include_audit: bool) -> None:
+    """Write the complete stored authorization state as a JSON or YAML snapshot.
+
+    Unlike export-manifest, this keeps resource UUIDs, project and shared-source
+    child resources, inactive resource generations, and every deployment role, so
+    import-state can recreate the same records.
+    """
+    result = export_state(snapshot, database or settings.AUTHORIZATION_DATABASE_PATH, include_audit=include_audit)
+    click.echo(
+        f"Exported: {result['resources']} resources, {result['grants']} grants, "
+        f"{result['application_roles']} application roles, {result['audit_events']} audit events"
+    )
+
+
+@cli.command("import-state")
+@click.argument("snapshot", type=click.Path(exists=True, path_type=Path))
+@click.option(
+    "--database",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Authorization database. A missing database is created, so a snapshot can seed a new deployment.",
+)
+@click.option("--actor", required=True, help="Principal recorded on the restore audit event.")
+@click.option("--dry-run", is_flag=True, help="Validate the snapshot and report counts without writing.")
+@click.option("--yes", is_flag=True, help="Confirm the destructive operation.")
+@click.option("--non-interactive", is_flag=True, help="Skip confirmation for controlled automation.")
+def import_state_command(
+    snapshot: Path,
+    database: Path | None,
+    actor: str,
+    dry_run: bool,
+    yes: bool,
+    non_interactive: bool,
+) -> None:
+    """Replace stored authorization records with a validated snapshot.
+
+    Every stored resource, grant, and deployment role is replaced, so this is the
+    inverse of export-state. A snapshot without audit events leaves the audit
+    history in place.
+    """
+    try:
+        counts = inspect_state(snapshot)
+    except ValueError as error:
+        raise click.ClickException(str(error)) from error
+    summary = (
+        f"{counts['resources']} resources, {counts['grants']} grants, "
+        f"{counts['application_roles']} application roles, "
+        f"audit events {'replaced' if counts['audit_events_replaced'] else 'retained'}"
+    )
+    if dry_run:
+        click.echo(f"Dry run: would import {summary}")
+        return
+    _confirm_destructive(f"Replace all authorization records with {snapshot} ({summary})?", yes, non_interactive)
+    result = import_state(snapshot, database or settings.AUTHORIZATION_DATABASE_PATH, actor)
+    click.echo(
+        f"Imported: {result['resources']} resources, {result['grants']} grants, "
+        f"{result['application_roles']} application roles, {result['audit_events']} audit events"
+    )
 
 
 @cli.command("grant")
