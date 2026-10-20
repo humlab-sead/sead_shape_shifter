@@ -669,7 +669,7 @@ class TableConfig:
 
     def get_columns(self, include_fks: bool = True, include_extra: bool = True, include_unnest: bool = True) -> list[str]:
         """Return configured and generated output columns based on inclusion criteria."""
-        cols: list[str] = []
+        cols: list[str] = [self.system_id]
         cols.extend(self.columns)
         if include_fks:
             cols.extend(list(self.fk_columns))

@@ -426,20 +426,35 @@ class TestIdentityKeyHint:
         assert "is the remote entity's 'public_id'" in report
         assert "Join on 'remote_entity.system_id' instead" in report
 
-    def test_missing_system_id_key_explains_generated_system_id(self, mock_project):
-        """Joining on the remote system_id explains it is generated during normalization."""
-        fk_cfg = ForeignKeyConfig(
-            local_entity="local_entity",
-            fk_cfg={"entity": "remote_entity", "how": "left", "local_keys": ["local_id"], "remote_keys": ["system_id"]},
+    def test_system_id_remote_key_is_available_when_not_declared_in_columns(self):
+        """A generated system_id can be used as a remote key without listing it in columns."""
+        project = ShapeShiftProject(
+            cfg={
+                "entities": {
+                    "local_entity": {
+                        "columns": ["local_id"],
+                        "foreign_keys": [
+                            {
+                                "entity": "remote_entity",
+                                "how": "left",
+                                "local_keys": ["local_id"],
+                                "remote_keys": ["system_id"],
+                            }
+                        ],
+                    },
+                    "remote_entity": {"public_id": "remote_id", "columns": ["data"]},
+                }
+            }
         )
 
-        spec = ForeignKeyConfigSpecification(mock_project)
+        remote_table = project.get_table("remote_entity")
+        fk_cfg = project.get_table("local_entity").foreign_keys[0]
+        spec = ForeignKeyConfigSpecification(project)
         result = spec.is_satisfied_by(fk_cfg=fk_cfg)
 
-        report: str = spec.get_report()
-        assert result is False
-        assert "not found in remote entity" in report
-        assert "generated 'system_id'" in report
+        assert "system_id" in remote_table.get_columns()
+        assert result is True
+        assert not spec.has_errors(), spec.get_report()
 
     def test_unrelated_missing_key_has_no_hint(self, mock_project):
         """A missing key that is not an identity column keeps the plain message."""
