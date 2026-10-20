@@ -190,6 +190,20 @@ Use `--dry-run` to validate a snapshot before applying it. The `backup` and
 [AUTHORIZATION.md](AUTHORIZATION.md#snapshots-and-restores) for the full record
 set and validation rules.
 
+A snapshot is also the supported way to change many role and grant records at
+once: export, edit the file, review the `--dry-run` difference, then import it. A
+restore replaces every stored record, so it also removes the authorization record
+of any project created after the export. Back up and export a baseline first.
+`import-state --dry-run` lists each record the snapshot would add, remove, or
+change, and the import is refused when the result would leave no administrator or
+an active project without an owner. Accept that deliberately with
+`--allow-no-admin` or `--allow-unowned-project`. After the import, export again
+and compare the records with the file that was applied. The step-by-step
+procedure is in
+[AUTHORIZATION.md](AUTHORIZATION.md#editing-a-snapshot-by-hand). For one or two
+records, use the individual `grant`, `revoke`, `grant-application-role`, and
+`revoke-application-role` commands instead.
+
 Backups are written to the persistent `backups/` directory with a timestamped
 filename. Restore a backup by filename only:
 

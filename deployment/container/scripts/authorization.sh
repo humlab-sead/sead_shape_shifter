@@ -43,7 +43,12 @@ Convenience commands:
   export-manifest FILE   Export active top-level resources and grants from the
                          running container as JSON or YAML
   import-state FILE      Replace all stored authorization records with a host-side
-                         JSON or YAML snapshot (see export-state)
+                         JSON or YAML snapshot (see export-state). Add --dry-run
+                         to list each record the snapshot would add, remove, or
+                         change. The import is refused when the result would
+                         leave no administrator or an active project without an
+                         owner; accept that with --allow-no-admin or
+                         --allow-unowned-project.
   export-state FILE      Export the complete authorization state, including
                          children, inactive resources, and every deployment
                          role, as JSON or YAML for review and version control
@@ -68,6 +73,9 @@ Examples:
   container/scripts/authorization.sh integrity-check
   container/scripts/authorization.sh backup
   container/scripts/authorization.sh restore authorization-20260916-120000.sqlite3
+  container/scripts/authorization.sh export-state after.yaml
+  container/scripts/authorization.sh import-state after.yaml --dry-run --actor operator
+  container/scripts/authorization.sh import-state after.yaml --actor operator
   container/scripts/authorization.sh grant --resource-type project \
     --locator example --subject-type principal --subject-id user \
     --role viewer --actor operator

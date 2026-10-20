@@ -155,3 +155,33 @@ class AuthorizationState:
     grants: tuple[Grant, ...]
     application_roles: tuple[ApplicationRoleAssignment, ...]
     audit_events: tuple[AuditEvent, ...] | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class StateChange:
+    """One stored record that a snapshot import would add, remove, or change."""
+
+    action: str
+    record_type: str
+    detail: str
+
+
+@dataclass(frozen=True, slots=True)
+class StateImportPlan:
+    """What importing a snapshot would change, and the conditions it would break.
+
+    ``administrators`` lists the administrators that would remain. An empty tuple
+    means the deployment would have none. ``unowned_projects`` lists the active
+    projects that would be left without an owner grant.
+    """
+
+    counts: dict[str, int]
+    changes: tuple[StateChange, ...]
+    administrators: tuple[str, ...]
+    unowned_projects: tuple[str, ...]
+    audit_events_replaced: bool = False
+
+    @property
+    def is_destructive(self) -> bool:
+        """Return whether the plan would remove an administrator or a project owner."""
+        return not self.administrators or bool(self.unowned_projects)
