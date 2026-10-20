@@ -40,12 +40,6 @@ def is_date_type(column_type: str | None) -> bool:
     return normalize_column_type(column_type) == "date"
 
 
-def is_timestamp_type(column_type: str | None) -> bool:
-    """Return whether a target column type stores a date and a clock time."""
-    normalized = normalize_column_type(column_type)
-    return normalized.startswith("timestamp") or normalized == "datetime"
-
-
 def drop_timezone(value: datetime | pd.Timestamp) -> datetime | pd.Timestamp:
     """Remove timezone metadata without changing the calendar or clock fields."""
     if isinstance(value, pd.Timestamp):
