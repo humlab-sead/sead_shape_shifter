@@ -68,17 +68,6 @@ class _ReconciliationClient:
         return self.target_ids.get(entity_name)
 
 
-class _TargetIdAllocator:
-    """Fail the test when generation-time child allocation is attempted."""
-
-    def __init__(self) -> None:
-        self.requests: list[tuple[str, str]] = []
-
-    async def reserve_target_id(self, table_name: str, public_id_column: str) -> int | None:
-        self.requests.append((table_name, public_id_column))
-        return 999_999
-
-
 def _connection_parameters() -> dict[str, Any]:
     """Return disposable connection parameters or skip the test."""
     host = os.getenv("SEAD_DISPOSABLE_POSTGRES_HOST")
@@ -243,7 +232,6 @@ def _ingester(
     output_folder: Any,
     sims: _SimsClient | None = None,
     reconciliation: _ReconciliationClient | None = None,
-    allocator: _TargetIdAllocator | None = None,
     target_model: dict[str, Any] | None = None,
 ) -> SeadChangeRequestIngester:
     """Build an ingester configured for inline staging."""
@@ -260,7 +248,6 @@ def _ingester(
                 "submission_context": _submission_context(),
                 "sims_client": sims or _SimsClient(),
                 "reconciliation_client": reconciliation or _ReconciliationClient({"site": 7001}),
-                "target_id_allocator": allocator or _TargetIdAllocator(),
                 "deploy_strategy": "inline_staging",
                 "staging_target_schema": schema,
             },
@@ -319,18 +306,15 @@ class TestInlineStagingDeployment:
     @pytest.mark.asyncio
     async def test_multi_level_chain_allocates_ids_and_resolves_foreign_keys(self, disposable_schema: str, tmp_path):
         parameters = _connection_parameters()
-        allocator = _TargetIdAllocator()
         statements = await _deploy(
             _source_tables(),
             disposable_schema,
             tmp_path,
             sims=_SimsClient({"dataset": 900}),
-            allocator=allocator,
         )
 
         _run_statements(parameters, statements)
 
-        assert not allocator.requests
         dataset_ids = {row[0] for row in _rows(parameters, f'SELECT dataset_id FROM "{disposable_schema}".tbl_datasets')}
         analysis_rows = _rows(parameters, f'SELECT analysis_entity_id, dataset_id FROM "{disposable_schema}".tbl_analysis_entities')
         abundance_rows = _rows(

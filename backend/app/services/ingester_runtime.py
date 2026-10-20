@@ -288,8 +288,7 @@ class SeadChangeRequestSimsAdapter:
             try:
                 return business_id_for_row(declared_keys, row)
             except BusinessKeyError as exc:
-                logger.warning("Cannot serialize business key for '{}': {}", entity_name, exc)
-                return entity_name
+                raise ValueError(f"Cannot serialize declared business key for entity '{entity_name}': {exc}") from exc
 
         serialized_pairs: list[str] = []
         for key in sorted(row):
@@ -368,7 +367,7 @@ class SeadChangeRequestReconciliationAdapter:
 
 
 class SeadChangeRequestTargetCollisionChecker:
-    """PostgreSQL adapter for target collision checks and public-ID sequence reservations."""
+    """PostgreSQL adapter for read-only target row and ID collision checks."""
 
     def __init__(
         self,
@@ -396,18 +395,6 @@ class SeadChangeRequestTargetCollisionChecker:
             sql.Identifier(public_id_column),
         )
         return await self._fetch_exists(statement, (target_id,))
-
-    async def reserve_target_id(self, table_name: str, public_id_column: str) -> int | None:
-        """Consume and return the next value from a target column's associated sequence."""
-        statement = sql.SQL("SELECT nextval(pg_get_serial_sequence(%s, %s))")
-        async with await psycopg.AsyncConnection.connect(**self._connection_kwargs) as connection:
-            qualified_table_name = self._table_identifier(table_name).as_string(connection)
-            async with connection.cursor() as cursor:
-                await cursor.execute(statement, (qualified_table_name, public_id_column))
-                row = await cursor.fetchone()
-        if row is None or row[0] is None:
-            return None
-        return int(row[0])
 
     async def row_exists(self, table_name: str, filters: dict[str, object]) -> bool:
         if not filters:

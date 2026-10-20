@@ -35,6 +35,7 @@ class TestBuildPendingConfirmationReport:
             timestamp=datetime(2026, 5, 23, 22, 30, 0),
             binding_set_uuid="binding-123",
             change_request_name="CR-2026-001",
+            run_id="retry-run-123",
         )
 
         report = PendingConfirmationReport.create(
@@ -52,3 +53,4 @@ class TestBuildPendingConfirmationReport:
         assert report.outstanding_step == "Confirm the Binding Set before change-package generation can continue"
         assert report.operator_action == "Confirm the Binding Set in SIMS, then rerun the ingester with the same submission context"
         assert "test-submission" in report.rerun_instruction
+        assert "retry-run-123" in report.rerun_instruction

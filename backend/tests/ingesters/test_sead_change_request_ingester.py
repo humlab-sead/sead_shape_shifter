@@ -247,18 +247,6 @@ class FakeCollisionChecker:
         return (table_name, tuple(sorted(filters.items()))) in self.rows
 
 
-class FakeTargetIdAllocator:
-    """Return a configured public ID reserved from a target sequence."""
-
-    def __init__(self, target_id: int | None) -> None:
-        self.target_id = target_id
-        self.requests: list[tuple[str, str]] = []
-
-    async def reserve_target_id(self, table_name: str, public_id_column: str) -> int | None:
-        self.requests.append((table_name, public_id_column))
-        return self.target_id
-
-
 class StubBundleFileDeployStrategy:
     """Test strategy that emits an extra sidecar file in the artifact bundle."""
 
@@ -967,6 +955,7 @@ class TestSeadChangeRequestIngesterValidation:
     @pytest.mark.asyncio
     async def test_validate_returns_pending_confirmation_report_for_proposed_binding_set(self):
         """Validation should surface a pending confirmation report when SIMS returns a proposed Binding Set."""
+        sims_client = FakeSimsClient(binding_set_state="proposed", target_id=501)
         ingester = SeadChangeRequestIngester(
             IngesterConfig(
                 host="localhost",
@@ -977,7 +966,7 @@ class TestSeadChangeRequestIngesterValidation:
                     "tables": {"sample": pd.DataFrame({"sample_id": [None]})},
                     "target_model": minimal_target_model(sample={"role": "fact", "public_id": "sample_id"}),
                     "submission_context": minimal_submission_context(),
-                    "sims_client": FakeSimsClient(binding_set_state="proposed", target_id=501),
+                    "sims_client": sims_client,
                 },
             )
         )
@@ -988,6 +977,8 @@ class TestSeadChangeRequestIngesterValidation:
         assert result.pending_confirmation_report is not None
         assert result.pending_confirmation_report["binding_set_uuid"] == "binding-123"
         assert result.pending_confirmation_report["binding_set_state"] == "proposed"
+        assert sims_client.run_ids[0] is not None
+        assert sims_client.run_ids[0] in result.pending_confirmation_report["rerun_instruction"]
 
     @pytest.mark.asyncio
     async def test_validate_reports_outcome_counts_for_existing_rows_with_mutable_field_scope(self):
@@ -1141,7 +1132,6 @@ class TestSeadChangeRequestIngesterIngest:
     @pytest.mark.asyncio
     async def test_ingest_emits_submission_and_links_new_dataset(self, tmp_path):
         """Ingest should resolve the provider, emit one submission, and link new datasets to it."""
-        target_id_allocator = FakeTargetIdAllocator(702)
         ingester = SeadChangeRequestIngester(
             IngesterConfig(
                 host="localhost",
@@ -1170,7 +1160,6 @@ class TestSeadChangeRequestIngesterIngest:
                         target_id=501,
                         target_ids={"submission": 1, "dataset": 91924},
                     ),
-                    "target_id_allocator": target_id_allocator,
                 },
             )
         )
@@ -1185,12 +1174,10 @@ class TestSeadChangeRequestIngesterIngest:
         assert '"submission_id"' in deploy_sql
         assert '"data_type_id"' in deploy_sql
         assert "tbl_submission_tasks" not in deploy_sql
-        assert not target_id_allocator.requests
 
     @pytest.mark.asyncio
     async def test_ingest_copy_csv_emits_submission_and_dataset_payloads(self, tmp_path):
         """Copy-CSV should emit payloads for the new submission and linked dataset only."""
-        target_id_allocator = FakeTargetIdAllocator(702)
         ingester = SeadChangeRequestIngester(
             IngesterConfig(
                 host="localhost",
@@ -1220,7 +1207,6 @@ class TestSeadChangeRequestIngesterIngest:
                         target_id=501,
                         target_ids={"submission": 1, "dataset": 91924},
                     ),
-                    "target_id_allocator": target_id_allocator,
                 },
             )
         )
@@ -1234,7 +1220,6 @@ class TestSeadChangeRequestIngesterIngest:
         assert any(path.endswith("/tbl_datasets.gz") for path in bundle_files)
         assert not any(path.endswith("/tbl_data_providers.gz") for path in bundle_files)
         assert not any(path.endswith("/tbl_submission_states.gz") for path in bundle_files)
-        assert not target_id_allocator.requests
 
     @pytest.mark.asyncio
     async def test_ingest_rejects_retired_file_input(self):
@@ -2063,6 +2048,8 @@ class TestSeadChangeRequestIngesterIngest:
         assert result.pending_confirmation_report is not None
         assert result.pending_confirmation_report["binding_set_uuid"] == "binding-123"
         assert result.deploy_artifact is None
+        assert sims_client.run_ids[0] is not None
+        assert sims_client.run_ids[0] in result.pending_confirmation_report["rerun_instruction"]
 
     @pytest.mark.parametrize("deploy_strategy", ["inline_insert", "copy_csv"])
     @pytest.mark.asyncio
@@ -2360,9 +2347,8 @@ class TestSeadChangeRequestIngesterStaging:
     """Tests for the opt-in inline staging strategy."""
 
     @pytest.mark.asyncio
-    async def test_ingest_emits_staging_artifact_without_child_id_reservation(self, tmp_path):
-        """Staging defers child IDs and never asks the allocator for one."""
-        allocator = FakeTargetIdAllocator(target_id=9999)
+    async def test_ingest_emits_staging_artifact_with_deployment_time_child_ids(self, tmp_path):
+        """Staging keeps child ID allocation in the generated deployment SQL."""
         sims_client = FakeSimsClient(target_id=501)
         ingester = SeadChangeRequestIngester(
             IngesterConfig(
@@ -2381,22 +2367,78 @@ class TestSeadChangeRequestIngesterStaging:
                     "submission_context": minimal_submission_context(),
                     "sims_client": sims_client,
                     "reconciliation_client": FakeReconciliationClient(target_id=7001),
-                    "target_id_allocator": allocator,
                     "deploy_strategy": "inline_staging",
                     "staging_target_schema": "public",
                 },
             )
         )
-
         result = await ingest_bundle(ingester)
-
+        result = await ingest_bundle(ingester)
         assert result.success is True, result.error_details
-        assert not allocator.requests
+        assert result.success is True, result.error_details
         assert result.deploy_artifact is not None
         deploy_sql = result.deploy_artifact["deploy_sql"]
         assert result.deploy_artifact["metadata"]["deploy_strategy"] == "inline_staging"
         assert '"public"."tbl_analysis_entities"' in deploy_sql
         assert "SELECT 'analysis_entity', \"_local_system_id\"," in deploy_sql
+
+
+class TestDatabaseSequenceIdentity:
+    """Database-sequence IDs must be resolved before Change Request preparation."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("deploy_strategy", ["inline_insert", "copy_csv", "inline_staging"])
+    async def test_validation_and_ingestion_block_unresolved_ids_without_allocator_calls(self, tmp_path, deploy_strategy):
+        class UnexpectedAllocator:
+            """Fail if preparation attempts to consume a target sequence."""
+
+            async def reserve_target_id(self, table_name: str, public_id_column: str) -> int:
+                raise AssertionError(f"Unexpected target sequence allocation for {table_name}.{public_id_column}")
+
+        sims_client = CountingSimsClient()
+        extra: dict[str, Any] = {
+            "tables": {"sample": pd.DataFrame({"sample_id": [None], "sample_name": ["A"]})},
+            "target_model": minimal_target_model(
+                sample={
+                    "role": "fact",
+                    "public_id": "sample_id",
+                    "public_id_generation": "database_sequence",
+                    "target_table": "tbl_samples",
+                    "identity_tracking": "derived",
+                    "reconciliation": "derive",
+                }
+            ),
+            "submission_context": minimal_submission_context(),
+            "sims_client": sims_client,
+            "target_id_allocator": UnexpectedAllocator(),
+            "deploy_strategy": deploy_strategy,
+        }
+        if deploy_strategy == "inline_staging":
+            extra["staging_target_schema"] = "public"
+
+        ingester = SeadChangeRequestIngester(
+            IngesterConfig(
+                host="localhost",
+                port=5432,
+                dbname="test_db",
+                user="test_user",
+                output_folder=str(tmp_path),
+                extra=extra,
+            )
+        )
+
+        validation = await validate_bundle(ingester)
+        ingestion = await ingest_bundle(ingester, validate_first=False)
+
+        assert validation.is_valid is False
+        assert any("pre-resolve it before Change Request validation or bundle generation" in error for error in validation.errors)
+        assert ingestion.success is False
+        assert "pre-resolve it before Change Request validation or bundle generation" in (ingestion.error_details or "")
+        assert sims_client.batch_calls == 0
+
+
+class TestSeadChangeRequestIngesterStagingValidation:
+    """Tests for inline-staging configuration and eligibility."""
 
     @pytest.mark.asyncio
     async def test_staging_requires_an_explicit_schema(self):

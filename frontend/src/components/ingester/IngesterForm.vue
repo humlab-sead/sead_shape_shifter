@@ -623,6 +623,17 @@ const isDescriptionProjectDerived = computed(() => {
   )
 })
 
+watch(
+  () => [
+    normalizeSubmissionName(form.value.submission_name),
+    routeProjectName.value,
+    seadChangeRequest.value.timestamp.trim(),
+    seadChangeRequest.value.datatype.trim().toLowerCase(),
+    normalizeSubmissionIdentifier(seadChangeRequest.value.identifier),
+  ],
+  () => ingesterStore.resetProjectAttempt()
+)
+
 watch(ignoreColumnsText, (newValue) => {
   form.value.config!.ignore_columns = newValue
     .split('\n')
@@ -962,6 +973,7 @@ async function handleIngest() {
 
 function resetForm() {
   formRef.value?.resetValidation?.()
+  ingesterStore.resetProjectAttempt()
   form.value = createBaseForm()
   seadChangeRequest.value = createSeadChangeRequestState(defaultProjectName.value)
   lastAutoIdentifier.value = ''

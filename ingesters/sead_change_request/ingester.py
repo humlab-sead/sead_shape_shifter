@@ -101,7 +101,6 @@ class SeadChangeRequestIngester:
             planned,
             sims_client=self._get_client("sims_client"),
             reconciliation_client=self._get_client("reconciliation_client"),
-            target_id_allocator=self._get_client("target_id_allocator") or self._get_client("collision_checker"),
         )
 
     def _add_submission_tables(self, inputs: ResolvedInputs) -> ResolvedInputs:
