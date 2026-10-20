@@ -88,6 +88,7 @@ class IngestionResult:
     pending_confirmation_report: dict[str, Any] | None = None
     scope_name: str | None = None
     run_id: str | None = None
+    output_path: str | None = None
 
     @staticmethod
     def create_success_result(
@@ -98,6 +99,7 @@ class IngestionResult:
         deploy_artifact: dict[str, Any],
         scope_name: str | None = None,
         run_id: str | None = None,
+        output_path: str | None = None,
     ) -> "IngestionResult":
         """Build a standard successful ingestion result."""
         return IngestionResult(
@@ -111,6 +113,7 @@ class IngestionResult:
             pending_confirmation_report=None,
             scope_name=scope_name,
             run_id=run_id,
+            output_path=output_path,
         )
 
     @staticmethod

@@ -227,9 +227,20 @@ Optional injected collaborators include:
 
 ## Artifact Output
 
-The ingester writes a bundle under `IngesterConfig.output_folder` using the canonical bundle name derived from `SubmissionContext`.
+The ingester writes each bundle into an exclusive run folder under `IngesterConfig.output_folder`, then
+places the canonical bundle name inside it:
 
-The emitted directory contains:
+```text
+<output_folder>/<YYYYMMDDTHHMMSSZ>_<sha256(run_id)>/<bundle_name>/
+```
+
+The run folder combines the UTC start time with the SHA-256 digest of the effective `run_id`, so a raw
+caller-supplied run ID never becomes a path component. The folder is reserved exclusively before SIMS
+identity or Binding Set calls; a repeated run identity under the same clock fails before any file or SIMS
+side effect. A later failure removes only the incomplete output the current invocation reserved, never a
+pre-existing bundle.
+
+The emitted bundle directory contains:
 
 - `deploy/<bundle_name>.sql`
 - `revert/<bundle_name>.sql`
@@ -240,8 +251,9 @@ The emitted directory contains:
 The exact payload shape depends on the selected deploy strategy.
 
 The `metadata` and `metadata_artifact` sections both record the effective `scope_name` and
-`run_id` used for the run. The ingest response returns the same two values, so an operator can
-match an emitted bundle to the SIMS scope and run that produced it.
+`run_id` used for the run. The ingest response returns the same two values plus the written bundle
+directory in `output_path`, so an operator can match an emitted bundle to the SIMS scope, run, and
+on-disk location that produced it.
 
 ## Retired File Input
 

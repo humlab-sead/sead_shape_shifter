@@ -123,7 +123,7 @@ class ProjectIngesterService:
             records_processed=result.records_inserted,
             message=result.message,
             submission_id=result.submission_id,
-            output_path=None,
+            output_path=result.output_path,
             error_details=result.error_details,
             scope_name=result.scope_name,
             run_id=result.run_id,

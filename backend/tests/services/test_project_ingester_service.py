@@ -606,9 +606,13 @@ async def test_successful_ingest_writes_only_bundle_under_managed_root(monkeypat
     assert result.scope_name == "provider://pilot"
     assert result.run_id is not None
     assert result.deploy_artifact is not None
+    assert result.output_path is not None
     assert calls[0][0] == "normalize"
-    bundle_dirs = [path for path in output_root.iterdir() if path.is_dir()]
+    run_folders = [path for path in output_root.iterdir() if path.is_dir()]
+    assert len(run_folders) == 1
+    bundle_dirs = [path for path in run_folders[0].iterdir() if path.is_dir()]
     assert len(bundle_dirs) == 1
+    assert Path(result.output_path).resolve() == bundle_dirs[0].resolve()
     bundle_files = {path.relative_to(bundle_dirs[0]).as_posix() for path in bundle_dirs[0].rglob("*") if path.is_file()}
     assert any(path.startswith("deploy/") for path in bundle_files)
     assert any(path.startswith("revert/") for path in bundle_files)
