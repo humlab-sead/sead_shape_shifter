@@ -323,6 +323,45 @@ class FileManager:
 
         target_path.unlink()
 
+    def promote_project_file(
+        self,
+        project_name: str,
+        filename: str,
+        *,
+        allowed_extensions: set[str] | None = None,
+        max_size_mb: int = MAX_PROJECT_UPLOAD_SIZE_MB,
+    ) -> ProjectFileInfo:
+        """Copy a project file into the global shared-data directory."""
+        self._ensure_project_exists(project_name)
+        safe_filename = self._sanitize_filename(filename)
+        if safe_filename != filename or safe_filename == "shapeshifter.yml":
+            raise BadRequestError("A valid project data filename is required")
+
+        upload_dir = self._get_project_upload_dir(project_name)
+        source_path = upload_dir / safe_filename
+        if source_path.is_symlink():
+            raise BadRequestError("Project files linked outside the project directory cannot be shared")
+
+        try:
+            managed_source_path = resolve_contained_path(source_path, upload_dir, allow_absolute=True)
+        except ValueError as exc:
+            raise BadRequestError("File path is outside the project directory") from exc
+
+        if not managed_source_path.is_file():
+            raise ResourceNotFoundError(
+                message=f"Project file '{safe_filename}' was not found",
+                resource_type="file",
+                resource_id=safe_filename,
+            )
+
+        with managed_source_path.open("rb") as source_file:
+            upload = UploadFile(filename=safe_filename, file=source_file)
+            return self.save_data_source_file(
+                upload,
+                allowed_extensions=allowed_extensions,
+                max_size_mb=max_size_mb,
+            )
+
     # Global data source file operations
 
     def list_data_source_files(self, extensions: Iterable[str] | None = None, project_name: str | None = None) -> list[ProjectFileInfo]:

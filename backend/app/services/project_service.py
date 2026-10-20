@@ -1255,6 +1255,14 @@ class ProjectService:
 
         self.files.delete_project_file(project_name, filename)
 
+    def promote_project_file(self, project_name: str, filename: str) -> ProjectFileInfo:
+        """Copy a project file to global shared data."""
+        return self.files.promote_project_file(
+            project_name,
+            filename,
+            allowed_extensions={".xlsx", ".xls", ".csv"},
+        )
+
     # Global data source file management
 
     def list_data_source_files(self, extensions: Iterable[str] | None = None, project_name: str | None = None) -> list[ProjectFileInfo]:

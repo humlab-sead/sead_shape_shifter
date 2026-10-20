@@ -137,6 +137,38 @@ describe('projectsApi', () => {
         url: '/projects/test-project/files/my%20data.csv',
       })
     })
+
+    it('should fetch project file capabilities', async () => {
+      const capabilities = { can_share_with_all_projects: true }
+      vi.mocked(apiRequest).mockResolvedValue(capabilities)
+
+      const result = await projectsApi.getFileCapabilities('test-project')
+
+      expect(apiRequest).toHaveBeenCalledWith({
+        method: 'GET',
+        url: '/projects/test-project/files/capabilities',
+      })
+      expect(result).toEqual(capabilities)
+    })
+
+    it('should share a project file with all projects', async () => {
+      const sharedFile = {
+        name: 'shared data.csv',
+        path: 'shared data.csv',
+        location: 'global' as const,
+        size_bytes: 12,
+        modified_at: '2024-01-01T00:00:00Z',
+      }
+      vi.mocked(apiRequest).mockResolvedValue(sharedFile)
+
+      const result = await projectsApi.shareFile('test-project', sharedFile.name)
+
+      expect(apiRequest).toHaveBeenCalledWith({
+        method: 'POST',
+        url: '/projects/test-project/files/shared%20data.csv/share',
+      })
+      expect(result).toEqual(sharedFile)
+    })
   })
 
   describe('get', () => {
