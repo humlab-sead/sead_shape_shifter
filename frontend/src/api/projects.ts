@@ -242,6 +242,16 @@ export const projectsApi = {
   },
 
   /**
+   * Delete a project file that is not referenced by a local entity
+   */
+  deleteFile: async (name: string, filename: string): Promise<void> => {
+    return apiRequest<void>({
+      method: 'DELETE',
+      url: `/projects/${name}/files/${encodeURIComponent(filename)}`,
+    })
+  },
+
+  /**
    * List project-local and shared YAML files available as target models
    */
   listTargetModels: async (name: string): Promise<TargetModelFileOption[]> => {
@@ -254,9 +264,12 @@ export const projectsApi = {
   /**
    * Upload a file into the project's uploads directory
    */
-  uploadFile: async (name: string, file: File): Promise<ProjectFileInfo> => {
+  uploadFile: async (name: string, file: File, overwrite = false): Promise<ProjectFileInfo> => {
     const formData = new FormData()
     formData.append('file', file)
+    if (overwrite) {
+      formData.append('overwrite', 'true')
+    }
 
     // Use apiClient directly instead of apiRequest to ensure proper FormData handling
     const response = await apiClient.post<ProjectFileInfo>(`/projects/${name}/files`, formData, {

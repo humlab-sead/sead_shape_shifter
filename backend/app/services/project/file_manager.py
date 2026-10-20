@@ -1,10 +1,13 @@
 """File management operations: upload, list, and inspect files for projects."""
 
+import os
+import tempfile
 from pathlib import Path
 from typing import Iterable
 
 from fastapi import UploadFile
 
+from backend.app.exceptions import ResourceNotFoundError
 from backend.app.mappers.project_name_mapper import ProjectNameMapper
 from backend.app.models.project import ProjectFileInfo
 from backend.app.utils.excel_utils import get_excel_metadata as extract_excel_metadata
@@ -208,6 +211,7 @@ class FileManager:
         *,
         allowed_extensions: set[str] | None = None,
         max_size_mb: int = MAX_PROJECT_UPLOAD_SIZE_MB,
+        overwrite: bool = False,
     ) -> ProjectFileInfo:
         """Save an uploaded file into the project's uploads directory.
 
@@ -216,6 +220,7 @@ class FileManager:
             upload: Uploaded file
             allowed_extensions: Allowed file extensions (e.g., {'.xlsx', '.xls'})
             max_size_mb: Maximum file size in megabytes
+            overwrite: Replace a file with the same name instead of choosing a new name
 
         Returns:
             File information for the saved file
@@ -235,17 +240,30 @@ class FileManager:
         upload_dir: Path = self._get_project_upload_dir(project_name)
         upload_dir.mkdir(parents=True, exist_ok=True)
 
+        upload_path = upload_dir / filename
+        if overwrite and upload_path.is_symlink():
+            raise BadRequestError("A project file symlink cannot be overwritten")
         target_path = resolve_contained_path(filename, upload_dir)
-        counter = 1
-        while target_path.exists():
-            target_path = resolve_contained_path(f"{Path(filename).stem}-{counter}{ext}", upload_dir)
-            counter += 1
+        reserved_target = False
+        if not overwrite:
+            counter = 1
+            while True:
+                try:
+                    with target_path.open("xb"):
+                        pass
+                    reserved_target = True
+                    break
+                except FileExistsError:
+                    target_path = resolve_contained_path(f"{Path(filename).stem}-{counter}{ext}", upload_dir)
+                    counter += 1
 
         max_bytes: int = max_size_mb * 1024 * 1024
         total_bytes = 0
+        temporary_path: Path | None = None
 
         try:
-            with target_path.open("wb") as buffer:
+            with tempfile.NamedTemporaryFile(mode="wb", dir=upload_dir, prefix=".upload-", suffix=".tmp", delete=False) as buffer:
+                temporary_path = Path(buffer.name)
                 while True:
                     chunk: bytes = upload.file.read(1024 * 1024)
                     if not chunk:
@@ -254,9 +272,15 @@ class FileManager:
                     if max_bytes and total_bytes > max_bytes:
                         raise BadRequestError(f"File is too large ({total_bytes} bytes). Maximum allowed is {max_bytes} bytes")
                     buffer.write(chunk)
-        except Exception as exc:  # pylint: disable=broad-except
-            target_path.unlink(missing_ok=True)
-            raise exc
+            assert temporary_path is not None
+            os.replace(temporary_path, target_path)
+            reserved_target = False
+        except Exception:
+            if temporary_path is not None:
+                temporary_path.unlink(missing_ok=True)
+            if reserved_target:
+                target_path.unlink(missing_ok=True)
+            raise
         finally:
             try:
                 upload.file.close()
@@ -272,6 +296,32 @@ class FileManager:
             size_bytes=stat.st_size,
             modified_at=stat.st_mtime,
         )
+
+    def delete_project_file(self, project_name: str, filename: str) -> None:
+        """Delete a file from a project's uploads directory."""
+        self._ensure_project_exists(project_name)
+        safe_filename = self._sanitize_filename(filename)
+        if safe_filename != filename or safe_filename == "shapeshifter.yml":
+            raise BadRequestError("A valid project data filename is required")
+
+        upload_dir = self._get_project_upload_dir(project_name)
+        candidate_path = upload_dir / safe_filename
+        if candidate_path.is_symlink():
+            raise BadRequestError("Project files linked outside the project directory cannot be deleted")
+
+        try:
+            target_path = resolve_contained_path(candidate_path, upload_dir, allow_absolute=True)
+        except ValueError as exc:
+            raise BadRequestError("File path is outside the project directory") from exc
+
+        if not target_path.is_file():
+            raise ResourceNotFoundError(
+                message=f"Project file '{safe_filename}' was not found",
+                resource_type="file",
+                resource_id=safe_filename,
+            )
+
+        target_path.unlink()
 
     # Global data source file operations
 

@@ -884,3 +884,84 @@ class TestProjectsBackups:
 
         assert response.status_code == 200
         assert response.json() == []
+
+
+class TestProjectFileManagement:
+    """Tests for uploading, replacing, and deleting project files."""
+
+    async def test_upload_project_file_overwrites_when_requested(
+        self, reset_services, tmp_path, monkeypatch, authorized_client
+    ):
+        """The upload endpoint replaces a same-named file only when requested."""
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        create_response = await authorized_client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "data_provider_code": "test-provider", "provider_schema": "schema-one"},
+        )
+        assert create_response.status_code == 201
+
+        first_response = await authorized_client.post(
+            "/api/v1/projects/test_project/files",
+            files={"file": ("data.xlsx", b"old content", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+        )
+        replace_response = await authorized_client.post(
+            "/api/v1/projects/test_project/files",
+            files={"file": ("data.xlsx", b"new content", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+            data={"overwrite": "true"},
+        )
+
+        assert first_response.status_code == 200
+        assert replace_response.status_code == 200
+        assert replace_response.json()["name"] == "data.xlsx"
+        assert (tmp_path / "test_project" / "data.xlsx").read_bytes() == b"new content"
+
+    async def test_delete_project_file_rejects_local_entity_references(
+        self, reset_services, tmp_path, monkeypatch, authorized_client
+    ):
+        """A project file referenced by a local entity cannot be deleted."""
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        create_response = await authorized_client.post(
+            "/api/v1/projects",
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {
+                    "source_data": {
+                        "type": "csv",
+                        "options": {"filename": "data.csv", "location": "local"},
+                    }
+                },
+            },
+        )
+        assert create_response.status_code == 201
+        file_response = await authorized_client.post(
+            "/api/v1/projects/test_project/files",
+            files={"file": ("data.csv", b"col\nvalue\n", "text/csv")},
+        )
+        assert file_response.status_code == 200
+
+        response = await authorized_client.delete("/api/v1/projects/test_project/files/data.csv")
+
+        assert response.status_code == 409
+        assert "source_data" in response.json()["detail"]["message"]
+        assert (tmp_path / "test_project" / "data.csv").exists()
+
+    async def test_delete_unused_project_file(self, reset_services, tmp_path, monkeypatch, authorized_client):
+        """An unreferenced project file can be deleted."""
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        create_response = await authorized_client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "data_provider_code": "test-provider", "provider_schema": "schema-one"},
+        )
+        assert create_response.status_code == 201
+        file_response = await authorized_client.post(
+            "/api/v1/projects/test_project/files",
+            files={"file": ("unused.csv", b"col\nvalue\n", "text/csv")},
+        )
+        assert file_response.status_code == 200
+
+        response = await authorized_client.delete("/api/v1/projects/test_project/files/unused.csv")
+
+        assert response.status_code == 204
+        assert not (tmp_path / "test_project" / "unused.csv").exists()

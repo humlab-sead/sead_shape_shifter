@@ -4,7 +4,7 @@ from io import StringIO
 from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Body, Depends, File, Query, UploadFile, status
+from fastapi import APIRouter, Body, Depends, File, Form, Query, UploadFile, status
 from fastapi.responses import Response
 from loguru import logger
 from pydantic import BaseModel, Field
@@ -1124,6 +1124,7 @@ async def upload_project_file(
     name: str,  # pylint: disable=unused-argument
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
     file: UploadFile = File(...),
+    overwrite: bool = Form(default=False),
 ) -> ProjectFileInfo:
     """Upload data file (Excel, CSV) to project's directory.
 
@@ -1135,7 +1136,24 @@ async def upload_project_file(
         project_name=authorized_project.resource.locator,
         upload=file,
         allowed_extensions={".xlsx", ".xls", ".csv"},
+        overwrite=overwrite,
     )
+
+
+@router.delete(
+    "/projects/{name}/files/{filename}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete an unused project file",
+)
+@handle_endpoint_errors
+async def delete_project_file(
+    name: str,  # pylint: disable=unused-argument
+    filename: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
+) -> None:
+    """Delete a project file that no local entity references."""
+    project_service: ProjectService = get_project_service()
+    project_service.delete_project_file(authorized_project.resource.locator, filename)
 
 
 @router.get(

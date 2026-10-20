@@ -1202,6 +1202,7 @@ class ProjectService:
         *,
         allowed_extensions: set[str] | None = None,
         max_size_mb: int = 50,  # FileManager.MAX_PROJECT_UPLOAD_SIZE_MB
+        overwrite: bool = False,
     ) -> ProjectFileInfo:
         """Save an uploaded file into the project's uploads directory.
 
@@ -1210,11 +1211,49 @@ class ProjectService:
             upload: Uploaded file
             allowed_extensions: Allowed file extensions
             max_size_mb: Maximum file size in megabytes
+            overwrite: Replace a file with the same name instead of choosing a new name
 
         Returns:
             File information for the saved file
         """
-        return self.files.save_project_file(project_name, upload, allowed_extensions=allowed_extensions, max_size_mb=max_size_mb)
+        return self.files.save_project_file(
+            project_name,
+            upload,
+            allowed_extensions=allowed_extensions,
+            max_size_mb=max_size_mb,
+            overwrite=overwrite,
+        )
+
+    def delete_project_file(self, project_name: str, filename: str) -> None:
+        """Delete an unused project file.
+
+        Raises a conflict when a local entity still references the file.
+        """
+        project = self.load_project(project_name)
+        referencing_entities: list[str] = []
+        for entity_name, entity_config in project.entities.items():
+            if not isinstance(entity_config, dict):
+                continue
+            options = entity_config.get("options")
+            if not isinstance(options, dict) or options.get("location") != "local":
+                continue
+            configured_filename = options.get("filename")
+            if not isinstance(configured_filename, str):
+                continue
+            configured_path = Path(configured_filename)
+            if configured_path.name == filename and configured_path.parent == Path("."):
+                referencing_entities.append(entity_name)
+
+        if referencing_entities:
+            names = ", ".join(sorted(referencing_entities))
+            raise ResourceConflictError(
+                message=f"Cannot delete '{filename}' because it is referenced by these local entities: {names}",
+                resource_type="file",
+                resource_id=filename,
+                context={"referencing_entities": sorted(referencing_entities)},
+            )
+
+        self.files.delete_project_file(project_name, filename)
 
     # Global data source file management
 
