@@ -176,6 +176,10 @@ markers = [
   "debug: marks tests for debugging purposes (typically run manually)",
   "manual: marks tests requiring manual setup (e.g., real database)",
 ]
+filterwarnings = [
+  # jaydebeapi uses the deprecated jpype._core.isThreadAttachedToJVM; nothing we can fix on our side.
+  "ignore:jpype._core.isThreadAttachedToJVM is deprecated:DeprecationWarning",
+]
 # python_files = "test_*.py" "*_test.py"
 # Uncomment to see logs during test runs:
 # log_cli = true
