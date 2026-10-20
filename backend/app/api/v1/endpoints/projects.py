@@ -1190,11 +1190,7 @@ async def get_project_file_capabilities(
     authorization_service: Annotated[AuthorizationService, Depends(get_authorization_service)],
 ) -> dict[str, bool]:
     """Return whether the current user can share project files globally."""
-    return {
-        "can_share_with_all_projects": authorization_service.can_perform_application_action(
-            principal, Action.MANAGE_SHARED_SOURCES
-        )
-    }
+    return {"can_share_with_all_projects": authorization_service.can_perform_application_action(principal, Action.MANAGE_SHARED_SOURCES)}
 
 
 @router.get(
