@@ -1,8 +1,13 @@
+from typing import TYPE_CHECKING, Any
+
 import pandas as pd
 
 from src.model import ForeignKeyConfig, ShapeShiftProject, TableConfig
-from src.specifications.base import Specification
+from src.specifications.base import ProjectSpecification, Specification
 from src.table_store import TableStore
+
+if TYPE_CHECKING:
+    from src.reconciliation.mapping_model import MappingCatalog
 
 # pylint: disable=line-too-long
 
@@ -88,15 +93,151 @@ class ForeignKeyConfigSpecification(Specification):
         if missing_fields:
             self.add_error(
                 f"{fk_cfg.local_entity} -> {fk_cfg.remote_entity}: "
-                f"remote keys {missing_fields} not found in remote entity '{fk_cfg.remote_entity}'",
+                f"remote keys {missing_fields} not found in remote entity '{fk_cfg.remote_entity}'"
+                f"{self._identity_key_hint(missing_fields, fk_cfg.remote_entity, remote_table_cfg)}",
                 entity=fk_cfg.local_entity,
+                field="foreign_keys[].remote_keys",
             )
 
         return not self.has_errors()
 
+    @staticmethod
+    def _identity_key_hint(missing_fields: set[str], remote_entity: str, remote_table_cfg: TableConfig) -> str:
+        """Explain the fix when a missing remote key is a remote identity column.
+
+        Returns an empty string when none of the missing keys is the remote
+        ``system_id`` or ``public_id``, so unrelated missing columns keep the
+        plain message.
+        """
+        identity_rule: str = (
+            "A foreign key stores the parent's 'system_id' values, while the parent's "
+            f"'public_id' only names the child column. Join on '{remote_entity}.{remote_table_cfg.system_id}' instead."
+        )
+        if remote_table_cfg.public_id and remote_table_cfg.public_id in missing_fields:
+            return (
+                f". '{remote_table_cfg.public_id}' is the remote entity's 'public_id'. "
+                "It names the child column but does not hold joinable values here. " + identity_rule
+            )
+        if remote_table_cfg.system_id in missing_fields:
+            return (
+                f". '{remote_table_cfg.system_id}' is the remote entity's generated 'system_id'. It is added "
+                "during normalization and is not a declared column of the remote entity, so it cannot be "
+                f"selected as a join key here. Declare it in the remote entity's 'columns' to join on it."
+            )
+        return ""
+
     def get_missing_fields(self, *, required_fields: set[str], available_fields: set[str]) -> set[str]:
         """Return the set of required keys that are missing from found keys."""
         return {key for key in required_fields if key not in available_fields}
+
+
+class ForeignKeyRemotePublicIdSpecification(ProjectSpecification):
+    """Warn when a foreign key joins on a remote ``public_id`` that carries no values.
+
+    A child foreign key stores the parent's ``system_id`` values; the parent's
+    ``public_id`` only names the child column. Configuring ``remote_keys`` as the
+    parent's ``public_id`` is therefore a mistake whenever that ``public_id`` has
+    no value source: the join silently matches nothing.
+
+    The rule fires only when a remote key equals the remote ``public_id`` **and**
+    that ``public_id`` has no value source:
+
+    - Fixed entity: the ``public_id`` column is all-null in ``values`` (and the
+      entity is not filled by ``append``). A fixed entity whose ``public_id`` is a
+      populated data column (for example ``master_dataset.master_set_id``) is left
+      alone.
+    - Other entities: the ``public_id`` is not a declared ``columns``/``extra_columns``
+      field and no committed mapping sidecar populates it.
+
+    Severity is ``warning`` because the link is skipped rather than corrupting data,
+    matching ``FK_REMOTE_EMPTY`` and ``FK_DATA_INTEGRITY``.
+    """
+
+    def __init__(self, project_cfg: dict[str, Any], mapping_catalog: "MappingCatalog | None" = None) -> None:
+        super().__init__(project_cfg)
+        self._mapping_catalog: MappingCatalog | None = mapping_catalog
+
+    def is_satisfied_by(self, **kwargs) -> bool:
+        """Check every foreign key for a join on an unpopulated remote public_id."""
+        self.clear()
+
+        entities_cfg: dict[str, dict[str, Any]] = self.project_cfg.get("entities", {}) or {}
+        for entity_name, entity_cfg in entities_cfg.items():
+            for fk_cfg in (entity_cfg or {}).get("foreign_keys", []) or []:
+                self._check_foreign_key(entity_name=entity_name, fk_cfg=fk_cfg)
+
+        return not self.has_errors()
+
+    def _check_foreign_key(self, *, entity_name: str, fk_cfg: Any) -> None:
+        """Add a warning when one foreign key joins on an unpopulated remote public_id."""
+        if not isinstance(fk_cfg, dict) or fk_cfg.get("how") == "cross":
+            return
+
+        remote_entity: str = fk_cfg.get("entity", "")
+        remote_keys: Any = fk_cfg.get("remote_keys", []) or []
+        if not remote_entity or not self.entity_exists(remote_entity):
+            return
+        # An unresolved directive (a plain string) cannot be matched key-by-key; skip it.
+        if not isinstance(remote_keys, list):
+            return
+
+        remote_cfg: TableConfig = self.get_entity(remote_entity)
+        public_id: str = remote_cfg.public_id
+        if not public_id or public_id not in remote_keys:
+            return
+
+        if self._public_id_has_value_source(remote_cfg):
+            return
+
+        self.add_warning(
+            f"{entity_name} -> {remote_entity}: remote key '{public_id}' is the remote entity's "
+            f"'public_id', which holds no values, so the join matches nothing. "
+            f"A foreign key stores the parent's 'system_id' values; the parent's 'public_id' only "
+            f"names the child column. Join on '{remote_entity}.{remote_cfg.system_id}' instead.",
+            entity=entity_name,
+            field="foreign_keys[].remote_keys",
+            code="FK_REMOTE_PUBLIC_ID_EMPTY",
+        )
+
+    def _public_id_has_value_source(self, remote_cfg: TableConfig) -> bool:
+        """Return True when the remote public_id is populated by data, values, or a sidecar."""
+        public_id: str = remote_cfg.public_id
+
+        # A committed mapping sidecar populates the public_id at normalization time.
+        if self._mapping_catalog is not None and self._mapping_catalog.committed_links_by_entity(remote_cfg.entity_name):
+            return True
+
+        if remote_cfg.type == "fixed":
+            if remote_cfg.has_append:
+                return True
+            return self._fixed_public_id_has_value(remote_cfg)
+
+        # Non-fixed entity: a declared data column or extra_column supplies the value.
+        return public_id in remote_cfg.safe_columns or public_id in remote_cfg.extra_column_names
+
+    @staticmethod
+    def _fixed_public_id_has_value(remote_cfg: TableConfig) -> bool:
+        """Return True when any fixed ``values`` row carries a non-null public_id."""
+        public_id: str = remote_cfg.public_id
+        raw_values: Any = remote_cfg.values
+        values: list[Any] = raw_values if isinstance(raw_values, list) else []
+        rows: list[list[Any]] = [row for row in values if isinstance(row, list)]
+        if not rows:
+            return False
+
+        full_columns: list[str] = remote_cfg.values_column_order
+        declared_columns: list[str] = remote_cfg.safe_columns
+        row_width: int = len(rows[0])
+
+        if row_width == len(full_columns) and public_id in full_columns:
+            index: int = full_columns.index(public_id)
+        elif row_width == len(declared_columns) and public_id in declared_columns:
+            index = declared_columns.index(public_id)
+        else:
+            # The public_id has no positional slot in these rows, so it carries no value.
+            return False
+
+        return any(len(row) > index and row[index] is not None for row in rows)
 
 
 class ForeignKeyDataSpecification(ForeignKeyConfigSpecification):

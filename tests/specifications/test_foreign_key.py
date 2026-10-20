@@ -6,7 +6,11 @@ import pandas as pd
 import pytest
 
 from src.model import ForeignKeyConfig, ShapeShiftProject, TableConfig
-from src.specifications.foreign_key import ForeignKeyConfigSpecification, ForeignKeyDataSpecification
+from src.specifications.foreign_key import (
+    ForeignKeyConfigSpecification,
+    ForeignKeyDataSpecification,
+    ForeignKeyRemotePublicIdSpecification,
+)
 from src.table_store import TableStore
 
 
@@ -380,3 +384,208 @@ class TestForeignKeyDataSpecification:
         assert result is False
         # Error should come from config validation
         assert spec.has_errors()
+
+
+class TestIdentityKeyHint:
+    """Tests for the identity-column hint added to the missing-remote-key error."""
+
+    @pytest.fixture
+    def mock_project(self):
+        """Mock project whose remote table has a public_id and a system_id."""
+        project = MagicMock(spec=ShapeShiftProject)
+
+        local_table = MagicMock(spec=TableConfig)
+        local_table.keys_columns_and_fks = ["local_id"]
+        local_table.unnest_columns = []
+
+        remote_table = MagicMock(spec=TableConfig)
+        # The remote entity exposes only a data column; neither identity column is joinable.
+        remote_table.get_columns.return_value = ["data"]
+        remote_table.system_id = "system_id"
+        remote_table.public_id = "site_id"
+
+        def get_table(entity_name):
+            return local_table if entity_name == "local_entity" else remote_table
+
+        project.get_table = get_table
+        return project
+
+    def test_missing_public_id_key_explains_public_id_rule(self, mock_project):
+        """Joining on the remote public_id explains that FKs store system_id values."""
+        fk_cfg = ForeignKeyConfig(
+            local_entity="local_entity",
+            fk_cfg={"entity": "remote_entity", "how": "left", "local_keys": ["local_id"], "remote_keys": ["site_id"]},
+        )
+
+        spec = ForeignKeyConfigSpecification(mock_project)
+        result = spec.is_satisfied_by(fk_cfg=fk_cfg)
+
+        report: str = spec.get_report()
+        assert result is False
+        assert "not found in remote entity" in report
+        assert "is the remote entity's 'public_id'" in report
+        assert "Join on 'remote_entity.system_id' instead" in report
+
+    def test_missing_system_id_key_explains_generated_system_id(self, mock_project):
+        """Joining on the remote system_id explains it is generated during normalization."""
+        fk_cfg = ForeignKeyConfig(
+            local_entity="local_entity",
+            fk_cfg={"entity": "remote_entity", "how": "left", "local_keys": ["local_id"], "remote_keys": ["system_id"]},
+        )
+
+        spec = ForeignKeyConfigSpecification(mock_project)
+        result = spec.is_satisfied_by(fk_cfg=fk_cfg)
+
+        report: str = spec.get_report()
+        assert result is False
+        assert "not found in remote entity" in report
+        assert "generated 'system_id'" in report
+
+    def test_unrelated_missing_key_has_no_hint(self, mock_project):
+        """A missing key that is not an identity column keeps the plain message."""
+        fk_cfg = ForeignKeyConfig(
+            local_entity="local_entity",
+            fk_cfg={"entity": "remote_entity", "how": "left", "local_keys": ["local_id"], "remote_keys": ["bogus"]},
+        )
+
+        spec = ForeignKeyConfigSpecification(mock_project)
+        result = spec.is_satisfied_by(fk_cfg=fk_cfg)
+
+        report: str = spec.get_report()
+        assert result is False
+        assert "not found in remote entity" in report
+        assert "public_id" not in report
+        assert "system_id" not in report
+
+
+class TestForeignKeyRemotePublicIdSpecification:
+    """Tests for the structural warning on joins against an unpopulated remote public_id."""
+
+    @staticmethod
+    def _project_cfg(*, remote_cfg: dict, remote_keys: list[str], how: str = "left") -> dict:
+        """Build a minimal project where ``child`` joins ``remote`` on ``remote_keys``."""
+        return {
+            "entities": {
+                "child": {
+                    "columns": ["join_col"],
+                    "foreign_keys": [
+                        {"entity": "remote", "local_keys": ["join_col"], "remote_keys": remote_keys, "how": how},
+                    ],
+                },
+                "remote": remote_cfg,
+            }
+        }
+
+    def _warning_codes(self, project_cfg: dict, mapping_catalog=None) -> list[str]:
+        spec = ForeignKeyRemotePublicIdSpecification(project_cfg, mapping_catalog)
+        spec.is_satisfied_by()
+        return [issue.code for issue in spec.warnings]
+
+    def test_fixed_all_null_public_id_warns(self):
+        """A fixed remote whose public_id is all-null warns when joined on."""
+        project_cfg = self._project_cfg(
+            remote_cfg={"type": "fixed", "public_id": "site_id", "keys": ["name"], "columns": ["name"], "values": [[1, None, "foo"]]},
+            remote_keys=["site_id"],
+        )
+        assert self._warning_codes(project_cfg) == ["FK_REMOTE_PUBLIC_ID_EMPTY"]
+
+    def test_fixed_populated_public_id_no_warning(self):
+        """A fixed remote whose public_id carries values is left alone."""
+        project_cfg = self._project_cfg(
+            remote_cfg={"type": "fixed", "public_id": "site_id", "keys": ["name"], "columns": ["name"], "values": [[1, 100, "foo"]]},
+            remote_keys=["site_id"],
+        )
+        assert self._warning_codes(project_cfg) == []
+
+    def test_fixed_with_append_no_warning(self):
+        """A fixed remote filled by append is assumed to populate the public_id."""
+        project_cfg = self._project_cfg(
+            remote_cfg={
+                "type": "fixed",
+                "public_id": "site_id",
+                "keys": ["name"],
+                "columns": ["name"],
+                "values": [[1, None, "foo"]],
+                "append": {"values": [[2, 200, "bar"]]},
+            },
+            remote_keys=["site_id"],
+        )
+        assert self._warning_codes(project_cfg) == []
+
+    def test_sql_public_id_not_a_column_warns(self):
+        """A sql remote whose public_id is not a declared column warns when joined on."""
+        project_cfg = self._project_cfg(
+            remote_cfg={"type": "sql", "public_id": "site_id", "keys": ["name"], "columns": ["name"], "query": "select 1"},
+            remote_keys=["site_id"],
+        )
+        assert self._warning_codes(project_cfg) == ["FK_REMOTE_PUBLIC_ID_EMPTY"]
+
+    def test_sql_public_id_as_column_no_warning(self):
+        """A sql remote that selects its public_id as a column is left alone."""
+        project_cfg = self._project_cfg(
+            remote_cfg={"type": "sql", "public_id": "site_id", "keys": ["name"], "columns": ["site_id", "name"], "query": "select 1"},
+            remote_keys=["site_id"],
+        )
+        assert self._warning_codes(project_cfg) == []
+
+    def test_committed_sidecar_suppresses_warning(self):
+        """A committed mapping sidecar that populates the public_id suppresses the warning."""
+        project_cfg = self._project_cfg(
+            remote_cfg={"type": "sql", "public_id": "site_id", "keys": ["name"], "columns": ["name"], "query": "select 1"},
+            remote_keys=["site_id"],
+        )
+        catalog = MagicMock()
+        catalog.committed_links_by_entity.return_value = {"site_id": MagicMock()}
+        assert self._warning_codes(project_cfg, mapping_catalog=catalog) == []
+
+    def test_cross_join_skipped(self):
+        """A cross join carries no remote keys to check and is skipped."""
+        project_cfg = self._project_cfg(
+            remote_cfg={"type": "sql", "public_id": "site_id", "keys": ["name"], "columns": ["name"], "query": "select 1"},
+            remote_keys=["site_id"],
+            how="cross",
+        )
+        assert self._warning_codes(project_cfg) == []
+
+    def test_join_on_other_key_no_warning(self):
+        """Joining on a key that is not the public_id is left alone."""
+        project_cfg = self._project_cfg(
+            remote_cfg={"type": "sql", "public_id": "site_id", "keys": ["name"], "columns": ["name"], "query": "select 1"},
+            remote_keys=["name"],
+        )
+        assert self._warning_codes(project_cfg) == []
+
+    def test_unresolved_directive_remote_keys_skipped(self):
+        """An unresolved directive string in remote_keys is skipped rather than substring-matched."""
+        project_cfg = self._project_cfg(
+            remote_cfg={"type": "sql", "public_id": "site_id", "keys": ["name"], "columns": ["name"], "query": "select 1"},
+            remote_keys=["site_id"],
+        )
+        project_cfg["entities"]["child"]["foreign_keys"][0]["remote_keys"] = "@load: site_id"
+        assert self._warning_codes(project_cfg) == []
+
+    def test_missing_remote_entity_no_crash(self):
+        """A foreign key pointing at an unknown entity is skipped without error."""
+        project_cfg = {
+            "entities": {
+                "child": {
+                    "columns": ["join_col"],
+                    "foreign_keys": [{"entity": "ghost", "local_keys": ["join_col"], "remote_keys": ["site_id"]}],
+                }
+            }
+        }
+        assert self._warning_codes(project_cfg) == []
+
+    def test_warning_carries_field_and_entity(self):
+        """The warning records the child entity and the remote_keys field."""
+        project_cfg = self._project_cfg(
+            remote_cfg={"type": "fixed", "public_id": "site_id", "keys": ["name"], "columns": ["name"], "values": [[1, None, "foo"]]},
+            remote_keys=["site_id"],
+        )
+        spec = ForeignKeyRemotePublicIdSpecification(project_cfg)
+        spec.is_satisfied_by()
+        assert len(spec.warnings) == 1
+        warning = spec.warnings[0]
+        assert warning.entity == "child"
+        assert warning.field == "foreign_keys[].remote_keys"
+        assert "Join on 'remote.system_id' instead" in warning.message
