@@ -61,6 +61,11 @@ Backend settings use the `SHAPE_SHIFTER_` prefix and are loaded from
 | `SHAPE_SHIFTER_ALLOWED_ORIGIN_REGEX` | `null` | Optional controlled CORS pattern. |
 | `SHAPE_SHIFTER_RECONCILIATION_SERVICE_URL` | `http://localhost:8000` | Reconciliation service base URL. |
 | `SHAPE_SHIFTER_SIMS_SERVICE_URL` | `http://localhost:8000` | SEAD authority/SIMS service base URL. |
+| `SHAPE_SHIFTER_INGEST_TARGET_HOST` | `null` | Backend-selected PostgreSQL host for project-based Change Request generation; required when that helper is used. |
+| `SHAPE_SHIFTER_INGEST_TARGET_PORT` | `5432` | Backend-selected PostgreSQL port for project-based Change Request generation. |
+| `SHAPE_SHIFTER_INGEST_TARGET_DBNAME` | `null` | Backend-selected PostgreSQL database name; required when that helper is used. |
+| `SHAPE_SHIFTER_INGEST_TARGET_USER` | `null` | Backend-selected PostgreSQL user; required when that helper is used. |
+| `SHAPE_SHIFTER_INGEST_OUTPUT_DIR` | `null` | Writable root for generated Change Request bundles; required when that helper is used. Relative paths resolve under `SHAPE_SHIFTER_APPLICATION_ROOT`. |
 | `SHAPE_SHIFTER_ENABLE_FK_SUGGESTIONS` | `false` | Foreign-key candidate suggestions. |
 | `SHAPE_SHIFTER_INGESTER_PATHS` | `['ingesters']` | Ingester module directories. |
 | `SHAPE_SHIFTER_ENABLED_INGESTERS` | `null` | Enabled ingester keys; null means all discovered ingesters. |
@@ -69,6 +74,11 @@ Backend settings use the `SHAPE_SHIFTER_` prefix and are loaded from
 Set `SEAD_HOST`, `SEAD_PORT`, `SEAD_DBNAME`, and `SEAD_USER` through the project
 data-source configuration when required. Keep PostgreSQL passwords in
 `~/config/.pgpass/.pgpass` with mode `600`, not in project YAML or `backend.env`.
+Project-based Change Request generation uses the separate `SHAPE_SHIFTER_INGEST_TARGET_*`
+values above; add a matching host, port, database, and user entry to the deployment
+user's PostgreSQL password file. The helper does not take its target connection or
+output directory from project YAML or request data. Configure `SHAPE_SHIFTER_INGEST_OUTPUT_DIR`
+to a writable location for the generated deploy bundles before enabling that workflow.
 `VITE_*` values are build-time settings in `~/config/deployment.env` and require
 a new image build.
 

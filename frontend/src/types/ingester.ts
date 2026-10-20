@@ -71,6 +71,26 @@ export interface IngestRequest {
   deploy_strategy?: string
 }
 
+export interface ProjectSubmissionOptions {
+  submission_name: string
+  timestamp: string
+  datatype: string
+  identifier: string
+  description?: string | null
+  issue_identifier?: string | null
+  author?: string | null
+  run_id?: string | null
+}
+
+export interface ProjectIngesterRequest {
+  project_name: string
+  translate?: boolean
+  drop_foreign_keys?: boolean
+  default_entity?: string | null
+  submission_context: ProjectSubmissionOptions
+  deploy_strategy?: string | null
+}
+
 export interface IngestResponse {
   success: boolean
   records_processed: number

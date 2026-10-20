@@ -122,7 +122,7 @@ class TestBusinessKeyErrors:
     def test_accepts_unique_present_keys(self):
         frame = pd.DataFrame({"site_code": ["A", "B"]})
 
-        assert business_key_errors("site", ["site_code"], frame) == []
+        assert not business_key_errors("site", ["site_code"], frame)
 
     def test_rejects_empty_key_declaration(self):
         errors = business_key_errors("site", [], pd.DataFrame({"site_code": ["A"]}))
@@ -166,11 +166,11 @@ class TestBusinessKeyErrors:
     def test_composite_keys_compare_the_whole_tuple(self):
         frame = pd.DataFrame({"site_code": ["A", "A"], "layer": ["1", "2"]})
 
-        assert business_key_errors("site", ["site_code", "layer"], frame) == []
+        assert not business_key_errors("site", ["site_code", "layer"], frame)
 
     def test_repeated_values_across_tables_are_not_compared(self):
         first = pd.DataFrame({"site_code": ["A"]})
         second = pd.DataFrame({"site_code": ["A"]})
 
-        assert business_key_errors("site", ["site_code"], first) == []
-        assert business_key_errors("other_site", ["site_code"], second) == []
+        assert not business_key_errors("site", ["site_code"], first)
+        assert not business_key_errors("other_site", ["site_code"], second)

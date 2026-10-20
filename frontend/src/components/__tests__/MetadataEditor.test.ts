@@ -76,6 +76,12 @@ const VSelectStub = defineComponent({
   },
 })
 
+const VComboboxStub = defineComponent({
+  inheritAttrs: false,
+  props: ['modelValue', 'items', 'label'],
+  template: '<div />',
+})
+
 const VBtnStub = defineComponent({
   props: ['disabled', 'loading'],
   setup(props, { slots }) {
@@ -89,6 +95,7 @@ const globalStubs = {
   VTextField: VTextFieldStub,
   VTextarea: VTextareaStub,
   VSelect: VSelectStub,
+  VCombobox: VComboboxStub,
   VBtn: VBtnStub,
 }
 

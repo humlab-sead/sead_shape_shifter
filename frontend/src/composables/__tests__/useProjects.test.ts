@@ -1,27 +1,51 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import { nextTick } from 'vue'
+import { defineComponent } from 'vue'
+import { mount, type VueWrapper } from '@vue/test-utils'
 import { useProjects } from '../useProjects'
 import { useProjectStore } from '@/stores'
 import type { Project, ProjectMetadata } from '@/types'
 import type { ProjectCreateRequest, ProjectUpdateRequest } from '@/api/projects'
 
-// Mock console methods
-const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+let mountedWrappers: VueWrapper[] = []
+
+function useProjectsInSetup(options: Parameters<typeof useProjects>[0] = {}): ReturnType<typeof useProjects> {
+  let result: ReturnType<typeof useProjects> | null = null
+  const wrapper = mount(
+    defineComponent({
+      setup() {
+        result = useProjects(options)
+        return () => null
+      },
+    })
+  )
+
+  mountedWrappers.push(wrapper)
+
+  if (!result) {
+    throw new Error('Failed to create useProjects test harness')
+  }
+
+  return result
+}
 
 describe('useProjects', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
-    consoleError.mockClear()
+    mountedWrappers = []
+    vi.spyOn(console, 'error').mockImplementation(() => {})
   })
 
   afterEach(() => {
+    for (const wrapper of mountedWrappers) {
+      wrapper.unmount()
+    }
     vi.restoreAllMocks()
   })
 
   describe('initialization', () => {
     it('should initialize with default options', () => {
-      const { loading, error, projects } = useProjects({ autoFetch: false })
+      const { loading, error, projects } = useProjectsInSetup({ autoFetch: false })
 
       expect(loading.value).toBe(false)
       expect(error.value).toBeNull()
@@ -32,19 +56,16 @@ describe('useProjects', () => {
       const store = useProjectStore()
       vi.spyOn(store, 'fetchProjects').mockResolvedValue()
 
-      useProjects({ autoFetch: true })
-      await nextTick()
+      useProjectsInSetup({ autoFetch: true })
 
-      // Note: onMounted doesn't trigger in tests, so auto-fetch won't be called
-      // This test documents the intended behavior
-      expect(store.fetchProjects).not.toHaveBeenCalled()
+      expect(store.fetchProjects).toHaveBeenCalled()
     })
 
     it('should not auto-fetch when autoFetch is false', () => {
       const store = useProjectStore()
       vi.spyOn(store, 'fetchProjects')
 
-      useProjects({ autoFetch: false })
+      useProjectsInSetup({ autoFetch: false })
 
       expect(store.fetchProjects).not.toHaveBeenCalled()
     })
@@ -53,7 +74,7 @@ describe('useProjects', () => {
   describe('computed state', () => {
     it('should expose projects from store', () => {
       const store = useProjectStore()
-      const { projects } = useProjects({ autoFetch: false })
+      const { projects } = useProjectsInSetup({ autoFetch: false })
 
       const mockProjects: ProjectMetadata[] = [
         {
@@ -73,7 +94,7 @@ describe('useProjects', () => {
 
     it('should expose selectedProject from store', () => {
       const store = useProjectStore()
-      const { selectedProject } = useProjects({ autoFetch: false })
+      const { selectedProject } = useProjectsInSetup({ autoFetch: false })
 
       const mockProject: Project = {
         entities: {},
@@ -94,7 +115,7 @@ describe('useProjects', () => {
 
     it('should expose loading state from store', () => {
       const store = useProjectStore()
-      const { loading } = useProjects({ autoFetch: false })
+      const { loading } = useProjectsInSetup({ autoFetch: false })
 
       store.$patch({ loading: true })
       expect(loading.value).toBe(true)
@@ -105,7 +126,7 @@ describe('useProjects', () => {
 
     it('should expose error state from store', () => {
       const store = useProjectStore()
-      const { error } = useProjects({ autoFetch: false })
+      const { error } = useProjectsInSetup({ autoFetch: false })
 
       store.$patch({ error: 'Test error' })
       expect(error.value).toBe('Test error')
@@ -116,7 +137,7 @@ describe('useProjects', () => {
 
     it('should expose hasUnsavedChanges from store', () => {
       const store = useProjectStore()
-      const { hasUnsavedChanges } = useProjects({ autoFetch: false })
+      const { hasUnsavedChanges } = useProjectsInSetup({ autoFetch: false })
 
       store.$patch({ hasUnsavedChanges: true })
       expect(hasUnsavedChanges.value).toBe(true)
@@ -124,7 +145,7 @@ describe('useProjects', () => {
 
     it('should expose hasErrors from store', () => {
       const store = useProjectStore()
-      const { hasErrors } = useProjects({ autoFetch: false })
+      const { hasErrors } = useProjectsInSetup({ autoFetch: false })
 
       store.$patch({
         validationResult: {
@@ -142,7 +163,7 @@ describe('useProjects', () => {
 
     it('should expose hasWarnings from store', () => {
       const store = useProjectStore()
-      const { hasWarnings } = useProjects({ autoFetch: false })
+      const { hasWarnings } = useProjectsInSetup({ autoFetch: false })
 
       store.$patch({
         validationResult: {
@@ -164,7 +185,7 @@ describe('useProjects', () => {
       const store = useProjectStore()
       vi.spyOn(store, 'fetchProjects').mockResolvedValue()
 
-      const { fetch, initialized } = useProjects({ autoFetch: false })
+      const { fetch, initialized } = useProjectsInSetup({ autoFetch: false })
 
       expect(initialized.value).toBe(false)
 
@@ -179,7 +200,7 @@ describe('useProjects', () => {
       const error = new Error('Fetch failed')
       vi.spyOn(store, 'fetchProjects').mockRejectedValue(error)
 
-      const { fetch } = useProjects({ autoFetch: false })
+      const { fetch } = useProjectsInSetup({ autoFetch: false })
 
       await expect(fetch()).rejects.toThrow('Fetch failed')
     })
@@ -190,7 +211,7 @@ describe('useProjects', () => {
       const store = useProjectStore()
       const spy = vi.spyOn(store, 'fetchProjects').mockResolvedValue()
 
-      const { ensureLoaded, initialized } = useProjects({ autoFetch: false })
+      const { ensureLoaded, initialized } = useProjectsInSetup({ autoFetch: false })
       await ensureLoaded()
 
       expect(spy).toHaveBeenCalledTimes(1)
@@ -204,7 +225,7 @@ describe('useProjects', () => {
       vi.spyOn(store, 'isProjectsStale').mockReturnValue(false)
       const spy = vi.spyOn(store, 'fetchProjects').mockResolvedValue()
 
-      const { ensureLoaded, initialized } = useProjects({ autoFetch: false })
+      const { ensureLoaded, initialized } = useProjectsInSetup({ autoFetch: false })
       await ensureLoaded()
 
       expect(initialized.value).toBe(true)
@@ -217,7 +238,7 @@ describe('useProjects', () => {
       vi.spyOn(store, 'isProjectsStale').mockReturnValue(true)
       const spy = vi.spyOn(store, 'fetchProjects').mockResolvedValue()
 
-      const { ensureLoaded, initialized } = useProjects({ autoFetch: false })
+      const { ensureLoaded, initialized } = useProjectsInSetup({ autoFetch: false })
       await ensureLoaded()
 
       expect(initialized.value).toBe(true)
@@ -244,7 +265,7 @@ describe('useProjects', () => {
 
       vi.spyOn(store, 'selectProject').mockResolvedValue(mockProject)
 
-      const { select } = useProjects({ autoFetch: false })
+      const { select } = useProjectsInSetup({ autoFetch: false })
       const result = await select('selected')
 
       expect(store.selectProject).toHaveBeenCalledWith('selected')
@@ -256,7 +277,7 @@ describe('useProjects', () => {
       const error = new Error('Select failed')
       vi.spyOn(store, 'selectProject').mockRejectedValue(error)
 
-      const { select } = useProjects({ autoFetch: false })
+      const { select } = useProjectsInSetup({ autoFetch: false })
 
       await expect(select('nonexistent')).rejects.toThrow('Select failed')
     })
@@ -284,7 +305,7 @@ describe('useProjects', () => {
 
       vi.spyOn(store, 'createProject').mockResolvedValue(mockProject)
 
-      const { create } = useProjects({ autoFetch: false })
+      const { create } = useProjectsInSetup({ autoFetch: false })
       const result = await create(createRequest)
 
       expect(store.createProject).toHaveBeenCalledWith(createRequest)
@@ -296,7 +317,7 @@ describe('useProjects', () => {
       const error = new Error('Create failed')
       vi.spyOn(store, 'createProject').mockRejectedValue(error)
 
-      const { create } = useProjects({ autoFetch: false })
+      const { create } = useProjectsInSetup({ autoFetch: false })
       const createRequest: ProjectCreateRequest = {
         name: 'invalid',
         data_provider_code: 'test-provider',
@@ -328,7 +349,7 @@ describe('useProjects', () => {
 
       vi.spyOn(store, 'updateProject').mockResolvedValue(mockProject)
 
-      const { update } = useProjects({ autoFetch: false })
+      const { update } = useProjectsInSetup({ autoFetch: false })
       const result = await update('test-project', updateRequest)
 
       expect(store.updateProject).toHaveBeenCalledWith('test-project', updateRequest)
@@ -340,7 +361,7 @@ describe('useProjects', () => {
       const error = new Error('Update failed')
       vi.spyOn(store, 'updateProject').mockRejectedValue(error)
 
-      const { update } = useProjects({ autoFetch: false })
+      const { update } = useProjectsInSetup({ autoFetch: false })
       const updateRequest: ProjectUpdateRequest = { entities: {}, options: { description: 'New desc' } }
 
       await expect(update('test-project', updateRequest)).rejects.toThrow('Update failed')
@@ -352,7 +373,7 @@ describe('useProjects', () => {
       const store = useProjectStore()
       vi.spyOn(store, 'deleteProject').mockResolvedValue()
 
-      const { remove } = useProjects({ autoFetch: false })
+      const { remove } = useProjectsInSetup({ autoFetch: false })
       await remove('test-project')
 
       expect(store.deleteProject).toHaveBeenCalledWith('test-project')
@@ -363,7 +384,7 @@ describe('useProjects', () => {
       const error = new Error('Delete failed')
       vi.spyOn(store, 'deleteProject').mockRejectedValue(error)
 
-      const { remove } = useProjects({ autoFetch: false })
+      const { remove } = useProjectsInSetup({ autoFetch: false })
 
       await expect(remove('test-project')).rejects.toThrow('Delete failed')
     })
@@ -383,7 +404,7 @@ describe('useProjects', () => {
 
       vi.spyOn(store, 'validateProject').mockResolvedValue(mockResult)
 
-      const { validate } = useProjects({ autoFetch: false })
+      const { validate } = useProjectsInSetup({ autoFetch: false })
       const result = await validate('test-project')
 
       expect(store.validateProject).toHaveBeenCalledWith('test-project')
@@ -395,7 +416,7 @@ describe('useProjects', () => {
       const error = new Error('Validation failed')
       vi.spyOn(store, 'validateProject').mockRejectedValue(error)
 
-      const { validate } = useProjects({ autoFetch: false })
+      const { validate } = useProjectsInSetup({ autoFetch: false })
 
       await expect(validate('test-project')).rejects.toThrow('Validation failed')
     })
@@ -415,7 +436,7 @@ describe('useProjects', () => {
 
       store.$patch({ projects: [mockProject] })
 
-      const { projectByName } = useProjects({ autoFetch: false })
+      const { projectByName } = useProjectsInSetup({ autoFetch: false })
       const result = projectByName('test-project')
 
       expect(result).toEqual(mockProject)
@@ -434,7 +455,7 @@ describe('useProjects', () => {
 
       vi.spyOn(store, 'fetchBackups').mockResolvedValue(mockBackups)
 
-      const { fetchBackups } = useProjects({ autoFetch: false })
+      const { fetchBackups } = useProjectsInSetup({ autoFetch: false })
       const result = await fetchBackups('test-project')
 
       expect(store.fetchBackups).toHaveBeenCalledWith('test-project')
@@ -457,7 +478,7 @@ describe('useProjects', () => {
 
       vi.spyOn(store, 'restoreBackup').mockResolvedValue(mockProject)
 
-      const { restore } = useProjects({ autoFetch: false })
+      const { restore } = useProjectsInSetup({ autoFetch: false })
       const result = await restore('test-project', 'backup.yml')
 
       expect(store.restoreBackup).toHaveBeenCalledWith('test-project', 'backup.yml')
@@ -469,7 +490,7 @@ describe('useProjects', () => {
       const error = new Error('Backup failed')
       vi.spyOn(store, 'fetchBackups').mockRejectedValue(error)
 
-      const { fetchBackups } = useProjects({ autoFetch: false })
+      const { fetchBackups } = useProjectsInSetup({ autoFetch: false })
 
       await expect(fetchBackups('test-project')).rejects.toThrow('Backup failed')
     })
@@ -480,7 +501,7 @@ describe('useProjects', () => {
       const store = useProjectStore()
       vi.spyOn(store, 'clearError')
 
-      const { clearError } = useProjects({ autoFetch: false })
+      const { clearError } = useProjectsInSetup({ autoFetch: false })
       clearError()
 
       expect(store.clearError).toHaveBeenCalled()
@@ -490,7 +511,7 @@ describe('useProjects', () => {
   describe('project statistics', () => {
     it('should compute project count', () => {
       const store = useProjectStore()
-      const { count } = useProjects({ autoFetch: false })
+      const { count } = useProjectsInSetup({ autoFetch: false })
 
       store.$patch({
         projects: [
@@ -517,7 +538,7 @@ describe('useProjects', () => {
     })
 
     it('should check if projects are empty', () => {
-      const { isEmpty } = useProjects({ autoFetch: false })
+      const { isEmpty } = useProjectsInSetup({ autoFetch: false })
 
       expect(isEmpty.value).toBe(true)
     })

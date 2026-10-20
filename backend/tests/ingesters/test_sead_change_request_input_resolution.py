@@ -1,15 +1,26 @@
 """Tests for SEAD change request input resolution of the run ID."""
 
 from datetime import datetime
+from pathlib import Path
+from types import MappingProxyType
 
+import pandas as pd
 import pytest
+from pandas.testing import assert_frame_equal
 
 from backend.app.ingesters import IngesterConfig
-from ingesters.sead_change_request.contracts import SubmissionContext
+from ingesters.sead_change_request.contracts import (
+    CHANGE_REQUEST_FILE_INPUT_RETIRED_MESSAGE,
+    SourceTableBundle,
+    SubmissionContext,
+)
 from ingesters.sead_change_request.input_resolution import (
     DeployStrategyError,
+    SourceBundleError,
+    _build_source_bundle,
     _resolve_deploy_strategy,
     _resolve_run_id,
+    _resolve_source_bundle,
     _resolve_staging_target_schema,
     _resolve_submission_context,
 )
@@ -188,3 +199,141 @@ class TestResolveDeployStrategy:
 
         with pytest.raises(DeployStrategyError, match="does not accept 'staging_target_schema'"):
             _resolve_deploy_strategy(config, _resolve_staging_target_schema(config))
+
+
+class TestResolveSourceBundle:
+    """The retired file input must fail before config extras or file access."""
+
+    @pytest.mark.parametrize("source", ["submission.xlsx", Path("submission.xlsx")])
+    def test_string_and_path_sources_are_rejected(self, source: str | Path):
+        config = IngesterConfig(host="localhost", port=5432, dbname="test_db", user="test_user")
+
+        with pytest.raises(SourceBundleError, match=CHANGE_REQUEST_FILE_INPUT_RETIRED_MESSAGE):
+            _resolve_source_bundle(config, source)
+
+    @pytest.mark.parametrize(
+        "extras",
+        [
+            {},
+            {"source_bundle": SourceTableBundle(tables={"sample": pd.DataFrame({"sample_id": [1]})})},
+            {"tables": {"sample": pd.DataFrame({"sample_id": [1]})}},
+        ],
+    )
+    @pytest.mark.parametrize("source", ["submission.xlsx", Path("submission.xlsx")])
+    def test_path_shaped_sources_cannot_select_extras(self, source: str | Path, extras: dict):
+        config = IngesterConfig(host="localhost", port=5432, dbname="test_db", user="test_user", extra=extras)
+
+        with pytest.raises(SourceBundleError, match=CHANGE_REQUEST_FILE_INPUT_RETIRED_MESSAGE):
+            _resolve_source_bundle(config, source)
+
+    def test_path_source_is_rejected_without_reading_the_file(self, tmp_path: Path):
+        source_path = tmp_path / "submission.xlsx"
+        source_path.write_bytes(b"not a workbook")
+        config = IngesterConfig(
+            host="localhost",
+            port=5432,
+            dbname="test_db",
+            user="test_user",
+            extra={"tables": {"sample": pd.DataFrame({"sample_id": [1]})}},
+        )
+
+        with pytest.raises(SourceBundleError, match=CHANGE_REQUEST_FILE_INPUT_RETIRED_MESSAGE):
+            _resolve_source_bundle(config, source_path)
+
+    def test_source_bundle_argument_is_accepted(self):
+        bundle = SourceTableBundle(tables={"sample": pd.DataFrame({"sample_id": [1]})})
+        config = IngesterConfig(host="localhost", port=5432, dbname="test_db", user="test_user")
+
+        assert _resolve_source_bundle(config, bundle) is bundle
+
+    def test_configured_source_bundle_is_accepted(self):
+        bundle = SourceTableBundle(tables={"sample": pd.DataFrame({"sample_id": [1]})})
+        config = IngesterConfig(host="localhost", port=5432, dbname="test_db", user="test_user", extra={"source_bundle": bundle})
+
+        assert _resolve_source_bundle(config, None) is bundle
+
+    def test_configured_tables_are_built_into_a_bundle(self):
+        config = IngesterConfig(
+            host="localhost",
+            port=5432,
+            dbname="test_db",
+            user="test_user",
+            extra={"tables": {"sample": pd.DataFrame({"sample_id": [1]})}},
+        )
+
+        bundle = _resolve_source_bundle(config, None)
+
+        assert list(bundle.tables) == ["sample"]
+
+    def test_non_dataframe_table_values_are_rejected_when_building_the_bundle(self):
+        with pytest.raises(SourceBundleError, match="must be a pandas DataFrame"):
+            _build_source_bundle({"sample": [{"sample_id": 1}]})
+
+    def test_empty_table_mappings_are_rejected_when_building_the_bundle(self):
+        with pytest.raises(SourceBundleError, match="No source tables were provided"):
+            _build_source_bundle({})
+
+
+class TestBuildSourceBundle:
+    """The adapter copies caller frames and sanitizes only the copied columns."""
+
+    def test_preserves_entity_names_values_dtypes_and_timezones(self):
+        source_frame = pd.DataFrame(
+            {
+                "Sample ID": [1, 2],
+                "Collected At": pd.Series(pd.to_datetime(["2026-05-23 10:15:00+02:00", "2026-05-24 11:30:00+02:00"])).dt.tz_convert(
+                    "Europe/Stockholm"
+                ),
+            }
+        )
+        original_columns = source_frame.columns.tolist()
+
+        bundle = _build_source_bundle({"sample": source_frame}, source_name="normalized submission")
+
+        expected_frame = source_frame.copy()
+        expected_frame.columns = ["sample_id", "collected_at"]
+        copied_frame = bundle.tables["sample"]
+
+        assert bundle.source_name == "normalized submission"
+        assert list(bundle.tables) == ["sample"]
+        assert copied_frame is not source_frame
+        assert source_frame.columns.tolist() == original_columns
+        assert_frame_equal(copied_frame, expected_frame)
+        assert str(copied_frame["collected_at"].dt.tz) == "Europe/Stockholm"
+
+    def test_sanitized_duplicate_columns_remain_unique(self):
+        source_frame = pd.DataFrame([[1, 2]], columns=["Sample ID", "Sample ID"])
+
+        bundle = _build_source_bundle({"sample": source_frame})
+
+        assert bundle.tables["sample"].columns.tolist() == ["sample_id", "sample_id_1"]
+
+    def test_internal_workflow_columns_keep_their_labels(self):
+        source_frame = pd.DataFrame(
+            {
+                "Sample Name": ["new name"],
+                "sample_name__existing": ["old name"],
+                "_row_state": ["existing_entity"],
+            }
+        )
+
+        bundle = _build_source_bundle({"sample": source_frame})
+
+        assert bundle.tables["sample"].columns.tolist() == ["sample_name", "sample_name__existing", "_row_state"]
+
+    def test_mapping_instances_are_accepted_by_source_resolution(self):
+        config = IngesterConfig(host="localhost", port=5432, dbname="test_db", user="test_user")
+        source = MappingProxyType({"sample": pd.DataFrame({"sample_id": [1]})})
+
+        bundle = _resolve_source_bundle(config, source)
+
+        assert list(bundle.tables) == ["sample"]
+        assert bundle.tables["sample"]["sample_id"].tolist() == [1]
+
+    def test_blank_table_names_are_rejected(self):
+        with pytest.raises(SourceBundleError, match="must be non-empty strings"):
+            _build_source_bundle({"   ": pd.DataFrame({"sample_id": [1]})})
+
+    def test_non_string_table_names_are_rejected(self):
+        with pytest.raises(SourceBundleError, match="must be non-empty strings"):
+            _build_source_bundle({1: pd.DataFrame({"sample_id": [1]})})  # type: ignore[dict-item]

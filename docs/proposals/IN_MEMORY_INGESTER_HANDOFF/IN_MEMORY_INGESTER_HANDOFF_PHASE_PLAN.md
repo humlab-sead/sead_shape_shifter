@@ -2,11 +2,11 @@
 
 ## Summary
 
-This plan sequences [the in-memory handoff proposal](./IN_MEMORY_INGESTER_HANDOFF.md). Retire unused Change Request file input first, then add a shared no-write normalization step, table-input support, a guarded backend helper, and project-only routes used by the operator client. The [target-bundle access proposal](../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md) follows this handoff and owns the later permission change and per-run output rules.
+This plan sequences [the in-memory handoff proposal](./IN_MEMORY_INGESTER_HANDOFF.md). Phases 1–3 retired Change Request file input and added no-write normalization and table-input support. Phase 4 added the guarded backend helper, and Phase 5 exposed its project-only routes and connected the saved-project operator client. The [target-bundle access proposal](../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md) owns the later permission change and per-run output rules.
 
 ## Problem
 
-Change Request generation currently reads a workbook written by normalization. That read accepts caller-supplied paths and can change names, values, types, and timezones. The proposed project-only operation needs normalized tables in memory, trusted ingester settings, project validation, and authorization before any ingester work.
+Change Request generation previously read a workbook written by normalization. That read accepted caller-supplied paths and could change names, values, types, and timezones. Phase 1 retired that input. The proposed project-only operation needs normalized tables in memory, trusted ingester settings, project validation, and authorization before any ingester work.
 
 ## Scope
 
@@ -16,10 +16,11 @@ It leaves Excel dispatch and file input for other ingesters unchanged. It does n
 
 ## Current Position
 
-- `workflow()` applies normalization options and then writes through a dispatcher; it has no shared no-write step.
-- `sead_change_request` still advertises Excel formats. Its source resolver can select `config.extra` tables before checking a path-shaped input, and its file routes remain callable.
-- Shared ingester requests require `source`; the current service copies caller configuration. There is no dedicated project-only route or backend helper with the proposed trusted-input and project-validation rules.
-- The handoff proposal deliberately retires Change Request file input before the replacement operator path is available. Bundle generation is unavailable during that interval.
+- `normalize_project()` applies normalization options and returns the completed tables without writing; `workflow()` calls it before its dispatcher write and shape log.
+- `sead_change_request` advertises no file formats. Its file routes, service calls, and file-oriented methods reject Change Request input; its source resolver rejects a path-shaped input before checking `config.extra`.
+- `TableSourceIngester` and the Change Request table methods are implemented. The adapter copies and sanitizes normalized tables; artifact rendering keeps date and clock fields without timezone conversion and rejects incompatible target column types.
+- Shared ingester requests still require `source` and use the existing file-oriented service. The internal `ProjectIngesterService` validates authorization and project configuration, then passes normalized tables and trusted settings to table-capable ingesters. The project-only routes now expose this helper, and the saved-project Dispatch form uses those routes.
+- Phases 1–5 are complete, as recorded in the [Phase 1](./IN_MEMORY_INGESTER_HANDOFF_PHASE_1_TASK_PLAN.md), [Phase 2](./IN_MEMORY_INGESTER_HANDOFF_PHASE_2_TASK_PLAN.md), [Phase 3](./IN_MEMORY_INGESTER_HANDOFF_PHASE_3_TASK_PLAN.md), [Phase 4](./IN_MEMORY_INGESTER_HANDOFF_PHASE_4_TASK_PLAN.md), and [Phase 5](./IN_MEMORY_INGESTER_HANDOFF_PHASE_5_TASK_PLAN.md) task plans. Project-only bundle generation is available through the saved-project operator path; both interim permissions remain required.
 
 ## Phase Plan
 
@@ -59,7 +60,7 @@ Close the unused Change Request workbook entry points before building the projec
 
 **Readiness**
 
-Ready for a task plan; the retirement rule is decided in the source proposal.
+Completed. The [Phase 1 task plan](./IN_MEMORY_INGESTER_HANDOFF_PHASE_1_TASK_PLAN.md) records acceptance and validation results.
 
 ### Phase 2: Share normalization without writing output
 
@@ -74,7 +75,7 @@ Let a caller obtain the completed normalized tables with the same options as `wo
 
 **Depends On**
 
-- Phase 1 retirement, to preserve the agreed delivery order.
+- Phase 1 retirement (complete), preserving the agreed delivery order.
 
 **Outputs**
 
@@ -96,7 +97,7 @@ Let a caller obtain the completed normalized tables with the same options as `wo
 
 **Readiness**
 
-Blocked on Phase 1 retirement; no further design decision is recorded for this phase.
+Completed. The [Phase 2 task plan](./IN_MEMORY_INGESTER_HANDOFF_PHASE_2_TASK_PLAN.md) records acceptance and validation results.
 
 ### Phase 3: Accept normalized tables in the Change Request ingester
 
@@ -108,7 +109,7 @@ Make table validation and ingestion explicit without using Excel as the input co
 
 - Add the separate `TableSourceIngester` capability and a Change Request adapter that copies and sanitizes columns while preserving entity names, values, dtypes, and timezones.
 - Reuse the existing post-resolution validation and ingestion checks for table methods. Reject invalid tables and unsupported timezone values clearly.
-- Use representative workbook fixtures to document data changes caused by Excel; compare business-key and generated-artifact behavior where those changes matter.
+- Use normalized table values for business-key decisions and generated artifacts.
 
 **Depends On**
 
@@ -122,23 +123,25 @@ Make table validation and ingestion explicit without using Excel as the input co
 
 - `PH3-AC-1` (from `P-AC-2`) A protocol check discovers table support without changing the shared `Ingester` protocol or shared file request and response models.
 - `PH3-AC-2` (from `P-AC-3`) The adapter copies valid tables, preserves normalized entity names and values, sanitizes columns, and rejects invalid input with `SourceBundleError`.
-- `PH3-AC-3` (from `P-AC-4`) Fixtures document relevant Excel conversion differences, and table-based business-key decisions and artifacts use normalized values.
-- `PH3-AC-4` (from `P-AC-8`) Table validation and ingestion run the existing post-preparation checks and preserve `validate_first` behavior; unsupported timezone values fail clearly.
+- `PH3-AC-3` (from `P-AC-4`) Table-based business-key decisions and generated change-request artifacts use normalized table values.
+- `PH3-AC-4` (from `P-AC-3`, `P-AC-8`) Table validation and ingestion run the existing post-preparation checks and preserve `validate_first` behavior. Date and timestamp values retain their normalized calendar and clock fields in generated literals; timezone metadata is removed without conversion. Incompatible timezone-aware target columns fail clearly.
 
 **Validation Milestones**
 
 - `VM-3.1` Protocol, adapter, and invalid-input checks establish the table contract (covers `PH3-AC-1`, `PH3-AC-2`).
-- `VM-3.2` Table validation and ingestion exercise preconditions, collision checks, SQL rendering, and artifact generation without workbook input (covers `PH3-AC-4`).
-- `VM-3.3` Fixtures show preserved normalized data and the relevant Excel conversion differences (covers `PH3-AC-3`).
+- `VM-3.2` Table validation and ingestion exercise preconditions and collision checks; artifact checks confirm date and clock fields are unchanged, timezone metadata is not converted, and incompatible target column types fail before artifact writing (covers `PH3-AC-4`).
+- `VM-3.3` Fixtures verify business-key decisions and generated change-request artifacts use normalized table values (covers `PH3-AC-3`).
 
 **Task-Plan Handoff**
 
 - Keep source entity names separate from target table names: `TargetModel.entities` identifies the entity, and `target_table` selects the SQL table when present. Do not apply Excel sheet-name rules or require workbook decision parity.
-- Resolve which target columns and SQL renderers support timezone-aware datetimes before completing table support; reject unsupported combinations with a clear error.
+- Here, an input column is a column in a normalized entity DataFrame passed to the table methods. Its target is the same-named column in the destination table for that entity, described by `TargetModel.entities[entity].columns` and `target_table` (or the entity name when `target_table` is unset).
+- For a `date` target, use the calendar date shown in the normalized input value. For a timestamp without time zone target, use its calendar and clock fields as written. Remove any timezone metadata from normalized datetime values without changing those fields; do not convert through UTC or a target/session timezone. Require timezone-naive target columns and reject incompatible target types.
+- Verify that each deploy-artifact strategy (`inline_insert`, `copy_csv`, and `inline_staging`) writes those literal values without shifting the date or clock fields, and rejects incompatible target types before artifact writing.
 
 **Readiness**
 
-Requires Phase 2 output and a decision based on timezone rendering checks before a task plan can be ready.
+Completed. The [Phase 3 task plan](./IN_MEMORY_INGESTER_HANDOFF_PHASE_3_TASK_PLAN.md) records the table-method, literal-rendering, and incompatible-target validation results.
 
 ### Phase 4: Build the guarded project composition helper
 
@@ -154,7 +157,7 @@ Compose authorized project normalization and table ingestion with server-selecte
 
 **Depends On**
 
-- Phases 2 and 3 provide the no-write step and table methods.
+- Phases 2 and 3 provide the no-write step and table methods (both complete).
 
 **Outputs**
 
@@ -182,7 +185,7 @@ Compose authorized project normalization and table ingestion with server-selecte
 
 **Readiness**
 
-Blocked on Phases 2 and 3, including the timezone decision.
+Completed. The [Phase 4 task plan](./IN_MEMORY_INGESTER_HANDOFF_PHASE_4_TASK_PLAN.md) records implementation and validation for `PH4-AC-1`–`PH4-AC-6`. The helper retains the interim application permission check; the companion proposal's output and database rules remain prerequisites for removing it.
 
 ### Phase 5: Expose project-only routes and switch the operator client
 
@@ -224,7 +227,7 @@ Let an authorized operator validate and generate a Change Request from a saved p
 
 **Readiness**
 
-Blocked on Phase 4. The later permission change remains in the companion plan.
+Completed. The [Phase 5 task plan](./IN_MEMORY_INGESTER_HANDOFF_PHASE_5_TASK_PLAN.md) records implementation and passing validation for `PH5-AC-1`–`PH5-AC-4`. Both `project:execute` and the interim `application:run_ingesters` permission remain required. The companion proposal still owns exclusive per-run output and read-only target-database access before the application permission can be removed.
 
 ## Cross-Phase Rules
 

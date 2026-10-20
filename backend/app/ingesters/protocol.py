@@ -4,9 +4,12 @@ This module defines the standard interface that all ingesters must implement,
 along with configuration and result data classes.
 """
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
+
+import pandas as pd
 
 
 @dataclass
@@ -224,5 +227,46 @@ class Ingester(Protocol):
 
         Returns:
             IngestionResult with success status and details
+        """
+        ...
+
+
+@runtime_checkable
+class TableSourceIngester(Protocol):
+    """Optional capability for ingesters that accept normalized tables in memory.
+
+    This capability is independent of :class:`Ingester`. An ingester may support
+    file input, table input, or both, and callers discover table support with a
+    runtime check instead of inspecting ``supported_formats``.
+    """
+
+    async def validate_tables(self, tables: Mapping[str, pd.DataFrame], *, source_name: str = "") -> ValidationResult:
+        """Validate normalized tables without writing any artifact.
+
+        Args:
+            tables: Entity or table name mapped to one normalized DataFrame.
+            source_name: Diagnostic label for error messages; never a file path.
+
+        Returns:
+            ValidationResult with errors, warnings, and info messages.
+        """
+        ...
+
+    async def ingest_tables(
+        self,
+        tables: Mapping[str, pd.DataFrame],
+        *,
+        source_name: str = "",
+        validate_first: bool = True,
+    ) -> IngestionResult:
+        """Ingest normalized tables into the target system.
+
+        Args:
+            tables: Entity or table name mapped to one normalized DataFrame.
+            source_name: Diagnostic label for error messages; never a file path.
+            validate_first: Run validation before ingesting.
+
+        Returns:
+            IngestionResult with success status and details.
         """
         ...

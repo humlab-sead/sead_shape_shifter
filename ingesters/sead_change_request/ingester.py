@@ -4,10 +4,12 @@ This module resolves external inputs, runs the shared preparation flow, and
 turns the result into validation or ingestion output.
 """
 
+from collections.abc import Mapping
 from dataclasses import asdict, replace
 from pathlib import Path
 from typing import Any
 
+import pandas as pd
 from loguru import logger
 
 from backend.app.ingesters.protocol import IngesterConfig, IngesterMetadata, IngestionResult, ValidationResult
@@ -15,9 +17,11 @@ from backend.app.ingesters.registry import get_ingester_registry
 from ingesters.sead_change_request.artifact_writer import write_artifact_bundle
 from ingesters.sead_change_request.collision_checks import CollisionCheckResult, check_projected_collisions
 from ingesters.sead_change_request.contracts import (
+    CHANGE_REQUEST_FILE_INPUT_RETIRED_MESSAGE,
     FIXED_PROVIDER_TARGET_TABLE,
     ChangeRequestPackage,
     DeployArtifact,
+    SourceTableBundle,
     TrustedProjectContext,
 )
 from ingesters.sead_change_request.input_resolution import (
@@ -25,6 +29,7 @@ from ingesters.sead_change_request.input_resolution import (
     InputResolutionError,
     SubmissionContextError,
     TargetModelError,
+    _build_source_bundle,
     resolve_inputs,
 )
 from ingesters.sead_change_request.package_builder import build_change_request_package, build_staging_package
@@ -57,7 +62,7 @@ class SeadChangeRequestIngester:
             name="SEAD Change Request",
             description="Generate SEAD change request artifacts from normalized data",
             version="0.1.0",
-            supported_formats=["xlsx", "xls"],
+            supported_formats=[],
             requires_config=True,
         )
 
@@ -66,9 +71,9 @@ class SeadChangeRequestIngester:
         extras = self.config.extra or {}
         return extras.get(key)
 
-    async def _prepare_change_request(self, source: Path | str) -> PreparationResult:
-        """Run the shared preparation workflow after inputs are resolved."""
-        inputs: ResolvedInputs = resolve_inputs(self.config, source)
+    async def _prepare_change_request(self, bundle: SourceTableBundle) -> PreparationResult:
+        """Run the shared preparation workflow for an in-memory source bundle."""
+        inputs: ResolvedInputs = resolve_inputs(self.config, bundle)
         inputs = self._add_submission_tables(inputs)
         self._validate_business_keys(inputs)
         await self._verify_provider_row(inputs)
@@ -171,14 +176,32 @@ class SeadChangeRequestIngester:
                 f"No SEAD data provider row matches data_provider_id {provider_id} and data_provider_code '{provider_code}'"
             )
 
-    async def validate(self, excel_file: Path | str) -> ValidationResult:
+    async def _validate_bundle(self, bundle: SourceTableBundle) -> ValidationResult:
+        """Validate an in-memory source bundle through the shared preparation flow."""
         try:
-            preparation: PreparationResult = await self._prepare_change_request(excel_file)
+            preparation: PreparationResult = await self._prepare_change_request(bundle)
         except InputResolutionError as exc:
             return build_validation_input_failure(exc)
 
         self._log_validation(preparation)
         return build_validation_result(preparation)
+
+    async def validate_tables(self, tables: Mapping[str, pd.DataFrame], *, source_name: str = "") -> ValidationResult:
+        """Validate normalized tables through the shared preparation flow.
+
+        The adapter copies and sanitizes the supplied frames before the existing
+        bundle validation runs. ``source_name`` is diagnostic metadata only.
+        """
+        try:
+            bundle: SourceTableBundle = _build_source_bundle(tables, source_name=source_name)
+        except InputResolutionError as exc:
+            return build_validation_input_failure(exc)
+        return await self._validate_bundle(bundle)
+
+    async def validate(self, source: Path | str) -> ValidationResult:  # pylint: disable=unused-argument
+        """Reject the retired Change Request file input without opening the source."""
+        logger.warning("SEAD change request validation rejected retired file input")
+        return ValidationResult(is_valid=False, errors=[CHANGE_REQUEST_FILE_INPUT_RETIRED_MESSAGE], warnings=[], infos=[])
 
     @staticmethod
     def _build_change_package(preparation: PreparationResult) -> ChangeRequestPackage:
@@ -206,9 +229,43 @@ class SeadChangeRequestIngester:
             len(preparation.planned.tables),
         )
 
-    async def ingest(self, excel_file: Path | str, validate_first: bool = True) -> IngestionResult:
+    async def ingest(self, source: Path | str, validate_first: bool = True) -> IngestionResult:  # pylint: disable=unused-argument
+        """Reject the retired Change Request file input without opening the source."""
+        logger.warning("SEAD change request ingest rejected retired file input")
+        return IngestionResult.create_failed_result(
+            message="File input retired",
+            details=CHANGE_REQUEST_FILE_INPUT_RETIRED_MESSAGE,
+        )
+
+    async def ingest_tables(
+        self,
+        tables: Mapping[str, pd.DataFrame],
+        *,
+        source_name: str = "",
+        validate_first: bool = True,
+    ) -> IngestionResult:
+        """Ingest normalized tables through the shared preparation and artifact flow.
+
+        The adapter copies and sanitizes the supplied frames before the existing
+        bundle workflow runs. ``source_name`` is diagnostic metadata only and is
+        never opened or resolved as a path.
+        """
         try:
-            preparation: PreparationResult = await self._prepare_change_request(excel_file)
+            bundle: SourceTableBundle = _build_source_bundle(tables, source_name=source_name)
+        except InputResolutionError as exc:
+            if validate_first:
+                validation_failure = build_validation_input_failure(exc)
+                return IngestionResult.create_failed_result(
+                    message="Validation failed",
+                    details=failure_details(validation_failure.errors),
+                )
+            return build_ingestion_input_failure(exc)
+        return await self._ingest_bundle(bundle, validate_first=validate_first)
+
+    async def _ingest_bundle(self, bundle: SourceTableBundle, validate_first: bool = True) -> IngestionResult:
+        """Ingest an in-memory source bundle through the shared preparation flow."""
+        try:
+            preparation: PreparationResult = await self._prepare_change_request(bundle)
         except InputResolutionError as exc:
             if validate_first:
                 validation_failure = build_validation_input_failure(exc)

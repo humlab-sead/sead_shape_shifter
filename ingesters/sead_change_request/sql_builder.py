@@ -20,13 +20,21 @@ from ingesters.sead_change_request.contracts import (
     resolve_bundle_name,
 )
 from ingesters.sead_change_request.inline_staging_sql import render_inline_staging_deploy
-from ingesters.sead_change_request.sql_rendering import encode_bundle_file_content
+from ingesters.sead_change_request.sql_rendering import (
+    drop_timezone,
+    encode_bundle_file_content,
+    is_date_type,
+    is_midnight,
+    is_timezone_aware_type,
+    normalize_column_type,
+)
 from ingesters.sead_change_request.sql_rendering import quote_identifier as _quote_identifier
 from ingesters.sead_change_request.sql_rendering import quote_relation as _quote_relation
 from ingesters.sead_change_request.sql_rendering import quote_string as _quote_string
 from ingesters.sead_change_request.sql_rendering import render_literal as _render_literal
 from ingesters.sead_change_request.sql_rendering import renderable_columns as _renderable_columns
-from src.target_model.models import TargetModel
+from ingesters.sead_change_request.sql_rendering import validate_target_temporal_types as _validate_target_temporal_types
+from src.target_model.models import EntitySpec, TargetModel
 
 DEFAULT_DEPLOY_ARTIFACT_STRATEGY = "inline_insert"
 COPY_CSV_DEPLOY_ARTIFACT_STRATEGY = "copy_csv"
@@ -63,12 +71,22 @@ class InlineInsertDeployStrategy:
         for entity_name, package_table in change_package.tables.items():
             entity_spec = target_model.entities[entity_name]
             table_name = entity_spec.target_table or entity_name
+            column_types = _declared_column_types(entity_spec)
+            _validate_target_temporal_types(entity_name, package_table.frame.columns, column_types)
             generated_columns = {name for name, column in entity_spec.columns.items() if column.generated}
             for row_index, row in package_table.frame.iterrows():
                 if _is_update_row(package_table, row_index):
-                    statements.append(_render_update_statement(table_name, row, entity_spec.public_id, package_table.mutable_fields))
+                    statements.append(
+                        _render_update_statement(
+                            table_name,
+                            row,
+                            entity_spec.public_id,
+                            package_table.mutable_fields,
+                            column_types,
+                        )
+                    )
                 else:
-                    statements.append(_render_insert_statement(table_name, row, generated_columns))
+                    statements.append(_render_insert_statement(table_name, row, generated_columns, column_types))
 
         statements = _add_sequence_synchronization(change_package, target_model, statements)
         deploy_sql_lines = ["BEGIN;", "SET CONSTRAINTS ALL DEFERRED;"]
@@ -105,6 +123,8 @@ class CopyCsvDeployStrategy:
         for entity_name, package_table in change_package.tables.items():
             entity_spec = target_model.entities[entity_name]
             table_name = entity_spec.target_table or entity_name
+            column_types = _declared_column_types(entity_spec)
+            _validate_target_temporal_types(entity_name, package_table.frame.columns, column_types)
             insert_mask, update_mask = _package_row_masks(package_table)
 
             if bool(insert_mask.any()):
@@ -114,7 +134,7 @@ class CopyCsvDeployStrategy:
                     bundle_name = _artifact_directory_name(submission_context)
                     payload_relative_path = _build_bundle_payload_relative_path(bundle_name, table_name)
                     bundle_files[f"deploy/{payload_relative_path}"] = _render_copy_csv_bundle_file(
-                        package_table.frame.loc[insert_mask], columns
+                        package_table.frame.loc[insert_mask], columns, column_types
                     )
                     emitted_table_order.append(table_name)
                     emitted_row_counts[table_name] = len(package_table.frame.loc[insert_mask].index)
@@ -122,7 +142,15 @@ class CopyCsvDeployStrategy:
 
             if bool(update_mask.any()):
                 for _, row in package_table.frame.loc[update_mask].iterrows():
-                    statements.append(_render_update_statement(table_name, row, entity_spec.public_id, package_table.mutable_fields))
+                    statements.append(
+                        _render_update_statement(
+                            table_name,
+                            row,
+                            entity_spec.public_id,
+                            package_table.mutable_fields,
+                            column_types,
+                        )
+                    )
 
         statements = _add_sequence_synchronization(change_package, target_model, statements)
         deploy_sql_lines = ["BEGIN;", "SET CONSTRAINTS ALL DEFERRED;"]
@@ -417,11 +445,22 @@ def _resolved_author(submission_context: SubmissionContext) -> str:
     return submission_context.author or "unknown"
 
 
-def _render_insert_statement(table_name: str, row: pd.Series, generated_columns: set[str] | None = None) -> str:
+def _declared_column_types(entity_spec: EntitySpec) -> dict[str, str | None]:
+    """Return the declared target type for each column of one entity."""
+    return {column_name: column_spec.type for column_name, column_spec in entity_spec.columns.items()}
+
+
+def _render_insert_statement(
+    table_name: str,
+    row: pd.Series,
+    generated_columns: set[str] | None = None,
+    column_types: dict[str, str | None] | None = None,
+) -> str:
     """Render a single INSERT statement from a projected row."""
+    declared_types = column_types or {}
     columns = _renderable_columns(row, generated_columns)
     identifiers = ", ".join(_quote_identifier(column) for column in columns)
-    values = ", ".join(_render_literal(row[column]) for column in columns)
+    values = ", ".join(_render_literal(row[column], declared_types.get(column)) for column in columns)
     return f"INSERT INTO {_quote_identifier(table_name)} ({identifiers}) VALUES ({values});"
 
 
@@ -430,6 +469,7 @@ def _render_update_statement(
     row: pd.Series,
     public_id_column: str | None,
     mutable_fields: list[str] | None,
+    column_types: dict[str, str | None] | None = None,
 ) -> str:
     """Render a single UPDATE statement for an accepted existing-row update."""
     if not public_id_column:
@@ -439,12 +479,15 @@ def _render_update_statement(
             f"Cannot render update statement for '{table_name}' because '{public_id_column}' is missing from the projected row"
         )
 
+    declared_types = column_types or {}
     set_columns = _update_assignment_columns(row, public_id_column, mutable_fields)
     if not set_columns:
         raise ValueError(f"Cannot render update statement for '{table_name}' because no mutable columns were available")
 
-    assignments = ", ".join(f"{_quote_identifier(column)} = {_render_literal(row[column])}" for column in set_columns)
-    where_clause = f"{_quote_identifier(public_id_column)} = {_render_literal(row[public_id_column])}"
+    assignments = ", ".join(
+        f"{_quote_identifier(column)} = {_render_literal(row[column], declared_types.get(column))}" for column in set_columns
+    )
+    where_clause = f"{_quote_identifier(public_id_column)} = {_render_literal(row[public_id_column], declared_types.get(public_id_column))}"
     return f"UPDATE {_quote_identifier(table_name)} SET {assignments} WHERE {where_clause};"
 
 
@@ -458,19 +501,24 @@ def _render_copy_statement(table_name: str, columns: list[str], relative_path: s
     )
 
 
-def _render_copy_csv_bundle_file(frame: pd.DataFrame, columns: list[str]) -> str:
+def _render_copy_csv_bundle_file(
+    frame: pd.DataFrame,
+    columns: list[str],
+    column_types: dict[str, str | None] | None = None,
+) -> str:
     """Render a tab-delimited PostgreSQL CSV payload sidecar file for a prepared table."""
+    declared_types = column_types or {}
     buffer = StringIO()
 
     for _, row in frame.loc[:, columns].iterrows():
-        rendered_fields = [_render_copy_csv_field(row[column]) for column in columns]
+        rendered_fields = [_render_copy_csv_field(row[column], declared_types.get(column)) for column in columns]
         buffer.write("\t".join(rendered_fields))
         buffer.write("\n")
 
     return buffer.getvalue()
 
 
-def _render_copy_csv_field(value: object) -> str:
+def _render_copy_csv_field(value: object, column_type: str | None = None) -> str:
     """Render one field according to the hardened copy_csv contract."""
     scalar_value = cast(Any, value)
     if value is None or pd.isna(scalar_value):
@@ -481,27 +529,24 @@ def _render_copy_csv_field(value: object) -> str:
         return str(value)
     if isinstance(value, Real):
         return _render_copy_csv_real(value)
-    if isinstance(value, pd.Timestamp):
-        return _quote_copy_csv_text(_render_copy_csv_timestamp(value))
-    if isinstance(value, datetime):
-        return _quote_copy_csv_text(value.isoformat())
+    if isinstance(value, (pd.Timestamp, datetime)):
+        return _quote_copy_csv_text(_render_copy_csv_timestamp(pd.Timestamp(value), column_type))
 
     return _quote_copy_csv_text(str(value))
 
 
-def _render_copy_csv_timestamp(value: pd.Timestamp) -> str:
-    """Render pandas timestamps using the hardened copy_csv date-only contract."""
-    if (
-        value.tz is None  #  pylint: disable=too-many-boolean-expressions
-        and value.hour == 0
-        and value.minute == 0
-        and value.second == 0
-        and value.microsecond == 0
-        and value.nanosecond == 0
-    ):
+def _render_copy_csv_timestamp(value: pd.Timestamp, column_type: str | None = None) -> str:
+    """Render pandas timestamps using the target column type and copy_csv date-only contract."""
+    if is_timezone_aware_type(column_type):
+        raise ValueError(f"Target column type '{column_type}' is timezone-aware; normalized values must target a timezone-naive column")
+    if is_date_type(column_type):
         return value.date().isoformat()
 
-    return value.isoformat()
+    naive_value = drop_timezone(value)
+    if not normalize_column_type(column_type) and is_midnight(naive_value):
+        return naive_value.date().isoformat()
+
+    return naive_value.isoformat()
 
 
 def _render_copy_csv_real(value: Real) -> str:

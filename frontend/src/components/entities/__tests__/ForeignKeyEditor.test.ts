@@ -25,6 +25,7 @@ const ForeignKeyTesterStub = {
 
 const ComboboxStub = {
   name: 'VCombobox',
+  inheritAttrs: false,
   props: ['label', 'items', 'modelValue'],
   emits: ['focus', 'update:modelValue'],
   template: '<div class="v-combobox-stub" />',
@@ -34,6 +35,13 @@ const ControlStub = {
   inheritAttrs: false,
   props: ['modelValue'],
   template: '<div><slot /></div>',
+}
+
+const controlStubs = {
+  VAutocomplete: ControlStub,
+  VSelect: ControlStub,
+  VTextField: ControlStub,
+  VCombobox: ControlStub,
 }
 
 describe('ForeignKeyEditor', () => {
@@ -62,9 +70,7 @@ describe('ForeignKeyEditor', () => {
         renderStubDefaultSlot: true,
         stubs: {
           ForeignKeyTester: ForeignKeyTesterStub,
-          VAutocomplete: ControlStub,
-          VSelect: ControlStub,
-          VCombobox: ControlStub,
+          ...controlStubs,
         },
       },
     })
@@ -95,7 +101,7 @@ describe('ForeignKeyEditor', () => {
       },
       global: {
         renderStubDefaultSlot: true,
-        stubs: { VAutocomplete: ControlStub, VSelect: ControlStub, VCombobox: ControlStub },
+        stubs: controlStubs,
       },
     })
 
@@ -126,7 +132,7 @@ describe('ForeignKeyEditor', () => {
       },
       global: {
         renderStubDefaultSlot: true,
-        stubs: { VAutocomplete: ControlStub, VSelect: ControlStub, VCombobox: ControlStub },
+        stubs: controlStubs,
       },
     })
 
@@ -182,8 +188,7 @@ describe('ForeignKeyEditor', () => {
         renderStubDefaultSlot: true,
         stubs: {
           ForeignKeyTester: ForeignKeyTesterStub,
-          VAutocomplete: ControlStub,
-          VSelect: ControlStub,
+          ...controlStubs,
           VCombobox: ComboboxStub,
         },
       },
@@ -229,7 +234,7 @@ describe('ForeignKeyEditor', () => {
       },
       global: {
         renderStubDefaultSlot: true,
-        stubs: { VCombobox: ComboboxStub },
+        stubs: { ...controlStubs, VCombobox: ComboboxStub },
       },
     })
 
@@ -283,7 +288,7 @@ describe('ForeignKeyEditor', () => {
       },
       global: {
         renderStubDefaultSlot: true,
-        stubs: { VCombobox: ComboboxStub },
+        stubs: { ...controlStubs, VCombobox: ComboboxStub },
       },
     })
 
