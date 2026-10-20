@@ -3,6 +3,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from loguru import logger
 
 from backend.app.authorization.dependencies import (
     get_authorization_service,
@@ -64,8 +65,11 @@ async def validate_project_ingester(
         )
     except PermissionError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from exc
-    except Exception as exc:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Validation failed: {exc}") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except Exception:
+        logger.exception("Project ingester validation failed")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Validation failed")
 
 
 @router.post("/sead_change_request/from-project/ingest", response_model=IngestResponse)
@@ -84,8 +88,11 @@ async def ingest_project_ingester(
         )
     except PermissionError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from exc
-    except Exception as exc:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Ingestion failed: {exc}") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except Exception:
+        logger.exception("Project ingester ingestion failed")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Ingestion failed")
 
 
 @router.post("/{key}/validate", response_model=ValidateResponse)
