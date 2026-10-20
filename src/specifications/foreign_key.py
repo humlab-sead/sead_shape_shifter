@@ -118,12 +118,6 @@ class ForeignKeyConfigSpecification(Specification):
                 f". '{remote_table_cfg.public_id}' is the remote entity's 'public_id'. "
                 "It names the child column but does not hold joinable values here. " + identity_rule
             )
-        if remote_table_cfg.system_id in missing_fields:
-            return (
-                f". '{remote_table_cfg.system_id}' is the remote entity's generated 'system_id'. It is added "
-                "during normalization and is not a declared column of the remote entity, so it cannot be "
-                f"selected as a join key here. Declare it in the remote entity's 'columns' to join on it."
-            )
         return ""
 
     def get_missing_fields(self, *, required_fields: set[str], available_fields: set[str]) -> set[str]:
