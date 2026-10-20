@@ -536,7 +536,7 @@ class TestQueryService:
             mock_mapper.to_core_config = MagicMock(return_value=mock_ds_value)
 
             with pytest.raises(QueryExecutionError) as exc_info:
-                await service.execute_query(ds_cfg=mock_ds_config, query=query, timeout=1)
+                await service.execute_query(ds_cfg=mock_ds_config, query=query, timeout=0.05)
 
             error = exc_info.value
             assert "timed out" in error.message.lower() or "timeout" in error.message.lower()
@@ -572,9 +572,13 @@ class TestQueryService:
                 mock_mapper.to_core_config = MagicMock(return_value=MagicMock())
                 mock_get_loader.side_effect = [lambda data_source: first_loader, lambda data_source: second_loader]
 
-                first_task = asyncio.create_task(service.execute_query(ds_cfg=mock_ds_config, query="SELECT * FROM users", timeout=1))
+                first_task = asyncio.create_task(
+                    service.execute_query(ds_cfg=mock_ds_config, query="SELECT * FROM users", timeout=0.05)
+                )
                 await asyncio.wait_for(started.wait(), timeout=1)
-                second_task = asyncio.create_task(service.execute_query(ds_cfg=mock_ds_config, query="SELECT * FROM users", timeout=1))
+                second_task = asyncio.create_task(
+                    service.execute_query(ds_cfg=mock_ds_config, query="SELECT * FROM users", timeout=0.05)
+                )
 
                 with pytest.raises(QueryExecutionError):
                     await first_task
