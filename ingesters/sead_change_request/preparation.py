@@ -22,7 +22,6 @@ from ingesters.sead_change_request.identity_resolution import resolve_planned_ta
 from ingesters.sead_change_request.identity_work import build_identity_work_plan
 from ingesters.sead_change_request.orchestration import (
     IdentityOrchestrationResult,
-    TargetIdAllocatorPort,
     orchestrate_identity_assignments,
 )
 from ingesters.sead_change_request.staging_eligibility import (
@@ -89,7 +88,6 @@ async def prepare_change_request(
     *,
     sims_client: Any | None,
     reconciliation_client: Any | None,
-    target_id_allocator: TargetIdAllocatorPort | None = None,
 ) -> PreparationResult:
     """Run the shared preparation workflow after inputs are resolved."""
     preflight_result: CapabilityPreflightResult | None = await _run_capability_preflight(
@@ -103,7 +101,6 @@ async def prepare_change_request(
         inputs.submission_context,
         sims_client=sims_client,
         reconciliation_client=reconciliation_client,
-        target_id_allocator=target_id_allocator,
         target_model_entities=inputs.target_model.entities,
         fallback_assignments=inputs.fallback_assignments,
     )

@@ -75,7 +75,7 @@ class FakeBackendSimsClient:
         self.resolve_requests: list[object] = []
         self.associated_change_requests: list[tuple[UUID, str]] = []
 
-    async def resolve(self, request: object) -> FakeResolveResponse:
+    async def resolve(self, request: ResolveRequest) -> FakeResolveResponse:
         self.resolve_requests.append(request)
         if self.resolve_error is not None:
             raise self.resolve_error
@@ -473,8 +473,8 @@ async def test_reconciliation_miss_allocates_site_through_real_sims_service():
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_target_sequence_reservation_uses_loopback_disposable_postgres():
-    """Reserve submission_id from the helper-owned local PostgreSQL sequence."""
+async def test_target_verification_reads_do_not_advance_database_sequence():
+    """Target verification reads leave the submission sequence unchanged."""
     host = os.getenv("SEAD_DISPOSABLE_POSTGRES_HOST")
     port = os.getenv("SEAD_DISPOSABLE_POSTGRES_PORT")
     dbname = os.getenv("SEAD_DISPOSABLE_POSTGRES_DB")
@@ -507,17 +507,15 @@ async def test_target_sequence_reservation_uses_loopback_disposable_postgres():
             previous_value, was_called = await cursor.fetchone()
 
     checker = SeadChangeRequestTargetCollisionChecker(**connection_kwargs)
-    reserved_id = await checker.reserve_target_id("tbl_submissions", "submission_id")
+    await checker.target_id_exists("tbl_submissions", "submission_id", previous_value)
+    await checker.row_exists("tbl_submissions", {"submission_id": previous_value})
 
     async with await psycopg.AsyncConnection.connect(**connection_kwargs) as connection:
         async with connection.cursor() as cursor:
             await cursor.execute(sql.SQL("SELECT last_value, is_called FROM {}").format(sequence_identifier))
             current_value, is_called = await cursor.fetchone()
 
-    expected_id = previous_value + 1 if was_called else previous_value
-    assert reserved_id == expected_id
-    assert current_value == reserved_id
-    assert is_called is True
+    assert (current_value, is_called) == (previous_value, was_called)
 
 
 class TestTrustedScopeAndBusinessKeys:
@@ -576,6 +574,95 @@ class TestTrustedScopeAndBusinessKeys:
 
         identity_value = sims_client.resolve_requests[0].requests[0].primary_signal.identity_value
         assert identity_value == '[1,[["site_name","string","A"],["site_code","number","7"]]]'
+
+    @pytest.mark.asyncio
+    async def test_declared_business_key_reuses_target_identity_across_runs(self):
+        class StatefulBackendSimsClient(FakeBackendSimsClient):
+            """Return the same target ID for a provider scope and business-key identity."""
+
+            def __init__(self) -> None:
+                super().__init__()
+                self.identity_ids: dict[tuple[str, str], int] = {}
+
+            async def resolve(self, request: object) -> FakeResolveResponse:
+                self.resolve_requests.append(request)
+                scope_name = request.scope_name
+                identity_value = request.requests[0].primary_signal.identity_value
+                identity_key = (scope_name, identity_value)
+                target_id = self.identity_ids.setdefault(identity_key, 500 + len(self.identity_ids))
+                return FakeResolveResponse(self.binding_set_uuid, self.lifecycle_state, target_id=target_id)
+
+        sims_client = StatefulBackendSimsClient()
+        adapter = SeadChangeRequestSimsAdapter(
+            cast(Any, sims_client),
+            business_keys={"site": ("site_name", "site_code")},
+        )
+        row = {"site_name": "A", "site_code": "7"}
+
+        first = await adapter.allocate_entity(
+            "site",
+            row,
+            SubmissionContext(
+                submission_name="test-submission",
+                project_name="test-project",
+                timestamp=datetime.fromisoformat("2026-05-23T23:10:00"),
+                scope_name=TEST_SCOPE_NAME,
+                run_id="first-run",
+            ),
+        )
+        second = await adapter.allocate_entity(
+            "site",
+            row,
+            SubmissionContext(
+                submission_name="test-submission",
+                project_name="test-project",
+                timestamp=datetime.fromisoformat("2026-05-23T23:10:00"),
+                scope_name=TEST_SCOPE_NAME,
+                run_id="second-run",
+            ),
+        )
+        different_key = await adapter.allocate_entity(
+            "site",
+            {"site_name": "B", "site_code": "8"},
+            SubmissionContext(
+                submission_name="test-submission",
+                project_name="test-project",
+                timestamp=datetime.fromisoformat("2026-05-23T23:10:00"),
+                scope_name=TEST_SCOPE_NAME,
+                run_id="third-run",
+            ),
+        )
+        different_scope = await adapter.allocate_entity(
+            "site",
+            row,
+            SubmissionContext(
+                submission_name="test-submission",
+                project_name="test-project",
+                timestamp=datetime.fromisoformat("2026-05-23T23:10:00"),
+                scope_name="provider://mal/other-project",
+                run_id="fourth-run",
+            ),
+        )
+
+        assert first["target_id"] == second["target_id"]
+        assert different_key["target_id"] != first["target_id"]
+        assert different_scope["target_id"] != first["target_id"]
+        assert [request.run_id for request in sims_client.resolve_requests] == ["first-run", "second-run", "third-run", "fourth-run"]
+        assert {request.scope_name for request in sims_client.resolve_requests} == {TEST_SCOPE_NAME, "provider://mal/other-project"}
+        assert (
+            sims_client.resolve_requests[0].requests[0].primary_signal.identity_value
+            == sims_client.resolve_requests[1].requests[0].primary_signal.identity_value
+        )
+
+    @pytest.mark.asyncio
+    async def test_invalid_declared_business_key_fails_before_sims_request(self):
+        sims_client = FakeBackendSimsClient(lifecycle_state="confirmed", target_id=501)
+        adapter = SeadChangeRequestSimsAdapter(cast(Any, sims_client), business_keys={"site": ("site_name", "site_code")})
+
+        with pytest.raises(ValueError, match="Cannot serialize declared business key for entity 'site'"):
+            await adapter.allocate_entity("site", {"site_name": "A"}, minimal_submission_context())
+
+        assert not sims_client.resolve_requests
 
     @pytest.mark.asyncio
     async def test_entity_without_declared_keys_keeps_the_field_based_identity(self):

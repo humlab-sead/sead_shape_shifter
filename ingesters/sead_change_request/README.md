@@ -216,14 +216,24 @@ Common inputs include:
 
 Declared keys become one deterministic SIMS business key serialized as
 `[1, [[column, type, value], ...]]` in declared order. Entities without declared keys keep the
-field-based identity value.
+field-based identity value. Within the same provider-schema scope, matching declared keys resolve
+to the same SIMS identity across runs, even when the run ID changes.
+
+### Target Database Access
+
+Validation and bundle generation use the target database only for read-only provider-row
+confirmation and target-row collision checks. They do not write target rows, call `nextval`, or
+consume target sequence values. A non-SIMS entity with a missing database-sequence public ID must
+be pre-resolved; otherwise, preparation blocks it as unsupported.
+
+Generated deployment SQL keeps its sequence synchronization and inline-staging allocation. Those
+statements run only when the downstream operator executes the emitted artifact.
 
 Optional injected collaborators include:
 
 - `sims_client`: allocates entities, derives bridge rows, and manages Binding Set state
 - `reconciliation_client`: resolves classifier-like rows to existing target IDs
-- `collision_checker`: checks whether rendered rows would collide with target data and reserves configured database-sequence public IDs
-- `target_id_allocator`: optional separate client for reserving configured database-sequence public IDs; defaults to `collision_checker`
+- `collision_checker`: confirms the fixed provider row and checks whether rendered rows would collide with target data
 
 ## Artifact Output
 
@@ -254,6 +264,13 @@ The `metadata` and `metadata_artifact` sections both record the effective `scope
 `run_id` used for the run. The ingest response returns the same two values plus the written bundle
 directory in `output_path`, so an operator can match an emitted bundle to the SIMS scope, run, and
 on-disk location that produced it.
+
+The client keeps one run ID in its Pinia ingester store for each submission attempt. It reuses the
+ID for validation, bundle creation, and a retry after Binding Set confirmation, including when the
+form is unmounted and opened again during the same page session. Changing the normalized submission
+name, route project, timestamp, datatype, or identifier starts a new attempt; a successful bundle
+also ends the attempt. A page reload starts a new attempt. Other API callers may omit `run_id`; the
+server then creates the effective ID before SIMS resolution and output reservation.
 
 ## Retired File Input
 
