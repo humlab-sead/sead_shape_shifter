@@ -88,6 +88,9 @@ Every row above except the health check requires an authenticated principal thro
 | `DELETE` | `/api/v1/projects/{name}/layout`                     | `project:edit`                               |
 | `POST`   | `/api/v1/projects/{name}/files`                      | `project:edit`                               |
 | `GET`    | `/api/v1/projects/{name}/files`                      | `project:read`                               |
+| `DELETE` | `/api/v1/projects/{name}/files/{filename}`            | `project:edit`                               |
+| `GET`    | `/api/v1/projects/{name}/files/capabilities`         | `project:read`                               |
+| `POST`   | `/api/v1/projects/{name}/files/{filename}/share`     | `project:edit`; `application:manage_shared_sources` |
 
 `GET /api/v1/projects` returns metadata only for projects the principal can read: `ProjectService.list_authorized_projects` requires an `active` resource record and `project:read` for each entry, so the route narrows its response instead of denying the request. Projects without an authorization record are omitted. The route declares no `authorization_requirement` metadata because the check applies to each listed entry rather than to one request; the authenticated-only classification in the automated check records that distinction.
 
