@@ -6,4 +6,4 @@ code: strucke
 name: Ulf Strucke
 schemas:
   - provider_schema: radiocarbon/strucke-pilot
-    scope_name: provider://radiocarbon/strucke-pilot
+    scope_name: provider://strucke/radiocarbon/strucke-pilot
