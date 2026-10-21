@@ -1,5 +1,17 @@
 #!/usr/bin/env python3
-"""Copy projects from one local deployment to another without deleting projects."""
+"""Copy project folders and their authorization records between two deployments.
+
+Run as root from a repository checkout. Projects flow in one direction, from
+``--source-user`` to ``--target-user``. A project the target does not have is
+copied and adopted with the source's single named owner; a project copied earlier
+is replaced while its target resource and grants are kept. Nothing on the target is
+ever deleted: a project removed from the source stays on the target.
+
+Each completed copy is recorded in the target's ``state/project-sync`` directory,
+so a later run can tell an untouched destination project from one edited on the
+target. Both containers must be running, because authorization records are read
+through each deployment's own wrapper scripts.
+"""
 
 import argparse
 import fcntl
@@ -26,7 +38,7 @@ class SyncError(Exception):
 
 @dataclass(frozen=True)
 class Deployment:
-    """Paths and Unix identity for one local deployment."""
+    """Paths and Unix identity for one deployment user."""
 
     user: str
     uid: int
@@ -37,18 +49,19 @@ class Deployment:
 
     @property
     def projects_dir(self) -> Path:
-        """Return the directory containing project folders."""
+        """Return ``<data_dir>/projects``, the directory whose subfolders are projects."""
         return self.data_dir / "projects"
 
     @property
     def container_dir(self) -> Path:
-        """Return the deployed scripts directory's parent."""
+        """Return ``<home>/container``, which holds the deployment's installed scripts."""
         return self.home / "container"
 
 
 @dataclass(frozen=True)
 class Project:
-    """One source project and its named owner."""
+    """One source project with its resource UUID, single owner, and folder digest.
+    """
 
     locator: str
     path: Path
@@ -59,7 +72,13 @@ class Project:
 
 @dataclass(frozen=True)
 class Change:
-    """One project copy that passed all preflight checks."""
+    """One planned copy that passed all preflight checks.
+
+    ``target_resource_id`` is ``None`` when the target has no authorization resource
+    for the locator yet, which means the run will adopt the project. ``enrollment``
+    marks a project whose target folder and resource already exist and are being
+    taken over, so the replaced folder is kept under ``backups`` for review.
+    """
 
     project: Project
     destination: Path
@@ -68,12 +87,12 @@ class Change:
 
 
 class DeploymentCommands:
-    """Run the installed deployment commands as their owning Unix user."""
+    """Run the deployment's installed scripts as its own Unix user."""
 
     PATH = "/home/linuxbrew/.linuxbrew/bin:/usr/local/bin:/usr/bin:/bin"
 
     def run(self, deployment: Deployment, script: str, *args: str) -> str:
-        """Run a deployed script with the user's rootless Podman environment."""
+        """Run one installed script as the deployment user and return its standard output."""
         command = [
             "sudo",
             "-u",
@@ -95,7 +114,7 @@ class DeploymentCommands:
         return result.stdout
 
     def grant_records(self, deployment: Deployment, command: str) -> list[dict[str, Any]]:
-        """Read JSON resource or grant records from the authorization wrapper."""
+        """Read and check the JSON list printed by an authorization list command."""
         output = self.run(deployment, "authorization.sh", command, "--json")
         try:
             records = json.loads(output)
@@ -106,16 +125,16 @@ class DeploymentCommands:
         return records
 
     def adopt(self, deployment: Deployment, locator: str, owner: str) -> None:
-        """Create a project resource with the source project's owner."""
+        """Create a target resource and owner grant for one project locator."""
         self.run(deployment, "project.sh", "adopt", "--project", locator, "--owner", owner)
 
     def restart(self, deployment: Deployment) -> None:
-        """Restart the destination so its project caches reload from disk."""
+        """Restart the deployment's container so it reloads project content from disk."""
         self.run(deployment, "container.sh", "restart")
 
 
 def resolve_deployment(user: str, config_dir: Path | None = None) -> Deployment:
-    """Resolve the data mount using the deployment's installed environment loader."""
+    """Return the paths and Unix identity for one deployment user. """
     try:
         account = pwd.getpwnam(user)
     except KeyError as exc:
@@ -145,7 +164,7 @@ def resolve_deployment(user: str, config_dir: Path | None = None) -> Deployment:
 
 
 def tree_digest(root: Path) -> str:
-    """Hash file names and contents, rejecting links that could leave the project."""
+    """Return a SHA-256 hex digest of a project folder's names and contents."""
     if not root.is_dir() or root.is_symlink():
         raise SyncError(f"Project folder is missing or is a symlink: {root}")
     digest: HASH = hashlib.sha256()
@@ -170,7 +189,7 @@ def tree_digest(root: Path) -> str:
 
 
 def project_locator(path: Path, projects_dir: Path) -> str:
-    """Convert a project folder under projects/ to its API locator."""
+    """Convert a project folder path to the locator used by authorization and the API."""
     relative: Path = path.relative_to(projects_dir)
     if not relative.parts or any(part in {".", ".."} or ":" in part for part in relative.parts):
         raise SyncError(f"Invalid project folder name: {path}")
@@ -178,7 +197,7 @@ def project_locator(path: Path, projects_dir: Path) -> str:
 
 
 def reject_symlink_ancestors(path: Path, root: Path) -> None:
-    """Reject a project path whose existing parent points outside its root."""
+    """Raise SyncError when an existing part of ``path`` below ``root`` is a symlink."""
     relative: Path = path.relative_to(root)
     current: Path = root
     if current.is_symlink():
@@ -190,7 +209,15 @@ def reject_symlink_ancestors(path: Path, root: Path) -> None:
 
 
 def source_projects(source: Deployment, commands: DeploymentCommands) -> list[Project]:
-    """Read source folders and their one named owner from authorization records."""
+    """Read the source project folders together with their single named owner.
+
+    Reads active project resources and principal owner grants from the source
+    deployment, pairs each folder containing ``shapeshifter.yml`` with its resource
+    UUID, and hashes the folder contents. Raises SyncError when a project has no
+    active resource, does not have exactly one owner, contains a symlink, or is
+    nested inside another project. Nested folders are rejected because replacing a
+    parent folder would remove the separate project inside it.
+    """
     resources: dict[Any, Any] = {
         item["locator"]: item["resource_id"]
         for item in commands.grant_records(source, "list-resources")
@@ -222,19 +249,26 @@ def source_projects(source: Deployment, commands: DeploymentCommands) -> list[Pr
 
 
 def state_path(source: Deployment, target: Deployment) -> Path:
-    """Return the marker file for this source and destination pair."""
+    """Return the state file that records copies from one source to one target."""
     return target.data_dir / "state" / "project-sync" / f"{source.user}.json"
 
 
 def check_state_path(path: Path) -> None:
-    """Reject links in the marker path before the root process opens it."""
+    """Raise SyncError when any part of the state or lock path is a symlink."""
     for candidate in (path.parent.parent, path.parent, path, path.with_suffix(".lock")):
         if candidate.is_symlink():
             raise SyncError(f"Project sync state path contains a symlink: {candidate}")
 
 
 def read_state(path: Path, source: Deployment) -> dict[str, dict[str, str]]:
-    """Read the prior successful copies and check their source identity."""
+    """Read the recorded copies for one source and target pair.
+
+    Returns ``{locator: {source_resource_id, target_resource_id, digest}}``, or an
+    empty mapping when the file does not exist yet. Raises SyncError when the file
+    cannot be read, is not the expected shape, or records a different source
+    deployment or format, because comparing against another source's copies would
+    misjudge which destination projects were edited locally.
+    """
     check_state_path(path)
     if not path.exists():
         return {}
@@ -253,7 +287,12 @@ def read_state(path: Path, source: Deployment) -> dict[str, dict[str, str]]:
 
 
 def write_state(path: Path, source: Deployment, projects: dict[str, dict[str, str]]) -> None:
-    """Atomically record completed copies for a later conflict check."""
+    """Record the completed copies so the next run can detect local edits.
+
+    Writes a temporary file in the same directory, sets mode 0600, then replaces the
+    state file in one step, so an interrupted run leaves either the previous record
+    or the new one. Creates the parent directory with mode 0700 when it is missing.
+    """
     check_state_path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     os.chmod(path.parent, 0o700)
@@ -271,7 +310,13 @@ def write_state(path: Path, source: Deployment, projects: dict[str, dict[str, st
 
 @contextmanager
 def sync_lock(path: Path) -> Iterator[None]:
-    """Allow only one writer for a source and destination pair."""
+    """Hold an exclusive lock for one source and target pair while the body runs.
+
+    Raises SyncError immediately when another sync already holds the lock, instead of
+    waiting, so two operators cannot interleave copies. The lock file is created with
+    mode 0600 and the lock is released when the with-block exits, including on
+    failure.
+    """
     check_state_path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     os.chmod(path.parent, 0o700)
@@ -293,7 +338,20 @@ def plan(
     state: dict[str, dict[str, str]],
     enroll_existing: set[str],
 ) -> list[Change]:
-    """Reject collisions and local changes before copying any project."""
+    """Return the copies to perform after checking every source project.
+
+    Compares the source projects, the target resources, the recorded state, and
+    ``enroll_existing``. A project is adopted when the target has no resource for it,
+    enrolled when the target already has a folder and resource with the same single
+    owner and the locator is listed in ``enroll_existing``, and updated when it was
+    copied before and the destination is unchanged since that copy.
+
+    Raises SyncError for a target collision that ``enroll_existing`` does not allow, a
+    destination edited after its last copy, a changed authorization resource, a nested
+    folder, or an ``enroll_existing`` name that matched no project. Nothing is copied
+    here; see ``sync``, which also leaves ``enroll_existing`` projects alone until
+    every check has passed.
+    """
     target_resources = {
         item["locator"]: item["resource_id"]
         for item in commands.grant_records(target, "list-resources")
@@ -348,7 +406,15 @@ def plan(
 
 
 def copy_to_stage(change: Change, target: Deployment) -> Path:
-    """Copy one stable source project outside project discovery and set ownership."""
+    """Copy one source project to a staging folder on the target file system.
+
+    The staging folder is created under the target's ``tmp`` directory, which must be
+    on the same file system as the destination, so the rename that installs it cannot
+    leave a partly written project in the projects directory. Ownership is given to the
+    target user, and the source and staged copies are both hashed afterwards, so a
+    project edited during the copy raises SyncError. The staging folder is removed when
+    the copy fails.
+    """
     parent = change.destination.parent
     reject_symlink_ancestors(parent, target.projects_dir)
     parent.mkdir(parents=True, exist_ok=True)
@@ -381,7 +447,18 @@ def sync(
     dry_run: bool = False,
     enroll_existing: set[str] | None = None,
 ) -> list[str]:
-    """Copy changed projects and adopt new ones; keep absent source projects."""
+    """Copy the planned projects and record them, returning one line per change.
+
+    Returns one description per project, prefixed ``adopt``, ``enroll``, or ``update``.
+    With ``dry_run``, returns those descriptions and changes nothing.
+
+    Otherwise stages every copy before installing any of them, replaces each
+    destination folder (keeping the previous folder under ``backups`` when enrolling),
+    creates authorization records for adopted projects, and rewrites the state file
+    after each project. Restarts the target container once at the end when any folder
+    changed, so the application reloads project content. Raises SyncError when both
+    sides name the same deployment or a required directory is missing.
+    """
     if source.user == target.user or source.projects_dir.resolve() == target.projects_dir.resolve():
         raise SyncError("Source and destination must be different deployments")
     if not source.projects_dir.is_dir() or not target.projects_dir.is_dir():
@@ -464,7 +541,13 @@ def sync(
 
 
 def main() -> int:
-    """Parse deployment names and run one local project sync."""
+    """Parse the arguments, run one local project sync, and return the exit code.
+
+    Prints one line per project, prefixed with ``Would`` for a dry run, and a final
+    count. Returns 0 when the run completed and 1 when a SyncError or file error was
+    reported. Requires root, because project folders belong to the deployment users
+    and copied files must be given to the target user.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source-user", required=True, help="Unix user that owns the source deployment")
     parser.add_argument("--target-user", required=True, help="Unix user that owns the destination deployment")
