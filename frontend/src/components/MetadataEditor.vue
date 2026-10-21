@@ -116,6 +116,7 @@
           :items="targetModelItems"
           item-title="label"
           item-value="value"
+          :return-object="false"
           :loading="yamlFilesLoading"
           label="Target Model"
           hint="Select a project-local or shared YAML target model, or type an @load: path. Shared models are read-only."
