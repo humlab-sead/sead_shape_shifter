@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, shallowMount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { defineComponent, h, onMounted, useAttrs } from 'vue'
+import { defineComponent, h, onMounted, useAttrs, type PropType } from 'vue'
+import type { TargetModelFileOption } from '@/api/projects'
 import { useProjectStore } from '@/stores/project'
 import MetadataEditor from '../MetadataEditor.vue'
 
@@ -78,8 +79,34 @@ const VSelectStub = defineComponent({
 
 const VComboboxStub = defineComponent({
   inheritAttrs: false,
-  props: ['modelValue', 'items', 'label'],
-  template: '<div />',
+  props: {
+    modelValue: null,
+    items: { type: Array as PropType<TargetModelFileOption[]>, default: () => [] },
+    label: String,
+    returnObject: { type: Boolean, default: true },
+  },
+  emits: ['update:modelValue'],
+  setup(props, { emit }) {
+    return () =>
+      h('label', [
+        props.label,
+        h(
+          'select',
+          {
+            value: typeof props.modelValue === 'string' ? props.modelValue : '',
+            onChange: (event: Event) => {
+              const value = (event.target as HTMLSelectElement).value
+              const item = props.items.find((option) => option.value === value)
+              emit('update:modelValue', props.returnObject ? item : value)
+            },
+          },
+          [
+            h('option', { value: '' }, ''),
+            ...props.items.map((item) => h('option', { value: item.value }, item.label)),
+          ]
+        ),
+      ])
+  },
 })
 
 const VBtnStub = defineComponent({
@@ -121,7 +148,7 @@ function selectForLabel(wrapper: ReturnType<typeof shallowMount>, label: string)
   return field.get('select')
 }
 
-function createProject(providerCode: string | null, providerSchema: string | null) {
+function createProject(providerCode: string | null, providerSchema: string | null, targetModel: string | null = null) {
   return {
     metadata: {
       name: 'legacy-project',
@@ -130,6 +157,7 @@ function createProject(providerCode: string | null, providerSchema: string | nul
       entity_count: 0,
       data_provider_code: providerCode,
       provider_schema: providerSchema,
+      target_model: targetModel,
     },
     entities: {},
   }
@@ -188,6 +216,51 @@ describe('MetadataEditor', () => {
     expect(providerField?.get('input').attributes('readonly')).toBeDefined()
     expect(providerField?.get('input').element.value).toBe('Provider A (provider-a)')
     expect(schemaField?.get('input').element.value).toBe('schema-one')
+  })
+
+  it.each([
+    {
+      name: 'project-local',
+      label: 'Project-local: target-model.yml',
+      value: '@load: target-model.yml',
+      location: 'project' as const,
+    },
+    {
+      name: 'shared',
+      label: 'Shared: sead_standard_model.yml',
+      value: '@load: ${GLOBAL_TARGET_MODEL_DIR}/sead_standard_model.yml',
+      location: 'shared' as const,
+    },
+  ])('saves the selected $name target model reference as a string', async (targetModel) => {
+    const store = useProjectStore()
+    store.selectedProject = createProject('provider-a', 'schema-one')
+    mocks.listTargetModels.mockResolvedValue([
+      {
+        name: targetModel.label,
+        label: targetModel.label,
+        value: targetModel.value,
+        location: targetModel.location,
+      },
+    ])
+    const assignedProject = createProject('provider-a', 'schema-one', targetModel.value)
+    mocks.updateMetadata.mockResolvedValue(assignedProject)
+
+    const wrapper = shallowMount(MetadataEditor, {
+      props: { projectName: 'legacy-project' },
+      global: { renderStubDefaultSlot: true, stubs: globalStubs },
+    })
+    await flushPromises()
+
+    await selectForLabel(wrapper, 'Target Model').setValue(targetModel.value)
+    await wrapper.findAll('button').find((button) => button.text() === 'Save Metadata')?.trigger('click')
+    await flushPromises()
+
+    expect(mocks.updateMetadata).toHaveBeenCalledWith(
+      'legacy-project',
+      expect.objectContaining({
+        target_model: targetModel.value,
+      })
+    )
   })
 
   it('clears the selected schema when an unbound project changes provider', async () => {

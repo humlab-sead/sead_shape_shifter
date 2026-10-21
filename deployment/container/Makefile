@@ -43,10 +43,7 @@ ENV_FILE ?= $(if $(ENV_CONFIG_DIR),$(call resolve_path,$(ENV_CONFIG_DIR))/deploy
 
 # Shared fallback values come from the deployment template that setup.sh copies
 # to CONFIG_DIR/deployment.env, so the Makefile and scripts/_load-env.sh resolve
-# the same defaults from one place. Include the template first, then
-# deployment.env, so the deployed file wins; the ENV_* capture above keeps the
-# environment above both.
--include $(MAKEFILE_DIR).env.example
+# the same defaults from one place. 
 -include $(ENV_FILE)
 
 CONFIG_DIR := $(or $(ENV_CONFIG_DIR),$(CONFIG_DIR),$(HOME)/config)

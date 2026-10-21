@@ -5,7 +5,5 @@
 code: mal
 name: MAL
 schemas:
-  - provider_schema: archeobotany/arbodat-pilot
-    scope_name: provider://mal/archeobotany/arbodat-pilot
-  - provider_schema: radiocarbon/strucke-pilot
-    scope_name: provider://mal/radiocarbon/strucke-pilot
+  - provider_schema: archeobotany/mal
+    scope_name: provider://mal/archeobotany/mal

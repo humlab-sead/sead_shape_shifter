@@ -86,7 +86,7 @@ services:
       # deployment tree, so this nested mount hides the writable shared-data
       # path at the same location and the application can never rewrite an
       # established provider or scope identity.
-      - ./resources/data-providers:/app/shared/data-providers:ro
+      # - ./resources/data-providers:/app/shared/data-providers:ro
 
       - ${CONTAINER_DATA_DIR}/logs:/app/logs:rw
       - ${CONTAINER_DATA_DIR}/output:/app/output:rw

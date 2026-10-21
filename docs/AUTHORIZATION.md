@@ -135,6 +135,112 @@ The authorization database records grant creation and revocation, deployment-rol
 
 Audit records must not contain credentials, SQL text, sensitive filesystem paths, or secret configuration. They are written through the authorization repository with the associated mutation. Operators can review them with `sead-authorization list-audit-events`, using `--json` for automation; do not query or alter the database directly.
 
+## Snapshots And Restores
+
+`sead-authorization export-state` writes the complete stored state to JSON or YAML, and `import-state` replaces the stored records with a snapshot. The file extension selects the format. A snapshot holds every record needed to recreate the database:
+
+| Section | Contents |
+|---------|----------|
+| `schema_version` | Database schema version the snapshot was written from |
+| `resources` | Every resource generation, including inactive ones |
+| `grants` | Every typed grant, with `created_at` and `created_by` |
+| `application_roles` | Every deployment role, not only `admin` |
+| `audit_events` | Audit history, only when `--include-audit` is given |
+
+Resource UUIDs are recorded, so grants keep pointing at the same resources after a restore. Records are sorted and timestamps are written as ISO strings, so a committed snapshot changes only when a stored record changes.
+
+Audit events are excluded by default because they change on every authorization operation and would dominate a version-control diff. A restore from a snapshot without them keeps the existing audit history; a snapshot with them replaces it.
+
+`export-manifest` remains the reviewed-policy format and is not interchangeable with a snapshot: it holds only administrators, active top-level resources, and their grants, and it uses locators instead of UUIDs. Use `export-state` for a backup or a version-controlled record of the deployed state, and `export-manifest` for the policy review that `migrate --manifest` applies.
+
+`import-state` validates the whole snapshot before writing: the schema version must not be newer than the application, resource IDs and active locators must be unique, every grant and parent reference must resolve, and the owner role stays restricted to a principal. It also refuses a snapshot that would leave the deployment without an administrator, or an active project without an owner; see [Editing A Snapshot By Hand](#editing-a-snapshot-by-hand). The replacement runs in one transaction, so a rejected or failed restore leaves the previous records in place. The restore records one `state_restored` audit event with the actor and record counts.
+
+A restore replaces records, so it is not a routine fix for a single wrong grant. Use `grant`, `revoke`, `grant-application-role`, and `revoke-application-role` for individual changes.
+
+### Editing A Snapshot By Hand
+
+An exported snapshot can be edited and imported to change many records at once. Use this for a batch change across many principals or projects, for a change that should be reviewed as a file in version control, or to revert an earlier bulk change. Use the individual commands for one or two records.
+
+An import is refused when the snapshot would leave the deployment without an administrator, or an active project without an owner. That is the same guarantee `revoke` and `revoke-application-role` give for a single change. `--allow-no-admin` and `--allow-unowned-project` accept the condition on purpose, so a deliberate change is possible but a mistake is not silent.
+
+`import-state --dry-run` prints the record-level difference between the snapshot and the stored records rather than only counts. Each line names the record that would be added, removed, or changed:
+
+```text
+Dry run: 3 record change(s) in after.yaml:
+  - grant            group:editors viewer on project:project-a
+  - grant            principal:alice owner on project:project-a
+  + grant            principal:alice editor on project:project-a
+```
+
+Only access-relevant changes appear. For a grant that means the subject, the resource, and the role, so a changed `created_by` or `created_at` on an otherwise identical grant is not listed. The dry run also reports the administrators and the active projects that would have no owner after the import, and exits non-zero when either condition would occur without the matching opt-in flag.
+
+Two consequences remain for a restore, whichever way it is applied.
+
+- A restore records one `state_restored` event with record counts. It does not record which grant or role changed, so the audit trail shows that a restore happened but not what it altered. The `--dry-run` output is the only record of what changed, so keep it with the change.
+- A restore replaces every stored record. A project created between the export and the import loses its authorization record: the project folder stays on disk, its locator resolves to no resource, and only an administrator can reach it. Export immediately before importing.
+
+To change roles and grants by hand, follow these steps. In a deployed environment, run each command as the deployment user through `~/container/scripts/authorization.sh`, for example `./scripts/authorization.sh export-state after.yaml`. The wrapper runs the command inside the container and copies the file across the container boundary. `sead-authorization` is the command name inside the container.
+
+1. Export the current state as the file to return to, and take a binary backup as well.
+
+   ```bash
+   sead-authorization export-state before.yaml
+   sead-authorization backup before-restore.sqlite3
+   ```
+
+   Through the wrapper, `./scripts/authorization.sh backup` takes no destination: it writes a timestamped file to the persistent `backups/` directory.
+
+2. Export the state you will edit and compare the two files, so the intent of each change is written down.
+
+   ```bash
+   sead-authorization export-state after.yaml
+   diff -u before.yaml after.yaml
+   ```
+
+3. Edit `after.yaml`, then review the difference.
+
+   ```bash
+   diff -u before.yaml after.yaml
+   ```
+
+4. Validate the snapshot without writing it. The command prints each record it would add, remove, or change, and rejects an invalid schema version, duplicate IDs, an unresolved reference, or an owner role on a group or `everyone` subject. It exits non-zero when the snapshot would leave no administrator or an active project without an owner.
+
+   ```bash
+   sead-authorization import-state after.yaml --dry-run --actor you@example.org
+   ```
+
+5. Confirm the dry run lists the changes you intended, and nothing else. If it reports an administrator or an owned project you did not mean to remove, edit the snapshot rather than reaching for the opt-in flag.
+
+6. Import the snapshot. The command prints the record counts it will write and asks for confirmation before replacing anything; `--yes` skips the prompt.
+
+   ```bash
+   sead-authorization import-state after.yaml --actor you@example.org
+   ```
+
+7. Export the stored state again and confirm it holds the same records. Export sorts grants by resource, subject type, subject, and role, so a record added at the end of the file returns in its sorted position. Compare the lines rather than the order.
+
+   ```bash
+   sead-authorization export-state verify.yaml
+   diff -u <(sort after.yaml) <(sort verify.yaml)
+   ```
+
+Keep `before.yaml` until the change is verified. Importing it restores the earlier records.
+
+A hand-added grant needs `subject_type`, `subject_id`, `resource_id`, `role`, `created_at`, and `created_by`.
+
+| Field | Rule |
+|-------|------|
+| `subject_type` | `principal`, `group`, or `everyone` |
+| `subject_id` | Principal ID or group ID; `authenticated` for `everyone` |
+| `resource_id` | UUID of a resource in the same snapshot |
+| `role` | `viewer`, `editor`, `executor`, or `owner` for project resources; `reader` for shared data sources |
+| `created_at` | ISO 8601 timestamp, for example `2026-10-20T09:00:00+00:00` |
+| `created_by` | Non-empty principal ID recorded as the creator |
+
+The `owner` role is rejected on a `group` or `everyone` subject, so every project keeps a named principal owner. Granting access to a project that is not yet in the snapshot requires adding its resource first, with a new UUID and `lifecycle_state: active`; see [Moving A Resource Locator](#moving-a-resource-locator) for the case where a project moved rather than was created.
+
+The import checks that `subject_type`, `resource_id`, `created_at`, and `created_by` are valid, but it does not check the grant `role` against the role names in [Resource Roles](#resource-roles). A misspelled role is accepted and recorded. Because the policy denies unknown roles, such a grant permits nothing, and the import still reports success. When a hand-edited grant has no effect, check its role spelling against the role table.
+
 ## Current Coverage
 
 Implemented controls cover project resources and project children, shared data-source access, project references to shared sources, and authenticated access to the global application and error logs. The policy is intentionally deny-by-default.
