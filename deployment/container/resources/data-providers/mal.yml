@@ -6,4 +6,4 @@ code: mal
 name: MAL
 schemas:
   - provider_schema: archeobotany/mal
-    scope_name: provider://archeobotany/mal
+    scope_name: provider://mal/archeobotany/mal

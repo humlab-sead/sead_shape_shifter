@@ -6,4 +6,4 @@ code: arbodat-pilot
 name: Arbodat Pilot
 schemas:
   - provider_schema: archeobotany/arbodat-pilot
-    scope_name: provider://archeobotany/arbodat-pilot
+    scope_name: provider://arbodat-pilot/archeobotany/arbodat-pilot
