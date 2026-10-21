@@ -38,10 +38,20 @@ Convenience commands:
   backup                 Create a timestamped authorization database backup
   restore BACKUP         Restore a backup after stopping the application and
                          checking the restored database before restarting it
-    import-manifest FILE   Import a host-side JSON or YAML manifest into the
-                                                 running container
-    export-manifest FILE   Export active top-level resources and grants from the
-                                                 running container as JSON or YAML
+  import-manifest FILE   Import a host-side JSON or YAML manifest into the
+                         running container
+  export-manifest FILE   Export active top-level resources and grants from the
+                         running container as JSON or YAML
+  import-state FILE      Replace all stored authorization records with a host-side
+                         JSON or YAML snapshot (see export-state). Add --dry-run
+                         to list each record the snapshot would add, remove, or
+                         change. The import is refused when the result would
+                         leave no administrator or an active project without an
+                         owner; accept that with --allow-no-admin or
+                         --allow-unowned-project.
+  export-state FILE      Export the complete authorization state, including
+                         children, inactive resources, and every deployment
+                         role, as JSON or YAML for review and version control
 
 Web users (run on the deployment host):
     The htpasswd username must exactly match the case-sensitive principal ID used
@@ -63,6 +73,9 @@ Examples:
   container/scripts/authorization.sh integrity-check
   container/scripts/authorization.sh backup
   container/scripts/authorization.sh restore authorization-20260916-120000.sqlite3
+  container/scripts/authorization.sh export-state after.yaml
+  container/scripts/authorization.sh import-state after.yaml --dry-run --actor operator
+  container/scripts/authorization.sh import-state after.yaml --actor operator
   container/scripts/authorization.sh grant --resource-type project \
     --locator example --subject-type principal --subject-id user \
     --role viewer --actor operator
@@ -110,6 +123,16 @@ require_running_container() {
     fi
 }
 
+has_actor() {
+    local argument
+    for argument in "$@"; do
+        if [[ "$argument" = "--actor" || "$argument" = --actor=* ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
 run_cli() {
     require_running_container
     local command_name="${1:-}"
@@ -117,15 +140,7 @@ run_cli() {
     local -a command_args=("$@")
     case "$command_name" in
         grant|revoke|grant-application-role|revoke-application-role|move-resource)
-            local has_actor=false
-            local argument
-            for argument in "${command_args[@]}"; do
-                if [[ "$argument" = "--actor" || "$argument" = --actor=* ]]; then
-                    has_actor=true
-                    break
-                fi
-            done
-            if [[ "$has_actor" = false ]]; then
+            if ! has_actor "${command_args[@]}"; then
                 command_args+=(--actor "$HOST_ACTOR")
             fi
             ;;
@@ -214,6 +229,46 @@ export_manifest() {
     podman cp "$CONTAINER_NAME:$container_manifest_path" "$manifest_path"
 }
 
+# export-state and import-state move a complete snapshot across the container
+# boundary. The extension of the host path selects JSON or YAML, so it is kept on
+# the temporary container path.
+container_snapshot_path() {
+    local host_path="$1" prefix="$2"
+    local extension="${host_path##*.}"
+    [[ "$extension" = "$host_path" ]] && extension="yaml"
+    printf '/tmp/%s-$$.%s\n' "$prefix" "$extension"
+}
+
+export_state_snapshot() {
+    local snapshot_path="${1:-}"
+    shift || true
+    [[ -n "$snapshot_path" ]] || { echo "export-state requires a snapshot path." >&2; exit 1; }
+    [[ ! -d "$snapshot_path" ]] || { echo "Export path must be a file: $snapshot_path" >&2; exit 1; }
+    require_running_container
+    local container_snapshot
+    container_snapshot="$(container_snapshot_path "$snapshot_path" authorization-state-export)"
+    trap 'podman exec "$CONTAINER_NAME" rm -f "$container_snapshot" >/dev/null 2>&1 || true' RETURN
+    podman exec "$CONTAINER_NAME" "${CONTAINER_CLI[@]}" export-state "$container_snapshot" "$@"
+    podman cp "$CONTAINER_NAME:$container_snapshot" "$snapshot_path"
+}
+
+import_state_snapshot() {
+    local snapshot_path="${1:-}"
+    shift || true
+    [[ -n "$snapshot_path" ]] || { echo "import-state requires a snapshot path." >&2; exit 1; }
+    [[ -f "$snapshot_path" ]] || { echo "Snapshot not found: $snapshot_path" >&2; exit 1; }
+    require_running_container
+    local container_snapshot
+    container_snapshot="$(container_snapshot_path "$snapshot_path" authorization-state-import)"
+    trap 'podman exec "$CONTAINER_NAME" rm -f "$container_snapshot" >/dev/null 2>&1 || true' RETURN
+    podman exec -i "$CONTAINER_NAME" tee "$container_snapshot" < "$snapshot_path" >/dev/null
+    local -a command_args=("$container_snapshot" "$@")
+    if ! has_actor "${command_args[@]}"; then
+        command_args+=(--actor "$HOST_ACTOR")
+    fi
+    podman exec "$CONTAINER_NAME" "${CONTAINER_CLI[@]}" import-state "${command_args[@]}"
+}
+
 [[ $# -gt 0 ]] || { usage >&2; exit 1; }
 
 case "$1" in
@@ -233,6 +288,14 @@ case "$1" in
     export-manifest)
         shift
         export_manifest "$@"
+        ;;
+    import-state)
+        shift
+        import_state_snapshot "$@"
+        ;;
+    export-state)
+        shift
+        export_state_snapshot "$@"
         ;;
     *)
         run_cli "$@"

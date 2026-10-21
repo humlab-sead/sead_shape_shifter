@@ -7,16 +7,21 @@ g_script_dir="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 # the runtime bundle, so the bundle it synchronizes is the sibling
 # deployment/container/ directory.
 g_container_dir="$(CDPATH= cd -- "$g_script_dir/../../container" && pwd)"
-g_deploy_user="${DEPLOY_USER:-test-shape-shifter.sead.se}"
+g_deploy_user="${DEPLOY_USER:-}"
 g_deploy_host="${DEPLOY_HOST:-}"
 g_deploy_ssh_user="${DEPLOY_SSH_USER:-${USER:-}}"
 g_remote_dir="${REMOTE_DIR:-container}"
 g_dry_run=false
+g_verbose=false
 
 usage() {
+  message=${1:-}
+  if [ -n "$message" ]; then
+    echo "error: $message" >&2
+  fi
   cat <<'EOF'
-Usage: deployment/container-host/deploy/sync-to-deploy [--dry-run]
-§
+Usage: deployment/container-host/deploy/sync-to-deploy TARGET_USER [--deploy-host HOST] [--deploy-ssh-user USER] [--remote-dir DIR] [--dry-run] [--verbose]
+
 Synchronize the local container/ directory to the deployment user's
 container directory and install/reload its systemd user unit. With no DEPLOY_HOST, synchronize on the current host.
 With DEPLOY_HOST, use DEPLOY_SSH_USER for SSH transport. Files removed
@@ -26,7 +31,7 @@ not copied. A lib/ directory is never copied and any earlier copy on the
 target is removed: the Containerfile downloads UCanAccess at build time.
 
 Defaults:
-  owner: DEPLOY_USER=test-shape-shifter.sead.se
+  owner: no default, must be specified as TARGET_USER
   group: primary group of DEPLOY_USER (from the passwd entry)
   host: DEPLOY_HOST (empty means the current host)
   SSH user: DEPLOY_SSH_USER=$USER (remote mode only)
@@ -42,29 +47,26 @@ The service is not restarted or enabled by this command. Use the service
 commands separately after reviewing the synchronized files.
 
 Options:
-  --deploy-user USER       Target owner. Default: $g_deploy_user
   --deploy-host HOST       SSH host; empty means the current host
   --deploy-ssh-user USER   SSH transport account for remote mode
   --remote-dir DIR         Target directory relative to the owner's home
   --dry-run                Show changes without modifying the target
+  --verbose                Show detailed output during synchronization
   -h, --help               Show this help message
 
 Examples:
-  deployment/container-host/deploy/sync-to-deploy
-  deployment/container-host/deploy/sync-to-deploy --dry-run
+  deployment/container-host/deploy/sync-to-deploy TARGET_USER
+  deployment/container-host/deploy/sync-to-deploy TARGET_USER --dry-run
   DEPLOY_USER=test-shape-shifter.sead.se DEPLOY_HOST=deploy.example.org \
-    DEPLOY_SSH_USER=deploy-admin deployment/container-host/deploy/sync-to-deploy
+    DEPLOY_SSH_USER=deploy-admin deployment/container-host/deploy/sync-to-deploy TARGET_USER
 EOF
 }
 
+POSITIONAL=()
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --deploy-user)
-      [[ $# -ge 2 ]] || { echo "--deploy-user requires a value." >&2; exit 1; }
-      g_deploy_user="$2"
-      shift 2
-      ;;
-    --deploy-host)
+     --deploy-host)
       [[ $# -ge 2 ]] || { echo "--deploy-host requires a value." >&2; exit 1; }
       g_deploy_host="$2"
       shift 2
@@ -80,12 +82,31 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     --dry-run) g_dry_run=true; shift ;;
+    --verbose) g_verbose=true; shift ;;
     -h|--help) usage; exit 0 ;;
-    *) echo "Unknown option: $1" >&2; usage >&2; exit 1 ;;
+    *) POSITIONAL+=("$1"); shift ;;
   esac
 done
 
+if [ ${#POSITIONAL[@]} -ge 1 ]; then
+  g_deploy_user="${POSITIONAL[0]}"
+fi
+set -- "${POSITIONAL[@]}"
+
 command -v rsync >/dev/null || { echo "rsync is required locally." >&2; exit 1; }
+
+if [[ -z "$g_deploy_user" ]]; then
+  usage "missing argument TARGET_USER" >&2
+  exit 1
+fi
+
+if [[ "$g_verbose" = true ]]; then
+  echo "g_deploy_user=$g_deploy_user"
+  echo "g_deploy_host=$g_deploy_host"
+  echo "g_deploy_ssh_user=$g_deploy_ssh_user"
+  echo "g_remote_dir=$g_remote_dir"
+  echo "g_dry_run=$g_dry_run"
+fi
 
 # Refuses a local target that the release manager owns, so an isolated
 # development sync cannot overwrite a selected release. The check runs through
@@ -113,47 +134,67 @@ refuse_managed_target() {
 # UCanAccess copy off the target: the Containerfile downloads and pins the JARs
 # at build time, so the build context no longer needs them. Because --delete
 # skips excluded paths, the stale target directory is removed explicitly below.
-RSYNC_ARGS=(--archive --no-group --delete --delete-delay --human-readable --itemize-changes --exclude=/.env --exclude=/lib --exclude="deployment-verification")
+if [[ "$g_verbose" = true ]]; then
+  VERBOSE_ARG="--itemize-changes"
+else
+  VERBOSE_ARG="--itemize-changes"
+  # VERBOSE_ARG="--out-format='%n%L'"
+fi
+RSYNC_ARGS=(--archive --no-group --delete --delete-delay "$VERBOSE_ARG" --human-readable --exclude=/.env --exclude=/lib --exclude="deployment-verification")
 if [[ "$g_dry_run" = true ]]; then
   RSYNC_ARGS+=(--dry-run)
 fi
 
 if [[ -z "$g_deploy_host" ]]; then
+
   command -v getent >/dev/null || { echo "getent is required for local sync." >&2; exit 1; }
   command -v sudo >/dev/null || { echo "sudo is required for local sync." >&2; exit 1; }
+
   deploy_record="$(getent passwd "$g_deploy_user")"
+
   [[ -n "$deploy_record" ]] || { echo "Cannot resolve local user: $g_deploy_user" >&2; exit 1; }
+
   deploy_home="$(printf '%s\n' "$deploy_record" | cut -d: -f6)"
-  deploy_gid="$(printf '%s\n' "$deploy_record" | cut -d: -f4)"
+  # deploy_gid="$(printf '%s\n' "$deploy_record" | cut -d: -f4)"
+
   destination="$deploy_home/${g_remote_dir%/}/"
+
   refuse_managed_target "$destination"
-  printf 'Synchronizing %s/ to local %s\n' "$g_container_dir" "$destination"
+  printf 'Synchronizing %s/\n' "$g_container_dir"
+  printf '     to local %s\n' "$destination"
   sudo rsync "${RSYNC_ARGS[@]}" "$g_container_dir/" "$destination"
+
   if [[ "$g_dry_run" = false ]]; then
     sudo rm -rf "${destination%/}/lib"
-    sudo chown -R "$g_deploy_user:$deploy_gid" "$destination"
-    sudo install -d -o "$g_deploy_user" -g "$deploy_gid" -m 700 "$deploy_home/.config/systemd/user"
-    sudo install -o "$g_deploy_user" -g "$deploy_gid" -m 644 \
+    sudo chown -R "$g_deploy_user:$g_deploy_user" "$destination"
+    sudo install -d -o "$g_deploy_user" -g "$g_deploy_user" -m 700 "$deploy_home/.config/systemd/user"
+    sudo install -o "$g_deploy_user" -g "$g_deploy_user" -m 644 \
       "$g_container_dir/service/shape-shifter.service" \
       "$deploy_home/.config/systemd/user/shape-shifter.service"
     sudo -u "$g_deploy_user" -H env XDG_RUNTIME_DIR="/run/user/$(id -u "$g_deploy_user")" \
       systemctl --user daemon-reload
   fi
 else
+
   command -v ssh >/dev/null || { echo "ssh is required for remote sync." >&2; exit 1; }
   [[ -n "$g_deploy_ssh_user" ]] || { echo "g_deploy_ssh_user is required for remote sync." >&2; exit 1; }
+
   TARGET="${g_deploy_ssh_user}@${g_deploy_host}"
   deploy_record="$(ssh "$TARGET" "getent passwd '$g_deploy_user'")"
   [[ -n "$deploy_record" ]] || { echo "Cannot resolve remote user: $g_deploy_user" >&2; exit 1; }
+
   deploy_home="$(printf '%s\n' "$deploy_record" | cut -d: -f6)"
-  deploy_gid="$(printf '%s\n' "$deploy_record" | cut -d: -f4)"
+  # deploy_gid="$(printf '%s\n' "$deploy_record" | cut -d: -f4)"
   destination="$deploy_home/${g_remote_dir%/}/"
+
   if ssh "$TARGET" "sudo -n test -L '${destination%/}'"; then
     echo "error: refusing to synchronize into ${destination%/} on $TARGET: it is a symlink, which is how the release manager selects a release." >&2
     echo "       Use --remote-dir container-dev for isolated development." >&2
     exit 1
   fi
+
   resolved_remote="$(ssh "$TARGET" "sudo -n readlink -f -- '${destination%/}' 2>/dev/null || true") || true"
+
   case "$resolved_remote" in
   /opt/shape-shifter/*)
     echo "error: refusing to synchronize into ${destination%/} on $TARGET: it resolves into administrator-owned release storage ($resolved_remote)." >&2
@@ -161,17 +202,19 @@ else
     exit 1
     ;;
   esac
+
   printf 'Synchronizing %s/ to %s:%s\n' "$g_container_dir" "$TARGET" "$destination"
   rsync "${RSYNC_ARGS[@]}" --rsync-path="sudo -n rsync" "$g_container_dir/" "$TARGET:$destination"
+
   if [[ "$g_dry_run" = false ]]; then
     ssh "$TARGET" "sudo -n rm -rf '${destination%/}/lib'"
-    ssh "$TARGET" "sudo -n chown -R '$g_deploy_user:$deploy_gid' '$destination'"
-    ssh "$TARGET" "sudo -n install -d -o '$g_deploy_user' -g '$deploy_gid' -m 700 '$deploy_home/.config/systemd/user'"
-    ssh "$TARGET" "sudo -n install -o '$g_deploy_user' -g '$deploy_gid' -m 644 '$destination/service/shape-shifter.service' '$deploy_home/.config/systemd/user/shape-shifter.service'"
+    ssh "$TARGET" "sudo -n chown -R '$g_deploy_user:$g_deploy_user' '$destination'"
+    ssh "$TARGET" "sudo -n install -d -o '$g_deploy_user' -g '$g_deploy_user' -m 700 '$deploy_home/.config/systemd/user'"
+    ssh "$TARGET" "sudo -n install -o '$g_deploy_user' -g '$g_deploy_user' -m 644 '$destination/service/shape-shifter.service' '$deploy_home/.config/systemd/user/shape-shifter.service'"
     deploy_uid="$(ssh "$TARGET" "id -u '$g_deploy_user'")"
     ssh "$TARGET" "sudo -n -u '$g_deploy_user' -H env XDG_RUNTIME_DIR=/run/user/$deploy_uid systemctl --user daemon-reload"
   fi
 fi
 
-printf 'Synchronized files are owned by %s:%s.\n' "$g_deploy_user" "$deploy_gid"
+printf 'Synchronized files are owned by %s:%s.\n' "$g_deploy_user" "$g_deploy_user"
 [[ "$g_dry_run" = true ]] || printf 'Systemd unit installed and user daemon reloaded for %s.\n' "$g_deploy_user"

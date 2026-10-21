@@ -306,6 +306,8 @@ readonly g_required_files=(
 	scripts/_load-env.sh
 	scripts/_env-config.sh
 	scripts/project.sh
+	scripts/authorization.sh
+	scripts/rename-user.sh
 	scripts/setup.sh
 	scripts/build.sh
 	scripts/backup.sh
