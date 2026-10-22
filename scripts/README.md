@@ -2,6 +2,32 @@
 
 This directory contains CLI scripts for Shape Shifter workflows.
 
+## Normalizing Entity Key Order
+
+`sort_project_yaml.py` re-orders each entity's keys in a project file the way a full
+project save does (`type`, `source`, `system_id`, `public_id`, `keys`, `columns`,
+`values`, …). Use it before comparing two versions of a project file so that key-order
+noise does not hide real changes. It is registered as the `sort-project` console script:
+
+```bash
+# Print the sorted project to stdout
+sort-project data/projects/example/shapeshifter.yml > sorted.yml
+
+# Rewrite the file in place
+sort-project --inplace data/projects/example/shapeshifter.yml
+```
+
+Without an activated virtualenv, run it through `uv` or the module path:
+
+```bash
+uv run sort-project --inplace data/projects/example/shapeshifter.yml
+uv run python scripts/sort_project_yaml.py data/projects/example/shapeshifter.yml
+```
+
+The script reformats only; it runs no project validation. The `sort-project` command
+exists only after installing the project in editable mode (`make install`), so rerun
+that after changing `[project.scripts]` in `pyproject.toml`.
+
 ## Printing a Target Model Entity
 
 `print_target_model_entity.py` prints one entity specification from a target model YAML file:
