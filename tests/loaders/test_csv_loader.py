@@ -13,6 +13,16 @@ class TestCsvLoader:
     """Tests for CSV loader."""
 
     @pytest.mark.asyncio
+    async def test_load_file_ignores_location_metadata(self, tmp_path):
+        path = tmp_path / "samples.csv"
+        path.write_text("id,name\n1,Alice\n", encoding="utf-8")
+
+        loader = CsvLoader()
+        result = await loader.load_file({"filename": str(path), "location": "local"})
+
+        assert result.to_dict(orient="records") == [{"id": 1, "name": "Alice"}]
+
+    @pytest.mark.asyncio
     async def test_connection_success(self):
         """Should successfully test connection to existing CSV file."""
         # Create a temporary CSV file
