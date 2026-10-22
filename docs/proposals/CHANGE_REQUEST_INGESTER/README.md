@@ -26,7 +26,7 @@ Status reviewed 2026-10-17. No new PostgreSQL validation was run for this update
 | Provider-submission lifecycle | Complete | Rules are promoted to the [durable lifecycle reference](../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md); implementation history is under [done/DATA_PROVIDER_SUBMISSION_LIFECYCLE](./done/DATA_PROVIDER_SUBMISSION_LIFECYCLE). |
 | Submission metadata and generated packages | Complete | Both artifact strategies passed contract checks on separate disposable clones, including PostgreSQL sequence advancement. Upstream schema deployment and legacy compatibility remain release dependencies tracked in the [cutover and deployment workstream](./CUTOVER_AND_DEPLOYMENT/README.md). See the [completed proposal and task plan](./done/REFACTOR_SEAD_SUBMISSION_METADATA/REFACTOR_SEAD_SUBMISSION_METADATA.md). |
 | SIMS-SEAD adoption, cutover, and deployment | Draft; decisions open | Resolve tracked-entity mapping, missing UUIDs, backfill and writer ordering, upstream schema/compatibility ownership, and package supersession. Track in [CUTOVER_AND_DEPLOYMENT](./CUTOVER_AND_DEPLOYMENT/README.md). |
-| Ingester authorization and filesystem access | Proposed; not ready to enable | Define and implement resource authorization and filesystem containment. Keep operations unavailable until required checks are enforced. See the [authorization proposal](../INGESTER_AUTHORIZATION_TASKS/INGESTER_AUTHORIZATION_TASKS.md) and the [target-bundle access proposal](../done/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md). |
+| Ingester authorization and filesystem access | Merged into Security Hardening Follow-up | Future generic-route ingesters require resource authorization and containment before enablement. The current Change Request workflow remains covered by the [target-bundle access proposal](../done/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md). |
 | Post-MVP proposals | Deferred; no combined delivery accepted | Select and accept a narrow capability before planning implementation. See the [post-MVP proposal portfolio](../CHANGE_REQUEST_INGESTER_POST_MVP/README.md). |
 
 ### Next Priority
@@ -44,7 +44,7 @@ See the [closed MVP proposal](./done/CHANGE_REQUEST_INGESTER_MVP/SEAD_CHANGE_REQ
 ## Active Documents
 
 - [Cutover and deployment workstream](./CUTOVER_AND_DEPLOYMENT/README.md)
-- [Ingester authorization proposal](../INGESTER_AUTHORIZATION_TASKS/INGESTER_AUTHORIZATION_TASKS.md)
+- [Security Hardening Follow-up](../SECURITY_HARDENING_FOLLOWUP/SECURITY_HARDENING_FOLLOWUP.md)
 - [Target-bundle access proposal](../done/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md)
 - [Post-MVP proposal portfolio](../CHANGE_REQUEST_INGESTER_POST_MVP/README.md)
 

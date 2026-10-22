@@ -48,7 +48,7 @@ Lower-level calls can already reach the DataFrame-based ingester contract, but t
 
 - Removing Excel dispatch or changing file input for other ingesters. The deprecated `sead` ingester still requires file input until its separate removal ([#569](https://github.com/humlab-sead/sead_shape_shifter/issues/569)). The `xlsx` and `openpyxl` dispatchers are unchanged.
 - Writing an Excel workbook per composed call as an audit artifact. The deploy artifact bundle is the audit record; see Proposed Design §5.
-- Adding containment for the retired Change Request workbook input. [Ingester Authorization](../../INGESTER_AUTHORIZATION_TASKS/INGESTER_AUTHORIZATION_TASKS.md) still governs any remaining path-based ingester operations.
+- Adding containment for the retired Change Request workbook input. The [Security Hardening Follow-up](../../SECURITY_HARDENING_FOLLOWUP/SECURITY_HARDENING_FOLLOWUP.md) defines safeguards before any future generic-route ingester is enabled.
 - Changing the shared `IngestRequest`, `ValidateRequest`, `IngestResponse`, or `ValidateResponse` contracts for other ingesters.
 - Adding a new operator control to choose between workbook and project input; the project workflow uses the new project-only endpoints.
 - Removing the ingester or routing ingestion through a dispatcher. The ingester stays a separate extension point with its own authorization and validation rules.
