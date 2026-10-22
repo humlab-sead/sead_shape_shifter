@@ -149,8 +149,7 @@
     "python.testing.pytestArgs": [
         "-qq",
         "tests",
-        "backend/tests",
-        "ingesters/sead/tests"
+        "backend/tests"
     ],
     "python.testing.pytestEnabled": true,
     "python.testing.unittestEnabled": false,
