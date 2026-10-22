@@ -6,7 +6,7 @@
 
 **Readiness: Validated.** [Phase 1](./CHANGE_REQUEST_TARGET_BUNDLE_ACCESS_PHASE_PLAN.md#phase-1-make-bundle-output-exclusive-and-traceable) is marked ready. The output location, run-folder token, collision ordering, cleanup rule, and response contract are fixed by the [proposal](./CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md). The current code and affected tests were inspected, and focused baseline tests pass.
 
-**Constraints and dependencies:** The [in-memory handoff](../IN_MEMORY_INGESTER_HANDOFF/IN_MEMORY_INGESTER_HANDOFF_PHASE_PLAN.md) is complete. Keep `application:run_ingesters` on both project-only routes and the direct helper until Phase 3. Keep `project:execute`, the strict no-source project request, backend-owned `INGEST_OUTPUT_DIR`, and retired Change Request file input. Phase 2 owns target-sequence and retry-client changes; this phase preserves the current database and SIMS identity behavior apart from choosing one effective run ID before output reservation.
+**Constraints and dependencies:** The [in-memory handoff](../done/IN_MEMORY_INGESTER_HANDOFF/IN_MEMORY_INGESTER_HANDOFF_PHASE_PLAN.md) is complete. Keep `application:run_ingesters` on both project-only routes and the direct helper until Phase 3. Keep `project:execute`, the strict no-source project request, backend-owned `INGEST_OUTPUT_DIR`, and retired Change Request file input. Phase 2 owns target-sequence and retry-client changes; this phase preserves the current database and SIMS identity behavior apart from choosing one effective run ID before output reservation.
 
 **Source criteria:** `P-AC-2` and the output-path part of `P-AC-5` map to `PH1-AC-1`–`PH1-AC-3`; Phase 1 validation milestones are `VM-1.1` and `VM-1.2`.
 

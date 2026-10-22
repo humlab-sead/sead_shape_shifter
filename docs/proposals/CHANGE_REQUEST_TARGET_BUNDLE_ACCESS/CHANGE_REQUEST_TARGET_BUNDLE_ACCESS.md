@@ -5,11 +5,11 @@
 - Proposed change; the in-memory handoff is complete, but this permission change is not implemented
 - Scope: project-only Change Request validation and target-bundle creation without a caller-supplied source file
 - Goal: let an authenticated principal holding `project:execute` on a saved project validate and create its Change Request target bundle without `application:run_ingesters`, for downstream review by the SEAD Release Cycle
-- Completed prerequisite: the [in-memory ingester handoff](../IN_MEMORY_INGESTER_HANDOFF/IN_MEMORY_INGESTER_HANDOFF_PHASE_PLAN.md) added the project-only routes, helper, table input, and saved-project client path. Both routes and direct helper calls still require `application:run_ingesters`.
+- Completed prerequisite: the [in-memory ingester handoff](../done/IN_MEMORY_INGESTER_HANDOFF/IN_MEMORY_INGESTER_HANDOFF_PHASE_PLAN.md) added the project-only routes, helper, table input, and saved-project client path. Both routes and direct helper calls still require `application:run_ingesters`.
 
 ## Summary
 
-Allow an authenticated principal holding `project:execute` on a saved project to use its project-only Change Request validation and bundle-creation routes without `application:run_ingesters`. The completed [in-memory handoff](../IN_MEMORY_INGESTER_HANDOFF/IN_MEMORY_INGESTER_HANDOFF.md) supplies normalized tables without a caller source path. Keep the project authorization check, make bundle output exclusive within the managed root, and limit target-database access during both operations to read-only verification queries. The SEAD Release Cycle remains responsible for downstream quality assurance.
+Allow an authenticated principal holding `project:execute` on a saved project to use its project-only Change Request validation and bundle-creation routes without `application:run_ingesters`. The completed [in-memory handoff](../done/IN_MEMORY_INGESTER_HANDOFF/IN_MEMORY_INGESTER_HANDOFF.md) supplies normalized tables without a caller source path. Keep the project authorization check, make bundle output exclusive within the managed root, and limit target-database access during both operations to read-only verification queries. The SEAD Release Cycle remains responsible for downstream quality assurance.
 
 ## Problem
 
@@ -29,7 +29,7 @@ The project-only Change Request routes already normalize an authorized saved pro
 - Removing or relaxing the `project:execute` requirement for this operation, or making bundle creation available to principals without access to the saved project.
 - Reopening Change Request workbook input. The shared file routes, service, and ingester reject it; [Ingester Authorization](../INGESTER_AUTHORIZATION_TASKS/INGESTER_AUTHORIZATION_TASKS.md) governs remaining path-based ingesters.
 - Adding per-source authorization or a separate bundle-creation permission.
-- Changing the completed in-memory normalization or table-input contracts from [IN_MEMORY_INGESTER_HANDOFF](../IN_MEMORY_INGESTER_HANDOFF/IN_MEMORY_INGESTER_HANDOFF.md).
+- Changing the completed in-memory normalization or table-input contracts from [IN_MEMORY_INGESTER_HANDOFF](../done/IN_MEMORY_INGESTER_HANDOFF/IN_MEMORY_INGESTER_HANDOFF.md).
 - Moving the SEAD Release Cycle's review or quality-assurance responsibilities into Shape Shifter.
 - Implementing granular Change Request ingester security, which can be reconsidered separately.
 
@@ -88,7 +88,7 @@ Project-only validation and bundle creation may connect to the target database f
 
 ## Planning Handoff
 
-- The [in-memory handoff phase plan](../IN_MEMORY_INGESTER_HANDOFF/IN_MEMORY_INGESTER_HANDOFF_PHASE_PLAN.md) records Phases 1–5 complete. Change only its dedicated project-only routes and helper when removing `application:run_ingesters`; keep the `project:execute` checks, strict no-source request, and retired Change Request file input.
+- The [in-memory handoff phase plan](../done/IN_MEMORY_INGESTER_HANDOFF/IN_MEMORY_INGESTER_HANDOFF_PHASE_PLAN.md) records Phases 1–5 complete. Change only its dedicated project-only routes and helper when removing `application:run_ingesters`; keep the `project:execute` checks, strict no-source request, and retired Change Request file input.
 - Keep each run's output in its own `<UTC timestamp>_<SHA-256 digest of run_id>` folder under the configured `INGEST_OUTPUT_DIR` root, with the existing bundle name unchanged inside it. The raw run ID remains in SIMS, the response, and the manifest, never in a filesystem component. Choose the effective run ID and reserve the destination before SIMS calls; fail on collision without a SIMS call for that request. Clean only incomplete output owned by the current invocation. Carry the written bundle path from the writer through the ingester result into `output_path`. Do not add caller source, output, or target-database selection to the project-only request.
 - Leave downstream review and quality assurance to the SEAD Release Cycle.
 - Reconsider timestamped folder naming and retention under [#550](https://github.com/humlab-sead/sead_shape_shifter/issues/550).

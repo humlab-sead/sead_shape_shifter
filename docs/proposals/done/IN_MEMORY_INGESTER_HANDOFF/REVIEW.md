@@ -5,7 +5,7 @@
 | Item | Value |
 |---|---|
 | Reviewed document | [IN_MEMORY_INGESTER_HANDOFF.md](./IN_MEMORY_INGESTER_HANDOFF.md) |
-| Related documents | [CHANGE_REQUEST_TARGET_BUNDLE_ACCESS](../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md), its [phase plan](../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS_PHASE_PLAN.md), [Phase 1 task plan](../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS_PHASE_1_TASK_PLAN.md), and [review](../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/REVIEW.md) |
+| Related documents | [CHANGE_REQUEST_TARGET_BUNDLE_ACCESS](../../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md), its [phase plan](../../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS_PHASE_PLAN.md), [Phase 1 task plan](../../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS_PHASE_1_TASK_PLAN.md), and [review](../../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/REVIEW.md) |
 | Review date | 2026-10-19 |
 | Revision reviewed | Branch `dev` at `50a7e5bc`, including the current uncommitted proposal and companion-plan revisions |
 | Method | Read the proposals, prior reviews, cited Ingester Authorization proposal, and relevant Core, backend, ingester, and client code. No tests or live services were run. |
@@ -74,7 +74,7 @@ The main concern is the contract between the two proposals. The handoff delivers
 
 #### R4 — The transitional Excel policy conflicts with the cited authorization proposal
 
-**Location:** Handoff Summary, Non-Goals, `P-AC-6`, Planning Handoff; [Ingester Authorization](../INGESTER_AUTHORIZATION_TASKS/INGESTER_AUTHORIZATION_TASKS.md) Proposed Design and `P-AC-5`.
+**Location:** Handoff Summary, Non-Goals, `P-AC-6`, Planning Handoff; [Ingester Authorization](../../INGESTER_AUTHORIZATION_TASKS/INGESTER_AUTHORIZATION_TASKS.md) Proposed Design and `P-AC-5`.
 
 **Issue and impact:** The handoff and bundle-access proposals keep the caller-path route available behind `application:run_ingesters` until containment ships. Ingester Authorization says incomplete path-based operations must remain unavailable through routes and services until source and destination checks exist. Current code allows the path read. The documents give opposite delivery instructions for the interim period.
 

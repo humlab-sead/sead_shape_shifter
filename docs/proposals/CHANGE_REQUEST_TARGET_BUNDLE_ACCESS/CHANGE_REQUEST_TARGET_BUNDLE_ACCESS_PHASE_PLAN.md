@@ -2,7 +2,7 @@
 
 ## Summary
 
-This plan sequences the [Change Request target-bundle access proposal](./CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md) from the completed [in-memory ingester handoff](../IN_MEMORY_INGESTER_HANDOFF/IN_MEMORY_INGESTER_HANDOFF_PHASE_PLAN.md) to a project-only workflow that requires `project:execute` but not `application:run_ingesters`. Safe output and read-only target-database behavior must be validated before the permission changes.
+This plan sequences the [Change Request target-bundle access proposal](./CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md) from the completed [in-memory ingester handoff](../done/IN_MEMORY_INGESTER_HANDOFF/IN_MEMORY_INGESTER_HANDOFF_PHASE_PLAN.md) to a project-only workflow that requires `project:execute` but not `application:run_ingesters`. Safe output and read-only target-database behavior must be validated before the permission changes.
 
 ## Problem
 
