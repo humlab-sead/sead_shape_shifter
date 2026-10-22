@@ -59,10 +59,11 @@ all = [
 # CLI entry points for easy command-line access
 sead-ingest = "backend.app.scripts.ingest:cli"
 sead-authorization = "backend.app.scripts.authorization:cli"
+sort-project = "scripts.sort_project_yaml:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["src*", "backend*", "ingesters*", "target_models*"]
+include = ["src*", "backend*", "ingesters*", "target_models*", "scripts*"]
 
 
 [tool.ruff]

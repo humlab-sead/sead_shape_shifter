@@ -261,17 +261,10 @@ class YamlService:
 
             path.parent.mkdir(parents=True, exist_ok=True)
 
-            # Order entity keys for better readability
-            data = self._order_entity_keys(data)
-
-            # Apply flow style to short lists for compact formatting
-            if flow_style_max_items > 0:
-                self._apply_flow_style(data, flow_style_max_items)
-
             logger.debug(f"Writing to temporary file: {temp_path}")
 
             with temp_path.open("w", encoding="utf-8") as f:
-                self.yaml.dump(data, f)
+                f.write(self.dumps(data, flow_style_max_items=flow_style_max_items))
 
             temp_path.replace(path)
             logger.info(f"Successfully saved YAML file: {path}")
@@ -283,6 +276,29 @@ class YamlService:
             if temp_path.exists():
                 temp_path.unlink()
             raise YamlSaveError(f"Failed to save YAML file {path}: {e}") from e
+
+    def dumps(self, data: dict[str, Any], flow_style_max_items: int = 5) -> str:
+        """
+        Render data as YAML text without writing a file.
+
+        Applies the same entity key ordering and flow-style formatting as ``save()``,
+        so the returned text matches what ``save()`` would write for the same data.
+
+        Args:
+            data: Data to render
+            flow_style_max_items: Maximum list length for flow style (default 5, 0 to disable)
+
+        Returns:
+            YAML document text
+        """
+        ordered: dict[str, Any] = self._order_entity_keys(data)
+
+        if flow_style_max_items > 0:
+            self._apply_flow_style(ordered, flow_style_max_items)
+
+        stream = StringIO()
+        self.yaml.dump(ordered, stream)
+        return stream.getvalue()
 
     # ------------------------------------------------------------------
     # Comment-preserving boundary API
