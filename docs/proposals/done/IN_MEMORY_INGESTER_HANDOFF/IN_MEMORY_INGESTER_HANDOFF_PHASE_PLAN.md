@@ -2,7 +2,7 @@
 
 ## Summary
 
-This plan sequences [the in-memory handoff proposal](./IN_MEMORY_INGESTER_HANDOFF.md). Phases 1–3 retired Change Request file input and added no-write normalization and table-input support. Phase 4 added the guarded backend helper, and Phase 5 exposed its project-only routes and connected the saved-project operator client. The [target-bundle access proposal](../../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md) owns the later permission change and per-run output rules.
+This plan sequences [the in-memory handoff proposal](./IN_MEMORY_INGESTER_HANDOFF.md). Phases 1–3 retired Change Request file input and added no-write normalization and table-input support. Phase 4 added the guarded backend helper, and Phase 5 exposed its project-only routes and connected the saved-project operator client. The [target-bundle access proposal](../../done/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md) owns the later permission change and per-run output rules.
 
 ## Problem
 

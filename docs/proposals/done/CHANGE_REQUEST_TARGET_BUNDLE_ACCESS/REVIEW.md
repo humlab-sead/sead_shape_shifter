@@ -3,7 +3,7 @@
 ## Review Basis
 
 - Reviewed: [proposal](./CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md), revised on 2026-10-19, against repository commit `ed8a8e4d` on `in-memory-ingester-handoff`.
-- Related: completed [in-memory handoff phase plan](../done/IN_MEMORY_INGESTER_HANDOFF/IN_MEMORY_INGESTER_HANDOFF_PHASE_PLAN.md), this topic's [phase plan](./CHANGE_REQUEST_TARGET_BUNDLE_ACCESS_PHASE_PLAN.md) and [Phase 1 task plan](./CHANGE_REQUEST_TARGET_BUNDLE_ACCESS_PHASE_1_TASK_PLAN.md).
+- Related: completed [in-memory handoff phase plan](../../done/IN_MEMORY_INGESTER_HANDOFF/IN_MEMORY_INGESTER_HANDOFF_PHASE_PLAN.md), this topic's [phase plan](./CHANGE_REQUEST_TARGET_BUNDLE_ACCESS_PHASE_PLAN.md) and [Phase 1 task plan](./CHANGE_REQUEST_TARGET_BUNDLE_ACCESS_PHASE_1_TASK_PLAN.md).
 - Method: compared the decisions with the project-only routes, direct helper, request models, bundle writer, identity adapter, and client. No tests or deployment checks were run for this review.
 
 ## Overall Assessment
@@ -18,13 +18,13 @@ The proposal is ready for a refreshed phase plan. Its existing phase plan and ta
 
 **Location:** [phase plan](./CHANGE_REQUEST_TARGET_BUNDLE_ACCESS_PHASE_PLAN.md) Summary, Current Position, Depends On, `PH1-AC-1`–`PH1-AC-4`; [task plan](./CHANGE_REQUEST_TARGET_BUNDLE_ACCESS_PHASE_1_TASK_PLAN.md) Readiness, Repository Findings, `T1.1`–`T1.4`, and validation table.
 
-Both documents still say the handoff is unimplemented. `T1.1` targets the shared `ingest_data` route and keeps Change Request validation gated, while the shipped [project-only routes](../../../backend/app/api/v1/endpoints/ingesters.py) and [helper](../../../backend/app/services/project_ingester_service.py) each have an application-action check. `T1.2` calls for adding `INGEST_OUTPUT_DIR` through `IngesterService`, though the [setting](../../../backend/app/core/config.py) and its use in `ProjectIngesterService` already exist. Following these tasks could leave the intended workflow gated or change authorization on the shared file route. Refresh both plans from the revised `P-AC-*` criteria before implementation, including the safe run-ID folder token, early output reservation, actual output-path propagation, and validation's sequence rule. **Confidence: High.**
+Both documents still say the handoff is unimplemented. `T1.1` targets the shared `ingest_data` route and keeps Change Request validation gated, while the shipped [project-only routes](../../../../backend/app/api/v1/endpoints/ingesters.py) and [helper](../../../../backend/app/services/project_ingester_service.py) each have an application-action check. `T1.2` calls for adding `INGEST_OUTPUT_DIR` through `IngesterService`, though the [setting](../../../../backend/app/core/config.py) and its use in `ProjectIngesterService` already exist. Following these tasks could leave the intended workflow gated or change authorization on the shared file route. Refresh both plans from the revised `P-AC-*` criteria before implementation, including the safe run-ID folder token, early output reservation, actual output-path propagation, and validation's sequence rule. **Confidence: High.**
 
 ### Low — Related status and authorization documentation still describe earlier behavior
 
-**Location:** [in-memory handoff proposal](../done/IN_MEMORY_INGESTER_HANDOFF/IN_MEMORY_INGESTER_HANDOFF.md) Status; [authorization route inventory](../../AUTHORIZATION_ROUTE_INVENTORY.md) ingester routes.
+**Location:** [in-memory handoff proposal](../../done/IN_MEMORY_INGESTER_HANDOFF/IN_MEMORY_INGESTER_HANDOFF.md) Status; [authorization route inventory](../../../AUTHORIZATION_ROUTE_INVENTORY.md) ingester routes.
 
-The handoff proposal still says "Proposed feature" although its [phase plan](../done/IN_MEMORY_INGESTER_HANDOFF/IN_MEMORY_INGESTER_HANDOFF_PHASE_PLAN.md) records Phases 1–5 complete. The route inventory omits the project-only routes and says the shared routes accept no project locator, although their models include `project_name`. Update these references when the plans are refreshed so maintainers do not infer the wrong current permission path. **Confidence: High.**
+The handoff proposal still says "Proposed feature" although its [phase plan](../../done/IN_MEMORY_INGESTER_HANDOFF/IN_MEMORY_INGESTER_HANDOFF_PHASE_PLAN.md) records Phases 1–5 complete. The route inventory omits the project-only routes and says the shared routes accept no project locator, although their models include `project_name`. Update these references when the plans are refreshed so maintainers do not infer the wrong current permission path. **Confidence: High.**
 
 ## Proposal Updates Applied
 

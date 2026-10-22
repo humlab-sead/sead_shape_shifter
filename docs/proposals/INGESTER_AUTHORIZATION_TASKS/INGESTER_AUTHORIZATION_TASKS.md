@@ -10,7 +10,7 @@
 
 Use the centralized authorization policy for ingester application roles and authorize each project, source, and destination used by an operation. Replace caller-selected paths and destinations with approved resource references. Keep operations unavailable until their authorization and containment checks are implemented and tested.
 
-This proposal complements [Change Request Target Bundle Access](../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md), which defines the permission exception for Change Request bundle creation. Path containment and server-managed destination controls for ingester operations remain in scope here.
+This proposal complements [Change Request Target Bundle Access](../done/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md), which defines the permission exception for Change Request bundle creation. Path containment and server-managed destination controls for ingester operations remain in scope here.
 
 ## Problem
 
@@ -96,7 +96,7 @@ Do not enable the current path-based operation merely because the caller has the
 
 - Preserve the centralized principal contract and existing `operator`/`admin` action mappings.
 - Keep application-role checks separate from authorization of the resources used by each run.
-- Own approved references, containment, and server-managed database destinations for ingester operations. [Change Request Target Bundle Access](../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md) covers only that operation's permission exception, managed output location, and read-only target access.
+- Own approved references, containment, and server-managed database destinations for ingester operations. [Change Request Target Bundle Access](../done/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md) covers only that operation's permission exception, managed output location, and read-only target access.
 - Resolve whether each operation is project-scoped and, if so, require a project reference and `project:execute` before enabling it.
 - Resolve whether `do_register` is ingester configuration, data registration, or part of execution, and apply the corresponding role before implementation.
 - Validate that denied operations fail before file reads, database connections, or writes.
