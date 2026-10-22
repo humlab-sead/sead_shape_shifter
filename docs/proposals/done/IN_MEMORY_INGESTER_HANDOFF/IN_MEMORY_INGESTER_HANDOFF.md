@@ -2,10 +2,11 @@
 
 ## Status
 
-- Proposed feature
+- Implemented; Phases 1-5 are complete, as recorded in the [phase plan](./IN_MEMORY_INGESTER_HANDOFF_PHASE_PLAN.md) and its task plans. Project-only bundle generation is available through the saved-project operator path; both `project:execute` and the interim `application:run_ingesters` permission remain required.
 - Scope: a reusable normalization step, an optional table-input capability for ingesters, handoff rules, a backend composition helper, and project-only API and client entry points
 - Goal: run normalization and change-request generation in one process without writing and re-reading an Excel workbook
-- Depends on [CHANGE_REQUEST_TARGET_BUNDLE_ACCESS](../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md) for the permission that governs Change Request bundle creation; this proposal does not set that permission
+- Remaining follow-up: [CHANGE_REQUEST_TARGET_BUNDLE_ACCESS](../../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md) owns exclusive per-run output, read-only target-database access, and removal of the interim `application:run_ingesters` gate from the project-only path
+- Depends on [CHANGE_REQUEST_TARGET_BUNDLE_ACCESS](../../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md) for the permission that governs Change Request bundle creation; this proposal does not set that permission
 
 ## Summary
 
@@ -47,7 +48,7 @@ Lower-level calls can already reach the DataFrame-based ingester contract, but t
 
 - Removing Excel dispatch or changing file input for other ingesters. The deprecated `sead` ingester still requires file input until its separate removal ([#569](https://github.com/humlab-sead/sead_shape_shifter/issues/569)). The `xlsx` and `openpyxl` dispatchers are unchanged.
 - Writing an Excel workbook per composed call as an audit artifact. The deploy artifact bundle is the audit record; see Proposed Design §5.
-- Adding containment for the retired Change Request workbook input. [Ingester Authorization](../INGESTER_AUTHORIZATION_TASKS/INGESTER_AUTHORIZATION_TASKS.md) still governs any remaining path-based ingester operations.
+- Adding containment for the retired Change Request workbook input. [Ingester Authorization](../../INGESTER_AUTHORIZATION_TASKS/INGESTER_AUTHORIZATION_TASKS.md) still governs any remaining path-based ingester operations.
 - Changing the shared `IngestRequest`, `ValidateRequest`, `IngestResponse`, or `ValidateResponse` contracts for other ingesters.
 - Adding a new operator control to choose between workbook and project input; the project workflow uses the new project-only endpoints.
 - Removing the ingester or routing ingestion through a dispatcher. The ingester stays a separate extension point with its own authorization and validation rules.
@@ -149,7 +150,7 @@ Before calling `_create_config()` or its runtime injection functions, the helper
 
 The helper never forwards `request.config` or an arbitrary extras mapping to `_create_config()`. It rejects a project request that tries to provide a target model, database, output path, source path, project identity override, or runtime collaborator, including through nested input.
 
-This handoff delivers the project-only routes behind `require_application_action(Action.RUN_INGESTERS)` as well as the project dependency. Until the companion's output and database rules ship, the helper uses its required, constructor-injected `AuthorizationService` to check `can_perform_application_action(authorized_project.principal, Action.RUN_INGESTERS)` after the project-resource guard and before any work. A direct call therefore cannot bypass the interim application gate. [CHANGE_REQUEST_TARGET_BUNDLE_ACCESS](../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md) later removes that check from the project-only helper and routes, after its exclusive managed-output and read-only target-database rules are in force. The helper's `AuthorizedResource` check remains. The existing `/{key}/validate` and `/{key}/ingest` file routes continue to require `application:run_ingesters` for other ingesters. They reject `sead_change_request` file requests regardless of permission; the file-oriented service and ingester methods reject the same input before reading a path. No key-based permission exemption is applied to the shared routes.
+This handoff delivers the project-only routes behind `require_application_action(Action.RUN_INGESTERS)` as well as the project dependency. Until the companion's output and database rules ship, the helper uses its required, constructor-injected `AuthorizationService` to check `can_perform_application_action(authorized_project.principal, Action.RUN_INGESTERS)` after the project-resource guard and before any work. A direct call therefore cannot bypass the interim application gate. [CHANGE_REQUEST_TARGET_BUNDLE_ACCESS](../../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md) later removes that check from the project-only helper and routes, after its exclusive managed-output and read-only target-database rules are in force. The helper's `AuthorizedResource` check remains. The existing `/{key}/validate` and `/{key}/ingest` file routes continue to require `application:run_ingesters` for other ingesters. They reject `sead_change_request` file requests regardless of permission; the file-oriented service and ingester methods reject the same input before reading a path. No key-based permission exemption is applied to the shared routes.
 
 The operator client sends Change Request validation and ingestion for a saved project to the project-only routes, without a `source` value. File-only ingesters continue to use the existing source-path routes. The companion proposal adds one persistent `run_id` per submission attempt to these project requests.
 
@@ -170,7 +171,7 @@ So a workbook is not a superset of the bundle's audit value, and it is a less fa
 
 If source-level reproducibility is later required, that is a provenance question, not a workbook question: record the project configuration version, source references, and run identifiers. Materializing normalized tables is a debugging aid at most; if it is added, it should be labelled a debug snapshot rather than an audit record.
 
-This proposal does not choose where bundle output lives. That is the managed output location decision in [CHANGE_REQUEST_TARGET_BUNDLE_ACCESS](../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md). Projects currently have `data/`, `materialized/`, and `backups/` sub-folders and no `output/` folder; any new sub-folder would be that decision, and would need containment through `resolve_contained_path`.
+This proposal does not choose where bundle output lives. That is the managed output location decision in [CHANGE_REQUEST_TARGET_BUNDLE_ACCESS](../../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md). Projects currently have `data/`, `materialized/`, and `backups/` sub-folders and no `output/` folder; any new sub-folder would be that decision, and would need containment through `resolve_contained_path`.
 
 ## Alternatives Considered
 

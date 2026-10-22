@@ -3,7 +3,7 @@
 ## Review Basis
 
 - Reviewed: [proposal](./CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md), revised on 2026-10-19, against repository commit `ed8a8e4d` on `in-memory-ingester-handoff`.
-- Related: completed [in-memory handoff phase plan](../IN_MEMORY_INGESTER_HANDOFF/IN_MEMORY_INGESTER_HANDOFF_PHASE_PLAN.md), this topic's [phase plan](./CHANGE_REQUEST_TARGET_BUNDLE_ACCESS_PHASE_PLAN.md) and [Phase 1 task plan](./CHANGE_REQUEST_TARGET_BUNDLE_ACCESS_PHASE_1_TASK_PLAN.md).
+- Related: completed [in-memory handoff phase plan](../done/IN_MEMORY_INGESTER_HANDOFF/IN_MEMORY_INGESTER_HANDOFF_PHASE_PLAN.md), this topic's [phase plan](./CHANGE_REQUEST_TARGET_BUNDLE_ACCESS_PHASE_PLAN.md) and [Phase 1 task plan](./CHANGE_REQUEST_TARGET_BUNDLE_ACCESS_PHASE_1_TASK_PLAN.md).
 - Method: compared the decisions with the project-only routes, direct helper, request models, bundle writer, identity adapter, and client. No tests or deployment checks were run for this review.
 
 ## Overall Assessment
@@ -22,9 +22,9 @@ Both documents still say the handoff is unimplemented. `T1.1` targets the shared
 
 ### Low — Related status and authorization documentation still describe earlier behavior
 
-**Location:** [in-memory handoff proposal](../IN_MEMORY_INGESTER_HANDOFF/IN_MEMORY_INGESTER_HANDOFF.md) Status; [authorization route inventory](../../AUTHORIZATION_ROUTE_INVENTORY.md) ingester routes.
+**Location:** [in-memory handoff proposal](../done/IN_MEMORY_INGESTER_HANDOFF/IN_MEMORY_INGESTER_HANDOFF.md) Status; [authorization route inventory](../../AUTHORIZATION_ROUTE_INVENTORY.md) ingester routes.
 
-The handoff proposal still says "Proposed feature" although its [phase plan](../IN_MEMORY_INGESTER_HANDOFF/IN_MEMORY_INGESTER_HANDOFF_PHASE_PLAN.md) records Phases 1–5 complete. The route inventory omits the project-only routes and says the shared routes accept no project locator, although their models include `project_name`. Update these references when the plans are refreshed so maintainers do not infer the wrong current permission path. **Confidence: High.**
+The handoff proposal still says "Proposed feature" although its [phase plan](../done/IN_MEMORY_INGESTER_HANDOFF/IN_MEMORY_INGESTER_HANDOFF_PHASE_PLAN.md) records Phases 1–5 complete. The route inventory omits the project-only routes and says the shared routes accept no project locator, although their models include `project_name`. Update these references when the plans are refreshed so maintainers do not infer the wrong current permission path. **Confidence: High.**
 
 ## Proposal Updates Applied
 
