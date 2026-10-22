@@ -5,7 +5,7 @@
 | Item | Value |
 |---|---|
 | Reviewed document | [IN_MEMORY_INGESTER_HANDOFF.md](./IN_MEMORY_INGESTER_HANDOFF.md) |
-| Related documents | [CHANGE_REQUEST_TARGET_BUNDLE_ACCESS](../../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md), its [phase plan](../../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS_PHASE_PLAN.md), [Phase 1 task plan](../../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS_PHASE_1_TASK_PLAN.md), and [review](../../CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/REVIEW.md) |
+| Related documents | [CHANGE_REQUEST_TARGET_BUNDLE_ACCESS](../../done/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md), its [phase plan](../../done/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS_PHASE_PLAN.md), [Phase 1 task plan](../../done/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS_PHASE_1_TASK_PLAN.md), and [review](../../done/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/REVIEW.md) |
 | Review date | 2026-10-19 |
 | Revision reviewed | Branch `dev` at `50a7e5bc`, including the current uncommitted proposal and companion-plan revisions |
 | Method | Read the proposals, prior reviews, cited Ingester Authorization proposal, and relevant Core, backend, ingester, and client code. No tests or live services were run. |
