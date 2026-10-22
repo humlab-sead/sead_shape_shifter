@@ -228,6 +228,31 @@ def test_import_state_rejects_a_grant_for_an_unknown_resource(tmp_path) -> None:
         import_state(snapshot, database, "restorer")
 
 
+def test_import_state_rejects_unknown_role_before_writing(tmp_path) -> None:
+    database = tmp_path / "authorization.sqlite3"
+    _populate(database)
+    snapshot = tmp_path / "state.json"
+    export_state(snapshot, database)
+    document = json.loads(snapshot.read_text(encoding="utf-8"))
+    document["grants"][0]["role"] = "viewr"
+    snapshot.write_text(json.dumps(document), encoding="utf-8")
+
+    result = CliRunner().invoke(
+        cli,
+        ["import-state", str(snapshot), "--database", str(database), "--actor", "restorer", "--dry-run"],
+    )
+
+    assert result.exit_code != 0
+    assert "Snapshot grant" in result.output
+    assert "Invalid role 'viewr'" in result.output
+    assert "allowed roles:" in result.output
+    repository = SQLiteAuthorizationRepository(database)
+    try:
+        assert len(repository.list_all_grants()) == 4
+    finally:
+        repository.close()
+
+
 def test_import_state_rejects_broad_ownership_and_duplicate_records(tmp_path) -> None:
     resource_id = uuid4()
     base_resource = {

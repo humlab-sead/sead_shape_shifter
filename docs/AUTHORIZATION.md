@@ -203,7 +203,7 @@ To change roles and grants by hand, follow these steps. In a deployed environmen
    diff -u before.yaml after.yaml
    ```
 
-4. Validate the snapshot without writing it. The command prints each record it would add, remove, or change, and rejects an invalid schema version, duplicate IDs, an unresolved reference, or an owner role on a group or `everyone` subject. It exits non-zero when the snapshot would leave no administrator or an active project without an owner.
+4. Validate the snapshot without writing it. The command prints each record it would add, remove, or change, and rejects an invalid schema version, duplicate IDs, an unresolved reference, an invalid role for a resource type, or an owner role on a group or `everyone` subject. Role errors name the grant and list the roles allowed for that resource type. It exits non-zero when the snapshot would leave no administrator or an active project without an owner.
 
    ```bash
    sead-authorization import-state after.yaml --dry-run --actor you@example.org
@@ -233,13 +233,11 @@ A hand-added grant needs `subject_type`, `subject_id`, `resource_id`, `role`, `c
 | `subject_type` | `principal`, `group`, or `everyone` |
 | `subject_id` | Principal ID or group ID; `authenticated` for `everyone` |
 | `resource_id` | UUID of a resource in the same snapshot |
-| `role` | `viewer`, `editor`, `executor`, or `owner` for project resources; `reader` for shared data sources |
+| `role` | Must exactly match a role allowed for the resource type: `viewer`, `editor`, `executor`, or `owner` for project resources; `reader` for shared data sources. Invalid roles are rejected before any records are written. |
 | `created_at` | ISO 8601 timestamp, for example `2026-10-20T09:00:00+00:00` |
 | `created_by` | Non-empty principal ID recorded as the creator |
 
 The `owner` role is rejected on a `group` or `everyone` subject, so every project keeps a named principal owner. Granting access to a project that is not yet in the snapshot requires adding its resource first, with a new UUID and `lifecycle_state: active`; see [Moving A Resource Locator](#moving-a-resource-locator) for the case where a project moved rather than was created.
-
-The import checks that `subject_type`, `resource_id`, `created_at`, and `created_by` are valid, but it does not check the grant `role` against the role names in [Resource Roles](#resource-roles). A misspelled role is accepted and recorded. Because the policy denies unknown roles, such a grant permits nothing, and the import still reports success. When a hand-edited grant has no effect, check its role spelling against the role table.
 
 ## Current Coverage
 
