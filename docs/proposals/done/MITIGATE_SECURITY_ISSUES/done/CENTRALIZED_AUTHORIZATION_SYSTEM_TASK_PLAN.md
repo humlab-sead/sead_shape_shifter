@@ -90,7 +90,7 @@ Protect shared data, database operations, and logs.
 - [x] Extend the automated route inventory check so static data-source sub-routes cannot remain silently undeclared, and confirm the check passes against the reconciled inventory.
 - [x] Add allowed and denied tests for the newly protected file and metadata routes, including unauthenticated, cross-project, operator, and reader outcomes.
 
-Ingester authorization tasks are tracked in [INGESTER_AUTHORIZATION_TASKS.md](../../../INGESTER_AUTHORIZATION_TASKS/INGESTER_AUTHORIZATION_TASKS.md).
+Ingester authorization tasks are tracked in [INGESTER_AUTHORIZATION_TASKS.md](../../../archive/INGESTER_AUTHORIZATION_TASKS.md).
 
 **Completion Criteria**
 
@@ -273,7 +273,7 @@ Approved broad-access grants are evaluated centrally, recorded against generatio
 
 - Native application login, credential storage, token issuance, account recovery, and multi-factor authentication.
 - Filesystem containment, SQL safety, secret redaction, and network restrictions except where authorization must compose with those controls.
-- Ingester authorization and capability enablement, which are tracked in [INGESTER_AUTHORIZATION_TASKS.md](../../../INGESTER_AUTHORIZATION_TASKS/INGESTER_AUTHORIZATION_TASKS.md).
+- Ingester authorization and capability enablement, which are tracked in [INGESTER_AUTHORIZATION_TASKS.md](../../../archive/INGESTER_AUTHORIZATION_TASKS.md).
 
 ## Risks And Mitigations
 

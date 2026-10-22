@@ -74,7 +74,7 @@ The main concern is the contract between the two proposals. The handoff delivers
 
 #### R4 — The transitional Excel policy conflicts with the cited authorization proposal
 
-**Location:** Handoff Summary, Non-Goals, `P-AC-6`, Planning Handoff; [Ingester Authorization](../../INGESTER_AUTHORIZATION_TASKS/INGESTER_AUTHORIZATION_TASKS.md) Proposed Design and `P-AC-5`.
+**Location:** Handoff Summary, Non-Goals, `P-AC-6`, Planning Handoff; ingester authorization is now covered by the [Security Hardening Follow-up](../../SECURITY_HARDENING_FOLLOWUP/SECURITY_HARDENING_FOLLOWUP.md).
 
 **Issue and impact:** The handoff and bundle-access proposals keep the caller-path route available behind `application:run_ingesters` until containment ships. Ingester Authorization says incomplete path-based operations must remain unavailable through routes and services until source and destination checks exist. Current code allows the path read. The documents give opposite delivery instructions for the interim period.
 

@@ -1,6 +1,6 @@
 # Assessment: Consequences of Putting INGESTER_AUTHORIZATION_TASKS On Hold
 
-Reviewed: [INGESTER_AUTHORIZATION_TASKS.md](./INGESTER_AUTHORIZATION_TASKS.md), 2026-10-22.
+Reviewed: [INGESTER_AUTHORIZATION_TASKS.md](../archive/INGESTER_AUTHORIZATION_TASKS.md), 2026-10-22.
 Review context: the project owner considers this proposal low priority and asked for an
 assessment of what putting it on hold would leave open.
 
