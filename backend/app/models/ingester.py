@@ -12,11 +12,11 @@ class IngesterMetadataResponse(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "key": "sead",
-                "name": "SEAD Clearinghouse",
-                "description": "Import SEAD Clearinghouse Excel submissions",
-                "version": "1.0.0",
-                "supported_formats": ["xlsx"],
+                "key": "sead_change_request",
+                "name": "SEAD Change Request",
+                "description": "Build a Change Request deploy bundle from a saved project",
+                "version": "0.1.0",
+                "supported_formats": [],
             }
         }
     )

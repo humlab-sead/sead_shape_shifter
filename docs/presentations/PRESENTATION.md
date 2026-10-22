@@ -187,7 +187,7 @@ The mapping catalog is stored alongside the YAML project and records the source 
 
 **Execute** runs the normalization workflow and produces processed output. Supported output workflows include CSV, Excel, and database destinations.
 
-**Dispatch** sends processed output through a configured ingester. The SEAD Clearinghouse ingester supports validation and loading into its staging and public data structures.
+**Dispatch** sends processed output through a configured ingester. The SEAD Change Request ingester resolves identities through SIMS and emits a reviewable deploy bundle instead of writing to the target database.
 
 Execution and delivery are separate steps, so teams can inspect output before submitting it.
 

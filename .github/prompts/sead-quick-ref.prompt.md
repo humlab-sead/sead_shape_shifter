@@ -3,7 +3,7 @@ agent: ask
 description: Ultra-concise SEAD database lookup card — key tables, primary keys, and FK patterns
 ---
 
-> **Domain-Specific Reference**: For SEAD ingester (`ingesters/sead/`) and SEAD project development. Core Shape Shifter is schema-agnostic.
+> **Domain-Specific Reference**: For SEAD project development and the SEAD Change Request ingester. Core Shape Shifter is schema-agnostic.
 
 ## Core Hierarchy
 

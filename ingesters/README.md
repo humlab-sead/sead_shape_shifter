@@ -7,7 +7,6 @@ This directory contains ingester implementations for Shape Shifter. Ingesters ar
 | Key | Status | Purpose |
 |---|---|---|
 | `sead_change_request` | Active | Resolves identities through SIMS and emits a reviewable Change Request deploy bundle. |
-| `sead` | **Deprecated** | Legacy direct-to-database importer. Does not use SIMS. Kept only for existing callers; scheduled for removal. |
 
 ## Architecture
 
@@ -94,18 +93,9 @@ The ingester will be auto-discovered at application startup. To explicitly enabl
 ```yaml
 # backend/app/core/config.py or config file
 ingesters:
-  enabled: ["sead", "your_ingester"]
+  enabled: ["sead_change_request"]
   search_paths: ["ingesters"]
 ```
-
-## Available Ingesters
-
-### SEAD Clearinghouse
-- **Key**: `sead`
-- **Path**: `ingesters/sead/`
-- **Description**: Ingests data into SEAD Clearinghouse PostgreSQL database
-- **Formats**: Excel (.xlsx)
-- **Status**: Production-ready
 
 ## Testing
 
@@ -188,7 +178,7 @@ python -m backend.app.scripts.ingest ingest your_ingester /path/to/file.xlsx \
 ### Import Errors
 - Ingesters should import protocol from `backend.app.ingesters.protocol`
 - Internal imports within ingester should use `from ingesters.<name>.module import X`
-- Don't import from `backend.app.ingesters.sead` (old location)
+- Import only the protocol and registry from `backend.app.ingesters`; implementation modules live under `ingesters/`
 
 ### Configuration Issues
 - Use explicit values in `extra` dict to avoid `ConfigValue` lookups

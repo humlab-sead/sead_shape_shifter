@@ -1,9 +1,9 @@
 ---
 agent: ask
-description: SEAD database schema reference — table hierarchy, naming conventions, and common FK patterns for SEAD ingester development
+description: SEAD database schema reference — table hierarchy, naming conventions, and common FK patterns for SEAD projects
 ---
 
-> **Domain-Specific Reference**: Use when working with the SEAD ingester (`ingesters/sead/`) or SEAD-specific Shape Shifter projects. Core Shape Shifter is schema-agnostic.
+> **Domain-Specific Reference**: Use when working with SEAD-specific Shape Shifter projects or the SEAD Change Request ingester. Core Shape Shifter is schema-agnostic.
 
 ## Domain
 
