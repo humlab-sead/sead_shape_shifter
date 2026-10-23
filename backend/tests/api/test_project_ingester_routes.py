@@ -207,6 +207,7 @@ async def test_project_routes_forward_authorized_resource_request_and_response(
         {"validate_first": False},
         {"submission_context": {**PROJECT_REQUEST["submission_context"], "project_name": "project-a"}},
         {"submission_context": {**PROJECT_REQUEST["submission_context"], "data_provider_code": "caller"}},
+        {"foreign_key_value_sources": {"location": {"location_type": "public_id"}}},
     ],
 )
 async def test_project_routes_reject_file_and_caller_configuration_fields(

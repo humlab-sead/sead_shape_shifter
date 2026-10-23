@@ -41,15 +41,15 @@
 
 ## Three-Tier Identity System
 
-All FK relationships use local `system_id` values — never external IDs.
+Core FK links use local `system_id` values. A change-request package can use an existing target ID only when the project declares `foreign_key_value_sources.<target>: public_id`; that declaration does not create a Core link or dependency.
 
 | Tier | Field | Purpose | FK values? |
 |------|-------|---------|-----------|
-| 1 | `system_id` | Local sequential integer | **Yes** |
+| 1 | `system_id` | Local sequential integer | **Yes, for Core links** |
 | 2 | `keys` | Business keys for deduplication | No |
 | 3 | `public_id` | Target schema column name; holds SEAD IDs after mapping | No |
 
-- `public_id` must end with `_id`. FK child column name = parent's `public_id`; FK values = parent's `system_id`.
+- `public_id` must end with `_id`. A Core FK child column uses the parent's `public_id` as its name and the parent's `system_id` as its value. The change-request package exception is project-specific and requires a target database lookup.
 
 ## Code Conventions
 

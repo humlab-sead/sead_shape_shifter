@@ -595,7 +595,7 @@
         "type": "string"
       },
       "default": {},
-      "description": "Target-model FK values supplied by this source; omitted entries use the local system_id link",
+      "description": "Per-target-model-FK value source: system_id uses the local Core link; public_id supplies an existing target ID to the SEAD change-request package without creating a Core link. Omitted entries use system_id.",
       "title": "Foreign Key Value Sources",
       "type": "object"
     },

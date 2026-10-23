@@ -186,7 +186,9 @@ This architecture separates concerns between:
 - **Business logic**: `keys` for entity identification in source data
 - **Global scope**: `public_id` for target system integration and FK relationships
 
-**Critical Principle**: All relationships in ShapeShifter use local `system_id` values. FK columns always contain parent's `system_id` (sequential integers), never external IDs. External IDs (e.g., SEAD IDs) are applied as a decoration step via the mapping sidecar (`<project>-mapping.yml`).
+**Core link rule**: Core FK links use local `system_id` values. Their FK columns contain the referenced entity's local `system_id`, not an external ID. When an ID from the source is used for reconciliation, it can still be configured as a business key and mapped through the mapping sidecar (`<project>-mapping.yml`).
+
+The SEAD change-request ingester also supports a project-specific direct target-ID value for an eligible target-model FK. This changes only the FK value written to the change-request package; it does not create a Core link or change Core FK values.
 
 #### `system_id` (Auto-Managed)
 - **Type**: `string` (always "system_id")
@@ -272,6 +274,31 @@ This architecture separates concerns between:
   # Automatically migrated to:
   public_id: site_id
   ```
+
+#### `foreign_key_value_sources`
+
+Use this entity-level map when a source already contains an existing target ID for a direct target-model FK. The target model still defines the relationship and its requirements; the project declares how its source values are represented.
+
+```yaml
+metadata:
+  target_model: "@load: resources/target_models/sead_standard_model.yml"
+
+entities:
+  location:
+    columns: [location_type_id, location_name]
+    foreign_key_value_sources:
+      location_type: public_id
+```
+
+Here, `location.location_type_id` contains existing SEAD `location_type_id` values. The project does not add a Core `foreign_keys` link to `location_type` for this declaration.
+
+- An omitted entry, or an explicit `system_id` entry, keeps the normal local-link behavior.
+- `public_id` is valid only for a direct target-model FK without `via`. The referenced target entity must define `public_id` and `target_table`, and the source entity must output that target column. A Core `foreign_keys` link to the same target conflicts with `public_id` mode.
+- The change-request ingester checks each packaged non-null value against the target table's integer public-ID column during both validation and ingestion. The check is read-only and mandatory; if the database lookup is unavailable or the ID is absent, the package fails. IDs for rows created by the same package must continue to use local `system_id` links.
+- Missing values follow the target-model FK rules, including `required`, `required_when`, and `nullable`. Rows excluded from the package do not need a direct-ID lookup.
+- The package manifest lists direct-ID FKs under `direct_target_id_foreign_keys`. Supplied FK values do not become mapping-sidecar links.
+
+The declaration is not a shared target-model setting and does not waive a target entity's independent `required: true` project requirement.
 
 #### `surrogate_id` (Deprecated - Use `public_id`)
 - **Status**: **DEPRECATED** - Use `public_id` instead

@@ -18,6 +18,7 @@ from backend.app.services.project_data_provider_service import ProjectDataProvid
 from backend.app.services.project_service import ProjectService, get_project_service
 from ingesters.sead_change_request.input_resolution import TRUSTED_PROJECT_CONTEXT_KEY
 from src.specifications import CompositeProjectSpecification
+from src.target_model.conformance import ConformanceIssue, ForeignKeyValueSourceConformanceValidator
 from src.target_model.models import TargetModel
 from src.workflow import normalize_project
 
@@ -205,6 +206,19 @@ class ProjectIngesterService:
         if target_model_data is None:
             raise ProjectIngesterConfigurationError("The saved project requires metadata.target_model")
         target_model = TargetModel.model_validate(target_model_data)
+
+        foreign_key_value_sources: dict[str, dict[str, str]] = {}
+        for entity_name in core_project.entities:
+            entity_config = core_project.get_table(entity_name)
+            if entity_config.foreign_key_value_sources:
+                foreign_key_value_sources[entity_name] = dict(entity_config.foreign_key_value_sources)
+        if key == "sead_change_request" and any(
+            value_source == "public_id" for entity_sources in foreign_key_value_sources.values() for value_source in entity_sources.values()
+        ):
+            direct_issues = ForeignKeyValueSourceConformanceValidator().validate(target_model, core_project)
+            if direct_issues:
+                raise ProjectIngesterConfigurationError(self._format_direct_fk_issues(direct_issues))
+
         trusted_context = self.project_data_provider_service.build_trusted_context(project)
 
         submission_context = request.submission_context.model_dump(mode="python", exclude_none=True)
@@ -214,6 +228,8 @@ class ProjectIngesterService:
             TRUSTED_PROJECT_CONTEXT_KEY: trusted_context,
             "submission_context": submission_context,
         }
+        if key == "sead_change_request" and foreign_key_value_sources:
+            extra["foreign_key_value_sources"] = foreign_key_value_sources
         if request.deploy_strategy is not None:
             extra["deploy_strategy"] = request.deploy_strategy
 
@@ -238,6 +254,20 @@ class ProjectIngesterService:
             output_folder=str(self.settings.INGEST_OUTPUT_DIR),
             extra=extra,
         )
+
+    @staticmethod
+    def _format_direct_fk_issues(issues: list[ConformanceIssue]) -> str:
+        """Format direct foreign-key declaration errors for existing service responses."""
+        formatted_issues: list[str] = []
+        for issue in issues:
+            context = [
+                f"entity '{issue.entity}'" if issue.entity else None,
+                f"field '{issue.field}'" if issue.field else None,
+                f"column '{issue.column}'" if issue.column else None,
+            ]
+            issue_context = ", ".join(item for item in context if item)
+            formatted_issues.append(f"{issue.code}: {issue.message}" + (f" ({issue_context})" if issue_context else ""))
+        return "Invalid direct foreign-key declaration: " + "; ".join(formatted_issues)
 
     @staticmethod
     def _log_table_counts(project_name: str, tables: dict[str, Any]) -> None:
