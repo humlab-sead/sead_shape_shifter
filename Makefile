@@ -9,6 +9,16 @@ install:
 	@uv pip install -e ".[all]"
 	@echo "✓ Installed shape-shifter with all dependencies (core + api + dev)"
 
+# Re-sync the shared .venv/ from uv.lock without pruning the api/dev extras.
+# Plain `uv sync` syncs to base + dependency-group dev only and silently
+# removes fastapi/uvicorn/pytest, which live in the optional "all" extra
+# (= api + dev extras). The dependency-groups dev (pre-commit, pyinstrument)
+# is included by uv sync automatically.
+.PHONY: sync
+sync:
+	@uv sync --extra all
+	@echo "✓ Synced .venv/ (core + api + dev) from uv.lock"
+
 .PHONY: install-core
 install-core:
 	@uv venv
@@ -317,8 +327,12 @@ create-graphify:
 	@graphify cluster-only $(HOME)/source/sead_shape_shifter
 	@graphify export callflow-html
 
+# graphify comes from brew (~/.local/bin), not the project .venv.
+# GRAPHIFY_VIZ_NODE_LIMIT=0 blocks graph.html generation and removes any stale
+# file (graph is far above the 5000-node viz limit and the HTML is unused).
+# graphify reads this limit only from the environment, not from .graphifyrc.
 update-graphify:
-	@uv run graphify update $(HOME)/source/sead_shape_shifter  --force
+	@GRAPHIFY_VIZ_NODE_LIMIT=0 graphify update $(HOME)/source/sead_shape_shifter --force
 	@git add graphify-out
 	@if git diff --cached --quiet -- graphify-out; then \
 		echo "No changes in graphify-out"; \
@@ -327,7 +341,7 @@ update-graphify:
 	fi
 
 install-graphify:
-	@uv add --dev graphifyy[all]
+	@uv tool install "graphifyy[all]" --force
 	@graphify hook install
 	@graphify vscode install
 	@graphify codex install

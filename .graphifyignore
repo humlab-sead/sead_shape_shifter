@@ -27,8 +27,22 @@ deprecated/
 sead-tools/
 lib/
 
-# Large test fixtures; keep test source code
+# Large test fixtures
 **/test_data/
+
+# Test suites: ~44% of graph nodes. Test files are connectivity hubs that
+# crowd out production code in graphify query/explain results; read test
+# source directly instead of indexing it.
+tests/
+backend/tests/
+frontend/tests/
+
+# Deployment scripts and agent skill files: low value for code queries
+deployment/
+.agents/
+
+# Frontend documentation (not code)
+frontend/docs/
 
 # Historical or presentation-only documentation
 /docs/archive/
