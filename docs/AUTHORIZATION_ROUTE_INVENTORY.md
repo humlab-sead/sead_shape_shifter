@@ -165,7 +165,7 @@ Every row above except the health check requires an authenticated principal thro
 | `POST`   | `/api/v1/data-sources/{name}/cache/invalidate`                  | `application:manage_shared_sources` |                                                                                                                     |
 | `POST`   | `/api/v1/data-sources/{data_source_name}/query/execute`         | `shared_data_source:read`           |                                                                                                                     |
 | `POST`   | `/api/v1/data-sources/{data_source_name}/query/validate`        | `shared_data_source:read`           |                                                                                                                     |
-| `POST`   | `/api/v1/data-sources/{data_source_name}/query/columns`         | `shared_data_source:read`           |                                                                                                                     |
+| `POST`   | `/api/v1/data-sources/{data_source_name}/query/columns`         | project or shared-source read       | Uses `project:read` when `project_name` is supplied; otherwise uses `shared_data_source:read`                       |
 
 ### Suggestions, Preview, And Reconciliation
 
