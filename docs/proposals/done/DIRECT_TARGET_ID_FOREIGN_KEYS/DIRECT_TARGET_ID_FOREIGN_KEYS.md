@@ -2,9 +2,11 @@
 
 ## Status
 
-- Proposed feature / change request
-- Scope: project FK value declarations, target-model conformance, SEAD change-request validation and projection
-- Goal: accept existing target ids in an FK column without requiring a project entity used only to translate those ids
+- **Implemented** (completed 2026-10-23).
+- Scope: project FK value declarations, target-model conformance, SEAD change-request validation and projection, saved-project integration, guidance and schema updates, and the ArboDat pilot.
+- Goal: accept existing target ids in an FK column without requiring a project entity used only to translate those ids.
+- Validation: all three phase task plans record completion. Focused backend, core, schema, and documentation checks passed; the direct-FK PostgreSQL integration test passed without skips; lint passed. The ArboDat pilot found no helper entities that could be removed.
+- Remaining follow-up: advanced FK validation modes and the FK null-key policy remain deferred in their respective proposals.
 
 ## Summary
 
@@ -14,10 +16,10 @@ This removes helper entities whose only purpose is to translate an existing SEAD
 
 Related documents:
 
-- [Target Model Guide](../../../docs/TARGET_MODEL_GUIDE.md)
-- [Conditional Target Model Requirements](../done/CONDITIONAL_TARGET_MODEL_REQUIREMENTS/CONDITIONAL_TARGET_MODEL_REQUIREMENTS.md) — the `required_when` rule this declaration composes with
-- [Target Model Conditional FK Candidates](../../../resources/target_models/TARGET_MODEL_CONDITIONAL_CANDIDATES.md) — candidate inventory, not a count of projects that can drop an entity
-- [Advanced FK Validation Modes](../future/ADVANCED_FK_VALIDATION_MODES.md), [FK Null-Key Policy Model](../future/FK_NULL_KEY_POLICY_MODEL.md) — related deferred work
+- [Target Model Guide](../../../../docs/TARGET_MODEL_GUIDE.md)
+- [Conditional Target Model Requirements](../CONDITIONAL_TARGET_MODEL_REQUIREMENTS/CONDITIONAL_TARGET_MODEL_REQUIREMENTS.md) — the `required_when` rule this declaration composes with
+- [Target Model Conditional FK Candidates](../../../../resources/target_models/TARGET_MODEL_CONDITIONAL_CANDIDATES.md) — candidate inventory, not a count of projects that can drop an entity
+- [Advanced FK Validation Modes](../../future/ADVANCED_FK_VALIDATION_MODES.md), [FK Null-Key Policy Model](../../future/FK_NULL_KEY_POLICY_MODEL.md) — related deferred work
 
 ## Problem
 
