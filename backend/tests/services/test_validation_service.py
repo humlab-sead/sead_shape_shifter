@@ -568,6 +568,44 @@ class TestValidateTargetModel:
         assert result.is_valid is True
         assert result.errors == []
 
+    def test_direct_fk_declaration_without_target_model_returns_specific_error(self, validation_service: ValidationService):
+        mock_api_project = Mock(spec=Project)
+        mock_api_project.entities = {"location": {"foreign_key_value_sources": {"location_type": "public_id"}}}
+        mock_core_project = Mock()
+        mock_core_project.metadata.target_model = None
+
+        with patch("backend.app.services.validation_service.get_project_service") as mock_get_service:
+            mock_project_service = Mock()
+            mock_project_service.load_project.return_value = mock_api_project
+            mock_get_service.return_value = mock_project_service
+
+            with patch("backend.app.services.validation_service.ProjectMapper.to_core", return_value=mock_core_project):
+                result = validation_service.validate_target_model("test-project")
+
+        assert result.is_valid is False
+        assert [(issue.code, issue.entity, issue.field) for issue in result.errors] == [
+            ("DIRECT_FK_TARGET_MODEL_UNAVAILABLE", "location", "metadata.target_model")
+        ]
+
+    def test_direct_fk_declaration_with_missing_target_model_file_returns_specific_error(self, validation_service: ValidationService):
+        mock_api_project = Mock(spec=Project)
+        mock_api_project.entities = {"location": {"foreign_key_value_sources": {"location_type": "public_id"}}}
+
+        with patch("backend.app.services.validation_service.get_project_service") as mock_get_service:
+            mock_project_service = Mock()
+            mock_project_service.load_project.return_value = mock_api_project
+            mock_get_service.return_value = mock_project_service
+
+            with patch(
+                "backend.app.services.validation_service.ProjectMapper.to_core",
+                side_effect=FileNotFoundError("missing_target_model.yml"),
+            ):
+                result = validation_service.validate_target_model("test-project")
+
+        assert result.is_valid is False
+        assert result.errors[0].code == "DIRECT_FK_TARGET_MODEL_UNAVAILABLE"
+        assert result.errors[0].entity == "location"
+
     def test_target_model_null_is_treated_as_missing(self, validation_service: ValidationService):
         """A resolved null target_model should behave the same as an absent target model."""
         mock_api_project = Mock(spec=Project)

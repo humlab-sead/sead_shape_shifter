@@ -20,6 +20,7 @@ def project_target_ids(
     target_model: TargetModel,
     planned_tables: list[PlannedTable] | None = None,
     pending: PendingDeploymentMap | None = None,
+    foreign_key_value_sources: dict[str, dict[str, str]] | None = None,
 ) -> TargetProjectionResult:
     """Replace local identity values with target-facing PK/FK values.
 
@@ -34,6 +35,7 @@ def project_target_ids(
     tables: dict[str, ProjectedTable] = {}
     diagnostics: list[str] = []
     planned_table_lookup: dict[str, PlannedTable] = {planned_table.entity_name: planned_table for planned_table in planned_tables or []}
+    direct_fk_targets = _direct_fk_targets(foreign_key_value_sources)
 
     for entity_name, resolved_table in identity_result.tables.items():
         entity_spec: EntitySpec = target_model.entities[entity_name]
@@ -76,6 +78,8 @@ def project_target_ids(
                 )
 
         for foreign_key in entity_spec.foreign_keys:
+            if foreign_key.entity in direct_fk_targets.get(entity_name, set()):
+                continue
             if foreign_key.required_when is not None:
                 table_diagnostics.extend(
                     _project_conditional_foreign_key(
@@ -139,6 +143,14 @@ def project_target_ids(
         diagnostics.extend(table_diagnostics)
 
     return TargetProjectionResult(tables=tables, diagnostics=diagnostics)
+
+
+def _direct_fk_targets(foreign_key_value_sources: dict[str, dict[str, str]] | None) -> dict[str, set[str]]:
+    """Return target entities whose FK values are already target IDs."""
+    return {
+        source_entity: {target_entity for target_entity, value_source in target_sources.items() if value_source == "public_id"}
+        for source_entity, target_sources in (foreign_key_value_sources or {}).items()
+    }
 
 
 def _project_conditional_foreign_key(

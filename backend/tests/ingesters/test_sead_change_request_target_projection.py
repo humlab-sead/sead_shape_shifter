@@ -153,6 +153,54 @@ class TestProjectTargetIds:
         assert result.tables["sample"].frame["site_id"].tolist() == [501, 502]
         assert not result.diagnostics
 
+        explicit_local_result = project_target_ids(
+            identity_result,
+            target_model,
+            foreign_key_value_sources={"sample": {"site": "system_id"}},
+        )
+        assert explicit_local_result.tables["sample"].frame["site_id"].tolist() == [501, 502]
+        assert explicit_local_result.diagnostics == result.diagnostics
+
+    def test_direct_foreign_key_keeps_the_target_id_without_a_parent_table(self):
+        frame = pd.DataFrame({"system_id": [10], "location_id": [None], "location_type_id": ["00042"]})
+        identity_result = IdentityResolutionResult(
+            tables={"location": make_resolved_table("location", frame, [ChangeRowState.NEWLY_ALLOCATED_ENTITY], [601])}
+        )
+        target_model = minimal_target_model(
+            location_type={"role": "lookup", "public_id": "location_type_id", "target_table": "tbl_location_types"},
+            location={
+                "role": "fact",
+                "public_id": "location_id",
+                "foreign_keys": [{"entity": "location_type", "required": True}],
+            },
+        )
+
+        result = project_target_ids(
+            identity_result,
+            target_model,
+            foreign_key_value_sources={"location": {"location_type": "public_id"}},
+        )
+
+        assert result.tables["location"].frame["location_type_id"].tolist() == ["00042"]
+        assert result.tables["location"].frame["location_id"].tolist() == [601]
+        assert not result.diagnostics
+
+    def test_direct_conditional_fk_skips_projection_diagnostics_for_unselected_malformed_rows(self):
+        frame = pd.DataFrame({"system_id": [10], "location_id": [None], "location_type_id": ["bad"]})
+        identity_result = IdentityResolutionResult(
+            tables={"location": make_resolved_table("location", frame, [ChangeRowState.EXISTING_ENTITY], [601])}
+        )
+        target_model = conditional_location_target_model()
+
+        result = project_target_ids(
+            identity_result,
+            target_model,
+            foreign_key_value_sources={"location": {"location_type": "public_id"}},
+        )
+
+        assert result.tables["location"].frame["location_type_id"].tolist() == ["bad"]
+        assert not result.diagnostics
+
     def test_reports_unresolved_foreign_keys_when_parent_mapping_missing(self):
         """Unmapped FK values should become null and produce a diagnostic."""
         parent_frame = pd.DataFrame({"system_id": [1], "site_id": [None]})

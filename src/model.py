@@ -511,6 +511,12 @@ class TableConfig:
             ForeignKeyConfig(local_entity=self.entity_name, fk_cfg=fk_data) for fk_data in self.entity_cfg.get("foreign_keys", []) or []
         ]
 
+    @property
+    def foreign_key_value_sources(self) -> dict[str, str]:
+        """Return configured target-model FK value sources without adding project links."""
+        value_sources = self.entity_cfg.get("foreign_key_value_sources", {})
+        return value_sources if isinstance(value_sources, dict) else {}
+
     def dependent_entities(self) -> Generator[str, None, None]:
         """Yield names of entities that depend on this entity."""
         for entity_name in sorted(self.entities_cfg):

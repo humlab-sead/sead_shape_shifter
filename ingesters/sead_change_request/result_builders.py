@@ -10,7 +10,7 @@ from ingesters.sead_change_request.preparation import PreparationResult
 
 def build_validation_result(preparation: PreparationResult) -> ValidationResult:
     """Build the protocol validation result from a shared preparation output."""
-    validation_errors = preparation.planned.errors + preparation.projection_result.diagnostics
+    validation_errors = preparation.planned.errors + preparation.projection_result.diagnostics + preparation.direct_fk_diagnostics
     if preparation.preflight_result is not None:
         validation_errors = validation_errors + preparation.preflight_result.diagnostics
     warnings = list(preparation.planned.warnings)
@@ -113,6 +113,12 @@ def check_ingestion_preconditions(preparation: PreparationResult) -> IngestionRe
         return IngestionResult.create_failed_result(
             message="Validation failed",
             details=failure_details(preparation.planned.errors),
+        )
+
+    if preparation.direct_fk_diagnostics:
+        return IngestionResult.create_failed_result(
+            message="Direct foreign-key validation failed",
+            details=failure_details(preparation.direct_fk_diagnostics),
         )
 
     if preparation.resolution_result.blocked_rows:

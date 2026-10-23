@@ -1,6 +1,7 @@
 from collections import Counter
 from pathlib import Path
 
+import pytest
 import yaml
 
 from src.model import ShapeShiftProject, TableConfig
@@ -1056,6 +1057,200 @@ def test_induced_requirement_transitive_stops_at_present_intermediate() -> None:
 
     assert ("MISSING_INDUCED_REQUIRED_ENTITY", "taxon_group") in codes_entities
     assert ("MISSING_INDUCED_REQUIRED_ENTITY", "taxon") not in codes_entities  # taxon is present
+
+
+def test_direct_public_id_fks_allow_missing_targets_and_report_pending_checks() -> None:
+    target_model = _minimal_target_model(
+        {
+            "sample": {
+                "foreign_keys": [
+                    {"entity": "optional_dataset"},
+                    {"entity": "required_dataset", "required": True},
+                    {"entity": "conditional_dataset", "required_when": {"has_new_rows": "sample"}},
+                ],
+            },
+            "optional_dataset": {"public_id": "optional_dataset_id", "target_table": "public.optional_dataset"},
+            "required_dataset": {"public_id": "required_dataset_id", "target_table": "public.required_dataset"},
+            "conditional_dataset": {"public_id": "conditional_dataset_id", "target_table": "public.conditional_dataset"},
+        }
+    )
+    project = _minimal_project(
+        {
+            "sample": {
+                "columns": ["optional_dataset_id", "required_dataset_id", "conditional_dataset_id"],
+                "foreign_key_value_sources": {
+                    "optional_dataset": "public_id",
+                    "required_dataset": "public_id",
+                    "conditional_dataset": "public_id",
+                },
+            }
+        },
+        options={"validation": {"severity_overrides": {"direct_fk_pending_check": "error"}}},
+    )
+
+    issues = TargetModelConformanceValidator().validate(target_model, project)
+    codes = [issue.code for issue in issues]
+
+    pending = [issue for issue in issues if issue.code == "DIRECT_FK_TARGET_CHECK_PENDING"]
+    assert len(pending) == 3
+    assert {issue.severity for issue in pending} == {"info"}
+    assert "MISSING_REQUIRED_FOREIGN_KEY_TARGET" not in codes
+    assert "MISSING_INDUCED_REQUIRED_ENTITY" not in codes
+    assert "CONDITIONAL_FK_AWAITING_RECONCILIATION" in codes
+
+
+def test_system_id_value_source_keeps_local_link_check_and_has_no_pending_check() -> None:
+    target_model = _minimal_target_model(
+        {
+            "sample": {"foreign_keys": [{"entity": "dataset", "required": True}]},
+            "dataset": {"public_id": "dataset_id"},
+        }
+    )
+    project = _minimal_project(
+        {
+            "sample": {
+                "columns": ["dataset_id"],
+                "foreign_keys": [{"entity": "dataset", "local_keys": ["dataset_id"], "remote_keys": ["dataset_id"]}],
+                "foreign_key_value_sources": {"dataset": "system_id"},
+            },
+            "dataset": {"public_id": "dataset_id", "columns": ["dataset_name"]},
+        }
+    )
+
+    issues = TargetModelConformanceValidator().validate(target_model, project)
+
+    assert not any(issue.code == "DIRECT_FK_TARGET_CHECK_PENDING" for issue in issues)
+    assert not any(issue.code == "MISSING_REQUIRED_FOREIGN_KEY_TARGET" for issue in issues)
+
+
+def test_direct_public_id_fk_does_not_satisfy_globally_required_entity() -> None:
+    target_model = _minimal_target_model(
+        {
+            "sample": {"foreign_keys": [{"entity": "dataset", "required": True}]},
+            "dataset": {"required": True, "public_id": "dataset_id", "target_table": "public.dataset"},
+        }
+    )
+    project = _minimal_project({"sample": {"columns": ["dataset_id"], "foreign_key_value_sources": {"dataset": "public_id"}}})
+
+    issues = TargetModelConformanceValidator().validate(target_model, project)
+
+    assert any(issue.code == "MISSING_REQUIRED_ENTITY" and issue.entity == "dataset" for issue in issues)
+    assert not any(issue.code == "MISSING_REQUIRED_FOREIGN_KEY_TARGET" for issue in issues)
+    assert not any(issue.code == "MISSING_INDUCED_REQUIRED_ENTITY" for issue in issues)
+
+
+@pytest.mark.parametrize(
+    ("target_entities", "source_entity", "expected_code"),
+    [
+        ({}, {"foreign_key_value_sources": {"dataset": "public_id"}}, "DIRECT_FK_RELATIONSHIP_UNKNOWN"),
+        (
+            {
+                "sample": {"foreign_keys": [{"entity": "dataset", "via": "sample_dataset"}]},
+                "dataset": {"public_id": "dataset_id", "target_table": "public.dataset"},
+            },
+            {"columns": ["dataset_id"], "foreign_key_value_sources": {"dataset": "public_id"}},
+            "DIRECT_FK_VIA_UNSUPPORTED",
+        ),
+        (
+            {
+                "sample": {"foreign_keys": [{"entity": "dataset"}]},
+                "dataset": {"target_table": "public.dataset"},
+            },
+            {"columns": ["dataset_id"], "foreign_key_value_sources": {"dataset": "public_id"}},
+            "DIRECT_FK_TARGET_PUBLIC_ID_MISSING",
+        ),
+        (
+            {
+                "sample": {"foreign_keys": [{"entity": "dataset"}]},
+                "dataset": {"public_id": "dataset_id"},
+            },
+            {"columns": ["dataset_id"], "foreign_key_value_sources": {"dataset": "public_id"}},
+            "DIRECT_FK_TARGET_TABLE_MISSING",
+        ),
+        (
+            {
+                "sample": {"foreign_keys": [{"entity": "dataset"}]},
+                "dataset": {"public_id": "dataset_id", "target_table": "public.dataset"},
+            },
+            {
+                "columns": ["dataset_id"],
+                "foreign_keys": [{"entity": "dataset", "local_keys": ["dataset_id"], "remote_keys": ["dataset_id"]}],
+                "foreign_key_value_sources": {"dataset": "public_id"},
+            },
+            "DIRECT_FK_CORE_LINK_CONFLICT",
+        ),
+        (
+            {
+                "sample": {"foreign_keys": [{"entity": "dataset"}]},
+                "dataset": {"public_id": "dataset_id", "target_table": "public.dataset"},
+            },
+            {"columns": ["sample_name"], "foreign_key_value_sources": {"dataset": "public_id"}},
+            "DIRECT_FK_OUTPUT_COLUMN_MISSING",
+        ),
+    ],
+)
+def test_invalid_direct_public_id_fk_reports_specific_code(target_entities: dict, source_entity: dict, expected_code: str) -> None:
+    if "sample" not in target_entities and expected_code == "DIRECT_FK_RELATIONSHIP_UNKNOWN":
+        target_entities = {"sample": {"foreign_keys": [{"entity": "dataset", "required": True}]}}
+    target_model = _minimal_target_model(target_entities)
+    project_entities = {"sample": source_entity}
+    if expected_code == "DIRECT_FK_CORE_LINK_CONFLICT":
+        project_entities["dataset"] = {"public_id": "dataset_id", "columns": ["dataset_name"]}
+    project = _minimal_project(project_entities)
+
+    codes = [issue.code for issue in TargetModelConformanceValidator().validate(target_model, project)]
+
+    assert expected_code in codes
+    if expected_code == "DIRECT_FK_RELATIONSHIP_UNKNOWN":
+        assert "MISSING_REQUIRED_FOREIGN_KEY_TARGET" in codes
+
+
+def test_direct_public_id_column_dropped_by_unnest_is_rejected() -> None:
+    target_model = _minimal_target_model(
+        {
+            "sample": {"foreign_keys": [{"entity": "dataset"}]},
+            "dataset": {"public_id": "dataset_id", "target_table": "public.dataset"},
+        }
+    )
+    project = _minimal_project(
+        {
+            "sample": {
+                "columns": ["record_key", "dataset_id"],
+                "foreign_key_value_sources": {"dataset": "public_id"},
+                "unnest": {
+                    "id_vars": ["record_key"],
+                    "value_vars": ["dataset_id"],
+                    "var_name": "attribute",
+                    "value_name": "value",
+                },
+            }
+        }
+    )
+
+    codes = [issue.code for issue in TargetModelConformanceValidator().validate(target_model, project)]
+
+    assert "DIRECT_FK_OUTPUT_COLUMN_MISSING" in codes
+
+
+def test_direct_public_id_fk_counts_as_fact_path_to_lookup() -> None:
+    target_model = TargetModel.model_validate(
+        {
+            "model": {"name": "test", "version": "1.0"},
+            "constraints": [{"type": "no_orphan_facts"}],
+            "entities": {
+                "dataset": {"role": "lookup", "public_id": "dataset_id", "target_table": "public.dataset"},
+                "sample": {
+                    "role": "fact",
+                    "foreign_keys": [{"entity": "dataset", "required": True}],
+                },
+            },
+        }
+    )
+    project = _minimal_project({"sample": {"columns": ["dataset_id"], "foreign_key_value_sources": {"dataset": "public_id"}}})
+
+    issues = TargetModelConformanceValidator().validate(target_model, project)
+
+    assert not any(issue.code == "ORPHAN_FACT_ENTITY" for issue in issues)
 
 
 def test_no_orphan_facts_is_silent_when_constraint_is_not_declared() -> None:
