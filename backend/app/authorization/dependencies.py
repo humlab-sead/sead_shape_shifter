@@ -107,8 +107,12 @@ def require_active_project(action: Action) -> Callable:
     return dependency
 
 
-def require_shared_data_source(action: Action) -> Callable:
-    """Create a dependency that authorizes a shared data source locator for an action."""
+def require_shared_data_source(action: Action, *, body_locator: bool = False) -> Callable:
+    """Create a dependency that authorizes a shared data source locator for an action.
+
+    Set ``body_locator`` when the request body, rather than the route parameters,
+    contains the shared data source filename.
+    """
 
     async def dependency(
         request: Request,
@@ -118,14 +122,16 @@ def require_shared_data_source(action: Action) -> Callable:
         name: str | None = None,
         data_source_name: str | None = None,
     ) -> AuthorizedResource:
-        source_reference = filename or name or data_source_name
-        if source_reference is None:
+        source_reference = None if body_locator else filename or name or data_source_name
+        if body_locator or source_reference is None:
             try:
                 body = await request.json()
             except (RuntimeError, ValueError):
                 body = None
             if isinstance(body, dict):
-                source_reference = body.get("source_filename")
+                body_reference = body.get("source_filename")
+                if body_locator or source_reference is None:
+                    source_reference = body_reference
 
         return authorize_shared_data_source_reference(principal, service, source_reference, action)
 
