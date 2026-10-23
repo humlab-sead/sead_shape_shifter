@@ -63,10 +63,10 @@ describe('ingesterApi project routes', () => {
         data: { success: true, records_processed: 1, message: 'Imported' },
       })
 
-    await ingesterApi.validate('sead', validateRequest)
-    await ingesterApi.ingest('sead', ingestRequest)
+    await ingesterApi.validate('sead_change_request', validateRequest)
+    await ingesterApi.ingest('sead_change_request', ingestRequest)
 
-    expect(apiClient.post).toHaveBeenNthCalledWith(1, '/ingesters/sead/validate', validateRequest)
-    expect(apiClient.post).toHaveBeenNthCalledWith(2, '/ingesters/sead/ingest', ingestRequest)
+    expect(apiClient.post).toHaveBeenNthCalledWith(1, '/ingesters/sead_change_request/validate', validateRequest)
+    expect(apiClient.post).toHaveBeenNthCalledWith(2, '/ingesters/sead_change_request/ingest', ingestRequest)
   })
 })

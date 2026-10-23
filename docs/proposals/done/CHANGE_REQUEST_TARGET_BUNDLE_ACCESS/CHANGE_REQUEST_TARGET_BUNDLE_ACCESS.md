@@ -29,7 +29,7 @@ The project-only Change Request routes already normalize an authorized saved pro
 
 - Changing the `application:run_ingesters` requirement for other ingester operations.
 - Removing or relaxing the `project:execute` requirement for this operation, or making bundle creation available to principals without access to the saved project.
-- Reopening Change Request workbook input. The shared file routes, service, and ingester reject it; [Ingester Authorization](../../INGESTER_AUTHORIZATION_TASKS/INGESTER_AUTHORIZATION_TASKS.md) governs remaining path-based ingesters.
+- Reopening Change Request workbook input. The shared file routes, service, and ingester reject it; [Security Hardening Follow-up](../../SECURITY_HARDENING_FOLLOWUP/SECURITY_HARDENING_FOLLOWUP.md) defines safeguards for future generic-route ingesters.
 - Adding per-source authorization or a separate bundle-creation permission.
 - Changing the completed in-memory normalization or table-input contracts from [IN_MEMORY_INGESTER_HANDOFF](../../done/IN_MEMORY_INGESTER_HANDOFF/IN_MEMORY_INGESTER_HANDOFF.md).
 - Moving the SEAD Release Cycle's review or quality-assurance responsibilities into Shape Shifter.

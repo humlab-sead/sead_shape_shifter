@@ -30,6 +30,7 @@ from backend.app.authorization.operations import (
     reconcile_manifest,
     restore_database,
 )
+from backend.app.authorization.policy import allowed_resource_roles, validate_resource_role
 from backend.app.authorization.repository import SQLiteAuthorizationRepository
 from backend.app.core.config import settings
 
@@ -47,17 +48,23 @@ def migrate(database: Path | None, manifest: Path | None, dry_run: bool) -> None
     """Initialize the schema and optionally inspect a migration manifest."""
     path: Path = database or settings.AUTHORIZATION_DATABASE_PATH
     if manifest:
-        summary: dict[str, int] = inspect_manifest(
-            manifest, allow_authenticated_everyone=settings.AUTHORIZATION_ALLOW_AUTHENTICATED_EVERYONE
-        )
+        try:
+            summary: dict[str, int] = inspect_manifest(
+                manifest, allow_authenticated_everyone=settings.AUTHORIZATION_ALLOW_AUTHENTICATED_EVERYONE
+            )
+        except ValueError as error:
+            raise click.ClickException(str(error)) from error
         click.echo(f"Manifest: {summary['resources']} resources, {summary['administrators']} administrators")
     if dry_run:
         click.echo("Dry run: no database changes made")
         return
     if manifest:
-        applied: dict[str, int] = apply_manifest(
-            manifest, path, allow_authenticated_everyone=settings.AUTHORIZATION_ALLOW_AUTHENTICATED_EVERYONE
-        )
+        try:
+            applied: dict[str, int] = apply_manifest(
+                manifest, path, allow_authenticated_everyone=settings.AUTHORIZATION_ALLOW_AUTHENTICATED_EVERYONE
+            )
+        except ValueError as error:
+            raise click.ClickException(str(error)) from error
         click.echo(f"Applied: {applied['resources']} resources, {applied['administrators']} administrators, {applied['grants']} grants")
     else:
         initialize_database(path)
@@ -316,7 +323,11 @@ def _raise_for_destructive_plan(
 @click.option("--locator", required=True)
 @click.option("--subject-type", required=True, type=click.Choice([subject_type.value for subject_type in GrantSubjectType]))
 @click.option("--subject-id", required=True)
-@click.option("--role", required=True)
+@click.option(
+    "--role",
+    required=True,
+    type=click.Choice(sorted({role for resource_type in ResourceType for role in allowed_resource_roles(resource_type)})),
+)
 @click.option("--actor", required=True)
 @click.option("--dry-run", is_flag=True)
 def grant(
@@ -339,6 +350,10 @@ def grant(
         typed_subject = GrantSubjectType(subject_type)
         if typed_subject == GrantSubjectType.EVERYONE and not settings.AUTHORIZATION_ALLOW_AUTHENTICATED_EVERYONE:
             raise click.ClickException("Authenticated everyone grants are disabled by deployment configuration")
+        try:
+            validate_resource_role(resource.resource_type, role)
+        except ValueError as error:
+            raise click.ClickException(str(error)) from error
         if repository.grant_exists(typed_subject, subject_id, resource.resource_id, role):
             click.echo("Grant already exists")
             return

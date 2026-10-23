@@ -2120,7 +2120,9 @@ async function handleSaveDrawerNote() {
   drawerNoteError.value = null
 
   try {
-    const response = await api.tasks.setNote(projectName.value, selectedNode.value, drawerNoteContent.value)
+    const response = drawerNoteContent.value.trim()
+      ? await api.tasks.setNote(projectName.value, selectedNode.value, drawerNoteContent.value)
+      : await api.tasks.removeNote(projectName.value, selectedNode.value)
     taskStatusStore.setEntityHasNote(selectedNode.value, response.has_note)
     applyTaskStatusToNodes()
 

@@ -14,10 +14,10 @@ This removes helper entities whose only purpose is to translate an existing SEAD
 
 Related documents:
 
-- [Target Model Guide](../../docs/TARGET_MODEL_GUIDE.md)
-- [Conditional Target Model Requirements](done/CONDITIONAL_TARGET_MODEL_REQUIREMENTS/CONDITIONAL_TARGET_MODEL_REQUIREMENTS.md) — the `required_when` rule this declaration composes with
-- [Target Model Conditional FK Candidates](../../resources/target_models/TARGET_MODEL_CONDITIONAL_CANDIDATES.md) — candidate inventory, not a count of projects that can drop an entity
-- [Advanced FK Validation Modes](future/ADVANCED_FK_VALIDATION_MODES.md), [FK Null-Key Policy Model](future/FK_NULL_KEY_POLICY_MODEL.md) — related deferred work
+- [Target Model Guide](../../../docs/TARGET_MODEL_GUIDE.md)
+- [Conditional Target Model Requirements](../done/CONDITIONAL_TARGET_MODEL_REQUIREMENTS/CONDITIONAL_TARGET_MODEL_REQUIREMENTS.md) — the `required_when` rule this declaration composes with
+- [Target Model Conditional FK Candidates](../../../resources/target_models/TARGET_MODEL_CONDITIONAL_CANDIDATES.md) — candidate inventory, not a count of projects that can drop an entity
+- [Advanced FK Validation Modes](../future/ADVANCED_FK_VALIDATION_MODES.md), [FK Null-Key Policy Model](../future/FK_NULL_KEY_POLICY_MODEL.md) — related deferred work
 
 ## Problem
 
@@ -33,11 +33,13 @@ The standard target model is shared by projects with different sources. The valu
 - Structural and project conformance rules for that declaration.
 - A resolved value-source handoff to the change-request ingester, target database existence checks, and projection for supplied ids.
 - Configuration guide, API model, and editor schema updates for the project declaration.
+- The root `AGENTS.md` and `src/AGENTS.md` identity rules, so they distinguish Core FK links from direct target IDs in change-request packages.
 
 ## Non-Goals
 
 - Inferring value interpretation from whether the referenced project entity exists.
 - Changing the default `system_id` behavior or the Core link algorithm for existing project FKs.
+- Changing the Core FK value rule: Core project FK links continue to use local `system_id` values. The `public_id` option applies only when the change-request ingester writes a target-model FK column to a package.
 - Mixing `system_id` and `public_id` values in one FK column.
 - Accepting an id for a row that will be created by the same change request. Such rows continue to use local `system_id` links.
 - Supporting non-integer target public ids, bridge FKs declared with `via`, synthesized bridges, or business-key reconciliation in this change.
@@ -49,7 +51,7 @@ Verified against the repository:
 - `ForeignKeyConfig.generate_link_setup` names an FK column after the referenced entity's `public_id` while supplying its local `system_id` (`src/model.py`).
 - `project_target_ids` maps local FK values through the referenced resolved table and casts projected IDs to `Int64` (`ingesters/sead_change_request/target_projection.py`).
 - Project conformance has separate direct-FK, induced-required-entity, globally-required-entity, and no-orphan-fact checks (`src/target_model/conformance.py`). Skipping only the direct-FK check would not cover every case.
-- The current target database checker is optional, runs during `ingest()`, and accepts integer IDs. `validate()` does not use it (`ingesters/sead_change_request/ingester.py`, `ingesters/sead_change_request/collision_checks.py`).
+- The current target database checker is optional. `ingest_tables()` may use it for target collision checks; `validate_tables()` does not use it. The file-based `validate()` and `ingest()` methods reject retired file input (`ingesters/sead_change_request/ingester.py`, `ingesters/sead_change_request/collision_checks.py`).
 - The change-request ingester receives a target model through `IngesterConfig.extra`; its current input does not include a project object or per-project FK value-source map (`ingesters/sead_change_request/input_resolution.py`).
 - Column nullability validation checks `required: true` with a non-nullable column. The change-request projection also checks required FKs, but `nullable: false` alone does not reject a missing value (`src/target_model/data_validators.py`, `ingesters/sead_change_request/target_projection.py`).
 - In the standard target model, `data_provider_id` is the public ID. `data_provider_uuid` is a separate UUID column, not a public-ID FK target (`resources/target_models/sead_standard_model.yml`).
@@ -73,6 +75,8 @@ entities:
 
 The map key is a target entity named by a direct FK on `location` in the resolved target model. Allowed values are `system_id` and `public_id`; an absent entry means `system_id`. `system_id` uses the existing project `foreign_keys` link. `public_id` means the project produces the column named by the target entity's `public_id` directly, without a project FK link to that target. The declaration is project metadata, not a Core join or dependency.
 
+This changes only how the change-request ingester handles the declared output column. Core treats the supplied target ID as ordinary column data: it creates no project FK link or dependency for that declaration, and existing Core FK links still carry local `system_id` values. When building a change-request package, the ingester checks the declared value against the target table and preserves it in the target-model FK column.
+
 The project cannot declare both a Core `foreign_keys` link and `public_id` mode for the same target-model FK. Any nonempty `foreign_key_value_sources` map requires `metadata.target_model`; projects without the map may still omit a target model. A direct-ID entry also requires a direct target-model FK without `via` and a target entity with both `public_id` and `target_table`. The target-model FK remains the authority for `required` and `required_when`.
 
 The API project model and `ProjectMapper` preserve this declaration into Core. The change-request ingester receives a resolved per-entity value-source map in `IngesterConfig.extra`, alongside its target model. A caller using a saved project derives that map from the resolved project rather than re-entering it. A standalone caller may supply the same map explicitly. An absent map means every FK uses the current `system_id` path; the ingester never infers mode from table presence.
@@ -85,7 +89,7 @@ A target entity marked `required: true` in the target model remains required as 
 
 ### Change-request validation and projection
 
-After identity planning determines which rows will enter the change request, each non-null direct-ID FK value on those rows is checked against the referenced target table and public-ID column in the target database. The lookup is read-only and required by both `validate()` and `ingest()` when there are values to check. If the lookup is unavailable, a value is malformed, or no target row exists, validation fails with the source entity, FK column, and offending value. There is no fallback to local `system_id` interpretation. Database constraints remain the final check when the package is deployed.
+After identity planning determines which rows will enter the change request, each non-null direct-ID FK value on those rows is checked against the referenced target table and public-ID column in the target database. The lookup is read-only and required by both `validate_tables()` and `ingest_tables()` when there are values to check. Saved-project validation and ingestion use these table-based methods. If the lookup is unavailable, a value is malformed, or no target row exists, validation fails with the source entity, FK column, and offending value. There is no fallback to local `system_id` interpretation. Database constraints remain the final check when the package is deployed.
 
 The first delivery accepts integer target public ids. The database column type is checked when a direct-ID value is packaged, because the target model may omit a column specification for its `public_id`. Values are normalized to integer form for comparison and payload typing, but are never remapped through a local entity. A non-integer target public-ID column fails validation with a clear error. The current standard target model provides no verified UUID or string public-ID FK target, so generic support is deferred until one is needed.
 
@@ -119,7 +123,7 @@ The package manifest records each FK that used direct target ids. The FK values 
 
 - Project configuration: accept both declared value sources and the default; reject an unknown source, unknown relationship, missing target metadata, `via`, and a conflicting Core FK link.
 - Conformance: omit an otherwise optional referenced entity without direct-FK or induced-entity errors; retain the globally required-entity rule; count the direct relationship for no-orphan-facts; keep the default scaffold unchanged.
-- Change request: pass the resolved map through project-driven and standalone ingester inputs; preserve supplied integer IDs; reject a non-integer target column, missing target row, or unavailable lookup in both `validate()` and `ingest()`; confirm that an absent referenced project table is not needed.
+- Change request: pass the resolved map through the saved-project service into `validate_tables()` and `ingest_tables()`; preserve supplied integer IDs; reject a non-integer target column, missing target row, or unavailable lookup through both methods. Confirm that standalone callers can supply the map and that an absent referenced project table is not needed.
 - Missing values: cover required, conditional, optional non-nullable, zero-insert, insert, and update cases.
 - Regression: existing `system_id` projects produce the same results. Run `tests/target_model/`, `tests/model/test_target_model_conformance.py`, and `backend/tests/ingesters/`. Confirm the previously reported failures in `test_core_conformance_reports_known_gaps_for_full_arbodat_project` and `test_core_conformance_current_corpus_issue_families_are_stable` against the unmodified standard target model before comparing results.
 - End-to-end: validate and package one direct-ID change request against a disposable PostgreSQL instance, including the manifest and a nonexistent ID.
@@ -127,15 +131,15 @@ The package manifest records each FK that used direct target ids. The FK values 
 
 ## Acceptance Criteria
 
-- `P-AC-1` A project entity accepts `foreign_key_value_sources` for target-model direct FKs, and project-driven callers pass its resolved map to the change-request ingester. Omission or `system_id` keeps existing Core linking and projection behavior.
+- `P-AC-1` A project entity accepts `foreign_key_value_sources` for target-model direct FKs, and saved-project callers pass its resolved map to the change-request ingester. The declaration creates no Core project link or dependency; existing Core FK links continue to carry local `system_id` values. Omission or `system_id` keeps existing Core linking and projection behavior.
 - `P-AC-2` Invalid value sources, unknown relationships, missing target metadata, `via`, and conflicting Core FK links fail with machine-readable codes.
 - `P-AC-3` A project using `public_id` may omit an otherwise optional referenced entity and link. Conformance reports an informational pending target check, no missing direct-FK or induced-entity error, and no false no-orphan-facts issue; globally required entities remain required.
 - `P-AC-4` A direct-ID FK reaches the change request with the same target ID and is never rewritten through the local `system_id` map.
-- `P-AC-5` Both `validate()` and `ingest()` reject a packaged direct ID that is malformed, absent from the target table, or unverifiable because the required lookup is unavailable. The error names the source entity, column, and value where one was supplied.
+- `P-AC-5` Both `validate_tables()` and `ingest_tables()` reject a packaged direct ID that is malformed, absent from the target table, or unverifiable because the required lookup is unavailable. Saved-project validation and ingestion exercise these methods. The error names the source entity, column, and value where one was supplied.
 - `P-AC-6` Missing direct-ID values on inserted rows follow `required`, `required_when`, and `nullable: false`; explicit null updates to non-nullable FK columns fail, and excluded rows do not block the package.
 - `P-AC-7` Integer target ids are checked against the target database without a local-entity map; non-integer target public-ID columns fail validation when direct mode is used.
 - `P-AC-8` Existing `system_id` projects retain their results and default-path diagnostics, subject to the recorded pre-existing test failures.
-- `P-AC-9` The configuration guide, API project model, and editor schema document the declaration and default; the default scaffold still generates local-ID links.
+- `P-AC-9` The configuration guide, API project model, and editor schema document the declaration and default. `AGENTS.md` and `src/AGENTS.md` state that Core FK links remain `system_id`-based and that direct target IDs apply only to change-request package FK values. The default scaffold still generates local-ID links.
 - `P-AC-10` The change-request manifest identifies direct-ID FKs, while the mapping sidecar remains a record of reconciliation links rather than supplied FK values.
 
 ## Planning Handoff
@@ -143,6 +147,7 @@ The package manifest records each FK that used direct target ids. The FK values 
 **Confirmed decisions**
 
 - The target model defines relationships; each project explicitly selects `public_id` where its source already supplies target ids.
+- Direct `public_id` FK values are an output exception for change-request packages only. Core project FK links continue to carry local `system_id` values, and direct-ID declarations create no Core project link or dependency. Update `AGENTS.md` and `src/AGENTS.md` to state this distinction.
 - The ingester receives the resolved value-source map in `IngesterConfig.extra`; saved-project callers derive it from the project, and standalone callers may provide it directly.
 - The default remains `system_id`. A direct-ID declaration never invokes a Core FK join or reinterprets a local ID by inference.
 - Direct IDs must name rows already present in the target database. Lookup is mandatory for packaged values during validation and ingestion; missing lookup fails closed.
@@ -153,7 +158,7 @@ The package manifest records each FK that used direct target ids. The FK values 
 
 - Preserve existing Core link behavior, default-path diagnostics, `required_when` insert timing, and its exclusivity with `required`.
 - Make direct-mode conformance consistent across direct-FK, induced-entity, globally-required-entity, and no-orphan-facts checks.
-- Validate target existence in both ingester paths before accepting a package; retain database constraints at deployment.
+- Validate target existence in `validate_tables()` and `ingest_tables()` before accepting a package; saved-project service calls must exercise both methods. Retain database constraints at deployment.
 - Keep the default scaffold and shared target-model interpretation unchanged for existing projects.
 - Record the direct-ID declaration in the package manifest; do not create artificial mapping-sidecar links.
 

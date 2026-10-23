@@ -22,6 +22,7 @@ from backend.app.authorization.models import (
     StateChange,
     StateImportPlan,
 )
+from backend.app.authorization.policy import validate_resource_role
 from backend.app.authorization.repository import CURRENT_SCHEMA_VERSION, SQLiteAuthorizationRepository
 
 
@@ -485,7 +486,7 @@ def _load_state(path: Path) -> AuthorizationState:
             f"{CURRENT_SCHEMA_VERSION}; upgrade the application before restoring it"
         )
     resources = _snapshot_resources(document.get("resources", []))
-    grants = _snapshot_grants(document.get("grants", []), {resource.resource_id for resource in resources})
+    grants = _snapshot_grants(document.get("grants", []), {resource.resource_id: resource for resource in resources})
     application_roles = _snapshot_application_roles(document.get("application_roles", []))
     audit_events = _snapshot_audit_events(document["audit_events"]) if "audit_events" in document else None
     return AuthorizationState(schema_version, resources, grants, application_roles, audit_events)
@@ -531,7 +532,7 @@ def _snapshot_resources(items: Any) -> tuple[ResourceRecord, ...]:
     return tuple(resources)
 
 
-def _snapshot_grants(items: Any, resource_ids: set[UUID]) -> tuple[Grant, ...]:
+def _snapshot_grants(items: Any, resources_by_id: dict[UUID, ResourceRecord]) -> tuple[Grant, ...]:
     if not isinstance(items, list):
         raise ValueError("Snapshot grants must be a list")
     grants: list[Grant] = []
@@ -554,8 +555,13 @@ def _snapshot_grants(items: Any, resource_ids: set[UUID]) -> tuple[Grant, ...]:
             raise ValueError("Everyone grants must use subject_id 'authenticated'")
         if subject_type != GrantSubjectType.PRINCIPAL and role == "owner":
             raise ValueError("Only a principal may receive the owner role")
-        if resource_id not in resource_ids:
+        resource = resources_by_id.get(resource_id)
+        if resource is None:
             raise ValueError(f"Snapshot grant references an unknown resource: {resource_id}")
+        try:
+            validate_resource_role(resource.resource_type, role)
+        except ValueError as exc:
+            raise ValueError(f"Snapshot grant {subject_type.value}:{subject_id} on {_resource_label(resource)}: {exc}") from exc
         key = (subject_type.value, subject_id, resource_id, role)
         if key in seen:
             raise ValueError(f"Duplicate snapshot grant: {subject_type.value}:{subject_id} {role} {resource_id}")
@@ -727,7 +733,7 @@ def _validate_resource(resource: Any, *, allow_authenticated_everyone: bool = Fa
     if not isinstance(resource["resource_type"], str) or not isinstance(resource["locator"], str) or not resource["locator"].strip():
         raise ValueError("Each manifest resource needs resource_type and locator")
     try:
-        ResourceType(resource["resource_type"])
+        resource_type = ResourceType(resource["resource_type"])
     except ValueError as exc:
         raise ValueError(f"Unknown manifest resource_type: {resource['resource_type']}") from exc
     grants = resource.get("grants", [])
@@ -750,6 +756,13 @@ def _validate_resource(resource: Any, *, allow_authenticated_everyone: bool = Fa
             raise ValueError("Authenticated everyone grants are disabled by deployment configuration")
         if not isinstance(grant.get("role"), str) or not grant["role"].strip():
             raise ValueError("Each manifest grant needs a non-empty role")
+        role = grant["role"].strip()
+        try:
+            validate_resource_role(resource_type, role)
+        except ValueError as exc:
+            raise ValueError(
+                f"Manifest grant {subject_type.value}:{subject_id} on {resource_type.value}:{resource['locator']}: {exc}"
+            ) from exc
 
 
 def _apply_administrators(

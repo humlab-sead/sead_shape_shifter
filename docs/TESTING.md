@@ -55,10 +55,6 @@ Covers:
 
 Tests in `backend/tests/integration/` test service interactions end-to-end within the backend layer.
 
-### Ingester tests (`ingesters/sead/tests/`)
-
-Tests for the SEAD ingester covering validation logic, ingestion flow, and fixture-based unit tests. No live database required for the unit tier.
-
 ### Frontend tests (`frontend/src/**/__tests__/`)
 
 Vitest unit tests for stores, composables, API client modules, utilities, and selected components. Run in a jsdom environment.
@@ -119,7 +115,7 @@ uv run pytest tests backend/tests -v -m "not integration and not manual and not 
 
 - **YAML fixtures**: Core tests use YAML project files under `tests/test_data/`. Backend tests use fixtures under `backend/tests/test_data/`. These fixture projects are the primary test inputs.
 - **Python fixtures**: `tests/conftest.py` provides `MockConfigProvider`, mock DB rows, and async mocks. `backend/tests/conftest.py` provides a FastAPI `TestClient`, mock services, and test projects.
-- **Ingester fixtures**: `ingesters/sead/tests/fixtures.py` and `builders.py` provide explicit `IngesterConfig` instances with all required fields to avoid `ConfigStore` initialization in tests.
+- **Ingester fixtures**: backend ingester tests build explicit `IngesterConfig` instances with all required fields to avoid `ConfigStore` initialization in tests.
 - **Mocking strategy**: Pure domain validators receive DataFrames directly — no mocks needed. Services that call external systems (DB, HTTP) are mocked at the service boundary. Use `AsyncMock` for async service methods.
 - **Frontend mocks**: API modules are mocked via `vi.mock()` in Vitest. Pinia stores are used with `createPinia()` and `setActivePinia()` in each test.
 - Do not add `print` statements or debug logging to tests; use `pytest -s` locally if needed.
@@ -129,7 +125,7 @@ uv run pytest tests backend/tests -v -m "not integration and not manual and not 
 ## Common Test Commands
 
 ```bash
-# All tests (core + backend + ingesters)
+# All tests (core + backend)
 make test
 
 # Core tests only
@@ -141,9 +137,6 @@ uv run pytest backend/tests -v
 
 # With explicit PYTHONPATH if imports fail
 PYTHONPATH=.:backend uv run pytest backend/tests -v
-
-# Ingester tests only
-uv run pytest ingesters/sead/tests -v
 
 # Single test or test file
 uv run pytest tests/test_mapping.py::test_name -v -s

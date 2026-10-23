@@ -55,7 +55,7 @@ The reviewed input set was validated with `migrate --dry-run`, then imported and
 - Enforcement cutover and rollback — Phases 4–5.
 - Authorization policy, role, or action changes.
 - Project YAML or other user-editable project-data changes.
-- Ingester capability authorization — owned by `INGESTER_AUTHORIZATION_TASKS.md`.
+- Ingester capability authorization — later consolidated into the [Security Hardening Follow-up](../../../SECURITY_HARDENING_FOLLOWUP/SECURITY_HARDENING_FOLLOWUP.md).
 
 **Affected components:** the legacy source directories and target deployment mounts (read-only during inventory), the configured authorization SQLite store, the reviewed manifest, and the inventory records. Phase 2 did not modify project YAML; manifest application and reconciliation were performed later as Phase 3 work.
 

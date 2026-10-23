@@ -62,19 +62,12 @@ class TestIngestersEndpoints:
 
         data = response.json()
         assert isinstance(data, list)
-        assert len(data) >= 1  # At least SEAD ingester should be registered
-
-        # Verify SEAD ingester is in the list
-        sead_ingester = next((i for i in data if i["key"] == "sead"), None)
-        assert sead_ingester is not None
-        assert sead_ingester["name"] == "SEAD Clearinghouse"
-        assert sead_ingester["version"] == "1.0.0"
-        assert "xlsx" in sead_ingester["supported_formats"]
-        assert sead_ingester["deprecated"] is True
-        assert "sead_change_request" in sead_ingester["deprecation_message"]
+        assert len(data) >= 1
+        assert all(i["key"] != "sead" for i in data)
 
         change_request_ingester = next((i for i in data if i["key"] == "sead_change_request"), None)
         assert change_request_ingester is not None
+        assert change_request_ingester["name"] == "SEAD Change Request"
         assert change_request_ingester["supported_formats"] == []
 
     def test_list_ingesters_structure(self, client: TestClient):
@@ -106,35 +99,10 @@ class TestIngestersEndpoints:
     def test_validate_invalid_request(self, client: TestClient):
         """Test validation with invalid request body."""
         response = client.post(
-            "/api/v1/ingesters/sead/validate",
+            "/api/v1/ingesters/sead_change_request/validate",
             json={},  # Missing required 'source' field
         )
         assert response.status_code == 422  # Pydantic validation error
-
-    def test_validate_success_structure(self, client: TestClient):
-        """Test validation response structure (mock successful case)."""
-        # This test validates the response structure
-        # Actual validation would require a real file and database
-        response = client.post(
-            "/api/v1/ingesters/sead/validate",
-            json={
-                "source": "/nonexistent/path.xlsx",  # Will fail but return structured response
-                "config": {"ignore_columns": []},
-            },
-        )
-
-        # Response should be 200 even if validation fails (validation result is in body)
-        # OR 500 if file doesn't exist
-        data = response.json()
-        if response.status_code == 200:
-            assert "is_valid" in data
-            assert "errors" in data
-            assert "warnings" in data
-            assert "infos" in data
-            assert "pending_confirmation_report" in data
-            assert isinstance(data["errors"], list)
-            assert isinstance(data["warnings"], list)
-            assert isinstance(data["infos"], list)
 
     def test_validate_rejects_retired_change_request_file_input(self, client: TestClient):
         """The shared validate route must reject the retired Change Request file input."""
@@ -179,46 +147,13 @@ class TestIngestersEndpoints:
     def test_ingest_invalid_request(self, client: TestClient):
         """Test ingestion with invalid request body."""
         response = client.post(
-            "/api/v1/ingesters/sead/ingest",
+            "/api/v1/ingesters/sead_change_request/ingest",
             json={
                 "source": "/path/to/file.xlsx",
                 # Missing required fields: submission_name, data_types
             },
         )
         assert response.status_code == 422  # Pydantic validation error
-
-    def test_ingest_response_structure(self, client: TestClient):
-        """Test ingestion response structure."""
-        response = client.post(
-            "/api/v1/ingesters/sead/ingest",
-            json={
-                "source": "/nonexistent/path.xlsx",
-                "config": {
-                    "database": {
-                        "host": "localhost",
-                        "port": 5432,
-                        "dbname": "test_db",
-                        "user": "test_user",
-                    },
-                    "ignore_columns": [],
-                },
-                "submission_name": "test_submission",
-                "data_types": "test",
-                "output_folder": "output",
-                "register": False,
-                "explode": False,
-            },
-        )
-
-        # Will fail (file doesn't exist) but should return a structured ingestion response
-        assert response.status_code == 200
-        data = response.json()
-        assert "success" in data
-        assert "message" in data
-        assert "error_details" in data
-        assert "deploy_artifact" in data
-        assert "pending_confirmation_report" in data
-        assert data["success"] is False
 
     def test_ingest_rejects_retired_change_request_file_input(self, client: TestClient):
         """The shared ingest route must reject the retired Change Request file input."""
@@ -260,7 +195,7 @@ class TestIngesterServiceIntegration:
 
         ingesters = get_ingester_service().list_ingesters()
         assert len(ingesters) >= 1
-        assert any(i.key == "sead" for i in ingesters)
+        assert any(i.key == "sead_change_request" for i in ingesters)
 
     def test_service_create_config(self):
         """Test IngesterService._create_config method."""
