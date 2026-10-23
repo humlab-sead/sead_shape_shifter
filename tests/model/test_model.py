@@ -387,6 +387,34 @@ class TestTableConfig:
         assert table.depends_on == {"location"}
         assert table.foreign_keys == []
 
+    def test_foreign_key_value_sources_do_not_create_project_links(self):
+        entities: dict[str, dict[str, Any]] = {
+            "location": {
+                "columns": ["location_type_id"],
+                "foreign_key_value_sources": {"location_type": "public_id"},
+            }
+        }
+
+        table = TableConfig(entities_cfg=entities, entity_name="location")
+
+        assert table.foreign_key_value_sources == {"location_type": "public_id"}
+        assert table.foreign_keys == []
+        assert table.depends_on == set()
+        assert table.get_target_facing_foreign_key_targets() == set()
+        assert "location_type_id" in table.get_target_facing_columns()
+
+    def test_foreign_key_value_sources_default_to_empty_and_preserve_system_id(self):
+        entities: dict[str, dict[str, Any]] = {
+            "location": {"columns": ["location_type_id"]},
+            "sample": {"foreign_key_value_sources": {"sample_type": "system_id"}},
+        }
+
+        location = TableConfig(entities_cfg=entities, entity_name="location")
+        sample = TableConfig(entities_cfg=entities, entity_name="sample")
+
+        assert location.foreign_key_value_sources == {}
+        assert sample.foreign_key_value_sources == {"sample_type": "system_id"}
+
     def test_table_with_foreign_keys(self):
         """Test table configuration with foreign keys."""
         entities: dict[str, dict[str, Any]] = {

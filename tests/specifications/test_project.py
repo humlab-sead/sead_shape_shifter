@@ -11,6 +11,7 @@ from src.specifications.project import (
     CompositeProjectSpecification,
     DataSourceExistsSpecification,
     EntitiesSpecification,
+    ForeignKeyValueSourceSpecification,
 )
 
 
@@ -123,6 +124,57 @@ class TestCircularDependencySpecification:
         result = spec.is_satisfied_by()
 
         assert result is True
+
+
+class TestForeignKeyValueSourceSpecification:
+    """Tests for direct target-model FK value-source declarations."""
+
+    def test_rejects_non_map_and_unsupported_value_sources_with_codes(self):
+        for declaration in ([], {"location_type": "external_id"}, {"location_type": {"source": "public_id"}}):
+            specification = ForeignKeyValueSourceSpecification(
+                {
+                    "metadata": {"type": "shapeshifter-project", "target_model": {"entities": {}}},
+                    "entities": {"location": {"foreign_key_value_sources": declaration}},
+                }
+            )
+
+            assert specification.is_satisfied_by() is False
+            assert specification.errors[0].code == "DIRECT_FK_VALUE_SOURCE_INVALID"
+            assert specification.errors[0].entity == "location"
+            assert specification.errors[0].field.startswith("foreign_key_value_sources")
+
+    def test_nonempty_map_requires_target_model(self):
+        specification = ForeignKeyValueSourceSpecification(
+            {
+                "metadata": {"type": "shapeshifter-project"},
+                "entities": {"location": {"foreign_key_value_sources": {"location_type": "public_id"}}},
+            }
+        )
+
+        assert specification.is_satisfied_by() is False
+        assert [(issue.code, issue.entity, issue.field) for issue in specification.errors] == [
+            ("DIRECT_FK_TARGET_MODEL_REQUIRED", "location", "metadata.target_model")
+        ]
+
+    def test_empty_or_absent_map_keeps_target_model_optional(self):
+        for entity_cfg in ({}, {"foreign_key_value_sources": {}}):
+            specification = ForeignKeyValueSourceSpecification(
+                {"metadata": {"type": "shapeshifter-project"}, "entities": {"location": entity_cfg}}
+            )
+
+            assert specification.is_satisfied_by() is True
+            assert not specification.errors
+
+    def test_composite_project_specification_runs_value_source_check(self):
+        project = CompositeProjectSpecification(
+            {
+                "metadata": {"type": "shapeshifter-project"},
+                "entities": {"location": {"foreign_key_value_sources": {"location_type": "public_id"}}},
+            }
+        )
+
+        assert project.is_satisfied_by() is False
+        assert any(issue.code == "DIRECT_FK_TARGET_MODEL_REQUIRED" for issue in project.errors)
 
 
 class TestDataSourceExistsSpecification:
@@ -305,7 +357,8 @@ class TestCompositeProjectSpecification:
         specs: list[ProjectSpecification] = spec.get_default_specifications()
 
         assert isinstance(specs, list)
-        assert len(specs) == 5
+        assert len(specs) == 6
+        assert any(isinstance(s, ForeignKeyValueSourceSpecification) for s in specs)
         assert any(isinstance(s, ForeignKeyRemotePublicIdSpecification) for s in specs)
 
     def test_custom_specifications(self, valid_project_cfg):

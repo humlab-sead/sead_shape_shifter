@@ -586,6 +586,19 @@
       "title": "Foreign Keys",
       "type": "array"
     },
+    "foreign_key_value_sources": {
+      "additionalProperties": {
+        "enum": [
+          "system_id",
+          "public_id"
+        ],
+        "type": "string"
+      },
+      "default": {},
+      "description": "Target-model FK values supplied by this source; omitted entries use the local system_id link",
+      "title": "Foreign Key Value Sources",
+      "type": "object"
+    },
     "unnest": {
       "anyOf": [
         {
