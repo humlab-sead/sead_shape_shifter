@@ -167,6 +167,14 @@ class Entity(BaseModel):
     )
     extra_columns: dict[str, Any] = Field(default_factory=dict, description="Additional computed columns")
     foreign_keys: list[ForeignKeyConfig] = Field(default_factory=list, description="Foreign key relationships")
+    foreign_key_value_sources: dict[str, Literal["system_id", "public_id"]] = Field(
+        default_factory=dict,
+        json_schema_extra={"default": {}},
+        description=(
+            "Per-target-model-FK value source: system_id uses the local Core link; public_id supplies an existing target ID "
+            "to the SEAD change-request package without creating a Core link. Omitted entries use system_id."
+        ),
+    )
     unnest: UnnestConfig | None = Field(default=None, description="Unnest configuration")
     filters: list[FilterConfig] = Field(default_factory=list, description="Entity filters with optional staged execution")
     append: list[AppendConfig] = Field(default_factory=list, description="Data to append")

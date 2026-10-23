@@ -75,16 +75,24 @@ def test_project_maintainer_edits_any_project_without_a_grant(tmp_path) -> None:
     repository.close()
 
 
-def test_unknown_role_and_action_are_denied(tmp_path) -> None:
+def test_existing_unknown_role_is_denied_and_can_be_revoked(tmp_path) -> None:
     repository = SQLiteAuthorizationRepository(tmp_path / "authorization.sqlite3")
     project = ResourceRecord(uuid4(), ResourceType.PROJECT, "project-a")
     repository.create_resource(project)
-    repository.add_grant(Grant("alice", project.resource_id, "unknown", datetime.now(UTC), "admin"))
+    with repository._connection:
+        repository._connection.execute(
+            "INSERT INTO grant_record(subject_type, subject_id, resource_id, role, created_at, created_by) "
+            "VALUES ('principal', 'alice', ?, 'unknown', ?, 'admin')",
+            (str(project.resource_id), datetime.now(UTC).isoformat()),
+        )
 
     service = AuthorizationService(repository)
 
+    assert not service.is_allowed(_principal(), Action.READ, project)
     assert not service.is_allowed(_principal(), Action.EDIT, project)
     assert not service.is_allowed(_principal(), Action.READ_LOGS, project)
+    repository.remove_grant("alice", project.resource_id, "unknown", "admin")
+    assert repository.list_grants("alice") == []
     repository.close()
 
 

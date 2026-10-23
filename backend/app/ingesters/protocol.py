@@ -17,8 +17,8 @@ class IngesterMetadata:
     """Metadata about an ingester.
 
     Attributes:
-        key: Unique identifier for the ingester (e.g., 'sead')
-        name: Human-readable name (e.g., 'SEAD Clearinghouse')
+        key: Unique identifier for the ingester (e.g., 'your_ingester')
+        name: Human-readable name (e.g., 'Your Ingester')
         description: Description of what the ingester does
         version: Ingester version string
         supported_formats: List of supported file formats (e.g., ['xlsx', 'xls'])

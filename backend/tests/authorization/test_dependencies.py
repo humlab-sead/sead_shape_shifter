@@ -177,6 +177,20 @@ async def test_shared_data_source_dependency_returns_authorized_resource(tmp_pat
 
 
 @pytest.mark.asyncio
+async def test_shared_data_source_dependency_authorizes_route_name_when_not_using_body_locator(tmp_path) -> None:
+    repository = SQLiteAuthorizationRepository(tmp_path / "authorization.sqlite3")
+    resource = ResourceRecord(uuid4(), ResourceType.SHARED_DATA_SOURCE, "source-a")
+    repository.create_resource(resource)
+    repository.add_grant(Grant("alice", resource.resource_id, "reader", datetime.now(UTC), "admin"))
+    dependency = require_shared_data_source(Action.READ)
+
+    result = await dependency(_json_request({}), _principal(), AuthorizationService(repository), name="source-a")
+
+    assert result.resource.resource_id == resource.resource_id
+    repository.close()
+
+
+@pytest.mark.asyncio
 async def test_shared_data_source_dependency_authorizes_source_filename_from_request_body(tmp_path) -> None:
     repository = SQLiteAuthorizationRepository(tmp_path / "authorization.sqlite3")
     resource = ResourceRecord(uuid4(), ResourceType.SHARED_DATA_SOURCE, "source-a")
@@ -188,6 +202,37 @@ async def test_shared_data_source_dependency_authorizes_source_filename_from_req
 
     assert result.resource.resource_id == resource.resource_id
     repository.close()
+
+
+@pytest.mark.asyncio
+async def test_project_data_source_connection_uses_body_source_not_project_route_name(tmp_path) -> None:
+    repository = SQLiteAuthorizationRepository(tmp_path / "authorization.sqlite3")
+    resource = ResourceRecord(uuid4(), ResourceType.SHARED_DATA_SOURCE, "source-a")
+    repository.create_resource(resource)
+    repository.add_grant(Grant("alice", resource.resource_id, "reader", datetime.now(UTC), "admin"))
+    route = next(
+        route
+        for route in projects_router.routes
+        if isinstance(route, APIRoute) and route.path == "/projects/{name}/data-sources" and "POST" in (route.methods or [])
+    )
+    dependency = next(
+        dependency.call
+        for dependency in route.dependant.dependencies
+        if callable(dependency.call)
+        and _authorization_requirement(dependency.call) == {"resource_type": "shared_data_source", "action": "read"}
+    )
+
+    try:
+        result = await dependency(
+            _json_request({"source_filename": "source-a.yml"}),
+            _principal(),
+            AuthorizationService(repository),
+            name="project-a",
+        )
+    finally:
+        repository.close()
+
+    assert result.resource.resource_id == resource.resource_id
 
 
 @pytest.mark.asyncio

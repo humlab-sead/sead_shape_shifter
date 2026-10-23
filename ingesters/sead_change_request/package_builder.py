@@ -6,6 +6,7 @@ from ingesters.sead_change_request.contracts import (
     ChangeRequestPackage,
     ChangeRequestTable,
     ChangeRowState,
+    DirectForeignKey,
     IdentityResolutionResult,
     KnownIdMapping,
     PlannedRowAction,
@@ -36,8 +37,17 @@ def build_change_request_package(
     projection_result: TargetProjectionResult,
     identity_result: IdentityResolutionResult,
     planned_tables: list[PlannedTable] | None = None,
+    foreign_key_value_sources: dict[str, dict[str, str]] | None = None,
+    target_model: TargetModel | None = None,
 ) -> ChangeRequestPackage:
     """Build the in-memory change package from projected tables."""
+    if target_model is None and any(
+        value_source == "public_id"
+        for entity_sources in (foreign_key_value_sources or {}).values()
+        for value_source in entity_sources.values()
+    ):
+        raise ValueError("Target model is required to identify direct foreign-key columns in a change package")
+
     tables: dict[str, ChangeRequestTable] = {}
     infos: list[str] = []
     planned_table_lookup: dict[str, PlannedTable] = {planned_table.entity_name: planned_table for planned_table in planned_tables or []}
@@ -79,7 +89,12 @@ def build_change_request_package(
         )
 
     infos.append(f"Prepared {len(tables)} change-package table(s)")
-    return ChangeRequestPackage(tables=tables, warnings=list(projection_result.diagnostics), infos=infos)
+    return ChangeRequestPackage(
+        tables=tables,
+        warnings=list(projection_result.diagnostics),
+        infos=infos,
+        direct_foreign_keys=_select_direct_foreign_keys(tables, foreign_key_value_sources, target_model),
+    )
 
 
 def _build_update_mask(planned_table: PlannedTable | None, resolved_table: ResolvedIdentityTable) -> pd.Series:
@@ -95,6 +110,7 @@ def build_staging_package(
     planned_tables: list[PlannedTable],
     target_model: TargetModel,
     target_schema: str,
+    foreign_key_value_sources: dict[str, dict[str, str]] | None = None,
 ) -> ChangeRequestPackage:
     """Build the inline-staging package from pre-projection resolved rows.
 
@@ -130,23 +146,34 @@ def build_staging_package(
         )
         infos.append(f"Staged {int(insert_mask.sum())} row(s) for '{planned_table.entity_name}'")
 
-    known_id_mappings = _collect_known_id_mappings(tables, identity_result, target_model)
+    direct_foreign_keys = _select_direct_foreign_keys(tables, foreign_key_value_sources, target_model)
+    known_id_mappings = _collect_known_id_mappings(tables, identity_result, target_model, direct_foreign_keys)
     infos.append(f"Staged {len(known_id_mappings)} known target-ID mapping(s)")
-    return ChangeRequestPackage(tables=tables, infos=infos, known_id_mappings=known_id_mappings, target_schema=target_schema)
+    return ChangeRequestPackage(
+        tables=tables,
+        infos=infos,
+        known_id_mappings=known_id_mappings,
+        direct_foreign_keys=direct_foreign_keys,
+        target_schema=target_schema,
+    )
 
 
 def _collect_known_id_mappings(
     staged_tables: dict[str, ChangeRequestTable],
     identity_result: IdentityResolutionResult,
     target_model: TargetModel,
+    direct_foreign_keys: list[DirectForeignKey] | None = None,
 ) -> list[KnownIdMapping]:
     """Return mappings for every local reference used by a staged foreign key."""
     needed: dict[str, set[object]] = {}
+    direct_pairs = {(item.source_entity, item.target_entity) for item in direct_foreign_keys or []}
     for entity_name, staged_table in staged_tables.items():
         entity_spec = target_model.entities.get(entity_name)
         if entity_spec is None:
             continue
         for foreign_key in entity_spec.foreign_keys:
+            if (entity_name, foreign_key.entity) in direct_pairs:
+                continue
             remote_spec = target_model.entities.get(foreign_key.entity)
             if remote_spec is None or not remote_spec.public_id:
                 continue
@@ -173,6 +200,29 @@ def _collect_known_id_mappings(
             mappings.append(KnownIdMapping(entity_name=entity_name, system_id=int(local_value), target_id=int(target_id)))
 
     return mappings
+
+
+def _select_direct_foreign_keys(
+    package_tables: dict[str, ChangeRequestTable],
+    foreign_key_value_sources: dict[str, dict[str, str]] | None,
+    target_model: TargetModel | None = None,
+) -> list[DirectForeignKey]:
+    """Return declared direct FKs for source tables selected into the package."""
+    direct_foreign_keys: list[DirectForeignKey] = []
+    for source_entity, target_sources in (foreign_key_value_sources or {}).items():
+        if source_entity not in package_tables:
+            continue
+        for target_entity, value_source in target_sources.items():
+            if value_source != "public_id":
+                continue
+            column_name = None
+            if target_model is not None:
+                target_spec = target_model.entities.get(target_entity)
+                column_name = target_spec.public_id if target_spec is not None else None
+            if not column_name:
+                continue
+            direct_foreign_keys.append(DirectForeignKey(source_entity=source_entity, target_entity=target_entity, column_name=column_name))
+    return sorted(direct_foreign_keys, key=lambda item: (item.source_entity, item.target_entity, item.column_name))
 
 
 def _local_key_series(frame: pd.DataFrame) -> pd.Series:

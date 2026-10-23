@@ -206,7 +206,7 @@ class TestFileManager:
 
         assert result.name == "data.xlsx"
         assert original_file.read_bytes() == b"new content"
-        assert list(sample_project.glob(".upload-*.tmp")) == []
+        assert not list(sample_project.glob(".upload-*.tmp"))
 
     def test_save_project_file_failed_overwrite_preserves_existing_file(self, file_manager: FileManager, sample_project: Path):
         """A rejected oversized overwrite leaves the existing file unchanged."""
@@ -218,7 +218,7 @@ class TestFileManager:
             file_manager.save_project_file("test_project", upload, max_size_mb=1, overwrite=True)
 
         assert original_file.read_bytes() == b"old content"
-        assert list(sample_project.glob(".upload-*.tmp")) == []
+        assert not list(sample_project.glob(".upload-*.tmp"))
 
     def test_save_project_file_overwrite_rejects_symlink(self, file_manager: FileManager, sample_project: Path):
         """An overwrite cannot replace the target of a project-local symlink."""

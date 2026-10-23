@@ -394,6 +394,24 @@ class TestYamlServiceEntityKeyOrdering:
 
         assert alpha_idx < beta_idx < zebra_idx
 
+    def test_dumps_matches_save(self, yaml_service, tmp_path):
+        """Test that dumps() renders the same text that save() writes."""
+        data = {
+            "entities": {
+                "test_entity": {
+                    "filters": [],
+                    "type": "entity",
+                    "keys": ["id"],
+                    "columns": ["a", "b"],
+                }
+            }
+        }
+
+        file_path = tmp_path / "dumped.yml"
+        yaml_service.save(data, file_path, create_backup=False)
+
+        assert yaml_service.dumps(yaml_service.load(file_path)) == file_path.read_text()
+
 
 class TestYamlServiceValidation:
     """Tests for YAML validation."""
