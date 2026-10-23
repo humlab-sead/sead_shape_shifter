@@ -350,6 +350,15 @@ class KnownIdMapping:
     target_id: int
 
 
+@dataclass(frozen=True, slots=True)
+class DirectForeignKey:
+    """A target-model FK column whose source value is already a target ID."""
+
+    source_entity: str
+    target_entity: str
+    column_name: str
+
+
 @dataclass(slots=True)
 class ChangeRequestPackage:
     """Generated change-request payload before artifact rendering.
@@ -363,6 +372,7 @@ class ChangeRequestPackage:
     warnings: list[str] = field(default_factory=list)
     infos: list[str] = field(default_factory=list)
     known_id_mappings: list[KnownIdMapping] = field(default_factory=list)
+    direct_foreign_keys: list[DirectForeignKey] = field(default_factory=list)
     target_schema: str | None = None
 
     @property

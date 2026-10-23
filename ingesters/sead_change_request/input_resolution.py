@@ -32,6 +32,9 @@ TRUSTED_PROJECT_CONTEXT_KEY = "trusted_project_context"
 SIMS_SCOPE_OVERRIDE_KEY = "sims_scope_name"
 """Config-extra key a caller must not use to select the Change Request scope."""
 
+FOREIGN_KEY_VALUE_SOURCES_KEY = "foreign_key_value_sources"
+"""Config-extra key that carries per-entity target-model FK value sources."""
+
 
 class InputResolutionError(Exception):
     """Expected user/configuration error while resolving ingester inputs.
@@ -97,6 +100,7 @@ def resolve_inputs(config: IngesterConfig, source: object) -> ResolvedInputs:
 
     try:
         target_model: TargetModel = _resolve_target_model(config)
+        foreign_key_value_sources = _resolve_foreign_key_value_sources(config, target_model)
         trusted_project_context: TrustedProjectContext | None = _resolve_trusted_project_context(config)
         submission_context: SubmissionContext = _resolve_submission_context(config, trusted_project_context)
         fallback_assignments: dict[str, dict[object, IdentityAssignment]] = _resolve_identity_assignments(config)
@@ -110,6 +114,7 @@ def resolve_inputs(config: IngesterConfig, source: object) -> ResolvedInputs:
     return ResolvedInputs(
         bundle=bundle,
         target_model=target_model,
+        foreign_key_value_sources=foreign_key_value_sources,
         submission_context=submission_context,
         fallback_assignments=fallback_assignments,
         mutable_fields_by_entity=mutable_fields_by_entity,
@@ -118,6 +123,57 @@ def resolve_inputs(config: IngesterConfig, source: object) -> ResolvedInputs:
         staging_target_schema=staging_target_schema,
         trusted_project_context=trusted_project_context,
     )
+
+
+def _resolve_foreign_key_value_sources(config: IngesterConfig, target_model: TargetModel) -> dict[str, dict[str, str]]:
+    """Validate and copy the per-entity target-model FK value-source map."""
+    extras: dict[str, Any] = config.extra or {}
+    if FOREIGN_KEY_VALUE_SOURCES_KEY not in extras:
+        return {}
+    raw_sources = extras[FOREIGN_KEY_VALUE_SOURCES_KEY]
+    if not isinstance(raw_sources, Mapping):
+        raise TargetModelError("Foreign key value sources must map source entity names to target entity names and value sources")
+
+    resolved_sources: dict[str, dict[str, str]] = {}
+    for source_entity, raw_entity_sources in raw_sources.items():
+        if not isinstance(source_entity, str) or not source_entity.strip():
+            raise TargetModelError("Foreign key value-source source entity names must be non-empty strings")
+        if source_entity not in target_model.entities:
+            raise TargetModelError(f"Foreign key value-source source entity '{source_entity}' is not present in the target model")
+        if not isinstance(raw_entity_sources, Mapping):
+            raise TargetModelError(f"Foreign key value sources for '{source_entity}' must be a mapping")
+
+        entity_sources: dict[str, str] = {}
+        for target_entity, value_source in raw_entity_sources.items():
+            if not isinstance(target_entity, str) or not target_entity.strip():
+                raise TargetModelError(f"Foreign key value-source target entity names for '{source_entity}' must be non-empty strings")
+            if not isinstance(value_source, str) or value_source not in {"system_id", "public_id"}:
+                raise TargetModelError(
+                    f"Foreign key value source for '{source_entity}' to '{target_entity}' must be 'system_id' or 'public_id'"
+                )
+            target_spec = target_model.entities.get(target_entity)
+            if target_spec is None:
+                raise TargetModelError(
+                    f"Foreign key value-source target entity '{target_entity}' for '{source_entity}' is not present in the target model"
+                )
+            foreign_key = next(
+                (item for item in target_model.entities[source_entity].foreign_keys if item.entity == target_entity),
+                None,
+            )
+            if foreign_key is None:
+                raise TargetModelError(f"Entity '{source_entity}' has no direct target-model foreign key to '{target_entity}'")
+            if foreign_key.via is not None:
+                raise TargetModelError(
+                    f"Entity '{source_entity}' foreign key to '{target_entity}' uses via '{foreign_key.via}', which is not supported"
+                )
+            if value_source == "public_id" and not target_spec.public_id:
+                raise TargetModelError(f"Target entity '{target_entity}' must declare public_id for direct FK values")
+            if value_source == "public_id" and not target_spec.target_table:
+                raise TargetModelError(f"Target entity '{target_entity}' must declare target_table for direct FK values")
+            entity_sources[target_entity] = value_source
+        resolved_sources[source_entity] = entity_sources
+
+    return resolved_sources
 
 
 def _resolve_source_bundle(config: IngesterConfig, source: object) -> SourceTableBundle:

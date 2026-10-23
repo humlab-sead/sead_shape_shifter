@@ -6,6 +6,7 @@ from typing import Any
 from ingesters.sead_change_request.capability_preflight import preflight_capabilities
 from ingesters.sead_change_request.contracts import (
     CapabilityPreflightResult,
+    ChangeRequestPackage,
     IdentityAssignment,
     IdentityResolutionResult,
     IdentityWorkPlan,
@@ -18,12 +19,14 @@ from ingesters.sead_change_request.contracts import (
     TrustedProjectContext,
     classify_submission_outcomes,
 )
+from ingesters.sead_change_request.direct_fk_validation import validate_direct_foreign_keys
 from ingesters.sead_change_request.identity_resolution import resolve_planned_tables
 from ingesters.sead_change_request.identity_work import build_identity_work_plan
 from ingesters.sead_change_request.orchestration import (
     IdentityOrchestrationResult,
     orchestrate_identity_assignments,
 )
+from ingesters.sead_change_request.package_builder import build_change_request_package, build_staging_package
 from ingesters.sead_change_request.staging_eligibility import (
     PendingDeploymentMap,
     collect_pending_deployment,
@@ -39,6 +42,7 @@ class ResolvedInputs:
 
     bundle: SourceTableBundle
     target_model: TargetModel
+    foreign_key_value_sources: dict[str, dict[str, str]]
     submission_context: SubmissionContext
     fallback_assignments: dict[str, dict[object, IdentityAssignment]]
     mutable_fields_by_entity: dict[str, list[str]]
@@ -80,6 +84,8 @@ class PreparationResult:
     pending_confirmation_report: dict[str, Any] | None = None
     preflight_result: CapabilityPreflightResult | None = None
     pending_deployment: PendingDeploymentMap = field(default_factory=PendingDeploymentMap)
+    change_package: ChangeRequestPackage | None = None
+    direct_fk_diagnostics: list[str] = field(default_factory=list)
 
 
 async def prepare_change_request(
@@ -88,6 +94,7 @@ async def prepare_change_request(
     *,
     sims_client: Any | None,
     reconciliation_client: Any | None,
+    collision_checker: Any | None = None,
 ) -> PreparationResult:
     """Run the shared preparation workflow after inputs are resolved."""
     preflight_result: CapabilityPreflightResult | None = await _run_capability_preflight(
@@ -117,12 +124,43 @@ async def prepare_change_request(
         inputs.target_model,
         orchestration_result.assignments,
     )
-    pending_deployment = collect_pending_deployment(resolution_result, inputs.target_model) if inputs.is_staging else PendingDeploymentMap()
+    pending_deployment = (
+        collect_pending_deployment(
+            resolution_result,
+            inputs.target_model,
+            foreign_key_value_sources=inputs.foreign_key_value_sources,
+        )
+        if inputs.is_staging
+        else PendingDeploymentMap()
+    )
     projection_result: TargetProjectionResult = project_target_ids(
         resolution_result,
         inputs.target_model,
         planned_tables=planned.tables,
         pending=pending_deployment,
+        foreign_key_value_sources=inputs.foreign_key_value_sources,
+    )
+    change_package = (
+        build_staging_package(
+            resolution_result,
+            planned.tables,
+            inputs.target_model,
+            str(inputs.staging_target_schema),
+            foreign_key_value_sources=inputs.foreign_key_value_sources,
+        )
+        if inputs.is_staging
+        else build_change_request_package(
+            projection_result,
+            resolution_result,
+            planned.tables,
+            foreign_key_value_sources=inputs.foreign_key_value_sources,
+            target_model=inputs.target_model,
+        )
+    )
+    direct_fk_diagnostics = await validate_direct_foreign_keys(
+        change_package,
+        inputs.target_model,
+        collision_checker,
     )
     pending_confirmation_report = _build_pending_confirmation_report(
         inputs.submission_context,
@@ -146,6 +184,8 @@ async def prepare_change_request(
         pending_confirmation_report=pending_confirmation_report,
         preflight_result=preflight_result,
         pending_deployment=pending_deployment,
+        change_package=change_package,
+        direct_fk_diagnostics=direct_fk_diagnostics,
     )
 
 

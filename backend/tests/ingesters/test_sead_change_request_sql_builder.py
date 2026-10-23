@@ -16,6 +16,7 @@ from ingesters.sead_change_request import (
     ChangeRowState,
     CopyCsvDeployStrategy,
     DeployArtifact,
+    DirectForeignKey,
     KnownIdMapping,
     PlannedRowAction,
     SubmissionContext,
@@ -115,6 +116,143 @@ class TestBuildDeployArtifact:
             f'\\copy "tbl_sample" ("sample_id", "sample_name", "active") FROM program \'zcat -qac {expected_bundle_name}/tbl_sample.gz\' WITH (FORMAT csv, DELIMITER E\'\\t\', ENCODING \'utf-8\');'  # NOQA
         ]
         assert artifact.bundle_files == {f"deploy/{expected_bundle_name}/tbl_sample.gz": "101\tO'Reilly\ttrue\n"}
+
+    def test_direct_fk_value_and_manifest_metadata_are_preserved_for_all_strategies(self):
+        frame = pd.DataFrame({"location_id": [601], "location_type_id": [42]})
+        package = ChangeRequestPackage(
+            tables={
+                "location": ChangeRequestTable(
+                    name="location",
+                    frame=frame,
+                    row_states=pd.Series([ChangeRowState.NEWLY_ALLOCATED_ENTITY], index=frame.index, name="_row_state"),
+                )
+            },
+            direct_foreign_keys=[DirectForeignKey("location", "location_type", "location_type_id")],
+        )
+        target_model = minimal_target_model(
+            location_type={"role": "lookup", "public_id": "location_type_id", "target_table": "tbl_location_types"},
+            location={
+                "role": "fact",
+                "public_id": "location_id",
+                "target_table": "tbl_locations",
+                "foreign_keys": [{"entity": "location_type", "required": True}],
+            },
+        )
+        context = SubmissionContext(
+            submission_name="test-submission",
+            project_name="test-project",
+            timestamp=datetime(2026, 5, 23, 23, 0, 0),
+            datatype="mal",
+            identifier="TEST_SUBMISSION",
+        )
+        expected_fk_metadata = [{"source_entity": "location", "target_entity": "location_type", "column": "location_type_id"}]
+
+        for strategy in ("inline_insert", "copy_csv", "inline_staging"):
+            strategy_package = ChangeRequestPackage(
+                tables=package.tables,
+                direct_foreign_keys=package.direct_foreign_keys,
+                target_schema="public" if strategy == "inline_staging" else None,
+            )
+            artifact = build_deploy_artifact(strategy_package, target_model, context, strategy=strategy)
+
+            assert artifact.metadata_artifact["direct_target_id_foreign_keys"] == expected_fk_metadata
+            if strategy == "copy_csv":
+                assert any("42" in content for content in artifact.bundle_files.values())
+            else:
+                assert "42" in artifact.deploy_sql
+
+        staging_package = ChangeRequestPackage(
+            tables=package.tables,
+            direct_foreign_keys=package.direct_foreign_keys,
+            target_schema="public",
+        )
+        staging_sql = build_deploy_artifact(staging_package, target_model, context, strategy="inline_staging").deploy_sql
+        assert '"location_type_id"' in staging_sql
+        assert '"_local_location_type_id"' not in staging_sql
+        assert 'SET "location_type_id" = mapped.target_id' not in staging_sql
+
+    def test_direct_fk_manifest_omits_unassigned_update_columns(self):
+        frame = pd.DataFrame(
+            {
+                "location_id": [601],
+                "location_type_id": [42],
+                "location_name": ["changed"],
+                "location_name__existing": ["old"],
+            }
+        )
+        package = ChangeRequestPackage(
+            tables={
+                "location": ChangeRequestTable(
+                    name="location",
+                    frame=frame,
+                    row_states=pd.Series([ChangeRowState.EXISTING_ENTITY], index=frame.index, name="_row_state"),
+                    planned_actions=pd.Series([PlannedRowAction.UPDATE_EXISTING_CANDIDATE], index=frame.index, name="_planned_action"),
+                    mutable_fields=["location_name"],
+                )
+            },
+            direct_foreign_keys=[DirectForeignKey("location", "location_type", "location_type_id")],
+        )
+        target_model = minimal_target_model(
+            location_type={"role": "lookup", "public_id": "location_type_id", "target_table": "tbl_location_types"},
+            location={"role": "fact", "public_id": "location_id", "target_table": "tbl_locations"},
+        )
+        context = SubmissionContext(
+            submission_name="test-submission",
+            project_name="test-project",
+            timestamp=datetime(2026, 5, 23, 23, 0, 0),
+        )
+
+        artifact = build_deploy_artifact(package, target_model, context)
+
+        assert "direct_target_id_foreign_keys" not in artifact.metadata_artifact
+        assert '"location_type_id"' not in artifact.statements[0]
+
+    def test_inline_staging_keeps_direct_and_local_fk_values_separate(self):
+        frame = pd.DataFrame({"location_id": [601], "site_id": [1], "location_type_id": [1]})
+        package = ChangeRequestPackage(
+            tables={
+                "location": ChangeRequestTable(
+                    name="location",
+                    frame=frame,
+                    row_states=pd.Series([ChangeRowState.NEWLY_ALLOCATED_ENTITY], index=frame.index, name="_row_state"),
+                )
+            },
+            known_id_mappings=[KnownIdMapping("site", 1, 7001)],
+            direct_foreign_keys=[DirectForeignKey("location", "location_type", "location_type_id")],
+            target_schema="public",
+        )
+        target_model = minimal_target_model(
+            site={"role": "lookup", "public_id": "site_id", "target_table": "tbl_sites"},
+            location_type={"role": "lookup", "public_id": "location_type_id", "target_table": "tbl_location_types"},
+            location={
+                "role": "fact",
+                "public_id": "location_id",
+                "target_table": "tbl_locations",
+                "foreign_keys": [
+                    {"entity": "site", "required": True},
+                    {"entity": "location_type", "required": True},
+                ],
+            },
+        )
+        context = SubmissionContext(
+            submission_name="test-submission",
+            project_name="test-project",
+            timestamp=datetime(2026, 5, 23, 23, 0, 0),
+        )
+
+        artifact = build_deploy_artifact(package, target_model, context, strategy="inline_staging")
+
+        assert artifact.metadata_artifact["known_id_mapping_count"] == 1
+        assert "('site', 1, 7001)" in artifact.deploy_sql
+        assert '"_local_site_id"' in artifact.deploy_sql
+        assert '"_local_location_type_id"' not in artifact.deploy_sql
+        assert 'SET "site_id" = mapped.target_id' in artifact.deploy_sql
+        assert 'SET "location_type_id" = mapped.target_id' not in artifact.deploy_sql
+        assert '"location_type_id", "location_id", "_local_system_id", "_local_site_id"' in artifact.deploy_sql
+        staged_load = next(
+            statement for statement in artifact.statements if statement.startswith('INSERT INTO "_shape_shifter_stage_location"')
+        )
+        assert "VALUES\n(1, 601, 0, 1)" in staged_load
 
     def test_inline_insert_omits_generated_bridge_id(self):
         frame = pd.DataFrame({"site_location_id": pd.Series([pd.NA], dtype="Int64"), "site_id": [6489], "location_id": [1]})
