@@ -17,12 +17,15 @@ from ingesters.sead_change_request.contracts import (
 from ingesters.sead_change_request.input_resolution import (
     DeployStrategyError,
     SourceBundleError,
+    TargetModelError,
     _build_source_bundle,
     _resolve_deploy_strategy,
+    _resolve_foreign_key_value_sources,
     _resolve_run_id,
     _resolve_source_bundle,
     _resolve_staging_target_schema,
     _resolve_submission_context,
+    resolve_inputs,
 )
 from ingesters.sead_change_request.sql_builder import (
     COPY_CSV_DEPLOY_ARTIFACT_STRATEGY,
@@ -31,6 +34,7 @@ from ingesters.sead_change_request.sql_builder import (
     InlineInsertDeployStrategy,
     InlineStagingDeployStrategy,
 )
+from src.target_model.models import TargetModel
 
 
 def _config_with_context(context_data: dict) -> IngesterConfig:
@@ -199,6 +203,103 @@ class TestResolveDeployStrategy:
 
         with pytest.raises(DeployStrategyError, match="does not accept 'staging_target_schema'"):
             _resolve_deploy_strategy(config, _resolve_staging_target_schema(config))
+
+
+class TestResolveForeignKeyValueSources:
+    """Tests for the standalone target-model FK value-source input."""
+
+    @staticmethod
+    def _target_model(*, target_public_id: str | None = "location_type_id", target_table: str | None = "tbl_location_types", via=None):
+        return TargetModel.model_validate(
+            {
+                "model": {"name": "Test", "version": "1"},
+                "entities": {
+                    "location_type": {"role": "lookup", "public_id": target_public_id, "target_table": target_table},
+                    "location": {
+                        "role": "fact",
+                        "public_id": "location_id",
+                        "foreign_keys": [{"entity": "location_type", **({"via": via} if via else {})}],
+                    },
+                },
+                "constraints": [],
+            }
+        )
+
+    def test_absent_map_defaults_to_local_ids(self):
+        config = IngesterConfig(host="localhost", port=5432, dbname="test_db", user="test_user", extra={})
+
+        assert not _resolve_foreign_key_value_sources(config, self._target_model())
+
+    def test_resolve_inputs_carries_a_copy_of_the_checked_map(self):
+        model = self._target_model()
+        raw_sources = {"location": {"location_type": "public_id"}}
+        config = IngesterConfig(
+            host="localhost",
+            port=5432,
+            dbname="test_db",
+            user="test_user",
+            extra={
+                "target_model": model,
+                "foreign_key_value_sources": raw_sources,
+                "submission_context": {
+                    "submission_name": "test-submission",
+                    "project_name": "test-project",
+                    "timestamp": "2026-05-23T22:00:00",
+                    "datatype": "mal",
+                    "identifier": "TEST_SUBMISSION",
+                },
+            },
+        )
+
+        inputs = resolve_inputs(config, {"location": pd.DataFrame({"location_type_id": [42]})})
+
+        assert inputs.foreign_key_value_sources == raw_sources
+        assert inputs.foreign_key_value_sources is not raw_sources
+        assert inputs.foreign_key_value_sources["location"] is not raw_sources["location"]
+
+    @pytest.mark.parametrize("value_source", ["system_id", "public_id"])
+    def test_accepts_explicit_supported_sources(self, value_source: str):
+        config = IngesterConfig(
+            host="localhost",
+            port=5432,
+            dbname="test_db",
+            user="test_user",
+            extra={"foreign_key_value_sources": {"location": {"location_type": value_source}}},
+        )
+
+        assert _resolve_foreign_key_value_sources(config, self._target_model()) == {"location": {"location_type": value_source}}
+
+    @pytest.mark.parametrize(
+        ("value_sources", "target_model", "message"),
+        [
+            ([], None, "must map source entity names"),
+            ({"missing": {"location_type": "public_id"}}, None, "source entity 'missing'"),
+            ({"location": {"missing": "public_id"}}, None, "target entity 'missing'"),
+            ({"location": {"location_type": "system_id"}}, "no_fk", "no direct target-model foreign key"),
+            ({"location": {"location_type": "local_id"}}, None, "must be 'system_id' or 'public_id'"),
+            ({"location": {"location_type": "public_id"}}, "missing_public_id", "must declare public_id"),
+            ({"location": {"location_type": "public_id"}}, "missing_table", "must declare target_table"),
+            ({"location": {"location_type": "public_id"}}, "via", "uses via 'location_type_bridge'"),
+        ],
+    )
+    def test_rejects_malformed_or_ineligible_maps(self, value_sources, target_model, message):
+        config = IngesterConfig(
+            host="localhost",
+            port=5432,
+            dbname="test_db",
+            user="test_user",
+            extra={"foreign_key_value_sources": value_sources},
+        )
+        model = self._target_model(
+            target_public_id=None if target_model == "missing_public_id" else "location_type_id",
+            target_table=None if target_model == "missing_table" else "tbl_location_types",
+            via="location_type_bridge" if target_model == "via" else None,
+        )
+        if target_model == "no_fk":
+            model.entities["location"].foreign_keys = []
+
+        with pytest.raises(TargetModelError, match=message):
+            _resolve_foreign_key_value_sources(config, model)
 
 
 class TestResolveSourceBundle:

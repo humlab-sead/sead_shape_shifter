@@ -99,6 +99,7 @@ class InlineInsertDeployStrategy:
             statements=statements,
             artifact_metadata={
                 "deploy_statement_count": len(statements),
+                **_direct_fk_metadata(change_package, target_model),
                 **_common_contract_metadata(submission_context, statements=statements, bundle_files={}),
             },
         )
@@ -164,6 +165,7 @@ class CopyCsvDeployStrategy:
             artifact_metadata={
                 "deploy_statement_count": len(statements),
                 "bundle_file_count": len(bundle_files),
+                **_direct_fk_metadata(change_package, target_model),
                 **_common_contract_metadata(
                     submission_context,
                     statements=statements,
@@ -210,6 +212,7 @@ class InlineStagingDeployStrategy:
                 "staging_target_schema": self.target_schema,
                 "staged_table_count": len(change_package.tables),
                 "known_id_mapping_count": len(change_package.known_id_mappings),
+                **_direct_fk_metadata(change_package, target_model),
                 **_common_contract_metadata(submission_context, statements=statements, bundle_files={}),
             },
         )
@@ -377,6 +380,52 @@ def _base_deploy_artifact_metadata(submission_context: SubmissionContext, strate
         "dispatch_date": submission_context.timestamp.date().isoformat(),
         "description": _resolved_description(submission_context),
         "issue_identifier": _resolved_issue_identifier(submission_context),
+    }
+
+
+def _direct_fk_metadata(change_package: ChangeRequestPackage, target_model: TargetModel) -> dict[str, object]:
+    """Return manifest entries for direct FKs with a non-null packaged value."""
+    used_foreign_keys: list[dict[str, str]] = []
+    for direct_fk in change_package.direct_foreign_keys:
+        package_table = change_package.tables.get(direct_fk.source_entity)
+        source_spec = target_model.entities.get(direct_fk.source_entity)
+        if package_table is None or source_spec is None or direct_fk.column_name not in package_table.frame.columns:
+            continue
+        column_spec = source_spec.columns.get(direct_fk.column_name)
+        if column_spec is not None and column_spec.generated:
+            continue
+        used = False
+        for row_index, row in package_table.frame.iterrows():
+            if _is_update_row(package_table, row_index):
+                assigned_columns = _update_assignment_columns(row, source_spec.public_id or "", package_table.mutable_fields)
+                if direct_fk.column_name not in assigned_columns:
+                    continue
+            elif package_table.row_states.loc[row_index] not in {
+                ChangeRowState.NEWLY_ALLOCATED_ENTITY,
+                ChangeRowState.DERIVED_BRIDGE_ROW,
+                ChangeRowState.PENDING_DEPLOYMENT_ID,
+            }:
+                continue
+            if pd.notna(row[direct_fk.column_name]):
+                used = True
+                break
+        if not used:
+            continue
+        used_foreign_keys.append(
+            {
+                "source_entity": direct_fk.source_entity,
+                "target_entity": direct_fk.target_entity,
+                "column": direct_fk.column_name,
+            }
+        )
+
+    if not used_foreign_keys:
+        return {}
+    return {
+        "direct_target_id_foreign_keys": sorted(
+            used_foreign_keys,
+            key=lambda item: (item["source_entity"], item["target_entity"], item["column"]),
+        )
     }
 
 

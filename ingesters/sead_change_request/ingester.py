@@ -101,6 +101,7 @@ class SeadChangeRequestIngester:
             planned,
             sims_client=self._get_client("sims_client"),
             reconciliation_client=self._get_client("reconciliation_client"),
+            collision_checker=self._get_client("collision_checker"),
         )
 
     def _add_submission_tables(self, inputs: ResolvedInputs) -> ResolvedInputs:
@@ -216,6 +217,8 @@ class SeadChangeRequestIngester:
     @staticmethod
     def _build_change_package(preparation: PreparationResult) -> ChangeRequestPackage:
         """Build the staging or direct package for the selected strategy."""
+        if preparation.change_package is not None:
+            return preparation.change_package
         if preparation.inputs.is_staging:
             return build_staging_package(
                 preparation.resolution_result,

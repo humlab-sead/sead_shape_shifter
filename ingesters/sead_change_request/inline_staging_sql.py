@@ -25,7 +25,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 
-from ingesters.sead_change_request.contracts import ChangeRequestPackage, ChangeRequestTable, ChangeRowState
+from ingesters.sead_change_request.contracts import ChangeRequestPackage, ChangeRequestTable, ChangeRowState, DirectForeignKey
 from ingesters.sead_change_request.sql_rendering import (
     quote_identifier,
     quote_qualified_relation,
@@ -64,6 +64,7 @@ class StagedEntityPlan:
     load_columns: tuple[str, ...]
     insert_columns: tuple[str, ...]
     foreign_key_columns: tuple[str, ...]
+    direct_foreign_key_columns: frozenset[str]
     available_columns: frozenset[str]
     pending_rows: tuple[object, ...]
     loads_public_id: bool
@@ -100,7 +101,7 @@ def render_inline_staging_deploy(
     if not plans:
         return []
 
-    insert_order = _resolve_insert_order(plans, target_model)
+    insert_order = _resolve_insert_order(plans, target_model, change_package.direct_foreign_keys)
     statements: list[str] = []
     statements.extend(_render_support_check(plans))
     statements.extend(_render_table_locks(plans))
@@ -156,7 +157,10 @@ def _build_entity_plans(
         validate_target_temporal_types(entity_name, table.frame.columns, _declared_column_types(spec))
 
         pending_rows = tuple(table.frame.index[table.row_states.isin(PENDING_ROW_STATES)])
-        foreign_key_columns = _foreign_key_columns(spec, target_model, table)
+        direct_foreign_key_columns = frozenset(
+            item.column_name for item in change_package.direct_foreign_keys if item.source_entity == entity_name
+        )
+        foreign_key_columns = _foreign_key_columns(spec, target_model, table, direct_foreign_key_columns)
         excluded = set(foreign_key_columns) | {spec.public_id}
 
         plans.append(
@@ -168,6 +172,7 @@ def _build_entity_plans(
                 load_columns=tuple(renderable_columns(table.frame, excluded)),
                 insert_columns=tuple(renderable_columns(table.frame, {spec.public_id})),
                 foreign_key_columns=tuple(sorted(foreign_key_columns)),
+                direct_foreign_key_columns=direct_foreign_key_columns,
                 available_columns=frozenset(renderable_columns(table.frame, set())),
                 pending_rows=pending_rows,
                 loads_public_id=bool(table.row_states.isin(ALLOCATED_ROW_STATES).any()),
@@ -177,19 +182,28 @@ def _build_entity_plans(
     return plans
 
 
-def _foreign_key_columns(spec: EntitySpec, target_model: TargetModel, table: ChangeRequestTable) -> set[str]:
+def _foreign_key_columns(
+    spec: EntitySpec,
+    target_model: TargetModel,
+    table: ChangeRequestTable,
+    direct_foreign_key_columns: set[str] | frozenset[str] = frozenset(),
+) -> set[str]:
     """Return staged columns that hold local parent references."""
     columns: set[str] = set()
     for foreign_key in spec.foreign_keys:
         remote_spec = target_model.entities.get(foreign_key.entity)
         if remote_spec is None or not remote_spec.public_id:
             continue
-        if remote_spec.public_id in table.frame.columns:
+        if remote_spec.public_id in table.frame.columns and remote_spec.public_id not in direct_foreign_key_columns:
             columns.add(remote_spec.public_id)
     return columns
 
 
-def _resolve_insert_order(plans: list[StagedEntityPlan], target_model: TargetModel) -> list[StagedEntityPlan]:
+def _resolve_insert_order(
+    plans: list[StagedEntityPlan],
+    target_model: TargetModel,
+    direct_foreign_keys: list[DirectForeignKey] | None = None,
+) -> list[StagedEntityPlan]:
     """Return the plans in dependency order, rejecting selected insert cycles."""
     plan_by_entity = {plan.entity_name: plan for plan in plans}
     present_optional: list[tuple[str, str]] = []
@@ -202,6 +216,20 @@ def _resolve_insert_order(plans: list[StagedEntityPlan], target_model: TargetMod
                 continue
             if remote_spec.public_id in plan.foreign_key_columns:
                 present_optional.append((plan.entity_name, foreign_key.entity))
+
+    direct_pairs = {(item.source_entity, item.target_entity) for item in direct_foreign_keys or []}
+    if direct_pairs:
+        filtered_entities = {
+            entity_name: entity_spec.model_copy(
+                update={
+                    "foreign_keys": [
+                        foreign_key for foreign_key in entity_spec.foreign_keys if (entity_name, foreign_key.entity) not in direct_pairs
+                    ]
+                }
+            )
+            for entity_name, entity_spec in target_model.entities.items()
+        }
+        target_model = target_model.model_copy(update={"entities": filtered_entities})
 
     insert_plan = build_insert_plan(target_model, plan_by_entity, present_optional_foreign_keys=present_optional)
     if insert_plan.cycles:
@@ -406,6 +434,8 @@ def _render_resolve_foreign_keys(plan: StagedEntityPlan, target_model: TargetMod
     """Return statements that resolve local parent references to target IDs."""
     statements: list[str] = []
     for column in plan.foreign_key_columns:
+        if column in plan.direct_foreign_key_columns:
+            continue
         remote_entity = _remote_entity_for_column(plan.spec, target_model, column)
         if remote_entity is None:
             continue

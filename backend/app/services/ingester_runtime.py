@@ -396,6 +396,21 @@ class SeadChangeRequestTargetCollisionChecker:
         )
         return await self._fetch_exists(statement, (target_id,))
 
+    async def target_id_column_type(self, table_name: str, public_id_column: str) -> str | None:
+        """Return a target ID column's PostgreSQL type, or None when it is missing."""
+        schema_name, relation_name = self._split_table_name(table_name)
+        if not schema_name or not relation_name or not public_id_column:
+            raise ValueError("Target table and public-ID column names must be non-empty")
+
+        statement = sql.SQL(
+            "SELECT data_type FROM information_schema.columns WHERE table_schema = %s AND table_name = %s AND column_name = %s"
+        )
+        async with await psycopg.AsyncConnection.connect(**self._connection_kwargs) as connection:
+            async with connection.cursor() as cursor:
+                await cursor.execute(statement, (schema_name, relation_name, public_id_column))
+                row = await cursor.fetchone()
+        return str(row[0]) if row is not None else None
+
     async def row_exists(self, table_name: str, filters: dict[str, object]) -> bool:
         if not filters:
             return False
@@ -415,10 +430,14 @@ class SeadChangeRequestTargetCollisionChecker:
         return bool(row[0]) if row is not None else False
 
     def _table_identifier(self, table_name: str) -> sql.Composed | sql.Identifier:
+        return sql.Identifier(*self._split_table_name(table_name))
+
+    def _split_table_name(self, table_name: str) -> tuple[str, str]:
+        """Resolve a qualified table name or apply the configured default schema."""
         if "." in table_name:
             schema_name, relation_name = table_name.split(".", maxsplit=1)
-            return sql.Identifier(schema_name, relation_name)
-        return sql.Identifier(self._default_schema, table_name)
+            return schema_name, relation_name
+        return self._default_schema, table_name
 
 
 def _is_missing_value(value: object) -> bool:

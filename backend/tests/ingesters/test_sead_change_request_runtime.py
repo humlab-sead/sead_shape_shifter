@@ -4,6 +4,7 @@ import os
 from datetime import datetime
 from types import SimpleNamespace
 from typing import Any, cast
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID, uuid4
 
 import httpx
@@ -673,3 +674,83 @@ class TestTrustedScopeAndBusinessKeys:
 
         identity_value = sims_client.resolve_requests[0].requests[0].primary_signal.identity_value
         assert identity_value == "sample:name=A"
+
+
+class TestTargetCollisionCheckerColumnType:
+    """Tests for read-only target public-ID type lookup."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("table_name", "default_schema", "expected_schema", "expected_table"),
+        [
+            ("tbl_locations", "sead", "sead", "tbl_locations"),
+            ("archive.tbl_locations", "sead", "archive", "tbl_locations"),
+        ],
+    )
+    async def test_type_lookup_uses_qualified_or_default_schema(self, table_name, default_schema, expected_schema, expected_table):
+        cursor = MagicMock()
+        cursor.execute = AsyncMock()
+        cursor.fetchone = AsyncMock(return_value=("integer",))
+        cursor.__aenter__ = AsyncMock(return_value=cursor)
+        cursor.__aexit__ = AsyncMock(return_value=None)
+        connection = MagicMock()
+        connection.cursor = MagicMock(return_value=cursor)
+        connection.__aenter__ = AsyncMock(return_value=connection)
+        connection.__aexit__ = AsyncMock(return_value=None)
+        checker = SeadChangeRequestTargetCollisionChecker(
+            host="localhost",
+            port=5432,
+            dbname="test_db",
+            user="test_user",
+            default_schema=default_schema,
+        )
+
+        with patch(
+            "backend.app.services.ingester_runtime.psycopg.AsyncConnection.connect",
+            AsyncMock(return_value=connection),
+        ):
+            result = await checker.target_id_column_type(table_name, "location_id")
+
+        assert result == "integer"
+        assert cursor.execute.await_args.args[1] == (expected_schema, expected_table, "location_id")
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("row, expected", [("text", "text"), (None, None)])
+    async def test_type_lookup_returns_text_type_or_missing_column(self, row, expected):
+        cursor = MagicMock()
+        cursor.execute = AsyncMock()
+        cursor.fetchone = AsyncMock(return_value=(row,) if row is not None else None)
+        cursor.__aenter__ = AsyncMock(return_value=cursor)
+        cursor.__aexit__ = AsyncMock(return_value=None)
+        connection = MagicMock()
+        connection.cursor = MagicMock(return_value=cursor)
+        connection.__aenter__ = AsyncMock(return_value=connection)
+        connection.__aexit__ = AsyncMock(return_value=None)
+        checker = SeadChangeRequestTargetCollisionChecker(host="localhost", port=5432, dbname="test_db", user="test_user")
+
+        with patch(
+            "backend.app.services.ingester_runtime.psycopg.AsyncConnection.connect",
+            AsyncMock(return_value=connection),
+        ):
+            result = await checker.target_id_column_type("tbl_locations", "location_id")
+
+        assert result == expected
+
+    @pytest.mark.asyncio
+    async def test_type_lookup_surfaces_catalog_query_errors(self):
+        cursor = MagicMock()
+        cursor.execute = AsyncMock(side_effect=RuntimeError("catalog unavailable"))
+        cursor.__aenter__ = AsyncMock(return_value=cursor)
+        cursor.__aexit__ = AsyncMock(return_value=None)
+        connection = MagicMock()
+        connection.cursor = MagicMock(return_value=cursor)
+        connection.__aenter__ = AsyncMock(return_value=connection)
+        connection.__aexit__ = AsyncMock(return_value=None)
+        checker = SeadChangeRequestTargetCollisionChecker(host="localhost", port=5432, dbname="test_db", user="test_user")
+
+        with patch(
+            "backend.app.services.ingester_runtime.psycopg.AsyncConnection.connect",
+            AsyncMock(return_value=connection),
+        ):
+            with pytest.raises(RuntimeError, match="catalog unavailable"):
+                await checker.target_id_column_type("tbl_locations", "location_id")

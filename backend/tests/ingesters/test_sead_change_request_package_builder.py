@@ -4,6 +4,7 @@ import pandas as pd
 
 from ingesters.sead_change_request import (
     ChangeRowState,
+    DirectForeignKey,
     PlannedRowAction,
     PlannedTable,
     build_change_request_package,
@@ -318,3 +319,61 @@ class TestBuildStagingPackage:
 
         assert package.is_staging is False
         assert not package.known_id_mappings
+
+    def test_direct_fk_is_not_added_to_the_local_mapping_list(self):
+        target_model = TargetModel.model_validate(
+            {
+                "model": {"name": "SEAD Test Model", "version": "0.1.0"},
+                "entities": {
+                    "site": {"role": "lookup", "public_id": "site_id", "target_table": "tbl_sites"},
+                    "location_type": {"role": "lookup", "public_id": "location_type_id", "target_table": "tbl_location_types"},
+                    "location": {
+                        "role": "fact",
+                        "public_id": "location_id",
+                        "target_table": "tbl_locations",
+                        "foreign_keys": [
+                            {"entity": "site", "required": True},
+                            {"entity": "location_type", "required": True},
+                        ],
+                    },
+                },
+                "constraints": [],
+            }
+        )
+        site_frame = pd.DataFrame({"system_id": [1], "site_id": [7001]})
+        location_frame = pd.DataFrame({"system_id": [2], "location_id": [None], "site_id": [1], "location_type_id": [1]})
+        identity_result = IdentityResolutionResult(
+            tables={
+                "site": ResolvedIdentityTable(
+                    entity_name="site",
+                    frame=site_frame,
+                    row_states=pd.Series([ChangeRowState.EXISTING_ENTITY], index=site_frame.index),
+                    resolved_target_ids=pd.Series([7001], index=site_frame.index, dtype="Int64"),
+                ),
+                "location": ResolvedIdentityTable(
+                    entity_name="location",
+                    frame=location_frame,
+                    row_states=pd.Series([ChangeRowState.NEWLY_ALLOCATED_ENTITY], index=location_frame.index),
+                    resolved_target_ids=pd.Series([601], index=location_frame.index, dtype="Int64"),
+                ),
+            }
+        )
+        planned_tables = [
+            PlannedTable(
+                entity_name="location",
+                frame=location_frame,
+                planned_actions=pd.Series([PlannedRowAction.ALLOCATE], index=location_frame.index),
+            )
+        ]
+
+        package = build_staging_package(
+            identity_result,
+            planned_tables,
+            target_model,
+            "public",
+            foreign_key_value_sources={"location": {"location_type": "public_id"}},
+        )
+
+        assert package.tables["location"].frame["location_type_id"].tolist() == [1]
+        assert package.direct_foreign_keys == [DirectForeignKey("location", "location_type", "location_type_id")]
+        assert [(item.entity_name, item.system_id, item.target_id) for item in package.known_id_mappings] == [("site", 1, 7001)]
