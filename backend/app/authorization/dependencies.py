@@ -2,7 +2,7 @@
 
 from collections.abc import Callable, Generator
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any, TypeVar
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, Request
@@ -15,6 +15,18 @@ from backend.app.authorization.service import AuthorizationService
 from backend.app.core.config import settings
 from backend.app.core.operation_manager import OperationProgress, operation_manager
 from backend.app.core.state_manager import ProjectSession
+
+
+DependencyCallable = TypeVar("DependencyCallable", bound=Callable[..., Any])
+
+
+def _attach_authorization_requirement(
+    dependency: DependencyCallable,
+    requirement: dict[str, str],
+) -> DependencyCallable:
+    """Attach authorization metadata to a dependency without changing its callable."""
+    setattr(dependency, "authorization_requirement", requirement)
+    return dependency
 
 
 def get_authorization_repository() -> Generator[AuthorizationRepository, None, None]:
@@ -77,8 +89,10 @@ def require_project(action: Action, *, body_locator: bool = False) -> Callable:
             raise HTTPException(status_code=404, detail="Resource not found")
         return authorized
 
-    dependency.authorization_requirement = {"resource_type": ResourceType.PROJECT.value, "action": action.value}
-    return dependency
+    return _attach_authorization_requirement(
+        dependency,
+        {"resource_type": ResourceType.PROJECT.value, "action": action.value},
+    )
 
 
 def require_active_project(action: Action) -> Callable:
@@ -103,8 +117,10 @@ def require_active_project(action: Action) -> Callable:
             raise HTTPException(status_code=404, detail="Resource not found")
         return authorized
 
-    dependency.authorization_requirement = {"resource_type": ResourceType.PROJECT.value, "action": action.value}
-    return dependency
+    return _attach_authorization_requirement(
+        dependency,
+        {"resource_type": ResourceType.PROJECT.value, "action": action.value},
+    )
 
 
 def require_shared_data_source(action: Action, *, body_locator: bool = False) -> Callable:
@@ -135,8 +151,10 @@ def require_shared_data_source(action: Action, *, body_locator: bool = False) ->
 
         return authorize_shared_data_source_reference(principal, service, source_reference, action)
 
-    dependency.authorization_requirement = {"resource_type": ResourceType.SHARED_DATA_SOURCE.value, "action": action.value}
-    return dependency
+    return _attach_authorization_requirement(
+        dependency,
+        {"resource_type": ResourceType.SHARED_DATA_SOURCE.value, "action": action.value},
+    )
 
 
 def _data_source_locator(value: str | None) -> str | None:
@@ -175,8 +193,10 @@ def require_application_action(action: Action) -> Callable:
             raise HTTPException(status_code=403, detail="Insufficient authorization")
         return principal
 
-    dependency.authorization_requirement = {"resource_type": "application", "action": action.value}
-    return dependency
+    return _attach_authorization_requirement(
+        dependency,
+        {"resource_type": "application", "action": action.value},
+    )
 
 
 def require_ingester_project(action: Action) -> Callable:
@@ -211,8 +231,10 @@ def require_ingester_project(action: Action) -> Callable:
             raise HTTPException(status_code=404, detail="Resource not found")
         return authorized
 
-    dependency.authorization_requirement = {"resource_type": ResourceType.PROJECT.value, "action": action.value}
-    return dependency
+    return _attach_authorization_requirement(
+        dependency,
+        {"resource_type": ResourceType.PROJECT.value, "action": action.value},
+    )
 
 
 def require_authorized_session(action: Action) -> Callable:
@@ -231,8 +253,10 @@ def require_authorized_session(action: Action) -> Callable:
             raise HTTPException(status_code=404, detail="Resource not found")
         return session
 
-    dependency.authorization_requirement = {"resource_type": ResourceType.PROJECT.value, "action": action.value}
-    return dependency
+    return _attach_authorization_requirement(
+        dependency,
+        {"resource_type": ResourceType.PROJECT.value, "action": action.value},
+    )
 
 
 def require_operation(action: Action = Action.READ) -> Callable:
@@ -251,9 +275,11 @@ def require_operation(action: Action = Action.READ) -> Callable:
             resource = service.repository.get_resource(UUID(progress.project_resource_id))
         except ValueError:
             resource = None
-        if service.authorize(principal, action, resource) is None:
+        if service.authorize(principal, action, resource) is None:  # pyright: ignore[reportArgumentType]
             raise HTTPException(status_code=404, detail="Operation not found")
         return progress
 
-    dependency.authorization_requirement = {"resource_type": ResourceType.PROJECT.value, "action": action.value}
-    return dependency
+    return _attach_authorization_requirement(
+        dependency,
+        {"resource_type": ResourceType.PROJECT.value, "action": action.value},
+    )
