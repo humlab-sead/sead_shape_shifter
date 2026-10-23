@@ -157,6 +157,30 @@ def require_shared_data_source(action: Action, *, body_locator: bool = False) ->
     )
 
 
+def require_project_or_shared_data_source(action: Action) -> Callable:
+    """Authorize a project when ``project_name`` is supplied, otherwise a shared data source."""
+
+    async def dependency(
+        principal: Annotated[Principal, Depends(get_principal())],
+        service: Annotated[AuthorizationService, Depends(get_authorization_service)],
+        data_source_name: str,
+        project_name: str | None = None,
+    ) -> AuthorizedResource:
+        if project_name:
+            resource = service.repository.get_resource_by_locator(ResourceType.PROJECT, project_name)
+            authorized = service.authorize(principal, action, resource) if resource is not None else None
+            if authorized is None:
+                raise HTTPException(status_code=404, detail="Resource not found")
+            return authorized
+
+        return authorize_shared_data_source_reference(principal, service, data_source_name, action)
+
+    return _attach_authorization_requirement(
+        dependency,
+        {"resource_type": "project_or_shared_data_source", "action": action.value},
+    )
+
+
 def _data_source_locator(value: str | None) -> str | None:
     if value is None:
         return None

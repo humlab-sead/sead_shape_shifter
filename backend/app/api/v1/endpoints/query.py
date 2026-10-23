@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 import backend.app.models.data_source as api
 from backend.app.api.dependencies import get_data_source_service
-from backend.app.authorization.dependencies import require_shared_data_source
+from backend.app.authorization.dependencies import require_project_or_shared_data_source, require_shared_data_source
 from backend.app.authorization.models import Action, AuthorizedResource
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.project import Project
@@ -19,6 +19,7 @@ from src.model import DataSourceConfig, ShapeShiftProject
 
 router = APIRouter()
 query_reader_dependency = require_shared_data_source(Action.READ)
+query_columns_reader_dependency = require_project_or_shared_data_source(Action.READ)
 
 
 def get_query_service() -> QueryService:
@@ -222,7 +223,7 @@ async def validate_query(
 async def introspect_query_columns(
     data_source_name: str,
     introspection: QueryIntrospection,
-    authorized_data_source: Annotated[AuthorizedResource, Depends(query_reader_dependency)],
+    authorized_data_source: Annotated[AuthorizedResource, Depends(query_columns_reader_dependency)],
     project_name: str | None = None,
     query_service: QueryService = Depends(get_query_service),
     data_source_service: DataSourceService = Depends(get_data_source_service),
