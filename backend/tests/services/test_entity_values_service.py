@@ -685,6 +685,26 @@ class TestEntityValuesService:
         assert sidecar["entities"]["location"]["local_key"] == "name"
         assert sidecar["entities"]["location"]["links"]["Uppsala"]["target_id"] == 100
 
+    def test_update_values_without_business_keys_skips_mapping_entry_creation(self, service, mock_project_service, tmp_path):
+        """A materialized fixed save without business keys writes rows without creating a mapping entry."""
+        project_file = tmp_path / "shapeshifter.yml"
+        project_file.write_text("metadata:\n  type: shapeshifter\n", encoding="utf-8")
+        mock_project = Mock()
+        mock_project.folder = tmp_path
+        mock_project.filename = str(project_file)
+        mock_project_service.load_project.return_value = mock_project
+        entity = dict(self._FIXED_ENTITY)
+        entity["keys"] = []
+        entity["materialized"] = {"enabled": True}
+        mock_project_service.get_entity_by_name.return_value = entity
+
+        result = service.update_values("test_project", "location", self._FIXED_COLUMNS, [[1, 100, "Uppsala", "Sweden"]], "parquet")
+
+        assert result.row_count == 1
+        saved_rows = pd.read_parquet(tmp_path / "materialized" / "test.parquet")
+        assert saved_rows.to_dict(orient="records") == [{"system_id": 1, "location_id": 100, "name": "Uppsala", "country": "Sweden"}]
+        assert not (tmp_path / f"{tmp_path.name}-mapping.yml").exists()
+
     @pytest.mark.parametrize("materialized", [False, True])
     def test_update_values_rejects_fixed_rows_without_project_path(self, service, mock_project_service, tmp_path, materialized):
         """Missing project metadata must fail before any fixed rows are written."""
