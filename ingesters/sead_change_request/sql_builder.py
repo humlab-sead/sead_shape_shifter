@@ -397,7 +397,7 @@ def _direct_fk_metadata(change_package: ChangeRequestPackage, target_model: Targ
         used = False
         for row_index, row in package_table.frame.iterrows():
             if _is_update_row(package_table, row_index):
-                assigned_columns = _update_assignment_columns(row, source_spec.public_id or "", package_table.mutable_fields)
+                assigned_columns = update_assignment_columns(row, source_spec.public_id or "", package_table.mutable_fields)
                 if direct_fk.column_name not in assigned_columns:
                     continue
             elif package_table.row_states.loc[row_index] not in {
@@ -529,7 +529,7 @@ def _render_update_statement(
         )
 
     declared_types = column_types or {}
-    set_columns = _update_assignment_columns(row, public_id_column, mutable_fields)
+    set_columns = update_assignment_columns(row, public_id_column, mutable_fields)
     if not set_columns:
         raise ValueError(f"Cannot render update statement for '{table_name}' because no mutable columns were available")
 
@@ -687,7 +687,7 @@ def _is_update_row(package_table: ChangeRequestTable, row_index: object) -> bool
     return package_table.planned_actions.loc[row_index] == PlannedRowAction.UPDATE_EXISTING_CANDIDATE  # type: ignore
 
 
-def _update_assignment_columns(row: pd.Series, public_id_column: str, mutable_fields: list[str] | None) -> list[str]:
+def update_assignment_columns(row: pd.Series, public_id_column: str, mutable_fields: list[str] | None) -> list[str]:
     """Return the columns that should be updated for one existing-row update."""
     if mutable_fields is not None:
         columns: list[str] = []

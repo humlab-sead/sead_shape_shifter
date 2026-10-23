@@ -12,7 +12,7 @@ from ingesters.sead_change_request.contracts import (
     DirectForeignKey,
     PlannedRowAction,
 )
-from ingesters.sead_change_request.sql_builder import _update_assignment_columns
+from ingesters.sead_change_request.sql_builder import update_assignment_columns
 from src.target_model.models import EntitySpec, ForeignKeySpec, TargetModel
 
 INTEGER_COLUMN_TYPES = frozenset({"smallint", "integer", "bigint", "int2", "int4", "int8"})
@@ -187,7 +187,7 @@ def _is_assigned_update_column(
     mutable_fields: list[str] | None,
 ) -> bool:
     """Use the deploy renderer's rules to decide whether an update writes a column."""
-    return column_name in _update_assignment_columns(row, public_id_column or "", mutable_fields)
+    return column_name in update_assignment_columns(row, public_id_column or "", mutable_fields)
 
 
 def _parse_integer_id(value: object) -> int | None:
