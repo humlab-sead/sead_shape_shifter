@@ -27,6 +27,8 @@ gh pr diff <PR> --repo OWNER/REPO --patch --color never
 
 Record `OWNER/REPO`, PR number, PR URL, base branch, and **full** reviewed `headRefOid`. The GitHub PR diff (not local uncommitted changes) defines the review's scope. Inspect nearby source, tests, configuration, repository instructions, and the project's proposals or phase plans when relevant. Mention inaccessible files or an incomplete diff.
 
+**Exclude all changes under `graphify-out/` from the review.** Do not inspect or report findings for files in that directory; review the remaining PR changes normally.
+
 ## 2. Validate possible findings
 
 Apply the criteria in [references/review-criteria.md](references/review-criteria.md). Prioritize demonstrable correctness, security, data integrity, concurrency, interface/schema contracts, meaningful performance regressions, and missing tests for changed behavior.
