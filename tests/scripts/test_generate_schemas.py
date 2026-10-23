@@ -12,6 +12,9 @@ def test_entity_schema_describes_direct_foreign_key_value_sources() -> None:
 
     assert value_sources_schema["default"] == {}
     assert value_sources_schema["additionalProperties"]["enum"] == ["system_id", "public_id"]
+    assert "existing target ID" in value_sources_schema["description"]
+    assert "without creating a Core link" in value_sources_schema["description"]
+    assert "Omitted entries use system_id" in value_sources_schema["description"]
 
 
 @pytest.mark.parametrize(

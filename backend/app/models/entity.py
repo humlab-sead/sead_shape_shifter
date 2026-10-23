@@ -170,7 +170,10 @@ class Entity(BaseModel):
     foreign_key_value_sources: dict[str, Literal["system_id", "public_id"]] = Field(
         default_factory=dict,
         json_schema_extra={"default": {}},
-        description="Target-model FK values supplied by this source; omitted entries use the local system_id link",
+        description=(
+            "Per-target-model-FK value source: system_id uses the local Core link; public_id supplies an existing target ID "
+            "to the SEAD change-request package without creating a Core link. Omitted entries use system_id."
+        ),
     )
     unnest: UnnestConfig | None = Field(default=None, description="Unnest configuration")
     filters: list[FilterConfig] = Field(default_factory=list, description="Entity filters with optional staged execution")
