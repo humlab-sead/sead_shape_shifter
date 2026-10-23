@@ -170,7 +170,7 @@ warn_return_any = false
 [tool.pytest.ini_options]
 # Run tests in parallel with pytest-xdist; use "-p no:xdist" or "-n 0" to run serially.
 addopts = "-qq -rfEx --strict-markers --durations=10 -n auto"
-testpaths = ["tests", "backend/tests", "ingesters/sead/tests"]
+testpaths = ["tests", "backend/tests"]
 python_classes = "Test*"
 python_functions = "test_*"
 asyncio_mode = "auto"

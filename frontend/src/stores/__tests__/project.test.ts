@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { PROJECT_LIST_TTL_MS, useProjectStore } from '../project'
+import { useValidationStore } from '../validation'
 import type { Project, ProjectMetadata, ValidationResult } from '@/types'
 import type { ProjectCreateRequest, ProjectUpdateRequest, BackupInfo, MetadataUpdateRequest } from '@/api/projects'
 
@@ -248,6 +249,28 @@ describe('useProjectStore', () => {
       expect(store.selectedProject).toEqual(mockProject)
       expect(store.hasUnsavedChanges).toBe(false)
       expect(result).toEqual(mockProject)
+    })
+
+    it('should clear validation state when switching projects', async () => {
+      const store = useProjectStore()
+      const validationStore = useValidationStore()
+      store.selectedProject = { metadata: { name: 'previous-project' } } as Project
+      store.validationResult = { error_count: 1 } as ValidationResult
+      validationStore.validationResult = { error_count: 1 } as ValidationResult
+      validationStore.entityValidationResults.set('entity', { error_count: 1 } as ValidationResult)
+      validationStore.error = 'Validation failed'
+
+      vi.mocked(api.projects.activate).mockResolvedValue({
+        metadata: { name: 'next-project' },
+        entities: {},
+      } as Project)
+
+      await store.selectProject('next-project')
+
+      expect(store.validationResult).toBeNull()
+      expect(validationStore.validationResult).toBeNull()
+      expect(validationStore.entityValidationResults.size).toBe(0)
+      expect(validationStore.error).toBeNull()
     })
 
     it('should handle select errors', async () => {

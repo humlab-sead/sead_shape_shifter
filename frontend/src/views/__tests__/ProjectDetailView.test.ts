@@ -341,6 +341,8 @@ describe('ProjectDetailView', () => {
     mockGraphState.addRelatedBranchEdgeClass.mockReset()
     mockGraphState.render.mockReset()
     mockGraphState.getNote.mockClear()
+    mockGraphState.removeNote.mockReset()
+    mockGraphState.setNote.mockReset()
   })
 
   it('captures graph options and opens the details drawer on node click', async () => {
@@ -418,5 +420,23 @@ describe('ProjectDetailView', () => {
     await flushPromises()
 
     expect(wrapper.text()).not.toContain('Target Model')
+  })
+
+  it('removes a note when saving content that is blank after trimming', async () => {
+    const wrapper = mountProjectDetailView()
+    await flushPromises()
+    const vm = wrapper.vm as any
+    vm.selectedNode = 'analysis_entity'
+    vm.drawerNoteContent = ' \n\t '
+    vm.drawerOriginalNoteContent = 'Existing note'
+    vm.drawerNoteHasChanges = true
+
+    await vm.handleSaveDrawerNote()
+
+    expect(mockGraphState.removeNote).toHaveBeenCalledWith('arbodat', 'analysis_entity')
+    expect(mockGraphState.setNote).not.toHaveBeenCalled()
+    expect(vm.drawerNoteContent).toBe('')
+    expect(vm.drawerOriginalNoteContent).toBe('')
+    expect(vm.drawerNoteHasChanges).toBe(false)
   })
 })
