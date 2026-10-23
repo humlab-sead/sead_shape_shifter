@@ -4,6 +4,14 @@ from backend.app.models.reconciliation import EntityResolutionCatalog, EntityRes
 from scripts.generate_schemas import generate_schemas
 
 RECONCILIATION_SCHEMA = generate_schemas()["reconciliationSchema.json"]
+ENTITY_SCHEMA = generate_schemas()["entitySchema.json"]
+
+
+def test_entity_schema_describes_direct_foreign_key_value_sources() -> None:
+    value_sources_schema = ENTITY_SCHEMA["properties"]["foreign_key_value_sources"]
+
+    assert value_sources_schema["default"] == {}
+    assert value_sources_schema["additionalProperties"]["enum"] == ["system_id", "public_id"]
 
 
 @pytest.mark.parametrize(

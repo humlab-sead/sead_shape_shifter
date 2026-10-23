@@ -32,5 +32,12 @@ describe('setupYamlIntelligence', () => {
         }),
       ])
     )
+
+    const entitySchema = options?.schemas.find((schema) => schema.uri.endsWith('/entity-schema.json'))?.schema as any
+    expect(entitySchema.properties.foreign_key_value_sources.default).toEqual({})
+    expect(entitySchema.properties.foreign_key_value_sources.additionalProperties.enum).toEqual([
+      'system_id',
+      'public_id',
+    ])
   })
 })
