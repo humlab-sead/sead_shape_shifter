@@ -139,6 +139,7 @@ def resolve_staged_children(
 def collect_pending_deployment(
     identity_result: IdentityResolutionResult,
     target_model: TargetModel,
+    foreign_key_value_sources: dict[str, dict[str, str]] | None = None,
 ) -> PendingDeploymentMap:
     """Return the pending rows and the foreign keys that reference them.
 
@@ -160,12 +161,18 @@ def collect_pending_deployment(
         pending_keys[entity_name] = _local_keys(resolved_table.frame.loc[mask])
 
     pending_fk_mask: dict[str, dict[str, pd.Series]] = {}
+    direct_fk_targets = {
+        source_entity: {target_entity for target_entity, value_source in target_sources.items() if value_source == "public_id"}
+        for source_entity, target_sources in (foreign_key_value_sources or {}).items()
+    }
     for entity_name, resolved_table in identity_result.tables.items():
         entity_spec = target_model.entities.get(entity_name)
         if entity_spec is None:
             continue
         column_masks: dict[str, pd.Series] = {}
         for foreign_key in entity_spec.foreign_keys:
+            if foreign_key.entity in direct_fk_targets.get(entity_name, set()):
+                continue
             remote_keys = pending_keys.get(foreign_key.entity)
             remote_spec = target_model.entities.get(foreign_key.entity)
             if not remote_keys or remote_spec is None or not remote_spec.public_id:

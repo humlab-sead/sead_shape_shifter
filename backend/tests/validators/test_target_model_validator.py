@@ -91,6 +91,31 @@ class TestTargetModelValidatorHappyPaths:
             ("CONDITIONAL_FK_AWAITING_RECONCILIATION", "info", ValidationCategory.CONFORMANCE)
         ]
 
+    def test_direct_target_id_fk_pending_check_keeps_code_and_info_severity(self):
+        project = _make_project(
+            {
+                "sample": {
+                    "system_id": "system_id",
+                    "columns": ["dataset_id"],
+                    "foreign_key_value_sources": {"dataset": "public_id"},
+                    "data": {"type": "fixed", "values": []},
+                }
+            },
+            options={"validation": {"severity_overrides": {"direct_fk_pending_check": "error"}}},
+        )
+        target_model_data = _minimal_target_model(
+            entities={
+                "sample": {"foreign_keys": [{"entity": "dataset", "required": True}]},
+                "dataset": {"public_id": "dataset_id", "target_table": "public.dataset"},
+            }
+        )
+
+        issues = TargetModelValidator().validate(target_model_data, project)
+
+        assert [(issue.code, issue.severity, issue.category) for issue in issues if issue.code == "DIRECT_FK_TARGET_CHECK_PENDING"] == [
+            ("DIRECT_FK_TARGET_CHECK_PENDING", "info", ValidationCategory.CONFORMANCE)
+        ]
+
     def test_transitive_foreign_key_path_returns_no_errors(self):
         """A required FK satisfied through an intermediate project entity should not raise a direct-FK error."""
         project = _make_project(
