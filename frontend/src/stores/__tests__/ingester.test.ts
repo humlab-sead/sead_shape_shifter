@@ -169,16 +169,18 @@ describe('useIngesterStore project actions', () => {
 
   it('keeps file actions on the existing ingester methods', async () => {
     const store = useIngesterStore()
-    store.ingesters = [{ key: 'sead', name: 'SEAD', description: '', version: '', supported_formats: ['xlsx'] }]
-    store.selectIngester('sead')
+    store.ingesters = [
+      { key: 'example_ingester', name: 'Example Ingester', description: '', version: '', supported_formats: ['xlsx'] },
+    ]
+    store.selectIngester('example_ingester')
     vi.mocked(ingesterApi.validate).mockResolvedValue(validResult)
     vi.mocked(ingesterApi.ingest).mockResolvedValue(ingestedResult)
 
     await store.validate({ source: 'input.xlsx' })
     await store.ingest({ source: 'input.xlsx', submission_name: 'test', data_types: 'bugs' })
 
-    expect(ingesterApi.validate).toHaveBeenCalledWith('sead', { source: 'input.xlsx' })
-    expect(ingesterApi.ingest).toHaveBeenCalledWith('sead', {
+    expect(ingesterApi.validate).toHaveBeenCalledWith('example_ingester', { source: 'input.xlsx' })
+    expect(ingesterApi.ingest).toHaveBeenCalledWith('example_ingester', {
       source: 'input.xlsx',
       submission_name: 'test',
       data_types: 'bugs',
@@ -189,8 +191,10 @@ describe('useIngesterStore project actions', () => {
 
   it('does not run project actions when Change Request is not selected', async () => {
     const store = useIngesterStore()
-    store.ingesters = [{ key: 'sead', name: 'SEAD', description: '', version: '', supported_formats: ['xlsx'] }]
-    store.selectIngester('sead')
+    store.ingesters = [
+      { key: 'example_ingester', name: 'Example Ingester', description: '', version: '', supported_formats: ['xlsx'] },
+    ]
+    store.selectIngester('example_ingester')
 
     await store.validateProject(projectRequest)
     await store.ingestProject(projectRequest)

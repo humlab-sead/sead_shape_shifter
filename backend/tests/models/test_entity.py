@@ -126,7 +126,21 @@ class TestEntity:
         assert entity.keys == []
         assert entity.columns == []
         assert entity.foreign_keys == []
+        assert entity.foreign_key_value_sources == {}
         assert entity.check_column_names is True
+
+    def test_foreign_key_value_sources_accept_only_supported_modes(self):
+        entity = Entity(
+            name="location",
+            foreign_key_value_sources={"location_type": "public_id"},
+        )
+
+        assert entity.foreign_key_value_sources == {"location_type": "public_id"}
+        assert Entity(name="sample", foreign_key_value_sources={"sample_type": "system_id"}).foreign_key_value_sources == {
+            "sample_type": "system_id"
+        }
+        with pytest.raises(ValidationError):
+            Entity(name="location", foreign_key_value_sources={"location_type": "external_id"})
 
     def test_with_foreign_keys(self):
         """Test entity with foreign keys."""

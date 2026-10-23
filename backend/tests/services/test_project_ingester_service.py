@@ -1,5 +1,6 @@
 """Tests for guarded project-to-ingester composition."""
 
+import json
 from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
@@ -12,6 +13,7 @@ import pytest
 from backend.app.authorization.models import Action, AuthorizedResource, Principal, ResourceRecord, ResourceType
 from backend.app.core.config import Settings
 from backend.app.ingesters.protocol import IngestionResult, ValidationResult
+from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.ingester import ProjectIngesterRequest, ProjectSubmissionOptions
 from backend.app.models.project import Project, ProjectMetadata
 from backend.app.services import project_ingester_service as project_ingester_module
@@ -59,6 +61,51 @@ def valid_target_model() -> dict[str, Any]:
         "entities": {"sample": {"role": "fact", "public_id": "sample_id"}},
         "constraints": [],
     }
+
+
+def direct_fk_target_model() -> dict[str, Any]:
+    """Build the target model used by saved-project direct-FK tests."""
+    return {
+        "model": {"name": "Direct FK Test Model", "version": "0.1.0"},
+        "entities": {
+            "location_type": {"role": "lookup", "public_id": "location_type_id", "target_table": "tbl_location_types"},
+            "location": {
+                "role": "fact",
+                "public_id": "location_id",
+                "target_table": "tbl_locations",
+                "foreign_keys": [{"entity": "location_type", "required": True}],
+            },
+        },
+        "constraints": [],
+    }
+
+
+def saved_direct_fk_project(
+    *,
+    value_source: str | None = "public_id",
+    columns: list[str] | None = None,
+    foreign_keys: list[dict[str, Any]] | None = None,
+) -> Project:
+    """Build one saved project with a direct-FK declaration and inline target model."""
+    location: dict[str, Any] = {
+        "type": "fixed",
+        "columns": columns or ["location_type_id"],
+        "values": [[42] if columns is None or "location_type_id" in columns else ["Norway"]],
+    }
+    if value_source is not None:
+        location["foreign_key_value_sources"] = {"location_type": value_source}
+    if foreign_keys:
+        location["foreign_keys"] = foreign_keys
+    return Project(
+        metadata=ProjectMetadata(
+            name="pilot",
+            entity_count=1,
+            data_provider_code="SEAD",
+            provider_schema="test-schema",
+            target_model=direct_fk_target_model(),
+        ),
+        entities={"location": location},
+    )
 
 
 class FakeProjectService:
@@ -613,6 +660,202 @@ async def test_successful_ingest_writes_only_bundle_under_managed_root(monkeypat
     assert any(path.startswith("verify/") for path in bundle_files)
     assert "manifest.json" in bundle_files
     assert not any(path.lower().endswith((".xlsx", ".xls")) for path in bundle_files)
+
+
+class _DirectFkCollisionChecker:
+    """Return deterministic target lookup results for saved-project service tests."""
+
+    def __init__(self, existing_id: int) -> None:
+        self.existing_id = existing_id
+
+    async def target_id_column_type(self, _table_name: str, _column_name: str) -> str:
+        return "integer"
+
+    async def target_id_exists(self, _table_name: str, _column_name: str, target_id: int) -> bool:
+        return target_id == self.existing_id
+
+    async def row_exists(self, _table_name: str, _filters: dict[str, object]) -> bool:
+        return True
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("target_id", "expected_valid"), [(42, True), (999, False)])
+async def test_saved_direct_fk_map_reaches_validation_and_ingestion_through_real_mapper_and_ingester(
+    monkeypatch, tmp_path, target_id, expected_valid
+) -> None:
+    """Use the saved map in both table methods, accepting only IDs found by target lookup."""
+    project = saved_direct_fk_project()
+    project_service = FakeProjectService(project)
+    provider_service = FakeProjectDataProviderService()
+    source_tables = {"location": pd.DataFrame({"location_id": [None], "location_type_id": [target_id]})}
+    checker = _DirectFkCollisionChecker(existing_id=42)
+    seen_maps: list[dict[str, dict[str, str]]] = []
+
+    class ValidSpecification:
+        def __init__(self, _cfg) -> None:
+            self.errors: list[str] = []
+            self.warnings: list[str] = []
+
+        def is_satisfied_by(self) -> bool:
+            return True
+
+    monkeypatch.setattr(project_ingester_module, "CompositeProjectSpecification", ValidSpecification)
+
+    async def normalize(mapped_project, *, translate, drop_foreign_keys, default_entity, env_file):  # pylint: disable=unused-argument
+        assert mapped_project.get_table("location").foreign_keys == []
+        return SimpleNamespace(table_store=source_tables)
+
+    monkeypatch.setattr(project_ingester_module, "normalize_project", normalize)
+
+    def inject_runtime(key, extra, configured_settings):  # pylint: disable=unused-argument
+        seen_maps.append(extra["foreign_key_value_sources"])
+        return {
+            **extra,
+            "identity_assignments": {"location": {0: {"state": "newly_allocated_entity", "target_id": 601}}},
+        }
+
+    monkeypatch.setattr(project_ingester_module, "inject_ingester_runtime_dependencies", inject_runtime)
+
+    def inject_database(key, extra, db_config):  # pylint: disable=unused-argument
+        return {**extra, "collision_checker": checker}
+
+    monkeypatch.setattr(project_ingester_module, "inject_ingester_database_dependencies", inject_database)
+    runtime_settings = settings(tmp_path, INGEST_OUTPUT_DIR=tmp_path / "generated/change-requests")
+    service = ProjectIngesterService(
+        project_service=project_service,  # type: ignore[arg-type]
+        project_data_provider_service=provider_service,  # type: ignore[arg-type]
+        settings=runtime_settings,
+    )
+
+    validation = await service.validate_project_tables("sead_change_request", authorized_project(), request())
+    ingestion = await service.ingest_project_tables("sead_change_request", authorized_project(), request())
+
+    expected_map = {"location": {"location_type": "public_id"}}
+    assert validation.is_valid is expected_valid
+    assert ingestion.success is expected_valid
+    assert seen_maps == [expected_map, expected_map]
+    if expected_valid:
+        assert ingestion.output_path is not None
+        assert ingestion.deploy_artifact is not None
+        manifest = json.loads((Path(ingestion.output_path) / "manifest.json").read_text(encoding="utf-8"))
+        assert manifest["direct_target_id_foreign_keys"] == [
+            {"source_entity": "location", "target_entity": "location_type", "column": "location_type_id"}
+        ]
+        assert str(target_id) in ingestion.deploy_artifact["deploy_sql"]
+    else:
+        assert "value 999" in validation.errors[0]
+        assert "value 999" in (ingestion.error_details or "")
+        output_root = tmp_path / "generated/change-requests"
+        assert not output_root.exists() or not list(output_root.glob("**/*"))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("value_source", "expected_map"),
+    [("system_id", {"location": {"location_type": "system_id"}}), (None, None)],
+)
+@pytest.mark.parametrize("method_name", ["validate_project_tables", "ingest_project_tables"])
+async def test_saved_default_and_explicit_system_id_keep_the_core_link_and_config_shape(
+    monkeypatch, tmp_path, value_source, expected_map, method_name
+) -> None:
+    """Keep the local Core link and omit the config map when the saved project has no declaration."""
+    project_service = FakeProjectService(saved_direct_fk_project(value_source=value_source, foreign_keys=[{"entity": "location_type"}]))
+
+    class ValidSpecification:
+        def __init__(self, _cfg) -> None:
+            self.errors: list[str] = []
+            self.warnings: list[str] = []
+
+        def is_satisfied_by(self) -> bool:
+            return True
+
+    monkeypatch.setattr(project_ingester_module, "CompositeProjectSpecification", ValidSpecification)
+
+    async def normalize(*_args, **_kwargs):
+        return SimpleNamespace(table_store={"location": pd.DataFrame({"location_type_id": [1]})})
+
+    monkeypatch.setattr(project_ingester_module, "normalize_project", normalize)
+    monkeypatch.setattr(
+        project_ingester_module,
+        "get_ingester_registry",
+        lambda: FakeRegistry(FakeTableIngester),
+    )
+    monkeypatch.setattr(project_ingester_module, "inject_ingester_runtime_dependencies", lambda _key, extra, _settings: extra)
+    monkeypatch.setattr(project_ingester_module, "inject_ingester_database_dependencies", lambda _key, extra, _config: extra)
+    FakeTableIngester.instances.clear()
+    FakeTableIngester.validation_result = ValidationResult(is_valid=True)
+    FakeTableIngester.ingestion_result = IngestionResult(
+        success=True,
+        message="bundle generated",
+        records_inserted=1,
+        scope_name="provider://pilot",
+        run_id="run-1",
+        deploy_artifact={"deploy_sql": "SELECT 1;"},
+    )
+    service = project_ingester_service(project_service, runtime_settings=settings(tmp_path))
+
+    result = await getattr(service, method_name)("sead_change_request", authorized_project(), request())
+
+    assert result.is_valid is True if method_name == "validate_project_tables" else result.success is True
+    config = FakeTableIngester.instances[-1].config
+    if expected_map is None:
+        assert "foreign_key_value_sources" not in config.extra
+    else:
+        assert config.extra["foreign_key_value_sources"] == expected_map
+    mapped_project = ProjectMapper.to_core(project_service.project)
+    assert mapped_project.get_table("location").foreign_keys
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("columns", "foreign_keys", "expected_code"),
+    [
+        (["location_type_id"], [{"entity": "location_type"}], "DIRECT_FK_CORE_LINK_CONFLICT"),
+        (["location_name"], None, "DIRECT_FK_OUTPUT_COLUMN_MISSING"),
+    ],
+)
+@pytest.mark.parametrize("method_name", ["validate_project_tables", "ingest_project_tables"])
+async def test_saved_direct_fk_declaration_errors_stop_before_normalization(
+    monkeypatch, tmp_path, columns, foreign_keys, expected_code, method_name
+) -> None:
+    """Reject direct-mode conflicts and missing output columns before row processing."""
+    project_service = FakeProjectService(saved_direct_fk_project(columns=columns, foreign_keys=foreign_keys))
+
+    class ValidSpecification:
+        def __init__(self, _cfg) -> None:
+            self.errors: list[str] = []
+            self.warnings: list[str] = []
+
+        def is_satisfied_by(self) -> bool:
+            return True
+
+    monkeypatch.setattr(project_ingester_module, "CompositeProjectSpecification", ValidSpecification)
+    monkeypatch.setattr(
+        project_ingester_module,
+        "normalize_project",
+        lambda *args, **kwargs: pytest.fail("Invalid direct declarations must stop before normalization"),
+    )
+    provider_service = FakeProjectDataProviderService()
+    service = ProjectIngesterService(
+        project_service=project_service,  # type: ignore[arg-type]
+        project_data_provider_service=provider_service,  # type: ignore[arg-type]
+        settings=settings(tmp_path),
+    )
+
+    result = await getattr(service, method_name)("sead_change_request", authorized_project(), request())
+    error_details = result.errors[0] if method_name == "validate_project_tables" else result.error_details
+
+    assert result.is_valid is False if method_name == "validate_project_tables" else result.success is False
+    assert error_details is not None
+    assert expected_code in error_details
+    assert "entity 'location'" in error_details
+    if expected_code == "DIRECT_FK_CORE_LINK_CONFLICT":
+        assert "field 'foreign_key_value_sources.location_type'" in error_details
+    else:
+        assert "column 'location_type_id'" in error_details
+    assert not provider_service.projects
+    output_root = tmp_path / "generated/change-requests"
+    assert not output_root.exists() or not list(output_root.glob("**/*"))
 
 
 @pytest.mark.asyncio

@@ -207,6 +207,7 @@ async def test_project_routes_forward_authorized_resource_request_and_response(
         {"validate_first": False},
         {"submission_context": {**PROJECT_REQUEST["submission_context"], "project_name": "project-a"}},
         {"submission_context": {**PROJECT_REQUEST["submission_context"], "data_provider_code": "caller"}},
+        {"foreign_key_value_sources": {"location": {"location_type": "public_id"}}},
     ],
 )
 async def test_project_routes_reject_file_and_caller_configuration_fields(
@@ -300,7 +301,7 @@ async def test_project_routes_preserve_project_and_data_validation_failures(
     helper_method.assert_awaited_once()
 
 
-@pytest.mark.parametrize("path", ["/api/v1/ingesters/sead/validate", "/api/v1/ingesters/sead/ingest"])
+@pytest.mark.parametrize("path", ["/api/v1/ingesters/sead_change_request/validate", "/api/v1/ingesters/sead_change_request/ingest"])
 async def test_generic_file_routes_require_operator_role_for_project_executor(
     authorization_repository: SQLiteAuthorizationRepository,
     monkeypatch,

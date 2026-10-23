@@ -100,7 +100,7 @@ async def validate_data(
     """Validate data using the specified ingester.
 
     Args:
-        key: Ingester identifier (e.g., 'sead')
+        key: Ingester identifier (e.g., 'your_ingester')
         request: Validation request with source path and optional config
         authorized_project: Saved project authorized for the SEAD Change Request ingester
 
@@ -138,7 +138,7 @@ async def ingest_data(
     """Ingest data using the specified ingester.
 
     Args:
-        key: Ingester identifier (e.g., 'sead')
+        key: Ingester identifier (e.g., 'your_ingester')
         request: Ingestion request with source path, config, submission details
         authorized_project: Saved project authorized for the SEAD Change Request ingester
 

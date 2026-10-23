@@ -235,13 +235,33 @@ class FakeCollisionChecker:
     """Simple fake target collision checker for ingester tests."""
 
     def __init__(
-        self, *, target_ids: set[tuple[str, str, int]] | None = None, rows: set[tuple[str, tuple[tuple[str, object], ...]]] | None = None
+        self,
+        *,
+        target_ids: set[tuple[str, str, int]] | None = None,
+        rows: set[tuple[str, tuple[tuple[str, object], ...]]] | None = None,
+        column_types: dict[tuple[str, str], str | None] | None = None,
+        type_error: Exception | None = None,
+        exists_error: Exception | None = None,
     ) -> None:
         self.target_ids = target_ids or set()
         self.rows = rows or set()
+        self.column_types = column_types or {}
+        self.type_error = type_error
+        self.exists_error = exists_error
+        self.checked_ids: list[tuple[str, str, int]] = []
+        self.checked_types: list[tuple[str, str]] = []
 
     async def target_id_exists(self, table_name: str, public_id_column: str, target_id: int) -> bool:
+        self.checked_ids.append((table_name, public_id_column, target_id))
+        if self.exists_error is not None:
+            raise self.exists_error
         return (table_name, public_id_column, target_id) in self.target_ids
+
+    async def target_id_column_type(self, table_name: str, public_id_column: str) -> str | None:
+        self.checked_types.append((table_name, public_id_column))
+        if self.type_error is not None:
+            raise self.type_error
+        return self.column_types.get((table_name, public_id_column), "integer")
 
     async def row_exists(self, table_name: str, filters: dict[str, object]) -> bool:
         return (table_name, tuple(sorted(filters.items()))) in self.rows
@@ -269,6 +289,56 @@ def minimal_target_model(**extra_entities: dict) -> dict:
         "entities": extra_entities,
         "constraints": [],
     }
+
+
+_NO_COLLISION_CHECKER = object()
+
+
+def direct_fk_target_model(*, foreign_key: dict | None = None, nullable: bool | None = False) -> dict:
+    """Build a target model with a location FK whose source may contain a target ID."""
+    location: dict[str, Any] = {
+        "role": "fact",
+        "public_id": "location_id",
+        "target_table": "tbl_locations",
+        "foreign_keys": [foreign_key or {"entity": "location_type", "required": True}],
+    }
+    if nullable is not None:
+        location["columns"] = {"location_type_id": {"nullable": nullable}}
+    return minimal_target_model(
+        location_type={"role": "lookup", "public_id": "location_type_id", "target_table": "tbl_location_types"},
+        location=location,
+    )
+
+
+def make_direct_fk_ingester(
+    tables: dict[str, pd.DataFrame],
+    *,
+    collision_checker: object = _NO_COLLISION_CHECKER,
+    foreign_key: dict | None = None,
+    nullable: bool | None = False,
+    extra: dict[str, Any] | None = None,
+    output_folder: str | None = None,
+) -> SeadChangeRequestIngester:
+    """Build an ingester with an explicit standalone direct-FK declaration."""
+    config_extra: dict[str, Any] = {
+        "tables": tables,
+        "target_model": direct_fk_target_model(foreign_key=foreign_key, nullable=nullable),
+        "foreign_key_value_sources": {"location": {"location_type": "public_id"}},
+        "submission_context": minimal_submission_context(),
+    }
+    if collision_checker is not _NO_COLLISION_CHECKER:
+        config_extra["collision_checker"] = collision_checker
+    config_extra.update(extra or {})
+    config_values: dict[str, Any] = {
+        "host": "localhost",
+        "port": 5432,
+        "dbname": "test_db",
+        "user": "test_user",
+        "extra": config_extra,
+    }
+    if output_folder is not None:
+        config_values["output_folder"] = output_folder
+    return SeadChangeRequestIngester(IngesterConfig(**config_values))
 
 
 def submission_target_model() -> dict:
@@ -924,6 +994,225 @@ class TestSeadChangeRequestIngesterValidation:
         assert result.errors == ["Entity 'location' has 1 missing conditional FK value(s) for 'location_type_id'"]
 
     @pytest.mark.asyncio
+    async def test_validate_accepts_an_existing_direct_target_id_without_a_parent_table(self):
+        checker = FakeCollisionChecker(target_ids={("tbl_location_types", "location_type_id", 42)})
+        frame = pd.DataFrame({"location_id": [None], "location_type_id": ["00042"]})
+        ingester = make_direct_fk_ingester(
+            {"location": frame},
+            collision_checker=checker,
+            extra={"identity_assignments": {"location": {0: {"state": ChangeRowState.NEWLY_ALLOCATED_ENTITY, "target_id": 601}}}},
+        )
+
+        result = await ingester.validate_tables({"location": frame})
+        preparation = await ingester._prepare_change_request(SourceTableBundle(tables={"location": frame}))
+
+        assert result.is_valid is True
+        assert result.errors == []
+        assert checker.checked_types == [("tbl_location_types", "location_type_id")] * 2
+        assert checker.checked_ids == [("tbl_location_types", "location_type_id", 42)] * 2
+        assert preparation.change_package is not None
+        assert preparation.change_package.tables["location"].frame.at[0, "location_type_id"] == 42
+        assert isinstance(preparation.change_package.tables["location"].frame.at[0, "location_type_id"], int)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("value", ["not-an-id", 4.25, True])
+    async def test_validate_rejects_malformed_direct_target_ids(self, value):
+        checker = FakeCollisionChecker()
+        ingester = make_direct_fk_ingester(
+            {"location": pd.DataFrame({"location_id": [None], "location_type_id": [value]})},
+            collision_checker=checker,
+            extra={"identity_assignments": {"location": {0: {"state": ChangeRowState.NEWLY_ALLOCATED_ENTITY, "target_id": 601}}}},
+        )
+
+        result = await ingester.validate_tables({"location": pd.DataFrame({"location_id": [None], "location_type_id": [value]})})
+
+        assert result.is_valid is False
+        assert len(result.errors) == 1
+        assert "Entity 'location'" in result.errors[0]
+        assert "column 'location_type_id'" in result.errors[0]
+        assert repr(value) in result.errors[0]
+        assert not checker.checked_types
+        assert not checker.checked_ids
+
+    @pytest.mark.asyncio
+    async def test_validate_rejects_missing_or_unverifiable_direct_target_ids(self):
+        tables = {"location": pd.DataFrame({"location_id": [None], "location_type_id": [42]})}
+        identity = {"identity_assignments": {"location": {0: {"state": ChangeRowState.NEWLY_ALLOCATED_ENTITY, "target_id": 601}}}}
+
+        absent_ingester = make_direct_fk_ingester(tables, collision_checker=FakeCollisionChecker(), extra=identity)
+        absent_result = await absent_ingester.validate_tables(tables)
+        assert absent_result.is_valid is False
+        assert "value 42" in absent_result.errors[0]
+        assert "absent" in absent_result.errors[0]
+
+        unavailable_ingester = make_direct_fk_ingester(tables, extra=identity)
+        unavailable_result = await unavailable_ingester.validate_tables(tables)
+        assert unavailable_result.is_valid is False
+        assert "value 42" in unavailable_result.errors[0]
+        assert "unavailable" in unavailable_result.errors[0]
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("checker", "expected"),
+        [
+            (FakeCollisionChecker(column_types={("tbl_location_types", "location_type_id"): "text"}), "non-integer type 'text'"),
+            (FakeCollisionChecker(type_error=RuntimeError("catalog failure")), "catalog failure"),
+            (FakeCollisionChecker(exists_error=RuntimeError("lookup failure")), "lookup failure"),
+        ],
+    )
+    async def test_validate_fails_closed_for_non_integer_columns_and_database_errors(self, checker, expected):
+        tables = {"location": pd.DataFrame({"location_id": [None], "location_type_id": [42]})}
+        ingester = make_direct_fk_ingester(
+            tables,
+            collision_checker=checker,
+            extra={"identity_assignments": {"location": {0: {"state": ChangeRowState.NEWLY_ALLOCATED_ENTITY, "target_id": 601}}}},
+        )
+
+        result = await ingester.validate_tables(tables)
+
+        assert result.is_valid is False
+        assert "Entity 'location'" in result.errors[0]
+        assert "column 'location_type_id'" in result.errors[0]
+        assert "value 42" in result.errors[0]
+        assert expected in result.errors[0]
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("foreign_key", "nullable"),
+        [
+            ({"entity": "location_type", "required": True}, True),
+            ({"entity": "location_type", "required_when": {"has_new_rows": "location"}}, True),
+            ({"entity": "location_type"}, False),
+        ],
+    )
+    async def test_validate_requires_missing_direct_values_on_selected_inserts(self, foreign_key, nullable):
+        tables = {"location": pd.DataFrame({"location_id": [None], "location_type_id": [None]})}
+        checker = FakeCollisionChecker()
+        ingester = make_direct_fk_ingester(
+            tables,
+            collision_checker=checker,
+            foreign_key=foreign_key,
+            nullable=nullable,
+            extra={"identity_assignments": {"location": {0: {"state": ChangeRowState.NEWLY_ALLOCATED_ENTITY, "target_id": 601}}}},
+        )
+
+        result = await ingester.validate_tables(tables)
+
+        assert result.is_valid is False
+        assert "Entity 'location'" in result.errors[0]
+        assert "column 'location_type_id'" in result.errors[0]
+        assert not checker.checked_types
+        assert not checker.checked_ids
+
+    @pytest.mark.asyncio
+    async def test_validate_skips_lookup_for_zero_insert_and_excluded_rows(self):
+        zero_insert_checker = FakeCollisionChecker()
+        zero_insert_tables = {"location": pd.DataFrame({"location_id": [701], "location_type_id": ["bad"]})}
+        zero_insert_ingester = make_direct_fk_ingester(zero_insert_tables, collision_checker=zero_insert_checker)
+
+        zero_insert_result = await zero_insert_ingester.validate_tables(zero_insert_tables)
+
+        assert zero_insert_result.is_valid is True
+        assert not zero_insert_checker.checked_types
+        assert not zero_insert_checker.checked_ids
+
+        checker = FakeCollisionChecker(target_ids={("tbl_location_types", "location_type_id", 42)})
+        tables = {
+            "location": pd.DataFrame(
+                {"location_id": [701, None], "location_type_id": ["bad", 42]},
+                index=[0, 1],
+            )
+        }
+        ingester = make_direct_fk_ingester(
+            tables,
+            collision_checker=checker,
+            extra={"identity_assignments": {"location": {1: {"state": ChangeRowState.NEWLY_ALLOCATED_ENTITY, "target_id": 601}}}},
+        )
+
+        result = await ingester.validate_tables(tables)
+
+        assert result.is_valid is True
+        assert checker.checked_ids == [("tbl_location_types", "location_type_id", 42)]
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("value", [None, "not-an-id"])
+    async def test_validate_checks_only_assigned_direct_fk_update_columns(self, value):
+        tables = {
+            "location": pd.DataFrame(
+                {
+                    "location_id": [701],
+                    "location_type_id": [value],
+                    "location_name": ["new name"],
+                    "location_name__existing": ["old name"],
+                }
+            )
+        }
+        checker = FakeCollisionChecker()
+        ingester = make_direct_fk_ingester(
+            tables,
+            collision_checker=checker,
+            extra={"mutable_fields_by_entity": {"location": ["location_name"]}},
+        )
+
+        result = await ingester.validate_tables(tables)
+
+        assert result.is_valid is True
+        assert not checker.checked_types
+        assert not checker.checked_ids
+
+    @pytest.mark.asyncio
+    async def test_validate_checks_a_direct_fk_when_an_update_assigns_it(self):
+        tables = {
+            "location": pd.DataFrame(
+                {
+                    "location_id": [701],
+                    "location_type_id": [42],
+                    "location_type_id__existing": [41],
+                }
+            )
+        }
+        checker = FakeCollisionChecker(target_ids={("tbl_location_types", "location_type_id", 42)})
+        ingester = make_direct_fk_ingester(
+            tables,
+            collision_checker=checker,
+            foreign_key={"entity": "location_type"},
+            nullable=False,
+            extra={"mutable_fields_by_entity": {"location": ["location_type_id"]}},
+        )
+
+        result = await ingester.validate_tables(tables)
+
+        assert result.is_valid is True
+        assert checker.checked_types == [("tbl_location_types", "location_type_id")]
+        assert checker.checked_ids == [("tbl_location_types", "location_type_id", 42)]
+
+    @pytest.mark.asyncio
+    async def test_validate_rejects_null_non_nullable_direct_fk_on_assigned_update(self):
+        tables = {
+            "location": pd.DataFrame(
+                {
+                    "location_id": [701],
+                    "location_type_id": [None],
+                    "location_type_id__existing": [42],
+                }
+            )
+        }
+        ingester = make_direct_fk_ingester(
+            tables,
+            collision_checker=FakeCollisionChecker(),
+            foreign_key={"entity": "location_type"},
+            nullable=False,
+            extra={"mutable_fields_by_entity": {"location": ["location_type_id"]}},
+        )
+
+        result = await ingester.validate_tables(tables)
+
+        assert result.is_valid is False
+        assert "Entity 'location'" in result.errors[0]
+        assert "column 'location_type_id'" in result.errors[0]
+        assert "missing direct FK value" in result.errors[0]
+
+    @pytest.mark.asyncio
     async def test_validate_accepts_client_orchestrated_assignments(self):
         """Validation should accept assignments produced by the thin client orchestration layer."""
         ingester = SeadChangeRequestIngester(
@@ -1100,6 +1389,64 @@ class TestSeadChangeRequestIngesterValidation:
 
 class TestSeadChangeRequestIngesterIngest:
     """Tests for scaffold ingest behavior."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("deploy_strategy", ["inline_insert", "copy_csv", "inline_staging"])
+    async def test_ingest_preserves_direct_ids_and_writes_manifest_metadata(self, tmp_path, deploy_strategy):
+        tables = {"location": pd.DataFrame({"location_id": [None], "location_type_id": ["42"]})}
+        checker = FakeCollisionChecker(target_ids={("tbl_location_types", "location_type_id", 42)})
+        extra: dict[str, Any] = {
+            "deploy_strategy": deploy_strategy,
+            "identity_assignments": {"location": {0: {"state": ChangeRowState.NEWLY_ALLOCATED_ENTITY, "target_id": 601}}},
+        }
+        if deploy_strategy == "inline_staging":
+            extra["staging_target_schema"] = "public"
+        ingester = make_direct_fk_ingester(
+            tables,
+            collision_checker=checker,
+            extra=extra,
+            output_folder=str(tmp_path / deploy_strategy),
+        )
+
+        result = await ingester.ingest_tables(tables)
+
+        assert result.success is True
+        assert result.deploy_artifact is not None
+        expected_metadata = [{"source_entity": "location", "target_entity": "location_type", "column": "location_type_id"}]
+        assert result.deploy_artifact["metadata_artifact"]["direct_target_id_foreign_keys"] == expected_metadata
+        if deploy_strategy == "copy_csv":
+            assert any("42" in content for content in result.deploy_artifact["bundle_files"].values())
+        else:
+            assert "42" in result.deploy_artifact["deploy_sql"]
+
+        bundle_root = emitted_bundle_dir(tmp_path / deploy_strategy, expected_bundle_name())
+        manifest = json.loads((bundle_root / "manifest.json").read_text(encoding="utf-8"))
+        assert manifest["direct_target_id_foreign_keys"] == expected_metadata
+        if deploy_strategy == "inline_staging":
+            assert result.deploy_artifact["metadata_artifact"]["known_id_mapping_count"] == 0
+            assert '"_local_location_type_id"' not in result.deploy_artifact["deploy_sql"]
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("validate_first", "expected_message"),
+        [(True, "Validation failed"), (False, "Direct foreign-key validation failed")],
+    )
+    async def test_ingest_fails_without_a_direct_id_checker_and_removes_reserved_run(self, tmp_path, validate_first, expected_message):
+        tables = {"location": pd.DataFrame({"location_id": [None], "location_type_id": [42]})}
+        ingester = make_direct_fk_ingester(
+            tables,
+            extra={"identity_assignments": {"location": {0: {"state": ChangeRowState.NEWLY_ALLOCATED_ENTITY, "target_id": 601}}}},
+            output_folder=str(tmp_path),
+        )
+
+        result = await ingester.ingest_tables(tables, validate_first=validate_first)
+
+        assert result.success is False
+        assert result.message == expected_message
+        assert "Entity 'location'" in result.error_details
+        assert "column 'location_type_id'" in result.error_details
+        assert "value 42" in result.error_details
+        assert not list(tmp_path.iterdir())
 
     @pytest.mark.asyncio
     async def test_ingest_emits_empty_artifact_bundle_for_valid_reference_only_bundle(self, tmp_path):

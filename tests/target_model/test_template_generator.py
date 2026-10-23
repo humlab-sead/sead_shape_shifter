@@ -49,3 +49,25 @@ def test_generate_project_template_raises_for_unknown_entity() -> None:
         assert "Unknown entities requested" in str(exc)
     else:
         raise AssertionError("Expected ValueError for unknown entity selection")
+
+
+def test_generate_project_template_keeps_required_foreign_keys_on_local_id_path() -> None:
+    target_model = TargetModel.model_validate(
+        {
+            "model": {"name": "Test", "version": "1"},
+            "entities": {
+                "location": {
+                    "role": "fact",
+                    "public_id": "location_id",
+                    "foreign_keys": [{"entity": "location_type", "required": True}],
+                },
+                "location_type": {"role": "lookup", "public_id": "location_type_id"},
+            },
+        }
+    )
+
+    template = generate_project_template(target_model, entity_names=["location"])
+    location = template["entities"]["location"]  # type: ignore[index]
+
+    assert location["foreign_keys"] == [{"entity": "location_type"}]  # type: ignore[index]
+    assert "foreign_key_value_sources" not in location  # type: ignore[operator]

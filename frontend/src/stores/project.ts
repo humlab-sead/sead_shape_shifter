@@ -4,6 +4,7 @@ import { AxiosError } from 'axios'
 import { api } from '@/api'
 import { useSessionStore } from '@/stores/session'
 import { useEntityStore } from '@/stores/entity'
+import { useValidationStore } from '@/stores/validation'
 import type { Project, ProjectMetadata, ValidationResult } from '@/types'
 import type { ProjectCreateRequest, ProjectUpdateRequest, BackupInfo, MetadataUpdateRequest } from '@/api/projects'
 
@@ -121,6 +122,8 @@ export const useProjectStore = defineStore('project', () => {
     loading.value = true
     error.value = null
     try {
+      const isProjectSwitch = currentProjectName.value !== name
+
       // CRITICAL FIX: Reset entity store when switching projects
       // to prevent stale entities from previous project (or deleted project
       // recreated with same name) from appearing.
@@ -128,6 +131,11 @@ export const useProjectStore = defineStore('project', () => {
       if (entityStore.currentProjectName !== name) {
         // logState('selectProject:resettingEntityStore', { name, previousProject: entityStore.currentProjectName })
         entityStore.reset()
+      }
+
+      if (isProjectSwitch) {
+        clearValidation()
+        useValidationStore().reset()
       }
 
       // Activate project in backend (loads into ApplicationState)

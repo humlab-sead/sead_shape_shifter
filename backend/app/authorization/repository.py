@@ -19,6 +19,7 @@ from backend.app.authorization.models import (
     ResourceRecord,
     ResourceType,
 )
+from backend.app.authorization.policy import validate_resource_role
 
 CURRENT_SCHEMA_VERSION = 4
 MINIMUM_SUPPORTED_SCHEMA_VERSION = CURRENT_SCHEMA_VERSION
@@ -175,6 +176,9 @@ class SQLiteAuthorizationRepository:
         """Persist a resource grant."""
         if grant.subject_type != GrantSubjectType.PRINCIPAL and grant.role == "owner":
             raise ValueError("Only a principal may receive the owner role")
+        resource = self.get_resource(grant.resource_id)
+        if resource is not None:
+            validate_resource_role(resource.resource_type, grant.role)
         with self._connection:
             self._connection.execute(
                 "INSERT INTO grant_record(subject_type, subject_id, resource_id, role, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?)",
@@ -346,6 +350,12 @@ class SQLiteAuthorizationRepository:
         audit event records the actor, the counts, and whether the snapshot
         replaced the audit history or left it in place.
         """
+        resources_by_id = {resource.resource_id: resource for resource in state.resources}
+        for grant in state.grants:
+            resource = resources_by_id.get(grant.resource_id)
+            if resource is not None:
+                validate_resource_role(resource.resource_type, grant.role)
+
         existing_parents = {
             row["resource_id"]: row["parent_resource_id"]
             for row in self._connection.execute("SELECT resource_id, parent_resource_id FROM resource")

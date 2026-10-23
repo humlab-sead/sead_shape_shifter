@@ -25,6 +25,36 @@ if TYPE_CHECKING:
 # pylint: disable=unused-argument
 
 
+def _direct_fk_target_model_error(project: Project, reason: str) -> ValidationResult | None:
+    """Return a validation error when direct FK values have no resolved target model."""
+    entities = getattr(project, "entities", {})
+    if not isinstance(entities, dict):
+        return None
+
+    source_entities = [
+        entity_name
+        for entity_name, entity_cfg in entities.items()
+        if isinstance(entity_cfg, dict)
+        and isinstance(entity_cfg.get("foreign_key_value_sources"), dict)
+        and entity_cfg["foreign_key_value_sources"]
+    ]
+    if not source_entities:
+        return None
+
+    sorted_entities = sorted(source_entities)
+    entity_list = ", ".join(sorted_entities)
+    error = ValidationError(
+        severity="error",
+        entity=sorted_entities[0],
+        field="metadata.target_model",
+        message=(
+            f"Project entity declaration(s) {entity_list} use foreign_key_value_sources, " f"but the target model is unavailable: {reason}"
+        ),
+        code="DIRECT_FK_TARGET_MODEL_UNAVAILABLE",
+    )
+    return ValidationResult(is_valid=False, errors=[error])
+
+
 class ValidationService:
     """Service for validating projects using existing specifications."""
 
@@ -286,15 +316,16 @@ class ValidationService:
             core_project: ShapeShiftProject = ProjectMapper.to_core(api_project)
         except FileNotFoundError as e:
             # @load: in metadata.target_model points to a missing file.
-            # Treat as if no target_model was configured — skip conformance silently.
             logger.debug(f"Target model file not found for project '{project_name}', skipping conformance: {e}")
-            return ValidationResult(is_valid=True)
+            direct_fk_error = _direct_fk_target_model_error(api_project, "the configured target-model file could not be loaded")
+            return direct_fk_error or ValidationResult(is_valid=True)
 
         target_model_data: dict | None = core_project.metadata.target_model
 
         if not target_model_data or not isinstance(target_model_data, dict):
             logger.debug(f"Project '{project_name}' has no resolved target_model — skipping conformance")
-            return ValidationResult(is_valid=True)
+            direct_fk_error = _direct_fk_target_model_error(api_project, "metadata.target_model is missing or unresolved")
+            return direct_fk_error or ValidationResult(is_valid=True)
 
         logger.debug(f"Running target-model conformance for project: {project_name}")
         issues: list[ValidationError] = TargetModelValidator().validate(target_model_data, core_project)
