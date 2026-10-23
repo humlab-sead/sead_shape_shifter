@@ -35,7 +35,7 @@ from src.path_resolution import resolve_contained_path
 from src.target_model import DocumentFormat
 
 router = APIRouter()
-shared_data_source_reader_dependency = require_shared_data_source(Action.READ)
+shared_data_source_reader_dependency = require_shared_data_source(Action.READ, body_locator=True)
 PROJECT_CONFIG_FILENAME = "shapeshifter.yml"
 
 # pylint: disable=no-member
