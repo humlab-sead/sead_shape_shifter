@@ -6,7 +6,7 @@ deployment role, and optionally the audit history.
 """
 
 import json
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 import pytest
@@ -14,9 +14,6 @@ import yaml
 from click.testing import CliRunner
 
 from backend.app.authorization.models import (
-    ApplicationRole,
-    ApplicationRoleAssignment,
-    AuditEvent,
     Grant,
     GrantSubjectType,
     ResourceRecord,
