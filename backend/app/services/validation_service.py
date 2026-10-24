@@ -8,7 +8,14 @@ from backend.app.core.config import get_settings
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.mappers.validation_mapper import ValidationMapper
 from backend.app.models.project import Project
-from backend.app.models.validation import DataValidationMode, ValidationError, ValidationResult
+from backend.app.models.validation import (
+    DataValidationMode,
+    DataValidationStatus,
+    EntityDataValidationResult,
+    EntityDataValidationStatus,
+    ValidationError,
+    ValidationResult,
+)
 from backend.app.services.project_data_provider_service import ProjectDataProviderService
 from backend.app.services.project_provider_binding_service import ProjectProviderBindingService
 from backend.app.services.project_service import ProjectService, get_project_service
@@ -100,6 +107,26 @@ class ValidationService:
         # Load and resolve project (convert directives to concrete values)
         project_service: ProjectService = get_project_service()
         api_project: Project = project_service.load_project(project_name)
+
+        structural_result = self.validate_project(api_project.model_dump(mode="python"), source_path=api_project.filename)
+        if structural_result.errors:
+            status_reason = f"Structural errors prevent data validation for this project: {structural_result.errors[0].message}"
+            logger.warning(f"Data validation skipped for '{project_name}': {status_reason}")
+            entity_statuses = {
+                name: EntityDataValidationResult(status=EntityDataValidationStatus.SKIPPED, reason=status_reason)
+                for name in (entity_names or list(api_project.entities))
+            }
+            return ValidationResult(
+                is_valid=False,
+                errors=structural_result.errors,
+                warnings=structural_result.warnings,
+                info=structural_result.info,
+                validation_mode=validation_mode,
+                status=DataValidationStatus.SKIPPED,
+                status_reason=status_reason,
+                entity_statuses=entity_statuses,
+            )
+
         core_project: ShapeShiftProject = ProjectMapper.to_core(api_project)
 
         # Use injected factory or default factory
@@ -138,20 +165,26 @@ class ValidationService:
         errors_list: list[ValidationError] = [ValidationMapper.to_api_error(issue) for issue in issues_list]
 
         errors: list[ValidationError] = [e for e in errors_list if e.severity == "error"]
-        warnings: list[ValidationError] = [e for e in errors_list if e.severity == "warning"]
-        info: list[ValidationError] = [e for e in errors_list if e.severity == "info"]
+        warnings: list[ValidationError] = structural_result.warnings + [e for e in errors_list if e.severity == "warning"]
+        info: list[ValidationError] = structural_result.info + [e for e in errors_list if e.severity == "info"]
 
         result = ValidationResult(
-            is_valid=len(errors) == 0,
+            is_valid=len(errors) == 0 and orchestrator.status == DataValidationStatus.COMPLETED,
             errors=errors,
             warnings=warnings,
             info=info,
             error_count=len(errors),
             warning_count=len(warnings),
             validation_mode=validation_mode,
+            status=orchestrator.status,
+            status_reason=orchestrator.status_reason,
+            entity_statuses=orchestrator.entity_statuses,
         )
 
-        logger.info(f"Data validation completed: {result.error_count} errors, {result.warning_count} warnings")
+        logger.info(
+            f"Data validation run finished: status={orchestrator.status.value}, "
+            f"{result.error_count} errors, {result.warning_count} warnings"
+        )
 
         return result
 

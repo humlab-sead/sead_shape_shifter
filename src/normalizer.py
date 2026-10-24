@@ -118,6 +118,7 @@ class ShapeShifter:
         self.linker: ForeignKeyLinker = ForeignKeyLinker(table_store=self.table_store, project=self.project)
         self.extra_col_evaluator: ExtraColumnEvaluator = ExtraColumnEvaluator()
         self.unresolved_extra_columns: dict[str, dict[str, dict[str, Any]]] = {}
+        self.incomplete_entities: dict[str, str] = {}
         self.mapping_manager: MappingManager = MappingManager()
         self.mapping_catalog: MappingCatalog | None = None
 
@@ -193,7 +194,11 @@ class ShapeShifter:
                     self.state.log_unmet_dependencies()
                     raise ValueError(f"Circular or unresolved dependencies detected: {self.state.unprocessed_entities}")
 
-                await self._process_entity(entity, subset_service)
+                try:
+                    await self._process_entity(entity, subset_service)
+                except Exception as e:
+                    self.incomplete_entities[entity] = str(e)
+                    raise
 
             self._link_deferred_foreign_keys()
         finally:
@@ -439,7 +444,9 @@ class ShapeShifter:
             if table_cfg.unnest:
                 self.table_store[entity] = unnest(entity=entity, table=self.table_store[entity], table_cfg=table_cfg)
         except Exception as e:  # ldtype: ignore ; pylint: disable=broad-except
-            logger.error(f"Error unnesting entity {entity}: {e}")
+            self.incomplete_entities[entity] = str(e)
+            logger.exception(f"Error unnesting entity {entity}: {e}")
+            raise
         return self.table_store[entity]
 
     def translate(self, translations_map: dict[str, str]) -> Self:
