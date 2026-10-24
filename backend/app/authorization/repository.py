@@ -103,7 +103,8 @@ class SQLiteAuthorizationRepository:
             self._connection.execute("CREATE TABLE IF NOT EXISTS schema_version (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)")
             current = self._connection.execute("SELECT MAX(version) FROM schema_version").fetchone()[0] or 0
             if current == 0:
-                self._connection.executescript("""
+                self._connection.executescript(
+                    """
                     CREATE TABLE resource (
                         resource_id TEXT PRIMARY KEY,
                         resource_type TEXT NOT NULL,
@@ -145,7 +146,8 @@ class SQLiteAuthorizationRepository:
                         details TEXT
                     );
                     INSERT INTO schema_version(version, applied_at) VALUES (4, CURRENT_TIMESTAMP);
-                    """)
+                    """
+                )
                 return
             if current < MINIMUM_SUPPORTED_SCHEMA_VERSION:
                 raise RuntimeError(
