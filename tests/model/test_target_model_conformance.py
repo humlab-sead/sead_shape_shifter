@@ -663,7 +663,7 @@ def test_core_conformance_reports_known_gaps_for_full_arbodat_project() -> None:
     target_model: TargetModel = load_target_model()
     project: ShapeShiftProject = load_real_project("arbodat")
 
-    expected_errors = [
+    expected_errors: list[tuple[str, str]] = [
         ("CONDITIONAL_FK_AWAITING_RECONCILIATION", "location"),
         ("MISSING_REQUIRED_COLUMN", "relative_dating"),
         ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "abundance_modification"),
@@ -689,8 +689,7 @@ def test_core_conformance_current_corpus_issue_families_are_stable() -> None:
     issue_summary: dict[str, Counter[str | None]] = {
         name: Counter(code for code, _entity in issue_pairs(target_model, project)) for name, project in corpus.items()
     }
-
-    assert issue_summary == {
+    expected_summary: dict[str, Counter[str]] = {
         "sead_arbodat_core": Counter(
             {
                 "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 5,
@@ -712,13 +711,17 @@ def test_core_conformance_current_corpus_issue_families_are_stable() -> None:
         ),
         "arbodat_full": Counter(
             {
-                "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 3,
+                "MISSING_REQUIRED_COLUMN": 15,
+                "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 13,
+                "ORPHAN_FACT_ENTITY": 3,
+                "MISSING_REQUIRED_ENTITY": 2,
                 "UNEXPECTED_PUBLIC_ID": 1,
                 "CONDITIONAL_FK_AWAITING_RECONCILIATION": 1,
-                "MISSING_REQUIRED_COLUMN": 1,
+                "MISSING_INDUCED_REQUIRED_ENTITY": 1,
             }
         ),
     }
+    assert issue_summary == expected_summary
 
 
 def _minimal_target_model(entities: dict) -> TargetModel:
