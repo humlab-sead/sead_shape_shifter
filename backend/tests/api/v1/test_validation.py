@@ -179,7 +179,11 @@ class TestEntityValidation:
 
         from backend.app.services import validation_service as validation_service_module
 
-        monkeypatch.setattr(validation_service_module.ProjectMapper, "to_core", lambda *_args, **_kwargs: (_ for _ in ()).throw(ValueError("mapping failed")))
+        monkeypatch.setattr(
+            validation_service_module.ProjectMapper,
+            "to_core",
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(ValueError("mapping failed")),
+        )
         mapping_failure = await authorized_client.post(
             f"/api/v1/projects/{project_name}/entities/sample/validate-draft",
             json={"entity_draft": {"type": "entity", "keys": ["sample_id"], "columns": ["sample_id"]}},
