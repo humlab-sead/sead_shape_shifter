@@ -9,6 +9,7 @@ export default mergeConfig(
       environment: 'jsdom',
       exclude: [...configDefaults.exclude, 'tests/e2e/**'],
       root: fileURLToPath(new URL('./', import.meta.url)),
+      setupFiles: ['./tests/unit/setup.ts'],
       server: {
         deps: {
           // Vuetify and icon packages import CSS from node_modules.
