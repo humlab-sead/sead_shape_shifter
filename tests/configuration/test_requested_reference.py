@@ -5,7 +5,39 @@ from pathlib import Path
 
 import pytest
 
-from src.configuration.resolve import RequestedReferenceResolutionError, resolve_requested_reference
+from src.configuration.resolve import RequestedReferenceResolutionError, resolve_requested_reference, split_reference_expression
+
+
+@pytest.mark.parametrize(
+    ("expression", "expected"),
+    [
+        ("@value: entities.source.keys + ['last']", ["@value: entities.source.keys", "['last']"]),
+        ("['first'] + @value: entities.source.keys", ["['first']", "@value: entities.source.keys"]),
+        (
+            "@value: entities.first.keys + ['middle'] + @value: entities.last.keys",
+            ["@value: entities.first.keys", "['middle']", "@value: entities.last.keys"],
+        ),
+    ],
+)
+def test_split_reference_expression_keeps_supported_operands_in_order(expression: str, expected: list[str]) -> None:
+    """Expose supported value paths and list literals without changing their order."""
+    assert split_reference_expression(expression) == expected
+
+
+@pytest.mark.parametrize(
+    "expression",
+    [
+        "@value: entities.source.keys +",
+        "@value: entities.source.keys + + ['last']",
+        "@value: entities.source.keys + ['last'",
+        "['first'] + @value: entities.source.keys]",
+        "@value: entities.source.keys + unsupported",
+        "@value: entities.source.keys + {'key': 'value'}",
+    ],
+)
+def test_split_reference_expression_rejects_malformed_or_unsupported_operands(expression: str) -> None:
+    """Reject incomplete expressions and tokens the scoped resolver cannot evaluate."""
+    assert split_reference_expression(expression) is None
 
 
 def test_resolves_nested_and_list_item_references_in_order() -> None:

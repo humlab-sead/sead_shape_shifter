@@ -286,37 +286,9 @@ def resolve_requested_reference(
                 ) from exc
         return value
 
-    def split_expression(expression: str) -> list[str] | None:
-        """Split a supported list expression at top-level plus signs."""
-        if expression.count("[") != expression.count("]"):
-            return None
-        tokens: list[str] = []
-        current_token = ""
-        bracket_depth = 0
-        for char in expression:
-            if char == "[":
-                bracket_depth += 1
-                current_token += char
-            elif char == "]":
-                bracket_depth -= 1
-                current_token += char
-                if bracket_depth < 0:
-                    return None
-            elif char == "+" and bracket_depth == 0:
-                if current_token.strip():
-                    tokens.append(current_token.strip())
-                current_token = ""
-            else:
-                current_token += char
-        if current_token.strip():
-            tokens.append(current_token.strip())
-        if bracket_depth != 0 or len(tokens) < 2:
-            return None
-        return tokens
-
     def resolve_expression(expression: str) -> list[Any]:
         """Resolve a supported list expression without dropping failed operands."""
-        tokens = split_expression(expression)
+        tokens = split_reference_expression(expression)
         if tokens is None:
             raise RequestedReferenceResolutionError("dependency_failure", "The reference expression is malformed.")
 
@@ -434,6 +406,61 @@ def resolve_requested_reference(
 
 
 _REQUESTED_PATH_MISSING = object()
+
+
+def split_reference_expression(expression: str) -> list[str] | None:
+    """Return supported @value and list-literal operands in expression order.
+
+    The returned tokens keep their original text apart from surrounding
+    whitespace. A malformed expression or an unsupported operand returns
+    None.
+    """
+    if expression.count("[") != expression.count("]"):
+        return None
+
+    tokens: list[str] = []
+    current_token = ""
+    bracket_depth = 0
+    for char in expression:
+        if char == "[":
+            bracket_depth += 1
+            current_token += char
+        elif char == "]":
+            bracket_depth -= 1
+            current_token += char
+            if bracket_depth < 0:
+                return None
+        elif char == "+" and bracket_depth == 0:
+            token = current_token.strip()
+            if not token:
+                return None
+            tokens.append(token)
+            current_token = ""
+        else:
+            current_token += char
+
+    token = current_token.strip()
+    if bracket_depth != 0 or not token:
+        return None
+    tokens.append(token)
+    if len(tokens) < 2:
+        return None
+
+    for token in tokens:
+        if token.startswith("@value:"):
+            if not token[len("@value:") :].strip():
+                return None
+            continue
+        if not (token.startswith("[") and token.endswith("]")):
+            return None
+        try:
+            literal = yaml.safe_load(token)
+        except Exception:  # pylint: disable=broad-exception-caught
+            return None
+        if not isinstance(literal, list) or any(isinstance(item, list) for item in literal):
+            return None
+
+    return tokens
 
 
 def load_resolved_yaml(
