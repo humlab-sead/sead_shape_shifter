@@ -185,18 +185,20 @@ class ShapeShifter:
         subset_service: SubsetService = SubsetService()
         self.mapping_catalog = self.mapping_manager.load(self.project.filename)
 
-        while self.state.unprocessed_entities:
-            entity: str | None = self.state.get_next_entity_to_process()
+        try:
+            while self.state.unprocessed_entities:
+                entity: str | None = self.state.get_next_entity_to_process()
 
-            if entity is None:
-                self.state.log_unmet_dependencies()
-                raise ValueError(f"Circular or unresolved dependencies detected: {self.state.unprocessed_entities}")
+                if entity is None:
+                    self.state.log_unmet_dependencies()
+                    raise ValueError(f"Circular or unresolved dependencies detected: {self.state.unprocessed_entities}")
 
-            await self._process_entity(entity, subset_service)
+                await self._process_entity(entity, subset_service)
 
-        self._link_deferred_foreign_keys()
-        self.duckdb_workspace.close()
-        self.loaders.close_all()
+            self._link_deferred_foreign_keys()
+        finally:
+            self.duckdb_workspace.close()
+            self.loaders.close_all()
         return self
 
     async def _process_entity(self, entity: str, subset_service: SubsetService) -> None:

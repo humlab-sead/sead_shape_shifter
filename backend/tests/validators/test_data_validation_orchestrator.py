@@ -154,6 +154,51 @@ async def test_orchestrator_maps_normalization_missing_key_error_to_business_key
 
 
 @pytest.mark.asyncio
+async def test_full_data_strategy_validates_available_entities_after_missing_key_error():
+    """A missing key should not cause normalization to restart or stop later entity checks."""
+    core_project = ShapeShiftProject(
+        cfg={
+            "entities": {
+                "broken_entity": {"columns": ["value"], "keys": ["missing_key"]},
+                "later_entity": {"columns": ["value"]},
+            }
+        }
+    )
+    normalizer = Mock()
+    normalizer.table_store = TableStore(
+        {
+            "broken_entity": pd.DataFrame({"value": [1]}),
+            "later_entity": pd.DataFrame(),
+        }
+    )
+    normalizer.unresolved_extra_columns = {}
+    normalizer.normalize = AsyncMock(
+        side_effect=MissingBusinessKeyError(
+            "Entity 'broken_entity': key column(s) ['missing_key'] are missing.",
+            entity_name="broken_entity",
+            missing_keys=["missing_key"],
+        )
+    )
+    project_service = Mock()
+    project_service.load_project.return_value = Mock()
+    strategy = FullDataFetchStrategy(project_service=project_service)
+    orchestrator = DataValidationOrchestrator(fetch_strategy=strategy)
+
+    with (
+        patch("backend.app.validators.data_validation_orchestrator.ProjectMapper.to_core", return_value=core_project),
+        patch("backend.app.validators.data_validation_orchestrator.ShapeShifter", return_value=normalizer),
+    ):
+        issues = await orchestrator.validate_all_entities(
+            core_project=core_project,
+            project_name="test_project",
+        )
+
+    normalizer.normalize.assert_awaited_once()
+    assert any(issue.entity == "broken_entity" and issue.code == "BUSINESS_KEY_NOT_PRODUCED" for issue in issues)
+    assert any(issue.entity == "later_entity" and issue.code == "EMPTY_RESULT" for issue in issues)
+
+
+@pytest.mark.asyncio
 async def test_preview_strategy_fetches_from_service():
     """Test PreviewDataFetchStrategy uses preview service."""
     mock_service = Mock(spec=ShapeShiftService)
