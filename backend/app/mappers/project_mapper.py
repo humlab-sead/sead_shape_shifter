@@ -44,6 +44,7 @@ from backend.app.models.mapping_sync import (
 )
 from backend.app.utils import convert_ruamel_types
 from src.configuration import find_unresolved_directives
+from src.configuration.resolve import resolve_requested_reference
 from src.model import ShapeShiftProject, TableConfig
 from src.path_resolution import resolve_contained_path
 from src.reconciliation.fixed_entity_mapping_changes import (
@@ -66,6 +67,7 @@ from src.types.fixed_entity_types import (
     format_fixed_entity_normalization_warning,
     normalize_fixed_entity_type_conventions,
 )
+from src.utility import dotset
 
 
 class ProjectMapper:
@@ -274,13 +276,44 @@ class ProjectMapper:
         return cfg_dict
 
     @staticmethod
-    def to_core(api_config: Project) -> ShapeShiftProject:
+    def to_core(api_config: Project, *, requested_reference_path: str | None = None) -> ShapeShiftProject:
         """Convert API Project to core ShapeShiftProject.
 
         Conditionally resolves @include:, @load: and @value: directives only if needed.
         Resolves file paths based on location field at the API → Core boundary using strategy pattern.
+
+        When requested_reference_path is set, resolve only that value and its dependencies
+        for editor reads. The normal conversion path remains unchanged.
         """
         cfg_dict: dict[str, Any] = ProjectMapper.to_core_dict(api_config=api_config)
+        project_name: str = api_config.metadata.name if api_config.metadata else (api_config.filename or "")
+
+        if requested_reference_path is not None:
+            projects_root: Path = Path(settings.PROJECTS_DIR).resolve()
+            project_root: Path | None = None
+            if api_config.filename:
+                candidate_root: Path = Path(api_config.filename).resolve().parent
+                if candidate_root.is_relative_to(projects_root):
+                    project_root = candidate_root
+            if project_root is None:
+                project_root = resolve_contained_path(project_name.replace(":", "/"), settings.PROJECTS_DIR)
+
+            resolved_value = resolve_requested_reference(
+                cfg_dict,
+                requested_reference_path,
+                source_path=api_config.filename,
+                env_prefix=settings.env_prefix,
+                env_filename=settings.env_file,
+                allowed_roots=(
+                    project_root,
+                    settings.GLOBAL_DATA_DIR,
+                    settings.GLOBAL_DATA_SOURCE_DIR,
+                    settings.GLOBAL_TARGET_MODEL_DIR,
+                ),
+                allowed_vars=settings.resolver_allowed_env_vars,
+            )
+            dotset(cfg_dict, requested_reference_path, resolved_value)
+            return ShapeShiftProject(cfg=cfg_dict, filename=api_config.filename or "")
 
         # Use the configured path, including its default, when resolving this approved path variable.
         metadata: Any = cfg_dict.get("metadata")
@@ -291,7 +324,6 @@ class ProjectMapper:
         # Apply type-specific transformations (API → Core) using strategy pattern
         # File-based entities: resolve (filename, location) to absolute paths
         # Other entities: no-op transformation
-        project_name: str = api_config.metadata.name if api_config.metadata else (api_config.filename or "")
         mapper_factory = EntityConfigMapperFactory(settings)
         mapper_context = EntityMapperContext(project_name=project_name, project_options=cfg_dict.get("options", {}))
 
