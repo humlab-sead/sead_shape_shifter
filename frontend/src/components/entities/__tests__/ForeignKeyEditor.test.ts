@@ -38,6 +38,12 @@ const ControlStub = {
 }
 
 const controlStubs = {
+  VBtn: {
+    name: 'VBtn',
+    props: ['icon'],
+    emits: ['click'],
+    template: '<button type="button" :data-icon="icon" @click="$emit(\'click\', $event)"><slot /></button>',
+  },
   VAutocomplete: ControlStub,
   VSelect: ControlStub,
   VTextField: ControlStub,
@@ -317,6 +323,74 @@ describe('ForeignKeyEditor', () => {
       localEntity: 'sample',
       remoteEntity: 'site',
       isLocalKeys: false,
+    })
+  })
+
+  it('carries each key origin through editor updates and removal of a preceding row', async () => {
+    const secondOrigin = {
+      local_keys: {
+        value: "['local_first'] + @value: entities.site.keys",
+        chips: ["['local_first'] + @value: entities.site.keys"],
+      },
+      remote_keys: {
+        value: ['@value: entities.site.columns'],
+        chips: ['@value: entities.site.columns'],
+      },
+    }
+    const wrapper = shallowMount(ForeignKeyEditor, {
+      props: {
+        modelValue: [
+          {
+            entity: 'first_site',
+            local_keys: '@value: entities.first_site.keys',
+            remote_keys: ['@value: entities.first_site.columns'],
+            how: 'inner',
+            __columnListOrigins: {
+              local_keys: { value: '@value: entities.first_site.keys', chips: ['@value: entities.first_site.keys'] },
+              remote_keys: {
+                value: ['@value: entities.first_site.columns'],
+                chips: ['@value: entities.first_site.columns'],
+              },
+            },
+          },
+          {
+            entity: 'site',
+            local_keys: secondOrigin.local_keys.value,
+            remote_keys: secondOrigin.remote_keys.value,
+            how: 'left',
+            __columnListOrigins: secondOrigin,
+          },
+        ] as any,
+        projectName: 'demo',
+        entityName: 'sample',
+      },
+      global: {
+        renderStubDefaultSlot: true,
+        stubs: { ...controlStubs, VCombobox: ComboboxStub },
+      },
+    })
+
+    const localInputs = wrapper.findAllComponents(ComboboxStub).filter((input) => input.props('label') === 'Local Keys')
+    expect(localInputs).toHaveLength(2)
+    localInputs[1]!.vm.$emit('update:modelValue', ['edited_local'])
+    await flushPromises()
+
+    const afterEdit = wrapper.emitted('update:modelValue')?.at(-1)?.[0] as Array<Record<string, any>>
+    expect(afterEdit[1]?.__columnListOrigins).toEqual(secondOrigin)
+
+    const deleteButton = wrapper
+      .findAllComponents({ name: 'VBtn' })
+      .find((button) => button.props('icon') === 'mdi-delete')
+    expect(deleteButton).toBeTruthy()
+    await deleteButton!.trigger('click')
+    await flushPromises()
+
+    const afterRemoval = wrapper.emitted('update:modelValue')?.at(-1)?.[0] as Array<Record<string, any>>
+    expect(afterRemoval).toHaveLength(1)
+    expect(afterRemoval[0]).toMatchObject({
+      entity: 'site',
+      local_keys: ['edited_local'],
+      __columnListOrigins: secondOrigin,
     })
   })
 })
