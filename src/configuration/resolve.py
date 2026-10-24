@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 from loguru import logger
 
 from src.path_resolution import resolve_contained_path
-from src.utility import Registry, dget, dotexists, dotget, replace_env_vars
+from src.utility import Registry, dget, dotexists, dotexpand, dotget, replace_env_vars
 
 from .utility import is_path_to_existing_file, load_data_file, load_yaml_file
 
@@ -55,6 +55,14 @@ class ResolutionContext:
             allowed_roots=self.allowed_roots,
             allowed_vars=self.allowed_vars,
         )
+
+
+class RequestedReferenceResolutionError(ValueError):
+    """A requested reference could not be resolved without walking the full project."""
+
+    def __init__(self, reason_code: str, message: str) -> None:
+        super().__init__(message)
+        self.reason_code = reason_code
 
 
 @dataclasses.dataclass
@@ -169,6 +177,263 @@ def resolve_directives(
         _raise_on_unresolved_directives(data)
 
     return data
+
+
+def resolve_requested_reference(
+    data: dict[str, Any],
+    requested_path: str,
+    *,
+    env_filename: str | None = None,
+    env_prefix: str | None = None,
+    runtime_root: str | Path | None = None,
+    application_root_env_var: str = "APPLICATION_ROOT",
+    source_path: str | None = None,
+    try_without_prefix: bool = True,
+    allowed_roots: tuple[str | Path, ...] = (),
+    allowed_vars: frozenset[str] | set[str] | None = None,
+) -> Any:
+    """Resolve one path and only the directive values reached from that path.
+
+    The input mapping is copied. Missing or circular references and failures in
+    reached include/load/environment directives raise a classified error.
+    """
+    working_data = copy.deepcopy(data)
+    runtime_root_path = _resolve_runtime_root(runtime_root, env_prefix, application_root_env_var)
+    source_folder = Path(source_path).parent if source_path and is_path_to_existing_file(source_path) else None
+    context = ResolutionContext(
+        env_prefix=env_prefix,
+        runtime_root=runtime_root_path,
+        application_root_env_var=application_root_env_var,
+        source_path=source_path,
+        source_folder=source_folder,
+        root_data=working_data,
+        env_filename=env_filename,
+        try_without_prefix=try_without_prefix,
+        allowed_roots=tuple(Path(root).resolve() for root in allowed_roots),
+        allowed_vars=allowed_vars,
+    )
+    registered_resolvers: dict[str, DirectiveResolver] = {
+        key: resolver_type() for key, resolver_type in ResolverRegistry.items.items() if resolver_type is not ReferenceResolver
+    }
+    reference_resolver = ReferenceResolver()
+    active_paths: list[str] = []
+
+    def get_value(path: str) -> Any:
+        """Read a dotted path while preserving the project's path aliases."""
+        for expanded_path in dotexpand(path):
+            value: Any = working_data
+            for segment in expanded_path.split("."):
+                if not isinstance(value, dict) or segment not in value:
+                    value = _REQUESTED_PATH_MISSING
+                    break
+                value = value[segment]
+                if value is None:
+                    value = _REQUESTED_PATH_MISSING
+                    break
+            if value is not _REQUESTED_PATH_MISSING:
+                return value
+        return _REQUESTED_PATH_MISSING
+
+    def set_value(path: str, value: Any) -> None:
+        """Replace a path already present in the copied mapping."""
+        for expanded_path in dotexpand(path):
+            segments = expanded_path.split(".")
+            parent: Any = working_data
+            for segment in segments[:-1]:
+                if not isinstance(parent, dict) or segment not in parent or not isinstance(parent[segment], dict):
+                    parent = _REQUESTED_PATH_MISSING
+                    break
+                parent = parent[segment]
+            if parent is not _REQUESTED_PATH_MISSING and segments[-1] in parent:
+                parent[segments[-1]] = value
+                return
+        raise RequestedReferenceResolutionError("missing_path", f"Reference path '{path}' was not found.")
+
+    def preprocess(value: Any, current_context: ResolutionContext, include_stack: tuple[str, ...]) -> Any:
+        """Apply include, load, and environment directives using the full resolver handlers."""
+        if isinstance(value, dict):
+            return {key: preprocess(child, current_context, include_stack) for key, child in value.items()}
+        if isinstance(value, list):
+            return [preprocess(item, current_context, include_stack) for item in value]
+        if not isinstance(value, str):
+            return value
+
+        for resolver in registered_resolvers.values():
+            if not resolver.can_handle(value):
+                continue
+            try:
+                resolved = resolver.resolve_directive(value, current_context)
+                if not resolved.should_resolve_recursively:
+                    return resolved.value
+                next_context = (
+                    current_context.for_loaded_source(resolved.source_path, resolved.value) if resolved.source_path else current_context
+                )
+                if resolved.source_path:
+                    resolved_path = str(Path(resolved.source_path).resolve())
+                    if resolved_path in include_stack:
+                        raise RequestedReferenceResolutionError(
+                            "circular_reference", f"Included configuration file '{resolved.source_path}' is circular."
+                        )
+                    next_stack = (*include_stack, resolved_path)
+                else:
+                    next_stack = include_stack
+                return preprocess(resolved.value, next_context, next_stack)
+            except RequestedReferenceResolutionError:
+                raise
+            except Exception as exc:  # pylint: disable=broad-exception-caught
+                raise RequestedReferenceResolutionError(
+                    "dependency_failure", f"A directive needed by reference path could not be resolved: {exc}"
+                ) from exc
+        return value
+
+    def split_expression(expression: str) -> list[str] | None:
+        """Split a supported list expression at top-level plus signs."""
+        if expression.count("[") != expression.count("]"):
+            return None
+        tokens: list[str] = []
+        current_token = ""
+        bracket_depth = 0
+        for char in expression:
+            if char == "[":
+                bracket_depth += 1
+                current_token += char
+            elif char == "]":
+                bracket_depth -= 1
+                current_token += char
+                if bracket_depth < 0:
+                    return None
+            elif char == "+" and bracket_depth == 0:
+                if current_token.strip():
+                    tokens.append(current_token.strip())
+                current_token = ""
+            else:
+                current_token += char
+        if current_token.strip():
+            tokens.append(current_token.strip())
+        if bracket_depth != 0 or len(tokens) < 2:
+            return None
+        return tokens
+
+    def resolve_expression(expression: str) -> list[Any]:
+        """Resolve a supported list expression without dropping failed operands."""
+        tokens = split_expression(expression)
+        if tokens is None:
+            raise RequestedReferenceResolutionError("dependency_failure", "The reference expression is malformed.")
+
+        result: list[Any] = []
+        for token in tokens:
+            if token.startswith(reference_resolver.resolve_key):
+                dependency_path = token[len(reference_resolver.resolve_key) :].strip()
+                if not dependency_path:
+                    raise RequestedReferenceResolutionError("missing_path", "A reference expression has an empty path.")
+                dependency = resolve_path(dependency_path)
+                if isinstance(dependency, list):
+                    if any(isinstance(item, list) for item in dependency):
+                        raise RequestedReferenceResolutionError(
+                            "dependency_failure", "A reference expression cannot flatten a nested list."
+                        )
+                    result.extend(dependency)
+                else:
+                    result.append(dependency)
+            elif token.startswith("[") and token.endswith("]"):
+                try:
+                    literal = yaml.safe_load(token)
+                except Exception as exc:  # pylint: disable=broad-exception-caught
+                    raise RequestedReferenceResolutionError(
+                        "dependency_failure", "The reference expression contains an invalid list."
+                    ) from exc
+                if not isinstance(literal, list) or any(isinstance(item, list) for item in literal):
+                    raise RequestedReferenceResolutionError("dependency_failure", "The reference expression contains an unsupported list.")
+                result.extend(literal)
+            else:
+                raise RequestedReferenceResolutionError("dependency_failure", "The reference expression contains an unsupported operand.")
+        if not result:
+            raise RequestedReferenceResolutionError("dependency_failure", "The reference expression resolved to no values.")
+        return result
+
+    def resolve_values(value: Any, current_path: str, include_stack: tuple[str, ...]) -> Any:
+        """Resolve @value references inside a reached value and flatten list-item references."""
+        if isinstance(value, dict):
+            return {key: resolve_values(child, f"{current_path}.{key}", include_stack) for key, child in value.items()}
+        if isinstance(value, list):
+            result: list[Any] = []
+            for index, item in enumerate(value):
+                resolved_item = resolve_values(item, f"{current_path}[{index}]", include_stack)
+                if isinstance(item, str) and item.strip().startswith(reference_resolver.resolve_key) and isinstance(resolved_item, list):
+                    result.extend(resolved_item)
+                else:
+                    result.append(resolved_item)
+            return result
+        if not isinstance(value, str):
+            return value
+
+        contains_reference = reference_resolver.resolve_key in value
+        is_expression = contains_reference and "+" in value or "[" in value and "+" in value
+        if is_expression:
+            return resolve_expression(value)
+        if value.startswith(reference_resolver.resolve_key):
+            dependency_path = value[len(reference_resolver.resolve_key) :].strip()
+            if not dependency_path:
+                raise RequestedReferenceResolutionError("missing_path", "The reference path is empty.")
+            return resolve_path(dependency_path)
+        if contains_reference:
+            raise RequestedReferenceResolutionError(
+                "dependency_failure", f"A reference directive in '{current_path}' is not a supported simple path."
+            )
+        return value
+
+    def resolve_path(path: str) -> Any:
+        """Resolve one path and cache its result in the copied mapping for later dependencies."""
+        if path in active_paths:
+            chain = " -> ".join((*active_paths, path))
+            raise RequestedReferenceResolutionError("circular_reference", f"Reference cycle detected: {chain}.")
+        active_paths.append(path)
+        try:
+            expanded_paths = dotexpand(path)
+            if not expanded_paths:
+                raise RequestedReferenceResolutionError("missing_path", "The reference path is empty.")
+            for expanded_path in expanded_paths:
+                segments = expanded_path.split(".")
+                for segment_count in range(1, len(segments)):
+                    parent_path = ".".join(segments[:segment_count])
+                    parent_value = get_value(parent_path)
+                    if isinstance(parent_value, str) and (
+                        reference_resolver.can_handle(parent_value)
+                        or any(resolver.can_handle(parent_value) for resolver in registered_resolvers.values())
+                    ):
+                        prepared_parent = preprocess(parent_value, context, ())
+                        prepared_parent = resolve_values(prepared_parent, parent_path, ())
+                        set_value(parent_path, prepared_parent)
+
+            value = get_value(path)
+            if value is _REQUESTED_PATH_MISSING:
+                raise RequestedReferenceResolutionError("missing_path", f"Reference path '{path}' was not found.")
+            prepared_value = preprocess(value, context, ())
+            resolved_value = resolve_values(prepared_value, path, ())
+            if find_unresolved_directives(resolved_value):
+                raise RequestedReferenceResolutionError(
+                    "dependency_failure", f"Reference path '{path}' depends on an unresolved directive."
+                )
+            set_value(path, resolved_value)
+            return resolved_value
+        except RequestedReferenceResolutionError:
+            raise
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            raise RequestedReferenceResolutionError("dependency_failure", f"Reference path '{path}' could not be resolved: {exc}") from exc
+        finally:
+            active_paths.pop()
+
+    try:
+        return resolve_path(requested_path)
+    except RequestedReferenceResolutionError:
+        raise
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        raise RequestedReferenceResolutionError(
+            "dependency_failure", f"Reference path '{requested_path}' could not be resolved: {exc}"
+        ) from exc
+
+
+_REQUESTED_PATH_MISSING = object()
 
 
 def load_resolved_yaml(

@@ -54,6 +54,18 @@ async def test_authenticated_principal_cannot_cross_user_resource_boundaries(tmp
         ("GET", "/api/v1/data-sources/alice-source/tables/sites/schema", None, 404),
         ("POST", "/api/v1/sessions", {"project_name": "alice-project"}, 404),
         ("POST", "/api/v1/data-sources/alice-source/query/validate", {"query": "SELECT 1"}, 404),
+        (
+            "POST",
+            "/api/v1/projects/alice-project/entities/site/column-references/resolve",
+            {"entity_draft": {}, "directive": "@value: entities.site.keys"},
+            404,
+        ),
+        (
+            "POST",
+            "/api/v1/projects/alice-project/entities/site/column-references/complete",
+            {"entity_draft": {}, "prefix": "@value: entities."},
+            404,
+        ),
     )
 
     try:
