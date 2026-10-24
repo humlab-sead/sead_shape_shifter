@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pandas as pd
 import pytest
 
+from backend.app.models.validation import DataValidationStatus, EntityDataValidationStatus
 from backend.app.services.shapeshift_service import ShapeShiftService
 from backend.app.validators.data_validation_orchestrator import (
     DataValidationOrchestrator,
@@ -12,7 +13,6 @@ from backend.app.validators.data_validation_orchestrator import (
     PreviewDataFetchStrategy,
     TableStoreDataFetchStrategy,
 )
-from backend.app.models.validation import DataValidationStatus, EntityDataValidationStatus
 from src.exceptions import MissingBusinessKeyError
 from src.model import ShapeShiftProject
 from src.normalizer import ShapeShifter
@@ -197,6 +197,43 @@ async def test_full_data_strategy_does_not_validate_partial_tables_after_normali
     assert orchestrator.status == DataValidationStatus.FAILED
     assert orchestrator.entity_statuses["broken_entity"].status == EntityDataValidationStatus.FAILED
     assert "missing_key" in orchestrator.entity_statuses["broken_entity"].reason
+    assert orchestrator.entity_statuses["later_entity"].status == EntityDataValidationStatus.SKIPPED
+
+
+@pytest.mark.asyncio
+async def test_full_data_strategy_does_not_validate_incomplete_normalization_output():
+    """An incomplete entity prevents dataframe checks from inspecting its pre-unnest frame."""
+    core_project = ShapeShiftProject(
+        cfg={
+            "entities": {
+                "broken_entity": {"columns": ["id", "metric"]},
+                "later_entity": {"columns": ["value"]},
+            }
+        }
+    )
+    normalizer = Mock()
+    normalizer.table_store = TableStore({"broken_entity": pd.DataFrame({"id": [1], "metric": [10]})})
+    normalizer.unresolved_extra_columns = {}
+    normalizer.incomplete_entities = {"broken_entity": "Unnest skipped because all `value_vars` columns overlap with `id_vars`: ['metric']"}
+    normalizer.normalize = AsyncMock(return_value=normalizer)
+    project_service = Mock()
+    project_service.load_project.return_value = Mock()
+    strategy = FullDataFetchStrategy(project_service=project_service)
+    orchestrator = DataValidationOrchestrator(fetch_strategy=strategy)
+    orchestrator._validate_entity = AsyncMock()
+
+    with (
+        patch("backend.app.validators.data_validation_orchestrator.ProjectMapper.to_core", return_value=core_project),
+        patch("backend.app.validators.data_validation_orchestrator.ShapeShifter", return_value=normalizer),
+    ):
+        issues = await orchestrator.validate_all_entities(core_project=core_project, project_name="test_project")
+
+    normalizer.normalize.assert_awaited_once()
+    orchestrator._validate_entity.assert_not_awaited()
+    assert issues == []
+    assert orchestrator.status == DataValidationStatus.FAILED
+    assert orchestrator.entity_statuses["broken_entity"].status == EntityDataValidationStatus.FAILED
+    assert "overlap" in orchestrator.entity_statuses["broken_entity"].reason
     assert orchestrator.entity_statuses["later_entity"].status == EntityDataValidationStatus.SKIPPED
 
 

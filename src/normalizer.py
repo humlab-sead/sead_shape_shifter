@@ -28,7 +28,7 @@ from src.transforms.extra_columns import ExtraColumnEvaluator
 from src.transforms.filter import apply_filters
 from src.transforms.link import ForeignKeyLinker
 from src.transforms.translate import translate
-from src.transforms.unnest import unnest
+from src.transforms.unnest import UnnestSkippedError, unnest
 from src.transforms.utility import add_system_id
 
 INTERNAL_DATA_SOURCE = "@internal"
@@ -191,6 +191,20 @@ class ShapeShifter:
                 entity: str | None = self.state.get_next_entity_to_process()
 
                 if entity is None:
+                    blocked_entities: dict[str, str] = {}
+                    for blocked_entity in self.state.unprocessed_entities:
+                        failed_dependencies = self.state.get_unmet_dependencies(blocked_entity) & self.incomplete_entities.keys()
+                        if failed_dependencies:
+                            dependency = sorted(failed_dependencies)[0]
+                            blocked_entities[blocked_entity] = (
+                                f"Skipped because prerequisite entity '{dependency}' is incomplete: {self.incomplete_entities[dependency]}"
+                            )
+                    if blocked_entities:
+                        for blocked_entity, reason in blocked_entities.items():
+                            self.incomplete_entities[blocked_entity] = reason
+                            self.state.mark_incomplete(blocked_entity)
+                        continue
+
                     self.state.log_unmet_dependencies()
                     raise ValueError(f"Circular or unresolved dependencies detected: {self.state.unprocessed_entities}")
 
@@ -257,7 +271,12 @@ class ShapeShifter:
             )
 
         if table_cfg.unnest:
-            self.unnest_entity(entity=entity)
+            try:
+                self.unnest_entity(entity=entity)
+            except UnnestSkippedError:
+                self.table_store.pop(entity, None)
+                self.state.mark_incomplete(entity)
+                return
             self.linker.link_entity(entity_name=entity)
             # Re-evaluate deferred extra_columns after unnesting (in case unnest added new columns)
             deferred_extra_columns = self._evaluate_deferred_extra_columns(entity, deferred_extra_columns)
@@ -443,6 +462,9 @@ class ShapeShifter:
             table_cfg: TableConfig = self.project.get_table(entity)
             if table_cfg.unnest:
                 self.table_store[entity] = unnest(entity=entity, table=self.table_store[entity], table_cfg=table_cfg)
+        except UnnestSkippedError as e:
+            self.incomplete_entities[entity] = str(e)
+            raise
         except Exception as e:  # ldtype: ignore ; pylint: disable=broad-except
             self.incomplete_entities[entity] = str(e)
             logger.exception(f"Error unnesting entity {entity}: {e}")

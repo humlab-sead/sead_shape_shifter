@@ -6,6 +6,10 @@ from loguru import logger
 from src.model import TableConfig, UnnestConfig
 
 
+class UnnestSkippedError(ValueError):
+    """Raised when no value columns remain to melt after overlap recovery."""
+
+
 def unnest(entity: str, table: pd.DataFrame, table_cfg: TableConfig) -> pd.DataFrame:
 
     unnest_config: UnnestConfig | None = table_cfg.unnest
@@ -25,16 +29,17 @@ def unnest(entity: str, table: pd.DataFrame, table_cfg: TableConfig) -> pd.DataF
     if not var_name or not value_name:
         raise ValueError(f"{entity}[unnesting]: Invalid configuration: {unnest_config}")
 
-    # Defensive check for configurations that bypass project validation. Pandas
-    # keeps overlapping columns as identifiers instead of melting them, which can
-    # drop variables or return no rows.
     overlap: set[str] = set(id_vars) & set(value_vars)
     if overlap:
-        raise ValueError(
-            f"{entity}[unnesting]: Cannot unnest entity, columns cannot be both `id_vars` and `value_vars`: "
-            f"{sorted(overlap)}. Overlapping columns are treated as identifiers and are not melted; "
-            f"remove them from one of the lists."
+        logger.warning(
+            f"{entity}[unnesting]: Columns listed in both `id_vars` and `value_vars`: {sorted(overlap)}. "
+            "Keeping them as identifiers and excluding them from the melted values."
         )
+        value_vars = [column for column in value_vars if column not in overlap]
+        if not value_vars:
+            raise UnnestSkippedError(
+                f"{entity}[unnesting]: Unnest skipped because all `value_vars` columns overlap with `id_vars`: {sorted(overlap)}"
+            )
 
     opts: dict[str, Any] = {
         "var_name": var_name,

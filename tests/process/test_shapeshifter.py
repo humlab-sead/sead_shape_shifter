@@ -809,6 +809,41 @@ class TestShapeShifter:
         assert "site_property_id" in normalizer.table_store["site_property"].columns
 
     @pytest.mark.asyncio
+    async def test_normalize_skips_fully_overlapping_unnest_and_its_dependents(self):
+        """An incomplete unnest must not expose the source frame or block independent entities."""
+        project = ShapeShiftProject(
+            cfg={
+                "entities": {
+                    "survey": {"columns": ["id", "metric", "other"]},
+                    "broken": {
+                        "source": "survey",
+                        "columns": ["id", "metric"],
+                        "unnest": {
+                            "id_vars": ["id", "metric"],
+                            "value_vars": ["metric"],
+                            "var_name": "variable",
+                            "value_name": "value",
+                        },
+                    },
+                    "dependent": {"source": "broken", "columns": ["id"]},
+                    "independent": {"source": "survey", "columns": ["id", "other"]},
+                }
+            }
+        )
+        survey_df = pd.DataFrame({"id": [1], "metric": [10], "other": ["keep"]})
+        normalizer = ShapeShifter(project=project, default_entity="survey", table_store=TableStore({"survey": survey_df}))
+
+        await normalizer.normalize()
+
+        assert "broken" not in normalizer.table_store
+        assert "dependent" not in normalizer.table_store
+        assert "independent" in normalizer.table_store
+        assert "broken" in normalizer.incomplete_entities
+        assert "dependent" in normalizer.incomplete_entities
+        assert "overlap" in normalizer.incomplete_entities["broken"]
+        assert "broken" in normalizer.incomplete_entities["dependent"]
+
+    @pytest.mark.asyncio
     async def test_normalize_applies_after_unnest_filters(self):
         """Filters staged after unnest should see generated var/value columns."""
         survey_df = pd.DataFrame(
