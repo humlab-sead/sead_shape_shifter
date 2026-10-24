@@ -51,14 +51,14 @@ export const useProjectStore = defineStore('project', () => {
   const lastFetchedAt = ref<number | null>(null)
 
   // Diagnostic logging helper for state sync debugging
-    // function logState(action: string, details: Record<string, unknown> = {}) {
-    //   console.info(`[ProjectStore] ${action}`, {
-    //     ...details,
-    //     selectedProject: selectedProject.value?.metadata?.name ?? null,
-    //     projectCount: projects.value.length,
-    //     timestamp: new Date().toISOString(),
-    //   })
-    // }
+  // function logState(action: string, details: Record<string, unknown> = {}) {
+  //   console.info(`[ProjectStore] ${action}`, {
+  //     ...details,
+  //     selectedProject: selectedProject.value?.metadata?.name ?? null,
+  //     projectCount: projects.value.length,
+  //     timestamp: new Date().toISOString(),
+  //   })
+  // }
 
   // Getters
   const currentProjectName = computed(() => {
