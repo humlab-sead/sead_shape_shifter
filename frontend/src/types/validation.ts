@@ -6,6 +6,13 @@ export type ValidationSeverity = 'error' | 'warning' | 'info'
 export type ValidationCategory = 'structural' | 'data' | 'performance' | 'conformance'
 export type ValidationPriority = 'low' | 'medium' | 'high' | 'critical'
 export type DataValidationMode = 'sample' | 'complete'
+export type DataValidationStatus = 'completed' | 'partial' | 'failed' | 'skipped'
+export type EntityDataValidationStatus = 'completed' | 'failed' | 'skipped'
+
+export interface EntityDataValidationResult {
+  status: EntityDataValidationStatus
+  reason?: string | null
+}
 
 export interface ValidationError {
   severity: ValidationSeverity
@@ -44,6 +51,9 @@ export interface ValidationResult {
   error_count: number
   warning_count: number
   validation_mode?: DataValidationMode | null
+  status?: DataValidationStatus | null
+  status_reason?: string | null
+  entity_statuses?: Record<string, EntityDataValidationResult>
 }
 
 // Helper functions
