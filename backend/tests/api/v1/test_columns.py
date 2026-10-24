@@ -112,6 +112,44 @@ async def test_post_uses_unsaved_draft_and_returns_operation_and_stage_candidate
 
 
 @pytest.mark.asyncio
+async def test_post_flattens_mixed_value_references_in_draft_column_lists(authorized_client) -> None:
+    await _create_project(authorized_client)
+    draft = {
+        "type": "entity",
+        "public_id": "child_id",
+        "keys": ["before_key", "@value: entities.parent.keys", "after_key"],
+        "columns": ["before_column", "@value: entities.parent.columns", "after_column"],
+        "foreign_keys": [
+            {
+                "entity": "parent",
+                "local_keys": ["before_local", "@value: entities.parent.keys", "after_local"],
+                "remote_keys": ["before_remote", "@value: entities.parent.columns", "after_remote"],
+            }
+        ],
+        "drop_duplicates": ["before_duplicate", "@value: entities.parent.keys", "after_duplicate"],
+        "drop_empty_rows": ["before_empty", "@value: entities.parent.keys", "after_empty"],
+        "unnest": {
+            "id_vars": ["before_id", "@value: entities.parent.keys", "after_id"],
+            "value_vars": ["before_value", "@value: entities.parent.columns", "after_value"],
+            "var_name": "measurement_type",
+            "value_name": "measurement_value",
+        },
+    }
+
+    response = await authorized_client.post(
+        "/api/v1/projects/test_project/entities/child/column-availability",
+        json={"entity_draft": draft},
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["columns"] == ["before_column", "parent_key", "source_value", "after_column"]
+    saved_entity = await authorized_client.get("/api/v1/projects/test_project/entities/child")
+    assert saved_entity.status_code == 200
+    assert saved_entity.json()["entity_data"]["keys"] == ["child_key"]
+    assert saved_entity.json()["entity_data"]["columns"] == ["child_key", "saved_value"]
+
+
+@pytest.mark.asyncio
 async def test_post_does_not_suggest_a_key_without_a_producer(authorized_client) -> None:
     await _create_project(authorized_client)
 

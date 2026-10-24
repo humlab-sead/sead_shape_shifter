@@ -90,8 +90,8 @@ class TestEntityValidation:
             json={
                 "entity_draft": {
                     "type": "entity",
-                    "keys": ["draft_missing"],
-                    "columns": "@value: entities.source.keys",
+                    "keys": ["draft_missing", "@value: entities.source.keys"],
+                    "columns": ["before_column", "@value: entities.source.columns", "after_column"],
                     "unnest": {
                         "id_vars": ["shared"],
                         "value_vars": ["shared"],

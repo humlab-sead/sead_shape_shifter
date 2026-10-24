@@ -1,6 +1,6 @@
 """Tests for @value: reference resolution (ReferenceResolver)."""
 
-from src.configuration.resolve import ReferenceResolver
+from src.configuration.resolve import ReferenceResolver, resolve_directives
 
 
 def _resolve(data: dict) -> dict:
@@ -59,6 +59,25 @@ def test_replace_references_multiple_directive_list_elements() -> None:
     resolved: dict = _resolve(data)
 
     assert resolved["combined"] == ["x", "y", "z"]
+
+
+def test_resolve_directives_flattens_mixed_list_references() -> None:
+    """Resolve mixed literal and reference items as one flat ordered list."""
+    data = {
+        "entities": {
+            "site": {"keys": ["site_id"], "columns": ["site_id", "site_name"]},
+            "sample": {
+                "keys": ["before_key", "@value: entities.site.keys", "after_key"],
+                "columns": ["before_column", "@value: entities.site.columns", "after_column"],
+            },
+        }
+    }
+
+    resolved = resolve_directives(data)
+
+    assert resolved["entities"]["sample"]["keys"] == ["before_key", "site_id", "after_key"]
+    assert resolved["entities"]["sample"]["columns"] == ["before_column", "site_id", "site_name", "after_column"]
+    assert data["entities"]["sample"]["columns"] == ["before_column", "@value: entities.site.columns", "after_column"]
 
 
 def test_replace_references_directive_list_element_scalar_result_not_flattened() -> None:

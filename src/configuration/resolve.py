@@ -164,7 +164,8 @@ def resolve_directives(
 
     # Build directive resolver map (order does not matter — each resolver only
     # handles its own directive prefix)
-    resolvers: dict[str, DirectiveResolver] = {key: cls() for key, cls in ResolverRegistry.items.items()}
+    # Resolve @value after other directives so list items that expand to lists can be flattened.
+    resolvers: dict[str, DirectiveResolver] = {key: cls() for key, cls in ResolverRegistry.items.items() if cls is not ReferenceResolver}
 
     # Single orchestration path: the orchestrator owns all traversal and dispatch.
     # Included documents are recursively resolved by re-entering this traversal.
