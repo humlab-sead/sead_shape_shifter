@@ -2,7 +2,9 @@
 
 import pytest
 
+from backend.app.authorization.service import AuthorizationService
 from backend.app.core.config import settings
+from backend.app.main import app
 from backend.app.services import dependency_service, project_service, validation_service, yaml_service
 
 # pylint: disable=redefined-outer-name, unused-argument
@@ -177,10 +179,8 @@ class TestEntityValidation:
         assert unresolved.status_code == 200
         assert any(error["code"] == "COLUMN_REFERENCE_MISSING_PATH" for error in unresolved.json()["errors"])
 
-        from backend.app.services import validation_service as validation_service_module
-
         monkeypatch.setattr(
-            validation_service_module.ProjectMapper,
+            validation_service.ProjectMapper,
             "to_core",
             lambda *_args, **_kwargs: (_ for _ in ()).throw(ValueError("mapping failed")),
         )
@@ -195,7 +195,6 @@ class TestEntityValidation:
         self, tmp_path, monkeypatch, reset_services, authorized_client
     ):
         """Require project read access and publish the request and response models."""
-        from backend.app.main import app
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
         created = await authorized_client.post(
@@ -208,8 +207,6 @@ class TestEntityValidation:
             },
         )
         assert created.status_code == 201
-
-        from backend.app.authorization.service import AuthorizationService
 
         monkeypatch.setattr(AuthorizationService, "authorize", lambda *_args, **_kwargs: None)
 
