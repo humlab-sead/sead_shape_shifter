@@ -63,6 +63,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { normalizeColumnListChips } from './columnListValue'
 
 interface UnnestConfig {
   id_vars: string[]
@@ -83,14 +84,24 @@ const emit = defineEmits<{
   'update:modelValue': [value: UnnestConfig | null]
 }>()
 
-const unnest = ref<UnnestConfig>(
-  props.modelValue || {
-    id_vars: [],
-    value_vars: [],
-    var_name: '',
-    value_name: '',
+function cloneUnnest(value?: UnnestConfig | null): UnnestConfig {
+  if (!value) {
+    return {
+      id_vars: [],
+      value_vars: [],
+      var_name: '',
+      value_name: '',
+    }
   }
-)
+
+  return {
+    ...value,
+    id_vars: normalizeColumnListChips(value.id_vars),
+    value_vars: normalizeColumnListChips(value.value_vars),
+  }
+}
+
+const unnest = ref<UnnestConfig>(cloneUnnest(props.modelValue))
 
 const unnestEnabled = ref(!!props.modelValue)
 
@@ -100,7 +111,16 @@ const valueVarColumns = computed(() => props.valueVarColumns ?? [])
 watch(
   [unnestEnabled, unnest],
   () => {
-    emit('update:modelValue', unnestEnabled.value ? unnest.value : null)
+    emit(
+      'update:modelValue',
+      unnestEnabled.value
+        ? {
+            ...unnest.value,
+            id_vars: [...unnest.value.id_vars],
+            value_vars: [...unnest.value.value_vars],
+          }
+        : null
+    )
   },
   { deep: true }
 )
@@ -108,12 +128,18 @@ watch(
 watch(
   () => props.modelValue,
   (newValue) => {
-    if (newValue) {
-      unnest.value = newValue
-      unnestEnabled.value = true
-    } else {
+    if (!newValue) {
       unnestEnabled.value = false
+      return
     }
+
+    const normalized = cloneUnnest(newValue)
+    if (unnestEnabled.value && JSON.stringify(unnest.value) === JSON.stringify(normalized)) {
+      return
+    }
+
+    unnest.value = normalized
+    unnestEnabled.value = true
   },
   { deep: true }
 )

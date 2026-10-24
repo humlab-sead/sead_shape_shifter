@@ -1059,6 +1059,8 @@ import { useEntities, useSuggestions, useEntityPreview, useSettings, useColumnAv
 import { useNotification } from '@/composables/useNotification'
 import { useProjectStore, useEntityStore } from '@/stores'
 import type { EntityResponse, FixedSchema, MappingSyncPending, MappingSyncRetryResult } from '@/api/entities'
+import { normalizeForeignKeyKeys } from './foreignKeyEditorUtils'
+import { cloneColumnListValue, normalizeColumnListChips, serializeColumnListValue } from './columnListValue'
 import type { ForeignKeySuggestion, DependencySuggestion } from '@/composables'
 import * as yaml from 'js-yaml'
 import { AgGridVue } from 'ag-grid-vue3'
@@ -1300,25 +1302,106 @@ function normalizeFixedColumnTypes(value: unknown, allowedColumns: string[] = []
 }
 
 function normalizeChipField(value: unknown): string[] {
-  if (Array.isArray(value)) {
-    return value
-      .map((item) => {
-        if (typeof item === 'string') return item.trim()
-        if (typeof item === 'object' && item !== null && 'value' in item) {
-          const chipValue = (item as { value?: unknown }).value
-          return typeof chipValue === 'string' ? chipValue.trim() : String(chipValue ?? '').trim()
-        }
-        return String(item ?? '').trim()
-      })
-      .filter((item) => item.length > 0)
-  }
+  return normalizeColumnListChips(value)
+}
 
-  if (typeof value === 'string') {
-    const trimmed = value.trim()
-    return trimmed.length > 0 ? [trimmed] : []
-  }
+interface ColumnListOrigin {
+  value: unknown
+  chips: string[]
+}
 
-  return []
+interface ForeignKeyColumnListOrigins {
+  local_keys: ColumnListOrigin
+  remote_keys: ColumnListOrigin
+}
+
+interface ColumnListOrigins {
+  keys: ColumnListOrigin
+  columns: ColumnListOrigin
+  drop_duplicates: ColumnListOrigin
+  drop_empty_rows: ColumnListOrigin
+  unnest_id_vars: ColumnListOrigin
+  unnest_value_vars: ColumnListOrigin
+}
+
+function createColumnListOrigin(value: unknown): ColumnListOrigin {
+  return {
+    value: cloneColumnListValue(value),
+    chips: normalizeChipField(value),
+  }
+}
+
+function createForeignKeyColumnListOrigins(foreignKey: Record<string, any>): ForeignKeyColumnListOrigins {
+  const localValue = cloneColumnListValue(foreignKey.local_keys)
+  const remoteValue = cloneColumnListValue(foreignKey.remote_keys)
+
+  return {
+    local_keys: {
+      value: localValue,
+      chips: normalizeForeignKeyKeys(foreignKey.local_keys),
+    },
+    remote_keys: {
+      value: remoteValue,
+      chips: normalizeForeignKeyKeys(foreignKey.remote_keys),
+    },
+  }
+}
+
+function buildForeignKeyFormData(value: unknown): any[] {
+  if (!Array.isArray(value)) return []
+
+  return value.map((item) => {
+    const foreignKey = item && typeof item === 'object' ? (item as Record<string, any>) : {}
+    const { __columnListOrigins: _columnListOrigins, ...publicFields } = foreignKey
+    return {
+      ...publicFields,
+      local_keys: normalizeForeignKeyKeys(foreignKey.local_keys),
+      remote_keys: normalizeForeignKeyKeys(foreignKey.remote_keys),
+      __columnListOrigins: createForeignKeyColumnListOrigins(foreignKey),
+    }
+  })
+}
+
+function normalizeUnnestForFormData(value: unknown): any | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+
+  const unnest = value as Record<string, unknown>
+  return {
+    ...unnest,
+    id_vars: normalizeChipField(unnest.id_vars),
+    value_vars: normalizeChipField(unnest.value_vars),
+  }
+}
+
+const columnListOrigins = ref<ColumnListOrigins>({
+  keys: createColumnListOrigin(undefined),
+  columns: createColumnListOrigin(undefined),
+  drop_duplicates: createColumnListOrigin(undefined),
+  drop_empty_rows: createColumnListOrigin(undefined),
+  unnest_id_vars: createColumnListOrigin(undefined),
+  unnest_value_vars: createColumnListOrigin(undefined),
+})
+
+function setColumnListOrigins(entityData: Record<string, any>) {
+  const dropDuplicates =
+    Array.isArray(entityData.drop_duplicates) || typeof entityData.drop_duplicates === 'string'
+      ? entityData.drop_duplicates
+      : undefined
+  const dropEmptyRows =
+    Array.isArray(entityData.drop_empty_rows) || typeof entityData.drop_empty_rows === 'string'
+      ? entityData.drop_empty_rows
+      : undefined
+  const unnest = entityData.unnest && typeof entityData.unnest === 'object' ? entityData.unnest : {}
+
+  columnListOrigins.value = {
+    keys: createColumnListOrigin(entityData.keys),
+    columns:
+      entityData.type === 'fixed' ? createColumnListOrigin(undefined) : createColumnListOrigin(entityData.columns),
+    drop_duplicates: createColumnListOrigin(dropDuplicates),
+    drop_empty_rows: createColumnListOrigin(dropEmptyRows),
+    unnest_id_vars: createColumnListOrigin(unnest.id_vars),
+    unnest_value_vars: createColumnListOrigin(unnest.value_vars),
+  }
 }
 
 const formData = ref<FormData>({
@@ -1839,12 +1922,8 @@ function buildEntityConfigFromFormData(options: BuildEntityConfigOptions = {}): 
    * A single @value: directive element is written as a scalar string for cleaner YAML.
    * Mixed arrays (directives + regular columns) are preserved as lists.
    */
-  function serializeKeysField(keys: string[]): string | string[] {
-    const first = keys[0]
-    if (keys.length === 1 && first !== undefined && first.trim().startsWith('@value:')) {
-      return first.trim()
-    }
-    return keys
+  function serializeKeysField(keys: string[], origin: ColumnListOrigin): string | string[] {
+    return serializeColumnListValue(keys, origin.value, origin.chips)
   }
 
   const effectiveColumns =
@@ -1852,13 +1931,13 @@ function buildEntityConfigFromFormData(options: BuildEntityConfigOptions = {}): 
 
   const entityData: Record<string, unknown> = {
     type: formData.value.type,
-    keys: serializeKeysField(formData.value.keys),
+    keys: serializeKeysField(formData.value.keys, columnListOrigins.value.keys),
     // For fixed entities, persist the produced data columns (managed identity
     // fields stay implicit). The positional grid/values order adds identity back.
     columns:
       formData.value.type === 'fixed'
         ? normalizeEditableFixedColumns(fixedValuesColumns.value, formData.value.public_id)
-        : serializeKeysField(effectiveColumns),
+        : serializeKeysField(effectiveColumns, columnListOrigins.value.columns),
   }
 
   // Always include public_id (even if null) to prevent field from being omitted
@@ -1929,27 +2008,22 @@ function buildEntityConfigFromFormData(options: BuildEntityConfigOptions = {}): 
   if (formData.value.foreign_keys.length > 0) {
     // Transform foreign keys: extract column values and preserve all FK settings.
     entityData.foreign_keys = formData.value.foreign_keys.map((fk: any) => {
-      // Normalize FK keys arrays, then apply the same scalar-directive rule as serializeKeysField
-      const normalizeFkKeys = (keys: any): string | string[] => {
-        if (typeof keys === 'string' && keys.trim().startsWith('@value:')) {
-          // Scalar directive string — serialize as-is
-          return keys.trim()
-        }
-        const arr: string[] = Array.isArray(keys)
-          ? keys.map((col: any) => (typeof col === 'string' ? col : col.value))
-          : []
-        // Single @value: element — collapse to scalar for cleaner YAML
-        const firstArr = arr[0]
-        if (arr.length === 1 && firstArr !== undefined && firstArr.trim().startsWith('@value:')) {
-          return firstArr.trim()
-        }
-        return arr
-      }
+      const origins = fk.__columnListOrigins as ForeignKeyColumnListOrigins | undefined
+      const localKeys = normalizeForeignKeyKeys(fk.local_keys)
+      const remoteKeys = normalizeForeignKeyKeys(fk.remote_keys)
 
       const transformedFk: Record<string, unknown> = {
         entity: fk.entity,
-        local_keys: normalizeFkKeys(fk.local_keys),
-        remote_keys: normalizeFkKeys(fk.remote_keys),
+        local_keys: serializeColumnListValue(
+          localKeys,
+          origins?.local_keys.value,
+          origins?.local_keys.chips ?? normalizeForeignKeyKeys(origins?.local_keys.value as any)
+        ),
+        remote_keys: serializeColumnListValue(
+          remoteKeys,
+          origins?.remote_keys.value,
+          origins?.remote_keys.chips ?? normalizeForeignKeyKeys(origins?.remote_keys.value as any)
+        ),
       }
 
       if (fk.how) {
@@ -1980,7 +2054,11 @@ function buildEntityConfigFromFormData(options: BuildEntityConfigOptions = {}): 
   // Include drop_duplicates if enabled
   if (formData.value.drop_duplicates.enabled) {
     if (formData.value.drop_duplicates.columns.length > 0) {
-      entityData.drop_duplicates = formData.value.drop_duplicates.columns
+      entityData.drop_duplicates = serializeColumnListValue(
+        formData.value.drop_duplicates.columns,
+        columnListOrigins.value.drop_duplicates.value,
+        columnListOrigins.value.drop_duplicates.chips
+      )
     } else {
       entityData.drop_duplicates = true
     }
@@ -1993,7 +2071,11 @@ function buildEntityConfigFromFormData(options: BuildEntityConfigOptions = {}): 
   // Include drop_empty_rows if enabled
   if (formData.value.drop_empty_rows.enabled) {
     if (formData.value.drop_empty_rows.columns.length > 0) {
-      entityData.drop_empty_rows = formData.value.drop_empty_rows.columns
+      entityData.drop_empty_rows = serializeColumnListValue(
+        formData.value.drop_empty_rows.columns,
+        columnListOrigins.value.drop_empty_rows.value,
+        columnListOrigins.value.drop_empty_rows.chips
+      )
     } else {
       entityData.drop_empty_rows = true
     }
@@ -2004,7 +2086,20 @@ function buildEntityConfigFromFormData(options: BuildEntityConfigOptions = {}): 
     entityData.filters = formData.value.advanced.filters
   }
   if (formData.value.advanced.unnest) {
-    entityData.unnest = formData.value.advanced.unnest
+    const unnest = formData.value.advanced.unnest
+    entityData.unnest = {
+      ...unnest,
+      id_vars: serializeColumnListValue(
+        normalizeChipField(unnest.id_vars),
+        columnListOrigins.value.unnest_id_vars.value,
+        columnListOrigins.value.unnest_id_vars.chips
+      ),
+      value_vars: serializeColumnListValue(
+        normalizeChipField(unnest.value_vars),
+        columnListOrigins.value.unnest_value_vars.value,
+        columnListOrigins.value.unnest_value_vars.chips
+      ),
+    }
   }
   if (formData.value.type !== 'merged' && formData.value.advanced.append?.length) {
     entityData.append = formData.value.advanced.append
@@ -2803,13 +2898,13 @@ function yamlToFormData(yamlString: string): boolean {
     const dropDuplicates = data.drop_duplicates
     const dropDuplicatesData = {
       enabled: dropDuplicates !== undefined && dropDuplicates !== null,
-      columns: Array.isArray(dropDuplicates) ? dropDuplicates : [],
+      columns: normalizeChipField(dropDuplicates),
     }
 
     const dropEmptyRows = data.drop_empty_rows
     const dropEmptyRowsData = {
       enabled: dropEmptyRows !== undefined && dropEmptyRows !== null,
-      columns: Array.isArray(dropEmptyRows) ? dropEmptyRows : [],
+      columns: normalizeChipField(dropEmptyRows),
     }
 
     const nestedCheckFunctionalDependency =
@@ -2846,14 +2941,14 @@ function yamlToFormData(yamlString: string): boolean {
           range: data.options?.range || '',
           location: data.options?.location || 'global',
         },
-        foreign_keys: Array.isArray(data.foreign_keys) ? data.foreign_keys : [],
+        foreign_keys: buildForeignKeyFormData(data.foreign_keys),
         depends_on: normalizeChipField(data.depends_on),
         drop_duplicates: dropDuplicatesData,
         drop_empty_rows: dropEmptyRowsData,
         check_functional_dependency: effectiveCheckFunctionalDependency,
         advanced: {
           filters: Array.isArray(data.filters) ? data.filters : [],
-          unnest: data.unnest || null,
+          unnest: normalizeUnnestForFormData(data.unnest),
           append: Array.isArray(data.append) ? data.append : [],
           extra_columns: data.extra_columns || undefined,
           replacements: data.replacements || undefined,
@@ -2862,6 +2957,8 @@ function yamlToFormData(yamlString: string): boolean {
     } finally {
       suppressFixedSchemaRemap.value = false
     }
+
+    setColumnListOrigins(data)
 
     yamlError.value = null
     return true
@@ -2929,6 +3026,19 @@ function buildDirtySnapshot(): string {
 }
 
 function captureInitialSnapshot() {
+  const savedEntityData = buildEntityConfigFromFormData()
+  setColumnListOrigins(savedEntityData)
+
+  const savedForeignKeys = Array.isArray(savedEntityData.foreign_keys)
+    ? (savedEntityData.foreign_keys as Array<Record<string, any>>)
+    : []
+  formData.value.foreign_keys = formData.value.foreign_keys.map((foreignKey: any, index: number) => {
+    const savedForeignKey = savedForeignKeys[index]
+    return savedForeignKey
+      ? { ...foreignKey, __columnListOrigins: createForeignKeyColumnListOrigins(savedForeignKey) }
+      : foreignKey
+  })
+
   initialFormSnapshot.value = buildDirtySnapshot()
   hasPendingChanges.value = false
 }
@@ -3351,6 +3461,7 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
     entity.entity_data.type === 'fixed'
       ? normalizeFixedValuesRowsForForm(roundTrip.inlineValues, normalizedColumns, publicId)
       : roundTrip.inlineValues
+  setColumnListOrigins(entity.entity_data as Record<string, any>)
   hasExternalValues.value = Boolean(roundTrip.externalValuesDirective)
   externalValuesDirective.value = roundTrip.externalValuesDirective
   materializedConfig.value = roundTrip.materializedConfig
@@ -3380,20 +3491,20 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
       range: (entity.entity_data.options as any)?.range || '',
       location: (entity.entity_data.options as any)?.location || 'global',
     },
-    foreign_keys: (entity.entity_data.foreign_keys as any[]) || [],
+    foreign_keys: buildForeignKeyFormData(entity.entity_data.foreign_keys),
     depends_on: normalizeChipField(entity.entity_data.depends_on),
     drop_duplicates: {
       enabled: dropDuplicates !== undefined && dropDuplicates !== null,
-      columns: Array.isArray(dropDuplicates) ? dropDuplicates : [],
+      columns: normalizeChipField(dropDuplicates),
     },
     drop_empty_rows: {
       enabled: dropEmptyRows !== undefined && dropEmptyRows !== null,
-      columns: Array.isArray(dropEmptyRows) ? dropEmptyRows : [],
+      columns: normalizeChipField(dropEmptyRows),
     },
     check_functional_dependency: effectiveCheckFunctionalDependency,
     advanced: {
       filters: (entity.entity_data.filters as any[]) || [],
-      unnest: entity.entity_data.unnest || null,
+      unnest: normalizeUnnestForFormData(entity.entity_data.unnest),
       append: (entity.entity_data.append as any[]) || [],
       branches: (entity.entity_data.branches as any[]) || [],
       extra_columns: (entity.entity_data.extra_columns as Record<string, ExtraColumnValue>) || undefined,
