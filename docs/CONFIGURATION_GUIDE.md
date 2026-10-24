@@ -1082,6 +1082,7 @@ This is the right fit when the derived value depends on cleanup, fallback handli
   - `false`: Keep all rows
   - `list[string]`: Drop rows where all specified columns are empty
   - `dict[string, list[any]]`: Drop rows where specified columns contain the given values. Keys are column names, values are lists of values to treat as empty for that column (e.g., `[null, ""]`)
+- **Stage**: For an entity with unnesting, a list or mapping subset runs after unnest and before the second foreign-key link when all selected columns are present. An enabled `true` setting, or a list or mapping whose columns are not all present at that point, runs during final cleanup after linking and post-unnest filters. This allows configured empty rows to be removed before strict foreign-key null validation when the cleanup columns are available.
 - **Note**: Empty strings are automatically treated as `pd.NA` before checking for empty rows (unless using dict format with custom empty values)
 - **Example**:
   ```yaml

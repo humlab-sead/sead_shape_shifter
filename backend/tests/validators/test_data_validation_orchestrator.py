@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pandas as pd
 import pytest
 
+from backend.app.models.validation import DataValidationStatus, EntityDataValidationStatus
 from backend.app.services.shapeshift_service import ShapeShiftService
 from backend.app.validators.data_validation_orchestrator import (
     DataValidationOrchestrator,
@@ -41,9 +42,8 @@ async def test_table_store_strategy_returns_existing_data():
     assert len(df2) == 2
     assert list(df2.columns) == ["x", "y"]
 
-    # Test fetching non-existent entity returns empty DataFrame
-    df3 = await strategy.fetch("any_project", "missing")
-    assert df3.empty
+    with pytest.raises(KeyError, match="not available"):
+        await strategy.fetch("any_project", "missing")
 
 
 @pytest.mark.asyncio
@@ -115,8 +115,8 @@ async def test_orchestrator_reports_unproduced_business_key():
 
 
 @pytest.mark.asyncio
-async def test_orchestrator_maps_normalization_missing_key_error_to_business_key_issue():
-    """A normalization missing-key failure is reported as a structured business-key error."""
+async def test_orchestrator_marks_unavailable_entity_failed_without_dataframe_checks():
+    """An unavailable table is a workflow failure, not an empty-data validation result."""
 
     class MissingKeyFetchStrategy(TableStoreDataFetchStrategy):
         """Strategy whose fetch fails the way normalization does for an unproduced key."""
@@ -145,17 +145,15 @@ async def test_orchestrator_maps_normalization_missing_key_error_to_business_key
         entity_names=["test_entity"],
     )
 
-    key_issues = [issue for issue in issues if issue.code == "BUSINESS_KEY_NOT_PRODUCED"]
-    assert len(key_issues) == 1
-    assert key_issues[0].severity == "error"
-    assert key_issues[0].entity == "test_entity"
-    assert key_issues[0].field == "keys"
-    assert key_issues[0].column == "missing_key"
+    assert issues == []
+    assert orchestrator.status == DataValidationStatus.FAILED
+    assert orchestrator.entity_statuses["test_entity"].status == EntityDataValidationStatus.FAILED
+    assert "missing_key" in orchestrator.entity_statuses["test_entity"].reason
 
 
 @pytest.mark.asyncio
-async def test_full_data_strategy_validates_available_entities_after_missing_key_error():
-    """A missing key should not cause normalization to restart or stop later entity checks."""
+async def test_full_data_strategy_does_not_validate_partial_tables_after_normalization_error():
+    """A normalization failure prevents dataframe validators from reading partial tables."""
     core_project = ShapeShiftProject(
         cfg={
             "entities": {
@@ -172,6 +170,7 @@ async def test_full_data_strategy_validates_available_entities_after_missing_key
         }
     )
     normalizer.unresolved_extra_columns = {}
+    normalizer.incomplete_entities = {}
     normalizer.normalize = AsyncMock(
         side_effect=MissingBusinessKeyError(
             "Entity 'broken_entity': key column(s) ['missing_key'] are missing.",
@@ -194,8 +193,79 @@ async def test_full_data_strategy_validates_available_entities_after_missing_key
         )
 
     normalizer.normalize.assert_awaited_once()
-    assert any(issue.entity == "broken_entity" and issue.code == "BUSINESS_KEY_NOT_PRODUCED" for issue in issues)
-    assert any(issue.entity == "later_entity" and issue.code == "EMPTY_RESULT" for issue in issues)
+    assert issues == []
+    assert orchestrator.status == DataValidationStatus.FAILED
+    assert orchestrator.entity_statuses["broken_entity"].status == EntityDataValidationStatus.FAILED
+    assert "missing_key" in orchestrator.entity_statuses["broken_entity"].reason
+    assert orchestrator.entity_statuses["later_entity"].status == EntityDataValidationStatus.SKIPPED
+
+
+@pytest.mark.asyncio
+async def test_full_data_strategy_does_not_validate_incomplete_normalization_output():
+    """An incomplete entity prevents dataframe checks from inspecting its pre-unnest frame."""
+    core_project = ShapeShiftProject(
+        cfg={
+            "entities": {
+                "broken_entity": {"columns": ["id", "metric"]},
+                "later_entity": {"columns": ["value"]},
+            }
+        }
+    )
+    normalizer = Mock()
+    normalizer.table_store = TableStore({"broken_entity": pd.DataFrame({"id": [1], "metric": [10]})})
+    normalizer.unresolved_extra_columns = {}
+    normalizer.incomplete_entities = {"broken_entity": "Unnest skipped because all `value_vars` columns overlap with `id_vars`: ['metric']"}
+    normalizer.normalize = AsyncMock(return_value=normalizer)
+    project_service = Mock()
+    project_service.load_project.return_value = Mock()
+    strategy = FullDataFetchStrategy(project_service=project_service)
+    orchestrator = DataValidationOrchestrator(fetch_strategy=strategy)
+    orchestrator._validate_entity = AsyncMock()
+
+    with (
+        patch("backend.app.validators.data_validation_orchestrator.ProjectMapper.to_core", return_value=core_project),
+        patch("backend.app.validators.data_validation_orchestrator.ShapeShifter", return_value=normalizer),
+    ):
+        issues = await orchestrator.validate_all_entities(core_project=core_project, project_name="test_project")
+
+    normalizer.normalize.assert_awaited_once()
+    orchestrator._validate_entity.assert_not_awaited()
+    assert issues == []
+    assert orchestrator.status == DataValidationStatus.FAILED
+    assert orchestrator.entity_statuses["broken_entity"].status == EntityDataValidationStatus.FAILED
+    assert "overlap" in orchestrator.entity_statuses["broken_entity"].reason
+    assert orchestrator.entity_statuses["later_entity"].status == EntityDataValidationStatus.SKIPPED
+
+
+@pytest.mark.asyncio
+async def test_sample_validation_continues_independent_previews_after_failure():
+    """A failed preview skips its dependents but does not stop independent previews."""
+    core_project = ShapeShiftProject(
+        cfg={
+            "entities": {
+                "root": {"type": "entity", "columns": ["value"]},
+                "dependent": {"type": "entity", "source": "root", "columns": ["value"]},
+                "independent": {"type": "entity", "columns": ["value"]},
+            }
+        }
+    )
+    preview_service = Mock(spec=ShapeShiftService)
+    preview_service.preview_entity = AsyncMock(
+        side_effect=[
+            RuntimeError("root preview failed"),
+            Mock(rows=[{"value": 1}]),
+        ]
+    )
+    orchestrator = DataValidationOrchestrator(fetch_strategy=PreviewDataFetchStrategy(preview_service))
+
+    issues = await orchestrator.validate_all_entities(core_project, "test_project")
+
+    assert issues == []
+    assert preview_service.preview_entity.await_count == 2
+    assert orchestrator.entity_statuses["root"].status == EntityDataValidationStatus.FAILED
+    assert orchestrator.entity_statuses["dependent"].status == EntityDataValidationStatus.SKIPPED
+    assert orchestrator.entity_statuses["independent"].status == EntityDataValidationStatus.COMPLETED
+    assert orchestrator.status == DataValidationStatus.PARTIAL
 
 
 @pytest.mark.asyncio
