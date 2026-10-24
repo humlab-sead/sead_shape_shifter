@@ -2487,6 +2487,19 @@ local_keys: "@value: entities.feature.keys"
 remote_keys: "@value: entities.feature.keys"
 ```
 
+References can also appear in a list with literal column names. When the referenced value is a list,
+its entries are inserted at that position and the result stays flat and ordered:
+
+```yaml
+columns:
+  - first_column
+  - "@value: entities.site.columns"
+  - last_column
+```
+
+The YAML keeps the reference text and literal names. `ProjectMapper.to_core()` resolves the reference
+when it builds the Core configuration. Existing `+` expressions remain supported for older projects.
+
 **Benefits:**
 - DRY (Don't Repeat Yourself) principle
 - Single source of truth
