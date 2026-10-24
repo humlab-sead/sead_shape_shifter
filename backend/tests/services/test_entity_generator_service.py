@@ -64,7 +64,7 @@ class TestEntityGeneratorService:
             },
             options={
                 "data_sources": {
-                    "test_db": "@include: test_db.yml",
+                    "test_db": "test_db.yml",
                 }
             },
         )
@@ -320,3 +320,19 @@ class TestEntityGeneratorService:
             await generator_service.generate_from_table(project_name="test_project", data_source_key="test_db", table_name="users")
 
         mock_schema_service.get_table_schema.assert_not_called()
+
+    def test_resolve_project_local_include(self, generator_service, mock_project, tmp_path, monkeypatch):
+        """Project-local includes are resolved relative to the project file."""
+        from backend.app.core.config import settings
+
+        projects_dir = tmp_path / "projects"
+        project_dir = projects_dir / "test_project"
+        project_dir.mkdir(parents=True)
+        (project_dir / "local-db.yml").write_text("driver: sqlite\noptions:\n  filename: local.db\n", encoding="utf-8")
+        monkeypatch.setattr(settings, "PROJECTS_DIR", projects_dir)
+        mock_project.metadata.file_path = str(project_dir / "shapeshifter.yml")
+        mock_project.options["data_sources"]["test_db"] = "@include: local-db.yml"
+
+        resolved = generator_service._resolve_data_source(mock_project, "test_project", "test_db")
+
+        assert resolved == {"driver": "sqlite", "options": {"filename": "local.db"}}
