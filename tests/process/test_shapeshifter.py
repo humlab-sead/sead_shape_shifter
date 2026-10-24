@@ -611,6 +611,24 @@ class TestShapeShifter:
             # Should return unchanged
             pd.testing.assert_frame_equal(result, site_df)
 
+    def test_unnest_entity_marks_failure_and_reraises(self, survey_and_site_config: ShapeShiftProject):
+        """An unnest failure must not return its input table as a successful result."""
+        site_df = pd.DataFrame({"site_id": [1], "name": ["A"]})
+        normalizer = ShapeShifter(
+            project=survey_and_site_config,
+            table_store=TableStore({"survey": pd.DataFrame(), "site": site_df}),
+        )
+        mock_table_cfg = Mock()
+        mock_table_cfg.unnest = True
+
+        with patch.object(normalizer.project, "get_table", return_value=mock_table_cfg):
+            with patch("src.normalizer.unnest", side_effect=ValueError("missing value column")):
+                with pytest.raises(ValueError, match="missing value column"):
+                    normalizer.unnest_entity(entity="site")
+
+        assert normalizer.incomplete_entities == {"site": "missing value column"}
+        pd.testing.assert_frame_equal(normalizer.table_store["site"], site_df)
+
     def test_store_xlsx(self, survey_only_config: ShapeShiftProject):
         """Test storing data as XLSX."""
         df = pd.DataFrame({"col1": [1, 2]})
