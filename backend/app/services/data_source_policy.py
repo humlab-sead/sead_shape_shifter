@@ -183,9 +183,14 @@ def validate_server_managed_data_source(config: Any, settings: Settings | None =
 
     settings = settings or get_settings()
     env_var_prefixes = _allowed_env_var_prefixes(settings)
+    allowed_env_var_names = settings.resolver_allowed_env_vars
     raw_env_var_names = _extract_env_var_names(config)
 
-    disallowed_env_vars = sorted(name for name in raw_env_var_names if not any(name.startswith(prefix) for prefix in env_var_prefixes))
+    disallowed_env_vars = sorted(
+        name
+        for name in raw_env_var_names
+        if name not in allowed_env_var_names and not any(name.startswith(prefix) for prefix in env_var_prefixes)
+    )
     if disallowed_env_vars:
         raise ValueError(f"Data source references unapproved environment variables: {', '.join(disallowed_env_vars)}")
 
