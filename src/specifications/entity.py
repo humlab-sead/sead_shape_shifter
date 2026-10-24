@@ -1491,17 +1491,14 @@ class UnnestColumnsSpecification(ProjectSpecification):
         id_vars: list[str] | None = unnest_cfg.get("id_vars")
         value_vars: list[str] | None = unnest_cfg.get("value_vars")
 
-        # Reject columns listed as both identifiers and melted values. Pandas treats
-        # an overlapping column as an identifier and does not melt it, so a full
-        # overlap returns zero rows and a partial overlap silently drops the
-        # overlapping variables from the result.
+        # Runtime unnesting removes overlapping columns from value_vars. Warn here
+        # so structural validation reports the configuration without blocking it.
         if isinstance(id_vars, list) and isinstance(value_vars, list):
             overlap: set[str] = set(id_vars) & set(value_vars)
             if overlap:
-                self.add_error(
+                self.add_warning(
                     f"Unnest configuration lists the same columns in both id_vars and value_vars: {sorted(overlap)}. "
-                    f"Overlapping columns are kept as identifiers and are not melted; if every value_vars column "
-                    f"overlaps, unnest returns no rows. Remove each conflicting column from id_vars or value_vars.",
+                    "Overlapping columns will be kept as identifiers and excluded from the melted values.",
                     entity=entity_name,
                     field="unnest.value_vars",
                 )
