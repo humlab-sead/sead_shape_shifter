@@ -7,8 +7,8 @@ import pytest
 from backend.app.services.column_list_reference_validation import ColumnListReferenceValidationService
 
 
-@pytest.fixture
-def validator() -> ColumnListReferenceValidationService:
+@pytest.fixture(name="validator")
+def _validator() -> ColumnListReferenceValidationService:
     """Create a reference validator for one test."""
     return ColumnListReferenceValidationService()
 

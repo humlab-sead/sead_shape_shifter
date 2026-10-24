@@ -93,7 +93,7 @@ def test_resolution_accepts_empty_string_list_and_manual_options_path() -> None:
     options_result = service.resolve_reference("test_project", "child", {}, "@value: options.columns")
 
     assert empty_result.status == "resolved"
-    assert empty_result.columns == []
+    assert not empty_result.columns
     assert options_result.status == "resolved"
     assert options_result.columns == ["option_a", "option_b"]
 

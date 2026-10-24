@@ -25,7 +25,7 @@ router = APIRouter()
 )
 @handle_endpoint_errors
 async def resolve_column_reference(
-    project_name: str,
+    project_name: str,  # pylint: disable=unused-argument
     entity_name: str,
     request: ColumnReferenceResolveRequest,
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
@@ -45,7 +45,7 @@ async def resolve_column_reference(
 )
 @handle_endpoint_errors
 async def complete_column_references(
-    project_name: str,
+    project_name: str,  # pylint: disable=unused-argument
     entity_name: str,
     request: ColumnReferenceCompleteRequest,
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
