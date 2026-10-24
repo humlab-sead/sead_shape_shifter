@@ -1,5 +1,7 @@
 """Tests for entity API endpoints."""
 
+from unittest.mock import MagicMock
+
 import pandas as pd
 import pytest
 import yaml
@@ -7,7 +9,9 @@ from httpx import ASGITransport, AsyncClient
 
 from backend.app.core.config import settings
 from backend.app.main import app
+from backend.app.models.data_source import ColumnMetadata, TableSchema
 from backend.app.services import project_service, validation_service, yaml_service
+from backend.app.services.schema_service import SchemaIntrospectionService
 from src.reconciliation.mapping_manager import MappingManager
 
 # pylint: disable=redefined-outer-name, unused-argument
@@ -288,6 +292,87 @@ class TestEntitiesCreate:
         # Verify entity was added
         get_response = await authorized_client.get("/api/v1/projects/test_project/entities/new_entity")
         assert get_response.status_code == 200
+
+    async def test_generate_entity_from_shared_data_source_persists_entity(self, tmp_path, monkeypatch, reset_services, authorized_client):
+        """The table-generation endpoint resolves shared includes and persists the generated entity."""
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        shared_data_source_dir = tmp_path / "shared" / "data-sources"
+        shared_data_source_dir.mkdir(parents=True)
+        source_config = {
+            "driver": "sqlite",
+            "options": {"filename": str(tmp_path / "database.sqlite")},
+        }
+        (shared_data_source_dir / "sead-options.yml").write_text(yaml.safe_dump(source_config), encoding="utf-8")
+        monkeypatch.setattr(settings, "GLOBAL_DATA_SOURCE_DIR", shared_data_source_dir)
+        monkeypatch.setenv("SHAPE_SHIFTER_GLOBAL_DATA_SOURCE_DIR", str(shared_data_source_dir))
+
+        create_response = await authorized_client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "data_provider_code": "test-provider", "provider_schema": "schema-one", "entities": {}},
+        )
+        assert create_response.status_code == 201
+
+        project_service.get_project_service().save_options_boundary(
+            "test_project",
+            {"data_sources": {"sead": "@include: ${GLOBAL_DATA_SOURCE_DIR}/sead-options.yml"}},
+        )
+
+        schema_service_init = SchemaIntrospectionService.__init__
+        initialized_source_dirs = []
+
+        def track_schema_service_init(schema_service, data_source_dir):
+            initialized_source_dirs.append(data_source_dir)
+            schema_service_init(schema_service, data_source_dir)
+
+        async def get_table_schema(schema_service, data_source, table_name, schema=None):
+            assert data_source == source_config
+            assert table_name == "tbl_locations"
+            return TableSchema(
+                table_name=table_name,
+                schema_name=schema,
+                columns=[
+                    ColumnMetadata(
+                        name="location_id",
+                        data_type="integer",
+                        nullable=False,
+                        is_primary_key=True,
+                        default=None,
+                        max_length=None,
+                    ),
+                    ColumnMetadata(
+                        name="location_name",
+                        data_type="varchar",
+                        nullable=False,
+                        is_primary_key=False,
+                        default=None,
+                        max_length=255,
+                    ),
+                ],
+                row_count=1,
+            )
+
+        loader = MagicMock()
+        loader.quote_name.side_effect = lambda name: name
+        loader.qualify_name.side_effect = lambda *, schema, table: f"{schema}.{table}" if schema else table
+        monkeypatch.setattr(SchemaIntrospectionService, "__init__", track_schema_service_init)
+        monkeypatch.setattr(SchemaIntrospectionService, "get_table_schema", get_table_schema)
+        monkeypatch.setattr(SchemaIntrospectionService, "create_loader_for_data_source", lambda service, config: loader)
+
+        response = await authorized_client.post(
+            "/api/v1/projects/test_project/entities/generate-from-table",
+            json={"data_source": "sead", "table_name": "tbl_locations"},
+        )
+
+        assert response.status_code == 201, response.text
+        assert shared_data_source_dir in initialized_source_dirs
+        generated_entity = response.json()["entity_data"]
+        assert generated_entity["data_source"] == "sead"
+        assert generated_entity["query"] == "SELECT location_id, location_name FROM tbl_locations"
+
+        persisted_response = await authorized_client.get("/api/v1/projects/test_project/entities/tbl_locations")
+        assert persisted_response.status_code == 200
+        persisted_entity = persisted_response.json()["entity_data"]
+        assert {key: persisted_entity[key] for key in generated_entity} == generated_entity
 
     async def test_create_entity_rejects_invalid_name(self, tmp_path, monkeypatch, reset_services, sample_entity_data, authorized_client):
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)

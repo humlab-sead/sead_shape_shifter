@@ -250,6 +250,16 @@ class TestDataSourceService:
         assert config is not None
         assert config.name == "test"
 
+    def test_load_inline_data_source_with_explicit_name(self, service: DataSourceService):
+        """Test loading inline configuration while preserving its explicit name."""
+        config = service.load_data_source(
+            {"name": "inline_db", "driver": "sqlite", "options": {"filename": "database.sqlite"}},
+        )
+
+        assert config is not None
+        assert config.name == "inline_db"
+        assert config.driver == "sqlite"
+
     # Create data source tests
 
     def test_create_data_source_success(self, service: DataSourceService, sample_config: DataSourceConfig):

@@ -28,7 +28,7 @@ from src.transforms.extra_columns import ExtraColumnEvaluator
 from src.transforms.filter import apply_filters
 from src.transforms.link import ForeignKeyLinker
 from src.transforms.translate import translate
-from src.transforms.unnest import unnest
+from src.transforms.unnest import UnnestSkippedError, unnest
 from src.transforms.utility import add_system_id
 
 INTERNAL_DATA_SOURCE = "@internal"
@@ -118,6 +118,7 @@ class ShapeShifter:
         self.linker: ForeignKeyLinker = ForeignKeyLinker(table_store=self.table_store, project=self.project)
         self.extra_col_evaluator: ExtraColumnEvaluator = ExtraColumnEvaluator()
         self.unresolved_extra_columns: dict[str, dict[str, dict[str, Any]]] = {}
+        self.incomplete_entities: dict[str, str] = {}
         self.mapping_manager: MappingManager = MappingManager()
         self.mapping_catalog: MappingCatalog | None = None
 
@@ -190,10 +191,28 @@ class ShapeShifter:
                 entity: str | None = self.state.get_next_entity_to_process()
 
                 if entity is None:
+                    blocked_entities: dict[str, str] = {}
+                    for blocked_entity in self.state.unprocessed_entities:
+                        failed_dependencies = self.state.get_unmet_dependencies(blocked_entity) & self.incomplete_entities.keys()
+                        if failed_dependencies:
+                            dependency = sorted(failed_dependencies)[0]
+                            blocked_entities[blocked_entity] = (
+                                f"Skipped because prerequisite entity '{dependency}' is incomplete: {self.incomplete_entities[dependency]}"
+                            )
+                    if blocked_entities:
+                        for blocked_entity, reason in blocked_entities.items():
+                            self.incomplete_entities[blocked_entity] = reason
+                            self.state.mark_incomplete(blocked_entity)
+                        continue
+
                     self.state.log_unmet_dependencies()
                     raise ValueError(f"Circular or unresolved dependencies detected: {self.state.unprocessed_entities}")
 
-                await self._process_entity(entity, subset_service)
+                try:
+                    await self._process_entity(entity, subset_service)
+                except Exception as e:
+                    self.incomplete_entities[entity] = str(e)
+                    raise
 
             self._link_deferred_foreign_keys()
         finally:
@@ -251,8 +270,15 @@ class ShapeShifter:
                 stage="after_link",
             )
 
+        drop_empty_rows_applied: bool = False
         if table_cfg.unnest:
-            self.unnest_entity(entity=entity)
+            try:
+                self.unnest_entity(entity=entity)
+            except UnnestSkippedError:
+                self.table_store.pop(entity, None)
+                self.state.mark_incomplete(entity)
+                return
+            drop_empty_rows_applied = self._drop_empty_rows_if_ready(entity, table_cfg)
             self.linker.link_entity(entity_name=entity)
             # Re-evaluate deferred extra_columns after unnesting (in case unnest added new columns)
             deferred_extra_columns = self._evaluate_deferred_extra_columns(entity, deferred_extra_columns)
@@ -271,7 +297,7 @@ class ShapeShifter:
 
         self._check_duplicate_keys(entity, table_cfg)
 
-        if table_cfg.drop_empty_rows:
+        if table_cfg.drop_empty_rows and not drop_empty_rows_applied:
             self.table_store[entity] = drop_empty_rows(data=self.table_store[entity], entity_name=entity, subset=table_cfg.drop_empty_rows)
 
         # Add system_id if requested and not present (always uses "system_id" column name)
@@ -379,6 +405,20 @@ class ShapeShifter:
             # raise ValueError(f"{entity}[keys]: Duplicate keys found for keys {table_cfg.keys}.")
             logger.error(f"{entity}[keys]: DUPLICATE KEYS FOUND FOR KEYS {table_cfg.keys}.")
 
+    def _drop_empty_rows_if_ready(self, entity: str, table_cfg: TableConfig) -> bool:
+        """Drop configured empty rows before post-unnest FK validation when the subset is available."""
+        subset: bool | list[str] | dict[str, Any] = table_cfg.drop_empty_rows
+        if not subset or not isinstance(subset, (list, dict)):
+            return False
+
+        subset_columns = subset.keys() if isinstance(subset, dict) else subset
+        data: pd.DataFrame = self.table_store[entity]
+        if not set(subset_columns).issubset(data.columns):
+            return False
+
+        self.table_store[entity] = drop_empty_rows(data=data, entity_name=entity, subset=subset)
+        return True
+
     def _evaluate_deferred_extra_columns(self, entity_name: str, deferred_extra_columns: dict[str, Any]) -> dict[str, Any]:
         """Re-evaluate extra_columns that were deferred because their source columns were unavailable.
 
@@ -438,8 +478,13 @@ class ShapeShifter:
             table_cfg: TableConfig = self.project.get_table(entity)
             if table_cfg.unnest:
                 self.table_store[entity] = unnest(entity=entity, table=self.table_store[entity], table_cfg=table_cfg)
+        except UnnestSkippedError as e:
+            self.incomplete_entities[entity] = str(e)
+            raise
         except Exception as e:  # ldtype: ignore ; pylint: disable=broad-except
-            logger.error(f"Error unnesting entity {entity}: {e}")
+            self.incomplete_entities[entity] = str(e)
+            logger.exception(f"Error unnesting entity {entity}: {e}")
+            raise
         return self.table_store[entity]
 
     def translate(self, translations_map: dict[str, str]) -> Self:

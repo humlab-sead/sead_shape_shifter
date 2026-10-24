@@ -22,6 +22,23 @@ class DataValidationMode(str, Enum):
     COMPLETE = "complete"  # Full validation using complete normalized dataset
 
 
+class DataValidationStatus(str, Enum):
+    """Execution status for a data-validation run."""
+
+    COMPLETED = "completed"
+    PARTIAL = "partial"
+    FAILED = "failed"
+    SKIPPED = "skipped"
+
+
+class EntityDataValidationStatus(str, Enum):
+    """Execution status for one entity's data-validation checks."""
+
+    COMPLETED = "completed"
+    FAILED = "failed"
+    SKIPPED = "skipped"
+
+
 class ValidationPriority(str, Enum):
     """Priority level for validation checks."""
 
@@ -47,6 +64,13 @@ class ValidationError(BaseModel):
     auto_fixable: bool = Field(default=False, description="Whether this issue can be auto-fixed")
 
 
+class EntityDataValidationResult(BaseModel):
+    """Execution status and optional reason for one entity's data-validation checks."""
+
+    status: EntityDataValidationStatus
+    reason: str | None = None
+
+
 class ValidationResult(BaseModel):
     """Result of configuration validation."""
 
@@ -57,6 +81,11 @@ class ValidationResult(BaseModel):
     error_count: int = Field(default=0, description="Number of errors")
     warning_count: int = Field(default=0, description="Number of warnings")
     validation_mode: DataValidationMode | None = Field(default=None, description="Data validation mode used")
+    status: DataValidationStatus | None = Field(default=None, description="Execution status for data validation")
+    status_reason: str | None = Field(default=None, description="Reason data validation failed or was skipped")
+    entity_statuses: dict[str, EntityDataValidationResult] = Field(
+        default_factory=dict, description="Execution status and reason for each entity"
+    )
 
     @model_validator(mode="after")
     def calculate_counts(self) -> "ValidationResult":
