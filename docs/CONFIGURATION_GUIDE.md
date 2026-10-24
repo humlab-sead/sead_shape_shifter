@@ -101,6 +101,8 @@ metadata:
 
 Choose a pair from the project creation dialog. An existing unbound project can receive its first pair in the Metadata tab. After the first successful assignment, both codes are shown as fixed values. Editing project YAML directly does not bypass the save rule and requires repository review.
 
+Once a project is bound, its entities must keep the same resolved ordered Business Keys. Replacing a Business Keys reference with literal names is allowed when both resolve to the exact same ordered list. A different list or order remains blocked, and an unresolved reference cannot be replaced because the service cannot confirm that the keys match. Changing key meaning requires a new provider schema code or an explicit identity migration.
+
 ### Examples
 
 **Minimal Metadata:**

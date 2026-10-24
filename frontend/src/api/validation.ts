@@ -2,7 +2,7 @@
  * API service for validation and dependency analysis
  */
 
-import type { ValidationResult, DependencyGraph, CircularDependencyCheck } from '@/types'
+import type { ValidationResult, DependencyGraph, CircularDependencyCheck, DraftEntityValidationRequest } from '@/types'
 import { apiRequest } from './client'
 
 /**
@@ -16,6 +16,21 @@ export const validationApi = {
     return apiRequest<ValidationResult>({
       method: 'POST',
       url: `/projects/${projectName}/entities/${entityName}/validate`,
+    })
+  },
+
+  /**
+   * Validate an unsaved entity draft without changing the project.
+   */
+  validateEntityDraft: async (
+    projectName: string,
+    entityName: string,
+    request: DraftEntityValidationRequest
+  ): Promise<ValidationResult> => {
+    return apiRequest<ValidationResult>({
+      method: 'POST',
+      url: `/projects/${projectName}/entities/${entityName}/validate-draft`,
+      data: request,
     })
   },
 

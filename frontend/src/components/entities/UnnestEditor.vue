@@ -10,6 +10,9 @@
         :entity-name="entityName"
         :entity-draft="entityDraft"
         :disabled="referenceControlsDisabled"
+        :validation-issues="idVarValidationIssues"
+        :validation-loading="validationLoading"
+        :validation-error="validationError"
         :edited-field-path="`entities.${entityName}.unnest.id_vars`"
         label="ID Variables"
         hint="Columns to keep as-is"
@@ -17,6 +20,8 @@
         variant="outlined"
         density="compact"
         class="mb-4"
+        @inspect-reference="emit('inspect-reference')"
+        @replace-reference="emit('replace-reference', $event)"
       />
 
       <column-reference-combobox
@@ -26,6 +31,9 @@
         :entity-name="entityName"
         :entity-draft="entityDraft"
         :disabled="referenceControlsDisabled"
+        :validation-issues="valueVarValidationIssues"
+        :validation-loading="validationLoading"
+        :validation-error="validationError"
         :edited-field-path="`entities.${entityName}.unnest.value_vars`"
         label="Value Variables"
         hint="Columns to unpivot"
@@ -33,6 +41,8 @@
         variant="outlined"
         density="compact"
         class="mb-4"
+        @inspect-reference="emit('inspect-reference')"
+        @replace-reference="emit('replace-reference', $event)"
       />
 
       <v-text-field
@@ -87,6 +97,10 @@ interface Props {
   entityName?: string
   entityDraft?: Record<string, unknown>
   referenceControlsDisabled?: boolean
+  idVarValidationIssues?: import('@/types').ValidationError[]
+  valueVarValidationIssues?: import('@/types').ValidationError[]
+  validationLoading?: boolean
+  validationError?: string | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -94,10 +108,16 @@ const props = withDefaults(defineProps<Props>(), {
   entityName: '',
   entityDraft: () => ({}),
   referenceControlsDisabled: false,
+  idVarValidationIssues: () => [],
+  valueVarValidationIssues: () => [],
+  validationLoading: false,
+  validationError: null,
 })
 
 const emit = defineEmits<{
   'update:modelValue': [value: UnnestConfig | null]
+  'inspect-reference': []
+  'replace-reference': [replacement: { fieldPath: string; before: string[]; after: string[] }]
 }>()
 
 function cloneUnnest(value?: UnnestConfig | null): UnnestConfig {
@@ -127,6 +147,10 @@ const projectName = computed(() => props.projectName)
 const entityName = computed(() => props.entityName)
 const entityDraft = computed(() => props.entityDraft)
 const referenceControlsDisabled = computed(() => props.referenceControlsDisabled)
+const idVarValidationIssues = computed(() => props.idVarValidationIssues)
+const valueVarValidationIssues = computed(() => props.valueVarValidationIssues)
+const validationLoading = computed(() => props.validationLoading)
+const validationError = computed(() => props.validationError)
 
 watch(
   [unnestEnabled, unnest],

@@ -31,7 +31,7 @@ const ReferenceComboboxStub = {
     'preferredEntity',
     'disabled',
   ],
-  emits: ['update:modelValue'],
+  emits: ['update:modelValue', 'inspect-reference', 'replace-reference'],
   template: '<div class="column-reference-combobox-stub" />',
 }
 
@@ -56,6 +56,62 @@ const controlStubs = {
 }
 
 describe('ForeignKeyEditor', () => {
+  it('forwards inspection and replacement events from local and remote key controls', async () => {
+    const wrapper = shallowMount(ForeignKeyEditor, {
+      props: {
+        modelValue: [{ entity: 'site', local_keys: ['local'], remote_keys: ['remote'], how: 'inner' }],
+        projectName: 'demo',
+        entityName: 'sample',
+      },
+      global: { renderStubDefaultSlot: true, stubs: controlStubs },
+    })
+    const references = wrapper.findAllComponents({ name: 'ColumnReferenceCombobox' })
+    const replacement = {
+      fieldPath: 'entities.sample.foreign_keys.0.local_keys',
+      before: ['@value: entities.site.keys'],
+      after: ['site_id'],
+    }
+
+    references[0]?.vm.$emit('inspect-reference')
+    references[0]?.vm.$emit('replace-reference', replacement)
+    references[1]?.vm.$emit('inspect-reference')
+
+    expect(wrapper.emitted('inspect-reference')).toHaveLength(2)
+    expect(wrapper.emitted('replace-reference')?.[0]?.[0]).toEqual(replacement)
+  })
+
+  it('preserves ordered duplicate columns when a local or remote reference is replaced', async () => {
+    const reference = '@value: entities.site.keys'
+    const wrapper = shallowMount(ForeignKeyEditor, {
+      props: {
+        modelValue: [
+          { entity: 'site', local_keys: ['before', reference, 'after'], remote_keys: [reference], how: 'inner' },
+        ],
+        projectName: 'demo',
+        entityName: 'sample',
+      },
+      global: { renderStubDefaultSlot: true, stubs: controlStubs },
+    })
+    const references = wrapper.findAllComponents({ name: 'ColumnReferenceCombobox' })
+    const expandedColumns = ['a', 'b', 'a']
+
+    for (const [index, key] of ['local_keys', 'remote_keys'].entries()) {
+      const before = (references[index]?.props('modelValue') as string[]) ?? []
+      const after = index === 0 ? ['before', ...expandedColumns, 'after'] : expandedColumns
+      references[index]?.vm.$emit('update:modelValue', after)
+      references[index]?.vm.$emit('replace-reference', {
+        fieldPath: `entities.sample.foreign_keys.0.${key}`,
+        before,
+        after,
+      })
+      await flushPromises()
+
+      const emitted = wrapper.emitted('update:modelValue')?.at(-1)?.[0] as Array<Record<string, unknown>> | undefined
+      expect(emitted?.[0]?.[key]).toEqual(after)
+      expect(references[index]?.props('modelValue')).toEqual(after)
+    }
+  })
+
   it('allows testing an existing entity foreign key draft without saving', async () => {
     const wrapper = shallowMount(ForeignKeyEditor, {
       props: {

@@ -58,6 +58,174 @@ class TestEntityValidation:
         assert "errors" in data
         assert "warnings" in data
 
+    async def test_validate_entity_draft_uses_nested_draft_references_and_does_not_save(
+        self, tmp_path, monkeypatch, reset_services, authorized_client
+    ):
+        """Validate nested references from the submitted entity and preserve the saved entity."""
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        project_name = "draft_validation"
+        created = await authorized_client.post(
+            "/api/v1/projects",
+            json={
+                "name": project_name,
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {
+                    "site": {"type": "entity", "keys": ["site_id"], "columns": ["site_id"]},
+                    "source": {
+                        "type": "entity",
+                        "keys": "@value: entities.site.keys",
+                        "columns": ["site_id", "shared"],
+                    },
+                    "sample": {"type": "entity", "keys": ["saved"], "columns": ["saved"]},
+                },
+            },
+        )
+        assert created.status_code == 201
+
+        response = await authorized_client.post(
+            f"/api/v1/projects/{project_name}/entities/sample/validate-draft",
+            json={
+                "entity_draft": {
+                    "type": "entity",
+                    "keys": ["draft_missing"],
+                    "columns": "@value: entities.source.keys",
+                    "unnest": {
+                        "id_vars": ["shared"],
+                        "value_vars": ["shared"],
+                        "var_name": "kind",
+                        "value_name": "value",
+                    },
+                }
+            },
+        )
+
+        assert response.status_code == 200
+        result = response.json()
+        missing_key = next(error for error in result["errors"] if error["code"] == "BUSINESS_KEY_NOT_PRODUCED")
+        overlap = next(warning for warning in result["warnings"] if warning["code"] == "UNNEST_VARIABLE_OVERLAP")
+        assert missing_key["entity"] == "sample"
+        assert missing_key["related_columns"] == ["draft_missing"]
+        assert overlap["entity"] == "sample"
+        assert overlap["related_columns"] == ["shared"]
+
+        saved = await authorized_client.get(f"/api/v1/projects/{project_name}/entities/sample")
+        assert saved.status_code == 200
+        assert saved.json()["entity_data"]["keys"] == ["saved"]
+        assert saved.json()["entity_data"]["columns"] == ["saved"]
+
+    async def test_validate_entity_draft_rename_keeps_saved_entity(self, tmp_path, monkeypatch, reset_services, authorized_client):
+        """Apply the draft under its new name in the copied project only."""
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        project_name = "draft_validation_rename"
+        created = await authorized_client.post(
+            "/api/v1/projects",
+            json={
+                "name": project_name,
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {"sample": {"type": "entity", "keys": ["saved"], "columns": ["saved"]}},
+            },
+        )
+        assert created.status_code == 201
+
+        response = await authorized_client.post(
+            f"/api/v1/projects/{project_name}/entities/renamed/validate-draft",
+            json={
+                "original_entity_name": "sample",
+                "entity_draft": {"type": "entity", "keys": ["draft_missing"], "columns": ["present"]},
+            },
+        )
+
+        assert response.status_code == 200
+        missing_key = next(error for error in response.json()["errors"] if error["code"] == "BUSINESS_KEY_NOT_PRODUCED")
+        assert missing_key["entity"] == "renamed"
+        assert missing_key["related_columns"] == ["draft_missing"]
+        saved = await authorized_client.get(f"/api/v1/projects/{project_name}/entities/sample")
+        assert saved.status_code == 200
+        assert saved.json()["entity_data"]["keys"] == ["saved"]
+        missing_renamed_entity = await authorized_client.get(f"/api/v1/projects/{project_name}/entities/renamed")
+        assert missing_renamed_entity.status_code == 404
+
+    async def test_validate_entity_draft_reports_reference_and_mapping_errors(
+        self, tmp_path, monkeypatch, reset_services, authorized_client
+    ):
+        """Keep unresolved draft references and mapper failures in the validation response."""
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        project_name = "draft_validation_errors"
+        created = await authorized_client.post(
+            "/api/v1/projects",
+            json={
+                "name": project_name,
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {"sample": {"type": "entity", "keys": ["saved"], "columns": ["saved"]}},
+            },
+        )
+        assert created.status_code == 201
+
+        unresolved = await authorized_client.post(
+            f"/api/v1/projects/{project_name}/entities/sample/validate-draft",
+            json={
+                "entity_draft": {
+                    "type": "entity",
+                    "keys": ["sample_id"],
+                    "columns": "@value: entities.missing.keys",
+                }
+            },
+        )
+        assert unresolved.status_code == 200
+        assert any(error["code"] == "COLUMN_REFERENCE_MISSING_PATH" for error in unresolved.json()["errors"])
+
+        from backend.app.services import validation_service as validation_service_module
+
+        monkeypatch.setattr(validation_service_module.ProjectMapper, "to_core", lambda *_args, **_kwargs: (_ for _ in ()).throw(ValueError("mapping failed")))
+        mapping_failure = await authorized_client.post(
+            f"/api/v1/projects/{project_name}/entities/sample/validate-draft",
+            json={"entity_draft": {"type": "entity", "keys": ["sample_id"], "columns": ["sample_id"]}},
+        )
+        assert mapping_failure.status_code == 200
+        assert any(error["code"] == "PROJECT_RESOLUTION_FAILED" for error in mapping_failure.json()["errors"])
+
+    async def test_validate_entity_draft_requires_read_access_and_documents_contract(
+        self, tmp_path, monkeypatch, reset_services, authorized_client
+    ):
+        """Require project read access and publish the request and response models."""
+        from backend.app.main import app
+
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        created = await authorized_client.post(
+            "/api/v1/projects",
+            json={
+                "name": "draft_validation_access",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {"sample": {"type": "entity", "keys": ["sample_id"], "columns": ["sample_id"]}},
+            },
+        )
+        assert created.status_code == 201
+
+        from backend.app.authorization.service import AuthorizationService
+
+        monkeypatch.setattr(AuthorizationService, "authorize", lambda *_args, **_kwargs: None)
+
+        denied = await authorized_client.post(
+            "/api/v1/projects/draft_validation_access/entities/sample/validate-draft",
+            json={"entity_draft": {"type": "entity", "keys": [], "columns": []}},
+        )
+        assert denied.status_code == 404
+        missing = await authorized_client.post(
+            "/api/v1/projects/missing_project/entities/sample/validate-draft",
+            json={"entity_draft": {"type": "entity", "keys": [], "columns": []}},
+        )
+        assert missing.status_code == 404
+
+        operation = app.openapi()["paths"]["/api/v1/projects/{name}/entities/{entity_name}/validate-draft"]["post"]
+        request_schema = operation["requestBody"]["content"]["application/json"]["schema"]["$ref"]
+        response_schema = operation["responses"]["200"]["content"]["application/json"]["schema"]["$ref"]
+        assert request_schema.endswith("/DraftEntityValidationRequest")
+        assert response_schema.endswith("/ValidationResult")
+
     async def test_validate_entity_preserves_raw_reference_when_mapping_fails(
         self, tmp_path, monkeypatch, reset_services, authorized_client
     ):

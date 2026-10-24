@@ -1501,6 +1501,8 @@ class UnnestColumnsSpecification(ProjectSpecification):
                     "Overlapping columns will be kept as identifiers and excluded from the melted values.",
                     entity=entity_name,
                     field="unnest.value_vars",
+                    code="UNNEST_VARIABLE_OVERLAP",
+                    related_columns=sorted(overlap),
                 )
 
         # Get all columns available when unnest runs (after FK linking)

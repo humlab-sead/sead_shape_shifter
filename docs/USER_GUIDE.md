@@ -394,6 +394,14 @@ Shortcut:
 
 ---
 
+## Inspect Column References
+
+When a column list contains an `@value` reference, open its chip's menu and choose **Inspect** to see the columns it currently resolves to. The editor shows a matching business-key error or unnest overlap warning beside the affected column names. Findings under **Saved project findings** describe the last saved validation; they do not describe unsaved edits.
+
+For a resolved simple reference, choose **Replace with columns** to save the current column names in that list. This is a snapshot: later changes to the source entity will not update those names. Choose **Undo** before saving to restore the reference. Editing that list or saving clears the Undo action. On projects bound to a provider schema, replacing a **Business Keys** reference with the exact same ordered key names can be saved. A different key list or order is blocked; changing key meaning requires a new provider schema code or an explicit identity migration. An unresolved reference also remains blocked because the editor cannot confirm that the literal names match.
+
+---
+
 ## Reshape Data with Unnest
 
 Use the **Unnest** tab to turn wide data (one column per measurement) into long data (one row per measurement). It reshapes the table with a melt operation.

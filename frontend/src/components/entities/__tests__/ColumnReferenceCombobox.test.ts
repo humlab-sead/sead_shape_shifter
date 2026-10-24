@@ -38,10 +38,11 @@ const ComboboxStub = {
         {{ item }}
       </button>
       <slot
-        v-for="item in modelValue"
+        v-for="(item, index) in modelValue"
         name="chip"
-        :key="item"
+        :key="index"
         :item="{ value: item, title: item }"
+        :index="index"
         :props="{ text: item }"
       />
       <slot name="message" />
@@ -189,6 +190,70 @@ describe('ColumnReferenceCombobox', () => {
       'first',
     ])
     expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+    expect(wrapper.emitted('inspect-reference')).toHaveLength(1)
+  })
+
+  it('marks overlapping expanded columns and replaces only the inspected duplicate chip', async () => {
+    const directive = '@value: entities.site.keys'
+    apiMocks.resolve.mockResolvedValue({
+      directive,
+      path: 'entities.site.keys',
+      status: 'resolved',
+      columns: ['shared', 'other', 'shared'],
+    })
+    const wrapper = mountPicker({
+      ...baseProps,
+      modelValue: ['before', directive, directive, 'after'],
+      validationIssues: [
+        {
+          severity: 'warning',
+          entity: 'sample',
+          field: 'unnest.value_vars',
+          message: 'The ID and Value Variables overlap.',
+          code: 'UNNEST_VARIABLE_OVERLAP',
+          related_columns: ['shared'],
+        },
+      ],
+    } as typeof baseProps & { modelValue: string[] })
+
+    const inspectButtons = wrapper.findAll(`button[aria-label="Inspect ${directive}"]`)
+    await inspectButtons[1]?.trigger('click')
+    await flushPromises()
+
+    const expandedRows = wrapper.findAll('[data-testid="reference-inspection"] li')
+    expect(expandedRows).toHaveLength(3)
+    expect(expandedRows[0]?.text()).toContain('warning')
+    expect(expandedRows[0]?.text()).toContain('The ID and Value Variables overlap.')
+    expect(expandedRows[1]?.text()).toBe('other')
+    expect(expandedRows[2]?.text()).toContain('warning')
+    expect(wrapper.text()).toContain('will not follow later source changes')
+
+    await wrapper.get('[data-testid="replace-reference"]').trigger('click')
+    expect(wrapper.emitted('update:modelValue')?.[0]?.[0]).toEqual([
+      'before',
+      directive,
+      'shared',
+      'other',
+      'shared',
+      'after',
+    ])
+    expect(wrapper.emitted('replace-reference')?.[0]?.[0]).toEqual({
+      fieldPath: 'entities.sample.keys',
+      before: ['before', directive, directive, 'after'],
+      after: ['before', directive, 'shared', 'other', 'shared', 'after'],
+    })
+  })
+
+  it('allows replacing a resolved reference that returns no columns', async () => {
+    const directive = '@value: entities.site.columns'
+    apiMocks.resolve.mockResolvedValue({ directive, path: 'entities.site.columns', status: 'resolved', columns: [] })
+    const wrapper = mountPicker({ ...baseProps, modelValue: ['before', directive, 'after'] })
+
+    await wrapper.get(`button[aria-label="Inspect ${directive}"]`).trigger('click')
+    await flushPromises()
+    await wrapper.get('[data-testid="replace-reference"]').trigger('click')
+
+    expect(wrapper.emitted('update:modelValue')?.[0]?.[0]).toEqual(['before', 'after'])
   })
 
   it('checks a manually committed path and displays unresolved and request errors separately', async () => {

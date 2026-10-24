@@ -145,6 +145,7 @@
             <entity-list-card
               :project-name="projectName"
               :entity-to-edit="entityToEdit"
+              :saved-validation-result="savedStructuralValidationResult"
               @entity-updated="handleEntityUpdated"
               @entity-edit-request-consumed="handleEntityEditRequestConsumed"
             />
@@ -919,6 +920,7 @@
       v-model="entityStore.showEditorOverlay"
       :project-name="projectName"
       :entity="overlayEntity"
+      :saved-validation-result="savedStructuralValidationResult"
       :initial-tab="entityStore.overlayInitialTab"
       mode="edit"
       @saved="handleOverlayEntitySaved"
@@ -952,7 +954,7 @@ import { useSession } from '@/composables/useSession'
 import { getTaskStatusNodeClasses, shouldShowNodeForTaskFilter } from '@/utils/taskGraph'
 import { useEntityStore } from '@/stores/entity'
 import { useTaskStatusStore } from '@/stores/taskStatus'
-import type { CustomGraphLayout } from '@/types'
+import type { CustomGraphLayout, ValidationResult } from '@/types'
 import type { GraphColorByMode } from '@/utils/taskGraph'
 import type { TaskFilter } from '@/components/dependencies/TaskFilterDropdown.vue'
 import EntityListCard from '@/components/entities/EntityListCard.vue'
@@ -1039,10 +1041,15 @@ const {
   warningCount,
   validate,
   validateEntity,
+  lastValidatedProject,
 } = useValidation({
   projectName: projectName.value,
   autoValidate: false,
 })
+
+const savedStructuralValidationResult = computed<ValidationResult | null>(() =>
+  lastValidatedProject.value === projectName.value ? validationResult.value : null
+)
 
 const {
   loading: dataValidationLoading,

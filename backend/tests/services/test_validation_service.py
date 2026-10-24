@@ -371,6 +371,36 @@ class TestValidationServiceEntity:
         assert result.is_valid is True
         assert result.error_count == 0
 
+    def test_validate_entity_returns_structured_affected_columns(self, validation_service):
+        """Keep existing issue messages and severity while exposing affected columns."""
+        project = Project(
+            metadata=ProjectMetadata(name="test", entity_count=1),
+            entities={
+                "sample": {
+                    "type": "entity",
+                    "keys": ["missing"],
+                    "columns": ["present", "shared"],
+                    "unnest": {
+                        "id_vars": ["shared"],
+                        "value_vars": ["shared"],
+                        "var_name": "kind",
+                        "value_name": "value",
+                    },
+                }
+            },
+        )
+
+        result = validation_service.validate_entity(project, "sample")
+
+        missing_key = next(error for error in result.errors if error.code == "BUSINESS_KEY_NOT_PRODUCED")
+        overlap = next(warning for warning in result.warnings if warning.code == "UNNEST_VARIABLE_OVERLAP")
+        assert missing_key.severity == "error"
+        assert missing_key.related_columns == ["missing"]
+        assert "key column(s) ['missing'] are not produced" in missing_key.message
+        assert overlap.severity == "warning"
+        assert overlap.related_columns == ["shared"]
+        assert "same columns in both id_vars and value_vars: ['shared']" in overlap.message
+
     def test_validate_entity_with_errors(self, validation_service: ValidationService):
         """Test validating entity with errors."""
         entity_data = {

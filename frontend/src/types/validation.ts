@@ -22,10 +22,16 @@ export interface ValidationError {
   field?: string | null
   message: string
   code?: string | null
+  related_columns?: string[] | null
   suggestion?: string | null
   category?: ValidationCategory
   priority?: ValidationPriority
   auto_fixable?: boolean
+}
+
+export interface DraftEntityValidationRequest {
+  entity_draft: Record<string, unknown>
+  original_entity_name?: string | null
 }
 
 export interface ValidationBranchGroup {

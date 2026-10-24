@@ -16,7 +16,7 @@
       @update:model-value="handleModelUpdate"
       @update:search="handleSearchUpdate"
     >
-      <template #chip="{ props: chipProps, item }">
+      <template #chip="{ props: chipProps, item, index }">
         <v-chip v-bind="chipProps" size="small">
           <span>{{ chipText(item) }}</span>
           <template v-if="isSimpleColumnReference(chipText(item))" #append>
@@ -26,7 +26,7 @@
               variant="text"
               :disabled="disabled"
               :aria-label="`Inspect ${chipText(item)}`"
-              @click.stop.prevent="inspect(chipText(item))"
+              @click.stop.prevent="inspect(chipText(item), index)"
             />
           </template>
         </v-chip>
@@ -75,9 +75,42 @@
       </v-alert>
       <template v-else-if="inspection?.status === 'resolved'">
         <ol v-if="inspection.columns?.length" class="column-reference-list">
-          <li v-for="(column, index) in inspection.columns" :key="`${index}:${column}`">{{ column }}</li>
+          <li v-for="(column, index) in inspection.columns" :key="`${index}:${column}`">
+            <span>{{ column }}</span>
+            <div v-for="issue in issuesForColumn(column)" :key="`${issue.code}:${issue.message}`" class="mt-1">
+              <v-chip
+                size="x-small"
+                class="mr-1"
+                :color="issue.severity === 'error' ? 'error' : issue.severity === 'warning' ? 'warning' : 'info'"
+              >
+                {{ issue.severity }}
+              </v-chip>
+              <span class="text-caption">{{ issue.message }}</span>
+            </div>
+          </li>
         </ol>
         <div v-else class="text-caption">This reference returns no columns.</div>
+        <v-alert v-if="validationLoading" type="info" variant="tonal" density="compact" class="mt-2">
+          Checking current draft findings…
+        </v-alert>
+        <v-alert
+          v-if="validationError"
+          type="error"
+          variant="tonal"
+          density="compact"
+          class="mt-2"
+          data-testid="draft-validation-error"
+        >
+          Could not read current draft findings: {{ validationError }}
+        </v-alert>
+        <template v-if="canReplaceInspectedReference">
+          <p class="text-caption mt-2 mb-1">
+            Replacing this reference saves these column names as a snapshot. They will not follow later source changes.
+          </p>
+          <v-btn size="small" variant="tonal" data-testid="replace-reference" @click="replaceInspectedReference">
+            Replace with columns
+          </v-btn>
+        </template>
       </template>
       <v-alert v-else-if="inspection" type="warning" variant="tonal" density="compact">
         {{ inspection.reason || 'This reference could not be resolved.' }}
@@ -88,6 +121,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, ref, useAttrs, watch } from 'vue'
+import type { ValidationError } from '@/types'
 import type { ColumnReferenceContext } from '@/composables/useColumnReferences'
 import { isSimpleColumnReference, useColumnReferences } from '@/composables/useColumnReferences'
 
@@ -102,21 +136,30 @@ interface Props {
   editedFieldPath: string
   preferredEntity?: string
   disabled?: boolean
+  validationIssues?: ValidationError[]
+  validationLoading?: boolean
+  validationError?: string | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
   preferredEntity: undefined,
   disabled: false,
+  validationIssues: () => [],
+  validationLoading: false,
+  validationError: null,
 })
 
 const emit = defineEmits<{
   'update:modelValue': [value: string[]]
+  'inspect-reference': []
+  'replace-reference': [replacement: { fieldPath: string; before: string[]; after: string[] }]
 }>()
 
 const attrs = useAttrs()
 const combobox = ref<{ focus?: () => void } | null>(null)
 const search = ref('')
 const pendingManualDirective = ref<string | null>(null)
+const inspectionIndex = ref<number | null>(null)
 const referenceState = useColumnReferences()
 
 const context = computed<ColumnReferenceContext>(() => ({
@@ -158,6 +201,7 @@ watch(
   contextKey,
   () => {
     referenceState.clear()
+    inspectionIndex.value = null
     if (!props.disabled && search.value.trim().startsWith('@value')) {
       referenceState.scheduleCompletion(context.value, search.value)
     }
@@ -174,6 +218,22 @@ function normalizeValues(value: unknown): string[] {
     }
     return String(item)
   })
+}
+
+const canReplaceInspectedReference = computed(() => {
+  const index = inspectionIndex.value
+  return (
+    !props.disabled &&
+    !!props.editedFieldPath &&
+    index !== null &&
+    props.modelValue[index] === inspectionDirective.value &&
+    isSimpleColumnReference(inspectionDirective.value ?? '') &&
+    inspection?.value?.status === 'resolved'
+  )
+})
+
+function issuesForColumn(column: string): ValidationError[] {
+  return props.validationIssues.filter((issue) => issue.related_columns?.includes(column))
 }
 
 function isIncompleteReferenceEntry(value: string): boolean {
@@ -221,6 +281,7 @@ async function handleModelUpdate(value: unknown): Promise<void> {
   }
 
   referenceState.clearInspection()
+  inspectionIndex.value = null
   const manuallyEntered = addedValues.find((item) => isSimpleColumnReference(item) && !candidates.value.includes(item))
   search.value = ''
   pendingManualDirective.value = manuallyEntered ?? null
@@ -229,15 +290,29 @@ async function handleModelUpdate(value: unknown): Promise<void> {
   if (manuallyEntered) {
     await nextTick()
     if (props.modelValue.includes(manuallyEntered) && !props.disabled) {
-      await referenceState.resolveReference(context.value, manuallyEntered)
+      inspect(manuallyEntered, nextValues.lastIndexOf(manuallyEntered))
     }
     pendingManualDirective.value = null
   }
 }
 
-function inspect(directive: string): void {
+function inspect(directive: string, index: number): void {
   if (props.disabled || !isSimpleColumnReference(directive)) return
+  inspectionIndex.value = index
+  emit('inspect-reference')
   void referenceState.resolveReference(context.value, directive)
+}
+
+function replaceInspectedReference(): void {
+  if (!canReplaceInspectedReference.value || inspectionIndex.value === null) return
+
+  const before = [...props.modelValue]
+  const after = [...before]
+  after.splice(inspectionIndex.value, 1, ...(inspection.value?.columns ?? []))
+  emit('update:modelValue', after)
+  emit('replace-reference', { fieldPath: props.editedFieldPath, before, after: [...after] })
+  inspectionIndex.value = null
+  referenceState.clearInspection()
 }
 
 async function beginReferenceEntry(): Promise<void> {

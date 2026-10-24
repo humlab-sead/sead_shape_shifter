@@ -2,6 +2,7 @@
 
 import threading
 from contextlib import ExitStack, nullcontext
+from copy import deepcopy
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -430,7 +431,8 @@ class ProjectService:
     def validate_project_file_write(self, file_path: Path, candidate_config: dict[str, Any]) -> None:
         """Check candidate metadata and key declarations against the current project file.
 
-        A bound project keeps its provider-schema pair and its declared business keys.
+        A bound project keeps its provider-schema pair and the resolved ordered list of
+        business keys for each entity.
         Both checks run before the file is written, so a rejected write has no effect.
         """
         current_config: dict[str, Any] | None = None
@@ -442,14 +444,15 @@ class ProjectService:
             current_metadata = raw_metadata if isinstance(raw_metadata, dict) else {}
         candidate_metadata = candidate_config.get("metadata") if isinstance(candidate_config, dict) else None
         self.provider_binding_service.validate_write(current_metadata, candidate_metadata)
-        self._validate_business_key_write(current_config, candidate_config)
+        self._validate_business_key_write(current_config, candidate_config, file_path)
 
     def _validate_business_key_write(
         self,
         current_config: dict[str, Any] | None,
         candidate_config: dict[str, Any],
+        file_path: Path,
     ) -> None:
-        """Reject a tracked business-key declaration change on a bound project."""
+        """Reject key edits that change or cannot confirm ordered keys on a bound project."""
         if not isinstance(current_config, dict) or not isinstance(candidate_config, dict):
             return
 
@@ -462,26 +465,86 @@ class ProjectService:
         if not isinstance(current_entities, dict) or not isinstance(candidate_entities, dict):
             return
 
+        project_dir = file_path.resolve().parent.relative_to(self.projects_dir.resolve()).as_posix()
+        project_name = ProjectNameMapper.to_api_name(project_dir)
         errors: list[ValidationError] = []
         for entity_name, current_entity in current_entities.items():
             candidate_entity = candidate_entities.get(entity_name)
             if not isinstance(candidate_entity, dict):
                 continue
-            errors.extend(_key_declaration_errors(entity_name, current_entity, candidate_entity))
+            errors.extend(
+                self._business_key_change_errors(
+                    entity_name,
+                    current_entity,
+                    candidate_entity,
+                    current_config,
+                    candidate_config,
+                    file_path,
+                    project_name,
+                )
+            )
 
-        errors.extend(self._shared_pair_key_errors(current_metadata, candidate_entities))
+        errors.extend(self._shared_pair_key_errors(current_metadata, candidate_config, file_path, project_name))
         if errors:
             raise ProjectProviderBindingError(errors)
+
+    def _business_key_change_errors(
+        self,
+        entity_name: str,
+        current_entity: dict[str, Any],
+        candidate_entity: dict[str, Any],
+        current_config: dict[str, Any],
+        candidate_config: dict[str, Any],
+        file_path: Path,
+        project_name: str,
+    ) -> list[ValidationError]:
+        """Allow a changed key declaration only when it resolves to the same ordered columns."""
+        current_keys = _ordered_keys(current_entity)
+        candidate_keys = _ordered_keys(candidate_entity)
+        if current_keys == candidate_keys or (not current_keys and not candidate_keys):
+            return []
+
+        current_resolved = self._resolve_business_keys(current_config, entity_name, file_path, project_name)
+        candidate_resolved = self._resolve_business_keys(candidate_config, entity_name, file_path, project_name)
+        if current_resolved is not None and current_resolved == candidate_resolved:
+            return []
+
+        return _key_declaration_errors(entity_name, current_entity, candidate_entity)
+
+    @staticmethod
+    def _resolve_business_keys(
+        project_config: dict[str, Any],
+        entity_name: str,
+        file_path: Path,
+        project_name: str,
+    ) -> tuple[str, ...] | None:
+        """Resolve one entity's declared keys through the API-to-Core mapper."""
+        try:
+            api_project = ProjectMapper.to_api_config(deepcopy(project_config), project_name, str(file_path))
+            core_project = ProjectMapper.to_core(api_project, requested_reference_path=f"entities.{entity_name}.keys")
+            entities = core_project.cfg.get("entities")
+            entity = entities.get(entity_name) if isinstance(entities, dict) else None
+            if not isinstance(entity, dict):
+                return None
+            return _ordered_keys(entity)
+        except Exception as error:  # pylint: disable=broad-exception-caught
+            logger.debug("Could not resolve business keys for project '{}' entity '{}': {}", project_name, entity_name, error)
+            return None
 
     def _shared_pair_key_errors(
         self,
         metadata: Any,
-        candidate_entities: dict[str, Any],
+        candidate_config: dict[str, Any],
+        candidate_file_path: Path,
+        candidate_project_name: str,
     ) -> list[ValidationError]:
-        """Reject key declarations that disagree with a project on the same provider schema."""
+        """Reject different or unresolved ordered keys on the same provider schema."""
         if not isinstance(metadata, dict):
             return []
         pair = (metadata.get("data_provider_code"), metadata.get("provider_schema"))
+        candidate_entities = candidate_config.get("entities")
+        if not isinstance(candidate_entities, dict):
+            return []
 
         errors: list[ValidationError] = []
         for sibling in self.list_projects():
@@ -497,6 +560,21 @@ class ProjectService:
                     continue
                 if _ordered_keys(sibling_entity) == _ordered_keys(candidate_entity):
                     continue
+                sibling_file_path = Path(sibling.file_path)
+                sibling_keys = self._resolve_business_keys(
+                    sibling_config,
+                    entity_name,
+                    sibling_file_path,
+                    sibling.name,
+                )
+                candidate_keys = self._resolve_business_keys(
+                    candidate_config,
+                    entity_name,
+                    candidate_file_path,
+                    candidate_project_name,
+                )
+                if sibling_keys is not None and sibling_keys == candidate_keys:
+                    continue
                 errors.append(
                     ValidationError(
                         severity="error",
@@ -504,8 +582,8 @@ class ProjectService:
                         field=f"entities.{entity_name}.keys",
                         message=(
                             f"Project '{sibling.name}' shares provider-schema pair "
-                            f"'{pair[0]}' / '{pair[1]}' and declares different business keys for "
-                            f"'{entity_name}'; a shared scope needs one reviewed key meaning."
+                            f"'{pair[0]}' / '{pair[1]}' and does not have the same resolvable ordered business keys "
+                            f"for '{entity_name}'; a shared scope needs one reviewed key meaning."
                         ),
                         code="PROJECT_BUSINESS_KEY_INVALID",
                     )
@@ -591,7 +669,7 @@ class ProjectService:
         self.state.invalidate(project_name)
 
     def _validate_entity_key_write(self, file_path: Path, entity_name: str, entity_dict: dict[str, Any]) -> None:
-        """Reject a single-entity write that changes a bound project's declared keys."""
+        """Reject a single-entity write that changes a bound project's resolved ordered keys."""
         current_config = self.yaml_service.load(file_path)
         if not isinstance(current_config, dict):
             return
@@ -602,7 +680,7 @@ class ProjectService:
         candidate_entities = dict(current_entities)
         candidate_entities[entity_name] = entity_dict
         candidate_config["entities"] = candidate_entities
-        self._validate_business_key_write(current_config, candidate_config)
+        self._validate_business_key_write(current_config, candidate_config, file_path)
 
     def save_entity_rename_boundary(self, project_name: str, old_name: str, new_name: str, project: Project) -> list[str]:
         """Save an entity rename and best-effort move its note in the task sidecar."""
@@ -1382,7 +1460,7 @@ def _ordered_keys(entity: Any) -> tuple[str, ...]:
 
 
 def _key_declaration_errors(entity_name: str, current_entity: Any, candidate_entity: dict[str, Any]) -> list[ValidationError]:
-    """Return errors when a bound project's declared keys change for one entity."""
+    """Return an error when a bound project's key edit changes or cannot confirm its ordered keys."""
     current_keys = _ordered_keys(current_entity)
     candidate_keys = _ordered_keys(candidate_entity)
     if current_keys == candidate_keys:
@@ -1395,9 +1473,10 @@ def _key_declaration_errors(entity_name: str, current_entity: Any, candidate_ent
             entity=entity_name,
             field=f"entities.{entity_name}.keys",
             message=(
-                "An assigned provider-schema pair keeps its declared business keys; "
-                f"change from {list(current_keys)} to {list(candidate_keys)} requires a new provider schema code "
-                "or an explicit identity migration."
+                "An assigned provider-schema pair keeps its resolved ordered business keys. "
+                f"The change from {list(current_keys)} to {list(candidate_keys)} changes that list or could not be "
+                "resolved for comparison. Review the provider schema; if the key meaning changes, use a new "
+                "provider schema code or an explicit identity migration."
             ),
             code="PROJECT_BUSINESS_KEY_INVALID",
         )
