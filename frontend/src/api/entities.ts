@@ -129,6 +129,31 @@ export interface ColumnAvailabilityResponse {
   unnest: { id_vars: string[]; value_vars: string[] }
 }
 
+export interface ColumnReferenceResolveRequest {
+  entity_draft: Record<string, unknown>
+  directive: string
+}
+
+export interface ColumnReferenceResolveResponse {
+  directive: string
+  path: string | null
+  status: 'resolved' | 'unresolved'
+  columns?: string[]
+  reason_code?: 'malformed_input' | 'missing_path' | 'circular_reference' | 'dependency_failure' | 'wrong_result_type'
+  reason?: string
+}
+
+export interface ColumnReferenceCompleteRequest {
+  entity_draft: Record<string, unknown>
+  prefix: string
+  edited_field_path?: string
+  preferred_entity?: string
+}
+
+export interface ColumnReferenceCompleteResponse {
+  candidates: string[]
+}
+
 export interface GenerateFromTableRequest {
   data_source: string
   table_name: string
@@ -186,6 +211,32 @@ export const entitiesApi = {
     return apiRequest<ColumnAvailabilityResponse>({
       method: 'POST',
       url: `/projects/${projectName}/entities/${entityName}/column-availability`,
+      data,
+    })
+  },
+
+  /** Return draft-aware @value choices for one typed prefix. */
+  completeColumnReferences: async (
+    projectName: string,
+    entityName: string,
+    data: ColumnReferenceCompleteRequest
+  ): Promise<ColumnReferenceCompleteResponse> => {
+    return apiRequest<ColumnReferenceCompleteResponse>({
+      method: 'POST',
+      url: `/projects/${projectName}/entities/${entityName}/column-references/complete`,
+      data,
+    })
+  },
+
+  /** Resolve one simple @value directive against the current entity draft. */
+  resolveColumnReference: async (
+    projectName: string,
+    entityName: string,
+    data: ColumnReferenceResolveRequest
+  ): Promise<ColumnReferenceResolveResponse> => {
+    return apiRequest<ColumnReferenceResolveResponse>({
+      method: 'POST',
+      url: `/projects/${projectName}/entities/${entityName}/column-references/resolve`,
       data,
     })
   },

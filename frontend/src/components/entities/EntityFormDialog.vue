@@ -341,20 +341,22 @@
 
                         <v-col cols="4" class="pl-2">
                           <!-- Keys (business keys) -->
-                          <v-combobox
+                          <column-reference-combobox
                             v-model="formData.keys"
                             :items="columnAvailability?.business_keys ?? []"
+                            :project-name="projectName"
+                            :entity-name="formData.name"
+                            :entity-draft="serializedEntityDraft"
+                            :edited-field-path="`entities.${formData.name}.keys`"
+                            :disabled="!modelValue"
                             label="Business Keys *"
                             variant="outlined"
-                            multiple
-                            chips
-                            closable-chips
                             persistent-placeholder
                           >
                             <template #message>
                               <span class="text-caption">Natural key columns that uniquely identify records</span>
                             </template>
-                          </v-combobox>
+                          </column-reference-combobox>
                         </v-col>
                       </v-row>
                     </div>
@@ -366,23 +368,22 @@
                     >
                       <v-row no-gutters>
                         <v-col cols="8" class="pr-2">
-                          <v-combobox
+                          <column-reference-combobox
+                            v-if="formData.type !== 'fixed'"
                             v-model="formData.columns"
                             :items="columnAvailability?.columns ?? []"
+                            :project-name="projectName"
+                            :entity-name="formData.name"
+                            :entity-draft="serializedEntityDraft"
+                            :edited-field-path="`entities.${formData.name}.columns`"
+                            :disabled="!modelValue"
                             label="Columns"
                             variant="outlined"
-                            multiple
-                            chips
-                            closable-chips
                             persistent-placeholder
-                            :rules="formData.type === 'fixed' ? columnsRules : []"
+                            :rules="[]"
                           >
                             <template #message>
-                              <span class="text-caption" v-if="formData.type === 'fixed'">
-                                Fixed values grid fields. Business keys select produced fields but do not add grid
-                                columns; system_id and public_id stay implicit in the stored schema.
-                              </span>
-                              <span class="text-caption" v-else-if="isMergedEntityType">
+                              <span class="text-caption" v-if="isMergedEntityType">
                                 Optional post-merge column restriction. Leave empty to keep the full union returned by
                                 all branches.
                               </span>
@@ -393,6 +394,25 @@
                                 Select from sheet columns (auto-detected from file)
                               </span>
                               <span class="text-caption" v-else>Column names to extract or create</span>
+                            </template>
+                          </column-reference-combobox>
+                          <v-combobox
+                            v-else
+                            v-model="formData.columns"
+                            :items="columnAvailability?.columns ?? []"
+                            label="Columns"
+                            variant="outlined"
+                            multiple
+                            chips
+                            closable-chips
+                            persistent-placeholder
+                            :rules="columnsRules"
+                          >
+                            <template #message>
+                              <span class="text-caption">
+                                Fixed values grid fields. Business keys select produced fields but do not add grid
+                                columns; system_id and public_id stay implicit in the stored schema.
+                              </span>
                             </template>
                           </v-combobox>
                         </v-col>
@@ -603,21 +623,22 @@
                             </v-col>
                           </v-row>
 
-                          <v-combobox
+                          <column-reference-combobox
                             v-model="formData.drop_duplicates.columns"
                             :items="columnAvailability?.drop_duplicates ?? []"
+                            :project-name="projectName"
+                            :entity-name="formData.name"
+                            :entity-draft="serializedEntityDraft"
+                            :edited-field-path="`entities.${formData.name}.drop_duplicates`"
+                            :disabled="!modelValue || !formData.drop_duplicates.enabled"
                             label="Deduplication Columns"
                             variant="outlined"
-                            multiple
-                            chips
-                            closable-chips
                             persistent-placeholder
-                            :disabled="!formData.drop_duplicates.enabled"
                           >
                             <template #message>
                               <span class="text-caption">Columns to use for deduplication (empty = all columns)</span>
                             </template>
-                          </v-combobox>
+                          </column-reference-combobox>
                         </v-col>
 
                         <!-- Drop Empty Rows -->
@@ -631,21 +652,22 @@
                               />
                             </v-col>
                           </v-row>
-                          <v-combobox
+                          <column-reference-combobox
                             v-model="formData.drop_empty_rows.columns"
                             :items="columnAvailability?.drop_empty_rows ?? []"
+                            :project-name="projectName"
+                            :entity-name="formData.name"
+                            :entity-draft="serializedEntityDraft"
+                            :edited-field-path="`entities.${formData.name}.drop_empty_rows`"
+                            :disabled="!modelValue || !formData.drop_empty_rows.enabled"
                             label="Columns to Check for Empty Values"
                             variant="outlined"
-                            multiple
-                            chips
-                            closable-chips
                             persistent-placeholder
-                            :disabled="!formData.drop_empty_rows.enabled"
                           >
                             <template #message>
                               <span class="text-caption">Columns to check for empty values (empty = all columns)</span>
                             </template>
-                          </v-combobox>
+                          </column-reference-combobox>
                         </v-col>
                       </v-row>
                     </div>
@@ -694,6 +716,8 @@
                   :available-entities="availableSourceEntities"
                   :project-name="projectName"
                   :entity-name="formData.name"
+                  :entity-draft="serializedEntityDraft"
+                  :reference-controls-disabled="!modelValue"
                   :entity-columns="effectiveEntityColumns"
                   :column-candidates="columnAvailability?.foreign_keys ?? []"
                   :is-entity-saved="mode === 'edit'"
@@ -711,6 +735,10 @@
                   v-model="formData.advanced.unnest"
                   :id-var-columns="columnAvailability?.unnest.id_vars ?? []"
                   :value-var-columns="columnAvailability?.unnest.value_vars ?? []"
+                  :project-name="projectName"
+                  :entity-name="formData.name"
+                  :entity-draft="serializedEntityDraft"
+                  :reference-controls-disabled="!modelValue"
                 />
               </v-window-item>
 
@@ -1068,6 +1096,7 @@ import type { ColDef } from 'ag-grid-community'
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
 import ForeignKeyEditor from './ForeignKeyEditor.vue'
+import ColumnReferenceCombobox from './ColumnReferenceCombobox.vue'
 import FiltersEditor from './FiltersEditor.vue'
 import UnnestEditor from './UnnestEditor.vue'
 import AppendEditor from './AppendEditor.vue'
@@ -2118,6 +2147,8 @@ function buildEntityConfigFromFormData(options: BuildEntityConfigOptions = {}): 
   return entityData
 }
 
+const serializedEntityDraft = computed(() => buildEntityConfigFromFormData({ includeDerivedSqlColumns: true }))
+
 async function refreshPreview() {
   if (!canPreview.value) return
 
@@ -2133,7 +2164,7 @@ async function refreshPreview() {
   }
 
   // Convert form data to entity config format (same as handleSubmit)
-  const entityConfig = buildEntityConfigFromFormData({ includeDerivedSqlColumns: true })
+  const entityConfig = serializedEntityDraft.value
 
   // Pass converted entity config to preview unsaved changes
   await previewEntity(props.projectName, formData.value.name, previewLimit.value, entityConfig)
@@ -2348,7 +2379,7 @@ watch(
         debouncedPreviewEntity(props.projectName, selectedPreviewSourceBranchOption.value.source, 100)
       } else {
         // Convert form data to entity config before previewing
-        const entityConfig = buildEntityConfigFromFormData({ includeDerivedSqlColumns: true })
+        const entityConfig = serializedEntityDraft.value
         debouncedPreviewEntity(props.projectName, formData.value.name, 100, entityConfig)
       }
     }
@@ -3856,7 +3887,7 @@ watch(
     isOpen: props.modelValue,
     projectName: props.projectName,
     entityName: formData.value.name,
-    entityDraft: buildEntityConfigFromFormData({ includeDerivedSqlColumns: true }),
+    entityDraft: serializedEntityDraft.value,
     sourceColumns: [...columnsOptions.value],
   }),
   (requestState) => {

@@ -19,7 +19,7 @@
       </v-alert>
 
       <v-expansion-panels v-if="foreignKeys.length > 0" variant="accordion" density="compact">
-        <v-expansion-panel v-for="(fk, index) in foreignKeys" :key="index">
+        <v-expansion-panel v-for="(fk, index) in foreignKeys" :key="getForeignKeyRowId(fk)">
           <v-expansion-panel-title class="py-2">
             <div class="d-flex align-center justify-space-between flex-grow-1">
               <span class="text-caption">
@@ -127,19 +127,18 @@
 
             <v-row dense class="mb-2">
               <v-col cols="12" md="5">
-                <v-combobox
-                  v-model="fk.local_keys"
-                  label="Local Keys"
-                  multiple
-                  chips
-                  closable-chips
-                  persistent-placeholder
+                <column-reference-combobox
+                  :model-value="normalizeKeysArray(fk.local_keys)"
                   variant="outlined"
                   density="compact"
                   :items="getLocalColumnItems(index)"
-                  :error="localKeyErrors[index] !== undefined"
-                  :messages="localKeyErrors[index]"
-                  @focus="loadDirectives"
+                  :project-name="projectName"
+                  :entity-name="entityName"
+                  :entity-draft="entityDraft"
+                  :disabled="referenceControlsDisabled"
+                  :edited-field-path="`entities.${entityName}.foreign_keys.${index}.local_keys`"
+                  :preferred-entity="entityName"
+                  label="Local Keys"
                   @update:model-value="handleLocalKeysUpdate(index, $event)"
                 />
               </v-col>
@@ -149,19 +148,18 @@
               </v-col>
 
               <v-col cols="12" md="5">
-                <v-combobox
-                  v-model="fk.remote_keys"
-                  label="Remote Keys"
-                  multiple
-                  chips
-                  closable-chips
-                  persistent-placeholder
+                <column-reference-combobox
+                  :model-value="normalizeKeysArray(fk.remote_keys)"
                   variant="outlined"
                   density="compact"
                   :items="getRemoteKeyItems(index)"
-                  :error="remoteKeyErrors[index] !== undefined"
-                  :messages="remoteKeyErrors[index]"
-                  @focus="loadDirectives"
+                  :project-name="projectName"
+                  :entity-name="entityName"
+                  :entity-draft="entityDraft"
+                  :disabled="referenceControlsDisabled"
+                  :edited-field-path="`entities.${entityName}.foreign_keys.${index}.remote_keys`"
+                  :preferred-entity="fk.entity"
+                  label="Remote Keys"
                   @update:model-value="handleRemoteKeysUpdate(index, $event)"
                 />
               </v-col>
@@ -250,7 +248,6 @@
                               density="compact"
                               :items="getExtraColumnSourceItems(index)"
                               hide-details
-                              @focus="loadDirectives"
                               @update:model-value="updateExtraColumn(index, colIndex, extraCol.local, extraCol.remote)"
                             />
                           </v-col>
@@ -310,11 +307,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, toRaw, watch } from 'vue'
 import type { ForeignKeyColumnCandidates } from '@/api/entities'
 import type { ForeignKeyConfig, ForeignKeyConstraints } from '@/types'
 import ForeignKeyTester from './ForeignKeyTester.vue'
-import { useDirectiveValidation } from '@/composables/useDirectiveValidation'
+import ColumnReferenceCombobox from './ColumnReferenceCombobox.vue'
 import { normalizeForeignKeyKeys } from './foreignKeyEditorUtils'
 import { getKeyPairRows, hasKeyCountMismatch, hasSuspiciousKeyReorder } from './foreignKeyPreviewUtils'
 
@@ -322,6 +319,8 @@ interface Props {
   modelValue: ForeignKeyConfig[]
   availableEntities?: string[]
   columnCandidates?: ForeignKeyColumnCandidates[]
+  entityDraft?: Record<string, unknown>
+  referenceControlsDisabled?: boolean
   projectName: string
   entityName: string
   entityColumns?: string[] | string
@@ -332,6 +331,8 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   availableEntities: () => [],
   columnCandidates: () => [],
+  entityDraft: () => ({}),
+  referenceControlsDisabled: false,
   entityColumns: () => [],
   isEntitySaved: false,
   hasUnsavedChanges: false,
@@ -363,7 +364,7 @@ function createDefaultConstraints(overrides?: ForeignKeyConstraints | null): For
 }
 
 function cloneForeignKey(fk: ForeignKeyConfig): ForeignKeyConfig {
-  return {
+  const cloned: ForeignKeyConfig = {
     ...fk,
     local_keys: normalizeKeysArray(fk.local_keys),
     remote_keys: normalizeKeysArray(fk.remote_keys),
@@ -374,142 +375,35 @@ function cloneForeignKey(fk: ForeignKeyConfig): ForeignKeyConfig {
         : { ...(fk.extra_columns as Record<string, string>) }
       : undefined,
   }
+  rowIds.set(cloned, nextRowId++)
+  return cloned
 }
 
+const rowIds = new WeakMap<object, number>()
+let nextRowId = 1
 const foreignKeys = ref<ForeignKeyConfig[]>(props.modelValue.map(cloneForeignKey))
-const { validateDirective, getValidDirectives, isDirective } = useDirectiveValidation()
-const directiveItems = ref<string[]>([])
-let directivesLoaded = false
-
-// Validation errors for directive values (indexed by FK index)
-const localKeyErrors = ref<Array<string | undefined>>([])
-const remoteKeyErrors = ref<Array<string | undefined>>([])
-
-/**
- * Validate local keys for directive references.
- */
-async function validateLocalKeys(fkIndex: number) {
-  const fk = foreignKeys.value[fkIndex]
-  if (!fk) return
-
-  // Get normalized keys without mutating the original array
-  const normalizedKeys = normalizeKeysArray(fk.local_keys)
-
-  if (!normalizedKeys || normalizedKeys.length === 0) {
-    localKeyErrors.value[fkIndex] = undefined
-    return
+function getForeignKeyRowId(fk: ForeignKeyConfig): number {
+  const raw = toRaw(fk)
+  let id = rowIds.get(raw)
+  if (id === undefined) {
+    id = nextRowId++
+    rowIds.set(raw, id)
   }
-
-  // Check if any key is a directive
-  const directiveKey = normalizedKeys.find((key) => isDirective(key))
-  if (!directiveKey) {
-    localKeyErrors.value[fkIndex] = undefined
-    return
-  }
-
-  // Validate the directive
-  const result = await validateDirective(props.projectName, directiveKey as string, {
-    localEntity: props.entityName,
-    remoteEntity: fk.entity,
-    isLocalKeys: true,
-  })
-
-  if (result && !result.is_valid) {
-    let errorMsg = result.error || 'Invalid @value directive'
-    if (result.suggestions.length > 0) {
-      errorMsg += `. Try: ${result.suggestions.slice(0, 2).join(', ')}`
-    }
-    localKeyErrors.value[fkIndex] = errorMsg
-  } else {
-    localKeyErrors.value[fkIndex] = undefined
-  }
+  return id
 }
 
-/**
- * Validate remote keys for directive references.
- */
-async function validateRemoteKeys(fkIndex: number) {
-  const fk = foreignKeys.value[fkIndex]
-  if (!fk) return
-
-  // Get normalized keys without mutating the original array
-  const normalizedKeys = normalizeKeysArray(fk.remote_keys)
-
-  if (!normalizedKeys || normalizedKeys.length === 0) {
-    remoteKeyErrors.value[fkIndex] = undefined
-    return
-  }
-
-  // Check if any key is a directive
-  const directiveKey = normalizedKeys.find((key) => isDirective(key))
-  if (!directiveKey) {
-    remoteKeyErrors.value[fkIndex] = undefined
-    return
-  }
-
-  // Validate the directive
-  const result = await validateDirective(props.projectName, directiveKey as string, {
-    localEntity: props.entityName,
-    remoteEntity: fk.entity,
-    isLocalKeys: false,
-  })
-
-  if (result && !result.is_valid) {
-    let errorMsg = result.error || 'Invalid @value directive'
-    if (result.suggestions.length > 0) {
-      errorMsg += `. Try: ${result.suggestions.slice(0, 2).join(', ')}`
-    }
-    remoteKeyErrors.value[fkIndex] = errorMsg
-  } else {
-    remoteKeyErrors.value[fkIndex] = undefined
-  }
-}
-
-async function handleLocalKeysUpdate(fkIndex: number, value: unknown) {
+function handleLocalKeysUpdate(fkIndex: number, value: unknown) {
   const fk = foreignKeys.value[fkIndex]
   if (!fk) return
 
   fk.local_keys = normalizeKeysArray(value)
-  await validateLocalKeys(fkIndex)
 }
 
-async function handleRemoteKeysUpdate(fkIndex: number, value: unknown) {
+function handleRemoteKeysUpdate(fkIndex: number, value: unknown) {
   const fk = foreignKeys.value[fkIndex]
   if (!fk) return
 
   fk.remote_keys = normalizeKeysArray(value)
-  await validateRemoteKeys(fkIndex)
-}
-
-/**
- * Extract @value directives from entity columns configuration.
- */
-function extractColumnDirectives(): string[] {
-  const columns = props.entityColumns
-  if (!columns) return []
-
-  const directives: string[] = []
-
-  // Handle scalar directive string
-  if (typeof columns === 'string' && columns.trim().startsWith('@value:')) {
-    directives.push(columns.trim())
-  }
-  // Handle array of columns (may contain directive elements)
-  else if (Array.isArray(columns)) {
-    columns.forEach((col) => {
-      if (typeof col === 'string' && col.trim().startsWith('@value:')) {
-        directives.push(col.trim())
-      }
-    })
-  }
-
-  return directives
-}
-
-async function loadDirectives() {
-  if (directivesLoaded) return
-  directiveItems.value = await getValidDirectives(props.projectName)
-  directivesLoaded = true
 }
 
 function getColumnCandidates(fkIndex: number): ForeignKeyColumnCandidates | undefined {
@@ -521,24 +415,17 @@ function getColumnCandidates(fkIndex: number): ForeignKeyColumnCandidates | unde
 
 function getLocalColumnItems(fkIndex: number): string[] {
   const candidates = getColumnCandidates(fkIndex)
-  return [
-    ...new Set([
-      ...(candidates?.local_keys_before_unnest ?? []),
-      ...(candidates?.local_keys_after_unnest ?? []),
-      ...directiveItems.value,
-      ...extractColumnDirectives(),
-    ]),
-  ]
+  return [...new Set([...(candidates?.local_keys_before_unnest ?? []), ...(candidates?.local_keys_after_unnest ?? [])])]
 }
 
 function getRemoteKeyItems(fkIndex: number): string[] {
   const candidates = getColumnCandidates(fkIndex)
-  return [...new Set([...(candidates?.remote_keys ?? []), ...directiveItems.value])]
+  return [...new Set(candidates?.remote_keys ?? [])]
 }
 
 function getExtraColumnSourceItems(fkIndex: number): string[] {
   const candidates = getColumnCandidates(fkIndex)
-  return [...new Set([...(candidates?.extra_column_sources ?? []), ...directiveItems.value])]
+  return [...new Set(candidates?.extra_column_sources ?? [])]
 }
 
 const joinTypes = [

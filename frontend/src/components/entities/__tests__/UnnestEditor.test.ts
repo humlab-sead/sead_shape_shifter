@@ -3,18 +3,23 @@ import { mount } from '@vue/test-utils'
 import UnnestEditor from '../UnnestEditor.vue'
 
 const stubs = {
-  VSwitch: true,
+  VSwitch: {
+    name: 'VSwitch',
+    props: ['modelValue'],
+    emits: ['update:modelValue'],
+    template: '<button type="button" @click="$emit(\'update:modelValue\', !modelValue)" />',
+  },
   VAlert: true,
   VTextField: {
     name: 'VTextField',
     props: ['modelValue', 'label', 'prefix'],
     template: '<div class="text-field-stub" />',
   },
-  VCombobox: {
-    name: 'VCombobox',
-    props: ['modelValue', 'items', 'label'],
+  ColumnReferenceCombobox: {
+    name: 'ColumnReferenceCombobox',
+    props: ['modelValue', 'items', 'label', 'entityDraft', 'editedFieldPath', 'disabled'],
     emits: ['update:modelValue'],
-    template: '<div class="combobox-stub" />',
+    template: '<div class="column-reference-combobox-stub" />',
   },
 }
 
@@ -30,13 +35,19 @@ describe('UnnestEditor', () => {
         },
         idVarColumns: ['id_candidate'],
         valueVarColumns: ['value_candidate'],
+        projectName: 'demo',
+        entityName: 'sample',
+        entityDraft: { columns: ['current_column'] },
       },
       global: { stubs },
     })
-    const comboboxes = wrapper.findAllComponents({ name: 'VCombobox' })
+    const comboboxes = wrapper.findAllComponents({ name: 'ColumnReferenceCombobox' })
 
     expect(comboboxes[0]?.props('items')).toEqual(['id_candidate'])
     expect(comboboxes[1]?.props('items')).toEqual(['value_candidate'])
+    expect(comboboxes[0]?.props('entityDraft')).toEqual({ columns: ['current_column'] })
+    expect(comboboxes[0]?.props('editedFieldPath')).toBe('entities.sample.unnest.id_vars')
+    expect(comboboxes[1]?.props('editedFieldPath')).toBe('entities.sample.unnest.value_vars')
 
     comboboxes[1]?.vm.$emit('update:modelValue', ['saved_value', 'manual_value'])
     await wrapper.vm.$nextTick()
@@ -60,7 +71,7 @@ describe('UnnestEditor', () => {
       global: { stubs },
     })
 
-    const comboboxes = wrapper.findAllComponents({ name: 'VCombobox' })
+    const comboboxes = wrapper.findAllComponents({ name: 'ColumnReferenceCombobox' })
     expect(comboboxes[0]?.props('modelValue')).toEqual(['@value: entities.site.keys'])
     expect(comboboxes[1]?.props('modelValue')).toEqual(['manual_value', '@value: entities.site.columns'])
     expect(initial.id_vars).toBe('@value: entities.site.keys')
@@ -84,5 +95,18 @@ describe('UnnestEditor', () => {
     })
     expect(comboboxes[0]?.props('modelValue')).toEqual(['updated_id'])
     expect(comboboxes[1]?.props('modelValue')).toEqual(['@value: entities.site.updated_columns'])
+  })
+
+  it('removes both reference controls when unnest is disabled', async () => {
+    const wrapper = mount(UnnestEditor, {
+      props: {
+        modelValue: { id_vars: ['id'], value_vars: ['value'], var_name: 'variable', value_name: 'value' },
+      },
+      global: { stubs },
+    })
+
+    expect(wrapper.findAllComponents({ name: 'ColumnReferenceCombobox' })).toHaveLength(2)
+    await wrapper.getComponent({ name: 'VSwitch' }).trigger('click')
+    expect(wrapper.findAllComponents({ name: 'ColumnReferenceCombobox' })).toHaveLength(0)
   })
 })

@@ -11,6 +11,7 @@ declare module 'vue' {
     AppendEditor: typeof import('./components/entities/AppendEditor.vue')['default']
     BranchEditor: typeof import('./components/entities/BranchEditor.vue')['default']
     CircularDependencyAlert: typeof import('./components/dependencies/CircularDependencyAlert.vue')['default']
+    ColumnReferenceCombobox: typeof import('./components/entities/ColumnReferenceCombobox.vue')['default']
     ContextHelp: typeof import('./components/ContextHelp.vue')['default']
     CopyProjectDialog: typeof import('./components/projects/CopyProjectDialog.vue')['default']
     CreateEntityFromTableDialog: typeof import('./components/entities/CreateEntityFromTableDialog.vue')['default']

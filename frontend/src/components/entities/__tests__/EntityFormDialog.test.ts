@@ -159,6 +159,23 @@ const childStubs = {
     props: ['modelValue', 'label', 'items', 'disabled'],
     template: '<div class="v-combobox-stub" :data-label="label" :data-disabled="String(disabled)"><slot /></div>',
   },
+  ColumnReferenceCombobox: {
+    name: 'ColumnReferenceCombobox',
+    props: [
+      'modelValue',
+      'items',
+      'label',
+      'disabled',
+      'projectName',
+      'entityName',
+      'entityDraft',
+      'editedFieldPath',
+      'preferredEntity',
+      'rules',
+    ],
+    emits: ['update:modelValue'],
+    template: '<div class="column-reference-combobox-stub" :data-label="label"><slot /></div>',
+  },
   YamlEditor: {
     name: 'YamlEditor',
     props: ['modelValue'],
@@ -168,13 +185,21 @@ const childStubs = {
   SqlEditor: { template: '<div data-testid="sql-editor" />' },
   ForeignKeyEditor: {
     name: 'ForeignKeyEditor',
-    props: ['modelValue', 'columnCandidates'],
+    props: ['modelValue', 'columnCandidates', 'entityDraft', 'referenceControlsDisabled'],
     template: '<div data-testid="foreign-key-editor" />',
   },
   FiltersEditor: { template: '<div data-testid="filters-editor" />' },
   UnnestEditor: {
     name: 'UnnestEditor',
-    props: ['modelValue', 'idVarColumns', 'valueVarColumns'],
+    props: [
+      'modelValue',
+      'idVarColumns',
+      'valueVarColumns',
+      'projectName',
+      'entityName',
+      'entityDraft',
+      'referenceControlsDisabled',
+    ],
     template: '<div data-testid="unnest-editor" />',
   },
   AppendEditor: { template: '<div data-testid="append-editor" />' },
@@ -350,7 +375,12 @@ function findSelectByLabel(wrapper: ReturnType<typeof mountEntityFormDialog>, la
 }
 
 function findComboboxByLabel(wrapper: ReturnType<typeof mountEntityFormDialog>, label: string) {
-  return wrapper.findAllComponents({ name: 'VCombobox' }).find((component) => component.props('label') === label)
+  return (
+    wrapper
+      .findAllComponents({ name: 'ColumnReferenceCombobox' })
+      .find((component) => component.props('label') === label) ??
+    wrapper.findAllComponents({ name: 'VCombobox' }).find((component) => component.props('label') === label)
+  )
 }
 
 function editEntityName(wrapper: ReturnType<typeof mountEntityFormDialog>, name: string) {
@@ -450,6 +480,74 @@ describe('EntityFormDialog', () => {
     expect(replacementsEditor.props('modelValue')).toEqual({
       landskap: [{ map: { Bo: 'Bohuslan', Vg: 'Vastergotland' } }],
     })
+  })
+
+  it('passes one current serialized draft and field path to each in-scope picker', async () => {
+    const entity = createEntity('reference_form', {
+      type: 'entity',
+      public_id: 'reference_form_id',
+      keys: '@value: entities.site.keys',
+      columns: ['sample_name'],
+      drop_duplicates: ['sample_name'],
+      drop_empty_rows: ['sample_name'],
+      foreign_keys: [{ entity: 'site', local_keys: ['site_name'], remote_keys: ['site_id'], how: 'left' }],
+      unnest: { id_vars: ['sample_name'], value_vars: ['sample_value'], var_name: 'variable', value_name: 'value' },
+    })
+    mockState.entities = [...sourceEntities, createEntity('site', { type: 'entity', columns: ['site_id'] })]
+
+    const wrapper = mountEntityFormDialog({ mode: 'edit', entity })
+    await flushPromises()
+    await nextTick()
+
+    const referenceInputs = wrapper.findAllComponents({ name: 'ColumnReferenceCombobox' })
+    const paths = referenceInputs.map((input) => input.props('editedFieldPath'))
+    expect(paths).toEqual([
+      'entities.reference_form.keys',
+      'entities.reference_form.columns',
+      'entities.reference_form.drop_duplicates',
+      'entities.reference_form.drop_empty_rows',
+    ])
+    expect(
+      referenceInputs.every((input) => input.props('entityDraft') === referenceInputs[0]?.props('entityDraft'))
+    ).toBe(true)
+    expect(referenceInputs[0]?.props('entityDraft')).toMatchObject({
+      keys: '@value: entities.site.keys',
+      columns: ['sample_name'],
+      foreign_keys: [{ entity: 'site', local_keys: ['site_name'], remote_keys: ['site_id'] }],
+    })
+
+    const foreignKeyEditor = wrapper.findComponent({ name: 'ForeignKeyEditor' })
+    const unnestEditor = wrapper.findComponent({ name: 'UnnestEditor' })
+    expect(foreignKeyEditor.props('entityDraft')).toBe(referenceInputs[0]?.props('entityDraft'))
+    expect(unnestEditor.props('entityDraft')).toBe(referenceInputs[0]?.props('entityDraft'))
+    expect(unnestEditor.props('projectName')).toBe('arbodat')
+    expect(unnestEditor.props('entityName')).toBe('reference_form')
+
+    editEntityName(wrapper, 'renamed_reference_form')
+    await nextTick()
+    expect(wrapper.findAllComponents({ name: 'ColumnReferenceCombobox' })[0]?.props('editedFieldPath')).toBe(
+      'entities.renamed_reference_form.keys'
+    )
+    expect(wrapper.findAllComponents({ name: 'ColumnReferenceCombobox' })[0]?.props('entityName')).toBe(
+      'renamed_reference_form'
+    )
+    await wrapper.setProps({ modelValue: false })
+    expect(
+      wrapper.findAllComponents({ name: 'ColumnReferenceCombobox' }).every((input) => input.props('disabled') === true)
+    ).toBe(true)
+  })
+
+  it('keeps Fixed Entity Columns on the plain combobox', async () => {
+    const wrapper = mountEntityFormDialog({ mode: 'edit', entity: fixedEntity })
+    await flushPromises()
+    await nextTick()
+
+    expect(
+      wrapper.findAllComponents({ name: 'ColumnReferenceCombobox' }).some((input) => input.props('label') === 'Columns')
+    ).toBe(false)
+    expect(wrapper.findAllComponents({ name: 'VCombobox' }).some((input) => input.props('label') === 'Columns')).toBe(
+      true
+    )
   })
 
   it('preserves every saved column-list field shape after an unrelated edit and child editor updates', async () => {
@@ -808,18 +906,10 @@ unnest:
     await flushPromises()
     await nextTick()
 
-    const columnsCombobox = wrapper
-      .findAllComponents({ name: 'VCombobox' })
-      .find((component) => component.props('label') === 'Columns')
-    const keysCombobox = wrapper
-      .findAllComponents({ name: 'VCombobox' })
-      .find((component) => component.props('label') === 'Business Keys *')
-    const dedupeCombobox = wrapper
-      .findAllComponents({ name: 'VCombobox' })
-      .find((component) => component.props('label') === 'Deduplication Columns')
-    const emptyRowsCombobox = wrapper
-      .findAllComponents({ name: 'VCombobox' })
-      .find((component) => component.props('label') === 'Columns to Check for Empty Values')
+    const columnsCombobox = findComboboxByLabel(wrapper, 'Columns')
+    const keysCombobox = findComboboxByLabel(wrapper, 'Business Keys *')
+    const dedupeCombobox = findComboboxByLabel(wrapper, 'Deduplication Columns')
+    const emptyRowsCombobox = findComboboxByLabel(wrapper, 'Columns to Check for Empty Values')
     const unnestEditor = wrapper.findComponent({ name: 'UnnestEditor' })
     const extraColumnsEditor = wrapper.findComponent({ name: 'ExtraColumnsEditor' })
     const replacementsEditor = wrapper.findComponent({ name: 'ReplacementsEditor' })
@@ -988,9 +1078,7 @@ unnest:
     await flushPromises()
     await nextTick()
 
-    const keysCombobox = wrapper
-      .findAllComponents({ name: 'VCombobox' })
-      .find((component) => component.props('label') === 'Business Keys *')
+    const keysCombobox = findComboboxByLabel(wrapper, 'Business Keys *')
     expect(keysCombobox).toBeTruthy()
     keysCombobox!.vm.$emit('update:modelValue', ['label', 'ghost_key'])
     await flushPromises()
@@ -1184,9 +1272,7 @@ unnest:
     await flushPromises()
     await nextTick()
 
-    const keysCombobox = wrapper
-      .findAllComponents({ name: 'VCombobox' })
-      .find((component) => component.props('label') === 'Business Keys *')
+    const keysCombobox = findComboboxByLabel(wrapper, 'Business Keys *')
     expect(keysCombobox).toBeTruthy()
     keysCombobox!.vm.$emit('update:modelValue', ['label', 'ghost_key'])
     await flushPromises()
@@ -1248,9 +1334,7 @@ unnest:
     await flushPromises()
     await nextTick()
 
-    const columnsCombobox = wrapper
-      .findAllComponents({ name: 'VCombobox' })
-      .find((component) => component.props('label') === 'Columns')
+    const columnsCombobox = findComboboxByLabel(wrapper, 'Columns')
     expect(columnsCombobox).toBeTruthy()
     columnsCombobox!.vm.$emit('update:modelValue', ['label', 'created_at'])
     await flushPromises()
@@ -1371,9 +1455,7 @@ unnest:
     await flushPromises()
     await nextTick()
 
-    const columnsCombobox = wrapper
-      .findAllComponents({ name: 'VCombobox' })
-      .find((component) => component.props('label') === 'Columns')
+    const columnsCombobox = findComboboxByLabel(wrapper, 'Columns')
     columnsCombobox!.vm.$emit('update:modelValue', ['sample_name', 'form_only_edit'])
     await flushPromises()
 
