@@ -200,7 +200,7 @@ Project context comes from the active project and current editor or runtime stat
 
 Deployment state can change what a project configuration means. The skill workflow checks:
 
-1. The `data_provider_code`/`provider_schema` pair and its binding in the deployment's curated provider registry. A normal save cannot change the pair or established business keys for an already-bound project. Advice must account for that rule.
+1. The `data_provider_code`/`provider_schema` pair and its binding in the deployment's curated provider registry. A normal save cannot change the pair or change the resolved ordered Business Keys for an already-bound project. Advice must account for that rule.
 2. Materialized entity state: `materialized.source_state` shows whether the entity's current behavior comes from a saved snapshot rather than the visible YAML.
 3. Public-ID links in the mapping sidecar. Core structural validation does not check these links, so its results alone may give an incomplete picture of identity in a materialized project.
 4. Prior validation snapshots for the project, when the session store retains them (see [Open Questions](#open-questions)).

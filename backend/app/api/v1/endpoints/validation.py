@@ -9,7 +9,7 @@ from backend.app.authorization.dependencies import require_project
 from backend.app.authorization.models import Action, AuthorizedResource
 from backend.app.models.fix import FixResult, FixSuggestion
 from backend.app.models.project import Project
-from backend.app.models.validation import DataValidationMode, ValidationError, ValidationResult
+from backend.app.models.validation import DataValidationMode, DraftEntityValidationRequest, ValidationError, ValidationResult
 from backend.app.services.auto_fix_service import AutoFixService
 from backend.app.services.dependency_service import DependencyGraph, DependencyService, get_dependency_service
 from backend.app.services.project_service import ProjectService, get_project_service
@@ -86,6 +86,33 @@ async def validate_entity(
 
     logger.info(f"Validated entity '{entity_name}' in project '{name}': " f"valid={result.is_valid}, errors={result.error_count}")
 
+    return result
+
+
+@router.post("/projects/{name}/entities/{entity_name}/validate-draft", response_model=ValidationResult)
+@handle_endpoint_errors
+async def validate_entity_draft(
+    name: str,
+    entity_name: str,
+    request: DraftEntityValidationRequest,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
+) -> ValidationResult:
+    """Validate an entity draft in a copied project without saving it."""
+    project_service: ProjectService = get_project_service()
+    validation_service: ValidationService = get_validation_service()
+
+    saved_project: Project = project_service.load_project(authorized_project.resource.locator)
+    draft_project = saved_project.model_copy(deep=True)
+    original_entity_name = request.original_entity_name
+    if original_entity_name and original_entity_name != entity_name:
+        draft_project.entities.pop(original_entity_name, None)
+    draft_project.entities[entity_name] = request.entity_draft
+
+    result = validation_service.validate_entity(draft_project, entity_name)
+    logger.info(
+        f"Validated draft for entity '{entity_name}' in project '{name}': "
+        f"valid={result.is_valid}, errors={result.error_count}, warnings={result.warning_count}"
+    )
     return result
 
 

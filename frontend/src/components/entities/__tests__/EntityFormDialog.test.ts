@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import { createVuetify } from 'vuetify'
@@ -6,6 +6,7 @@ import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 
 import type { ColumnAvailabilityResponse, EntityResponse } from '@/api/entities'
+import type { ValidationResult } from '@/types'
 import EntityFormDialog from '../EntityFormDialog.vue'
 import { getExtraColumnDiagnostics } from '../extraColumnsEditorUtils'
 
@@ -32,6 +33,7 @@ const mockState = vi.hoisted(() => ({
   setMappingSyncPending: vi.fn(),
   introspectQueryColumns: vi.fn(async () => []),
   syncCachedEntity: vi.fn(),
+  validateEntityDraft: vi.fn(),
 }))
 
 vi.mock('@/composables', async () => {
@@ -111,6 +113,10 @@ vi.mock('@/api/query', () => ({
   },
 }))
 
+vi.mock('@/api/validation', () => ({
+  validationApi: { validateEntityDraft: mockState.validateEntityDraft },
+}))
+
 const vuetify = createVuetify({ components, directives })
 
 const childStubs = {
@@ -172,8 +178,11 @@ const childStubs = {
       'editedFieldPath',
       'preferredEntity',
       'rules',
+      'validationIssues',
+      'validationLoading',
+      'validationError',
     ],
-    emits: ['update:modelValue'],
+    emits: ['update:modelValue', 'inspect-reference', 'replace-reference'],
     template: '<div class="column-reference-combobox-stub" :data-label="label"><slot /></div>',
   },
   YamlEditor: {
@@ -186,6 +195,7 @@ const childStubs = {
   ForeignKeyEditor: {
     name: 'ForeignKeyEditor',
     props: ['modelValue', 'columnCandidates', 'entityDraft', 'referenceControlsDisabled'],
+    emits: ['update:modelValue', 'inspect-reference', 'replace-reference'],
     template: '<div data-testid="foreign-key-editor" />',
   },
   FiltersEditor: { template: '<div data-testid="filters-editor" />' },
@@ -199,7 +209,12 @@ const childStubs = {
       'entityName',
       'entityDraft',
       'referenceControlsDisabled',
+      'idVarValidationIssues',
+      'valueVarValidationIssues',
+      'validationLoading',
+      'validationError',
     ],
+    emits: ['update:modelValue', 'inspect-reference', 'replace-reference'],
     template: '<div data-testid="unnest-editor" />',
   },
   AppendEditor: { template: '<div data-testid="append-editor" />' },
@@ -459,6 +474,11 @@ describe('EntityFormDialog', () => {
     mockState.retryFixedEntityMapping.mockReset()
     mockState.setMappingSyncPending.mockReset()
     mockState.syncCachedEntity.mockReset()
+    mockState.validateEntityDraft.mockReset()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('loads persisted replacements into the ReplacementsEditor when the edit dialog opens', async () => {
@@ -548,6 +568,230 @@ describe('EntityFormDialog', () => {
     expect(wrapper.findAllComponents({ name: 'VCombobox' }).some((input) => input.props('label') === 'Columns')).toBe(
       true
     )
+  })
+
+  it('labels saved structural findings and does not pass them as current draft annotations', async () => {
+    const entity = createEntity('saved_findings', {
+      type: 'entity',
+      public_id: 'saved_findings_id',
+      keys: ['missing'],
+      columns: ['present'],
+    })
+    const savedValidationResult: ValidationResult = {
+      is_valid: false,
+      errors: [
+        {
+          severity: 'error',
+          entity: entity.name,
+          field: 'keys',
+          message: "Entity 'saved_findings': key column(s) ['missing'] are not produced by this entity.",
+          code: 'BUSINESS_KEY_NOT_PRODUCED',
+          related_columns: ['missing'],
+        },
+      ],
+      warnings: [],
+      info: [],
+      error_count: 1,
+      warning_count: 0,
+    }
+
+    const wrapper = mountEntityFormDialog({ mode: 'edit', entity, savedValidationResult })
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="saved-project-findings"]').text()).toContain('Saved project findings')
+    expect(wrapper.get('[data-testid="saved-project-findings"]').text()).toContain('are not produced')
+    const keys = findComboboxByLabel(wrapper, 'Business Keys *')
+    expect(keys?.props('validationIssues')).toEqual([])
+  })
+
+  it('requests draft findings on inspection and clears annotations after an edit', async () => {
+    vi.useFakeTimers()
+    const reference = '@value: entities.site.keys'
+    const entity = createEntity('draft_findings', {
+      type: 'entity',
+      public_id: 'draft_findings_id',
+      keys: reference,
+      columns: ['shared'],
+      unnest: { id_vars: ['shared'], value_vars: [reference], var_name: 'kind', value_name: 'value' },
+    })
+    const result: ValidationResult = {
+      is_valid: false,
+      errors: [
+        {
+          severity: 'error',
+          entity: entity.name,
+          field: 'keys',
+          message: 'The business key is not produced.',
+          code: 'BUSINESS_KEY_NOT_PRODUCED',
+          related_columns: ['missing'],
+        },
+      ],
+      warnings: [
+        {
+          severity: 'warning',
+          entity: entity.name,
+          field: 'unnest.value_vars',
+          message: 'ID and Value Variables overlap.',
+          code: 'UNNEST_VARIABLE_OVERLAP',
+          related_columns: ['shared'],
+        },
+      ],
+      info: [],
+      error_count: 1,
+      warning_count: 1,
+    }
+    mockState.validateEntityDraft.mockResolvedValue(result)
+
+    const wrapper = mountEntityFormDialog({ mode: 'edit', entity })
+    await flushPromises()
+    const keys = findComboboxByLabel(wrapper, 'Business Keys *')
+    keys?.vm.$emit('inspect-reference')
+    await vi.advanceTimersByTimeAsync(300)
+    await flushPromises()
+
+    expect(mockState.validateEntityDraft).toHaveBeenCalledWith('arbodat', entity.name, {
+      entity_draft: expect.objectContaining({ keys: reference, columns: ['shared'] }),
+      original_entity_name: entity.name,
+    })
+    expect(keys?.props('validationIssues')).toEqual([result.errors[0]])
+    const unnestEditor = wrapper.findComponent({ name: 'UnnestEditor' })
+    expect(unnestEditor.props('idVarValidationIssues')).toEqual([result.warnings[0]])
+    expect(unnestEditor.props('valueVarValidationIssues')).toEqual([result.warnings[0]])
+
+    keys?.vm.$emit('update:modelValue', ['changed_key'])
+    await nextTick()
+    expect(keys?.props('validationIssues')).toEqual([])
+    expect(unnestEditor.props('valueVarValidationIssues')).toEqual([])
+  })
+
+  it('replaces and undoes one reference in each control group while preserving untouched storage on Save', async () => {
+    const reference = '@value: entities.site.keys'
+    const manualReference = '@value: entities.site.manual_columns'
+    const legacyExpression = "'literal' + @value: entities.site.keys"
+    const entity = createEntity('reference_replacement', {
+      type: 'entity',
+      public_id: 'reference_replacement_id',
+      keys: reference,
+      columns: [manualReference, reference],
+      drop_duplicates: ['before_duplicate', reference, 'after_duplicate'],
+      drop_empty_rows: [legacyExpression, reference],
+      foreign_keys: [{ entity: 'site', local_keys: [reference, 'local_manual'], remote_keys: reference, how: 'left' }],
+      unnest: {
+        id_vars: reference,
+        value_vars: ['manual_value', reference],
+        var_name: 'variable',
+        value_name: 'value',
+      },
+    })
+    mockState.update.mockResolvedValue({ name: entity.name, warnings: [] })
+
+    const wrapper = mountEntityFormDialog({ mode: 'edit', entity })
+    await flushPromises()
+    await nextTick()
+    const resolvedColumns = ['expanded_a', 'expanded_b', 'expanded_a']
+    const basePath = 'entities.reference_replacement'
+
+    async function replaceDirectField(fieldPath: string, keepReplacement = false) {
+      const picker = wrapper
+        .findAllComponents({ name: 'ColumnReferenceCombobox' })
+        .find((candidate) => candidate.props('editedFieldPath') === fieldPath)
+      expect(picker).toBeDefined()
+      const before = picker!.props('modelValue') as string[]
+      const index = before.indexOf(reference)
+      expect(index).toBeGreaterThanOrEqual(0)
+      const after = [...before]
+      after.splice(index, 1, ...resolvedColumns)
+      picker!.vm.$emit('update:modelValue', after)
+      picker!.vm.$emit('replace-reference', { fieldPath, before, after })
+      await nextTick()
+      expect(wrapper.find('[data-testid="reference-replacement-undo"]').exists()).toBe(true)
+      if (!keepReplacement) {
+        await wrapper.get('[data-testid="undo-reference-replacement"]').trigger('click')
+        await flushPromises()
+        const restored = wrapper
+          .findAllComponents({ name: 'ColumnReferenceCombobox' })
+          .find((candidate) => candidate.props('editedFieldPath') === fieldPath)
+        expect(restored?.props('modelValue')).toEqual(before)
+        expect(wrapper.find('[data-testid="reference-replacement-undo"]').exists()).toBe(false)
+      }
+      return { before, after }
+    }
+
+    const initialDraft = wrapper
+      .findAllComponents({ name: 'ColumnReferenceCombobox' })[0]
+      ?.props('entityDraft') as Record<string, unknown>
+    expect(initialDraft).toMatchObject({
+      keys: reference,
+      columns: [manualReference, reference],
+      drop_duplicates: ['before_duplicate', reference, 'after_duplicate'],
+      drop_empty_rows: [legacyExpression, reference],
+    })
+
+    for (const field of ['keys', 'columns', 'drop_duplicates']) {
+      await replaceDirectField(`${basePath}.${field}`)
+    }
+
+    const foreignKeyEditor = wrapper.findComponent({ name: 'ForeignKeyEditor' })
+    for (const keyName of ['local_keys', 'remote_keys']) {
+      const currentKeys = foreignKeyEditor.props('modelValue') as Array<Record<string, any>>
+      const before = currentKeys[0]?.[keyName] as string[]
+      const after = [...before]
+      after.splice(after.indexOf(reference), 1, ...resolvedColumns)
+      const updatedForeignKeys = [{ ...currentKeys[0], [keyName]: after }]
+      const fieldPath = `${basePath}.foreign_keys.0.${keyName}`
+      foreignKeyEditor.vm.$emit('update:modelValue', updatedForeignKeys)
+      foreignKeyEditor.vm.$emit('replace-reference', { fieldPath, before, after })
+      expect((wrapper.vm as any).$.setupState.referenceReplacement).toMatchObject({ fieldPath, before, after })
+      await flushPromises()
+      expect(wrapper.find('[data-testid="reference-replacement-undo"]').exists()).toBe(true)
+      await wrapper.get('[data-testid="undo-reference-replacement"]').trigger('click')
+      await flushPromises()
+      expect((foreignKeyEditor.props('modelValue') as Array<Record<string, any>>)[0]?.[keyName]).toEqual(before)
+    }
+
+    const unnestEditor = wrapper.findComponent({ name: 'UnnestEditor' })
+    for (const keyName of ['id_vars', 'value_vars']) {
+      const currentUnnest = unnestEditor.props('modelValue') as Record<string, any>
+      const before = currentUnnest[keyName] as string[]
+      const after = [...before]
+      after.splice(after.indexOf(reference), 1, ...resolvedColumns)
+      const fieldPath = `${basePath}.unnest.${keyName}`
+      unnestEditor.vm.$emit('update:modelValue', { ...currentUnnest, [keyName]: after })
+      unnestEditor.vm.$emit('replace-reference', { fieldPath, before, after })
+      await flushPromises()
+      expect(wrapper.find('[data-testid="reference-replacement-undo"]').exists()).toBe(true)
+      await wrapper.get('[data-testid="undo-reference-replacement"]').trigger('click')
+      await flushPromises()
+      expect((unnestEditor.props('modelValue') as Record<string, any>)[keyName]).toEqual(before)
+    }
+
+    const { before, after } = await replaceDirectField(`${basePath}.drop_empty_rows`, true)
+    expect(after).toEqual([legacyExpression, ...resolvedColumns])
+    ;(wrapper.vm as any).$.setupState.activeTab = 'relationships'
+    await nextTick()
+    expect(wrapper.find('[data-testid="undo-reference-replacement"]').exists()).toBe(true)
+
+    const saveButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Save')
+    expect(saveButton?.element.disabled).toBe(false)
+    await saveButton!.trigger('click')
+    await flushPromises()
+
+    const savedData = mockState.update.mock.calls.at(-1)?.[1].entity_data
+    expect(savedData).toMatchObject({
+      keys: reference,
+      columns: [manualReference, reference],
+      drop_duplicates: ['before_duplicate', reference, 'after_duplicate'],
+      drop_empty_rows: [legacyExpression, ...resolvedColumns],
+      foreign_keys: [{ entity: 'site', local_keys: [reference, 'local_manual'], remote_keys: reference, how: 'left' }],
+      unnest: {
+        id_vars: reference,
+        value_vars: ['manual_value', reference],
+        var_name: 'variable',
+        value_name: 'value',
+      },
+    })
+    expect(savedData.drop_empty_rows).not.toEqual(before)
+    expect(wrapper.find('[data-testid="reference-replacement-undo"]').exists()).toBe(false)
   })
 
   it('preserves every saved column-list field shape after an unrelated edit and child editor updates', async () => {

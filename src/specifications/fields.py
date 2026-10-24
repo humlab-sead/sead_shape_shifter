@@ -278,4 +278,6 @@ class KeysSubsetOfColumnsValidator(FieldValidator):
             "(extra_columns, foreign_keys, or unnest) that creates them.",
             entity=entity_name,
             field="keys",
+            code="BUSINESS_KEY_NOT_PRODUCED",
+            related_columns=missing_keys,
         )

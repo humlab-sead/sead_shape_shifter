@@ -127,6 +127,7 @@
       :project-name="projectName"
       :entity="selectedEntity"
       :mode="dialogMode"
+      :saved-validation-result="savedValidationResult"
       @saved="handleEntitySaved"
     />
 
@@ -149,12 +150,14 @@
 import { ref, computed, watch } from 'vue'
 import { useEntities } from '@/composables'
 import type { EntityResponse } from '@/api/entities'
+import type { ValidationResult } from '@/types'
 import EntityFormDialog from './EntityFormDialog.vue'
 import DeleteConfirmationDialog from '@/components/common/DeleteConfirmationDialog.vue'
 
 interface Props {
   projectName: string
   entityToEdit?: string | null
+  savedValidationResult?: ValidationResult | null
 }
 
 interface Emits {

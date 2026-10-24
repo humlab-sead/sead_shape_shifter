@@ -334,6 +334,7 @@ class ValidationService:
             field=field_name,
             message=message,
             code=code,
+            related_columns=issue.kwargs.get("related_columns"),
         )
 
     def validate_entity(self, project: Project, entity_name: str) -> ValidationResult:

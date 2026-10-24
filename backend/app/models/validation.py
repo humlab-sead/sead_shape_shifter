@@ -58,10 +58,21 @@ class ValidationError(BaseModel):
     field: str | None = Field(default=None, description="Field name where error occurred")
     message: str = Field(..., description="Error message")
     code: str | None = Field(default=None, description="Error code for programmatic handling")
+    related_columns: list[str] | None = Field(default=None, description="Columns named by this validation issue")
     suggestion: str | None = Field(default=None, description="Suggested fix")
     category: ValidationCategory = Field(default=ValidationCategory.STRUCTURAL, description="Validation category")
     priority: ValidationPriority = Field(default=ValidationPriority.MEDIUM, description="Validation priority")
     auto_fixable: bool = Field(default=False, description="Whether this issue can be auto-fixed")
+
+
+class DraftEntityValidationRequest(BaseModel):
+    """Entity data to validate without saving it to the project."""
+
+    entity_draft: dict[str, object] = Field(..., description="Raw entity configuration from the current editor draft")
+    original_entity_name: str | None = Field(
+        default=None,
+        description="Saved entity name to replace when the draft renames an entity",
+    )
 
 
 class EntityDataValidationResult(BaseModel):

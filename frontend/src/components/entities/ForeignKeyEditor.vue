@@ -128,7 +128,7 @@
             <v-row dense class="mb-2">
               <v-col cols="12" md="5">
                 <column-reference-combobox
-                  :model-value="normalizeKeysArray(fk.local_keys)"
+                  :model-value="getForeignKeyKeys(fk, 'local_keys')"
                   variant="outlined"
                   density="compact"
                   :items="getLocalColumnItems(index)"
@@ -136,10 +136,14 @@
                   :entity-name="entityName"
                   :entity-draft="entityDraft"
                   :disabled="referenceControlsDisabled"
+                  :validation-loading="validationLoading"
+                  :validation-error="validationError"
                   :edited-field-path="`entities.${entityName}.foreign_keys.${index}.local_keys`"
                   :preferred-entity="entityName"
                   label="Local Keys"
                   @update:model-value="handleLocalKeysUpdate(index, $event)"
+                  @inspect-reference="emit('inspect-reference')"
+                  @replace-reference="handleReferenceReplacement(index, $event)"
                 />
               </v-col>
 
@@ -149,7 +153,7 @@
 
               <v-col cols="12" md="5">
                 <column-reference-combobox
-                  :model-value="normalizeKeysArray(fk.remote_keys)"
+                  :model-value="getForeignKeyKeys(fk, 'remote_keys')"
                   variant="outlined"
                   density="compact"
                   :items="getRemoteKeyItems(index)"
@@ -157,10 +161,14 @@
                   :entity-name="entityName"
                   :entity-draft="entityDraft"
                   :disabled="referenceControlsDisabled"
+                  :validation-loading="validationLoading"
+                  :validation-error="validationError"
                   :edited-field-path="`entities.${entityName}.foreign_keys.${index}.remote_keys`"
                   :preferred-entity="fk.entity"
                   label="Remote Keys"
                   @update:model-value="handleRemoteKeysUpdate(index, $event)"
+                  @inspect-reference="emit('inspect-reference')"
+                  @replace-reference="handleReferenceReplacement(index, $event)"
                 />
               </v-col>
             </v-row>
@@ -326,6 +334,8 @@ interface Props {
   entityColumns?: string[] | string
   isEntitySaved?: boolean
   hasUnsavedChanges?: boolean
+  validationLoading?: boolean
+  validationError?: string | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -336,20 +346,40 @@ const props = withDefaults(defineProps<Props>(), {
   entityColumns: () => [],
   isEntitySaved: false,
   hasUnsavedChanges: false,
+  validationLoading: false,
+  validationError: null,
 })
 
 const emit = defineEmits<{
   'update:modelValue': [value: ForeignKeyConfig[]]
+  'inspect-reference': []
+  'replace-reference': [replacement: { fieldPath: string; before: string[]; after: string[] }]
 }>()
 
+interface ForeignKeyColumnListOrigin {
+  preserveDuplicates?: boolean
+}
+
+interface ForeignKeyWithColumnListOrigins extends ForeignKeyConfig {
+  __columnListOrigins?: {
+    local_keys?: ForeignKeyColumnListOrigin
+    remote_keys?: ForeignKeyColumnListOrigin
+  }
+}
+
 /**
- * Normalize keys array to always contain unique strings.
+ * Normalize key arrays to non-empty strings, removing duplicates by default.
  * Handles case where v-combobox might store objects instead of string values.
  * Scalar strings are wrapped in a single-element array so they appear as a
  * removable chip in the combobox.
  */
-function normalizeKeysArray(keys: any): string[] {
-  return normalizeForeignKeyKeys(keys)
+function normalizeKeysArray(keys: any, preserveDuplicates = false): string[] {
+  return normalizeForeignKeyKeys(keys, preserveDuplicates)
+}
+
+function getForeignKeyKeys(fk: ForeignKeyConfig, key: 'local_keys' | 'remote_keys'): string[] {
+  const fkWithOrigins = fk as ForeignKeyWithColumnListOrigins
+  return normalizeKeysArray(fk[key], fkWithOrigins.__columnListOrigins?.[key]?.preserveDuplicates)
 }
 
 function createDefaultConstraints(overrides?: ForeignKeyConstraints | null): ForeignKeyConstraints {
@@ -366,8 +396,8 @@ function createDefaultConstraints(overrides?: ForeignKeyConstraints | null): For
 function cloneForeignKey(fk: ForeignKeyConfig): ForeignKeyConfig {
   const cloned: ForeignKeyConfig = {
     ...fk,
-    local_keys: normalizeKeysArray(fk.local_keys),
-    remote_keys: normalizeKeysArray(fk.remote_keys),
+    local_keys: getForeignKeyKeys(fk, 'local_keys'),
+    remote_keys: getForeignKeyKeys(fk, 'remote_keys'),
     constraints: createDefaultConstraints(fk.constraints),
     extra_columns: fk.extra_columns
       ? Array.isArray(fk.extra_columns)
@@ -396,14 +426,44 @@ function handleLocalKeysUpdate(fkIndex: number, value: unknown) {
   const fk = foreignKeys.value[fkIndex]
   if (!fk) return
 
-  fk.local_keys = normalizeKeysArray(value)
+  fk.local_keys = normalizeKeysArray(
+    value,
+    (fk as ForeignKeyWithColumnListOrigins).__columnListOrigins?.local_keys?.preserveDuplicates
+  )
 }
 
 function handleRemoteKeysUpdate(fkIndex: number, value: unknown) {
   const fk = foreignKeys.value[fkIndex]
   if (!fk) return
 
-  fk.remote_keys = normalizeKeysArray(value)
+  fk.remote_keys = normalizeKeysArray(
+    value,
+    (fk as ForeignKeyWithColumnListOrigins).__columnListOrigins?.remote_keys?.preserveDuplicates
+  )
+}
+
+function handleReferenceReplacement(
+  fkIndex: number,
+  replacement: { fieldPath: string; before: string[]; after: string[] }
+): void {
+  const fk = foreignKeys.value[fkIndex]
+  if (!fk) return
+
+  const key = replacement.fieldPath.endsWith('.local_keys')
+    ? 'local_keys'
+    : replacement.fieldPath.endsWith('.remote_keys')
+      ? 'remote_keys'
+      : null
+  if (!key) return
+
+  const fkWithOrigins = fk as ForeignKeyWithColumnListOrigins
+  const origins = fkWithOrigins.__columnListOrigins ?? {}
+  fkWithOrigins.__columnListOrigins = {
+    ...origins,
+    [key]: { ...origins[key], preserveDuplicates: true },
+  }
+  fk[key] = [...replacement.after]
+  emit('replace-reference', replacement)
 }
 
 function getColumnCandidates(fkIndex: number): ForeignKeyColumnCandidates | undefined {

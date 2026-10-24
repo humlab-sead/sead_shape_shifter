@@ -71,6 +71,48 @@
           <div class="mt-4 text-h6">Loading entity data...</div>
         </v-overlay>
 
+        <v-alert
+          v-if="savedStructuralIssues.length"
+          type="warning"
+          variant="tonal"
+          density="compact"
+          class="mx-4 mt-4"
+          data-testid="saved-project-findings"
+        >
+          <div class="font-weight-medium mb-1">Saved project findings</div>
+          <div class="text-caption mb-2">These findings describe the last saved project validation.</div>
+          <div
+            v-for="issue in savedStructuralIssues"
+            :key="`${issue.code}:${issue.field}:${issue.message}`"
+            class="mb-1"
+          >
+            <v-chip size="x-small" class="mr-1" :color="issue.severity === 'error' ? 'error' : 'warning'">
+              {{ issue.severity }}
+            </v-chip>
+            {{ issue.message }}
+          </div>
+        </v-alert>
+
+        <v-alert
+          v-if="referenceReplacement"
+          type="info"
+          variant="tonal"
+          density="compact"
+          class="mx-4 mt-4"
+          data-testid="reference-replacement-undo"
+        >
+          <span>Column names were saved as a snapshot and will not follow later source changes.</span>
+          <v-btn
+            size="small"
+            variant="text"
+            class="ml-2"
+            data-testid="undo-reference-replacement"
+            @click="undoReferenceReplacement"
+          >
+            Undo
+          </v-btn>
+        </v-alert>
+
         <div :class="viewMode !== 'form' ? 'split-layout' : ''" :data-view-mode="viewMode">
           <!-- Left: Entity Form -->
           <div
@@ -342,16 +384,22 @@
                         <v-col cols="4" class="pl-2">
                           <!-- Keys (business keys) -->
                           <column-reference-combobox
-                            v-model="formData.keys"
+                            :model-value="formData.keys"
                             :items="columnAvailability?.business_keys ?? []"
                             :project-name="projectName"
                             :entity-name="formData.name"
                             :entity-draft="serializedEntityDraft"
                             :edited-field-path="`entities.${formData.name}.keys`"
                             :disabled="!modelValue"
+                            :validation-issues="draftIssuesForField('keys')"
+                            :validation-loading="draftValidationLoading"
+                            :validation-error="draftValidationError"
                             label="Business Keys *"
                             variant="outlined"
                             persistent-placeholder
+                            @inspect-reference="handleColumnReferenceInspection"
+                            @update:model-value="handleReferenceFieldUpdate('keys', $event)"
+                            @replace-reference="handleReferenceReplacement"
                           >
                             <template #message>
                               <span class="text-caption">Natural key columns that uniquely identify records</span>
@@ -370,17 +418,22 @@
                         <v-col cols="8" class="pr-2">
                           <column-reference-combobox
                             v-if="formData.type !== 'fixed'"
-                            v-model="formData.columns"
+                            :model-value="formData.columns"
                             :items="columnAvailability?.columns ?? []"
                             :project-name="projectName"
                             :entity-name="formData.name"
                             :entity-draft="serializedEntityDraft"
                             :edited-field-path="`entities.${formData.name}.columns`"
                             :disabled="!modelValue"
+                            :validation-loading="draftValidationLoading"
+                            :validation-error="draftValidationError"
                             label="Columns"
                             variant="outlined"
                             persistent-placeholder
                             :rules="[]"
+                            @inspect-reference="handleColumnReferenceInspection"
+                            @update:model-value="handleReferenceFieldUpdate('columns', $event)"
+                            @replace-reference="handleReferenceReplacement"
                           >
                             <template #message>
                               <span class="text-caption" v-if="isMergedEntityType">
@@ -624,16 +677,21 @@
                           </v-row>
 
                           <column-reference-combobox
-                            v-model="formData.drop_duplicates.columns"
+                            :model-value="formData.drop_duplicates.columns"
                             :items="columnAvailability?.drop_duplicates ?? []"
                             :project-name="projectName"
                             :entity-name="formData.name"
                             :entity-draft="serializedEntityDraft"
                             :edited-field-path="`entities.${formData.name}.drop_duplicates`"
                             :disabled="!modelValue || !formData.drop_duplicates.enabled"
+                            :validation-loading="draftValidationLoading"
+                            :validation-error="draftValidationError"
                             label="Deduplication Columns"
                             variant="outlined"
                             persistent-placeholder
+                            @inspect-reference="handleColumnReferenceInspection"
+                            @update:model-value="handleReferenceFieldUpdate('drop_duplicates', $event)"
+                            @replace-reference="handleReferenceReplacement"
                           >
                             <template #message>
                               <span class="text-caption">Columns to use for deduplication (empty = all columns)</span>
@@ -653,16 +711,21 @@
                             </v-col>
                           </v-row>
                           <column-reference-combobox
-                            v-model="formData.drop_empty_rows.columns"
+                            :model-value="formData.drop_empty_rows.columns"
                             :items="columnAvailability?.drop_empty_rows ?? []"
                             :project-name="projectName"
                             :entity-name="formData.name"
                             :entity-draft="serializedEntityDraft"
                             :edited-field-path="`entities.${formData.name}.drop_empty_rows`"
                             :disabled="!modelValue || !formData.drop_empty_rows.enabled"
+                            :validation-loading="draftValidationLoading"
+                            :validation-error="draftValidationError"
                             label="Columns to Check for Empty Values"
                             variant="outlined"
                             persistent-placeholder
+                            @inspect-reference="handleColumnReferenceInspection"
+                            @update:model-value="handleReferenceFieldUpdate('drop_empty_rows', $event)"
+                            @replace-reference="handleReferenceReplacement"
                           >
                             <template #message>
                               <span class="text-caption">Columns to check for empty values (empty = all columns)</span>
@@ -722,7 +785,11 @@
                   :column-candidates="columnAvailability?.foreign_keys ?? []"
                   :is-entity-saved="mode === 'edit'"
                   :has-unsaved-changes="hasPendingChanges"
+                  :validation-loading="draftValidationLoading"
+                  :validation-error="draftValidationError"
                   @update:model-value="handleForeignKeysUpdate"
+                  @inspect-reference="handleColumnReferenceInspection"
+                  @replace-reference="handleReferenceReplacement"
                 />
               </v-window-item>
 
@@ -732,13 +799,20 @@
 
               <v-window-item value="unnest">
                 <unnest-editor
-                  v-model="formData.advanced.unnest"
+                  :model-value="formData.advanced.unnest"
                   :id-var-columns="columnAvailability?.unnest.id_vars ?? []"
                   :value-var-columns="columnAvailability?.unnest.value_vars ?? []"
                   :project-name="projectName"
                   :entity-name="formData.name"
                   :entity-draft="serializedEntityDraft"
                   :reference-controls-disabled="!modelValue"
+                  :id-var-validation-issues="draftIssuesForField('unnest.id_vars')"
+                  :value-var-validation-issues="draftIssuesForField('unnest.value_vars')"
+                  :validation-loading="draftValidationLoading"
+                  :validation-error="draftValidationError"
+                  @inspect-reference="handleColumnReferenceInspection"
+                  @update:model-value="handleUnnestUpdate"
+                  @replace-reference="handleReferenceReplacement"
                 />
               </v-window-item>
 
@@ -1124,6 +1198,8 @@ import {
   normalizeEditableFixedColumns,
 } from './entityFormMaterialization'
 import type { ExtraColumnValue } from './extraColumnsEditorUtils'
+import type { ValidationError, ValidationResult } from '@/types'
+import { useDraftEntityValidation } from '@/composables/useDraftEntityValidation'
 
 const DIALOG_SIZE_STORAGE_KEY = 'shape-shifter:entity-dialog-size:v1'
 const DEFAULT_DIALOG_WIDTH = 1100
@@ -1153,6 +1229,14 @@ interface Props {
   entity?: EntityResponse | null
   mode: 'create' | 'edit'
   initialTab?: 'form' | 'yaml'
+  savedValidationResult?: ValidationResult | null
+}
+
+interface ReferenceReplacementSnapshot {
+  fieldPath: string
+  before: string[]
+  after: string[]
+  foreignKeyOriginBefore?: ColumnListOrigin
 }
 
 interface Emits {
@@ -1175,6 +1259,13 @@ type PreviewError =
 
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
+const {
+  result: draftValidationResult,
+  error: draftValidationError,
+  loading: draftValidationLoading,
+  setContext: setDraftValidationContext,
+  validateDraft: validateDraftEntity,
+} = useDraftEntityValidation()
 
 const { entities, create, update } = useEntities({
   projectName: props.projectName,
@@ -1337,6 +1428,7 @@ function normalizeChipField(value: unknown): string[] {
 interface ColumnListOrigin {
   value: unknown
   chips: string[]
+  preserveDuplicates?: boolean
 }
 
 interface ForeignKeyColumnListOrigins {
@@ -1360,18 +1452,39 @@ function createColumnListOrigin(value: unknown): ColumnListOrigin {
   }
 }
 
-function createForeignKeyColumnListOrigins(foreignKey: Record<string, any>): ForeignKeyColumnListOrigins {
-  const localValue = cloneColumnListValue(foreignKey.local_keys)
-  const remoteValue = cloneColumnListValue(foreignKey.remote_keys)
+function createForeignKeyColumnListOrigins(
+  foreignKey: Record<string, any>,
+  existingOrigins?: ForeignKeyColumnListOrigins,
+  useCurrentValues = false
+): ForeignKeyColumnListOrigins {
+  const sourceOrigins = (foreignKey.__columnListOrigins as ForeignKeyColumnListOrigins | undefined) ?? existingOrigins
+  const localPreserveDuplicates = sourceOrigins?.local_keys?.preserveDuplicates ?? false
+  const remotePreserveDuplicates = sourceOrigins?.remote_keys?.preserveDuplicates ?? false
 
   return {
     local_keys: {
-      value: localValue,
-      chips: normalizeForeignKeyKeys(foreignKey.local_keys),
+      value: cloneColumnListValue(
+        useCurrentValues ? foreignKey.local_keys : (sourceOrigins?.local_keys?.value ?? foreignKey.local_keys)
+      ),
+      chips: useCurrentValues
+        ? normalizeForeignKeyKeys(foreignKey.local_keys, localPreserveDuplicates)
+        : [
+            ...(sourceOrigins?.local_keys?.chips ??
+              normalizeForeignKeyKeys(foreignKey.local_keys, localPreserveDuplicates)),
+          ],
+      ...(localPreserveDuplicates ? { preserveDuplicates: true } : {}),
     },
     remote_keys: {
-      value: remoteValue,
-      chips: normalizeForeignKeyKeys(foreignKey.remote_keys),
+      value: cloneColumnListValue(
+        useCurrentValues ? foreignKey.remote_keys : (sourceOrigins?.remote_keys?.value ?? foreignKey.remote_keys)
+      ),
+      chips: useCurrentValues
+        ? normalizeForeignKeyKeys(foreignKey.remote_keys, remotePreserveDuplicates)
+        : [
+            ...(sourceOrigins?.remote_keys?.chips ??
+              normalizeForeignKeyKeys(foreignKey.remote_keys, remotePreserveDuplicates)),
+          ],
+      ...(remotePreserveDuplicates ? { preserveDuplicates: true } : {}),
     },
   }
 }
@@ -1382,11 +1495,12 @@ function buildForeignKeyFormData(value: unknown): any[] {
   return value.map((item) => {
     const foreignKey = item && typeof item === 'object' ? (item as Record<string, any>) : {}
     const { __columnListOrigins: _columnListOrigins, ...publicFields } = foreignKey
+    const origins = createForeignKeyColumnListOrigins(foreignKey)
     return {
       ...publicFields,
-      local_keys: normalizeForeignKeyKeys(foreignKey.local_keys),
-      remote_keys: normalizeForeignKeyKeys(foreignKey.remote_keys),
-      __columnListOrigins: createForeignKeyColumnListOrigins(foreignKey),
+      local_keys: normalizeForeignKeyKeys(foreignKey.local_keys, origins.local_keys.preserveDuplicates),
+      remote_keys: normalizeForeignKeyKeys(foreignKey.remote_keys, origins.remote_keys.preserveDuplicates),
+      __columnListOrigins: origins,
     }
   })
 }
@@ -1474,6 +1588,8 @@ const formData = ref<FormData>({
     replacements: undefined,
   },
 })
+
+const referenceReplacement = ref<ReferenceReplacementSnapshot | null>(null)
 
 const activeTab = ref('basic')
 
@@ -2038,20 +2154,22 @@ function buildEntityConfigFromFormData(options: BuildEntityConfigOptions = {}): 
     // Transform foreign keys: extract column values and preserve all FK settings.
     entityData.foreign_keys = formData.value.foreign_keys.map((fk: any) => {
       const origins = fk.__columnListOrigins as ForeignKeyColumnListOrigins | undefined
-      const localKeys = normalizeForeignKeyKeys(fk.local_keys)
-      const remoteKeys = normalizeForeignKeyKeys(fk.remote_keys)
+      const localKeys = normalizeForeignKeyKeys(fk.local_keys, origins?.local_keys.preserveDuplicates)
+      const remoteKeys = normalizeForeignKeyKeys(fk.remote_keys, origins?.remote_keys.preserveDuplicates)
 
       const transformedFk: Record<string, unknown> = {
         entity: fk.entity,
         local_keys: serializeColumnListValue(
           localKeys,
           origins?.local_keys.value,
-          origins?.local_keys.chips ?? normalizeForeignKeyKeys(origins?.local_keys.value as any)
+          origins?.local_keys.chips ??
+            normalizeForeignKeyKeys(origins?.local_keys.value as any, origins?.local_keys.preserveDuplicates)
         ),
         remote_keys: serializeColumnListValue(
           remoteKeys,
           origins?.remote_keys.value,
-          origins?.remote_keys.chips ?? normalizeForeignKeyKeys(origins?.remote_keys.value as any)
+          origins?.remote_keys.chips ??
+            normalizeForeignKeyKeys(origins?.remote_keys.value as any, origins?.remote_keys.preserveDuplicates)
         ),
       }
 
@@ -2148,6 +2266,245 @@ function buildEntityConfigFromFormData(options: BuildEntityConfigOptions = {}): 
 }
 
 const serializedEntityDraft = computed(() => buildEntityConfigFromFormData({ includeDerivedSqlColumns: true }))
+
+const draftValidationContext = computed(() => ({
+  projectName: props.projectName,
+  entityName: formData.value.name,
+  entityDraft: serializedEntityDraft.value,
+  ...(props.mode === 'edit' && props.entity?.name ? { originalEntityName: props.entity.name } : {}),
+}))
+
+const draftValidationContextKey = computed(() =>
+  props.modelValue
+    ? JSON.stringify([
+        draftValidationContext.value.projectName,
+        draftValidationContext.value.entityName,
+        draftValidationContext.value.originalEntityName ?? null,
+        draftValidationContext.value.entityDraft,
+      ])
+    : null
+)
+
+onMounted(() => {
+  watch(
+    draftValidationContextKey,
+    () => setDraftValidationContext(props.modelValue ? draftValidationContext.value : null),
+    { immediate: true, flush: 'sync' }
+  )
+})
+
+watch(
+  () => props.modelValue,
+  (isOpen) => {
+    if (!isOpen) referenceReplacement.value = null
+  },
+  { flush: 'sync' }
+)
+
+const savedStructuralIssues = computed<ValidationError[]>(() => {
+  const result = props.savedValidationResult
+  const savedEntityName = props.entity?.name
+  if (!result || !savedEntityName) return []
+
+  return [...result.errors, ...result.warnings].filter(
+    (issue) =>
+      issue.entity === savedEntityName &&
+      (issue.code === 'UNNEST_VARIABLE_OVERLAP' || issue.code === 'BUSINESS_KEY_NOT_PRODUCED')
+  )
+})
+
+function draftIssuesForField(fieldPath: 'keys' | 'unnest.id_vars' | 'unnest.value_vars'): ValidationError[] {
+  const result = draftValidationResult.value
+  if (!result || !formData.value.name) return []
+
+  const code = fieldPath === 'keys' ? 'BUSINESS_KEY_NOT_PRODUCED' : 'UNNEST_VARIABLE_OVERLAP'
+  const issueField = fieldPath === 'unnest.id_vars' || fieldPath === 'unnest.value_vars' ? 'unnest.value_vars' : 'keys'
+  return [...result.errors, ...result.warnings].filter(
+    (issue) => issue.entity === formData.value.name && issue.field === issueField && issue.code === code
+  )
+}
+
+function getRelativeReferenceFieldPath(fieldPath: string): string {
+  return fieldPath.replace(/^entities\.[^.]+\./, '')
+}
+
+function getReferenceFieldChips(fieldPath: string): string[] | null {
+  const field = getRelativeReferenceFieldPath(fieldPath)
+  switch (field) {
+    case 'keys':
+      return [...formData.value.keys]
+    case 'columns':
+      return [...formData.value.columns]
+    case 'drop_duplicates':
+      return [...formData.value.drop_duplicates.columns]
+    case 'drop_empty_rows':
+      return [...formData.value.drop_empty_rows.columns]
+    case 'unnest.id_vars':
+      return formData.value.advanced.unnest ? [...formData.value.advanced.unnest.id_vars] : null
+    case 'unnest.value_vars':
+      return formData.value.advanced.unnest ? [...formData.value.advanced.unnest.value_vars] : null
+    default: {
+      const foreignKeyMatch = /^foreign_keys\.(\d+)\.(local_keys|remote_keys)$/.exec(field)
+      if (!foreignKeyMatch) return null
+      const foreignKey = formData.value.foreign_keys[Number(foreignKeyMatch[1])]
+      if (!foreignKey) return null
+      const keyName = foreignKeyMatch[2] as 'local_keys' | 'remote_keys'
+      const origins = foreignKey.__columnListOrigins as ForeignKeyColumnListOrigins | undefined
+      return normalizeForeignKeyKeys(foreignKey[keyName], origins?.[keyName].preserveDuplicates)
+    }
+  }
+}
+
+function sameReferenceChips(left: string[] | null, right: string[]): boolean {
+  return left !== null && left.length === right.length && left.every((value, index) => value === right[index])
+}
+
+const replacementCurrentChips = computed(() => {
+  const snapshot = referenceReplacement.value
+  return snapshot ? getReferenceFieldChips(snapshot.fieldPath) : null
+})
+
+watch(
+  replacementCurrentChips,
+  (currentChips) => {
+    const snapshot = referenceReplacement.value
+    if (snapshot && !sameReferenceChips(currentChips, snapshot.after)) {
+      referenceReplacement.value = null
+    }
+  },
+  { flush: 'post' }
+)
+
+watch(
+  () => [formData.value.drop_duplicates.enabled, formData.value.drop_empty_rows.enabled] as const,
+  ([dropDuplicatesEnabled, dropEmptyRowsEnabled]) => {
+    const field = referenceReplacement.value
+      ? getRelativeReferenceFieldPath(referenceReplacement.value.fieldPath)
+      : null
+    if (
+      (field === 'drop_duplicates' && !dropDuplicatesEnabled) ||
+      (field === 'drop_empty_rows' && !dropEmptyRowsEnabled)
+    ) {
+      referenceReplacement.value = null
+    }
+  },
+  { flush: 'sync' }
+)
+
+function handleColumnReferenceInspection(): void {
+  if (!props.modelValue) return
+  validateDraftEntity(draftValidationContext.value)
+}
+
+function handleReferenceFieldUpdate(
+  field: 'keys' | 'columns' | 'drop_duplicates' | 'drop_empty_rows',
+  value: unknown
+): void {
+  const columns = normalizeChipField(value)
+  if (field === 'keys') formData.value.keys = columns
+  else if (field === 'columns') formData.value.columns = columns
+  else if (field === 'drop_duplicates') formData.value.drop_duplicates.columns = columns
+  else formData.value.drop_empty_rows.columns = columns
+}
+
+function handleUnnestUpdate(value: unknown): void {
+  formData.value.advanced.unnest = normalizeUnnestForFormData(value)
+}
+
+function handleReferenceReplacement(replacement: ReferenceReplacementSnapshot): void {
+  const relativeField = getRelativeReferenceFieldPath(replacement.fieldPath)
+  const foreignKeyMatch = /^foreign_keys\.(\d+)\.(local_keys|remote_keys)$/.exec(relativeField)
+  let foreignKeyOriginBefore: ColumnListOrigin | undefined
+
+  if (foreignKeyMatch) {
+    const index = Number(foreignKeyMatch[1])
+    const key = foreignKeyMatch[2] as 'local_keys' | 'remote_keys'
+    const currentForeignKey = formData.value.foreign_keys[index]
+    if (currentForeignKey) {
+      const currentOrigins = currentForeignKey.__columnListOrigins as ForeignKeyColumnListOrigins | undefined
+      const origin = currentOrigins?.[key]
+      foreignKeyOriginBefore = origin
+        ? { ...origin, value: cloneColumnListValue(origin.value), chips: [...origin.chips] }
+        : {
+            value: cloneColumnListValue(currentForeignKey[key]),
+            chips: normalizeForeignKeyKeys(currentForeignKey[key]),
+          }
+
+      const foreignKeys = formData.value.foreign_keys.map((foreignKey: any) => ({ ...foreignKey }))
+      const current = foreignKeys[index]
+      const origins = createForeignKeyColumnListOrigins(current, currentOrigins)
+      const after = [...replacement.after]
+      origins[key] = { value: [...after], chips: [...after], preserveDuplicates: true }
+      foreignKeys[index] = { ...current, [key]: after, __columnListOrigins: origins }
+      formData.value.foreign_keys = foreignKeys
+    }
+  }
+
+  referenceReplacement.value = {
+    fieldPath: replacement.fieldPath,
+    before: [...replacement.before],
+    after: [...replacement.after],
+    ...(foreignKeyOriginBefore ? { foreignKeyOriginBefore } : {}),
+  }
+}
+
+function undoReferenceReplacement(): void {
+  const snapshot = referenceReplacement.value
+  if (!snapshot || !sameReferenceChips(getReferenceFieldChips(snapshot.fieldPath), snapshot.after)) {
+    referenceReplacement.value = null
+    return
+  }
+
+  const field = getRelativeReferenceFieldPath(snapshot.fieldPath)
+  referenceReplacement.value = null
+
+  switch (field) {
+    case 'keys':
+      formData.value.keys = [...snapshot.before]
+      break
+    case 'columns':
+      formData.value.columns = [...snapshot.before]
+      break
+    case 'drop_duplicates':
+      formData.value.drop_duplicates.columns = [...snapshot.before]
+      break
+    case 'drop_empty_rows':
+      formData.value.drop_empty_rows.columns = [...snapshot.before]
+      break
+    case 'unnest.id_vars':
+    case 'unnest.value_vars': {
+      const unnest = formData.value.advanced.unnest
+      if (!unnest) return
+      const key = field.endsWith('id_vars') ? 'id_vars' : 'value_vars'
+      formData.value.advanced.unnest = { ...unnest, [key]: [...snapshot.before] }
+      break
+    }
+    default: {
+      const foreignKeyMatch = /^foreign_keys\.(\d+)\.(local_keys|remote_keys)$/.exec(field)
+      if (!foreignKeyMatch) return
+      const index = Number(foreignKeyMatch[1])
+      const key = foreignKeyMatch[2] as 'local_keys' | 'remote_keys'
+      const foreignKeys = formData.value.foreign_keys.map((foreignKey) => ({ ...foreignKey }))
+      const foreignKey = foreignKeys[index]
+      if (!foreignKey) return
+      const origins = foreignKey.__columnListOrigins as ForeignKeyColumnListOrigins | undefined
+      const restoredOrigins = { ...(origins ?? createForeignKeyColumnListOrigins(foreignKey)) }
+      if (snapshot.foreignKeyOriginBefore) {
+        restoredOrigins[key] = {
+          ...snapshot.foreignKeyOriginBefore,
+          value: cloneColumnListValue(snapshot.foreignKeyOriginBefore.value),
+          chips: [...snapshot.foreignKeyOriginBefore.chips],
+        }
+      }
+      foreignKeys[index] = {
+        ...foreignKey,
+        [key]: [...snapshot.before],
+        __columnListOrigins: restoredOrigins,
+      }
+      void handleForeignKeysUpdate(foreignKeys)
+    }
+  }
+}
 
 async function refreshPreview() {
   if (!canPreview.value) return
@@ -3017,6 +3374,14 @@ async function handleYamlChange(value: string) {
 }
 
 async function handleForeignKeysUpdate(value: any[]) {
+  const currentFkReplacement = referenceReplacement.value
+  if (
+    currentFkReplacement &&
+    value.length < formData.value.foreign_keys.length &&
+    getRelativeReferenceFieldPath(currentFkReplacement.fieldPath).startsWith('foreign_keys.')
+  ) {
+    referenceReplacement.value = null
+  }
   formData.value.foreign_keys = value
 
   // Relationships tab lives outside v-form fields; force a validity refresh
@@ -3066,7 +3431,14 @@ function captureInitialSnapshot() {
   formData.value.foreign_keys = formData.value.foreign_keys.map((foreignKey: any, index: number) => {
     const savedForeignKey = savedForeignKeys[index]
     return savedForeignKey
-      ? { ...foreignKey, __columnListOrigins: createForeignKeyColumnListOrigins(savedForeignKey) }
+      ? {
+          ...foreignKey,
+          __columnListOrigins: createForeignKeyColumnListOrigins(
+            savedForeignKey,
+            foreignKey.__columnListOrigins as ForeignKeyColumnListOrigins | undefined,
+            true
+          ),
+        }
       : foreignKey
   })
 
@@ -3175,6 +3547,7 @@ async function handleSubmit() {
         name: formData.value.name,
         entity_data: entityData,
       })
+      referenceReplacement.value = null
       syncDetectedSqlColumnsToFormData()
       emit('saved', formData.value.name)
       // Keep dialog open after creating (user can choose "Save & Close" if they want to close)
@@ -3190,6 +3563,7 @@ async function handleSubmit() {
         entity_data: entityData,
         ...(formData.value.name !== originalEntityName ? { new_name: formData.value.name } : {}),
       })
+      referenceReplacement.value = null
       for (const warning of updatedEntity.warnings ?? []) {
         showWarning(warning)
       }

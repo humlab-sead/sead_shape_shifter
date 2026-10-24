@@ -1,9 +1,12 @@
 export type ForeignKeyKeyInput = string | { value?: string | null } | null | undefined
 
 /**
- * Normalize combobox key selections to unique non-empty strings while preserving order.
+ * Normalize combobox key selections to non-empty strings while preserving order.
  */
-export function normalizeForeignKeyKeys(keys: ForeignKeyKeyInput[] | string | null | undefined): string[] {
+export function normalizeForeignKeyKeys(
+  keys: ForeignKeyKeyInput[] | string | null | undefined,
+  preserveDuplicates = false
+): string[] {
   if (!Array.isArray(keys)) {
     if (typeof keys === 'string') {
       const trimmed = keys.trim()
@@ -21,5 +24,5 @@ export function normalizeForeignKeyKeys(keys: ForeignKeyKeyInput[] | string | nu
     .map((key) => key.trim())
     .filter((key) => key.length > 0)
 
-  return [...new Set(normalized)]
+  return preserveDuplicates ? normalized : [...new Set(normalized)]
 }

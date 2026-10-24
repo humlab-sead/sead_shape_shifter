@@ -333,14 +333,14 @@ class TestSaveEntityRenameBoundary:
 
 
 class TestBoundProjectBusinessKeys:
-    """A bound project keeps its declared tracked business keys."""
+    """A bound project keeps its resolved ordered business keys."""
 
     @staticmethod
     def _bind(project_file: Path) -> None:
         project_file.write_text(
             FIXTURE_YAML.replace(
                 "  version: 1.0.0\n",
-                "  version: 1.0.0\n  data_provider_code: test-provider\n  provider_schema: schema-one\n",
+                "  version: 1.0.0\n  type: shapeshifter-project\n  data_provider_code: test-provider\n  provider_schema: schema-one\n",
             ),
             encoding="utf-8",
         )
@@ -377,6 +377,110 @@ class TestBoundProjectBusinessKeys:
         )
 
         assert YamlService().load(project_file)["entities"]["sample"]["columns"] == ["name", "value", "extra"]
+
+    def test_allows_replacing_keys_with_the_same_resolved_order(self, service: ProjectService, project_file: Path) -> None:
+        self._bind(project_file)
+        project_file.write_text(
+            project_file.read_text(encoding="utf-8").replace("keys: [sample_id]", 'keys: "@value: entities.site.keys"'),
+            encoding="utf-8",
+        )
+
+        service.save_entity_boundary(
+            "test-project",
+            "sample",
+            {"type": "entity", "keys": ["site_id"], "columns": ["name", "value"]},
+        )
+
+        assert YamlService().load(project_file)["entities"]["sample"]["keys"] == ["site_id"]
+
+    def test_rejects_replacing_unresolved_keys_with_literals(self, service: ProjectService, project_file: Path) -> None:
+        self._bind(project_file)
+        project_file.write_text(
+            project_file.read_text(encoding="utf-8").replace("keys: [sample_id]", 'keys: "@value: entities.missing.keys"'),
+            encoding="utf-8",
+        )
+        original = project_file.read_bytes()
+
+        with pytest.raises(ProjectProviderBindingError):
+            service.save_entity_boundary(
+                "test-project",
+                "sample",
+                {"type": "entity", "keys": ["site_id"], "columns": ["name", "value"]},
+            )
+
+        assert project_file.read_bytes() == original
+
+    def test_rejects_reordering_resolved_business_keys(self, service: ProjectService, project_file: Path) -> None:
+        self._bind(project_file)
+        config = YamlService().load(project_file)
+        config["entities"]["sample"]["keys"] = "@value: entities.site.keys"
+        config["entities"]["site"]["keys"] = ["site_id", "region_id"]
+        YamlService().save(config, project_file, create_backup=False)
+        original = project_file.read_bytes()
+
+        with pytest.raises(ProjectProviderBindingError):
+            service.save_entity_boundary(
+                "test-project",
+                "sample",
+                {"type": "entity", "keys": ["region_id", "site_id"], "columns": ["name", "value"]},
+            )
+
+        assert project_file.read_bytes() == original
+
+    def test_allows_same_resolved_keys_across_a_shared_provider_pair(
+        self, service: ProjectService, project_file: Path, projects_dir: Path
+    ) -> None:
+        self._bind(project_file)
+        project_file.write_text(
+            project_file.read_text(encoding="utf-8").replace("keys: [sample_id]", 'keys: "@value: entities.site.keys"'),
+            encoding="utf-8",
+        )
+        sibling_dir = projects_dir / "sibling"
+        sibling_dir.mkdir()
+        sibling_file = sibling_dir / "shapeshifter.yml"
+        self._bind(sibling_file)
+        sibling_file.write_text(
+            sibling_file.read_text(encoding="utf-8").replace("keys: [sample_id]", "keys: [site_id]"),
+            encoding="utf-8",
+        )
+
+        service.save_entity_boundary(
+            "test-project",
+            "sample",
+            {"type": "entity", "keys": "@value: entities.site.keys", "columns": ["name", "value", "extra"]},
+        )
+
+        assert YamlService().load(project_file)["entities"]["sample"]["columns"] == ["name", "value", "extra"]
+
+    def test_rejects_different_resolved_keys_across_a_shared_provider_pair(
+        self, service: ProjectService, project_file: Path, projects_dir: Path
+    ) -> None:
+        self._bind(project_file)
+        project_file.write_text(
+            project_file.read_text(encoding="utf-8").replace("keys: [sample_id]", 'keys: "@value: entities.site.keys"'),
+            encoding="utf-8",
+        )
+        sibling_dir = projects_dir / "sibling"
+        sibling_dir.mkdir()
+        sibling_file = sibling_dir / "shapeshifter.yml"
+        self._bind(sibling_file)
+        sibling_file.write_text(
+            sibling_file.read_text(encoding="utf-8").replace("keys: [sample_id]", "keys: [other_id]"),
+            encoding="utf-8",
+        )
+        original = project_file.read_bytes()
+        listed_projects = {project.name: project for project in service.list_projects()}
+        assert set(listed_projects) == {"test-project", "sibling"}
+        assert listed_projects["sibling"].data_provider_code == "test-provider"
+
+        with pytest.raises(ProjectProviderBindingError):
+            service.save_entity_boundary(
+                "test-project",
+                "sample",
+                {"type": "entity", "keys": "@value: entities.site.keys", "columns": ["name", "value", "extra"]},
+            )
+
+        assert project_file.read_bytes() == original
 
     def test_allows_a_key_change_on_an_unbound_project(self, service: ProjectService, project_file: Path) -> None:
         service.save_entity_boundary(

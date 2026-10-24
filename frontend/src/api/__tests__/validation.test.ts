@@ -4,7 +4,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { validationApi } from '../validation'
-import type { ValidationResult, DependencyGraph, CircularDependencyCheck } from '@/types'
+import type { ValidationResult, DependencyGraph, CircularDependencyCheck, DraftEntityValidationRequest } from '@/types'
 
 // Mock the API client
 vi.mock('../client', () => ({
@@ -147,6 +147,42 @@ describe('validationApi', () => {
 
       expect(result.errors[0]?.auto_fixable).toBe(true)
       expect(result.errors[0]?.suggestion).toBeDefined()
+    })
+  })
+
+  describe('validateEntityDraft', () => {
+    it('posts the copied draft and original name to the draft validation route', async () => {
+      const mockValidation: ValidationResult = {
+        is_valid: false,
+        errors: [],
+        warnings: [
+          {
+            severity: 'warning',
+            entity: 'sample',
+            field: 'unnest.value_vars',
+            message: 'overlap',
+            code: 'UNNEST_VARIABLE_OVERLAP',
+            related_columns: ['shared'],
+          },
+        ],
+        info: [],
+        error_count: 0,
+        warning_count: 1,
+      }
+      const request: DraftEntityValidationRequest = {
+        entity_draft: { type: 'entity', keys: ['draft'], columns: '@value: entities.site.keys' },
+        original_entity_name: 'old_name',
+      }
+      vi.mocked(apiRequest).mockResolvedValue(mockValidation)
+
+      const result = await validationApi.validateEntityDraft('test-project', 'sample', request)
+
+      expect(apiRequest).toHaveBeenCalledWith({
+        method: 'POST',
+        url: '/projects/test-project/entities/sample/validate-draft',
+        data: request,
+      })
+      expect(result.warnings[0]?.related_columns).toEqual(['shared'])
     })
   })
 

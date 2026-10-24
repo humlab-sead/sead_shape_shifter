@@ -17,13 +17,63 @@ const stubs = {
   },
   ColumnReferenceCombobox: {
     name: 'ColumnReferenceCombobox',
-    props: ['modelValue', 'items', 'label', 'entityDraft', 'editedFieldPath', 'disabled'],
-    emits: ['update:modelValue'],
+    props: [
+      'modelValue',
+      'items',
+      'label',
+      'entityDraft',
+      'editedFieldPath',
+      'disabled',
+      'validationIssues',
+      'validationLoading',
+      'validationError',
+    ],
+    emits: ['update:modelValue', 'inspect-reference', 'replace-reference'],
     template: '<div class="column-reference-combobox-stub" />',
   },
 }
 
 describe('UnnestEditor', () => {
+  it('passes validation findings and forwards reference events from both variable lists', async () => {
+    const overlap = {
+      severity: 'warning',
+      entity: 'sample',
+      field: 'unnest.value_vars',
+      message: 'The ID and Value Variables overlap.',
+      code: 'UNNEST_VARIABLE_OVERLAP',
+      related_columns: ['shared'],
+    }
+    const wrapper = mount(UnnestEditor, {
+      props: {
+        modelValue: {
+          id_vars: ['@value: entities.site.keys'],
+          value_vars: ['@value: entities.site.keys'],
+          var_name: 'kind',
+          value_name: 'value',
+        },
+        idVarValidationIssues: [overlap] as any,
+        valueVarValidationIssues: [overlap] as any,
+        validationLoading: true,
+      },
+      global: { stubs },
+    })
+    const references = wrapper.findAllComponents({ name: 'ColumnReferenceCombobox' })
+    const replacement = {
+      fieldPath: 'entities.sample.unnest.id_vars',
+      before: ['@value: entities.site.keys'],
+      after: ['site_id'],
+    }
+
+    expect(references[0]?.props('validationIssues')).toEqual([overlap])
+    expect(references[1]?.props('validationIssues')).toEqual([overlap])
+    expect(references[0]?.props('validationLoading')).toBe(true)
+    references[0]?.vm.$emit('inspect-reference')
+    references[1]?.vm.$emit('replace-reference', replacement)
+
+    expect(wrapper.emitted('inspect-reference')).toHaveLength(1)
+    expect(wrapper.emitted('replace-reference')?.[0]?.[0]).toEqual(replacement)
+  })
+
   it('uses separate ID and value candidates and accepts a value outside the suggestions', async () => {
     const wrapper = mount(UnnestEditor, {
       props: {
