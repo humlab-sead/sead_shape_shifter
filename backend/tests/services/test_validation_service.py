@@ -110,6 +110,108 @@ class TestValidationServiceBasic:
         assert result.is_valid is True
         assert result.error_count == 0
 
+    def test_valid_saved_references_keep_normal_validation_results(self, validation_service):
+        """Resolve valid column references and keep the existing structural result."""
+        config = {
+            "metadata": {
+                "type": "shapeshifter-project",
+                "name": "test",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+            },
+            "entities": {
+                "data_provider": FIXED_PROVIDER_ENTITY,
+                "source": {"type": "entity", "keys": ["source_id"], "columns": ["source_id", "name"]},
+                "sample": {
+                    "type": "entity",
+                    "keys": "@value: entities.source.keys",
+                    "columns": ["source_id", "name"],
+                },
+            },
+        }
+
+        result = validation_service.validate_project(config)
+
+        assert result.is_valid is True
+        assert result.errors == []
+        assert result.error_count == 0
+
+    def test_invalid_references_are_merged_with_specification_errors(self, validation_service):
+        """Keep raw reference failures alongside independent structural errors."""
+        config = {
+            "metadata": {
+                "type": "shapeshifter-project",
+                "name": "test",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+            },
+            "entities": {
+                "sample": {
+                    "type": "entity",
+                    "keys": "@value: entities.missing.keys",
+                    "foreign_keys": [{"entity": "missing_entity", "local_keys": ["site_id"], "remote_keys": ["site_id"]}],
+                }
+            },
+        }
+
+        result = validation_service.validate_project(config)
+
+        assert any(error.code == "COLUMN_REFERENCE_MISSING_PATH" for error in result.errors)
+        assert any(error.code != "COLUMN_REFERENCE_MISSING_PATH" for error in result.errors)
+        assert result.error_count == len(result.errors)
+        assert result.is_valid is False
+
+    def test_missing_include_keeps_reference_errors_and_existing_error_code(self, validation_service):
+        """Return raw reference errors together with the existing missing-include result."""
+        config = {
+            "entities": {"sample": {"keys": "@value: entities.missing.keys"}},
+            "metadata": {
+                "type": "shapeshifter-project",
+                "name": "test",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+            },
+            "options": {},
+        }
+        config["entities"]["data_provider"] = FIXED_PROVIDER_ENTITY
+        config["options"].update(
+            {
+                "required_file": "@include: absent.yml",
+            }
+        )
+
+        result = validation_service.validate_project(config)
+
+        assert [error.code for error in result.errors] == ["COLUMN_REFERENCE_MISSING_PATH", "CONFIG_INCLUDE_NOT_FOUND"]
+        assert result.error_count == 2
+
+    def test_other_resolution_failure_keeps_reference_errors(self, validation_service, monkeypatch):
+        """Classify non-file mapper failures without dropping independently found errors."""
+        config = {
+            "metadata": {
+                "type": "shapeshifter-project",
+                "name": "test",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+            },
+            "entities": {
+                "data_provider": FIXED_PROVIDER_ENTITY,
+                "sample": {"keys": "@value: entities.missing.keys"},
+            },
+        }
+
+        def fail_resolution(*args, **kwargs):
+            raise ValueError("invalid project data")
+
+        monkeypatch.setattr(validation_service_module, "resolve_directives", fail_resolution)
+
+        result = validation_service.validate_project(config)
+
+        assert [error.code for error in result.errors] == ["COLUMN_REFERENCE_MISSING_PATH", "PROJECT_RESOLUTION_FAILED"]
+        assert result.errors[-1].entity is None
+        assert result.errors[-1].field is None
+        assert result.error_count == len(result.errors)
+
 
 class TestValidationServiceErrors:
     """Tests for error detection."""
@@ -332,6 +434,54 @@ class TestValidationServiceEntity:
         for error in result.errors:
             assert error.entity is None or error.entity == "sample"
 
+    def test_validate_entity_reports_raw_references_and_filters_other_entities(self, validation_service):
+        """Check raw paths before mapping, then retain entity-specific result filtering."""
+        project = Project(
+            metadata=ProjectMetadata(
+                name="test",
+                entity_count=3,
+                data_provider_code="test-provider",
+                provider_schema="schema-one",
+            ),
+            entities={
+                "source": {"type": "entity", "keys": ["source_id"], "columns": ["source_id"]},
+                "sample": {"type": "entity", "keys": ["@value: entities.missing.sample"]},
+                "other": {"type": "entity", "keys": ["@value: entities.missing.other"]},
+            },
+        )
+
+        result = validation_service.validate_entity(project, "sample")
+
+        matching = [error for error in result.errors if error.code == "COLUMN_REFERENCE_MISSING_PATH"]
+        assert len(matching) == 1
+        assert matching[0].entity == "sample"
+        assert matching[0].field == "keys[0]"
+        assert all(error.entity is None or error.entity == "sample" for error in result.errors)
+
+    def test_validate_entity_returns_resolution_failure_as_validation_result(self, validation_service, monkeypatch):
+        """Keep raw reference errors and a project-level result when Core mapping fails."""
+        project = Project(
+            metadata=ProjectMetadata(name="test", entity_count=1),
+            entities={"sample": {"type": "entity", "keys": ["@value: entities.missing.keys"]}},
+        )
+
+        original_mapper = ProjectMapper.to_core
+
+        def fail_mapping(*args, **kwargs):
+            if kwargs.get("requested_reference_path") is None:
+                raise ValueError("mapping failed")
+            return original_mapper(*args, **kwargs)
+
+        monkeypatch.setattr(validation_service_module.ProjectMapper, "to_core", fail_mapping)
+
+        result = validation_service.validate_entity(project, "sample")
+
+        assert any(error.code == "COLUMN_REFERENCE_MISSING_PATH" for error in result.errors)
+        resolution_errors = [error for error in result.errors if error.code == "PROJECT_RESOLUTION_FAILED"]
+        assert len(resolution_errors) == 1
+        assert resolution_errors[0].entity is None
+        assert resolution_errors[0].field is None
+
 
 class TestValidationServiceErrorParsing:
     """Tests for error message parsing."""
@@ -515,6 +665,38 @@ class TestDataValidation:
         assert result.errors[0].category == ValidationCategory.STRUCTURAL
         assert result.entity_statuses["broken"].status == EntityDataValidationStatus.SKIPPED
         mapper.assert_not_called()
+        orchestrator_factory.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_column_reference_errors_skip_data_validation(self, monkeypatch):
+        """Raw reference failures skip mapping and the data orchestrator."""
+        project = Project(
+            metadata=ProjectMetadata(name="broken-project", entity_count=2),
+            entities={
+                "source": {"type": "entity", "keys": ["id"], "columns": ["id"]},
+                "sample": {"type": "entity", "keys": "@value: entities.missing.keys"},
+            },
+        )
+        project_service = Mock()
+        project_service.load_project.return_value = project
+        orchestrator_factory = Mock()
+        service = ValidationService(data_orchestrator_factory=orchestrator_factory)
+
+        original_to_core = ProjectMapper.to_core
+        requested_paths: list[str | None] = []
+
+        def track_mapper_call(project_arg, *, requested_reference_path=None):
+            requested_paths.append(requested_reference_path)
+            return original_to_core(project_arg, requested_reference_path=requested_reference_path)
+
+        monkeypatch.setattr(validation_service_module.ProjectMapper, "to_core", track_mapper_call)
+        with patch("backend.app.services.validation_service.get_project_service", return_value=project_service):
+            result = await service.validate_project_data("broken-project")
+
+        assert result.status == DataValidationStatus.SKIPPED
+        assert result.errors[0].code == "COLUMN_REFERENCE_MISSING_PATH", result.errors
+        assert result.entity_statuses["sample"].status == EntityDataValidationStatus.SKIPPED
+        assert requested_paths == ["entities.missing.keys"]
         orchestrator_factory.assert_not_called()
 
     @pytest.mark.asyncio

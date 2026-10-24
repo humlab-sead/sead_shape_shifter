@@ -58,6 +58,85 @@ class TestEntityValidation:
         assert "errors" in data
         assert "warnings" in data
 
+    async def test_validate_entity_preserves_raw_reference_when_mapping_fails(
+        self, tmp_path, monkeypatch, reset_services, authorized_client
+    ):
+        """Return the raw reference and include failure through the existing entity route."""
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        project_name = "entity_reference_failure"
+        created = await authorized_client.post(
+            "/api/v1/projects",
+            json={
+                "name": project_name,
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {
+                    "source": {"type": "entity", "keys": ["source_id"], "columns": ["source_id"]},
+                    "sample": {"type": "entity", "keys": ["sample_id"], "columns": ["sample_id"]},
+                },
+            },
+        )
+        assert created.status_code == 201
+
+        saved_reference = "@value: entities.missing.keys"
+        reference_update = await authorized_client.put(
+            f"/api/v1/projects/{project_name}/entities/sample",
+            json={"entity_data": {"type": "entity", "keys": ["sample_id"], "columns": saved_reference}},
+        )
+        include_update = await authorized_client.put(
+            f"/api/v1/projects/{project_name}/entities/source",
+            json={"entity_data": {"type": "entity", "keys": ["source_id"], "columns": "@include: absent.yml"}},
+        )
+        assert reference_update.status_code == 200
+        assert include_update.status_code == 200
+
+        response = await authorized_client.post(f"/api/v1/projects/{project_name}/entities/sample/validate")
+
+        assert response.status_code == 200
+        data = response.json()
+        codes = [error["code"] for error in data["errors"]]
+        assert "COLUMN_REFERENCE_MISSING_PATH" in codes
+        assert "CONFIG_INCLUDE_NOT_FOUND" in codes
+        reference_error = next(error for error in data["errors"] if error["code"] == "COLUMN_REFERENCE_MISSING_PATH")
+        assert reference_error["entity"] == "sample"
+        assert reference_error["field"] == "columns"
+        assert saved_reference in reference_error["message"]
+
+    async def test_validate_data_skips_row_checks_for_saved_reference_errors(
+        self, tmp_path, monkeypatch, reset_services, authorized_client
+    ):
+        """Return structural reference errors from the existing data-validation route."""
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        project_name = "data_reference_failure"
+        created = await authorized_client.post(
+            "/api/v1/projects",
+            json={
+                "name": project_name,
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {
+                    "source": {"type": "entity", "keys": ["source_id"], "columns": ["source_id"]},
+                    "sample": {"type": "entity", "keys": ["sample_id"], "columns": ["sample_id"]},
+                },
+            },
+        )
+        assert created.status_code == 201
+
+        saved_reference = "@value: entities.missing.keys"
+        updated = await authorized_client.put(
+            f"/api/v1/projects/{project_name}/entities/sample",
+            json={"entity_data": {"type": "entity", "keys": ["sample_id"], "columns": saved_reference}},
+        )
+        assert updated.status_code == 200
+
+        response = await authorized_client.post(f"/api/v1/projects/{project_name}/validate/data")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "skipped"
+        assert data["error_count"] > 0
+        assert any(error["code"] == "COLUMN_REFERENCE_MISSING_PATH" and saved_reference in error["message"] for error in data["errors"])
+
     async def test_validate_nonexistent_entity(self, tmp_path, monkeypatch, reset_services, sample_entity_data, authorized_client):
         """Test validating non-existent entity."""
 

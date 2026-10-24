@@ -98,3 +98,25 @@ def test_default_conversion_still_resolves_nested_references_and_reports_file_er
     assert core_project.cfg["entities"]["child"]["keys"] == ["id", "site_id"]
     with pytest.raises(FileNotFoundError):
         ProjectMapper.to_core(broken_project)
+
+
+@pytest.mark.parametrize(
+    ("expression", "expected"),
+    [
+        ("@value: entities.source.keys + ['last']", ["first", "second", "last"]),
+        ("['first'] + @value: entities.source.keys", ["first", "first", "second"]),
+    ],
+)
+def test_default_conversion_keeps_valid_expression_order(expression: str, expected: list[str]) -> None:
+    """Keep the existing full-mapper values for both supported legacy operand orders."""
+    project = make_project(
+        Path("test_project") / "shapeshifter.yml",
+        {
+            "source": {"keys": ["first", "second"]},
+            "child": {"keys": expression},
+        },
+    )
+
+    core_project = ProjectMapper.to_core(project)
+
+    assert core_project.cfg["entities"]["child"]["keys"] == expected

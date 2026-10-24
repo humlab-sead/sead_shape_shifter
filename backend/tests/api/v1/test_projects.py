@@ -488,6 +488,87 @@ class TestProjectsDelete:
 class TestProjectsValidate:
     """Tests for project validation."""
 
+    async def test_validate_saved_reference_keeps_original_text_and_does_not_change_project(
+        self, tmp_path, monkeypatch, reset_services, authorized_client
+    ):
+        """Return a located saved-reference error and leave the saved entity unchanged."""
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        project_name = "reference_project"
+        created = await authorized_client.post(
+            "/api/v1/projects",
+            json={
+                "name": project_name,
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {
+                    "source": {"type": "entity", "keys": ["source_id"], "columns": ["source_id"]},
+                    "sample": {"type": "entity", "keys": ["sample_id"], "columns": ["sample_id"]},
+                },
+            },
+        )
+        assert created.status_code == 201
+
+        saved_reference = "@value: entities.missing.keys"
+        updated = await authorized_client.put(
+            f"/api/v1/projects/{project_name}/entities/sample",
+            json={"entity_data": {"type": "entity", "keys": ["sample_id"], "columns": saved_reference}},
+        )
+        assert updated.status_code == 200
+
+        response = await authorized_client.post(f"/api/v1/projects/{project_name}/validate")
+        assert response.status_code == 200
+        data = response.json()
+
+        reference_errors = [error for error in data["errors"] if error["code"] == "COLUMN_REFERENCE_MISSING_PATH"]
+        assert len(reference_errors) == 1
+        assert reference_errors[0]["entity"] == "sample"
+        assert reference_errors[0]["field"] == "columns"
+        assert saved_reference in reference_errors[0]["message"]
+        assert data["error_count"] == len(data["errors"])
+
+        saved = await authorized_client.get(f"/api/v1/projects/{project_name}/entities/sample")
+        assert saved.status_code == 200
+        assert saved.json()["entity_data"]["columns"] == saved_reference
+
+    async def test_validate_saved_reference_when_project_resolution_fails(self, tmp_path, monkeypatch, reset_services, authorized_client):
+        """Return both saved-reference and project-resolution errors as HTTP 200."""
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        project_name = "reference_resolution_failure"
+        created = await authorized_client.post(
+            "/api/v1/projects",
+            json={
+                "name": project_name,
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {
+                    "source": {"type": "entity", "keys": ["source_id"], "columns": ["source_id"]},
+                    "sample": {"type": "entity", "keys": ["sample_id"], "columns": ["sample_id"]},
+                },
+            },
+        )
+        assert created.status_code == 201
+
+        saved_reference = "@value: entities.missing.keys"
+        reference_update = await authorized_client.put(
+            f"/api/v1/projects/{project_name}/entities/sample",
+            json={"entity_data": {"type": "entity", "keys": ["sample_id"], "columns": saved_reference}},
+        )
+        include_update = await authorized_client.put(
+            f"/api/v1/projects/{project_name}/entities/source",
+            json={"entity_data": {"type": "entity", "keys": ["source_id"], "columns": "@include: absent.yml"}},
+        )
+        assert reference_update.status_code == 200
+        assert include_update.status_code == 200
+
+        response = await authorized_client.post(f"/api/v1/projects/{project_name}/validate")
+
+        assert response.status_code == 200
+        data = response.json()
+        codes = [error["code"] for error in data["errors"]]
+        assert "COLUMN_REFERENCE_MISSING_PATH" in codes
+        assert "CONFIG_INCLUDE_NOT_FOUND" in codes
+        assert saved_reference in next(error["message"] for error in data["errors"] if error["code"] == "COLUMN_REFERENCE_MISSING_PATH")
+
     async def test_validate_valid_configuration(self, tmp_path, monkeypatch, reset_services, authorized_client):
         """Test validating a valid project."""
 

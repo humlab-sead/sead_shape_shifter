@@ -16,6 +16,7 @@ from backend.app.models.validation import (
     ValidationError,
     ValidationResult,
 )
+from backend.app.services.column_list_reference_validation import ColumnListReferenceValidationService
 from backend.app.services.project_data_provider_service import ProjectDataProviderService
 from backend.app.services.project_provider_binding_service import ProjectProviderBindingService
 from backend.app.services.project_service import ProjectService, get_project_service
@@ -83,6 +84,7 @@ class ValidationService:
         self._project_data_provider_service = project_data_provider_service or ProjectDataProviderService(
             binding_service=self._project_provider_binding_service
         )
+        self._column_list_reference_validation = ColumnListReferenceValidationService()
 
     async def validate_project_data(
         self,
@@ -188,7 +190,13 @@ class ValidationService:
 
         return result
 
-    def validate_project(self, project_cfg: dict[str, Any], *, source_path: str | None = None) -> ValidationResult:
+    def validate_project(
+        self,
+        project_cfg: dict[str, Any],
+        *,
+        source_path: str | None = None,
+        _reference_errors: list[ValidationError] | None = None,
+    ) -> ValidationResult:
         """
         Validate project using CompositeConfigSpecification.
 
@@ -199,7 +207,11 @@ class ValidationService:
             ValidationResult with errors and warnings
         """
         logger.debug("Validating project")
-        provider_errors = self._project_provider_binding_service.validation_errors((project_cfg or {}).get("metadata"))
+        project_cfg = project_cfg or {}
+        reference_errors = _reference_errors
+        if reference_errors is None:
+            reference_errors = self._column_list_reference_validation.validate(project_cfg, source_path=source_path)
+        provider_errors = self._project_provider_binding_service.validation_errors(project_cfg.get("metadata"))
 
         # Resolve directives before validation (Core layer requirement)
         # Specifications expect fully resolved config
@@ -217,25 +229,25 @@ class ValidationService:
         except FileNotFoundError as e:
             # Missing /@load file should be reported as a normal validation error,
             # not as a 500 internal server error.
-            return ValidationResult(
-                is_valid=False,
-                errors=provider_errors
-                + [
-                    ValidationError(
-                        severity="error",
-                        entity=None,
-                        field=None,
-                        message=str(e),
-                        code="CONFIG_INCLUDE_NOT_FOUND",
-                        suggestion="Ensure the referenced include file exists and the path is relative to the project YAML file.",
-                    )
-                ],
+            return self._project_resolution_failure(
+                reference_errors,
+                provider_errors,
+                e,
+                code="CONFIG_INCLUDE_NOT_FOUND",
+                suggestion="Ensure the referenced include file exists and the path is relative to the project YAML file.",
+            )
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            return self._project_resolution_failure(
+                reference_errors,
+                provider_errors,
+                e,
+                code="PROJECT_RESOLUTION_FAILED",
             )
 
         specification = CompositeProjectSpecification(project_cfg)
         specification.is_satisfied_by()
         provider_errors = provider_errors + self._data_provider_errors(project_cfg, provider_errors)
-        validation_errors = [self._map_issue(error) for error in specification.errors] + provider_errors
+        validation_errors = reference_errors + [self._map_issue(error) for error in specification.errors] + provider_errors
 
         result = ValidationResult(
             is_valid=not validation_errors,
@@ -258,6 +270,29 @@ class ValidationService:
             logger.warning(f"Configuration validation failed with {', '.join(parts)}")
 
         return result
+
+    @staticmethod
+    def _project_resolution_failure(
+        reference_errors: list[ValidationError],
+        provider_errors: list[ValidationError],
+        error: Exception,
+        *,
+        code: str,
+        suggestion: str | None = None,
+    ) -> ValidationResult:
+        """Return raw validation errors when full-project resolution cannot finish."""
+        resolution_error = ValidationError(
+            severity="error",
+            entity=None,
+            field=None,
+            message=str(error),
+            code=code,
+            suggestion=suggestion,
+        )
+        return ValidationResult(
+            is_valid=False,
+            errors=reference_errors + provider_errors + [resolution_error],
+        )
 
     def _data_provider_errors(self, project_cfg: dict[str, Any], binding_errors: list[ValidationError]) -> list[ValidationError]:
         """Return fixed provider-row errors for a project that already has a registered pair.
@@ -313,9 +348,33 @@ class ValidationService:
             ValidationResult with errors and warnings for this entity
         """
 
-        core_project: ShapeShiftProject = ProjectMapper.to_core(project)
-
-        result: ValidationResult = self.validate_project(core_project.cfg, source_path=project.filename)
+        raw_project_cfg = ProjectMapper.to_core_dict(project)
+        reference_errors = self._column_list_reference_validation.validate(raw_project_cfg, source_path=project.filename)
+        try:
+            core_project: ShapeShiftProject = ProjectMapper.to_core(project)
+        except FileNotFoundError as e:
+            provider_errors = self._project_provider_binding_service.validation_errors(raw_project_cfg.get("metadata"))
+            result = self._project_resolution_failure(
+                reference_errors,
+                provider_errors,
+                e,
+                code="CONFIG_INCLUDE_NOT_FOUND",
+                suggestion="Ensure the referenced include file exists and the path is relative to the project YAML file.",
+            )
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            provider_errors = self._project_provider_binding_service.validation_errors(raw_project_cfg.get("metadata"))
+            result = self._project_resolution_failure(
+                reference_errors,
+                provider_errors,
+                e,
+                code="PROJECT_RESOLUTION_FAILED",
+            )
+        else:
+            result = self.validate_project(
+                core_project.cfg,
+                source_path=project.filename,
+                _reference_errors=reference_errors,
+            )
 
         # Filter to only errors/warnings for this entity
         entity_errors: list[ValidationError] = [e for e in result.errors if e.entity == entity_name or e.entity is None]
