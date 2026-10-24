@@ -3,27 +3,33 @@
     <v-switch v-model="unnestEnabled" label="Enable Unnest" density="compact" hide-details class="mb-4" />
 
     <template v-if="unnestEnabled">
-      <v-combobox
+      <column-reference-combobox
         v-model="unnest.id_vars"
         :items="idVarColumns"
+        :project-name="projectName"
+        :entity-name="entityName"
+        :entity-draft="entityDraft"
+        :disabled="referenceControlsDisabled"
+        :edited-field-path="`entities.${entityName}.unnest.id_vars`"
         label="ID Variables"
         hint="Columns to keep as-is"
         persistent-hint
-        chips
-        multiple
         variant="outlined"
         density="compact"
         class="mb-4"
       />
 
-      <v-combobox
+      <column-reference-combobox
         v-model="unnest.value_vars"
         :items="valueVarColumns"
+        :project-name="projectName"
+        :entity-name="entityName"
+        :entity-draft="entityDraft"
+        :disabled="referenceControlsDisabled"
+        :edited-field-path="`entities.${entityName}.unnest.value_vars`"
         label="Value Variables"
         hint="Columns to unpivot"
         persistent-hint
-        chips
-        multiple
         variant="outlined"
         density="compact"
         class="mb-4"
@@ -64,6 +70,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { normalizeColumnListChips } from './columnListValue'
+import ColumnReferenceCombobox from './ColumnReferenceCombobox.vue'
 
 interface UnnestConfig {
   id_vars: string[]
@@ -76,9 +83,18 @@ interface Props {
   modelValue?: UnnestConfig | null
   idVarColumns?: string[]
   valueVarColumns?: string[]
+  projectName?: string
+  entityName?: string
+  entityDraft?: Record<string, unknown>
+  referenceControlsDisabled?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  projectName: '',
+  entityName: '',
+  entityDraft: () => ({}),
+  referenceControlsDisabled: false,
+})
 
 const emit = defineEmits<{
   'update:modelValue': [value: UnnestConfig | null]
@@ -107,6 +123,10 @@ const unnestEnabled = ref(!!props.modelValue)
 
 const idVarColumns = computed(() => props.idVarColumns ?? [])
 const valueVarColumns = computed(() => props.valueVarColumns ?? [])
+const projectName = computed(() => props.projectName)
+const entityName = computed(() => props.entityName)
+const entityDraft = computed(() => props.entityDraft)
+const referenceControlsDisabled = computed(() => props.referenceControlsDisabled)
 
 watch(
   [unnestEnabled, unnest],

@@ -1,20 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { flushPromises, shallowMount } from '@vue/test-utils'
 
 import ForeignKeyEditor from '../ForeignKeyEditor.vue'
-
-const directiveMocks = vi.hoisted(() => ({
-  getValidDirectives: vi.fn(async () => ['@value:available']),
-  validateDirective: vi.fn(async () => ({ is_valid: true, path: '@value:available', error: null, suggestions: [] })),
-}))
-
-vi.mock('@/composables/useDirectiveValidation', () => ({
-  useDirectiveValidation: () => ({
-    getValidDirectives: directiveMocks.getValidDirectives,
-    validateDirective: directiveMocks.validateDirective,
-    isDirective: (value: unknown) => typeof value === 'string' && value.startsWith('@value:'),
-  }),
-}))
 
 const ForeignKeyTesterStub = {
   name: 'ForeignKeyTester',
@@ -29,6 +16,23 @@ const ComboboxStub = {
   props: ['label', 'items', 'modelValue'],
   emits: ['focus', 'update:modelValue'],
   template: '<div class="v-combobox-stub" />',
+}
+
+const ReferenceComboboxStub = {
+  name: 'ColumnReferenceCombobox',
+  props: [
+    'label',
+    'items',
+    'modelValue',
+    'projectName',
+    'entityName',
+    'entityDraft',
+    'editedFieldPath',
+    'preferredEntity',
+    'disabled',
+  ],
+  emits: ['update:modelValue'],
+  template: '<div class="column-reference-combobox-stub" />',
 }
 
 const ControlStub = {
@@ -48,14 +52,10 @@ const controlStubs = {
   VSelect: ControlStub,
   VTextField: ControlStub,
   VCombobox: ControlStub,
+  ColumnReferenceCombobox: ReferenceComboboxStub,
 }
 
 describe('ForeignKeyEditor', () => {
-  beforeEach(() => {
-    directiveMocks.getValidDirectives.mockClear()
-    directiveMocks.validateDirective.mockClear()
-  })
-
   it('allows testing an existing entity foreign key draft without saving', async () => {
     const wrapper = shallowMount(ForeignKeyEditor, {
       props: {
@@ -200,10 +200,12 @@ describe('ForeignKeyEditor', () => {
       },
     })
 
-    const comboboxes = wrapper.findAllComponents(ComboboxStub)
-    const localInputs = comboboxes.filter((input) => input.props('label') === 'Local Keys')
-    const remoteInputs = comboboxes.filter((input) => input.props('label') === 'Remote Keys')
-    const extraSourceInput = comboboxes.find((input) => input.props('label') === 'Remote Column')
+    const referenceInputs = wrapper.findAllComponents(ReferenceComboboxStub)
+    const localInputs = referenceInputs.filter((input) => input.props('label') === 'Local Keys')
+    const remoteInputs = referenceInputs.filter((input) => input.props('label') === 'Remote Keys')
+    const extraSourceInput = wrapper
+      .findAllComponents(ComboboxStub)
+      .find((input) => input.props('label') === 'Remote Column')
 
     expect(localInputs.map((input) => input.props('items'))).toEqual([
       ['site_name', 'shared', 'measurement_type'],
@@ -250,7 +252,7 @@ describe('ForeignKeyEditor', () => {
 
     const getComboboxItems = (label: string) =>
       wrapper
-        .findAllComponents(ComboboxStub)
+        .findAllComponents(ReferenceComboboxStub)
         .find((input) => input.props('label') === label)
         ?.props('items')
 
@@ -274,11 +276,18 @@ describe('ForeignKeyEditor', () => {
     expect(getComboboxItems('Remote Keys')).toEqual(['location_id'])
   })
 
-  it('retains directive suggestions and validation for local and remote keys', async () => {
+  it('keeps FK suggestions field-specific and passes local or remote reference context', async () => {
+    const entityDraft = {
+      columns: ['current_local'],
+      foreign_keys: [{ entity: 'site', local_keys: [], remote_keys: [] }],
+    }
     const wrapper = shallowMount(ForeignKeyEditor, {
       props: {
-        modelValue: [{ entity: 'site', local_keys: [], remote_keys: [], how: 'inner' }],
-        entityColumns: ['@value:entity_column'],
+        modelValue: [
+          { entity: 'site', local_keys: [], remote_keys: [], how: 'inner', extra_columns: { site_code: '' } },
+          { entity: 'taxon', local_keys: [], remote_keys: [], how: 'inner' },
+        ],
+        entityDraft,
         columnCandidates: [
           {
             index: 0,
@@ -287,6 +296,14 @@ describe('ForeignKeyEditor', () => {
             local_keys_after_unnest: [],
             remote_keys: ['site_id'],
             extra_column_sources: ['site_code'],
+          },
+          {
+            index: 1,
+            entity: 'taxon',
+            local_keys_before_unnest: ['taxon_name'],
+            local_keys_after_unnest: [],
+            remote_keys: ['taxon_id'],
+            extra_column_sources: [],
           },
         ],
         projectName: 'demo',
@@ -298,32 +315,38 @@ describe('ForeignKeyEditor', () => {
       },
     })
 
-    const getCombobox = (label: string) =>
-      wrapper.findAllComponents(ComboboxStub).find((input) => input.props('label') === label)!
-    const localInput = getCombobox('Local Keys')
-    const remoteInput = getCombobox('Remote Keys')
+    const inputs = wrapper.findAllComponents(ReferenceComboboxStub)
+    expect(
+      inputs.filter((input) => input.props('label') === 'Local Keys').map((input) => input.props('items'))
+    ).toEqual([['site_name'], ['taxon_name']])
+    expect(
+      inputs.filter((input) => input.props('label') === 'Remote Keys').map((input) => input.props('items'))
+    ).toEqual([['site_id'], ['taxon_id']])
+    expect(inputs.map((input) => input.props('entityDraft'))).toEqual([
+      entityDraft,
+      entityDraft,
+      entityDraft,
+      entityDraft,
+    ])
+    expect(inputs.map((input) => input.props('preferredEntity'))).toEqual(['sample', 'site', 'sample', 'taxon'])
+    expect(inputs.map((input) => input.props('editedFieldPath'))).toEqual([
+      'entities.sample.foreign_keys.0.local_keys',
+      'entities.sample.foreign_keys.0.remote_keys',
+      'entities.sample.foreign_keys.1.local_keys',
+      'entities.sample.foreign_keys.1.remote_keys',
+    ])
 
-    localInput.vm.$emit('focus')
+    const extraSourceInput = wrapper
+      .findAllComponents(ComboboxStub)
+      .find((input) => input.props('label') === 'Remote Column')
+    expect(extraSourceInput?.props('items')).toEqual(['site_code'])
+
+    inputs[0]!.vm.$emit('update:modelValue', ['@value: entities.sample.columns'])
     await flushPromises()
-
-    expect(directiveMocks.getValidDirectives).toHaveBeenCalledWith('demo')
-    expect(localInput.props('items')).toEqual(['site_name', '@value:available', '@value:entity_column'])
-    expect(remoteInput.props('items')).toEqual(['site_id', '@value:available'])
-
-    localInput.vm.$emit('update:modelValue', ['@value:local'])
-    remoteInput.vm.$emit('update:modelValue', ['@value:remote'])
-    await flushPromises()
-
-    expect(directiveMocks.validateDirective).toHaveBeenCalledWith('demo', '@value:local', {
-      localEntity: 'sample',
-      remoteEntity: 'site',
-      isLocalKeys: true,
-    })
-    expect(directiveMocks.validateDirective).toHaveBeenCalledWith('demo', '@value:remote', {
-      localEntity: 'sample',
-      remoteEntity: 'site',
-      isLocalKeys: false,
-    })
+    expect(wrapper.emitted('update:modelValue')?.at(-1)?.[0]).toEqual([
+      expect.objectContaining({ local_keys: ['@value: entities.sample.columns'] }),
+      expect.objectContaining({ entity: 'taxon' }),
+    ])
   })
 
   it('carries each key origin through editor updates and removal of a preceding row', async () => {
@@ -370,7 +393,9 @@ describe('ForeignKeyEditor', () => {
       },
     })
 
-    const localInputs = wrapper.findAllComponents(ComboboxStub).filter((input) => input.props('label') === 'Local Keys')
+    const localInputs = wrapper
+      .findAllComponents(ReferenceComboboxStub)
+      .filter((input) => input.props('label') === 'Local Keys')
     expect(localInputs).toHaveLength(2)
     localInputs[1]!.vm.$emit('update:modelValue', ['edited_local'])
     await flushPromises()
