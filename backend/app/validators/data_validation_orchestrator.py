@@ -80,6 +80,7 @@ class FullDataFetchStrategy(DataFetchStrategy):
     def __init__(self, project_service: ProjectService) -> None:
         self.project_service: ProjectService = project_service
         self._normalizer_cache: dict[str, ShapeShifter] = {}
+        self._normalization_errors: dict[str, dict[str, MissingBusinessKeyError]] = {}
 
     async def fetch(self, project_name: str, entity_name: str) -> pd.DataFrame:
         """Fetch full normalized dataset."""
@@ -88,8 +89,16 @@ class FullDataFetchStrategy(DataFetchStrategy):
             project: api.Project = self.project_service.load_project(project_name)
             core_project: ShapeShiftProject = ProjectMapper.to_core(project)
             normalizer = ShapeShifter(core_project)
-            await normalizer.normalize()
             self._normalizer_cache[project_name] = normalizer
+            try:
+                await normalizer.normalize()
+            except MissingBusinessKeyError as e:
+                logger.warning(
+                    f"Full normalization stopped because entity {e.entity_name!r} is missing business keys "
+                    f"{e.missing_keys}; continuing validation with available normalized data"
+                )
+                if e.entity_name:
+                    self._normalization_errors.setdefault(project_name, {})[e.entity_name] = e
 
         normalizer: ShapeShifter = self._normalizer_cache[project_name]
 
@@ -104,8 +113,16 @@ class FullDataFetchStrategy(DataFetchStrategy):
         if normalizer is None:
             return []
 
+        issues: list[ValidationIssue] = []
         unresolved_extra_columns = normalizer.unresolved_extra_columns.get(entity_name, {})
-        return UnresolvedExtraColumnsValidator.validate(unresolved_extra_columns, entity_name)
+        issues.extend(UnresolvedExtraColumnsValidator.validate(unresolved_extra_columns, entity_name))
+
+        missing_key_error = self._normalization_errors.get(project_name, {}).get(entity_name)
+        entity_data = normalizer.table_store.get(entity_name)
+        if missing_key_error and (entity_data is None or entity_data.empty):
+            issues.extend(BusinessKeyProducedValidator.issues_for_missing_keys(entity_name, list(missing_key_error.missing_keys)))
+
+        return issues
 
 
 class TableStoreDataFetchStrategy(DataFetchStrategy):
