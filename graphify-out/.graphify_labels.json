@@ -1,5 +1,4 @@
 {
-  "108": "CONFIGURATION_GUIDE.md",
   "153": "Frontend Entry HTML",
   "168": "backend/__init__.py",
   "174": "SEAD Shape Shifter",
@@ -16,7 +15,6 @@
   "341": "3. Implementation and Architecture Concepts",
   "360": "5. Working with Entities",
   "368": "Remediation Plan",
-  "373": "3. Typical Workflow",
   "389": "Merged Entities",
   "390": "SEAD Shape Shifter Project Editor - Frontend",
   "391": "compilerOptions",
@@ -27,6 +25,5 @@
   "461": "[1.21.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.20.2...v1.21.0) (2026-02-21)",
   "466": "7. Validation",
   "505": "4. Projects and Workspace",
-  "592": "RTK - Rust Token Killer (Codex CLI)",
-  "608": "11. Advanced Features"
+  "592": "RTK - Rust Token Killer (Codex CLI)"
 }
