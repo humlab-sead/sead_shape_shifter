@@ -5,7 +5,7 @@
 - Proposed feature
 - Scope: Entity editor fields that accept column lists and `@value` references
 - Goal: Keep references convenient while making their columns visible and editable
-- Related: Supersedes the UI phases of the archived [Value Directive UX Plan](done/VALUE_DIRECTIVE_UX_PLAN.md). Its list-flattening and scalar-shorthand work has shipped; its context-aware `/valid-directives` phase is replaced by the guided entry below, and its dangling-reference validation phase is folded into this proposal.
+- Related: Supersedes the UI phases of the archived [Value Directive UX Plan](../done/VALUE_DIRECTIVE_UX_PLAN.md). Its list-flattening and scalar-shorthand work has shipped; its context-aware `/valid-directives` phase is replaced by the guided entry below, and its dangling-reference validation phase is folded into this proposal.
 
 ## Summary
 
