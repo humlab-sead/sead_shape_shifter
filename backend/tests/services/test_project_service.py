@@ -1248,7 +1248,8 @@ options: {}
         # Create nested source
         nested_dir = service.projects_dir / "category" / "source_project"
         nested_dir.mkdir(parents=True)
-        (nested_dir / "shapeshifter.yml").write_text("""
+        (nested_dir / "shapeshifter.yml").write_text(
+            """
 metadata:
   type: shapeshifter-project
   name: category/source_project
@@ -1257,7 +1258,8 @@ metadata:
   provider_schema: schema-one
 entities: {}
 options: {}
-""")
+"""
+        )
 
         result = service.copy_project("category/source_project", "category/target_project")
 
