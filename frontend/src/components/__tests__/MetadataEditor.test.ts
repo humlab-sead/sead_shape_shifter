@@ -100,10 +100,7 @@ const VComboboxStub = defineComponent({
               emit('update:modelValue', props.returnObject ? item : value)
             },
           },
-          [
-            h('option', { value: '' }, ''),
-            ...props.items.map((item) => h('option', { value: item.value }, item.label)),
-          ]
+          [h('option', { value: '' }, ''), ...props.items.map((item) => h('option', { value: item.value }, item.label))]
         ),
       ])
   },
@@ -252,7 +249,10 @@ describe('MetadataEditor', () => {
     await flushPromises()
 
     await selectForLabel(wrapper, 'Target Model').setValue(targetModel.value)
-    await wrapper.findAll('button').find((button) => button.text() === 'Save Metadata')?.trigger('click')
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Save Metadata')
+      ?.trigger('click')
     await flushPromises()
 
     expect(mocks.updateMetadata).toHaveBeenCalledWith(

@@ -30,7 +30,10 @@ export const useIngesterStore = defineStore('ingester', () => {
   const isValidating = computed(() => loading.value)
   const isIngesting = computed(() => loading.value)
 
-  function projectRequestForAttempt(request: ProjectIngesterRequest): { request: ProjectIngesterRequest; runId: string } {
+  function projectRequestForAttempt(request: ProjectIngesterRequest): {
+    request: ProjectIngesterRequest
+    runId: string
+  } {
     const context = request.submission_context
     const normalizedSubmissionName = context.submission_name
       .trim()
