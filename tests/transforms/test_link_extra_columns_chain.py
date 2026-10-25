@@ -25,7 +25,7 @@ class TestLinkExtraColumnsChain:
                     "keys": ["Projekt", "Fraktion"],
                 },
                 # Intermediate entity that will be linked first
-                "_project_contact": {
+                "helper_project_contact": {
                     "type": "fixed",
                     "source": {
                         "Projekt": ["P1", "P2"],
@@ -51,9 +51,9 @@ class TestLinkExtraColumnsChain:
                     "public_id": "dataset_contact_id",
                     "keys": ["Projekt", "Fraktion"],
                     "foreign_keys": [
-                        # FK #1: Link to _project_contact and bring contact_name as extra column
+                        # FK #1: Link to helper_project_contact and bring contact_name as extra column
                         {
-                            "entity": "_project_contact",
+                            "entity": "helper_project_contact",
                             "local_keys": ["Projekt"],
                             "remote_keys": ["Projekt"],
                             "extra_columns": {"contact_name": "contact_name"},
@@ -76,7 +76,7 @@ class TestLinkExtraColumnsChain:
         table_store = TableStore(
             {
                 "dataset": pd.DataFrame({"Projekt": ["P1", "P2"], "Fraktion": ["F1", "F2"], "system_id": [1, 2]}),
-                "_project_contact": pd.DataFrame(
+                "helper_project_contact": pd.DataFrame(
                     {
                         "Projekt": ["P1", "P2"],
                         "contact_type": ["ArchAusg", "BotBear"],
@@ -114,16 +114,16 @@ class TestLinkExtraColumnsChain:
 
         # Verify data correctness
         assert result["contact_name"].tolist() == ["Alice", "Bob"]
-        assert result["project_contact_id"].tolist() == [1, 2]  # system_ids from _project_contact
+        assert result["project_contact_id"].tolist() == [1, 2]  # system_ids from helper_project_contact
         assert result["contact_id"].tolist() == [1, 2]  # system_ids from contact
 
     def test_extra_columns_not_available_fails_validation(self, project):
         """Test that FK #2 fails validation if FK #1 hasn't added the required column."""
-        # Initialize table store without _project_contact (so FK #1 will fail)
+        # Initialize table store without helper_project_contact (so FK #1 will fail)
         table_store = TableStore(
             {
                 "dataset": pd.DataFrame({"Projekt": ["P1", "P2"], "Fraktion": ["F1", "F2"], "system_id": [1, 2]}),
-                # Missing _project_contact - FK #1 will be deferred
+                # Missing helper_project_contact - FK #1 will be deferred
                 "contact": pd.DataFrame(
                     {
                         "contact_name": ["Alice", "Bob", "Charlie"],
@@ -139,7 +139,7 @@ class TestLinkExtraColumnsChain:
         linker = ForeignKeyLinker(project, table_store)
         deferred = linker.link_entity("dataset_contacts")
 
-        # Verify linking was deferred (because _project_contact is missing)
+        # Verify linking was deferred (because helper_project_contact is missing)
         assert deferred
 
         # Verify FK #1 was deferred and FK #2 couldn't proceed

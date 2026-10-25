@@ -53,7 +53,7 @@ task_list:
   - taxa_plant_sociological_behaviour
   - taxa_persistence
   - taxa_use_categories
-  - _project_contact
+  - helper_project_contact
   - helper_pcodes
   - cultural_group
   - dating_period

@@ -286,7 +286,7 @@ entities:
     depends_on: []
   contact:
     type: entity
-    source: _project_contact
+    source: helper_project_contact
     public_id: contact_id
     keys: []
     columns: [contact_name, contact_type]
@@ -294,7 +294,7 @@ entities:
     - entity: contact_type
       local_keys: [contact_type]
       remote_keys: [arbodat_code]
-    depends_on: [contact_type, _project_contact]
+    depends_on: [contact_type, helper_project_contact]
     drop_duplicates: true
     append:
       source:
@@ -422,7 +422,7 @@ entities:
     keys: [Projekt, Fraktion, contact_id]
     columns: [Projekt, Fraktion]
     foreign_keys:
-    - entity: _project_contact
+    - entity: helper_project_contact
       local_keys: [Projekt]
       remote_keys: [Projekt]
       extra_columns:
@@ -430,7 +430,7 @@ entities:
     - entity: contact
       local_keys: [contact_name]
       remote_keys: [contact_name]
-    depends_on: [_project_contact, contact, dataset, project]
+    depends_on: [helper_project_contact, contact, dataset, project]
     drop_duplicates: [Projekt, Fraktion, contact_id]
   dataset_submission:
     type: entity
@@ -1426,7 +1426,7 @@ entities:
       local_keys: [PCODE]
       remote_keys: [PCODE]
     depends_on: [taxa]
-  _project_contact:
+  helper_project_contact:
     type: sql
     source:
     data_source: arbodat_data
@@ -1686,7 +1686,7 @@ options:
   reconciliation: '@include: reconciliation.yml'
   finally:
     drop:
-      tables: [helper_pcodes, _project_contact]
+      tables: [helper_pcodes, helper_project_contact]
       columns:
       - site.public_id
       - project.public_id
