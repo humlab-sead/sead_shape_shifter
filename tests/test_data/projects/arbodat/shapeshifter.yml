@@ -1032,8 +1032,8 @@ entities:
     type: sql
     data_source: arbodat_data
     public_id: site_location_id
-    keys: [Fustel, EVNr]
-    columns: '@value: entities.site.keys + @value: entities.location.columns'
+    keys: [Fustel, EVNr, location_type]
+    columns: [Fustel, EVNr, Ort, Kreis, Land, Staat, FlurStr] 
     query: select distinct [Fustel], [EVNr], [Ort], [Kreis], [Land], [Staat], [FlurStr] from [Projekte];
     foreign_keys:
     - entity: site
