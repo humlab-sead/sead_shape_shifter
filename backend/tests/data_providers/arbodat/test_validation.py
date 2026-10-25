@@ -1,11 +1,14 @@
+from collections import Counter
 import copy
 import os
+from pathlib import Path
 from typing import Any
 
 import jpype
 import pytest
 from dotenv import dotenv_values
 from loguru import logger
+from ruamel import yaml
 
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.project import Project
@@ -20,7 +23,13 @@ from src.loaders.sql_loaders import init_jvm_for_ucanaccess
 from src.model import ShapeShiftProject
 from src.normalizer import ShapeShifter
 from src.specifications.project import CompositeProjectSpecification
+from src.target_model.conformance import ConformanceIssue, TargetModelConformanceValidator
+from src.target_model.models import TargetModel
 from src.validators.data_validators import ValidationIssue
+
+TEST_DATA_DIR: Path = Path(__file__).resolve().parent.parent / "test_data"
+TARGET_MODEL_PATH: Path = TEST_DATA_DIR / "target_models" / "sead_standard_model.yml"
+PROJECTS_DIR: Path = TEST_DATA_DIR / "projects"
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -136,3 +145,49 @@ def test_target_model_conformance(project: ShapeShiftProject):
         logger.warning(f"Target model validation found {len(errors)} errors:\n{error_report}")
 
     # assert not errors, f"Expected no validation errors, found {len(errors)}: {[error.message for error in errors]}"
+
+
+def test_core_conformance_reports_known_gaps_for_full_arbodat_project() -> None:
+    target_model: TargetModel = load_target_model()
+    project: ShapeShiftProject = load_real_project("arbodat")
+
+    expected_errors = [
+        ("CONDITIONAL_FK_AWAITING_RECONCILIATION", "location"),
+        ("MISSING_REQUIRED_COLUMN", "relative_dating"),
+        ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "abundance_modification"),
+        ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "abundance_property"),
+        ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "relative_dating"),
+        ("UNEXPECTED_PUBLIC_ID", "relative_dating"),
+    ]
+
+    issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
+    actual_issues = [(issue.code, issue.entity) for issue in issues]
+    # print('\n'.join(f'{x.code};{x.entity};{x.message}' for x in issues))
+    assert sorted(actual_issues) == sorted(expected_errors)
+
+
+def load_target_model() -> TargetModel:
+    return TargetModel.model_validate(yaml.safe_load(TARGET_MODEL_PATH.read_text(encoding="utf-8")))
+
+
+def load_real_project(project_name: str) -> ShapeShiftProject:
+    project_path: Path = Path(PROJECTS_DIR / project_name / "shapeshifter.yml")
+    return ShapeShiftProject(cfg=yaml.safe_load(project_path.read_text(encoding="utf-8")))
+
+
+def test_core_conformance_current_corpus_issue_families_are_stable() -> None:
+    target_model: TargetModel = load_target_model()
+    project: ShapeShiftProject = load_real_project("arbodat")
+
+    issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
+
+    issue_summary: Counter[str | None] = Counter(issue.code for issue in issues)
+
+    assert issue_summary == Counter(
+        {
+            "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 3,
+            "UNEXPECTED_PUBLIC_ID": 1,
+            "CONDITIONAL_FK_AWAITING_RECONCILIATION": 1,
+            "MISSING_REQUIRED_COLUMN": 1,
+        }
+    )
