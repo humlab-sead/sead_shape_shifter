@@ -1,6 +1,6 @@
-from collections import Counter
 import copy
 import os
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -115,6 +115,9 @@ async def test_data_validation_orchestrator(project: ShapeShiftProject):
     await normalizer.normalize()
 
     assert len(normalizer.table_store) > 0, "Table store should contain normalized entities"
+    site_location_df = normalizer.table_store["site_location"]
+    kville_rows = site_location_df.loc[(site_location_df["Fustel"] == "Kville 1502") & site_location_df["EVNr"].isna()]
+    assert not kville_rows.empty, "The site_location row with a null EVNr should link to the matching site row"
 
     strategy = TableStoreDataFetchStrategy(table_store=normalizer.table_store)
     orchestrator = DataValidationOrchestrator(fetch_strategy=strategy)
