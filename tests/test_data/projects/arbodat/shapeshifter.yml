@@ -1008,7 +1008,25 @@ entities:
       sample_group_name: Befu
       sample_group_description:
       sampling_context_id:
-      method_id:
+      method_id: 0
+    foreign_keys:
+    - entity: site
+      local_keys: [site_id]
+      remote_keys: [system_id]
+      how: inner
+      constraints:
+        allow_unmatched_left: false
+        allow_null_keys: false
+        cardinality: many_to_one
+    - entity: method
+      local_keys: [method_id]
+      remote_keys: [system_id]
+      how: left
+      constraints:
+        allow_unmatched_left: false
+        allow_null_keys: false
+        cardinality: many_to_one
+
   site:
     type: sql
     data_source: arbodat_data
