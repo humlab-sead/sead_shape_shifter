@@ -13,7 +13,6 @@ from backend.app.models.column_reference import (
 from backend.app.models.project import Project
 from backend.app.services.project_service import ProjectService
 from src.configuration.resolve import RequestedReferenceResolutionError
-from src.utility import dotget
 
 _SIMPLE_PATH_PATTERN = re.compile(r"^[A-Za-z0-9_-]+(?:[.:][A-Za-z0-9_-]+)*$")
 _REASON_MESSAGES = {
@@ -50,7 +49,7 @@ class ColumnReferenceService:
             reason_code = ColumnReferenceFailureCode(exc.reason_code)
             return self._unresolved(directive, path, reason_code)
 
-        if not isinstance(value, list) or any(not isinstance(column, str) for column in value):
+        if not self._is_column_list(value):
             return self._unresolved(directive, path, ColumnReferenceFailureCode.WRONG_RESULT_TYPE)
 
         return ColumnReferenceResolveResponse(
@@ -98,21 +97,28 @@ class ColumnReferenceService:
         if not isinstance(entity_value, dict):
             return ColumnReferenceCompleteResponse(candidates=[])
 
-        candidates: list[str] = []
+        candidate_paths: list[str] = []
         for property_name in sorted(entity_value):
             if not property_name.startswith(property_prefix):
                 continue
             path = f"entities.{selected_entity}.{property_name}"
             if path == edited_path:
                 continue
-            try:
-                value = self._resolve_path(project, path)
-            except RequestedReferenceResolutionError:
+            # Only text and list properties can resolve to a column list, so skip
+            # the mapping and resolution work for the remaining shapes.
+            if not isinstance(entity_value[property_name], (str, list)):
                 continue
-            if isinstance(value, list) and all(isinstance(column, str) for column in value):
-                candidates.append(f"@value: {path}")
+            candidate_paths.append(path)
+
+        resolved_values = ProjectMapper.resolve_reference_values(project, candidate_paths)
+        candidates: list[str] = [f"@value: {path}" for path in candidate_paths if self._is_column_list(resolved_values.get(path))]
 
         return ColumnReferenceCompleteResponse(candidates=candidates)
+
+    @staticmethod
+    def _is_column_list(value: Any) -> bool:
+        """Return True when the resolved value is a list holding only strings."""
+        return isinstance(value, list) and all(isinstance(column, str) for column in value)
 
     @staticmethod
     def _parse_directive(directive: str) -> str | None:
@@ -131,9 +137,11 @@ class ColumnReferenceService:
 
     @staticmethod
     def _resolve_path(project: Project, path: str) -> Any:
-        """Resolve one path through the mapper's editor-only conversion mode."""
-        core_project = ProjectMapper.to_core(project, requested_reference_path=path)
-        return dotget(core_project.cfg, path)
+        """Resolve one path through the mapper's editor-only resolution mode."""
+        value = ProjectMapper.resolve_reference_values(project, [path])[path]
+        if isinstance(value, RequestedReferenceResolutionError):
+            raise value
+        return value
 
     @staticmethod
     def _ordered_entity_names(project: Project, preferred_entity: str | None) -> list[str]:

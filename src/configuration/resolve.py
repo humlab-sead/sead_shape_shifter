@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import dataclasses
 import re
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -180,9 +181,8 @@ def resolve_directives(
     return data
 
 
-def resolve_requested_reference(
+def _make_requested_path_resolver(
     data: dict[str, Any],
-    requested_path: str,
     *,
     env_filename: str | None = None,
     env_prefix: str | None = None,
@@ -192,10 +192,12 @@ def resolve_requested_reference(
     try_without_prefix: bool = True,
     allowed_roots: tuple[str | Path, ...] = (),
     allowed_vars: frozenset[str] | set[str] | None = None,
-) -> Any:
-    """Resolve one path and only the directive values reached from that path.
+) -> Callable[[str], Any]:
+    """Return a resolver that reads requested paths from one copied mapping.
 
-    The input mapping is copied. Missing or circular references and failures in
+    The input mapping is copied once, so a caller that reads several paths pays
+    the copy cost once. Each returned call resolves one path and the directive
+    values reached from it. Missing or circular references and failures in
     reached include/load/environment directives raise a classified error.
     """
     working_data = copy.deepcopy(data)
@@ -396,14 +398,84 @@ def resolve_requested_reference(
         finally:
             active_paths.pop()
 
-    try:
-        return resolve_path(requested_path)
-    except RequestedReferenceResolutionError:
-        raise
-    except Exception as exc:  # pylint: disable=broad-exception-caught
-        raise RequestedReferenceResolutionError(
-            "dependency_failure", f"Reference path '{requested_path}' could not be resolved: {exc}"
-        ) from exc
+    def resolve_requested_path(path: str) -> Any:
+        """Resolve one requested path and classify unexpected failures."""
+        try:
+            return resolve_path(path)
+        except RequestedReferenceResolutionError:
+            raise
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            raise RequestedReferenceResolutionError("dependency_failure", f"Reference path '{path}' could not be resolved: {exc}") from exc
+
+    return resolve_requested_path
+
+
+def resolve_requested_reference(
+    data: dict[str, Any],
+    requested_path: str,
+    *,
+    env_filename: str | None = None,
+    env_prefix: str | None = None,
+    runtime_root: str | Path | None = None,
+    application_root_env_var: str = "APPLICATION_ROOT",
+    source_path: str | None = None,
+    try_without_prefix: bool = True,
+    allowed_roots: tuple[str | Path, ...] = (),
+    allowed_vars: frozenset[str] | set[str] | None = None,
+) -> Any:
+    """Resolve one path and only the directive values reached from that path."""
+    return _make_requested_path_resolver(
+        data,
+        env_filename=env_filename,
+        env_prefix=env_prefix,
+        runtime_root=runtime_root,
+        application_root_env_var=application_root_env_var,
+        source_path=source_path,
+        try_without_prefix=try_without_prefix,
+        allowed_roots=allowed_roots,
+        allowed_vars=allowed_vars,
+    )(requested_path)
+
+
+def resolve_requested_references(
+    data: dict[str, Any],
+    requested_paths: Sequence[str],
+    *,
+    env_filename: str | None = None,
+    env_prefix: str | None = None,
+    runtime_root: str | Path | None = None,
+    application_root_env_var: str = "APPLICATION_ROOT",
+    source_path: str | None = None,
+    try_without_prefix: bool = True,
+    allowed_roots: tuple[str | Path, ...] = (),
+    allowed_vars: frozenset[str] | set[str] | None = None,
+) -> dict[str, Any]:
+    """Resolve several paths from one copied mapping.
+
+    Returns one entry per requested path. A path that cannot be resolved maps to
+    its classified ``RequestedReferenceResolutionError`` so one broken path does
+    not hide results for the others. Each resolved path is cached, so later paths
+    reuse the values resolved for earlier ones.
+    """
+    resolve_requested_path = _make_requested_path_resolver(
+        data,
+        env_filename=env_filename,
+        env_prefix=env_prefix,
+        runtime_root=runtime_root,
+        application_root_env_var=application_root_env_var,
+        source_path=source_path,
+        try_without_prefix=try_without_prefix,
+        allowed_roots=allowed_roots,
+        allowed_vars=allowed_vars,
+    )
+
+    results: dict[str, Any] = {}
+    for requested_path in requested_paths:
+        try:
+            results[requested_path] = resolve_requested_path(requested_path)
+        except RequestedReferenceResolutionError as error:
+            results[requested_path] = error
+    return results
 
 
 _REQUESTED_PATH_MISSING = object()
