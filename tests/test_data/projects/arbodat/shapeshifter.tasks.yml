@@ -56,7 +56,7 @@ task_list:
   - taxa_persistence
   - taxa_use_categories
   - _project_contact
-  - _pcodes
+  - helper_pcodes
   - cultural_group
   - dating_period
   - natural_region_group
