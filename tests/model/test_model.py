@@ -63,6 +63,16 @@ class TestForeignKeyConstraints:
         constraints = ForeignKeyConstraints(data={})
         assert constraints.allow_null_keys is False
 
+    def test_null_keys_equal_default(self):
+        """Test null_keys_equal defaults to False."""
+        constraints = ForeignKeyConstraints(data={})
+        assert constraints.null_keys_equal is False
+
+    def test_null_keys_equal_explicit(self):
+        """Test null_keys_equal can be enabled explicitly."""
+        constraints = ForeignKeyConstraints(data={"null_keys_equal": True})
+        assert constraints.null_keys_equal is True
+
     def test_allow_null_keys_false(self):
         """Test allow_null_keys set to False."""
         constraints = ForeignKeyConstraints(data={"allow_null_keys": False})

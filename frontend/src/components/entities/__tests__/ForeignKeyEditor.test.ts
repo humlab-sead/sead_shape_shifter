@@ -37,8 +37,16 @@ const ControlStub = {
   template: '<div><slot /></div>',
 }
 
+const CheckboxStub = {
+  name: 'VCheckbox',
+  props: ['modelValue', 'label'],
+  emits: ['update:modelValue'],
+  template: '<button @click="$emit(\'update:modelValue\', !modelValue)">{{ label }}</button>',
+}
+
 const controlStubs = {
   VAutocomplete: ControlStub,
+  VCheckbox: CheckboxStub,
   VSelect: ControlStub,
   VTextField: ControlStub,
   VCombobox: ControlStub,
@@ -114,6 +122,41 @@ describe('ForeignKeyEditor', () => {
       'Local and remote keys contain the same names in a different order.'
     )
     expect(wrapper.find('[data-testid="fk-key-count-warning"]').exists()).toBe(false)
+  })
+
+  it('exposes null-key equality as an explicit constraint', async () => {
+    const wrapper = shallowMount(ForeignKeyEditor, {
+      props: {
+        modelValue: [
+          {
+            entity: 'site',
+            local_keys: ['Fustel', 'EVNr'],
+            remote_keys: ['Fustel', 'EVNr'],
+            how: 'inner',
+          },
+        ],
+        projectName: 'demo',
+        entityName: 'site_location',
+      },
+      global: {
+        renderStubDefaultSlot: true,
+        stubs: controlStubs,
+      },
+    })
+
+    const checkbox = wrapper
+      .findAllComponents(CheckboxStub)
+      .find((component) => component.props('label') === 'Match Null Join-Key Parts')
+
+    expect(checkbox).toBeDefined()
+    await checkbox?.vm.$emit('update:modelValue', true)
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.emitted('update:modelValue')?.at(-1)?.[0]).toEqual([
+      expect.objectContaining({
+        constraints: expect.objectContaining({ null_keys_equal: true }),
+      }),
+    ])
   })
 
   it('shows a warning and an empty pair slot when key counts differ', () => {

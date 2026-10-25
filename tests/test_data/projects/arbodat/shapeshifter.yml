@@ -835,7 +835,7 @@ entities:
       remote_keys: [archdat]
       how: inner
       constraints:
-        cardinality: one_to_one
+        cardinality: many_to_one
         allow_unmatched_right: true
         require_unique_left: false
         require_unique_right: false
@@ -1042,7 +1042,7 @@ entities:
       constraints:
         cardinality: many_to_one
         require_unique_left: false
-        allow_null_keys: false
+        null_keys_equal: true
     - entity: location
       local_keys: [location_type, location_name]
       remote_keys: [location_type, location_name]
@@ -1054,9 +1054,10 @@ entities:
     check_functional_dependency: true
     unnest:
       id_vars: [Fustel, EVNr]
-      value_vars: [Ort, Kreis, Land, Staat]
+      value_vars: [Ort, Kreis, Land, Staat, FlurStr]
       var_name: location_type
       value_name: location_name
+    drop_empty_rows: [location_name]
   site_natural_region:
     type: sql
     data_source: arbodat_data
