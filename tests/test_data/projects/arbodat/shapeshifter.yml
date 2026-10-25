@@ -1628,8 +1628,8 @@ entities:
     columns:
     - system_id
     - sample_type_id
-    - sample_type_description
-    - sample_type_name
+    - description
+    - type_name
     - Nummer
     - PrTyp
     - ProbTyp
@@ -1653,8 +1653,8 @@ entities:
         data_source: arbodat_lookup
         query: select distinct[Nummer],  [PrTyp], [ProbTyp] from [Probentypen] ;
         extra_columns:
-          sample_type_name: PrTyp
-          sample_type_description: PrTyp
+          type_name: PrTyp
+          description: PrTyp
       materialized_at: '2026-10-09T09:07:47.888587'
   tmp_analysis_entity_for_relative_dating:
     type: sql
