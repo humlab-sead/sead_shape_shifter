@@ -1147,7 +1147,7 @@ This is the right fit when the derived value depends on cleanup, fallback handli
   filters:
     - type: exists_in
       column: "PCODE"              # Local column to filter
-      other_entity: "_pcodes"      # Entity to check against
+      other_entity: "helper_pcodes"      # Entity to check against
       other_column: "PCODE"        # Column in other entity (optional, defaults to same name)
       drop_duplicates: ["PCODE"]  # Optional: drop duplicates after filtering
   ```
@@ -3748,7 +3748,7 @@ taxa:
   filters:
     - type: exists_in
       column: "PCODE"
-      other_entity: "_pcodes"  # Reference entity with valid codes
+      other_entity: "helper_pcodes"  # Reference entity with valid codes
       other_column: "PCODE"
 ```
 

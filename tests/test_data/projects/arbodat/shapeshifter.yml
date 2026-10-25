@@ -1219,7 +1219,7 @@ entities:
         require_unique_left: false
         require_unique_right: false
         allow_row_decrease: true
-  _pcodes:
+  helper_pcodes:
     type: sql
     source:
     data_source: arbodat_data
@@ -1245,11 +1245,11 @@ entities:
     query: |-
       select distinct t.[PCODE], t.[BNam], t.[Name_E], t.[Fam], t.[S_Od], t.[TaxAut], t.[Achtung]
       from [ÖkoSozDaten] t ;
-    depends_on: [_pcodes]
+    depends_on: [helper_pcodes]
     filters:
     - type: exists_in
       column: PCODE
-      other_entity: _pcodes
+      other_entity: helper_pcodes
       other_column: PCODE
     extra_columns:
       author_id:

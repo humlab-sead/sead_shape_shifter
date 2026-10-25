@@ -52,7 +52,7 @@ options:
     site: tbl_sites
     taxa: tbl_taxa_tree_master
   table_name_ignores:
-    - _pcodes
+    - helper_pcodes
     - _project_contact
     - archaeological_period
     - chronological_period
