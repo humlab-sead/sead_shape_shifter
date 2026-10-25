@@ -5,6 +5,7 @@ from typing import Any
 
 import pytest
 
+from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.column_reference import ColumnReferenceFailureCode
 from backend.app.models.project import Project, ProjectMetadata
 from backend.app.services.column_reference_service import ColumnReferenceService
@@ -130,6 +131,51 @@ def test_completion_narrows_candidates_and_skips_bad_properties_independently() 
     assert entities.candidates == ["@value: entities.child.", "@value: entities.site."]
     assert properties.candidates == ["@value: entities.site.columns"]
     assert filtered.candidates == ["@value: entities.site.keys"]
+
+
+def test_completion_ignores_property_shapes_that_cannot_hold_a_column_list() -> None:
+    """Offer only string and list properties that resolve to a column list."""
+    service, _ = make_service(
+        {
+            "site": {
+                "keys": ["site_id"],
+                "type": "entity",
+                "unnest": {"id_vars": ["site_id"], "value_vars": ["name"]},
+                "foreign_keys": [{"entity": "other", "local_keys": ["site_id"]}],
+            },
+        }
+    )
+
+    result = service.complete_references("test_project", "child", {}, "@value: entities.site.")
+
+    assert result.candidates == ["@value: entities.site.keys"]
+
+
+def test_completion_maps_the_project_once_for_all_candidate_properties(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Map the project once per completion request instead of once per candidate property."""
+    service, _ = make_service(
+        {
+            "site": {
+                "keys": ["site_id"],
+                "columns": ["name"],
+                "public_id": "site_id",
+                "unnest": {"id_vars": ["site_id"], "value_vars": ["name"]},
+            },
+        }
+    )
+    mapped_projects: list[str] = []
+    original_to_core_dict = ProjectMapper.to_core_dict
+
+    def counting_to_core_dict(api_config: Project) -> dict[str, Any]:
+        mapped_projects.append(api_config.metadata.name if api_config.metadata else "")
+        return original_to_core_dict(api_config)
+
+    monkeypatch.setattr(ProjectMapper, "to_core_dict", staticmethod(counting_to_core_dict))
+
+    result = service.complete_references("test_project", "child", {}, "@value: entities.site.")
+
+    assert result.candidates == ["@value: entities.site.columns", "@value: entities.site.keys"]
+    assert mapped_projects == ["test_project"]
 
 
 def test_completion_only_accepts_value_prefixes() -> None:

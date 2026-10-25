@@ -5,7 +5,12 @@ from pathlib import Path
 
 import pytest
 
-from src.configuration.resolve import RequestedReferenceResolutionError, resolve_requested_reference, split_reference_expression
+from src.configuration.resolve import (
+    RequestedReferenceResolutionError,
+    resolve_requested_reference,
+    resolve_requested_references,
+    split_reference_expression,
+)
 
 
 @pytest.mark.parametrize(
@@ -102,6 +107,27 @@ def test_reports_missing_and_circular_requested_dependencies() -> None:
 
     assert missing_error.value.reason_code == "missing_path"
     assert cycle_error.value.reason_code == "circular_reference"
+
+
+def test_resolves_several_paths_and_reports_each_failure() -> None:
+    """Return one result per path and keep a broken path from hiding the others."""
+    config = {
+        "entities": {
+            "source": {"keys": ["first", "second"]},
+            "child": {"keys": "@value: entities.source.keys", "columns": "@value: entities.unknown.columns"},
+        },
+    }
+
+    results = resolve_requested_references(
+        config,
+        ["entities.source.keys", "entities.child.keys", "entities.child.columns"],
+    )
+
+    assert results["entities.source.keys"] == ["first", "second"]
+    assert results["entities.child.keys"] == ["first", "second"]
+    failure = results["entities.child.columns"]
+    assert isinstance(failure, RequestedReferenceResolutionError)
+    assert failure.reason_code == "missing_path"
 
 
 def test_does_not_return_expression_values_when_an_operand_is_missing() -> None:

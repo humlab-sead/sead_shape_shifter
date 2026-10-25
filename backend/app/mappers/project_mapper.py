@@ -22,6 +22,7 @@ The API layer is the editing/persistence boundary. Core is the execution/process
 No hardcoded field lists - all field handling is derived from Pydantic schemas.
 """
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -44,7 +45,7 @@ from backend.app.models.mapping_sync import (
 )
 from backend.app.utils import convert_ruamel_types
 from src.configuration import find_unresolved_directives
-from src.configuration.resolve import resolve_requested_reference
+from src.configuration.resolve import resolve_requested_reference, resolve_requested_references
 from src.model import ShapeShiftProject, TableConfig
 from src.path_resolution import resolve_contained_path
 from src.reconciliation.fixed_entity_mapping_changes import (
@@ -289,27 +290,14 @@ class ProjectMapper:
         project_name: str = api_config.metadata.name if api_config.metadata else (api_config.filename or "")
 
         if requested_reference_path is not None:
-            projects_root: Path = Path(settings.PROJECTS_DIR).resolve()
-            project_root: Path | None = None
-            if api_config.filename:
-                candidate_root: Path = Path(api_config.filename).resolve().parent
-                if candidate_root.is_relative_to(projects_root):
-                    project_root = candidate_root
-            if project_root is None:
-                project_root = resolve_contained_path(project_name.replace(":", "/"), settings.PROJECTS_DIR)
-
+            project_root: Path = ProjectMapper._editor_project_root(api_config, project_name)
             resolved_value = resolve_requested_reference(
                 cfg_dict,
                 requested_reference_path,
                 source_path=api_config.filename,
                 env_prefix=settings.env_prefix,
                 env_filename=settings.env_file,
-                allowed_roots=(
-                    project_root,
-                    settings.GLOBAL_DATA_DIR,
-                    settings.GLOBAL_DATA_SOURCE_DIR,
-                    settings.GLOBAL_TARGET_MODEL_DIR,
-                ),
+                allowed_roots=ProjectMapper._editor_allowed_roots(project_root),
                 allowed_vars=settings.resolver_allowed_env_vars,
             )
             dotset(cfg_dict, requested_reference_path, resolved_value)
@@ -368,6 +356,48 @@ class ProjectMapper:
         ProjectMapper._validate_mapping_sidecar(project, api_config.filename)
 
         return project
+
+    @staticmethod
+    def resolve_reference_values(api_config: Project, requested_paths: Sequence[str]) -> dict[str, Any]:
+        """Resolve editor reference paths against one copied project mapping.
+
+        Reads several paths from a single project copy so completion and
+        inspection do not pay one project copy per candidate path. Returns one
+        entry per path; a path that cannot be resolved maps to its classified
+        ``RequestedReferenceResolutionError``.
+        """
+        cfg_dict: dict[str, Any] = ProjectMapper.to_core_dict(api_config=api_config)
+        project_name: str = api_config.metadata.name if api_config.metadata else (api_config.filename or "")
+        project_root: Path = ProjectMapper._editor_project_root(api_config, project_name)
+        return resolve_requested_references(
+            cfg_dict,
+            requested_paths,
+            source_path=api_config.filename,
+            env_prefix=settings.env_prefix,
+            env_filename=settings.env_file,
+            allowed_roots=ProjectMapper._editor_allowed_roots(project_root),
+            allowed_vars=settings.resolver_allowed_env_vars,
+        )
+
+    @staticmethod
+    def _editor_project_root(api_config: Project, project_name: str) -> Path:
+        """Return the containment-checked folder that anchors relative file paths."""
+        projects_root: Path = Path(settings.PROJECTS_DIR).resolve()
+        if api_config.filename:
+            candidate_root: Path = Path(api_config.filename).resolve().parent
+            if candidate_root.is_relative_to(projects_root):
+                return candidate_root
+        return resolve_contained_path(project_name.replace(":", "/"), settings.PROJECTS_DIR)
+
+    @staticmethod
+    def _editor_allowed_roots(project_root: Path) -> tuple[Path, ...]:
+        """Return the roots an editor reference may read from."""
+        return (
+            project_root,
+            settings.GLOBAL_DATA_DIR,
+            settings.GLOBAL_DATA_SOURCE_DIR,
+            settings.GLOBAL_TARGET_MODEL_DIR,
+        )
 
     @staticmethod
     def to_core_config(api_config: Project) -> ShapeShiftProject:
