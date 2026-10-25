@@ -322,8 +322,6 @@ def _make_requested_path_resolver(
                 result.extend(literal)
             else:
                 raise RequestedReferenceResolutionError("dependency_failure", "The reference expression contains an unsupported operand.")
-        if not result:
-            raise RequestedReferenceResolutionError("dependency_failure", "The reference expression resolved to no values.")
         return result
 
     def resolve_values(value: Any, current_path: str, include_stack: tuple[str, ...]) -> Any:

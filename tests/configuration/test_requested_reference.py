@@ -130,6 +130,18 @@ def test_resolves_several_paths_and_reports_each_failure() -> None:
     assert failure.reason_code == "missing_path"
 
 
+def test_expression_with_only_empty_operands_resolves_to_no_columns() -> None:
+    """Accept an empty result the same way a simple reference to an empty list is accepted."""
+    config = {
+        "entities": {
+            "empty": {"keys": []},
+            "child": {"keys": "@value: entities.empty.keys + []"},
+        },
+    }
+
+    assert resolve_requested_reference(config, "entities.child.keys") == []
+
+
 def test_does_not_return_expression_values_when_an_operand_is_missing() -> None:
     """Reject a missing operand instead of returning a shortened expression result."""
     config = {"entities": {"child": {"keys": "@value: entities.missing.keys + ['literal']"}}}
