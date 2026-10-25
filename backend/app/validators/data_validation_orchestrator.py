@@ -52,9 +52,7 @@ class DataFetchStrategy(ABC):
         """Fetch data for an entity."""
         raise NotImplementedError
 
-    async def get_additional_issues(  # pylint: disable=unused-argument
-        self, project_name: str, entity_name: str
-    ) -> list[ValidationIssue]:
+    async def get_additional_issues(self, project_name: str, entity_name: str) -> list[ValidationIssue]:  # pylint: disable=unused-argument
         """Return strategy-specific validation issues for an entity."""
         return []
 
@@ -234,8 +232,7 @@ class DataValidationOrchestrator:
             failed_dependencies = [
                 dependency
                 for dependency in self._dependencies(core_project, entity_name)
-                if dependency in self.entity_statuses
-                and self.entity_statuses[dependency].status != EntityDataValidationStatus.COMPLETED
+                if dependency in self.entity_statuses and self.entity_statuses[dependency].status != EntityDataValidationStatus.COMPLETED
             ]
             if failed_dependencies:
                 dependency = failed_dependencies[0]

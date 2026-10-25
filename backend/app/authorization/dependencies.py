@@ -16,7 +16,6 @@ from backend.app.core.config import settings
 from backend.app.core.operation_manager import OperationProgress, operation_manager
 from backend.app.core.state_manager import ProjectSession
 
-
 DependencyCallable = TypeVar("DependencyCallable", bound=Callable[..., Any])
 
 

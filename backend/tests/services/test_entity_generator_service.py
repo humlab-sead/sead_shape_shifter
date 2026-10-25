@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from backend.app.core.config import settings
 from backend.app.exceptions import ResourceConflictError, ResourceNotFoundError
 from backend.app.models.data_source import ColumnMetadata, TableSchema
 from backend.app.models.project import Project, ProjectMetadata
@@ -323,7 +324,6 @@ class TestEntityGeneratorService:
 
     def test_resolve_project_local_include(self, generator_service, mock_project, tmp_path, monkeypatch):
         """Project-local includes are resolved relative to the project file."""
-        from backend.app.core.config import settings
 
         projects_dir = tmp_path / "projects"
         project_dir = projects_dir / "test_project"
