@@ -176,7 +176,7 @@ entities:
       remote_keys: [property_type_scope, arbodat_code]
     depends_on: [abundance, property_type]
     drop_duplicates: true
-    drop_empty_rows: [abundance_property_value]
+    drop_empty_rows: [property_value]
     check_functional_dependency: true
     extra_columns:
       property_type_scope: abundance
@@ -194,7 +194,7 @@ entities:
       - EDatProb
       - AnmFrakt
       var_name: abundance_property_type
-      value_name: abundance_property_value
+      value_name: property_value
   property_type:
     type: fixed
     public_id: property_type_id
@@ -606,7 +606,7 @@ entities:
         allow_row_decrease: true
     depends_on: [feature, property_type]
     drop_duplicates: [Projekt, Befu, feature_property_type]
-    drop_empty_rows: [feature_property_value]
+    drop_empty_rows: [property_value]
     check_functional_dependency: true
     extra_columns:
       property_type_scope: feature
@@ -620,7 +620,7 @@ entities:
       - BestJa
       - Anmerkung
       var_name: feature_property_type
-      value_name: feature_property_value
+      value_name: property_value
   feature_type:
     type: fixed
     public_id: feature_type_id
@@ -1134,13 +1134,13 @@ entities:
       property_type_scope: site
     filters:
     - type: query
-      query: '~site_property_value.isnull() '
+      query: '~property_value.isnull() '
       stage: after_unnest
     unnest:
       id_vars: [Fustel, EVNr, property_type_scope]
       value_vars: '@value: entities.site_property.columns'
       var_name: site_property_type
-      value_name: site_property_value
+      value_name: property_value
   site_type_group:
     type: fixed
     public_id: site_type_group_id
