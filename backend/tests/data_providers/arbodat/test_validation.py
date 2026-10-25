@@ -154,7 +154,9 @@ def test_target_model_conformance(project: ShapeShiftProject):
 
     # assert not errors, f"Expected no validation errors, found {len(errors)}: {[error.message for error in errors]}"
 
+
 # pylint: disable=line-too-long
+
 
 def test_core_conformance_reports_known_gaps_for_full_arbodat_project(project: ShapeShiftProject) -> None:
     target_model: TargetModel = load_target_model()
@@ -168,29 +170,21 @@ def test_core_conformance_reports_known_gaps_for_full_arbodat_project(project: S
         "MISSING_REQUIRED_FOREIGN_KEY_TARGET;analysis_entity;Entity 'analysis_entity' is missing required foreign key target 'dataset'",
         "MISSING_REQUIRED_FOREIGN_KEY_TARGET;abundance_modification;Entity 'abundance_modification' is missing required foreign key target 'abundance'",
         "MISSING_REQUIRED_FOREIGN_KEY_TARGET;abundance_property;Entity 'abundance_property' is missing required foreign key target 'abundance'",
-        "MISSING_REQUIRED_FOREIGN_KEY_TARGET;abundance_property;Entity 'abundance_property' is missing required foreign key target 'property_type'",
         "MISSING_REQUIRED_FOREIGN_KEY_TARGET;relative_dating;Entity 'relative_dating' is missing required foreign key target 'analysis_entity'",
-        "MISSING_REQUIRED_FOREIGN_KEY_TARGET;site_property;Entity 'site_property' is missing required foreign key target 'property_type'",
-        "MISSING_REQUIRED_FOREIGN_KEY_TARGET;feature_property;Entity 'feature_property' is missing required foreign key target 'property_type'",
         "CONDITIONAL_FK_AWAITING_RECONCILIATION;location;Conditional foreign key from 'location' to 'location_type' is awaiting reconciliation; project conformance cannot determine whether rows will be inserted.",
         "ORPHAN_FACT_ENTITY;sample_group;Fact entity 'sample_group' does not reach any lookup or classifier entity",
-        "ORPHAN_FACT_ENTITY;abundance_property;Fact entity 'abundance_property' does not reach any lookup or classifier entity",
         "MISSING_REQUIRED_COLUMN;sample_type;Entity 'sample_type' is missing required target column 'type_name'",
         "MISSING_REQUIRED_COLUMN;sample_coordinate;Entity 'sample_coordinate' is missing required target column 'measurement'",
         "MISSING_REQUIRED_COLUMN;dataset;Entity 'dataset' is missing required target column 'submission_id'",
         "MISSING_REQUIRED_COLUMN;analysis_entity;Entity 'analysis_entity' is missing required target column 'dataset_id'",
-        "MISSING_REQUIRED_COLUMN;abundance_property;Entity 'abundance_property' is missing required target column 'property_type_id'",
         "MISSING_REQUIRED_COLUMN;abundance_property;Entity 'abundance_property' is missing required target column 'property_value'",
         "MISSING_REQUIRED_COLUMN;relative_dating;Entity 'relative_dating' is missing required target column 'analysis_entity_id'",
         "MISSING_REQUIRED_COLUMN;contact_type;Entity 'contact_type' is missing required target column 'contact_type_name'",
         "MISSING_REQUIRED_COLUMN;feature;Entity 'feature' is missing required target column 'feature_name'",
-        "MISSING_REQUIRED_COLUMN;site_property;Entity 'site_property' is missing required target column 'property_type_id'",
         "MISSING_REQUIRED_COLUMN;site_property;Entity 'site_property' is missing required target column 'property_value'",
-        "MISSING_REQUIRED_COLUMN;feature_property;Entity 'feature_property' is missing required target column 'property_type_id'",
         "MISSING_REQUIRED_COLUMN;feature_property;Entity 'feature_property' is missing required target column 'property_value'",
         "MISSING_REQUIRED_ENTITY;data_provider;Target model requires entity 'data_provider'",
         "MISSING_REQUIRED_ENTITY;citation;Target model requires entity 'citation'",
-        "MISSING_INDUCED_REQUIRED_ENTITY;property_type;Entity 'property_type' is required because entity 'abundance_property' is present and has a required foreign key chain to 'property_type'",
     ]
 
     issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
