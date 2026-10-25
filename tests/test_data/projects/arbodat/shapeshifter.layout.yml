@@ -14,9 +14,9 @@ layout:
   abundance_property:
     x: 854.8056593601367
     y: 308.62959497580624
-  abundance_property_type:
-    x: 888.8669256787716
-    y: 573.1254712197377
+  property_type:
+    x: -311.445
+    y: -48.618
   analysis_entity:
     x: 350.2878276304412
     y: 273.859239307631
@@ -125,9 +125,6 @@ layout:
   site_natural_region:
     x: -1205.1244751717566
     y: -540.9238335480679
-  site_property_type:
-    x: -811.0550623730305
-    y: -784.0779248027862
   site_property:
     x: -719.3172051144129
     y: -568.8910742530985
@@ -194,9 +191,6 @@ layout:
   tmp_analysis_entity_for_relative_dating:
     x: 251.45361709115085
     y: 873.7283923854103
-  feature_property_type:
-    x: -1012.1463480322008
-    y: 65.1002434260472
   analysis_entity_ages:
     x: -1391.3628615381726
     y: -333.96074000554603

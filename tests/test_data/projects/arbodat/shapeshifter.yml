@@ -171,15 +171,17 @@ entities:
     - EDatProb
     - AnmFrakt
     foreign_keys:
-    - entity: abundance_property_type
-      local_keys: [abundance_property_type]
-      remote_keys: [arbodat_code]
-    depends_on: [abundance, abundance_property_type]
+    - entity: property_type
+      local_keys: [property_type_scope, abundance_property_type]
+      remote_keys: [property_type_scope, arbodat_code]
+    depends_on: [abundance, property_type]
     drop_duplicates: true
     drop_empty_rows: [abundance_property_value]
     check_functional_dependency: true
+    extra_columns:
+      property_type_scope: abundance
     unnest:
-      id_vars: [abundance_id]
+      id_vars: [abundance_id, property_type_scope]
       value_vars:
       - rAnzahl
       - rGewicht
@@ -193,22 +195,33 @@ entities:
       - AnmFrakt
       var_name: abundance_property_type
       value_name: abundance_property_value
-  abundance_property_type:
+  property_type:
     type: fixed
-    public_id: abundance_property_type_id
-    keys: [arbodat_code]
-    columns: [system_id, abundance_property_type_id, arbodat_code, abundance_property_type, description]
+    public_id: property_type_id
+    keys: [property_type_scope, arbodat_code]
+    columns: [system_id, property_type_id, property_type_scope, arbodat_code, property_type_name, description]
     values:
-    - [1, null, rAnzahl, raw_count, Counted number of finds of one type of plant remains from a sieving fraction or parts of a sieving fraction]
-    - [2, null, rGewicht, raw_weight, Weight  of one type of plant remains from a sieving fraction or parts of a sieving fraction]
-    - [3, null, geschätzt, estimated_amount, Checked (1) if the counts are estimated]
-    - [4, null, rFrag, raw_fragments, Counted number of fragments of one type of plant remains from a sieving fraction or parts of a sieving fraction]
-    - [5, null, Multiplikator, multiplier, Used if only part of a fraction is analysed. E.g. if 1/4 is sorted the multiplier is 4. The multiplier is used to calculate extrapolated count/fragments/weight]
-    - [6, null, FAnzahl, extrapolated_count, Extrapolated count = raw_count * multiplier]
-    - [7, null, FFragmente, extrapolated_fragments, Extrapolated fragments = raw_fragments * multiplier]
-    - [8, null, FGewicht, extrapolated_weight, 'Extrapolated weight = raw_weight * multiplier ']
-    - [9, null, EDatProb, entry_date, Entry date in ArboDat]
-    - [10, null, AnmFrakt, note, 'Remarks on the botanical determination. ']
+    - [1, null, abundance, rAnzahl, raw_count, Counted number of finds of one type of plant remains from a sieving fraction or parts of a sieving fraction]
+    - [2, null, abundance, rGewicht, raw_weight, Weight  of one type of plant remains from a sieving fraction or parts of a sieving fraction]
+    - [3, null, abundance, geschätzt, estimated_amount, Checked (1) if the counts are estimated]
+    - [4, null, abundance, rFrag, raw_fragments, Counted number of fragments of one type of plant remains from a sieving fraction or parts of a sieving fraction]
+    - [5, null, abundance, Multiplikator, multiplier, Used if only part of a fraction is analysed. E.g. if 1/4 is sorted the multiplier is 4. The multiplier is used to calculate extrapolated count/fragments/weight]
+    - [6, null, abundance, FAnzahl, extrapolated_count, Extrapolated count = raw_count * multiplier]
+    - [7, null, abundance, FFragmente, extrapolated_fragments, Extrapolated fragments = raw_fragments * multiplier]
+    - [8, null, abundance, FGewicht, extrapolated_weight, 'Extrapolated weight = raw_weight * multiplier ']
+    - [9, null, abundance, EDatProb, entry_date, Entry date in ArboDat]
+    - [10, null, abundance, AnmFrakt, note, 'Remarks on the botanical determination. ']
+    - [11, null, site, Limes, Limes, Within Limes. Checked in case of Roman sites]
+    - [12, null, site, okFustel, okFustel, 'Methodological assessment of the site: adequate or deficient']
+    - [13, null, site, TK, Map sheet, 'TK 25 (Topographic Map 1:25,000)']
+    - [14, null, site, EVNr, EVNr, Site identifier]
+    - [15, null, site, AnmFustel, AnmFustel, Free text entry for all kind of informations related to the site]
+    - [16, null, feature, gebäud, Building context, 'Denotes if a feature is part of a building. Possible values: ja/nein/? ']
+    - [17, null, feature, okBefu, Feature ok, Methodological classification of the feature is ok or not.]
+    - [18, null, feature, okErh, Preservation, 'Preservation of the plant remains: good/medium/bad  (/mittel/schlecht)']
+    - [19, null, feature, BestJa, Determination year, Year of botanical determination]
+    - [20, null, feature, FlSchn, Excavation area, Used to distinguish between identical feature numbers in same excavation.]
+    - [21, null, feature, Anmerkung, Notes, Notes on the feature]
   analysis_entity:
     type: sql
     data_source: arbodat_data
@@ -581,9 +594,9 @@ entities:
         require_unique_left: false
         require_unique_right: false
         allow_row_decrease: true
-    - entity: feature_property_type
-      local_keys: [feature_property_type]
-      remote_keys: [arbodat_code]
+    - entity: property_type
+      local_keys: [property_type_scope, feature_property_type]
+      remote_keys: [property_type_scope, arbodat_code]
       how: left
       constraints:
         cardinality: many_to_one
@@ -591,12 +604,14 @@ entities:
         require_unique_left: false
         require_unique_right: false
         allow_row_decrease: true
-    depends_on: [feature, feature_property_type]
+    depends_on: [feature, property_type]
     drop_duplicates: [Projekt, Befu, feature_property_type]
     drop_empty_rows: [feature_property_value]
     check_functional_dependency: true
+    extra_columns:
+      property_type_scope: feature
     unnest:
-      id_vars: [Projekt, Befu]
+      id_vars: [Projekt, Befu, property_type_scope]
       value_vars:
       - FlSchn
       - gebäud
@@ -1078,17 +1093,6 @@ entities:
     depends_on: [site, natural_region]
     drop_duplicates: [Fustel, EVNr]
     check_functional_dependency: true
-  site_property_type:
-    type: fixed
-    public_id: site_property_type_id
-    keys: []
-    columns: [system_id, site_property_type_id, site_property_type, description, arbodat_code]
-    values:
-    - [1, null, Limes, Within Limes. Checked in case of Roman sites, Limes]
-    - [2, null, okFustel, 'Methodological assessment of the site: adequate or deficient', okFustel]
-    - [3, null, Map sheet, 'TK 25 (Topographic Map 1:25,000)', TK]
-    - [4, null, EVNr, Site identifier, EVNr]
-    - [5, null, AnmFustel, Free text entry for all kind of informations related to the site, AnmFustel]
   site_property:
     type: sql
     data_source: arbodat_data
@@ -1114,16 +1118,26 @@ entities:
         require_unique_right: false
         allow_row_decrease: true
         allow_null_keys: true
-    depends_on: [site, site_property_type]
+    - entity: property_type
+      local_keys: [property_type_scope, site_property_type]
+      remote_keys: [property_type_scope, arbodat_code]
+      how: left
+      constraints:
+        cardinality: many_to_one
+        allow_unmatched_left: false
+        allow_null_keys: false
+    depends_on: [site, property_type]
     drop_duplicates: [Fustel, EVNr, site_property_type]
     drop_empty_rows: [Fustel]
     check_functional_dependency: false
+    extra_columns:
+      property_type_scope: site
     filters:
     - type: query
       query: '~site_property_value.isnull() '
       stage: after_unnest
     unnest:
-      id_vars: [Fustel, EVNr]
+      id_vars: [Fustel, EVNr, property_type_scope]
       value_vars: '@value: entities.site_property.columns'
       var_name: site_property_type
       value_name: site_property_value
@@ -1660,18 +1674,6 @@ entities:
         require_unique_left: false
         require_unique_right: false
         allow_row_decrease: true
-  feature_property_type:
-    type: fixed
-    public_id: feature_property_type_id
-    keys: []
-    columns: [system_id, feature_property_type_id, feature_property_name, feature_property_description, arbodat_code]
-    values:
-    - [1, null, Building context, 'Denotes if a feature is part of a building. Possible values: ja/nein/? ', gebäud]
-    - [2, null, Feature ok, Methodological classification of the feature is ok or not., okBefu]
-    - [3, null, Preservation, 'Preservation of the plant remains: good/medium/bad  (/mittel/schlecht)', okErh]
-    - [4, null, Determination year, Year of botanical determination, BestJa]
-    - [5, null, Excavation area, Used to distinguish between identical feature numbers in same excavation., FlSchn]
-    - [6, null, Notes, Notes on the feature, Anmerkung]
 options:
   translations:
     filename: translations.tsv
@@ -1684,7 +1686,7 @@ options:
   reconciliation: '@include: reconciliation.yml'
   finally:
     drop:
-      tables: [_pcodes, _project_contact]
+      tables: [helper_pcodes, _project_contact]
       columns:
       - site.public_id
       - project.public_id
@@ -1693,6 +1695,11 @@ options:
       - analysis_entity.public_id
       - abundance.public_id
       - location.public_id
+      - property_type.property_type_scope
+      - property_type.arbodat_code
+      - abundance_property.property_type_scope
+      - feature_property.property_type_scope
+      - site_property.property_type_scope
   ingesters:
     sead:
       data_source: sead
