@@ -53,7 +53,7 @@ options:
     taxa: tbl_taxa_tree_master
   table_name_ignores:
     - helper_pcodes
-    - _project_contact
+    - helper_project_contact
     - archaeological_period
     - chronological_period
     - cultural_group
