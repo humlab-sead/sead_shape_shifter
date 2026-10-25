@@ -36,13 +36,14 @@ class ColumnReferenceService:
         entity_name: str,
         entity_draft: dict[str, Any],
         directive: str,
+        original_entity_name: str | None = None,
     ) -> ColumnReferenceResolveResponse:
         """Resolve a complete simple directive and return columns or one local reason."""
         path = self._parse_directive(directive)
         if path is None:
             return self._unresolved(directive, None, ColumnReferenceFailureCode.MALFORMED_INPUT)
 
-        project = self._load_draft(project_name, entity_name, entity_draft)
+        project = self._load_draft(project_name, entity_name, entity_draft, original_entity_name)
         try:
             value = self._resolve_path(project, path)
         except RequestedReferenceResolutionError as exc:
@@ -67,6 +68,7 @@ class ColumnReferenceService:
         prefix: str,
         edited_field_path: str | None = None,
         preferred_entity: str | None = None,
+        original_entity_name: str | None = None,
     ) -> ColumnReferenceCompleteResponse:
         """Return progressively filtered @value candidates for list-valued properties."""
         normalized_prefix = prefix.strip()
@@ -82,7 +84,7 @@ class ColumnReferenceService:
             return ColumnReferenceCompleteResponse(candidates=[])
 
         remainder = body[len("entities.") :]
-        project = self._load_draft(project_name, entity_name, entity_draft)
+        project = self._load_draft(project_name, entity_name, entity_draft, original_entity_name)
         entity_names = self._ordered_entity_names(project, preferred_entity)
         if "." not in remainder:
             candidates = [f"@value: entities.{name}." for name in entity_names if name.startswith(remainder)]
@@ -129,9 +131,22 @@ class ColumnReferenceService:
         path = normalized[len("@value:") :].strip()
         return path if path and _SIMPLE_PATH_PATTERN.fullmatch(path) else None
 
-    def _load_draft(self, project_name: str, entity_name: str, entity_draft: dict[str, Any]) -> Project:
-        """Load an isolated project copy and replace one entity with its unsaved values."""
+    def _load_draft(
+        self,
+        project_name: str,
+        entity_name: str,
+        entity_draft: dict[str, Any],
+        original_entity_name: str | None = None,
+    ) -> Project:
+        """Load an isolated project copy and replace one entity with its unsaved values.
+
+        A renamed draft drops the saved entity under its old name, so completion and
+        resolution see the draft once and references to the old name are not resolved
+        against stale saved values.
+        """
         project = self.project_service.load_project(project_name).model_copy(deep=True)
+        if original_entity_name and original_entity_name != entity_name:
+            project.entities.pop(original_entity_name, None)
         project.entities[entity_name] = copy.deepcopy(entity_draft)
         return project
 

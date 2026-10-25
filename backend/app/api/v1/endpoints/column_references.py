@@ -36,6 +36,7 @@ async def resolve_column_reference(
         entity_name,
         request.entity_draft,
         request.directive,
+        request.original_entity_name,
     )
 
 
@@ -58,4 +59,5 @@ async def complete_column_references(
         request.prefix,
         edited_field_path=request.edited_field_path,
         preferred_entity=request.preferred_entity,
+        original_entity_name=request.original_entity_name,
     )

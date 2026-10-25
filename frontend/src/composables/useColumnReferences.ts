@@ -14,6 +14,7 @@ export interface ColumnReferenceContext {
   entityDraft: Record<string, unknown>
   editedFieldPath: string
   preferredEntity?: string
+  originalEntityName?: string
 }
 
 export function isSimpleColumnReference(value: string): boolean {
@@ -97,6 +98,7 @@ export function useColumnReferences() {
       prefix: normalizedPrefix,
       edited_field_path: context.editedFieldPath,
       preferred_entity: context.preferredEntity,
+      ...(context.originalEntityName ? { original_entity_name: context.originalEntityName } : {}),
     }
     completionTimer = setTimeout(() => {
       completionTimer = null
@@ -117,6 +119,7 @@ export function useColumnReferences() {
     const request: ColumnReferenceResolveRequest = {
       entity_draft: cloneEntityDraft(context.entityDraft),
       directive,
+      ...(context.originalEntityName ? { original_entity_name: context.originalEntityName } : {}),
     }
 
     try {

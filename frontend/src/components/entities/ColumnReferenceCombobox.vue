@@ -132,6 +132,7 @@ interface Props {
   items: string[]
   projectName: string
   entityName: string
+  originalEntityName?: string
   entityDraft: Record<string, unknown>
   editedFieldPath: string
   preferredEntity?: string
@@ -142,6 +143,7 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
+  originalEntityName: undefined,
   preferredEntity: undefined,
   disabled: false,
   validationIssues: () => [],
@@ -168,12 +170,16 @@ const context = computed<ColumnReferenceContext>(() => ({
   entityDraft: props.entityDraft,
   editedFieldPath: props.editedFieldPath,
   preferredEntity: props.preferredEntity,
+  ...(props.originalEntityName && props.originalEntityName !== props.entityName
+    ? { originalEntityName: props.originalEntityName }
+    : {}),
 }))
 
 const contextKey = computed(() =>
   JSON.stringify([
     props.projectName,
     props.entityName,
+    props.originalEntityName,
     props.editedFieldPath,
     props.preferredEntity,
     props.disabled,

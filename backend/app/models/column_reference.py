@@ -21,6 +21,7 @@ class ColumnReferenceResolveRequest(BaseModel):
 
     entity_draft: dict[str, Any] = Field(description="Current unsaved entity values")
     directive: str = Field(description="Complete simple @value directive to check")
+    original_entity_name: str | None = Field(default=None, description="Saved entity name when the draft renames it")
 
 
 class ColumnReferenceResolveResponse(BaseModel):
@@ -41,6 +42,7 @@ class ColumnReferenceCompleteRequest(BaseModel):
     prefix: str = Field(description="Typed @value prefix")
     edited_field_path: str | None = Field(default=None, description="Path of the field being edited")
     preferred_entity: str | None = Field(default=None, description="Entity to show first for a related FK field")
+    original_entity_name: str | None = Field(default=None, description="Saved entity name when the draft renames it")
 
 
 class ColumnReferenceCompleteResponse(BaseModel):

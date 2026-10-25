@@ -178,6 +178,62 @@ def test_completion_maps_the_project_once_for_all_candidate_properties(monkeypat
     assert mapped_projects == ["test_project"]
 
 
+def test_renamed_draft_replaces_the_saved_entity_for_resolution_and_completion() -> None:
+    """Drop the saved entity under its old name when the draft renames it."""
+    service, saved_project = make_service(
+        {
+            "site": {"keys": ["saved_site"], "columns": ["saved_name"]},
+            "child": {"keys": ["child_id"], "columns": ["child_name"]},
+        }
+    )
+    saved_entities = deepcopy(saved_project.entities)
+    draft = {"keys": ["renamed_id"], "columns": ["renamed_name"]}
+
+    resolved = service.resolve_reference(
+        "test_project",
+        "renamed",
+        draft,
+        "@value: entities.renamed.keys",
+        original_entity_name="site",
+    )
+    stale = service.resolve_reference(
+        "test_project",
+        "renamed",
+        draft,
+        "@value: entities.site.keys",
+        original_entity_name="site",
+    )
+    completed = service.complete_references(
+        "test_project",
+        "renamed",
+        draft,
+        "@value: entities.",
+        original_entity_name="site",
+    )
+
+    assert resolved.status == "resolved"
+    assert resolved.columns == ["renamed_id"]
+    assert stale.reason_code == ColumnReferenceFailureCode.MISSING_PATH
+    assert completed.candidates == ["@value: entities.child.", "@value: entities.renamed."]
+    assert saved_project.entities == saved_entities
+
+
+def test_rename_to_the_same_name_keeps_the_saved_entity() -> None:
+    """Keep the saved entity when the supplied original name matches the draft name."""
+    service, _ = make_service({"site": {"keys": ["saved_site"]}})
+
+    result = service.resolve_reference(
+        "test_project",
+        "site",
+        {"keys": ["draft_site"]},
+        "@value: entities.site.keys",
+        original_entity_name="site",
+    )
+
+    assert result.status == "resolved"
+    assert result.columns == ["draft_site"]
+
+
 def test_completion_only_accepts_value_prefixes() -> None:
     """Do not offer project-wide or arbitrary-path candidates for unrelated text."""
     service, _ = make_service({"site": {"keys": ["id"]}})

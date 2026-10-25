@@ -71,6 +71,49 @@ async def test_reference_routes_use_draft_and_do_not_save_it(authorized_client) 
 
 
 @pytest.mark.asyncio
+async def test_reference_routes_replace_the_saved_entity_when_a_draft_renames_it(authorized_client) -> None:
+    """Resolve and complete against the renamed draft without keeping the old saved entity."""
+    await _create_project(authorized_client)
+    draft = {"type": "entity", "keys": ["renamed_id"], "columns": ["renamed_name"]}
+
+    resolve_response = await authorized_client.post(
+        "/api/v1/projects/test_project/entities/renamed/column-references/resolve",
+        json={
+            "entity_draft": draft,
+            "directive": "@value: entities.renamed.keys",
+            "original_entity_name": "site",
+        },
+    )
+    stale_response = await authorized_client.post(
+        "/api/v1/projects/test_project/entities/renamed/column-references/resolve",
+        json={
+            "entity_draft": draft,
+            "directive": "@value: entities.site.keys",
+            "original_entity_name": "site",
+        },
+    )
+    complete_response = await authorized_client.post(
+        "/api/v1/projects/test_project/entities/renamed/column-references/complete",
+        json={
+            "entity_draft": draft,
+            "prefix": "@value: entities.",
+            "original_entity_name": "site",
+        },
+    )
+
+    assert resolve_response.status_code == 200, resolve_response.text
+    assert resolve_response.json()["columns"] == ["renamed_id"]
+    assert stale_response.status_code == 200, stale_response.text
+    assert stale_response.json()["reason_code"] == "missing_path"
+    assert complete_response.status_code == 200, complete_response.text
+    assert complete_response.json() == {"candidates": ["@value: entities.child.", "@value: entities.renamed."]}
+
+    saved_entity = await authorized_client.get("/api/v1/projects/test_project/entities/site")
+    assert saved_entity.status_code == 200, saved_entity.text
+    assert saved_entity.json()["entity_data"]["keys"] == ["saved_site"]
+
+
+@pytest.mark.asyncio
 async def test_resolve_route_returns_typed_local_failure_and_missing_project_is_404(authorized_client) -> None:
     """Return bad references as typed results and keep project lookup concealed."""
     await _create_project(authorized_client)
