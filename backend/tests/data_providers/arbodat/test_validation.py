@@ -27,7 +27,7 @@ from src.target_model.conformance import ConformanceIssue, TargetModelConformanc
 from src.target_model.models import TargetModel
 from src.validators.data_validators import ValidationIssue
 
-TEST_DATA_DIR: Path = Path(__file__).resolve().parent.parent / "test_data"
+TEST_DATA_DIR: Path = Path("tests/test_data").resolve()
 TARGET_MODEL_PATH: Path = TEST_DATA_DIR / "target_models" / "sead_standard_model.yml"
 PROJECTS_DIR: Path = TEST_DATA_DIR / "projects"
 
@@ -64,6 +64,10 @@ def _arbodat_project() -> ShapeShiftProject:
 def _project(arbodat_project: ShapeShiftProject) -> ShapeShiftProject:
     """Provide each test with its own copy of the parsed project."""
     return copy.deepcopy(arbodat_project)
+
+
+def load_target_model() -> TargetModel:
+    return TargetModel.model_validate(yaml.YAML(typ="safe").load(TARGET_MODEL_PATH.read_text(encoding="utf-8")))
 
 
 #############################################################################################################
@@ -150,38 +154,52 @@ def test_target_model_conformance(project: ShapeShiftProject):
 
     # assert not errors, f"Expected no validation errors, found {len(errors)}: {[error.message for error in errors]}"
 
+# pylint: disable=line-too-long
 
-def test_core_conformance_reports_known_gaps_for_full_arbodat_project() -> None:
+def test_core_conformance_reports_known_gaps_for_full_arbodat_project(project: ShapeShiftProject) -> None:
     target_model: TargetModel = load_target_model()
-    project: ShapeShiftProject = load_real_project("arbodat")
 
-    expected_errors = [
-        ("CONDITIONAL_FK_AWAITING_RECONCILIATION", "location"),
-        ("MISSING_REQUIRED_COLUMN", "relative_dating"),
-        ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "abundance_modification"),
-        ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "abundance_property"),
-        ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "relative_dating"),
-        ("UNEXPECTED_PUBLIC_ID", "relative_dating"),
+    expected_issues: list[str] = [
+        "UNEXPECTED_PUBLIC_ID;relative_dating;Entity 'relative_dating' declares public_id 'relative_age_id' but target model expects 'relative_date_id'",
+        "MISSING_REQUIRED_FOREIGN_KEY_TARGET;sample_group;Entity 'sample_group' is missing required foreign key target 'site'",
+        "MISSING_REQUIRED_FOREIGN_KEY_TARGET;sample_group;Entity 'sample_group' is missing required foreign key target 'method'",
+        "MISSING_REQUIRED_FOREIGN_KEY_TARGET;dataset;Entity 'dataset' is missing required foreign key target 'submission'",
+        "MISSING_REQUIRED_FOREIGN_KEY_TARGET;dataset;Entity 'dataset' is missing required foreign key target 'data_type'",
+        "MISSING_REQUIRED_FOREIGN_KEY_TARGET;analysis_entity;Entity 'analysis_entity' is missing required foreign key target 'dataset'",
+        "MISSING_REQUIRED_FOREIGN_KEY_TARGET;abundance_modification;Entity 'abundance_modification' is missing required foreign key target 'abundance'",
+        "MISSING_REQUIRED_FOREIGN_KEY_TARGET;abundance_property;Entity 'abundance_property' is missing required foreign key target 'abundance'",
+        "MISSING_REQUIRED_FOREIGN_KEY_TARGET;abundance_property;Entity 'abundance_property' is missing required foreign key target 'property_type'",
+        "MISSING_REQUIRED_FOREIGN_KEY_TARGET;relative_dating;Entity 'relative_dating' is missing required foreign key target 'analysis_entity'",
+        "MISSING_REQUIRED_FOREIGN_KEY_TARGET;site_property;Entity 'site_property' is missing required foreign key target 'property_type'",
+        "MISSING_REQUIRED_FOREIGN_KEY_TARGET;feature_property;Entity 'feature_property' is missing required foreign key target 'property_type'",
+        "CONDITIONAL_FK_AWAITING_RECONCILIATION;location;Conditional foreign key from 'location' to 'location_type' is awaiting reconciliation; project conformance cannot determine whether rows will be inserted.",
+        "ORPHAN_FACT_ENTITY;sample_group;Fact entity 'sample_group' does not reach any lookup or classifier entity",
+        "ORPHAN_FACT_ENTITY;abundance_property;Fact entity 'abundance_property' does not reach any lookup or classifier entity",
+        "MISSING_REQUIRED_COLUMN;sample_type;Entity 'sample_type' is missing required target column 'type_name'",
+        "MISSING_REQUIRED_COLUMN;sample_coordinate;Entity 'sample_coordinate' is missing required target column 'measurement'",
+        "MISSING_REQUIRED_COLUMN;dataset;Entity 'dataset' is missing required target column 'submission_id'",
+        "MISSING_REQUIRED_COLUMN;analysis_entity;Entity 'analysis_entity' is missing required target column 'dataset_id'",
+        "MISSING_REQUIRED_COLUMN;abundance_property;Entity 'abundance_property' is missing required target column 'property_type_id'",
+        "MISSING_REQUIRED_COLUMN;abundance_property;Entity 'abundance_property' is missing required target column 'property_value'",
+        "MISSING_REQUIRED_COLUMN;relative_dating;Entity 'relative_dating' is missing required target column 'analysis_entity_id'",
+        "MISSING_REQUIRED_COLUMN;contact_type;Entity 'contact_type' is missing required target column 'contact_type_name'",
+        "MISSING_REQUIRED_COLUMN;feature;Entity 'feature' is missing required target column 'feature_name'",
+        "MISSING_REQUIRED_COLUMN;site_property;Entity 'site_property' is missing required target column 'property_type_id'",
+        "MISSING_REQUIRED_COLUMN;site_property;Entity 'site_property' is missing required target column 'property_value'",
+        "MISSING_REQUIRED_COLUMN;feature_property;Entity 'feature_property' is missing required target column 'property_type_id'",
+        "MISSING_REQUIRED_COLUMN;feature_property;Entity 'feature_property' is missing required target column 'property_value'",
+        "MISSING_REQUIRED_ENTITY;data_provider;Target model requires entity 'data_provider'",
+        "MISSING_REQUIRED_ENTITY;citation;Target model requires entity 'citation'",
+        "MISSING_INDUCED_REQUIRED_ENTITY;property_type;Entity 'property_type' is required because entity 'abundance_property' is present and has a required foreign key chain to 'property_type'",
     ]
 
     issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
-    actual_issues = [(issue.code, issue.entity) for issue in issues]
-    # print('\n'.join(f'{x.code};{x.entity};{x.message}' for x in issues))
-    assert sorted(actual_issues) == sorted(expected_errors)
+    actual_issues: list[str] = [f"{x.code};{x.entity};{x.message}" for x in issues]
+    assert sorted(actual_issues) == sorted(expected_issues)
 
 
-def load_target_model() -> TargetModel:
-    return TargetModel.model_validate(yaml.safe_load(TARGET_MODEL_PATH.read_text(encoding="utf-8")))
-
-
-def load_real_project(project_name: str) -> ShapeShiftProject:
-    project_path: Path = Path(PROJECTS_DIR / project_name / "shapeshifter.yml")
-    return ShapeShiftProject(cfg=yaml.safe_load(project_path.read_text(encoding="utf-8")))
-
-
-def test_core_conformance_current_corpus_issue_families_are_stable() -> None:
+def test_core_conformance_current_corpus_issue_families_are_stable(project: ShapeShiftProject) -> None:
     target_model: TargetModel = load_target_model()
-    project: ShapeShiftProject = load_real_project("arbodat")
 
     issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
 
@@ -189,9 +207,12 @@ def test_core_conformance_current_corpus_issue_families_are_stable() -> None:
 
     assert issue_summary == Counter(
         {
-            "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 3,
+            "MISSING_REQUIRED_COLUMN": 13,
+            "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 11,
+            "ORPHAN_FACT_ENTITY": 2,
+            "MISSING_REQUIRED_ENTITY": 2,
             "UNEXPECTED_PUBLIC_ID": 1,
             "CONDITIONAL_FK_AWAITING_RECONCILIATION": 1,
-            "MISSING_REQUIRED_COLUMN": 1,
+            "MISSING_INDUCED_REQUIRED_ENTITY": 1,
         }
     )
