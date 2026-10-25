@@ -1,6 +1,9 @@
 """Specifications for validating entity configurations."""
 
+import re
 from typing import Any
+
+import pandas as pd
 
 from src.model import TableConfig
 from src.transforms.dsl import FormulaEngine, extract_column_references
@@ -1277,8 +1280,66 @@ class FilterSpecification(ProjectSpecification):
 
             if filter_type == "exists_in":
                 self._validate_exists_in_filter(entity_name, idx, filter_cfg, stage)
+            elif filter_type == "query":
+                self._validate_query_filter(entity_name, idx, filter_cfg, stage, entity_cfg)
 
         return not self.has_errors()
+
+    def _validate_query_filter(
+        self, entity_name: str, idx: int, filter_cfg: dict[str, Any], stage: str, entity_cfg: dict[str, Any]
+    ) -> None:
+        query = filter_cfg.get("query")
+        if not isinstance(query, str) or not query.strip():
+            self.add_error(
+                f"Entity '{entity_name}', filter #{idx + 1}: query filter requires a non-empty 'query' expression",
+                entity=entity_name,
+                field=f"filters[{idx}].query",
+            )
+            return
+
+        if not self._has_declared_source_columns(entity_cfg):
+            return
+
+        available_columns = self._get_filter_stage_columns(entity_name, stage)
+        empty_data = pd.DataFrame({column: pd.Series(dtype="object") for column in available_columns})
+        local_names = set(re.findall(r"@([A-Za-z_]\w*)", query))
+        local_data = {name: pd.Series(dtype="object") for name in local_names}
+
+        try:
+            empty_data.query(query, local_dict=local_data)
+        except pd.errors.UndefinedVariableError as exc:
+            self.add_error(
+                f"Entity '{entity_name}', filter #{idx + 1}: query references a column not available at stage '{stage}': "
+                f"{exc}. Available columns: {sorted(available_columns)}.",
+                entity=entity_name,
+                field=f"filters[{idx}].query",
+            )
+        except SyntaxError as exc:
+            self.add_error(
+                f"Entity '{entity_name}', filter #{idx + 1}: invalid pandas query syntax: {exc}",
+                entity=entity_name,
+                field=f"filters[{idx}].query",
+            )
+        except Exception as exc:  # pylint: disable=broad-except
+            self.add_warning(
+                f"Entity '{entity_name}', filter #{idx + 1}: pandas could not check this query with an empty "
+                f"DataFrame ({type(exc).__name__}: {exc}). Source data types or values may be required.",
+                entity=entity_name,
+                field=f"filters[{idx}].query",
+            )
+
+    @staticmethod
+    def _has_declared_source_columns(entity_cfg: dict[str, Any]) -> bool:
+        columns = entity_cfg.get("columns")
+        if isinstance(columns, list) and columns and all(isinstance(column, str) for column in columns):
+            if any(column.startswith("@value:") for column in columns):
+                return False
+            return True
+
+        entity_type = entity_cfg.get("type")
+        if entity_type == "fixed":
+            return True
+        return False
 
     def _validate_exists_in_filter(self, entity_name: str, idx: int, filter_cfg: dict[str, Any], stage: str) -> None:
         filter_id = f"Entity '{entity_name}', filter #{idx + 1}"
@@ -1330,11 +1391,25 @@ class FilterSpecification(ProjectSpecification):
                 )
 
     def _get_filter_stage_columns(self, entity_name: str, stage: str) -> set[str]:
+        entity_cfg = self.get_entity_cfg(entity_name)
+        configured_keys = entity_cfg.get("keys", [])
+        key_columns = set(configured_keys) if isinstance(configured_keys, list) else set()
+
         if stage == "extract":
-            return self.get_entity_columns(entity_name, exclude_types={"unnest", "foreign_keys"})
+            return self.get_entity_columns(entity_name, exclude_types={"unnest", "foreign_keys"}) | key_columns
         if stage == "after_link":
-            return self.get_entity_columns(entity_name, exclude_types={"unnest"})
-        return self.get_entity_columns(entity_name)
+            return self.get_entity_columns(entity_name, exclude_types={"unnest"}) | key_columns
+
+        available_columns = self.get_entity_columns(entity_name)
+        available_columns.update(key_columns)
+        unnest_cfg = entity_cfg.get("unnest") or {}
+        pre_unnest_columns = self.get_entity_columns(entity_name, exclude_types={"unnest"})
+        value_name = unnest_cfg.get("value_name")
+        if value_name and value_name not in pre_unnest_columns:
+            value_vars = unnest_cfg.get("value_vars", [])
+            if isinstance(value_vars, list):
+                available_columns.difference_update(value_vars)
+        return available_columns
 
 
 @ENTITY_SPECIFICATION.register(key="materialization")
@@ -1416,17 +1491,14 @@ class UnnestColumnsSpecification(ProjectSpecification):
         id_vars: list[str] | None = unnest_cfg.get("id_vars")
         value_vars: list[str] | None = unnest_cfg.get("value_vars")
 
-        # Reject columns listed as both identifiers and melted values. Pandas treats
-        # an overlapping column as an identifier and does not melt it, so a full
-        # overlap returns zero rows and a partial overlap silently drops the
-        # overlapping variables from the result.
+        # Runtime unnesting removes overlapping columns from value_vars. Warn here
+        # so structural validation reports the configuration without blocking it.
         if isinstance(id_vars, list) and isinstance(value_vars, list):
             overlap: set[str] = set(id_vars) & set(value_vars)
             if overlap:
-                self.add_error(
+                self.add_warning(
                     f"Unnest configuration lists the same columns in both id_vars and value_vars: {sorted(overlap)}. "
-                    f"Overlapping columns are kept as identifiers and are not melted; if every value_vars column "
-                    f"overlaps, unnest returns no rows. Remove each conflicting column from id_vars or value_vars.",
+                    "Overlapping columns will be kept as identifiers and excluded from the melted values.",
                     entity=entity_name,
                     field="unnest.value_vars",
                 )

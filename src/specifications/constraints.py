@@ -57,6 +57,9 @@ class ForeignKeyRuntimeOptions:
 
     @classmethod
     def from_constraints(cls, constraints: ForeignKeyConstraints) -> "ForeignKeyRuntimeOptions":
+        if constraints.null_keys_equal:
+            return cls(enforce_strict_null_keys=False, use_null_safe_merge=False)
+
         return cls(
             enforce_strict_null_keys=not constraints.allow_null_keys,
             use_null_safe_merge=constraints.allow_null_keys,

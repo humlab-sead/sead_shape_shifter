@@ -20,7 +20,7 @@ Suggestions should represent columns available at the operation's execution stag
 | `Business Keys` | Entity data fields that can be present by the duplicate-key check. Include source fields and resolvable generated fields; do not suggest the automatically assigned `system_id` as a business key. |
 | `Replacements` | Columns present during extraction after eligible `extra_columns` have been evaluated. Replacements run before linking and unnesting, so do not suggest FK or unnest outputs. An extra column deferred because it depends on a later stage is not available for this operation. |
 | `Drop Duplicates` | Columns present at the deduplication call. Normally this is the extraction output after early extras and linking-independent projection, before FK linking and unnesting. If a selected subset includes the configured unnest `var_name` or `value_name`, the implementation delays that deduplication until after unnesting; then suggest only columns present in that post-unnest table. |
-| `Drop Empty Rows` | Columns present at the final cleanup call: after linking and, when configured, unnesting and post-unnest extra-column evaluation. Do not suggest unnest `value_vars` unless they also survive as `id_vars`; they are consumed by the melt. This setting currently has no explicit stage selector. |
+| `Drop Empty Rows` | Columns available to cleanup: after unnest and before the second FK link for a list or mapping subset whose columns are all present; otherwise at the final cleanup call after linking and post-unnest extra-column evaluation. Do not suggest unnest `value_vars` unless they also survive as `id_vars`; they are consumed by the melt. This setting has no explicit stage selector. |
 | FK `Local Keys` | Columns present when the FK is linked. The first linking pass can use extracted columns and early extras; later FKs can also use columns added by earlier FKs. A second pass runs after unnesting, so keys made available only by unnest outputs can be used there. Suggestions should use the current unsaved local entity draft, not only the saved project. |
 | FK `Remote Keys` and FK extra columns | Columns in the selected parent entity's processed output, including available keys, declared columns, computed columns, unnest outputs, and linked columns. Include `system_id` as a valid match key. The child FK value is still populated from the parent's `system_id`; `remote_keys` controls row matching. |
 | Unnest `ID Variables` and `Value Variables` | Input columns present immediately before unnesting: extracted fields, eligible extra columns, and columns added by the first FK-link pass. The resulting table contains `id_vars`, `var_name`, and `value_name`; `value_vars` are not output columns unless also listed in `id_vars`. |
@@ -40,13 +40,13 @@ For each entity, the current call sequence is:
 5. Run entity-level deduplication unless it must wait for unnest output. This follows the extraction filters; early per-subtable deduplication may already have run.
 6. Store the intermediate table and link available foreign keys.
 7. Re-evaluate deferred extra columns, then run `after_link` filters.
-8. If unnest is configured, unnest the table, run FK linking again, re-evaluate deferred extra columns, and run `after_unnest` filters.
+8. If unnest is configured, unnest the table. Apply a configured list or mapping `drop_empty_rows` subset before the second FK link when all selected columns are present. Then run FK linking again, re-evaluate deferred extra columns, and run `after_unnest` filters.
 9. Run delayed deduplication when selected deduplication columns depend on unnest output.
-10. Check business keys for duplicates, then apply configured `drop_empty_rows` once, after linking and any unnesting.
+10. Check business keys for duplicates, then apply `drop_empty_rows` if it was not already applied before the second FK link. `drop_empty_rows: true` runs here.
 11. Add a missing `system_id`, add a missing `public_id` column, apply sidecar links, retry deferred FK links, verify extra columns, and reorder columns.
 12. After all entities are processed, retry deferred FK links. The outer workflow then performs optional FK-column removal and translation before storing.
 
-At the extraction subset step, `get_subset2()` evaluates eligible extra columns, then performs deduplication, applies `drop_empty_rows` only if the caller enabled it, and applies replacements. In the normalizer's entity path that caller explicitly disables the subset-level empty-row removal; the configured `drop_empty_rows` runs at step 10 instead.
+At the extraction subset step, `get_subset2()` evaluates eligible extra columns, then performs deduplication, applies `drop_empty_rows` only if the caller enabled it, and applies replacements. In the normalizer's entity path that caller explicitly disables subset-level empty-row removal. The normalizer applies a list or mapping subset before the second FK link when its columns are available; other configurations run at step 10.
 
 ## Resolver Direction
 

@@ -26,6 +26,7 @@ class ForeignKeyConstraints(BaseModel):
     require_unique_left: bool = False
     require_unique_right: bool = False
     allow_null_keys: bool = False
+    null_keys_equal: bool = False
 
     @property
     def has_constraints(self) -> bool:
@@ -39,6 +40,7 @@ class ForeignKeyConstraints(BaseModel):
                 self.require_unique_left,
                 self.require_unique_right,
                 self.allow_null_keys,
+                self.null_keys_equal,
             ]
         )
 

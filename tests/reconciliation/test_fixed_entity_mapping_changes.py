@@ -153,9 +153,11 @@ class TestEligibility:
         assert result.proposed_entry.public_id == PUBLIC_ID
         assert [upsert.key for upsert in result.upserts] == [_key("S", "A")]
 
-    def test_materialized_fixed_without_entry_and_without_keys_is_rejected(self) -> None:
-        with pytest.raises(FixedEntityMappingChangeError, match="entity.keys"):
-            _compute(None, _snapshot([[5, "S", "A"]]), keys=[], materialized=True, existing_entry=None)
+    def test_materialized_fixed_without_entry_and_without_keys_is_not_eligible(self) -> None:
+        result = _compute(None, _snapshot([[5, "S", "A"]]), keys=[], materialized=True, existing_entry=None)
+
+        assert result.eligible is False
+        assert result.is_empty is True
 
     def test_non_materialized_fixed_with_existing_entry_is_eligible(self) -> None:
         result = _compute(

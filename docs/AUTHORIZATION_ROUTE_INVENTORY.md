@@ -4,7 +4,7 @@
 
 This inventory records the authorization requirement declared by every registered API route and the direct application routes mounted outside `api_router`. It is derived from the assembled FastAPI route table, `backend/app/api/v1/api.py`, and `backend/app/main.py` on the current branch. Update this document when adding, removing, or changing a route, mount, or authorization dependency.
 
-The current API-only runtime exposes 143 HTTP route entries under `/api/v1`, including the generated OpenAPI, Swagger UI, and ReDoc routes. It also exposes the Swagger OAuth redirect helper at `/docs/oauth2-redirect` and the repository documentation mount at `/docs/*`. The `/assets/*`, frontend SPA catch-all, and API-only `/` route are conditional on the frontend build state described below.
+The current API-only runtime exposes 151 HTTP route entries under `/api/v1`, including the generated OpenAPI, Swagger UI, and ReDoc routes. It also exposes the Swagger OAuth redirect helper at `/docs/oauth2-redirect` and the repository documentation mount at `/docs/*`. The `/assets/*`, frontend SPA catch-all, and API-only `/` route are conditional on the frontend build state described below.
 
 `UNDECLARED` means the route has no `authorization_requirement` metadata. It does not mean the route is anonymously accessible: trusted-proxy middleware requires authentication for all paths except `/api/v1/health` when enabled. An undeclared route still needs classification before authorization cutover; no row currently reads `UNDECLARED`.
 
@@ -115,6 +115,7 @@ Every row above except the health check requires an authenticated principal thro
 | `POST`   | `/api/v1/projects/{name}/validate/data`                          | `project:read` |
 | `POST`   | `/api/v1/projects/{name}/entities/{entity_name}/validate`        | `project:read` |
 | `POST`   | `/api/v1/projects/{name}/validate/target-model`                  | `project:read` |
+| `POST`   | `/api/v1/projects/{name}/entities/{entity_name}/validate-draft`  | `project:read` |
 | `GET`    | `/api/v1/projects/{name}/dependencies`                           | `project:read` |
 | `POST`   | `/api/v1/projects/{name}/dependencies/check`                     | `project:read` |
 | `POST`   | `/api/v1/projects/{name}/fixes/preview`                          | `project:read` |
@@ -242,7 +243,7 @@ Application and error logs are global: no project-scoped log file exists, so any
 
 `GET /api/v1/ingesters` returns registered ingester metadata (key, name, description, version, and supported formats) and `GET /api/v1/filters/types` returns filter configuration schemas, so both require an authenticated principal and no project role.
 
-`POST /api/v1/ingesters/{key}/validate` and `POST /api/v1/ingesters/{key}/ingest` require `application:run_ingesters`, which the `operator` deployment role holds, before the handler looks up or runs the requested ingester. These generic routes accept no project locator: `IngestRequest` carries a server file path in `source`, an `output_folder`, and the `do_register` and `explode` flags, so a run is not addressed to a project and cannot be authorized by `project:execute` alone. The [Security Hardening Follow-up](proposals/SECURITY_HARDENING_FOLLOWUP/SECURITY_HARDENING_FOLLOWUP.md) requires resource authorization and containment before enabling a future generic-route ingester. The [Change Request Target Bundle Access](proposals/done/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md) proposal governs the dedicated project-only operation.
+`POST /api/v1/ingesters/{key}/validate` and `POST /api/v1/ingesters/{key}/ingest` require `application:run_ingesters`, which the `operator` deployment role holds, before the handler looks up or runs the requested ingester. These generic routes accept no project locator: `IngestRequest` carries a server file path in `source`, an `output_folder`, and the `do_register` and `explode` flags, so a run is not addressed to a project and cannot be authorized by `project:execute` alone. Source and output path containment and destination database selection for generic ingester operations remain tracked in [Security Hardening Follow-up](proposals/SECURITY_HARDENING_FOLLOWUP/SECURITY_HARDENING_FOLLOWUP.md); data registration requires separate authorization classification. The dedicated Change Request target-bundle operation is covered by [Change Request Target Bundle Access](proposals/done/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS.md).
 
 `POST /api/v1/ingesters/sead_change_request/from-project/validate` and `POST /api/v1/ingesters/sead_change_request/from-project/ingest` require `project:execute` for the project named in the request body and no deployment role. They run the Change Request ingester against that authorized project's normalized tables. A principal holding `application:run_ingesters` but no `project:execute` grant on the named project is still denied.
 

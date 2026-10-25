@@ -104,12 +104,46 @@
 
       <!-- Validation Results -->
       <div v-else>
+        <v-card v-if="hasDataValidationExecution" variant="outlined" class="mb-4">
+          <v-card-title>Data Validation Execution</v-card-title>
+          <v-card-text>
+            <div class="d-flex align-center flex-wrap ga-2">
+              <span v-if="validationResult?.validation_mode">
+                Mode: <strong>{{ dataValidationModeLabel }}</strong>
+              </span>
+              <v-chip v-if="validationResult?.status" :color="dataValidationStatusColor" size="small">
+                Run status: {{ validationResult.status }}
+              </v-chip>
+            </div>
+
+            <p v-if="validationResult?.status_reason" class="mt-3 mb-0">
+              {{ validationResult.status_reason }}
+            </p>
+
+            <div v-if="entityStatuses.length > 0" class="mt-3">
+              <p class="text-subtitle-2 mb-2">Entity execution</p>
+              <div v-for="[entityName, entityStatus] in entityStatuses" :key="entityName" class="mb-2">
+                <div class="d-flex align-center flex-wrap ga-2">
+                  <span class="font-weight-medium">{{ entityName }}</span>
+                  <v-chip :color="entityStatusColor(entityStatus.status)" size="x-small">
+                    {{ entityStatus.status }}
+                  </v-chip>
+                </div>
+                <p v-if="entityStatus.reason" class="text-body-2 text-medium-emphasis mb-0">
+                  {{ entityStatus.reason }}
+                </p>
+              </div>
+            </div>
+          </v-card-text>
+        </v-card>
+
         <!-- Summary Card -->
         <v-card variant="tonal" :color="summaryColor" class="mb-4">
           <v-card-text>
             <div class="d-flex align-center">
               <v-icon :icon="summaryIcon" size="48" class="mr-4" />
               <div>
+                <p class="text-subtitle-2 mb-1">Validation Findings</p>
                 <p class="text-h6 mb-1">{{ summaryTitle }}</p>
                 <p class="text-body-2">
                   {{ errorCount }} {{ errorCount === 1 ? 'error' : 'errors' }}, {{ warningCount }}
@@ -317,7 +351,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useNotification } from '@/composables/useNotification'
-import { groupByEntityScope, type ValidationResult } from '@/types'
+import { groupByEntityScope, type EntityDataValidationStatus, type ValidationResult } from '@/types'
 import ValidationMessageList from './ValidationMessageList.vue'
 import DataValidationConfig from './DataValidationConfig.vue'
 
@@ -361,6 +395,29 @@ const infoCount = computed(() => infoMessages.value.length)
 const errors = computed(() => props.validationResult?.errors ?? [])
 const warnings = computed(() => props.validationResult?.warnings ?? [])
 const allMessages = computed(() => [...errors.value, ...warnings.value, ...infoMessages.value])
+const entityStatuses = computed(() => Object.entries(props.validationResult?.entity_statuses ?? {}))
+const hasDataValidationExecution = computed(
+  () =>
+    props.validationResult?.validation_mode != null ||
+    props.validationResult?.status != null ||
+    entityStatuses.value.length > 0
+)
+const dataValidationModeLabel = computed(() =>
+  props.validationResult?.validation_mode === 'sample' ? 'Sample' : 'Complete'
+)
+const dataValidationStatusColor = computed(() => {
+  switch (props.validationResult?.status) {
+    case 'completed':
+      return 'success'
+    case 'partial':
+      return 'warning'
+    case 'failed':
+    case 'skipped':
+      return 'error'
+    default:
+      return undefined
+  }
+})
 const entityScopedIssues = computed(() => groupByEntityScope(allMessages.value))
 const hasConditionalChecksAwaitingReconciliation = computed(() =>
   infoMessages.value.some((message) => message.code === 'CONDITIONAL_FK_AWAITING_RECONCILIATION')
@@ -381,6 +438,9 @@ const summaryIcon = computed(() => {
 })
 
 const summaryTitle = computed(() => {
+  if (props.validationResult?.status && props.validationResult.status !== 'completed') {
+    return 'Data quality checks incomplete'
+  }
   if (errorCount.value > 0) return 'Validation Failed'
   if (hasConditionalChecksAwaitingReconciliation.value) return 'Conditional checks await reconciliation'
   if (warningCount.value > 0) return 'Validation Passed with Warnings'
@@ -494,5 +554,18 @@ function formatBranchGroupLabel(branchName: string | null, branchSource: string 
   }
 
   return branchSource || 'Unnamed branch'
+}
+
+function entityStatusColor(status: EntityDataValidationStatus): string {
+  switch (status) {
+    case 'completed':
+      return 'success'
+    case 'failed':
+      return 'error'
+    case 'skipped':
+      return 'warning'
+    default:
+      return 'default'
+  }
 }
 </script>

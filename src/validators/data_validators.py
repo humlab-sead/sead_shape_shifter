@@ -401,8 +401,12 @@ class ForeignKeyIntegrityValidator:
         local_keys: list[str] = fk_config.get("local_keys", [])
         remote_keys: list[str] = fk_config.get("remote_keys", [])
         remote_entity: str = fk_config.get("entity", "unknown")
+        constraints: dict[str, Any] = fk_config.get("constraints") or {}
+        null_keys_equal: bool = constraints.get("null_keys_equal", False)
 
         if not local_keys or not remote_keys:
+            return []
+        if null_keys_equal and len(local_keys) != len(remote_keys):
             return []
 
         # Check columns exist
@@ -411,13 +415,16 @@ class ForeignKeyIntegrityValidator:
         if not all(k in remote_df.columns for k in remote_keys):
             return []  # Remote column issue
 
-        # Get unique local FK values (excluding nulls)
-        local_fk_values: pd.DataFrame = local_df[local_keys].dropna()
+        # Null key parts are excluded unless the FK explicitly treats nulls as equal.
+        local_fk_values: pd.DataFrame = local_df[local_keys].drop_duplicates()
+        remote_key_values: pd.DataFrame = remote_df[remote_keys].drop_duplicates()
+        if not null_keys_equal:
+            local_fk_values = local_fk_values.dropna()
+            remote_key_values = remote_key_values.dropna()
+
         if local_fk_values.empty:
             return []
 
-        # Get unique remote key values
-        remote_key_values: pd.DataFrame = remote_df[remote_keys].dropna()
         if remote_key_values.empty:
             # An empty remote frame and a remote frame whose key columns are entirely
             # null both leave nothing to join on, but they need different corrections:
@@ -454,19 +461,40 @@ class ForeignKeyIntegrityValidator:
                 )
             ]
 
-        # Create composite keys for comparison
-        local_composite: pd.Series = local_fk_values.apply(tuple, axis=1) if len(local_keys) > 1 else local_fk_values[local_keys[0]]
-        remote_composite: pd.Series = remote_key_values.apply(tuple, axis=1) if len(remote_keys) > 1 else remote_key_values[remote_keys[0]]
+        if null_keys_equal:
+            comparison_columns = [f"__fk_key_{index}" for index in range(len(local_keys))]
+            local_comparable = local_fk_values.copy()
+            remote_comparable = remote_key_values.copy()
+            local_comparable.columns = comparison_columns
+            remote_comparable.columns = comparison_columns
+            comparison = pd.merge(
+                local_comparable,
+                remote_comparable,
+                how="left",
+                on=comparison_columns,
+                indicator=True,
+            )
+            orphaned_rows = comparison.loc[comparison["_merge"] == "left_only", comparison_columns]
+            if orphaned_rows.empty:
+                return []
+            orphan_count = len(orphaned_rows)
+            sample_orphans = [tuple(row) if len(local_keys) > 1 else row[0] for row in orphaned_rows.itertuples(index=False, name=None)]
+        else:
+            # Create composite keys for comparison.
+            local_composite: pd.Series = local_fk_values.apply(tuple, axis=1) if len(local_keys) > 1 else local_fk_values[local_keys[0]]
+            remote_composite: pd.Series = (
+                remote_key_values.apply(tuple, axis=1) if len(remote_keys) > 1 else remote_key_values[remote_keys[0]]
+            )
+            orphaned: set = set(local_composite.unique()) - set(remote_composite.unique())
 
-        # Find orphaned values
-        orphaned: set = set(local_composite.unique()) - set(remote_composite.unique())
+            if not orphaned:
+                return []
 
-        if not orphaned:
-            return []
+            orphan_count = len(orphaned)
+            sample_orphans = list(orphaned)[:10]
 
         sample_count: int = 10
-        orphan_count: int = len(orphaned)
-        sample_orphans: list = list(orphaned)[:sample_count]
+        sample_orphans = sample_orphans[:sample_count]
         sample_str: str = ", ".join(str(v) for v in sample_orphans)
         if orphan_count > sample_count:
             sample_str += ", ..."

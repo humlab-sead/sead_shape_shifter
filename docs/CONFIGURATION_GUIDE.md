@@ -1082,6 +1082,7 @@ This is the right fit when the derived value depends on cleanup, fallback handli
   - `false`: Keep all rows
   - `list[string]`: Drop rows where all specified columns are empty
   - `dict[string, list[any]]`: Drop rows where specified columns contain the given values. Keys are column names, values are lists of values to treat as empty for that column (e.g., `[null, ""]`)
+- **Stage**: For an entity with unnesting, a list or mapping subset runs after unnest and before the second foreign-key link when all selected columns are present. An enabled `true` setting, or a list or mapping whose columns are not all present at that point, runs during final cleanup after linking and post-unnest filters. This allows configured empty rows to be removed before strict foreign-key null validation when the cleanup columns are available.
 - **Note**: Empty strings are automatically treated as `pd.NA` before checking for empty rows (unless using dict format with custom empty values)
 - **Example**:
   ```yaml
@@ -1657,12 +1658,26 @@ foreign_keys:
 - **Description**: Explicitly control whether missing values in foreign key key columns are tolerated
 - **Behavior**:
   - `false`: Strict override. Raise on missing key parts before merge.
-  - `true`: Tolerate missing key parts explicitly.
+  - `true`: Tolerate missing key parts explicitly; null values still do not match each other.
   - omitted: Use the runtime default for the join shape. For lookup-style `left` joins on alternative keys, missing local key parts are treated as unresolved links rather than hard errors.
 - **Example**:
   ```yaml
   constraints:
     allow_null_keys: true
+  ```
+
+##### `null_keys_equal`
+- **Type**: `bool`
+- **Default**: `false`
+- **Description**: Explicitly allow null key parts and treat nulls in corresponding key positions as equal during linking.
+- **Behavior**:
+  - `true`: Null key parts are not rejected, and matching nulls can link. Other parts of a composite key must still match.
+  - `false` or omitted: Preserve existing behavior, including `allow_null_keys: true` allowing nulls without matching them.
+  - `true` takes precedence over `allow_null_keys`.
+- **Example**:
+  ```yaml
+  constraints:
+    null_keys_equal: true
   ```
 
 #### Row Count Constraints
@@ -1891,7 +1906,7 @@ foreign_keys:
 - **Default**: `false`
 - **Description**: Explicitly control whether missing key parts are tolerated in foreign key columns
   - `false`: Raise error if the foreign key contains missing key parts
-  - `true`: Allow missing foreign key parts explicitly
+  - `true`: Allow missing foreign key parts explicitly; null values still do not match each other
   - omitted: Use the runtime default for the join shape
 - **Lookup-style `left` join default**: When omitted on a lookup-style `left` join that resolves a remote identity from alternative keys, missing local key parts are treated as unresolved links. The row is kept, the FK stays empty, and missing values never match missing values.
 - **Interaction**: When `false` + `allow_unmatched_left: false`, ensures all rows have valid non-null foreign keys
@@ -1907,6 +1922,22 @@ foreign_keys:
     constraints:
       allow_null_keys: false          # No null types allowed
       allow_unmatched_left: false     # And type must exist
+```
+
+**`null_keys_equal`**
+- **Type**: `bool`
+- **Default**: `false`
+- **Behavior**: When `true`, null key parts are allowed and matching nulls are treated as equal. For composite keys, all non-null parts must also match.
+- **Precedence**: `true` takes precedence over `allow_null_keys`, including an explicit `allow_null_keys: false`.
+- **Compatibility**: Omitted or `false` preserves current behavior. In particular, `allow_null_keys: true` continues to allow nulls without matching them.
+
+```yaml
+foreign_keys:
+  - entity: site
+    local_keys: [Fustel, EVNr]
+    remote_keys: [Fustel, EVNr]
+    constraints:
+      null_keys_equal: true
 ```
 
 ##### Lookup-Style `left` Join Default
@@ -4190,6 +4221,7 @@ ForeignKeyConstraints:
   require_unique_left?: bool
   require_unique_right?: bool
   allow_null_keys?: bool
+  null_keys_equal?: bool
   allow_row_decrease?: bool
 
 # UnnestConfig

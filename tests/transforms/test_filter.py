@@ -334,6 +334,26 @@ class TestApplyFilters:
         expected = pd.DataFrame({"a": [2, 3, 4], "b": [20, 30, 40]}, index=[1, 2, 3])
         pd.testing.assert_frame_equal(result, expected)
 
+    def test_apply_filters_continues_after_filter_references_missing_column(self, caplog):
+        """A failed query filter should not stop later filters or alter its input rows."""
+        df = pd.DataFrame({"value": [1, 2, 3]})
+        entities_cfg = {
+            "test": {
+                "filters": [
+                    {"type": "query", "query": "~site_property_value.isnull()"},
+                    {"type": "query", "query": "value > 1"},
+                ]
+            }
+        }
+        cfg = TableConfig(entities_cfg=entities_cfg, entity_name="test")
+
+        result = apply_filters("test", df, cfg, TableStore())
+
+        expected = pd.DataFrame({"value": [2, 3]}, index=[1, 2])
+        pd.testing.assert_frame_equal(result, expected)
+        assert "continuing without this filter" in caplog.text.lower()
+        assert "site_property_value" in caplog.text
+
     def test_apply_filters_no_filters(self):
         """Test that no filters returns original dataframe."""
         df = pd.DataFrame({"a": [1, 2, 3], "b": [10, 20, 30]})
