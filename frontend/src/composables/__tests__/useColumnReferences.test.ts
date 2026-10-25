@@ -174,6 +174,33 @@ describe('useColumnReferences', () => {
     scope.stop()
   })
 
+  it('sends the saved entity name only when the draft renames it', async () => {
+    apiMocks.complete.mockResolvedValue({ candidates: [] })
+    apiMocks.resolve.mockResolvedValue({ directive: '@value: entities.renamed.keys', path: null, status: 'unresolved' })
+    const scope = effectScope()
+    let references!: ReturnType<typeof useColumnReferences>
+    scope.run(() => {
+      references = useColumnReferences()
+    })
+
+    references.scheduleCompletion({ ...context(), originalEntityName: 'saved' }, '@value: entities.')
+    await vi.advanceTimersByTimeAsync(300)
+    await references.resolveReference({ ...context(), originalEntityName: 'saved' }, '@value: entities.renamed.keys')
+
+    expect(apiMocks.complete).toHaveBeenCalledWith('demo', 'sample', expect.objectContaining({ original_entity_name: 'saved' }))
+    expect(apiMocks.resolve).toHaveBeenCalledWith('demo', 'sample', expect.objectContaining({ original_entity_name: 'saved' }))
+
+    apiMocks.complete.mockClear()
+    apiMocks.resolve.mockClear()
+    references.scheduleCompletion(context(), '@value: entities.')
+    await vi.advanceTimersByTimeAsync(300)
+    await references.resolveReference(context(), '@value: entities.renamed.keys')
+
+    expect(apiMocks.complete).toHaveBeenCalledWith('demo', 'sample', expect.not.objectContaining({ original_entity_name: expect.anything() }))
+    expect(apiMocks.resolve).toHaveBeenCalledWith('demo', 'sample', expect.not.objectContaining({ original_entity_name: expect.anything() }))
+    scope.stop()
+  })
+
   it('does not request malformed or legacy expression values and clears pending work on disposal', async () => {
     apiMocks.complete.mockResolvedValue({ candidates: [] })
     const scope = effectScope()

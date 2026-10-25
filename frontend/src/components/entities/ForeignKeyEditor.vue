@@ -134,6 +134,7 @@
                   :items="getLocalColumnItems(index)"
                   :project-name="projectName"
                   :entity-name="entityName"
+                  :original-entity-name="originalEntityName"
                   :entity-draft="entityDraft"
                   :disabled="referenceControlsDisabled"
                   :validation-loading="validationLoading"
@@ -159,6 +160,7 @@
                   :items="getRemoteKeyItems(index)"
                   :project-name="projectName"
                   :entity-name="entityName"
+                  :original-entity-name="originalEntityName"
                   :entity-draft="entityDraft"
                   :disabled="referenceControlsDisabled"
                   :validation-loading="validationLoading"
@@ -331,6 +333,7 @@ interface Props {
   referenceControlsDisabled?: boolean
   projectName: string
   entityName: string
+  originalEntityName?: string
   entityColumns?: string[] | string
   isEntitySaved?: boolean
   hasUnsavedChanges?: boolean
@@ -343,6 +346,7 @@ const props = withDefaults(defineProps<Props>(), {
   columnCandidates: () => [],
   entityDraft: () => ({}),
   referenceControlsDisabled: false,
+  originalEntityName: undefined,
   entityColumns: () => [],
   isEntitySaved: false,
   hasUnsavedChanges: false,

@@ -8,6 +8,7 @@
         :items="idVarColumns"
         :project-name="projectName"
         :entity-name="entityName"
+        :original-entity-name="originalEntityName"
         :entity-draft="entityDraft"
         :disabled="referenceControlsDisabled"
         :validation-issues="idVarValidationIssues"
@@ -29,6 +30,7 @@
         :items="valueVarColumns"
         :project-name="projectName"
         :entity-name="entityName"
+        :original-entity-name="originalEntityName"
         :entity-draft="entityDraft"
         :disabled="referenceControlsDisabled"
         :validation-issues="valueVarValidationIssues"
@@ -95,6 +97,7 @@ interface Props {
   valueVarColumns?: string[]
   projectName?: string
   entityName?: string
+  originalEntityName?: string
   entityDraft?: Record<string, unknown>
   referenceControlsDisabled?: boolean
   idVarValidationIssues?: import('@/types').ValidationError[]
@@ -106,6 +109,7 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   projectName: '',
   entityName: '',
+  originalEntityName: undefined,
   entityDraft: () => ({}),
   referenceControlsDisabled: false,
   idVarValidationIssues: () => [],
@@ -145,6 +149,7 @@ const idVarColumns = computed(() => props.idVarColumns ?? [])
 const valueVarColumns = computed(() => props.valueVarColumns ?? [])
 const projectName = computed(() => props.projectName)
 const entityName = computed(() => props.entityName)
+const originalEntityName = computed(() => props.originalEntityName)
 const entityDraft = computed(() => props.entityDraft)
 const referenceControlsDisabled = computed(() => props.referenceControlsDisabled)
 const idVarValidationIssues = computed(() => props.idVarValidationIssues)

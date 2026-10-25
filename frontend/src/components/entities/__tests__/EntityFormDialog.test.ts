@@ -174,6 +174,7 @@ const childStubs = {
       'disabled',
       'projectName',
       'entityName',
+      'originalEntityName',
       'entityDraft',
       'editedFieldPath',
       'preferredEntity',
@@ -194,7 +195,7 @@ const childStubs = {
   SqlEditor: { template: '<div data-testid="sql-editor" />' },
   ForeignKeyEditor: {
     name: 'ForeignKeyEditor',
-    props: ['modelValue', 'columnCandidates', 'entityDraft', 'referenceControlsDisabled'],
+    props: ['modelValue', 'columnCandidates', 'entityDraft', 'referenceControlsDisabled', 'originalEntityName'],
     emits: ['update:modelValue', 'inspect-reference', 'replace-reference'],
     template: '<div data-testid="foreign-key-editor" />',
   },
@@ -207,6 +208,7 @@ const childStubs = {
       'valueVarColumns',
       'projectName',
       'entityName',
+      'originalEntityName',
       'entityDraft',
       'referenceControlsDisabled',
       'idVarValidationIssues',
@@ -530,6 +532,7 @@ describe('EntityFormDialog', () => {
     expect(
       referenceInputs.every((input) => input.props('entityDraft') === referenceInputs[0]?.props('entityDraft'))
     ).toBe(true)
+    expect(referenceInputs.every((input) => input.props('originalEntityName') === 'reference_form')).toBe(true)
     expect(referenceInputs[0]?.props('entityDraft')).toMatchObject({
       keys: '@value: entities.site.keys',
       columns: ['sample_name'],
@@ -551,6 +554,13 @@ describe('EntityFormDialog', () => {
     expect(wrapper.findAllComponents({ name: 'ColumnReferenceCombobox' })[0]?.props('entityName')).toBe(
       'renamed_reference_form'
     )
+    expect(
+      wrapper
+        .findAllComponents({ name: 'ColumnReferenceCombobox' })
+        .every((input) => input.props('originalEntityName') === 'reference_form')
+    ).toBe(true)
+    expect(wrapper.findComponent({ name: 'ForeignKeyEditor' }).props('originalEntityName')).toBe('reference_form')
+    expect(wrapper.findComponent({ name: 'UnnestEditor' }).props('originalEntityName')).toBe('reference_form')
     await wrapper.setProps({ modelValue: false })
     expect(
       wrapper.findAllComponents({ name: 'ColumnReferenceCombobox' }).every((input) => input.props('disabled') === true)

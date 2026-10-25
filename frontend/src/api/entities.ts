@@ -132,6 +132,7 @@ export interface ColumnAvailabilityResponse {
 export interface ColumnReferenceResolveRequest {
   entity_draft: Record<string, unknown>
   directive: string
+  original_entity_name?: string
 }
 
 export interface ColumnReferenceResolveResponse {
@@ -148,6 +149,7 @@ export interface ColumnReferenceCompleteRequest {
   prefix: string
   edited_field_path?: string
   preferred_entity?: string
+  original_entity_name?: string
 }
 
 export interface ColumnReferenceCompleteResponse {

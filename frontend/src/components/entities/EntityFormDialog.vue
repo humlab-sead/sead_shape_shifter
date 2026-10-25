@@ -388,6 +388,7 @@
                             :items="columnAvailability?.business_keys ?? []"
                             :project-name="projectName"
                             :entity-name="formData.name"
+                            :original-entity-name="savedEntityNameForReferences"
                             :entity-draft="serializedEntityDraft"
                             :edited-field-path="`entities.${formData.name}.keys`"
                             :disabled="!modelValue"
@@ -422,6 +423,7 @@
                             :items="columnAvailability?.columns ?? []"
                             :project-name="projectName"
                             :entity-name="formData.name"
+                            :original-entity-name="savedEntityNameForReferences"
                             :entity-draft="serializedEntityDraft"
                             :edited-field-path="`entities.${formData.name}.columns`"
                             :disabled="!modelValue"
@@ -681,6 +683,7 @@
                             :items="columnAvailability?.drop_duplicates ?? []"
                             :project-name="projectName"
                             :entity-name="formData.name"
+                            :original-entity-name="savedEntityNameForReferences"
                             :entity-draft="serializedEntityDraft"
                             :edited-field-path="`entities.${formData.name}.drop_duplicates`"
                             :disabled="!modelValue || !formData.drop_duplicates.enabled"
@@ -715,6 +718,7 @@
                             :items="columnAvailability?.drop_empty_rows ?? []"
                             :project-name="projectName"
                             :entity-name="formData.name"
+                            :original-entity-name="savedEntityNameForReferences"
                             :entity-draft="serializedEntityDraft"
                             :edited-field-path="`entities.${formData.name}.drop_empty_rows`"
                             :disabled="!modelValue || !formData.drop_empty_rows.enabled"
@@ -779,6 +783,7 @@
                   :available-entities="availableSourceEntities"
                   :project-name="projectName"
                   :entity-name="formData.name"
+                  :original-entity-name="savedEntityNameForReferences"
                   :entity-draft="serializedEntityDraft"
                   :reference-controls-disabled="!modelValue"
                   :entity-columns="effectiveEntityColumns"
@@ -804,6 +809,7 @@
                   :value-var-columns="columnAvailability?.unnest.value_vars ?? []"
                   :project-name="projectName"
                   :entity-name="formData.name"
+                  :original-entity-name="savedEntityNameForReferences"
                   :entity-draft="serializedEntityDraft"
                   :reference-controls-disabled="!modelValue"
                   :id-var-validation-issues="draftIssuesForField('unnest.id_vars')"
@@ -2266,6 +2272,11 @@ function buildEntityConfigFromFormData(options: BuildEntityConfigOptions = {}): 
 }
 
 const serializedEntityDraft = computed(() => buildEntityConfigFromFormData({ includeDerivedSqlColumns: true }))
+
+// The saved name lets reference pickers drop the old entity when this dialog renames it.
+const savedEntityNameForReferences = computed(() =>
+  props.mode === 'edit' && props.entity?.name ? props.entity.name : undefined
+)
 
 const draftValidationContext = computed(() => ({
   projectName: props.projectName,
