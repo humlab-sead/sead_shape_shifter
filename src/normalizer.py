@@ -270,6 +270,7 @@ class ShapeShifter:
                 stage="after_link",
             )
 
+        drop_empty_rows_applied: bool = False
         if table_cfg.unnest:
             try:
                 self.unnest_entity(entity=entity)
@@ -277,6 +278,7 @@ class ShapeShifter:
                 self.table_store.pop(entity, None)
                 self.state.mark_incomplete(entity)
                 return
+            drop_empty_rows_applied = self._drop_empty_rows_if_ready(entity, table_cfg)
             self.linker.link_entity(entity_name=entity)
             # Re-evaluate deferred extra_columns after unnesting (in case unnest added new columns)
             deferred_extra_columns = self._evaluate_deferred_extra_columns(entity, deferred_extra_columns)
@@ -295,7 +297,7 @@ class ShapeShifter:
 
         self._check_duplicate_keys(entity, table_cfg)
 
-        if table_cfg.drop_empty_rows:
+        if table_cfg.drop_empty_rows and not drop_empty_rows_applied:
             self.table_store[entity] = drop_empty_rows(data=self.table_store[entity], entity_name=entity, subset=table_cfg.drop_empty_rows)
 
         # Add system_id if requested and not present (always uses "system_id" column name)
@@ -402,6 +404,20 @@ class ShapeShifter:
         if has_duplicate_keys:
             # raise ValueError(f"{entity}[keys]: Duplicate keys found for keys {table_cfg.keys}.")
             logger.error(f"{entity}[keys]: DUPLICATE KEYS FOUND FOR KEYS {table_cfg.keys}.")
+
+    def _drop_empty_rows_if_ready(self, entity: str, table_cfg: TableConfig) -> bool:
+        """Drop configured empty rows before post-unnest FK validation when the subset is available."""
+        subset: bool | list[str] | dict[str, Any] = table_cfg.drop_empty_rows
+        if not subset or not isinstance(subset, (list, dict)):
+            return False
+
+        subset_columns = subset.keys() if isinstance(subset, dict) else subset
+        data: pd.DataFrame = self.table_store[entity]
+        if not set(subset_columns).issubset(data.columns):
+            return False
+
+        self.table_store[entity] = drop_empty_rows(data=data, entity_name=entity, subset=subset)
+        return True
 
     def _evaluate_deferred_extra_columns(self, entity_name: str, deferred_extra_columns: dict[str, Any]) -> dict[str, Any]:
         """Re-evaluate extra_columns that were deferred because their source columns were unavailable.
