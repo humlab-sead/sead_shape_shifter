@@ -71,7 +71,7 @@ notes:
   feature_property: |-
     Possible values needs review
     In the pilot project, okBefu is 1 for all features, gebäud is empty/0/1, okErh is 1 or 2
-  feature_property: |-
+
     If drop emtpy rows is set for the column feature_property_value, string values in the column are displayed as "Invalid number" in the preview.
 
     feature_property_value is the result of unnesting and has empty values for some feature properties.
