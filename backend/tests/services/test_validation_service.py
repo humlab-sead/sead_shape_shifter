@@ -6,7 +6,15 @@ import pytest
 
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.project import Project, ProjectMetadata
-from backend.app.models.validation import ValidationCategory, ValidationPriority
+from backend.app.models.validation import (
+    DataValidationStatus,
+    EntityDataValidationResult,
+    EntityDataValidationStatus,
+    ValidationCategory,
+    ValidationError,
+    ValidationPriority,
+    ValidationResult,
+)
 from backend.app.services import validation_service as validation_service_module
 from backend.app.services.validation_service import ValidationService, get_validation_service
 from src.model import ShapeShiftProject
@@ -487,11 +495,40 @@ class TestDataValidation:
     """Tests for data-aware validation that depends on preview and data validators."""
 
     @pytest.mark.asyncio
+    async def test_structural_errors_skip_data_validation_before_core_mapping(self):
+        """Structural errors are returned without mapping, fetching, or normalizing project data."""
+        project = Project(entities={"broken": {"type": "entity"}})
+        project_service = Mock()
+        project_service.load_project.return_value = project
+        orchestrator_factory = Mock()
+        service = ValidationService(data_orchestrator_factory=orchestrator_factory)
+
+        with (
+            patch("backend.app.services.validation_service.get_project_service", return_value=project_service),
+            patch("backend.app.services.validation_service.ProjectMapper.to_core") as mapper,
+        ):
+            result = await service.validate_project_data("broken-project")
+
+        assert result.status == DataValidationStatus.SKIPPED
+        assert result.validation_mode is not None
+        assert result.errors
+        assert result.errors[0].category == ValidationCategory.STRUCTURAL
+        assert result.entity_statuses["broken"].status == EntityDataValidationStatus.SKIPPED
+        mapper.assert_not_called()
+        orchestrator_factory.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_validate_project_data_groups_by_severity(self, reset_validation_singleton):
         """Test data validation groups issues by severity using dependency injection."""
         captured: dict[str, object] = {}
 
         class DummyDataValidationOrchestrator:
+            status = DataValidationStatus.COMPLETED
+            status_reason = None
+            entity_statuses = {
+                "entity1": EntityDataValidationResult(status=EntityDataValidationStatus.COMPLETED),
+            }
+
             async def validate_all_entities(
                 self,
                 core_project,
@@ -517,6 +554,9 @@ class TestDataValidation:
 
         # Mock project loading and resolution
         mock_api_project = Mock(spec=Project)
+        mock_api_project.model_dump.return_value = {}
+        mock_api_project.filename = None
+        mock_api_project.entities = {}
         mock_core_project = Mock()
         mock_core_project.cfg = {"entities": {}}
 
@@ -525,15 +565,27 @@ class TestDataValidation:
             mock_project_service.load_project.return_value = mock_api_project
             mock_get_service.return_value = mock_project_service
 
-            with patch("backend.app.services.validation_service.ProjectMapper.to_core", return_value=mock_core_project):
+            with (
+                patch("backend.app.services.validation_service.ProjectMapper.to_core", return_value=mock_core_project),
+                patch.object(
+                    validation_service_module.ValidationService,
+                    "validate_project",
+                    return_value=ValidationResult(
+                        is_valid=True,
+                        warnings=[ValidationError(severity="warning", message="Structural warning")],
+                    ),
+                ),
+            ):
                 # Inject the factory via constructor
                 service = ValidationService(data_orchestrator_factory=mock_orchestrator_factory)  # type: ignore
                 result = await service.validate_project_data("cfg-name", ["entity1"])
 
         assert result.is_valid is False
         assert result.error_count == 1
-        assert result.warning_count == 1
+        assert result.warning_count == 2
         assert len(result.info) == 1
+        assert result.status == DataValidationStatus.COMPLETED
+        assert result.entity_statuses["entity1"].status == EntityDataValidationStatus.COMPLETED
         # Verify captured arguments (core_project is Mock object, project_name, entity_names)
         assert captured["args"][1] == "cfg-name"  # project_name # type: ignore
         assert captured["args"][2] == ["entity1"]  # entity_names # type: ignore

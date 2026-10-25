@@ -78,6 +78,10 @@ class ForeignKeyConstraints:
         return self.data.get("allow_null_keys", False)
 
     @property
+    def null_keys_equal(self) -> bool:
+        return self.data.get("null_keys_equal", False)
+
+    @property
     def allow_null_keys_is_explicit(self) -> bool:
         return "allow_null_keys" in self.data
 

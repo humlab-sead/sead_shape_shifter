@@ -114,6 +114,18 @@
                       </div>
 
                       <v-checkbox
+                        v-model="fk.constraints.null_keys_equal"
+                        label="Match Null Join-Key Parts"
+                        density="compact"
+                        hide-details
+                      />
+
+                      <div class="text-caption text-grey-darken-1 mb-1">
+                        When enabled, null values in matching key positions are treated as equal. This also allows null
+                        key parts.
+                      </div>
+
+                      <v-checkbox
                         v-model="fk.constraints.allow_row_decrease"
                         label="Allow Row Decrease"
                         density="compact"
@@ -581,6 +593,14 @@ function getForeignKeyLabel(fk: ForeignKeyConfig): string {
 }
 
 function getNullKeyHelpText(fk: ForeignKeyConfig): string {
+  if (fk.constraints?.null_keys_equal) {
+    return 'Null join-key parts match when all corresponding key parts are equal. This setting also allows null key parts.'
+  }
+
+  if (fk.constraints?.allow_null_keys) {
+    return 'Missing join keys are tolerated, but null values do not match each other unless Match Null Join-Key Parts is enabled.'
+  }
+
   if (fk.how === 'left') {
     return 'Leave this unchecked to use the default behavior. Lookup-style left joins keep rows with missing join keys and leave the foreign key unresolved. Enable this only when missing join keys should be tolerated explicitly.'
   }

@@ -439,6 +439,24 @@ class TestForeignKeyIntegrityValidator:
         issues = ForeignKeyIntegrityValidator.validate(local_df, remote_df, fk_config, "local")
         assert not issues
 
+    def test_null_key_components_match_only_when_null_keys_equal_is_enabled(self):
+        """Null key components are compared when the FK opts into null equality."""
+        local_df = pd.DataFrame({"site_name": ["Kville 1502", "Other site"], "event_number": [None, None]})
+        remote_df = pd.DataFrame({"site_name": ["Kville 1502"], "event_number": [None]})
+        fk_config = {
+            "local_keys": ["site_name", "event_number"],
+            "remote_keys": ["site_name", "event_number"],
+            "entity": "site",
+            "constraints": {"null_keys_equal": True},
+        }
+
+        issues = ForeignKeyIntegrityValidator.validate(local_df, remote_df, fk_config, "site_location")
+
+        assert len(issues) == 1
+        assert issues[0].code == "FK_DATA_INTEGRITY"
+        assert "1 foreign key value(s) not found" in issues[0].message
+        assert "Other site" in issues[0].message
+
 
 class TestDataTypeCompatibilityValidator:
     """Tests for DataTypeCompatibilityValidator."""

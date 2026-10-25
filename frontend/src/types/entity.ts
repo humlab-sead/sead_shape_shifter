@@ -24,6 +24,7 @@ export interface ForeignKeyConstraints {
   require_unique_left?: boolean
   require_unique_right?: boolean
   allow_null_keys?: boolean
+  null_keys_equal?: boolean
 }
 
 export interface ForeignKeyConfig {

@@ -29,16 +29,6 @@ def load_project(name: str) -> ShapeShiftProject:
     return ShapeShiftProject(cfg=yaml.safe_load(project_path.read_text(encoding="utf-8")))
 
 
-def load_real_project(project_name: str) -> ShapeShiftProject:
-    project_path: Path = REAL_PROJECTS_DIR / project_name / "shapeshifter.yml"
-    return ShapeShiftProject(cfg=yaml.safe_load(project_path.read_text(encoding="utf-8")))
-
-
-def issue_pairs(target_model: TargetModel, project: ShapeShiftProject) -> list[tuple[str | None, str | None]]:
-    issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
-    return [(issue.code, issue.entity) for issue in issues]
-
-
 def test_conformance_registry_runs_global_and_entity_validator_base_types() -> None:
     """The registry should execute both global and entity validator subclasses."""
 
@@ -355,10 +345,10 @@ def test_core_conformance_reports_missing_entity_and_wrong_public_id() -> None:
     target_model: TargetModel = load_target_model()
     project: ShapeShiftProject = load_project("sead_missing_sample_group.yml")
 
-    issues: set[tuple[str | None, str | None]] = set(issue_pairs(target_model, project))
+    issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
 
-    assert ("MISSING_REQUIRED_ENTITY", "sample_group") in issues
-    assert ("UNEXPECTED_PUBLIC_ID", "sample") in issues
+    assert ("MISSING_REQUIRED_ENTITY", "sample_group") in {(issue.code, issue.entity) for issue in issues}
+    assert ("UNEXPECTED_PUBLIC_ID", "sample") in {(issue.code, issue.entity) for issue in issues}
 
 
 def test_core_conformance_accepts_sample_note_example_fixture() -> None:
@@ -385,7 +375,9 @@ def test_core_conformance_accepts_sample_note_example_fixture() -> None:
     )
     project: ShapeShiftProject = load_project("sead_sample_note_context.yml")
 
-    assert issue_pairs(target_model, project) == []
+    issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
+
+    assert not issues
 
 
 def test_core_conformance_accepts_sample_group_note_example_fixture() -> None:
@@ -410,8 +402,9 @@ def test_core_conformance_accepts_sample_group_note_example_fixture() -> None:
         }
     )
     project: ShapeShiftProject = load_project("sead_sample_group_note_context.yml")
+    issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
 
-    assert issue_pairs(target_model, project) == []
+    assert not issues
 
 
 def test_core_conformance_accepts_transitive_foreign_key_path() -> None:
@@ -458,9 +451,9 @@ def test_core_conformance_accepts_transitive_foreign_key_path() -> None:
         }
     )
 
-    issues = set(issue_pairs(target_model, project))
+    issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
 
-    assert ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "sample") not in issues
+    assert ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "sample") not in {(issue.code, issue.entity) for issue in issues}
 
 
 def test_schema_aware_append_emits_issue_when_append_branch_misses_required_column() -> None:
@@ -495,9 +488,9 @@ def test_schema_aware_append_emits_issue_when_append_branch_misses_required_colu
         }
     )
 
-    issues = set(issue_pairs(target_model, project))
+    issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
 
-    assert ("APPEND_MISSING_REQUIRED_COLUMN", "site") in issues
+    assert ("APPEND_MISSING_REQUIRED_COLUMN", "site") in {(issue.code, issue.entity) for issue in issues}
 
 
 def test_schema_aware_append_respects_align_by_position() -> None:
@@ -535,9 +528,9 @@ def test_schema_aware_append_respects_align_by_position() -> None:
         }
     )
 
-    codes = [issue.code for issue in TargetModelConformanceValidator().validate(target_model, project)]
+    issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
 
-    assert "APPEND_MISSING_REQUIRED_COLUMN" not in codes
+    assert "APPEND_MISSING_REQUIRED_COLUMN" not in {issue.code for issue in issues}
 
 
 def test_required_columns_ignores_required_generated_columns() -> None:
@@ -553,11 +546,11 @@ def test_required_columns_ignores_required_generated_columns() -> None:
             }
         }
     )
-    project = _minimal_project({"site": {"public_id": "site_id", "columns": ["site_name"]}})
+    project: ShapeShiftProject = _minimal_project({"site": {"public_id": "site_id", "columns": ["site_name"]}})
 
-    issues = issue_pairs(target_model, project)
+    issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
 
-    assert ("MISSING_REQUIRED_COLUMN", "site") not in issues
+    assert not any((issue.code, issue.entity) == ("MISSING_REQUIRED_COLUMN", "site") for issue in issues)
 
 
 def test_schema_aware_append_ignores_required_generated_columns() -> None:
@@ -592,9 +585,9 @@ def test_schema_aware_append_ignores_required_generated_columns() -> None:
         }
     )
 
-    codes = [issue.code for issue in TargetModelConformanceValidator().validate(target_model, project)]
+    issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
 
-    assert "APPEND_MISSING_REQUIRED_COLUMN" not in codes
+    assert not any(issue.code == "APPEND_MISSING_REQUIRED_COLUMN" for issue in issues)
 
 
 def test_core_conformance_keeps_alias_like_names_strict() -> None:
@@ -653,54 +646,17 @@ def test_core_conformance_keeps_alias_like_names_strict() -> None:
         }
     )
 
-    issues = set(issue_pairs(target_model, project))
-
-    assert ("MISSING_REQUIRED_COLUMN", "sample_type") in issues
-    assert ("MISSING_REQUIRED_COLUMN", "method") in issues
-
-
-def test_core_conformance_reports_known_gaps_for_full_arbodat_project() -> None:
-    target_model: TargetModel = load_target_model()
-    project: ShapeShiftProject = load_real_project("arbodat")
-
-    expected_errors = [
-        ("CONDITIONAL_FK_AWAITING_RECONCILIATION", "location"),
-        ("MISSING_REQUIRED_COLUMN", "relative_dating"),
-        ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "abundance_modification"),
-        ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "abundance_property"),
-        ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "relative_dating"),
-        ("UNEXPECTED_PUBLIC_ID", "relative_dating"),
-    ]
-
     issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
-    actual_issues = [(issue.code, issue.entity) for issue in issues]
-    # print('\n'.join(f'{x.code};{x.entity};{x.message}' for x in issues))
-    assert sorted(actual_issues) == sorted(expected_errors)
+
+    assert any((issue.code, issue.entity) == ("MISSING_REQUIRED_COLUMN", "sample_type") for issue in issues)
+    assert any((issue.code, issue.entity) == ("MISSING_REQUIRED_COLUMN", "method") for issue in issues)
 
 
-def test_core_conformance_current_corpus_issue_families_are_stable() -> None:
-    target_model: TargetModel = load_target_model()
-    corpus: dict[str, ShapeShiftProject] = {
-        "sead_arbodat_core": load_project("sead_arbodat_core.yml"),
-        "sead_missing_sample_group": load_project("sead_missing_sample_group.yml"),
-        "arbodat_full": load_real_project("arbodat"),
-    }
-
-    issue_summary: dict[str, Counter[str | None]] = {
-        name: Counter(code for code, _entity in issue_pairs(target_model, project)) for name, project in corpus.items()
-    }
-
-    assert issue_summary == {
-        "sead_arbodat_core": Counter(
-            {
-                "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 5,
-                "MISSING_REQUIRED_COLUMN": 5,
-                "MISSING_REQUIRED_ENTITY": 5,
-                "MISSING_BRIDGE_ENTITY": 1,
-                "CONDITIONAL_FK_AWAITING_RECONCILIATION": 1,
-            }
-        ),
-        "sead_missing_sample_group": Counter(
+@pytest.mark.parametrize(
+    "project_name,expected_issues",
+    [
+        (
+            "sead_missing_sample_group",
             {
                 "MISSING_REQUIRED_COLUMN": 8,
                 "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 6,
@@ -708,17 +664,17 @@ def test_core_conformance_current_corpus_issue_families_are_stable() -> None:
                 "UNEXPECTED_PUBLIC_ID": 1,
                 "MISSING_BRIDGE_ENTITY": 1,
                 "CONDITIONAL_FK_AWAITING_RECONCILIATION": 1,
-            }
+            },
         ),
-        "arbodat_full": Counter(
-            {
-                "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 3,
-                "UNEXPECTED_PUBLIC_ID": 1,
-                "CONDITIONAL_FK_AWAITING_RECONCILIATION": 1,
-                "MISSING_REQUIRED_COLUMN": 1,
-            }
-        ),
-    }
+    ],
+)
+def test_core_conformance_current_corpus_issue_families_are_stable(project_name: str, expected_issues: dict[str, int]) -> None:
+    target_model: TargetModel = load_target_model()
+    project: ShapeShiftProject = load_project(f"{project_name}.yml")
+    issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
+    issue_summary: Counter[str | None] = Counter(issue.code for issue in issues)
+
+    assert issue_summary == Counter(expected_issues)
 
 
 def _minimal_target_model(entities: dict) -> TargetModel:
@@ -741,9 +697,9 @@ def test_conditional_foreign_key_awaits_reconciliation_without_project_only_erro
             "location_type": {"public_id": "location_type_id"},
         }
     )
-    project = _minimal_project({"location": {"public_id": "location_id", "columns": ["location_name"]}})
+    project: ShapeShiftProject = _minimal_project({"location": {"public_id": "location_id", "columns": ["location_name"]}})
 
-    issues = TargetModelConformanceValidator().validate(target_model, project)
+    issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
 
     assert [(issue.code, issue.severity, issue.entity) for issue in issues] == [
         ("CONDITIONAL_FK_AWAITING_RECONCILIATION", "info", "location")

@@ -1,0 +1,106 @@
+version: '2.0'
+metadata:
+  created_at: '2026-10-08T11:41:27.193532Z'
+  updated_at: '2026-10-08T14:10:31.365142Z'
+  project: rebecka-arbodat-2
+entities:
+  abundance_element:
+    local_key: RTyp
+    public_id: abundance_element_id
+    entity_type: primary
+    links:
+      Blü:
+        target_id: 21
+        source: manual
+        created_at: '2026-10-08T11:53:46.224875Z'
+        committed_at: '2026-10-08T11:53:46.224463Z'
+        created_by: 112a0d2e
+      boPf:
+        target_id: 45
+        source: manual
+        created_at: '2026-10-08T11:53:46.224966Z'
+        committed_at: '2026-10-08T11:53:46.224463Z'
+        created_by: 112a0d2e
+      gPfl:
+        target_id: 37
+        source: manual
+        created_at: '2026-10-08T11:53:46.225659Z'
+        committed_at: '2026-10-08T11:53:46.224463Z'
+        created_by: 112a0d2e
+      Gr:
+        target_id: 29
+        source: manual
+        created_at: '2026-10-08T11:53:46.225704Z'
+        committed_at: '2026-10-08T11:53:46.224463Z'
+        created_by: 112a0d2e
+      Ho:
+        target_id: 44
+        source: manual
+        created_at: '2026-10-08T11:53:46.225867Z'
+        committed_at: '2026-10-08T11:53:46.224463Z'
+        created_by: 112a0d2e
+      HSB:
+        target_id: 32
+        source: manual
+        created_at: '2026-10-08T11:53:46.225940Z'
+        committed_at: '2026-10-08T11:53:46.224463Z'
+        created_by: 112a0d2e
+      Pol:
+        target_id: 2
+        source: manual
+        created_at: '2026-10-08T11:53:46.226508Z'
+        committed_at: '2026-10-08T11:53:46.224463Z'
+        created_by: 112a0d2e
+      Rin:
+        target_id: 43
+        source: manual
+        created_at: '2026-10-08T11:53:46.226714Z'
+        committed_at: '2026-10-08T11:53:46.224463Z'
+        created_by: 112a0d2e
+      S:
+        target_id: 36
+        source: manual
+        created_at: '2026-10-08T11:53:46.226759Z'
+        committed_at: '2026-10-08T11:53:46.224463Z'
+        created_by: 112a0d2e
+      Spi:
+        target_id: 33
+        source: manual
+        created_at: '2026-10-08T11:53:46.226965Z'
+        committed_at: '2026-10-08T11:53:46.224463Z'
+        created_by: 112a0d2e
+      Veget:
+        target_id: 41
+        source: manual
+        created_at: '2026-10-08T11:53:46.227211Z'
+        committed_at: '2026-10-08T11:53:46.224463Z'
+        created_by: 112a0d2e
+      Za:
+        target_id: 47
+        source: manual
+        created_at: '2026-10-08T11:53:46.227313Z'
+        committed_at: '2026-10-08T11:53:46.224463Z'
+        created_by: 112a0d2e
+      Zwei:
+        target_id: 42
+        source: manual
+        created_at: '2026-10-08T11:53:46.227354Z'
+        committed_at: '2026-10-08T11:53:46.224463Z'
+        created_by: 112a0d2e
+      Äch:
+        target_id: 27
+        source: manual
+        created_at: '2026-10-08T11:53:46.227425Z'
+        committed_at: '2026-10-08T11:53:46.224463Z'
+        created_by: 112a0d2e
+      Ähre:
+        target_id: 26
+        source: manual
+        created_at: '2026-10-08T11:53:46.227524Z'
+        committed_at: '2026-10-08T11:53:46.224463Z'
+        created_by: 112a0d2e
+  site_type:
+    local_key: FustelTyp
+    public_id: site_type_id
+    entity_type: primary
+    links: {}

@@ -169,9 +169,10 @@ def compute_fixed_row_change_set(
     """Return the mapping changes implied by two saved-row snapshots.
 
     Only configured fixed entities qualify. A materialized fixed entity with no
-    entry proposes a new entry using the ordered ``safe_keys`` default; any
-    other fixed entity with no entry returns no sync work. When an entry
-    exists, its stored ``local_key`` and ``public_id`` remain authoritative.
+    entry proposes a new entry using the ordered ``safe_keys`` default; if no
+    business keys are configured, it returns no sync work. Any other fixed
+    entity with no entry also returns no sync work. When an entry exists, its
+    stored ``local_key`` and ``public_id`` remain authoritative.
 
     Raises:
         FixedEntityMappingChangeError: When a required stored column is absent,
@@ -187,11 +188,7 @@ def compute_fixed_row_change_set(
             return not_eligible_change_set(entity_name)
         key_columns = ordered_key_columns(keys)
         if not key_columns:
-            raise FixedEntityMappingChangeError(
-                f"Fixed entity '{entity_name}' has no entity.keys configuration for mapping operations.",
-                entity_name=entity_name,
-                field="keys",
-            )
+            return not_eligible_change_set(entity_name)
         if not public_id:
             raise FixedEntityMappingChangeError(
                 f"Fixed entity '{entity_name}' has no public_id configuration for mapping operations.",

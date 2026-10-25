@@ -11,6 +11,7 @@ from loguru import logger
 
 from backend.app.core.config import settings
 from backend.app.exceptions import ResourceConflictError, ResourceNotFoundError
+from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.data_source import DataSourceConfig, TableSchema
 from backend.app.models.project import Project
 from backend.app.services.data_source_service import DataSourceService
@@ -24,7 +25,7 @@ class EntityGeneratorService:
 
     def __init__(self, schema_service: SchemaIntrospectionService | None = None, project_service: ProjectService | None = None):
         """Initialize entity generator service."""
-        self.schema_service: SchemaIntrospectionService = schema_service or SchemaIntrospectionService(settings.PROJECTS_DIR)
+        self.schema_service: SchemaIntrospectionService = schema_service or SchemaIntrospectionService(settings.GLOBAL_DATA_SOURCE_DIR)
         self.project_service: ProjectService = project_service or get_project_service()
         self.data_source_service: DataSourceService = self.schema_service.data_source_service
 
@@ -108,6 +109,7 @@ class EntityGeneratorService:
         return query
 
     def _resolve_data_source(self, project: Project, project_name: str, ds_key: str) -> str | dict[str, Any]:
+        """Resolve inline data sources and project include references."""
 
         if ds_key not in project.data_sources:
             raise ResourceNotFoundError(
@@ -129,13 +131,13 @@ class EntityGeneratorService:
             if not ref.startswith("@include:"):
                 return ref
 
-            filename: str = ref.split(":", 1)[1].strip()
-
-            if filename:
-                return filename
+            resolved_project = ProjectMapper.to_core(project)
+            resolved_source = resolved_project.data_sources.get(ds_key)
+            if isinstance(resolved_source, dict):
+                return resolved_source
 
         raise ResourceNotFoundError(
-            message=f"Data source '{ds_key}' in project '{project_name}' has an unsupported configuration type",
+            message=f"Data source '{ds_key}' in project '{project_name}' could not be resolved",
             resource_type="data_source",
             resource_id=ds_key,
             context={"project": project_name, "value_type": type(value).__name__},

@@ -18,6 +18,7 @@ class TestForeignKeyConstraints:
         """Test default constraint values."""
         constraints = ForeignKeyConstraints()
         assert constraints.allow_null_keys is False
+        assert constraints.null_keys_equal is False
         assert constraints.require_unique_left is False
         assert constraints.require_unique_right is False
 
@@ -28,6 +29,9 @@ class TestForeignKeyConstraints:
 
         with_cardinality = ForeignKeyConstraints(cardinality="one_to_one")
         assert with_cardinality.has_constraints is True
+
+        with_null_equality = ForeignKeyConstraints(null_keys_equal=True)
+        assert with_null_equality.has_constraints is True
 
     def test_has_match_constraints(self):
         """Test has_match_constraints property."""

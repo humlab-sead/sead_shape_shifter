@@ -85,8 +85,8 @@ class TestUnnestColumnsSpecification:
         assert len(spec.errors) > 0
         assert "missing_col" in spec.errors[0].message
 
-    def test_overlapping_id_vars_and_value_vars_error(self):
-        """Test that a column in both id_vars and value_vars is rejected."""
+    def test_overlapping_id_vars_and_value_vars_warning(self):
+        """Test that a column in both id_vars and value_vars reports a warning."""
         project_cfg = {
             "entities": {
                 "test_entity": {
@@ -105,14 +105,16 @@ class TestUnnestColumnsSpecification:
         spec = UnnestColumnsSpecification(project_cfg)
         result = spec.is_satisfied_by(entity_name="test_entity")
 
-        assert result is False
-        assert len(spec.errors) > 0
-        assert "measure1" in spec.errors[0].message
-        assert "both id_vars and value_vars" in spec.errors[0].message
-        assert spec.errors[0].field == "unnest.value_vars"
+        assert result is True
+        assert len(spec.errors) == 0
+        assert len(spec.warnings) == 1
+        assert "measure1" in spec.warnings[0].message
+        assert "both id_vars and value_vars" in spec.warnings[0].message
+        assert spec.warnings[0].entity == "test_entity"
+        assert spec.warnings[0].field == "unnest.value_vars"
 
-    def test_complete_overlap_id_vars_and_value_vars_error(self):
-        """Test that a complete overlap is rejected for every conflicting column."""
+    def test_complete_overlap_id_vars_and_value_vars_warning(self):
+        """Test that a complete overlap is reported as a warning."""
         project_cfg = {
             "entities": {
                 "test_entity": {
@@ -131,9 +133,10 @@ class TestUnnestColumnsSpecification:
         spec = UnnestColumnsSpecification(project_cfg)
         result = spec.is_satisfied_by(entity_name="test_entity")
 
-        assert result is False
-        assert len(spec.errors) > 0
-        assert "measure1" in spec.errors[0].message
+        assert result is True
+        assert len(spec.errors) == 0
+        assert len(spec.warnings) == 1
+        assert "measure1" in spec.warnings[0].message
 
     def test_disjoint_id_vars_and_value_vars_passes(self):
         """Test that disjoint id_vars and value_vars pass validation."""

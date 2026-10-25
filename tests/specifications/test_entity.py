@@ -1834,11 +1834,51 @@ class TestFilterSpecification:
         assert result is False
         assert any("other_column 'missing_column' not found" in str(error) for error in spec.errors)
 
-    def test_query_filter_does_not_parse_query_columns(self, project_cfg):
+    def test_query_filter_reports_missing_column_using_pandas(self, project_cfg):
         spec = FilterSpecification(project_cfg)
-        project_cfg["entities"]["measurement"]["filters"] = [{"type": "query", "stage": "after_unnest", "query": "missing_column == 'ph'"}]
+        project_cfg["entities"]["measurement"]["filters"] = [
+            {"type": "query", "stage": "after_unnest", "query": "~missing_column.isnull()"}
+        ]
 
         result = spec.is_satisfied_by(entity_name="measurement")
+
+        assert result is False
+        assert any("missing_column" in str(error) and "not available" in str(error) for error in spec.errors)
+
+    def test_query_filter_reports_invalid_pandas_syntax(self, project_cfg):
+        spec = FilterSpecification(project_cfg)
+        project_cfg["entities"]["measurement"]["filters"] = [{"type": "query", "stage": "after_unnest", "query": "value >>> 0"}]
+
+        result = spec.is_satisfied_by(entity_name="measurement")
+
+        assert result is False
+        assert any("invalid pandas query syntax" in str(error) for error in spec.errors)
+
+    def test_query_filter_accepts_backticks_and_external_variables(self, project_cfg):
+        spec = FilterSpecification(project_cfg)
+        project_cfg["entities"]["measurement"]["columns"].append("measure name")
+        project_cfg["entities"]["measurement"]["filters"] = [
+            {"type": "query", "stage": "after_unnest", "query": "`measure name` in @allowed_names"}
+        ]
+
+        result = spec.is_satisfied_by(entity_name="measurement")
+
+        assert result is True
+        assert len(spec.errors) == 0
+
+    def test_query_filter_skips_column_check_when_source_schema_is_unknown(self):
+        project_cfg = {
+            "entities": {
+                "dynamic_query": {
+                    "type": "sql",
+                    "auto_detect_columns": True,
+                    "filters": [{"type": "query", "query": "detected_column > 0"}],
+                }
+            }
+        }
+        spec = FilterSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="dynamic_query")
 
         assert result is True
         assert len(spec.errors) == 0

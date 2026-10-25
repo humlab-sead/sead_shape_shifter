@@ -165,7 +165,9 @@ class DataSourceService:
             Data source, or None if not found or invalid and strict is False.
         """
         if isinstance(source, dict):
-            return DataSourceConfig(name=source.get("name", "inline"), **source)
+            config: dict[str, Any] = dict(source)
+            name: str = config.pop("name", "inline")
+            return DataSourceConfig(name=name, **config)
 
         error: Exception | None = None
 
