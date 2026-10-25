@@ -8,8 +8,8 @@ from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.project import Project, ProjectMetadata
 from backend.app.models.validation import (
     DataValidationStatus,
-    EntityDataValidationStatus,
     EntityDataValidationResult,
+    EntityDataValidationStatus,
     ValidationCategory,
     ValidationError,
     ValidationPriority,

@@ -54,7 +54,7 @@ def apply_filters(
             raise ValueError(f"Unknown filter type for entity {name!r}: {ftype!r}")
         try:
             df = filter_cls().apply(df, f, data_store)
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             cause = e.__cause__ or e
             logger.error(
                 f"Could not apply {ftype!r} filter for entity {name!r} at stage {stage!r}; "
