@@ -537,8 +537,8 @@ class NoOrphanFactsConformanceValidator(GlobalConformanceValidator):
                 ConformanceIssue(
                     code="ORPHAN_FACT_ENTITY",
                     message=(
-                        f"Fact entity '{entity_name}' does not reach any lookup or classifier entity "
-                        f"declared by the target model ({', '.join(sorted(parent_entities))})"
+                        f"Fact entity '{entity_name}' does not reach any lookup or classifier entity"
+                        # f"declared by the target model ({', '.join(sorted(parent_entities))})"
                     ),
                     entity=entity_name,
                 )
