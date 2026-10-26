@@ -395,6 +395,8 @@ entities:
     public_id: dataset_id
     keys: [Projekt, Fraktion]
     columns: [Projekt, Fraktion]
+    foreign_key_value_sources:
+      data_type: public_id
     foreign_keys:
     - entity: project
       local_keys: [Projekt]
