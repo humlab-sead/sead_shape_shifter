@@ -174,6 +174,9 @@ entities:
     - entity: property_type
       local_keys: [property_group, property_type]
       remote_keys: [property_group, arbodat_code]
+    - entity: abundance
+      local_keys: [abundance_id]
+      remote_keys: [system_id]
     depends_on: [abundance, property_type]
     drop_duplicates: true
     drop_empty_rows: [property_value]
