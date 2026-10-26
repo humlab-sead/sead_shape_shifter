@@ -12,29 +12,32 @@ from __future__ import annotations
 import abc
 import argparse
 import asyncio
-
+import os
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Awaitable, Callable, Sequence
+from typing import Any, Awaitable, Callable
 
 import click
+from dotenv import load_dotenv
 from loguru import logger
 
 PROJECT_ROOT: Path = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+# pylint: disable=wrong-import-position, no-value-for-parameter, redefined-outer-name
+# pyright: ignore[reportMissingImports]
+
 from backend.app.models.validation import ValidationError
 from backend.app.validators.data_validation_orchestrator import DataValidationOrchestrator, TableStoreDataFetchStrategy
 from backend.app.validators.target_model_validator import TargetModelValidator
+from src.issues import CoreIssue
 from src.model import ShapeShiftProject
 from src.normalizer import ShapeShifter
-from src.specifications import CompositeProjectSpecification, project
-from src.specifications.base import SpecificationIssue
+from src.specifications import CompositeProjectSpecification
 from src.utility import Registry, setup_logging
 from src.validators.data_validators import ValidationIssue
-from src.issues import CoreIssue
 
 
 @dataclass
@@ -83,7 +86,6 @@ class WorkflowExecutor(abc.ABC):
     @abc.abstractmethod
     def _execute(self, project: ShapeShiftProject, ignores: set[str]) -> WorkflowResult:
         """Execute the workflow for the given project and return a WorkflowResult."""
-        pass
 
     def get_name(self) -> str:
         """Return the name/key of this workflow executor."""
@@ -182,7 +184,6 @@ def run_workflows(project: ShapeShiftProject, workflow: str, ignores: set[str]) 
     results: dict[str, WorkflowResult] = {}
 
     for wf in workflows:
-
         if "structural" in results and not results["structural"].passed:
             reason = "Skipped because structural validation reported errors."
             logger.warning(f"Skipping {wf} validation: {reason}")
@@ -196,7 +197,7 @@ def run_workflows(project: ShapeShiftProject, workflow: str, ignores: set[str]) 
     return results
 
 
-def print_workflow_results(project_file: Path, results: dict[str, WorkflowResult], format: str = "csv") -> None:
+def print_workflow_results(results: dict[str, WorkflowResult], output_format: str = "csv") -> None:
     """Print workflow-by-workflow validation results."""
 
     def csv_header() -> str:
@@ -206,7 +207,7 @@ def print_workflow_results(project_file: Path, results: dict[str, WorkflowResult
         """Return a list of issue attributes suitable for CSV output."""
         return f"{issue.severity};{issue.entity};{issue.field};{issue.column};{issue.code};{issue.message}"
 
-    if format == "csv":
+    if output_format == "csv":
         print(csv_header())
         for result in results.values():
             for issue in result.issues:
@@ -263,6 +264,11 @@ def print_summary(results: dict[str, WorkflowResult]) -> None:
 
 def load_project(project_path: str, env_file: str) -> ShapeShiftProject:
     """Load the project file, raising an exception if loading fails."""
+    load_dotenv(dotenv_path=env_file)
+    target_model_dir: Path = PROJECT_ROOT / "resources" / "target_models"
+    if not os.environ.get("GLOBAL_TARGET_MODEL_DIR") and target_model_dir.is_dir():
+        os.environ["GLOBAL_TARGET_MODEL_DIR"] = str(target_model_dir)
+
     return ShapeShiftProject.from_file(filename=project_path, env_file=env_file, env_prefix="SHAPE_SHIFTER")
 
 
@@ -300,7 +306,7 @@ def execute(
         return 1
 
     results: dict[str, WorkflowResult] = run_workflows(project, workflow, ignores=ignores)
-    print_workflow_results(project_file, results)
+    print_workflow_results(results)
 
     return 0 if all(result.passed for result in results.values()) else 1
 
