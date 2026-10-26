@@ -315,7 +315,12 @@ entities:
     - [4, null, Bot. Determination, 'Name(s) of person(s) responsible for charcoal or seed/fruit determination, etc', BotBest]
     - [5, null, Site Director/Institution, Name of site director and/or institution, ArchAusg]
     contact_types: [ArchAusg, ArchBear, BotBear, Aut, BotBest]
-    surrogate_name: contact_type
+  citation:
+    type: fixed
+    public_id: biblio_id
+    keys: [title, year, authors]
+    columns: [bugs_reference, doi, isbn, notes, title, year, authors, full_reference, url]
+    values: []
   coordinate_method_dimension:
     type: fixed
     source:
