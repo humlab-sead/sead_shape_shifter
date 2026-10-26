@@ -159,7 +159,7 @@ entities:
     keys: []
     columns:
     - abundance_id
-    - abundance_property_type
+    - property_type
     - rAnzahl
     - rGewicht
     - geschätzt
@@ -172,14 +172,14 @@ entities:
     - AnmFrakt
     foreign_keys:
     - entity: property_type
-      local_keys: [property_type_scope, abundance_property_type]
-      remote_keys: [property_type_scope, arbodat_code]
+      local_keys: [property_group, property_type]
+      remote_keys: [property_group, arbodat_code]
     depends_on: [abundance, property_type]
     drop_duplicates: true
     drop_empty_rows: [property_value]
     check_functional_dependency: true
     unnest:
-      id_vars: [abundance_id, property_type_scope]
+      id_vars: [abundance_id, property_group]
       value_vars:
       - rAnzahl
       - rGewicht
@@ -191,18 +191,18 @@ entities:
       - FGewicht
       - EDatProb
       - AnmFrakt
-      var_name: abundance_property_type
+      var_name: property_type
       value_name: property_value
     extra_columns:
-      property_type_scope: abundance_property_scope
+      property_group: abundance_property_scope
   property_type:
     type: fixed
     public_id: property_type_id
-    keys: [property_type_scope, arbodat_code]
+    keys: [property_group, arbodat_code]
     columns:
     - system_id
     - property_type_id
-    - property_type_scope
+    - property_group
     - arbodat_code
     - property_type_name
     - description
@@ -488,6 +488,41 @@ entities:
       contact_id: int
     values:
     - [1, 1, arbodat-pilot, Arbodat Pilot, null]
+  submission:
+    type: fixed
+    public_id: submission_id
+    keys: [submission_identifier]
+    columns:
+    - system_id
+    - submission_state
+    - upload_date
+    - submission_date
+    - submission_identifier
+    - issue_identifier
+    - author
+    - notes
+    - data_provider_code
+    - submission_name
+    - source_name
+    - data_types
+    values:
+    - [1, PENDING, '2024-06-06', '2024-06-06', ARBODAT_PILOT, issue, An author, Some notes, DP_CODE, Arbodat pilot, datafile.xlsx, archeaobotany]
+    foreign_keys:
+    - entity: data_provider
+      local_keys: [data_provider_code]
+      remote_keys: [data_provider_code]
+      how: left
+    - entity: submission_state
+      local_keys: [submission_state]
+      remote_keys: [submission_state]
+      how: left
+  submission_state:
+    type: fixed
+    public_id: submission_state_id
+    keys: []
+    columns: [system_id, submission_state]
+    values:
+    - [1, PENDING]
   dating:
     type: sql
     source:
@@ -540,6 +575,30 @@ entities:
       remote_keys: [Projekt, Befu, ProbNr]
     depends_on: [sample]
     drop_duplicates: true
+  dating_period:
+    type: sql
+    source:
+    data_source: arbodat_data
+    public_id: dating_period_id
+    keys: '@value: entities.sample.keys'
+    columns: "@value: entities.sample.keys + ['ChronoDat', 'ArchDat']"
+    query: |-
+      select distinct [Projekt], [Befu], [ProbNr], [ChronoDat], [ArchDat]
+      from [Proben] ;
+    foreign_keys:
+    - entity: sample
+      local_keys: '@value: entities.sample.keys'
+      remote_keys: '@value: entities.sample.keys'
+    - entity: chronological_period
+      local_keys: [ChronoDat]
+      remote_keys: [ChronoDat]
+      how: left
+    - entity: archaeological_period
+      local_keys: [ArchDat]
+      remote_keys: [ArchDat]
+      how: left
+    depends_on: [sample]
+    drop_empty_rows: [ChronoDat, ArchDat]
   dimension:
     type: fixed
     source:
@@ -601,13 +660,14 @@ entities:
       how: left
     depends_on: [project]
     drop_duplicates: [Projekt, Befu]
+    check_functional_dependency: true
     extra_columns:
       feature_name: Befu
   feature_property:
     type: sql
     data_source: arbodat_data
     public_id: feature_property_id
-    keys: [Projekt, Befu, feature_property_type]
+    keys: [Projekt, Befu, property_type]
     columns:
     - Projekt
     - Befu
@@ -620,17 +680,17 @@ entities:
     query: "select [Projekt], [Befu], [FlSchn], [gebäud], [okBefu], [okErh], [BestJa], [Anmerkung] from [Befunde] where [Projekt] in ('19_0013', '19_0014', '22_0005', '18_0025', '22_0015'); "
     foreign_keys:
     - entity: feature
-      local_keys: '@value: entities.feature.keys'
-      remote_keys: '@value: entities.feature.keys'
+      local_keys: [Projekt, Befu]
+      remote_keys: [Projekt, Befu]
       constraints:
-        cardinality: one_to_one
+        cardinality: one_to_many
         allow_unmatched_right: true
         require_unique_left: false
         require_unique_right: false
         allow_row_decrease: true
     - entity: property_type
-      local_keys: [property_type_scope, feature_property_type]
-      remote_keys: [property_type_scope, arbodat_code]
+      local_keys: [property_group, property_type]
+      remote_keys: [property_group, arbodat_code]
       how: left
       constraints:
         cardinality: many_to_one
@@ -639,11 +699,11 @@ entities:
         require_unique_right: false
         allow_row_decrease: true
     depends_on: [feature, property_type]
-    drop_duplicates: [Projekt, Befu, feature_property_type]
+    drop_duplicates: [Projekt, Befu, property_type]
     drop_empty_rows: [property_value]
     check_functional_dependency: true
     unnest:
-      id_vars: [Projekt, Befu, property_type_scope]
+      id_vars: [Projekt, Befu, property_group]
       value_vars:
       - FlSchn
       - gebäud
@@ -651,10 +711,10 @@ entities:
       - okErh
       - BestJa
       - Anmerkung
-      var_name: feature_property_type
+      var_name: property_type
       value_name: property_value
     extra_columns:
-      property_type_scope: feature_property_scope
+      property_group: feature_property_scope
   feature_type:
     type: fixed
     public_id: feature_type_id
@@ -768,11 +828,11 @@ entities:
     keys: [location_type]
     columns: [system_id, location_type_id, location_type]
     values:
-    - [1, 2, Ort]
-    - [2, 2, Kreis]
-    - [3, 2, Land]
-    - [4, 1, Staat]
-    - [5, 10, FlurStr]
+    - [1, null, Ort]
+    - [2, null, Kreis]
+    - [3, null, Land]
+    - [4, null, Staat]
+    - [5, null, FlurStr]
   master_dataset:
     type: fixed
     public_id: master_set_id
@@ -811,6 +871,7 @@ entities:
     - [8, null, null, Mineral remains 0.25-0.5 mm, 'MIN 0,25', 'MIN 0,25', null, 'MIN 0,25']
     - [9, 105, null, null, Local or unknown grid, null, null, null]
     - [10, 76, null, null, Altitude above sea level, null, null, null]
+    - [11, 8, null, null, Plant macros, Plant macros, null, SampleGroupMethod]
     foreign_keys:
     - entity: method_group
       local_keys: [method_group_id]
@@ -960,8 +1021,8 @@ entities:
     query: select [Projekt], [Befu], [ProbNr], [KoordX], [KoordY], [KoordZ], [TiefeBis], [TiefeVon], [Prob_üNN] from [Proben] where [Projekt] in ('19_0013', '19_0014', '22_0005', '18_0025', '22_0015');
     foreign_keys:
     - entity: sample
-      local_keys: '@value: entities.sample.keys'
-      remote_keys: '@value: entities.sample.keys'
+      local_keys: [Projekt, Befu, ProbNr]
+      remote_keys: [Projekt, Befu, ProbNr]
       how: left
     - entity: coordinate_method_dimension
       local_keys: [coordinate_type]
@@ -972,8 +1033,14 @@ entities:
     drop_empty_rows: [measurement]
     check_functional_dependency: true
     unnest:
-      id_vars: '@value: entities.sample.keys'
-      value_vars: '@value: entities.sample_coordinate.columns'
+      id_vars: [Projekt, Befu, ProbNr]
+      value_vars:
+      - KoordX
+      - KoordY
+      - KoordZ
+      - TiefeBis
+      - TiefeVon
+      - Prob_üNN
       var_name: coordinate_type
       value_name: measurement
   sample_description_type:
@@ -1155,7 +1222,7 @@ entities:
     type: sql
     data_source: arbodat_data
     public_id: site_property_id
-    keys: [Fustel, EVNr, site_property_type]
+    keys: [Fustel, EVNr, property_type]
     columns:
     - Fustel
     - EVNr
@@ -1177,15 +1244,15 @@ entities:
         allow_row_decrease: true
         allow_null_keys: true
     - entity: property_type
-      local_keys: [property_type_scope, site_property_type]
-      remote_keys: [property_type_scope, arbodat_code]
+      local_keys: [property_group, property_type]
+      remote_keys: [property_group, arbodat_code]
       how: left
       constraints:
         cardinality: many_to_one
         allow_unmatched_left: false
         allow_null_keys: false
     depends_on: [site, property_type]
-    drop_duplicates: [Fustel, EVNr, site_property_type]
+    drop_duplicates: [Fustel, EVNr, property_type]
     drop_empty_rows: [Fustel]
     check_functional_dependency: false
     filters:
@@ -1193,12 +1260,12 @@ entities:
       query: '~property_value.isnull() '
       stage: after_unnest
     unnest:
-      id_vars: [Fustel, EVNr, property_type_scope]
-      value_vars: '@value: entities.site_property.columns'
-      var_name: site_property_type
+      id_vars: [Fustel, EVNr, property_group]
+      value_vars: [okFustel, Limes, TK, AnmFustel]
+      var_name: property_type
       value_name: property_value
     extra_columns:
-      property_type_scope: site_property_scope
+      property_group: site_property_scope
   site_type_group:
     type: fixed
     public_id: site_type_group_id
@@ -1238,7 +1305,7 @@ entities:
         columns: [FuTypGrup, Beschreibung]
         query: select distinct [FuTypGrup], [Beschreibung] from [FundtypGruppe];
         extra_columns:
-          site_type_group: Beschreibung
+          site_type_group: FuTypGrup
           description: '"{FuTypGrup}: {Beschreibung}"'
           arbodat_code: FuTypGrup
       materialized_at: '2026-10-08T12:55:37.255017'
@@ -1655,7 +1722,7 @@ entities:
       notes: '"DE: {Eco_EN}. FR: {Eco_FR}"'
       definition: Bezeichnung
       ecocode_group_id: 1
-      abbreviation: '"ArboDat {Okogruppe}"'
+      abbreviation: '"ArboDat {Ökogruppe}"'
   ecocode:
     type: entity
     source: taxa_plant_sociological_behaviour
@@ -1736,14 +1803,16 @@ entities:
         require_unique_right: false
         allow_row_decrease: true
 options:
-  translations:
-    filename: translations.tsv
-    delimiter: "\t"
+  validation:
+    disabled_rules: [no_orphan_facts]
+  # translations:
+  #   filename: translations.tsv
+  #   delimiter: "\t"
   data_sources:
     sead: '@include: ${GLOBAL_DATA_SOURCE_DIR}/sead-options.yml'
     arbodat_data: '@include: ${GLOBAL_DATA_SOURCE_DIR}/arbodat-data-options.yml'
     arbodat_lookup: '@include: ${GLOBAL_DATA_SOURCE_DIR}/arbodat-lookup-options.yml'
-  translation: '@load: options.translations'
+  # translation: '@load: options.translations'
   reconciliation: '@include: reconciliation.yml'
   finally:
     drop:
@@ -1756,10 +1825,10 @@ options:
       - analysis_entity.public_id
       - abundance.public_id
       - location.public_id
-      - property_type.property_type_scope
+      - property_type.property_group
       - property_type.arbodat_code
-      - abundance_property.property_type_scope
-      - feature_property.property_type_scope
-      - site_property.property_type_scope
+      - abundance_property.property_group
+      - feature_property.property_group
+      - site_property.property_group
   ingesters:
     sead_change_request:
