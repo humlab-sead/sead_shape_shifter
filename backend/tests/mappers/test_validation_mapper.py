@@ -15,6 +15,7 @@ def test_from_core_issue_maps_validation_issue() -> None:
         category="data",
         priority="high",
         auto_fixable=False,
+        metadata={"expected_column": "sample_name"},
     )
 
     result = ValidationMapper.from_core_issue(issue, default_category=ValidationCategory.DATA)
@@ -26,6 +27,7 @@ def test_from_core_issue_maps_validation_issue() -> None:
     assert result.suggestion == "Fix the source schema"
     assert result.category == ValidationCategory.DATA
     assert result.priority == ValidationPriority.HIGH
+    assert result.metadata == {"expected_column": "sample_name"}
 
 
 def test_from_core_issue_maps_conformance_defaults() -> None:

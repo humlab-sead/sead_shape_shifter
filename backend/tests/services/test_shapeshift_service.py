@@ -11,6 +11,7 @@ from backend.app.models.shapeshift import ColumnInfo, PreviewResult
 from backend.app.services.shapeshift_service import PreviewResultBuilder, ShapeShiftCache, ShapeShiftService
 from src.model import ShapeShiftProject, TableConfig
 from src.specifications.constraints import ForeignKeyNullConstraintViolation
+from src.specifications.constraints import ValidationIssue as LinkerValidationIssue
 from src.table_store import TableStore
 
 # pylint: disable=redefined-outer-name, attribute-defined-outside-init
@@ -543,18 +544,58 @@ class TestShapeShiftService:
             mock_normalizer = MagicMock()
             mock_normalizer.normalize = AsyncMock()
             mock_normalizer.table_store = {"users": sample_dataframe}
+            mock_normalizer.unresolved_extra_columns = {}
+            linker_issue = LinkerValidationIssue(
+                issue_type="row_count_mismatch",
+                severity="warning",
+                local_entity="users",
+                remote_entity="accounts",
+                message="users -> accounts: join changed the row count",
+                metadata={"row_count_before": 3, "row_count_after": 2},
+            )
+            mock_normalizer.linker.validators = [MagicMock(issues=[linker_issue])]
             mock_normalizer_class.return_value = mock_normalizer
 
             # First call - should hit shapeshifter
             result1 = await shapeshift_service.preview_entity("test_project", "users", 50)
             assert result1.cache_hit is False
+            assert result1.validation_issues[0]["type"] == "row_count_mismatch"
 
             # Second call - should hit cache
             result2 = await shapeshift_service.preview_entity("test_project", "users", 50)
             assert result2.cache_hit is True
+            assert result2.validation_issues == result1.validation_issues
 
             # Verify shapeshifter was only called once
             assert mock_normalizer.normalize.call_count == 1
+
+    @pytest.mark.asyncio
+    async def test_warm_preview_returns_cached_validation_issues(
+        self,
+        shapeshift_service: ShapeShiftService,
+        sample_project: ShapeShiftProject,
+        sample_dataframe: pd.DataFrame,
+    ):
+        """A batch-warmed preview returns the findings stored with its DataFrame."""
+        validation_issue = {
+            "type": "row_count_mismatch",
+            "severity": "warning",
+            "local_entity": "users",
+            "remote_entity": "accounts",
+            "message": "users -> accounts: join changed the row count",
+            "metadata": {"row_count_before": 3, "row_count_after": 2},
+        }
+        shapeshift_service._warm_table_store = TableStore({"users": sample_dataframe})
+        shapeshift_service._warm_validation_issues = {"users": [validation_issue]}
+
+        with (
+            patch.object(shapeshift_service.project_cache, "get_project", new=AsyncMock(return_value=sample_project)),
+            patch.object(shapeshift_service, "get_project_version", return_value=1),
+        ):
+            result = await shapeshift_service.preview_entity("test_project", "users", 50)
+
+        assert result.cache_hit is True
+        assert result.validation_issues == [validation_issue]
 
     @pytest.mark.asyncio
     async def test_get_entity_sample(
