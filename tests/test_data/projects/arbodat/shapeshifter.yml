@@ -456,6 +456,17 @@ entities:
       dataset_submission_type_id: int
     values:
     - [1, 5]
+  data_provider:
+    type: fixed
+    public_id: data_provider_id
+    keys: [data_provider_code]
+    columns: [data_provider_code, data_provider_name, contact_id]
+    column_types:
+      data_provider_code: string
+      data_provider_name: string
+      contact_id: int
+    values:
+    - [1, 1, arbodat-pilot, Arbodat Pilot, null]
   dating:
     type: sql
     source:
