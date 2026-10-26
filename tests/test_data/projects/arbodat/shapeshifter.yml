@@ -1223,7 +1223,8 @@ entities:
     query: |-
       select distinct [Fustel], [EVNr], [NaturE]
       from [Projekte]
-      where [NaturE] is not null ;
+      where [NaturE] is not null
+        and [Fustel] is not NULL;
     foreign_keys:
     - entity: natural_region
       local_keys: '@value: entities.natural_region.keys'
