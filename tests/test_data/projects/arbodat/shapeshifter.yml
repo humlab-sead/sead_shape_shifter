@@ -307,7 +307,7 @@ entities:
     source:
     public_id: contact_type_id
     keys: [arbodat_code]
-    columns: [system_id, contact_type_id, contact_type, description, arbodat_code]
+    columns: [system_id, contact_type_id, contact_type_name, description, arbodat_code]
     values:
     - [1, null, Archaeologist, Name of scientist responsible for processing the archaeological material, ArchBear]
     - [2, null, Botanist, Name of scientist responsible for the botanical determination (possibly several persons), BotBear]
