@@ -951,7 +951,7 @@ entities:
   relative_dating:
     type: sql
     data_source: arbodat_data
-    public_id: relative_age_id
+    public_id: relative_date_id
     keys: [Projekt, Befu, ProbNr]
     columns: [Projekt, Befu, ProbNr, ArchDat]
     query: select [Projekt], [Befu], [ProbNr], [ArchDat] from [Proben] where [Projekt] in ('19_0014', '22_0005', '18_0025', '22_0015');
