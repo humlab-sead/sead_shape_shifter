@@ -132,9 +132,9 @@ class ConformanceValidationExecutor(WorkflowExecutor):
     def _execute(self, project: ShapeShiftProject, ignores: set[str]) -> WorkflowResult:
         """Run target-model conformance validation if the project defines a target model."""
 
-        def map_error_to_issue(error: ValidationError) -> ValidationIssue:
+        def map_validation_issue(error: ValidationError) -> ValidationIssue:
             return ValidationIssue(
-                severity="error",
+                severity=error.severity,
                 message=error.message,
                 entity=error.entity,
                 field=error.field,
@@ -154,8 +154,8 @@ class ConformanceValidationExecutor(WorkflowExecutor):
         errors: list[ValidationError] = TargetModelValidator().validate(target_model_data, project)
         return WorkflowResult(
             name="conformance",
-            passed=len(errors) == 0,
-            issues=[map_error_to_issue(e) for e in errors if e.code not in ignores],
+            passed=all(error.severity != "error" for error in errors),
+            issues=[map_validation_issue(e) for e in errors if e.code not in ignores],
         )
 
 
