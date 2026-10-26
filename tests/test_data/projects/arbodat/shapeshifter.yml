@@ -292,7 +292,7 @@ entities:
     depends_on: []
   contact:
     type: entity
-    source: helper_project_contact
+    source: project_contact_helper
     public_id: contact_id
     keys: []
     columns: [contact_name, contact_type]
@@ -300,7 +300,7 @@ entities:
     - entity: contact_type
       local_keys: [contact_type]
       remote_keys: [arbodat_code]
-    depends_on: [contact_type, helper_project_contact]
+    depends_on: [contact_type, project_contact_helper]
     drop_duplicates: true
     append:
       source:
@@ -443,7 +443,7 @@ entities:
     keys: [Projekt, Fraktion, contact_id]
     columns: [Projekt, Fraktion]
     foreign_keys:
-    - entity: helper_project_contact
+    - entity: project_contact_helper
       local_keys: [Projekt]
       remote_keys: [Projekt]
       extra_columns:
@@ -451,7 +451,7 @@ entities:
     - entity: contact
       local_keys: [contact_name]
       remote_keys: [contact_name]
-    depends_on: [helper_project_contact, contact, dataset, project]
+    depends_on: [project_contact_helper, contact, dataset, project]
     drop_duplicates: [Projekt, Fraktion, contact_id]
   dataset_submission:
     type: entity
@@ -1291,11 +1291,11 @@ entities:
         require_unique_left: false
         require_unique_right: false
         allow_row_decrease: true
-  helper_pcodes:
+  pcodes_helper:
     type: sql
     source:
     data_source: arbodat_data
-    public_id: _pcodes_id
+    public_id: helper_pcode_id
     keys: [PCODE]
     columns: [PCODE]
     query: select distinct [PCODE] from [Details] ;
@@ -1317,11 +1317,11 @@ entities:
     query: |-
       select distinct t.[PCODE], t.[BNam], t.[Name_E], t.[Fam], t.[S_Od], t.[TaxAut], t.[Achtung]
       from [ÖkoSozDaten] t ;
-    depends_on: [helper_pcodes]
+    depends_on: [pcodes_helper]
     filters:
     - type: exists_in
       column: PCODE
-      other_entity: helper_pcodes
+      other_entity: pcodes_helper
       other_column: PCODE
     extra_columns:
       author_id:
@@ -1484,14 +1484,17 @@ entities:
       local_keys: [PCODE]
       remote_keys: [PCODE]
     depends_on: [taxa]
-  helper_project_contact:
+  project_contact_helper:
     type: sql
     source:
     data_source: arbodat_data
     public_id: project_contact_id
     keys: [Projekt, contact_type, contact_name]
     columns: [Projekt, ArchAusg, ArchBear, BotBear]
-    query: select distinct [Projekt], [ArchAusg], [ArchBear], [BotBear] from [Projekte] ;
+    query: |-
+      select distinct [Projekt], [ArchAusg], [ArchBear], [BotBear]
+      from [Projekte]
+      where [Fustel] is not NULL;
     drop_duplicates: [Projekt, contact_type, contact_name]
     unnest:
       id_vars: [Projekt]
@@ -1744,7 +1747,7 @@ options:
   reconciliation: '@include: reconciliation.yml'
   finally:
     drop:
-      tables: [helper_pcodes, helper_project_contact]
+      tables: [pcodes_helper, project_contact_helper]
       columns:
       - site.public_id
       - project.public_id
