@@ -8,6 +8,7 @@ export type ValidationPriority = 'low' | 'medium' | 'high' | 'critical'
 export type DataValidationMode = 'sample' | 'complete'
 export type DataValidationStatus = 'completed' | 'partial' | 'failed' | 'skipped'
 export type EntityDataValidationStatus = 'completed' | 'failed' | 'skipped'
+export type ValidationMetadataValue = string | number | boolean | null | string[]
 
 export interface EntityDataValidationResult {
   status: EntityDataValidationStatus
@@ -26,6 +27,7 @@ export interface ValidationError {
   category?: ValidationCategory
   priority?: ValidationPriority
   auto_fixable?: boolean
+  metadata?: Record<string, ValidationMetadataValue>
 }
 
 export interface ValidationBranchGroup {
