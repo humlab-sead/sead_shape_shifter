@@ -178,8 +178,6 @@ entities:
     drop_duplicates: true
     drop_empty_rows: [property_value]
     check_functional_dependency: true
-    extra_columns:
-      property_type_scope: abundance_property_scope
     unnest:
       id_vars: [abundance_id, property_type_scope]
       value_vars:
@@ -195,11 +193,19 @@ entities:
       - AnmFrakt
       var_name: abundance_property_type
       value_name: property_value
+    extra_columns:
+      property_type_scope: abundance_property_scope
   property_type:
     type: fixed
     public_id: property_type_id
     keys: [property_type_scope, arbodat_code]
-    columns: [system_id, property_type_id, property_type_scope, arbodat_code, property_type_name, description]
+    columns:
+    - system_id
+    - property_type_id
+    - property_type_scope
+    - arbodat_code
+    - property_type_name
+    - description
     values:
     - [1, null, abundance_property_scope, rAnzahl, raw_count, Counted number of finds of one type of plant remains from a sieving fraction or parts of a sieving fraction]
     - [2, null, abundance_property_scope, rGewicht, raw_weight, Weight  of one type of plant remains from a sieving fraction or parts of a sieving fraction]
@@ -319,7 +325,16 @@ entities:
     type: fixed
     public_id: biblio_id
     keys: [title, year, authors]
-    columns: [bugs_reference, doi, isbn, notes, title, year, authors, full_reference, url]
+    columns:
+    - bugs_reference
+    - doi
+    - isbn
+    - notes
+    - title
+    - year
+    - authors
+    - full_reference
+    - url
     values: []
   coordinate_method_dimension:
     type: fixed
@@ -574,8 +589,6 @@ entities:
     - BestJa
     - Anmerkung
     query: select [Projekt], [Befu], [FlSchn], [BefuTyp], [FuTypVermut], [gebäud], [okBefu], [okErh], [BotBest], [BestJa], [Anmerkung] from [Befunde]
-    extra_columns:
-      feature_name: Befu
     foreign_keys:
     - entity: project
       local_keys: [Projekt]
@@ -588,6 +601,8 @@ entities:
       how: left
     depends_on: [project]
     drop_duplicates: [Projekt, Befu]
+    extra_columns:
+      feature_name: Befu
   feature_property:
     type: sql
     data_source: arbodat_data
@@ -627,8 +642,6 @@ entities:
     drop_duplicates: [Projekt, Befu, feature_property_type]
     drop_empty_rows: [property_value]
     check_functional_dependency: true
-    extra_columns:
-      property_type_scope: feature_property_scope
     unnest:
       id_vars: [Projekt, Befu, property_type_scope]
       value_vars:
@@ -640,6 +653,8 @@ entities:
       - Anmerkung
       var_name: feature_property_type
       value_name: property_value
+    extra_columns:
+      property_type_scope: feature_property_scope
   feature_type:
     type: fixed
     public_id: feature_type_id
@@ -1021,13 +1036,6 @@ entities:
     public_id: sample_group_id
     keys: [site_id, Projekt, Befu]
     columns: [site_id, Projekt, Befu]
-    depends_on: [feature]
-    drop_duplicates: true
-    extra_columns:
-      sample_group_name: Befu
-      sample_group_description:
-      sampling_context_id:
-      method_id: 0
     foreign_keys:
     - entity: site
       local_keys: [site_id]
@@ -1045,7 +1053,13 @@ entities:
         allow_unmatched_left: false
         allow_null_keys: false
         cardinality: many_to_one
-
+    depends_on: [feature]
+    drop_duplicates: true
+    extra_columns:
+      sample_group_name: Befu
+      sample_group_description:
+      sampling_context_id:
+      method_id: 0
   site:
     type: sql
     data_source: arbodat_data
@@ -1085,7 +1099,14 @@ entities:
     data_source: arbodat_data
     public_id: site_location_id
     keys: [Fustel, EVNr, location_type]
-    columns: [Fustel, EVNr, Ort, Kreis, Land, Staat, FlurStr] 
+    columns:
+    - Fustel
+    - EVNr
+    - Ort
+    - Kreis
+    - Land
+    - Staat
+    - FlurStr
     query: select distinct [Fustel], [EVNr], [Ort], [Kreis], [Land], [Staat], [FlurStr] from [Projekte];
     foreign_keys:
     - entity: site
@@ -1103,13 +1124,13 @@ entities:
         require_unique_left: false
         allow_null_keys: false
     drop_duplicates: true
+    drop_empty_rows: [location_name]
     check_functional_dependency: true
     unnest:
       id_vars: [Fustel, EVNr]
       value_vars: [Ort, Kreis, Land, Staat, FlurStr]
       var_name: location_type
       value_name: location_name
-    drop_empty_rows: [location_name]
   site_natural_region:
     type: sql
     data_source: arbodat_data
@@ -1167,8 +1188,6 @@ entities:
     drop_duplicates: [Fustel, EVNr, site_property_type]
     drop_empty_rows: [Fustel]
     check_functional_dependency: false
-    extra_columns:
-      property_type_scope: site_property_scope
     filters:
     - type: query
       query: '~property_value.isnull() '
@@ -1178,6 +1197,8 @@ entities:
       value_vars: '@value: entities.site_property.columns'
       var_name: site_property_type
       value_name: property_value
+    extra_columns:
+      property_type_scope: site_property_scope
   site_type_group:
     type: fixed
     public_id: site_type_group_id
@@ -1739,35 +1760,3 @@ options:
       - site_property.property_type_scope
   ingesters:
     sead_change_request:
-    
-    # sead:
-    #   data_source: sead
-    #   options:
-    #     transfer_format: csv
-    #     ignore_columns: [date_updated, '*_uuid', (*]
-    #   policies:
-    #     if_foreign_key_value_is_missing_add_identity_mapping_to_foreign_key_table:
-    #       priority: 1
-    #     set_public_id_to_negative_system_id_for_new_lookups:
-    #       disabled: true
-    #     update_missing_foreign_key_policy:
-    #       tbl_dataset_contacts:
-    #         contact_type_id: 2
-    #         contact_id: 1
-    #     if_lookup_table_is_missing_add_table_using_system_id_as_public_id:
-    #       tables:
-    #       - tbl_abundance_elements
-    #       - tbl_contact_types
-    #       - tbl_dataset_submission_types
-    #       - tbl_location_types
-    #       - tbl_project_types
-    #       - tbl_project_stages
-    #       - tbl_relative_ages
-    #       - tbl_sample_group_sampling_contexts
-    #       - tbl_sample_types
-    #       preallocated_tables: []
-    #     if_lookup_with_no_new_data_then_keep_only_system_id_public_id:
-    #       priority: 9
-    #     drop_ignored_columns:
-    #       priority: 3
-    #       columns: [date_updated, '*_uuid']
