@@ -569,6 +569,8 @@ entities:
     - BestJa
     - Anmerkung
     query: select [Projekt], [Befu], [FlSchn], [BefuTyp], [FuTypVermut], [gebäud], [okBefu], [okErh], [BotBest], [BestJa], [Anmerkung] from [Befunde]
+    extra_columns:
+      feature_name: Befu
     foreign_keys:
     - entity: project
       local_keys: [Projekt]
