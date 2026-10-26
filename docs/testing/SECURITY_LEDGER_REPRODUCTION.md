@@ -179,4 +179,4 @@ The two captures must match. Any difference means the run reached the host.
 - Security Hardening Follow-up proposal and phase plan:
   [../proposals/SECURITY_HARDENING_FOLLOWUP/SECURITY_HARDENING_FOLLOWUP.md](../proposals/SECURITY_HARDENING_FOLLOWUP/SECURITY_HARDENING_FOLLOWUP.md)
 - Testing strategy and commands: [../TESTING.md](../TESTING.md)
-- Container build and run: [../../container/README.md](../../container/README.md)
+- Container build and run: [../../deployment/container/README.md](../../deployment/container/README.md)

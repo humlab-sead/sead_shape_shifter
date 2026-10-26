@@ -7,6 +7,7 @@ export * from './projects'
 export * from './entities'
 export * from './validation'
 export * from './data-sources'
+export * from './data-providers'
 export * from './data-source-files'
 export * from './sessions'
 export * from './reconciliation'
@@ -20,6 +21,7 @@ import { projectsApi } from './projects'
 import { entitiesApi } from './entities'
 import { validationApi } from './validation'
 import { dataSourcesApi } from './data-sources'
+import { dataProvidersApi } from './data-providers'
 import { dataSourceFilesApi } from './data-source-files'
 import { sessionsApi } from './sessions'
 import { reconciliationSpecApi } from './reconciliation'
@@ -33,6 +35,7 @@ export const api = {
   entities: entitiesApi,
   validation: validationApi,
   dataSources: dataSourcesApi,
+  dataProviders: dataProvidersApi,
   dataSourceFiles: dataSourceFilesApi,
   sessions: sessionsApi,
   reconciliationSpec: reconciliationSpecApi,

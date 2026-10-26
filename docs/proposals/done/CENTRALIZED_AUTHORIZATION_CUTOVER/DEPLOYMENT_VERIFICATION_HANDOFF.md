@@ -51,8 +51,8 @@ Evidence for all of the above is recorded in [SECURITY_CHECK.md](../../done/MITI
 | [SECURITY_CHECK.md](../../done/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md#deployment-verification-record-2026-09-15) | Release identity, checks performed, defects, and limitations from the 2026-09-15 run |
 | [SECURITY_CHECK.md](../../done/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md#live-read-only-role-verification-2026-09-16) | Database grant checks and results against the live test database |
 | [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md#phase-5-verify-podman-deployment-and-update-security-record) | Deployment record and release disposition that consume these results |
-| [container/DEPLOYMENT.md](../../../../container/DEPLOYMENT.md) | Build, service install, and proxy setup for the Podman deployment |
-| [container/scripts/service.sh](../../../../container/scripts/service.sh) | Service control actions: install, enable, disable, start, stop, restart, status, logs |
+| [container/DEPLOYMENT.md](../../../../deployment/container/DEPLOYMENT.md) | Build, service install, and proxy setup for the Podman deployment |
+| container/scripts/service.sh | Service control actions: install, enable, disable, start, stop, restart, status, logs |
 | [OPERATIONS.md](../../../OPERATIONS.md#post-deployment-verification) | Current post-deployment verification and [rollback](../../../OPERATIONS.md#rollback) guidance; still written for Docker Compose, so treat the commands as needs-rewrite |
 
 ## Next Actions

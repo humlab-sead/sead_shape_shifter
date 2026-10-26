@@ -39,10 +39,7 @@ export const materializationApi = {
   /**
    * Check if an entity can be materialized
    */
-  async canMaterialize(
-    projectName: string,
-    entityName: string
-  ): Promise<CanMaterializeResponse> {
+  async canMaterialize(projectName: string, entityName: string): Promise<CanMaterializeResponse> {
     const response = await apiClient.get<CanMaterializeResponse>(
       `/projects/${projectName}/entities/${entityName}/can-materialize`
     )

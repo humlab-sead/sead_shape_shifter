@@ -8,6 +8,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from backend.app.api.dependencies import get_data_source_service
+from backend.app.api.v1.endpoints import query as query_endpoint
 from backend.app.api.v1.endpoints.query import get_query_service
 from backend.app.authorization.dependencies import get_authorization_service
 from backend.app.authorization.models import Grant, ResourceRecord, ResourceType
@@ -64,6 +65,9 @@ def _authorization_repository(tmp_path):
     resource = ResourceRecord(uuid4(), ResourceType.SHARED_DATA_SOURCE, "authorized-source")
     repository.create_resource(resource)
     repository.add_grant(Grant("alice", resource.resource_id, "reader", datetime.now(UTC), "admin"))
+    project = ResourceRecord(uuid4(), ResourceType.PROJECT, "Roger-test")
+    repository.create_resource(project)
+    repository.add_grant(Grant("alice", project.resource_id, "viewer", datetime.now(UTC), "admin"))
     yield repository
     repository.close()
 
@@ -205,3 +209,40 @@ async def test_introspect_query_columns_uses_authorized_shared_source(
     assert response.json() == {"columns": ["id"]}
     mock_data_source_service.load_data_source.assert_called_once_with("authorized-source", strict=True)
     mock_query_service.introspect_query_columns.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_introspect_query_columns_uses_project_access_when_project_name_is_supplied(
+    query_dependencies,  # pylint: disable=unused-argument
+    mock_data_source_service: MagicMock,
+    mock_query_service: MagicMock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    resolve_config = MagicMock(return_value=mock_data_source_service.load_data_source.return_value)
+    monkeypatch.setattr(query_endpoint, "_resolve_data_source_config", resolve_config)
+
+    async with _client_for_principal("alice") as client:
+        response = await client.post(
+            "/api/v1/data-sources/SEAD/query/columns?project_name=Roger-test",
+            json={"query": "SELECT id FROM table1"},
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {"columns": ["id"]}
+    resolve_config.assert_called_once()
+    assert resolve_config.call_args.args[:3] == ("SEAD", mock_data_source_service, "Roger-test")
+    mock_query_service.introspect_query_columns.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_introspect_query_columns_conceals_unreadable_project(
+    query_dependencies,  # pylint: disable=unused-argument
+) -> None:
+    async with _client_for_principal("bob") as client:
+        response = await client.post(
+            "/api/v1/data-sources/SEAD/query/columns?project_name=Roger-test",
+            json={"query": "SELECT id FROM table1"},
+        )
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Resource not found"}

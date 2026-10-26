@@ -21,6 +21,22 @@ def test_authorization_database_cannot_be_stored_in_project_data(tmp_path) -> No
         )
 
 
+def test_authorization_database_cannot_be_stored_in_shared_target_models(tmp_path) -> None:
+    with pytest.raises(ValueError, match="AUTHORIZATION_DATABASE_PATH"):
+        Settings(
+            APPLICATION_ROOT=tmp_path,
+            AUTHORIZATION_DATABASE_PATH=tmp_path / "shared/target-models/authorization.sqlite3",
+        )
+
+
+def test_authorization_database_cannot_be_stored_in_shared_data_providers(tmp_path) -> None:
+    with pytest.raises(ValueError, match="AUTHORIZATION_DATABASE_PATH"):
+        Settings(
+            APPLICATION_ROOT=tmp_path,
+            AUTHORIZATION_DATABASE_PATH=tmp_path / "shared/data-providers/authorization.sqlite3",
+        )
+
+
 def test_development_principal_is_rejected_in_production(tmp_path) -> None:
     with pytest.raises(ValueError, match="DEVELOPMENT_PRINCIPAL_ID"):
         Settings(
@@ -70,7 +86,7 @@ def test_debug_startup_logs_bootstrap_command_only_when_opted_in(tmp_path, monke
     )
     try:
         _log_development_authorization_bootstrap_hint()
-        assert messages == []
+        assert not messages
 
         monkeypatch.setattr(settings, "AUTHORIZATION_DEV_BOOTSTRAP_HINT_ENABLED", True)
         _log_development_authorization_bootstrap_hint()

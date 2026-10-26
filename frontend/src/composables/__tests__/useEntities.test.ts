@@ -96,9 +96,7 @@ describe('useEntities', () => {
       const store = useEntityStore()
       const { entities } = useEntitiesInSetup({ projectName: 'test-project', autoFetch: false })
 
-      const mockEntities: EntityResponse[] = [
-        createEntityResponse('entity1', { type: 'table', table: 'table1' }),
-      ]
+      const mockEntities: EntityResponse[] = [createEntityResponse('entity1', { type: 'table', table: 'table1' })]
 
       store.$patch((state) => {
         state.entities = mockEntities

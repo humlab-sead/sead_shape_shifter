@@ -6,8 +6,8 @@ This folder collects the operational decisions and validation gates for adopting
 
 - [SIMS-SEAD trust-contract adoption proposal](./SIMS_SEAD_TRUST_CONTRACT_ADOPTION_PROPOSAL.md) — adoption scope, cutover rules, deployment gates, and acceptance criteria.
 - [SIMS identity allocation operational plan](./SIMS_IDENTITY_ALLOCATION_OPERATIONAL_PLAN.md) — backfill, cross-schema coverage, sequence ownership, and missing UUID decisions.
-- [PostgreSQL contract validation handoff](./POSTGRESQL_CONTRACT_VALIDATION.md) — disposable-database procedure and the current generated-artifact blocker.
-- [Submission metadata proposal](../REFACTOR_SEAD_SUBMISSION_METADATA.md) — implemented package contract and unresolved upstream schema dependencies.
+- [PostgreSQL contract validation handoff](../done/POSTGRESQL_CONTRACT_VALIDATION.md) — disposable-database procedure and passing checks for both generated-artifact strategies.
+- [Completed submission metadata proposal](../done/REFACTOR_SEAD_SUBMISSION_METADATA/REFACTOR_SEAD_SUBMISSION_METADATA.md) — implemented package contract; upstream schema deployment and compatibility remain release dependencies.
 
 ## Gates To Resolve
 
@@ -16,8 +16,7 @@ This folder collects the operational decisions and validation gates for adopting
 3. Backfill existing SEAD IDs and UUIDs into an initially empty SIMS store. Require every tracked SEAD row to match SIMS; SIMS-only identities are allowed.
 4. Order writer changes so no tracked-entity writer change is applied after backfill completes. Initialize SIMS allocators above existing SEAD IDs before new allocations are enabled.
 5. Confirm the submission schema, required legacy migration, and any required compatibility behavior are deployed before generated packages are eligible. The upstream release and compatibility-view owner remain to be confirmed.
-6. Resolve the generated-artifact sequence-safety failure before deployment. The current disposable test packages leave submission and dataset sequences behind explicitly inserted IDs; do not deploy those packages. Validate both inline INSERT and copy-CSV output after the identity and sequence contract is corrected.
-7. Prevent a regenerated package from becoming eligible until the earlier package for the same logical submission has been withdrawn or superseded. SIMS Binding Set status does not revoke generated SQL.
-8. Run SEAD-to-SIMS coverage, UUID parity, allocator, sequence-safety, and SEAD persistence checks before adoption. Do not use SIMS as the enforcement mechanism for SEAD database integrity.
+6. Prevent a regenerated package from becoming eligible until the earlier package for the same logical submission has been withdrawn or superseded. SIMS Binding Set status does not revoke generated SQL.
+7. Run SEAD-to-SIMS coverage, UUID parity, allocator, sequence-safety, and SEAD persistence checks before adoption. Submission and dataset sequence advancement passed package-level checks on disposable clones; broader cutover checks remain. Do not use SIMS as the enforcement mechanism for SEAD database integrity.
 
-Closed artifact-format and renderer work remains documented under [done/CHANGE_REQUEST_INGESTER_DELIVERY_1](../done/CHANGE_REQUEST_INGESTER_DELIVERY_1); it describes implementation history, not cutover approval.
+Closed artifact-format and renderer work remains documented under [done/CHANGE_REQUEST_INGESTER_MVP](../done/CHANGE_REQUEST_INGESTER_MVP); it describes implementation history, not cutover approval.

@@ -5,7 +5,7 @@
         <v-icon class="mr-2" color="primary">mdi-magnify</v-icon>
         Search for Alternative Match
       </v-card-title>
-      
+
       <v-card-subtitle v-if="originalQuery" class="mt-2">
         <span class="text-grey">Original:</span>
         <v-chip size="small" class="ml-2">{{ originalQuery }}</v-chip>
@@ -31,7 +31,7 @@
         <div v-if="searched" class="mt-4">
           <v-list v-if="suggestions.length > 0" density="compact">
             <v-list-subheader>{{ suggestions.length }} Results</v-list-subheader>
-            
+
             <v-list-item
               v-for="(suggestion, idx) in suggestions"
               :key="idx"
@@ -82,13 +82,7 @@
       <v-card-actions>
         <v-spacer />
         <v-btn variant="text" @click="cancel">Cancel</v-btn>
-        <v-btn 
-          color="primary" 
-          variant="tonal"
-          :disabled="!selectedSuggestion" 
-          @click="accept"
-          prepend-icon="mdi-check"
-        >
+        <v-btn color="primary" variant="tonal" :disabled="!selectedSuggestion" @click="accept" prepend-icon="mdi-check">
           Accept Match
         </v-btn>
       </v-card-actions>
@@ -128,16 +122,19 @@ const suggestions = ref<ReconciliationCandidate[]>([])
 const selectedSuggestion = ref<ReconciliationCandidate | null>(null)
 
 // Watch for external model value changes
-watch(() => props.modelValue, (newValue) => {
-  dialogVisible.value = newValue
-  if (newValue) {
-    // Reset on open
-    searchTerm.value = props.originalQuery || ''
-    selectedSuggestion.value = null
-    searched.value = false
-    suggestions.value = []
+watch(
+  () => props.modelValue,
+  (newValue) => {
+    dialogVisible.value = newValue
+    if (newValue) {
+      // Reset on open
+      searchTerm.value = props.originalQuery || ''
+      selectedSuggestion.value = null
+      searched.value = false
+      suggestions.value = []
+    }
   }
-})
+)
 
 // Dialog visibility change
 function onDialogChange(value: boolean) {

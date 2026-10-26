@@ -1,0 +1,9 @@
+# MAL pilot provider record.
+#
+# Reviewed registry data: see README.md in this directory. The scope names are
+# stable identity contracts and must not change after a project binds to them.
+code: mal
+name: MAL
+schemas:
+  - provider_schema: archeobotany/mal
+    scope_name: provider://mal/archeobotany/mal

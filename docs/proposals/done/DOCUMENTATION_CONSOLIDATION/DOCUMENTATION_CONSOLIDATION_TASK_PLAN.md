@@ -61,7 +61,7 @@
 | `.github/instructions/readme.instructions.md:21,30,46`; `.github/instructions/operations.instructions.md:72,73,79` | Agent instruction files name `docker/README.md` and `docker/docker-compose.yml` as trusted sources. | These must be updated in Area 2 or the instructions keep sending agents to deleted files. |
 | `docs/README.md` (302 lines) | Omits `DIAGRAMS.md`, `GLOSSARY.md`, `SQL_SAFETY_POLICY.md`, `TARGET_MODEL_GUIDE.md`, `TARGET_MODEL_SCHEMA_REFERENCE.md`, and the deployment docs. Repeats navigation at lines 228–255 and duplicates the proposal inventory at lines 118–204. | Area 1 rebuilds it as a complete map. |
 | `docs/DIAGRAMS.md` (1397 lines) | Section numbers present: 1–9, 11, 12, 14–26. Sections 10 and 13 do not exist. Sections 1–3 and 11–12 are narrative, not diagrams. Section 12 spans lines 643–799. | Area 5 moves narrative out and renumbers. |
-| `docs/USER_GUIDE.md:533` | `[docs/CONFIGURATION_GUIDE.md](docs/CONFIGURATION_GUIDE.md)` resolves to `docs/docs/CONFIGURATION_GUIDE.md`. | Area 1 fixes it; Area 5 audits the rest of the guide. |
+| `docs/USER_GUIDE.md:533` | `[docs/CONFIGURATION_GUIDE.md](../../../CONFIGURATION_GUIDE.md)` resolves to `docs/docs/CONFIGURATION_GUIDE.md`. | Area 1 fixes it; Area 5 audits the rest of the guide. |
 | Link scan of five documents | Broken: `docs/README.md` → `proposals/future/AI_PROJECT_ADVISOR_PROPOSAL.md`, `proposals/future/COMMENT_PRESERVING_SAVE_PATH.md`, `proposals/future/COMMENT_PRESERVING_SAVE_PATH_IMPLEMENTATION_SKETCH.md`; `docs/USER_GUIDE.md` → `docs/CONFIGURATION_GUIDE.md`. The AI advisor material is now under `docs/proposals/SHAPESHIFTER_PROJECT_AI_ADVISOR/`; the comment-preserving files are under `docs/proposals/done/`. | These four links are the full verified broken set. This is new evidence; the original review listed only the `USER_GUIDE.md` link. |
 | `git log --all --diff-filter=D` and `git ls-files` | No `DOCKER_TO_PODMAN_MIGRATION.md` was ever tracked or deleted. No `SUMMARY.md`, `INDEX.md`, or `QUICK_REFERENCE.md` is tracked in any branch. | Finding 3 is not reproducible. Do not spend edits on it. |
 | `.github/workflows/` | Contains only `release.yml` (semantic-release). No push or PR test workflow exists. | A CI link check would require a new workflow. Makefile integration is the in-scope guard. |
@@ -105,7 +105,7 @@
 
 - [x] `T1.1` **Complete:** Correct the broken link at `docs/USER_GUIDE.md:533`.
   - **Target:** `docs/USER_GUIDE.md`, section 7 (fixed entities).
-  - **Current → required:** `[docs/CONFIGURATION_GUIDE.md](docs/CONFIGURATION_GUIDE.md)` → `[CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md)`, because the page lives in `docs/`.
+  - **Current → required:** `[docs/CONFIGURATION_GUIDE.md](../../../CONFIGURATION_GUIDE.md)` → `[CONFIGURATION_GUIDE.md](../../../CONFIGURATION_GUIDE.md)`, because the page lives in `docs/`.
   - **Implementation:** Single-link edit. Do not change surrounding prose.
   - **Validation:** `V-1`; the scan reports no `docs/USER_GUIDE.md` entries.
 

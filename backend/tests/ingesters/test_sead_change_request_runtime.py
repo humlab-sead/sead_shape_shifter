@@ -4,6 +4,7 @@ import os
 from datetime import datetime
 from types import SimpleNamespace
 from typing import Any, cast
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID, uuid4
 
 import httpx
@@ -13,6 +14,7 @@ import pytest
 from psycopg import sql
 
 from backend.app.clients.sims_client import SimsClient
+from backend.app.ingesters.protocol import IngesterConfig
 from backend.app.models.reconciliation import ReconciliationCandidate
 from backend.app.models.sims import ResolveRequest, ResolveResponse
 from backend.app.services.ingester_runtime import (
@@ -22,8 +24,12 @@ from backend.app.services.ingester_runtime import (
 )
 from ingesters.sead_change_request import ChangeRowState, orchestrate_identity_assignments
 from ingesters.sead_change_request.contracts import PlannedRowAction, PlannedTable, SimsResolveItem, SubmissionContext
+from ingesters.sead_change_request.input_resolution import SubmissionContextError, resolve_inputs
 
 # pylint: disable=unused-argument
+
+TEST_SCOPE_NAME = "provider://mal/test-pilot"
+"""Provider-schema scope used by adapter tests instead of a project-name fallback."""
 
 
 class FakeBackendReconciliationClient:
@@ -70,7 +76,7 @@ class FakeBackendSimsClient:
         self.resolve_requests: list[object] = []
         self.associated_change_requests: list[tuple[UUID, str]] = []
 
-    async def resolve(self, request: object) -> FakeResolveResponse:
+    async def resolve(self, request: ResolveRequest) -> FakeResolveResponse:
         self.resolve_requests.append(request)
         if self.resolve_error is not None:
             raise self.resolve_error
@@ -93,6 +99,7 @@ def minimal_submission_context() -> SubmissionContext:
         submission_name="test-submission",
         project_name="test-project",
         timestamp=datetime.fromisoformat("2026-05-23T23:10:00"),
+        scope_name=TEST_SCOPE_NAME,
     )
 
 
@@ -166,6 +173,7 @@ class TestSeadChangeRequestSimsAdapter:
                 submission_name="test-submission",
                 project_name="test-project",
                 timestamp=datetime.fromisoformat("2026-05-23T23:10:00"),
+                scope_name=TEST_SCOPE_NAME,
             ),
         )
 
@@ -186,6 +194,7 @@ class TestSeadChangeRequestSimsAdapter:
                 submission_name="test-submission",
                 project_name="test-project",
                 timestamp=datetime.fromisoformat("2026-05-23T23:10:00"),
+                scope_name=TEST_SCOPE_NAME,
             ),
         )
 
@@ -203,6 +212,7 @@ class TestSeadChangeRequestSimsAdapter:
             project_name="test-project",
             timestamp=datetime.fromisoformat("2026-05-23T23:10:00"),
             run_id="run-123",
+            scope_name=TEST_SCOPE_NAME,
         )
 
         result = await adapter.resolve_batch(
@@ -228,6 +238,7 @@ class TestSeadChangeRequestSimsAdapter:
             submission_name="test-submission",
             project_name="test-project",
             timestamp=datetime.fromisoformat("2026-05-23T23:10:00"),
+            scope_name=TEST_SCOPE_NAME,
         )
 
         await adapter.resolve_batch([SimsResolveItem(entity_name="sample", row={"name": "A"})], context)
@@ -347,7 +358,7 @@ async def test_approved_site_match_through_real_sims_service():
     source_key = f"shape-shifter-approved-site-{uuid4().hex}"
     scope_name = f"sead://test-integration/shape-shifter/{uuid4().hex}"
     sims_client = RecordingSimsClient(base_url)
-    adapter = SeadChangeRequestSimsAdapter(sims_client, scope_name=scope_name, created_by="local-disposable-verification")
+    adapter = SeadChangeRequestSimsAdapter(sims_client, created_by="local-disposable-verification")
 
     async def resolve_site(submission_name: str, target_id: int):
         frame = pd.DataFrame({"site_name": [source_key]})
@@ -360,6 +371,7 @@ async def test_approved_site_match_through_real_sims_service():
             submission_name=submission_name,
             project_name="shape-shifter-disposable-verification",
             timestamp=datetime.now(),
+            scope_name=scope_name,
         )
         return await orchestrate_identity_assignments(
             [planned_table],
@@ -408,7 +420,7 @@ async def test_reconciliation_miss_allocates_site_through_real_sims_service():
     source_key = f"ss-verify-site-{uuid4().hex}"
     scope_name = f"sead://test-integration/shape-shifter/{uuid4().hex}"
     sims_client = RecordingSimsClient(base_url)
-    adapter = SeadChangeRequestSimsAdapter(sims_client, scope_name=scope_name, created_by="local-disposable-verification")
+    adapter = SeadChangeRequestSimsAdapter(sims_client, created_by="local-disposable-verification")
     reconciliation_client = FakeReconciliationClient(target_id=None)
 
     async def resolve_site(submission_name: str):
@@ -422,6 +434,7 @@ async def test_reconciliation_miss_allocates_site_through_real_sims_service():
             submission_name=submission_name,
             project_name="shape-shifter-disposable-verification",
             timestamp=datetime.now(),
+            scope_name=scope_name,
         )
         return await orchestrate_identity_assignments(
             [planned_table],
@@ -461,8 +474,8 @@ async def test_reconciliation_miss_allocates_site_through_real_sims_service():
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_target_sequence_reservation_uses_loopback_disposable_postgres():
-    """Reserve submission_id from the helper-owned local PostgreSQL sequence."""
+async def test_target_verification_reads_do_not_advance_database_sequence():
+    """Target verification reads leave the submission sequence unchanged."""
     host = os.getenv("SEAD_DISPOSABLE_POSTGRES_HOST")
     port = os.getenv("SEAD_DISPOSABLE_POSTGRES_PORT")
     dbname = os.getenv("SEAD_DISPOSABLE_POSTGRES_DB")
@@ -495,14 +508,249 @@ async def test_target_sequence_reservation_uses_loopback_disposable_postgres():
             previous_value, was_called = await cursor.fetchone()
 
     checker = SeadChangeRequestTargetCollisionChecker(**connection_kwargs)
-    reserved_id = await checker.reserve_target_id("tbl_submissions", "submission_id")
+    await checker.target_id_exists("tbl_submissions", "submission_id", previous_value)
+    await checker.row_exists("tbl_submissions", {"submission_id": previous_value})
 
     async with await psycopg.AsyncConnection.connect(**connection_kwargs) as connection:
         async with connection.cursor() as cursor:
             await cursor.execute(sql.SQL("SELECT last_value, is_called FROM {}").format(sequence_identifier))
             current_value, is_called = await cursor.fetchone()
 
-    expected_id = previous_value + 1 if was_called else previous_value
-    assert reserved_id == expected_id
-    assert current_value == reserved_id
-    assert is_called is True
+    assert (current_value, is_called) == (previous_value, was_called)
+
+
+class TestTrustedScopeAndBusinessKeys:
+    """Tests for the trusted scope input and declared-key identity values."""
+
+    @pytest.mark.asyncio
+    async def test_adapter_requires_the_trusted_scope_instead_of_a_project_fallback(self):
+        sims_client = FakeBackendSimsClient(lifecycle_state="confirmed", target_id=501)
+        adapter = SeadChangeRequestSimsAdapter(cast(Any, sims_client))
+
+        with pytest.raises(ValueError, match="provider-schema pair must supply it"):
+            await adapter.allocate_entity(
+                "sample",
+                {"name": "A"},
+                SubmissionContext(
+                    submission_name="test-submission",
+                    project_name="test-project",
+                    timestamp=datetime.fromisoformat("2026-05-23T23:10:00"),
+                ),
+            )
+
+        assert not sims_client.resolve_requests
+
+    def test_caller_scope_override_is_rejected_before_any_source_read(self, tmp_path):
+        config = IngesterConfig(
+            host="localhost",
+            port=5432,
+            dbname="",
+            user="",
+            extra={
+                "target_model": {"model": {"name": "Test", "version": "1"}, "entities": {}, "constraints": []},
+                "submission_context": {
+                    "submission_name": "test-submission",
+                    "project_name": "test-project",
+                    "timestamp": "2026-05-23T23:10:00",
+                    "datatype": "mal",
+                    "identifier": "TEST_SUBMISSION",
+                },
+                "sims_scope_name": "provider://other/scope",
+            },
+        )
+
+        with pytest.raises(SubmissionContextError, match="cannot select the Change Request scope"):
+            resolve_inputs(config, {"site": pd.DataFrame({"site_id": [1]})})
+
+    @pytest.mark.asyncio
+    async def test_declared_business_keys_serialize_the_identity_value(self):
+        sims_client = FakeBackendSimsClient(lifecycle_state="confirmed", target_id=501)
+        adapter = SeadChangeRequestSimsAdapter(cast(Any, sims_client), business_keys={"site": ("site_name", "site_code")})
+
+        await adapter.allocate_entity(
+            "site",
+            {"site_name": "A", "site_code": 7, "unrelated": "ignored"},
+            minimal_submission_context(),
+        )
+
+        identity_value = sims_client.resolve_requests[0].requests[0].primary_signal.identity_value
+        assert identity_value == '[1,[["site_name","string","A"],["site_code","number","7"]]]'
+
+    @pytest.mark.asyncio
+    async def test_declared_business_key_reuses_target_identity_across_runs(self):
+        class StatefulBackendSimsClient(FakeBackendSimsClient):
+            """Return the same target ID for a provider scope and business-key identity."""
+
+            def __init__(self) -> None:
+                super().__init__()
+                self.identity_ids: dict[tuple[str, str], int] = {}
+
+            async def resolve(self, request: object) -> FakeResolveResponse:
+                self.resolve_requests.append(request)
+                scope_name = request.scope_name
+                identity_value = request.requests[0].primary_signal.identity_value
+                identity_key = (scope_name, identity_value)
+                target_id = self.identity_ids.setdefault(identity_key, 500 + len(self.identity_ids))
+                return FakeResolveResponse(self.binding_set_uuid, self.lifecycle_state, target_id=target_id)
+
+        sims_client = StatefulBackendSimsClient()
+        adapter = SeadChangeRequestSimsAdapter(
+            cast(Any, sims_client),
+            business_keys={"site": ("site_name", "site_code")},
+        )
+        row = {"site_name": "A", "site_code": "7"}
+
+        first = await adapter.allocate_entity(
+            "site",
+            row,
+            SubmissionContext(
+                submission_name="test-submission",
+                project_name="test-project",
+                timestamp=datetime.fromisoformat("2026-05-23T23:10:00"),
+                scope_name=TEST_SCOPE_NAME,
+                run_id="first-run",
+            ),
+        )
+        second = await adapter.allocate_entity(
+            "site",
+            row,
+            SubmissionContext(
+                submission_name="test-submission",
+                project_name="test-project",
+                timestamp=datetime.fromisoformat("2026-05-23T23:10:00"),
+                scope_name=TEST_SCOPE_NAME,
+                run_id="second-run",
+            ),
+        )
+        different_key = await adapter.allocate_entity(
+            "site",
+            {"site_name": "B", "site_code": "8"},
+            SubmissionContext(
+                submission_name="test-submission",
+                project_name="test-project",
+                timestamp=datetime.fromisoformat("2026-05-23T23:10:00"),
+                scope_name=TEST_SCOPE_NAME,
+                run_id="third-run",
+            ),
+        )
+        different_scope = await adapter.allocate_entity(
+            "site",
+            row,
+            SubmissionContext(
+                submission_name="test-submission",
+                project_name="test-project",
+                timestamp=datetime.fromisoformat("2026-05-23T23:10:00"),
+                scope_name="provider://mal/other-project",
+                run_id="fourth-run",
+            ),
+        )
+
+        assert first["target_id"] == second["target_id"]
+        assert different_key["target_id"] != first["target_id"]
+        assert different_scope["target_id"] != first["target_id"]
+        assert [request.run_id for request in sims_client.resolve_requests] == ["first-run", "second-run", "third-run", "fourth-run"]
+        assert {request.scope_name for request in sims_client.resolve_requests} == {TEST_SCOPE_NAME, "provider://mal/other-project"}
+        assert (
+            sims_client.resolve_requests[0].requests[0].primary_signal.identity_value
+            == sims_client.resolve_requests[1].requests[0].primary_signal.identity_value
+        )
+
+    @pytest.mark.asyncio
+    async def test_invalid_declared_business_key_fails_before_sims_request(self):
+        sims_client = FakeBackendSimsClient(lifecycle_state="confirmed", target_id=501)
+        adapter = SeadChangeRequestSimsAdapter(cast(Any, sims_client), business_keys={"site": ("site_name", "site_code")})
+
+        with pytest.raises(ValueError, match="Cannot serialize declared business key for entity 'site'"):
+            await adapter.allocate_entity("site", {"site_name": "A"}, minimal_submission_context())
+
+        assert not sims_client.resolve_requests
+
+    @pytest.mark.asyncio
+    async def test_entity_without_declared_keys_keeps_the_field_based_identity(self):
+        sims_client = FakeBackendSimsClient(lifecycle_state="confirmed", target_id=501)
+        adapter = SeadChangeRequestSimsAdapter(cast(Any, sims_client), business_keys={})
+
+        await adapter.allocate_entity("sample", {"sample_id": None, "name": "A"}, minimal_submission_context())
+
+        identity_value = sims_client.resolve_requests[0].requests[0].primary_signal.identity_value
+        assert identity_value == "sample:name=A"
+
+
+class TestTargetCollisionCheckerColumnType:
+    """Tests for read-only target public-ID type lookup."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("table_name", "default_schema", "expected_schema", "expected_table"),
+        [
+            ("tbl_locations", "sead", "sead", "tbl_locations"),
+            ("archive.tbl_locations", "sead", "archive", "tbl_locations"),
+        ],
+    )
+    async def test_type_lookup_uses_qualified_or_default_schema(self, table_name, default_schema, expected_schema, expected_table):
+        cursor = MagicMock()
+        cursor.execute = AsyncMock()
+        cursor.fetchone = AsyncMock(return_value=("integer",))
+        cursor.__aenter__ = AsyncMock(return_value=cursor)
+        cursor.__aexit__ = AsyncMock(return_value=None)
+        connection = MagicMock()
+        connection.cursor = MagicMock(return_value=cursor)
+        connection.__aenter__ = AsyncMock(return_value=connection)
+        connection.__aexit__ = AsyncMock(return_value=None)
+        checker = SeadChangeRequestTargetCollisionChecker(
+            host="localhost",
+            port=5432,
+            dbname="test_db",
+            user="test_user",
+            default_schema=default_schema,
+        )
+
+        with patch(
+            "backend.app.services.ingester_runtime.psycopg.AsyncConnection.connect",
+            AsyncMock(return_value=connection),
+        ):
+            result = await checker.target_id_column_type(table_name, "location_id")
+
+        assert result == "integer"
+        assert cursor.execute.await_args.args[1] == (expected_schema, expected_table, "location_id")
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("row, expected", [("text", "text"), (None, None)])
+    async def test_type_lookup_returns_text_type_or_missing_column(self, row, expected):
+        cursor = MagicMock()
+        cursor.execute = AsyncMock()
+        cursor.fetchone = AsyncMock(return_value=(row,) if row is not None else None)
+        cursor.__aenter__ = AsyncMock(return_value=cursor)
+        cursor.__aexit__ = AsyncMock(return_value=None)
+        connection = MagicMock()
+        connection.cursor = MagicMock(return_value=cursor)
+        connection.__aenter__ = AsyncMock(return_value=connection)
+        connection.__aexit__ = AsyncMock(return_value=None)
+        checker = SeadChangeRequestTargetCollisionChecker(host="localhost", port=5432, dbname="test_db", user="test_user")
+
+        with patch(
+            "backend.app.services.ingester_runtime.psycopg.AsyncConnection.connect",
+            AsyncMock(return_value=connection),
+        ):
+            result = await checker.target_id_column_type("tbl_locations", "location_id")
+
+        assert result == expected
+
+    @pytest.mark.asyncio
+    async def test_type_lookup_surfaces_catalog_query_errors(self):
+        cursor = MagicMock()
+        cursor.execute = AsyncMock(side_effect=RuntimeError("catalog unavailable"))
+        cursor.__aenter__ = AsyncMock(return_value=cursor)
+        cursor.__aexit__ = AsyncMock(return_value=None)
+        connection = MagicMock()
+        connection.cursor = MagicMock(return_value=cursor)
+        connection.__aenter__ = AsyncMock(return_value=connection)
+        connection.__aexit__ = AsyncMock(return_value=None)
+        checker = SeadChangeRequestTargetCollisionChecker(host="localhost", port=5432, dbname="test_db", user="test_user")
+
+        with patch(
+            "backend.app.services.ingester_runtime.psycopg.AsyncConnection.connect",
+            AsyncMock(return_value=connection),
+        ):
+            with pytest.raises(RuntimeError, match="catalog unavailable"):
+                await checker.target_id_column_type("tbl_locations", "location_id")

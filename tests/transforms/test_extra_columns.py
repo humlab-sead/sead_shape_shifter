@@ -45,6 +45,11 @@ class TestInterpolationDetection:
         """Invalid column names (starting with number) are not detected."""
         assert not ExtraColumnEvaluator.is_interpolated_string("{123invalid}")
 
+    def test_detects_unicode_column_name(self):
+        """Column names starting with a non-ASCII letter are detected."""
+        assert ExtraColumnEvaluator.is_interpolated_string("ArboDat {Ökogruppe}")
+        assert ExtraColumnEvaluator.is_interpolated_string("{Ångström}")
+
 
 class TestDslFormulaDetection:
     """Test DSL formula detection and literal escaping."""
@@ -97,6 +102,11 @@ class TestDependencyExtraction:
         """Escaped braces {{}} are ignored."""
         result = ExtraColumnEvaluator.extract_column_dependencies("{{literal}} {real}")
         assert result == ["real"]
+
+    def test_extracts_unicode_column_name(self):
+        """Column names starting with a non-ASCII letter are extracted."""
+        result = ExtraColumnEvaluator.extract_column_dependencies("ArboDat {Ökogruppe}")
+        assert result == ["Ökogruppe"]
 
     def test_empty_pattern(self):
         """Pattern with no columns returns empty list."""
@@ -185,6 +195,12 @@ class TestInterpolationEvaluation:
         result = ExtraColumnEvaluator.evaluate_interpolation(df, "{val} + {val}", "test")
         assert result.iloc[0] == "5 + 5"
 
+    def test_interpolates_unicode_column_name(self):
+        """A column whose name starts with a non-ASCII letter interpolates."""
+        df = pd.DataFrame({"Ökogruppe": ["12", "34"]})
+        result = ExtraColumnEvaluator.evaluate_interpolation(df, "ArboDat {Ökogruppe}", "test")
+        assert result.tolist() == ["ArboDat 12", "ArboDat 34"]
+
 
 class TestExtraColumnsEvaluation:
     """Test evaluate_extra_columns() full evaluation logic."""
@@ -266,6 +282,16 @@ class TestExtraColumnsEvaluation:
 
         assert "fullname" in result.columns
         assert result["fullname"].iloc[0] == "John Doe"
+        assert len(deferred) == 0
+
+    def test_unicode_column_name_interpolation(self):
+        """Interpolation referencing a non-ASCII column name is evaluated, not stored literally."""
+        evaluator = ExtraColumnEvaluator()
+        df = pd.DataFrame({"Ökogruppe": ["12", "34"]})
+        result, deferred = evaluator.evaluate_extra_columns(df, {"abbreviation": "ArboDat {Ökogruppe}"}, "test")
+
+        assert "abbreviation" in result.columns
+        assert result["abbreviation"].tolist() == ["ArboDat 12", "ArboDat 34"]
         assert len(deferred) == 0
 
     def test_multiple_extra_columns(self):

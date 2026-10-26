@@ -1,1 +1,0 @@
-../../../../docs/templates/PROPOSAL_TEMPLATE.md

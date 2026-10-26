@@ -88,6 +88,7 @@ class CsvLoader(FileLoader):
             filename: str = clean_opts.pop("filename")
         except KeyError as exc:
             raise ValueError("Missing 'filename' in options for CSV loader") from exc
+        clean_opts.pop("location", None)  # Shape Shifter metadata field, not a pandas option
         df: pd.DataFrame = pd.read_csv(filename, **clean_opts)
 
         if opts.get("sanitize_header", True):

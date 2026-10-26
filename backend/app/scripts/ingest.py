@@ -8,23 +8,23 @@ Examples:
     # List available ingesters
     python -m backend.app.scripts.ingest list
 
-    # Validate a SEAD Excel file
-    python -m backend.app.scripts.ingest validate sead /path/to/data.xlsx \\
+    # Validate data for an ingester that accepts file input
+    python -m backend.app.scripts.ingest validate <ingester_key> /path/to/data.xlsx \\
         --config config.json
 
-    # Ingest SEAD data
-    python -m backend.app.scripts.ingest ingest sead /path/to/data.xlsx \\
-        --submission-name "dendro_2026_01" \\
-        --data-types "dendro" \\
+    # Ingest data with an ingester that accepts file input
+    python -m backend.app.scripts.ingest ingest <ingester_key> /path/to/data.xlsx \\
+        --submission-name "my_submission" \\
+        --data-types "my_data_type" \\
         --database-host localhost \\
         --database-port 5432 \\
-        --database-name sead_staging \\
-        --database-user sead_user \\
+        --database-name target_db \\
+        --database-user target_user \\
         --register \\
         --explode
 
     # Ingest with config file
-    python -m backend.app.scripts.ingest ingest sead /path/to/data.xlsx \\
+    python -m backend.app.scripts.ingest ingest <ingester_key> /path/to/data.xlsx \\
         --config ingest_config.json
 """
 
@@ -212,7 +212,7 @@ def ingest(
 ) -> None:
     """Ingest data into the system.
 
-    INGESTER_KEY: Key of the ingester to use (e.g., 'sead')
+    INGESTER_KEY: Key of the ingester to use (e.g., 'your_ingester')
     SOURCE: Path to the data file to ingest
     """
     logger.info(f"Ingesting {source} using {ingester_key} ingester...")

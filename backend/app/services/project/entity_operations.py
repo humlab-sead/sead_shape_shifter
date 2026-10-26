@@ -2,15 +2,60 @@
 
 import hashlib
 import json
+import re
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
-from backend.app.exceptions import EntityConflictError, ResourceConflictError, ResourceNotFoundError
+from backend.app.exceptions import (
+    ConfigurationError,
+    EntityConflictError,
+    ResourceConflictError,
+    ResourceNotFoundError,
+    SchemaValidationError,
+)
+from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.middleware.correlation import get_correlation_id
 from backend.app.models.entity import Entity
+from backend.app.models.mapping_sync import MappingSyncPending
 from backend.app.models.project import Project
+from backend.app.services.fixed_entity_mapping_change_service import FixedEntityMappingChangeService
+from backend.app.services.fixed_entity_mapping_sync_service import FixedEntityMappingSyncService
 from backend.app.services.project.entity_persistence_strategies import EntityPersistenceStrategyRegistry
+from backend.app.utils.entity_name import validate_new_entity_name
+from backend.app.utils.sql import extract_tables
+from src.model import TableConfig
+from src.reconciliation.fixed_entity_mapping_changes import FixedEntityMappingChangeError
+
+_ENTITY_VALUE_REFERENCE_RE = re.compile(r"@value:\s*entities\.([A-Za-z0-9_-]+)(?=\.|\s|$)")
+
+
+@dataclass(frozen=True)
+class EntityUpdateResult:
+    """Outcome of an entity update: warnings plus an optional pending mapping result.
+
+    ``mapping_sync`` is set only when the rows were persisted but the mapping
+    sidecar write did not happen. A caller that receives this result must report
+    a partial save instead of a complete failure or a complete success.
+    """
+
+    warnings: list[str] = field(default_factory=list)
+    mapping_sync: MappingSyncPending | None = None
+
+
+def _iter_config_strings(value: Any):
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if isinstance(key, str):
+                yield key
+            yield from _iter_config_strings(item)
+    elif isinstance(value, (list, tuple)):
+        for item in value:
+            yield from _iter_config_strings(item)
+    elif isinstance(value, str):
+        yield value
+
 
 if TYPE_CHECKING:
     pass
@@ -48,6 +93,9 @@ class EntityOperations:
         save_project_callback,  # Callable[[Project], Project]
         persistence_strategy_registry: EntityPersistenceStrategyRegistry | None = None,
         save_entity_boundary_callback=None,  # Callable[[str, str, dict | None], None] | None
+        save_entity_rename_callback=None,  # Callable[[str, str, str, Project], list[str]] | None
+        mapping_change_service: FixedEntityMappingChangeService | None = None,
+        mapping_sync_service: FixedEntityMappingSyncService | None = None,
     ):
         """Initialize entity operations.
 
@@ -60,12 +108,45 @@ class EntityOperations:
                 Signature: (project_name: str, entity_name: str, entity_dict: dict | None) -> None.
                 When provided, entity mutations use boundary save instead of full project save.
                 Pass None to fall back to whole-project save.
+            mapping_change_service: Read-only preparation of fixed-row mapping changes.
+                Defaults to a service instance so invalid mapping inputs are always rejected.
         """
         self._get_lock = project_lock_getter
         self._load_project = load_project_callback
         self._save_project = save_project_callback
         self._save_entity_boundary = save_entity_boundary_callback
+        self._save_entity_rename = save_entity_rename_callback
         self._persistence_strategy_registry = persistence_strategy_registry or EntityPersistenceStrategyRegistry()
+        self._mapping_change_service = mapping_change_service or FixedEntityMappingChangeService()
+        self._mapping_sync_service = mapping_sync_service or FixedEntityMappingSyncService(self._mapping_change_service.manager)
+
+    @staticmethod
+    def _find_entity_dependents(project: Project, entity_name: str) -> list[str]:
+        """Return sorted entity names that directly reference an entity."""
+        dependents: set[str] = set()
+        for dependent_name, entity_data in (project.entities or {}).items():
+            if dependent_name == entity_name or not isinstance(entity_data, dict) or not entity_data:
+                continue
+
+            table_config = TableConfig(
+                entities_cfg=project.entities,
+                entity_name=dependent_name,
+                project_options=project.options,
+            )
+            if entity_name in table_config.referenced_entities:
+                dependents.add(dependent_name)
+                continue
+
+            for value in _iter_config_strings(entity_data):
+                if any(match.group(1) == entity_name for match in _ENTITY_VALUE_REFERENCE_RE.finditer(value)):
+                    dependents.add(dependent_name)
+                    break
+
+            if entity_data.get("data_source") == "@internal" and isinstance(entity_data.get("query"), str):
+                if entity_name.casefold() in {table.casefold() for table in extract_tables(entity_data["query"])}:
+                    dependents.add(dependent_name)
+
+        return sorted(dependents)
 
     @staticmethod
     def _serialize_entity(entity: Entity) -> dict[str, Any]:
@@ -119,6 +200,7 @@ class EntityOperations:
         Raises:
             ResourceConflictError: If entity already exists
         """
+        validate_new_entity_name(entity_name)
         if entity_name in project.entities:
             raise ResourceConflictError(resource_type="entity", resource_id=entity_name, message=f"Entity '{entity_name}' already exists")
 
@@ -208,6 +290,7 @@ class EntityOperations:
             ProjectNotFoundError: If project not found
             ResourceConflictError: If entity already exists
         """
+        validate_new_entity_name(entity_name)
         corr: str = get_correlation_id()
         lock = self._get_lock(project_name)
         logger.info(
@@ -261,7 +344,8 @@ class EntityOperations:
         entity_data: dict[str, Any],
         *,
         expected_etag: str | None = None,
-    ) -> None:
+        new_name: str | None = None,
+    ) -> EntityUpdateResult:
         """
         Update entity in project by project name.
 
@@ -279,21 +363,18 @@ class EntityOperations:
             entity_data: Updated entity data as dict
             expected_etag: When provided, the ETag the client received on last read.
                 If the current persisted ETag differs, raises EntityConflictError.
+            new_name: Optional replacement name. Renames are rejected while other entities refer to the entity.
 
         Raises:
             ProjectNotFoundError: If project not found
             ResourceNotFoundError: If entity not found
             EntityConflictError: If *expected_etag* is given and does not match the
                 current entity ETag
+            ResourceConflictError: If the target name exists or the entity has dependents
         """
         corr: str = get_correlation_id()
         lock = self._get_lock(project_name)
-        logger.info(
-            "[{}] update_entity_by_name: ACQUIRING lock project='{}' entity='{}'",
-            corr,
-            project_name,
-            entity_name,
-        )
+        logger.info("[{}] update_entity_by_name: ACQUIRING lock project='{}' entity='{}'", corr, project_name, entity_name)
 
         with lock:
             # Force-load from disk when performing a conditional (ETag) update so the
@@ -315,7 +396,7 @@ class EntityOperations:
 
             if expected_etag is not None:
                 current_entity = project.entities[entity_name]
-                current_etag = compute_entity_etag(current_entity)
+                current_etag: str = compute_entity_etag(current_entity)
                 if current_etag != expected_etag:
                     logger.info(
                         "[{}] update_entity_by_name: ETag mismatch project='{}' entity='{}' expected='{}' current='{}'",
@@ -332,12 +413,77 @@ class EntityOperations:
                         current_entity=current_entity,
                     )
 
+            rename_entity: bool = new_name is not None and new_name != entity_name
+            if rename_entity:
+                assert new_name is not None
+                validate_new_entity_name(new_name)
+                if new_name in project.entities:
+                    raise ResourceConflictError(
+                        message=f"Entity '{new_name}' already exists",
+                        resource_type="entity",
+                        resource_id=new_name,
+                        context={"conflict_type": "entity_name_collision", "new_name": new_name},
+                    )
+
+                dependent_names: list[str] = self._find_entity_dependents(project, entity_name)
+                if dependent_names:
+                    raise ResourceConflictError.create_entity_has_dependents(
+                        entity_name=entity_name,
+                        new_name=new_name,
+                        dependent_names=dependent_names,
+                    )
+
+                if project.filename:
+                    mapping_snapshot = self._mapping_sync_service.load_snapshot(project.filename)
+                    if entity_name in mapping_snapshot.catalog.entities:
+                        raise ResourceConflictError(
+                            message=(
+                                f"Cannot rename entity '{entity_name}' because it has a mapping sidecar entry. "
+                                "Remove or migrate the mapping entry before renaming the entity."
+                            ),
+                            resource_type="entity",
+                            resource_id=entity_name,
+                            context={"conflict_type": "entity_has_mapping", "new_name": new_name},
+                        )
+
+                if self._save_entity_rename is None:
+                    raise ConfigurationError(message="Safe entity rename persistence is not configured.")
+
             # Ensure public_id is preserved (three-tier identity model)
             # If not in incoming data, keep existing value (even if None)
             if "public_id" not in entity_data and "public_id" in project.entities[entity_name]:
                 entity_data["public_id"] = project.entities[entity_name]["public_id"]
 
-            entity_data = self._prepare_entity_for_persistence(getattr(project, "options", {}), entity_name, entity_data)
+            persistence_name: None | str = new_name if rename_entity else entity_name
+            assert persistence_name is not None
+            entity_data = self._prepare_entity_for_persistence(getattr(project, "options", {}), persistence_name, entity_data)
+
+            if rename_entity:
+                project.entities.pop(entity_name)
+                assert new_name is not None
+                project.add_entity(new_name, entity_data)
+                if project.metadata and project.metadata.default_entity == entity_name:
+                    project.metadata.default_entity = new_name
+                assert self._save_entity_rename is not None
+                return EntityUpdateResult(warnings=self._save_entity_rename(project_name, entity_name, new_name, project))
+
+            # Compare the previously saved fixed rows with the new rows before the
+            # boundary save so invalid mapping inputs never reach persistence.
+            previous_entity = project.entities.get(entity_name)
+            mapping_snapshot = None
+            project_path = project.filename
+            if entity_data.get("type") == "fixed" and isinstance(entity_data.get("values"), list) and project_path:
+                mapping_snapshot = self._mapping_sync_service.load_snapshot(project_path)
+            try:
+                change_set = self._mapping_change_service.prepare_inline_change_set(
+                    entity_name=entity_name,
+                    project_path=project_path,
+                    previous_entity=previous_entity,
+                    current_entity=entity_data,
+                    mapping_catalog=mapping_snapshot.catalog if mapping_snapshot is not None else None,
+                )
+            except FixedEntityMappingChangeError as exc:
+                raise SchemaValidationError(message=str(exc), entity=entity_name, field=exc.field) from exc
 
             # Use the model's add_entity method to ensure proper handling
             project.add_entity(entity_name, entity_data)
@@ -346,6 +492,26 @@ class EntityOperations:
                 self._save_entity_boundary(project_name, entity_name, entity_data)
             else:
                 self._save_project(project)
+
+            if mapping_snapshot is not None and project_path:
+                sync_result = self._mapping_sync_service.apply_change_set(
+                    change_set=change_set,
+                    snapshot=mapping_snapshot,
+                    project_path=project_path,
+                    row_version=compute_entity_etag(entity_data),
+                    created_by=get_correlation_id(),
+                )
+                if sync_result.error is not None:
+                    pending = ProjectMapper.fixed_change_set_to_pending(
+                        change_set,
+                        project=project_name,
+                        entity=entity_name,
+                        storage_kind="inline",
+                        row_version=sync_result.row_version,
+                        sidecar_version=sync_result.sidecar_version,
+                    )
+                    return EntityUpdateResult(warnings=[], mapping_sync=pending)
+            return EntityUpdateResult(warnings=[])
 
     def delete_entity_by_name(self, project_name: str, entity_name: str) -> None:
         """

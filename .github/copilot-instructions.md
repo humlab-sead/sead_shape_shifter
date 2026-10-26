@@ -61,7 +61,7 @@ Core pipeline order matters: Extract → Filter → Link → Unnest → Translat
 
 ## graphify
 
-When `graphify-out/graph.json` exists, run `.venv/bin/graphify query "<question>"` before broad codebase exploration, architecture searches, or relationship searches. Use `.venv/bin/graphify path "<source>" "<target>"` for a specific relationship and `.venv/bin/graphify explain "<concept>"` for a focused concept. Verify graphify results against current source code, tests, configuration, and applicable instructions. Use `rg` or targeted file reads for exact text and local implementation details. After modifying code, run `.venv/bin/graphify update .` to refresh the graph. Follow the full graphify quick start and fallback guidance in `AGENTS.md`.
+graphify is installed via brew (`~/.local/bin/graphify`), not the project `.venv`. When `graphify-out/graph.json` exists, run `graphify query "<question>"` before broad codebase exploration, architecture searches, or relationship searches. Use `graphify path "<source>" "<target>"` for a specific relationship and `graphify explain "<concept>"` for a focused concept. Verify graphify results against current source code, tests, configuration, and applicable instructions. Use `rg` or targeted file reads for exact text and local implementation details. After modifying code, run `GRAPHIFY_VIZ_NODE_LIMIT=0 graphify update .` to refresh the graph; the env var blocks the unused graph.html output. Follow the full graphify quick start and fallback guidance in `AGENTS.md`.
 
 <!-- rtk-instructions v2 -->
 **rtk** is a CLI proxy that filters and compresses command outputs, saving 60-90% tokens.

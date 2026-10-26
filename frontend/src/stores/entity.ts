@@ -1,7 +1,13 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { api } from '@/api'
-import type { EntityResponse, EntityCreateRequest, EntityUpdateRequest } from '@/api/entities'
+import type {
+  EntityResponse,
+  EntityCreateRequest,
+  EntityUpdateRequest,
+  MappingSyncPending,
+  MappingSyncRetryResult,
+} from '@/api/entities'
 
 export const useEntityStore = defineStore('entity', () => {
   // State
@@ -16,22 +22,25 @@ export const useEntityStore = defineStore('entity', () => {
     currentEtag: string
     currentEntity: Record<string, unknown>
   } | null>(null)
-  
+  // Pending mapping changes from a partial fixed-row save, scoped to one project/entity.
+  const mappingSyncPending = ref<MappingSyncPending | null>(null)
+  const mappingSyncRetrying = ref(false)
+
   // Overlay state
   const showEditorOverlay = ref(false)
   const overlayEntityName = ref<string | null>(null)
   const overlayInitialTab = ref<'form' | 'yaml'>('form')
 
   // Diagnostic logging helper for state sync debugging
-  function logState(action: string, details: Record<string, unknown> = {}) {
-    console.info(`[EntityStore] ${action}`, {
-      ...details,
-      currentProject: currentProjectName.value,
-      entityCount: entities.value.length,
-      entityNames: entities.value.map(e => e.name),
-      timestamp: new Date().toISOString(),
-    })
-  }
+  // function logState(action: string, details: Record<string, unknown> = {}) {
+  //   console.info(`[EntityStore] ${action}`, {
+  //     ...details,
+  //     currentProject: currentProjectName.value,
+  //     entityCount: entities.value.length,
+  //     entityNames: entities.value.map((e) => e.name),
+  //     timestamp: new Date().toISOString(),
+  //   })
+  // }
 
   function syncSelectedEntityFromList() {
     const selectedName = selectedEntity.value?.name
@@ -100,14 +109,14 @@ export const useEntityStore = defineStore('entity', () => {
 
   // Actions
   async function fetchEntities(projectName: string) {
-    logState('fetchEntities:before', { projectName })
+    // logState('fetchEntities:before', { projectName })
     loading.value = true
     error.value = null
     currentProjectName.value = projectName
     try {
       entities.value = await api.entities.list(projectName)
       syncSelectedEntityFromList()
-      logState('fetchEntities:after', { projectName })
+      // logState('fetchEntities:after', { projectName })
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to fetch entities'
       throw err
@@ -138,7 +147,7 @@ export const useEntityStore = defineStore('entity', () => {
   }
 
   async function createEntity(projectName: string, data: EntityCreateRequest) {
-    logState('createEntity:before', { projectName, entityName: data.name })
+    // logState('createEntity:before', { projectName, entityName: data.name })
     loading.value = true
     error.value = null
     try {
@@ -146,9 +155,9 @@ export const useEntityStore = defineStore('entity', () => {
       entities.value.push(entity)
       selectedEntity.value = entity
       hasUnsavedChanges.value = false
-      
-      logState('createEntity:after', { projectName, entityName: data.name })
-      
+
+      // logState('createEntity:after', { projectName, entityName: data.name })
+
       return entity
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to create entity'
@@ -170,27 +179,44 @@ export const useEntityStore = defineStore('entity', () => {
       const index = entities.value.findIndex((e: EntityResponse) => e.name === entityName)
       if (index !== -1) {
         entities.value[index] = entity
+      } else {
+        syncCachedEntity(entity)
       }
 
       selectedEntity.value = entity
       hasUnsavedChanges.value = false
-      
+
+      // Retain or clear pending mapping changes for this project/entity only.
+      if (entity.mapping_sync) {
+        mappingSyncPending.value = entity.mapping_sync
+      } else if (isPendingFor(projectName, entityName)) {
+        mappingSyncPending.value = null
+      }
+
       // Note: Backend already persists entity to disk.
       // Don't call refreshProjectState() here as it causes component recreation
       // which resets dialog state (closes the entity editor).
-      
+
       return entity
     } catch (err: unknown) {
-      const axiosErr = err as { response?: { status?: number; data?: { detail?: { context?: { current_etag?: string; current_entity?: Record<string, unknown> } } } } }
-      if (axiosErr?.response?.status === 409) {
-        const ctx = axiosErr.response?.data?.detail?.context
+      const axiosErr = err as {
+        response?: {
+          status?: number
+          data?: {
+            detail?: { context?: { current_etag?: string; current_entity?: Record<string, unknown> }; message?: string }
+          }
+        }
+      }
+      const detail = axiosErr?.response?.data?.detail
+      if (axiosErr?.response?.status === 409 && detail?.context?.current_etag) {
+        const ctx = detail.context
         conflictInfo.value = {
           entityName,
           currentEtag: ctx?.current_etag ?? '',
           currentEntity: ctx?.current_entity ?? {},
         }
       }
-      error.value = err instanceof Error ? err.message : 'Failed to update entity'
+      error.value = detail?.message ?? (err instanceof Error ? err.message : 'Failed to update entity')
       throw err
     } finally {
       loading.value = false
@@ -198,7 +224,7 @@ export const useEntityStore = defineStore('entity', () => {
   }
 
   async function deleteEntity(projectName: string, entityName: string) {
-    logState('deleteEntity:before', { projectName, entityName })
+    // logState('deleteEntity:before', { projectName, entityName })
     loading.value = true
     error.value = null
     try {
@@ -207,7 +233,7 @@ export const useEntityStore = defineStore('entity', () => {
       if (selectedEntity.value?.name === entityName) {
         selectedEntity.value = null
       }
-      logState('deleteEntity:after', { projectName, entityName })
+      // logState('deleteEntity:after', { projectName, entityName })
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to delete entity'
       throw err
@@ -224,8 +250,32 @@ export const useEntityStore = defineStore('entity', () => {
     error.value = null
   }
 
+  function isPendingFor(projectName: string, entityName: string): boolean {
+    const pending = mappingSyncPending.value
+    return !!pending && pending.project === projectName && pending.entity === entityName
+  }
+
+  function setMappingSyncPending(pending: MappingSyncPending | null) {
+    mappingSyncPending.value = pending
+  }
+
+  async function retryMappingSync(projectName: string, entityName: string): Promise<MappingSyncRetryResult | null> {
+    const pending = mappingSyncPending.value
+    if (!pending) {
+      return null
+    }
+    mappingSyncRetrying.value = true
+    try {
+      const result = await api.entities.retryFixedEntityMapping(projectName, entityName, pending)
+      mappingSyncPending.value = null
+      return result
+    } finally {
+      mappingSyncRetrying.value = false
+    }
+  }
+
   function reset() {
-    logState('reset:before')
+    // logState('reset:before')
     entities.value = []
     selectedEntity.value = null
     currentProjectName.value = null
@@ -234,16 +284,17 @@ export const useEntityStore = defineStore('entity', () => {
     hasUnsavedChanges.value = false
     showEditorOverlay.value = false
     overlayEntityName.value = null
-    logState('reset:after')
+    mappingSyncPending.value = null
+    // logState('reset:after')
   }
-  
+
   // Overlay management
   function openEditorOverlay(entityName: string, initialTab: 'form' | 'yaml' = 'form') {
     overlayEntityName.value = entityName
     overlayInitialTab.value = initialTab
     showEditorOverlay.value = true
   }
-  
+
   function closeEditorOverlay() {
     showEditorOverlay.value = false
     overlayEntityName.value = null
@@ -259,6 +310,8 @@ export const useEntityStore = defineStore('entity', () => {
     error,
     hasUnsavedChanges,
     conflictInfo,
+    mappingSyncPending,
+    mappingSyncRetrying,
     showEditorOverlay,
     overlayEntityName,
     overlayInitialTab,
@@ -279,6 +332,8 @@ export const useEntityStore = defineStore('entity', () => {
     deleteEntity,
     markAsChanged,
     clearError,
+    setMappingSyncPending,
+    retryMappingSync,
     reset,
     openEditorOverlay,
     closeEditorOverlay,

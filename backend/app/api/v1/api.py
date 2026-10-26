@@ -4,6 +4,7 @@ from fastapi import APIRouter
 
 from backend.app.api.v1.endpoints import (
     columns,
+    data_providers,
     data_sources,
     directives,
     entities,
@@ -40,6 +41,7 @@ api_router.include_router(directives.router, tags=["directives"])
 api_router.include_router(validation.router, tags=["validation"])
 api_router.include_router(tasks.router, tags=["tasks"])
 api_router.include_router(data_sources.router, tags=["data-sources"])
+api_router.include_router(data_providers.router, tags=["data-providers"])
 api_router.include_router(schema.router, tags=["schema"])
 api_router.include_router(query.router, tags=["query"])
 api_router.include_router(suggestions.router, tags=["suggestions"])

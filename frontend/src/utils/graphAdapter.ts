@@ -86,15 +86,15 @@ export function toCytoscapeElements(
 ): ElementDefinition[] {
   if (!graph) return []
 
-  const { 
-    cycles = [], 
-    showNodeLabels = true, 
-    showEdgeLabels = true, 
+  const {
+    cycles = [],
+    showNodeLabels = true,
+    showEdgeLabels = true,
     showForeignKeyEdges = true,
     showProvidesEdges = true,
-    highlightCycles = false, 
+    highlightCycles = false,
     showSources = false,
-    showSourceEntities = false 
+    showSourceEntities = false,
   } = options
 
   // Determine if we should show any source-related content
@@ -116,9 +116,9 @@ export function toCytoscapeElements(
       classes.push('materialized')
     }
 
-      if (node.type === 'merged') {
-        classes.push('merged-node')
-      }
+    if (node.type === 'merged') {
+      classes.push('merged-node')
+    }
 
     return {
       data: {
@@ -135,64 +135,65 @@ export function toCytoscapeElements(
   })
 
   // Convert source nodes (with filtering based on options)
-  const sourceNodes: ElementDefinition[] = showAnySourceContent && graph.source_nodes
-    ? graph.source_nodes
-        .filter((sourceNode) => {
-          // Filter based on node type
-          const isSource = sourceNode.type === 'datasource' || sourceNode.type === 'file'
-          const isSourceEntity = sourceNode.type === 'table' || sourceNode.type === 'sheet'
-          
-          // Show node if:
-          // - It's a source (db/file) and showSources is true
-          // - It's a source entity (table/sheet) and showSourceEntities is true
-          return (isSource && showSources) || (isSourceEntity && showSourceEntities)
-        })
-        .map((sourceNode) => {
-        const classes = ['source-node', `source-${sourceNode.type}`]
+  const sourceNodes: ElementDefinition[] =
+    showAnySourceContent && graph.source_nodes
+      ? graph.source_nodes
+          .filter((sourceNode) => {
+            // Filter based on node type
+            const isSource = sourceNode.type === 'datasource' || sourceNode.type === 'file'
+            const isSourceEntity = sourceNode.type === 'table' || sourceNode.type === 'sheet'
 
-        if (!showNodeLabels) {
-          classes.push('hide-label')
-        }
+            // Show node if:
+            // - It's a source (db/file) and showSources is true
+            // - It's a source entity (table/sheet) and showSourceEntities is true
+            return (isSource && showSources) || (isSourceEntity && showSourceEntities)
+          })
+          .map((sourceNode) => {
+            const classes = ['source-node', `source-${sourceNode.type}`]
 
-        // Add icon prefix based on node type
-        const baseLabel = extractSourceLabel(sourceNode.name)
-        let label = baseLabel
-        
-        switch (sourceNode.type) {
-          case 'datasource':
-            label = `🗄️ ${baseLabel}`
-            break
-          case 'table':
-            label = `📋 ${baseLabel}`
-            break
-          case 'sheet':
-            label = `📄 ${baseLabel}`
-            break
-          case 'file':
-            // Different icons for different file types
-            if (sourceNode.source_type === 'csv') {
-              label = `📊 ${baseLabel}`
-            } else if (sourceNode.source_type === 'xlsx' || sourceNode.source_type === 'openpyxl') {
-              label = `📗 ${baseLabel}`
-            } else {
-              label = `📁 ${baseLabel}` // Generic file folder
+            if (!showNodeLabels) {
+              classes.push('hide-label')
             }
-            break
-        }
 
-        return {
-          data: {
-            id: sourceNode.name,
-            label: label,
-            nodeCategory: 'source',
-            sourceType: sourceNode.type,
-            sourceCategory: sourceNode.source_type,
-            metadata: sourceNode.metadata,
-          },
-          classes,
-        }
-      })
-    : []
+            // Add icon prefix based on node type
+            const baseLabel = extractSourceLabel(sourceNode.name)
+            let label = baseLabel
+
+            switch (sourceNode.type) {
+              case 'datasource':
+                label = `🗄️ ${baseLabel}`
+                break
+              case 'table':
+                label = `📋 ${baseLabel}`
+                break
+              case 'sheet':
+                label = `📄 ${baseLabel}`
+                break
+              case 'file':
+                // Different icons for different file types
+                if (sourceNode.source_type === 'csv') {
+                  label = `📊 ${baseLabel}`
+                } else if (sourceNode.source_type === 'xlsx' || sourceNode.source_type === 'openpyxl') {
+                  label = `📗 ${baseLabel}`
+                } else {
+                  label = `📁 ${baseLabel}` // Generic file folder
+                }
+                break
+            }
+
+            return {
+              data: {
+                id: sourceNode.name,
+                label: label,
+                nodeCategory: 'source',
+                sourceType: sourceNode.type,
+                sourceCategory: sourceNode.source_type,
+                metadata: sourceNode.metadata,
+              },
+              classes,
+            }
+          })
+      : []
 
   // Convert edges
   const edges: ElementDefinition[] = graph.edges
@@ -211,103 +212,104 @@ export function toCytoscapeElements(
       return true
     })
     .map((edge, index) => {
-    const classes: string[] = []
-    const isProvidesEdge = edge.type === 'provides'
-    const isBranchEdge = edge.is_branch_dependency === true || Boolean(edge.branch_name)
+      const classes: string[] = []
+      const isProvidesEdge = edge.type === 'provides'
+      const isBranchEdge = edge.is_branch_dependency === true || Boolean(edge.branch_name)
 
-    if (!showEdgeLabels) {
-      classes.push('hide-label')
-    }
+      if (!showEdgeLabels) {
+        classes.push('hide-label')
+      }
 
-    if (highlightCycles && isEdgeInCycle(edge.source, edge.target, cycles)) {
-      classes.push('cycle-edge')
-    }
+      if (highlightCycles && isEdgeInCycle(edge.source, edge.target, cycles)) {
+        classes.push('cycle-edge')
+      }
 
-    if (isProvidesEdge) {
-      classes.push('source-edge')
-    }
+      if (isProvidesEdge) {
+        classes.push('source-edge')
+      }
 
-    if (isBranchEdge) {
-      classes.push('branch-edge')
-    }
+      if (isBranchEdge) {
+        classes.push('branch-edge')
+      }
 
-    return {
-      data: {
-        id: `edge-${edge.source}-${edge.target}-${index}`,
-        source: edge.source,
-        target: edge.target,
-        branchName: edge.branch_name || null,
-        isBranchDependency: isBranchEdge,
-        label: edge.label || (isProvidesEdge ? 'provides' : ''),
-      },
-      classes,
-    }
-  })
+      return {
+        data: {
+          id: `edge-${edge.source}-${edge.target}-${index}`,
+          source: edge.source,
+          target: edge.target,
+          branchName: edge.branch_name || null,
+          isBranchDependency: isBranchEdge,
+          label: edge.label || (isProvidesEdge ? 'provides' : ''),
+        },
+        classes,
+      }
+    })
 
   // Convert source edges (with filtering based on options)
-  const sourceEdges: ElementDefinition[] = showAnySourceContent && graph.source_edges
-    ? graph.source_edges
-        .filter((edge) => {
-          const isProvidesEdge = edge.type === 'provides' || edge.label === 'provides'
+  const sourceEdges: ElementDefinition[] =
+    showAnySourceContent && graph.source_edges
+      ? graph.source_edges
+          .filter((edge) => {
+            const isProvidesEdge = edge.type === 'provides' || edge.label === 'provides'
 
-          if (isProvidesEdge && !showProvidesEdges) {
+            if (isProvidesEdge && !showProvidesEdges) {
+              return false
+            }
+
+            const viaSourceEntity = edge.via_source_entity === true
+
+            // Rule 1: Both checked - show all edges
+            if (showSources && showSourceEntities) {
+              return true
+            }
+
+            // Rule 2: Only showSources - show direct edges (via_source_entity=false)
+            if (showSources && !showSourceEntities) {
+              return !viaSourceEntity
+            }
+
+            // Rule 3: Only showSourceEntities - show edges through source entities
+            // but exclude source->source_entity edges (those should be hidden when source is hidden)
+            if (!showSources && showSourceEntities) {
+              // Include edges that go through source entities
+              // Exclude edges where source is a datasource/file (source->table or file->sheet)
+              if (!viaSourceEntity) return false
+
+              // Get source node if exists
+              const sourceNode = graph.source_nodes?.find((n) => n.name === edge.source)
+              const isSourceToEntity = sourceNode && (sourceNode.type === 'datasource' || sourceNode.type === 'file')
+
+              // Exclude source->source_entity edges, include source_entity->entity edges
+              return !isSourceToEntity
+            }
+
             return false
-          }
+          })
+          .map((edge, index) => {
+            const classes = ['source-edge']
 
-          const viaSourceEntity = edge.via_source_entity === true
-          
-          // Rule 1: Both checked - show all edges
-          if (showSources && showSourceEntities) {
-            return true
-          }
-          
-          // Rule 2: Only showSources - show direct edges (via_source_entity=false)
-          if (showSources && !showSourceEntities) {
-            return !viaSourceEntity
-          }
-          
-          // Rule 3: Only showSourceEntities - show edges through source entities
-          // but exclude source->source_entity edges (those should be hidden when source is hidden)
-          if (!showSources && showSourceEntities) {
-            // Include edges that go through source entities
-            // Exclude edges where source is a datasource/file (source->table or file->sheet)
-            if (!viaSourceEntity) return false
-            
-            // Get source node if exists
-            const sourceNode = graph.source_nodes?.find(n => n.name === edge.source)
-            const isSourceToEntity = sourceNode && (sourceNode.type === 'datasource' || sourceNode.type === 'file')
-            
-            // Exclude source->source_entity edges, include source_entity->entity edges
-            return !isSourceToEntity
-          }
-          
-          return false
-        })
-        .map((edge, index) => {
-        const classes = ['source-edge']
+            if (!showEdgeLabels) {
+              classes.push('hide-label')
+            }
 
-        if (!showEdgeLabels) {
-          classes.push('hide-label')
-        }
+            // Add frozen-edge class for edges from materialized entities
+            if (edge.frozen) {
+              classes.push('frozen-edge')
+            }
 
-        // Add frozen-edge class for edges from materialized entities
-        if (edge.frozen) {
-          classes.push('frozen-edge')
-        }
-
-        return {
-          data: {
-            id: `source-edge-${edge.source}-${edge.target}-${index}`,
-            source: edge.source,
-            target: edge.target,
-            label: edge.label || '',
-            frozen: edge.frozen || false,
-            viaSourceEntity: edge.via_source_entity || false,
-          },
-          classes,
-        }
-      })
-    : []
+            return {
+              data: {
+                id: `source-edge-${edge.source}-${edge.target}-${index}`,
+                source: edge.source,
+                target: edge.target,
+                label: edge.label || '',
+                frozen: edge.frozen || false,
+                viaSourceEntity: edge.via_source_entity || false,
+              },
+              classes,
+            }
+          })
+      : []
 
   return [...nodes, ...sourceNodes, ...edges, ...sourceEdges]
 }
@@ -322,14 +324,14 @@ export function getLayoutConfig(
 ) {
   if (layoutType === 'custom') {
     const mappedPositions: NodePosition[] = customPositions ? Object.values(customPositions) : []
-    
+
     // Preset layout uses fixed positions from customPositions
     return {
       name: 'preset',
       positions: (node: any) => {
         const nodeName = node.data('id')
         const pos = customPositions?.[nodeName]
-        
+
         if (pos) {
           // Return saved position
           return { x: pos.x, y: pos.y }
@@ -343,22 +345,22 @@ export function getLayoutConfig(
       animate,
       animationDuration: 300,
       // After preset layout, position unmapped nodes
-      stop: function(this: any) {
-        const cy = this.cy()  // Call the function to get Cytoscape instance
+      stop: function (this: any) {
+        const cy = this.cy() // Call the function to get Cytoscape instance
         console.log('[graphAdapter] Custom layout stop callback', {
           hasCy: !!cy,
           mappedPositionsCount: mappedPositions.length,
         })
-        
+
         if (!cy || mappedPositions.length === 0) {
           console.log('[graphAdapter] Early return - no cy or no mapped positions')
           return
         }
-        
+
         // Find all nodes at origin (0, 0) - these are unmapped
         const allNodes = cy.nodes()
         console.log('[graphAdapter] All nodes:', allNodes.length)
-        
+
         const unmappedNodes = allNodes.filter((node: any) => {
           const pos = node.position()
           const isAtOrigin = Math.abs(pos.x) < 0.1 && Math.abs(pos.y) < 0.1
@@ -367,14 +369,14 @@ export function getLayoutConfig(
           }
           return isAtOrigin
         })
-        
+
         console.log('[graphAdapter] Unmapped nodes count:', unmappedNodes.length)
-        
+
         if (unmappedNodes.length === 0) return
-        
+
         // Calculate bounding box of positioned nodes
-        const xs = mappedPositions.map(p => p.x)
-        const ys = mappedPositions.map(p => p.y)
+        const xs = mappedPositions.map((p) => p.x)
+        const ys = mappedPositions.map((p) => p.y)
         const minX = Math.min(...xs)
         const maxX = Math.max(...xs)
         const minY = Math.min(...ys)
@@ -383,15 +385,15 @@ export function getLayoutConfig(
         const centerY = (minY + maxY) / 2
         const width = maxX - minX
         const height = maxY - minY
-        
+
         console.log('[graphAdapter] Bounding box:', { minX, maxX, minY, maxY, centerX, centerY, width, height })
-        
+
         // Position unmapped nodes in a radial layout around the positioned nodes
         const radius = Math.max(width, height) / 2 + 150
         const angleStep = (2 * Math.PI) / unmappedNodes.length
-        
+
         console.log('[graphAdapter] Positioning unmapped nodes with radius:', radius)
-        
+
         unmappedNodes.forEach((node: any, index: number) => {
           const angle = index * angleStep
           const x = centerX + radius * Math.cos(angle)

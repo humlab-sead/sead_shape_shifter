@@ -1,0 +1,9 @@
+# MAL pilot provider record.
+#
+# Reviewed registry data: see README.md in this directory. The scope names are
+# stable identity contracts and must not change after a project binds to them.
+code: bugscep
+name: BugsCEP
+schemas:
+  - provider_schema: archeobotany/bugscep
+    scope_name: provider://bugscep/archeobotany/bugscep

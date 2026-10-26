@@ -27,6 +27,19 @@ def test_grant_mutation_writes_audit_event_atomically(tmp_path) -> None:
     repository.close()
 
 
+def test_grant_mutation_rejects_role_not_defined_for_resource_type(tmp_path) -> None:
+    repository = SQLiteAuthorizationRepository(tmp_path / "authorization.sqlite3")
+    project = ResourceRecord(uuid4(), ResourceType.PROJECT, "project-a")
+    repository.create_resource(project)
+
+    with pytest.raises(ValueError, match=r"Invalid role 'reader'.*allowed roles: editor, executor, owner, viewer"):
+        repository.add_grant(_grant("alice", project.resource_id, "reader"))
+
+    assert repository.list_all_grants() == []
+    assert repository.list_audit_events() == []
+    repository.close()
+
+
 def test_final_owner_and_admin_are_protected(tmp_path) -> None:
     repository = SQLiteAuthorizationRepository(tmp_path / "authorization.sqlite3")
     resource = ResourceRecord(uuid4(), ResourceType.PROJECT, "project-a")

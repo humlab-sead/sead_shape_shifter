@@ -21,14 +21,14 @@ class IngesterRegistry(Registry[type[Ingester]]):
     The registry can also dynamically discover ingesters from configured paths.
 
     Example:
-        @get_ingester_registry().register(key="sead")
-        class SeadIngester:
+        @get_ingester_registry().register(key="your_ingester")
+        class YourIngester:
             @classmethod
             def get_metadata(cls) -> IngesterMetadata:
                 return IngesterMetadata(
-                    key="sead",
-                    name="SEAD Clearinghouse",
-                    description="Ingest data into SEAD database",
+                    key="your_ingester",
+                    name="Your Ingester",
+                    description="Ingest data into the target system",
                     version="1.0.0",
                     supported_formats=["xlsx"],
                     requires_config=True,
@@ -63,7 +63,7 @@ class IngesterRegistry(Registry[type[Ingester]]):
             enabled_only: List of ingester names to load (None = load all discovered)
 
         Example:
-            get_ingester_registry().discover(search_paths=["ingesters"], enabled_only=["sead"])
+            get_ingester_registry().discover(search_paths=["ingesters"], enabled_only=["your_ingester"])
         """
         if self._initialized:
             logger.debug("Ingester discovery already completed, skipping")

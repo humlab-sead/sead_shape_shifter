@@ -3,9 +3,8 @@
 import pytest
 
 from backend.app.ingesters import IngesterConfig, IngesterMetadata, get_ingester_registry
-from backend.app.ingesters.protocol import Ingester, IngestionResult, ValidationResult
+from backend.app.ingesters.protocol import Ingester, IngestionResult, TableSourceIngester, ValidationResult
 from backend.app.ingesters.registry import IngesterRegistry
-from ingesters.sead import SeadIngester
 from ingesters.sead_change_request import SeadChangeRequestIngester
 
 
@@ -14,6 +13,30 @@ def get_ingesters() -> IngesterRegistry:
     """Ensure ingester registry is initialized for tests."""
     registry: IngesterRegistry = get_ingester_registry()
     return registry
+
+
+class FileOnlyIngester:
+    """Minimal file-only ingester used to check the optional table capability."""
+
+    @classmethod
+    def get_metadata(cls) -> IngesterMetadata:
+        return IngesterMetadata(
+            key="file_only",
+            name="File Only",
+            description="Test ingester with file input only",
+            version="0.0.0",
+            supported_formats=["xlsx"],
+            requires_config=False,
+        )
+
+    def __init__(self, config: IngesterConfig) -> None:
+        self.config = config
+
+    async def validate(self, _source: str) -> ValidationResult:
+        return ValidationResult(is_valid=True)
+
+    async def ingest(self, _source: str) -> IngestionResult:
+        return IngestionResult(success=True, message="ok")
 
 
 class TestIngesterRegistry:
@@ -25,22 +48,17 @@ class TestIngesterRegistry:
         assert hasattr(registry, "items")
         assert hasattr(registry, "get_metadata_list")
 
-    def test_sead_ingester_registered(self, registry: IngesterRegistry):
-        """Test that SeadIngester is automatically registered."""
-        assert "sead" in registry.items
-        assert registry.items["sead"] == SeadIngester
-
     def test_get_metadata_list(self, registry: IngesterRegistry):
         """Test getting list of all ingester metadata."""
         metadata_list: list[IngesterMetadata] = registry.get_metadata_list()
         assert len(metadata_list) >= 1
-        assert any(m.key == "sead" for m in metadata_list)
+        assert any(m.key == "sead_change_request" for m in metadata_list)
 
     def test_get_ingester_by_key(self, registry: IngesterRegistry):
         """Test getting an ingester class by key."""
-        ingester_cls: None | type[Ingester] = registry.get("sead")
+        ingester_cls: None | type[Ingester] = registry.get("sead_change_request")
         assert ingester_cls is not None
-        assert ingester_cls == SeadIngester
+        assert ingester_cls == SeadChangeRequestIngester
 
     def test_sead_change_request_ingester_registered(self, registry: IngesterRegistry):
         """Test that SeadChangeRequestIngester is automatically registered."""
@@ -54,36 +72,27 @@ class TestIngesterRegistry:
         assert ingester_cls == SeadChangeRequestIngester
 
 
-class TestSeadIngester:
-    """Tests for the SeadIngester class."""
+class TestTableSourceCapability:
+    """Table input is an optional capability beside the shared file protocol."""
 
-    def test_get_metadata(self):
-        """Test getting SeadIngester metadata."""
-        metadata = SeadIngester.get_metadata()
+    @staticmethod
+    def _change_request_ingester() -> SeadChangeRequestIngester:
+        return SeadChangeRequestIngester(IngesterConfig(host="localhost", port=5432, dbname="test_db", user="test_user"))
 
-        assert isinstance(metadata, IngesterMetadata)
-        assert metadata.key == "sead"
-        assert metadata.name == "SEAD Clearinghouse"
-        assert metadata.version == "1.0.0"
-        assert "xlsx" in metadata.supported_formats
-        assert metadata.requires_config is True
+    def test_change_request_ingester_supports_table_sources(self):
+        """The Change Request ingester should satisfy both the file and table protocols."""
+        ingester = self._change_request_ingester()
 
-    def test_ingester_creation(self):
-        """Test creating a SeadIngester instance."""
-        config = IngesterConfig(
-            host="localhost",
-            port=5432,
-            dbname="test_db",
-            user="test_user",
-            submission_name="test_submission",
-            data_types="test",
-            extra={"ignore_columns": []},  # Provide explicit ignore_columns to avoid ConfigValue lookup
-        )
+        assert isinstance(ingester, Ingester)
+        assert isinstance(ingester, TableSourceIngester)
+        assert isinstance(SeadChangeRequestIngester, TableSourceIngester)
 
-        ingester = SeadIngester(config)
-        assert ingester is not None
-        assert ingester.config == config
-        assert ingester.schema_service is not None
+    def test_file_only_ingester_does_not_satisfy_table_protocol(self):
+        """An ingester without table methods should not satisfy the table protocol."""
+        ingester = FileOnlyIngester(IngesterConfig(host="localhost", port=5432, dbname="test_db", user="test_user"))
+
+        assert isinstance(ingester, Ingester)
+        assert not isinstance(ingester, TableSourceIngester)
 
     def test_validation_result_structure(self):
         """Test ValidationResult dataclass."""
@@ -116,6 +125,7 @@ class TestSeadIngester:
         assert result.tables_processed == 5
         assert result.records_inserted == 100
         assert result.error_details is None
+        assert result.output_path is None
 
 
 class TestSeadChangeRequestIngester:
@@ -130,7 +140,7 @@ class TestSeadChangeRequestIngester:
         assert metadata.name == "SEAD Change Request"
         assert metadata.version == "0.1.0"
         assert metadata.requires_config is True
-        assert metadata.supported_formats == ["xlsx", "xls"]
+        assert not metadata.supported_formats
 
     def test_ingester_creation(self):
         """Test creating the scaffold ingester instance."""

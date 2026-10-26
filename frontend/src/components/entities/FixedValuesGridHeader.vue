@@ -19,11 +19,7 @@
       @mousedown.stop
       @change="onSelectChange"
     >
-      <option
-        v-for="option in options"
-        :key="`${columnName}-${option.value}`"
-        :value="option.value"
-      >
+      <option v-for="option in options" :key="`${columnName}-${option.value}`" :value="option.value">
         {{ option.label }}
       </option>
     </select>

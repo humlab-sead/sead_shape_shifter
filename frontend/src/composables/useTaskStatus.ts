@@ -17,7 +17,7 @@ export enum TaskStatus {
   TODO = 'todo',
   ONGOING = 'ongoing',
   DONE = 'done',
-  IGNORED = 'ignored'
+  IGNORED = 'ignored',
 }
 
 /**
@@ -25,9 +25,9 @@ export enum TaskStatus {
  */
 export enum TaskPriority {
   CRITICAL = 'critical', // Required + validation errors
-  READY = 'ready',       // Required + passes validation
-  WAITING = 'waiting',   // Has blockers (dependencies not done)
-  OPTIONAL = 'optional'  // Not required
+  READY = 'ready', // Required + passes validation
+  WAITING = 'waiting', // Has blockers (dependencies not done)
+  OPTIONAL = 'optional', // Not required
 }
 
 /**
@@ -88,9 +88,7 @@ export function useTaskStatus(projectName?: Ref<string> | string) {
   const error = ref<string | null>(null)
 
   // Computed project name
-  const project = computed(() =>
-    typeof projectName === 'string' ? projectName : projectName?.value ?? ''
-  )
+  const project = computed(() => (typeof projectName === 'string' ? projectName : (projectName?.value ?? '')))
 
   /**
    * Fetch task status for the project
@@ -105,9 +103,7 @@ export function useTaskStatus(projectName?: Ref<string> | string) {
     error.value = null
 
     try {
-      const response = await apiClient.get<ProjectTaskStatus>(
-        `/projects/${project.value}/tasks`
-      )
+      const response = await apiClient.get<ProjectTaskStatus>(`/projects/${project.value}/tasks`)
       taskStatus.value = response.data
     } catch (err: any) {
       error.value = err.response?.data?.detail || err.message || 'Failed to fetch task status'
@@ -270,9 +266,7 @@ export function useTaskStatus(projectName?: Ref<string> | string) {
     error.value = null
 
     try {
-      const response = await apiClient.delete<TaskOperationResponse>(
-        `/projects/${project.value}/tasks/${entityName}`
-      )
+      const response = await apiClient.delete<TaskOperationResponse>(`/projects/${project.value}/tasks/${entityName}`)
 
       // Update local state
       if (taskStatus.value?.entities[entityName]) {
@@ -305,9 +299,12 @@ export function useTaskStatus(projectName?: Ref<string> | string) {
     error.value = null
 
     try {
-      const response = await apiClient.post<{ success: boolean; entity_name: string; flagged: boolean; message: string }>(
-        `/projects/${project.value}/tasks/${entityName}/flag`
-      )
+      const response = await apiClient.post<{
+        success: boolean
+        entity_name: string
+        flagged: boolean
+        message: string
+      }>(`/projects/${project.value}/tasks/${entityName}/flag`)
 
       // Update local state
       if (taskStatus.value?.entities[entityName]) {
@@ -429,6 +426,6 @@ export function useTaskStatus(projectName?: Ref<string> | string) {
 
     // Computed
     completionPercentage,
-    completionSummary
+    completionSummary,
   }
 }

@@ -104,9 +104,7 @@ describe('BranchEditor', () => {
   })
 
   it('omits empty keys from emitted value', async () => {
-    const branches: BranchConfig[] = [
-      { name: 'dendro', source: 'dendro_analysis', keys: [] },
-    ]
+    const branches: BranchConfig[] = [{ name: 'dendro', source: 'dendro_analysis', keys: [] }]
     const wrapper = mountBranchEditor({ modelValue: branches })
     // Trigger a re-emit by simulating a change via buttons
     const buttons = wrapper.findAll('button')

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This guide covers everything a developer needs to set up, run, modify, and validate the Shape Shifter codebase day-to-day. For architecture and design decisions see [DESIGN.md](DESIGN.md). For deployment and operations see [OPERATIONS.md](OPERATIONS.md).
+This guide covers setting up, running, modifying, and validating the codebase day-to-day. Architecture and design: [DESIGN.md](DESIGN.md). Deployment and operations: [OPERATIONS.md](OPERATIONS.md).
 
 ---
 
@@ -15,7 +15,7 @@ This guide covers everything a developer needs to set up, run, modify, and valid
 - Git
 
 **Optional:**
-- Podman and `podman-compose` (for containerized runs; see [container/README.md](../container/README.md))
+- Podman and `podman-compose` (for containerized runs; see [deployment/container/README.md](../deployment/container/README.md))
 - Java JRE (`default-jre-headless`) — required to query MS Access sources via UCanAccess
 - PostgreSQL — required when using SQL data sources
 
@@ -39,7 +39,7 @@ make frontend-install
 
 ## Local Configuration
 
-The backend reads configuration from environment variables prefixed with `SHAPE_SHIFTER_`. For local development, create `backend.env` (not committed) and set any values that differ from defaults:
+The backend reads configuration from environment variables prefixed with `SHAPE_SHIFTER_` and loads them from `.env` in the working directory. Copy `.env.example` and set any values that differ from defaults:
 
 ```ini
 SHAPE_SHIFTER_PROJECTS_DIR=./projects
@@ -47,9 +47,13 @@ SHAPE_SHIFTER_LOG_LEVEL=DEBUG
 SHAPE_SHIFTER_ENVIRONMENT=development
 ```
 
-See `backend/app/core/config.py` for all available settings and their defaults. For production environment variables and secrets layout see [OPERATIONS.md](OPERATIONS.md).
+`SHAPE_SHIFTER_ENV_FILE` points the loader at a different file. See `backend/app/core/config.py` for all settings and their defaults. For production variables and secrets layout see [OPERATIONS.md](OPERATIONS.md).
 
 For PostgreSQL access, configure `~/.pgpass` rather than putting passwords in environment variables.
+
+### Markdown link updates when moving files
+
+Enable `markdown.updateLinksOnFileMove.enabled: "always"` and `markdown.validate.enabled: true` to let VS Code rewrite links into and out of a moved file or directory. It fires only for moves VS Code performs, so a terminal `git mv` updates nothing, and it rewrites link syntax only, leaving prose and table paths to a manual search. External `http(s)` links are never checked; run `make check-doc-links` after any move.
 
 ---
 
@@ -57,38 +61,57 @@ For PostgreSQL access, configure `~/.pgpass` rather than putting passwords in en
 
 ```
 sead_shape_shifter/
-├── src/                    # Core transformation engine (framework-independent)
-│   ├── normalizer.py       # ShapeShifter orchestrator
-│   ├── model.py            # Domain models
-│   ├── loaders/            # DataLoader implementations (sql, csv, xlsx, fixed)
-│   ├── validators/         # Constraint validators
-│   ├── dispatchers/        # Output format handlers
-│   └── specifications/     # Project-level structural validation
+├── src/                     # Core transformation engine (framework-independent)
+│   ├── normalizer.py        # ShapeShifter orchestrator
+│   ├── model.py             # Domain models
+│   ├── dispatch.py          # Output format handlers
+│   ├── extract.py           # Source extraction
+│   ├── workflow.py          # Pipeline stage sequencing
+│   ├── loaders/             # DataLoader implementations
+│   ├── validators/          # Constraint validators
+│   ├── transforms/          # Filter, link, unnest, translate steps
+│   ├── specifications/      # Project-level structural validation
+│   ├── target_model/        # Target model parsing and conformance
+│   ├── reconciliation/      # Reconciliation support
+│   ├── sidecars/            # Mapping and value sidecars
+│   ├── configuration/       # Config provider
+│   └── types/               # Shared type definitions
 ├── backend/
 │   └── app/
 │       ├── api/v1/endpoints/ # FastAPI routers (one module per resource)
 │       ├── services/         # Business logic
 │       ├── mappers/          # API ↔ Core translation + env var resolution
 │       ├── models/           # Pydantic v2 request/response schemas
+│       ├── authorization/    # Principals, resources, grants, dependencies
+│       ├── validators/       # API-layer validators
 │       ├── clients/          # httpx clients (SIMS, reconciliation)
-│       └── core/             # Config, logging, state manager
+│       ├── core/             # Config, logging, state manager
+│       ├── ingesters/        # Ingester adapters
+│       ├── utils/            # Shared helpers
+│       ├── scripts/          # Admin CLI commands
+│       └── middleware/       # Request middleware
 ├── frontend/src/
 │   ├── api/                # Axios client modules (one per resource)
 │   ├── stores/             # Pinia stores
 │   ├── composables/        # Reusable composition functions
 │   ├── components/         # Vue components
-│   └── views/              # Route-level screens
+│   ├── views/              # Route-level screens
+│   ├── router/             # Route definitions
+│   ├── config/             # Runtime configuration
+│   ├── schemas/            # Generated JSON schemas
+│   ├── plugins/            # Vuetify and app plugins
+│   ├── styles/             # Shared styles and assets
+│   ├── utils/              # Shared frontend helpers
+│   └── types/              # TypeScript types
 ├── ingesters/              # Pluggable ingesters (top-level, auto-discovered)
 ├── tests/                  # Core tests
 ├── backend/tests/          # Backend API tests
 ├── docs/                   # Documentation
-├── container/              # Podman build and deploy scripts
+├── deployment/             # Container release bundle and host deployment tooling
 ├── scripts/                # Developer and admin scripts
 ├── pyproject.toml          # Python dependencies and tool config
 └── Makefile                # All supported development commands
 ```
-
-The core layer (`src/`) has no dependency on FastAPI or Pydantic API models. See [DESIGN.md](DESIGN.md) for the layer boundary architecture.
 
 ---
 
@@ -106,24 +129,20 @@ make fr                   # Kill + restart frontend only
 make br+fr                # Kill + restart both
 ```
 
-API docs are available at `http://localhost:8013/api/v1/docs` when the backend is running.
+API docs: `/api/v1/docs` on the same port.
 
 ### Testing
 
 ```bash
-make test                              # All tests (core + backend + ingesters)
+make test                              # All suites
 make backend-test                      # Backend tests only
 uv run pytest tests -v                 # Core tests only
-uv run pytest backend/tests -v         # Backend tests only
 
 # Run a single test
 uv run pytest tests/test_mapping.py::test_name -v -s
-
-# With explicit PYTHONPATH when import resolution fails
-PYTHONPATH=.:backend uv run pytest backend/tests -v
 ```
 
-Frontend tests:
+Frontend tests and documentation:
 
 ```bash
 make frontend-test        # Run Vitest tests
@@ -140,8 +159,6 @@ make pylint               # Pylint check
 make lint                 # tidy + ruff + pylint (full pass)
 make frontend-lint        # ESLint for frontend
 ```
-
-Run `make tidy && make lint` before opening a pull request.
 
 ---
 
@@ -166,7 +183,7 @@ See [DESIGN.md](DESIGN.md) for the full layer boundary and identity system desig
 
 ### Authorization for protected work
 
-Use the centralized authorization dependencies for every protected endpoint. Import actions and dependencies from the authorization package; do not duplicate role checks in a route or service.
+Use the centralized authorization dependencies for every protected endpoint; do not duplicate role checks in a route or service. The project path parameter must be named `name` or `project_name` so `require_project()` can resolve it. Use `require_shared_data_source(Action.READ)` for a named shared source and `require_application_action(action)` for deployment-wide permissions. Each dependency adds `authorization_requirement` metadata used by [AUTHORIZATION_ROUTE_INVENTORY.md](AUTHORIZATION_ROUTE_INVENTORY.md).
 
 ```python
 from typing import Annotated
@@ -187,11 +204,9 @@ async def read_example(
    return await service.read_example(authorized_project)
 ```
 
-The project path parameter must be named `name` or `project_name` so `require_project()` can resolve it. Use `require_shared_data_source(Action.READ)` for a named shared source and `require_application_action(action)` for deployment-wide permissions. Each dependency adds `authorization_requirement` metadata used by [AUTHORIZATION_ROUTE_INVENTORY.md](AUTHORIZATION_ROUTE_INVENTORY.md).
+Sensitive service methods must accept an `AuthorizedResource` or repeat the central check before reading data. Use `authorized_resource.resource.locator` only after the dependency resolved it; never accept a client-supplied resource name or path as proof of authorization.
 
-Sensitive service methods must accept an `AuthorizedResource` or perform the same central authorization check before accessing data. Use `authorized_resource.resource.locator` only after the dependency has resolved it. Do not pass client-supplied resource names, paths, or an `AuthorizedResource` value from an API request into a service as proof of authorization.
-
-For a long-running project operation, record the initiating principal and project resource UUID when creating its operation record:
+For a long-running operation, record the initiating principal and project resource UUID when creating it:
 
 ```python
 operation_id = operation_manager.create_operation(
@@ -201,11 +216,11 @@ operation_id = operation_manager.create_operation(
 )
 ```
 
-Use `require_operation(Action.READ)` or `require_operation(Action.EDIT)` for later progress, stream, result, and cancellation routes. Do not treat an operation ID or session ID as authorization. A background task uses the authorization state recorded when it starts; later access must reauthorize against the recorded project.
+Use `require_operation(Action.READ)` or `require_operation(Action.EDIT)` for progress, stream, result, and cancellation routes. An operation or session ID is not authorization, and a background task must reauthorize against the recorded project.
 
 ### Local authorization debug setup
 
-The `FastAPI Backend (Debug)` launch profile uses the `local-developer` principal, disables trusted-proxy authentication, binds the API to localhost, and writes to `state/authorization-dev.sqlite3`. From the repository root, initialize its admin role and register existing projects and shared data sources with:
+The `FastAPI Backend (Debug)` launch profile uses the `local-developer` principal, disables trusted-proxy authentication, binds the API to localhost, and writes to `state/authorization-dev.sqlite3`. Initialize it with:
 
 ```bash
 SHAPE_SHIFTER_ENVIRONMENT=development \
@@ -215,17 +230,17 @@ SHAPE_SHIFTER_AUTHORIZATION_DATABASE_PATH=state/authorization-dev.sqlite3 \
 uv run sead-authorization dev-bootstrap
 ```
 
-If that database is missing, lacks the local admin, or is missing resource records, the debug launch logs the same command without changing the database. This hint is enabled only in the debug launch profile. The command refuses non-development environments, enabled trusted-proxy authentication, or any database path other than `state/authorization-dev.sqlite3`. It is safe to rerun: existing roles, resource IDs, and grants are preserved, and newly discovered local resources are added. Run it again after adding project or shared data source files outside the API.
+The debug launch logs this command when the database lacks the local admin or resource records. The command refuses non-development environments, trusted-proxy authentication, or any other path, and is safe to rerun, so rerun it after adding project or shared data source files outside the API.
 
 When adding or changing protected work:
 
 1. Select the resource and action from `backend.app.authorization.models.Action`.
-2. Add the matching dependency and use its returned authorized resource for the service call.
-3. Record every required resource for multi-resource operations; project access does not grant shared-source access.
-4. Add the route to [AUTHORIZATION_ROUTE_INVENTORY.md](AUTHORIZATION_ROUTE_INVENTORY.md) with the declared requirement.
-5. Add focused allowed, denied, and concealed-resource tests. Test service or background entry points without relying only on route dependencies.
+2. Add the matching dependency and use its returned authorized resource.
+3. Record every required resource; project access does not grant shared-source access.
+4. Add the route to [AUTHORIZATION_ROUTE_INVENTORY.md](AUTHORIZATION_ROUTE_INVENTORY.md).
+5. Add allowed, denied, and concealed-resource tests, including service and background entry points.
 
-See [AUTHORIZATION.md](AUTHORIZATION.md) for policy rules and response behavior.
+See [AUTHORIZATION.md](AUTHORIZATION.md) for policy and response behavior.
 
 ### Frontend
 
@@ -238,14 +253,11 @@ See [AUTHORIZATION.md](AUTHORIZATION.md) for policy rules and response behavior.
 
 ## Development Workflow
 
-1. **Create a branch** from `dev`:
-   ```bash
-   git checkout -b feature/my-feature
-   ```
+1. **Branch from `dev`:** `git checkout -b feature/my-feature`
 
-2. **Make changes.** Run the relevant server locally to verify behavior.
+2. **Make changes**, running the relevant server locally to verify behavior.
 
-3. **Run targeted tests** for the changed area. Run broader tests when the change crosses layers.
+3. **Test** the changed area; run broader tests when the change crosses layers.
 
 4. **Format and lint** before committing:
    ```bash
@@ -280,10 +292,7 @@ make install            # Reinstall if environment is wrong
 lsof -i :8013          # Check if port is in use
 ```
 
-**Import errors:** Always run Python commands through `uv run`, which sets `PYTHONPATH=.` automatically. If still failing:
-```bash
-PYTHONPATH=.:backend uv run pytest backend/tests -v
-```
+**Import errors:** run Python through `uv run`, which sets `PYTHONPATH=.`. If imports still fail, set it explicitly: `PYTHONPATH=.:backend uv run pytest backend/tests -v`.
 
 **Async test failures:** ensure `@pytest.mark.asyncio` is on the test function and `pytest-asyncio` is installed.
 
@@ -294,44 +303,26 @@ make frontend-install   # Reinstall pnpm dependencies
 lsof -i :5173          # Check if port is in use
 ```
 
-**MS Access / JVM errors:** Java JRE must be installed (`sudo apt install default-jre-headless`). Run `scripts/install-ucanaccess.sh` to install the UCanAccess JAR. The JVM initializes once at backend startup; restart the backend if initialization fails.
+**MS Access / JVM errors:** install Java (`sudo apt install default-jre-headless`) and run `scripts/install-uncanccess.sh` for the UCanAccess JAR. The JVM initializes once at backend startup, so restart the backend if initialization fails.
 
-**Log output:** logs go to `logs/backend.log` when running via `make backend-run-log`. For pytest debug output, add `-s`.
+**Log output:** `logs/backend.log` when running via `make backend-run-log`; add `-s` to pytest for debug output.
 
 ---
 
 ## AI-Friendly Development
 
-As this project grows, AI-assisted code work is affected less by raw file count and more by how much ambiguity, duplication, and noise exists in the workspace.
+AI-assisted work is limited less by file count than by ambiguity, duplication, and search noise. Multiple implementations of one behavior, stale docs, and archived code that looks authoritative all degrade results, as do generated output, logs, and build artifacts in normal search paths.
 
-**What degrades AI performance:**
-- Multiple competing implementations of the same behavior
-- Stale or conflicting documentation
-- Generated files, coverage output, logs, and build artifacts mixed into normal search paths
-- Deprecated or archived code that looks authoritative
-- Features spread across many unrelated files with no clear owner
+Keep architectural boundaries enforced, docs current, naming consistent across entities and layers, feature logic locally coherent, and changes small and scoped. Add regression tests for bug-prone workflows.
 
-**What helps most:**
-1. Keep architectural boundaries clear and enforced.
-2. Maintain concise, current docs — especially architecture and workflow guidance.
-3. Use strong, consistent naming across entities, stores, services, endpoints, and config.
-4. Keep feature logic locally coherent rather than scattered across layers.
-5. Keep commits and pull requests small and scoped.
-6. Add focused regression tests for bug-prone workflows.
-7. When asking for AI help, include: affected workflow, expected behavior, actual behavior, likely files, and related proposal, phase-plan, or task-plan paths when available.
-8. Use `.venv/bin/graphify query` before broad code searches when exploring relationships; verify its results in current source and tests.
-
-The biggest performance cost for AI in a large repository is not size — it is uncertainty. Reducing ambiguity, duplication, and search noise usually improves AI effectiveness more than reducing line count.
+When asking for AI help, include the affected workflow, expected and actual behavior, likely files, and related proposal, phase-plan, or task-plan paths. Use `.venv/bin/graphify query` before broad code searches when exploring relationships, and verify its results in current source and tests.
 
 ---
 
 ## Related Documents
 
-- [DESIGN.md](DESIGN.md) — architecture, component responsibilities, key flows, design decisions
 - [TESTING.md](TESTING.md) — test strategy, levels, and repository-specific testing guidance
-- [OPERATIONS.md](OPERATIONS.md) — environments, deployment, CI/CD, rollback, and observability
 - [DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](DATA_PROVIDER_SUBMISSION_LIFECYCLE.md) — durable lifecycle policy for provider-submitted data changes through `sead_change_request`
 - [CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md) — complete YAML project configuration reference
 - [USER_GUIDE.md](USER_GUIDE.md) — end-user documentation for the editor UI
 - `.github/instructions/` — task-specific AI coding guidance (frontend, ingesters, validators, YAML config, etc.)
-- API reference: `http://localhost:8013/api/v1/docs` when running locally

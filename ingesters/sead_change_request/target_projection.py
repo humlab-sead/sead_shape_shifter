@@ -2,14 +2,40 @@
 
 import pandas as pd
 
-from ingesters.sead_change_request.contracts import IdentityResolutionResult, ProjectedTable, TargetProjectionResult
-from src.target_model.models import EntitySpec, TargetModel
+from ingesters.sead_change_request.contracts import (
+    IdentityResolutionResult,
+    PlannedRowAction,
+    PlannedTable,
+    ProjectedTable,
+    ResolvedIdentityTable,
+    TargetProjectionResult,
+)
+from ingesters.sead_change_request.package_builder import INSERTABLE_ROW_STATES
+from ingesters.sead_change_request.staging_eligibility import PendingDeploymentMap
+from src.target_model.models import EntitySpec, ForeignKeySpec, TargetModel
 
 
-def project_target_ids(identity_result: IdentityResolutionResult, target_model: TargetModel) -> TargetProjectionResult:
-    """Replace local identity values with target-facing PK/FK values."""
+def project_target_ids(
+    identity_result: IdentityResolutionResult,
+    target_model: TargetModel,
+    planned_tables: list[PlannedTable] | None = None,
+    pending: PendingDeploymentMap | None = None,
+    foreign_key_value_sources: dict[str, dict[str, str]] | None = None,
+) -> TargetProjectionResult:
+    """Replace local identity values with target-facing PK/FK values.
+
+    Conditional foreign keys are evaluated from the final reconciled row states, so
+    ``planned_tables`` carries the planned row actions that distinguish an accepted
+    existing-row update from a reference-only match.
+
+    ``pending`` marks values that are only available after deployment. Those values
+    are left unresolved without adding a diagnostic, because they are intentional
+    rather than missing. Deployment validates them after allocation.
+    """
     tables: dict[str, ProjectedTable] = {}
     diagnostics: list[str] = []
+    planned_table_lookup: dict[str, PlannedTable] = {planned_table.entity_name: planned_table for planned_table in planned_tables or []}
+    direct_fk_targets = _direct_fk_targets(foreign_key_value_sources)
 
     for entity_name, resolved_table in identity_result.tables.items():
         entity_spec: EntitySpec = target_model.entities[entity_name]
@@ -18,7 +44,10 @@ def project_target_ids(identity_result: IdentityResolutionResult, target_model: 
 
         if entity_spec.public_id:
             frame[entity_spec.public_id] = resolved_table.resolved_target_ids.astype("Int64")
-            unresolved_pk_count = int(frame[entity_spec.public_id].isna().sum())
+            unresolved_pk_mask = frame[entity_spec.public_id].isna()
+            if pending is not None:
+                unresolved_pk_mask = unresolved_pk_mask & ~_pending_row_mask(pending, entity_name, frame.index)
+            unresolved_pk_count = int(unresolved_pk_mask.sum())
             if unresolved_pk_count:
                 table_diagnostics.append(
                     f"Entity '{entity_name}' has {unresolved_pk_count} row(s) without a resolved target ID for '{entity_spec.public_id}'"
@@ -27,13 +56,11 @@ def project_target_ids(identity_result: IdentityResolutionResult, target_model: 
         required_fk_columns = {
             remote_spec.public_id
             for foreign_key in entity_spec.foreign_keys
-            if foreign_key.required
-            and (remote_spec := target_model.entities.get(foreign_key.entity)) is not None
-            and remote_spec.public_id
+            if foreign_key.required and (remote_spec := target_model.entities.get(foreign_key.entity)) is not None and remote_spec.public_id
         }
         for column_name, column_spec in entity_spec.columns.items():
             if (
-                frame.empty
+                frame.empty  # pylint: disable=too-many-boolean-expressions
                 or not column_spec.required
                 or column_spec.nullable is True
                 or column_spec.generated
@@ -51,6 +78,23 @@ def project_target_ids(identity_result: IdentityResolutionResult, target_model: 
                 )
 
         for foreign_key in entity_spec.foreign_keys:
+            if foreign_key.entity in direct_fk_targets.get(entity_name, set()):
+                continue
+            if foreign_key.required_when is not None:
+                table_diagnostics.extend(
+                    _project_conditional_foreign_key(
+                        entity_name,
+                        foreign_key,
+                        resolved_table,
+                        frame,
+                        target_model,
+                        identity_result,
+                        planned_table_lookup.get(entity_name),
+                        pending,
+                    )
+                )
+                continue
+
             remote_entity = foreign_key.entity
             remote_spec = target_model.entities.get(remote_entity)
             if remote_spec is None or not remote_spec.public_id:
@@ -62,9 +106,7 @@ def project_target_ids(identity_result: IdentityResolutionResult, target_model: 
             fk_column = remote_spec.public_id
             if fk_column not in frame.columns:
                 if foreign_key.required and not frame.empty:
-                    table_diagnostics.append(
-                        f"Entity '{entity_name}' is missing required FK column '{fk_column}' for '{remote_entity}'"
-                    )
+                    table_diagnostics.append(f"Entity '{entity_name}' is missing required FK column '{fk_column}' for '{remote_entity}'")
                 continue
             missing_required_fk_count = int(frame[fk_column].isna().sum())
             if foreign_key.required and missing_required_fk_count:
@@ -91,7 +133,8 @@ def project_target_ids(identity_result: IdentityResolutionResult, target_model: 
 
             remote_mapping = _build_remote_id_mapping(remote_table.frame["system_id"], remote_table.resolved_target_ids)
             projected_fk = frame[fk_column].map(remote_mapping).astype("Int64")
-            unresolved_fk_count = int(frame[fk_column].notna().sum() - projected_fk.notna().sum())
+            deferred_mask = _pending_foreign_key_mask(pending, entity_name, fk_column, frame.index)
+            unresolved_fk_count = int((frame[fk_column].notna() & projected_fk.isna() & ~deferred_mask).sum())
             frame[fk_column] = projected_fk
             if unresolved_fk_count:
                 table_diagnostics.append(f"Entity '{entity_name}' has {unresolved_fk_count} unresolved FK value(s) for '{fk_column}'")
@@ -100,6 +143,101 @@ def project_target_ids(identity_result: IdentityResolutionResult, target_model: 
         diagnostics.extend(table_diagnostics)
 
     return TargetProjectionResult(tables=tables, diagnostics=diagnostics)
+
+
+def _direct_fk_targets(foreign_key_value_sources: dict[str, dict[str, str]] | None) -> dict[str, set[str]]:
+    """Return target entities whose FK values are already target IDs."""
+    return {
+        source_entity: {target_entity for target_entity, value_source in target_sources.items() if value_source == "public_id"}
+        for source_entity, target_sources in (foreign_key_value_sources or {}).items()
+    }
+
+
+def _project_conditional_foreign_key(
+    entity_name: str,
+    foreign_key: ForeignKeySpec,
+    resolved_table: ResolvedIdentityTable,
+    frame: pd.DataFrame,
+    target_model: TargetModel,
+    identity_result: IdentityResolutionResult,
+    planned_table: PlannedTable | None,
+    pending: PendingDeploymentMap | None = None,
+) -> list[str]:
+    """Project one conditional foreign key and report only the rows that need a value.
+
+    The condition applies only to rows finally selected for insertion. Accepted
+    existing-row updates keep their projected foreign key value, and matched rows
+    that stay out of the package are not evaluated.
+    """
+    diagnostics: list[str] = []
+    insert_mask: pd.Series = resolved_table.row_states.isin(INSERTABLE_ROW_STATES)
+    update_mask: pd.Series = _build_packaged_update_mask(planned_table, resolved_table)
+    packaged_mask: pd.Series = insert_mask | update_mask
+    has_insert_rows = bool(insert_mask.any())
+
+    remote_entity: str = foreign_key.entity
+    remote_spec: EntitySpec | None = target_model.entities.get(remote_entity)
+    if remote_spec is None or not remote_spec.public_id:
+        if has_insert_rows:
+            diagnostics.append(
+                f"Entity '{entity_name}' cannot project conditional foreign key to '{remote_entity}' "
+                "because the target public_id is undefined"
+            )
+        return diagnostics
+
+    fk_column: str = remote_spec.public_id
+    if fk_column not in frame.columns:
+        if has_insert_rows:
+            diagnostics.append(f"Entity '{entity_name}' is missing conditional FK column '{fk_column}' for '{remote_entity}'")
+        return diagnostics
+
+    if not bool(packaged_mask.any()):
+        return diagnostics
+
+    missing_conditional_fk_count = int(frame.loc[insert_mask, fk_column].isna().sum())
+    if missing_conditional_fk_count:
+        diagnostics.append(f"Entity '{entity_name}' has {missing_conditional_fk_count} missing conditional FK value(s) for '{fk_column}'")
+
+    values_needing_projection: pd.Series = frame.loc[packaged_mask, fk_column]
+    if not bool(values_needing_projection.notna().any()):
+        return diagnostics
+
+    remote_table = identity_result.tables.get(remote_entity)
+    if remote_table is None:
+        diagnostics.append(
+            f"Entity '{entity_name}' cannot project conditional foreign key '{fk_column}' because "
+            f"resolved table '{remote_entity}' is missing"
+        )
+        return diagnostics
+
+    if "system_id" not in remote_table.frame.columns:
+        diagnostics.append(
+            f"Entity '{entity_name}' cannot project conditional foreign key '{fk_column}' "
+            f"because resolved table '{remote_entity}' has no system_id column"
+        )
+        return diagnostics
+
+    remote_mapping = _build_remote_id_mapping(remote_table.frame["system_id"], remote_table.resolved_target_ids)
+    projected_fk: pd.Series = frame[fk_column].map(remote_mapping).astype("Int64")
+    deferred_mask: pd.Series = _pending_foreign_key_mask(pending, entity_name, fk_column, frame.index)
+    unresolved_conditional_fk_count = int(
+        (values_needing_projection.notna() & projected_fk.loc[packaged_mask].isna() & ~deferred_mask.loc[packaged_mask]).sum()
+    )
+    frame[fk_column] = projected_fk
+    if unresolved_conditional_fk_count:
+        diagnostics.append(
+            f"Entity '{entity_name}' has {unresolved_conditional_fk_count} unresolved conditional FK value(s) for '{fk_column}'"
+        )
+
+    return diagnostics
+
+
+def _build_packaged_update_mask(planned_table: PlannedTable | None, resolved_table: ResolvedIdentityTable) -> pd.Series:
+    """Return the accepted existing-row update candidates among the resolved rows."""
+    if planned_table is None:
+        return pd.Series(False, index=resolved_table.frame.index)
+
+    return planned_table.planned_actions.reindex(resolved_table.frame.index) == PlannedRowAction.UPDATE_EXISTING_CANDIDATE
 
 
 def _build_remote_id_mapping(system_ids: pd.Series, resolved_target_ids: pd.Series) -> dict[object, int]:
@@ -112,3 +250,33 @@ def _build_remote_id_mapping(system_ids: pd.Series, resolved_target_ids: pd.Seri
             continue
         mapping[system_id] = int(target_id)
     return mapping
+
+
+def _pending_row_mask(pending: PendingDeploymentMap | None, entity_name: str, index: pd.Index) -> pd.Series:
+    """Return a mask of rows whose target ID is not available during generation."""
+    empty = pd.Series(False, index=index)
+    if pending is None:
+        return empty
+
+    mask = empty.copy()
+    for source in (pending.pending_row_mask.get(entity_name), pending.deferred_public_id_mask.get(entity_name)):
+        if source is None:
+            continue
+        mask = mask | source.reindex(index).fillna(False).astype(bool)
+    return mask
+
+
+def _pending_foreign_key_mask(
+    pending: PendingDeploymentMap | None,
+    entity_name: str,
+    column_name: str,
+    index: pd.Index,
+) -> pd.Series:
+    """Return a mask of rows whose foreign key value is pending deployment."""
+    empty = pd.Series(False, index=index)
+    if pending is None:
+        return empty
+    mask = pending.pending_fk_mask.get(entity_name, {}).get(column_name)
+    if mask is None:
+        return empty
+    return mask.reindex(index).fillna(False).astype(bool)

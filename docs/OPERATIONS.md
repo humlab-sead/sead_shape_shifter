@@ -1,21 +1,21 @@
 # Shape Shifter Operations Guide
 
-Runbook for operators and maintainers of deployed Shape Shifter environments. The supported deployment uses rootless Podman; setup, lifecycle commands, multi-environment deployment, NGINX, and systemd procedures are documented in [container/README.md](../container/README.md) and [container/DEPLOYMENT.md](../container/DEPLOYMENT.md).
+Runbook for operators and maintainers of deployed Shape Shifter environments. The supported deployment uses rootless Podman; setup, lifecycle commands, multi-environment deployment, NGINX, and systemd procedures are documented in [deployment/container/README.md](../deployment/container/README.md) and [deployment/container/DEPLOYMENT.md](../deployment/container/DEPLOYMENT.md).
 
 ## Operational Invariants
 
-- Run one backend worker. Project caches and in-memory singletons are process-local; multiple workers can serve stale data after writes.
+- Run one backend worker. Project caches, locks, and in-memory singletons are process-local. Multiple workers can serve stale data and overwrite mapping sidecar changes made by another worker.
 - Run the container as the deployment user with rootless Podman. `userns_mode: "keep-id"` maps the host UID/GID into the container for bind-mounted data.
 - Project state is file-backed YAML. Do not edit one project concurrently from multiple operator sessions.
 - The application serves plain HTTP. Terminate TLS at the NGINX reverse proxy or another trusted upstream.
 - NGINX is the authentication boundary. It must authenticate the user, overwrite `X-Authenticated-User` with the verified identity, and proxy to the application port.
 - Group grants need group IDs from the proxy. On a site that authenticates with `auth_basic`, NGINX derives `X-Authenticated-Groups` from the user name and a membership file, so a membership change needs a reload and is not recorded in the authorization audit log. See [NGINX group header](#nginx-group-header).
 - `/api/v1/health` is the only unauthenticated API path. Keep the application port private to the proxy host.
-- Java is required when projects use MS Access sources. Install UCanAccess with `make install-ucanaccess` from `container/` when the deployment image does not already contain the required JARs.
+- Java is required when projects use MS Access sources. Install UCanAccess with `make install-ucanaccess` from `deployment/container/` when the deployment image does not already contain the required JARs.
 
 ## Deployment Entry Points
 
-Run the deployment as a dedicated Linux user from `~/container`. Configuration defaults to `~/config` and persistent data to `~/container-data`; `CONFIG_DIR` and `DATA_DIR` select both, and the checkout holds neither. The supported first-start sequence is:
+Run the deployment as a dedicated Linux user from `~/container`, which holds a manual copy of the `deployment/container/` tree. Until images are published to GHCR (see [GHCR_IMAGE_RELEASE.md](./proposals/GHCR_IMAGE_RELEASE.md)), the tree is placed by copying it or refreshing it with `deployment/container-host/deploy/sync-to-deploy`; the `shape-shifter-container-release` manager is retired. See [Place the deployment files](../deployment/container/DEPLOYMENT.md#place-the-deployment-files). Configuration defaults to `~/config` and persistent data to `~/container-data`; `CONFIG_DIR` and `DATA_DIR` select both, and `~/container` holds neither. The supported first-start sequence is:
 
 ```bash
 make setup
@@ -24,7 +24,9 @@ make up
 make healthcheck
 ```
 
-Use [container/DEPLOYMENT.md](../container/DEPLOYMENT.md) for dedicated users, lingering, multiple environments, deployment helpers, NGINX installation, systemd services, and release or branch selection. Use [container/README.md](../container/README.md) for the complete Makefile command reference.
+Every lifecycle command runs from `~/container`: `make up`, `make down`, `make restart`, `make logs`, and `make status` all invoke `scripts/container.sh` there, and the systemd user unit calls the same dispatcher. Update the deployment files by syncing the reviewed tree with `sync-to-deploy` rather than editing files under `~/container` by hand.
+
+Use [deployment/container/DEPLOYMENT.md](../deployment/container/DEPLOYMENT.md) for dedicated users, lingering, multiple environments, deployment helpers, NGINX installation, systemd services, and release or branch selection. Use [deployment/container/README.md](../deployment/container/README.md) for the complete Makefile command reference.
 
 Each environment records its repository, ref, image, port, and path overrides in `~/config/deployment.env`. A build from `GIT_REF=dev` produces a `shape-shifter:dev` image; keep `IMAGE_NAME` aligned with that ref before `make up`. Image labels record the source commit, ref, repository, and build date.
 
@@ -43,6 +45,7 @@ Backend settings use the `SHAPE_SHIFTER_` prefix and are loaded from
 | `SHAPE_SHIFTER_PROJECTS_DIR` | `projects` | Project YAML and project-managed files. |
 | `SHAPE_SHIFTER_GLOBAL_DATA_DIR` | `shared/shared-data` | Shared reference data. |
 | `SHAPE_SHIFTER_GLOBAL_DATA_SOURCE_DIR` | `shared/data-sources` | Shared uploaded data sources. |
+| `SHAPE_SHIFTER_GLOBAL_DATA_PROVIDER_DIR` | `shared/data-providers` | Curated provider-schema registry. Point it at `deployment/container/resources/data-providers` for local development; the container mounts that directory read-only. |
 | `SHAPE_SHIFTER_LOG_DIR` | `logs` | Application logs. |
 | `SHAPE_SHIFTER_LOG_LEVEL` | `INFO` | Loguru log level. |
 | `SHAPE_SHIFTER_TRUSTED_PROXY_AUTH_ENABLED` | `false` | Require the identity forwarded by NGINX. |
@@ -58,6 +61,11 @@ Backend settings use the `SHAPE_SHIFTER_` prefix and are loaded from
 | `SHAPE_SHIFTER_ALLOWED_ORIGIN_REGEX` | `null` | Optional controlled CORS pattern. |
 | `SHAPE_SHIFTER_RECONCILIATION_SERVICE_URL` | `http://localhost:8000` | Reconciliation service base URL. |
 | `SHAPE_SHIFTER_SIMS_SERVICE_URL` | `http://localhost:8000` | SEAD authority/SIMS service base URL. |
+| `SHAPE_SHIFTER_INGEST_TARGET_HOST` | `null` | Backend-selected PostgreSQL host for project-based Change Request generation; required when that helper is used. |
+| `SHAPE_SHIFTER_INGEST_TARGET_PORT` | `5432` | Backend-selected PostgreSQL port for project-based Change Request generation. |
+| `SHAPE_SHIFTER_INGEST_TARGET_DBNAME` | `null` | Backend-selected PostgreSQL database name; required when that helper is used. |
+| `SHAPE_SHIFTER_INGEST_TARGET_USER` | `null` | Backend-selected PostgreSQL user; required when that helper is used. |
+| `SHAPE_SHIFTER_INGEST_OUTPUT_DIR` | `null` | Writable root for generated Change Request bundles; required when that helper is used. Relative paths resolve under `SHAPE_SHIFTER_APPLICATION_ROOT`. |
 | `SHAPE_SHIFTER_ENABLE_FK_SUGGESTIONS` | `false` | Foreign-key candidate suggestions. |
 | `SHAPE_SHIFTER_INGESTER_PATHS` | `['ingesters']` | Ingester module directories. |
 | `SHAPE_SHIFTER_ENABLED_INGESTERS` | `null` | Enabled ingester keys; null means all discovered ingesters. |
@@ -66,6 +74,11 @@ Backend settings use the `SHAPE_SHIFTER_` prefix and are loaded from
 Set `SEAD_HOST`, `SEAD_PORT`, `SEAD_DBNAME`, and `SEAD_USER` through the project
 data-source configuration when required. Keep PostgreSQL passwords in
 `~/config/.pgpass/.pgpass` with mode `600`, not in project YAML or `backend.env`.
+Project-based Change Request generation uses the separate `SHAPE_SHIFTER_INGEST_TARGET_*`
+values above; add a matching host, port, database, and user entry to the deployment
+user's PostgreSQL password file. The helper does not take its target connection or
+output directory from project YAML or request data. Configure `SHAPE_SHIFTER_INGEST_OUTPUT_DIR`
+to a writable location for the generated deploy bundles before enabling that workflow.
 `VITE_*` values are build-time settings in `~/config/deployment.env` and require
 a new image build.
 
@@ -99,7 +112,7 @@ location / {
 }
 ```
 
-`container/scripts/deploy/nginx-shape-shifter.conf.template` and the site files under `container/resources/` already contain both blocks. Enable the header on the backend in `~/config/backend.env`:
+`deployment/container-host/deploy/nginx-shape-shifter.conf.template` and the site files under `deployment/container/resources/` already contain both blocks. Enable the header on the backend in `~/config/backend.env`:
 
 ```bash
 SHAPE_SHIFTER_TRUSTED_PROXY_GROUPS_ENABLED=true
@@ -121,7 +134,7 @@ Notes:
 
 ## Data Layout And Backups
 
-`container/podman-compose.yml` mounts the following paths. Runtime configuration
+`deployment/container/podman-compose.yml` mounts the following paths. Runtime configuration
 comes from `CONFIG_DIR` and every mutable path from `CONTAINER_DATA_DIR`:
 
 | Host path | Container path | Contents |
@@ -146,7 +159,7 @@ application hosts.
 
 Project saves create timestamped YAML backups before writing. Loading a project does not modify its file. Copy project backups to operator-controlled storage and retain the release, project, and backup identifiers together. Restore a project only while following the normal review and validation process.
 
-For authorization administration, use `container/scripts/authorization.sh` from the deployment user's `container/` directory. The wrapper runs the tested CLI inside the deployed image and uses the persistent authorization database; do not edit SQLite directly because direct edits bypass audit records and final-owner protections.
+For authorization administration, use `~/container/scripts/authorization.sh` from the deployment user's `~/container` directory. The wrapper runs the tested CLI inside the deployed image and uses the persistent authorization database; do not edit SQLite directly because direct edits bypass audit records and final-owner protections.
 
 Use these commands for routine review and backup:
 
@@ -156,7 +169,40 @@ Use these commands for routine review and backup:
 ./scripts/authorization.sh list-audit-events --json
 ./scripts/authorization.sh integrity-check
 ./scripts/authorization.sh backup
+./scripts/authorization.sh export-state authorization-state.yaml
 ```
+
+`export-state` writes the complete authorization state, including resource UUIDs,
+child resources, inactive generations, and every deployment role, and
+`import-state` replaces the stored records with that snapshot:
+
+```bash
+./scripts/authorization.sh export-state authorization-state.yaml
+./scripts/authorization.sh import-state authorization-state.yaml --yes
+```
+
+A YAML snapshot is sorted and uses ISO timestamps, so it diffs cleanly and can be
+committed to version control. Audit events are excluded unless `--include-audit`
+is given; a restore from a snapshot without them keeps the existing history.
+Use `--dry-run` to validate a snapshot before applying it. The `backup` and
+`restore` pair remains the lossless binary backup for recovery, while
+`export-state` is the reviewable text form. See
+[AUTHORIZATION.md](AUTHORIZATION.md#snapshots-and-restores) for the full record
+set and validation rules.
+
+A snapshot is also the supported way to change many role and grant records at
+once: export, edit the file, review the `--dry-run` difference, then import it. A
+restore replaces every stored record, so it also removes the authorization record
+of any project created after the export. Back up and export a baseline first.
+`import-state --dry-run` lists each record the snapshot would add, remove, or
+change, and the import is refused when the result would leave no administrator or
+an active project without an owner. Accept that deliberately with
+`--allow-no-admin` or `--allow-unowned-project`. After the import, export again
+and compare the records with the file that was applied. The step-by-step
+procedure is in
+[AUTHORIZATION.md](AUTHORIZATION.md#editing-a-snapshot-by-hand). For one or two
+records, use the individual `grant`, `revoke`, `grant-application-role`, and
+`revoke-application-role` commands instead.
 
 Backups are written to the persistent `backups/` directory with a timestamped
 filename. Restore a backup by filename only:
@@ -190,28 +236,32 @@ Confirm the UI loads, the project list is available, API documentation is reacha
 podman inspect shape-shifter --format '{{index .Config.Labels "org.opencontainers.image.revision"}}'
 ```
 
-### Firewall and network exposure verification
+### Runtime verification ownership
 
-After each deployment, run `./scripts/verify/verify_firewall.sh` from the deployment user's `container/` directory. The script prints the listeners, the firewall rules for the active backend, and the loopback and LAN-address connection checks, then prints the cross-host commands to run from a second machine. The firewall-listing step needs `sudo`; the script never changes rules or service state.
+SEAD operations is responsible for checks of host exposure, deployed container
+configuration, database access, credentials, logs, proxy identity, application
+grants, and recovery. Shape Shifter no longer ships scripts for these checks.
+
+The [SEAD Runtime Verification Handoff](./proposals/done/CONTAINER_SETUP_SIMPLIFICATION/OPERATIONS_VERIFICATION_HANDOFF.md)
+states the required outcomes without selecting tools or procedures. It is a
+requirements document, not an operating procedure; use the checks and
+procedures established by SEAD operations for each environment.
+
+To update an environment's deployment files, sync the reviewed tree from a repository checkout and restart the service:
 
 ```bash
-./scripts/verify/verify_firewall.sh
+deployment/container-host/deploy/sync-to-deploy --deploy-user USER
+systemctl --user -M USER@ restart shape-shifter
 ```
 
-The check fails when the backend listens on `0.0.0.0:8012` or any port other than the proxy is reachable from outside. Record the listener output, the firewall listing, and the cross-host result with the date and host.
-
-### Container configuration re-inspection
-
-After each deployment or image change, run `./scripts/verify/verify_container_config.sh` from the deployment user's `container/` directory as that user, for example `sudo -u test-shape-shifter.sead.se -H bash ./scripts/verify/verify_container_config.sh`. The script prints the mounts, the published ports, the environment variable names (never values), and the image labels and history scan, and fails on a non-loopback port, a sensitive host mount, or a writable `.pgpass` mount. It never changes the container, image, or configuration; record its output with the date and host.
-
-To roll back, set `GIT_REF` and `IMAGE_NAME` to the last known-good release, rebuild or select the corresponding image, and run `make restart`. Keep the current authorization database unless the rollback explicitly requires restoring its recorded state. Re-run health, UI, authorization, and project-read checks after the rollback.
+`sync-to-deploy` replaces only the files under `~/container` and reinstalls the systemd unit; it does not change `GIT_REF` or `IMAGE_NAME`, so rebuild or select the application image separately with `make build` and `make restart` when the update also requires a different image. Because the manual layout keeps no previous version on the host, roll back by syncing a checkout at an earlier commit. Keep the current authorization database unless a rollback explicitly requires restoring its recorded state. Re-run health, UI, authorization, and project-read checks after any update, and see [Place the deployment files](../deployment/container/DEPLOYMENT.md#place-the-deployment-files) for the full workflow.
 
 ## Observability And References
 
 Application logs are written under `logs/`, rotate at the configured size, and are retained according to `SHAPE_SHIFTER_LOG_RETENTION`. Fixed-entity load normalizations produce warning logs and a UI banner; inspect the listed entity, row, and column before saving normalized values. No alerting infrastructure is currently configured.
 
-- [container/README.md](../container/README.md): Podman setup, configuration, lifecycle, and diagnostics.
-- [container/DEPLOYMENT.md](../container/DEPLOYMENT.md): deployment hosts, multiple environments, NGINX, systemd, and updates.
+- [deployment/container/README.md](../deployment/container/README.md): Podman setup, configuration, lifecycle, and diagnostics.
+- [deployment/container/DEPLOYMENT.md](../deployment/container/DEPLOYMENT.md): deployment hosts, multiple environments, NGINX, systemd, and updates.
 - [DEVELOPMENT.md](DEVELOPMENT.md): local development and contributor workflow.
 - [DESIGN.md](DESIGN.md): architecture and single-worker rationale.
 - [DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](DATA_PROVIDER_SUBMISSION_LIFECYCLE.md): provider-submission lifecycle policy.

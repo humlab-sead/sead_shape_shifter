@@ -41,6 +41,37 @@ def resolve_config(project: ShapeShiftProject | str, env_file: str | None = None
     return project
 
 
+async def normalize_project(
+    project: str | ShapeShiftProject,
+    translate: bool,
+    drop_foreign_keys: bool,
+    default_entity: str | None = None,
+    env_file: str | None = None,
+) -> ShapeShifter:
+    """Normalize a project's tables and return the completed ShapeShifter without writing output.
+
+    Applies the same post-normalization options as ``workflow()`` in the same order:
+    foreign key column dropping, then column translation. No dispatcher is invoked
+    and no output target is required.
+    """
+    resolved_project: ShapeShiftProject = resolve_config(project, env_file=env_file)
+
+    shapeshifter: ShapeShifter = ShapeShifter(project=resolved_project, default_entity=default_entity)
+
+    await shapeshifter.normalize()
+
+    if drop_foreign_keys:
+        shapeshifter.drop_foreign_key_columns()
+
+    if translate:
+        translations_map: dict[str, str] = extract_translation_map(fields_metadata=resolved_project.options.get("translation") or [])
+        shapeshifter.translate(translations_map=translations_map)
+
+    # Note: add_system_id_columns, add_public_id_columns, and move_keys_to_front
+    # are now called within normalize() to ensure materialized entities get identity columns
+    return shapeshifter
+
+
 async def workflow(
     project: str | ShapeShiftProject,
     target: str,
@@ -51,21 +82,14 @@ async def workflow(
     env_file: str | None = None,
 ) -> None:
     """Main workflow to normalize data and store the results."""
-    project = resolve_config(project, env_file=env_file)
+    shapeshifter: ShapeShifter = await normalize_project(
+        project,
+        translate=translate,
+        drop_foreign_keys=drop_foreign_keys,
+        default_entity=default_entity,
+        env_file=env_file,
+    )
 
-    shapeshifter: ShapeShifter = ShapeShifter(project=project, default_entity=default_entity)
-
-    await shapeshifter.normalize()
-
-    if drop_foreign_keys:
-        shapeshifter.drop_foreign_key_columns()
-
-    if translate:
-        translations_map: dict[str, str] = extract_translation_map(fields_metadata=project.options.get("translation") or [])
-        shapeshifter.translate(translations_map=translations_map)
-
-    # Note: add_system_id_columns, add_public_id_columns, and move_keys_to_front
-    # are now called within normalize() to ensure materialized entities get identity columns
     shapeshifter.store(target=target, mode=target_type)
     shapeshifter.log_shapes(target=target)
 

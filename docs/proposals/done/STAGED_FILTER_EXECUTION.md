@@ -49,8 +49,8 @@ This proposal is in scope for:
 
 1. filters that rely on columns created after extraction,
 2. filters that should run after linking or after unnesting,
-3. runtime execution changes in [src/normalizer.py](src/normalizer.py),
-4. filter config and validation changes in [src/model.py](src/model.py) and related backend models,
+3. runtime execution changes in [src/normalizer.py](../../../src/normalizer.py),
+4. filter config and validation changes in [src/model.py](../../../src/model.py) and related backend models,
 5. frontend/editor support for selecting execution stage,
 6. documentation updates describing filter timing and column availability.
 
@@ -69,9 +69,9 @@ This proposal is not in scope for:
 
 Filters are applied once, immediately after entity extraction:
 
-- [src/normalizer.py](src/normalizer.py#L156)
-- [src/transforms/filter.py](src/transforms/filter.py)
-- [docs/CONFIGURATION_GUIDE.md](docs/CONFIGURATION_GUIDE.md#L3073)
+- [src/normalizer.py](../../../src/normalizer.py#L156)
+- [src/transforms/filter.py](../../../src/transforms/filter.py)
+- [docs/CONFIGURATION_GUIDE.md](../../CONFIGURATION_GUIDE.md#L3073)
 
 The current normalization flow is effectively:
 
@@ -107,8 +107,8 @@ That is not possible today because the relevant column does not exist when filte
 
 Shape Shifter already has defer/retry behavior in two places:
 
-1. foreign key linking can be deferred until required inputs exist in [src/transforms/link.py](src/transforms/link.py),
-2. `extra_columns` evaluation can be retried after linking or unnesting in [src/normalizer.py](src/normalizer.py#L238).
+1. foreign key linking can be deferred until required inputs exist in [src/transforms/link.py](../../../src/transforms/link.py),
+2. `extra_columns` evaluation can be retried after linking or unnesting in [src/normalizer.py](../../../src/normalizer.py#L238).
 
 That pattern is useful internally, but it is not sufficient as the primary filter model.
 
@@ -190,7 +190,7 @@ entities:
 
 This proposal does not require Shape Shifter to parse pandas query expressions in Phase 1.
 
-The `query` filter can keep its current behavior in [src/transforms/filter.py](src/transforms/filter.py):
+The `query` filter can keep its current behavior in [src/transforms/filter.py](../../../src/transforms/filter.py):
 
 1. Shape Shifter decides when the filter runs based on `stage`,
 2. pandas still evaluates the query string,
@@ -202,7 +202,7 @@ If stronger pre-runtime validation is needed later, that can be added as follow-
 
 The runtime change should be minimal and explicit.
 
-In [src/normalizer.py](src/normalizer.py), normalization should conceptually become:
+In [src/normalizer.py](../../../src/normalizer.py), normalization should conceptually become:
 
 1. extract entity,
 2. run `extract` filters,
@@ -247,8 +247,8 @@ The existing column introspection service already distinguishes:
 
 Relevant code:
 
-- [backend/app/services/column_introspection_service.py](backend/app/services/column_introspection_service.py)
-- [frontend/src/composables/useColumnIntrospection.ts](frontend/src/composables/useColumnIntrospection.ts)
+- [backend/app/services/column_introspection_service.py](../../../backend/app/services/column_introspection_service.py)
+- frontend/src/composables/useColumnIntrospection.ts
 
 That makes it feasible to drive stage-aware validation and UI guidance without inventing a completely new analysis subsystem.
 
@@ -264,11 +264,11 @@ The UI should:
 4. make unnested-only columns visible when `after_unnest` is selected,
 5. preserve the current simple experience for users who do not need staged filters.
 
-The filter schema API in [backend/app/api/v1/endpoints/filters.py](backend/app/api/v1/endpoints/filters.py) is already designed to drive dynamic filter forms and can be extended to expose stage metadata if needed.
+The filter schema API in [backend/app/api/v1/endpoints/filters.py](../../../backend/app/api/v1/endpoints/filters.py) is already designed to drive dynamic filter forms and can be extended to expose stage metadata if needed.
 
 ## Documentation Impact
 
-The filter documentation in [docs/CONFIGURATION_GUIDE.md](docs/CONFIGURATION_GUIDE.md#L3073) currently states that filters run after extraction and before foreign key linking and other transformations.
+The filter documentation in [docs/CONFIGURATION_GUIDE.md](../../CONFIGURATION_GUIDE.md#L3073) currently states that filters run after extraction and before foreign key linking and other transformations.
 
 If this proposal is adopted, the docs must be updated to say:
 
@@ -295,8 +295,8 @@ Because this adds new behavior without changing existing defaults, it should be 
 If this proposal is approved, the implementation should likely include:
 
 1. adding stage support to the filter config model in core and backend,
-2. partitioning filters by stage in [src/transforms/filter.py](src/transforms/filter.py) or a small helper module,
-3. updating [src/normalizer.py](src/normalizer.py) to execute filter passes at explicit points,
+2. partitioning filters by stage in [src/transforms/filter.py](../../../src/transforms/filter.py) or a small helper module,
+3. updating [src/normalizer.py](../../../src/normalizer.py) to execute filter passes at explicit points,
 4. extending validation to understand stage-aware column availability,
 5. extending frontend filter editing to expose stage and stage-appropriate column suggestions,
 6. updating documentation and examples.

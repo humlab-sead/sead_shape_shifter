@@ -102,7 +102,16 @@ This section walks through the simplest successful workflow.
 1. Open the **Projects** page.
 2. Click **New Project**.
 3. Enter a project name.
-4. Open the new project.
+4. Select a registered **Data Provider** and one of its **Provider Schemas**.
+5. Click **Create**, then open the new project.
+
+The provider and schema must be a registered pair. If the provider list cannot be loaded or contains no entries, the dialog disables project creation until the registry is available.
+
+### Assign a Pair to an Existing Project
+
+An existing project without a provider pair can receive its first assignment in the **Metadata** tab. Select a registered provider and one of its schemas, then save. After the assignment succeeds, both values are shown as read-only. Application saves and raw YAML edits cannot change or remove the pair; direct file changes require repository review.
+
+Projects already checked into the repository may remain unbound until the planned Phase 4 migration. Run **YAML Validation** to see missing, partial, blank, or unregistered provider values reported under project metadata.
 
 ---
 
@@ -385,6 +394,37 @@ Shortcut:
 
 ---
 
+## Reshape Data with Unnest
+
+Use the **Unnest** tab to turn wide data (one column per measurement) into long data (one row per measurement). It reshapes the table with a melt operation.
+
+The tab has two column lists that behave differently:
+
+| Setting             | What happens to these columns                                                                 |
+|---------------------|-----------------------------------------------------------------------------------------------|
+| **ID Variables**    | Retained and repeated. The values are copied onto every generated row, so each row keeps its identifier. |
+| **Value Variables** | Reshaped and removed. Their names become rows in the variable-name column, their values become rows in the value-name column, and the original columns no longer appear in the output. |
+
+Value-variable columns are consumed by the reshape. Do not add them to **ID Variables** to keep them; listing a column there stops it being melted and changes the result.
+
+If you leave **Value Variables** empty, every column that is not an ID variable is melted.
+
+**Example.** With `site_id` as an ID variable and `KoordX`, `KoordY`, and `KoordZ` as value variables, one row becomes three:
+
+```
+| site_id | coordinate_type | coordinate_value |
+|---------|-----------------|------------------|
+| 1       | KoordX          | 100              |
+| 1       | KoordY          | 200              |
+| 1       | KoordZ          | 50               |
+```
+
+To keep an original value beside the melted result, add a copy of the column first (for example an alias under **Extra Columns**) and list the copy under **ID Variables**. The copy is retained and repeated on each row; the original is still melted.
+
+For the full `unnest` field reference, see [CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md).
+
+---
+
 ## Preview While Editing
 
 Preview helps verify:
@@ -472,6 +512,16 @@ Use `fixed` entities for:
 
 The fixed editor supports spreadsheet-style pasting.
 
+### Fixed Row Order and Business Keys
+
+The fixed grid shows the schema Shape Shifter uses for the stored rows:
+
+- Managed identity fields lead the grid: `system_id`, then the entity's `public_id` when it has one.
+- Produced data fields follow in their configured order.
+- Business keys label fields that already exist in the grid. Adding a key does not add a grid column, and a key that no produced field matches is reported by validation.
+
+If a fixed entity stores its values in a separate file (an `@load:` directive), the editor loads those rows into the same displayed order. When the values file columns cannot be matched to the displayed schema, the editor shows an error and disables saving instead of writing rows into the wrong fields.
+
 ### Edit a Fixed Entity
 
 Use this workflow when you need to maintain a lookup table directly in the project:
@@ -481,6 +531,22 @@ Use this workflow when you need to maintain a lookup table directly in the proje
 3. Review any validation messages shown in the grid.
 4. Save the project.
 5. Run validation before executing the full workflow.
+
+### Partial Saves and Mapping Retry
+
+Saving a fixed entity updates the mapping sidecar when the saved rows change a linked ID or row key. The mapping sidecar is a separate file, so the rows can be saved while the mapping update does not happen. When that occurs, the editor reports a partial save instead of a full success:
+
+- The editor shows **Rows saved; mapping changes pending** and a **Retry mapping** button.
+- **Save & Close** keeps the dialog open while changes are pending.
+- The pending result is retained until the retry succeeds or you close and reopen the editor.
+
+Use these steps to recover:
+
+1. Click **Retry mapping**. Shape Shifter applies only the recorded mapping changes; it does not resend the rows.
+2. If the retry succeeds, the pending notice is replaced by the usual save confirmation.
+3. If the retry reports a conflict, the editor lists the changed keys under the notice. Review the current rows and mapping links for those keys, adjust them, and retry, or reload the entity.
+
+A retry does not change rows or links at unaffected keys, so edits you made elsewhere while the mapping was pending are preserved.
 
 ### What Happens to `_id` Columns
 
@@ -658,6 +724,8 @@ Examples:
 
 Reconciled ID links and manual overrides are persisted in a **mapping sidecar file** (`<project>-mapping.yml`) stored alongside `shapeshifter.yml`. This file is the single source of truth for all entity ID mappings.
 
+Shape Shifter blocks renaming an entity that has a mapping entry, including an entry with no links. Ask a project maintainer to move or remove that entry before renaming the entity.
+
 Legacy `options.mappings` in `shapeshifter.yml` is no longer used for new projects.
 
 The mapping sidecar stores per-entity links with full provenance:
@@ -690,9 +758,10 @@ During normalization, mappings are applied in this order (first match wins):
 
 When editing a materialized entity and assigning `public_id` values:
 
-- Saving the materialized entity automatically syncs manual links to the mapping sidecar
-- Manual links replace any previous manual links for that entity
-- These manual links take highest precedence during normalization
+- Saving fixed rows updates links for ID or row-key changes and adds a missing link for a saved non-blank ID. Links at unaffected keys keep their source and details, even when a saved `public_id` is blank or older.
+- During normalization, committed manual links take precedence over reconciliation and imported links.
+
+Use **Sync from materialized entity** in Mapping Sidecar Management to seed or repair links from all saved rows. A request without options adds links only where no link exists and keeps every existing link. To rebuild manual links and remove stale manual entries, explicitly set `replace_manual_links` to `true`. A rebuilt link can replace another source at the same key because the sidecar stores one link per key.
 
 ## Mapping Sidecar Management
 
@@ -704,6 +773,7 @@ The sidecar file supports full CRUD via API endpoints:
 | Get single link               | `GET /projects/{project}/mapping/{entity}/{key}`               |
 | Create/update link            | `PUT /projects/{project}/mapping/{entity}/{key}`               |
 | Sync from materialized entity | `PATCH /projects/{project}/mapping/from-materialized/{entity}` |
+| Retry pending fixed-entity mapping | `PATCH /projects/{project}/mapping/retry-fixed-entity/{entity}` |
 | Commit draft links            | `POST /projects/{project}/mapping/commit`                      |
 | Delete link                   | `DELETE /projects/{project}/mapping/{entity}/{key}`            |
 | Export to CSV                 | `GET /projects/{project}/mapping/export?format=csv`            |
@@ -780,7 +850,7 @@ These three actions are distinct:
 |--------------------|------------------------|-------------------------------------------------------------------------------------------------------------|
 | **Execute**        | Header button          | Runs the normalization pipeline and produces output files (CSV, Excel, ZIP, or database)                    |
 | **Dispatch**       | Project → Dispatch tab | Runs a configured ingester directly from the project workspace to deliver processed data to a target system |
-| **Data Ingestion** | Top-level page         | Runs any registered ingester independently of a project                                                     |
+| **Data Ingestion** | Top-level page         | Runs project-independent ingesters without a project                                                       |
 
 ## Dispatch Tab (in Project Workspace)
 
@@ -789,15 +859,18 @@ The Dispatch tab lets you configure and run an ingester from within your project
 Workflow:
 1. Open a project and go to the **Dispatch** tab.
 2. Select a registered ingester from the list.
-3. Fill in the ingester configuration (data source, submission name, options).
-4. Run the ingester.
-5. Review the result summary.
+3. For a file-based ingester, use output from **Execute** or enter a suitable configured output path.
+4. For **SEAD Change Request**, enter the submission details and selected deploy output, then run **Validate**.
+5. If validation passes, run **Dispatch** and review the generated deploy bundle.
 
-Dispatch requires that Execute has already produced output, or that a suitable output path is configured.
+SEAD Change Request uses normalized tables from the saved project and does not need a workbook path or a previous
+**Execute** run. The operator needs **Execute** access to the saved project. The application-level permission to run
+ingesters is not required for this route; file-based ingesters still require it.
 
 ## Data Ingestion Page
 
-The top-level **Data Ingestion** page provides the same ingester capability without being tied to a specific project.
+The top-level **Data Ingestion** page runs ingesters that do not require a saved project. It does not list SEAD Change
+Request because that workflow must use an authorized saved project.
 
 Use it for:
 - one-off ingestion runs
@@ -809,6 +882,35 @@ Workflow:
 2. Select an ingester from the list.
 3. Enter connection and configuration details.
 4. Run the ingester.
+
+To run a SEAD Change Request, open its saved project and use **Project → Dispatch**. The form fixes the project
+locator to the open project and sends only the named submission details and selected deploy output.
+
+## SEAD Change Request Requirements
+
+A SEAD Change Request run validates the saved project before it normalizes data or creates a bundle. It uses that
+project's normalized tables directly; it does not read a dispatched workbook.
+
+The project needs:
+
+1. **A registered provider-schema pair.** `metadata.data_provider_code` and
+   `metadata.provider_schema` must match one reviewed pair in the provider registry. The pair
+   selects the SIMS scope as `provider://<provider-code>/<provider-schema>`.
+2. **One fixed `data_provider` row.** The entity must use `type: fixed`,
+   `public_id: data_provider_id`, `keys: [data_provider_code]`, and exactly one row. Enter the
+   SEAD `data_provider_id` yourself. Before SIMS work, the run confirms the ID and code identify
+   one existing `tbl_data_providers` row.
+3. **Declared business keys.** Every tracked project entity declares its identity columns in
+   `keys`. The run rejects a missing key column, a blank value, or a duplicate value in one
+   delivery before any SIMS request or bundle write.
+4. **A target database connection.** The provider row check reads SEAD, so a run without target
+   database details stops before SIMS.
+
+The response and the emitted `manifest.json` both show the effective `scope_name` and `run_id`.
+A `run_id` is meaningful only together with its scope, so compare the two values together.
+
+The operator needs **Execute** access to the saved project. This route does not require the application-level
+permission to run ingesters; file-based ingesters still require it.
 
 ---
 
@@ -973,6 +1075,35 @@ Fix structural problems before investigating data validation.
 
 ---
 
+## Change Request Stops Because a Link Is Missing
+
+A change request stops before it writes any output when a submitted row has no usable link to a related record. A typical example is a new location row with no location type.
+
+Shape Shifter links a row to a related record in two steps. It looks the related record up among the rows in your submission, and it writes the target system's ID for that record into the link column. The link fails when either step has nothing to work with.
+
+The message wording is technical. Use it to identify the cause and who can resolve it:
+
+| If the message mentions | The cause is | Resolved by |
+|------------------------|--------------|-------------|
+| a missing link column, or a missing link | The project does not connect the two entities, so the link column is never produced | The project owner |
+| a missing value | A cell in the source data is empty | The data provider |
+| a value that is unresolved, or that could not be found | The value does not match any row in the related data | The data provider |
+| a related entity that could not be found | The related data was not part of this submission | The project owner or the data provider |
+
+To resolve it:
+
+1. Read the entity, column, and related entity names in the message. They name the link that failed.
+2. Check that the related rows are present in the submission.
+3. Check that the link values are filled in and spelled the same way as the related rows.
+4. If the link column is missing from the submission entirely, ask the project owner to connect the two entities.
+5. Re-run validation after fixing the source data. Correcting values does not need a project change.
+
+Some submissions do not need link values at all. When every row matches a record that already exists in the target system, Shape Shifter inserts nothing and does not require the link. This is why the same project can report a link error for one submission and accept another.
+
+For the rule that decides when a link is required, see [TARGET_MODEL_GUIDE.md](TARGET_MODEL_GUIDE.md).
+
+---
+
 ## Execute Succeeds but Output Looks Wrong
 
 Review:
@@ -1040,6 +1171,10 @@ If the project shows **Load-Time Normalizations Detected**, Shape Shifter has al
 
 Use the **Files** tab.
 
+Upload Excel or CSV files there. If a file with the same name already exists, confirm **Replace** to update it without changing entity settings. Cancel the prompt to keep the existing file and upload the new file under a suffixed name.
+
+Use the delete button beside a file to remove it when it is no longer needed. Shape Shifter will prevent deletion while a local entity references that file; update the entity configuration first.
+
 ---
 
 ## Where do shared database connections come from?
@@ -1086,4 +1221,3 @@ These focus on:
 
 **Audience**: End Users, Data Managers, Integrators
 **Focus**: Workflow-Oriented User Documentation
-

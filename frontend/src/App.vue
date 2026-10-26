@@ -1,19 +1,9 @@
 <template>
   <v-app>
-    <v-navigation-drawer 
-      v-model="drawer" 
-      app 
-      :rail="rail" 
-      :width="sidebarWidth"
-      @click="rail = false"
-    >
+    <v-navigation-drawer v-model="drawer" app :rail="rail" :width="sidebarWidth" @click="rail = false">
       <!-- Resize Handle -->
-      <div 
-        v-if="!rail"
-        class="resize-handle"
-        @mousedown="startResize"
-      />
-      
+      <div v-if="!rail" class="resize-handle" @mousedown="startResize" />
+
       <v-list-item :title="rail ? '' : 'SEAD Shape Shifter'" :subtitle="rail ? '' : 'Project Editor'" nav>
         <!-- <template #prepend>
           <div class="d-flex align-center justify-center" :style="{ width: rail ? '40px' : '48px', height: '48px' }">
@@ -93,11 +83,10 @@
       <v-app-bar-nav-icon @click="drawer = !drawer" />
 
       <v-toolbar-title class="d-flex align-center">
-
         <span class="font-weight-bold">SEAD Shape Shifter</span>
         <span v-if="currentProject" class="ml-2 text-caption"> / {{ currentProject }} </span>
       </v-toolbar-title>
-        
+
       <v-spacer />
 
       <v-btn
@@ -240,11 +229,7 @@
           </div>
 
           <v-list bg-color="transparent" class="pa-0" density="comfortable">
-            <v-list-item
-              v-for="highlight in latestWhatsNewNote.highlights.slice(0, 5)"
-              :key="highlight"
-              class="px-0"
-            >
+            <v-list-item v-for="highlight in latestWhatsNewNote.highlights.slice(0, 5)" :key="highlight" class="px-0">
               <template #prepend>
                 <v-icon color="primary" size="small">mdi-sparkles</v-icon>
               </template>
@@ -394,7 +379,9 @@ const commands = ref<Command[]>([
     title: 'Open Log Viewer',
     icon: 'mdi-console-line',
     shortcut: 'Ctrl+Shift+L',
-    action: () => { showLogViewer.value = true },
+    action: () => {
+      showLogViewer.value = true
+    },
   },
 ])
 
@@ -460,7 +447,7 @@ function startResize(e: MouseEvent) {
 
 function handleResize(e: MouseEvent) {
   if (!isResizing.value) return
-  
+
   const newWidth = e.clientX
   // Constrain between 240px and 500px
   if (newWidth >= 240 && newWidth <= 500) {
@@ -472,7 +459,7 @@ function stopResize() {
   isResizing.value = false
   document.removeEventListener('mousemove', handleResize)
   document.removeEventListener('mouseup', stopResize)
-  
+
   // Save to localStorage
   localStorage.setItem('sidebarWidth', sidebarWidth.value.toString())
 }
@@ -507,7 +494,7 @@ function handleKeydown(event: KeyboardEvent) {
 onMounted(() => {
   window.addEventListener('keydown', handleKeydown)
   acknowledgedWhatsNewVersion.value = localStorage.getItem(whatsNewStorageKey)
-  
+
   // Load saved sidebar width
   const savedWidth = localStorage.getItem('sidebarWidth')
   if (savedWidth) {
@@ -516,7 +503,7 @@ onMounted(() => {
       sidebarWidth.value = width
     }
   }
-  
+
   if (window.innerWidth > 1280) {
     drawer.value = true
     rail.value = settings.railNavigation.value

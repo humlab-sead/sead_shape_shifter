@@ -69,6 +69,53 @@ class TestTargetModelValidatorHappyPaths:
 
         assert errors == []
 
+    def test_conditional_foreign_key_returns_information_without_requirement_errors(self):
+        """A project-only check reports a condition awaiting reconciliation without failing the project."""
+        project = _make_project(
+            {"location": _minimal_entity(public_id="location_id", columns=["location_name"])},
+            options={"validation": {"severity_overrides": {"conditional_foreign_key": "error"}}},
+        )
+        target_model_data = _minimal_target_model(
+            entities={
+                "location": {
+                    "public_id": "location_id",
+                    "foreign_keys": [{"entity": "location_type", "required_when": {"has_new_rows": "location"}}],
+                },
+                "location_type": {"public_id": "location_type_id"},
+            }
+        )
+
+        issues = TargetModelValidator().validate(target_model_data, project)
+
+        assert [(issue.code, issue.severity, issue.category) for issue in issues] == [
+            ("CONDITIONAL_FK_AWAITING_RECONCILIATION", "info", ValidationCategory.CONFORMANCE)
+        ]
+
+    def test_direct_target_id_fk_pending_check_keeps_code_and_info_severity(self):
+        project = _make_project(
+            {
+                "sample": {
+                    "system_id": "system_id",
+                    "columns": ["dataset_id"],
+                    "foreign_key_value_sources": {"dataset": "public_id"},
+                    "data": {"type": "fixed", "values": []},
+                }
+            },
+            options={"validation": {"severity_overrides": {"direct_fk_pending_check": "error"}}},
+        )
+        target_model_data = _minimal_target_model(
+            entities={
+                "sample": {"foreign_keys": [{"entity": "dataset", "required": True}]},
+                "dataset": {"public_id": "dataset_id", "target_table": "public.dataset"},
+            }
+        )
+
+        issues = TargetModelValidator().validate(target_model_data, project)
+
+        assert [(issue.code, issue.severity, issue.category) for issue in issues if issue.code == "DIRECT_FK_TARGET_CHECK_PENDING"] == [
+            ("DIRECT_FK_TARGET_CHECK_PENDING", "info", ValidationCategory.CONFORMANCE)
+        ]
+
     def test_transitive_foreign_key_path_returns_no_errors(self):
         """A required FK satisfied through an intermediate project entity should not raise a direct-FK error."""
         project = _make_project(

@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import { useProjectStore } from '../project'
+import { PROJECT_LIST_TTL_MS, useProjectStore } from '../project'
+import { useValidationStore } from '../validation'
 import type { Project, ProjectMetadata, ValidationResult } from '@/types'
 import type { ProjectCreateRequest, ProjectUpdateRequest, BackupInfo, MetadataUpdateRequest } from '@/api/projects'
 
@@ -44,6 +45,10 @@ describe('useProjectStore', () => {
     vi.clearAllMocks()
   })
 
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   describe('initial state', () => {
     it('should initialize with empty state', () => {
       const store = useProjectStore()
@@ -55,6 +60,7 @@ describe('useProjectStore', () => {
       expect(store.loading).toBe(false)
       expect(store.error).toBeNull()
       expect(store.hasUnsavedChanges).toBe(false)
+      expect(store.lastFetchedAt).toBeNull()
     })
   })
 
@@ -119,10 +125,7 @@ describe('useProjectStore', () => {
   describe('fetchProjects', () => {
     it('should fetch projects successfully', async () => {
       const store = useProjectStore()
-      const mockProjects = [
-        { name: 'project1' } as ProjectMetadata,
-        { name: 'project2' } as ProjectMetadata,
-      ]
+      const mockProjects = [{ name: 'project1' } as ProjectMetadata, { name: 'project2' } as ProjectMetadata]
 
       vi.mocked(api.projects.list).mockResolvedValue(mockProjects)
 
@@ -146,6 +149,90 @@ describe('useProjectStore', () => {
     })
   })
 
+  describe('project list staleness', () => {
+    it('should treat an unfetched list as stale', () => {
+      const store = useProjectStore()
+
+      expect(store.isProjectsStale()).toBe(true)
+    })
+
+    it('should record the fetch time and treat the list as fresh', async () => {
+      const store = useProjectStore()
+      vi.mocked(api.projects.list).mockResolvedValue([])
+      vi.spyOn(Date, 'now').mockReturnValue(1_000_000)
+
+      await store.fetchProjects()
+
+      expect(store.lastFetchedAt).toBe(1_000_000)
+      expect(store.isProjectsStale()).toBe(false)
+    })
+
+    it('should treat the list as stale once the freshness window passes', async () => {
+      const store = useProjectStore()
+      vi.mocked(api.projects.list).mockResolvedValue([])
+      const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(1_000_000)
+
+      await store.fetchProjects()
+      nowSpy.mockReturnValue(1_000_000 + PROJECT_LIST_TTL_MS + 1)
+
+      expect(store.isProjectsStale()).toBe(true)
+    })
+
+    it('should become stale when marked stale', async () => {
+      const store = useProjectStore()
+      vi.mocked(api.projects.list).mockResolvedValue([])
+
+      await store.fetchProjects()
+      expect(store.isProjectsStale()).toBe(false)
+
+      store.markProjectsStale()
+      expect(store.isProjectsStale()).toBe(true)
+    })
+
+    it('should not toggle the loading flag for a silent revalidation', async () => {
+      const store = useProjectStore()
+      let resolveList: (value: ProjectMetadata[]) => void = () => {}
+      vi.mocked(api.projects.list).mockReturnValue(
+        new Promise((resolve) => {
+          resolveList = resolve
+        })
+      )
+
+      const pending = store.fetchProjects({ silent: true })
+      expect(store.loading).toBe(false)
+
+      resolveList([])
+      await pending
+      expect(store.loading).toBe(false)
+    })
+
+    it('should mark the list stale when a fetch fails', async () => {
+      const store = useProjectStore()
+      vi.mocked(api.projects.list).mockResolvedValue([])
+      await store.fetchProjects()
+      expect(store.isProjectsStale()).toBe(false)
+
+      vi.mocked(api.projects.list).mockRejectedValue(new Error('boom'))
+      await expect(store.fetchProjects()).rejects.toThrow('boom')
+
+      expect(store.isProjectsStale()).toBe(true)
+    })
+
+    it('should mark the list stale after a project is deleted', async () => {
+      const store = useProjectStore()
+      vi.mocked(api.projects.list).mockResolvedValue([])
+      await store.fetchProjects()
+      expect(store.isProjectsStale()).toBe(false)
+
+      store.projects = [{ name: 'gone' } as ProjectMetadata]
+      vi.mocked(api.projects.delete).mockResolvedValue(undefined)
+
+      await store.deleteProject('gone')
+
+      expect(store.isProjectsStale()).toBe(true)
+    })
+  })
+
   describe('selectProject', () => {
     it('should select a project successfully', async () => {
       const store = useProjectStore()
@@ -164,6 +251,28 @@ describe('useProjectStore', () => {
       expect(result).toEqual(mockProject)
     })
 
+    it('should clear validation state when switching projects', async () => {
+      const store = useProjectStore()
+      const validationStore = useValidationStore()
+      store.selectedProject = { metadata: { name: 'previous-project' } } as Project
+      store.validationResult = { error_count: 1 } as ValidationResult
+      validationStore.validationResult = { error_count: 1 } as ValidationResult
+      validationStore.entityValidationResults.set('entity', { error_count: 1 } as ValidationResult)
+      validationStore.error = 'Validation failed'
+
+      vi.mocked(api.projects.activate).mockResolvedValue({
+        metadata: { name: 'next-project' },
+        entities: {},
+      } as Project)
+
+      await store.selectProject('next-project')
+
+      expect(store.validationResult).toBeNull()
+      expect(validationStore.validationResult).toBeNull()
+      expect(validationStore.entityValidationResults.size).toBe(0)
+      expect(validationStore.error).toBeNull()
+    })
+
     it('should handle select errors', async () => {
       const store = useProjectStore()
 
@@ -180,6 +289,8 @@ describe('useProjectStore', () => {
       const store = useProjectStore()
       const createData: ProjectCreateRequest = {
         name: 'new-project',
+        data_provider_code: 'test-provider',
+        provider_schema: 'schema-one',
         entities: {},
       }
       const mockProject = {
@@ -206,6 +317,8 @@ describe('useProjectStore', () => {
       const store = useProjectStore()
       const createData: ProjectCreateRequest = {
         name: 'new-project',
+        data_provider_code: 'test-provider',
+        provider_schema: 'schema-one',
         entities: {},
       }
 
@@ -379,8 +492,8 @@ describe('useProjectStore', () => {
     it('should fetch backups successfully', async () => {
       const store = useProjectStore()
       const mockBackups = [
-        { file_name: 'backup1.yml', file_path: '/tmp/backup1.yml', created_at: Date.now() } as BackupInfo,
-        { file_name: 'backup2.yml', file_path: '/tmp/backup2.yml', created_at: Date.now() } as BackupInfo,
+        { file_name: 'backup1.yml', created_at: Date.now() } as BackupInfo,
+        { file_name: 'backup2.yml', created_at: Date.now() } as BackupInfo,
       ]
 
       vi.mocked(api.projects.listBackups).mockResolvedValue(mockBackups)
@@ -419,7 +532,7 @@ describe('useProjectStore', () => {
 
       const result = await store.restoreBackup('test-project', 'backup.yml')
 
-      expect(api.projects.restore).toHaveBeenCalledWith('test-project', { backup_path: 'backup.yml' })
+      expect(api.projects.restore).toHaveBeenCalledWith('test-project', { backup_name: 'backup.yml' })
       expect(store.selectedProject).toEqual(restored)
       expect(store.projects[0]?.entity_count).toBe(10)
       expect(store.hasUnsavedChanges).toBe(false)
@@ -606,12 +719,11 @@ describe('useProjectStore', () => {
       store.projects = [{ name: 'test' } as ProjectMetadata]
       store.selectedProject = { metadata: { name: 'test' } } as Project
       store.validationResult = { error_count: 0 } as ValidationResult
-      store.backups = [
-        { file_name: 'backup.yml', file_path: '/tmp/backup.yml', created_at: Date.now() } as BackupInfo,
-      ]
+      store.backups = [{ file_name: 'backup.yml', created_at: Date.now() } as BackupInfo]
       store.loading = true
       store.error = 'Some error'
       store.hasUnsavedChanges = true
+      store.lastFetchedAt = Date.now()
 
       store.reset()
 
@@ -622,6 +734,7 @@ describe('useProjectStore', () => {
       expect(store.loading).toBe(false)
       expect(store.error).toBeNull()
       expect(store.hasUnsavedChanges).toBe(false)
+      expect(store.lastFetchedAt).toBeNull()
     })
   })
 })

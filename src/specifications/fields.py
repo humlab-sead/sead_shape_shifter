@@ -231,13 +231,10 @@ class FieldIsAbsentValidator(FieldValidator):
 
 @FIELD_VALIDATORS.register(key="keys_subset_of_columns")
 class KeysSubsetOfColumnsValidator(FieldValidator):
-    """Validator to check that all keys are present in columns.
+    """Validator to check that keys name configured output fields.
 
-    This ensures that keys used for deduplication and FK matching actually exist
-    in the extracted data. Skips validation when:
-    - columns is empty (keys come from source)
-    - keys is empty
-    - values contain @value references (unresolved)
+    Dynamic source fields are checked after loading because their names are not
+    available during structural validation.
     """
 
     def rule_predicate(self, target_cfg: dict[str, Any], entity_name: str, field: str, **kwargs) -> bool:
@@ -254,29 +251,31 @@ class KeysSubsetOfColumnsValidator(FieldValidator):
         if not isinstance(keys, list) or not isinstance(columns, list):
             return True
 
-        # Skip validation if columns is empty (keys come from source query/file)
+        # Defer source-field checks when a loader discovers the column names.
         if len(columns) == 0:
             return True
 
-        # Skip validation if keys is empty
         if len(keys) == 0:
             return True
 
-        # Check if all keys are in columns
-        keys_set: set[str] = set(keys)
-        columns_set: set[str] = set(columns)
-
-        return keys_set.issubset(columns_set)
+        available_columns: set[str] = self.get_entity_columns(
+            entity_name,
+            include_types={"columns", "extra_columns", "foreign_keys", "unnest"},
+        )
+        return set(keys).issubset(available_columns)
 
     def rule_fail(self, target_cfg: dict[str, Any], entity_name: str, field: str, **kwargs) -> None:
         keys: list[str] = target_cfg.get("keys", [])
-        columns: list[str] = target_cfg.get("columns", [])
-        missing_keys: set[str] = set(keys) - set(columns)
+        available_columns: set[str] = self.get_entity_columns(
+            entity_name,
+            include_types={"columns", "extra_columns", "foreign_keys", "unnest"},
+        )
+        missing_keys: list[str] = sorted(set(keys) - available_columns)
 
         self.rule_handler(
-            f"Entity '{entity_name}': Keys {sorted(missing_keys)} must be present in 'columns'. "
-            f"Keys are used for deduplication and FK matching, so they must exist in the extracted data. "
-            f"Add {sorted(missing_keys)} to the 'columns' list.",
+            f"Entity '{entity_name}': key column(s) {missing_keys} are not produced by this entity. "
+            "'keys' do not create output columns. Add the missing fields to 'columns' or configure the producer "
+            "(extra_columns, foreign_keys, or unnest) that creates them.",
             entity=entity_name,
             field="keys",
         )

@@ -1,0 +1,38 @@
+#!/bin/bash
+
+set -e
+
+# add support for -d option to specify folder should be deleted after archiving
+delete_after_archive=false
+if [ "$1" = "-d" ]; then
+  delete_after_archive=true
+  shift
+fi
+folder=$1
+
+if [ -z "$folder" ]; then
+  echo "Usage: $0 <folder>"
+  exit 1
+fi
+
+if [ ! -d "$folder" ]; then
+  echo "Error: $folder is not a valid directory."
+  exit 1
+fi
+
+# strip trailing slashes from the folder name
+archive_name=${folder%/}
+# use only basename
+archive_name=$(basename "$archive_name")
+# add date to the archive name
+archive_name="${archive_name}_$(date +%Y%m%d%H%M%S)"
+
+mkdir -p "archive"
+tar czf "archive/${archive_name}.tar.gz" "$folder"
+if [ -f "archive/${archive_name}.tar.gz" ]; then
+  if [ "$delete_after_archive" = true ]; then
+    rm -rf "$folder"
+  fi
+fi
+
+echo "info: directory $folder has been archived to archive/${archive_name}.tar.gz"

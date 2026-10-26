@@ -9,6 +9,16 @@ install:
 	@uv pip install -e ".[all]"
 	@echo "✓ Installed shape-shifter with all dependencies (core + api + dev)"
 
+# Re-sync the shared .venv/ from uv.lock without pruning the api/dev extras.
+# Plain `uv sync` syncs to base + dependency-group dev only and silently
+# removes fastapi/uvicorn/pytest, which live in the optional "all" extra
+# (= api + dev extras). The dependency-groups dev (pre-commit, pyinstrument)
+# is included by uv sync automatically.
+.PHONY: sync
+sync:
+	@uv sync --extra all
+	@echo "✓ Synced .venv/ (core + api + dev) from uv.lock"
+
 .PHONY: install-core
 install-core:
 	@uv venv
@@ -23,7 +33,7 @@ install-api:
 
 .PHONY: test
 test:
-	@uv run pytest tests backend/tests ingesters/sead/tests -v
+	@uv run pytest tests backend/tests -v
 
 .PHONY: test-validate
 test-validate:
@@ -47,6 +57,10 @@ profile-stats:
 	@uv run python -c "import pstats; p = pstats.Stats('profile.stats'); p.sort_stats('cumulative').print_stats(30)"
 	@echo "✓ Full stats saved to profile.stats"
 
+.PHONY: profile-projects
+profile-projects:
+	@uv run python scripts/profile_projects_listing.py
+
 .PHONY: publish
 publish:
 	@echo "Publishing Python package to PyPI"
@@ -58,7 +72,20 @@ black:
 
 .PHONY: pylint
 pylint:
-	@uv run pylint src tests backend ingesters
+	@uv run pylint -j 0 src tests backend ingesters
+
+# Lint only Python files changed against HEAD, including untracked files.
+.PHONY: pylint-changed
+pylint-changed:
+	@files="$$( { git diff --name-only --diff-filter=d HEAD -- '*.py'; \
+		git ls-files --others --exclude-standard -- '*.py'; } \
+		| grep -vE '^(\.venv|frontend|node_modules|docs|graphify-out)/' | sort -u)"; \
+	if [ -z "$$files" ]; then \
+		echo "pylint-changed: no changed Python files"; \
+	else \
+		echo "pylint-changed: checking $$(echo "$$files" | wc -l) file(s)"; \
+		echo "$$files" | xargs uv run pylint -j 0; \
+	fi
 
 .PHONY: pyright
 pyright:
@@ -83,6 +110,31 @@ check-imports:
 .PHONY: check-doc-links
 check-doc-links:
 	@scripts/check_doc_links.sh
+
+.PHONY: check-doc-links-lychee
+check-doc-links-lychee:
+	@echo "Checking documentation links with lychee..."
+	@lychee --offline --no-progress --root-dir . --extensions md docs
+	@echo "✓ Documentation links checked with lychee"
+
+################################################################################
+# Git related checks
+################################################################################
+
+.PHONY: branches-ahead
+branches-ahead:
+	@git for-each-ref --format='%(refname:short)' refs/heads | \
+	while IFS= read -r branch; do \
+		ahead=$$(git rev-list --count "dev..$$branch"); \
+		if [ "$$ahead" -gt 0 ]; then \
+			printf '%5s  %s\n' "$$ahead" "$$branch"; \
+		fi; \
+	done
+	@echo "✓ Branches ahead of dev listed above"
+
+
+target-model-csv:
+	yq -o=csv '[.entities | to_entries[] | {"entity": .key, "role": .value.role, "required": .value.required, "description": .value.description, "domains": ((.value.domains // []) | join("; ")), "target_table": .value.target_table, "public_id": .value.public_id, "columns": ((.value.columns // {}) | keys | join("; ")), "unique_sets": ((.value.unique_sets // []) | map(join(" + ")) | join("; ")), "foreign_keys": ((.value.foreign_keys // []) | map(.entity) | join("; "))}]' resources/target_models/sead_standard_model.yml
 
 ################################################################################
 # Development authorization for the current local resources. 
@@ -275,8 +327,12 @@ create-graphify:
 	@graphify cluster-only $(HOME)/source/sead_shape_shifter
 	@graphify export callflow-html
 
+# graphify comes from brew (~/.local/bin), not the project .venv.
+# GRAPHIFY_VIZ_NODE_LIMIT=0 blocks graph.html generation and removes any stale
+# file (graph is far above the 5000-node viz limit and the HTML is unused).
+# graphify reads this limit only from the environment, not from .graphifyrc.
 update-graphify:
-	@uv run graphify update $(HOME)/source/sead_shape_shifter  --force
+	@GRAPHIFY_VIZ_NODE_LIMIT=0 graphify update $(HOME)/source/sead_shape_shifter --force
 	@git add graphify-out
 	@if git diff --cached --quiet -- graphify-out; then \
 		echo "No changes in graphify-out"; \
@@ -285,7 +341,7 @@ update-graphify:
 	fi
 
 install-graphify:
-	@uv add --dev graphifyy[all]
+	@uv tool install "graphifyy[all]" --force
 	@graphify hook install
 	@graphify vscode install
 	@graphify codex install
@@ -298,7 +354,7 @@ install-graphify:
 commit-graphify:
 	@git add graphify-out
 	@if git diff --cached --quiet -- graphify-out; then \
-		echo "No changes in graphify§-out"; \
+		echo "No changes in graphify-out"; \
 	else \
 		git commit -m "chore: updated graphify graph"; \
 	fi
@@ -379,7 +435,7 @@ requirements.txt: pyproject.toml
 
 .PHONY: test-coverage
 test-coverage:
-	@uv run pytest tests backend/tests ingesters/sead/tests --cov=src --cov=backend/app --cov-report=html --cov-report=term
+	@uv run pytest tests backend/tests --cov=src --cov=backend/app --cov-report=html --cov-report=term
 
 .PHONY: dead-code
 dead-code:

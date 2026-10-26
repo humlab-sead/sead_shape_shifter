@@ -3,14 +3,16 @@ from pathlib import Path
 import pytest
 import yaml
 
+from src.target_model.effective_identity import resolve_aggregate_chain, resolve_effective_identity
+from src.target_model.insert_dependencies import build_insert_plan
 from src.target_model.models import TargetModel
 from src.target_model.spec_validator import TargetModelSpecValidator
 
 EXAMPLES_DIR = Path("tests/test_data/examples")
-SPECS_DIR = Path("tests/test_data/specs")
+TARGET_MODELS_DIR = Path("tests/test_data/target_models")
 
 
-@pytest.mark.parametrize("spec_path", list(SPECS_DIR.glob("*.yml")))
+@pytest.mark.parametrize("spec_path", list(TARGET_MODELS_DIR.glob("*.yml")))
 def test_sead_v2_spec_loads_and_validates(spec_path: Path) -> None:
     target_model = TargetModel.model_validate(yaml.safe_load(spec_path.read_text(encoding="utf-8")))
 
@@ -21,7 +23,7 @@ def test_sead_v2_spec_loads_and_validates(spec_path: Path) -> None:
     assert {"abundance", "abundance_element", "abundance_element_group", "abundance_modification", "abundance_property"}.issubset(
         target_model.entities
     )
-    assert {"taxa_tree_master", "taxa_common_names"}.issubset(target_model.entities)
+    assert {"taxa", "taxa_common_names"}.issubset(target_model.entities)
     assert {"relative_ages", "relative_dating", "geochronology", "dating_lab"}.issubset(target_model.entities)
     assert {"method_group", "contact", "contact_type"}.issubset(target_model.entities)
     assert {"project", "feature_type", "feature", "sample_description_type", "sample_description"}.issubset(target_model.entities)
@@ -41,7 +43,7 @@ def test_sead_v2_spec_loads_and_validates(spec_path: Path) -> None:
 
 
 def test_sead_superset_spec_loads_and_validates() -> None:
-    spec_path = Path("resources/target_models/sead_superset_model.yml")
+    spec_path = Path("resources/target_models/sead_standard_model.yml")
     target_model = TargetModel.model_validate(yaml.safe_load(spec_path.read_text(encoding="utf-8")))
 
     issues = TargetModelSpecValidator().validate(target_model)
@@ -68,6 +70,7 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     value_type_item = target_model.entities["value_type_item"]
     sample_group = target_model.entities["sample_group"]
     submission = target_model.entities["submission"]
+    dataset = target_model.entities["dataset"]
     sample_group_coordinate = target_model.entities["sample_group_coordinate"]
     sample_group_dimension = target_model.entities["sample_group_dimension"]
     sample_group_note = target_model.entities["sample_group_note"]
@@ -76,7 +79,7 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     site_natgridref = target_model.entities["site_natgridref"]
     site_property = target_model.entities["site_property"]
     sample_dimension = target_model.entities["sample_dimension"]
-    coordinate_system = target_model.entities["coordinate_system"]
+    chronology = target_model.entities["chronology"]
     colour = target_model.entities["colour"]
     sample_colour = target_model.entities["sample_colour"]
     ecocode = target_model.entities["ecocode"]
@@ -102,10 +105,14 @@ def test_sead_superset_spec_loads_and_validates() -> None:
 
     assert target_model.model.name == "SEAD Clearinghouse Extended"
     assert target_model.model.format_version == "1"
-    assert len(target_model.entities) == 103
+    assert len(target_model.entities) == 102
     assert submission.identity_tracking == "tracked"
     assert submission.reconciliation == "allocate"
     assert submission.public_id_generation is None
+    assert submission.synchronize_sequence_after_insert is True
+    assert dataset.identity_tracking == "tracked"
+    assert dataset.reconciliation == "allocate"
+    assert dataset.synchronize_sequence_after_insert is True
     assert {
         "analysis_value",
         "analysis_boolean_value",
@@ -133,7 +140,7 @@ def test_sead_superset_spec_loads_and_validates() -> None:
         "sample_location_type",
         "sample_note",
         "horizon",
-        "coordinate_system",
+        "chronology",
         "colour",
         "sample_colour",
         "project_type",
@@ -185,7 +192,7 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     assert abundance_property.target_table == "tbl_abundance_properties"
     assert any(foreign_key.entity == "property_type" for foreign_key in abundance_property.foreign_keys)
     assert analysis_taxon_count.target_table == "tbl_analysis_taxon_counts"
-    assert any(foreign_key.entity == "taxa_tree_master" for foreign_key in analysis_taxon_count.foreign_keys)
+    assert any(foreign_key.entity == "taxa" for foreign_key in analysis_taxon_count.foreign_keys)
     assert analysis_value_dimension.target_table == "tbl_analysis_value_dimensions"
     assert any(foreign_key.entity == "dimension" for foreign_key in analysis_value_dimension.foreign_keys)
     assert feature_property.target_table == "tbl_feature_properties"
@@ -205,17 +212,18 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     assert sample_colour.target_table == "tbl_sample_colours"
     assert sample_colour.aggregate_parent == "sample"
     assert any(foreign_key.entity == "colour" for foreign_key in sample_colour.foreign_keys)
-    assert coordinate_system.target_table == "tbl_coordinate_systems"
+    assert chronology.target_table == "tbl_chronologies"
+    assert any(foreign_key.entity == "relative_age_type" for foreign_key in chronology.foreign_keys)
     assert project_type.target_table == "tbl_project_types"
     assert project_stage.target_table == "tbl_project_stages"
     assert any(foreign_key.entity == "project_type" for foreign_key in project.foreign_keys)
     assert any(foreign_key.entity == "project_stage" for foreign_key in project.foreign_keys)
     assert taxa_synonyms.target_table == "tbl_taxa_synonyms"
-    assert taxa_synonyms.aggregate_parent == "taxa_tree_master"
+    assert taxa_synonyms.aggregate_parent == "taxa"
     assert any(foreign_key.entity == "citation" for foreign_key in taxa_synonyms.foreign_keys)
     assert taxa_measured_attributes.target_table == "tbl_taxa_measured_attributes"
-    assert taxa_measured_attributes.aggregate_parent == "taxa_tree_master"
-    assert any(foreign_key.entity == "taxa_tree_master" for foreign_key in taxa_measured_attributes.foreign_keys)
+    assert taxa_measured_attributes.aggregate_parent == "taxa"
+    assert any(foreign_key.entity == "taxa" for foreign_key in taxa_measured_attributes.foreign_keys)
     assert ecocode_system.target_table == "tbl_ecocode_systems"
     assert any(foreign_key.entity == "citation" for foreign_key in ecocode_system.foreign_keys)
     assert ecocode_group.target_table == "tbl_ecocode_groups"
@@ -223,13 +231,13 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     assert ecocode_definition.target_table == "tbl_ecocode_definitions"
     assert any(foreign_key.entity == "ecocode_group" for foreign_key in ecocode_definition.foreign_keys)
     assert ecocode.target_table == "tbl_ecocodes"
-    assert ecocode.aggregate_parent == "taxa_tree_master"
+    assert ecocode.aggregate_parent == "taxa"
     assert any(foreign_key.entity == "ecocode_definition" for foreign_key in ecocode.foreign_keys)
-    assert any(foreign_key.entity == "taxa_tree_master" for foreign_key in ecocode.foreign_keys)
+    assert any(foreign_key.entity == "taxa" for foreign_key in ecocode.foreign_keys)
     assert taxonomic_order_system.target_table == "tbl_taxonomic_order_systems"
     assert taxonomic_order.target_table == "tbl_taxonomic_order"
-    assert taxonomic_order.aggregate_parent == "taxa_tree_master"
-    assert any(foreign_key.entity == "taxa_tree_master" for foreign_key in taxonomic_order.foreign_keys)
+    assert taxonomic_order.aggregate_parent == "taxa"
+    assert any(foreign_key.entity == "taxa" for foreign_key in taxonomic_order.foreign_keys)
     assert any(foreign_key.entity == "taxonomic_order_system" for foreign_key in taxonomic_order.foreign_keys)
     assert rdb_system.target_table == "tbl_rdb_systems"
     assert any(foreign_key.entity == "location" for foreign_key in rdb_system.foreign_keys)
@@ -237,7 +245,7 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     assert rdb_code.target_table == "tbl_rdb_codes"
     assert any(foreign_key.entity == "rdb_system" for foreign_key in rdb_code.foreign_keys)
     assert rdb.target_table == "tbl_rdb"
-    assert rdb.aggregate_parent == "taxa_tree_master"
+    assert rdb.aggregate_parent == "taxa"
     assert any(foreign_key.entity == "rdb_code" for foreign_key in rdb.foreign_keys)
     assert value_type.target_table == "tbl_value_types"
     assert any(foreign_key.entity == "unit" for foreign_key in value_type.foreign_keys)
@@ -247,7 +255,7 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     assert submission_task.target_table == "tbl_submission_tasks"
     assert submission_task.columns["biblio_id"].nullable is True
     assert submission_task.columns["event_date"].type == "date"
-    assert dataset_contact.identity_columns == ["dataset_id", "contact_id", "contact_type_id", "event_date"]
+    assert ["dataset_id", "contact_id", "contact_type_id", "event_date"] in dataset_contact.unique_sets
     assert dataset_contact.columns["event_date"].nullable is True
     assert any(foreign_key.entity == "sample_group_sampling_context" for foreign_key in sample_group.foreign_keys)
     assert sample_group_coordinate.target_table == "tbl_sample_group_coordinates"
@@ -281,6 +289,48 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     assert issues == []
 
 
+def test_sead_superset_model_records_settled_aggregate_ownership() -> None:
+    """Settled aggregate chains, root identities, and insert ordering for the shared model."""
+    spec_path = Path("resources/target_models/sead_standard_model.yml")
+    target_model = TargetModel.model_validate(yaml.safe_load(spec_path.read_text(encoding="utf-8")))
+
+    expected_chains = {
+        "analysis_entity": ("dataset", ("dataset",)),
+        "analysis_value": ("dataset", ("analysis_entity", "dataset")),
+        "abundance": ("dataset", ("analysis_entity", "dataset")),
+        "abundance_modification": ("dataset", ("abundance", "analysis_entity", "dataset")),
+        "sample_dimension": ("sample", ("sample",)),
+        "sample_group_reference": ("sample_group", ("sample_group",)),
+        "value_type_item": ("value_type", ("value_type",)),
+    }
+
+    for entity_name, (root_entity, parent_chain) in expected_chains.items():
+        chain = resolve_aggregate_chain(target_model, entity_name)
+
+        assert chain.is_valid, f"{entity_name}: {chain.issues}"
+        assert chain.root_entity == root_entity
+        assert chain.parent_chain == parent_chain
+
+    assert resolve_aggregate_chain(target_model, "dataset").root_identity_tracking == "tracked"
+    assert resolve_aggregate_chain(target_model, "value_type").root_identity_tracking == "reconciled"
+
+    abundance_ident_level = target_model.entities["abundance_ident_level"]
+    assert abundance_ident_level.aggregate_parent is None
+    assert resolve_effective_identity(abundance_ident_level).identity_tracking == "derived"
+
+    child_entities = {entity_name for entity_name, spec in target_model.entities.items() if spec.aggregate_parent}
+    insert_set = set(child_entities)
+    insert_set.update(parent_name for entity_name in child_entities if (parent_name := target_model.entities[entity_name].aggregate_parent))
+    plan = build_insert_plan(target_model, insert_set)
+
+    assert plan.is_acyclic
+    order_index = {entity_name: index for index, entity_name in enumerate(plan.order)}
+    for entity_name in child_entities:
+        parent_name = target_model.entities[entity_name].aggregate_parent
+        assert parent_name is not None
+        assert order_index[parent_name] < order_index[entity_name]
+
+
 def test_non_sead_target_model_expresses_cleanly() -> None:
     """Acceptance criterion #5: at least one non-SEAD model can be expressed without schema changes.
 
@@ -300,7 +350,6 @@ def test_non_sead_target_model_expresses_cleanly() -> None:
                 "domains": ["core"],
                 "target_table": "tbl_collections",
                 "public_id": "collection_id",
-                "identity_columns": ["collection_name"],
                 "columns": {
                     "collection_name": {"required": True, "type": "string", "nullable": False},
                     "institution_code": {"required": True, "type": "string", "nullable": False},
@@ -314,7 +363,6 @@ def test_non_sead_target_model_expresses_cleanly() -> None:
                 "domains": ["core"],
                 "target_table": "tbl_specimens",
                 "public_id": "specimen_id",
-                "identity_columns": ["catalogue_number"],
                 "columns": {
                     "catalogue_number": {"required": True, "type": "string", "nullable": False},
                     "taxon_id": {"required": True, "type": "integer", "nullable": False},
@@ -330,7 +378,6 @@ def test_non_sead_target_model_expresses_cleanly() -> None:
                 "domains": ["taxonomy"],
                 "target_table": "tbl_taxa",
                 "public_id": "taxon_id",
-                "identity_columns": ["scientific_name"],
                 "columns": {
                     "scientific_name": {"required": True, "type": "string", "nullable": False},
                     "common_name": {"type": "string", "nullable": True},

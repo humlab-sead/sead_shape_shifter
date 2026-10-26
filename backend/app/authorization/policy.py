@@ -21,6 +21,19 @@ RESOURCE_ROLE_ACTIONS: dict[ResourceType, dict[str, frozenset[Action]]] = {
     ResourceType.SHARED_DATA_SOURCE_CHILD: SHARED_SOURCE_ROLE_ACTIONS,
 }
 
+
+def allowed_resource_roles(resource_type: ResourceType) -> tuple[str, ...]:
+    """Return the sorted grant role names allowed for a resource type."""
+    return tuple(sorted(RESOURCE_ROLE_ACTIONS.get(resource_type, {})))
+
+
+def validate_resource_role(resource_type: ResourceType, role: str) -> None:
+    """Raise when a grant role is not defined for its resource type."""
+    allowed_roles = allowed_resource_roles(resource_type)
+    if role not in allowed_roles:
+        raise ValueError(f"Invalid role {role!r} for resource type {resource_type.value}; allowed roles: {', '.join(allowed_roles)}")
+
+
 DEPLOYMENT_ROLE_ACTIONS: dict[ApplicationRole, frozenset[Action]] = {
     ApplicationRole.PROJECT_CREATOR: frozenset({Action.CREATE_PROJECT}),
     ApplicationRole.OPERATOR: frozenset({Action.READ_ALL_SHARED_SOURCES, Action.MANAGE_SHARED_SOURCES, Action.RUN_INGESTERS}),

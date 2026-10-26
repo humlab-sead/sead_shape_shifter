@@ -19,19 +19,37 @@ class Ingester(Protocol):
     async def ingest(self, source: str) -> IngestionResult: ...
 ```
 
+### Optional Table Input
+
+Ingesters that accept normalized tables in memory implement the separate `TableSourceIngester` protocol.
+Callers discover this capability with a runtime check. The shared `Ingester` protocol and the shared file
+request and response models stay unchanged.
+
+```python
+@runtime_checkable
+class TableSourceIngester(Protocol):
+    async def validate_tables(
+        self, tables: Mapping[str, pd.DataFrame], *, source_name: str = ""
+    ) -> ValidationResult: ...
+
+    async def ingest_tables(
+        self,
+        tables: Mapping[str, pd.DataFrame],
+        *,
+        source_name: str = "",
+        validate_first: bool = True,
+    ) -> IngestionResult: ...
+```
+
+`source_name` is diagnostic text for messages. It is never opened or resolved as a file path.
+`sead_change_request` implements this capability.
+
 ## Components
 
 ### Core Infrastructure
-- **`protocol.py`**: Defines the `Ingester` protocol and result types
+- **`protocol.py`**: Defines the `Ingester` protocol, the optional `TableSourceIngester` protocol, and the result types
 - **`registry.py`**: Auto-discovery registry for ingesters
 - **`__init__.py`**: Triggers registration of all ingesters
-
-### SEAD Ingester (`sead/`)
-Complete implementation for SEAD Clearinghouse Import system:
-- **`ingester.py`**: Main ingester class implementing the protocol
-- **Core modules**: metadata, policies, specification, submission, repository, utility, process
-- **Dispatchers**: csv_processor, xml_processor
-- **Uploaders**: csv_uploader, xml_uploader
 
 ## Usage
 
@@ -42,35 +60,33 @@ List available ingesters:
 GET /api/v1/ingesters
 ```
 
-Validate data source:
+Validate the authorized project's normalized tables for a Change Request:
 ```http
-POST /api/v1/ingesters/sead/validate
+POST /api/v1/ingesters/sead_change_request/from-project/validate
 {
-  "source": "/path/to/data.xlsx",
-  "config": {
-    "ignore_columns": ["date_updated", "*_uuid"]
-  }
+  "project_name": "pilot_bugs",
+  "submission_context": {
+    "submission_name": "pilot_bugs_bugs",
+    "timestamp": "2026-10-19T12:00",
+    "datatype": "bugs",
+    "identifier": "PILOT_BUGS"
+  },
+  "deploy_strategy": "copy_csv"
 }
 ```
 
-Ingest data:
+Ingest the authorized project's normalized tables as a Change Request:
 ```http
-POST /api/v1/ingesters/sead/ingest
+POST /api/v1/ingesters/sead_change_request/from-project/ingest
 {
-  "source": "/path/to/data.xlsx",
-  "config": {
-    "database": {
-      "host": "localhost",
-      "port": 5432,
-      "dbname": "sead_staging",
-      "user": "sead_user"
-    }
+  "project_name": "pilot_bugs",
+  "submission_context": {
+    "submission_name": "pilot_bugs_bugs",
+    "timestamp": "2026-10-19T12:00",
+    "datatype": "bugs",
+    "identifier": "PILOT_BUGS"
   },
-  "submission_name": "dendro_2026_01",
-  "data_types": "dendro",
-  "output_folder": "/output",
-  "do_register": true,
-  "explode": true
+  "deploy_strategy": "copy_csv"
 }
 ```
 
@@ -81,20 +97,12 @@ List ingesters:
 python -m backend.app.scripts.ingest list-ingesters
 ```
 
-Validate:
+Validate and ingest commands accept file input for ingesters that support it:
 ```bash
-python -m backend.app.scripts.ingest validate sead /path/to/data.xlsx
-```
-
-Ingest:
-```bash
-python -m backend.app.scripts.ingest ingest sead /path/to/data.xlsx \
-  --submission-name "dendro_2026_01" \
-  --data-types "dendro" \
-  --database-host localhost \
-  --database-name sead_staging \
-  --register \
-  --explode
+python -m backend.app.scripts.ingest validate <ingester_key> /path/to/data.xlsx
+python -m backend.app.scripts.ingest ingest <ingester_key> /path/to/data.xlsx \
+  --submission-name "my_submission" \
+  --data-types "my_data_type"
 ```
 
 ### Frontend (Vue 3)
@@ -107,21 +115,9 @@ const ingesterStore = useIngesterStore()
 // List ingesters
 await ingesterStore.fetchIngesters()
 
-// Validate
-await ingesterStore.validate('sead', {
-  source: '/path/to/data.xlsx',
-  config: {}
-})
-
-// Ingest
-await ingesterStore.ingest('sead', {
-  source: '/path/to/data.xlsx',
-  submission_name: 'dendro_2026_01',
-  data_types: 'dendro',
-  config: {},
-  do_register: true,
-  explode: true
-})
+// Validate and ingest use the project routes for sead_change_request
+await ingesterStore.validateProject(projectRequest)
+await ingesterStore.ingestProject(projectRequest)
 ```
 
 ## Adding a New Ingester
@@ -214,5 +210,5 @@ Use `extra` dict for ingester-specific parameters.
 ## See Also
 
 - [AGENTS.md](../../AGENTS.md#ingester-development-pattern) - Complete ingester development guide
-- [Implementation Plan](../../../INGESTER_INTEGRATION_PLAN.md) - Detailed integration plan
-- [Backend API Docs](../../../docs/BACKEND_API.md) - API endpoint reference
+- Implementation Plan - Detailed integration plan
+- Backend API Docs - API endpoint reference

@@ -1,0 +1,11 @@
+# MAL pilot provider record.
+#
+# Reviewed registry data: see README.md in this directory. The scope names are
+# stable identity contracts and must not change after a project binds to them.
+code: afl
+name: AFL
+description: Stockholm Archaeological Research Laboratory (AFL).
+schemas:
+  - provider_schema: isotope/glykou
+    scope_name: provider://afl/isotope/glykou
+    description: Glykou isotope data from AFL.

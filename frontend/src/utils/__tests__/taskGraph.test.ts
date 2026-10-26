@@ -25,6 +25,10 @@ describe('taskGraph', () => {
     expect(shouldShowNodeForTaskFilter(undefined, 'critical')).toBe(true)
   })
 
+  it('excludes undefined status from the has_note filter', () => {
+    expect(shouldShowNodeForTaskFilter(undefined, 'has_note')).toBe(false)
+  })
+
   it('filters by basic task status', () => {
     expect(shouldShowNodeForTaskFilter(mkStatus({ status: 'todo' as any }), 'todo')).toBe(true)
     expect(shouldShowNodeForTaskFilter(mkStatus({ status: 'ongoing' as any }), 'ongoing')).toBe(true)
@@ -36,6 +40,18 @@ describe('taskGraph', () => {
   it('filters blocked entities', () => {
     expect(shouldShowNodeForTaskFilter(mkStatus({ blocked_by: ['dep_a'] }), 'blocked')).toBe(true)
     expect(shouldShowNodeForTaskFilter(mkStatus({ blocked_by: [] }), 'blocked')).toBe(false)
+  })
+
+  it('filters entities not marked ignored', () => {
+    expect(shouldShowNodeForTaskFilter(mkStatus({ status: 'todo' as any }), 'not_ignored')).toBe(true)
+    expect(shouldShowNodeForTaskFilter(mkStatus({ status: 'done' as any }), 'not_ignored')).toBe(true)
+    expect(shouldShowNodeForTaskFilter(mkStatus({ status: 'ongoing' as any }), 'not_ignored')).toBe(true)
+    expect(shouldShowNodeForTaskFilter(mkStatus({ status: 'ignored' as any }), 'not_ignored')).toBe(false)
+  })
+
+  it('filters entities with a note', () => {
+    expect(shouldShowNodeForTaskFilter(mkStatus({ has_note: true }), 'has_note')).toBe(true)
+    expect(shouldShowNodeForTaskFilter(mkStatus({ has_note: false }), 'has_note')).toBe(false)
   })
 
   it('filters critical entities', () => {
@@ -50,7 +66,10 @@ describe('taskGraph', () => {
     expect(getTaskStatusNodeClasses(mkStatus({ blocked_by: ['dep_a'] }))).toEqual(['task-blocked'])
     expect(getTaskStatusNodeClasses(mkStatus({ priority: 'critical' as any }))).toEqual(['task-critical'])
     expect(getTaskStatusNodeClasses(mkStatus({ priority: 'ready' as any }))).toEqual(['task-ready'])
-    expect(getTaskStatusNodeClasses(mkStatus({ status: 'done' as any, flagged: true }))).toEqual(['task-done', 'task-flagged'])
+    expect(getTaskStatusNodeClasses(mkStatus({ status: 'done' as any, flagged: true }))).toEqual([
+      'task-done',
+      'task-flagged',
+    ])
     expect(getTaskStatusNodeClasses(undefined)).toEqual([])
   })
 })

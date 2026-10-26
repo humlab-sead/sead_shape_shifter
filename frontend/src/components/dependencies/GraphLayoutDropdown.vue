@@ -16,11 +16,11 @@
 
     <v-list density="compact" min-width="220">
       <v-list-subheader>Graph Layout</v-list-subheader>
-      
+
       <!-- Hierarchical Layout -->
       <v-list-item @click="selectLayout('hierarchical')">
         <template #prepend>
-          <v-icon 
+          <v-icon
             :icon="layoutType === 'hierarchical' ? 'mdi-radiobox-marked' : 'mdi-radiobox-blank'"
             :color="layoutType === 'hierarchical' ? 'primary' : undefined"
           />
@@ -35,7 +35,7 @@
       <!-- Force Layout -->
       <v-list-item @click="selectLayout('force')">
         <template #prepend>
-          <v-icon 
+          <v-icon
             :icon="layoutType === 'force' ? 'mdi-radiobox-marked' : 'mdi-radiobox-blank'"
             :color="layoutType === 'force' ? 'primary' : undefined"
           />
@@ -48,12 +48,9 @@
       </v-list-item>
 
       <!-- Custom Layout -->
-      <v-list-item 
-        @click="selectLayout('custom')"
-        :disabled="!hasCustomLayout"
-      >
+      <v-list-item @click="selectLayout('custom')" :disabled="!hasCustomLayout">
         <template #prepend>
-          <v-icon 
+          <v-icon
             :icon="layoutType === 'custom' ? 'mdi-radiobox-marked' : 'mdi-radiobox-blank'"
             :color="layoutType === 'custom' ? 'primary' : undefined"
           />
@@ -70,36 +67,23 @@
       <v-divider class="my-2" />
 
       <!-- Save as Custom -->
-      <v-list-item 
-        @click="$emit('save-custom')"
-        :disabled="saving"
-      >
+      <v-list-item @click="$emit('save-custom')" :disabled="saving">
         <template #prepend>
-          <v-icon 
-            icon="mdi-content-save" 
-            :class="{ 'rotating': saving }"
-          />
+          <v-icon icon="mdi-content-save" :class="{ rotating: saving }" />
         </template>
         <v-list-item-title>
           {{ saving ? 'Saving...' : 'Save as Custom' }}
         </v-list-item-title>
-        <v-list-item-subtitle class="text-caption">
-          Save current positions
-        </v-list-item-subtitle>
+        <v-list-item-subtitle class="text-caption"> Save current positions </v-list-item-subtitle>
       </v-list-item>
 
       <!-- Clear Custom -->
-      <v-list-item 
-        v-if="hasCustomLayout"
-        @click="$emit('clear-custom')"
-      >
+      <v-list-item v-if="hasCustomLayout" @click="$emit('clear-custom')">
         <template #prepend>
           <v-icon icon="mdi-delete" color="error" />
         </template>
         <v-list-item-title>Clear Custom Layout</v-list-item-title>
-        <v-list-item-subtitle class="text-caption">
-          Remove saved positions
-        </v-list-item-subtitle>
+        <v-list-item-subtitle class="text-caption"> Remove saved positions </v-list-item-subtitle>
       </v-list-item>
     </v-list>
   </v-menu>
@@ -119,7 +103,7 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   layoutType: 'hierarchical',
   hasCustomLayout: false,
-  saving: false
+  saving: false,
 })
 
 const emit = defineEmits<{
@@ -130,10 +114,14 @@ const emit = defineEmits<{
 
 const layoutLabel = computed(() => {
   switch (props.layoutType) {
-    case 'hierarchical': return 'Hierarchical'
-    case 'force': return 'Force'
-    case 'custom': return 'Custom'
-    default: return 'Unknown'
+    case 'hierarchical':
+      return 'Hierarchical'
+    case 'force':
+      return 'Force'
+    case 'custom':
+      return 'Custom'
+    default:
+      return 'Unknown'
   }
 })
 

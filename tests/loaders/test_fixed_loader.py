@@ -303,6 +303,42 @@ class TestCreateFixedTable:
             await FixedLoader(data_source=None).load(entity, table_cfg)
 
     @pytest.mark.asyncio
+    async def test_width_error_includes_expected_positional_order(self):
+        """Fixed width errors should show the expected positional column order."""
+        entity = "broken_fixed_order"
+        config = {
+            entity: {
+                "type": "fixed",
+                "public_id": "broken_fixed_order_id",
+                "keys": [],
+                "columns": ["a", "b"],
+                "values": [[1, None, "aa", "bb", "extra"]],
+            }
+        }
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
+
+        with pytest.raises(ValueError, match="Expected positional column order"):
+            await FixedLoader(data_source=None).load(entity, table_cfg)
+
+    @pytest.mark.asyncio
+    async def test_raises_when_key_is_not_produced(self):
+        """Fixed entities whose keys are not produced should fail validation."""
+        entity = "broken_fixed_keys"
+        config = {
+            entity: {
+                "type": "fixed",
+                "public_id": "broken_fixed_keys_id",
+                "keys": ["missing_key"],
+                "columns": ["a", "b"],
+                "values": [[1, None, "aa", "bb"]],
+            }
+        }
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
+
+        with pytest.raises(ValueError, match="do not create output columns"):
+            await FixedLoader(data_source=None).load(entity, table_cfg)
+
+    @pytest.mark.asyncio
     async def test_location_type_example_from_yaml(self):
         """Test location_type example from arbodat.yml."""
         entity = "location_type"

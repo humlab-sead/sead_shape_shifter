@@ -3,8 +3,22 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from src.issues import CoreIssue
-from src.target_model.effective_identity import resolve_effective_identity
-from src.target_model.models import EntitySpec, TargetModel
+from src.target_model.effective_identity import resolve_aggregate_chain, resolve_effective_identity
+from src.target_model.models import EntitySpec, ForeignKeySpec, TargetModel
+
+CHAIN_ISSUE_CODES: frozenset[str] = frozenset(
+    {
+        "AGGREGATE_PARENT_CYCLE",
+        "INVALID_AGGREGATE_ROOT_IDENTITY",
+        "AGGREGATE_CHILD_MISSING_PUBLIC_ID",
+        "AGGREGATE_ROOT_MISSING_PUBLIC_ID",
+    }
+)
+"""Chain-level issue codes that immediate-parent checks cannot report.
+
+Other chain issue codes repeat diagnostics that ``_validate_aggregate_parent``
+already emits for the broken link, so validation drops them to avoid duplicates.
+"""
 
 
 @dataclass(slots=True, kw_only=True, repr=False)
@@ -24,6 +38,7 @@ class TargetModelSpecValidator:
     def validate(self, target_model: TargetModel) -> list[SpecValidationIssue]:
         issues: list[SpecValidationIssue] = []
         suffix = target_model.naming.public_id_suffix if target_model.naming else None
+        reported_cycles: set[tuple[str, ...]] = set()
 
         for entity_name, entity_spec in target_model.entities.items():
             column_names = set(entity_spec.columns)
@@ -47,15 +62,8 @@ class TargetModelSpecValidator:
                         )
                     )
 
-            for identity_column in entity_spec.identity_columns:
-                if identity_column not in column_names:
-                    issues.append(
-                        SpecValidationIssue(
-                            code="UNKNOWN_IDENTITY_COLUMN",
-                            message=f"Entity '{entity_name}' references unknown identity column '{identity_column}'",
-                            entity=entity_name,
-                        )
-                    )
+                if foreign_key.required_when is not None:
+                    issues.extend(self._validate_required_when(target_model, entity_name, foreign_key))
 
             for unique_set in entity_spec.unique_sets:
                 for column_name in unique_set:
@@ -92,8 +100,69 @@ class TargetModelSpecValidator:
                         )
                     )
 
-            issues.extend(self._validate_aggregate_parent(target_model, entity_name, entity_spec))
+            aggregate_parent_issues = self._validate_aggregate_parent(target_model, entity_name, entity_spec)
+            issues.extend(aggregate_parent_issues)
+            issues.extend(self._validate_aggregate_chain(target_model, entity_name, entity_spec, aggregate_parent_issues, reported_cycles))
             issues.extend(self._validate_identity_rules(entity_name, entity_spec))
+
+        return issues
+
+    @staticmethod
+    def _validate_required_when(target_model: TargetModel, entity_name: str, foreign_key: ForeignKeySpec) -> list[SpecValidationIssue]:
+        """Validate that a conditional FK names its owning source and a target with a public ID."""
+        issues: list[SpecValidationIssue] = []
+        source_entity = foreign_key.required_when.has_new_rows
+
+        if "required" in foreign_key.model_fields_set:
+            issues.append(
+                SpecValidationIssue(
+                    code="CONFLICTING_FOREIGN_KEY_REQUIREMENTS",
+                    message=(
+                        f"Entity '{entity_name}' foreign key to '{foreign_key.entity}' cannot declare both "
+                        "'required' and 'required_when'"
+                    ),
+                    entity=entity_name,
+                )
+            )
+
+        if source_entity not in target_model.entities:
+            issues.append(
+                SpecValidationIssue(
+                    code="UNKNOWN_CONDITIONAL_FOREIGN_KEY_SOURCE",
+                    message=(f"Entity '{entity_name}' foreign key condition references unknown source entity '{source_entity}'"),
+                    entity=entity_name,
+                )
+            )
+        elif source_entity != entity_name:
+            issues.append(
+                SpecValidationIssue(
+                    code="CONDITIONAL_FOREIGN_KEY_SOURCE_MISMATCH",
+                    message=(f"Entity '{entity_name}' foreign key condition must name its owning source entity, " f"not '{source_entity}'"),
+                    entity=entity_name,
+                )
+            )
+
+        if foreign_key.via:
+            issues.append(
+                SpecValidationIssue(
+                    code="CONDITIONAL_FOREIGN_KEY_VIA_UNSUPPORTED",
+                    message=(
+                        f"Entity '{entity_name}' foreign key condition cannot use bridge '{foreign_key.via}'; "
+                        "conditional foreign keys must be direct"
+                    ),
+                    entity=entity_name,
+                )
+            )
+
+        target_spec = target_model.entities.get(foreign_key.entity)
+        if target_spec is not None and not target_spec.public_id:
+            issues.append(
+                SpecValidationIssue(
+                    code="CONDITIONAL_FOREIGN_KEY_TARGET_MISSING_PUBLIC_ID",
+                    message=(f"Entity '{entity_name}' conditional foreign key target '{foreign_key.entity}' " "must declare public_id"),
+                    entity=entity_name,
+                )
+            )
 
         return issues
 
@@ -161,6 +230,43 @@ class TargetModelSpecValidator:
 
         return issues
 
+    @staticmethod
+    def _validate_aggregate_chain(
+        target_model: TargetModel,
+        entity_name: str,
+        entity_spec: EntitySpec,
+        aggregate_parent_issues: list[SpecValidationIssue],
+        reported_cycles: set[tuple[str, ...]],
+    ) -> list[SpecValidationIssue]:
+        """Report chain-level aggregate failures that immediate-parent checks cannot see.
+
+        Skips entities whose immediate parent link is already reported, because a
+        broken first link makes the rest of the chain unresolvable. Reports each
+        canonical cycle once, on the alphabetically first member entity.
+        """
+        if aggregate_parent_issues:
+            return []
+        if entity_spec.aggregate_parent is None and entity_spec.identity_tracking != "child":
+            return []
+
+        chain = resolve_aggregate_chain(target_model, entity_name)
+        issues: list[SpecValidationIssue] = []
+        for chain_issue in chain.issues:
+            if chain_issue.code not in CHAIN_ISSUE_CODES:
+                continue
+            if chain_issue.code == "AGGREGATE_PARENT_CYCLE":
+                if chain_issue.cycle is None or chain_issue.cycle in reported_cycles:
+                    continue
+                reported_cycles.add(chain_issue.cycle)
+            issues.append(
+                SpecValidationIssue(
+                    code=chain_issue.code,
+                    message=chain_issue.message,
+                    entity=chain_issue.entity,
+                )
+            )
+        return issues
+
     def _validate_identity_rules(self, entity_name: str, entity_spec: EntitySpec) -> list[SpecValidationIssue]:
         issues: list[SpecValidationIssue] = []
         identity_tracking, reconciliation = self._resolve_effective_sims(entity_spec)
@@ -178,6 +284,41 @@ class TargetModelSpecValidator:
                     entity=entity_name,
                 )
             )
+
+        if entity_spec.synchronize_sequence_after_insert:
+            if not entity_spec.target_table or not entity_spec.public_id:
+                issues.append(
+                    SpecValidationIssue(
+                        code="SEQUENCE_SYNC_REQUIRES_TARGET_ID",
+                        message=(
+                            f"Entity '{entity_name}' synchronizes a database sequence after insert but must declare "
+                            "target_table and public_id"
+                        ),
+                        entity=entity_name,
+                    )
+                )
+            if identity_tracking != "tracked":
+                issues.append(
+                    SpecValidationIssue(
+                        code="SEQUENCE_SYNC_REQUIRES_TRACKED_IDENTITY",
+                        message=(
+                            f"Entity '{entity_name}' synchronizes a database sequence after insert but does not use "
+                            "tracked identity allocation"
+                        ),
+                        entity=entity_name,
+                    )
+                )
+            if entity_spec.public_id_generation == "database_sequence":
+                issues.append(
+                    SpecValidationIssue(
+                        code="CONFLICTING_PUBLIC_ID_SEQUENCE_RULES",
+                        message=(
+                            f"Entity '{entity_name}' cannot reserve IDs from a database sequence and synchronize "
+                            "that sequence after insert"
+                        ),
+                        entity=entity_name,
+                    )
+                )
 
         if identity_tracking == "child":
             if entity_spec.reconciliation is not None:

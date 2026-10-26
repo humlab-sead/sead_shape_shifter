@@ -37,7 +37,6 @@ def test_target_model_parses_richer_entity_payload() -> None:
                     "domains": ["core", "spatial"],
                     "target_table": "tbl_locations",
                     "public_id": "location_id",
-                    "identity_columns": ["location_type_id", "location_name"],
                     "columns": {
                         "location_name": {"required": True, "type": "string", "nullable": False},
                         "location_type_id": {"required": True, "generated": True, "type": "integer", "nullable": False},
@@ -58,12 +57,59 @@ def test_target_model_parses_richer_entity_payload() -> None:
 
     location = target_model.entities["location"]
     assert location.domains == ["core", "spatial"]
-    assert location.identity_columns == ["location_type_id", "location_name"]
     assert list(location.columns) == ["location_name", "location_type_id", "location_kind"]
     assert location.columns["location_name"].required is True
     assert location.columns["location_type_id"].generated is True
     assert location.columns["location_kind"].allowed_values == ["site", "trench"]
     assert location.unique_sets == [["location_type_id", "location_name"]]
+
+
+def test_target_model_parses_and_round_trips_conditional_foreign_key() -> None:
+    target_model = TargetModel.model_validate(
+        {
+            "model": {"name": "SEAD Clearinghouse", "version": "2.0.0"},
+            "entities": {
+                "location": {
+                    "foreign_keys": [
+                        {
+                            "entity": "location_type",
+                            "required_when": {"has_new_rows": "location"},
+                        }
+                    ]
+                },
+                "static_location": {"foreign_keys": [{"entity": "location_type"}]},
+                "location_type": {"public_id": "location_type_id"},
+            },
+        }
+    )
+
+    foreign_key = target_model.entities["location"].foreign_keys[0]
+    assert foreign_key.required_when is not None
+    assert foreign_key.required_when.has_new_rows == "location"
+
+    serialized = target_model.model_dump(mode="json")
+    assert "required" not in serialized["entities"]["location"]["foreign_keys"][0]
+    assert serialized["entities"]["static_location"]["foreign_keys"][0]["required"] is False
+
+    round_tripped = TargetModel.model_validate(serialized)
+    assert round_tripped == target_model
+
+
+@pytest.mark.parametrize(
+    "required_when",
+    [{}, {"has_new_rows": 1}, {"has_new_rows": "location", "unexpected": True}],
+)
+def test_target_model_rejects_malformed_required_when(required_when: object) -> None:
+    with pytest.raises(ValidationError):
+        TargetModel.model_validate(
+            {
+                "model": {"name": "SEAD Clearinghouse", "version": "2.0.0"},
+                "entities": {
+                    "location": {"foreign_keys": [{"entity": "location_type", "required_when": required_when}]},
+                    "location_type": {"public_id": "location_type_id"},
+                },
+            }
+        )
 
 
 def test_target_model_parses_database_sequence_public_id_generation() -> None:
@@ -82,6 +128,26 @@ def test_target_model_parses_database_sequence_public_id_generation() -> None:
     )
 
     assert target_model.entities["submission"].public_id_generation == "database_sequence"
+
+
+def test_target_model_parses_sequence_synchronization_for_sims_ids() -> None:
+    target_model = TargetModel.model_validate(
+        {
+            "model": {"name": "SEAD Clearinghouse", "version": "2.0.0"},
+            "entities": {
+                "submission": {
+                    "role": "fact",
+                    "identity_tracking": "tracked",
+                    "reconciliation": "allocate",
+                    "target_table": "tbl_submissions",
+                    "public_id": "submission_id",
+                    "synchronize_sequence_after_insert": True,
+                }
+            },
+        }
+    )
+
+    assert target_model.entities["submission"].synchronize_sequence_after_insert is True
 
 
 def test_target_model_rejects_unknown_model_fields() -> None:

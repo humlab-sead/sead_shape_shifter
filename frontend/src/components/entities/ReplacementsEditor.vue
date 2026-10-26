@@ -35,13 +35,7 @@
         <v-card variant="outlined">
           <v-card-title class="d-flex align-center justify-space-between">
             <span class="text-subtitle-2">Replacements</span>
-            <v-btn
-              size="small"
-              variant="outlined"
-              prepend-icon="mdi-plus"
-              :disabled="!selectedColumn"
-              @click="addRule"
-            >
+            <v-btn size="small" variant="outlined" prepend-icon="mdi-plus" :disabled="!selectedColumn" @click="addRule">
               Add rule
             </v-btn>
           </v-card-title>
@@ -52,12 +46,13 @@
               <strong>Replacements</strong> transform values in selected columns using ordered rules.
               <ul class="mt-2">
                 <li><strong>Match operations:</strong> equals, contains, startswith, endswith, regex, in (list)</li>
-                <li><strong>Transform operations:</strong> regex_sub (regex substitution), map (lookup), transform (function)</li>
+                <li>
+                  <strong>Transform operations:</strong> regex_sub (regex substitution), map (lookup), transform
+                  (function)
+                </li>
                 <li><strong>Special:</strong> blank_out (set to null/empty)</li>
               </ul>
-              <div class="mt-2">
-                Rules execute <strong>top to bottom</strong>. Use drag handles to reorder.
-              </div>
+              <div class="mt-2">Rules execute <strong>top to bottom</strong>. Use drag handles to reorder.</div>
             </v-alert>
 
             <v-alert v-if="!selectedColumn" type="info" variant="tonal" density="compact">
@@ -66,11 +61,13 @@
 
             <template v-else>
               <v-alert v-if="showConversionWarning" type="warning" variant="tonal" density="compact" class="mb-3">
-                This column uses a legacy replacement format. Editing here will convert it to the ordered rule-list format.
+                This column uses a legacy replacement format. Editing here will convert it to the ordered rule-list
+                format.
               </v-alert>
 
               <div v-if="rules.length === 0" class="text-caption text-medium-emphasis">
-                No rules configured for <strong>{{ selectedColumn }}</strong>.
+                No rules configured for <strong>{{ selectedColumn }}</strong
+                >.
               </div>
 
               <v-list v-else class="px-0" density="compact">
@@ -113,7 +110,13 @@
                             @click="moveRule(index, +1)"
                           />
                           <v-btn icon="mdi-content-copy" variant="text" size="small" @click="duplicateRule(index)" />
-                          <v-btn icon="mdi-delete" variant="text" size="small" color="error" @click="removeRule(index)" />
+                          <v-btn
+                            icon="mdi-delete"
+                            variant="text"
+                            size="small"
+                            color="error"
+                            @click="removeRule(index)"
+                          />
                         </v-col>
                       </v-row>
 
@@ -157,7 +160,12 @@
                           <v-col cols="12">
                             <div class="d-flex align-center justify-space-between mb-2">
                               <div class="text-caption text-medium-emphasis">Map</div>
-                              <v-btn size="x-small" variant="outlined" prepend-icon="mdi-plus" @click="addMapPair(rule)">
+                              <v-btn
+                                size="x-small"
+                                variant="outlined"
+                                prepend-icon="mdi-plus"
+                                @click="addMapPair(rule)"
+                              >
                                 Add pair
                               </v-btn>
                             </div>
@@ -225,8 +233,8 @@
                         <template v-else-if="rule.op === 'transform'">
                           <v-col cols="12">
                             <v-alert type="info" variant="tonal" density="compact">
-                              Transform rule applies normalize/coerce operations to <strong>all values</strong> without filtering.
-                              Configure normalize and/or coerce options below.
+                              Transform rule applies normalize/coerce operations to <strong>all values</strong> without
+                              filtering. Configure normalize and/or coerce options below.
                             </v-alert>
                           </v-col>
                         </template>
@@ -303,7 +311,17 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 
-type RuleOp = 'equals' | 'contains' | 'startswith' | 'endswith' | 'regex' | 'regex_sub' | 'in' | 'blank_out' | 'map' | 'transform'
+type RuleOp =
+  | 'equals'
+  | 'contains'
+  | 'startswith'
+  | 'endswith'
+  | 'regex'
+  | 'regex_sub'
+  | 'in'
+  | 'blank_out'
+  | 'map'
+  | 'transform'
 type BlankFill = 'forward' | 'backward' | 'none' | 'constant'
 
 interface UiRule {
@@ -364,7 +382,9 @@ const coerceItems = [
   { title: 'float', value: 'float' },
 ]
 
-const availableColumnsList = computed(() => (props.availableColumns || []).filter((c) => typeof c === 'string' && c.length > 0))
+const availableColumnsList = computed(() =>
+  (props.availableColumns || []).filter((c) => typeof c === 'string' && c.length > 0)
+)
 
 const selectedColumn = ref<string | null>(null)
 function deepClone<T>(value: T): T {
@@ -378,8 +398,8 @@ function deepClone<T>(value: T): T {
 const rawReplacements = ref<Record<string, any>>(deepClone(props.modelValue || {}))
 const rules = ref<UiRule[]>([])
 const showConversionWarning = ref(false)
-const isLoadingColumn = ref(false)  // Prevent infinite loop between watchers
-const isPersisting = ref(false)  // Track when we're persisting to prevent reload loop
+const isLoadingColumn = ref(false) // Prevent infinite loop between watchers
+const isPersisting = ref(false) // Track when we're persisting to prevent reload loop
 
 function supportsNegate(op: RuleOp): boolean {
   return ['equals', 'contains', 'startswith', 'endswith', 'in', 'regex'].includes(op)
@@ -407,8 +427,8 @@ function selectColumn(col: string) {
 }
 
 function loadColumn(col: string) {
-  isLoadingColumn.value = true  // Prevent rules watcher from triggering persist
-  
+  isLoadingColumn.value = true // Prevent rules watcher from triggering persist
+
   const spec = rawReplacements.value?.[col]
 
   showConversionWarning.value = false
@@ -419,7 +439,7 @@ function loadColumn(col: string) {
       .filter((r: any) => r && typeof r === 'object')
       .map((r: any) => fromRuleDict(r))
       .filter((r) => r !== null) as UiRule[]
-    isLoadingColumn.value = false  // Done loading
+    isLoadingColumn.value = false // Done loading
     return
   }
 
@@ -428,7 +448,7 @@ function loadColumn(col: string) {
     showConversionWarning.value = true
   }
   rules.value = []
-  isLoadingColumn.value = false  // Done loading
+  isLoadingColumn.value = false // Done loading
 }
 
 function fromRuleDict(rule: Record<string, any>): UiRule | null {
@@ -471,7 +491,10 @@ function fromRuleDict(rule: Record<string, any>): UiRule | null {
   }
 
   if ('map' in rule && rule.map && typeof rule.map === 'object' && !Array.isArray(rule.map)) {
-    const entries = Object.entries(rule.map as Record<string, any>).map(([k, v]) => ({ from: String(k), to: v != null ? String(v) : '' }))
+    const entries = Object.entries(rule.map as Record<string, any>).map(([k, v]) => ({
+      from: String(k),
+      to: v != null ? String(v) : '',
+    }))
     return {
       id: newId(),
       op: 'map',
@@ -520,15 +543,20 @@ function fromRuleDict(rule: Record<string, any>): UiRule | null {
 
   const flags = Array.isArray(rule.flags) ? rule.flags.map((f: any) => String(f).toLowerCase()) : []
 
-  const fromList = base === 'in'
-    ? (Array.isArray(rule.from) ? rule.from.map((v: any) => String(v)) : rule.from != null ? [String(rule.from)] : [])
-    : []
+  const fromList =
+    base === 'in'
+      ? Array.isArray(rule.from)
+        ? rule.from.map((v: any) => String(v))
+        : rule.from != null
+          ? [String(rule.from)]
+          : []
+      : []
 
   return {
     id: newId(),
     op: base,
     negate,
-    from: base === 'in' ? '' : (rule.from != null ? String(rule.from) : ''),
+    from: base === 'in' ? '' : rule.from != null ? String(rule.from) : '',
     fromList,
     to: rule.to != null ? String(rule.to) : '',
     blankValues: [],
@@ -678,8 +706,8 @@ function removeMapPair(rule: UiRule, index: number) {
 function persist() {
   if (!selectedColumn.value) return
 
-  isPersisting.value = true  // Set flag before emitting
-  
+  isPersisting.value = true // Set flag before emitting
+
   // Convert to rule-list format (advanced rules)
   rawReplacements.value[selectedColumn.value] = rules.value.map(toRuleDict)
 
@@ -690,7 +718,7 @@ function persist() {
   } else {
     emit('update:modelValue', rawReplacements.value)
   }
-  
+
   // Clear flag on next tick after parent has processed the update
   setTimeout(() => {
     isPersisting.value = false
@@ -704,7 +732,7 @@ watch(
     if (isPersisting.value) {
       return
     }
-    
+
     rawReplacements.value = deepClone(newValue || {})
 
     // Keep current column selection if still present
@@ -731,7 +759,7 @@ watch(
     if (isLoadingColumn.value) {
       return
     }
-    
+
     // Persist whenever rules change through v-model bindings.
     // (Operations like add/move/delete already call persist, but edits do not.)
     if (selectedColumn.value) {

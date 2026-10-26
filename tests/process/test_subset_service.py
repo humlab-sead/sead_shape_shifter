@@ -50,6 +50,26 @@ def test_get_subset_skips_missing_columns_when_requested() -> None:
     assert result["present"].tolist() == [1, 2]
 
 
+def test_get_subset_preserves_configured_column_order_and_ignores_key_only_fields() -> None:
+    service = SubsetService()
+    df = pd.DataFrame({"first": [1], "second": [2], "key_only": [3]})
+    table_cfg = build_table_config(columns=["second", "first"], keys=["key_only"])
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    assert list(result.columns) == ["second", "first"]
+
+
+def test_get_subset_keeps_auto_detected_sql_columns_in_source_order() -> None:
+    service = SubsetService()
+    df = pd.DataFrame({"source_b": [2], "source_a": [1], "system_id": [10]})
+    table_cfg = build_table_config(type="sql", columns=[], keys=["not_detected"], auto_detect_columns=True)
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    assert list(result.columns) == ["source_b", "source_a"]
+
+
 def test_get_subset_resolves_extra_columns_case_insensitive() -> None:
     service = SubsetService()
     df = pd.DataFrame({"ID": [1, 2], "VALUE": ["foo", "bar"]})

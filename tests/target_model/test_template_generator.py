@@ -6,13 +6,13 @@ from src.target_model.models import TargetModel
 from src.target_model.template_generator import generate_project_template, render_project_template_yaml
 
 EXAMPLES_DIR = Path("tests/test_data/examples")
-SPECS_DIR = Path("tests/test_data/specs")
+TARGET_MODELS_DIR = Path("tests/test_data/target_models")
 
-SPEC_PATH: Path = SPECS_DIR / "sead_standard_model.yml"
+TARGET_MODEL_PATH: Path = TARGET_MODELS_DIR / "sead_standard_model.yml"
 
 
 def load_target_model() -> TargetModel:
-    return TargetModel.model_validate(yaml.safe_load(SPEC_PATH.read_text(encoding="utf-8")))
+    return TargetModel.model_validate(yaml.safe_load(TARGET_MODEL_PATH.read_text(encoding="utf-8")))
 
 
 def test_generate_project_template_for_dating_domain_includes_required_dependency_closure() -> None:
@@ -22,7 +22,7 @@ def test_generate_project_template_for_dating_domain_includes_required_dependenc
 
     generated_entities: set[str] = template["entities"]  # type: ignore
     assert {"relative_ages", "relative_dating", "geochronology", "dating_lab"}.issubset(generated_entities)
-    assert {"analysis_entity", "sample", "sample_group", "sample_type", "site", "location", "location_type", "dataset", "method"}.issubset(
+    assert {"analysis_entity", "sample", "sample_group", "sample_type", "site", "location", "dataset", "method"}.issubset(
         generated_entities
     )
     assert "abundance" not in generated_entities
@@ -49,3 +49,25 @@ def test_generate_project_template_raises_for_unknown_entity() -> None:
         assert "Unknown entities requested" in str(exc)
     else:
         raise AssertionError("Expected ValueError for unknown entity selection")
+
+
+def test_generate_project_template_keeps_required_foreign_keys_on_local_id_path() -> None:
+    target_model = TargetModel.model_validate(
+        {
+            "model": {"name": "Test", "version": "1"},
+            "entities": {
+                "location": {
+                    "role": "fact",
+                    "public_id": "location_id",
+                    "foreign_keys": [{"entity": "location_type", "required": True}],
+                },
+                "location_type": {"role": "lookup", "public_id": "location_type_id"},
+            },
+        }
+    )
+
+    template = generate_project_template(target_model, entity_names=["location"])
+    location = template["entities"]["location"]  # type: ignore[index]
+
+    assert location["foreign_keys"] == [{"entity": "location_type"}]  # type: ignore[index]
+    assert "foreign_key_value_sources" not in location  # type: ignore[operator]

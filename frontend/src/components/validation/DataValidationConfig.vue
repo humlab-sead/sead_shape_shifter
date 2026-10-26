@@ -49,7 +49,8 @@
                   <div>
                     <div class="font-weight-medium">Complete Data (Comprehensive)</div>
                     <div class="text-caption text-grey">
-                      Validate using full normalized dataset. Slower but catches all issues. Recommended before deployment.
+                      Validate using full normalized dataset. Slower but catches all issues. Recommended before
+                      deployment.
                     </div>
                   </div>
                 </template>

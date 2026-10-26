@@ -53,10 +53,9 @@ describe('schemaApi', () => {
 
       await schemaApi.listTables('my database with spaces')
 
-      expect(mockApiClient.get).toHaveBeenCalledWith(
-        '/data-sources/my%20database%20with%20spaces/tables',
-        { params: undefined }
-      )
+      expect(mockApiClient.get).toHaveBeenCalledWith('/data-sources/my%20database%20with%20spaces/tables', {
+        params: undefined,
+      })
     })
 
     it('should propagate API errors', async () => {
@@ -85,10 +84,9 @@ describe('schemaApi', () => {
       const result = await schemaApi.getTableSchema('my-database', 'users')
 
       expect(result).toEqual(mockSchema)
-      expect(mockApiClient.get).toHaveBeenCalledWith(
-        '/data-sources/my-database/tables/users/schema',
-        { params: undefined }
-      )
+      expect(mockApiClient.get).toHaveBeenCalledWith('/data-sources/my-database/tables/users/schema', {
+        params: undefined,
+      })
     })
 
     it('should get table schema with schema filter', async () => {
@@ -102,10 +100,9 @@ describe('schemaApi', () => {
 
       await schemaApi.getTableSchema('my-database', 'table1', { schema: 'public' })
 
-      expect(mockApiClient.get).toHaveBeenCalledWith(
-        '/data-sources/my-database/tables/table1/schema',
-        { params: { schema: 'public' } }
-      )
+      expect(mockApiClient.get).toHaveBeenCalledWith('/data-sources/my-database/tables/table1/schema', {
+        params: { schema: 'public' },
+      })
     })
 
     it('should handle URL encoding for table names', async () => {
@@ -119,10 +116,9 @@ describe('schemaApi', () => {
 
       await schemaApi.getTableSchema('my-database', 'my table')
 
-      expect(mockApiClient.get).toHaveBeenCalledWith(
-        '/data-sources/my-database/tables/my%20table/schema',
-        { params: undefined }
-      )
+      expect(mockApiClient.get).toHaveBeenCalledWith('/data-sources/my-database/tables/my%20table/schema', {
+        params: undefined,
+      })
     })
 
     it('should handle special characters in names', async () => {
@@ -143,9 +139,7 @@ describe('schemaApi', () => {
 
       mockApiClient.get.mockRejectedValue(error)
 
-      await expect(schemaApi.getTableSchema('my-database', 'nonexistent')).rejects.toThrow(
-        'Table not found'
-      )
+      await expect(schemaApi.getTableSchema('my-database', 'nonexistent')).rejects.toThrow('Table not found')
     })
   })
 
@@ -167,10 +161,9 @@ describe('schemaApi', () => {
       const result = await schemaApi.previewTableData('my-database', 'users')
 
       expect(result).toEqual(mockPreview)
-      expect(mockApiClient.get).toHaveBeenCalledWith(
-        '/data-sources/my-database/tables/users/preview',
-        { params: undefined }
-      )
+      expect(mockApiClient.get).toHaveBeenCalledWith('/data-sources/my-database/tables/users/preview', {
+        params: undefined,
+      })
     })
 
     it('should preview with limit parameter', async () => {
@@ -186,10 +179,9 @@ describe('schemaApi', () => {
 
       await schemaApi.previewTableData('my-database', 'users', { limit: 10 })
 
-      expect(mockApiClient.get).toHaveBeenCalledWith(
-        '/data-sources/my-database/tables/users/preview',
-        { params: { limit: 10 } }
-      )
+      expect(mockApiClient.get).toHaveBeenCalledWith('/data-sources/my-database/tables/users/preview', {
+        params: { limit: 10 },
+      })
     })
 
     it('should preview with offset parameter', async () => {
@@ -205,10 +197,9 @@ describe('schemaApi', () => {
 
       await schemaApi.previewTableData('my-database', 'users', { offset: 10 })
 
-      expect(mockApiClient.get).toHaveBeenCalledWith(
-        '/data-sources/my-database/tables/users/preview',
-        { params: { offset: 10 } }
-      )
+      expect(mockApiClient.get).toHaveBeenCalledWith('/data-sources/my-database/tables/users/preview', {
+        params: { offset: 10 },
+      })
     })
 
     it('should preview with all parameters', async () => {
@@ -228,16 +219,13 @@ describe('schemaApi', () => {
         schema: 'public',
       })
 
-      expect(mockApiClient.get).toHaveBeenCalledWith(
-        '/data-sources/my-database/tables/users/preview',
-        {
-          params: {
-            limit: 10,
-            offset: 5,
-            schema: 'public',
-          },
-        }
-      )
+      expect(mockApiClient.get).toHaveBeenCalledWith('/data-sources/my-database/tables/users/preview', {
+        params: {
+          limit: 10,
+          offset: 5,
+          schema: 'public',
+        },
+      })
     })
 
     it('should handle URL encoding in preview', async () => {
@@ -247,10 +235,9 @@ describe('schemaApi', () => {
 
       await schemaApi.previewTableData('my database', 'my table')
 
-      expect(mockApiClient.get).toHaveBeenCalledWith(
-        '/data-sources/my%20database/tables/my%20table/preview',
-        { params: undefined }
-      )
+      expect(mockApiClient.get).toHaveBeenCalledWith('/data-sources/my%20database/tables/my%20table/preview', {
+        params: undefined,
+      })
     })
 
     it('should propagate API errors', async () => {
@@ -258,9 +245,7 @@ describe('schemaApi', () => {
 
       mockApiClient.get.mockRejectedValue(error)
 
-      await expect(schemaApi.previewTableData('my-database', 'users')).rejects.toThrow(
-        'Preview failed'
-      )
+      await expect(schemaApi.previewTableData('my-database', 'users')).rejects.toThrow('Preview failed')
     })
   })
 
@@ -270,9 +255,7 @@ describe('schemaApi', () => {
 
       await schemaApi.invalidateCache('my-database')
 
-      expect(mockApiClient.post).toHaveBeenCalledWith(
-        '/data-sources/my-database/cache/invalidate'
-      )
+      expect(mockApiClient.post).toHaveBeenCalledWith('/data-sources/my-database/cache/invalidate')
     })
 
     it('should handle URL encoding for cache invalidation', async () => {
@@ -280,9 +263,7 @@ describe('schemaApi', () => {
 
       await schemaApi.invalidateCache('my database with spaces')
 
-      expect(mockApiClient.post).toHaveBeenCalledWith(
-        '/data-sources/my%20database%20with%20spaces/cache/invalidate'
-      )
+      expect(mockApiClient.post).toHaveBeenCalledWith('/data-sources/my%20database%20with%20spaces/cache/invalidate')
     })
 
     it('should propagate API errors', async () => {
@@ -290,9 +271,7 @@ describe('schemaApi', () => {
 
       mockApiClient.post.mockRejectedValue(error)
 
-      await expect(schemaApi.invalidateCache('my-database')).rejects.toThrow(
-        'Cache invalidation failed'
-      )
+      await expect(schemaApi.invalidateCache('my-database')).rejects.toThrow('Cache invalidation failed')
     })
 
     it('should not return data', async () => {
@@ -308,8 +287,20 @@ describe('schemaApi', () => {
     it('should get type mappings for a table', async () => {
       const mockMappings: Record<string, TypeMapping> = {
         id: { sql_type: 'integer', suggested_type: 'integer', confidence: 1, reason: 'direct match', alternatives: [] },
-        email: { sql_type: 'varchar', suggested_type: 'string', confidence: 1, reason: 'direct match', alternatives: [] },
-        age: { sql_type: 'integer', suggested_type: 'integer', confidence: 0.9, reason: 'direct match', alternatives: [] },
+        email: {
+          sql_type: 'varchar',
+          suggested_type: 'string',
+          confidence: 1,
+          reason: 'direct match',
+          alternatives: [],
+        },
+        age: {
+          sql_type: 'integer',
+          suggested_type: 'integer',
+          confidence: 0.9,
+          reason: 'direct match',
+          alternatives: [],
+        },
       }
 
       mockApiClient.get.mockResolvedValue({ data: mockMappings })
@@ -317,10 +308,9 @@ describe('schemaApi', () => {
       const result = await schemaApi.getTypeMappings('my-database', 'users')
 
       expect(result).toEqual(mockMappings)
-      expect(mockApiClient.get).toHaveBeenCalledWith(
-        '/data-sources/my-database/tables/users/type-mappings',
-        { params: undefined }
-      )
+      expect(mockApiClient.get).toHaveBeenCalledWith('/data-sources/my-database/tables/users/type-mappings', {
+        params: undefined,
+      })
     })
 
     it('should get type mappings with schema filter', async () => {
@@ -332,10 +322,9 @@ describe('schemaApi', () => {
 
       await schemaApi.getTypeMappings('my-database', 'table1', { schema: 'public' })
 
-      expect(mockApiClient.get).toHaveBeenCalledWith(
-        '/data-sources/my-database/tables/table1/type-mappings',
-        { params: { schema: 'public' } }
-      )
+      expect(mockApiClient.get).toHaveBeenCalledWith('/data-sources/my-database/tables/table1/type-mappings', {
+        params: { schema: 'public' },
+      })
     })
 
     it('should handle URL encoding for type mappings', async () => {
@@ -343,10 +332,9 @@ describe('schemaApi', () => {
 
       await schemaApi.getTypeMappings('my database', 'my table')
 
-      expect(mockApiClient.get).toHaveBeenCalledWith(
-        '/data-sources/my%20database/tables/my%20table/type-mappings',
-        { params: undefined }
-      )
+      expect(mockApiClient.get).toHaveBeenCalledWith('/data-sources/my%20database/tables/my%20table/type-mappings', {
+        params: undefined,
+      })
     })
 
     it('should propagate API errors', async () => {
@@ -354,9 +342,7 @@ describe('schemaApi', () => {
 
       mockApiClient.get.mockRejectedValue(error)
 
-      await expect(schemaApi.getTypeMappings('my-database', 'users')).rejects.toThrow(
-        'Type mapping failed'
-      )
+      await expect(schemaApi.getTypeMappings('my-database', 'users')).rejects.toThrow('Type mapping failed')
     })
 
     it('should return empty object for tables with no columns', async () => {

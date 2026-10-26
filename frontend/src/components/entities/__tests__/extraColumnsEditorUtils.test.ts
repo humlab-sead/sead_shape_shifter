@@ -17,8 +17,12 @@ describe('extraColumnsEditorUtils', () => {
     expect(extractInterpolationReferences('{first_name} {last_name}')).toEqual(['first_name', 'last_name'])
   })
 
+  it('extracts interpolation references with non-ASCII column names', () => {
+    expect(extractInterpolationReferences('ArboDat {Ökogruppe}')).toEqual(['Ökogruppe'])
+  })
+
   it('extracts formula references without DSL function names', () => {
-    expect(extractFormulaReferences("=concat(upper(code), trim(name))")).toEqual(['code', 'name'])
+    expect(extractFormulaReferences('=concat(upper(code), trim(name))')).toEqual(['code', 'name'])
   })
 
   it('classifies copy expressions using available columns', () => {
@@ -28,6 +32,12 @@ describe('extraColumnsEditorUtils', () => {
   it('classifies interpolation and formula expressions', () => {
     expect(analyzeExtraColumnExpression('{first} {last}').kind).toBe('interpolation')
     expect(analyzeExtraColumnExpression('=concat(first, last)').kind).toBe('formula')
+  })
+
+  it('classifies non-ASCII interpolations instead of constants', () => {
+    const analysis = analyzeExtraColumnExpression('ArboDat {Ökogruppe}', ['Ökogruppe'])
+    expect(analysis.kind).toBe('interpolation')
+    expect(analysis.references).toEqual(['Ökogruppe'])
   })
 
   it('parses constant scalar literals for save', () => {
@@ -65,22 +75,36 @@ describe('extraColumnsEditorUtils', () => {
       }
     )
 
-    expect(diagnostics.some((diagnostic) => diagnostic.severity === 'error' && diagnostic.message.includes('Duplicate'))).toBe(true)
-    expect(diagnostics.some((diagnostic) => diagnostic.severity === 'error' && diagnostic.message.includes('reserved'))).toBe(true)
+    expect(
+      diagnostics.some((diagnostic) => diagnostic.severity === 'error' && diagnostic.message.includes('Duplicate'))
+    ).toBe(true)
+    expect(
+      diagnostics.some((diagnostic) => diagnostic.severity === 'error' && diagnostic.message.includes('reserved'))
+    ).toBe(true)
   })
 
   it('warns when interpolation references are not currently available', () => {
-    const diagnostics = getExtraColumnDiagnostics(
-      [{ column: 'label', source: '{country_name} / {sample_code}' }],
-      0,
-      {
-        reservedNames: [],
-        availableColumns: ['sample_code'],
-      }
-    )
+    const diagnostics = getExtraColumnDiagnostics([{ column: 'label', source: '{country_name} / {sample_code}' }], 0, {
+      reservedNames: [],
+      availableColumns: ['sample_code'],
+    })
 
-    expect(diagnostics.some((diagnostic) => diagnostic.message.includes('Interpolates: country_name, sample_code'))).toBe(true)
-    expect(diagnostics.some((diagnostic) => diagnostic.severity === 'warning' && diagnostic.message.includes('country_name'))).toBe(true)
+    expect(
+      diagnostics.some((diagnostic) => diagnostic.message.includes('Interpolates: country_name, sample_code'))
+    ).toBe(true)
+    expect(
+      diagnostics.some((diagnostic) => diagnostic.severity === 'warning' && diagnostic.message.includes('country_name'))
+    ).toBe(true)
+  })
+
+  it('reports non-ASCII column interpolation instead of a constant', () => {
+    const diagnostics = getExtraColumnDiagnostics([{ column: 'abbreviation', source: 'ArboDat {Ökogruppe}' }], 0, {
+      reservedNames: [],
+      availableColumns: ['Ökogruppe'],
+    })
+
+    expect(diagnostics.some((diagnostic) => diagnostic.message.includes('Interpolates: Ökogruppe'))).toBe(true)
+    expect(diagnostics.some((diagnostic) => diagnostic.message.includes('constant literal'))).toBe(false)
   })
 
   it('suggests placeholders for empty or interpolation expressions', () => {
@@ -93,7 +117,9 @@ describe('extraColumnsEditorUtils', () => {
   it('suggests functions and raw columns for formula expressions', () => {
     const suggestions = getExtraColumnSuggestions('=concat(code)', ['code', 'name'])
 
-    expect(suggestions.some((suggestion) => suggestion.category === 'function' && suggestion.value === 'upper()')).toBe(true)
+    expect(suggestions.some((suggestion) => suggestion.category === 'function' && suggestion.value === 'upper()')).toBe(
+      true
+    )
     expect(suggestions.some((suggestion) => suggestion.category === 'column' && suggestion.value === 'name')).toBe(true)
   })
 
@@ -103,11 +129,18 @@ describe('extraColumnsEditorUtils', () => {
     ).toBe('=concat()')
 
     expect(
-      applySuggestionToExpression('{sample_code}', { label: '{country_name}', value: '{country_name}', category: 'placeholder' }, ['sample_code'])
+      applySuggestionToExpression(
+        '{sample_code}',
+        { label: '{country_name}', value: '{country_name}', category: 'placeholder' },
+        ['sample_code']
+      )
     ).toBe('{sample_code} {country_name}')
 
     expect(
-      applySuggestionToExpression('=concat(code', { label: 'name', value: 'name', category: 'column' }, ['code', 'name'])
+      applySuggestionToExpression('=concat(code', { label: 'name', value: 'name', category: 'column' }, [
+        'code',
+        'name',
+      ])
     ).toBe('=concat(code, name')
   })
 })

@@ -52,7 +52,15 @@ async def sample_project(tmp_path, monkeypatch, authorized_client):
         },
     }
 
-    response = await authorized_client.post("/api/v1/projects", json={"name": "test_project", "entities": project_entities})
+    response = await authorized_client.post(
+        "/api/v1/projects",
+        json={
+            "name": "test_project",
+            "data_provider_code": "test-provider",
+            "provider_schema": "schema-one",
+            "entities": project_entities,
+        },
+    )
     assert response.status_code == 201, response.text
 
     return tmp_path / "test_project" / "shapeshifter.yml"

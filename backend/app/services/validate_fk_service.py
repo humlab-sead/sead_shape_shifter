@@ -7,9 +7,11 @@ import pandas as pd
 from backend.app.core.state_manager import get_app_state_manager
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models import CardinalityInfo, JoinStatistics, JoinTestResult, PreviewResult, Project, UnmatchedRow
+from backend.app.models.entity import ForeignKeyConfig as ApiForeignKeyConfig
 from backend.app.services.project_service import ProjectService
 from backend.app.services.shapeshift_service import ShapeShiftService
-from src.model import ForeignKeyConfig, ShapeShiftProject, TableConfig
+from src.model import ForeignKeyConfig as CoreForeignKeyConfig
+from src.model import ShapeShiftProject, TableConfig
 
 
 class ValidateForeignKeyService:
@@ -21,7 +23,12 @@ class ValidateForeignKeyService:
         self.project_service: ProjectService = project_service or ProjectService()
 
     async def test_foreign_key(
-        self, project_name: str, entity_name: str, foreign_key_index: int, sample_size: int = 100
+        self,
+        project_name: str,
+        entity_name: str,
+        foreign_key_index: int | None = None,
+        sample_size: int = 100,
+        foreign_key_config: ApiForeignKeyConfig | None = None,
     ) -> "JoinTestResult":
         """
         Test a foreign key join to validate the relationship.
@@ -29,8 +36,9 @@ class ValidateForeignKeyService:
         Args:
             project_name: Name of the project
             entity_name: Name of the entity with the foreign key
-            foreign_key_index: Index of the foreign key in the entity's foreign_keys list
+            foreign_key_index: Index of the saved foreign key to test when no config is provided
             sample_size: Number of rows to test (default 100)
+            foreign_key_config: Current foreign key configuration, including unsaved edits
 
         Returns:
             JoinTestResult with statistics and unmatched rows
@@ -51,16 +59,22 @@ class ValidateForeignKeyService:
 
         entity_cfg: TableConfig = project.tables[entity_name]
 
-        if not entity_cfg.foreign_keys or foreign_key_index >= len(entity_cfg.foreign_keys):
-            raise ValueError(f"Foreign key index {foreign_key_index} out of range")
+        if foreign_key_config is not None:
+            fk_cfg = CoreForeignKeyConfig(
+                local_entity=entity_name,
+                fk_cfg=foreign_key_config.model_dump(exclude_none=True),
+            )
+        else:
+            if foreign_key_index is None or foreign_key_index < 0:
+                raise ValueError("A foreign key configuration or valid saved foreign key index is required")
+            if not entity_cfg.foreign_keys or foreign_key_index >= len(entity_cfg.foreign_keys):
+                raise ValueError(f"Foreign key index {foreign_key_index} out of range")
+            fk_cfg = entity_cfg.foreign_keys[foreign_key_index]
 
-        fk_cfg: ForeignKeyConfig = entity_cfg.foreign_keys[foreign_key_index]
         remote_entity_name: str = fk_cfg.remote_entity
 
         if remote_entity_name not in project.tables:
             raise ValueError(f"Remote entity '{remote_entity_name}' not found")
-
-        # remote_entity_cfg = project.tables[remote_entity_name]
 
         # Load sample data for both entities
         local_preview: PreviewResult = await self.preview_service.preview_entity(project_name, entity_name, limit=sample_size)

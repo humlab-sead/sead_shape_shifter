@@ -3,7 +3,7 @@
  */
 import { ref, computed } from 'vue'
 import { apiClient } from '@/api/client'
-import type { FormattedError } from '@/types'
+import type { FormattedError, ForeignKeyConfig } from '@/types'
 import { formatErrorMessage } from '@/utils/errors'
 
 export interface JoinStatistics {
@@ -55,6 +55,7 @@ export function useForeignKeyTester() {
     projectName: string,
     entityName: string,
     fkIndex: number,
+    foreignKey: ForeignKeyConfig,
     sampleSize: number = 100
   ): Promise<JoinTestResult | null> => {
     loading.value = true
@@ -64,7 +65,7 @@ export function useForeignKeyTester() {
     try {
       const response = await apiClient.post<JoinTestResult>(
         `/projects/${encodeURIComponent(projectName)}/entities/${encodeURIComponent(entityName)}/foreign-keys/${fkIndex}/test`,
-        null,
+        foreignKey,
         {
           params: { sample_size: sampleSize },
         }

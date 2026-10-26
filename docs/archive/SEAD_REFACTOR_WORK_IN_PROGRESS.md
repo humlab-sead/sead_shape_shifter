@@ -1,8 +1,8 @@
 
 > **Archived:** This early working note is superseded by
-> [REFACTOR_SEAD_SUBMISSION_METADATA.md](../proposals/CHANGE_REQUEST_INGESTER/REFACTOR_SEAD_SUBMISSION_METADATA.md)
+> [REFACTOR_SEAD_SUBMISSION_METADATA.md](../proposals/CHANGE_REQUEST_INGESTER/done/REFACTOR_SEAD_SUBMISSION_METADATA/REFACTOR_SEAD_SUBMISSION_METADATA.md)
 > and the revised
-> [upstream DDL](../proposals/CHANGE_REQUEST_INGESTER/20260830_DDL_SUBMISSION_MODEL_REFACTOR.sql).
+> [upstream DDL](../../../sead_change_control/sead_model/deploy/20260830_DDL_SUBMISSION_MODEL_REFACTOR.sql).
 > Its schema examples and ERD do not include all accepted task bibliography and event-date changes.
 
 # An initial redesign of SEAD submission model 

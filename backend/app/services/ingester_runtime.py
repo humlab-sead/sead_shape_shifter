@@ -15,7 +15,9 @@ from backend.app.clients.reconciliation_client import ReconciliationClient, Reco
 from backend.app.clients.sims_client import SimsClient
 from backend.app.core.config import Settings
 from backend.app.models.sims import CapabilitiesResponse, IdentitySignal, IdentityType, ResolutionRequest, ResolveRequest
-from ingesters.sead_change_request.contracts import SimsResolveItem, SubmissionContext
+from ingesters.sead_change_request.contracts import SimsResolveItem, SubmissionContext, TrustedProjectContext
+from ingesters.sead_change_request.input_resolution import TRUSTED_PROJECT_CONTEXT_KEY
+from src.business_keys import BusinessKeyError, business_id_for_row
 
 
 def inject_ingester_runtime_dependencies(ingester_key: str | None, extra: dict[str, Any], settings: Settings) -> dict[str, Any]:
@@ -24,12 +26,13 @@ def inject_ingester_runtime_dependencies(ingester_key: str | None, extra: dict[s
         return extra
 
     resolved_extra = dict(extra)
+    trusted_project_context: TrustedProjectContext | None = resolved_extra.get(TRUSTED_PROJECT_CONTEXT_KEY)
     resolved_extra.setdefault(
         "sims_client",
         SeadChangeRequestSimsAdapter(
             SimsClient(base_url=settings.SIMS_SERVICE_URL),
-            scope_name=resolved_extra.get("sims_scope_name"),
             created_by=resolved_extra.get("sims_created_by"),
+            business_keys=trusted_project_context.business_keys if trusted_project_context is not None else None,
         ),
     )
     resolved_extra.setdefault(
@@ -66,12 +69,27 @@ def inject_ingester_database_dependencies(ingester_key: str | None, extra: dict[
 
 
 class SeadChangeRequestSimsAdapter:
-    """Thin adapter from the ingester orchestration seam to the backend SIMS client."""
+    """Thin adapter from the ingester orchestration seam to the backend SIMS client.
 
-    def __init__(self, sims_client: SimsClient, *, scope_name: str | None = None, created_by: str | None = None) -> None:
+    The scope comes from the resolved submission context, which the backend fills from the
+    authorized saved project's registered provider-schema pair. This adapter never accepts
+    a caller-supplied scope and never falls back to a project-name scope.
+
+    ``business_keys`` carries the saved project's ordered ``EntityConfig.keys`` per entity.
+    When an entity declares keys, the adapter serializes them into one deterministic
+    ``business_id``; otherwise it keeps the earlier field-based identity value.
+    """
+
+    def __init__(
+        self,
+        sims_client: SimsClient,
+        *,
+        created_by: str | None = None,
+        business_keys: dict[str, tuple[str, ...]] | None = None,
+    ) -> None:
         self._sims_client = sims_client
-        self._scope_name = scope_name
         self._created_by = created_by
+        self._business_keys = business_keys or {}
 
     async def allocate_entity(self, entity_name: str, row: dict[str, Any], submission_context: SubmissionContext) -> dict[str, Any]:
         """Resolve the row in SIMS as a new or already-bound identity."""
@@ -148,10 +166,7 @@ class SeadChangeRequestSimsAdapter:
         )
         if approved_aggregate_id is not None and target_id != approved_aggregate_id:
             target_id = None
-            note = (
-                f"SIMS did not return approved aggregate ID {approved_aggregate_id}; "
-                "refusing to use a different aggregate ID"
-            )
+            note = f"SIMS did not return approved aggregate ID {approved_aggregate_id}; " "refusing to use a different aggregate ID"
 
         return {
             "target_id": target_id,
@@ -202,9 +217,7 @@ class SeadChangeRequestSimsAdapter:
             "outcomes": [
                 {
                     "target_id": outcome.target_id,
-                    "tracked_identity_uuid": (
-                        str(outcome.tracked_identity_uuid) if outcome.tracked_identity_uuid is not None else None
-                    ),
+                    "tracked_identity_uuid": (str(outcome.tracked_identity_uuid) if outcome.tracked_identity_uuid is not None else None),
                 }
                 for outcome in response.outcomes
             ],
@@ -251,15 +264,32 @@ class SeadChangeRequestSimsAdapter:
         await self._sims_client.associate_change_request(UUID(binding_set_uuid), change_request_name)
 
     def _build_scope_name(self, submission_context: SubmissionContext) -> str:
-        if self._scope_name:
-            return self._scope_name
-        return f"sead-change-request:{submission_context.project_name}"
+        """Return the provider-schema scope bound to the authorized saved project."""
+        scope_name = submission_context.scope_name
+        if not scope_name or not scope_name.strip():
+            raise ValueError(
+                "Change Request SIMS scope is not configured; the authorized saved project's provider-schema pair must supply it"
+            )
+        return scope_name.strip()
 
     def _run_id_for(self, submission_context: SubmissionContext) -> str:
         """Return the persisted run ID, minting a fallback when absent."""
         return submission_context.run_id or str(uuid4())
 
     def _build_identity_value(self, entity_name: str, row: dict[str, Any]) -> str:
+        """Return the SIMS business key for one row.
+
+        A tracked entity with declared business keys uses the stable serialized
+        ``business_id``. An entity without declared keys keeps the earlier field-based
+        value so other entities are unchanged.
+        """
+        declared_keys = self._business_keys.get(entity_name)
+        if declared_keys:
+            try:
+                return business_id_for_row(declared_keys, row)
+            except BusinessKeyError as exc:
+                raise ValueError(f"Cannot serialize declared business key for entity '{entity_name}': {exc}") from exc
+
         serialized_pairs: list[str] = []
         for key in sorted(row):
             value = row[key]
@@ -337,7 +367,7 @@ class SeadChangeRequestReconciliationAdapter:
 
 
 class SeadChangeRequestTargetCollisionChecker:
-    """PostgreSQL adapter for target collision checks and public-ID sequence reservations."""
+    """PostgreSQL adapter for read-only target row and ID collision checks."""
 
     def __init__(
         self,
@@ -366,17 +396,20 @@ class SeadChangeRequestTargetCollisionChecker:
         )
         return await self._fetch_exists(statement, (target_id,))
 
-    async def reserve_target_id(self, table_name: str, public_id_column: str) -> int | None:
-        """Consume and return the next value from a target column's associated sequence."""
-        statement = sql.SQL("SELECT nextval(pg_get_serial_sequence(%s, %s))")
+    async def target_id_column_type(self, table_name: str, public_id_column: str) -> str | None:
+        """Return a target ID column's PostgreSQL type, or None when it is missing."""
+        schema_name, relation_name = self._split_table_name(table_name)
+        if not schema_name or not relation_name or not public_id_column:
+            raise ValueError("Target table and public-ID column names must be non-empty")
+
+        statement = sql.SQL(
+            "SELECT data_type FROM information_schema.columns WHERE table_schema = %s AND table_name = %s AND column_name = %s"
+        )
         async with await psycopg.AsyncConnection.connect(**self._connection_kwargs) as connection:
-            qualified_table_name = self._table_identifier(table_name).as_string(connection)
             async with connection.cursor() as cursor:
-                await cursor.execute(statement, (qualified_table_name, public_id_column))
+                await cursor.execute(statement, (schema_name, relation_name, public_id_column))
                 row = await cursor.fetchone()
-        if row is None or row[0] is None:
-            return None
-        return int(row[0])
+        return str(row[0]) if row is not None else None
 
     async def row_exists(self, table_name: str, filters: dict[str, object]) -> bool:
         if not filters:
@@ -397,10 +430,14 @@ class SeadChangeRequestTargetCollisionChecker:
         return bool(row[0]) if row is not None else False
 
     def _table_identifier(self, table_name: str) -> sql.Composed | sql.Identifier:
+        return sql.Identifier(*self._split_table_name(table_name))
+
+    def _split_table_name(self, table_name: str) -> tuple[str, str]:
+        """Resolve a qualified table name or apply the configured default schema."""
         if "." in table_name:
             schema_name, relation_name = table_name.split(".", maxsplit=1)
-            return sql.Identifier(schema_name, relation_name)
-        return sql.Identifier(self._default_schema, table_name)
+            return schema_name, relation_name
+        return self._default_schema, table_name
 
 
 def _is_missing_value(value: object) -> bool:

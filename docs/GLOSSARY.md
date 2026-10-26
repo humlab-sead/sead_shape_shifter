@@ -84,6 +84,24 @@ The process of deciding which target record a source record should match.
 
 The process of finding the correct parent record for a related child record.
 
+### Projection
+
+**Definition:** The step that replaces a row's local values with the values the target system uses: the row's own local identity becomes its target ID, and each link value becomes the target ID of the record it points to.
+
+**Context:** Also called target projection. It runs after identity resolution, so it acts only on rows whose target ID has been decided. It needs a column to write the target ID into, the linked rows present in the same submission, and the local row numbering that joins the two sides. When one of these is absent, Shape Shifter reports a diagnostic instead of writing the value.
+
+### Resolved Table
+
+**Definition:** A submitted table after identity resolution: the same rows, now carrying a row state and, where decided, the target ID for each row.
+
+**Context:** Projection reads link values from a resolved table. A link value is translated only when the linked entity also has a resolved table in the same submission.
+
+### Row State
+
+**Definition:** The outcome identity resolution assigns to one row, such as newly allocated, derived bridge row, existing, reconciled, or blocked.
+
+**Context:** The state decides whether the row is written. Newly allocated and derived bridge rows are inserted; existing rows are written only when an accepted update changes them; reconciled rows are used for reference only; blocked rows stop the submission before any output is produced.
+
 ### Staging
 
 An intermediate step where data is prepared before final loading or export.
@@ -115,6 +133,12 @@ A local sequential integer that serves as the primary key for all Shape Shifter 
 ### Business Keys
 
 Human-meaningful identifiers that uniquely distinguish an entity within a domain, such as a site code or scientific name. Used for matching and deduplication in the keys tier of the three-tier identity system.
+
+### Authoritative Fixed Column Ordering
+
+**Definition:** The one column order Shape Shifter uses for a fixed entity's rows: the managed identity columns first (`system_id`, then `public_id` when the entity defines one), followed by the entity's produced data columns in their declared order. Business keys describe produced fields and add no positions.
+
+**Context:** This is the order exposed as `fixed_schema.full_columns` in entity responses. Stored values, values requests, and the editor grid must match it position for position. A stored file holding the same columns in another order is reordered on read without being written; a values request in another order is rejected. Use this full term rather than the shorter "authoritative order", which is ambiguous.
 
 ## 3. Implementation and Architecture Concepts
 

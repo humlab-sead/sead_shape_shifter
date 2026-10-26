@@ -5,7 +5,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Import version from package
@@ -71,6 +71,8 @@ class Settings(BaseSettings):
     # Shared data paths for project portability (converted to absolute in model_post_init)
     GLOBAL_DATA_DIR: Path = Path("shared/shared-data")
     GLOBAL_DATA_SOURCE_DIR: Path = Path("shared/data-sources")
+    GLOBAL_DATA_PROVIDER_DIR: Path = Path("shared/data-providers")
+    GLOBAL_TARGET_MODEL_DIR: Path = Path("shared/target-models")
 
     # Logging configuration
     LOG_DIR: Path = Path("logs")
@@ -94,7 +96,8 @@ class Settings(BaseSettings):
     # data-source configuration. Names outside this list resolve to empty, so a
     # stored or request-supplied ${SECRET} cannot leak its value through preview.
     RESOLVER_ALLOWED_ENV_VARS: str = (
-        "APPLICATION_ROOT,GLOBAL_DATA_DIR,GLOBAL_DATA_SOURCE_DIR,SEAD_HOST,SEAD_PORT,SEAD_DBNAME,SEAD_USER,BUGS_CEP_MDB_FILE"
+        "APPLICATION_ROOT,GLOBAL_DATA_DIR,GLOBAL_DATA_SOURCE_DIR,GLOBAL_TARGET_MODEL_DIR,"
+        "SEAD_HOST,SEAD_PORT,SEAD_DBNAME,SEAD_USER,BUGS_CEP_MDB_FILE"
     )
 
     # Suggestions
@@ -103,8 +106,19 @@ class Settings(BaseSettings):
     # Ingester configuration
     INGESTER_PATHS: list[str] = ["ingesters"]
     ENABLED_INGESTERS: list[str] | None = None  # None = all discovered ingesters
+    INGEST_TARGET_HOST: str | None = None
+    INGEST_TARGET_PORT: int = Field(default=5432, ge=1, le=65535)
+    INGEST_TARGET_DBNAME: str | None = None
+    INGEST_TARGET_USER: str | None = None
+    INGEST_OUTPUT_DIR: Path | None = None
 
     MATERIALIZATION_INLINE_THRESHOLD: int = 20  # Rows below which data is stored inline in YAML
+
+    @field_validator("INGEST_OUTPUT_DIR", mode="before")
+    @classmethod
+    def blank_ingest_output_dir_is_unset(cls, value: Any) -> Any:
+        """Treat an empty output directory setting as unconfigured."""
+        return None if isinstance(value, str) and not value.strip() else value
 
     @model_validator(mode="after")
     def validate_production_authentication(self) -> "Settings":
@@ -131,16 +145,25 @@ class Settings(BaseSettings):
         self.LOG_DIR = self._resolve_under_root(self.LOG_DIR)
         self.GLOBAL_DATA_DIR = self._resolve_under_root(self.GLOBAL_DATA_DIR)
         self.GLOBAL_DATA_SOURCE_DIR = self._resolve_under_root(self.GLOBAL_DATA_SOURCE_DIR)
+        self.GLOBAL_DATA_PROVIDER_DIR = self._resolve_under_root(self.GLOBAL_DATA_PROVIDER_DIR)
+        self.GLOBAL_TARGET_MODEL_DIR = self._resolve_under_root(self.GLOBAL_TARGET_MODEL_DIR)
         self.AUTHORIZATION_DATABASE_PATH = self._resolve_under_root(self.AUTHORIZATION_DATABASE_PATH)
+        if self.INGEST_OUTPUT_DIR is not None:
+            self.INGEST_OUTPUT_DIR = self._resolve_under_root(self.INGEST_OUTPUT_DIR)
 
         protected_directories = (
             self.PROJECTS_DIR,
             self.LOG_DIR,
             self.GLOBAL_DATA_DIR,
             self.GLOBAL_DATA_SOURCE_DIR,
+            self.GLOBAL_DATA_PROVIDER_DIR,
+            self.GLOBAL_TARGET_MODEL_DIR,
         )
         if any(self.AUTHORIZATION_DATABASE_PATH.is_relative_to(directory) for directory in protected_directories):
-            raise ValueError("AUTHORIZATION_DATABASE_PATH must be outside project, log, and shared-data directories")
+            raise ValueError(
+                "AUTHORIZATION_DATABASE_PATH must be outside the project, log, shared-data, "
+                "data-source, data-provider, and target-model directories"
+            )
         self.AUTHORIZATION_DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
 
         for path in (
@@ -148,6 +171,8 @@ class Settings(BaseSettings):
             self.LOG_DIR,
             self.GLOBAL_DATA_DIR,
             self.GLOBAL_DATA_SOURCE_DIR,
+            self.GLOBAL_DATA_PROVIDER_DIR,
+            self.GLOBAL_TARGET_MODEL_DIR,
         ):
             path.mkdir(parents=True, exist_ok=True)
 
@@ -189,6 +214,16 @@ class Settings(BaseSettings):
     def global_data_source_dir(self) -> Path:
         """Get global data source directory path."""
         return self.GLOBAL_DATA_SOURCE_DIR
+
+    @property
+    def global_data_provider_dir(self) -> Path:
+        """Get the curated data provider registry directory path."""
+        return self.GLOBAL_DATA_PROVIDER_DIR
+
+    @property
+    def global_target_model_dir(self) -> Path:
+        """Get the shared target model directory path."""
+        return self.GLOBAL_TARGET_MODEL_DIR
 
     @property
     def env_opts(self) -> dict[str, Any]:

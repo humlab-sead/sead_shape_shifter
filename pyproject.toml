@@ -1,6 +1,6 @@
 [project]
 name = "shape-shifter"
-version = "2.3.0"
+version = "2.2.0"
 description = "Declarative data transformation framework with optional web editor API"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -24,6 +24,7 @@ dependencies = [
     "pydantic>=2.0.0",
     "pydantic-settings>=2.0.0",
     "networkx>=3.0",
+    "pyyaml>=6.0.0",
     "ruamel.yaml>=0.18.0",
     "sqlparse>=0.5.0",
     "uvicorn>=0.38.0",
@@ -58,10 +59,11 @@ all = [
 # CLI entry points for easy command-line access
 sead-ingest = "backend.app.scripts.ingest:cli"
 sead-authorization = "backend.app.scripts.authorization:cli"
+sort-project = "scripts.sort_project_yaml:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["src*", "backend*", "ingesters*", "target_models*"]
+include = ["src*", "backend*", "ingesters*", "target_models*", "scripts*"]
 
 
 [tool.ruff]
@@ -97,6 +99,12 @@ indent-style = "space"
 docstring-code-format = true
 
 
+[tool.pylint]
+max-line-length = 140
+jobs = 0
+# Pylint matches ignore entries against directory and file base names, not paths.
+ignore = [".venv", "frontend", "node_modules", "docs", "graphify-out"]
+
 [tool.pylint."MESSAGES CONTROL"]
 disable = [
     "C0114",  # missing-module-docstring
@@ -129,10 +137,6 @@ line-length = 140
 target-version = ['py313']
 
 
-[tool.pylint]
-max-line-length = 140
-max-args = 10
-
 # Import sorting (handled by Ruff)
 [tool.isort]
 line_length = 142
@@ -164,9 +168,9 @@ warn_return_any = false
 # pytest
 # --------------------
 [tool.pytest.ini_options]
-# addopts = "-q -ra -n 2 --strict-markers"
-addopts = "-qq -rfEx --strict-markers"
-testpaths = ["tests", "backend/tests", "ingesters/sead/tests"]
+# Run tests in parallel with pytest-xdist; use "-p no:xdist" or "-n 0" to run serially.
+addopts = "-qq -rfEx --strict-markers --durations=10 -n auto"
+testpaths = ["tests", "backend/tests"]
 python_classes = "Test*"
 python_functions = "test_*"
 asyncio_mode = "auto"
@@ -174,6 +178,10 @@ markers = [
   "integration: marks tests that hit external services (e.g., Ollama, DB)",
   "debug: marks tests for debugging purposes (typically run manually)",
   "manual: marks tests requiring manual setup (e.g., real database)",
+]
+filterwarnings = [
+  # jaydebeapi uses the deprecated jpype._core.isThreadAttachedToJVM; nothing we can fix on our side.
+  "ignore:jpype._core.isThreadAttachedToJVM is deprecated:DeprecationWarning",
 ]
 # python_files = "test_*.py" "*_test.py"
 # Uncomment to see logs during test runs:
@@ -203,7 +211,6 @@ fail_under = 85
 
 [dependency-groups]
 dev = [
-    "graphifyy[all]>=0.8.36",
     "pre-commit>=4.6.0",
     "pyinstrument>=5.1.2",
 ]

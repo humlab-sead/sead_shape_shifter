@@ -141,7 +141,6 @@ class SchemaIntrospectionService:
             if ds_config is None:
                 raise SchemaIntrospectionError(message=f"Data source '{ds_name}'not found", data_source=ds_name, operation="get_tables")
 
-            ds_config = ds_config.resolve_config_env_vars()
             loader: SqlLoader = self.create_loader_for_data_source(ds_config)
 
             core_tables: dict[str, CoreSchema.TableMetadata] = await loader.get_tables(schema_name=schema)

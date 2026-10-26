@@ -2,11 +2,16 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
 from backend.app.authorization.dependencies import require_project
 from backend.app.authorization.models import Action, AuthorizedResource
 from backend.app.models import mapping as api
+from backend.app.models.mapping_sync import MappingSyncPending, MappingSyncRetryResult
+from backend.app.services.fixed_entity_mapping_retry_service import (
+    FixedEntityMappingRetryService,
+    get_fixed_entity_mapping_retry_service,
+)
 from backend.app.services.mapping_service import MappingService
 from backend.app.services.project_service import get_project_service
 from backend.app.utils.error_handlers import handle_endpoint_errors
@@ -44,6 +49,38 @@ def _to_entity_response(entity_name: str, entity_mapping: EntityMapping) -> api.
         description=entity_mapping.description,
         links={key: _to_link_response(link) for key, link in entity_mapping.links.items()},
     )
+
+
+# ----------------------------------------------------------------------
+# Fixed-entity pending mapping retry
+# ----------------------------------------------------------------------
+
+
+@router.patch(
+    "/projects/{project_name}/mapping/retry-fixed-entity/{entity_name}",
+    response_model=MappingSyncRetryResult,
+)
+@handle_endpoint_errors
+async def retry_fixed_entity_mapping(
+    project_name: str,  # pylint: disable=unused-argument
+    entity_name: str,
+    request: MappingSyncPending,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
+    service: FixedEntityMappingRetryService = Depends(get_fixed_entity_mapping_retry_service),
+) -> MappingSyncRetryResult:
+    """Apply the mapping changes recorded by a partial fixed-row save.
+
+    The route does not recompute changes from the current rows. It validates
+    that the pending payload matches the request project and entity, applies
+    only the remaining changes under the project lock, and returns HTTP 409
+    with the changed keys when review is required.
+    """
+    if request.project != authorized_project.resource.locator or request.entity != entity_name:
+        raise HTTPException(
+            status_code=422,
+            detail="Pending mapping payload does not match the request project and entity.",
+        )
+    return service.retry(authorized_project.resource.locator, entity_name, request)
 
 
 @router.get("/projects/{project_name}/mapping/{entity_name}", response_model=api.MappingEntityResponse)

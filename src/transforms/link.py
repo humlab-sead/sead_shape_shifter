@@ -23,6 +23,9 @@ def _is_lookup_fk_enrichment(fk: ForeignKeyConfig, remote_cfg: TableConfig) -> b
 
 
 def _resolve_fk_runtime_options(fk: ForeignKeyConfig, remote_cfg: TableConfig) -> ForeignKeyRuntimeOptions:
+    if fk.constraints.null_keys_equal:
+        return ForeignKeyRuntimeOptions.from_constraints(fk.constraints)
+
     if fk.constraints.allow_null_keys_is_explicit:
         return ForeignKeyRuntimeOptions.from_constraints(fk.constraints)
 

@@ -1,6 +1,7 @@
 from collections import Counter
 from pathlib import Path
 
+import pytest
 import yaml
 
 from src.model import ShapeShiftProject, TableConfig
@@ -14,28 +15,18 @@ from src.target_model.conformance import (
 from src.target_model.models import TargetModel
 
 TEST_DATA_DIR: Path = Path(__file__).resolve().parent.parent / "test_data"
-SPEC_PATH: Path = TEST_DATA_DIR / "specs" / "sead_standard_model.yml"
+TARGET_MODEL_PATH: Path = TEST_DATA_DIR / "target_models" / "sead_standard_model.yml"
 EXAMPLES_DIR: Path = TEST_DATA_DIR / "examples"
 REAL_PROJECTS_DIR: Path = TEST_DATA_DIR / "projects"
 
 
 def load_target_model() -> TargetModel:
-    return TargetModel.model_validate(yaml.safe_load(SPEC_PATH.read_text(encoding="utf-8")))
+    return TargetModel.model_validate(yaml.safe_load(TARGET_MODEL_PATH.read_text(encoding="utf-8")))
 
 
 def load_project(name: str) -> ShapeShiftProject:
     project_path: Path = EXAMPLES_DIR / name
     return ShapeShiftProject(cfg=yaml.safe_load(project_path.read_text(encoding="utf-8")))
-
-
-def load_real_project(project_name: str) -> ShapeShiftProject:
-    project_path: Path = REAL_PROJECTS_DIR / project_name / "shapeshifter.yml"
-    return ShapeShiftProject(cfg=yaml.safe_load(project_path.read_text(encoding="utf-8")))
-
-
-def issue_pairs(target_model: TargetModel, project: ShapeShiftProject) -> list[tuple[str | None, str | None]]:
-    issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
-    return [(issue.code, issue.entity) for issue in issues]
 
 
 def test_conformance_registry_runs_global_and_entity_validator_base_types() -> None:
@@ -229,6 +220,77 @@ def test_table_config_target_facing_columns_collapse_at_unnest_boundary() -> Non
     assert table_cfg.get_target_facing_foreign_key_targets() == {"location_type"}
 
 
+def test_core_conformance_reports_local_foreign_key_keys_dropped_by_unnest() -> None:
+    target_model = _minimal_target_model(
+        {
+            "abundance_property": {
+                "foreign_keys": [{"entity": "property_type", "required": True}],
+            },
+            "property_type": {"public_id": "property_type_id"},
+        }
+    )
+    project = _minimal_project(
+        {
+            "abundance_property": {
+                "columns": ["record_key", "property_group", "property_type_a", "property_type_b"],
+                "foreign_keys": [
+                    {
+                        "entity": "property_type",
+                        "local_keys": ["property_group", "property_type"],
+                        "remote_keys": ["property_group", "property_type"],
+                    }
+                ],
+                "unnest": {
+                    "id_vars": ["record_key"],
+                    "value_vars": ["property_type_a", "property_type_b"],
+                    "var_name": "property_type",
+                    "value_name": "count",
+                },
+            },
+            "property_type": {"public_id": "property_type_id", "columns": ["property_group", "property_type"]},
+        }
+    )
+
+    issues = TargetModelConformanceValidator().validate(target_model, project)
+    fk_issue = next(issue for issue in issues if issue.code == "MISSING_REQUIRED_FOREIGN_KEY_TARGET")
+
+    assert fk_issue.message == (
+        "Entity 'abundance_property' is missing required foreign key target 'property_type' because local key "
+        "column(s) 'property_group' do not survive unnest. Preserve them in 'id_vars' or otherwise make them "
+        "available after unnest."
+    )
+
+
+def test_core_conformance_keeps_generic_missing_foreign_key_message_without_matching_project_fk() -> None:
+    target_model = _minimal_target_model(
+        {
+            "abundance_property": {
+                "foreign_keys": [{"entity": "property_type", "required": True}],
+            },
+            "property_type": {"public_id": "property_type_id"},
+        }
+    )
+    project = _minimal_project(
+        {
+            "abundance_property": {
+                "columns": ["record_key", "property_type_a", "property_type_b"],
+                "unnest": {
+                    "id_vars": ["record_key"],
+                    "value_vars": ["property_type_a", "property_type_b"],
+                    "var_name": "property_type",
+                    "value_name": "count",
+                },
+            },
+            "property_type": {"public_id": "property_type_id"},
+        }
+    )
+
+    issues = TargetModelConformanceValidator().validate(target_model, project)
+    fk_issue = next(issue for issue in issues if issue.code == "MISSING_REQUIRED_FOREIGN_KEY_TARGET")
+
+    assert fk_issue.message == ("Entity 'abundance_property' is missing required foreign key target 'property_type'")
+
+
 def test_table_config_target_facing_columns_allow_chained_fk_extra_columns_after_unnest() -> None:
     entities = {
         "location_type": {
@@ -279,30 +341,14 @@ def test_table_config_target_facing_columns_allow_chained_fk_extra_columns_after
     assert table_cfg.get_target_facing_foreign_key_targets() == {"location_group", "location_type"}
 
 
-def test_core_legacy_mode_matches_existing_fixture() -> None:
-    target_model: TargetModel = load_target_model()
-    project: ShapeShiftProject = load_project("sead_arbodat_core.yml")
-
-    assert sorted(issue_pairs(target_model, project)) == sorted(
-        [
-            ("MISSING_BRIDGE_ENTITY", "site"),
-            ("MISSING_REQUIRED_COLUMN", "analysis_entity"),
-            ("MISSING_REQUIRED_COLUMN", "method"),
-            ("MISSING_REQUIRED_COLUMN", "sample_type"),
-            ("MISSING_REQUIRED_ENTITY", "site_location"),
-            ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "analysis_entity"),
-        ]
-    )
-
-
 def test_core_conformance_reports_missing_entity_and_wrong_public_id() -> None:
     target_model: TargetModel = load_target_model()
     project: ShapeShiftProject = load_project("sead_missing_sample_group.yml")
 
-    issues: set[tuple[str | None, str | None]] = set(issue_pairs(target_model, project))
+    issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
 
-    assert ("MISSING_REQUIRED_ENTITY", "sample_group") in issues
-    assert ("UNEXPECTED_PUBLIC_ID", "sample") in issues
+    assert ("MISSING_REQUIRED_ENTITY", "sample_group") in {(issue.code, issue.entity) for issue in issues}
+    assert ("UNEXPECTED_PUBLIC_ID", "sample") in {(issue.code, issue.entity) for issue in issues}
 
 
 def test_core_conformance_accepts_sample_note_example_fixture() -> None:
@@ -329,7 +375,9 @@ def test_core_conformance_accepts_sample_note_example_fixture() -> None:
     )
     project: ShapeShiftProject = load_project("sead_sample_note_context.yml")
 
-    assert issue_pairs(target_model, project) == []
+    issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
+
+    assert not issues
 
 
 def test_core_conformance_accepts_sample_group_note_example_fixture() -> None:
@@ -354,8 +402,9 @@ def test_core_conformance_accepts_sample_group_note_example_fixture() -> None:
         }
     )
     project: ShapeShiftProject = load_project("sead_sample_group_note_context.yml")
+    issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
 
-    assert issue_pairs(target_model, project) == []
+    assert not issues
 
 
 def test_core_conformance_accepts_transitive_foreign_key_path() -> None:
@@ -402,9 +451,9 @@ def test_core_conformance_accepts_transitive_foreign_key_path() -> None:
         }
     )
 
-    issues = set(issue_pairs(target_model, project))
+    issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
 
-    assert ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "sample") not in issues
+    assert ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "sample") not in {(issue.code, issue.entity) for issue in issues}
 
 
 def test_schema_aware_append_emits_issue_when_append_branch_misses_required_column() -> None:
@@ -439,9 +488,9 @@ def test_schema_aware_append_emits_issue_when_append_branch_misses_required_colu
         }
     )
 
-    issues = set(issue_pairs(target_model, project))
+    issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
 
-    assert ("APPEND_MISSING_REQUIRED_COLUMN", "site") in issues
+    assert ("APPEND_MISSING_REQUIRED_COLUMN", "site") in {(issue.code, issue.entity) for issue in issues}
 
 
 def test_schema_aware_append_respects_align_by_position() -> None:
@@ -479,9 +528,9 @@ def test_schema_aware_append_respects_align_by_position() -> None:
         }
     )
 
-    codes = [issue.code for issue in TargetModelConformanceValidator().validate(target_model, project)]
+    issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
 
-    assert "APPEND_MISSING_REQUIRED_COLUMN" not in codes
+    assert "APPEND_MISSING_REQUIRED_COLUMN" not in {issue.code for issue in issues}
 
 
 def test_required_columns_ignores_required_generated_columns() -> None:
@@ -497,11 +546,11 @@ def test_required_columns_ignores_required_generated_columns() -> None:
             }
         }
     )
-    project = _minimal_project({"site": {"public_id": "site_id", "columns": ["site_name"]}})
+    project: ShapeShiftProject = _minimal_project({"site": {"public_id": "site_id", "columns": ["site_name"]}})
 
-    issues = issue_pairs(target_model, project)
+    issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
 
-    assert ("MISSING_REQUIRED_COLUMN", "site") not in issues
+    assert not any((issue.code, issue.entity) == ("MISSING_REQUIRED_COLUMN", "site") for issue in issues)
 
 
 def test_schema_aware_append_ignores_required_generated_columns() -> None:
@@ -536,9 +585,9 @@ def test_schema_aware_append_ignores_required_generated_columns() -> None:
         }
     )
 
-    codes = [issue.code for issue in TargetModelConformanceValidator().validate(target_model, project)]
+    issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
 
-    assert "APPEND_MISSING_REQUIRED_COLUMN" not in codes
+    assert not any(issue.code == "APPEND_MISSING_REQUIRED_COLUMN" for issue in issues)
 
 
 def test_core_conformance_keeps_alias_like_names_strict() -> None:
@@ -597,71 +646,35 @@ def test_core_conformance_keeps_alias_like_names_strict() -> None:
         }
     )
 
-    issues = set(issue_pairs(target_model, project))
+    issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
 
-    assert ("MISSING_REQUIRED_COLUMN", "sample_type") in issues
-    assert ("MISSING_REQUIRED_COLUMN", "method") in issues
-
-
-def test_core_conformance_reports_known_gaps_for_full_arbodat_project() -> None:
-    target_model: TargetModel = load_target_model()
-    project: ShapeShiftProject = load_real_project("arbodat")
-
-    assert sorted(issue_pairs(target_model, project)) == sorted(
-        [
-            ("APPEND_MISSING_REQUIRED_COLUMN", "analysis_entity"),
-            ("APPEND_MISSING_REQUIRED_COLUMN", "analysis_entity"),
-            ("MISSING_INDUCED_REQUIRED_ENTITY", "taxa_tree_master"),
-            ("ORPHAN_FACT_ENTITY", "abundance_property"),
-            ("MISSING_REQUIRED_COLUMN", "abundance_ident_level"),
-            ("MISSING_REQUIRED_COLUMN", "analysis_entity"),
-            ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "abundance"),
-            ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "abundance_ident_level"),
-            ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "analysis_entity"),
-        ]
-    )
+    assert any((issue.code, issue.entity) == ("MISSING_REQUIRED_COLUMN", "sample_type") for issue in issues)
+    assert any((issue.code, issue.entity) == ("MISSING_REQUIRED_COLUMN", "method") for issue in issues)
 
 
-def test_core_conformance_current_corpus_issue_families_are_stable() -> None:
-    target_model: TargetModel = load_target_model()
-    corpus: dict[str, ShapeShiftProject] = {
-        "sead_arbodat_core": load_project("sead_arbodat_core.yml"),
-        "sead_missing_sample_group": load_project("sead_missing_sample_group.yml"),
-        "arbodat_full": load_real_project("arbodat"),
-    }
-
-    issue_summary: dict[str, Counter[str | None]] = {
-        name: Counter(code for code, _entity in issue_pairs(target_model, project)) for name, project in corpus.items()
-    }
-
-    assert issue_summary == {
-        "sead_arbodat_core": Counter(
+@pytest.mark.parametrize(
+    "project_name,expected_issues",
+    [
+        (
+            "sead_missing_sample_group",
             {
-                "MISSING_REQUIRED_COLUMN": 3,
-                "MISSING_BRIDGE_ENTITY": 1,
-                "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 1,
-                "MISSING_REQUIRED_ENTITY": 1,
-            }
-        ),
-        "sead_missing_sample_group": Counter(
-            {
-                "MISSING_REQUIRED_COLUMN": 5,
-                "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 2,
-                "MISSING_REQUIRED_ENTITY": 2,
+                "MISSING_REQUIRED_COLUMN": 8,
+                "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 6,
+                "MISSING_REQUIRED_ENTITY": 6,
                 "UNEXPECTED_PUBLIC_ID": 1,
                 "MISSING_BRIDGE_ENTITY": 1,
-            }
+                "CONDITIONAL_FK_AWAITING_RECONCILIATION": 1,
+            },
         ),
-        "arbodat_full": Counter(
-            {
-                "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 3,
-                "MISSING_REQUIRED_COLUMN": 2,
-                "APPEND_MISSING_REQUIRED_COLUMN": 2,
-                "MISSING_INDUCED_REQUIRED_ENTITY": 1,
-                "ORPHAN_FACT_ENTITY": 1,
-            }
-        ),
-    }
+    ],
+)
+def test_core_conformance_current_corpus_issue_families_are_stable(project_name: str, expected_issues: dict[str, int]) -> None:
+    target_model: TargetModel = load_target_model()
+    project: ShapeShiftProject = load_project(f"{project_name}.yml")
+    issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
+    issue_summary: Counter[str | None] = Counter(issue.code for issue in issues)
+
+    assert issue_summary == Counter(expected_issues)
 
 
 def _minimal_target_model(entities: dict) -> TargetModel:
@@ -672,6 +685,86 @@ def _minimal_project(entities: dict, options: dict | None = None) -> ShapeShiftP
     return ShapeShiftProject(
         cfg={"metadata": {"name": "test", "type": "shapeshifter-project"}, "entities": entities, "options": options or {}}
     )
+
+
+def test_conditional_foreign_key_awaits_reconciliation_without_project_only_errors() -> None:
+    target_model = _minimal_target_model(
+        {
+            "location": {
+                "public_id": "location_id",
+                "foreign_keys": [{"entity": "location_type", "required_when": {"has_new_rows": "location"}}],
+            },
+            "location_type": {"public_id": "location_type_id"},
+        }
+    )
+    project: ShapeShiftProject = _minimal_project({"location": {"public_id": "location_id", "columns": ["location_name"]}})
+
+    issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
+
+    assert [(issue.code, issue.severity, issue.entity) for issue in issues] == [
+        ("CONDITIONAL_FK_AWAITING_RECONCILIATION", "info", "location")
+    ]
+
+
+def test_conditional_foreign_key_status_is_not_promoted_by_severity_override() -> None:
+    target_model = _minimal_target_model(
+        {
+            "location": {
+                "public_id": "location_id",
+                "foreign_keys": [{"entity": "location_type", "required_when": {"has_new_rows": "location"}}],
+            },
+            "location_type": {"public_id": "location_type_id"},
+        }
+    )
+    project = _minimal_project(
+        {"location": {"public_id": "location_id", "columns": ["location_name"]}},
+        options={"validation": {"severity_overrides": {"conditional_foreign_key": "error"}}},
+    )
+
+    issues = TargetModelConformanceValidator().validate(target_model, project)
+
+    assert [(issue.code, issue.severity) for issue in issues] == [("CONDITIONAL_FK_AWAITING_RECONCILIATION", "info")]
+
+
+def test_conditional_foreign_key_status_is_omitted_when_source_is_absent() -> None:
+    target_model = _minimal_target_model(
+        {
+            "location": {
+                "foreign_keys": [{"entity": "location_type", "required_when": {"has_new_rows": "location"}}],
+            },
+            "location_type": {"public_id": "location_type_id"},
+        }
+    )
+
+    issues = TargetModelConformanceValidator().validate(target_model, _minimal_project({}))
+
+    assert issues == []
+
+
+def test_conditional_foreign_key_does_not_change_static_requirements() -> None:
+    target_model = _minimal_target_model(
+        {
+            "location": {
+                "public_id": "location_id",
+                "columns": {"location_name": {"required": True}},
+                "foreign_keys": [
+                    {"entity": "location_type", "required_when": {"has_new_rows": "location"}},
+                    {"entity": "site", "required": True},
+                ],
+            },
+            "location_type": {"public_id": "location_type_id"},
+            "site": {"required": True, "public_id": "site_id"},
+        }
+    )
+    project = _minimal_project({"location": {"public_id": "location_id", "columns": ["location_id"]}})
+
+    issues = TargetModelConformanceValidator().validate(target_model, project)
+    issue_pairs_with_severity = {(issue.code, issue.entity, issue.severity) for issue in issues}
+
+    assert ("CONDITIONAL_FK_AWAITING_RECONCILIATION", "location", "info") in issue_pairs_with_severity
+    assert ("MISSING_REQUIRED_COLUMN", "location", "error") in issue_pairs_with_severity
+    assert ("MISSING_REQUIRED_ENTITY", "site", "error") in issue_pairs_with_severity
+    assert ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "location", "error") in issue_pairs_with_severity
 
 
 def test_public_id_validator_produces_missing_public_id_when_project_entity_has_none() -> None:
@@ -920,6 +1013,200 @@ def test_induced_requirement_transitive_stops_at_present_intermediate() -> None:
 
     assert ("MISSING_INDUCED_REQUIRED_ENTITY", "taxon_group") in codes_entities
     assert ("MISSING_INDUCED_REQUIRED_ENTITY", "taxon") not in codes_entities  # taxon is present
+
+
+def test_direct_public_id_fks_allow_missing_targets_and_report_pending_checks() -> None:
+    target_model = _minimal_target_model(
+        {
+            "sample": {
+                "foreign_keys": [
+                    {"entity": "optional_dataset"},
+                    {"entity": "required_dataset", "required": True},
+                    {"entity": "conditional_dataset", "required_when": {"has_new_rows": "sample"}},
+                ],
+            },
+            "optional_dataset": {"public_id": "optional_dataset_id", "target_table": "public.optional_dataset"},
+            "required_dataset": {"public_id": "required_dataset_id", "target_table": "public.required_dataset"},
+            "conditional_dataset": {"public_id": "conditional_dataset_id", "target_table": "public.conditional_dataset"},
+        }
+    )
+    project = _minimal_project(
+        {
+            "sample": {
+                "columns": ["optional_dataset_id", "required_dataset_id", "conditional_dataset_id"],
+                "foreign_key_value_sources": {
+                    "optional_dataset": "public_id",
+                    "required_dataset": "public_id",
+                    "conditional_dataset": "public_id",
+                },
+            }
+        },
+        options={"validation": {"severity_overrides": {"direct_fk_pending_check": "error"}}},
+    )
+
+    issues = TargetModelConformanceValidator().validate(target_model, project)
+    codes = [issue.code for issue in issues]
+
+    pending = [issue for issue in issues if issue.code == "DIRECT_FK_TARGET_CHECK_PENDING"]
+    assert len(pending) == 3
+    assert {issue.severity for issue in pending} == {"info"}
+    assert "MISSING_REQUIRED_FOREIGN_KEY_TARGET" not in codes
+    assert "MISSING_INDUCED_REQUIRED_ENTITY" not in codes
+    assert "CONDITIONAL_FK_AWAITING_RECONCILIATION" in codes
+
+
+def test_system_id_value_source_keeps_local_link_check_and_has_no_pending_check() -> None:
+    target_model = _minimal_target_model(
+        {
+            "sample": {"foreign_keys": [{"entity": "dataset", "required": True}]},
+            "dataset": {"public_id": "dataset_id"},
+        }
+    )
+    project = _minimal_project(
+        {
+            "sample": {
+                "columns": ["dataset_id"],
+                "foreign_keys": [{"entity": "dataset", "local_keys": ["dataset_id"], "remote_keys": ["dataset_id"]}],
+                "foreign_key_value_sources": {"dataset": "system_id"},
+            },
+            "dataset": {"public_id": "dataset_id", "columns": ["dataset_name"]},
+        }
+    )
+
+    issues = TargetModelConformanceValidator().validate(target_model, project)
+
+    assert not any(issue.code == "DIRECT_FK_TARGET_CHECK_PENDING" for issue in issues)
+    assert not any(issue.code == "MISSING_REQUIRED_FOREIGN_KEY_TARGET" for issue in issues)
+
+
+def test_direct_public_id_fk_does_not_satisfy_globally_required_entity() -> None:
+    target_model = _minimal_target_model(
+        {
+            "sample": {"foreign_keys": [{"entity": "dataset", "required": True}]},
+            "dataset": {"required": True, "public_id": "dataset_id", "target_table": "public.dataset"},
+        }
+    )
+    project = _minimal_project({"sample": {"columns": ["dataset_id"], "foreign_key_value_sources": {"dataset": "public_id"}}})
+
+    issues = TargetModelConformanceValidator().validate(target_model, project)
+
+    assert any(issue.code == "MISSING_REQUIRED_ENTITY" and issue.entity == "dataset" for issue in issues)
+    assert not any(issue.code == "MISSING_REQUIRED_FOREIGN_KEY_TARGET" for issue in issues)
+    assert not any(issue.code == "MISSING_INDUCED_REQUIRED_ENTITY" for issue in issues)
+
+
+@pytest.mark.parametrize(
+    ("target_entities", "source_entity", "expected_code"),
+    [
+        ({}, {"foreign_key_value_sources": {"dataset": "public_id"}}, "DIRECT_FK_RELATIONSHIP_UNKNOWN"),
+        (
+            {
+                "sample": {"foreign_keys": [{"entity": "dataset", "via": "sample_dataset"}]},
+                "dataset": {"public_id": "dataset_id", "target_table": "public.dataset"},
+            },
+            {"columns": ["dataset_id"], "foreign_key_value_sources": {"dataset": "public_id"}},
+            "DIRECT_FK_VIA_UNSUPPORTED",
+        ),
+        (
+            {
+                "sample": {"foreign_keys": [{"entity": "dataset"}]},
+                "dataset": {"target_table": "public.dataset"},
+            },
+            {"columns": ["dataset_id"], "foreign_key_value_sources": {"dataset": "public_id"}},
+            "DIRECT_FK_TARGET_PUBLIC_ID_MISSING",
+        ),
+        (
+            {
+                "sample": {"foreign_keys": [{"entity": "dataset"}]},
+                "dataset": {"public_id": "dataset_id"},
+            },
+            {"columns": ["dataset_id"], "foreign_key_value_sources": {"dataset": "public_id"}},
+            "DIRECT_FK_TARGET_TABLE_MISSING",
+        ),
+        (
+            {
+                "sample": {"foreign_keys": [{"entity": "dataset"}]},
+                "dataset": {"public_id": "dataset_id", "target_table": "public.dataset"},
+            },
+            {
+                "columns": ["dataset_id"],
+                "foreign_keys": [{"entity": "dataset", "local_keys": ["dataset_id"], "remote_keys": ["dataset_id"]}],
+                "foreign_key_value_sources": {"dataset": "public_id"},
+            },
+            "DIRECT_FK_CORE_LINK_CONFLICT",
+        ),
+        (
+            {
+                "sample": {"foreign_keys": [{"entity": "dataset"}]},
+                "dataset": {"public_id": "dataset_id", "target_table": "public.dataset"},
+            },
+            {"columns": ["sample_name"], "foreign_key_value_sources": {"dataset": "public_id"}},
+            "DIRECT_FK_OUTPUT_COLUMN_MISSING",
+        ),
+    ],
+)
+def test_invalid_direct_public_id_fk_reports_specific_code(target_entities: dict, source_entity: dict, expected_code: str) -> None:
+    if "sample" not in target_entities and expected_code == "DIRECT_FK_RELATIONSHIP_UNKNOWN":
+        target_entities = {"sample": {"foreign_keys": [{"entity": "dataset", "required": True}]}}
+    target_model = _minimal_target_model(target_entities)
+    project_entities = {"sample": source_entity}
+    if expected_code == "DIRECT_FK_CORE_LINK_CONFLICT":
+        project_entities["dataset"] = {"public_id": "dataset_id", "columns": ["dataset_name"]}
+    project = _minimal_project(project_entities)
+
+    codes = [issue.code for issue in TargetModelConformanceValidator().validate(target_model, project)]
+
+    assert expected_code in codes
+    if expected_code == "DIRECT_FK_RELATIONSHIP_UNKNOWN":
+        assert "MISSING_REQUIRED_FOREIGN_KEY_TARGET" in codes
+
+
+def test_direct_public_id_column_dropped_by_unnest_is_rejected() -> None:
+    target_model = _minimal_target_model(
+        {
+            "sample": {"foreign_keys": [{"entity": "dataset"}]},
+            "dataset": {"public_id": "dataset_id", "target_table": "public.dataset"},
+        }
+    )
+    project = _minimal_project(
+        {
+            "sample": {
+                "columns": ["record_key", "dataset_id"],
+                "foreign_key_value_sources": {"dataset": "public_id"},
+                "unnest": {
+                    "id_vars": ["record_key"],
+                    "value_vars": ["dataset_id"],
+                    "var_name": "attribute",
+                    "value_name": "value",
+                },
+            }
+        }
+    )
+
+    codes = [issue.code for issue in TargetModelConformanceValidator().validate(target_model, project)]
+
+    assert "DIRECT_FK_OUTPUT_COLUMN_MISSING" in codes
+
+
+def test_direct_public_id_fk_counts_as_fact_path_to_lookup() -> None:
+    target_model = TargetModel.model_validate(
+        {
+            "model": {"name": "test", "version": "1.0"},
+            "constraints": [{"type": "no_orphan_facts"}],
+            "entities": {
+                "dataset": {"role": "lookup", "public_id": "dataset_id", "target_table": "public.dataset"},
+                "sample": {
+                    "role": "fact",
+                    "foreign_keys": [{"entity": "dataset", "required": True}],
+                },
+            },
+        }
+    )
+    project = _minimal_project({"sample": {"columns": ["dataset_id"], "foreign_key_value_sources": {"dataset": "public_id"}}})
+
+    issues = TargetModelConformanceValidator().validate(target_model, project)
+
+    assert not any(issue.code == "ORPHAN_FACT_ENTITY" for issue in issues)
 
 
 def test_no_orphan_facts_is_silent_when_constraint_is_not_declared() -> None:

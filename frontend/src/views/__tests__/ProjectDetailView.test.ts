@@ -312,6 +312,22 @@ function mountProjectDetailView() {
 
 describe('ProjectDetailView', () => {
   beforeEach(() => {
+    const values = new Map<string, string>()
+    const localStorageMock: Storage = {
+      get length() {
+        return values.size
+      },
+      clear: () => values.clear(),
+      getItem: (key) => values.get(key) ?? null,
+      key: (index) => Array.from(values.keys())[index] ?? null,
+      removeItem: (key) => {
+        values.delete(key)
+      },
+      setItem: (key, value) => {
+        values.set(key, String(value))
+      },
+    }
+    Object.defineProperty(window, 'localStorage', { configurable: true, value: localStorageMock })
     window.localStorage.clear()
     window.localStorage.setItem('shapeshifter.graph.colorBy.arbodat', 'type')
     mockProjectState.selectedProjectRef.value = { metadata: {}, options: {} }
@@ -325,6 +341,8 @@ describe('ProjectDetailView', () => {
     mockGraphState.addRelatedBranchEdgeClass.mockReset()
     mockGraphState.render.mockReset()
     mockGraphState.getNote.mockClear()
+    mockGraphState.removeNote.mockReset()
+    mockGraphState.setNote.mockReset()
   })
 
   it('captures graph options and opens the details drawer on node click', async () => {
@@ -348,7 +366,6 @@ describe('ProjectDetailView', () => {
 
     await flushPromises()
     mockProjectState.getRawYaml.mockClear()
-
     ;(wrapper.vm as any).rawYamlContent = 'stale yaml'
     ;(wrapper.vm as any).originalYamlContent = 'stale yaml'
     ;(wrapper.vm as any).yamlHasChanges = false
@@ -365,9 +382,7 @@ describe('ProjectDetailView', () => {
       metadata: { name: 'arbodat' },
       options: {},
       entities: {},
-      load_warnings: [
-        "Entity 'method', row 1, column 'method_id': normalized '53' to 53 (int)",
-      ],
+      load_warnings: ["Entity 'method', row 1, column 'method_id': normalized '53' to 53 (int)"],
     }
 
     const wrapper = mountProjectDetailView()
@@ -395,7 +410,7 @@ describe('ProjectDetailView', () => {
 
   it('hides the target-model yaml tab for shared target models', async () => {
     mockProjectState.selectedProjectRef.value = {
-      metadata: { name: 'arbodat', target_model: '@load: resources/target_models/sead_superset_model.yml' },
+      metadata: { name: 'arbodat', target_model: '@load: resources/target_models/sead_standard_model.yml' },
       options: {},
       entities: {},
     }
@@ -405,5 +420,23 @@ describe('ProjectDetailView', () => {
     await flushPromises()
 
     expect(wrapper.text()).not.toContain('Target Model')
+  })
+
+  it('removes a note when saving content that is blank after trimming', async () => {
+    const wrapper = mountProjectDetailView()
+    await flushPromises()
+    const vm = wrapper.vm as any
+    vm.selectedNode = 'analysis_entity'
+    vm.drawerNoteContent = ' \n\t '
+    vm.drawerOriginalNoteContent = 'Existing note'
+    vm.drawerNoteHasChanges = true
+
+    await vm.handleSaveDrawerNote()
+
+    expect(mockGraphState.removeNote).toHaveBeenCalledWith('arbodat', 'analysis_entity')
+    expect(mockGraphState.setNote).not.toHaveBeenCalled()
+    expect(vm.drawerNoteContent).toBe('')
+    expect(vm.drawerOriginalNoteContent).toBe('')
+    expect(vm.drawerNoteHasChanges).toBe(false)
   })
 })
