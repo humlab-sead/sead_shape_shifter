@@ -104,11 +104,11 @@ def test_fk_merge_keys_after_rename():
         "metadata": {"name": "test", "version": "1.0"},
         "entities": {
             "parent": {
-                "type": "fixed",
+                "type": "sql",
                 "public_id": "parent_id",
                 "keys": [],
-                "columns": ["system_id", "parent_id", "name"],
-                "values": [[1, None, "Parent A"], [2, None, "Parent B"]],
+                "columns": ["name"],
+                "query": "select name from parent",
             },
             "child": {
                 "type": "entity",

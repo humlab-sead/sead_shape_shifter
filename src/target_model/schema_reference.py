@@ -5,7 +5,16 @@ import json
 from pydantic import BaseModel
 from pydantic_core import PydanticUndefined
 
-from src.target_model.models import ColumnSpec, EntitySpec, ForeignKeySpec, GlobalConstraint, ModelMetadata, NamingConventions, TargetModel
+from src.target_model.models import (
+    ColumnSpec,
+    EntitySpec,
+    ForeignKeySpec,
+    GlobalConstraint,
+    ModelMetadata,
+    NamingConventions,
+    RequiredWhenSpec,
+    TargetModel,
+)
 
 SCHEMA_REF_TEMPLATE = "#/$defs/{model}"
 MODEL_ORDER: list[type[BaseModel]] = [
@@ -14,6 +23,7 @@ MODEL_ORDER: list[type[BaseModel]] = [
     EntitySpec,
     ColumnSpec,
     ForeignKeySpec,
+    RequiredWhenSpec,
     NamingConventions,
     GlobalConstraint,
 ]
@@ -24,6 +34,7 @@ SECTION_INTROS: dict[str, str] = {
     "EntitySpec": "Values under `entities.<entity_name>` for each target entity.",
     "ColumnSpec": "Values under `entities.<entity_name>.columns.<column_name>` for each declared column.",
     "ForeignKeySpec": "Values under `entities.<entity_name>.foreign_keys[]` for each foreign key requirement.",
+    "RequiredWhenSpec": "A `has_new_rows` condition applies after reconciliation selects at least one source row for insertion.",
     "NamingConventions": "Optional naming rules under the `naming` section.",
     "GlobalConstraint": "Entries under the optional `constraints[]` list.",
 }
@@ -31,7 +42,7 @@ SECTION_INTROS: dict[str, str] = {
 
 def generate_target_model_schema_reference() -> str:
     """Return a Markdown reference derived from the Pydantic target-model schema."""
-    schema = TargetModel.model_json_schema(mode="serialization", by_alias=True, ref_template=SCHEMA_REF_TEMPLATE)
+    schema = TargetModel.model_json_schema(mode="validation", by_alias=True, ref_template=SCHEMA_REF_TEMPLATE)
     defs = _as_schema_mapping(schema.get("$defs"))
 
     lines: list[str] = [
@@ -101,6 +112,9 @@ def _collect_child_paths(
     seen: set[str],
 ) -> None:
     resolved = _resolve_schema(field_schema, defs)
+
+    if resolved is not field_schema and isinstance(resolved.get("properties"), dict):
+        _collect_paths(path, resolved, defs, lines, seen)
 
     additional = resolved.get("additionalProperties")
     if isinstance(additional, dict):

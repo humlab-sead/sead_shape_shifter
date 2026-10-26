@@ -19,10 +19,17 @@ from backend.app.models.project import Project
 from backend.app.services.entity_values_service import EntityValuesService
 from backend.app.services.project.entity_persistence_strategies import EntityPersistenceStrategyRegistry
 from backend.app.services.project_service import ProjectService
+from backend.app.utils.fixed_schema import derive_fixed_schema
 from src.model import ShapeShiftProject, TableConfig
 from src.normalizer import ShapeShifter
+from src.reconciliation.fixed_entity_mapping_changes import (
+    FixedEntityMappingChangeError,
+    RowSnapshot,
+    compute_fixed_row_change_set,
+    default_local_key,
+)
 from src.reconciliation.mapping_manager import MappingManager
-from src.reconciliation.mapping_model import EntityMapping, EntityType, Link, LinkSource, encode_local_key
+from src.reconciliation.mapping_model import EntityMapping, EntityType, Link, LinkSource
 from src.specifications.materialize import CanMaterializeSpecification
 from src.types.fixed_entity_types import (
     FixedEntityTypeCoercer,
@@ -177,24 +184,16 @@ class MaterializationService:
         return normalized_df, values, column_types, storage_column_types
 
     @staticmethod
-    def _coerce_mapping_target_id(value: Any, entity_name: str, public_id: str) -> int:
-        """Convert a saved public_id value to an integer mapping target ID."""
-        try:
-            return int(value)
-        except (TypeError, ValueError) as exc:
-            raise MaterializationError(
-                f"Entity '{entity_name}' has non-integer public_id value {value!r} in column '{public_id}'."
-            ) from exc
-
-    @staticmethod
     def _default_mapping_local_key(table: TableConfig) -> str | list[str]:
-        """Return the default local_key to use when a sidecar entry does not exist yet."""
-        keys = list(table.keys)
+        """Return the default local_key to use when a sidecar entry does not exist yet.
+
+        Uses the shared ordered ``safe_keys`` rule so compound keys encode in the
+        same declared order as mapping entry creation.
+        """
+        keys = table.safe_keys
         if not keys:
             raise MaterializationError(f"Entity '{table.entity_name}' has no entity.keys configuration for mapping sidecar sync.")
-        if len(keys) == 1:
-            return keys[0]
-        return keys
+        return default_local_key(keys)
 
     @staticmethod
     def _ensure_mapping_entity(catalog: Any, table: TableConfig) -> EntityMapping:
@@ -216,6 +215,14 @@ class MaterializationService:
         """Build a dataframe from saved materialized rows."""
         return pd.DataFrame(values, columns=columns)
 
+    @staticmethod
+    def _resolve_saved_full_columns(entity_cfg: dict[str, Any], columns: list[str]) -> list[str]:
+        """Rebuild the authoritative full column order for stored inline materialized rows."""
+        fixed_schema = derive_fixed_schema(entity_cfg)
+        if fixed_schema:
+            return list(fixed_schema["full_columns"])
+        return columns
+
     def _load_saved_materialized_rows(self, api_project: Project, entity_name: str) -> tuple[list[str], list[list[Any]]]:
         """Read the currently saved materialized rows from inline values or @load storage."""
         entity_cfg = api_project.entities.get(entity_name)
@@ -228,7 +235,8 @@ class MaterializationService:
         if isinstance(values, list):
             if not columns:
                 raise MaterializationError(f"Entity '{entity_name}' is missing columns for inline materialized values.")
-            return list(columns), values
+            # Inline rows are stored in full order while 'columns' holds produced data fields only.
+            return self._resolve_saved_full_columns(entity_cfg, list(columns)), values
 
         loaded = self.entity_values_service.get_values(api_project.metadata.name if api_project.metadata else "", entity_name)
         return list(loaded.columns), loaded.values
@@ -237,46 +245,46 @@ class MaterializationService:
         self,
         table: TableConfig,
         local_key: str | list[str],
+        public_id: str,
         columns: list[str],
         values: list[list[Any]],
         *,
         created_by: str,
     ) -> dict[str, Link]:
-        """Build committed manual links from saved materialized rows."""
-        df = self._sanitize_materialized_dataframe(self._rows_to_dataframe(columns, values))
-        if table.public_id not in df.columns:
-            raise MaterializationError(f"Entity '{table.entity_name}' is missing public_id column '{table.public_id}' in saved rows.")
-
-        required_local_keys = [local_key] if isinstance(local_key, str) else list(local_key)
-        missing_local_keys = [key for key in required_local_keys if key not in df.columns]
-        if missing_local_keys:
-            raise MaterializationError(
-                f"Entity '{table.entity_name}' is missing mapping local_key columns {missing_local_keys} in saved rows."
+        """Build validated manual links from saved rows using fixed-row key and ID rules."""
+        saved_df = self._sanitize_materialized_dataframe(self._rows_to_dataframe(columns, values))
+        saved_columns = [str(column) for column in saved_df.columns.tolist()]
+        saved_positions = [columns.index(column) for column in saved_columns]
+        saved_values = [[row[position] for position in saved_positions] for row in values]
+        candidate_entry = EntityMapping(
+            local_key=local_key,
+            public_id=public_id,
+            entity_type=EntityType.PRIMARY,
+        )
+        try:
+            change_set = compute_fixed_row_change_set(
+                entity_name=table.entity_name,
+                entity_type="fixed",
+                materialized=True,
+                keys=table.safe_keys,
+                public_id=public_id,
+                existing_entry=candidate_entry,
+                previous=None,
+                current=RowSnapshot(columns=saved_columns, values=saved_values),
             )
+        except FixedEntityMappingChangeError as exc:
+            raise MaterializationError(str(exc)) from exc
 
         committed_at = datetime.now(timezone.utc)
-        links: dict[str, Link] = {}
-
-        for _, row in df.iterrows():
-            target_id_value = row[table.public_id]
-            if pd.isna(target_id_value):
-                continue
-
-            key_values: Any
-            if isinstance(local_key, str):
-                key_values = row[local_key]
-            else:
-                key_values = [row[key] for key in local_key]
-
-            encoded_key = encode_local_key(local_key, key_values)
-            links[encoded_key] = Link(
-                target_id=self._coerce_mapping_target_id(target_id_value, table.entity_name, table.public_id),
+        return {
+            operation.key: Link(
+                target_id=operation.target_id,
                 source=LinkSource.MANUAL,
                 committed_at=committed_at,
                 created_by=created_by,
             )
-
-        return links
+            for operation in change_set.upserts
+        }
 
     def sync_materialized_entity_mappings(
         self,
@@ -287,8 +295,32 @@ class MaterializationService:
         values: list[list[Any]] | None = None,
         created_by: str | None = None,
         require_materialized: bool = True,
+        replace_manual_links: bool = False,
     ) -> MaterializedMappingSyncResult:
-        """Replace manual mapping links for an entity from the currently saved materialized rows."""
+        """Seed missing links or explicitly replace manual links under the project lock."""
+        with self.project_service._get_lock(project_name):
+            return self._sync_materialized_entity_mappings_locked(
+                project_name,
+                entity_name,
+                columns=columns,
+                values=values,
+                created_by=created_by,
+                require_materialized=require_materialized,
+                replace_manual_links=replace_manual_links,
+            )
+
+    def _sync_materialized_entity_mappings_locked(
+        self,
+        project_name: str,
+        entity_name: str,
+        *,
+        columns: list[str] | None = None,
+        values: list[list[Any]] | None = None,
+        created_by: str | None = None,
+        require_materialized: bool = True,
+        replace_manual_links: bool = False,
+    ) -> MaterializedMappingSyncResult:
+        """Seed absent links or replace manual links from the currently saved materialized rows."""
         try:
             api_project: Project = self.project_service.load_project(project_name)
             entity_cfg = api_project.entities.get(entity_name)
@@ -300,7 +332,7 @@ class MaterializationService:
             if not materialized_enabled:
                 if require_materialized:
                     raise MaterializationError(f"Entity '{entity_name}' is not materialized")
-                return MaterializedMappingSyncResult(success=True, entity_name=entity_name, manual_links_replaced=0)
+                return MaterializedMappingSyncResult(success=True, entity_name=entity_name)
 
             core_project: ShapeShiftProject = ProjectMapper.to_core(api_project)
             table_cfg: TableConfig = core_project.get_table(entity_name)
@@ -313,19 +345,42 @@ class MaterializationService:
             actor = created_by or get_correlation_id()
             project_path = api_project.filename or project_name
             manager = MappingManager()
-            catalog = manager.load(project_path)
+            snapshot = manager.load_snapshot(project_path)
+            catalog = snapshot.catalog
+            entry_was_missing = entity_name not in catalog.entities
             entity_mapping = self._ensure_mapping_entity(catalog, table_cfg)
             manual_links = self._extract_manual_links_from_rows(
                 table_cfg,
                 entity_mapping.local_key,
+                entity_mapping.public_id,
                 list(saved_columns),
                 saved_values,
                 created_by=actor,
             )
-            manual_count = manager.replace_entity_manual_links(catalog, entity_name, manual_links)
-            manager.save(catalog, project_path)
+            if replace_manual_links:
+                manual_count = manager.replace_entity_manual_links(catalog, entity_name, manual_links)
+                manager.save(catalog, project_path, expected_version=snapshot.content_version)
+                return MaterializedMappingSyncResult(
+                    success=True,
+                    entity_name=entity_name,
+                    manual_links_replaced=manual_count,
+                )
 
-            return MaterializedMappingSyncResult(success=True, entity_name=entity_name, manual_links_replaced=manual_count)
+            manual_links_added = 0
+            for key, link in manual_links.items():
+                if key in entity_mapping.links:
+                    continue
+                entity_mapping.links[key] = link
+                manual_links_added += 1
+
+            if entry_was_missing or manual_links_added:
+                manager.save(catalog, project_path, expected_version=snapshot.content_version)
+
+            return MaterializedMappingSyncResult(
+                success=True,
+                entity_name=entity_name,
+                manual_links_added=manual_links_added,
+            )
 
         except MaterializationError as exc:
             logger.error(f"Failed to sync materialized mappings for entity '{entity_name}': {exc}")
@@ -453,11 +508,17 @@ class MaterializationService:
         if not saved_state:
             logger.warning(f"Entity '{table.entity_name}' has no config to save - unmaterialization may not be possible")
 
+        # The managed identity columns lead the stored row order but are not data columns.
+        identity_columns: set[str] = {"system_id"}
+        if table.public_id:
+            identity_columns.add(table.public_id)
+        data_columns: list[str] = [column for column in df.columns.tolist() if column not in identity_columns]
+
         new_config = {
             "type": "fixed",
             "public_id": table.public_id,
             "keys": list(table.keys),
-            "columns": list(df.columns),
+            "columns": data_columns,
             "values": values_inline if values_inline else None,
             "materialized": {
                 "enabled": True,

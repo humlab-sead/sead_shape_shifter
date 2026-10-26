@@ -9,7 +9,7 @@ class TestBuildIdentityWorkPlan:
     """Tests for partitioning planned rows into identity work queues."""
 
     def test_partitions_rows_by_planned_action(self):
-        """Rows should be split into the Delivery 1 queues without re-deriving actions."""
+        """Rows should be split into the MVP Delivery queues without re-deriving actions."""
         sample_frame = pd.DataFrame({"sample_id": [1, None], "sample_name": ["A", "B"]})
         sample_actions = pd.Series(
             [PlannedRowAction.REFERENCE_EXISTING, PlannedRowAction.ALLOCATE],
@@ -63,9 +63,7 @@ class TestBuildIdentityWorkPlan:
         frame = pd.DataFrame({"sample_dimension_id": [None], "sample_id": [10]})
         actions = pd.Series([PlannedRowAction.INHERIT_AGGREGATE], index=frame.index, name="_planned_action")
 
-        work_plan = build_identity_work_plan(
-            [PlannedTable(entity_name="sample_dimension", frame=frame, planned_actions=actions)]
-        )
+        work_plan = build_identity_work_plan([PlannedTable(entity_name="sample_dimension", frame=frame, planned_actions=actions)])
 
         assert work_plan.total_inherit_rows == 1
         assert work_plan.total_allocation_rows == 0

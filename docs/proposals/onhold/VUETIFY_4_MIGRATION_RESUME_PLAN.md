@@ -40,14 +40,14 @@ Vuetify MCP reports that for `VSelect`, `VAutocomplete`, and `VCombobox`, the it
 
 Affected files identified during scanning:
 
-1. [frontend/src/components/execute/ExecuteDialog.vue](frontend/src/components/execute/ExecuteDialog.vue)
-2. [frontend/src/components/entities/CreateEntityFromTableDialog.vue](frontend/src/components/entities/CreateEntityFromTableDialog.vue)
-3. [frontend/src/components/entities/MaterializeDialog.vue](frontend/src/components/entities/MaterializeDialog.vue)
-4. [frontend/src/components/entities/EntityFormDialog.vue](frontend/src/components/entities/EntityFormDialog.vue)
-5. [frontend/src/components/ProjectDataSources.vue](frontend/src/components/ProjectDataSources.vue)
-6. [frontend/src/components/SchemaTreeView.vue](frontend/src/components/SchemaTreeView.vue)
-7. [frontend/src/components/DataSourceFormDialog.vue](frontend/src/components/DataSourceFormDialog.vue)
-8. [frontend/src/components/query/QueryBuilder.vue](frontend/src/components/query/QueryBuilder.vue)
+1. [frontend/src/components/execute/ExecuteDialog.vue](../../../frontend/src/components/execute/ExecuteDialog.vue)
+2. [frontend/src/components/entities/CreateEntityFromTableDialog.vue](../../../frontend/src/components/entities/CreateEntityFromTableDialog.vue)
+3. [frontend/src/components/entities/MaterializeDialog.vue](../../../frontend/src/components/entities/MaterializeDialog.vue)
+4. [frontend/src/components/entities/EntityFormDialog.vue](../../../frontend/src/components/entities/EntityFormDialog.vue)
+5. [frontend/src/components/ProjectDataSources.vue](../../../frontend/src/components/ProjectDataSources.vue)
+6. [frontend/src/components/SchemaTreeView.vue](../../../frontend/src/components/SchemaTreeView.vue)
+7. [frontend/src/components/DataSourceFormDialog.vue](../../../frontend/src/components/DataSourceFormDialog.vue)
+8. [frontend/src/components/query/QueryBuilder.vue](../../../frontend/src/components/query/QueryBuilder.vue)
 
 ### 2. Those slot renames are not safe to pre-apply on the current Vuetify 3 setup
 
@@ -67,18 +67,18 @@ These are migration hotspots, but not safe blanket edits ahead of the real upgra
 
 Examples:
 
-1. [frontend/src/components/entities/ExtraColumnsEditor.vue](frontend/src/components/entities/ExtraColumnsEditor.vue)
-2. [frontend/src/components/entities/FiltersEditor.vue](frontend/src/components/entities/FiltersEditor.vue)
-3. [frontend/src/components/entities/ReplacementsEditor.vue](frontend/src/components/entities/ReplacementsEditor.vue)
-4. [frontend/src/components/entities/ForeignKeyEditor.vue](frontend/src/components/entities/ForeignKeyEditor.vue)
-5. [frontend/src/components/LogViewerOverlay.vue](frontend/src/components/LogViewerOverlay.vue)
-6. [frontend/src/components/dependencies/TaskCompletionStats.vue](frontend/src/components/dependencies/TaskCompletionStats.vue)
-7. [frontend/src/components/reconciliation/SpecificationEditor.vue](frontend/src/components/reconciliation/SpecificationEditor.vue)
-8. [frontend/src/styles/global.css](frontend/src/styles/global.css)
+1. [frontend/src/components/entities/ExtraColumnsEditor.vue](../../../frontend/src/components/entities/ExtraColumnsEditor.vue)
+2. [frontend/src/components/entities/FiltersEditor.vue](../../../frontend/src/components/entities/FiltersEditor.vue)
+3. [frontend/src/components/entities/ReplacementsEditor.vue](../../../frontend/src/components/entities/ReplacementsEditor.vue)
+4. [frontend/src/components/entities/ForeignKeyEditor.vue](../../../frontend/src/components/entities/ForeignKeyEditor.vue)
+5. [frontend/src/components/LogViewerOverlay.vue](../../../frontend/src/components/LogViewerOverlay.vue)
+6. [frontend/src/components/dependencies/TaskCompletionStats.vue](../../../frontend/src/components/dependencies/TaskCompletionStats.vue)
+7. [frontend/src/components/reconciliation/SpecificationEditor.vue](../../../frontend/src/components/reconciliation/SpecificationEditor.vue)
+8. [frontend/src/styles/global.css](../../../frontend/src/styles/global.css)
 
 ### 4. One safe visual alignment change was retained
 
-The overlay card elevation in [frontend/src/components/entities/EntityEditorOverlay.vue](frontend/src/components/entities/EntityEditorOverlay.vue) was reduced from `24` to `5` to match Vuetify 4's Material Design 3 elevation scale.
+The overlay card elevation in [frontend/src/components/entities/EntityEditorOverlay.vue](../../../frontend/src/components/entities/EntityEditorOverlay.vue) was reduced from `24` to `5` to match Vuetify 4's Material Design 3 elevation scale.
 
 This is valid in Vuetify 3 as well, but it may have a visible shadow difference.
 
@@ -141,7 +141,7 @@ This should be the highest-priority code change because it is a direct API-level
 Second pass:
 
 1. review all `v-row dense` usage,
-2. review direct `.v-row`, `.v-col`, `.v-container` overrides in [frontend/src/styles/global.css](frontend/src/styles/global.css),
+2. review direct `.v-row`, `.v-col`, `.v-container` overrides in [frontend/src/styles/global.css](../../../frontend/src/styles/global.css),
 3. move fragile overrides toward explicit spacing utilities or custom layer-aware CSS,
 4. visually test entity editors, project detail screens, table/config forms, and schema explorer layouts.
 
@@ -150,7 +150,7 @@ Second pass:
 Third pass:
 
 1. review legacy typography utility classes such as `text-h4`, `text-subtitle-1`, `text-body-2`, and `text-caption`,
-2. confirm the current `defaultTheme: 'light'` setting in [frontend/src/plugins/vuetify.ts](frontend/src/plugins/vuetify.ts) still reflects the desired behavior after the upgrade,
+2. confirm the current `defaultTheme: 'light'` setting in [frontend/src/plugins/vuetify.ts](../../../frontend/src/plugins/vuetify.ts) still reflects the desired behavior after the upgrade,
 3. compare key pages visually rather than assuming parity.
 
 ## Suggested Execution Checklist
@@ -177,14 +177,14 @@ When resuming, follow this order:
 
 Focus manual testing on these views/components because they are most likely to show migration fallout:
 
-1. [frontend/src/views/ProjectDetailView.vue](frontend/src/views/ProjectDetailView.vue)
-2. [frontend/src/components/entities/EntityFormDialog.vue](frontend/src/components/entities/EntityFormDialog.vue)
-3. [frontend/src/components/ProjectDataSources.vue](frontend/src/components/ProjectDataSources.vue)
-4. [frontend/src/components/DataSourceFormDialog.vue](frontend/src/components/DataSourceFormDialog.vue)
-5. [frontend/src/components/SchemaTreeView.vue](frontend/src/components/SchemaTreeView.vue)
-6. [frontend/src/components/query/QueryBuilder.vue](frontend/src/components/query/QueryBuilder.vue)
-7. [frontend/src/components/query/QueryEditor.vue](frontend/src/components/query/QueryEditor.vue)
-8. [frontend/src/views/SchemaExplorerView.vue](frontend/src/views/SchemaExplorerView.vue)
+1. [frontend/src/views/ProjectDetailView.vue](../../../frontend/src/views/ProjectDetailView.vue)
+2. [frontend/src/components/entities/EntityFormDialog.vue](../../../frontend/src/components/entities/EntityFormDialog.vue)
+3. [frontend/src/components/ProjectDataSources.vue](../../../frontend/src/components/ProjectDataSources.vue)
+4. [frontend/src/components/DataSourceFormDialog.vue](../../../frontend/src/components/DataSourceFormDialog.vue)
+5. [frontend/src/components/SchemaTreeView.vue](../../../frontend/src/components/SchemaTreeView.vue)
+6. [frontend/src/components/query/QueryBuilder.vue](../../../frontend/src/components/query/QueryBuilder.vue)
+7. [frontend/src/components/query/QueryEditor.vue](../../../frontend/src/components/query/QueryEditor.vue)
+8. [frontend/src/views/SchemaExplorerView.vue](../../../frontend/src/views/SchemaExplorerView.vue)
 
 ## Proposed Deliverable Shape
 

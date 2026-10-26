@@ -12,8 +12,8 @@ Rules here apply when working in `src/`. Also read the root `AGENTS.md` for cros
 
 ## Entity System
 
-- Three identity tiers: `system_id` (FK values), `keys` (dedup), `public_id` (target column name, must end `_id`).
-- FK child column name = parent's `public_id` name; FK values = parent's `system_id` — never external IDs.
+- Three identity tiers: `system_id` (Core FK values), `keys` (dedup), `public_id` (target column name, must end `_id`).
+- Core FK child column name = parent's `public_id` name; Core FK values = parent's `system_id`. A project declaration `foreign_key_value_sources.<target>: public_id` applies only when the change-request ingester writes the package FK and does not create a Core link or dependency.
 - Entity types: `entity` (row-extract), `fixed` (inline lookup), `sql` (query), `merged` (multi-branch). Classifiers must use `fixed` or `sql`, not `entity`.
 - Merged entities: each branch gets a `{entity}_branch` discriminator column and sparse nullable `Int64` FK columns for all other branches.
 - `defer_dependency: true` breaks circular FK chains; it is not a general ordering tool — only use for genuine cycles.

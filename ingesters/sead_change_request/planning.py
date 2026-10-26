@@ -45,12 +45,20 @@ def plan_table(
     *,
     mutable_fields: list[str] | None = None,
     existing_row_update_entities: set[str] | None = None,
+    staging: bool = False,
 ) -> PlannedTable:
-    """Plan row actions for one entity table in a deterministic way."""
+    """Plan row actions for one entity table in a deterministic way.
+
+    With ``staging`` enabled, an effective aggregate child is planned for
+    ``DEFER_TO_DEPLOYMENT`` so no target ID is reserved during generation.
+    Direct strategies keep their current actions.
+    """
     diagnostics: list[str] = []
     effective = resolve_effective_identity(entity_spec)
 
-    if entity_spec.public_id_generation == "database_sequence":
+    if staging and effective.identity_tracking == "child":
+        missing_action = PlannedRowAction.DEFER_TO_DEPLOYMENT
+    elif entity_spec.public_id_generation == "database_sequence":
         if not entity_spec.target_table:
             raise ValueError(f"Entity '{entity_name}' uses database_sequence public ID generation but has no target_table")
         if entity_spec.identity_tracking is None or entity_spec.identity_tracking == "tracked":
@@ -61,7 +69,7 @@ def plan_table(
         missing_action = PlannedRowAction.RESERVE_DATABASE_ID
     elif effective.identity_tracking == "derived":
         if not entity_spec.unique_sets:
-            diagnostics.append(f"Bridge entity '{entity_name}' has no unique_sets metadata; Delivery 1 uniqueness checks will be blocked")
+            diagnostics.append(f"Bridge entity '{entity_name}' has no unique_sets metadata; MVP Delivery uniqueness checks will be blocked")
         planned_actions = pd.Series([PlannedRowAction.EVALUATE_BRIDGE] * len(frame.index), index=frame.index, name="_planned_action")
         return PlannedTable(entity_name=entity_name, frame=frame, planned_actions=planned_actions, diagnostics=diagnostics)
     else:
@@ -135,6 +143,7 @@ def plan_bundle(
     *,
     mutable_fields_by_entity: dict[str, list[str]] | None = None,
     existing_row_update_entities: set[str] | None = None,
+    staging: bool = False,
 ) -> PlannedBundle:
     """Plan all source tables against the target model and collect diagnostics."""
     planned_tables: list[PlannedTable] = []
@@ -155,6 +164,7 @@ def plan_bundle(
                 entity_spec,
                 mutable_fields=(mutable_fields_by_entity or {}).get(entity_name),
                 existing_row_update_entities=existing_row_update_entities,
+                staging=staging,
             )
         except ValueError as exc:
             errors.append(str(exc))
@@ -167,7 +177,33 @@ def plan_bundle(
         action_summary = ", ".join(f"{int(count)} {action}" for action, count in action_counts.items())
         infos.append(f"Planned '{entity_name}': {action_summary}")
 
+    if staging:
+        errors.extend(staging_scope_errors(planned_tables))
+
     return PlannedBundle(tables=planned_tables, errors=errors, warnings=warnings, infos=infos)
+
+
+def staging_scope_errors(planned_tables: list[PlannedTable]) -> list[str]:
+    """Return errors for planned work that the isolated staging strategy cannot stage.
+
+    Existing-row updates stay outside this strategy and must not be mixed into a
+    staged dependency graph, so they fail explicitly instead of being dropped.
+    """
+    errors: list[str] = []
+    for planned_table in planned_tables:
+        update_rows = int((planned_table.planned_actions == PlannedRowAction.UPDATE_EXISTING_CANDIDATE).sum())
+        blocked_update_rows = int((planned_table.planned_actions == PlannedRowAction.BLOCK_EXISTING_UPDATE).sum())
+        if update_rows:
+            errors.append(
+                f"Entity '{planned_table.entity_name}' has {update_rows} existing-row update row(s); "
+                "the inline staging strategy does not support existing-row updates"
+            )
+        elif blocked_update_rows:
+            errors.append(
+                f"Entity '{planned_table.entity_name}' has {blocked_update_rows} blocked existing-row update row(s); "
+                "the inline staging strategy does not support existing-row updates"
+            )
+    return errors
 
 
 def _missing_mutable_field_requirements(frame: pd.DataFrame, mutable_fields: list[str]) -> list[str]:

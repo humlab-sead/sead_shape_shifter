@@ -9,6 +9,7 @@ from src.utility import dotget
 
 from .base import ProjectSpecification
 from .entity import EntitySpecification
+from .foreign_key import ForeignKeyRemotePublicIdSpecification
 
 if TYPE_CHECKING:
     from src.reconciliation.mapping_model import MappingCatalog
@@ -149,6 +150,55 @@ class IsProjectSpecification(ProjectSpecification):
         return not self.has_errors()
 
 
+class ForeignKeyValueSourceSpecification(ProjectSpecification):
+    """Validate project FK value-source declarations before target-model conformance."""
+
+    def is_satisfied_by(self, **kwargs) -> bool:
+        """Reject malformed value-source maps and maps without target-model metadata."""
+        self.clear()
+
+        entities = self.project_cfg.get("entities", {})
+        if not isinstance(entities, dict):
+            return True
+
+        metadata = self.project_cfg.get("metadata", {})
+        target_model = metadata.get("target_model") if isinstance(metadata, dict) else None
+
+        for entity_name, entity_cfg in entities.items():
+            if not isinstance(entity_cfg, dict) or "foreign_key_value_sources" not in entity_cfg:
+                continue
+
+            value_sources = entity_cfg["foreign_key_value_sources"]
+            if not isinstance(value_sources, dict):
+                self.add_error(
+                    "foreign_key_value_sources must be a map of target entity names to 'system_id' or 'public_id'.",
+                    entity=entity_name,
+                    field="foreign_key_value_sources",
+                    code="DIRECT_FK_VALUE_SOURCE_INVALID",
+                )
+                continue
+
+            for target_entity, value_source in value_sources.items():
+                if isinstance(value_source, str) and value_source in {"system_id", "public_id"}:
+                    continue
+                self.add_error(
+                    f"Foreign key value source for '{target_entity}' must be 'system_id' or 'public_id'.",
+                    entity=entity_name,
+                    field=f"foreign_key_value_sources.{target_entity}",
+                    code="DIRECT_FK_VALUE_SOURCE_INVALID",
+                )
+
+            if value_sources and not target_model:
+                self.add_error(
+                    "A non-empty foreign_key_value_sources map requires metadata.target_model.",
+                    entity=entity_name,
+                    field="metadata.target_model",
+                    code="DIRECT_FK_TARGET_MODEL_REQUIRED",
+                )
+
+        return not self.has_errors()
+
+
 class MappingSidecarSpecification(ProjectSpecification):
     """Validates that the mapping sidecar is consistent with entity configuration.
 
@@ -203,8 +253,14 @@ class CompositeProjectSpecification(ProjectSpecification):
     This is the main entry point for validating entire project configurations.
     """
 
-    def __init__(self, project_cfg: dict[str, Any], specifications: list[ProjectSpecification] | None = None) -> None:
+    def __init__(
+        self,
+        project_cfg: dict[str, Any],
+        specifications: list[ProjectSpecification] | None = None,
+        mapping_catalog: MappingCatalog | None = None,
+    ) -> None:
         super().__init__(project_cfg)
+        self._mapping_catalog: MappingCatalog | None = mapping_catalog
         self.specifications: list[ProjectSpecification] = specifications or self.get_default_specifications()
 
     def get_default_specifications(self) -> list[ProjectSpecification]:
@@ -219,7 +275,9 @@ class CompositeProjectSpecification(ProjectSpecification):
             EntitiesSpecification(self.project_cfg),
             CircularDependencySpecification(self.project_cfg),
             DataSourceExistsSpecification(self.project_cfg),
-            MappingSidecarSpecification(self.project_cfg),
+            ForeignKeyValueSourceSpecification(self.project_cfg),
+            MappingSidecarSpecification(self.project_cfg, self._mapping_catalog),
+            ForeignKeyRemotePublicIdSpecification(self.project_cfg, self._mapping_catalog),
         ]
 
     def is_satisfied_by(self, **kwargs) -> bool:

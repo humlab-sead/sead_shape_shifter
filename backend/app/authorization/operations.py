@@ -5,13 +5,25 @@ import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from ruamel.yaml import YAML
 from ruamel.yaml.error import YAMLError
 
-from backend.app.authorization.models import ApplicationRole, Grant, GrantSubjectType, ResourceRecord, ResourceType
-from backend.app.authorization.repository import SQLiteAuthorizationRepository
+from backend.app.authorization.models import (
+    ApplicationRole,
+    ApplicationRoleAssignment,
+    AuditEvent,
+    AuthorizationState,
+    Grant,
+    GrantSubjectType,
+    ResourceRecord,
+    ResourceType,
+    StateChange,
+    StateImportPlan,
+)
+from backend.app.authorization.policy import validate_resource_role
+from backend.app.authorization.repository import CURRENT_SCHEMA_VERSION, SQLiteAuthorizationRepository
 
 
 def integrity_check(path: Path) -> bool:
@@ -155,6 +167,482 @@ def export_manifest(path: Path, database: Path) -> dict[str, int]:
     return {"resources": len(resources), "administrators": len(administrators), "grants": sum(len(r["grants"]) for r in resources)}
 
 
+def export_state(path: Path, database: Path, *, include_audit: bool = False) -> dict[str, int]:
+    """Write the complete stored authorization state to a JSON or YAML snapshot.
+
+    The snapshot keeps resource UUIDs, inactive resource generations, every
+    deployment role, and each record's ``created_at`` and ``created_by``, so
+    ``import_state`` can recreate the same records. Resources, grants, and roles
+    are sorted and timestamps are written as ISO strings, so a committed
+    snapshot changes only when a record changes.
+
+    Audit events are left out unless ``include_audit`` is true, because they
+    change on every authorization operation and would dominate a diff. A restore
+    from a snapshot without them keeps the existing audit history.
+    """
+    repository = SQLiteAuthorizationRepository(database)
+    try:
+        state = AuthorizationState(
+            schema_version=repository.schema_version(),
+            resources=tuple(sorted(repository.list_resources(), key=_resource_order)),
+            grants=tuple(sorted(repository.list_all_grants(), key=_grant_order)),
+            application_roles=tuple(sorted(repository.list_all_application_roles(), key=_application_role_order)),
+            audit_events=(tuple(sorted(repository.list_audit_events(), key=_audit_event_order)) if include_audit else None),
+        )
+    finally:
+        repository.close()
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        _write_document(path, _state_to_document(state))
+    except (OSError, YAMLError) as exc:
+        raise ValueError(f"Unable to write authorization snapshot: {exc}") from exc
+    return _state_counts(state)
+
+
+def inspect_state(path: Path) -> dict[str, Any]:
+    """Validate a snapshot and report what a restore would write."""
+    state = _load_state(path)
+    counts: dict[str, Any] = _state_counts(state)
+    counts["audit_events_replaced"] = state.audit_events is not None
+    return counts
+
+
+def plan_state_import(snapshot: Path, database: Path) -> StateImportPlan:
+    """Compare a validated snapshot with stored records without writing.
+
+    Only access-relevant changes are reported. For a grant that means the subject,
+    resource, and role, so a changed ``created_by`` or ``created_at`` on an
+    otherwise identical grant is not listed.
+    """
+    state = _load_state(snapshot)
+    current = _read_state(database)
+    return StateImportPlan(
+        counts=_state_counts(state),
+        changes=_state_changes(state, current),
+        administrators=_remaining_administrators(state),
+        unowned_projects=_unowned_projects(state),
+        audit_events_replaced=state.audit_events is not None,
+    )
+
+
+def import_state(
+    snapshot: Path,
+    database: Path,
+    actor_principal_id: str,
+    *,
+    allow_no_admin: bool = False,
+    allow_unowned_project: bool = False,
+) -> dict[str, int]:
+    """Replace stored authorization records with a validated snapshot.
+
+    The snapshot is validated before anything is written, and the replacement
+    runs in one transaction, so a rejected or failed restore leaves the previous
+    records in place.
+
+    ``allow_no_admin`` and ``allow_unowned_project`` accept a snapshot that would
+    leave the deployment without an administrator, or an active project without
+    an owner. Without them the import raises ``ValueError`` for either condition,
+    because a restore is otherwise the easiest way to lock every user out.
+    """
+    if not actor_principal_id.strip():
+        raise ValueError("An actor principal ID is required")
+    state = _load_state(snapshot)
+    _refuse_destructive_state(
+        state,
+        allow_no_admin=allow_no_admin,
+        allow_unowned_project=allow_unowned_project,
+    )
+    repository = SQLiteAuthorizationRepository(database)
+    try:
+        repository.replace_state(state, actor_principal_id.strip())
+    finally:
+        repository.close()
+    return _state_counts(state)
+
+
+def _refuse_destructive_state(
+    state: AuthorizationState,
+    *,
+    allow_no_admin: bool,
+    allow_unowned_project: bool,
+) -> None:
+    """Raise when a snapshot would remove the last administrator or a project owner."""
+    problems: list[str] = []
+    administrators = _remaining_administrators(state)
+    if not allow_no_admin and not administrators:
+        problems.append("the snapshot leaves the deployment without an administrator; pass --allow-no-admin to accept that")
+    unowned = _unowned_projects(state)
+    if not allow_unowned_project and unowned:
+        listed = ", ".join(unowned)
+        problems.append(
+            f"the snapshot leaves {len(unowned)} active project(s) without an owner ({listed}); pass --allow-unowned-project to accept that"
+        )
+    if problems:
+        raise ValueError("; ".join(problems))
+
+
+def _remaining_administrators(state: AuthorizationState) -> tuple[str, ...]:
+    """Return the principals that would hold the admin role after a restore."""
+    return tuple(sorted({assignment.principal_id for assignment in state.application_roles if assignment.role == ApplicationRole.ADMIN}))
+
+
+def _unowned_projects(state: AuthorizationState) -> tuple[str, ...]:
+    """Return the active projects that would have no owner grant after a restore.
+
+    Ownership is checked per project resource, not per child resource, because a
+    project grant applies to its children.
+    """
+    owned = {grant.resource_id for grant in state.grants if grant.role == "owner"}
+    return tuple(
+        sorted(
+            f"{resource.resource_type.value}:{resource.locator}"
+            for resource in state.resources
+            if resource.resource_type == ResourceType.PROJECT and resource.lifecycle_state == "active" and resource.resource_id not in owned
+        )
+    )
+
+
+def _read_state(database: Path) -> AuthorizationState:
+    """Read the stored state for comparison, without audit events.
+
+    A missing database is reported as empty state rather than created, so
+    ``plan_state_import`` and ``--dry-run`` leave no file behind.
+    """
+    if not database.is_file():
+        return AuthorizationState(schema_version=CURRENT_SCHEMA_VERSION, resources=(), grants=(), application_roles=())
+    repository = SQLiteAuthorizationRepository(database)
+    try:
+        return AuthorizationState(
+            schema_version=repository.schema_version(),
+            resources=tuple(repository.list_resources()),
+            grants=tuple(repository.list_all_grants()),
+            application_roles=tuple(repository.list_all_application_roles()),
+        )
+    finally:
+        repository.close()
+
+
+def _state_changes(snapshot: AuthorizationState, current: AuthorizationState) -> tuple[StateChange, ...]:
+    """Describe how a snapshot differs from the stored records."""
+    labels: dict[UUID, str] = {resource.resource_id: _resource_label(resource) for resource in current.resources}
+    labels.update({resource.resource_id: _resource_label(resource) for resource in snapshot.resources})
+    changes: list[StateChange] = []
+
+    current_resources = {resource.resource_id: resource for resource in current.resources}
+    snapshot_resources = {resource.resource_id: resource for resource in snapshot.resources}
+    for resource_id in sorted(snapshot_resources, key=str):
+        incoming = snapshot_resources[resource_id]
+        existing = current_resources.get(resource_id)
+        if existing is None:
+            changes.append(StateChange("add", "resource", f"{_resource_label(incoming)} [{resource_id}]"))
+        elif existing.locator != incoming.locator:
+            changes.append(StateChange("change", "resource", f"{_resource_label(existing)} -> {_resource_label(incoming)} [{resource_id}]"))
+        elif existing.lifecycle_state != incoming.lifecycle_state:
+            changes.append(
+                StateChange(
+                    "change",
+                    "resource",
+                    f"{_resource_label(incoming)} [{resource_id}] lifecycle {existing.lifecycle_state} -> {incoming.lifecycle_state}",
+                )
+            )
+    for resource_id in sorted(current_resources, key=str):
+        if resource_id not in snapshot_resources:
+            changes.append(StateChange("remove", "resource", f"{_resource_label(current_resources[resource_id])} [{resource_id}]"))
+
+    current_grants = {_grant_key(grant): grant for grant in current.grants}
+    snapshot_grants = {_grant_key(grant): grant for grant in snapshot.grants}
+    for key in sorted(snapshot_grants):
+        if key not in current_grants:
+            changes.append(StateChange("add", "grant", _grant_detail(snapshot_grants[key], labels)))
+    for key in sorted(current_grants):
+        if key not in snapshot_grants:
+            changes.append(StateChange("remove", "grant", _grant_detail(current_grants[key], labels)))
+
+    current_roles = {(assignment.principal_id, assignment.role.value) for assignment in current.application_roles}
+    snapshot_roles = {(assignment.principal_id, assignment.role.value) for assignment in snapshot.application_roles}
+    for principal_id, role in sorted(snapshot_roles - current_roles):
+        changes.append(StateChange("add", "application_role", f"{principal_id} {role}"))
+    for principal_id, role in sorted(current_roles - snapshot_roles):
+        changes.append(StateChange("remove", "application_role", f"{principal_id} {role}"))
+
+    order = {"application_role": 0, "resource": 1, "grant": 2}
+    action_order = {"remove": 0, "change": 1, "add": 2}
+    return tuple(sorted(changes, key=lambda change: (order.get(change.record_type, 9), action_order.get(change.action, 9), change.detail)))
+
+
+def _resource_label(resource: ResourceRecord) -> str:
+    return f"{resource.resource_type.value}:{resource.locator}"
+
+
+def _grant_key(grant: Grant) -> tuple[str, str, str, str]:
+    return grant.subject_type.value, grant.subject_id, str(grant.resource_id), grant.role
+
+
+def _grant_detail(grant: Grant, labels: dict[UUID, str]) -> str:
+    target = labels.get(grant.resource_id, str(grant.resource_id))
+    return f"{grant.subject_type.value}:{grant.subject_id} {grant.role} on {target}"
+
+
+def _state_counts(state: AuthorizationState) -> dict[str, int]:
+    return {
+        "resources": len(state.resources),
+        "grants": len(state.grants),
+        "application_roles": len(state.application_roles),
+        "audit_events": len(state.audit_events or ()),
+    }
+
+
+def _resource_order(resource: ResourceRecord) -> tuple[str, str, str]:
+    return resource.resource_type.value, resource.locator, str(resource.resource_id)
+
+
+def _grant_order(grant: Grant) -> tuple[str, str, str, str]:
+    return str(grant.resource_id), grant.subject_type.value, grant.subject_id, grant.role
+
+
+def _application_role_order(assignment: ApplicationRoleAssignment) -> tuple[str, str]:
+    return assignment.principal_id, assignment.role.value
+
+
+def _audit_event_order(event: AuditEvent) -> tuple[str, str]:
+    return event.occurred_at.isoformat(), str(event.event_id)
+
+
+def _state_to_document(state: AuthorizationState) -> dict[str, Any]:
+    document: dict[str, Any] = {
+        "schema_version": state.schema_version,
+        "resources": [
+            {
+                "resource_id": str(resource.resource_id),
+                "resource_type": resource.resource_type.value,
+                "locator": resource.locator,
+                "lifecycle_state": resource.lifecycle_state,
+                "parent_resource_id": str(resource.parent_resource_id) if resource.parent_resource_id else None,
+            }
+            for resource in state.resources
+        ],
+        "grants": [
+            {
+                "subject_type": grant.subject_type.value,
+                "subject_id": grant.subject_id,
+                "resource_id": str(grant.resource_id),
+                "role": grant.role,
+                "created_at": grant.created_at.isoformat(),
+                "created_by": grant.created_by,
+            }
+            for grant in state.grants
+        ],
+        "application_roles": [
+            {
+                "principal_id": assignment.principal_id,
+                "role": assignment.role.value,
+                "created_at": assignment.created_at.isoformat(),
+                "created_by": assignment.created_by,
+            }
+            for assignment in state.application_roles
+        ],
+    }
+    if state.audit_events is not None:
+        document["audit_events"] = [
+            {
+                "event_id": str(event.event_id),
+                "occurred_at": event.occurred_at.isoformat(),
+                "actor_principal_id": event.actor_principal_id,
+                "event_type": event.event_type,
+                "resource_id": str(event.resource_id) if event.resource_id else None,
+                "action": event.action,
+                "outcome": event.outcome,
+                "correlation_id": event.correlation_id,
+                "subject_type": event.subject_type.value if event.subject_type else None,
+                "subject_id": event.subject_id,
+                "provider": event.provider,
+                "details": event.details,
+            }
+            for event in state.audit_events
+        ]
+    return document
+
+
+def _write_document(path: Path, document: dict[str, Any]) -> None:
+    if path.suffix.lower() in {".yaml", ".yml"}:
+        yaml = YAML()
+        yaml.default_flow_style = False
+        with path.open("w", encoding="utf-8") as output:
+            yaml.dump(document, output)
+    else:
+        path.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
+
+
+def _load_state(path: Path) -> AuthorizationState:
+    """Read a snapshot and check that it can be restored as a whole."""
+    document = _load_document(path, label="authorization snapshot")
+    schema_version = document.get("schema_version")
+    if not isinstance(schema_version, int) or schema_version <= 0:
+        raise ValueError("Authorization snapshot needs a positive integer schema_version")
+    if schema_version > CURRENT_SCHEMA_VERSION:
+        raise ValueError(
+            f"Authorization snapshot schema version {schema_version} is newer than the supported version "
+            f"{CURRENT_SCHEMA_VERSION}; upgrade the application before restoring it"
+        )
+    resources = _snapshot_resources(document.get("resources", []))
+    grants = _snapshot_grants(document.get("grants", []), {resource.resource_id: resource for resource in resources})
+    application_roles = _snapshot_application_roles(document.get("application_roles", []))
+    audit_events = _snapshot_audit_events(document["audit_events"]) if "audit_events" in document else None
+    return AuthorizationState(schema_version, resources, grants, application_roles, audit_events)
+
+
+def _snapshot_resources(items: Any) -> tuple[ResourceRecord, ...]:
+    if not isinstance(items, list):
+        raise ValueError("Snapshot resources must be a list")
+    resources: list[ResourceRecord] = []
+    seen_ids: set[UUID] = set()
+    active_locators: set[tuple[str, str]] = set()
+    for item in items:
+        if not isinstance(item, dict):
+            raise ValueError("Each snapshot resource must be an object")
+        try:
+            resource_id = UUID(str(item["resource_id"]))
+            resource_type = ResourceType(str(item["resource_type"]))
+        except (KeyError, ValueError) as exc:
+            raise ValueError(f"Invalid snapshot resource: {exc}") from exc
+        locator = item.get("locator")
+        if not isinstance(locator, str) or not locator.strip():
+            raise ValueError(f"Snapshot resource {resource_id} needs a non-empty locator")
+        if resource_id in seen_ids:
+            raise ValueError(f"Duplicate snapshot resource_id: {resource_id}")
+        seen_ids.add(resource_id)
+        lifecycle_state = item.get("lifecycle_state") or "active"
+        if lifecycle_state == "active":
+            key = (resource_type.value, locator)
+            if key in active_locators:
+                raise ValueError(f"Duplicate active snapshot resource: {resource_type.value}:{locator}")
+            active_locators.add(key)
+        parent = item.get("parent_resource_id")
+        try:
+            parent_resource_id = UUID(str(parent)) if parent else None
+        except ValueError as exc:
+            raise ValueError(f"Invalid parent_resource_id on snapshot resource {resource_id}") from exc
+        if parent_resource_id == resource_id:
+            raise ValueError(f"Snapshot resource {resource_id} names itself as its parent")
+        resources.append(ResourceRecord(resource_id, resource_type, locator, lifecycle_state, parent_resource_id))
+    for resource in resources:
+        if resource.parent_resource_id is not None and resource.parent_resource_id not in seen_ids:
+            raise ValueError(f"Snapshot resource {resource.resource_id} references an unknown parent")
+    return tuple(resources)
+
+
+def _snapshot_grants(items: Any, resources_by_id: dict[UUID, ResourceRecord]) -> tuple[Grant, ...]:
+    if not isinstance(items, list):
+        raise ValueError("Snapshot grants must be a list")
+    grants: list[Grant] = []
+    seen: set[tuple[str, str, UUID, str]] = set()
+    for item in items:
+        if not isinstance(item, dict):
+            raise ValueError("Each snapshot grant must be an object")
+        try:
+            subject_type = GrantSubjectType(str(item["subject_type"]))
+            resource_id = UUID(str(item["resource_id"]))
+        except (KeyError, ValueError) as exc:
+            raise ValueError(f"Invalid snapshot grant: {exc}") from exc
+        subject_id = item.get("subject_id")
+        role = item.get("role")
+        if not isinstance(subject_id, str) or not subject_id.strip():
+            raise ValueError("Each snapshot grant needs a non-empty subject_id")
+        if not isinstance(role, str) or not role.strip():
+            raise ValueError("Each snapshot grant needs a non-empty role")
+        if subject_type == GrantSubjectType.EVERYONE and subject_id != "authenticated":
+            raise ValueError("Everyone grants must use subject_id 'authenticated'")
+        if subject_type != GrantSubjectType.PRINCIPAL and role == "owner":
+            raise ValueError("Only a principal may receive the owner role")
+        resource = resources_by_id.get(resource_id)
+        if resource is None:
+            raise ValueError(f"Snapshot grant references an unknown resource: {resource_id}")
+        try:
+            validate_resource_role(resource.resource_type, role)
+        except ValueError as exc:
+            raise ValueError(f"Snapshot grant {subject_type.value}:{subject_id} on {_resource_label(resource)}: {exc}") from exc
+        key = (subject_type.value, subject_id, resource_id, role)
+        if key in seen:
+            raise ValueError(f"Duplicate snapshot grant: {subject_type.value}:{subject_id} {role} {resource_id}")
+        seen.add(key)
+        try:
+            created_at = datetime.fromisoformat(str(item["created_at"]))
+        except (KeyError, ValueError) as exc:
+            raise ValueError(f"Invalid created_at on snapshot grant {subject_type.value}:{subject_id}") from exc
+        created_by = item.get("created_by")
+        if not isinstance(created_by, str) or not created_by.strip():
+            raise ValueError(f"Snapshot grant {subject_type.value}:{subject_id} needs created_by")
+        grants.append(Grant(subject_id, resource_id, role, created_at, created_by, subject_type))
+    return tuple(grants)
+
+
+def _snapshot_application_roles(items: Any) -> tuple[ApplicationRoleAssignment, ...]:
+    if not isinstance(items, list):
+        raise ValueError("Snapshot application_roles must be a list")
+    assignments: list[ApplicationRoleAssignment] = []
+    seen: set[tuple[str, str]] = set()
+    for item in items:
+        if not isinstance(item, dict):
+            raise ValueError("Each snapshot application role must be an object")
+        principal_id = item.get("principal_id")
+        if not isinstance(principal_id, str) or not principal_id.strip():
+            raise ValueError("Each snapshot application role needs a non-empty principal_id")
+        try:
+            role = ApplicationRole(str(item["role"]))
+        except (KeyError, ValueError) as exc:
+            raise ValueError(f"Invalid snapshot application role: {exc}") from exc
+        key = (principal_id, role.value)
+        if key in seen:
+            raise ValueError(f"Duplicate snapshot application role: {principal_id} {role.value}")
+        seen.add(key)
+        try:
+            created_at = datetime.fromisoformat(str(item["created_at"]))
+        except (KeyError, ValueError) as exc:
+            raise ValueError(f"Invalid created_at on snapshot application role {principal_id}") from exc
+        created_by = item.get("created_by")
+        if not isinstance(created_by, str) or not created_by.strip():
+            raise ValueError(f"Snapshot application role {principal_id} needs created_by")
+        assignments.append(ApplicationRoleAssignment(principal_id, role, created_at, created_by))
+    return tuple(assignments)
+
+
+def _snapshot_audit_events(items: Any) -> tuple[AuditEvent, ...]:
+    if not isinstance(items, list):
+        raise ValueError("Snapshot audit_events must be a list")
+    events: list[AuditEvent] = []
+    seen: set[UUID] = set()
+    for item in items:
+        if not isinstance(item, dict):
+            raise ValueError("Each snapshot audit event must be an object")
+        try:
+            event_id = UUID(str(item["event_id"]))
+            occurred_at = datetime.fromisoformat(str(item["occurred_at"]))
+        except (KeyError, ValueError) as exc:
+            raise ValueError(f"Invalid snapshot audit event: {exc}") from exc
+        if event_id in seen:
+            raise ValueError(f"Duplicate snapshot audit event: {event_id}")
+        seen.add(event_id)
+        subject_type = item.get("subject_type")
+        events.append(
+            AuditEvent(
+                event_id=event_id,
+                occurred_at=occurred_at,
+                actor_principal_id=str(item.get("actor_principal_id") or ""),
+                event_type=str(item.get("event_type") or ""),
+                resource_id=UUID(str(item["resource_id"])) if item.get("resource_id") else None,
+                action=item.get("action"),
+                outcome=str(item.get("outcome") or ""),
+                correlation_id=item.get("correlation_id"),
+                subject_type=GrantSubjectType(str(subject_type)) if subject_type else None,
+                subject_id=item.get("subject_id"),
+                provider=item.get("provider"),
+                details=item.get("details"),
+            )
+        )
+    return tuple(events)
+
+
 def initialize_database(path: Path) -> None:
     """Create or migrate the authorization database schema."""
     repository = SQLiteAuthorizationRepository(path)
@@ -184,11 +672,9 @@ def development_bootstrap_required(
         if has_development_admin is None:
             return True
 
-        registered_resources = {
+        registered_resources = {  # pylint: disable=unnecessary-comprehension
             (resource_type, locator)
-            for resource_type, locator in connection.execute(
-                "SELECT resource_type, locator FROM resource WHERE lifecycle_state = 'active'"
-            )
+            for resource_type, locator in connection.execute("SELECT resource_type, locator FROM resource WHERE lifecycle_state = 'active'")
         }
 
     expected_resources = {("project", locator) for locator in project_locators}
@@ -196,10 +682,8 @@ def development_bootstrap_required(
     return not expected_resources.issubset(registered_resources)
 
 
-
-
-def _load_manifest(path: Path) -> dict[str, Any]:
-    """Read a manifest as JSON or YAML and check that it holds an object."""
+def _load_document(path: Path, *, label: str) -> dict[str, Any]:
+    """Read a JSON or YAML file and check that it holds an object."""
     try:
         content = path.read_text(encoding="utf-8")
         suffix = path.suffix.lower()
@@ -208,7 +692,7 @@ def _load_manifest(path: Path) -> dict[str, Any]:
         elif suffix == ".json":
             value = json.loads(content)
         else:
-            # A manifest can arrive through a pipe, for example as
+            # A document can arrive through a pipe, for example as
             # --manifest /dev/stdin. Such a path carries no extension, so choose
             # the parser from the content instead of the name.
             try:
@@ -216,14 +700,14 @@ def _load_manifest(path: Path) -> dict[str, Any]:
             except json.JSONDecodeError:
                 value = YAML(typ="safe").load(content)
     except (OSError, json.JSONDecodeError, YAMLError) as exc:
-        raise ValueError(f"Invalid authorization manifest: {exc}") from exc
+        raise ValueError(f"Invalid {label}: {exc}") from exc
     if not isinstance(value, dict):
-        raise ValueError("Authorization manifest must contain an object")
+        raise ValueError(f"{label.capitalize()} must contain an object")
     return value
 
 
 def _load_validated_manifest(path: Path, *, allow_authenticated_everyone: bool = False) -> dict[str, Any]:
-    manifest = _load_manifest(path)
+    manifest = _load_document(path, label="authorization manifest")
     resources = manifest.get("resources", [])
     administrators = manifest.get("administrators", [])
     if not isinstance(resources, list) or not isinstance(administrators, list):
@@ -249,7 +733,7 @@ def _validate_resource(resource: Any, *, allow_authenticated_everyone: bool = Fa
     if not isinstance(resource["resource_type"], str) or not isinstance(resource["locator"], str) or not resource["locator"].strip():
         raise ValueError("Each manifest resource needs resource_type and locator")
     try:
-        ResourceType(resource["resource_type"])
+        resource_type = ResourceType(resource["resource_type"])
     except ValueError as exc:
         raise ValueError(f"Unknown manifest resource_type: {resource['resource_type']}") from exc
     grants = resource.get("grants", [])
@@ -272,6 +756,13 @@ def _validate_resource(resource: Any, *, allow_authenticated_everyone: bool = Fa
             raise ValueError("Authenticated everyone grants are disabled by deployment configuration")
         if not isinstance(grant.get("role"), str) or not grant["role"].strip():
             raise ValueError("Each manifest grant needs a non-empty role")
+        role = grant["role"].strip()
+        try:
+            validate_resource_role(resource_type, role)
+        except ValueError as exc:
+            raise ValueError(
+                f"Manifest grant {subject_type.value}:{subject_id} on {resource_type.value}:{resource['locator']}: {exc}"
+            ) from exc
 
 
 def _apply_administrators(

@@ -1,6 +1,5 @@
 """Deploy SQL generation for the SEAD change request ingester."""
 
-import gzip
 import re
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
@@ -20,11 +19,29 @@ from ingesters.sead_change_request.contracts import (
     SubmissionContext,
     resolve_bundle_name,
 )
-from src.target_model.models import TargetModel
+from ingesters.sead_change_request.inline_staging_sql import render_inline_staging_deploy
+from ingesters.sead_change_request.sql_rendering import (
+    drop_timezone,
+    encode_bundle_file_content,
+    is_date_type,
+    is_midnight,
+    is_timezone_aware_type,
+    normalize_column_type,
+)
+from ingesters.sead_change_request.sql_rendering import quote_identifier as _quote_identifier
+from ingesters.sead_change_request.sql_rendering import quote_relation as _quote_relation
+from ingesters.sead_change_request.sql_rendering import quote_string as _quote_string
+from ingesters.sead_change_request.sql_rendering import render_literal as _render_literal
+from ingesters.sead_change_request.sql_rendering import renderable_columns as _renderable_columns
+from ingesters.sead_change_request.sql_rendering import validate_target_temporal_types as _validate_target_temporal_types
+from src.target_model.models import EntitySpec, TargetModel
 
 DEFAULT_DEPLOY_ARTIFACT_STRATEGY = "inline_insert"
 COPY_CSV_DEPLOY_ARTIFACT_STRATEGY = "copy_csv"
+INLINE_STAGING_DEPLOY_ARTIFACT_STRATEGY = "inline_staging"
+STAGING_TARGET_SCHEMA_KEY = "staging_target_schema"
 SAFE_BUNDLE_TABLE_NAME_PATTERN = re.compile(r"^[A-Za-z0-9_]+$")
+SAFE_SCHEMA_NAME_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
 class DeployArtifactStrategy(Protocol):
@@ -54,13 +71,24 @@ class InlineInsertDeployStrategy:
         for entity_name, package_table in change_package.tables.items():
             entity_spec = target_model.entities[entity_name]
             table_name = entity_spec.target_table or entity_name
+            column_types = _declared_column_types(entity_spec)
+            _validate_target_temporal_types(entity_name, package_table.frame.columns, column_types)
             generated_columns = {name for name, column in entity_spec.columns.items() if column.generated}
             for row_index, row in package_table.frame.iterrows():
                 if _is_update_row(package_table, row_index):
-                    statements.append(_render_update_statement(table_name, row, entity_spec.public_id, package_table.mutable_fields))
+                    statements.append(
+                        _render_update_statement(
+                            table_name,
+                            row,
+                            entity_spec.public_id,
+                            package_table.mutable_fields,
+                            column_types,
+                        )
+                    )
                 else:
-                    statements.append(_render_insert_statement(table_name, row, generated_columns))
+                    statements.append(_render_insert_statement(table_name, row, generated_columns, column_types))
 
+        statements = _add_sequence_synchronization(change_package, target_model, statements)
         deploy_sql_lines = ["BEGIN;", "SET CONSTRAINTS ALL DEFERRED;"]
         deploy_sql_lines.extend(statements)
         deploy_sql_lines.append("COMMIT;")
@@ -71,6 +99,7 @@ class InlineInsertDeployStrategy:
             statements=statements,
             artifact_metadata={
                 "deploy_statement_count": len(statements),
+                **_direct_fk_metadata(change_package, target_model),
                 **_common_contract_metadata(submission_context, statements=statements, bundle_files={}),
             },
         )
@@ -95,6 +124,8 @@ class CopyCsvDeployStrategy:
         for entity_name, package_table in change_package.tables.items():
             entity_spec = target_model.entities[entity_name]
             table_name = entity_spec.target_table or entity_name
+            column_types = _declared_column_types(entity_spec)
+            _validate_target_temporal_types(entity_name, package_table.frame.columns, column_types)
             insert_mask, update_mask = _package_row_masks(package_table)
 
             if bool(insert_mask.any()):
@@ -104,7 +135,7 @@ class CopyCsvDeployStrategy:
                     bundle_name = _artifact_directory_name(submission_context)
                     payload_relative_path = _build_bundle_payload_relative_path(bundle_name, table_name)
                     bundle_files[f"deploy/{payload_relative_path}"] = _render_copy_csv_bundle_file(
-                        package_table.frame.loc[insert_mask], columns
+                        package_table.frame.loc[insert_mask], columns, column_types
                     )
                     emitted_table_order.append(table_name)
                     emitted_row_counts[table_name] = len(package_table.frame.loc[insert_mask].index)
@@ -112,8 +143,17 @@ class CopyCsvDeployStrategy:
 
             if bool(update_mask.any()):
                 for _, row in package_table.frame.loc[update_mask].iterrows():
-                    statements.append(_render_update_statement(table_name, row, entity_spec.public_id, package_table.mutable_fields))
+                    statements.append(
+                        _render_update_statement(
+                            table_name,
+                            row,
+                            entity_spec.public_id,
+                            package_table.mutable_fields,
+                            column_types,
+                        )
+                    )
 
+        statements = _add_sequence_synchronization(change_package, target_model, statements)
         deploy_sql_lines = ["BEGIN;", "SET CONSTRAINTS ALL DEFERRED;"]
         deploy_sql_lines.extend(statements)
         deploy_sql_lines.append("COMMIT;")
@@ -125,6 +165,7 @@ class CopyCsvDeployStrategy:
             artifact_metadata={
                 "deploy_statement_count": len(statements),
                 "bundle_file_count": len(bundle_files),
+                **_direct_fk_metadata(change_package, target_model),
                 **_common_contract_metadata(
                     submission_context,
                     statements=statements,
@@ -137,6 +178,46 @@ class CopyCsvDeployStrategy:
         )
 
 
+class InlineStagingDeployStrategy:
+    """Deploy strategy that stages rows and allocates child IDs during deployment."""
+
+    strategy_name = INLINE_STAGING_DEPLOY_ARTIFACT_STRATEGY
+
+    def __init__(self, *, target_schema: str) -> None:
+        self.target_schema = target_schema
+
+    def build_artifact(
+        self,
+        change_package: ChangeRequestPackage,
+        target_model: TargetModel,
+        submission_context: SubmissionContext,
+    ) -> DeployArtifact:
+        """Render the transactional staging artifact for one explicit schema."""
+        if change_package.target_schema not in (None, self.target_schema):
+            raise ValueError(
+                f"Staging package targets schema '{change_package.target_schema}' but the deployment schema is " f"'{self.target_schema}'"
+            )
+
+        statements = render_inline_staging_deploy(change_package, target_model, self.target_schema)
+        deploy_sql_lines = ["BEGIN;", "SET CONSTRAINTS ALL DEFERRED;"]
+        deploy_sql_lines.extend(statements)
+        deploy_sql_lines.append("COMMIT;")
+        return _build_deploy_artifact_payload(
+            strategy_name=self.strategy_name,
+            submission_context=submission_context,
+            deploy_sql_body="\n".join(deploy_sql_lines),
+            statements=statements,
+            artifact_metadata={
+                "deploy_statement_count": len(statements),
+                "staging_target_schema": self.target_schema,
+                "staged_table_count": len(change_package.tables),
+                "known_id_mapping_count": len(change_package.known_id_mappings),
+                **_direct_fk_metadata(change_package, target_model),
+                **_common_contract_metadata(submission_context, statements=statements, bundle_files={}),
+            },
+        )
+
+
 def build_deploy_artifact(
     change_package: ChangeRequestPackage,
     target_model: TargetModel,
@@ -144,27 +225,65 @@ def build_deploy_artifact(
     strategy: DeployArtifactStrategy | str | None = None,
 ) -> DeployArtifact:
     """Build the in-memory deploy artifact."""
-    resolved_strategy = resolve_deploy_artifact_strategy(strategy)
+    resolved_strategy = resolve_deploy_artifact_strategy(strategy, staging_target_schema=change_package.target_schema)
     return resolved_strategy.build_artifact(change_package, target_model, submission_context)
 
 
-def resolve_deploy_artifact_strategy(strategy: DeployArtifactStrategy | str | None = None) -> DeployArtifactStrategy:
-    """Resolve the configured deploy artifact strategy to a concrete renderer."""
-    if strategy is None:
+def resolve_deploy_artifact_strategy(
+    strategy: DeployArtifactStrategy | str | None = None,
+    *,
+    staging_target_schema: str | None = None,
+) -> DeployArtifactStrategy:
+    """Resolve the configured deploy artifact strategy to a concrete renderer.
+
+    ``inline_staging`` requires an explicit ``staging_target_schema`` because the
+    deployed database contains the target table names in more than one schema. A
+    schema supplied for any other strategy is rejected so the configuration cannot
+    imply staging while rendering direct inserts.
+    """
+    normalized_schema = _validate_staging_target_schema(staging_target_schema)
+
+    if strategy is None or (isinstance(strategy, str) and strategy.strip().lower() == DEFAULT_DEPLOY_ARTIFACT_STRATEGY):
+        _reject_unexpected_staging_schema(normalized_schema, DEFAULT_DEPLOY_ARTIFACT_STRATEGY)
         return InlineInsertDeployStrategy()
 
     if isinstance(strategy, str):
         normalized_strategy = strategy.strip().lower()
-        if normalized_strategy == DEFAULT_DEPLOY_ARTIFACT_STRATEGY:
-            return InlineInsertDeployStrategy()
         if normalized_strategy == COPY_CSV_DEPLOY_ARTIFACT_STRATEGY:
+            _reject_unexpected_staging_schema(normalized_schema, COPY_CSV_DEPLOY_ARTIFACT_STRATEGY)
             return CopyCsvDeployStrategy()
+        if normalized_strategy == INLINE_STAGING_DEPLOY_ARTIFACT_STRATEGY:
+            if normalized_schema is None:
+                raise ValueError(
+                    "Deploy strategy 'inline_staging' requires a non-empty 'staging_target_schema'; "
+                    "target table names exist in more than one schema"
+                )
+            return InlineStagingDeployStrategy(target_schema=normalized_schema)
         raise ValueError(
             "Unsupported deploy strategy "
-            f"'{strategy}'; expected '{DEFAULT_DEPLOY_ARTIFACT_STRATEGY}' or '{COPY_CSV_DEPLOY_ARTIFACT_STRATEGY}'"
+            f"'{strategy}'; expected '{DEFAULT_DEPLOY_ARTIFACT_STRATEGY}', '{COPY_CSV_DEPLOY_ARTIFACT_STRATEGY}', "
+            f"or '{INLINE_STAGING_DEPLOY_ARTIFACT_STRATEGY}'"
         )
 
     return strategy
+
+
+def _validate_staging_target_schema(staging_target_schema: str | None) -> str | None:
+    """Return a validated schema identifier or ``None``."""
+    if staging_target_schema is None:
+        return None
+    if not isinstance(staging_target_schema, str) or not staging_target_schema.strip():
+        raise ValueError("'staging_target_schema' must be a non-empty string when provided")
+    normalized = staging_target_schema.strip()
+    if not SAFE_SCHEMA_NAME_PATTERN.fullmatch(normalized):
+        raise ValueError(f"Unsafe 'staging_target_schema' value '{normalized}'; expected only letters, digits, and underscores")
+    return normalized
+
+
+def _reject_unexpected_staging_schema(staging_target_schema: str | None, strategy_name: str) -> None:
+    """Reject a staging schema supplied for a strategy that does not stage."""
+    if staging_target_schema is not None:
+        raise ValueError(f"Deploy strategy '{strategy_name}' does not accept 'staging_target_schema'")
 
 
 def _build_revert_placeholder_sql() -> str:
@@ -173,7 +292,7 @@ def _build_revert_placeholder_sql() -> str:
         [
             "BEGIN;",
             "DO $$ BEGIN",
-            "    RAISE EXCEPTION 'Rollback is not implemented for this Delivery 1 change package.';",
+            "    RAISE EXCEPTION 'Rollback is not implemented for this MVP Delivery change package.';",
             "END $$;",
             "ROLLBACK;",
         ]
@@ -186,7 +305,7 @@ def _build_verify_placeholder_sql() -> str:
         [
             "BEGIN;",
             "DO $$ BEGIN",
-            "    RAISE EXCEPTION 'Verification is not implemented for this Delivery 1 change package.';",
+            "    RAISE EXCEPTION 'Verification is not implemented for this MVP Delivery change package.';",
             "END $$;",
             "ROLLBACK;",
         ]
@@ -233,6 +352,8 @@ def _base_deploy_metadata(submission_context: SubmissionContext, strategy_name: 
         "timestamp": submission_context.timestamp.isoformat(),
         "binding_set_uuid": submission_context.binding_set_uuid,
         "change_request_name": submission_context.change_request_name,
+        "scope_name": submission_context.scope_name,
+        "run_id": submission_context.run_id,
         "deploy_strategy": strategy_name,
         "non_revertible": True,
         "verify_placeholder": True,
@@ -242,7 +363,7 @@ def _base_deploy_metadata(submission_context: SubmissionContext, strategy_name: 
 def _base_deploy_artifact_metadata(submission_context: SubmissionContext, strategy_name: str) -> dict[str, object]:
     """Build the shared persisted metadata artifact payload for a rendered deploy artifact."""
     return {
-        "artifact_type": "delivery_1_change_package",
+        "artifact_type": "mvp_delivery_change_package",
         "contract_version": 1,
         "deploy_strategy": strategy_name,
         "non_revertible": True,
@@ -251,12 +372,60 @@ def _base_deploy_artifact_metadata(submission_context: SubmissionContext, strate
         "project_name": submission_context.project_name,
         "binding_set_uuid": submission_context.binding_set_uuid,
         "change_request_name": submission_context.change_request_name,
+        "scope_name": submission_context.scope_name,
+        "run_id": submission_context.run_id,
         "cr_name": _artifact_directory_name(submission_context),
         "datatype": _resolved_datatype(submission_context),
         "identifier": _resolved_identifier(submission_context),
         "dispatch_date": submission_context.timestamp.date().isoformat(),
         "description": _resolved_description(submission_context),
         "issue_identifier": _resolved_issue_identifier(submission_context),
+    }
+
+
+def _direct_fk_metadata(change_package: ChangeRequestPackage, target_model: TargetModel) -> dict[str, object]:
+    """Return manifest entries for direct FKs with a non-null packaged value."""
+    used_foreign_keys: list[dict[str, str]] = []
+    for direct_fk in change_package.direct_foreign_keys:
+        package_table = change_package.tables.get(direct_fk.source_entity)
+        source_spec = target_model.entities.get(direct_fk.source_entity)
+        if package_table is None or source_spec is None or direct_fk.column_name not in package_table.frame.columns:
+            continue
+        column_spec = source_spec.columns.get(direct_fk.column_name)
+        if column_spec is not None and column_spec.generated:
+            continue
+        used = False
+        for row_index, row in package_table.frame.iterrows():
+            if _is_update_row(package_table, row_index):
+                assigned_columns = update_assignment_columns(row, source_spec.public_id or "", package_table.mutable_fields)
+                if direct_fk.column_name not in assigned_columns:
+                    continue
+            elif package_table.row_states.loc[row_index] not in {
+                ChangeRowState.NEWLY_ALLOCATED_ENTITY,
+                ChangeRowState.DERIVED_BRIDGE_ROW,
+                ChangeRowState.PENDING_DEPLOYMENT_ID,
+            }:
+                continue
+            if pd.notna(row[direct_fk.column_name]):
+                used = True
+                break
+        if not used:
+            continue
+        used_foreign_keys.append(
+            {
+                "source_entity": direct_fk.source_entity,
+                "target_entity": direct_fk.target_entity,
+                "column": direct_fk.column_name,
+            }
+        )
+
+    if not used_foreign_keys:
+        return {}
+    return {
+        "direct_target_id_foreign_keys": sorted(
+            used_foreign_keys,
+            key=lambda item: (item["source_entity"], item["target_entity"], item["column"]),
+        )
     }
 
 
@@ -325,11 +494,22 @@ def _resolved_author(submission_context: SubmissionContext) -> str:
     return submission_context.author or "unknown"
 
 
-def _render_insert_statement(table_name: str, row: pd.Series, generated_columns: set[str] | None = None) -> str:
+def _declared_column_types(entity_spec: EntitySpec) -> dict[str, str | None]:
+    """Return the declared target type for each column of one entity."""
+    return {column_name: column_spec.type for column_name, column_spec in entity_spec.columns.items()}
+
+
+def _render_insert_statement(
+    table_name: str,
+    row: pd.Series,
+    generated_columns: set[str] | None = None,
+    column_types: dict[str, str | None] | None = None,
+) -> str:
     """Render a single INSERT statement from a projected row."""
+    declared_types = column_types or {}
     columns = _renderable_columns(row, generated_columns)
     identifiers = ", ".join(_quote_identifier(column) for column in columns)
-    values = ", ".join(_render_literal(row[column]) for column in columns)
+    values = ", ".join(_render_literal(row[column], declared_types.get(column)) for column in columns)
     return f"INSERT INTO {_quote_identifier(table_name)} ({identifiers}) VALUES ({values});"
 
 
@@ -338,6 +518,7 @@ def _render_update_statement(
     row: pd.Series,
     public_id_column: str | None,
     mutable_fields: list[str] | None,
+    column_types: dict[str, str | None] | None = None,
 ) -> str:
     """Render a single UPDATE statement for an accepted existing-row update."""
     if not public_id_column:
@@ -347,12 +528,15 @@ def _render_update_statement(
             f"Cannot render update statement for '{table_name}' because '{public_id_column}' is missing from the projected row"
         )
 
-    set_columns = _update_assignment_columns(row, public_id_column, mutable_fields)
+    declared_types = column_types or {}
+    set_columns = update_assignment_columns(row, public_id_column, mutable_fields)
     if not set_columns:
         raise ValueError(f"Cannot render update statement for '{table_name}' because no mutable columns were available")
 
-    assignments = ", ".join(f"{_quote_identifier(column)} = {_render_literal(row[column])}" for column in set_columns)
-    where_clause = f"{_quote_identifier(public_id_column)} = {_render_literal(row[public_id_column])}"
+    assignments = ", ".join(
+        f"{_quote_identifier(column)} = {_render_literal(row[column], declared_types.get(column))}" for column in set_columns
+    )
+    where_clause = f"{_quote_identifier(public_id_column)} = {_render_literal(row[public_id_column], declared_types.get(public_id_column))}"
     return f"UPDATE {_quote_identifier(table_name)} SET {assignments} WHERE {where_clause};"
 
 
@@ -366,19 +550,24 @@ def _render_copy_statement(table_name: str, columns: list[str], relative_path: s
     )
 
 
-def _render_copy_csv_bundle_file(frame: pd.DataFrame, columns: list[str]) -> str:
+def _render_copy_csv_bundle_file(
+    frame: pd.DataFrame,
+    columns: list[str],
+    column_types: dict[str, str | None] | None = None,
+) -> str:
     """Render a tab-delimited PostgreSQL CSV payload sidecar file for a prepared table."""
+    declared_types = column_types or {}
     buffer = StringIO()
 
     for _, row in frame.loc[:, columns].iterrows():
-        rendered_fields = [_render_copy_csv_field(row[column]) for column in columns]
+        rendered_fields = [_render_copy_csv_field(row[column], declared_types.get(column)) for column in columns]
         buffer.write("\t".join(rendered_fields))
         buffer.write("\n")
 
     return buffer.getvalue()
 
 
-def _render_copy_csv_field(value: object) -> str:
+def _render_copy_csv_field(value: object, column_type: str | None = None) -> str:
     """Render one field according to the hardened copy_csv contract."""
     scalar_value = cast(Any, value)
     if value is None or pd.isna(scalar_value):
@@ -389,27 +578,24 @@ def _render_copy_csv_field(value: object) -> str:
         return str(value)
     if isinstance(value, Real):
         return _render_copy_csv_real(value)
-    if isinstance(value, pd.Timestamp):
-        return _quote_copy_csv_text(_render_copy_csv_timestamp(value))
-    if isinstance(value, datetime):
-        return _quote_copy_csv_text(value.isoformat())
+    if isinstance(value, (pd.Timestamp, datetime)):
+        return _quote_copy_csv_text(_render_copy_csv_timestamp(pd.Timestamp(value), column_type))
 
     return _quote_copy_csv_text(str(value))
 
 
-def _render_copy_csv_timestamp(value: pd.Timestamp) -> str:
-    """Render pandas timestamps using the hardened copy_csv date-only contract."""
-    if (
-        value.tz is None  #  pylint: disable=too-many-boolean-expressions
-        and value.hour == 0
-        and value.minute == 0
-        and value.second == 0
-        and value.microsecond == 0
-        and value.nanosecond == 0
-    ):
+def _render_copy_csv_timestamp(value: pd.Timestamp, column_type: str | None = None) -> str:
+    """Render pandas timestamps using the target column type and copy_csv date-only contract."""
+    if is_timezone_aware_type(column_type):
+        raise ValueError(f"Target column type '{column_type}' is timezone-aware; normalized values must target a timezone-naive column")
+    if is_date_type(column_type):
         return value.date().isoformat()
 
-    return value.isoformat()
+    naive_value = drop_timezone(value)
+    if not normalize_column_type(column_type) and is_midnight(naive_value):
+        return naive_value.date().isoformat()
+
+    return naive_value.isoformat()
 
 
 def _render_copy_csv_real(value: Real) -> str:
@@ -428,28 +614,6 @@ def _render_copy_csv_real(value: Real) -> str:
     return "0" if rendered == "-0" else rendered
 
 
-def _renderable_columns(row_like: pd.Series | pd.DataFrame, excluded_columns: set[str] | None = None) -> list[str]:
-    """Return non-internal column names in stable order for artifact rendering."""
-    excluded = excluded_columns or set()
-    if isinstance(row_like, pd.DataFrame):
-        return [
-            str(column)
-            for column in row_like.columns
-            if str(column) not in excluded
-            and not str(column).startswith("_")
-            and not str(column).endswith("__existing")
-            and str(column) != "system_id"
-        ]
-    return [
-        str(column)
-        for column in row_like.index
-        if str(column) not in excluded
-        and not str(column).startswith("_")
-        and not str(column).endswith("__existing")
-        and str(column) != "system_id"
-    ]
-
-
 def _package_row_masks(package_table: ChangeRequestTable) -> tuple[pd.Series, pd.Series]:
     """Return the insert and update masks for one packaged table."""
     insert_mask = package_table.row_states.isin({ChangeRowState.NEWLY_ALLOCATED_ENTITY, ChangeRowState.DERIVED_BRIDGE_ROW})
@@ -459,6 +623,63 @@ def _package_row_masks(package_table: ChangeRequestTable) -> tuple[pd.Series, pd
     return insert_mask, update_mask
 
 
+def _add_sequence_synchronization(
+    change_package: ChangeRequestPackage,
+    target_model: TargetModel,
+    data_statements: list[str],
+) -> list[str]:
+    """Lock and advance target sequences for tables receiving SIMS-assigned IDs."""
+    sequence_targets: set[tuple[str, str]] = set()
+    for entity_name, package_table in change_package.tables.items():
+        entity_spec = target_model.entities[entity_name]
+        if not entity_spec.synchronize_sequence_after_insert:
+            continue
+        insert_mask, _ = _package_row_masks(package_table)
+        if not bool(insert_mask.any()):
+            continue
+        if not entity_spec.target_table or not entity_spec.public_id:
+            raise ValueError(
+                f"Entity '{entity_name}' synchronizes a database sequence after insert " "but is missing target_table or public_id metadata"
+            )
+        sequence_targets.add((entity_spec.target_table, entity_spec.public_id))
+
+    if not sequence_targets:
+        return data_statements
+
+    locks = [f"LOCK TABLE {_quote_relation(table_name)} IN SHARE ROW EXCLUSIVE MODE;" for table_name, _ in sorted(sequence_targets)]
+    synchronization = [_render_sequence_synchronization(table_name, public_id) for table_name, public_id in sorted(sequence_targets)]
+    return [*locks, *data_statements, *synchronization]
+
+
+def _render_sequence_synchronization(table_name: str, public_id: str) -> str:
+    """Advance a target sequence past the highest row ID after artifact inserts."""
+    table_literal = _quote_string(table_name)
+    column_literal = _quote_string(public_id)
+    return "\n".join(
+        [
+            "DO $shape_shifter_sequence_sync$",
+            "DECLARE",
+            f"    target_table regclass := {table_literal}::regclass;",
+            f"    target_column text := {column_literal};",
+            "    target_sequence text;",
+            "    sequence_value bigint;",
+            "    table_max_id bigint;",
+            "BEGIN",
+            "    target_sequence := pg_get_serial_sequence(target_table::text, target_column);",
+            "    IF target_sequence IS NULL THEN",
+            "        RAISE EXCEPTION 'No PostgreSQL sequence is associated with %.%', target_table, target_column;",
+            "    END IF;",
+            "    EXECUTE format('SELECT last_value FROM %s', target_sequence::regclass) INTO sequence_value;",
+            "    EXECUTE format('SELECT COALESCE(MAX(%I), 0) FROM %s', target_column, target_table) INTO table_max_id;",
+            "    IF sequence_value <= table_max_id THEN",
+            "        PERFORM setval(target_sequence::regclass, table_max_id, true);",
+            "    END IF;",
+            "END",
+            "$shape_shifter_sequence_sync$;",
+        ]
+    )
+
+
 def _is_update_row(package_table: ChangeRequestTable, row_index: object) -> bool:
     """Return True when one packaged row should be rendered as an UPDATE statement."""
     if package_table.planned_actions is None:
@@ -466,7 +687,7 @@ def _is_update_row(package_table: ChangeRequestTable, row_index: object) -> bool
     return package_table.planned_actions.loc[row_index] == PlannedRowAction.UPDATE_EXISTING_CANDIDATE  # type: ignore
 
 
-def _update_assignment_columns(row: pd.Series, public_id_column: str, mutable_fields: list[str] | None) -> list[str]:
+def update_assignment_columns(row: pd.Series, public_id_column: str, mutable_fields: list[str] | None) -> list[str]:
     """Return the columns that should be updated for one existing-row update."""
     if mutable_fields is not None:
         columns: list[str] = []
@@ -496,31 +717,6 @@ def _update_assignment_columns(row: pd.Series, public_id_column: str, mutable_fi
     return columns
 
 
-def _quote_identifier(identifier: str) -> str:
-    escaped = identifier.replace('"', '""')
-    return f'"{escaped}"'
-
-
-def _render_literal(value: object) -> str:
-    scalar_value = cast(Any, value)
-    if value is None or pd.isna(scalar_value):
-        return "NULL"
-    if isinstance(value, bool):
-        return "TRUE" if value else "FALSE"
-    if isinstance(value, Integral):
-        return str(value)
-    if isinstance(value, Real):
-        return repr(value)
-    if isinstance(value, (datetime, pd.Timestamp)):
-        return _quote_string(value.isoformat())
-    return _quote_string(str(value))
-
-
-def _quote_string(value: str) -> str:
-    escaped = value.replace("'", "''")
-    return f"'{escaped}'"
-
-
 def _quote_copy_path(value: str) -> str:
     """Escape a relative artifact path for use inside a quoted \\copy path literal."""
     return value.replace("'", "''")
@@ -534,14 +730,6 @@ def _quote_copy_csv_text(value: str) -> str:
     needs_quotes = any(character in value for character in ("\t", "\n", "\r", '"'))
     escaped = value.replace('"', '""')
     return f'"{escaped}"' if needs_quotes else escaped
-
-
-def encode_bundle_file_content(relative_path: str, content: str) -> bytes:
-    """Encode bundle content exactly as it will be written to disk."""
-    encoded = content.encode("utf-8")
-    if relative_path.endswith(".gz"):
-        return gzip.compress(encoded, mtime=0)
-    return encoded
 
 
 def _build_bundle_payload_relative_path(bundle_name: str, table_name: str) -> str:

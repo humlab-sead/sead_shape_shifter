@@ -12,6 +12,7 @@ class ProcessState:
     def __init__(self, project: ShapeShiftProject, table_store: TableStore, target_entities: set[str] | None = None) -> None:
         self.project: ShapeShiftProject = project
         self.table_store: TableStore = table_store
+        self.incomplete_entities: set[str] = set()
         # Resolve target entities through the project to ensure dependencies are included consistently.
         # Filter to only entities that actually exist in the project config — FK references to
         # undefined entities (e.g. from a stale cache or partial config) are silently excluded.
@@ -37,6 +38,10 @@ class ProcessState:
             return set()
         return self.project.get_table(entity_name=entity).depends_on - self.processed_entities
 
+    def mark_incomplete(self, entity: str) -> None:
+        """Exclude an incomplete entity from processing without satisfying its dependencies."""
+        self.incomplete_entities.add(entity)
+
     def get_all_unmet_dependencies(self) -> dict[str, set[str]]:
         unmet_dependencies: dict[str, set[str]] = {
             entity: self.get_unmet_dependencies(entity=entity) for entity in self.unprocessed_entities
@@ -55,7 +60,7 @@ class ProcessState:
     @property
     def unprocessed_entities(self) -> set[str]:
         """Return the set of unprocessed target entities."""
-        return self.target_entities - self.processed_entities
+        return self.target_entities - self.processed_entities - self.incomplete_entities
 
 
 @dataclass

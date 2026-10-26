@@ -23,10 +23,7 @@
 
     <v-list density="compact" min-width="220">
       <!-- Show All -->
-      <v-list-item
-        :active="selectedFilter === 'all'"
-        @click="selectFilter('all')"
-      >
+      <v-list-item :active="selectedFilter === 'all'" @click="selectFilter('all')">
         <template #prepend>
           <v-icon icon="mdi-view-grid" />
         </template>
@@ -41,10 +38,7 @@
       <v-divider class="my-2" />
 
       <!-- Todo -->
-      <v-list-item
-        :active="selectedFilter === 'todo'"
-        @click="selectFilter('todo')"
-      >
+      <v-list-item :active="selectedFilter === 'todo'" @click="selectFilter('todo')">
         <template #prepend>
           <v-icon icon="mdi-circle-outline" color="grey" />
         </template>
@@ -57,10 +51,7 @@
       </v-list-item>
 
       <!-- Done -->
-      <v-list-item
-        :active="selectedFilter === 'done'"
-        @click="selectFilter('done')"
-      >
+      <v-list-item :active="selectedFilter === 'done'" @click="selectFilter('done')">
         <template #prepend>
           <v-icon icon="mdi-check-circle" color="success" />
         </template>
@@ -73,10 +64,7 @@
       </v-list-item>
 
       <!-- Ignored -->
-      <v-list-item
-        :active="selectedFilter === 'ignored'"
-        @click="selectFilter('ignored')"
-      >
+      <v-list-item :active="selectedFilter === 'ignored'" @click="selectFilter('ignored')">
         <template #prepend>
           <v-icon icon="mdi-cancel" color="grey-darken-2" />
         </template>
@@ -88,11 +76,34 @@
         </template>
       </v-list-item>
 
+      <!-- Active (not ignored) -->
+      <v-list-item :active="selectedFilter === 'not_ignored'" @click="selectFilter('not_ignored')">
+        <template #prepend>
+          <v-icon icon="mdi-filter-remove-outline" color="primary" />
+        </template>
+        <v-list-item-title>Active (not ignored)</v-list-item-title>
+        <template #append>
+          <v-chip size="x-small" color="primary" variant="flat">
+            {{ activeCount }}
+          </v-chip>
+        </template>
+      </v-list-item>
+
+      <!-- With note -->
+      <v-list-item :active="selectedFilter === 'has_note'" @click="selectFilter('has_note')">
+        <template #prepend>
+          <v-icon icon="mdi-note-text-outline" color="info" />
+        </template>
+        <v-list-item-title>With Note</v-list-item-title>
+        <template #append>
+          <v-chip size="x-small" color="info" variant="flat">
+            {{ noteCount }}
+          </v-chip>
+        </template>
+      </v-list-item>
+
       <!-- Blocked -->
-      <v-list-item
-        :active="selectedFilter === 'blocked'"
-        @click="selectFilter('blocked')"
-      >
+      <v-list-item :active="selectedFilter === 'blocked'" @click="selectFilter('blocked')">
         <template #prepend>
           <v-icon icon="mdi-alert" color="warning" />
         </template>
@@ -105,10 +116,7 @@
       </v-list-item>
 
       <!-- Critical -->
-      <v-list-item
-        :active="selectedFilter === 'critical'"
-        @click="selectFilter('critical')"
-      >
+      <v-list-item :active="selectedFilter === 'critical'" @click="selectFilter('critical')">
         <template #prepend>
           <v-icon icon="mdi-alert-circle" color="error" />
         </template>
@@ -121,7 +129,7 @@
       </v-list-item>
 
       <v-divider class="my-2" />
-      
+
       <!-- Add Todo Entity -->
       <v-list-item @click="$emit('create-todo')">
         <template #prepend>
@@ -129,7 +137,7 @@
         </template>
         <v-list-item-title>Add Todo Entity</v-list-item-title>
       </v-list-item>
-      
+
       <template v-if="!taskStatus || (stats?.total ?? 0) === 0">
         <v-divider class="my-2" />
         <v-list-item disabled>
@@ -138,7 +146,7 @@
             {{ !taskStatus ? 'Task list not initialized' : 'No entities yet' }}
           </v-list-item-title>
         </v-list-item>
-        
+
         <v-list-item v-if="!taskStatus" @click="$emit('initialize')">
           <template #prepend>
             <v-icon icon="mdi-plus-circle" color="primary" />
@@ -154,7 +162,7 @@
 import { computed } from 'vue'
 import type { ProjectTaskStatus, EntityTaskStatus } from '@/composables/useTaskStatus'
 
-export type TaskFilter = 'all' | 'todo' | 'done' | 'ignored' | 'blocked' | 'critical'
+export type TaskFilter = 'all' | 'todo' | 'done' | 'ignored' | 'not_ignored' | 'has_note' | 'blocked' | 'critical'
 
 interface Props {
   modelValue: TaskFilter
@@ -163,7 +171,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   modelValue: 'all',
-  taskStatus: null
+  taskStatus: null,
 })
 
 const emit = defineEmits<{
@@ -174,7 +182,7 @@ const emit = defineEmits<{
 
 const selectedFilter = computed({
   get: () => props.modelValue,
-  set: (value: TaskFilter) => emit('update:modelValue', value)
+  set: (value: TaskFilter) => emit('update:modelValue', value),
 })
 
 // Compute statistics from task status
@@ -184,35 +192,60 @@ const stats = computed(() => {
   const entities = Object.values(props.taskStatus.entities) as EntityTaskStatus[]
   return {
     total: entities.length,
-    todo: entities.filter(e => e.status === 'todo').length,
-    done: entities.filter(e => e.status === 'done').length,
-    ignored: entities.filter(e => e.status === 'ignored').length,
+    todo: entities.filter((e) => e.status === 'todo').length,
+    done: entities.filter((e) => e.status === 'done').length,
+    ignored: entities.filter((e) => e.status === 'ignored').length,
   }
 })
 
 const blockedCount = computed(() => {
   if (!props.taskStatus) return 0
   const entities = Object.values(props.taskStatus.entities) as EntityTaskStatus[]
-  return entities.filter(e => e.blocked_by && e.blocked_by.length > 0).length
+  return entities.filter((e) => e.blocked_by && e.blocked_by.length > 0).length
 })
 
 const criticalCount = computed(() => {
   if (!props.taskStatus) return 0
   const entities = Object.values(props.taskStatus.entities) as EntityTaskStatus[]
-  return entities.filter(e => e.priority === 'critical').length
+  return entities.filter((e) => e.priority === 'critical').length
+})
+
+// Count of entities not marked ignored
+const activeCount = computed(() => {
+  if (!props.taskStatus) return 0
+  const entities = Object.values(props.taskStatus.entities) as EntityTaskStatus[]
+  return entities.filter((e) => e.status !== 'ignored').length
+})
+
+// Count of entities with a persisted task note
+const noteCount = computed(() => {
+  if (!props.taskStatus) return 0
+  const entities = Object.values(props.taskStatus.entities) as EntityTaskStatus[]
+  return entities.filter((e) => e.has_note).length
 })
 
 const activeFilterCount = computed(() => {
   if (!props.taskStatus) return 0
-  
+
   switch (selectedFilter.value) {
-    case 'all': return stats.value?.total ?? 0
-    case 'todo': return stats.value?.todo ?? 0
-    case 'done': return stats.value?.done ?? 0
-    case 'ignored': return stats.value?.ignored ?? 0
-    case 'blocked': return blockedCount.value
-    case 'critical': return criticalCount.value
-    default: return 0
+    case 'all':
+      return stats.value?.total ?? 0
+    case 'todo':
+      return stats.value?.todo ?? 0
+    case 'done':
+      return stats.value?.done ?? 0
+    case 'ignored':
+      return stats.value?.ignored ?? 0
+    case 'not_ignored':
+      return activeCount.value
+    case 'has_note':
+      return noteCount.value
+    case 'blocked':
+      return blockedCount.value
+    case 'critical':
+      return criticalCount.value
+    default:
+      return 0
   }
 })
 

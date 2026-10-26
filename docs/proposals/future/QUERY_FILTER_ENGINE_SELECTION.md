@@ -19,7 +19,7 @@ This is a reproducibility and control feature, not a broad new query language.
 
 ## Problem
 
-Current behavior in [src/transforms/filter.py](src/transforms/filter.py) calls:
+Current behavior in [src/transforms/filter.py](../../../src/transforms/filter.py) calls:
 
 ```python
 df.query(query)
@@ -44,7 +44,7 @@ That works for many expressions, but the config cannot explicitly request pandas
 
 ## Current Behavior
 
-- Query filters are schema-driven and currently expose only `query` (see [src/transforms/filter.py](src/transforms/filter.py) and [src/transforms/filter_metadata.py](src/transforms/filter_metadata.py)).
+- Query filters are schema-driven and currently expose only `query` (see [src/transforms/filter.py](../../../src/transforms/filter.py) and [src/transforms/filter_metadata.py](../../../src/transforms/filter_metadata.py)).
 - Runtime delegates query parsing and execution to pandas.
 
 ## Proposed Design

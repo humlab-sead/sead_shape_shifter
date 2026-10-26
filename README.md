@@ -19,7 +19,7 @@ The supported container deployment uses rootless Podman and serves the frontend 
 
 ```bash
 git clone https://github.com/humlab-sead/sead_shape_shifter.git
-cd sead_shape_shifter/container
+cd sead_shape_shifter/deployment/container
 make setup
 make build
 make up
@@ -28,7 +28,7 @@ make healthcheck
 
 Open the application at <http://localhost:8012/>. The API documentation is at <http://localhost:8012/api/v1/docs>, and the health endpoint is <http://localhost:8012/api/v1/health>.
 
-See [container/README.md](container/README.md) for deployment prerequisites, configuration, lifecycle commands, and diagnostics. See [container/DEPLOYMENT.md](container/DEPLOYMENT.md) for deployment hosts, NGINX, systemd, and multiple environments.
+See [deployment/container/README.md](deployment/container/README.md) for deployment prerequisites, configuration, lifecycle commands, and diagnostics. See [deployment/container/DEPLOYMENT.md](deployment/container/DEPLOYMENT.md) for deployment hosts, NGINX, systemd, and multiple environments.
 
 ## Prerequisites
 

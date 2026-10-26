@@ -18,6 +18,39 @@ from backend.app.models.entity import (
 class TestProjectMapperNestedModels:
     """Test that all nested Pydantic models are properly serialized."""
 
+    def test_foreign_key_value_sources_survive_project_mapper_round_trip(self):
+        value_sources = {"location_type": "public_id"}
+        config = {
+            "metadata": {
+                "name": "direct-target-id",
+                "type": "shapeshifter-project",
+                "target_model": {"model": {"name": "test", "version": "1"}, "entities": {}},
+            },
+            "entities": {
+                "location": {
+                    "columns": ["location_type_id"],
+                    "foreign_key_value_sources": value_sources,
+                }
+            },
+        }
+
+        api_project = ProjectMapper.to_api_config(config, "direct-target-id")
+        core_dict = ProjectMapper.to_core_dict(api_project)
+        core_project = ProjectMapper.to_core(api_project)
+
+        assert api_project.entities["location"]["foreign_key_value_sources"] == value_sources
+        assert core_dict["entities"]["location"]["foreign_key_value_sources"] == value_sources
+        assert core_project.get_table("location").foreign_key_value_sources == value_sources
+
+    def test_entity_model_mapper_serializes_foreign_key_value_sources(self):
+        entity = Entity(
+            name="location",
+            foreign_key_value_sources={"location_type": "public_id"},
+        )
+
+        assert ProjectMapper._api_entity_to_dict(entity)["foreign_key_value_sources"] == {"location_type": "public_id"}
+        assert "foreign_key_value_sources" not in ProjectMapper._api_entity_to_dict(Entity(name="sample"))
+
     def test_all_nested_models_become_dicts(self):
         """Verify that ALL nested Pydantic models are converted to plain dicts.
 

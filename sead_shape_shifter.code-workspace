@@ -5,6 +5,9 @@
 		},
 		{
 			"path": "../sead_authority_service"
+		},
+		{
+			"path": "../sead_change_control"
 		}
 	],
 	"settings": {
@@ -37,7 +40,8 @@
 			"statusBar.debuggingBackground": "#445740",
 			"statusBar.debuggingForeground": "#e7e7e7",
 			"activityBar.activeBorder": "#e7e7e7",
-			"activityBarTop.activeBorder": "#e7e7e7"
+			"activityBarTop.activeBorder": "#e7e7e7",
+			"statusBar.inactiveBackground": "#445740"
 		},
 		"yaml.keyOrdering": false,
 		"python.analysis.autoFormatStrings": true,

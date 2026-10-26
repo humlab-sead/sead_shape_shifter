@@ -1,10 +1,11 @@
 """Integration tests for append processing in the normalization pipeline."""
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pandas as pd
 import pytest
 
+from src.loaders.base_loader import LoaderType
 from src.model import ShapeShiftProject
 from src.normalizer import ShapeShifter
 from src.table_store import TableStore
@@ -198,6 +199,7 @@ class TestAppendProcessingSQL:
         # Mock resolve_loader to return a mock SQL loader
         mock_loader = AsyncMock()
         mock_loader.load = AsyncMock(return_value=sql_result)
+        mock_loader.loader_type = Mock(return_value=LoaderType.SQL)
 
         with patch.object(normalizer.loaders, "resolve_loader", side_effect=[None, mock_loader]):
             # First config has no loader, second uses mock_loader.

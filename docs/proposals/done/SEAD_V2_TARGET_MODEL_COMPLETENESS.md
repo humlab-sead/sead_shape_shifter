@@ -38,7 +38,7 @@ The filtered Issue 6 snapshots are still useful, but they are only one evidence 
 
 ## Verified Current Coverage
 
-The current target model already covers a substantial core for Delivery 1 and early SEAD ingestion work.
+The current target model already covers a substantial core for the MVP Delivery and early SEAD ingestion work.
 
 Verified entity surface in [resources/target_models/sead_superset_model.yml](../../../resources/target_models/sead_superset_model.yml):
 
@@ -490,5 +490,5 @@ Issue 6 should count as complete when all of the following are true:
 - [docs/TARGET_MODEL_GUIDE.md](../../TARGET_MODEL_GUIDE.md)
 - [ingesters/sead/metadata.py](../../../ingesters/sead/metadata.py)
 - [docs/proposals/done/SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md](./SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md)
-- [docs/proposals/CHANGE_REQUEST_INGESTER/done/CHANGE_REQUEST_INGESTER_DELIVERY_1/DELIVERY_1_FOLLOWUP_CR.md](../CHANGE_REQUEST_INGESTER/done/CHANGE_REQUEST_INGESTER_DELIVERY_1/DELIVERY_1_FOLLOWUP_CR.md)
-- [docs/proposals/CHANGE_REQUEST_INGESTER/DELIVERY_1_FOLLOWUP_ISSUES.md](../CHANGE_REQUEST_INGESTER/DELIVERY_1_FOLLOWUP_ISSUES.md)
+- [docs/proposals/CHANGE_REQUEST_INGESTER/done/CHANGE_REQUEST_INGESTER_MVP/MVP_FOLLOWUP_CR.md](../CHANGE_REQUEST_INGESTER/done/CHANGE_REQUEST_INGESTER_MVP/MVP_FOLLOWUP_CR.md)
+- [docs/proposals/CHANGE_REQUEST_INGESTER/done/MVP_FOLLOWUP_ISSUES.md](../CHANGE_REQUEST_INGESTER/done/MVP_FOLLOWUP_ISSUES.md)

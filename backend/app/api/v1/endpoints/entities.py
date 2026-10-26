@@ -9,12 +9,14 @@ from pydantic import BaseModel, Field, field_validator
 
 from backend.app.authorization.dependencies import require_project
 from backend.app.authorization.models import Action, AuthorizedResource
+from backend.app.models.mapping_sync import MappingSyncPending
 from backend.app.models.project import Project
 from backend.app.services.entity_generator_service import EntityGeneratorService, get_entity_generator_service
 from backend.app.services.entity_values_service import EntityValuesData, EntityValuesService, get_entity_values_service
 from backend.app.services.materialization_service import MaterializationService
-from backend.app.services.project.entity_operations import compute_entity_etag
+from backend.app.services.project.entity_operations import EntityUpdateResult, compute_entity_etag
 from backend.app.services.project_service import ProjectService, get_project_service
+from backend.app.utils.entity_name import ENTITY_NAME_PATTERN
 from backend.app.utils.error_handlers import handle_endpoint_errors
 from backend.app.utils.fixed_schema import FixedSchema, derive_fixed_schema
 
@@ -64,7 +66,7 @@ class EntityCreateRequest(BaseModel):
     - ``{source_entity}_id`` per branch — sparse FK column back to source ``system_id``
     """
 
-    name: str = Field(..., description="Entity name")
+    name: str = Field(..., min_length=2, pattern=ENTITY_NAME_PATTERN, description="Entity name")
     entity_data: dict[str, Any] = Field(
         ...,
         description="Entity configuration data. Shape depends on `type`. See model description for merged entity shape.",
@@ -73,7 +75,9 @@ class EntityCreateRequest(BaseModel):
 
 
 class EntityUpdateRequest(BaseModel):
-    """Request to update entity. See ``EntityCreateRequest`` for ``entity_data`` shape details."""
+    """Request to update an entity and optionally change its name."""
+
+    new_name: str | None = Field(default=None, min_length=2, pattern=ENTITY_NAME_PATTERN, description="Replacement entity name")
 
     entity_data: dict[str, Any] = Field(
         ...,
@@ -90,9 +94,19 @@ class EntityResponse(BaseModel):
     etag: str = Field(..., description="Content-based ETag for optimistic locking")
     materialized: dict[str, Any] | None = Field(default=None, description="Materialization metadata (if entity is materialized)")
     fixed_schema: FixedSchema | None = Field(default=None, description="Authoritative fixed-schema metadata for fixed entities")
+    warnings: list[str] = Field(default_factory=list, description="Non-fatal warnings from the operation")
+    mapping_sync: MappingSyncPending | None = Field(
+        default=None,
+        description="Pending mapping changes when fixed rows were saved but the mapping sidecar was not written",
+    )
 
 
-def _build_entity_response(name: str, entity_data: dict[str, Any]) -> EntityResponse:
+def _build_entity_response(
+    name: str,
+    entity_data: dict[str, Any],
+    warnings: list[str] | None = None,
+    mapping_sync: MappingSyncPending | None = None,
+) -> EntityResponse:
     """Build a consistent entity response payload."""
     return EntityResponse(
         name=name,
@@ -100,6 +114,8 @@ def _build_entity_response(name: str, entity_data: dict[str, Any]) -> EntityResp
         etag=compute_entity_etag(entity_data),
         materialized=entity_data.get("materialized"),
         fixed_schema=derive_fixed_schema(entity_data),
+        warnings=warnings or [],
+        mapping_sync=mapping_sync,
     )
 
 
@@ -122,6 +138,10 @@ class EntityValuesResponse(BaseModel):
     format: str = Field(..., description="Storage format (parquet/csv)")
     row_count: int = Field(..., description="Number of rows")
     etag: str = Field(..., description="Entity tag for optimistic locking (based on file mtime+size)")
+    mapping_sync: MappingSyncPending | None = Field(
+        default=None,
+        description="Pending mapping changes when fixed rows were saved but the mapping sidecar was not written",
+    )
 
     @field_validator("values", mode="before")
     @classmethod
@@ -239,10 +259,17 @@ async def update_entity(
         Updated entity data with a fresh ETag
     """
     project_service: ProjectService = get_project_service()
-    project_service.update_entity_by_name(authorized_project.resource.locator, entity_name, request.entity_data, expected_etag=if_match)
-    entity_data: dict[str, Any] = project_service.get_entity_by_name(authorized_project.resource.locator, entity_name)
-    logger.info(f"Updated entity '{entity_name}' in '{project_name}'")
-    return _build_entity_response(entity_name, entity_data)
+    result: EntityUpdateResult = project_service.update_entity_by_name(
+        authorized_project.resource.locator,
+        entity_name,
+        request.entity_data,
+        expected_etag=if_match,
+        new_name=request.new_name,
+    )
+    response_name: str = request.new_name or entity_name
+    entity_data: dict[str, Any] = project_service.get_entity_by_name(authorized_project.resource.locator, response_name)
+    logger.info(f"Updated entity '{entity_name}' as '{response_name}' in '{project_name}'")
+    return _build_entity_response(response_name, entity_data, result.warnings, mapping_sync=result.mapping_sync)
 
 
 @router.delete(
@@ -410,20 +437,11 @@ async def update_entity_values(
 
     logger.info(f"Updated {result.row_count} rows for entity '{entity_name}' in '{project_name}'")
 
-    sync_result = get_materialization_service().sync_materialized_entity_mappings(
-        project_name=authorized_project.resource.locator,
-        entity_name=entity_name,
-        columns=request.columns,
-        values=request.values,
-        require_materialized=False,
-    )
-    if not sync_result.success:
-        raise HTTPException(status_code=500, detail=sync_result.errors[0] if sync_result.errors else "Mapping sync failed")
-
     return EntityValuesResponse(
         columns=result.columns,
         values=result.values,
         format=result.format,
         row_count=result.row_count,
         etag=result.etag,
+        mapping_sync=result.mapping_sync,
     )

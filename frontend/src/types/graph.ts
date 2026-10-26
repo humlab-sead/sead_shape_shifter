@@ -44,8 +44,8 @@ export interface DependencyEdge {
   label?: string
   branch_name?: string | null
   is_branch_dependency?: boolean
-  frozen?: boolean  // True for edges from materialized entities showing historical dependencies
-  via_source_entity?: boolean  // True for edges that go through source entities (table/sheet), false for direct source->entity
+  frozen?: boolean // True for edges from materialized entities showing historical dependencies
+  via_source_entity?: boolean // True for edges that go through source entities (table/sheet), false for direct source->entity
 }
 
 export interface DependencyGraph {
@@ -102,4 +102,3 @@ export interface GraphLayoutOptions {
   custom?: CustomGraphLayout
   _metadata?: LayoutMetadata
 }
-

@@ -9,7 +9,7 @@
 - Goal: deliver and record an authorization-enabled deployment on the new server that is ready for user acceptance testing, together with the operator procedures and documentation needed to run, verify, and roll it back
 - **Scope change 2026-09-22:** flipping production traffic and users from the old server to the new server is out of scope. It repoints DNS and the reverse proxy, migrates users, and depends on user acceptance testing this project does not own, so it moves to [PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md](../../future/PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md).
 - Source decision: [Centralized Authorization System](../../done/MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM.md)
-- Related: [Deployment Verification Handoff](./DEPLOYMENT_VERIFICATION_HANDOFF.md), [SECURITY_CHECK.md](../../done/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md), [Release Cycle Evidence And Locking](../../RELEASE_CYCLE_EVIDENCE_AND_LOCKING/README.md)
+- Related: [Deployment Verification Handoff](./DEPLOYMENT_VERIFICATION_HANDOFF.md), [SECURITY_CHECK.md](../../done/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md), [Release Cycle Evidence And Locking](../../future/RELEASE_CYCLE_EVIDENCE_AND_LOCKING/README.md)
 
 ## Summary
 

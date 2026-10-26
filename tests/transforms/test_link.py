@@ -6,6 +6,7 @@ import pandas as pd
 import pytest
 
 from src.model import ForeignKeyConfig, ShapeShiftProject
+from src.specifications.constraints import ForeignKeyNullConstraintViolation
 from src.table_store import TableStore
 from src.transforms.link import ForeignKeyLinker
 
@@ -245,6 +246,61 @@ def test_link_foreign_key_passes_strict_null_policy_to_merge_helper(monkeypatch:
     assert captured["opts"]["use_null_safe_merge"] is False
 
 
+@pytest.mark.parametrize(
+    ("constraints", "expected_site_ids"),
+    [
+        ({"allow_null_keys": True}, []),
+        ({"null_keys_equal": True}, [101]),
+    ],
+)
+def test_null_key_components_match_only_when_null_keys_equal_is_enabled(constraints: dict, expected_site_ids: list[int]):
+    """Null key components match only with the explicit null_keys_equal option."""
+    project = ShapeShiftProject(
+        cfg={
+            "entities": {
+                "site_location": {
+                    "columns": ["Fustel", "EVNr"],
+                    "keys": ["Fustel", "EVNr"],
+                    "foreign_keys": [
+                        {
+                            "entity": "site",
+                            "local_keys": ["Fustel", "EVNr"],
+                            "remote_keys": ["Fustel", "EVNr"],
+                            "how": "inner",
+                            "constraints": constraints,
+                        }
+                    ],
+                },
+                "site": {
+                    "columns": ["Fustel", "EVNr"],
+                    "keys": ["Fustel", "EVNr"],
+                    "public_id": "site_id",
+                },
+            }
+        }
+    )
+    fk = project.get_table("site_location").foreign_keys[0]
+    local_df = pd.DataFrame(
+        {
+            "system_id": [1, 2],
+            "Fustel": ["Kville 1502", "Different site"],
+            "EVNr": [None, None],
+        }
+    )
+    remote_df = pd.DataFrame(
+        {
+            "system_id": [101],
+            "Fustel": ["Kville 1502"],
+            "EVNr": [None],
+        }
+    )
+
+    linker = ForeignKeyLinker(project=project, table_store=TableStore({"site_location": local_df, "site": remote_df}))
+    linked_df = linker.link_foreign_key(local_df, fk, remote_df)
+
+    assert linked_df["site_id"].tolist() == expected_site_ids
+
+
 def test_link_foreign_key_non_lookup_join_does_not_enable_null_safe_merge_by_default(monkeypatch: pytest.MonkeyPatch):
     """Identity-style joins should stay on the strict merge path when null policy is omitted."""
     project = ShapeShiftProject(
@@ -332,6 +388,54 @@ def test_lookup_left_join_null_local_key_does_not_match_null_remote_key():
 
     assert linked_df["remote_id"].tolist()[0] == 7
     assert pd.isna(linked_df["remote_id"].tolist()[1])
+
+
+def test_lookup_inner_join_retains_strict_null_key_validation():
+    """Lookup-style inner joins should retain strict null-key validation."""
+    project = ShapeShiftProject(
+        cfg={
+            "entities": {
+                "local": {
+                    "columns": ["remote_code", "value"],
+                    "keys": ["remote_code"],
+                    "foreign_keys": [
+                        {
+                            "entity": "remote",
+                            "local_keys": ["remote_code"],
+                            "remote_keys": ["remote_code"],
+                            "how": "inner",
+                            "constraints": {"cardinality": "many_to_one"},
+                        },
+                    ],
+                },
+                "remote": {
+                    "columns": ["remote_code", "name"],
+                    "keys": ["remote_code"],
+                    "public_id": "remote_id",
+                },
+            }
+        }
+    )
+    fk_cfg = project.get_table("local").foreign_keys[0]
+    local_df = pd.DataFrame(
+        {
+            "system_id": [100, 101],
+            "remote_code": ["A", None],
+            "value": ["matched", "missing"],
+        }
+    )
+    remote_df = pd.DataFrame(
+        {
+            "system_id": [7, 8],
+            "remote_code": ["A", None],
+            "name": ["alpha", "null-row"],
+        }
+    )
+
+    linker = ForeignKeyLinker(project=project, table_store=TableStore({"local": local_df, "remote": remote_df}))
+
+    with pytest.raises(ForeignKeyNullConstraintViolation, match="Null values found in local key"):
+        linker.link_foreign_key(local_df, fk_cfg, remote_df)
 
 
 def test_link_entity_returns_deferred_when_specification_defers(monkeypatch: pytest.MonkeyPatch):

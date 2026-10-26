@@ -1,40 +1,23 @@
 <template>
-  <v-menu
-    v-model="isOpen"
-    :style="menuStyle"
-    :close-on-content-click="false"
-    location="bottom left"
-  >
+  <v-menu v-model="isOpen" :style="menuStyle" :close-on-content-click="false" location="bottom left">
     <template #activator="{ props: menuProps }">
       <!-- Invisible activator positioned at click location -->
       <div
         v-bind="menuProps"
         :style="activatorStyle"
-        style="position: fixed; width: 1px; height: 1px; pointer-events: none;"
+        style="position: fixed; width: 1px; height: 1px; pointer-events: none"
       />
     </template>
-    
+
     <v-list density="compact" min-width="200">
-      <v-list-item
-        prepend-icon="mdi-pencil"
-        title="Edit Entity"
-        @click="handleEdit"
-      />
-      <v-list-item
-        prepend-icon="mdi-eye"
-        title="Preview Data"
-        @click="handlePreview"
-      />
-      <v-list-item
-        prepend-icon="mdi-content-copy"
-        title="Duplicate Entity"
-        @click="handleDuplicate"
-      />
-      
+      <v-list-item prepend-icon="mdi-pencil" title="Edit Entity" @click="handleEdit" />
+      <v-list-item prepend-icon="mdi-eye" title="Preview Data" @click="handlePreview" />
+      <v-list-item prepend-icon="mdi-content-copy" title="Duplicate Entity" @click="handleDuplicate" />
+
       <!-- Task Status Actions -->
       <template v-if="taskStatus">
         <v-divider />
-        
+
         <!-- Verify Entity -->
         <v-list-item
           :disabled="!taskStatus.exists"
@@ -42,11 +25,9 @@
           title="Verify Entity"
           @click="handleVerifyEntity"
         >
-          <v-tooltip activator="parent" location="right">
-            Validate and generate preview data
-          </v-tooltip>
+          <v-tooltip activator="parent" location="right"> Validate and generate preview data </v-tooltip>
         </v-list-item>
-        
+
         <!-- Mark as Done -->
         <v-list-item
           :disabled="!canMarkComplete"
@@ -54,7 +35,7 @@
           title="Mark as Done"
           @click="handleMarkComplete"
         />
-        
+
         <!-- Mark as Ignored -->
         <v-list-item
           :disabled="taskStatus.status === 'ignored'"
@@ -62,7 +43,7 @@
           title="Mark as Ignored"
           @click="handleMarkIgnored"
         />
-        
+
         <!-- Mark as Ongoing -->
         <v-list-item
           :disabled="taskStatus.status === 'ongoing'"
@@ -70,11 +51,9 @@
           title="Mark as Ongoing"
           @click="handleMarkOngoing"
         >
-          <v-tooltip activator="parent" location="right">
-            Mark as work in progress
-          </v-tooltip>
+          <v-tooltip activator="parent" location="right"> Mark as work in progress </v-tooltip>
         </v-list-item>
-        
+
         <!-- Reset Status -->
         <v-list-item
           :disabled="taskStatus.status === 'todo'"
@@ -90,9 +69,7 @@
           :title="taskStatus.has_note ? 'Edit Note' : 'Add Note'"
           @click="handleEditNote"
         >
-          <v-tooltip activator="parent" location="right">
-            Add or edit a simple note for this entity
-          </v-tooltip>
+          <v-tooltip activator="parent" location="right"> Add or edit a simple note for this entity </v-tooltip>
         </v-list-item>
 
         <v-list-item
@@ -102,14 +79,9 @@
           @click="handleRemoveNote"
         />
       </template>
-      
+
       <v-divider />
-      <v-list-item
-        prepend-icon="mdi-delete"
-        title="Delete Entity"
-        class="text-error"
-        @click="handleDelete"
-      />
+      <v-list-item prepend-icon="mdi-delete" title="Delete Entity" class="text-error" @click="handleDelete" />
     </v-list>
   </v-menu>
 </template>
@@ -164,11 +136,7 @@ const activatorStyle = computed(() => ({
 // Can mark complete if entity exists and is not already done or ignored
 const canMarkComplete = computed(() => {
   if (!props.taskStatus) return false
-  return (
-    props.taskStatus.exists &&
-    props.taskStatus.status !== 'done' &&
-    props.taskStatus.status !== 'ignored'
-  )
+  return props.taskStatus.exists && props.taskStatus.status !== 'done' && props.taskStatus.status !== 'ignored'
 })
 
 function handleEdit() {

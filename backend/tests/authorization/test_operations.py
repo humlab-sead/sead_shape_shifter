@@ -173,6 +173,65 @@ def test_manifest_inspection_accepts_yaml_without_an_extension(tmp_path) -> None
     assert inspect_manifest(manifest) == {"resources": 1, "administrators": 1}
 
 
+def test_manifest_rejects_unknown_role_before_writing(tmp_path) -> None:
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "resources": [
+                    {
+                        "resource_type": "project",
+                        "locator": "project-a",
+                        "grants": [{"principal_id": "alice", "role": "viewr"}],
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    database = tmp_path / "authorization.sqlite3"
+
+    result = CliRunner().invoke(cli, ["migrate", "--database", str(database), "--manifest", str(manifest)])
+
+    assert result.exit_code != 0
+    assert "principal:alice on project:project-a" in result.output
+    assert "Invalid role 'viewr'" in result.output
+    assert "allowed roles: editor, executor, owner, viewer" in result.output
+    assert not database.exists()
+
+
+def test_grant_cli_rejects_unknown_role_names(tmp_path) -> None:
+    database = tmp_path / "authorization.sqlite3"
+    repository = SQLiteAuthorizationRepository(database)
+    repository.create_resource(ResourceRecord(uuid4(), ResourceType.PROJECT, "project-a"))
+    repository.close()
+
+    result = CliRunner().invoke(
+        cli,
+        [
+            "grant",
+            "--database",
+            str(database),
+            "--resource-type",
+            "project",
+            "--locator",
+            "project-a",
+            "--subject-type",
+            "principal",
+            "--subject-id",
+            "alice",
+            "--role",
+            "viewr",
+            "--actor",
+            "admin",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "Invalid value for '--role'" in result.output
+    assert "viewer" in result.output
+
+
 def test_export_manifest_writes_yaml_for_active_top_level_resources(tmp_path) -> None:
     database = tmp_path / "authorization.sqlite3"
     repository = SQLiteAuthorizationRepository(database)

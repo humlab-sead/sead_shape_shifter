@@ -41,15 +41,15 @@
 
 ## Three-Tier Identity System
 
-All FK relationships use local `system_id` values — never external IDs.
+Core FK links use local `system_id` values. A change-request package can use an existing target ID only when the project declares `foreign_key_value_sources.<target>: public_id`; that declaration does not create a Core link or dependency.
 
 | Tier | Field | Purpose | FK values? |
 |------|-------|---------|-----------|
-| 1 | `system_id` | Local sequential integer | **Yes** |
+| 1 | `system_id` | Local sequential integer | **Yes, for Core links** |
 | 2 | `keys` | Business keys for deduplication | No |
 | 3 | `public_id` | Target schema column name; holds SEAD IDs after mapping | No |
 
-- `public_id` must end with `_id`. FK child column name = parent's `public_id`; FK values = parent's `system_id`.
+- `public_id` must end with `_id`. A Core FK child column uses the parent's `public_id` as its name and the parent's `system_id` as its value. The change-request package exception is project-specific and requires a target database lookup.
 
 ## Code Conventions
 
@@ -86,12 +86,12 @@ This project has a knowledge graph at graphify-out/ with god nodes, community st
 When the user types `/graphify`, invoke the `skill` tool with `skill: "graphify"` before doing anything else.
 
 Rules:
-- The VS Code Codex extension may start with a minimal `PATH`. Run graphify through the project virtualenv: `.venv/bin/graphify ...` rather than bare `graphify`.
-- For codebase questions, first run `.venv/bin/graphify query "<question>"` when graphify-out/graph.json exists. Use `.venv/bin/graphify path "<A>" "<B>"` for relationships and `.venv/bin/graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- graphify is installed via brew (`~/.local/bin/graphify`), not the project `.venv`. If `graphify` is not on `PATH` (for example in a minimal shell), use the absolute path `~/.local/bin/graphify`.
+- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
 - Dirty graphify-out/ files are expected after hooks or incremental updates; dirty graph files are not a reason to skip graphify. Only skip graphify if the task is about stale or incorrect graph output, or the user explicitly says not to use it.
 - If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
 - Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
-- After modifying code, run `.venv/bin/graphify update .` to keep the graph current (AST-only, no API cost).
+- After modifying code, run `GRAPHIFY_VIZ_NODE_LIMIT=0 graphify update .` to keep the graph current (AST-only, no API cost). The env var blocks graph.html generation, which this project does not use. Shrinks caused by `.graphifyignore` rules or deleted files are accepted without `--force`; only unexplained extraction-loss shrinks are refused.
 
 ## rtk (Token Optimization)
 

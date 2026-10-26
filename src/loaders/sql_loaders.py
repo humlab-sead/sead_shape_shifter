@@ -149,29 +149,15 @@ class SqlLoader(DataLoader):
         detected_columns: list[str] = list(data.columns)
 
         if auto_detect_columns:
-
-            # Separate keys into source-backed (must exist in SQL) and extra_columns-backed (added later)
-            source_backed_keys: list[str] = [k for k in table_cfg.keys if k not in table_cfg.extra_column_names]
-            missing_keys: list[str] = [k for k in source_backed_keys if k not in detected_columns]
-
-            if missing_keys:
-                raise ValueError(
-                    f"[{table_cfg.entity_name}] Auto-detect columns is enabled, but key column(s) {missing_keys} are missing in the data. "
-                    f"(Keys can be added via extra_columns)"
-                )
-
             configured_columns: list[str] = table_cfg.safe_columns
             if configured_columns:
                 derived_columns: set[str] = set(table_cfg.identity_columns) | set(table_cfg.extra_column_names)
                 source_backed_columns: list[str] = [column for column in configured_columns if column not in derived_columns]
-                # Only require source-backed keys (not those added via extra_columns)
-                required_columns: list[str] = list(dict.fromkeys([*source_backed_columns, *sorted(source_backed_keys)]))
-                missing_columns: list[str] = [column for column in required_columns if column not in detected_columns]
+                missing_columns: list[str] = [column for column in source_backed_columns if column not in detected_columns]
                 if missing_columns:
                     raise ValueError(
                         f"[{table_cfg.entity_name}] Auto-detected SQL columns do not satisfy stored schema. "
                         f"Stored columns: {configured_columns}. Query-backed columns: {source_backed_columns}. "
-                        f"Source-backed keys: {sorted(source_backed_keys)}. "
                         f"Missing from detected columns: {missing_columns}. Detected columns: {detected_columns}. "
                         "Sync the entity columns before executing the workflow."
                     )
@@ -758,13 +744,10 @@ class UCanAccessSqlLoader(SqlLoader):
 
     @staticmethod
     def _configured_query_columns(table_cfg: TableConfig) -> list[str]:
-        """Return the expected raw query column order from stored keys and query-backed columns."""
-        ordered_keys: list[str] = list(table_cfg.entity_cfg.get("keys", []) or [])
+        """Return the expected raw query column order from configured producer columns."""
         derived_columns: set[str] = set(table_cfg.identity_columns) | set(table_cfg.extra_column_names)
-        source_backed_columns: list[str] = [
-            column for column in table_cfg.safe_columns if column not in derived_columns and column not in ordered_keys
-        ]
-        return ordered_keys + source_backed_columns
+        source_backed_columns: list[str] = [column for column in table_cfg.safe_columns if column not in derived_columns]
+        return source_backed_columns
 
     def _canonicalize_access_column_names(self, table_cfg: TableConfig, data: pd.DataFrame) -> pd.DataFrame:
         """Normalize Access result metadata to configured casing when names match ignoring case."""
@@ -772,7 +755,8 @@ class UCanAccessSqlLoader(SqlLoader):
         if not configured_query_columns:
             return data
 
-        configured_by_normalized_name: dict[str, str] = {column.casefold(): column for column in configured_query_columns}
+        configured_names: list[str] = configured_query_columns + table_cfg.safe_keys
+        configured_by_normalized_name: dict[str, str] = {column.casefold(): column for column in configured_names}
         normalized_columns: list[str] = [str(column).casefold() for column in data.columns]
         renamed_columns: list[str] = [
             configured_by_normalized_name.get(column, str(original)) for original, column in zip(data.columns, normalized_columns)

@@ -10,6 +10,7 @@ from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.materialization import (
     CanMaterializeResponse,
     MaterializationResult,
+    MaterializedMappingSyncRequest,
     MaterializedMappingSyncResult,
     MaterializeRequest,
     UnmaterializationResult,
@@ -132,10 +133,13 @@ async def sync_mapping_from_materialized(
     project_name: str,  # pylint: disable=unused-argument
     entity_name: str,
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
+    request: MaterializedMappingSyncRequest | None = None,
 ) -> MaterializedMappingSyncResult:
-    """Replace manual sidecar links for an entity from its saved materialized rows."""
+    """Add missing sidecar links or explicitly replace manual links from saved rows."""
     result = get_materialization_service().sync_materialized_entity_mappings(
-        project_name=authorized_project.resource.locator, entity_name=entity_name
+        project_name=authorized_project.resource.locator,
+        entity_name=entity_name,
+        replace_manual_links=request.replace_manual_links if request else False,
     )
 
     if not result.success:

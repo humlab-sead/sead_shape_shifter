@@ -8,7 +8,16 @@ from backend.app.core.config import get_settings
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.mappers.validation_mapper import ValidationMapper
 from backend.app.models.project import Project
-from backend.app.models.validation import DataValidationMode, ValidationError, ValidationResult
+from backend.app.models.validation import (
+    DataValidationMode,
+    DataValidationStatus,
+    EntityDataValidationResult,
+    EntityDataValidationStatus,
+    ValidationError,
+    ValidationResult,
+)
+from backend.app.services.project_data_provider_service import ProjectDataProviderService
+from backend.app.services.project_provider_binding_service import ProjectProviderBindingService
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.services.shapeshift_service import ShapeShiftService
 from src.configuration import resolve_directives
@@ -23,12 +32,44 @@ if TYPE_CHECKING:
 # pylint: disable=unused-argument
 
 
+def _direct_fk_target_model_error(project: Project, reason: str) -> ValidationResult | None:
+    """Return a validation error when direct FK values have no resolved target model."""
+    entities = getattr(project, "entities", {})
+    if not isinstance(entities, dict):
+        return None
+
+    source_entities = [
+        entity_name
+        for entity_name, entity_cfg in entities.items()
+        if isinstance(entity_cfg, dict)
+        and isinstance(entity_cfg.get("foreign_key_value_sources"), dict)
+        and entity_cfg["foreign_key_value_sources"]
+    ]
+    if not source_entities:
+        return None
+
+    sorted_entities = sorted(source_entities)
+    entity_list = ", ".join(sorted_entities)
+    error = ValidationError(
+        severity="error",
+        entity=sorted_entities[0],
+        field="metadata.target_model",
+        message=(
+            f"Project entity declaration(s) {entity_list} use foreign_key_value_sources, " f"but the target model is unavailable: {reason}"
+        ),
+        code="DIRECT_FK_TARGET_MODEL_UNAVAILABLE",
+    )
+    return ValidationResult(is_valid=False, errors=[error])
+
+
 class ValidationService:
     """Service for validating projects using existing specifications."""
 
     def __init__(
         self,
         data_orchestrator_factory: Callable[[], "DataValidationOrchestrator"] | None = None,
+        project_provider_binding_service: ProjectProviderBindingService | None = None,
+        project_data_provider_service: ProjectDataProviderService | None = None,
     ) -> None:
         """
         Initialize validation service.
@@ -38,6 +79,10 @@ class ValidationService:
                                       If None, uses default factory (lazy import to avoid circular dependency).
         """
         self._data_orchestrator_factory = data_orchestrator_factory
+        self._project_provider_binding_service = project_provider_binding_service or ProjectProviderBindingService()
+        self._project_data_provider_service = project_data_provider_service or ProjectDataProviderService(
+            binding_service=self._project_provider_binding_service
+        )
 
     async def validate_project_data(
         self,
@@ -62,6 +107,26 @@ class ValidationService:
         # Load and resolve project (convert directives to concrete values)
         project_service: ProjectService = get_project_service()
         api_project: Project = project_service.load_project(project_name)
+
+        structural_result = self.validate_project(api_project.model_dump(mode="python"), source_path=api_project.filename)
+        if structural_result.errors:
+            status_reason = f"Structural errors prevent data validation for this project: {structural_result.errors[0].message}"
+            logger.warning(f"Data validation skipped for '{project_name}': {status_reason}")
+            entity_statuses = {
+                name: EntityDataValidationResult(status=EntityDataValidationStatus.SKIPPED, reason=status_reason)
+                for name in (entity_names or list(api_project.entities))
+            }
+            return ValidationResult(
+                is_valid=False,
+                errors=structural_result.errors,
+                warnings=structural_result.warnings,
+                info=structural_result.info,
+                validation_mode=validation_mode,
+                status=DataValidationStatus.SKIPPED,
+                status_reason=status_reason,
+                entity_statuses=entity_statuses,
+            )
+
         core_project: ShapeShiftProject = ProjectMapper.to_core(api_project)
 
         # Use injected factory or default factory
@@ -100,20 +165,26 @@ class ValidationService:
         errors_list: list[ValidationError] = [ValidationMapper.to_api_error(issue) for issue in issues_list]
 
         errors: list[ValidationError] = [e for e in errors_list if e.severity == "error"]
-        warnings: list[ValidationError] = [e for e in errors_list if e.severity == "warning"]
-        info: list[ValidationError] = [e for e in errors_list if e.severity == "info"]
+        warnings: list[ValidationError] = structural_result.warnings + [e for e in errors_list if e.severity == "warning"]
+        info: list[ValidationError] = structural_result.info + [e for e in errors_list if e.severity == "info"]
 
         result = ValidationResult(
-            is_valid=len(errors) == 0,
+            is_valid=len(errors) == 0 and orchestrator.status == DataValidationStatus.COMPLETED,
             errors=errors,
             warnings=warnings,
             info=info,
             error_count=len(errors),
             warning_count=len(warnings),
             validation_mode=validation_mode,
+            status=orchestrator.status,
+            status_reason=orchestrator.status_reason,
+            entity_statuses=orchestrator.entity_statuses,
         )
 
-        logger.info(f"Data validation completed: {result.error_count} errors, {result.warning_count} warnings")
+        logger.info(
+            f"Data validation run finished: status={orchestrator.status.value}, "
+            f"{result.error_count} errors, {result.warning_count} warnings"
+        )
 
         return result
 
@@ -128,6 +199,7 @@ class ValidationService:
             ValidationResult with errors and warnings
         """
         logger.debug("Validating project")
+        provider_errors = self._project_provider_binding_service.validation_errors((project_cfg or {}).get("metadata"))
 
         # Resolve directives before validation (Core layer requirement)
         # Specifications expect fully resolved config
@@ -147,7 +219,8 @@ class ValidationService:
             # not as a 500 internal server error.
             return ValidationResult(
                 is_valid=False,
-                errors=[
+                errors=provider_errors
+                + [
                     ValidationError(
                         severity="error",
                         entity=None,
@@ -160,17 +233,19 @@ class ValidationService:
             )
 
         specification = CompositeProjectSpecification(project_cfg)
-        is_valid: bool = specification.is_satisfied_by()
+        specification.is_satisfied_by()
+        provider_errors = provider_errors + self._data_provider_errors(project_cfg, provider_errors)
+        validation_errors = [self._map_issue(error) for error in specification.errors] + provider_errors
 
         result = ValidationResult(
-            is_valid=is_valid,
-            errors=[self._map_issue(error) for error in specification.errors],
+            is_valid=not validation_errors,
+            errors=validation_errors,
             warnings=[self._map_issue(warning) for warning in specification.warnings],
             error_count=len(specification.errors),
             warning_count=len(specification.warnings),
         )
 
-        if is_valid:
+        if result.is_valid:
             logger.info("Configuration validation passed")
         else:
             error_count: int = len(specification.errors)
@@ -183,6 +258,17 @@ class ValidationService:
             logger.warning(f"Configuration validation failed with {', '.join(parts)}")
 
         return result
+
+    def _data_provider_errors(self, project_cfg: dict[str, Any], binding_errors: list[ValidationError]) -> list[ValidationError]:
+        """Return fixed provider-row errors for a project that already has a registered pair.
+
+        A project without a complete, registered provider-schema pair keeps receiving only
+        the binding errors from the first check. The fixed-row rule therefore applies to
+        bound projects and stays independent of any live target-database call.
+        """
+        if binding_errors:
+            return []
+        return self._project_data_provider_service.fixed_row_errors(project_cfg)
 
     def _map_issue(self, issue: SpecificationIssue) -> ValidationError:
         """Parse error message to extract entity and field information."""
@@ -263,15 +349,16 @@ class ValidationService:
             core_project: ShapeShiftProject = ProjectMapper.to_core(api_project)
         except FileNotFoundError as e:
             # @load: in metadata.target_model points to a missing file.
-            # Treat as if no target_model was configured — skip conformance silently.
             logger.debug(f"Target model file not found for project '{project_name}', skipping conformance: {e}")
-            return ValidationResult(is_valid=True)
+            direct_fk_error = _direct_fk_target_model_error(api_project, "the configured target-model file could not be loaded")
+            return direct_fk_error or ValidationResult(is_valid=True)
 
         target_model_data: dict | None = core_project.metadata.target_model
 
         if not target_model_data or not isinstance(target_model_data, dict):
             logger.debug(f"Project '{project_name}' has no resolved target_model — skipping conformance")
-            return ValidationResult(is_valid=True)
+            direct_fk_error = _direct_fk_target_model_error(api_project, "metadata.target_model is missing or unresolved")
+            return direct_fk_error or ValidationResult(is_valid=True)
 
         logger.debug(f"Running target-model conformance for project: {project_name}")
         issues: list[ValidationError] = TargetModelValidator().validate(target_model_data, core_project)

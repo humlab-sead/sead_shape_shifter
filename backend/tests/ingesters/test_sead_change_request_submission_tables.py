@@ -59,3 +59,16 @@ def test_rejects_source_owned_submission_tables() -> None:
 
     with pytest.raises(ValueError, match="reserved submission table"):
         build_submission_source_bundle(bundle, submission_context(), data_provider_id=51)
+
+
+def test_emits_exactly_one_lookup_only_provider_row_and_one_submission_row() -> None:
+    bundle = SourceTableBundle(tables={"dataset": pd.DataFrame({"system_id": [10], "dataset_id": [None]})})
+
+    result = build_submission_source_bundle(bundle, submission_context(), data_provider_id=4242)
+
+    assert len(result.tables["data_provider"].index) == 1
+    assert len(result.tables["submission"].index) == 1
+    provider_row = result.tables["data_provider"].iloc[0]
+    assert provider_row["data_provider_id"] == 4242
+    assert provider_row["data_provider_code"] == "SEAD"
+    assert result.tables["submission"].iloc[0]["data_provider_id"] == 1

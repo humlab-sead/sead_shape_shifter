@@ -4,6 +4,7 @@ import { AxiosError } from 'axios'
 import { api } from '@/api'
 import { useSessionStore } from '@/stores/session'
 import { useEntityStore } from '@/stores/entity'
+import { useValidationStore } from '@/stores/validation'
 import type { Project, ProjectMetadata, ValidationResult } from '@/types'
 import type { ProjectCreateRequest, ProjectUpdateRequest, BackupInfo, MetadataUpdateRequest } from '@/api/projects'
 
@@ -30,6 +31,13 @@ function extractErrorMessage(err: unknown, fallback: string): string {
   return err instanceof Error ? err.message : fallback
 }
 
+/**
+ * How long a fetched project list is treated as fresh. Within this window a view
+ * mount reuses the cached list; after it, the list is revalidated in the
+ * background while the cached list stays visible.
+ */
+export const PROJECT_LIST_TTL_MS = 30_000
+
 export const useProjectStore = defineStore('project', () => {
   // State
   const projects = ref<ProjectMetadata[]>([])
@@ -39,16 +47,18 @@ export const useProjectStore = defineStore('project', () => {
   const loading = ref(false)
   const error = ref<string | null>(null)
   const hasUnsavedChanges = ref(false)
+  // When the project list was last read from the server; null means it is not known to be fresh.
+  const lastFetchedAt = ref<number | null>(null)
 
   // Diagnostic logging helper for state sync debugging
-  function logState(action: string, details: Record<string, unknown> = {}) {
-    console.info(`[ProjectStore] ${action}`, {
-      ...details,
-      selectedProject: selectedProject.value?.metadata?.name ?? null,
-      projectCount: projects.value.length,
-      timestamp: new Date().toISOString(),
-    })
-  }
+  // function logState(action: string, details: Record<string, unknown> = {}) {
+  //   console.info(`[ProjectStore] ${action}`, {
+  //     ...details,
+  //     selectedProject: selectedProject.value?.metadata?.name ?? null,
+  //     projectCount: projects.value.length,
+  //     timestamp: new Date().toISOString(),
+  //   })
+  // }
 
   // Getters
   const currentProjectName = computed(() => {
@@ -72,37 +82,66 @@ export const useProjectStore = defineStore('project', () => {
   })
 
   // Actions
-  async function fetchProjects() {
-    loading.value = true
+  async function fetchProjects(options: { silent?: boolean } = {}) {
+    const silent = options.silent ?? false
+    if (!silent) {
+      loading.value = true
+    }
     error.value = null
     try {
       projects.value = await api.projects.list()
+      lastFetchedAt.value = Date.now()
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to fetch projects'
+      // A background revalidation keeps the cached list visible, so it does not
+      // surface an error page; it only marks the list stale for the next attempt.
+      if (!silent) {
+        error.value = err instanceof Error ? err.message : 'Failed to fetch projects'
+      }
+      lastFetchedAt.value = null
       throw err
     } finally {
-      loading.value = false
+      if (!silent) {
+        loading.value = false
+      }
     }
   }
 
+  function isProjectsStale(ttlMs: number = PROJECT_LIST_TTL_MS): boolean {
+    if (lastFetchedAt.value === null) {
+      return true
+    }
+    return Date.now() - lastFetchedAt.value > ttlMs
+  }
+
+  function markProjectsStale() {
+    lastFetchedAt.value = null
+  }
+
   async function selectProject(name: string) {
-    logState('selectProject:before', { name })
+    // logState('selectProject:before', { name })
     loading.value = true
     error.value = null
     try {
+      const isProjectSwitch = currentProjectName.value !== name
+
       // CRITICAL FIX: Reset entity store when switching projects
       // to prevent stale entities from previous project (or deleted project
       // recreated with same name) from appearing.
       const entityStore = useEntityStore()
       if (entityStore.currentProjectName !== name) {
-        logState('selectProject:resettingEntityStore', { name, previousProject: entityStore.currentProjectName })
+        // logState('selectProject:resettingEntityStore', { name, previousProject: entityStore.currentProjectName })
         entityStore.reset()
+      }
+
+      if (isProjectSwitch) {
+        clearValidation()
+        useValidationStore().reset()
       }
 
       // Activate project in backend (loads into ApplicationState)
       selectedProject.value = await api.projects.activate(name)
       hasUnsavedChanges.value = false
-      logState('selectProject:after', { name })
+      // logState('selectProject:after', { name })
       return selectedProject.value
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to load project'
@@ -129,7 +168,7 @@ export const useProjectStore = defineStore('project', () => {
   }
 
   async function createProject(data: ProjectCreateRequest) {
-    logState('createProject:before', { name: data.name })
+    // logState('createProject:before', { name: data.name })
     loading.value = true
     error.value = null
     try {
@@ -146,9 +185,10 @@ export const useProjectStore = defineStore('project', () => {
         modified_at: project.metadata?.modified_at,
         is_valid: project.metadata?.is_valid,
       })
+      markProjectsStale()
       selectedProject.value = project
       hasUnsavedChanges.value = false
-      logState('createProject:after', { name: data.name })
+      // logState('createProject:after', { name: data.name })
       return project
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to create project'
@@ -177,6 +217,7 @@ export const useProjectStore = defineStore('project', () => {
         }
       }
 
+      markProjectsStale()
       selectedProject.value = project
       hasUnsavedChanges.value = false
       return project
@@ -212,6 +253,7 @@ export const useProjectStore = defineStore('project', () => {
         }
       }
 
+      markProjectsStale()
       selectedProject.value = project
       hasUnsavedChanges.value = false
 
@@ -225,7 +267,7 @@ export const useProjectStore = defineStore('project', () => {
   }
 
   async function deleteProject(name: string) {
-    logState('deleteProject:before', { name })
+    // logState('deleteProject:before', { name })
     loading.value = true
     // Don't clear global error - operation errors should be handled by caller
     try {
@@ -236,13 +278,14 @@ export const useProjectStore = defineStore('project', () => {
 
       await api.projects.delete(name)
       projects.value = projects.value.filter((c) => c.name !== name)
+      markProjectsStale()
       if (selectedProject.value?.metadata?.name === name) {
         selectedProject.value = null
       }
 
       // Reset entity store again after delete completes
       entityStore.reset()
-      logState('deleteProject:after', { name })
+      // logState('deleteProject:after', { name })
     } catch (err) {
       // Extract detailed error message and re-throw with better message
       const errorMessage = extractErrorMessage(err, 'Failed to delete project')
@@ -283,11 +326,11 @@ export const useProjectStore = defineStore('project', () => {
     }
   }
 
-  async function restoreBackup(name: string, backupPath: string) {
+  async function restoreBackup(name: string, backupName: string) {
     loading.value = true
     error.value = null
     try {
-      const project = await api.projects.restore(name, { backup_path: backupPath })
+      const project = await api.projects.restore(name, { backup_name: backupName })
       selectedProject.value = project
 
       // Update in list if exists
@@ -466,6 +509,7 @@ export const useProjectStore = defineStore('project', () => {
     loading.value = false
     error.value = null
     hasUnsavedChanges.value = false
+    lastFetchedAt.value = null
   }
 
   return {
@@ -477,6 +521,7 @@ export const useProjectStore = defineStore('project', () => {
     loading,
     error,
     hasUnsavedChanges,
+    lastFetchedAt,
     // Getters
     currentProjectName,
     sortedProjects,
@@ -485,6 +530,8 @@ export const useProjectStore = defineStore('project', () => {
     hasWarnings,
     // Actions
     fetchProjects,
+    isProjectsStale,
+    markProjectsStale,
     selectProject,
     refreshProject,
     createProject,

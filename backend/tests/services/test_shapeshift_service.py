@@ -133,9 +133,9 @@ class TestShapeShiftCache:
         df = pd.DataFrame({"id": [1]})
         cache.set_dataframe(project_name="config1", entity_name="entity1", dataframe=df)
 
-        time.sleep(1.1)  # Wait for expiry
-
-        result = cache.get_dataframe("config1", "entity1")
+        # Move the clock past the TTL instead of sleeping in real time.
+        with patch("backend.app.utils.caches.time.time", return_value=time.time() + 2):
+            result = cache.get_dataframe("config1", "entity1")
         assert result is None
 
     def test_cache_invalidate_specific(self):
@@ -806,6 +806,54 @@ class TestShapeShiftService:
             # Verify the override was used by checking that project was modified
             # The ShapeShifter should have been called with the modified config
             mock_shifter.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_preview_entity_fixed_override_receives_project_options(self, shapeshift_service: ShapeShiftService):
+        """Regression #462: a fixed-entity override must be resolved with an EntityMapperContext.
+
+        A `type: fixed` override is dispatched to `FixedEntityConfigMapper`, which reads
+        `context.project_options`. When the project name string was passed as the context,
+        preview raised `AttributeError: 'str' object has no attribute 'project_options'`.
+        Applying the project's declared convention here is only possible when the options
+        reached the mapper through a proper context.
+        """
+        project = ShapeShiftProject(
+            cfg={
+                "metadata": {"name": "test_project"},
+                "entities": {},
+                "options": {"fixed_entity_types": {"conventions": [{"pattern": "abundance", "type": "int"}]}},
+            },
+            filename="test-project.yml",
+        )
+
+        override_config = {
+            "name": "abundance_source",
+            "type": "fixed",
+            "public_id": "abundance_source_id",
+            "keys": ["label"],
+            "columns": ["label", "abundance"],
+            "values": [["Oak", "12"]],
+        }
+
+        abundance_df = pd.DataFrame({"system_id": [1], "label": ["Oak"], "abundance": [12]})
+
+        mock_normalizer = MagicMock()
+        mock_normalizer.normalize = AsyncMock()
+        mock_normalizer.table_store = {"abundance_source": abundance_df}
+        mock_normalizer.unresolved_extra_columns = {}
+        mock_normalizer.linker.validators = []
+
+        with (
+            patch("backend.app.services.shapeshift_service.ShapeShifter") as mock_shifter,
+            patch.object(shapeshift_service.project_cache, "get_project", return_value=project),
+        ):
+            mock_shifter.return_value = mock_normalizer
+
+            result = await shapeshift_service.preview_entity("test_project", "abundance_source", limit=10, override_config=override_config)
+
+        # The declared project convention coerced "12" -> 12, proving project options were available.
+        assert override_config["values"] == [["Oak", 12]]
+        assert result.entity_name == "abundance_source"
 
     @pytest.mark.asyncio
     async def test_preview_entity_override_bypasses_cache(self, shapeshift_service: ShapeShiftService, sample_project: ShapeShiftProject):

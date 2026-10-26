@@ -21,7 +21,8 @@ export interface ExtraColumnSuggestion {
   category: 'placeholder' | 'column' | 'function'
 }
 
-const INTERPOLATION_PATTERN = /(?<!\{)\{([a-zA-Z_][\w]*)\}(?!\})/g
+// Column placeholders such as {Ökogruppe} may start with a Unicode letter (the `u` flag enables \p{L}/\p{N}).
+const INTERPOLATION_PATTERN = /(?<!\{)\{([\p{L}_][\p{L}\p{N}_]*)\}(?!\})/gu
 const FORMULA_REFERENCE_PATTERN = /\b([a-zA-Z_][\w]*)\b/g
 const DSL_FUNCTIONS = new Set(['concat', 'upper', 'lower', 'trim', 'substr', 'coalesce', 'null', 'true', 'false'])
 const FORMULA_SNIPPETS = ['concat()', 'upper()', 'lower()', 'trim()', 'substr()', 'coalesce()'] as const
@@ -157,7 +158,10 @@ export function getExtraColumnDiagnostics(
   }
 
   if (reservedNames.has(columnName)) {
-    diagnostics.push({ severity: 'error', message: `'${columnName}' conflicts with an existing or reserved result column.` })
+    diagnostics.push({
+      severity: 'error',
+      message: `'${columnName}' conflicts with an existing or reserved result column.`,
+    })
   }
 
   const analysis = analyzeExtraColumnExpression(expression, [...availableColumns])

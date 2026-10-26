@@ -1,0 +1,7 @@
+# Project-level graphify settings (key=value, read by extract/update/watch/hooks).
+# graphify is installed via brew (~/.local/bin/graphify), not the project .venv.
+
+# 0 disables graph.html generation entirely. The graph is far above the
+# 5,000-node viz limit and the HTML is not used; callflow HTML is a separate
+# `graphify export callflow-html` step and is unaffected.
+viz_node_limit=0

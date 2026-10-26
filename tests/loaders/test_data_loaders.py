@@ -6,7 +6,8 @@ Tests the vendor-specific database introspection methods in database loaders.
 
 import pytest
 
-from src.loaders.base_loader import DataLoaders, LoaderType
+from src.loaders.base_loader import DataLoader, DataLoaders, LoaderType
+from src.model import DataSourceConfig
 
 # pylint: disable=redefined-outer-name, unused-argument, protected-access
 
@@ -35,3 +36,31 @@ class TestDataLoader:
         """Check that all registered loaders have loader_type defined."""
         loader_keys: set[str] = DataLoaders.get_loader_keys_by_type(loader_type)
         assert set(loader_keys) == expected_keys, f"{loader_type} loaders do not match expected set. Found: {set(loader_keys)}"
+
+
+class TestDataLoaderCreateDefault:
+    """Tests for the base DataLoader.create() default implementation.
+
+    DuckDbLoader is the only loader that overrides create(). All other loaders
+    inherit this default, which instantiates the class directly and ignores
+    unused context keyword arguments.
+    """
+
+    def test_create_returns_instance_of_loader_class(self):
+        loader_cls: type[DataLoader] = DataLoaders.get(key="csv")
+        loader: DataLoader = loader_cls.create(data_source=None)
+        assert isinstance(loader, loader_cls)
+
+    def test_create_forwards_data_source(self):
+        config = DataSourceConfig(cfg={"driver": "csv"}, name="files")
+        loader: DataLoader = DataLoaders.get(key="csv").create(data_source=config)
+        assert loader.data_source is config
+
+    def test_create_ignores_unused_context_kwargs(self):
+        config = DataSourceConfig(cfg={"driver": "csv"}, name="files")
+        loader: DataLoader = DataLoaders.get(key="csv").create(
+            data_source=config,
+            workspace=object(),
+            table_store=object(),
+        )
+        assert loader.data_source is config

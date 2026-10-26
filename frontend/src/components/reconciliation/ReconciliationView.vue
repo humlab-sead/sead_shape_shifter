@@ -15,10 +15,11 @@
             >
               {{ serviceStatus.status === 'online' ? `Online (${availableEntityTypes} entities)` : 'Offline' }}
             </v-chip>
-            
+
             <!-- Configured Specifications Count -->
             <v-chip v-if="specifications.length > 0" size="small" variant="tonal" color="primary">
-              {{ specifications.length }} {{ specifications.length === 1 ? 'specification' : 'specifications' }} configured
+              {{ specifications.length }}
+              {{ specifications.length === 1 ? 'specification' : 'specifications' }} configured
             </v-chip>
           </div>
         </div>
@@ -52,7 +53,8 @@
                 Reconciliation Specifications
               </h3>
               <p class="text-grey mb-4">
-                Configure reconciliation specifications for your entities. Click the reconcile button on any specification to start.
+                Configure reconciliation specifications for your entities. Click the reconcile button on any
+                specification to start.
               </p>
               <specifications-list :project-name="projectName" @reconcile="handleReconcileSpec" />
             </div>
@@ -88,14 +90,22 @@
                   </v-btn>
                 </div>
               </div>
-              
-              <v-alert v-if="yamlError" type="error" variant="tonal" class="mb-4" closable @click:close="yamlError = null">
+
+              <v-alert
+                v-if="yamlError"
+                type="error"
+                variant="tonal"
+                class="mb-4"
+                closable
+                @click:close="yamlError = null"
+              >
                 <v-alert-title>YAML Error</v-alert-title>
                 {{ yamlError }}
               </v-alert>
-              
+
               <yaml-editor
                 v-model="yamlContent"
+                mode="reconciliation"
                 height="600px"
                 @update:model-value="yamlModified = true"
               />
@@ -110,7 +120,7 @@
                   <v-icon start>mdi-auto-fix</v-icon>
                   Reconcile & Review
                 </h3>
-                
+
                 <!-- Auto-Reconcile Button -->
                 <v-btn
                   v-if="selectedEntity && entitySpec"
@@ -155,7 +165,9 @@
               <v-card v-else variant="outlined" class="pa-8 text-center">
                 <v-icon icon="mdi-database-off-outline" size="64" color="grey" />
                 <h3 class="text-h6 mt-4 mb-2">No Data Available</h3>
-                <p class="text-grey">Run auto-reconcile to fetch and process entity data, then review and adjust mappings as needed</p>
+                <p class="text-grey">
+                  Run auto-reconcile to fetch and process entity data, then review and adjust mappings as needed
+                </p>
                 <v-btn class="mt-4" variant="tonal" @click="activeTab = 'setup'"> Go to Setup </v-btn>
               </v-card>
             </div>
@@ -192,7 +204,8 @@ const props = defineProps<Props>()
 
 // Store
 const reconciliationStore = useReconciliationStore()
-const { reconciliationConfig, loading, reconcilableEntities, previewData, getEntityTargets, specifications } = storeToRefs(reconciliationStore)
+const { reconciliationConfig, loading, reconcilableEntities, previewData, getEntityTargets, specifications } =
+  storeToRefs(reconciliationStore)
 
 // Local state
 const activeTab = ref<string>('configuration') // Tab state: configuration, reconcile
@@ -257,7 +270,7 @@ async function handleAutoReconcile() {
     resultMessage.value = `Auto-reconciliation complete: ${result.auto_accepted} auto-matched, ${result.needs_review} need review, ${result.unmatched} unmatched`
     resultColor.value = 'success'
     showResultSnackbar.value = true
-    
+
     // Switch to reconcile tab to show results
     if (entityPreviewData.value.length > 0) {
       activeTab.value = 'reconcile'
@@ -330,11 +343,11 @@ async function checkServiceHealth() {
   try {
     const response = await reconciliationStore.checkServiceHealth()
     serviceStatus.value = response
-    
+
     // Also fetch the manifest to get available entity types
     const manifest = await reconciliationStore.getServiceManifest()
     serviceManifest.value = manifest
-    
+
     // Extract entity types count from manifest
     if (manifest.defaultTypes && Array.isArray(manifest.defaultTypes)) {
       availableEntityTypes.value = manifest.defaultTypes.length
@@ -368,17 +381,17 @@ async function reloadYaml() {
 async function saveYaml() {
   savingYaml.value = true
   yamlError.value = null
-  
+
   try {
     // Parse YAML to validate
     // const parsedConfig = yaml.load(yamlContent.value)
-    
+
     // Save the config
     await reconciliationStore.saveEntityResolutionCatalogRaw(props.projectName, yamlContent.value)
-    
+
     // Reload specifications to reflect changes
     await reconciliationStore.loadSpecifications(props.projectName)
-    
+
     yamlModified.value = false
     resultMessage.value = 'Reconciliation configuration saved successfully'
     resultColor.value = 'success'
@@ -405,7 +418,7 @@ onMounted(async () => {
     // Load config and specifications
     await reconciliationStore.loadEntityResolutionCatalog(props.projectName)
     await reconciliationStore.loadSpecifications(props.projectName)
-    
+
     // Load YAML content
     await loadYamlContent()
 
@@ -468,7 +481,7 @@ watch(
       if (entitySpec.value.auto_accept_threshold) {
         autoAcceptThreshold.value = Math.round(entitySpec.value.auto_accept_threshold * 100)
       }
-      
+
       // Load preview data for the selected entity and target
       try {
         await reconciliationStore.loadPreviewData(props.projectName, newEntity, newTarget)

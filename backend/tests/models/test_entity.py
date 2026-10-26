@@ -18,6 +18,7 @@ class TestForeignKeyConstraints:
         """Test default constraint values."""
         constraints = ForeignKeyConstraints()
         assert constraints.allow_null_keys is False
+        assert constraints.null_keys_equal is False
         assert constraints.require_unique_left is False
         assert constraints.require_unique_right is False
 
@@ -28,6 +29,9 @@ class TestForeignKeyConstraints:
 
         with_cardinality = ForeignKeyConstraints(cardinality="one_to_one")
         assert with_cardinality.has_constraints is True
+
+        with_null_equality = ForeignKeyConstraints(null_keys_equal=True)
+        assert with_null_equality.has_constraints is True
 
     def test_has_match_constraints(self):
         """Test has_match_constraints property."""
@@ -126,7 +130,21 @@ class TestEntity:
         assert entity.keys == []
         assert entity.columns == []
         assert entity.foreign_keys == []
+        assert entity.foreign_key_value_sources == {}
         assert entity.check_column_names is True
+
+    def test_foreign_key_value_sources_accept_only_supported_modes(self):
+        entity = Entity(
+            name="location",
+            foreign_key_value_sources={"location_type": "public_id"},
+        )
+
+        assert entity.foreign_key_value_sources == {"location_type": "public_id"}
+        assert Entity(name="sample", foreign_key_value_sources={"sample_type": "system_id"}).foreign_key_value_sources == {
+            "sample_type": "system_id"
+        }
+        with pytest.raises(ValidationError):
+            Entity(name="location", foreign_key_value_sources={"location_type": "external_id"})
 
     def test_with_foreign_keys(self):
         """Test entity with foreign keys."""

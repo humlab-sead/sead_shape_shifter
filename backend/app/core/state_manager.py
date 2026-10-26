@@ -164,21 +164,23 @@ class ApplicationState:
         """Get a specific project from active editing sessions."""
         return self._active_projects.get(name)
 
-    def set_active_project(self, project: Project) -> None:
+    def set_active_project(self, project: Project, name: str | None = None) -> None:
         """
         Set/update the active project.
 
         Args:
             project: Project to set as active
+            name: Project locator used as the state cache key. When omitted, the
+                project's metadata name is used for backward compatibility.
         """
         assert project.metadata, "Project metadata missing"
 
-        name: str = project.metadata.name
-        self._active_projects[name] = project
-        self._active_project_name = name
-        self._project_versions[name] = self._project_versions.get(name, 0) + 1
-        self._project_dirty[name] = True
-        logger.debug(f"Set active project: {name} (version {self._project_versions[name]})")
+        key: str = name or project.metadata.name
+        self._active_projects[key] = project
+        self._active_project_name = key
+        self._project_versions[key] = self._project_versions.get(key, 0) + 1
+        self._project_dirty[key] = True
+        logger.debug(f"Set active project: {key} (version {self._project_versions[key]})")
 
     def mark_saved(self, name: str) -> None:
         """Mark a project as saved (no unsaved changes)."""
@@ -273,8 +275,14 @@ class ApplicationStateManager:
 
         return None
 
-    def update(self, project: Project) -> None:
-        """Update project if it's already known, otherwise ignore."""
+    def update(self, project: Project, name: str | None = None) -> None:
+        """Update project if it's already known, otherwise ignore.
+
+        Args:
+            project: Project to refresh in the cache.
+            name: Project locator used as the state cache key. When omitted, the
+                project's metadata name is used for backward compatibility.
+        """
         corr = get_correlation_id()
         with contextlib.suppress(RuntimeError):
 
@@ -285,19 +293,19 @@ class ApplicationStateManager:
                 return
 
             app_state: ApplicationState = get_app_state()
-            name = project.metadata.name
+            key: str = name or project.metadata.name
 
             # Only update if the project is already in memory
-            if name in app_state._active_projects:
+            if key in app_state._active_projects:
                 entity_count: int = len(project.entities or {})
                 entity_names: list[str] = sorted((project.entities or {}).keys())
-                app_state._active_projects[name] = project
-                new_version: int = app_state.increment_version(name)
-                app_state.mark_saved(name)
+                app_state._active_projects[key] = project
+                new_version: int = app_state.increment_version(key)
+                app_state.mark_saved(key)
                 logger.info(
                     "[{}] state.update: project='{}' version={} entities={} names={}",
                     corr,
-                    name,
+                    key,
                     new_version,
                     entity_count,
                     entity_names,
@@ -306,7 +314,7 @@ class ApplicationStateManager:
                 logger.warning(
                     "[{}] state.update: project='{}' NOT in active_projects, skipping cache update",
                     corr,
-                    name,
+                    key,
                 )
 
     def update_version(self, name: str) -> None:
@@ -316,21 +324,27 @@ class ApplicationStateManager:
                 get_app_state().increment_version(name)
 
     def activate(self, project: Project, name: str | None = None) -> None:
-        """Set active project in ApplicationState if initialized."""
-        name = name or (project.metadata.name if project.metadata else None)
-        if not name:
+        """Set active project in ApplicationState if initialized.
+
+        Args:
+            project: Project to set as active.
+            name: Project locator used as the state cache key. When omitted, the
+                project's metadata name is used for backward compatibility.
+        """
+        key: str | None = name or (project.metadata.name if project.metadata else None)
+        if not key:
             raise ValueError("Project name is required to activate project.")
         corr = get_correlation_id()
         entity_count = len(project.entities or {})
         entity_names = sorted((project.entities or {}).keys())
         with contextlib.suppress(RuntimeError):
             app_state: ApplicationState = get_app_state()
-            app_state.set_active_project(project)
-            app_state.mark_saved(name)  # Freshly loaded is not dirty
+            app_state.set_active_project(project, key)
+            app_state.mark_saved(key)  # Freshly loaded is not dirty
             logger.info(
                 "[{}] state.activate: project='{}' entities={} names={}",
                 corr,
-                name,
+                key,
                 entity_count,
                 entity_names,
             )

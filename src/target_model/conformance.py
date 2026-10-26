@@ -23,6 +23,7 @@ class ConformanceIssue(CoreIssue):
 
 
 class ConformanceValidator(ABC):
+    allow_severity_override: bool = True
 
     def get_default_severity(
         self, target_model: TargetModel, project: ShapeShiftProject  # pylint: disable=unused-argument
@@ -76,15 +77,20 @@ class GlobalConformanceValidator(ConformanceValidator):
         return self.validate_global(target_model, project)
 
 
-def has_target_facing_foreign_key_path(source_entity: str, target_entity: str, project: ShapeShiftProject) -> bool:
+def has_target_facing_foreign_key_path(
+    source_entity: str,
+    target_entity: str,
+    project: ShapeShiftProject,
+    target_model: TargetModel | None = None,
+) -> bool:
     """Return whether the project's target-facing FK graph reaches the target entity from the source entity."""
     if source_entity == target_entity:
         return True
-    if not project.has_table(source_entity) or not project.has_table(target_entity):
+    if not project.has_table(source_entity):
         return False
 
-    visited: set[str] = {source_entity}
-    queue: list[str] = sorted(project.get_table(source_entity).get_target_facing_foreign_key_targets())
+    visited: set[str] = set()
+    queue: list[str] = [source_entity]
 
     while queue:
         current_entity = queue.pop(0)
@@ -97,9 +103,47 @@ def has_target_facing_foreign_key_path(source_entity: str, target_entity: str, p
         if not project.has_table(current_entity):
             continue
 
-        queue.extend(sorted(project.get_table(current_entity).get_target_facing_foreign_key_targets() - visited))
+        table_cfg = project.get_table(current_entity)
+        targets = table_cfg.get_target_facing_foreign_key_targets()
+        if target_model is not None:
+            entity_spec = target_model.entities.get(current_entity)
+            if entity_spec is not None:
+                targets.update(
+                    foreign_key.entity
+                    for foreign_key in entity_spec.foreign_keys
+                    if is_valid_direct_public_id_foreign_key(current_entity, foreign_key.entity, target_model, project)
+                )
+        queue.extend(sorted(targets - visited))
 
     return False
+
+
+def is_valid_direct_public_id_foreign_key(
+    source_entity: str,
+    target_entity: str,
+    target_model: TargetModel,
+    project: ShapeShiftProject,
+) -> bool:
+    """Return whether a declared public_id source satisfies the direct-FK contract."""
+    if not project.has_table(source_entity):
+        return False
+
+    source_cfg = project.get_table(source_entity)
+    if source_cfg.foreign_key_value_sources.get(target_entity) != "public_id":
+        return False
+
+    source_spec = target_model.entities.get(source_entity)
+    target_spec = target_model.entities.get(target_entity)
+    if source_spec is None or target_spec is None or not target_spec.public_id or not target_spec.target_table:
+        return False
+
+    if not any(foreign_key.entity == target_entity and not foreign_key.via for foreign_key in source_spec.foreign_keys):
+        return False
+
+    if any(foreign_key.remote_entity == target_entity for foreign_key in source_cfg.foreign_keys):
+        return False
+
+    return target_spec.public_id in source_cfg.get_target_facing_columns()
 
 
 def get_append_column_rename_map(parent_table_cfg: TableConfig, append_table_cfg: TableConfig) -> dict[str, str]:
@@ -164,6 +208,157 @@ class PublicIdConformanceValidator(EntityConformanceValidator):
         return []
 
 
+@CONFORMANCE_VALIDATORS.register(key="foreign_key_value_source")
+class ForeignKeyValueSourceConformanceValidator(GlobalConformanceValidator):
+    """Validate project value-source declarations against target-model direct FKs."""
+
+    def validate_global(self, target_model: TargetModel, project: ShapeShiftProject) -> list[ConformanceIssue]:
+        issues: list[ConformanceIssue] = []
+
+        for source_entity in project.entities:
+            if not project.has_table(source_entity):
+                continue
+            source_cfg = project.get_table(source_entity)
+            value_sources = source_cfg.foreign_key_value_sources
+            source_spec = target_model.entities.get(source_entity)
+
+            for target_entity, value_source in value_sources.items():
+                if (
+                    not isinstance(target_entity, str)
+                    or not isinstance(value_source, str)
+                    or value_source not in {"system_id", "public_id"}
+                ):
+                    issues.append(
+                        ConformanceIssue(
+                            code="DIRECT_FK_VALUE_SOURCE_INVALID",
+                            message=f"Entity '{source_entity}' has an invalid foreign-key value-source declaration.",
+                            entity=source_entity,
+                            field="foreign_key_value_sources",
+                        )
+                    )
+                    continue
+
+                target_spec = target_model.entities.get(target_entity)
+                if target_spec is None:
+                    issues.append(
+                        ConformanceIssue(
+                            code="DIRECT_FK_RELATIONSHIP_UNKNOWN",
+                            message=f"Entity '{source_entity}' declares a value source for unknown target entity '{target_entity}'.",
+                            entity=source_entity,
+                            field=f"foreign_key_value_sources.{target_entity}",
+                        )
+                    )
+                    continue
+
+                target_fks = [fk for fk in source_spec.foreign_keys if fk.entity == target_entity] if source_spec else []
+                direct_fks = [fk for fk in target_fks if not fk.via]
+                if not direct_fks:
+                    issue_code = "DIRECT_FK_VIA_UNSUPPORTED" if target_fks else "DIRECT_FK_RELATIONSHIP_UNKNOWN"
+                    message = (
+                        f"Entity '{source_entity}' cannot declare a direct value source for '{target_entity}' through a via relationship."
+                        if target_fks
+                        else f"Entity '{source_entity}' has no direct target-model foreign key to '{target_entity}'."
+                    )
+                    issues.append(
+                        ConformanceIssue(
+                            code=issue_code,
+                            message=message,
+                            entity=source_entity,
+                            field=f"foreign_key_value_sources.{target_entity}",
+                        )
+                    )
+                    continue
+
+                if value_source != "public_id":
+                    continue
+
+                if not target_spec.public_id:
+                    issues.append(
+                        ConformanceIssue(
+                            code="DIRECT_FK_TARGET_PUBLIC_ID_MISSING",
+                            message=f"Target entity '{target_entity}' must declare public_id for direct FK values.",
+                            entity=source_entity,
+                            field=f"foreign_key_value_sources.{target_entity}",
+                        )
+                    )
+                if not target_spec.target_table:
+                    issues.append(
+                        ConformanceIssue(
+                            code="DIRECT_FK_TARGET_TABLE_MISSING",
+                            message=f"Target entity '{target_entity}' must declare target_table for direct FK values.",
+                            entity=source_entity,
+                            field=f"foreign_key_value_sources.{target_entity}",
+                        )
+                    )
+                has_core_link = any(fk.remote_entity == target_entity for fk in source_cfg.foreign_keys)
+                if has_core_link:
+                    issues.append(
+                        ConformanceIssue(
+                            code="DIRECT_FK_CORE_LINK_CONFLICT",
+                            message=(
+                                f"Entity '{source_entity}' cannot declare public_id values and a Core foreign_keys link "
+                                f"to '{target_entity}'."
+                            ),
+                            entity=source_entity,
+                            field=f"foreign_key_value_sources.{target_entity}",
+                        )
+                    )
+                if target_spec.public_id and not has_core_link and target_spec.public_id not in source_cfg.get_target_facing_columns():
+                    issues.append(
+                        ConformanceIssue(
+                            code="DIRECT_FK_OUTPUT_COLUMN_MISSING",
+                            message=(
+                                f"Entity '{source_entity}' must output target FK column '{target_spec.public_id}' "
+                                f"for direct values to '{target_entity}'."
+                            ),
+                            entity=source_entity,
+                            column=target_spec.public_id,
+                        )
+                    )
+
+        return issues
+
+
+@CONFORMANCE_VALIDATORS.register(key="direct_fk_pending_check")
+class DirectForeignKeyPendingCheckValidator(GlobalConformanceValidator):
+    """Report valid direct target IDs whose existence will be checked by the ingester."""
+
+    allow_severity_override = False
+
+    def get_default_severity(
+        self, target_model: TargetModel, project: ShapeShiftProject
+    ) -> SeverityLevel:  # pylint: disable=unused-argument
+        """Keep pending target checks informational."""
+        return "info"
+
+    def validate_global(self, target_model: TargetModel, project: ShapeShiftProject) -> list[ConformanceIssue]:
+        issues: list[ConformanceIssue] = []
+        for source_entity in project.entities:
+            if not project.has_table(source_entity):
+                continue
+            value_sources = project.get_table(source_entity).foreign_key_value_sources
+            for target_entity, value_source in value_sources.items():
+                if value_source != "public_id" or not is_valid_direct_public_id_foreign_key(
+                    source_entity, target_entity, target_model, project
+                ):
+                    continue
+
+                target_spec = target_model.entities[target_entity]
+                issues.append(
+                    ConformanceIssue(
+                        severity="info",
+                        code="DIRECT_FK_TARGET_CHECK_PENDING",
+                        message=(
+                            f"Target ID values for '{source_entity}.{target_spec.public_id}' will be checked "
+                            "against the target database during change-request validation."
+                        ),
+                        entity=source_entity,
+                        column=target_spec.public_id,
+                    )
+                )
+        return issues
+
+
 @CONFORMANCE_VALIDATORS.register(key="foreign_key")
 class ForeignKeyConformanceValidator(EntityConformanceValidator):
     """Validate that required FK targets are present, with support for bridge-mediated relationships.
@@ -202,12 +397,22 @@ class ForeignKeyConformanceValidator(EntityConformanceValidator):
                 # Direct FK target (no bridge)
                 if not foreign_key.via:
                     if foreign_key.entity not in project_targets and not has_target_facing_foreign_key_path(
-                        entity_name, foreign_key.entity, project
+                        entity_name, foreign_key.entity, project, target_model
                     ):
+                        missing_local_keys: set[str] = table_cfg.get_missing_unnest_foreign_key_local_keys(foreign_key.entity)
+                        if missing_local_keys:
+                            local_keys_text: str = ", ".join(f"'{key}'" for key in sorted(missing_local_keys))
+                            message: str = (
+                                f"Entity '{entity_name}' is missing required foreign key target '{foreign_key.entity}' "
+                                f"because local key column(s) {local_keys_text} do not survive unnest. "
+                                "Preserve them in 'id_vars' or otherwise make them available after unnest."
+                            )
+                        else:
+                            message = f"Entity '{entity_name}' is missing required foreign key target '{foreign_key.entity}'"
                         issues.append(
                             ConformanceIssue(
                                 code="MISSING_REQUIRED_FOREIGN_KEY_TARGET",
-                                message=f"Entity '{entity_name}' is missing required foreign key target '{foreign_key.entity}'",
+                                message=message,
                                 entity=entity_name,
                             )
                         )
@@ -251,6 +456,44 @@ class ForeignKeyConformanceValidator(EntityConformanceValidator):
         return issues
 
 
+@CONFORMANCE_VALIDATORS.register(key="conditional_foreign_key")
+class ConditionalForeignKeyConformanceValidator(GlobalConformanceValidator):
+    """Report conditional FKs that project conformance cannot evaluate before reconciliation."""
+
+    allow_severity_override = False
+
+    def get_default_severity(
+        self, target_model: TargetModel, project: ShapeShiftProject  # pylint: disable=unused-argument
+    ) -> SeverityLevel:
+        """Return info because final insert decisions are not available during project conformance."""
+        return "info"
+
+    def validate_global(self, target_model: TargetModel, project: ShapeShiftProject) -> list[ConformanceIssue]:
+        """Report conditional FKs for source entities present in the project."""
+        issues: list[ConformanceIssue] = []
+        for entity_name, entity_spec in target_model.entities.items():
+            if not project.has_table(entity_name):
+                continue
+
+            for foreign_key in entity_spec.foreign_keys:
+                if foreign_key.required_when is None:
+                    continue
+
+                issues.append(
+                    ConformanceIssue(
+                        severity="info",
+                        code="CONDITIONAL_FK_AWAITING_RECONCILIATION",
+                        message=(
+                            f"Conditional foreign key from '{entity_name}' to '{foreign_key.entity}' is awaiting "
+                            "reconciliation; project conformance cannot determine whether rows will be inserted."
+                        ),
+                        entity=entity_name,
+                    )
+                )
+
+        return issues
+
+
 @CONFORMANCE_VALIDATORS.register(key="no_orphan_facts")
 class NoOrphanFactsConformanceValidator(GlobalConformanceValidator):
     """Fact entities must reach at least one required lookup or classifier when the constraint is declared."""
@@ -285,15 +528,17 @@ class NoOrphanFactsConformanceValidator(GlobalConformanceValidator):
             if entity_spec.role != "fact" or not project.has_table(entity_name):
                 continue
 
-            if any(has_target_facing_foreign_key_path(entity_name, parent_entity, project) for parent_entity in parent_entities):
+            if any(
+                has_target_facing_foreign_key_path(entity_name, parent_entity, project, target_model) for parent_entity in parent_entities
+            ):
                 continue
 
             issues.append(
                 ConformanceIssue(
                     code="ORPHAN_FACT_ENTITY",
                     message=(
-                        f"Fact entity '{entity_name}' does not reach any lookup or classifier entity "
-                        f"declared by the target model ({', '.join(sorted(parent_entities))})"
+                        f"Fact entity '{entity_name}' does not reach any lookup or classifier entity"
+                        # f"declared by the target model ({', '.join(sorted(parent_entities))})"
                     ),
                     entity=entity_name,
                 )
@@ -436,6 +681,9 @@ class InducedRequirementConformanceValidator(GlobalConformanceValidator):
                 if not fk.required or fk.entity in visited:
                     continue
                 visited.add(fk.entity)
+
+                if is_valid_direct_public_id_foreign_key(entity_name, fk.entity, target_model, project):
+                    continue
 
                 fk_target_spec: EntitySpec | None = target_model.entities.get(fk.entity)
                 # Skip globally required targets — handled by required_entity validator.
@@ -624,7 +872,11 @@ class TargetModelConformanceValidator(ConformanceValidator):
             if rule_key in disabled_rule_keys:
                 continue
             validator: ConformanceValidator = validator_cls()
-            issue_severity = self.resolve_rule_severity(rule_key, validator, target_model, project, severity_overrides)
+            issue_severity = (
+                self.resolve_rule_severity(rule_key, validator, target_model, project, severity_overrides)
+                if validator.allow_severity_override
+                else validator.get_default_severity(target_model, project)
+            )
             rule_issues = validator.validate(target_model, project)
             for issue in rule_issues:
                 issue.severity = issue_severity

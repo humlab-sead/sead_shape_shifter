@@ -64,6 +64,8 @@ metadata:                             # Metadata definitions (required)
   name: string                        # Human-readable project name (optional)
   description: string                 # Detailed project description (optional)
   version: string                     # Semantic version (e.g., "1.0.0") (optional)
+  data_provider_code: string          # Registered provider code (required for new projects)
+  provider_schema: string              # Registered schema code for that provider (required for new projects)
   default_entity: string              # Default entity for `data` entities (optional)
   target_model: string | dict         # Target model spec reference (optional)
 ```
@@ -77,8 +79,27 @@ metadata:                             # Metadata definitions (required)
 - **name**: A human-readable name for the project (if omitted, derived from filename)
 - **description**: Detailed description of what this configuration does (supports multi-line strings using `|`)
 - **version**: Semantic version string (e.g., "1.0.0", "2.1.3") for tracking configuration changes
+- **data_provider_code** and **provider_schema**: A complete pair from the reviewed local provider registry. New projects require both values, and project validation reports missing, partial, blank, or unregistered values on the metadata fields. Once assigned, application saves cannot change or remove either value. Existing checked-in projects may remain unbound until the Phase 4 migration; assigning one requires both registered values.
 - **default_entity**: Reference to an existing entity used as the default source for `data` type entities
-- **target_model**: Reference to a target model specification. Accepted as a `@load:` directive pointing to a YAML file (`"@load: resources/target_models/sead_superset_model.yml"`) or as an inline mapping. When present, the **Check Conformance** button in the editor validates the project entities against the spec. See [TARGET_MODEL_GUIDE.md](TARGET_MODEL_GUIDE.md) for the workflow and [TARGET_MODEL_SCHEMA_REFERENCE.md](TARGET_MODEL_SCHEMA_REFERENCE.md) for the generated field-level schema reference.
+- **target_model**: Reference to a target model specification. Accepted as a `@load:` directive pointing to a YAML file (`"@load: resources/target_models/sead_standard_model.yml"`) or as an inline mapping. When present, the **Check Conformance** button in the editor validates the project entities against the spec. See [TARGET_MODEL_GUIDE.md](TARGET_MODEL_GUIDE.md) for the workflow and [TARGET_MODEL_SCHEMA_REFERENCE.md](TARGET_MODEL_SCHEMA_REFERENCE.md) for the generated field-level schema reference.
+
+Provider and schema values are separate codes. A provider can register more than one schema. For example, the current MAL pilot registry contains these pairs:
+
+```yaml
+metadata:
+  type: shapeshifter-project
+  data_provider_code: mal
+  provider_schema: archeobotany/arbodat-pilot
+```
+
+```yaml
+metadata:
+  type: shapeshifter-project
+  data_provider_code: mal
+  provider_schema: radiocarbon/strucke-pilot
+```
+
+Choose a pair from the project creation dialog. An existing unbound project can receive its first pair in the Metadata tab. After the first successful assignment, both codes are shown as fixed values. Editing project YAML directly does not bypass the save rule and requires repository review.
 
 ### Examples
 
@@ -97,8 +118,10 @@ metadata:
     Imports archaeological site data from multiple sources.
     Transforms data to match SEAD Clearinghouse schema.
   version: "2.1.0"
+  data_provider_code: mal
+  provider_schema: archeobotany/arbodat-pilot
   default_entity: sample_data
-  target_model: "@load: resources/target_models/sead_superset_model.yml"
+  target_model: "@load: resources/target_models/sead_standard_model.yml"
 ```
 
 ## Entity Section
@@ -163,16 +186,18 @@ This architecture separates concerns between:
 - **Business logic**: `keys` for entity identification in source data
 - **Global scope**: `public_id` for target system integration and FK relationships
 
-**Critical Principle**: All relationships in ShapeShifter use local `system_id` values. FK columns always contain parent's `system_id` (sequential integers), never external IDs. External IDs (e.g., SEAD IDs) are applied as a decoration step via the mapping sidecar (`<project>-mapping.yml`).
+**Core link rule**: Core FK links use local `system_id` values. Their FK columns contain the referenced entity's local `system_id`, not an external ID. When an ID from the source is used for reconciliation, it can still be configured as a business key and mapped through the mapping sidecar (`<project>-mapping.yml`).
+
+The SEAD change-request ingester also supports a project-specific direct target-ID value for an eligible target-model FK. This changes only the FK value written to the change-request package; it does not create a Core link or change Core FK values.
 
 #### `system_id` (Auto-Managed)
 - **Type**: `string` (always "system_id")
 - **Required**: Automatically managed by system
 - **Description**: Standardized name for auto-incrementing integer IDs (1, 2, 3...). This column is always added automatically during data loading and is used for internal processing. When data is exported, this column is renamed based on the entity's `public_id` setting.
-- **Import Rule**: For non-fixed entities (`sql`, `csv`, `xlsx`, `openpyxl`, `entity`), `system_id` is an internal Shape Shifter identity and should not be imported from source data or listed in `columns`. The main exception is `type: fixed`, where explicit `system_id` values may be preserved intentionally.
+- **Import Rule**: By default, non-fixed entities (`sql`, `csv`, `xlsx`, `openpyxl`, `entity`) should omit `system_id` and let Shape Shifter generate it. Structural validation warns when a non-fixed entity lists `system_id` in `columns`; runtime preserves supplied values, but currently does not check them for positive, unique integer values. Use source-supplied IDs only when they are intentional and stable. Fixed entities have separate checks for explicit `system_id` values.
 - **Behavior**:
   - Added automatically by all loaders (SQL, fixed, file)
-  - Always numbered sequentially starting from 1
+  - When generated, numbered sequentially starting from 1
   - Column name is always "system_id" during processing
   - Renamed to `public_id` value during export/dispatch
   - Read-only in UI (cannot be edited)
@@ -249,6 +274,31 @@ This architecture separates concerns between:
   # Automatically migrated to:
   public_id: site_id
   ```
+
+#### `foreign_key_value_sources`
+
+Use this entity-level map when a source already contains an existing target ID for a direct target-model FK. The target model still defines the relationship and its requirements; the project declares how its source values are represented.
+
+```yaml
+metadata:
+  target_model: "@load: resources/target_models/sead_standard_model.yml"
+
+entities:
+  location:
+    columns: [location_type_id, location_name]
+    foreign_key_value_sources:
+      location_type: public_id
+```
+
+Here, `location.location_type_id` contains existing SEAD `location_type_id` values. The project does not add a Core `foreign_keys` link to `location_type` for this declaration.
+
+- An omitted entry, or an explicit `system_id` entry, keeps the normal local-link behavior.
+- `public_id` is valid only for a direct target-model FK without `via`. The referenced target entity must define `public_id` and `target_table`, and the source entity must output that target column. A Core `foreign_keys` link to the same target conflicts with `public_id` mode.
+- The change-request ingester checks each packaged non-null value against the target table's integer public-ID column during both validation and ingestion. The check is read-only and mandatory; if the database lookup is unavailable or the ID is absent, the package fails. IDs for rows created by the same package must continue to use local `system_id` links.
+- Missing values follow the target-model FK rules, including `required`, `required_when`, and `nullable`. Rows excluded from the package do not need a direct-ID lookup.
+- The package manifest lists direct-ID FKs under `direct_target_id_foreign_keys`. Supplied FK values do not become mapping-sidecar links.
+
+The declaration is not a shared target-model setting and does not waive a target entity's independent `required: true` project requirement.
 
 #### `surrogate_id` (Deprecated - Use `public_id`)
 - **Status**: **DEPRECATED** - Use `public_id` instead
@@ -1032,6 +1082,7 @@ This is the right fit when the derived value depends on cleanup, fallback handli
   - `false`: Keep all rows
   - `list[string]`: Drop rows where all specified columns are empty
   - `dict[string, list[any]]`: Drop rows where specified columns contain the given values. Keys are column names, values are lists of values to treat as empty for that column (e.g., `[null, ""]`)
+- **Stage**: For an entity with unnesting, a list or mapping subset runs after unnest and before the second foreign-key link when all selected columns are present. An enabled `true` setting, or a list or mapping whose columns are not all present at that point, runs during final cleanup after linking and post-unnest filters. This allows configured empty rows to be removed before strict foreign-key null validation when the cleanup columns are available.
 - **Note**: Empty strings are automatically treated as `pd.NA` before checking for empty rows (unless using dict format with custom empty values)
 - **Example**:
   ```yaml
@@ -1607,12 +1658,26 @@ foreign_keys:
 - **Description**: Explicitly control whether missing values in foreign key key columns are tolerated
 - **Behavior**:
   - `false`: Strict override. Raise on missing key parts before merge.
-  - `true`: Tolerate missing key parts explicitly.
+  - `true`: Tolerate missing key parts explicitly; null values still do not match each other.
   - omitted: Use the runtime default for the join shape. For lookup-style `left` joins on alternative keys, missing local key parts are treated as unresolved links rather than hard errors.
 - **Example**:
   ```yaml
   constraints:
     allow_null_keys: true
+  ```
+
+##### `null_keys_equal`
+- **Type**: `bool`
+- **Default**: `false`
+- **Description**: Explicitly allow null key parts and treat nulls in corresponding key positions as equal during linking.
+- **Behavior**:
+  - `true`: Null key parts are not rejected, and matching nulls can link. Other parts of a composite key must still match.
+  - `false` or omitted: Preserve existing behavior, including `allow_null_keys: true` allowing nulls without matching them.
+  - `true` takes precedence over `allow_null_keys`.
+- **Example**:
+  ```yaml
+  constraints:
+    null_keys_equal: true
   ```
 
 #### Row Count Constraints
@@ -1841,7 +1906,7 @@ foreign_keys:
 - **Default**: `false`
 - **Description**: Explicitly control whether missing key parts are tolerated in foreign key columns
   - `false`: Raise error if the foreign key contains missing key parts
-  - `true`: Allow missing foreign key parts explicitly
+  - `true`: Allow missing foreign key parts explicitly; null values still do not match each other
   - omitted: Use the runtime default for the join shape
 - **Lookup-style `left` join default**: When omitted on a lookup-style `left` join that resolves a remote identity from alternative keys, missing local key parts are treated as unresolved links. The row is kept, the FK stays empty, and missing values never match missing values.
 - **Interaction**: When `false` + `allow_unmatched_left: false`, ensures all rows have valid non-null foreign keys
@@ -1857,6 +1922,22 @@ foreign_keys:
     constraints:
       allow_null_keys: false          # No null types allowed
       allow_unmatched_left: false     # And type must exist
+```
+
+**`null_keys_equal`**
+- **Type**: `bool`
+- **Default**: `false`
+- **Behavior**: When `true`, null key parts are allowed and matching nulls are treated as equal. For composite keys, all non-null parts must also match.
+- **Precedence**: `true` takes precedence over `allow_null_keys`, including an explicit `allow_null_keys: false`.
+- **Compatibility**: Omitted or `false` preserves current behavior. In particular, `allow_null_keys: true` continues to allow nulls without matching them.
+
+```yaml
+foreign_keys:
+  - entity: site
+    local_keys: [Fustel, EVNr]
+    remote_keys: [Fustel, EVNr]
+    constraints:
+      null_keys_equal: true
 ```
 
 ##### Lookup-Style `left` Join Default
@@ -2187,14 +2268,13 @@ unnest:
   - **Non-Empty**: Must contain at least one column (error if empty)
   - **String Items**: Each item must be a string (error if not)
   - **Column Existence**: Columns should exist in entity (suggested validation)
-  - **No Overlap**: Should not overlap with id_vars (suggested validation)
+  - **No Overlap**: Must not overlap with id_vars (error if it does)
 - **Common Issues**:
   - Missing value_vars
   - Value columns don't exist in source
-  - Overlap with id_vars
+  - Overlap with id_vars (rejected; overlapping columns are kept as identifiers and are not melted)
 - **Suggested Additional Validation**:
   - Validate columns exist before unnesting
-  - Warn if value_vars includes id_vars columns
 
 ##### `var_name`
 - **Type**: `string`
@@ -4141,6 +4221,7 @@ ForeignKeyConstraints:
   require_unique_left?: bool
   require_unique_right?: bool
   allow_null_keys?: bool
+  null_keys_equal?: bool
   allow_row_decrease?: bool
 
 # UnnestConfig
@@ -4421,4 +4502,3 @@ core_config = DataSourceMapper.to_core_config(api_config)
 result = await service.test_connection(api_config)
 # Internally, test_connection uses mapper to get resolved core config
 ```
-

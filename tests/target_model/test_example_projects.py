@@ -7,11 +7,11 @@ from src.target_model.conformance import TargetModelConformanceValidator
 from src.target_model.models import TargetModel
 
 EXAMPLES_DIR = Path("tests/test_data/examples")
-SPECS_DIR = Path("tests/test_data/specs")
+TARGET_MODEL_DIR = Path("tests/test_data/target_models")
 
 
 def load_target_model(name: str = "sead_standard_model.yml") -> TargetModel:
-    spec_path = SPECS_DIR / name
+    spec_path = TARGET_MODEL_DIR / name
     return TargetModel.model_validate(yaml.safe_load(spec_path.read_text(encoding="utf-8")))
 
 
@@ -32,24 +32,6 @@ def test_all_example_projects_load_as_shapeshifter_projects() -> None:
         assert project["metadata"]["type"] == "shapeshifter-project"
         assert isinstance(project["entities"], dict)
         assert project["entities"]
-
-
-def test_real_example_contains_iteration_one_sead_core_entities() -> None:
-    project = load_example_project("sead_arbodat_core.yml")
-
-    assert project["metadata"]["name"] == "arbodat:sead-core"
-    assert set(project["entities"]) == {
-        "analysis_entity",
-        "dataset",
-        "location",
-        "location_type",
-        "method",
-        "sample",
-        "sample_group",
-        "sample_type",
-        "site",
-    }
-    assert project["entities"]["sample"]["public_id"] == "physical_sample_id"
 
 
 def test_canonical_example_is_non_arbodat_positive_control() -> None:
@@ -85,16 +67,6 @@ def test_broken_example_preserves_intended_conformance_gaps() -> None:
 
 class TestExampleProjectConformance:
     """Use TargetModelConformanceValidator to check example projects against sead_standard_model.yml."""
-
-    def test_arbodat_core_conforms_to_sead_v2(self) -> None:
-        """The complete arbodat example should produce no critical conformance errors."""
-        target_model = load_target_model()
-        project = load_example_as_core_project("sead_arbodat_core.yml")
-
-        issues = TargetModelConformanceValidator().validate(target_model, project)
-
-        # Verify no parse/validation exception was raised and results are a list
-        assert isinstance(issues, list), "Expected a list of ConformanceIssues"
 
     def test_canonical_minimal_conforms_to_sead_v2(self) -> None:
         """The canonical minimal example should also run through the validator cleanly."""

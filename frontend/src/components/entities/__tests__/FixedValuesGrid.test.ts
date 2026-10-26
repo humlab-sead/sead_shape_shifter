@@ -28,9 +28,7 @@ describe('FixedValuesGrid', () => {
 
     await nextTick()
 
-    expect(wrapper.emitted('update:modelValue')).toEqual([
-      [[[1, 53, 'Sampling']]],
-    ])
+    expect(wrapper.emitted('update:modelValue')).toEqual([[[[1, 53, 'Sampling']]]])
     expect(wrapper.emitted('validation-errors')).toBeUndefined()
   })
 
@@ -52,9 +50,7 @@ describe('FixedValuesGrid', () => {
     await nextTick()
 
     expect(wrapper.emitted('update:modelValue')).toBeUndefined()
-    expect(wrapper.emitted('validation-errors')).toEqual([
-      [['Column method_id: 1 invalid value (row 1)']],
-    ])
+    expect(wrapper.emitted('validation-errors')).toEqual([[['Column method_id: 1 invalid value (row 1)']]])
   })
 
   it('uses declared int column types for non-_id columns', async () => {
@@ -74,9 +70,7 @@ describe('FixedValuesGrid', () => {
 
     await nextTick()
 
-    expect(wrapper.emitted('update:modelValue')).toEqual([
-      [[[1, 7, 'Sampling']]],
-    ])
+    expect(wrapper.emitted('update:modelValue')).toEqual([[[[1, 7, 'Sampling']]]])
   })
 
   it('uses declared float column types for non-_id columns', async () => {
@@ -96,9 +90,7 @@ describe('FixedValuesGrid', () => {
 
     await nextTick()
 
-    expect(wrapper.emitted('update:modelValue')).toEqual([
-      [[[1, 7.25, 'Sampling']]],
-    ])
+    expect(wrapper.emitted('update:modelValue')).toEqual([[[[1, 7.25, 'Sampling']]]])
   })
 
   it('does not coerce unsupported declared types on load', async () => {
@@ -119,6 +111,33 @@ describe('FixedValuesGrid', () => {
 
     expect(wrapper.emitted('update:modelValue')).toBeUndefined()
     expect(wrapper.emitted('validation-errors')).toBeUndefined()
+  })
+
+  it('renders columns in the supplied order without recomputing positions', async () => {
+    const wrapper = shallowMount(FixedValuesGrid, {
+      props: {
+        modelValue: [[1, 53, '2026-05-19', 'Sampling']],
+        columns: ['system_id', 'method_id', 'created_at', 'label'],
+        columnTypes: {},
+        publicId: 'method_id',
+      },
+      global: {
+        stubs: {
+          AgGridVue: AgGridVueStub,
+        },
+      },
+    })
+
+    await nextTick()
+
+    const columnDefs = (wrapper.vm as any).columnDefs as Array<Record<string, any>>
+    // The first column def is the selection checkbox; the rest mirror props.columns.
+    expect(columnDefs.slice(1).map((column) => column.headerName)).toEqual([
+      'system_id',
+      'method_id',
+      'created_at',
+      'label',
+    ])
   })
 
   it('wires compact header components for editable columns and removes detached controls', async () => {

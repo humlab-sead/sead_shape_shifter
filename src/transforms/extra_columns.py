@@ -63,10 +63,13 @@ class ExtraColumnEvaluator:
         'JD'
     """
 
-    # Regex pattern: match {column_name} but not {{escaped}}
-    # Matches: {col}, {first_name}, {col123}
+    # Regex pattern: match {column_name} but not {{escaped}}.
+    # The first character must be a Unicode word character that is not a digit
+    # (letters from any script plus underscore), so column names such as
+    # {Ökogruppe} are recognised. Remaining characters may be any word character.
+    # Matches: {col}, {first_name}, {col123}, {Ökogruppe}
     # Doesn't match: {{literal}}, {123invalid}
-    INTERPOLATION_PATTERN = re.compile(r"(?<!\{)\{([a-zA-Z_][\w]*)\}(?!\})")
+    INTERPOLATION_PATTERN = re.compile(r"(?<!\{)\{([^\W\d][\w]*)\}(?!\})")
     INTEGER_LITERAL_PATTERN = re.compile(r"[+-]?\d+")
     FLOAT_LITERAL_PATTERN = re.compile(r"[+-]?(?:\d+\.\d*|\.\d+)")
     INTEGER_LITERAL_PATTERN = re.compile(r"[+-]?\d+")

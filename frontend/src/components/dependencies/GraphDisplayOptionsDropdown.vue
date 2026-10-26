@@ -11,27 +11,17 @@
         class="text-capitalize"
       >
         Display
-        <v-badge
-          v-if="activeOptionsCount > 0"
-          :content="activeOptionsCount"
-          color="primary"
-          inline
-          class="ml-1"
-        />
+        <v-badge v-if="activeOptionsCount > 0" :content="activeOptionsCount" color="primary" inline class="ml-1" />
       </v-btn>
     </template>
 
     <v-list density="compact" min-width="200">
       <v-list-subheader>Graph Display Options</v-list-subheader>
-      
+
       <!-- Node Labels -->
       <v-list-item @click="toggleOption('nodeLabels')">
         <template #prepend>
-          <v-checkbox-btn
-            :model-value="options.nodeLabels"
-            hide-details
-            density="compact"
-          />
+          <v-checkbox-btn :model-value="options.nodeLabels" hide-details density="compact" />
         </template>
         <v-list-item-title>Node Labels</v-list-item-title>
       </v-list-item>
@@ -39,33 +29,21 @@
       <!-- Edge Labels -->
       <v-list-item @click="toggleOption('edgeLabels')">
         <template #prepend>
-          <v-checkbox-btn
-            :model-value="options.edgeLabels"
-            hide-details
-            density="compact"
-          />
+          <v-checkbox-btn :model-value="options.edgeLabels" hide-details density="compact" />
         </template>
         <v-list-item-title>Edge Labels</v-list-item-title>
       </v-list-item>
 
       <v-list-item @click="toggleOption('showForeignKeyEdges')">
         <template #prepend>
-          <v-checkbox-btn
-            :model-value="options.showForeignKeyEdges"
-            hide-details
-            density="compact"
-          />
+          <v-checkbox-btn :model-value="options.showForeignKeyEdges" hide-details density="compact" />
         </template>
         <v-list-item-title>FK-Link Edges</v-list-item-title>
       </v-list-item>
 
       <v-list-item @click="toggleOption('showProvidesEdges')">
         <template #prepend>
-          <v-checkbox-btn
-            :model-value="options.showProvidesEdges"
-            hide-details
-            density="compact"
-          />
+          <v-checkbox-btn :model-value="options.showProvidesEdges" hide-details density="compact" />
         </template>
         <v-list-item-title>Provides Edges</v-list-item-title>
       </v-list-item>
@@ -75,11 +53,7 @@
       <!-- Show Sources (databases, files) -->
       <v-list-item @click="toggleOption('showSources')">
         <template #prepend>
-          <v-checkbox-btn
-            :model-value="options.showSources"
-            hide-details
-            density="compact"
-          />
+          <v-checkbox-btn :model-value="options.showSources" hide-details density="compact" />
         </template>
         <v-list-item-title>Show Sources</v-list-item-title>
         <v-list-item-subtitle class="text-caption">Databases, Files</v-list-item-subtitle>
@@ -88,11 +62,7 @@
       <!-- Show Source Entities (tables, sheets) -->
       <v-list-item @click="toggleOption('showSourceEntities')">
         <template #prepend>
-          <v-checkbox-btn
-            :model-value="options.showSourceEntities"
-            hide-details
-            density="compact"
-          />
+          <v-checkbox-btn :model-value="options.showSourceEntities" hide-details density="compact" />
         </template>
         <v-list-item-title>Show Source Entities</v-list-item-title>
         <v-list-item-subtitle class="text-caption">Tables, Sheets</v-list-item-subtitle>
@@ -119,8 +89,8 @@ export interface GraphDisplayOptions {
   edgeLabels: boolean
   showForeignKeyEdges: boolean
   showProvidesEdges: boolean
-  showSources: boolean  // Show top-level sources (databases, files)
-  showSourceEntities: boolean  // Show intermediate source entities (tables, sheets)
+  showSources: boolean // Show top-level sources (databases, files)
+  showSourceEntities: boolean // Show intermediate source entities (tables, sheets)
 }
 
 interface Props {
@@ -134,12 +104,14 @@ const emit = defineEmits<{
 }>()
 
 const hasActiveOptions = computed(() => {
-  return props.options.nodeLabels
-    || props.options.edgeLabels
-    || props.options.showForeignKeyEdges
-    || props.options.showProvidesEdges
-    || props.options.showSources
-    || props.options.showSourceEntities
+  return (
+    props.options.nodeLabels ||
+    props.options.edgeLabels ||
+    props.options.showForeignKeyEdges ||
+    props.options.showProvidesEdges ||
+    props.options.showSources ||
+    props.options.showSourceEntities
+  )
 })
 
 const activeOptionsCount = computed(() => {

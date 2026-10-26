@@ -10,18 +10,23 @@ import pytest
 from ingesters.sead_change_request import (
     COPY_CSV_DEPLOY_ARTIFACT_STRATEGY,
     DEFAULT_DEPLOY_ARTIFACT_STRATEGY,
+    INLINE_STAGING_DEPLOY_ARTIFACT_STRATEGY,
     ChangeRequestPackage,
     ChangeRequestTable,
     ChangeRowState,
     CopyCsvDeployStrategy,
     DeployArtifact,
+    DirectForeignKey,
+    KnownIdMapping,
     PlannedRowAction,
     SubmissionContext,
     build_deploy_artifact,
     resolve_deploy_artifact_strategy,
 )
 from ingesters.sead_change_request.contracts import resolve_bundle_name
-from src.target_model.models import TargetModel
+from ingesters.sead_change_request.inline_staging_sql import _remote_entity_for_column
+from ingesters.sead_change_request.sql_builder import InlineStagingDeployStrategy
+from src.target_model.models import EntitySpec, TargetModel
 
 # pylint: disable=unused-argument, line-too-long
 
@@ -111,6 +116,143 @@ class TestBuildDeployArtifact:
             f'\\copy "tbl_sample" ("sample_id", "sample_name", "active") FROM program \'zcat -qac {expected_bundle_name}/tbl_sample.gz\' WITH (FORMAT csv, DELIMITER E\'\\t\', ENCODING \'utf-8\');'  # NOQA
         ]
         assert artifact.bundle_files == {f"deploy/{expected_bundle_name}/tbl_sample.gz": "101\tO'Reilly\ttrue\n"}
+
+    def test_direct_fk_value_and_manifest_metadata_are_preserved_for_all_strategies(self):
+        frame = pd.DataFrame({"location_id": [601], "location_type_id": [42]})
+        package = ChangeRequestPackage(
+            tables={
+                "location": ChangeRequestTable(
+                    name="location",
+                    frame=frame,
+                    row_states=pd.Series([ChangeRowState.NEWLY_ALLOCATED_ENTITY], index=frame.index, name="_row_state"),
+                )
+            },
+            direct_foreign_keys=[DirectForeignKey("location", "location_type", "location_type_id")],
+        )
+        target_model = minimal_target_model(
+            location_type={"role": "lookup", "public_id": "location_type_id", "target_table": "tbl_location_types"},
+            location={
+                "role": "fact",
+                "public_id": "location_id",
+                "target_table": "tbl_locations",
+                "foreign_keys": [{"entity": "location_type", "required": True}],
+            },
+        )
+        context = SubmissionContext(
+            submission_name="test-submission",
+            project_name="test-project",
+            timestamp=datetime(2026, 5, 23, 23, 0, 0),
+            datatype="mal",
+            identifier="TEST_SUBMISSION",
+        )
+        expected_fk_metadata = [{"source_entity": "location", "target_entity": "location_type", "column": "location_type_id"}]
+
+        for strategy in ("inline_insert", "copy_csv", "inline_staging"):
+            strategy_package = ChangeRequestPackage(
+                tables=package.tables,
+                direct_foreign_keys=package.direct_foreign_keys,
+                target_schema="public" if strategy == "inline_staging" else None,
+            )
+            artifact = build_deploy_artifact(strategy_package, target_model, context, strategy=strategy)
+
+            assert artifact.metadata_artifact["direct_target_id_foreign_keys"] == expected_fk_metadata
+            if strategy == "copy_csv":
+                assert any("42" in content for content in artifact.bundle_files.values())
+            else:
+                assert "42" in artifact.deploy_sql
+
+        staging_package = ChangeRequestPackage(
+            tables=package.tables,
+            direct_foreign_keys=package.direct_foreign_keys,
+            target_schema="public",
+        )
+        staging_sql = build_deploy_artifact(staging_package, target_model, context, strategy="inline_staging").deploy_sql
+        assert '"location_type_id"' in staging_sql
+        assert '"_local_location_type_id"' not in staging_sql
+        assert 'SET "location_type_id" = mapped.target_id' not in staging_sql
+
+    def test_direct_fk_manifest_omits_unassigned_update_columns(self):
+        frame = pd.DataFrame(
+            {
+                "location_id": [601],
+                "location_type_id": [42],
+                "location_name": ["changed"],
+                "location_name__existing": ["old"],
+            }
+        )
+        package = ChangeRequestPackage(
+            tables={
+                "location": ChangeRequestTable(
+                    name="location",
+                    frame=frame,
+                    row_states=pd.Series([ChangeRowState.EXISTING_ENTITY], index=frame.index, name="_row_state"),
+                    planned_actions=pd.Series([PlannedRowAction.UPDATE_EXISTING_CANDIDATE], index=frame.index, name="_planned_action"),
+                    mutable_fields=["location_name"],
+                )
+            },
+            direct_foreign_keys=[DirectForeignKey("location", "location_type", "location_type_id")],
+        )
+        target_model = minimal_target_model(
+            location_type={"role": "lookup", "public_id": "location_type_id", "target_table": "tbl_location_types"},
+            location={"role": "fact", "public_id": "location_id", "target_table": "tbl_locations"},
+        )
+        context = SubmissionContext(
+            submission_name="test-submission",
+            project_name="test-project",
+            timestamp=datetime(2026, 5, 23, 23, 0, 0),
+        )
+
+        artifact = build_deploy_artifact(package, target_model, context)
+
+        assert "direct_target_id_foreign_keys" not in artifact.metadata_artifact
+        assert '"location_type_id"' not in artifact.statements[0]
+
+    def test_inline_staging_keeps_direct_and_local_fk_values_separate(self):
+        frame = pd.DataFrame({"location_id": [601], "site_id": [1], "location_type_id": [1]})
+        package = ChangeRequestPackage(
+            tables={
+                "location": ChangeRequestTable(
+                    name="location",
+                    frame=frame,
+                    row_states=pd.Series([ChangeRowState.NEWLY_ALLOCATED_ENTITY], index=frame.index, name="_row_state"),
+                )
+            },
+            known_id_mappings=[KnownIdMapping("site", 1, 7001)],
+            direct_foreign_keys=[DirectForeignKey("location", "location_type", "location_type_id")],
+            target_schema="public",
+        )
+        target_model = minimal_target_model(
+            site={"role": "lookup", "public_id": "site_id", "target_table": "tbl_sites"},
+            location_type={"role": "lookup", "public_id": "location_type_id", "target_table": "tbl_location_types"},
+            location={
+                "role": "fact",
+                "public_id": "location_id",
+                "target_table": "tbl_locations",
+                "foreign_keys": [
+                    {"entity": "site", "required": True},
+                    {"entity": "location_type", "required": True},
+                ],
+            },
+        )
+        context = SubmissionContext(
+            submission_name="test-submission",
+            project_name="test-project",
+            timestamp=datetime(2026, 5, 23, 23, 0, 0),
+        )
+
+        artifact = build_deploy_artifact(package, target_model, context, strategy="inline_staging")
+
+        assert artifact.metadata_artifact["known_id_mapping_count"] == 1
+        assert "('site', 1, 7001)" in artifact.deploy_sql
+        assert '"_local_site_id"' in artifact.deploy_sql
+        assert '"_local_location_type_id"' not in artifact.deploy_sql
+        assert 'SET "site_id" = mapped.target_id' in artifact.deploy_sql
+        assert 'SET "location_type_id" = mapped.target_id' not in artifact.deploy_sql
+        assert '"location_type_id", "location_id", "_local_system_id", "_local_site_id"' in artifact.deploy_sql
+        staged_load = next(
+            statement for statement in artifact.statements if statement.startswith('INSERT INTO "_shape_shifter_stage_location"')
+        )
+        assert "VALUES\n(1, 601, 0, 1)" in staged_load
 
     def test_inline_insert_omits_generated_bridge_id(self):
         frame = pd.DataFrame({"site_location_id": pd.Series([pd.NA], dtype="Int64"), "site_id": [6489], "location_id": [1]})
@@ -462,6 +604,46 @@ class TestBuildDeployArtifact:
         assert artifact.metadata_artifact["deploy_statement_count"] == 1
         assert artifact.metadata_artifact["contract_version"] == 1
 
+    def test_syncs_postgresql_sequence_after_inserting_sims_assigned_id(self):
+        """Deploy SQL should keep a target sequence above explicit SIMS IDs."""
+        package = ChangeRequestPackage(
+            tables={
+                "submission": ChangeRequestTable(
+                    name="submission",
+                    frame=pd.DataFrame({"submission_id": [7], "submission_name": ["Submission A"]}),
+                    row_states=pd.Series([ChangeRowState.NEWLY_ALLOCATED_ENTITY], index=[0], name="_row_state"),
+                )
+            }
+        )
+        target_model = minimal_target_model(
+            submission={
+                "role": "fact",
+                "identity_tracking": "tracked",
+                "reconciliation": "allocate",
+                "public_id": "submission_id",
+                "target_table": "tbl_submissions",
+                "synchronize_sequence_after_insert": True,
+            }
+        )
+        submission_context = SubmissionContext(
+            submission_name="test-submission",
+            project_name="test-project",
+            timestamp=datetime(2026, 5, 23, 23, 0, 0),
+            datatype="mal",
+            identifier="TEST_SUBMISSION",
+        )
+
+        artifact = build_deploy_artifact(package, target_model, submission_context)
+
+        assert artifact.statements[0] == 'LOCK TABLE "tbl_submissions" IN SHARE ROW EXCLUSIVE MODE;'
+        assert artifact.statements[1] == 'INSERT INTO "tbl_submissions" ("submission_id", "submission_name") VALUES (7, \'Submission A\');'
+        sequence_sync = artifact.statements[2]
+        assert "pg_get_serial_sequence(target_table::text, target_column)" in sequence_sync
+        assert "setval(target_sequence::regclass, table_max_id, true)" in sequence_sync
+        assert "SELECT COALESCE(MAX(%I), 0)" in sequence_sync
+        assert artifact.deploy_sql.index("LOCK TABLE") < artifact.deploy_sql.index("INSERT INTO")
+        assert artifact.deploy_sql.index("INSERT INTO") < artifact.deploy_sql.index("pg_get_serial_sequence")
+
     def test_uses_entity_name_when_target_table_missing(self):
         """Deploy SQL should fall back to the entity name when target_table is not declared."""
         frame = pd.DataFrame({"site_id": [501]})
@@ -486,7 +668,7 @@ class TestBuildDeployArtifact:
         artifact = build_deploy_artifact(package, target_model, submission_context)
 
         assert artifact.statements == ['INSERT INTO "site" ("site_id") VALUES (501);']
-        assert artifact.metadata_artifact["artifact_type"] == "delivery_1_change_package"
+        assert artifact.metadata_artifact["artifact_type"] == "mvp_delivery_change_package"
         assert artifact.metadata_artifact["deploy_strategy"] == "inline_insert"
 
     def test_builds_update_statement_for_accepted_existing_row(self):
@@ -609,6 +791,156 @@ class TestBuildDeployArtifact:
         ]
 
 
+class TestTemporalLiteralRendering:
+    """Temporal literals keep their normalized calendar and clock fields in every strategy."""
+
+    @staticmethod
+    def _submission_context() -> SubmissionContext:
+        return SubmissionContext(
+            submission_name="temporal-submission",
+            project_name="test-project",
+            timestamp=datetime(2026, 5, 23, 23, 0, 0),
+            datatype="mal",
+            identifier="TEST_SUBMISSION",
+        )
+
+    @staticmethod
+    def _temporal_target_model(column_type: str | None) -> TargetModel:
+        column_specs: dict[str, dict] = {
+            "sample_id": {"type": "integer"},
+            "sample_date": {"type": "date"},
+        }
+        if column_type is not None:
+            column_specs["collected_at"] = {"type": column_type}
+        return minimal_target_model(
+            sample={"role": "fact", "public_id": "sample_id", "target_table": "tbl_sample", "columns": column_specs}
+        )
+
+    @staticmethod
+    def _package(frame: pd.DataFrame) -> ChangeRequestPackage:
+        return ChangeRequestPackage(
+            tables={
+                "sample": ChangeRequestTable(
+                    name="sample",
+                    frame=frame,
+                    row_states=pd.Series(
+                        [ChangeRowState.NEWLY_ALLOCATED_ENTITY] * len(frame.index),
+                        index=frame.index,
+                        name="_row_state",
+                    ),
+                )
+            }
+        )
+
+    def test_inline_insert_keeps_clock_fields_and_drops_timezone_metadata(self):
+        """An aware timestamp should keep its written clock reading without an offset."""
+        frame = pd.DataFrame(
+            {
+                "sample_id": [101],
+                "collected_at": [pd.Timestamp("2026-05-23 10:15:00", tz="Europe/Stockholm")],
+                "sample_date": [pd.Timestamp("2026-05-21 00:00:00", tz="Europe/Stockholm")],
+            }
+        )
+
+        artifact = build_deploy_artifact(
+            self._package(frame),
+            self._temporal_target_model("timestamp without time zone"),
+            self._submission_context(),
+        )
+
+        assert artifact.statements == [
+            'INSERT INTO "tbl_sample" ("sample_id", "collected_at", "sample_date") ' + "VALUES (101, '2026-05-23T10:15:00', '2026-05-21');"
+        ]
+        assert "+02:00" not in artifact.deploy_sql
+
+    def test_inline_insert_keeps_each_input_clock_reading_for_the_same_instant(self):
+        """Two aware values for the same instant should not be converted to one zone."""
+        stockholm_value = pd.Timestamp("2026-05-23 10:15:00", tz="Europe/Stockholm")
+        utc_value = pd.Timestamp("2026-05-23 08:15:00", tz="UTC")
+        frame = pd.DataFrame(
+            {
+                "sample_id": [101, 102],
+                "collected_at": pd.Series([stockholm_value, utc_value], dtype="object"),
+            }
+        )
+
+        artifact = build_deploy_artifact(
+            self._package(frame),
+            self._temporal_target_model("timestamp"),
+            self._submission_context(),
+        )
+
+        assert artifact.statements == [
+            'INSERT INTO "tbl_sample" ("sample_id", "collected_at") VALUES (101, \'2026-05-23T10:15:00\');',
+            'INSERT INTO "tbl_sample" ("sample_id", "collected_at") VALUES (102, \'2026-05-23T08:15:00\');',
+        ]
+
+    def test_copy_csv_keeps_date_and_clock_fields_without_offsets(self):
+        """The copy_csv payload should render the target temporal types without conversion."""
+        frame = pd.DataFrame(
+            {
+                "sample_id": [101],
+                "collected_at": [pd.Timestamp("2026-05-23 10:15:00", tz="Europe/Stockholm")],
+                "sample_date": [pd.Timestamp("2026-05-21 00:00:00", tz="Europe/Stockholm")],
+            }
+        )
+
+        artifact = build_deploy_artifact(
+            self._package(frame),
+            self._temporal_target_model("timestamp without time zone"),
+            self._submission_context(),
+            strategy="copy_csv",
+        )
+
+        payload = artifact.bundle_files[f"deploy/{bundle_name(self._submission_context())}/tbl_sample.gz"]
+        assert payload == "101\t2026-05-23T10:15:00\t2026-05-21\n"
+        assert "+02:00" not in payload
+
+    def test_inline_staging_keeps_date_and_clock_fields_without_offsets(self):
+        """The inline staging load should render the same literal date and clock fields."""
+        frame = pd.DataFrame(
+            {
+                "sample_id": [101],
+                "collected_at": [pd.Timestamp("2026-05-23 10:15:00", tz="Europe/Stockholm")],
+                "sample_date": [pd.Timestamp("2026-05-21 00:00:00", tz="Europe/Stockholm")],
+            }
+        )
+
+        artifact = build_deploy_artifact(
+            self._package(frame),
+            self._temporal_target_model("timestamp without time zone"),
+            self._submission_context(),
+            strategy=InlineStagingDeployStrategy(target_schema="staging"),
+        )
+
+        rendered_sql = "\n".join(artifact.statements)
+        assert "'2026-05-23T10:15:00'" in rendered_sql
+        assert "'2026-05-21'" in rendered_sql
+        assert "+02:00" not in rendered_sql
+
+    @pytest.mark.parametrize("strategy", ["inline_insert", "copy_csv", "inline_staging"])
+    @pytest.mark.parametrize("column_type", ["timestamp with time zone", "timestamptz"])
+    def test_explicit_timezone_aware_target_types_are_rejected(self, strategy: str, column_type: str):
+        """An explicitly timezone-aware target column should fail before any payload is rendered."""
+        frame = pd.DataFrame(
+            {
+                "sample_id": [101],
+                "collected_at": [pd.Timestamp("2026-05-23 10:15:00", tz="Europe/Stockholm")],
+            }
+        )
+        selected_strategy: str | InlineStagingDeployStrategy = (
+            InlineStagingDeployStrategy(target_schema="staging") if strategy == "inline_staging" else strategy
+        )
+
+        with pytest.raises(ValueError, match="timezone-aware"):
+            build_deploy_artifact(
+                self._package(frame),
+                self._temporal_target_model(column_type),
+                self._submission_context(),
+                strategy=selected_strategy,
+            )
+
+
 class TestStrategyParity:
     """Both deploy strategies must emit the same SIMS-issued identity values."""
 
@@ -657,11 +989,350 @@ class TestStrategyParity:
         assert 'INSERT INTO "tbl_sample" ("sample_id", "sample_name") VALUES (502, \'Allocated B\');' in inline.statements
 
         # copy-CSV carries the same two resolved IDs in its sidecar payload.
-        bundle_name = resolve_bundle_name(context)
-        payload = copy_csv.bundle_files[f"deploy/{bundle_name}/tbl_sample.gz"]
+        resolved_bundle_name: str = resolve_bundle_name(context)
+        payload: str = copy_csv.bundle_files[f"deploy/{resolved_bundle_name}/tbl_sample.gz"]
         assert payload == "501\tAllocated A\n502\tAllocated B\n"
 
         # Both strategies preserve exactly the same ordered target-ID values.
         inline_ids = [int(statement.split("VALUES (")[1].split(",")[0]) for statement in inline.statements]
         csv_ids = [int(line.split("\t")[0]) for line in payload.rstrip("\n").split("\n")]
         assert inline_ids == csv_ids == [501, 502]
+
+
+def _staging_submission_context() -> SubmissionContext:
+    return SubmissionContext(
+        submission_name="test-submission",
+        project_name="test-project",
+        timestamp=datetime(2026, 10, 17, 10, 0, 0),
+        datatype="mal",
+        identifier="STAGING_CASE",
+    )
+
+
+def _staging_model(**extra_entities: dict) -> TargetModel:
+    """Build a dataset -> analysis_entity -> abundance chain for staging tests."""
+    entities = {
+        "dataset": {
+            "role": "lookup",
+            "identity_tracking": "tracked",
+            "reconciliation": "allocate",
+            "public_id": "dataset_id",
+            "target_table": "tbl_datasets",
+            "synchronize_sequence_after_insert": True,
+            "columns": {"dataset_name": {"required": True, "type": "string"}},
+        },
+        "analysis_entity": {
+            "role": "fact",
+            "public_id": "analysis_entity_id",
+            "target_table": "tbl_analysis_entities",
+            "aggregate_parent": "dataset",
+            "columns": {"dataset_id": {"required": True, "type": "integer"}},
+            "foreign_keys": [{"entity": "dataset", "required": True}],
+        },
+        "abundance": {
+            "role": "fact",
+            "public_id": "abundance_id",
+            "target_table": "tbl_abundances",
+            "aggregate_parent": "analysis_entity",
+            "unique_sets": [["analysis_entity_id", "taxon_id"]],
+            "columns": {
+                "analysis_entity_id": {"required": True, "type": "integer"},
+                "taxon_id": {"required": True, "type": "integer"},
+            },
+            "foreign_keys": [{"entity": "analysis_entity", "required": True}],
+        },
+    }
+    entities.update(extra_entities)
+    return TargetModel.model_validate({"model": {"name": "SEAD Test Model", "version": "0.1.0"}, "entities": entities, "constraints": []})
+
+
+def _staging_package() -> ChangeRequestPackage:
+    """Build a staging package with one known root ID and pending children."""
+    dataset_frame = pd.DataFrame({"system_id": [10], "dataset_id": [900], "dataset_name": ["D1"]})
+    analysis_frame = pd.DataFrame({"system_id": [100], "analysis_entity_id": [None], "dataset_id": [10]})
+    abundance_frame = pd.DataFrame(
+        {"system_id": [1000, 1001], "abundance_id": [None, None], "analysis_entity_id": [100, 100], "taxon_id": [5, 6]}
+    )
+    return ChangeRequestPackage(
+        tables={
+            "analysis_entity": ChangeRequestTable(
+                name="analysis_entity",
+                frame=analysis_frame,
+                row_states=pd.Series([ChangeRowState.PENDING_DEPLOYMENT_ID], index=analysis_frame.index),
+                planned_actions=pd.Series([PlannedRowAction.DEFER_TO_DEPLOYMENT], index=analysis_frame.index),
+            ),
+            "abundance": ChangeRequestTable(
+                name="abundance",
+                frame=abundance_frame,
+                row_states=pd.Series([ChangeRowState.PENDING_DEPLOYMENT_ID] * 2, index=abundance_frame.index),
+                planned_actions=pd.Series([PlannedRowAction.DEFER_TO_DEPLOYMENT] * 2, index=abundance_frame.index),
+            ),
+            "dataset": ChangeRequestTable(
+                name="dataset",
+                frame=dataset_frame,
+                row_states=pd.Series([ChangeRowState.NEWLY_ALLOCATED_ENTITY], index=dataset_frame.index),
+                planned_actions=pd.Series([PlannedRowAction.ALLOCATE], index=dataset_frame.index),
+            ),
+        },
+        known_id_mappings=[KnownIdMapping(entity_name="dataset", system_id=10, target_id=900)],
+        target_schema="public",
+    )
+
+
+# pylint: disable=too-many-lines
+class TestStagingStrategyResolution:
+    """Schema and strategy selection rules."""
+
+    def test_inline_staging_requires_a_schema(self):
+        with pytest.raises(ValueError, match="requires a non-empty 'staging_target_schema'"):
+            resolve_deploy_artifact_strategy(INLINE_STAGING_DEPLOY_ARTIFACT_STRATEGY)
+
+    def test_inline_staging_accepts_a_safe_schema(self):
+        strategy = resolve_deploy_artifact_strategy(INLINE_STAGING_DEPLOY_ARTIFACT_STRATEGY, staging_target_schema="public")
+
+        assert isinstance(strategy, InlineStagingDeployStrategy)
+        assert strategy.target_schema == "public"
+
+    @pytest.mark.parametrize("unsafe_schema", ["public; DROP TABLE x", "1public", "pub lic"])
+    def test_inline_staging_rejects_an_unsafe_schema(self, unsafe_schema: str):
+        with pytest.raises(ValueError, match="Unsafe 'staging_target_schema'"):
+            resolve_deploy_artifact_strategy(INLINE_STAGING_DEPLOY_ARTIFACT_STRATEGY, staging_target_schema=unsafe_schema)
+
+    def test_direct_strategy_rejects_a_staging_schema(self):
+        with pytest.raises(ValueError, match="does not accept 'staging_target_schema'"):
+            resolve_deploy_artifact_strategy("inline_insert", staging_target_schema="public")
+
+    def test_mismatched_package_schema_is_rejected(self):
+        package = _staging_package()
+        strategy = InlineStagingDeployStrategy(target_schema="clearing_house")
+
+        with pytest.raises(ValueError, match="but the deployment schema is 'clearing_house'"):
+            strategy.build_artifact(package, _staging_model(), _staging_submission_context())
+
+
+class TestInlineStagingArtifact:
+    """Rendered statements for a supported staging deployment."""
+
+    def test_artifact_metadata_records_the_staging_contract(self):
+        artifact = build_deploy_artifact(
+            _staging_package(),
+            _staging_model(),
+            _staging_submission_context(),
+            strategy=INLINE_STAGING_DEPLOY_ARTIFACT_STRATEGY,
+        )
+
+        assert artifact.metadata["deploy_strategy"] == INLINE_STAGING_DEPLOY_ARTIFACT_STRATEGY
+        assert artifact.metadata_artifact["staging_target_schema"] == "public"
+        assert artifact.metadata_artifact["staged_table_count"] == 3
+        assert artifact.metadata_artifact["known_id_mapping_count"] == 1
+
+    def test_relations_are_schema_qualified_and_locked_in_sorted_order(self):
+        deploy_sql = build_deploy_artifact(
+            _staging_package(),
+            _staging_model(),
+            _staging_submission_context(),
+            strategy=INLINE_STAGING_DEPLOY_ARTIFACT_STRATEGY,
+        ).deploy_sql
+
+        assert '"public"."tbl_abundances"' in deploy_sql
+        lock_lines = [line for line in deploy_sql.splitlines() if line.startswith("LOCK TABLE")]
+        assert lock_lines == [
+            'LOCK TABLE "public"."tbl_abundances" IN SHARE ROW EXCLUSIVE MODE;',
+            'LOCK TABLE "public"."tbl_analysis_entities" IN SHARE ROW EXCLUSIVE MODE;',
+            'LOCK TABLE "public"."tbl_datasets" IN SHARE ROW EXCLUSIVE MODE;',
+        ]
+
+    def test_support_check_precedes_locks_and_sequence_writes(self):
+        deploy_sql = build_deploy_artifact(
+            _staging_package(),
+            _staging_model(),
+            _staging_submission_context(),
+            strategy=INLINE_STAGING_DEPLOY_ARTIFACT_STRATEGY,
+        ).deploy_sql
+
+        assert deploy_sql.index("$shape_shifter_staging_support$") < deploy_sql.index("LOCK TABLE")
+        assert deploy_sql.index("LOCK TABLE") < deploy_sql.index("nextval(")
+        assert "seqcache" in deploy_sql
+        assert "tgtype & 4" in deploy_sql
+
+    def test_known_ids_seed_the_map_and_pending_ids_are_allocated(self):
+        deploy_sql = build_deploy_artifact(
+            _staging_package(),
+            _staging_model(),
+            _staging_submission_context(),
+            strategy=INLINE_STAGING_DEPLOY_ARTIFACT_STRATEGY,
+        ).deploy_sql
+
+        assert "VALUES ('dataset', 10, 900);" in deploy_sql
+        assert "SELECT 'abundance', \"_local_system_id\"," in deploy_sql
+        assert "nextval(pg_get_serial_sequence('\"public\".\"tbl_abundances\"', 'abundance_id'))" in deploy_sql
+        assert "SELECT 'dataset', \"_local_system_id\"," not in deploy_sql
+
+    def test_local_values_are_kept_out_of_target_columns(self):
+        deploy_sql = build_deploy_artifact(
+            _staging_package(),
+            _staging_model(),
+            _staging_submission_context(),
+            strategy=INLINE_STAGING_DEPLOY_ARTIFACT_STRATEGY,
+        ).deploy_sql
+
+        assert 'INSERT INTO "_shape_shifter_stage_abundance" ("taxon_id", "_local_system_id", "_local_analysis_entity_id")' in deploy_sql
+        assert 'INSERT INTO "_shape_shifter_stage_analysis_entity" ("_local_system_id", "_local_dataset_id")' in deploy_sql
+        assert 'UPDATE "_shape_shifter_stage_abundance" AS staged SET "analysis_entity_id" = mapped.target_id' in deploy_sql
+
+    def test_unique_set_checks_compare_staged_and_target_rows(self):
+        deploy_sql = build_deploy_artifact(
+            _staging_package(),
+            _staging_model(),
+            _staging_submission_context(),
+            strategy=INLINE_STAGING_DEPLOY_ARTIFACT_STRATEGY,
+        ).deploy_sql
+
+        assert "$shape_shifter_staging_unique_sets_abundance_0$" in deploy_sql
+        assert "HAVING count(*) > 1" in deploy_sql
+        assert 'EXISTS (SELECT 1 FROM "public"."tbl_abundances" AS target' in deploy_sql
+
+    def test_inserts_follow_dependency_order(self):
+        deploy_sql = build_deploy_artifact(
+            _staging_package(),
+            _staging_model(),
+            _staging_submission_context(),
+            strategy=INLINE_STAGING_DEPLOY_ARTIFACT_STRATEGY,
+        ).deploy_sql
+
+        dataset_position = deploy_sql.index("$shape_shifter_staging_inserts_dataset$")
+        analysis_position = deploy_sql.index("$shape_shifter_staging_inserts_analysis_entity$")
+        abundance_position = deploy_sql.index("$shape_shifter_staging_inserts_abundance$")
+
+        assert dataset_position < analysis_position < abundance_position
+        assert "OVERRIDING SYSTEM VALUE" in deploy_sql
+        assert 'ORDER BY "_local_system_id"' in deploy_sql
+
+    def test_staging_uses_one_transaction(self):
+        deploy_sql = build_deploy_artifact(
+            _staging_package(),
+            _staging_model(),
+            _staging_submission_context(),
+            strategy=INLINE_STAGING_DEPLOY_ARTIFACT_STRATEGY,
+        ).deploy_sql
+
+        assert deploy_sql.count("\nBEGIN;") == 1
+        assert deploy_sql.rstrip().endswith("COMMIT;")
+        assert "ON COMMIT DROP" in deploy_sql
+
+
+class TestInlineStagingRejections:
+    """Explicit failures before any target write."""
+
+    def test_ambiguous_foreign_key_column_is_rejected(self):
+        model = minimal_target_model(
+            dataset={"public_id": "dataset_id"},
+            other_dataset={"public_id": "dataset_id"},
+        )
+        spec = EntitySpec.model_validate({"foreign_keys": [{"entity": "other_dataset"}, {"entity": "dataset"}]})
+
+        with pytest.raises(ValueError, match="dataset_id.*dataset, other_dataset"):
+            _remote_entity_for_column(spec, model, "dataset_id")
+
+    def test_selected_insert_cycle_is_rejected(self):
+        model = _staging_model(
+            cyclic_a={
+                "role": "fact",
+                "public_id": "cyclic_a_id",
+                "target_table": "tbl_cyclic_a",
+                "columns": {"cyclic_b_id": {"required": True, "type": "integer"}},
+                "foreign_keys": [{"entity": "cyclic_b", "required": True}],
+            },
+            cyclic_b={
+                "role": "fact",
+                "public_id": "cyclic_b_id",
+                "target_table": "tbl_cyclic_b",
+                "columns": {"cyclic_a_id": {"required": True, "type": "integer"}},
+                "foreign_keys": [{"entity": "cyclic_a", "required": True}],
+            },
+        )
+        frame_a = pd.DataFrame({"system_id": [1], "cyclic_a_id": [None], "cyclic_b_id": [2]})
+        frame_b = pd.DataFrame({"system_id": [2], "cyclic_b_id": [None], "cyclic_a_id": [1]})
+        package = ChangeRequestPackage(
+            tables={
+                "cyclic_a": ChangeRequestTable(
+                    name="cyclic_a",
+                    frame=frame_a,
+                    row_states=pd.Series([ChangeRowState.PENDING_DEPLOYMENT_ID], index=frame_a.index),
+                ),
+                "cyclic_b": ChangeRequestTable(
+                    name="cyclic_b",
+                    frame=frame_b,
+                    row_states=pd.Series([ChangeRowState.PENDING_DEPLOYMENT_ID], index=frame_b.index),
+                ),
+            },
+            target_schema="public",
+        )
+
+        with pytest.raises(ValueError, match="Staged insert dependency cycle detected: cyclic_a -> cyclic_b"):
+            build_deploy_artifact(package, model, _staging_submission_context(), strategy=INLINE_STAGING_DEPLOY_ARTIFACT_STRATEGY)
+
+    def test_entity_without_target_metadata_is_rejected(self):
+        model = _staging_model(
+            missing_target={"role": "fact", "public_id": "missing_target_id"},
+        )
+        frame = pd.DataFrame({"system_id": [1], "missing_target_id": [None]})
+        package = ChangeRequestPackage(
+            tables={
+                "missing_target": ChangeRequestTable(
+                    name="missing_target",
+                    frame=frame,
+                    row_states=pd.Series([ChangeRowState.PENDING_DEPLOYMENT_ID], index=frame.index),
+                )
+            },
+            target_schema="public",
+        )
+
+        with pytest.raises(ValueError, match="needs target_table and public_id metadata for inline staging"):
+            build_deploy_artifact(package, model, _staging_submission_context(), strategy=INLINE_STAGING_DEPLOY_ARTIFACT_STRATEGY)
+
+    def test_empty_package_renders_no_statements(self):
+        artifact = build_deploy_artifact(
+            ChangeRequestPackage(target_schema="public"),
+            _staging_model(),
+            _staging_submission_context(),
+            strategy=INLINE_STAGING_DEPLOY_ARTIFACT_STRATEGY,
+        )
+
+        assert artifact.statements == []
+
+
+@pytest.mark.parametrize(
+    ("deploy_strategy", "target_schema"),
+    [("inline_insert", None), ("copy_csv", None), ("inline_staging", "public")],
+)
+def test_manifest_records_the_effective_scope_and_run_id(deploy_strategy: str, target_schema: str | None):
+    """Every deploy strategy carries the same scope and run ID in its runtime and manifest metadata."""
+    submission_context = SubmissionContext(
+        submission_name="test-submission",
+        project_name="test-project",
+        timestamp=datetime(2026, 5, 23, 23, 0, 0),
+        datatype="mal",
+        identifier="TEST_SUBMISSION",
+        scope_name="provider://mal/archeobotany/arbodat-pilot",
+        run_id="run-abc-123",
+    )
+    target_model = minimal_target_model(sample={"role": "fact", "public_id": "sample_id", "target_table": "tbl_sample"})
+    frame = pd.DataFrame({"sample_id": [101]})
+    package = ChangeRequestPackage(
+        tables={
+            "sample": ChangeRequestTable(
+                name="sample",
+                frame=frame,
+                row_states=pd.Series([ChangeRowState.NEWLY_ALLOCATED_ENTITY], index=frame.index, name="_row_state"),
+            )
+        },
+        target_schema=target_schema,
+    )
+
+    artifact = build_deploy_artifact(package, target_model, submission_context, strategy=deploy_strategy)
+
+    assert artifact.metadata["scope_name"] == "provider://mal/archeobotany/arbodat-pilot"
+    assert artifact.metadata["run_id"] == "run-abc-123"
+    assert artifact.metadata_artifact["scope_name"] == "provider://mal/archeobotany/arbodat-pilot"
+    assert artifact.metadata_artifact["run_id"] == "run-abc-123"

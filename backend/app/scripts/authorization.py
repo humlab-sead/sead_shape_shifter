@@ -15,22 +15,27 @@ from backend.app.authorization.models import (
     GrantSubjectType,
     ResourceRecord,
     ResourceType,
+    StateImportPlan,
 )
 from backend.app.authorization.operations import (
     apply_manifest,
     backup_database,
     export_manifest,
+    export_state,
+    import_state,
     initialize_database,
     inspect_manifest,
     integrity_check,
+    plan_state_import,
     reconcile_manifest,
     restore_database,
 )
+from backend.app.authorization.policy import allowed_resource_roles, validate_resource_role
 from backend.app.authorization.repository import SQLiteAuthorizationRepository
 from backend.app.core.config import settings
 
 
-@click.group()
+@click.group(context_settings={"max_content_width": 120})
 def cli() -> None:
     """Manage Shape Shifter authorization storage."""
 
@@ -43,17 +48,23 @@ def migrate(database: Path | None, manifest: Path | None, dry_run: bool) -> None
     """Initialize the schema and optionally inspect a migration manifest."""
     path: Path = database or settings.AUTHORIZATION_DATABASE_PATH
     if manifest:
-        summary: dict[str, int] = inspect_manifest(
-            manifest, allow_authenticated_everyone=settings.AUTHORIZATION_ALLOW_AUTHENTICATED_EVERYONE
-        )
+        try:
+            summary: dict[str, int] = inspect_manifest(
+                manifest, allow_authenticated_everyone=settings.AUTHORIZATION_ALLOW_AUTHENTICATED_EVERYONE
+            )
+        except ValueError as error:
+            raise click.ClickException(str(error)) from error
         click.echo(f"Manifest: {summary['resources']} resources, {summary['administrators']} administrators")
     if dry_run:
         click.echo("Dry run: no database changes made")
         return
     if manifest:
-        applied: dict[str, int] = apply_manifest(
-            manifest, path, allow_authenticated_everyone=settings.AUTHORIZATION_ALLOW_AUTHENTICATED_EVERYONE
-        )
+        try:
+            applied: dict[str, int] = apply_manifest(
+                manifest, path, allow_authenticated_everyone=settings.AUTHORIZATION_ALLOW_AUTHENTICATED_EVERYONE
+            )
+        except ValueError as error:
+            raise click.ClickException(str(error)) from error
         click.echo(f"Applied: {applied['resources']} resources, {applied['administrators']} administrators, {applied['grants']} grants")
     else:
         initialize_database(path)
@@ -71,12 +82,7 @@ def dev_bootstrap() -> None:
     principal_id = settings.DEVELOPMENT_PRINCIPAL_ID
     if principal_id is None:
         raise click.ClickException("Set DEVELOPMENT_PRINCIPAL_ID to a valid local principal before bootstrapping")
-    if (
-        not principal_id.strip()
-        or principal_id != principal_id.strip()
-        or len(principal_id) > 255
-        or not principal_id.isprintable()
-    ):
+    if not principal_id.strip() or principal_id != principal_id.strip() or len(principal_id) > 255 or not principal_id.isprintable():
         raise click.ClickException("Set DEVELOPMENT_PRINCIPAL_ID to a valid local principal before bootstrapping")
 
     development_database = (settings.APPLICATION_ROOT / "state" / "authorization-dev.sqlite3").resolve()
@@ -88,9 +94,7 @@ def dev_bootstrap() -> None:
     from backend.app.services.project_service import ProjectService
 
     project_names = [project.name for project in ProjectService(settings.PROJECTS_DIR).list_projects()]
-    data_source_names = [
-        data_source.name for data_source in DataSourceService(settings.GLOBAL_DATA_SOURCE_DIR).list_data_sources()
-    ]
+    data_source_names = [data_source.name for data_source in DataSourceService(settings.GLOBAL_DATA_SOURCE_DIR).list_data_sources()]
 
     repository = SQLiteAuthorizationRepository(database)
     try:
@@ -184,13 +188,146 @@ def export_manifest_command(manifest: Path, database: Path | None) -> None:
     click.echo(f"Exported: {result['resources']} resources, {result['administrators']} administrators, {result['grants']} grants")
 
 
+@cli.command("export-state")
+@click.argument("snapshot", type=click.Path(path_type=Path))
+@click.option("--database", type=click.Path(exists=True, path_type=Path), default=None)
+@click.option(
+    "--include-audit",
+    is_flag=True,
+    help="Include audit events. They change on every authorization operation, so this output is a backup, not a review file.",
+)
+def export_state_command(snapshot: Path, database: Path | None, include_audit: bool) -> None:
+    """Write the complete stored authorization state as a JSON or YAML snapshot.
+
+    Unlike export-manifest, this keeps resource UUIDs, project and shared-source
+    child resources, inactive resource generations, and every deployment role, so
+    import-state can recreate the same records.
+    """
+    result = export_state(snapshot, database or settings.AUTHORIZATION_DATABASE_PATH, include_audit=include_audit)
+    click.echo(
+        f"Exported: {result['resources']} resources, {result['grants']} grants, "
+        f"{result['application_roles']} application roles, {result['audit_events']} audit events"
+    )
+
+
+@cli.command("import-state")
+@click.argument("snapshot", type=click.Path(exists=True, path_type=Path))
+@click.option(
+    "--database",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Authorization database. A missing database is created, so a snapshot can seed a new deployment.",
+)
+@click.option("--actor", required=True, help="Principal recorded on the restore audit event.")
+@click.option("--dry-run", is_flag=True, help="Validate the snapshot and list each record it would add, remove, or change.")
+@click.option("--allow-no-admin", is_flag=True, help="Accept a snapshot that leaves the deployment without an administrator.")
+@click.option("--allow-unowned-project", is_flag=True, help="Accept a snapshot that leaves an active project without an owner.")
+@click.option("--yes", is_flag=True, help="Confirm the destructive operation.")
+@click.option("--non-interactive", is_flag=True, help="Skip confirmation for controlled automation.")
+def import_state_command(
+    snapshot: Path,
+    database: Path | None,
+    actor: str,
+    dry_run: bool,
+    allow_no_admin: bool,
+    allow_unowned_project: bool,
+    yes: bool,
+    non_interactive: bool,
+) -> None:
+    """Replace stored authorization records with a validated snapshot.
+
+    Every stored resource, grant, and deployment role is replaced, so this is the
+    inverse of export-state. A snapshot without audit events leaves the audit
+    history in place.
+
+    The import is refused when the snapshot would leave no administrator, or an
+    active project without an owner. Pass --allow-no-admin or
+    --allow-unowned-project to accept that on purpose.
+    """
+    database_path = database or settings.AUTHORIZATION_DATABASE_PATH
+    try:
+        plan = plan_state_import(snapshot, database_path)
+    except ValueError as error:
+        raise click.ClickException(str(error)) from error
+
+    if dry_run:
+        _print_plan(plan, snapshot)
+        _raise_for_destructive_plan(plan, allow_no_admin=allow_no_admin, allow_unowned_project=allow_unowned_project)
+        click.echo("Dry run: nothing written")
+        return
+
+    summary = (
+        f"{plan.counts['resources']} resources, {plan.counts['grants']} grants, "
+        f"{plan.counts['application_roles']} application roles, "
+        f"audit events {'replaced' if plan.audit_events_replaced else 'retained'}, "
+        f"{len(plan.changes)} record change(s)"
+    )
+    _confirm_destructive(f"Replace all authorization records with {snapshot} ({summary})?", yes, non_interactive)
+    try:
+        result = import_state(
+            snapshot,
+            database_path,
+            actor,
+            allow_no_admin=allow_no_admin,
+            allow_unowned_project=allow_unowned_project,
+        )
+    except ValueError as error:
+        raise click.ClickException(str(error)) from error
+    click.echo(
+        f"Imported: {result['resources']} resources, {result['grants']} grants, "
+        f"{result['application_roles']} application roles, {result['audit_events']} audit events"
+    )
+
+
+def _print_plan(plan: StateImportPlan, snapshot: Path) -> None:
+    """Print each record change and the conditions the snapshot would leave."""
+    if not plan.changes:
+        click.echo(f"Dry run: {snapshot} matches the stored records; no record would change")
+    else:
+        click.echo(f"Dry run: {len(plan.changes)} record change(s) in {snapshot}:")
+        for change in plan.changes:
+            marker = {"add": "+", "remove": "-", "change": "~"}.get(change.action, "?")
+            click.echo(f"  {marker} {change.record_type:<17}{change.detail}")
+    click.echo(
+        f"Result: {plan.counts['resources']} resources, {plan.counts['grants']} grants, "
+        f"{plan.counts['application_roles']} application roles"
+    )
+    if plan.administrators:
+        click.echo(f"Administrators after import: {', '.join(plan.administrators)}")
+    if plan.unowned_projects:
+        click.echo(f"Active projects without an owner after import ({len(plan.unowned_projects)}): {', '.join(plan.unowned_projects)}")
+
+
+def _raise_for_destructive_plan(
+    plan: StateImportPlan,
+    *,
+    allow_no_admin: bool,
+    allow_unowned_project: bool,
+) -> None:
+    """Refuse a plan that would lock the deployment out, unless explicitly allowed."""
+    problems: list[str] = []
+    if not allow_no_admin and not plan.administrators:
+        problems.append("the snapshot leaves the deployment without an administrator; pass --allow-no-admin to accept that")
+    if not allow_unowned_project and plan.unowned_projects:
+        problems.append(
+            f"the snapshot leaves {len(plan.unowned_projects)} active project(s) without an owner; "
+            "pass --allow-unowned-project to accept that"
+        )
+    if problems:
+        raise click.ClickException("; ".join(problems))
+
+
 @cli.command("grant")
 @click.option("--database", type=click.Path(exists=True, path_type=Path), default=None)
 @click.option("--resource-type", required=True, type=click.Choice([resource_type.value for resource_type in ResourceType]))
 @click.option("--locator", required=True)
 @click.option("--subject-type", required=True, type=click.Choice([subject_type.value for subject_type in GrantSubjectType]))
 @click.option("--subject-id", required=True)
-@click.option("--role", required=True)
+@click.option(
+    "--role",
+    required=True,
+    type=click.Choice(sorted({role for resource_type in ResourceType for role in allowed_resource_roles(resource_type)})),
+)
 @click.option("--actor", required=True)
 @click.option("--dry-run", is_flag=True)
 def grant(
@@ -213,6 +350,10 @@ def grant(
         typed_subject = GrantSubjectType(subject_type)
         if typed_subject == GrantSubjectType.EVERYONE and not settings.AUTHORIZATION_ALLOW_AUTHENTICATED_EVERYONE:
             raise click.ClickException("Authenticated everyone grants are disabled by deployment configuration")
+        try:
+            validate_resource_role(resource.resource_type, role)
+        except ValueError as error:
+            raise click.ClickException(str(error)) from error
         if repository.grant_exists(typed_subject, subject_id, resource.resource_id, role):
             click.echo("Grant already exists")
             return
@@ -271,6 +412,55 @@ def revoke(
         except ValueError as error:
             raise click.ClickException(str(error)) from error
         click.echo(f"Revoked {role} from {subject_type}:{subject_id} on {resource_type}:{locator}")
+    finally:
+        repository.close()
+
+
+@cli.command("move-resource")
+@click.option("--database", type=click.Path(exists=True, path_type=Path), default=None)
+@click.option("--resource-type", required=True, type=click.Choice([resource_type.value for resource_type in ResourceType]))
+@click.option("--from-locator", required=True)
+@click.option("--to-locator", required=True)
+@click.option("--actor", required=True)
+@click.option("--dry-run", is_flag=True)
+@click.option("--yes", is_flag=True, help="Confirm the move.")
+@click.option("--non-interactive", is_flag=True, help="Skip confirmation for controlled automation.")
+def move_resource(
+    database: Path | None,
+    resource_type: str,
+    from_locator: str,
+    to_locator: str,
+    actor: str,
+    dry_run: bool,
+    yes: bool,
+    non_interactive: bool,
+) -> None:
+    """Move an active resource to a new locator without changing its UUID or grants.
+
+    Unlike deleting and recreating a resource, a move keeps the resource UUID, so
+    existing grants continue to apply. Use this after moving a project folder, whose
+    locator is the path-derived project name.
+    """
+    if from_locator == to_locator:
+        raise click.ClickException("--from-locator and --to-locator must differ")
+    if not actor.strip():
+        raise click.ClickException("--actor must be a non-empty string")
+
+    path: Path = database or settings.AUTHORIZATION_DATABASE_PATH
+    repository = SQLiteAuthorizationRepository(path)
+    try:
+        typed_resource = ResourceType(resource_type)
+        source = repository.get_resource_by_locator(typed_resource, from_locator)
+        if source is None:
+            raise click.ClickException(f"Active resource not found: {resource_type}:{from_locator}")
+        if repository.get_resource_by_locator(typed_resource, to_locator) is not None:
+            raise click.ClickException(f"An active resource already uses locator: {resource_type}:{to_locator}")
+        if dry_run:
+            click.echo(f"Dry run: would move {resource_type}:{from_locator} to {resource_type}:{to_locator}")
+            return
+        _confirm_destructive(f"Move {resource_type}:{from_locator} to {resource_type}:{to_locator}?", yes, non_interactive)
+        repository.update_resource_locator(source.resource_id, to_locator, actor)
+        click.echo(f"Moved {resource_type}:{from_locator} to {resource_type}:{to_locator} (resource_id {source.resource_id})")
     finally:
         repository.close()
 

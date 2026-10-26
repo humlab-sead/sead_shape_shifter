@@ -56,12 +56,6 @@ class ReconciliationClientPort(Protocol):
     async def reconcile_entity(self, entity_name: str, row: dict[str, Any]) -> int | None: ...
 
 
-class TargetIdAllocatorPort(Protocol):
-    """Target database sequence allocator used for public IDs outside SIMS."""
-
-    async def reserve_target_id(self, table_name: str, public_id_column: str) -> int | None: ...
-
-
 def _can_allocate_after_miss(entity_spec: EntitySpec | None) -> bool:
     """Return True when a reconciled miss may request SIMS allocation.
 
@@ -81,7 +75,6 @@ async def orchestrate_identity_assignments(
     *,
     sims_client: SimsClientPort | None = None,
     reconciliation_client: ReconciliationClientPort | None = None,
-    target_id_allocator: TargetIdAllocatorPort | None = None,
     target_model_entities: dict[str, EntitySpec] | None = None,
     fallback_assignments: dict[str, dict[object, IdentityAssignment]] | None = None,
 ) -> IdentityOrchestrationResult:
@@ -124,31 +117,13 @@ async def orchestrate_identity_assignments(
                     or not entity_spec.public_id
                 ):
                     raise ValueError(
-                        f"Entity '{planned_table.entity_name}' requires database-sequence ID metadata "
-                        "with target_table and public_id"
+                        f"Entity '{planned_table.entity_name}' requires database-sequence ID metadata " "with target_table and public_id"
                     )
-                if target_id_allocator is None:
-                    entity_assignments[row_index] = IdentityAssignment(
-                        state=ChangeRowState.BLOCKED_UNRESOLVED,
-                        note=f"Database sequence ID reservation is not configured for '{planned_table.entity_name}'",
-                    )
-                    continue
-                target_id = await target_id_allocator.reserve_target_id(entity_spec.target_table, entity_spec.public_id)
-                if target_id is None:
-                    entity_assignments[row_index] = IdentityAssignment(
-                        state=ChangeRowState.BLOCKED_UNRESOLVED,
-                        note=(
-                            f"No database sequence is associated with target column "
-                            f"'{entity_spec.target_table}.{entity_spec.public_id}'"
-                        ),
-                    )
-                    continue
                 entity_assignments[row_index] = IdentityAssignment(
-                    state=ChangeRowState.NEWLY_ALLOCATED_ENTITY,
-                    target_id=target_id,
+                    state=ChangeRowState.BLOCKED_UNRESOLVED,
                     note=(
-                        f"Reserved '{entity_spec.public_id}' from the database sequence for "
-                        f"'{entity_spec.target_table}'"
+                        f"Entity '{planned_table.entity_name}' has an unresolved database-sequence ID; "
+                        "pre-resolve it before Change Request validation or bundle generation"
                     ),
                 )
                 continue

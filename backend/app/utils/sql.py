@@ -110,27 +110,36 @@ def extract_tables(sql: str) -> list[str]:
 
     for statement in parsed:
         from_seen: bool = False
+        expect_table: bool = False
 
         for token in statement.tokens:
             if token.ttype is Keyword and token.value.upper() in FROM_CLAUSE_KEYWORDS:
                 from_seen = True
+                expect_table = True
                 continue
 
             if from_seen:
                 if isinstance(token, IdentifierList):
                     for identifier in token.get_identifiers():
                         tables.add(identifier.get_real_name())
+                    expect_table = False
                 elif isinstance(token, Identifier):
                     tables.add(token.get_real_name())
+                    expect_table = False
                 elif token.ttype is Keyword:
-                    from_seen = False
-                elif token.ttype is None:
+                    if expect_table:
+                        tables.add(token.value.strip('`"[]'))
+                        expect_table = False
+                    else:
+                        from_seen = False
+                elif token.ttype is None and expect_table:
                     # Bare token — simple table name not wrapped in an Identifier object
                     table_name = token.value.strip('`"[]')
                     if "." in table_name:
                         table_name = table_name.split(".")[-1]
                     if table_name and not any(c in table_name for c in "(),"):
                         tables.add(table_name)
+                        expect_table = False
 
     return sorted(list(tables))
 

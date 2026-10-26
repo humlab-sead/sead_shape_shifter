@@ -62,6 +62,25 @@ def disable_ucanaccess_jvm_startup(monkeypatch) -> None:
     monkeypatch.setattr(application_settings, "LOG_CONFIGURE_ON_STARTUP_ENABLED", False)
 
 
+@pytest.fixture(autouse=True)
+def test_provider_registry(tmp_path_factory, monkeypatch) -> None:
+    """Give project binding tests one isolated provider with two registered schemas."""
+    registry_dir = tmp_path_factory.mktemp("test-provider-registry")
+    (registry_dir / "test-provider.yml").write_text(
+        """
+code: test-provider
+name: Test Provider
+schemas:
+  - provider_schema: schema-one
+    scope_name: provider://test-provider/schema-one
+  - provider_schema: schema-two
+    scope_name: provider://test-provider/schema-two
+""".lstrip(),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(application_settings, "GLOBAL_DATA_PROVIDER_DIR", registry_dir)
+
+
 @pytest.fixture
 async def authorized_client(tmp_path, monkeypatch) -> AsyncIterator[AsyncClient]:
     """Create an authenticated client backed by an isolated authorization store.

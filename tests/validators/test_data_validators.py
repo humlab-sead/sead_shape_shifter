@@ -4,6 +4,7 @@ import pandas as pd
 import pytest
 
 from src.validators.data_validators import (
+    BusinessKeyProducedValidator,
     ColumnExistsValidator,
     DataTypeCompatibilityValidator,
     DuplicateKeysValidator,
@@ -177,6 +178,59 @@ class TestColumnExistsValidator:
         assert "BestJa" not in all_messages
 
 
+class TestBusinessKeyProducedValidator:
+    """Tests for BusinessKeyProducedValidator."""
+
+    def test_passes_when_all_keys_are_produced(self):
+        """No issues when every configured key exists in the DataFrame."""
+        df = pd.DataFrame({"a": [1, 2], "b": [3, 4]})
+
+        issues = BusinessKeyProducedValidator.validate(df, ["a", "b"], "test_entity")
+
+        assert issues == []
+
+    def test_reports_missing_key_with_actionable_message(self):
+        """A configured key absent from the data is reported with the agreed error content."""
+        df = pd.DataFrame({"a": [1, 2], "b": [3, 4]})
+
+        issues = BusinessKeyProducedValidator.validate(df, ["a", "missing_key"], "test_entity")
+
+        assert len(issues) == 1
+        issue = issues[0]
+        assert issue.code == "BUSINESS_KEY_NOT_PRODUCED"
+        assert issue.severity == "error"
+        assert issue.entity == "test_entity"
+        assert issue.field == "keys"
+        assert issue.column == "missing_key"
+        assert "missing_key" in issue.message
+        assert "'keys' do not create output columns" in issue.message
+        assert "'columns'" in issue.suggestion
+
+    def test_reports_only_the_missing_keys(self):
+        """Composite keys report only the keys the data does not contain."""
+        df = pd.DataFrame({"a": [1, 2], "b": [3, 4]})
+
+        issues = BusinessKeyProducedValidator.validate(df, ["a", "b", "c", "d"], "test_entity")
+
+        assert {issue.column for issue in issues} == {"c", "d"}
+
+    def test_empty_dataframe_no_errors(self):
+        """An empty DataFrame is skipped, matching ColumnExistsValidator behavior."""
+        df = pd.DataFrame()
+
+        issues = BusinessKeyProducedValidator.validate(df, ["missing_key"], "test_entity")
+
+        assert issues == []
+
+    def test_no_keys_no_errors(self):
+        """No configured keys produce no issues."""
+        df = pd.DataFrame({"a": [1, 2]})
+
+        issues = BusinessKeyProducedValidator.validate(df, [], "test_entity")
+
+        assert issues == []
+
+
 class TestNaturalKeyUniquenessValidator:
     """Tests for NaturalKeyUniquenessValidator."""
 
@@ -341,6 +395,40 @@ class TestForeignKeyIntegrityValidator:
 
         assert len(issues) == 1
         assert issues[0].code == "FK_REMOTE_EMPTY"
+        assert "no rows" in issues[0].message
+        assert "'pk'" in issues[0].message
+        assert issues[0].field == "foreign_keys[].entity"
+
+    def test_all_null_remote_key_names_the_column(self):
+        """A remote key that is entirely null should not be reported as an empty entity."""
+        local_df = pd.DataFrame({"fk": [1, 2]})
+        remote_df = pd.DataFrame({"pk": [None, None], "other": ["a", "b"]})
+        fk_config = {"local_keys": ["fk"], "remote_keys": ["pk"], "entity": "remote"}
+
+        issues = ForeignKeyIntegrityValidator.validate(local_df, remote_df, fk_config, "local")
+
+        assert len(issues) == 1
+        issue = issues[0]
+        assert issue.code == "FK_REMOTE_EMPTY"
+        assert issue.severity == "warning"
+        assert issue.field == "foreign_keys[].remote_keys"
+        # The remote entity has rows, so the message must not claim it is empty.
+        assert "no rows" not in issue.message
+        assert "'pk'" in issue.message
+        assert "2 row(s)" in issue.message
+        # The suggestion must point at the system_id convention.
+        assert "system_id" in issue.suggestion
+        assert "public_id" in issue.suggestion
+
+    def test_partially_null_remote_key_is_not_remote_empty(self):
+        """A remote key with at least one value should proceed to normal integrity checks."""
+        local_df = pd.DataFrame({"fk": [1]})
+        remote_df = pd.DataFrame({"pk": [None, 1]})
+        fk_config = {"local_keys": ["fk"], "remote_keys": ["pk"], "entity": "remote"}
+
+        issues = ForeignKeyIntegrityValidator.validate(local_df, remote_df, fk_config, "local")
+
+        assert not issues
 
     def test_null_values_ignored(self):
         """Test null FK values are ignored."""
@@ -350,6 +438,24 @@ class TestForeignKeyIntegrityValidator:
 
         issues = ForeignKeyIntegrityValidator.validate(local_df, remote_df, fk_config, "local")
         assert not issues
+
+    def test_null_key_components_match_only_when_null_keys_equal_is_enabled(self):
+        """Null key components are compared when the FK opts into null equality."""
+        local_df = pd.DataFrame({"site_name": ["Kville 1502", "Other site"], "event_number": [None, None]})
+        remote_df = pd.DataFrame({"site_name": ["Kville 1502"], "event_number": [None]})
+        fk_config = {
+            "local_keys": ["site_name", "event_number"],
+            "remote_keys": ["site_name", "event_number"],
+            "entity": "site",
+            "constraints": {"null_keys_equal": True},
+        }
+
+        issues = ForeignKeyIntegrityValidator.validate(local_df, remote_df, fk_config, "site_location")
+
+        assert len(issues) == 1
+        assert issues[0].code == "FK_DATA_INTEGRITY"
+        assert "1 foreign key value(s) not found" in issues[0].message
+        assert "Other site" in issues[0].message
 
 
 class TestDataTypeCompatibilityValidator:

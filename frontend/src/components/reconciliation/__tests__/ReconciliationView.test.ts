@@ -105,9 +105,13 @@ async function mountView() {
       stubs: {
         ReconciliationGrid: { template: '<div data-testid="reconciliation-grid" />' },
         SpecificationsList: {
-          template: '<button data-testid="open-reconcile" @click="$emit(\'reconcile\', \'site\', \'site_code\')">Open</button>',
+          template:
+            "<button data-testid=\"open-reconcile\" @click=\"$emit('reconcile', 'site', 'site_code')\">Open</button>",
         },
-        YamlEditor: { template: '<div data-testid="yaml-editor" />' },
+        YamlEditor: {
+          props: ['mode'],
+          template: '<div data-testid="yaml-editor" :data-mode="mode" />',
+        },
         VTabs: { template: '<div data-testid="tabs"><slot /></div>' },
         VTab: { template: '<button type="button"><slot /></button>' },
         VWindow: { template: '<div data-testid="window"><slot /></div>' },
@@ -132,7 +136,18 @@ describe('ReconciliationView', () => {
   beforeEach(() => {
     reconciliationStore.loading = false
     reconciliationStore.previewData = { site: [] }
-    reconciliationStore.exportToMapping = vi.fn(async () => ({ exported: 2, skipped_manual: 1, entity: 'site', field: 'site_code' }))
+    reconciliationStore.exportToMapping = vi.fn(async () => ({
+      exported: 2,
+      skipped_manual: 1,
+      entity: 'site',
+      field: 'site_code',
+    }))
+  })
+
+  it('uses reconciliation YAML intelligence for the catalog editor', async () => {
+    const wrapper = await mountView()
+
+    expect(wrapper.get('[data-testid="yaml-editor"]').attributes('data-mode')).toBe('reconciliation')
   })
 
   it('exports reconciliation links and shows the result counts', async () => {

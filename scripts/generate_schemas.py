@@ -28,10 +28,13 @@ SCRIPT_COMMAND = "python scripts/generate_schemas.py"
 # Add backend to path
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from backend.app.models.entity import Entity
-from backend.app.models.project import Project
-from src.loaders.driver_metadata import DriverSchemaRegistry
-from src.target_model.models import TargetModel
+# pylint: disable=import-error,wrong-import-position
+
+from backend.app.models.entity import Entity  # type: ignore  # noqa: E402
+from backend.app.models.project import Project  # type: ignore  # noqa: E402
+from backend.app.models.reconciliation import EntityResolutionCatalog, EntityResolutionSet  # type: ignore  # noqa: E402
+from src.loaders.driver_metadata import DriverSchemaRegistry  # type: ignore  # noqa: E402
+from src.target_model.models import TargetModel  # type: ignore  # noqa: E402
 
 SCHEMA_CONFIG: dict[str, dict[str, Any]] = {
     "entitySchema.json": {
@@ -70,10 +73,16 @@ SCHEMA_CONFIG: dict[str, dict[str, Any]] = {
     },
     "targetModelSchema.json": {
         "model": TargetModel,
+        "schema_mode": "validation",
         "title": "ShapeShifter Target Model Specification",
         "description": "Schema for target model specifications defining target database schema constraints and entity relationships",
         "remove_required": [],
         "field_patches": {},
+    },
+    "reconciliationSchema.json": {
+        "models": (EntityResolutionCatalog, EntityResolutionSet),
+        "title": "Shape Shifter Reconciliation Configuration",
+        "description": "A reconciliation specification or a catalog containing specifications.",
     },
 }
 
@@ -214,11 +223,33 @@ def clean_schema(schema: dict[str, Any], config: dict[str, Any]) -> dict[str, An
 def build_schema(model: type[Any], config: dict[str, Any]) -> dict[str, Any]:
     """Generate and customize JSON schema for a single model."""
     schema = model.model_json_schema(
-        mode="serialization",
+        mode=config.get("schema_mode", "serialization"),
         by_alias=True,
         ref_template=REF_TEMPLATE,
     )
     return clean_schema(schema, config)
+
+
+def build_combined_schema(models: tuple[type[Any], ...], config: dict[str, Any]) -> dict[str, Any]:
+    """Build a schema that accepts any one of the configured Pydantic models."""
+    definitions: dict[str, Any] = {}
+
+    for model in models:
+        schema = model.model_json_schema(
+            mode=config.get("schema_mode", "serialization"),
+            by_alias=True,
+            ref_template=REF_TEMPLATE,
+        )
+        definitions.update(schema.pop("$defs", {}))
+        definitions[model.__name__] = schema
+
+    return {
+        "$schema": JSON_SCHEMA_VERSION,
+        "title": config["title"],
+        "description": config["description"],
+        "oneOf": [{"$ref": REF_TEMPLATE.format(model=model.__name__)} for model in models],
+        "$defs": definitions,
+    }
 
 
 def generate_schemas(output_dir: Path | None = None, print_only: bool = False) -> dict[str, dict[str, Any]]:
@@ -234,8 +265,10 @@ def generate_schemas(output_dir: Path | None = None, print_only: bool = False) -
     schemas: dict[str, dict[str, Any]] = {}
 
     for filename, config in SCHEMA_CONFIG.items():
-        model = config["model"]
-        schemas[filename] = build_schema(model, config)
+        if "models" in config:
+            schemas[filename] = build_combined_schema(config["models"], config)
+        else:
+            schemas[filename] = build_schema(config["model"], config)
 
     if print_only:
         print(json.dumps(schemas, indent=2))
@@ -293,8 +326,11 @@ def print_schema_summary(schemas: dict[str, dict[str, Any]]) -> None:
     """Print summary information for generated schemas."""
     print("\nSchema Summary:")
     for filename, schema in schemas.items():
-        prop_count = len(schema.get("properties", {}))
-        print(f"{filename}: {prop_count} properties")
+        if "oneOf" in schema:
+            print(f"{filename}: {len(schema['oneOf'])} model variants")
+        else:
+            prop_count = len(schema.get("properties", {}))
+            print(f"{filename}: {prop_count} properties")
 
     entity_schema = schemas.get("entitySchema.json", {})
     entity_properties = entity_schema.get("properties", {})

@@ -18,12 +18,79 @@ export interface FixedSchema {
   order_source: 'stored' | 'derived'
 }
 
+/**
+ * A full mapping link recorded as an affected key's pre-write state.
+ */
+export interface MappingSyncLink {
+  target_id: number | null
+  source: string
+  confidence: number | null
+  created_at: string
+  committed_at: string | null
+  notes: string | null
+  created_by: string
+  reviewed_by: string | null
+}
+
+/**
+ * One recorded mapping change with its affected-key preconditions.
+ */
+export interface MappingSyncOperation {
+  op: 'upsert' | 'delete'
+  key: string
+  target_id: number | null
+  expected_row_present: boolean
+  expected_saved_id: number | null
+  prior_link: MappingSyncLink | null
+  row_index: number | null
+}
+
+/**
+ * The proposed sidecar entry recorded by a pending operation.
+ */
+export interface MappingSyncEntry {
+  local_key: string | string[]
+  public_id: string
+  prior_entry_exists: boolean
+}
+
+/**
+ * Pending mapping changes returned when fixed rows were saved but the mapping
+ * sidecar was not written. Submit it unchanged to retry the mapping changes.
+ */
+export interface MappingSyncPending {
+  status: 'pending'
+  rows_saved: boolean
+  project: string
+  entity: string
+  storage_kind: 'inline' | 'external'
+  local_key: string | string[]
+  public_id: string
+  operations: MappingSyncOperation[]
+  entry: MappingSyncEntry | null
+  expected_row_version: string
+  expected_sidecar_version: string
+}
+
+/**
+ * The result of applying a pending mapping request.
+ */
+export interface MappingSyncRetryResult {
+  status: 'applied' | 'noop'
+  rows_saved: true // Rows were saved by the original request; retry only writes mappings.
+  changed: boolean
+  sidecar_version: string
+  changed_keys: string[]
+}
+
 export interface EntityResponse {
   name: string
   entity_data: Record<string, unknown>
   etag: string
   materialized?: MaterializedMetadata
   fixed_schema?: FixedSchema | null
+  warnings?: string[]
+  mapping_sync?: MappingSyncPending | null
 }
 
 export interface EntityCreateRequest {
@@ -32,7 +99,34 @@ export interface EntityCreateRequest {
 }
 
 export interface EntityUpdateRequest {
+  new_name?: string
   entity_data: Record<string, unknown>
+}
+
+export interface ColumnAvailabilityRequest {
+  entity_draft: Record<string, unknown>
+  source_columns?: string[] | null
+}
+
+export interface ForeignKeyColumnCandidates {
+  index: number
+  entity: string
+  local_keys_before_unnest: string[]
+  local_keys_after_unnest: string[]
+  remote_keys: string[]
+  extra_column_sources: string[]
+}
+
+export interface ColumnAvailabilityResponse {
+  columns: string[]
+  business_keys: string[]
+  replacements: string[]
+  drop_duplicates: string[]
+  drop_empty_rows: string[]
+  extra_columns: { sources: string[] }
+  filters: Record<string, string[]>
+  foreign_keys: ForeignKeyColumnCandidates[]
+  unnest: { id_vars: string[]; value_vars: string[] }
 }
 
 export interface GenerateFromTableRequest {
@@ -48,6 +142,7 @@ export interface EntityValuesResponse {
   format: string
   row_count: number
   etag: string
+  mapping_sync?: MappingSyncPending | null
 }
 
 export interface EntityValuesUpdateRequest {
@@ -81,6 +176,21 @@ export const entitiesApi = {
   },
 
   /**
+   * Get operation-specific column candidates for an unsaved entity draft.
+   */
+  getColumnAvailability: async (
+    projectName: string,
+    entityName: string,
+    data: ColumnAvailabilityRequest
+  ): Promise<ColumnAvailabilityResponse> => {
+    return apiRequest<ColumnAvailabilityResponse>({
+      method: 'POST',
+      url: `/projects/${projectName}/entities/${entityName}/column-availability`,
+      data,
+    })
+  },
+
+  /**
    * Create new entity
    */
   create: async (projectName: string, data: EntityCreateRequest): Promise<EntityResponse> => {
@@ -98,7 +208,7 @@ export const entitiesApi = {
     projectName: string,
     entityName: string,
     data: EntityUpdateRequest,
-    ifMatch?: string,
+    ifMatch?: string
   ): Promise<EntityResponse> => {
     return apiRequest<EntityResponse>({
       method: 'PUT',
@@ -131,14 +241,10 @@ export const entitiesApi = {
 
   /**
    * Get external values for entity with @load: directive
-   * 
+   *
    * @param format - Optional format negotiation (parquet/csv)
    */
-  getValues: async (
-    projectName: string,
-    entityName: string,
-    format?: string
-  ): Promise<EntityValuesResponse> => {
+  getValues: async (projectName: string, entityName: string, format?: string): Promise<EntityValuesResponse> => {
     const params = format ? { format } : undefined
     return apiRequest<EntityValuesResponse>({
       method: 'GET',
@@ -149,7 +255,7 @@ export const entitiesApi = {
 
   /**
    * Update external values for entity with @load: directive
-   * 
+   *
    * @param ifMatch - Optional etag for optimistic locking
    */
   updateValues: async (
@@ -164,6 +270,24 @@ export const entitiesApi = {
       url: `/projects/${projectName}/entities/${entityName}/values`,
       data,
       headers,
+    })
+  },
+
+  /**
+   * Retry the pending mapping changes from a partial fixed-row save.
+   *
+   * The pending payload is submitted unchanged; the server applies only the
+   * remaining changes or returns 409 with the changed affected keys.
+   */
+  retryFixedEntityMapping: async (
+    projectName: string,
+    entityName: string,
+    pending: MappingSyncPending
+  ): Promise<MappingSyncRetryResult> => {
+    return apiRequest<MappingSyncRetryResult>({
+      method: 'PATCH',
+      url: `/projects/${projectName}/mapping/retry-fixed-entity/${entityName}`,
+      data: pending,
     })
   },
 }

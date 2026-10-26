@@ -34,6 +34,15 @@ class ProjectFileInfo(BaseModel):
         return datetime.fromtimestamp(value, tz=timezone.utc).isoformat()
 
 
+class TargetModelFileOption(BaseModel):
+    """A project-local or shared YAML file available to project metadata."""
+
+    name: str = Field(..., description="Target model filename")
+    label: str = Field(..., description="Picker label that identifies the target model location")
+    value: str = Field(..., description="Target model @load: reference to save in project metadata")
+    location: Literal["project", "shared"] = Field(..., description="Whether the model is project-local or shared")
+
+
 class ProjectMetadata(BaseModel):
     """Metadata about a project."""
 
@@ -42,6 +51,7 @@ class ProjectMetadata(BaseModel):
     description: str | None = Field(default=None, description="Project description")
     version: str | None = Field(default=None, description="Project version")
     data_provider_code: str | None = Field(default=None, description="Stable SEAD data provider code for the project")
+    provider_schema: str | None = Field(default=None, description="Stable schema code for the project's data provider")
     file_path: str | None = Field(default=None, description="File path if loaded from file")
     entity_count: int = Field(
         ...,

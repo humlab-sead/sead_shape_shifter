@@ -51,7 +51,7 @@ def test_discover_ingesters_runs_registry_discovery_when_needed(monkeypatch):
 
     class FakeSettings:
         INGESTER_PATHS = ["ingesters"]
-        ENABLED_INGESTERS = ["sead"]
+        ENABLED_INGESTERS = ["sead_change_request"]
 
     monkeypatch.setattr(ingest_cli, "Settings", FakeSettings)
     monkeypatch.setattr(ingest_cli, "get_ingester_registry", lambda: registry)
@@ -59,7 +59,7 @@ def test_discover_ingesters_runs_registry_discovery_when_needed(monkeypatch):
     discovered_registry = ingest_cli.discover_ingesters()
 
     assert discovered_registry is registry
-    assert calls == {"search_paths": ["ingesters"], "enabled_only": ["sead"]}
+    assert calls == {"search_paths": ["ingesters"], "enabled_only": ["sead_change_request"]}
 
 
 @pytest.mark.skip(reason="Test fails when not run in isolation, likely due to shared state. Needs investigation.")
@@ -68,11 +68,11 @@ def test_list_ingesters_prints_available_ingesters(cli_runner):
 
     metadata = [
         SimpleNamespace(
-            key="sead",
-            name="SEAD Clearinghouse",
-            description="Import SEAD submissions",
-            version="1.0.0",
-            supported_formats=["xlsx"],
+            key="sead_change_request",
+            name="SEAD Change Request",
+            description="Build a Change Request deploy bundle",
+            version="0.1.0",
+            supported_formats=[],
         )
     ]
 
@@ -84,8 +84,8 @@ def test_list_ingesters_prints_available_ingesters(cli_runner):
 
     assert result.exit_code == 0
     assert "Available Ingesters" in result.output
-    assert "Key:         sead" in result.output
-    assert "Formats:     xlsx" in result.output
+    assert "Key:         sead_change_request" in result.output
+    assert "Formats:     " in result.output
 
 
 @pytest.mark.skip(reason="Test fails when not run in isolation, likely due to shared state. Needs investigation.")
@@ -109,7 +109,7 @@ def test_validate_command_returns_success_and_builds_request(cli_runner, tmp_pat
             ingest_cli.cli,
             [
                 "validate",
-                "sead",
+                "sead_change_request",
                 str(source_path),
                 "--ignore-columns",
                 "date_updated",
@@ -121,7 +121,7 @@ def test_validate_command_returns_success_and_builds_request(cli_runner, tmp_pat
     request = captured["request"]
 
     assert result.exit_code == 0
-    assert captured["key"] == "sead"
+    assert captured["key"] == "sead_change_request"
     assert isinstance(request, ValidateRequest)
     assert request.source == str(source_path)
     assert request.config["ignore_columns"] == ["date_updated", "*_uuid"]
@@ -152,7 +152,7 @@ def test_validate_command_returns_failure_when_service_reports_invalid(cli_runne
         mock_service_instance = mock_ingester_service.return_value
         mock_service_instance.validate = fake_validate
 
-        result = cli_runner.invoke(ingest_cli.cli, ["validate", "sead", str(source_path)])
+        result = cli_runner.invoke(ingest_cli.cli, ["validate", "sead_change_request", str(source_path)])
 
     assert result.exit_code == 1
     assert "VALIDATION FAILED" in result.output
@@ -190,7 +190,7 @@ def test_ingest_command_returns_success_and_builds_request(cli_runner, tmp_path)
             ingest_cli.cli,
             [
                 "ingest",
-                "sead",
+                "sead_change_request",
                 str(source_path),
                 "--submission-name",
                 "sub_01",
@@ -216,7 +216,7 @@ def test_ingest_command_returns_success_and_builds_request(cli_runner, tmp_path)
     request = captured["request"]
 
     assert result.exit_code == 0
-    assert captured["key"] == "sead"
+    assert captured["key"] == "sead_change_request"
     assert isinstance(request, IngestRequest)
     assert request.source == str(source_path)
     assert request.submission_name == "sub_01"
@@ -254,7 +254,7 @@ def test_ingest_command_returns_failure_when_service_reports_error(cli_runner, t
 
         result = cli_runner.invoke(
             ingest_cli.cli,
-            ["ingest", "sead", str(source_path), "--submission-name", "sub_fail", "--data-types", "dendro"],
+            ["ingest", "sead_change_request", str(source_path), "--submission-name", "sub_fail", "--data-types", "dendro"],
         )
 
     assert result.exit_code == 1

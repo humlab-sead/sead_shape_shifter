@@ -23,7 +23,7 @@ export function configureMonacoWorkers() {
     self.MonacoEnvironment = {
       getWorker(_workerId: string, label: string): Worker {
         console.log(`[Monaco] Creating worker for label: ${label}`)
-        
+
         try {
           if (label === 'yaml') {
             return createYamlWorker()

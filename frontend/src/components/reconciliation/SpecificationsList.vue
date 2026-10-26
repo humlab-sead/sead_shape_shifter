@@ -3,9 +3,7 @@
     <v-card variant="outlined">
       <v-card-title class="d-flex align-center justify-space-between">
         <span>Reconciliation Specifications</span>
-        <v-btn color="primary" prepend-icon="mdi-plus" @click="openAddDialog">
-          Add Specification
-        </v-btn>
+        <v-btn color="primary" prepend-icon="mdi-plus" @click="openAddDialog"> Add Specification </v-btn>
       </v-card-title>
 
       <v-card-text>
@@ -32,24 +30,12 @@
         </v-alert>
 
         <!-- Data Table -->
-        <v-data-table
-          v-else
-          :headers="headers"
-          :items="specifications"
-          :items-per-page="10"
-          class="elevation-0"
-          hover
-        >
+        <v-data-table v-else :headers="headers" :items="specifications" :items-per-page="10" class="elevation-0" hover>
           <!-- Status Column -->
           <template #item.status="{ item }">
             <v-tooltip location="right">
               <template #activator="{ props: tooltipProps }">
-                <v-icon
-                  v-if="getValidationStatus(item).hasErrors"
-                  v-bind="tooltipProps"
-                  color="error"
-                  size="small"
-                >
+                <v-icon v-if="getValidationStatus(item).hasErrors" v-bind="tooltipProps" color="error" size="small">
                   mdi-alert-circle
                 </v-icon>
                 <v-icon
@@ -60,14 +46,7 @@
                 >
                   mdi-alert
                 </v-icon>
-                <v-icon
-                  v-else
-                  v-bind="tooltipProps"
-                  color="success"
-                  size="small"
-                >
-                  mdi-check-circle
-                </v-icon>
+                <v-icon v-else v-bind="tooltipProps" color="success" size="small"> mdi-check-circle </v-icon>
               </template>
               <div v-if="getValidationStatus(item).hasErrors" class="pa-2">
                 <div class="font-weight-bold mb-2">Configuration Errors:</div>
@@ -126,11 +105,7 @@
 
           <!-- Mappings Column -->
           <template #item.mapping_count="{ item }">
-            <v-chip
-              size="small"
-              :color="item.mapping_count > 0 ? 'info' : 'default'"
-              variant="tonal"
-            >
+            <v-chip size="small" :color="item.mapping_count > 0 ? 'info' : 'default'" variant="tonal">
               <v-icon start size="x-small">mdi-link-variant</v-icon>
               {{ item.mapping_count }}
             </v-chip>
@@ -210,11 +185,14 @@
         <v-card-text>
           <p>
             Are you sure you want to delete the specification for
-            <strong>{{ specToDelete?.entity_name }}.{{ specToDelete?.target_field }}</strong>?
+            <strong>{{ specToDelete?.entity_name }}.{{ specToDelete?.target_field }}</strong
+            >?
           </p>
 
           <v-alert v-if="specToDelete && specToDelete.mapping_count > 0" type="warning" variant="tonal" class="mt-4">
-            <div class="font-weight-bold">Warning: This specification has {{ specToDelete.mapping_count }} existing mappings</div>
+            <div class="font-weight-bold">
+              Warning: This specification has {{ specToDelete.mapping_count }} existing mappings
+            </div>
             <div class="text-caption mt-1">All mappings will be permanently deleted.</div>
           </v-alert>
 
@@ -224,14 +202,7 @@
         <v-card-actions>
           <v-spacer />
           <v-btn @click="deleteDialog = false">Cancel</v-btn>
-          <v-btn
-            color="error"
-            variant="elevated"
-            :loading="deletingSpec"
-            @click="performDelete"
-          >
-            Delete
-          </v-btn>
+          <v-btn color="error" variant="elevated" :loading="deletingSpec" @click="performDelete"> Delete </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -375,7 +346,7 @@ async function validateSpecification(spec: EntityResolutionListItem): Promise<Va
     hasErrors: false,
     hasWarnings: false,
     errors: [],
-    warnings: []
+    warnings: [],
   }
 
   // Determine which entity to validate against
@@ -388,7 +359,7 @@ async function validateSpecification(spec: EntityResolutionListItem): Promise<Va
 
   // Get actual available fields from API (includes all column types)
   const entityColumns = await getEntityFields(entityForValidation)
-  
+
   if (entityColumns.length === 0) {
     status.hasErrors = true
     status.errors.push(`Entity '${entityForValidation}' not found or has no columns`)
@@ -425,7 +396,7 @@ async function validateSpecification(spec: EntityResolutionListItem): Promise<Va
 
 function getValidationStatus(spec: EntityResolutionListItem): ValidationStatus {
   const cacheKey = `${spec.entity_name}.${spec.target_field}`
-  
+
   // Return cached if available
   if (validationCache.value[cacheKey]) {
     return validationCache.value[cacheKey]
@@ -436,15 +407,15 @@ function getValidationStatus(spec: EntityResolutionListItem): ValidationStatus {
     hasErrors: false,
     hasWarnings: false,
     errors: [],
-    warnings: []
+    warnings: [],
   }
 }
 
 async function validateAllSpecifications() {
   if (!specifications.value.length) return
-  
+
   validationLoading.value = true
-  
+
   try {
     // Validate all specifications in parallel
     await Promise.all(
@@ -471,10 +442,13 @@ onMounted(async () => {
 })
 
 // Watch for specification changes and revalidate
-watch(specifications, async () => {
-  await validateAllSpecifications()
-}, { deep: true })
-
+watch(
+  specifications,
+  async () => {
+    await validateAllSpecifications()
+  },
+  { deep: true }
+)
 </script>
 
 <style scoped>

@@ -30,6 +30,21 @@ def get_data_source_service() -> Generator[services.DataSourceService, None, Non
         pass
 
 
+def get_data_provider_service() -> Generator[services.DataProviderService, None, None]:
+    """
+    Get DataProviderService instance.
+
+    Reads the curated provider registry from the configured provider directory.
+    Used as FastAPI dependency for provider endpoints.
+    """
+    service = services.DataProviderService(settings.global_data_provider_dir)
+    try:
+        yield service
+    finally:
+        # Cleanup if needed (the registry is read from disk on each call)
+        pass
+
+
 def get_schema_service() -> Generator[services.SchemaIntrospectionService, None, None]:
     """
     Get SchemaIntrospectionService instance.

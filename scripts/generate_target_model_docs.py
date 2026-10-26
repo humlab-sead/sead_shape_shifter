@@ -70,8 +70,8 @@ Output formats
     markdown  Plain-text Markdown grouped by domain. Renders on GitHub/GitLab.
                         Version-controlled and can be converted to PDF or Word.
 
-    sims      Markdown register focused on SIMS identity categories, aggregate
-                        boundaries, business keys, and reconciliation strategy groupings.
+    sims      Markdown reference for Shape Shifter target-model unique sets,
+                        aggregate boundaries, and reconciliation groupings.
 
     all       Generates every supported format in one pass (default).
 
@@ -79,10 +79,10 @@ Output files
 ------------
   Files are written to --output-dir (default: docs/generated/) using the input
   file stem as the base name, e.g.:
-    docs/generated/sead_superset_model.html
-    docs/generated/sead_superset_model.md
-    docs/generated/sead_superset_model.xlsx
-    docs/generated/sead_superset_model.sims.md
+    docs/generated/sead_standard_model.html
+    docs/generated/sead_standard_model.md
+    docs/generated/sead_standard_model.xlsx
+    docs/generated/sead_standard_model.sims.md
 
 Understanding entity cards (HTML)
 ----------------------------------
@@ -108,16 +108,16 @@ Understanding entity cards (HTML)
 Examples
 --------
   # Generate all formats from the bundled SEAD spec
-    python scripts/generate_target_model_docs.py resources/target_models/sead_superset_model.yml
+    python scripts/generate_target_model_docs.py resources/target_models/sead_standard_model.yml
 
   # HTML only (recommended for stakeholder review)
-    python scripts/generate_target_model_docs.py resources/target_models/sead_superset_model.yml --format html
+    python scripts/generate_target_model_docs.py resources/target_models/sead_standard_model.yml --format html
 
   # Excel for gap-analysis workshop
-    python scripts/generate_target_model_docs.py resources/target_models/sead_superset_model.yml --format excel
+    python scripts/generate_target_model_docs.py resources/target_models/sead_standard_model.yml --format excel
 
-    # SIMS entity register for the Authority Service docs
-    python scripts/generate_target_model_docs.py resources/target_models/sead_superset_model.yml --format sims --output-dir /tmp
+    # Shape Shifter target-model reference for the Authority Service SIMS docs
+    python scripts/generate_target_model_docs.py resources/target_models/sead_standard_model.yml --format sims --output-dir /tmp
 
   # Custom output directory
   python scripts/generate_target_model_docs.py my_model.yml --format all --output-dir /tmp/model-docs
@@ -128,7 +128,7 @@ Examples
         "--format",
         choices=["html", "markdown", "excel", "sims", "all"],
         default="all",
-        help="Output format: html (interactive), markdown (plain text), excel (spreadsheet), sims (identity register), all (default)",
+        help="Output format: html (interactive), markdown (plain text), excel (spreadsheet), sims (target-model reference for SIMS docs), all (default)",
     )
     parser.add_argument("--output-dir", type=Path, default=Path("docs/generated"), help="Output directory (default: docs/generated)")
 

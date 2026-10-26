@@ -7,11 +7,14 @@ from typing import Any, Protocol
 import pandas as pd
 
 from backend.app.exceptions import SchemaValidationError
-from backend.app.utils.fixed_schema import build_fixed_full_columns, normalize_fixed_entity
+from backend.app.utils.fixed_schema import (
+    build_fixed_full_columns,
+    format_missing_fixed_keys_message,
+    normalize_fixed_entity,
+)
 from src.types.fixed_entity_types import (
     FixedEntityColumnTypeDeclarationError,
     FixedEntityTypeConventionDeclarationError,
-    build_fixed_entity_full_columns,
     is_valid_fixed_entity_value,
     normalize_fixed_entity_column_types,
     normalize_fixed_entity_type_conventions,
@@ -85,10 +88,8 @@ class FixedEntityPersistenceStrategy:
         except FixedEntityTypeConventionDeclarationError as exc:
             raise SchemaValidationError(message=str(exc), entity=entity_name, field="options.fixed_entity_types") from exc
 
-        raw_keys = entity_data.get("keys")
-        keys: list[str] = [key for key in raw_keys if isinstance(key, str)] if isinstance(raw_keys, list) else []
         public_id = entity_data.get("public_id") if isinstance(entity_data.get("public_id"), str) else None
-        full_columns = build_fixed_entity_full_columns(columns, keys, public_id)
+        full_columns = build_fixed_full_columns(columns, public_id)
 
         for row_idx, row in enumerate(values):
             row_columns = columns if len(row) == len(columns) else full_columns
@@ -131,6 +132,20 @@ class FixedEntityPersistenceStrategy:
                 field="columns",
             )
 
+        public_id = entity_data.get("public_id")
+        full_columns: list[str] = build_fixed_full_columns(list(columns), public_id if isinstance(public_id, str) else None)
+
+        raw_keys = entity_data.get("keys")
+        keys: list[str] = [key for key in raw_keys if isinstance(key, str)] if isinstance(raw_keys, list) else []
+        if columns and keys:
+            missing_keys: list[str] = [key for key in keys if key not in full_columns]
+            if missing_keys:
+                raise SchemaValidationError(
+                    message=format_missing_fixed_keys_message(entity_name, missing_keys, full_columns),
+                    entity=entity_name,
+                    field="keys",
+                )
+
         values = entity_data.get("values")
         if values is None or isinstance(values, str):
             return
@@ -154,20 +169,15 @@ class FixedEntityPersistenceStrategy:
             )
 
         values_length = next(iter(row_lengths))
-        public_id = entity_data.get("public_id")
-        identity_columns = {"system_id"}
-        if isinstance(public_id, str) and public_id:
-            identity_columns.add(public_id)
-
         expected_without_identity = len(columns)
-        expected_with_identity = len(set(columns) | identity_columns)
+        expected_with_identity = len(full_columns)
 
         if values_length not in (expected_without_identity, expected_with_identity):
             raise SchemaValidationError(
                 message=(
                     f"Fixed data entity '{entity_name}' has mismatched number of columns and values "
                     f"(got {values_length} values per row, expected {expected_without_identity} for data-only "
-                    f"or {expected_with_identity} with identity columns)"
+                    f"or {expected_with_identity} with identity columns). Expected positional column order: {full_columns}"
                 ),
                 entity=entity_name,
                 field="values",
@@ -186,7 +196,7 @@ class FixedEntityPersistenceStrategy:
 
     def normalize_materialized_dataframe(
         self,
-        entity_name: str,  # pylint: disable=unused-argument
+        entity_name: str,
         df: pd.DataFrame,
         public_id: str | None,
         keys: list[str],
@@ -199,11 +209,15 @@ class FixedEntityPersistenceStrategy:
         if public_id and public_id not in normalized_df.columns:
             normalized_df[public_id] = [None] * len(normalized_df)
 
-        for key in keys:
-            if key not in normalized_df.columns:
-                normalized_df[key] = [None] * len(normalized_df)
+        full_columns: list[str] = build_fixed_full_columns(normalized_df.columns.tolist(), public_id)
+        missing_keys: list[str] = [key for key in keys if key not in full_columns]
+        if missing_keys:
+            raise SchemaValidationError(
+                message=format_missing_fixed_keys_message(entity_name, missing_keys, full_columns),
+                entity=entity_name,
+                field="keys",
+            )
 
-        full_columns = build_fixed_full_columns(normalized_df.columns.tolist(), keys, public_id)
         return normalized_df.loc[:, full_columns]
 
 

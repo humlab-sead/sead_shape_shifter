@@ -428,7 +428,7 @@ ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
 
 - [Main Project README](../README.md) - Overall project documentation
 - [Configuration Guide](../docs/CONFIGURATION_GUIDE.md) - YAML configuration reference
-- [Development Guide](../docs/DEVELOPMENT_GUIDE.md) - Development setup and workflows
+- [Development Guide](../docs/DEVELOPMENT.md) - Development setup and workflows
 - [Copilot Instructions](../.github/copilot-instructions.md) - AI coding agent guidelines
 
 ## License

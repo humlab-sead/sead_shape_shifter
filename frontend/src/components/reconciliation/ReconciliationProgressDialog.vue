@@ -28,12 +28,8 @@
 
           <!-- Progress Details -->
           <div class="text-caption text-medium-emphasis mb-4">
-            <div v-if="progress.total > 0">
-              {{ progress.current }} / {{ progress.total }} queries processed
-            </div>
-            <div v-if="progress.elapsed_seconds">
-              Elapsed: {{ formatDuration(progress.elapsed_seconds) }}
-            </div>
+            <div v-if="progress.total > 0">{{ progress.current }} / {{ progress.total }} queries processed</div>
+            <div v-if="progress.elapsed_seconds">Elapsed: {{ formatDuration(progress.elapsed_seconds) }}</div>
             <div v-if="progress.estimated_remaining_seconds">
               Estimated time remaining: {{ formatDuration(progress.estimated_remaining_seconds) }}
             </div>
@@ -41,23 +37,14 @@
 
           <!-- Status Chips -->
           <div class="d-flex flex-wrap gap-2 mb-4">
-            <v-chip
-              :color="getStatusColor(progress.status)"
-              variant="flat"
-              size="small"
-            >
+            <v-chip :color="getStatusColor(progress.status)" variant="flat" size="small">
               <v-icon :icon="getStatusIcon(progress.status)" start size="small" />
               {{ progress.status.toUpperCase() }}
             </v-chip>
           </div>
 
           <!-- Error Message -->
-          <v-alert
-            v-if="progress.error"
-            type="error"
-            variant="tonal"
-            class="mb-4"
-          >
+          <v-alert v-if="progress.error" type="error" variant="tonal" class="mb-4">
             {{ progress.error }}
           </v-alert>
         </div>
@@ -70,7 +57,7 @@
 
       <v-card-actions>
         <v-spacer />
-        
+
         <!-- Cancel Button (only for running operations) -->
         <v-btn
           v-if="progress && progress.status === 'running'"
@@ -205,7 +192,7 @@ function handleClose() {
 function formatDuration(seconds: number): string {
   const mins = Math.floor(seconds / 60)
   const secs = Math.floor(seconds % 60)
-  
+
   if (mins > 0) {
     return `${mins}m ${secs}s`
   }

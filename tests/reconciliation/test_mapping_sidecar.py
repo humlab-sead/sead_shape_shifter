@@ -1,3 +1,4 @@
+import hashlib
 from datetime import datetime, timezone
 
 import pytest
@@ -5,7 +6,7 @@ import yaml
 from loguru import logger
 
 from src.model import TableConfig
-from src.reconciliation.mapping_manager import MappingManager
+from src.reconciliation.mapping_manager import MISSING_CONTENT_VERSION, MappingManager, MappingVersionConflictError
 from src.reconciliation.mapping_model import (
     EntityMapping,
     EntityType,
@@ -83,7 +84,8 @@ def make_catalog() -> MappingCatalog:
 
 
 def test_mapping_catalog_parses_valid_yaml_fixture() -> None:
-    fixture = yaml.safe_load("""
+    fixture = yaml.safe_load(
+        """
 version: "2.0"
 metadata:
   project: demo-project
@@ -107,7 +109,8 @@ entities:
         notes: curated
         created_by: tester
         reviewed_by: reviewer
-""")
+"""
+    )
 
     catalog = MappingCatalog.model_validate(fixture)
 
@@ -152,6 +155,80 @@ def test_mapping_manager_load_save_round_trip_preserves_catalog_fields(tmp_path)
     reloaded = MappingManager().load(project_dir)
 
     assert reloaded.model_dump(mode="json") == catalog.model_dump(mode="json")
+
+
+def test_mapping_manager_snapshot_uses_exact_bytes_and_separate_missing_version(tmp_path) -> None:
+    project_dir = tmp_path / "demo-project"
+    project_dir.mkdir()
+    manager = MappingManager()
+
+    missing_snapshot = manager.load_snapshot(project_dir)
+    assert missing_snapshot.content_version == MISSING_CONTENT_VERSION
+    assert missing_snapshot.content_version != missing_snapshot.catalog.version
+
+    manager.save(make_catalog(), project_dir, expected_version=missing_snapshot.content_version)
+    sidecar_path = project_dir / "demo-project-mapping.yml"
+    original_bytes = sidecar_path.read_bytes()
+    original_snapshot = manager.load_snapshot(project_dir)
+
+    sidecar_path.write_bytes(original_bytes + b"\n")
+    edited_snapshot = manager.load_snapshot(project_dir)
+
+    assert original_snapshot.content_version == hashlib.sha256(original_bytes).hexdigest()
+    assert edited_snapshot.content_version == hashlib.sha256(original_bytes + b"\n").hexdigest()
+    assert edited_snapshot.content_version != original_snapshot.content_version
+    assert edited_snapshot.catalog.version == "2.0"
+
+
+def test_mapping_manager_rejects_stale_save_without_mutating_cache_or_disk(tmp_path) -> None:
+    project_dir = tmp_path / "demo-project"
+    project_dir.mkdir()
+    manager = MappingManager()
+    cached_catalog = manager.load(project_dir)
+    snapshot = manager.load_snapshot(project_dir)
+    second_catalog = make_catalog()
+    second_manager = MappingManager()
+    second_manager.save(second_catalog, project_dir, expected_version=snapshot.content_version)
+    sidecar_path = project_dir / "demo-project-mapping.yml"
+    external_bytes = sidecar_path.read_bytes()
+
+    with pytest.raises(MappingVersionConflictError):
+        manager.save(cached_catalog, project_dir, expected_version=snapshot.content_version)
+
+    assert sidecar_path.read_bytes() == external_bytes
+    assert manager._cache[manager._cache_key(project_dir)] is cached_catalog
+
+
+def test_mapping_manager_load_refreshes_cache_after_another_manager_saves(tmp_path) -> None:
+    project_dir = tmp_path / "demo-project"
+    project_dir.mkdir()
+    first_manager = MappingManager()
+    cached_catalog = first_manager.load(project_dir)
+    second_manager = MappingManager()
+    second_snapshot = second_manager.load_snapshot(project_dir)
+
+    second_manager.save(make_catalog(), project_dir, expected_version=second_snapshot.content_version)
+
+    refreshed_catalog = first_manager.load(project_dir)
+
+    assert refreshed_catalog is not cached_catalog
+    assert "samples" in refreshed_catalog.entities
+
+
+def test_mapping_manager_cleans_temporary_file_when_atomic_replace_fails(tmp_path, monkeypatch) -> None:
+    project_dir = tmp_path / "demo-project"
+    project_dir.mkdir()
+    manager = MappingManager()
+
+    def fail_replace(_source, _destination):
+        raise OSError("replace failed")
+
+    monkeypatch.setattr("src.reconciliation.mapping_manager.os.replace", fail_replace)
+    with pytest.raises(OSError, match="replace failed"):
+        manager.save(make_catalog(), project_dir, expected_version=MISSING_CONTENT_VERSION)
+
+    assert not (project_dir / "demo-project-mapping.yml").exists()
+    assert list(project_dir.glob(".tmp-mapping-*.yml")) == []
 
 
 @pytest.mark.parametrize(

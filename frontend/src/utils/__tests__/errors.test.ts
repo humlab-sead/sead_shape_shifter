@@ -16,8 +16,8 @@ describe('Enhanced Error Parsing', () => {
             error_type: 'ForeignKeyError',
             message: "Entity 'site' has invalid foreign_keys: must be a list",
             tips: [
-              "Change foreign_keys to a list: foreign_keys: [...]",
-              "Each foreign key should be a separate list item",
+              'Change foreign_keys to a list: foreign_keys: [...]',
+              'Each foreign key should be a separate list item',
               "Check YAML syntax - use '- entity: ...' for list items",
             ],
             context: {
@@ -45,7 +45,8 @@ describe('Enhanced Error Parsing', () => {
         response: {
           data: {
             error_type: 'ConstraintViolationError',
-            message: "Validation failed for site_location -> location: missing values found in remote key 'location_name'.",
+            message:
+              "Validation failed for site_location -> location: missing values found in remote key 'location_name'.",
             tips: [
               "Check column 'location_name' in the remote entity for missing values.",
               'Clean or filter missing values before linking.',
@@ -67,7 +68,7 @@ describe('Enhanced Error Parsing', () => {
       expect(result.message).toContain("missing values found in remote key 'location_name'")
       expect(result.errorType).toBe('ConstraintViolationError')
       expect(result.tips).toHaveLength(3)
-      expect(result.tips![2]).toContain("Allow Missing Join Keys")
+      expect(result.tips![2]).toContain('Allow Missing Join Keys')
       expect(result.context?.key_column).toBe('location_name')
       expect(result.recoverable).toBe(true)
     })

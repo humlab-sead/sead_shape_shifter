@@ -26,6 +26,15 @@ APPROVED_DATATYPES: frozenset[str] = frozenset(
     }
 )
 
+FIXED_PROVIDER_TARGET_TABLE = "tbl_data_providers"
+"""SEAD table that holds the operator-reconciled data provider row."""
+
+CHANGE_REQUEST_FILE_INPUT_RETIRED_MESSAGE = (
+    "SEAD Change Request file input is retired; it no longer accepts workbooks or file paths. "
+    "Normalized tables must reach the ingester in memory."
+)
+"""Caller-facing reason returned when a retired Change Request file entry point is used."""
+
 
 class ChangeRowState(StrEnum):
     """Resolved row states used when building a change request."""
@@ -34,6 +43,7 @@ class ChangeRowState(StrEnum):
     NEWLY_ALLOCATED_ENTITY = "newly_allocated_entity"
     RECONCILED_CLASSIFIER = "reconciled_classifier"
     DERIVED_BRIDGE_ROW = "derived_bridge_row"
+    PENDING_DEPLOYMENT_ID = "pending_deployment_id"
     BLOCKED_UNRESOLVED = "blocked_unresolved"
 
 
@@ -48,6 +58,7 @@ class PlannedRowAction(StrEnum):
     RECONCILE = "reconcile"
     EVALUATE_BRIDGE = "evaluate_bridge"
     INHERIT_AGGREGATE = "inherit_aggregate"
+    DEFER_TO_DEPLOYMENT = "defer_to_deployment"
 
 
 class LifecycleVersionState(StrEnum):
@@ -94,6 +105,32 @@ class SubmissionContext:
     issue_identifier: str | None = None
     author: str | None = None
     data_provider_code: str | None = None
+    scope_name: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class TrustedProjectContext:
+    """Backend-owned project facts for one Change Request run.
+
+    The backend builds this value from the authorized saved project, after checking the
+    registered provider-schema pair and the fixed provider row. It carries the values the
+    ingester must not take from caller input:
+
+    - ``scope_name`` is the registered SIMS scope for the saved pair;
+    - ``data_provider_id`` is the operator-reconciled SEAD provider ID from the project's
+      fixed row;
+    - ``business_keys`` maps each tracked entity to its ordered ``EntityConfig.keys``.
+
+    The ingester rejects conflicting caller values and never derives these values from
+    request metadata.
+    """
+
+    project_name: str
+    provider_code: str
+    provider_schema: str
+    scope_name: str
+    data_provider_id: int
+    business_keys: dict[str, tuple[str, ...]] = field(default_factory=dict)
 
 
 @dataclass(slots=True)
@@ -272,6 +309,7 @@ class PendingConfirmationReport:
             blocked_entities.append(entity_name)
             blocked_rows += entity_blocked_rows
 
+        run_id_instruction = f" with run ID '{submission_context.run_id}'" if submission_context.run_id else ""
         return PendingConfirmationReport(
             submission_name=submission_context.submission_name,
             project_name=submission_context.project_name,
@@ -283,7 +321,7 @@ class PendingConfirmationReport:
             operator_action="Confirm the Binding Set in SIMS, then rerun the ingester with the same submission context",
             rerun_instruction=(
                 f"Rerun submission '{submission_context.submission_name}' for project '{submission_context.project_name}' "
-                "after the Binding Set is confirmed"
+                f"after the Binding Set is confirmed{run_id_instruction}"
             ),
         )
 
@@ -300,12 +338,47 @@ class ChangeRequestTable:
 
 
 @dataclass(slots=True)
+class KnownIdMapping:
+    """One local reference resolved to an existing or generated target ID.
+
+    Staging keeps these records as rows, not as a dictionary, so duplicate or
+    conflicting local keys can be reported instead of silently overwritten.
+    """
+
+    entity_name: str
+    system_id: int
+    target_id: int
+
+
+@dataclass(frozen=True, slots=True)
+class DirectForeignKey:
+    """A target-model FK column whose source value is already a target ID."""
+
+    source_entity: str
+    target_entity: str
+    column_name: str
+
+
+@dataclass(slots=True)
 class ChangeRequestPackage:
-    """Generated change-request payload before artifact rendering."""
+    """Generated change-request payload before artifact rendering.
+
+    ``tables`` holds target-write rows for every strategy. Staging packages also
+    carry ``known_id_mappings`` for parent rows that must not be written, and the
+    explicit ``target_schema`` that qualified rendering requires.
+    """
 
     tables: dict[str, ChangeRequestTable] = field(default_factory=dict)
     warnings: list[str] = field(default_factory=list)
     infos: list[str] = field(default_factory=list)
+    known_id_mappings: list[KnownIdMapping] = field(default_factory=list)
+    direct_foreign_keys: list[DirectForeignKey] = field(default_factory=list)
+    target_schema: str | None = None
+
+    @property
+    def is_staging(self) -> bool:
+        """Return ``True`` when this package was built for deployment-time staging."""
+        return self.target_schema is not None
 
 
 @dataclass(slots=True)

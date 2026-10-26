@@ -156,12 +156,11 @@
           "description": "Reserve the public ID from the target table's database sequence before artifact generation. Use only when identity_tracking is explicitly set to a non-tracked value.",
           "title": "Public Id Generation"
         },
-        "identity_columns": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Identity Columns",
-          "type": "array"
+        "synchronize_sequence_after_insert": {
+          "default": false,
+          "description": "Advance the target column's PostgreSQL sequence after inserting rows with SIMS-assigned IDs, so later default-generated IDs do not reuse them.",
+          "title": "Synchronize Sequence After Insert",
+          "type": "boolean"
         },
         "columns": {
           "additionalProperties": {
@@ -171,6 +170,7 @@
           "type": "object"
         },
         "unique_sets": {
+          "description": "Column groups declared unique for a target entity. Each group is an independent uniqueness rule.",
           "items": {
             "items": {
               "type": "string"
@@ -264,6 +264,18 @@
           ],
           "default": null,
           "title": "Via"
+        },
+        "required_when": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RequiredWhenSpec"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Condition that requires this foreign key after reconciliation."
         }
       },
       "required": [
@@ -355,6 +367,22 @@
         }
       },
       "title": "NamingConventions",
+      "type": "object"
+    },
+    "RequiredWhenSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "has_new_rows": {
+          "description": "Source entity that owns this foreign key. The condition applies only after final reconciliation selects at least one row from this entity for insertion.",
+          "minLength": 1,
+          "title": "Has New Rows",
+          "type": "string"
+        }
+      },
+      "required": [
+        "has_new_rows"
+      ],
+      "title": "RequiredWhenSpec",
       "type": "object"
     }
   },

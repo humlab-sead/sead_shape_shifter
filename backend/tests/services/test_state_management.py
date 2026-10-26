@@ -71,6 +71,8 @@ def _write_project_yaml(project_dir: Path, name: str, entities: dict[str, Any]) 
             "name": name,
             "description": f"Test project {name}",
             "version": "1.0.0",
+            "data_provider_code": "test-provider",
+            "provider_schema": "schema-one",
         },
         "entities": entities,
         "options": {},
@@ -310,7 +312,7 @@ class TestConcurrencyRegressions:
         - add_entity_by_name is serialized with per-project lock
         """
         # Create initial project on disk
-        service.create_project("test")
+        service.create_project("test", data_provider_code="test-provider", provider_schema="schema-one")
 
         # Simulate cache returning the current state each time
         # (mock_state.get returns None, so each load_project reads from disk)
@@ -336,7 +338,7 @@ class TestConcurrencyRegressions:
 
         Uses threads to simulate concurrent requests hitting the backend.
         """
-        service.create_project("concurrent_test")
+        service.create_project("concurrent_test", data_provider_code="test-provider", provider_schema="schema-one")
         mock_state.get.return_value = None
 
         errors = []
@@ -372,7 +374,7 @@ class TestConcurrencyRegressions:
         delete_project and create_project.
         """
         # Create project with entities
-        service.create_project("ghost_test")
+        service.create_project("ghost_test", data_provider_code="test-provider", provider_schema="schema-one")
         mock_state.get.return_value = None
         service.add_entity_by_name("ghost_test", "old_entity", {"source": "old_table"})
 
@@ -383,7 +385,7 @@ class TestConcurrencyRegressions:
         assert mock_state.invalidate.called
 
         # Recreate project with same name
-        project = service.create_project("ghost_test")
+        project = service.create_project("ghost_test", data_provider_code="test-provider", provider_schema="schema-one")
 
         # Should have zero entities (no ghosts)
         assert len(project.entities) == 0
@@ -443,6 +445,6 @@ class TestDeleteProjectCacheCleanup:
     def test_create_after_delete_clears_stale_caches(self, service: ProjectService, mock_state, temp_dir):
         """create_project defensively clears caches (handles delete+recreate race)."""
         with patch.object(service.operations, "_invalidate_all_caches") as mock_invalidate:
-            service.create_project("fresh")
+            service.create_project("fresh", data_provider_code="test-provider", provider_schema="schema-one")
             mock_invalidate.assert_called_once()
             assert mock_invalidate.call_args[0][0] == "fresh"

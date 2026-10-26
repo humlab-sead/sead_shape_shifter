@@ -4,9 +4,12 @@ This module defines the standard interface that all ingesters must implement,
 along with configuration and result data classes.
 """
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
+
+import pandas as pd
 
 
 @dataclass
@@ -14,12 +17,14 @@ class IngesterMetadata:
     """Metadata about an ingester.
 
     Attributes:
-        key: Unique identifier for the ingester (e.g., 'sead')
-        name: Human-readable name (e.g., 'SEAD Clearinghouse')
+        key: Unique identifier for the ingester (e.g., 'your_ingester')
+        name: Human-readable name (e.g., 'Your Ingester')
         description: Description of what the ingester does
         version: Ingester version string
         supported_formats: List of supported file formats (e.g., ['xlsx', 'xls'])
         requires_config: Whether ingester requires configuration
+        deprecated: Whether the ingester is superseded and kept only for existing callers
+        deprecation_message: Operator-facing explanation of the replacement for a deprecated ingester
     """
 
     key: str
@@ -28,6 +33,8 @@ class IngesterMetadata:
     version: str
     supported_formats: list[str]
     requires_config: bool
+    deprecated: bool = False
+    deprecation_message: str | None = None
 
 
 @dataclass
@@ -79,10 +86,20 @@ class IngestionResult:
     error_details: str | None = None
     deploy_artifact: dict[str, Any] | None = None
     pending_confirmation_report: dict[str, Any] | None = None
+    scope_name: str | None = None
+    run_id: str | None = None
+    output_path: str | None = None
 
     @staticmethod
     def create_success_result(
-        *, message: str, tables_processed: int, records_inserted: int, deploy_artifact: dict[str, Any]
+        *,
+        message: str,
+        tables_processed: int,
+        records_inserted: int,
+        deploy_artifact: dict[str, Any],
+        scope_name: str | None = None,
+        run_id: str | None = None,
+        output_path: str | None = None,
     ) -> "IngestionResult":
         """Build a standard successful ingestion result."""
         return IngestionResult(
@@ -94,6 +111,9 @@ class IngestionResult:
             error_details=None,
             deploy_artifact=deploy_artifact,
             pending_confirmation_report=None,
+            scope_name=scope_name,
+            run_id=run_id,
+            output_path=output_path,
         )
 
     @staticmethod
@@ -103,6 +123,8 @@ class IngestionResult:
         details: str,
         deploy_artifact: dict[str, Any] | None = None,
         pending_confirmation_report: dict[str, Any] | None = None,
+        scope_name: str | None = None,
+        run_id: str | None = None,
     ) -> "IngestionResult":
         """Build a standard failed ingestion result."""
         return IngestionResult(
@@ -114,6 +136,8 @@ class IngestionResult:
             error_details=details,
             deploy_artifact=deploy_artifact,
             pending_confirmation_report=pending_confirmation_report,
+            scope_name=scope_name,
+            run_id=run_id,
         )
 
 
@@ -206,5 +230,46 @@ class Ingester(Protocol):
 
         Returns:
             IngestionResult with success status and details
+        """
+        ...
+
+
+@runtime_checkable
+class TableSourceIngester(Protocol):
+    """Optional capability for ingesters that accept normalized tables in memory.
+
+    This capability is independent of :class:`Ingester`. An ingester may support
+    file input, table input, or both, and callers discover table support with a
+    runtime check instead of inspecting ``supported_formats``.
+    """
+
+    async def validate_tables(self, tables: Mapping[str, pd.DataFrame], *, source_name: str = "") -> ValidationResult:
+        """Validate normalized tables without writing any artifact.
+
+        Args:
+            tables: Entity or table name mapped to one normalized DataFrame.
+            source_name: Diagnostic label for error messages; never a file path.
+
+        Returns:
+            ValidationResult with errors, warnings, and info messages.
+        """
+        ...
+
+    async def ingest_tables(
+        self,
+        tables: Mapping[str, pd.DataFrame],
+        *,
+        source_name: str = "",
+        validate_first: bool = True,
+    ) -> IngestionResult:
+        """Ingest normalized tables into the target system.
+
+        Args:
+            tables: Entity or table name mapped to one normalized DataFrame.
+            source_name: Diagnostic label for error messages; never a file path.
+            validate_first: Run validation before ingesting.
+
+        Returns:
+            IngestionResult with success status and details.
         """
         ...

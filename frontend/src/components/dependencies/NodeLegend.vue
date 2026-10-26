@@ -14,9 +14,7 @@
           </div>
           <div class="legend-text">
             <span class="font-weight-medium">Entity (Derived)</span>
-            <div class="text-caption text-medium-emphasis">
-              Entity derived from another entity
-            </div>
+            <div class="text-caption text-medium-emphasis">Entity derived from another entity</div>
           </div>
         </div>
 
@@ -26,9 +24,7 @@
           </div>
           <div class="legend-text">
             <span class="font-weight-medium">CSV File Entity</span>
-            <div class="text-caption text-medium-emphasis">
-              Data loaded from a CSV file
-            </div>
+            <div class="text-caption text-medium-emphasis">Data loaded from a CSV file</div>
           </div>
         </div>
 
@@ -38,9 +34,7 @@
           </div>
           <div class="legend-text">
             <span class="font-weight-medium">Excel Entity (Pandas)</span>
-            <div class="text-caption text-medium-emphasis">
-              Data loaded from Excel using Pandas
-            </div>
+            <div class="text-caption text-medium-emphasis">Data loaded from Excel using Pandas</div>
           </div>
         </div>
 
@@ -50,9 +44,7 @@
           </div>
           <div class="legend-text">
             <span class="font-weight-medium">Excel Entity (OpenPyXL)</span>
-            <div class="text-caption text-medium-emphasis">
-              Data loaded from Excel using OpenPyXL
-            </div>
+            <div class="text-caption text-medium-emphasis">Data loaded from Excel using OpenPyXL</div>
           </div>
         </div>
 
@@ -62,9 +54,7 @@
           </div>
           <div class="legend-text">
             <span class="font-weight-medium">SQL Entity</span>
-            <div class="text-caption text-medium-emphasis">
-              Data derived from a SQL query
-            </div>
+            <div class="text-caption text-medium-emphasis">Data derived from a SQL query</div>
           </div>
         </div>
 
@@ -74,9 +64,7 @@
           </div>
           <div class="legend-text">
             <span class="font-weight-medium">Fixed Values Entity</span>
-            <div class="text-caption text-medium-emphasis">
-              Entity with manually defined fixed values
-            </div>
+            <div class="text-caption text-medium-emphasis">Entity with manually defined fixed values</div>
           </div>
         </div>
       </div>
@@ -91,9 +79,7 @@
           </div>
           <div class="legend-text">
             <span class="font-weight-medium">Data Source / Database</span>
-            <div class="text-caption text-medium-emphasis">
-              A database or file-based data source
-            </div>
+            <div class="text-caption text-medium-emphasis">A database or file-based data source</div>
           </div>
         </div>
 
@@ -103,9 +89,7 @@
           </div>
           <div class="legend-text">
             <span class="font-weight-medium">Database Table / Sheet</span>
-            <div class="text-caption text-medium-emphasis">
-              A specific table or Excel sheet
-            </div>
+            <div class="text-caption text-medium-emphasis">A specific table or Excel sheet</div>
           </div>
         </div>
       </div>
@@ -118,9 +102,7 @@
           <div class="edge-preview solid" />
           <div class="legend-text">
             <span class="font-weight-medium">Entity Dependency</span>
-            <div class="text-caption text-medium-emphasis">
-              One entity depends on another
-            </div>
+            <div class="text-caption text-medium-emphasis">One entity depends on another</div>
           </div>
         </div>
 
@@ -128,9 +110,7 @@
           <div class="edge-preview dotted" />
           <div class="legend-text">
             <span class="font-weight-medium">Source Relationship</span>
-            <div class="text-caption text-medium-emphasis">
-              Connection between source nodes and entities
-            </div>
+            <div class="text-caption text-medium-emphasis">Connection between source nodes and entities</div>
           </div>
         </div>
       </div>
@@ -145,9 +125,7 @@
           </div>
           <div class="legend-text">
             <span class="font-weight-medium">Valid / Normal</span>
-            <div class="text-caption text-medium-emphasis">
-              Node with no issues
-            </div>
+            <div class="text-caption text-medium-emphasis">Node with no issues</div>
           </div>
         </div>
 
@@ -157,9 +135,7 @@
           </div>
           <div class="legend-text">
             <span class="font-weight-medium">In Circular Dependency</span>
-            <div class="text-caption text-medium-emphasis">
-              Node is part of a circular dependency cycle
-            </div>
+            <div class="text-caption text-medium-emphasis">Node is part of a circular dependency cycle</div>
           </div>
         </div>
       </div>
@@ -264,8 +240,8 @@ const emit = defineEmits<{
 }
 
 .node-shape.csv {
-  background-color: #FFA500;
-  border-color: #FFA500;
+  background-color: #ffa500;
+  border-color: #ffa500;
 }
 
 .node-shape.xlsx {
@@ -323,13 +299,7 @@ const emit = defineEmits<{
 }
 
 .edge-preview.dotted {
-  background-image: repeating-linear-gradient(
-    90deg,
-    #00796b 0px,
-    #00796b 6px,
-    transparent 6px,
-    transparent 12px
-  );
+  background-image: repeating-linear-gradient(90deg, #00796b 0px, #00796b 6px, transparent 6px, transparent 12px);
 }
 
 .legend-text {

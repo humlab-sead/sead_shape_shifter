@@ -4,7 +4,7 @@ from io import StringIO
 from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Body, Depends, File, Query, UploadFile, status
+from fastapi import APIRouter, Body, Depends, File, Form, Query, UploadFile, status
 from fastapi.responses import Response
 from loguru import logger
 from pydantic import BaseModel, Field
@@ -22,20 +22,21 @@ from backend.app.authorization.models import Action, AuthorizedResource, Princip
 from backend.app.authorization.service import AuthorizationService
 from backend.app.core.config import settings
 from backend.app.mappers.project_name_mapper import ProjectNameMapper
-from backend.app.models.project import Project, ProjectFileInfo, ProjectMetadata
+from backend.app.models.project import Project, ProjectFileInfo, ProjectMetadata, TargetModelFileOption
 from backend.app.models.validation import ValidationResult
 from backend.app.services.documentation_service import DocumentationService, get_documentation_service
 from backend.app.services.layout_sidecar_manager import LayoutSidecarManager, get_layout_sidecar_manager
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.services.validation_service import ValidationService, get_validation_service
-from backend.app.services.yaml_service import YamlService, get_yaml_service
+from backend.app.services.yaml_service import YamlService, YamlServiceError, get_yaml_service
 from backend.app.utils.error_handlers import handle_endpoint_errors
 from backend.app.utils.exceptions import BadRequestError, BaseAPIException, NotFoundError
 from src.path_resolution import resolve_contained_path
 from src.target_model import DocumentFormat
 
 router = APIRouter()
-shared_data_source_reader_dependency = require_shared_data_source(Action.READ)
+shared_data_source_reader_dependency = require_shared_data_source(Action.READ, body_locator=True)
+PROJECT_CONFIG_FILENAME = "shapeshifter.yml"
 
 # pylint: disable=no-member
 
@@ -46,6 +47,17 @@ def _project_directory(project_name: str) -> Path:
         return resolve_contained_path(ProjectNameMapper.to_path(project_name), settings.PROJECTS_DIR)
     except ValueError as exc:
         raise BadRequestError("Project path is outside the managed projects directory") from exc
+
+
+def _list_project_config_backups(yaml_service: YamlService, project_dir: Path) -> list[Path]:
+    """Return backups created from the project's shapeshifter.yml file."""
+    config_path = Path(PROJECT_CONFIG_FILENAME)
+    backup_prefix = f"{config_path.stem}.backup."
+    return [
+        backup
+        for backup in yaml_service.list_backups(project_dir=project_dir)
+        if backup.name.startswith(backup_prefix) and backup.suffix == config_path.suffix
+    ]
 
 
 def _authorize_referenced_shared_data_sources(
@@ -68,6 +80,8 @@ class ProjectCreateRequest(BaseModel):
     """Request to create new project."""
 
     name: str = Field(..., description="Project name")
+    data_provider_code: str = Field(..., description="Registered data provider code")
+    provider_schema: str = Field(..., description="Registered provider schema code")
     entities: dict[str, dict[str, Any]] = Field(default_factory=dict, description="Initial entities")
     task_list: dict[str, Any] | None = Field(default=None, description="Task list configuration")
 
@@ -108,6 +122,8 @@ class MetadataUpdateRequest(BaseModel):
     target_model: str | None = Field(
         default=None, description="Target model spec path (e.g. @load: target.yml); empty string clears the field"
     )
+    data_provider_code: str | None = Field(default=None, description="Initial registered data provider code")
+    provider_schema: str | None = Field(default=None, description="Initial registered provider schema code")
 
 
 # Endpoints
@@ -195,7 +211,13 @@ async def create_project(
     project_service: ProjectService = get_project_service()
     project: Project | None = None
     try:
-        project = project_service.create_project(request.name, entities=request.entities, task_list=request.task_list)
+        project = project_service.create_project(
+            request.name,
+            entities=request.entities,
+            task_list=request.task_list,
+            data_provider_code=request.data_provider_code,
+            provider_schema=request.provider_schema,
+        )
         project_service.assign_project_owner(request.name, principal, authorization_service)
     except Exception:
         if project is not None:
@@ -267,6 +289,10 @@ async def update_project_metadata(
         default_entity=request.default_entity,
         target_model=request.target_model if "target_model" in request.model_fields_set else None,
         target_model_provided="target_model" in request.model_fields_set,
+        data_provider_code=request.data_provider_code if "data_provider_code" in request.model_fields_set else None,
+        data_provider_code_provided="data_provider_code" in request.model_fields_set,
+        provider_schema=request.provider_schema if "provider_schema" in request.model_fields_set else None,
+        provider_schema_provided="provider_schema" in request.model_fields_set,
     )
     logger.info(f"Updated metadata for project '{name}'")
     return project
@@ -399,7 +425,7 @@ async def list_backups(
     """
     yaml_service: YamlService = get_yaml_service()
     project_dir = _project_directory(authorized_project.resource.locator)
-    backups: list[Path] = yaml_service.list_backups(project_dir=project_dir)
+    backups: list[Path] = _list_project_config_backups(yaml_service, project_dir)
     backup_infos: list[BackupInfo] = [
         BackupInfo(
             file_name=backup.name,
@@ -432,27 +458,23 @@ async def restore_backup(
     """
     yaml_service: YamlService = get_yaml_service()
     project_dir: Path = _project_directory(authorized_project.resource.locator)
-    backups: list[Path] = yaml_service.list_backups(project_dir=project_dir)
+    backups: list[Path] = _list_project_config_backups(yaml_service, project_dir)
     backup_path: Path | None = next((backup for backup in backups if backup.name == request.backup_name), None)
     if backup_path is None:
         raise NotFoundError(f"Backup '{request.backup_name}' not found for project '{name}'")
 
-    target_path: Path = resolve_contained_path("shapeshifter.yml", project_dir)
-    yaml_service.restore_backup(backup_path, str(target_path), create_backup=True)
-    restored_data: dict[str, Any] = yaml_service.load(target_path)
-    stat = target_path.stat()
-    project = Project(
-        metadata=ProjectMetadata(
-            name=name,
-            file_path=str(target_path),
-            entity_count=len(restored_data.get("entities", {})),
-            created_at=stat.st_ctime,
-            modified_at=stat.st_mtime,
-            is_valid=True,  # Will be validated separately if needed
-        ),
-        entities=restored_data.get("entities", {}),
-        options=restored_data.get("options", {}),
-    )
+    target_path: Path = resolve_contained_path(PROJECT_CONFIG_FILENAME, project_dir)
+    project_service = get_project_service()
+    with project_service._get_lock(authorized_project.resource.locator):
+        try:
+            restored_data: dict[str, Any] = yaml_service.load(backup_path)
+        except YamlServiceError as exc:
+            raise BadRequestError("Selected backup contains invalid project YAML") from exc
+        if not isinstance(restored_data, dict) or not isinstance(restored_data.get("metadata"), dict):
+            raise BadRequestError("Selected backup must contain project metadata")
+        project_service.validate_project_file_write(target_path, restored_data)
+        yaml_service.restore_backup(backup_path, str(target_path), create_backup=True)
+        project = project_service.load_project(authorized_project.resource.locator, force_reload=True)
 
     logger.info(f"Restored project '{name}' from backup")
     return project
@@ -704,15 +726,13 @@ async def update_project_raw_yaml(
     if not project_path.exists():
         raise NotFoundError(f"Project file not found: {project_path}")
 
-    # Create backup before update
-    yaml_service.create_backup(project_path)
-
-    # Write new content
-    project_path.write_text(request.yaml_content, encoding="utf-8")
-
-    # Load and return updated project.
-    # IMPORTANT: Force reload so ApplicationState cache cannot return stale data.
-    updated_project = project_service.load_project(authorized_project.resource.locator, force_reload=True)
+    if not isinstance(parsed_yaml.get("metadata"), dict):
+        raise BadRequestError("YAML must contain project metadata")
+    with project_service._get_lock(authorized_project.resource.locator):
+        project_service.validate_project_file_write(project_path, parsed_yaml)
+        yaml_service.create_backup(project_path)
+        project_path.write_text(request.yaml_content, encoding="utf-8")
+        updated_project = project_service.load_project(authorized_project.resource.locator, force_reload=True)
 
     logger.info(f"Updated project '{name}' from raw YAML")
 
@@ -745,6 +765,9 @@ def _resolve_target_model_path(project: Project, project_name: str) -> Path:
             if raw.startswith(prefix):
                 rel_path: str = raw[len(prefix) :].lstrip(":").strip()
                 break
+
+    if "${GLOBAL_TARGET_MODEL_DIR}" in rel_path:
+        raise BaseAPIException("Shared target model files are read-only", 403)
 
     # Security: must stay inside the project directory
     project_dir: Path = _project_directory(project_name)
@@ -1101,6 +1124,7 @@ async def upload_project_file(
     name: str,  # pylint: disable=unused-argument
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
     file: UploadFile = File(...),
+    overwrite: bool = Form(default=False),
 ) -> ProjectFileInfo:
     """Upload data file (Excel, CSV) to project's directory.
 
@@ -1112,7 +1136,61 @@ async def upload_project_file(
         project_name=authorized_project.resource.locator,
         upload=file,
         allowed_extensions={".xlsx", ".xls", ".csv"},
+        overwrite=overwrite,
     )
+
+
+@router.delete(
+    "/projects/{name}/files/{filename}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete an unused project file",
+)
+@handle_endpoint_errors
+async def delete_project_file(
+    name: str,  # pylint: disable=unused-argument
+    filename: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
+) -> None:
+    """Delete a project file that no local entity references."""
+    project_service: ProjectService = get_project_service()
+    project_service.delete_project_file(authorized_project.resource.locator, filename)
+
+
+@router.post(
+    "/projects/{name}/files/{filename}/share",
+    response_model=ProjectFileInfo,
+    status_code=status.HTTP_201_CREATED,
+    summary="Share a project file with all projects",
+)
+@handle_endpoint_errors
+async def promote_project_file(
+    name: str,  # pylint: disable=unused-argument
+    filename: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
+    principal: Annotated[Principal, Depends(require_application_action(Action.MANAGE_SHARED_SOURCES))],
+    authorization_service: Annotated[AuthorizationService, Depends(get_authorization_service)],
+) -> ProjectFileInfo:
+    """Copy a project file to shared data and register its shared-file resource."""
+    project_service = get_project_service()
+    shared_file = project_service.promote_project_file(authorized_project.resource.locator, filename)
+    authorization_service.register_shared_data_source(principal, shared_file.name)
+    return shared_file
+
+
+@router.get(
+    "/projects/{name}/files/capabilities",
+    response_model=dict[str, bool],
+    summary="Get project file actions available to the current user",
+)
+@handle_endpoint_errors
+async def get_project_file_capabilities(
+    name: str,  # pylint: disable=unused-argument
+    _authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
+    principal: Annotated[Principal, Depends(get_principal())],
+    authorization_service: Annotated[AuthorizationService, Depends(get_authorization_service)],
+) -> dict[str, bool]:
+    """Return whether the current user can share project files globally."""
+    return {"can_share_with_all_projects": authorization_service.can_perform_application_action(principal, Action.MANAGE_SHARED_SOURCES)}
 
 
 @router.get(
@@ -1124,20 +1202,39 @@ async def upload_project_file(
 async def list_project_files(
     name: str,  # pylint: disable=unused-argument
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
+    principal: Annotated[Principal, Depends(get_principal())],
+    authorization_service: Annotated[AuthorizationService, Depends(get_authorization_service)],
     ext: list[str] | None = Query(default=None, description="Filter by extension(s), e.g. ext=yml&ext=yaml"),
 ) -> list[ProjectFileInfo]:
-    """List files in project directory.
+    """List project files and global files the principal may access.
 
     By default returns Excel and CSV data files.  Pass one or more ``ext``
     query parameters (without the leading dot) to filter by extension instead,
-    e.g. ``?ext=yml&ext=yaml`` for YAML files only.
+    e.g. ``?ext=yml&ext=yaml`` for YAML files only. Global files are included
+    only when the principal can manage shared sources.
     """
     project_service: ProjectService = get_project_service()
     if ext:
         extensions = [f".{e.lstrip('.')}" for e in ext]
     else:
         extensions = [".xlsx", ".xls", ".csv"]
-    return project_service.list_project_files(
+    return project_service.list_authorized_data_source_files(
+        principal=principal,
+        authorization_service=authorization_service,
         project_name=authorized_project.resource.locator,
         extensions=extensions,
     )
+
+
+@router.get(
+    "/projects/{name}/target-models",
+    response_model=list[TargetModelFileOption],
+    summary="List target model files available to a project",
+)
+@handle_endpoint_errors
+async def list_project_target_models(
+    name: str,  # pylint: disable=unused-argument
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
+) -> list[TargetModelFileOption]:
+    """List project-local and shared YAML files that can be selected as target models."""
+    return get_project_service().list_target_model_files(authorized_project.resource.locator)

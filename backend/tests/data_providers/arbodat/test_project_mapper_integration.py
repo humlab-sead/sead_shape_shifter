@@ -21,10 +21,17 @@ BACKEND_TESTS_DIR = Path(__file__).resolve().parents[2]
 PROJECT_PATH = Path("data/projects/arbodat/shapeshifter.yml")
 
 
+@pytest.fixture(scope="module", name="arbodat_project")
+def _arbodat_project() -> ShapeShiftProject:
+    """Load the real arbodat project once for all tests in this module."""
+    assert PROJECT_PATH.exists(), f"Test project file not found: {PROJECT_PATH}"
+    return ShapeShiftProject.from_file(str(PROJECT_PATH), env_file="data/test.env")
+
+
 class TestProjectMapperIntegration:
     """Integration tests using real project files."""
 
-    def test_arbodat_project_round_trip(self):
+    def test_arbodat_project_round_trip(self, arbodat_project: ShapeShiftProject):
         """Test round-trip conversion with real arbodat-database.yml project.
 
         This test verifies that:
@@ -33,16 +40,12 @@ class TestProjectMapperIntegration:
         3. The API Project can be converted back to core dict format
         4. The result matches the original project
         """
-        # Load real project file
-        project_path = PROJECT_PATH
-        assert project_path.exists(), f"Test project file not found: {project_path}"
-
-        # Load as ShapeShiftProject (core model)
-        original_shape_config = ShapeShiftProject.from_file(str(project_path), env_file="data/test.env")
+        # Loaded project (core model) from the shared module fixture
+        original_shape_config = arbodat_project
         original_cfg_dict = original_shape_config.cfg
 
         # Get config name from file
-        project_name = project_path.stem
+        project_name = PROJECT_PATH.stem
 
         # Convert to API Project
         api_project: Project = ProjectMapper.to_api_config(original_cfg_dict, project_name)
@@ -122,13 +125,9 @@ class TestProjectMapperIntegration:
                 diff_report = "\n".join(diffs)
                 pytest.fail(f"Options differ after round-trip:\n{diff_report}")
 
-    def test_arbodat_project_entity_details(self):
+    def test_arbodat_project_entity_details(self, arbodat_project: ShapeShiftProject):
         """Test detailed entity conversion for complex arbodat entities."""
-        project_path: Path = PROJECT_PATH
-
-        assert project_path.exists(), f"Test project file not found: {project_path}"
-
-        original_shape_config: ShapeShiftProject = ShapeShiftProject.from_file(str(project_path), env_file="data/test.env")
+        original_shape_config: ShapeShiftProject = arbodat_project
         original_cfg_dict: dict[str, dict[str, Any]] = original_shape_config.cfg
 
         # Convert to API and back
@@ -188,10 +187,9 @@ class TestProjectMapperIntegration:
                     assert field in restored_coord
                     assert restored_coord[field] == original_coord[field]
 
-    def test_arbodat_project_metadata_preservation(self):
+    def test_arbodat_project_metadata_preservation(self, arbodat_project: ShapeShiftProject):
         """Test that metadata fields are correctly set during conversion."""
-        project_path: Path = PROJECT_PATH
-        original_shape_config: ShapeShiftProject = ShapeShiftProject.from_file(str(project_path), env_file="data/test.env")
+        original_shape_config: ShapeShiftProject = arbodat_project
         original_cfg_dict = original_shape_config.cfg
 
         project_name = "arbodat"
