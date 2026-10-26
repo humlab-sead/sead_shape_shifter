@@ -415,6 +415,7 @@ entities:
       project_id:
       updated_dataset_id:
       master_set_name: ArboDat Pilot
+      submission_id: 1
   dataset_contacts:
     type: entity
     source: dataset
