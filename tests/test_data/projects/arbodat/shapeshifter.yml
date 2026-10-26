@@ -179,7 +179,7 @@ entities:
     drop_empty_rows: [property_value]
     check_functional_dependency: true
     extra_columns:
-      property_type_scope: abundance
+      property_type_scope: abundance_property_scope
     unnest:
       id_vars: [abundance_id, property_type_scope]
       value_vars:
@@ -201,27 +201,27 @@ entities:
     keys: [property_type_scope, arbodat_code]
     columns: [system_id, property_type_id, property_type_scope, arbodat_code, property_type_name, description]
     values:
-    - [1, null, abundance, rAnzahl, raw_count, Counted number of finds of one type of plant remains from a sieving fraction or parts of a sieving fraction]
-    - [2, null, abundance, rGewicht, raw_weight, Weight  of one type of plant remains from a sieving fraction or parts of a sieving fraction]
-    - [3, null, abundance, geschätzt, estimated_amount, Checked (1) if the counts are estimated]
-    - [4, null, abundance, rFrag, raw_fragments, Counted number of fragments of one type of plant remains from a sieving fraction or parts of a sieving fraction]
-    - [5, null, abundance, Multiplikator, multiplier, Used if only part of a fraction is analysed. E.g. if 1/4 is sorted the multiplier is 4. The multiplier is used to calculate extrapolated count/fragments/weight]
-    - [6, null, abundance, FAnzahl, extrapolated_count, Extrapolated count = raw_count * multiplier]
-    - [7, null, abundance, FFragmente, extrapolated_fragments, Extrapolated fragments = raw_fragments * multiplier]
-    - [8, null, abundance, FGewicht, extrapolated_weight, 'Extrapolated weight = raw_weight * multiplier ']
-    - [9, null, abundance, EDatProb, entry_date, Entry date in ArboDat]
-    - [10, null, abundance, AnmFrakt, note, 'Remarks on the botanical determination. ']
-    - [11, null, site, Limes, Limes, Within Limes. Checked in case of Roman sites]
-    - [12, null, site, okFustel, okFustel, 'Methodological assessment of the site: adequate or deficient']
-    - [13, null, site, TK, Map sheet, 'TK 25 (Topographic Map 1:25,000)']
-    - [14, null, site, EVNr, EVNr, Site identifier]
-    - [15, null, site, AnmFustel, AnmFustel, Free text entry for all kind of informations related to the site]
-    - [16, null, feature, gebäud, Building context, 'Denotes if a feature is part of a building. Possible values: ja/nein/? ']
-    - [17, null, feature, okBefu, Feature ok, Methodological classification of the feature is ok or not.]
-    - [18, null, feature, okErh, Preservation, 'Preservation of the plant remains: good/medium/bad  (/mittel/schlecht)']
-    - [19, null, feature, BestJa, Determination year, Year of botanical determination]
-    - [20, null, feature, FlSchn, Excavation area, Used to distinguish between identical feature numbers in same excavation.]
-    - [21, null, feature, Anmerkung, Notes, Notes on the feature]
+    - [1, null, abundance_property_scope, rAnzahl, raw_count, Counted number of finds of one type of plant remains from a sieving fraction or parts of a sieving fraction]
+    - [2, null, abundance_property_scope, rGewicht, raw_weight, Weight  of one type of plant remains from a sieving fraction or parts of a sieving fraction]
+    - [3, null, abundance_property_scope, geschätzt, estimated_amount, Checked (1) if the counts are estimated]
+    - [4, null, abundance_property_scope, rFrag, raw_fragments, Counted number of fragments of one type of plant remains from a sieving fraction or parts of a sieving fraction]
+    - [5, null, abundance_property_scope, Multiplikator, multiplier, Used if only part of a fraction is analysed. E.g. if 1/4 is sorted the multiplier is 4. The multiplier is used to calculate extrapolated count/fragments/weight]
+    - [6, null, abundance_property_scope, FAnzahl, extrapolated_count, Extrapolated count = raw_count * multiplier]
+    - [7, null, abundance_property_scope, FFragmente, extrapolated_fragments, Extrapolated fragments = raw_fragments * multiplier]
+    - [8, null, abundance_property_scope, FGewicht, extrapolated_weight, 'Extrapolated weight = raw_weight * multiplier ']
+    - [9, null, abundance_property_scope, EDatProb, entry_date, Entry date in ArboDat]
+    - [10, null, abundance_property_scope, AnmFrakt, note, 'Remarks on the botanical determination. ']
+    - [11, null, site_property_scope, Limes, Limes, Within Limes. Checked in case of Roman sites]
+    - [12, null, site_property_scope, okFustel, okFustel, 'Methodological assessment of the site: adequate or deficient']
+    - [13, null, site_property_scope, TK, Map sheet, 'TK 25 (Topographic Map 1:25,000)']
+    - [14, null, site_property_scope, EVNr, EVNr, Site identifier]
+    - [15, null, site_property_scope, AnmFustel, AnmFustel, Free text entry for all kind of informations related to the site]
+    - [16, null, feature_property_scope, gebäud, Building context, 'Denotes if a feature is part of a building. Possible values: ja/nein/? ']
+    - [17, null, feature_property_scope, okBefu, Feature ok, Methodological classification of the feature is ok or not.]
+    - [18, null, feature_property_scope, okErh, Preservation, 'Preservation of the plant remains: good/medium/bad  (/mittel/schlecht)']
+    - [19, null, feature_property_scope, BestJa, Determination year, Year of botanical determination]
+    - [20, null, feature_property_scope, FlSchn, Excavation area, Used to distinguish between identical feature numbers in same excavation.]
+    - [21, null, feature_property_scope, Anmerkung, Notes, Notes on the feature]
   analysis_entity:
     type: sql
     data_source: arbodat_data
@@ -628,7 +628,7 @@ entities:
     drop_empty_rows: [property_value]
     check_functional_dependency: true
     extra_columns:
-      property_type_scope: feature
+      property_type_scope: feature_property_scope
     unnest:
       id_vars: [Projekt, Befu, property_type_scope]
       value_vars:
@@ -1168,7 +1168,7 @@ entities:
     drop_empty_rows: [Fustel]
     check_functional_dependency: false
     extra_columns:
-      property_type_scope: site
+      property_type_scope: site_property_scope
     filters:
     - type: query
       query: '~property_value.isnull() '
