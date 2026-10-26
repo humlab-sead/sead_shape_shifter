@@ -33,6 +33,7 @@ class ShapeShiftService:
         self.settings: Settings = settings
         # Optional warm table_store populated by batch preview to short-circuit later preview calls
         self._warm_table_store: TableStore | None = None
+        self._warm_validation_issues: dict[str, list[dict[str, Any]]] = {}
         # Initialize entity config mapper factory for type-specific transformations
         self._mapper_factory = EntityConfigMapperFactory(self.settings)
 
@@ -109,7 +110,7 @@ class ShapeShiftService:
         # Fast path: if warm table_store from batch run exists, reuse it directly (but not when using override)
         if not using_override and self._warm_table_store and entity_name in self._warm_table_store:
             table_store = TableStore({entity_name: self._warm_table_store[entity_name]})
-            validation_issues: list[dict] = []
+            validation_issues = self._warm_validation_issues.get(entity_name, [])
             cached_hit = True
         else:
             # Skip cache lookup when using override config
@@ -127,6 +128,10 @@ class ShapeShiftService:
 
             if cached_data.data is not None:
                 table_store = TableStore({entity_name: cached_data.data} | cached_data.dependencies)
+                cached_dependency_issues = [
+                    issue for dependency_issues in cached_data.dependency_validation_issues.values() for issue in dependency_issues
+                ]
+                validation_issues = self._deduplicate_validation_issues(cached_data.validation_issues + cached_dependency_issues)
             else:
                 resolved_cfg: ShapeShiftProject = project.clone().resolve(filename=project.filename, strict=True, **self.settings.env_opts)
                 table_store, validation_issues = await self.shapeshift(
@@ -134,13 +139,29 @@ class ShapeShiftService:
                     entity_name=entity_name,
                     initial_table_store=cached_data.dependencies,
                 )
+                cached_dependency_issues = [
+                    issue for dependency_issues in cached_data.dependency_validation_issues.values() for issue in dependency_issues
+                ]
+                validation_issues = self._deduplicate_validation_issues(cached_dependency_issues + validation_issues)
 
                 # Only cache if not using override config
                 if not using_override:
                     entities: dict[str, TableConfig] = {name: project.get_table(name) for name in table_store.keys()}
                     hashes = [(name, cfg.hash()[:8]) for name, cfg in entities.items()]
                     logger.trace(f"[CACHE_SET] {project_name}/{entity_name}: project_version={project_version}, hashes={hashes}")
-                    self.cache.set_table_store(project_name, table_store, entity_name, project_version, entities)
+                    validation_issues_by_entity = self._validation_issues_by_entity(
+                        validation_issues,
+                        project,
+                        list(table_store.keys()),
+                    )
+                    self.cache.set_table_store(
+                        project_name,
+                        table_store,
+                        entity_name,
+                        project_version,
+                        entities,
+                        validation_issues_by_entity,
+                    )
 
         result: PreviewResult = PreviewResultBuilder().build(
             entity_name=entity_name,
@@ -324,6 +345,32 @@ class ShapeShiftService:
 
         return all_issues
 
+    @staticmethod
+    def _deduplicate_validation_issues(issues: list[dict]) -> list[dict]:
+        """Remove repeated normalization issues while preserving their original order."""
+        unique_issues: list[dict] = []
+        for issue in issues:
+            entity_name = issue.get("local_entity")
+            if not isinstance(entity_name, str):
+                raise ValueError("Normalization issue must include a string 'local_entity'")
+            if issue not in unique_issues:
+                unique_issues.append(issue)
+        return unique_issues
+
+    @staticmethod
+    def _validation_issues_by_entity(
+        issues: list[dict],
+        project: ShapeShiftProject,
+        entity_names: list[str],
+    ) -> dict[str, list[dict]]:
+        """Assign each normalization issue to requested entities that depend on its local entity."""
+        issues_by_entity: dict[str, list[dict]] = {}
+        for entity_name in entity_names:
+            required_entities = set(project.get_required_entities(entity_name))
+            required_entities.add(entity_name)
+            issues_by_entity[entity_name] = [issue for issue in issues if issue["local_entity"] in required_entities]
+        return issues_by_entity
+
     async def preview_entities_batch(self, project_name: str, entity_names: list[str]) -> TableStore:
         """
         Process multiple entities in one ShapeShifter run to populate cache efficiently.
@@ -359,11 +406,14 @@ class ShapeShiftService:
         if not project.is_resolved():
             resolved_project = project.clone().resolve(filename=project.filename, strict=True, **self.settings.env_opts)
 
-        table_store, _ = await self.shapeshift_batch(
+        table_store, validation_issues = await self.shapeshift_batch(
             project=resolved_project,
             entity_names=entity_names,  # Pass actual target entities
             initial_table_store=TableStore(),
         )
+
+        validation_issues = self._deduplicate_validation_issues(validation_issues)
+        validation_issues_by_entity = self._validation_issues_by_entity(validation_issues, project, list(table_store.keys()))
 
         # Cache all processed entities (target entities + dependencies) in one call
         entities: dict[str, TableConfig] = {name: project.get_table(name) for name in table_store.keys()}
@@ -373,10 +423,12 @@ class ShapeShiftService:
             target_entity="batch",  # Just for logging
             project_version=project_version,
             entity_configs=entities,
+            validation_issues_by_entity=validation_issues_by_entity,
         )
 
         # Preserve warm table_store for subsequent preview calls in this service instance
         self._warm_table_store = table_store
+        self._warm_validation_issues = validation_issues_by_entity
 
         elapsed_ms: int = int((time.time() - start_time) * 1000)
         logger.info(f"Batch processed {len(table_store)} entities in {elapsed_ms}ms (cache populated)")
@@ -400,6 +452,8 @@ class ShapeShiftService:
     def invalidate_cache(self, project_name: str, entity_name: str | None = None) -> None:
         """Invalidate preview cache for a project or specific entity."""
         self.cache.invalidate(project_name, entity_name)
+        self._warm_table_store = None
+        self._warm_validation_issues = {}
         logger.info(f"Invalidated preview cache for {project_name}:{entity_name or 'all'}")
 
     def get_project_version(self, project_name: str) -> int:

@@ -16,6 +16,7 @@ from backend.app.validators.data_validation_orchestrator import (
 from src.exceptions import MissingBusinessKeyError
 from src.model import ShapeShiftProject
 from src.normalizer import ShapeShifter
+from src.specifications.constraints import ValidationIssue as LinkerValidationIssue
 from src.table_store import TableStore
 from src.validators.data_validators import UnresolvedExtraColumnsValidator, ValidationIssue
 
@@ -253,7 +254,7 @@ async def test_sample_validation_continues_independent_previews_after_failure():
     preview_service.preview_entity = AsyncMock(
         side_effect=[
             RuntimeError("root preview failed"),
-            Mock(rows=[{"value": 1}]),
+            Mock(rows=[{"value": 1}], validation_issues=[]),
         ]
     )
     orchestrator = DataValidationOrchestrator(fetch_strategy=PreviewDataFetchStrategy(preview_service))
@@ -269,11 +270,55 @@ async def test_sample_validation_continues_independent_previews_after_failure():
 
 
 @pytest.mark.asyncio
+async def test_sample_validation_surfaces_preview_issues_without_dependency_duplicates():
+    """Sample validation returns structured preview issues once, including dependency findings."""
+    core_project = ShapeShiftProject(
+        cfg={
+            "entities": {
+                "root": {"type": "entity", "columns": ["value"]},
+                "dependent": {"type": "entity", "source": "root", "columns": ["value"]},
+            }
+        }
+    )
+    linker_issue = {
+        "type": "row_count_mismatch",
+        "severity": "warning",
+        "local_entity": "root",
+        "remote_entity": "source",
+        "message": "root -> source: join changed the row count",
+        "metadata": {"row_count_before": 2, "row_count_after": 1},
+    }
+    preview_service = Mock(spec=ShapeShiftService)
+    preview_service.preview_entity = AsyncMock(
+        side_effect=[
+            Mock(rows=[{"value": 1}], validation_issues=[linker_issue]),
+            Mock(rows=[{"value": 1}], validation_issues=[linker_issue]),
+        ]
+    )
+    orchestrator = DataValidationOrchestrator(fetch_strategy=PreviewDataFetchStrategy(preview_service))
+
+    issues = await orchestrator.validate_all_entities(core_project, "test_project")
+
+    linker_issues = [issue for issue in issues if issue.code == "ROW_COUNT_MISMATCH"]
+    assert len(linker_issues) == 1
+    assert linker_issues[0].severity == "warning"
+    assert linker_issues[0].entity == "root"
+    assert linker_issues[0].message == linker_issue["message"]
+    assert linker_issues[0].metadata == {
+        "row_count_before": 2,
+        "row_count_after": 1,
+        "issue_type": "row_count_mismatch",
+        "remote_entity": "source",
+    }
+
+
+@pytest.mark.asyncio
 async def test_preview_strategy_fetches_from_service():
     """Test PreviewDataFetchStrategy uses preview service."""
     mock_service = Mock(spec=ShapeShiftService)
     mock_result = Mock()
     mock_result.rows = [{"a": 1, "b": 2}, {"a": 3, "b": 4}]
+    mock_result.validation_issues = []
     mock_service.preview_entity = AsyncMock(return_value=mock_result)
 
     strategy = PreviewDataFetchStrategy(mock_service, limit=100)
@@ -298,6 +343,7 @@ async def test_preview_strategy_handles_empty_results():
     mock_service = Mock(spec=ShapeShiftService)
     mock_result = Mock()
     mock_result.rows = []
+    mock_result.validation_issues = []
     mock_service.preview_entity = AsyncMock(return_value=mock_result)
 
     strategy = PreviewDataFetchStrategy(mock_service)
@@ -365,6 +411,61 @@ async def test_orchestrator_surfaces_unresolved_extra_columns_in_full_data_mode(
     assert "Entity 'sample', field 'extra_columns.sample_label':" in unresolved_issues[0].message
     assert "country_name" in unresolved_issues[0].message
     assert "=concat(sample_name, ' / ', country_name)" in unresolved_issues[0].message
+
+
+@pytest.mark.asyncio
+async def test_full_data_validation_surfaces_linker_issues_for_local_entity():
+    """Complete validation maps linker findings to data issues for their local entity."""
+    core_project = ShapeShiftProject(
+        cfg={
+            "entities": {
+                "orders": {
+                    "type": "fixed",
+                    "public_id": "order_id",
+                    "keys": ["value"],
+                    "columns": ["value"],
+                    "values": [[1]],
+                }
+            }
+        }
+    )
+    linker_issue = LinkerValidationIssue(
+        issue_type="row_count_mismatch",
+        severity="warning",
+        local_entity="orders",
+        remote_entity="customers",
+        message="orders -> customers: join changed the row count",
+        metadata={"row_count_before": 4, "row_count_after": 2},
+    )
+    normalizer = Mock()
+    normalizer.table_store = TableStore({"orders": pd.DataFrame({"value": [1]})})
+    normalizer.unresolved_extra_columns = {}
+    normalizer.incomplete_entities = {}
+    normalizer.normalize = AsyncMock()
+    normalizer.linker.validators = [Mock(issues=[linker_issue])]
+    project_service = Mock()
+    project_service.load_project.return_value = Mock()
+
+    with (
+        patch("backend.app.validators.data_validation_orchestrator.ProjectMapper.to_core", return_value=core_project),
+        patch("backend.app.validators.data_validation_orchestrator.ShapeShifter", return_value=normalizer),
+    ):
+        strategy = FullDataFetchStrategy(project_service)
+        orchestrator = DataValidationOrchestrator(fetch_strategy=strategy)
+
+        issues = await orchestrator.validate_all_entities(core_project, "test_project")
+
+    linker_issues = [issue for issue in issues if issue.code == "ROW_COUNT_MISMATCH"]
+    assert len(linker_issues) == 1
+    assert linker_issues[0].severity == "warning"
+    assert linker_issues[0].entity == "orders"
+    assert linker_issues[0].message == linker_issue.message
+    assert linker_issues[0].metadata == {
+        "row_count_before": 4,
+        "row_count_after": 2,
+        "issue_type": "row_count_mismatch",
+        "remote_entity": "customers",
+    }
 
 
 @pytest.mark.asyncio
