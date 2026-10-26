@@ -954,13 +954,13 @@ entities:
       how: left
     depends_on: [sample, dimension, coordinate_method_dimension]
     drop_duplicates: true
-    drop_empty_rows: [coordinate_value]
+    drop_empty_rows: [measurement]
     check_functional_dependency: true
     unnest:
       id_vars: '@value: entities.sample.keys'
       value_vars: '@value: entities.sample_coordinate.columns'
       var_name: coordinate_type
-      value_name: coordinate_value
+      value_name: measurement
   sample_description_type:
     type: fixed
     source:
