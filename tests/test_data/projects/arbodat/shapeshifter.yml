@@ -1229,9 +1229,13 @@ entities:
     - entity: natural_region
       local_keys: '@value: entities.natural_region.keys'
       remote_keys: '@value: entities.natural_region.keys'
+      constraints:
+        null_keys_equal: true
     - entity: site
       local_keys: '@value: entities.site.keys'
       remote_keys: '@value: entities.site.keys'
+      constraints:
+        null_keys_equal: true
     depends_on: [site, natural_region]
     drop_duplicates: [Fustel, EVNr]
     check_functional_dependency: true
