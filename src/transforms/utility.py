@@ -63,17 +63,17 @@ add_surrogate_id = add_system_id
 _NULL_SENTINEL_PREFIX = "__ss_null_key__"
 
 
-def merge_with_null_safety(
+def merge_with_nonmatching_null_keys(
     local_df: pd.DataFrame,
     remote_df: pd.DataFrame,
     allow_null_keys: bool = False,
-    use_null_safe_merge: bool | None = None,
+    prevent_null_key_matches: bool | None = None,
     **opts,
 ) -> pd.DataFrame:
-    """Perform a merge that treats nulls in merge keys as non-matching values.
+    """Merge DataFrames without matching null keys across the two sides.
 
     Supports merges configured with left_on/right_on.
-    If null-safe handling is enabled and any merge key contains nulls,
+    If null-key match prevention is enabled and any merge key contains nulls,
     temporary left/right key columns are created with distinct sentinel values
     so nulls never match across the two DataFrames.
 
@@ -89,8 +89,8 @@ def merge_with_null_safety(
     left_on: list[str] = list(merge_kwargs.get("left_on") or [])
     right_on: list[str] = list(merge_kwargs.get("right_on") or [])
     how: str = merge_kwargs.get("how", "inner")
-    if use_null_safe_merge is None:
-        use_null_safe_merge = allow_null_keys
+    if prevent_null_key_matches is None:
+        prevent_null_key_matches = allow_null_keys
 
     # Coerce incompatible merge-key dtypes before any merge path.
     # Handles the common case of YAML-sourced string values joining against
@@ -98,7 +98,7 @@ def merge_with_null_safety(
     if left_on and right_on:
         local_df, remote_df = _coerce_compatible_merge_key_dtypes(local_df, remote_df, left_on, right_on)
 
-    if how == "cross" or not use_null_safe_merge or not left_on or not right_on:
+    if how == "cross" or not prevent_null_key_matches or not left_on or not right_on:
         return pd.merge(local_df, remote_df, **merge_kwargs)
 
     if len(left_on) != len(right_on):
@@ -107,8 +107,8 @@ def merge_with_null_safety(
     if not _has_nulls_in_columns(local_df, left_on) and not _has_nulls_in_columns(remote_df, right_on):
         return pd.merge(local_df, remote_df, **merge_kwargs)
 
-    merge_local_df, temp_left_on = _create_null_safe_merges(local_df, left_on, _NULL_SENTINEL_PREFIX, "left")
-    merge_remote_df, temp_right_on = _create_null_safe_merges(remote_df, right_on, _NULL_SENTINEL_PREFIX, "right")
+    merge_local_df, temp_left_on = _create_nonmatching_null_key_columns(local_df, left_on, _NULL_SENTINEL_PREFIX, "left")
+    merge_remote_df, temp_right_on = _create_nonmatching_null_key_columns(remote_df, right_on, _NULL_SENTINEL_PREFIX, "right")
     merge_opts: dict[str, Any] = merge_kwargs | {"left_on": temp_left_on, "right_on": temp_right_on}
 
     merged_df: pd.DataFrame = pd.merge(merge_local_df, merge_remote_df, **merge_opts)
@@ -174,20 +174,20 @@ def _coerce_compatible_merge_key_dtypes(
     return local_df, remote_df
 
 
-def _create_null_safe_merges(
+def _create_nonmatching_null_key_columns(
     df: pd.DataFrame,
     columns: list[str],
     sentinel_prefix: str,
     side: str,
 ) -> tuple[pd.DataFrame, list[str]]:
-    """Create null-safe merge keys for the specified columns in the DataFrame."""
+    """Create temporary keys that prevent null values from matching across merge sides."""
     merge_df: pd.DataFrame = df.copy()
     merge_columns: list[str] = []
 
     for index, key in enumerate(columns):
         merge_column: str = f"__nullsafe_merge_{side}_{index}__"
         sentinel: str = f"{sentinel_prefix}_{side}_{index}"
-        merge_df[merge_column] = _build_null_safe_merge_key(_get_series(merge_df, key), sentinel)
+        merge_df[merge_column] = _build_nonmatching_null_key(_get_series(merge_df, key), sentinel)
         merge_columns.append(merge_column)
 
     return merge_df, merge_columns
@@ -197,7 +197,7 @@ def _has_nulls_in_columns(df: pd.DataFrame, columns: list[str]) -> bool:
     return any(df[column].isna().any() for column in columns)
 
 
-def _build_null_safe_merge_key(series: pd.Series, sentinel: str) -> pd.Series:
+def _build_nonmatching_null_key(series: pd.Series, sentinel: str) -> pd.Series:
     return series.astype("object").where(series.notna(), sentinel)
 
 
