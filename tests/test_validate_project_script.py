@@ -5,12 +5,15 @@ import sys
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from typing import Literal
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
+import pandas as pd
 import pytest
 
 from backend.app.models.validation import ValidationError
 from src.model import ShapeShiftProject
+from src.specifications.constraints import ValidationIssue as LinkerValidationIssue
+from src.table_store import TableStore
 
 MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "validate_project.py"
 
@@ -119,6 +122,54 @@ class TestConformanceValidationExecutor:
 
         assert result.passed is expected_passed
         assert [issue.severity for issue in result.issues] == [severity]
+
+
+class TestDataValidationExecutor:
+    """Tests for structured findings produced during normalization."""
+
+    def test_execute_includes_normalizer_linker_issues_in_csv_results(self, monkeypatch, capsys):
+        """The CLI data workflow should return structured linker findings from its normalizer."""
+        validate_project = load_validate_project_module()
+        project = ShapeShiftProject(
+            cfg={
+                "metadata": {"name": "cli_test"},
+                "entities": {
+                    "orders": {
+                        "type": "fixed",
+                        "public_id": "order_id",
+                        "keys": ["value"],
+                        "columns": ["value"],
+                        "values": [[1]],
+                    }
+                },
+            }
+        )
+        linker_issue = LinkerValidationIssue(
+            issue_type="row_count_mismatch",
+            severity="warning",
+            local_entity="orders",
+            remote_entity="customers",
+            message="orders -> customers: join changed the row count",
+            metadata={"row_count_before": 4, "row_count_after": 2},
+        )
+        normalizer = SimpleNamespace(
+            table_store=TableStore({"orders": pd.DataFrame({"value": [1]})}),
+            unresolved_extra_columns={},
+            linker=SimpleNamespace(validators=[SimpleNamespace(issues=[linker_issue])]),
+            normalize=AsyncMock(),
+        )
+        monkeypatch.setattr(validate_project, "ShapeShifter", lambda _project: normalizer)
+
+        result = validate_project.DataValidationExecutor()._execute(project, ignores=set())
+
+        assert result.passed is True
+        assert [issue.code for issue in result.issues] == ["ROW_COUNT_MISMATCH"]
+
+        validate_project.print_workflow_results({"data": result})
+
+        assert (
+            "data;warning;orders;None;None;ROW_COUNT_MISMATCH;" "orders -> customers: join changed the row count"
+        ) in capsys.readouterr().out
 
 
 class TestExecute:
