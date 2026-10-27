@@ -9,8 +9,10 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pandas as pd
 import pytest
+from click.testing import CliRunner
 
 from backend.app.models.validation import ValidationError
+from src.issues import CoreIssue
 from src.model import ShapeShiftProject
 from src.specifications.constraints import ValidationIssue as LinkerValidationIssue
 from src.table_store import TableStore
@@ -170,6 +172,58 @@ class TestDataValidationExecutor:
         assert (
             "data;warning;orders;None;None;ROW_COUNT_MISMATCH;" "orders -> customers: join changed the row count"
         ) in capsys.readouterr().out
+
+
+class TestMarkdownReport:
+    """Tests for Markdown validation output."""
+
+    def test_print_workflow_results_includes_issue_code_and_location(self, capsys):
+        """Markdown output should show issue codes and the relevant project location."""
+        validate_project = load_validate_project_module()
+        issue = CoreIssue(
+            severity="error",
+            entity="orders",
+            field="columns",
+            column="order_id",
+            message="Configured column is missing.",
+            code="COLUMN_NOT_FOUND",
+        )
+        results = {"structural": validate_project.WorkflowResult(name="structural", passed=False, issues=[issue])}
+
+        validate_project.print_workflow_results(results, output_format="report")
+
+        output = capsys.readouterr().out
+        assert "# Validation report" in output
+        assert "## Structural" in output
+        assert "### Error - `COLUMN_NOT_FOUND`" in output
+        assert "- **Entity:** `orders`" in output
+        assert "- **Field:** `columns`" in output
+        assert "- **Column:** `order_id`" in output
+        assert "- **Message:** Configured column is missing." in output
+        assert "- **Failed:** 1" in output
+
+    @pytest.mark.parametrize("option", ["--output-format", "--output--format"])
+    def test_cli_accepts_markdown_report_option(self, option: str, tmp_path: Path, monkeypatch):
+        """The CLI should select the Markdown report when requested."""
+        validate_project = load_validate_project_module()
+        project_file = tmp_path / "project.yml"
+        project_file.write_text("metadata: {}\n", encoding="utf-8")
+        issue = CoreIssue(
+            severity="error",
+            entity="orders",
+            message="Configured column is missing.",
+            code="COLUMN_NOT_FOUND",
+        )
+        result = validate_project.WorkflowResult(name="structural", passed=False, issues=[issue])
+        monkeypatch.setattr(validate_project, "setup_logging", MagicMock())
+        monkeypatch.setattr(validate_project, "load_project", MagicMock())
+        monkeypatch.setattr(validate_project, "run_workflows", MagicMock(return_value={"structural": result}))
+
+        cli_result = CliRunner().invoke(validate_project.main, [str(project_file), option, "report"])
+
+        assert cli_result.exit_code == 0
+        assert "# Validation report" in cli_result.output
+        assert "### Error - `COLUMN_NOT_FOUND`" in cli_result.output
 
 
 class TestExecute:
