@@ -1,3 +1,62 @@
+# [2.5.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v2.4.0...v2.5.0) (2026-10-27)
+
+
+### Bug Fixes
+
+* add abundance entity mapping to shapeshifter.yml ([c6fd20f](https://github.com/humlab-sead/sead_shape_shifter/commit/c6fd20fe40f441283a5fd7a76574a5cdb535c095))
+* add citation entity with relevant fields in shapeshifter.yml ([11b8a51](https://github.com/humlab-sead/sead_shape_shifter/commit/11b8a516d033ef9c499016ffb84dd57ba4d3b766))
+* add constraints for null keys in natural_region and site entities ([424a520](https://github.com/humlab-sead/sead_shape_shifter/commit/424a52036c511fb1a0b340f30cf7177a00155830))
+* add data provider entity with relevant fields in shapeshifter.yml ([a5e6475](https://github.com/humlab-sead/sead_shape_shifter/commit/a5e64755e5fce278981f3049b8bd16430bc2fab8))
+* add extra_columns field to feature entity in shapeshifter.yml ([4d80f16](https://github.com/humlab-sead/sead_shape_shifter/commit/4d80f1622a73881e1cbdeb64123d4c4be0b468ab))
+* add foreign key constraints for method and site entities in shapeshifter.yml ([04394d7](https://github.com/humlab-sead/sead_shape_shifter/commit/04394d7e425f463172728bc0edbdab6d2e4493b8))
+* add foreign key value sources to dataset entity in shapeshifter.yml ([91e9e68](https://github.com/humlab-sead/sead_shape_shifter/commit/91e9e686f89fcadbfd72515e302547045ca94f68))
+* add submission entity mapping with constraints in shapeshifter.yml ([e16872b](https://github.com/humlab-sead/sead_shape_shifter/commit/e16872bf22e17442188a7ac06d05b28baafa603e))
+* add submission_id field to dataset entity in shapeshifter.yml ([538051b](https://github.com/humlab-sead/sead_shape_shifter/commit/538051b0fcb816642857263cc62fb5785ac469f6))
+* comment out sead configuration in shapeshifter.yml ([4a611e9](https://github.com/humlab-sead/sead_shape_shifter/commit/4a611e96f2bcaf44069326292a80038e025d9e5b))
+* **docs:** correct HTTP route entry count and remove outdated validation route ([92e3a97](https://github.com/humlab-sead/sead_shape_shifter/commit/92e3a976e5aa6c9f3b42ddb8dc07c2aa8aadcf80))
+* **strategy:** correct path for strategy file lookup ([be11c60](https://github.com/humlab-sead/sead_shape_shifter/commit/be11c605f4f283d942044f533a235495d3cbcab3))
+* **tests:** enhance type safety for configureMonacoYamlMock and improve schema lookup ([1438483](https://github.com/humlab-sead/sead_shape_shifter/commit/1438483e38873e1d4d51c7bdb847340fd93ae742))
+* **validation:** improve conformance validation issue handling and enhance test coverage ([8e18724](https://github.com/humlab-sead/sead_shape_shifter/commit/8e18724e10fe45ef0aa894523062337e4eb3e83b))
+* refactor validate_project.py for improved readability and functionality ([af03c4e](https://github.com/humlab-sead/sead_shape_shifter/commit/af03c4e7de4bad839f6c84ed04b0236314c3d5f3))
+* **validate:** remove commented-out code in print_workflow_results function ([3a43664](https://github.com/humlab-sead/sead_shape_shifter/commit/3a4366464357ffccd9965fa7b5f875cb845202b2))
+* remove dupe key ([801b9e3](https://github.com/humlab-sead/sead_shape_shifter/commit/801b9e3379901f6f37f0b2f1fff06b15f63c53aa))
+* **entity:** remove unused method_group entity from shapeshifter.yml ([a3bec6a](https://github.com/humlab-sead/sead_shape_shifter/commit/a3bec6a269bfed9e4e9e03d9d5a9b663c540d7e4))
+* rename contact_type column to contact_type_name in shapeshifter.yml ([ba1023e](https://github.com/humlab-sead/sead_shape_shifter/commit/ba1023e89acb3b55e9ba3bc824f46017af11f3a6))
+* rename helper entities ([9134450](https://github.com/humlab-sead/sead_shape_shifter/commit/91344507835851610ff669d66b5e4c9d41bf45e9))
+* reorganize extra_columns and update columns formatting in shapeshifter.yml ([b8e6c69](https://github.com/humlab-sead/sead_shape_shifter/commit/b8e6c69634a729ac6d488c646da6552e3f77a9cb))
+* set submission requirement to true in sead_standard_model.yml ([3efda5e](https://github.com/humlab-sead/sead_shape_shifter/commit/3efda5e6a18ebb2c269f5c8a20a97e5c4cc03b3a))
+* **validation:** surface normalizer findings in CLI ([f071013](https://github.com/humlab-sead/sead_shape_shifter/commit/f071013dff23ec690007484f1969e82717545f59)), closes [#610](https://github.com/humlab-sead/sead_shape_shifter/issues/610)
+* **validation:** surface normalizer findings ([ac5694c](https://github.com/humlab-sead/sead_shape_shifter/commit/ac5694c993d73fef2ed364e0539400771ba6b29b)), closes [#610](https://github.com/humlab-sead/sead_shape_shifter/issues/610)
+* **validation:** surface normalizer findings ([41e814e](https://github.com/humlab-sead/sead_shape_shifter/commit/41e814efb21cc08942f4b4ae07c820f3602668fe)), closes [#610](https://github.com/humlab-sead/sead_shape_shifter/issues/610)
+* update column names for clarity in shapeshifter.yml ([4e1c0d1](https://github.com/humlab-sead/sead_shape_shifter/commit/4e1c0d1c6531cfab56208ceee264403bdf3af834))
+* **data:** update data_provider_code in abundance entity values ([3741106](https://github.com/humlab-sead/sead_shape_shifter/commit/37411062a7e35d3df9b20a9c65f16549ba6344b0))
+* update drop_empty_rows and value_name fields in shapeshifter.yml ([734f9a7](https://github.com/humlab-sead/sead_shape_shifter/commit/734f9a77654fd7943f5638664007b8a12e540550))
+* **entity:** update method_id in abundance_element_group to correct reference ([354510d](https://github.com/humlab-sead/sead_shape_shifter/commit/354510d9d3ee8531a4708bd1eae859cd9fd0f3dd))
+* update property value references for consistency in shapeshifter.yml ([ea337fc](https://github.com/humlab-sead/sead_shape_shifter/commit/ea337fcafe5b7c0e7a0d78f7508008a4d44872be))
+* update property_type_scope references in shapeshifter.yml ([824efe5](https://github.com/humlab-sead/sead_shape_shifter/commit/824efe55b55e4f86181c8831c8af084ca90cdf39))
+* update public_id for relative_dating entity in shapeshifter.yml ([ca68bc3](https://github.com/humlab-sead/sead_shape_shifter/commit/ca68bc3e29b147f715f8411a12d25d8e26b142e5))
+* update query in abundance entity to include additional condition for Fustel ([6eef23d](https://github.com/humlab-sead/sead_shape_shifter/commit/6eef23da785fe8d1f635c3d6bde44fe50b5483a6))
+* update references from _pcodes to helper_pcodes for consistency ([9adb244](https://github.com/humlab-sead/sead_shape_shifter/commit/9adb244849bb58fa5324f5bb5aa873539f3a7790))
+* update references from _project_contact to helper_project_contact for consistency ([89067ed](https://github.com/humlab-sead/sead_shape_shifter/commit/89067ed69b5efcbb05cc8aa37da1c3e11bb76e88))
+* **proposal:** update SEAD target model coverage proposal to clarify coverage source and measurement ([aff6268](https://github.com/humlab-sead/sead_shape_shifter/commit/aff62688e6121a26e949ef32279db8b504244266))
+* update shapeshifter.yml to correct property type references and enhance submission structure ([11bb04c](https://github.com/humlab-sead/sead_shape_shifter/commit/11bb04cad81ebcb870e7cf1bdb1a52d812b4f852))
+* update table_name_ignores to correct helper names in config.yml ([389b9af](https://github.com/humlab-sead/sead_shape_shifter/commit/389b9afeb7a0e8ce3d13a45d443307849038ae68))
+* update validation messages for clarity and consistency in target model conformance tests ([a78091a](https://github.com/humlab-sead/sead_shape_shifter/commit/a78091a64df4e79ea9ef7d2260090cb880df1c9b))
+* update validation tests to reflect changes in expected issues and add new warnings ([8a2d4a5](https://github.com/humlab-sead/sead_shape_shifter/commit/8a2d4a5b5637c731c208c58b36360948798d3ae7))
+* **data:** update values and foreign key references in abundance entity ([7b882fa](https://github.com/humlab-sead/sead_shape_shifter/commit/7b882fabf34611e00bfafe4aa55ee8520404ca01))
+
+
+### Features
+
+* **entity:** add abundance entity mapping in shapeshifter.yml ([98372ea](https://github.com/humlab-sead/sead_shape_shifter/commit/98372ea3ce4b80c8c57463949758a962a8ded20e))
+* **investigation:** add findings on foreign-key integrity warnings ([ad170bd](https://github.com/humlab-sead/sead_shape_shifter/commit/ad170bd4ce56760543511eb30f7c426a74841255))
+* **validation:** add markdown report output ([0a59b01](https://github.com/humlab-sead/sead_shape_shifter/commit/0a59b01ee959a3821d61c2f2c6e36a68eb9406f3))
+* **target-model:** add missing entity candidates report for 2026-10-26 ([0936de0](https://github.com/humlab-sead/sead_shape_shifter/commit/0936de0074b67c4ff9d2930f3756246b782bed39))
+* **proposal:** add Output Dataset Expectations proposal to define metrics for transformed entity output ([7df010d](https://github.com/humlab-sead/sead_shape_shifter/commit/7df010dfd75e5006d632baf0426960a05318aecf))
+* **data:** add values to citation entity in shapeshifter.yml ([e028d32](https://github.com/humlab-sead/sead_shape_shifter/commit/e028d32ca1a9de2d0e9243fe6165e48f1d130c06))
+* **projects:** show shared target models read-only ([cf09cb9](https://github.com/humlab-sead/sead_shape_shifter/commit/cf09cb901ac39d73627bdf40d86d9e00143535fd)), closes [#611](https://github.com/humlab-sead/sead_shape_shifter/issues/611)
+* **tests:** update validation issues in data validation tests ([875042f](https://github.com/humlab-sead/sead_shape_shifter/commit/875042fb52e7db436247f06e8034d1861c900366))
+
 # [2.4.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v2.3.0...v2.4.0) (2026-10-26)
 
 
