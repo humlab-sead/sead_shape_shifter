@@ -5,6 +5,7 @@ Examples:
     uv run python scripts/validate_project.py data/projects/example/shapeshifter.yml
     uv run python scripts/validate_project.py data/projects/example/shapeshifter.yml --workflow structural
     uv run python scripts/validate_project.py data/projects/example/shapeshifter.yml --workflow conformance
+    uv run python scripts/validate_project.py data/projects/example/shapeshifter.yml --output-format report
 """
 
 from __future__ import annotations
@@ -247,6 +248,44 @@ def print_workflow_results(results: dict[str, WorkflowResult], output_format: st
     # print_summary(results)
 
 
+    if output_format == "report":
+        print_markdown_report(results)
+        return
+
+    raise ValueError(f"Unsupported output format: {output_format}")
+
+
+def print_markdown_report(results: dict[str, WorkflowResult]) -> None:
+    """Print validation workflows and issues as a Markdown report."""
+    lines: list[str] = ["# Validation report"]
+
+    for result in results.values():
+        status: str = "Skipped" if result.skipped else "Passed" if result.passed else "Failed"
+        lines.extend(["", f"## {result.name.title()}", f"**Status:** {status}"])
+
+        if result.skipped:
+            lines.extend(["", f"**Reason:** {result.skipped}"])
+            continue
+
+        if not result.issues:
+            lines.extend(["", "No issues found."])
+            continue
+
+        for issue in result.issues:
+            code: str = issue.code or "N/A"
+            lines.extend(["", f"### {issue.severity.title()} - `{code}`"])
+            for label, value in (("Entity", issue.entity), ("Field", issue.field), ("Column", issue.column)):
+                if value:
+                    lines.append(f"- **{label}:** `{value}`")
+            lines.append(f"- **Message:** {issue.message}")
+
+    passed: int = sum(1 for result in results.values() if result.passed and not result.skipped)
+    failed: int = sum(1 for result in results.values() if not result.passed and not result.skipped)
+    skipped: int = sum(1 for result in results.values() if result.skipped)
+    lines.extend(["", "## Summary", f"- **Passed:** {passed}", f"- **Failed:** {failed}", f"- **Skipped:** {skipped}"])
+    print("\n".join(lines))
+
+
 def print_summary(results: dict[str, WorkflowResult]) -> None:
     """Print a compact final summary."""
     failed: int = sum(1 for result in results.values() if not result.passed)
@@ -273,7 +312,15 @@ def load_project(project_path: str, env_file: str) -> ShapeShiftProject:
 
 
 def execute(
-    project_name: str, *, workflow: str, env_file: Path, verbose: bool, log_level: str | None, log_file: Path | None, ignore: str
+    project_name: str,
+    *,
+    workflow: str,
+    output_format: str = "csv",
+    env_file: Path,
+    verbose: bool,
+    log_level: str | None,
+    log_file: Path | None,
+    ignore: str,
 ) -> int:
     """
     Workflows
@@ -288,6 +335,7 @@ def execute(
     uv run python scripts/validate_project.py data/projects/example/shapeshifter.yml
     uv run python scripts/validate_project.py data/projects/example/shapeshifter.yml --workflow structural
     uv run python scripts/validate_project.py data/projects/example/shapeshifter.yml --workflow target-model-conformance
+    uv run python scripts/validate_project.py data/projects/example/shapeshifter.yml --output-format report
     """
     setup_logging(level=log_level.upper() if log_level else None, verbose=verbose, log_file=str(log_file) if log_file else None)
 
@@ -306,7 +354,7 @@ def execute(
         return 1
 
     results: dict[str, WorkflowResult] = run_workflows(project, workflow, ignores=ignores)
-    print_workflow_results(results)
+    print_workflow_results(results, output_format=output_format)
 
     return 0 if all(result.passed for result in results.values()) else 1
 
@@ -318,6 +366,14 @@ def execute(
     type=normalize_workflow_name,
     default="all",
     help="Workflow to run: structural, data, conformance, target-model-conformance, or all (default: all)",
+)
+@click.option(
+    "--output-format",
+    "--output--format",
+    type=click.Choice(["csv", "report"], case_sensitive=False),
+    default="csv",
+    show_default=True,
+    help="Output format: csv or Markdown report",
 )
 @click.option("--env-file", type=Path, default=Path(".env"), help="Optional env file for project loading (default: .env)")
 @click.option("--verbose", is_flag=True, default=False, help="Enable verbose loggingEnable verbose logging")
@@ -335,9 +391,25 @@ def execute(
     help="Codes to ignore, separated by commas (e.g., 'MISSING_COLUMN,INVALID_FOREIGN_KEY') ",
     show_default=True,
 )
-def main(project_name: str, workflow: str, env_file: Path, verbose: bool, log_level: str | None, log_file: Path | None, ignore: str) -> int:
+def main(
+    project_name: str,
+    workflow: str,
+    output_format: str,
+    env_file: Path,
+    verbose: bool,
+    log_level: str | None,
+    log_file: Path | None,
+    ignore: str,
+) -> int:
     return execute(
-        project_name, workflow=workflow, env_file=env_file, verbose=verbose, log_level=log_level, log_file=log_file, ignore=ignore
+        project_name,
+        workflow=workflow,
+        output_format=output_format,
+        env_file=env_file,
+        verbose=verbose,
+        log_level=log_level,
+        log_file=log_file,
+        ignore=ignore,
     )
 
 
