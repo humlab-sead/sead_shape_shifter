@@ -1136,7 +1136,7 @@ entities:
       sample_group_name: Befu
       sample_group_description:
       sampling_context_id:
-      method_id: 0
+      method_id: 11
   site:
     type: sql
     data_source: arbodat_data
