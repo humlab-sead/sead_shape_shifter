@@ -338,7 +338,8 @@ entities:
     - authors
     - full_reference
     - url
-    values: []
+    values:
+    - [null, null, null, null, 'Arbodat pilot project', 2026, 'Swedigarch Team', 'Arbodat pilot project', null]
   coordinate_method_dimension:
     type: fixed
     source:
