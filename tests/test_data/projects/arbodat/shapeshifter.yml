@@ -881,21 +881,19 @@ entities:
     - method_group_id
     - arbodat_code
     values:
-    - [1, null, null, Organic remains >2.0 mm, 'ORG 2,0', 'ORG 2,0', null, 'ORG 2,0']
-    - [2, null, null, Organic remains 1.0-2.0 mm, 'ORG 1,0', 'ORG 1,0', null, 'ORG 1,0']
-    - [3, null, null, Organic remains 0.5-1.0 mm, 'ORG 0,5', 'ORG 0,5', null, 'ORG 0,5']
-    - [4, null, null, Organic remains 0.25-0.5 mm, 'ORG 0,25', 'ORG 0,25', null, 'ORG 0,25']
-    - [5, null, null, Mineral remains >2.0 mm, 'MIN 2,0', 'MIN 2,0', null, 'MIN 2,0']
-    - [6, null, null, Mineral remains 1.0-2.0 mm, 'MIN 1,0', 'MIN 1,0', null, 'MIN 1,0']
-    - [7, null, null, Mineral remains 0.5-1.0 mm, 'MIN 0,5', 'MIN 0,5', null, 'MIN 0,5']
-    - [8, null, null, Mineral remains 0.25-0.5 mm, 'MIN 0,25', 'MIN 0,25', null, 'MIN 0,25']
-    - [9, 105, null, null, Local or unknown grid, null, null, null]
-    - [10, 76, null, null, Altitude above sea level, null, null, null]
-    - [11, 8, null, null, Plant macros, Plant macros, null, SampleGroupMethod]
-    foreign_keys:
-    - entity: method_group
-      local_keys: [method_group_id]
-      remote_keys: [system_id]
+    - [1, null, null, Organic remains >2.0 mm, 'ORG 2,0', 'ORG 2,0', 16, 'ORG 2,0']
+    - [2, null, null, Organic remains 1.0-2.0 mm, 'ORG 1,0', 'ORG 1,0', 16, 'ORG 1,0']
+    - [3, null, null, Organic remains 0.5-1.0 mm, 'ORG 0,5', 'ORG 0,5', 16, 'ORG 0,5']
+    - [4, null, null, Organic remains 0.25-0.5 mm, 'ORG 0,25', 'ORG 0,25', 16, 'ORG 0,25']
+    - [5, null, null, Mineral remains >2.0 mm, 'MIN 2,0', 'MIN 2,0', 16, 'MIN 2,0']
+    - [6, null, null, Mineral remains 1.0-2.0 mm, 'MIN 1,0', 'MIN 1,0', 16, 'MIN 1,0']
+    - [7, null, null, Mineral remains 0.5-1.0 mm, 'MIN 0,5', 'MIN 0,5', 16, 'MIN 0,5']
+    - [8, null, null, Mineral remains 0.25-0.5 mm, 'MIN 0,25', 'MIN 0,25', 16, 'MIN 0,25']
+    - [9, 105, null, null, Local or unknown grid, null, 17, null]
+    - [10, 76, null, null, Altitude above sea level, null, 17, null]
+    - [11, 8, null, null, Plant macros, Plant macros, 1, SampleGroupMethod]
+    foreign_key_value_sources:
+      method_group: public_id
     depends_on: []
     arbodat_codes:
     - ORG2,0
