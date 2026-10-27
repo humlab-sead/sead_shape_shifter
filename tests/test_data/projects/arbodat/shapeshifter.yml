@@ -151,6 +151,9 @@ entities:
     - entity: modification_type
       local_keys: [Zust]
       remote_keys: [Zust]
+    - entity: abundance
+      local_keys: [abundance_id]
+      remote_keys: [system_id]
     depends_on: [abundance]
   abundance_property:
     type: entity
