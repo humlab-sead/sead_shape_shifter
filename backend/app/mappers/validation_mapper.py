@@ -1,7 +1,10 @@
 """Mapper for translating between domain validation models and API validation models."""
 
+from typing import Any
+
 from backend.app import models as api
 from src.issues import CoreIssue
+from src.specifications.constraints import ValidationIssue as LinkerValidationIssue
 from src.target_model.conformance import ConformanceIssue
 from src.validators.data_validators import ValidationIssue
 
@@ -79,6 +82,7 @@ class ValidationMapper:
             category=category,
             priority=priority,
             auto_fixable=auto_fixable,
+            metadata=issue.metadata,
         )
 
     @staticmethod
@@ -89,6 +93,73 @@ class ValidationMapper:
             default_category=api.ValidationCategory.DATA,
             default_priority=api.ValidationPriority.MEDIUM,
             default_auto_fixable=False,
+        )
+
+    @staticmethod
+    def from_linker_issue(issue: LinkerValidationIssue) -> ValidationIssue:
+        """Convert a foreign-key linker issue to a data validation issue."""
+        return ValidationMapper._from_normalization_issue(
+            issue_type=issue.issue_type,
+            severity=issue.severity,
+            local_entity=issue.local_entity,
+            remote_entity=issue.remote_entity,
+            message=issue.message,
+            metadata=issue.metadata,
+        )
+
+    @staticmethod
+    def from_preview_issue_payload(issue: dict[str, Any]) -> ValidationIssue:
+        """Convert a structured preview issue to a data validation issue."""
+        issue_type = issue.get("type")
+        severity = issue.get("severity")
+        local_entity = issue.get("local_entity")
+        remote_entity = issue.get("remote_entity")
+        message = issue.get("message")
+        metadata = issue.get("metadata", {})
+
+        if not isinstance(issue_type, str):
+            raise ValueError("Preview validation issue must include a string 'type'")
+        if severity not in {"error", "warning", "info"}:
+            raise ValueError(f"Preview validation issue '{issue_type}' has unsupported severity: {severity!r}")
+        if not isinstance(local_entity, str):
+            raise ValueError(f"Preview validation issue '{issue_type}' must include a string 'local_entity'")
+        if remote_entity is not None and not isinstance(remote_entity, str):
+            raise ValueError(f"Preview validation issue '{issue_type}' has an invalid 'remote_entity'")
+        if not isinstance(message, str):
+            raise ValueError(f"Preview validation issue '{issue_type}' must include a string 'message'")
+        if not isinstance(metadata, dict):
+            raise ValueError(f"Preview validation issue '{issue_type}' must include object 'metadata'")
+
+        return ValidationMapper._from_normalization_issue(
+            issue_type=issue_type,
+            severity=severity,
+            local_entity=local_entity,
+            remote_entity=remote_entity,
+            message=message,
+            metadata=metadata,
+        )
+
+    @staticmethod
+    def _from_normalization_issue(
+        issue_type: str,
+        severity: str,
+        local_entity: str,
+        remote_entity: str | None,
+        message: str,
+        metadata: dict[str, Any],
+    ) -> ValidationIssue:
+        issue_metadata = dict(metadata)
+        issue_metadata.setdefault("issue_type", issue_type)
+        if remote_entity is not None:
+            issue_metadata.setdefault("remote_entity", remote_entity)
+
+        return ValidationIssue(
+            severity=severity,
+            entity=local_entity,
+            message=message,
+            code=issue_type.upper(),
+            category="data",
+            metadata=issue_metadata,
         )
 
     @staticmethod

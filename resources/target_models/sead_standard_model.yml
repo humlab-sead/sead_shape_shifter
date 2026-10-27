@@ -1122,7 +1122,7 @@ entities:
     role: fact
     identity_tracking: tracked
     reconciliation: allocate
-    required: false
+    required: true
     description: Metadata that groups datasets delivered by one data provider.
     domains: [core, provenance]
     target_table: tbl_submissions

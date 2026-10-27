@@ -3,10 +3,19 @@
 import importlib.util
 import sys
 from pathlib import Path
-from types import ModuleType
-from unittest.mock import MagicMock
+from types import ModuleType, SimpleNamespace
+from typing import Literal
+from unittest.mock import AsyncMock, MagicMock
 
+import pandas as pd
+import pytest
+from click.testing import CliRunner
+
+from backend.app.models.validation import ValidationError
+from src.issues import CoreIssue
 from src.model import ShapeShiftProject
+from src.specifications.constraints import ValidationIssue as LinkerValidationIssue
+from src.table_store import TableStore
 
 MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "validate_project.py"
 
@@ -29,21 +38,192 @@ class TestLoadProject:
     """Tests for load_project()."""
 
     def test_load_project_delegates_to_shapeshift_project_from_file(self, monkeypatch):
-        """load_project should pass through the file, env file, and env prefix."""
+        """load_project should use the repository target models directory as a fallback."""
         validate_project = load_validate_project_module()
         expected_project = MagicMock(spec=ShapeShiftProject)
         from_file = MagicMock(return_value=expected_project)
 
+        monkeypatch.delenv("GLOBAL_TARGET_MODEL_DIR", raising=False)
         monkeypatch.setattr(validate_project.ShapeShiftProject, "from_file", from_file)
 
         result = validate_project.load_project("/tmp/project.yml", "/tmp/.env")
 
         assert result is expected_project
+        assert validate_project.os.environ["GLOBAL_TARGET_MODEL_DIR"] == str(validate_project.PROJECT_ROOT / "resources" / "target_models")
         from_file.assert_called_once_with(
             filename="/tmp/project.yml",
             env_file="/tmp/.env",
             env_prefix="SHAPE_SHIFTER",
         )
+
+    def test_load_project_preserves_configured_target_model_dir(self, tmp_path: Path, monkeypatch):
+        """load_project should not replace a target-model directory set in the environment."""
+        validate_project = load_validate_project_module()
+        configured_dir = str(tmp_path / "configured-models")
+        monkeypatch.setenv("GLOBAL_TARGET_MODEL_DIR", configured_dir)
+        monkeypatch.setattr(validate_project.ShapeShiftProject, "from_file", MagicMock())
+
+        validate_project.load_project("/tmp/project.yml", str(tmp_path / ".env"))
+
+        assert validate_project.os.environ["GLOBAL_TARGET_MODEL_DIR"] == configured_dir
+
+    def test_load_project_uses_target_model_dir_from_env_file(self, tmp_path: Path, monkeypatch):
+        """load_project should load a configured target-model directory before applying the fallback."""
+        validate_project = load_validate_project_module()
+        configured_dir = str(tmp_path / "configured-models")
+        env_file = tmp_path / ".env"
+        env_file.write_text(f"GLOBAL_TARGET_MODEL_DIR={configured_dir}\n", encoding="utf-8")
+        monkeypatch.delenv("GLOBAL_TARGET_MODEL_DIR", raising=False)
+        monkeypatch.setattr(validate_project.ShapeShiftProject, "from_file", MagicMock())
+
+        validate_project.load_project("/tmp/project.yml", str(env_file))
+
+        assert validate_project.os.environ["GLOBAL_TARGET_MODEL_DIR"] == configured_dir
+
+    def test_load_project_does_not_set_default_when_target_model_dir_is_missing(self, tmp_path: Path, monkeypatch):
+        """load_project should leave the variable unset if the repository target-model directory is missing."""
+        validate_project = load_validate_project_module()
+        monkeypatch.setattr(validate_project, "PROJECT_ROOT", tmp_path)
+        monkeypatch.delenv("GLOBAL_TARGET_MODEL_DIR", raising=False)
+        monkeypatch.setattr(validate_project.ShapeShiftProject, "from_file", MagicMock())
+
+        validate_project.load_project("/tmp/project.yml", str(tmp_path / ".env"))
+
+        assert "GLOBAL_TARGET_MODEL_DIR" not in validate_project.os.environ
+
+
+class TestConformanceValidationExecutor:
+    """Tests for conformance issue severity handling."""
+
+    @pytest.mark.parametrize(
+        ("severity", "expected_passed"),
+        [
+            ("info", True),
+            ("warning", True),
+            ("error", False),
+        ],
+    )
+    def test_execute_preserves_severity_and_fails_only_for_errors(
+        self, severity: Literal["info", "warning", "error"], expected_passed: bool, monkeypatch
+    ):
+        """Conformance issues retain their severity, and only errors fail the workflow."""
+        validate_project = load_validate_project_module()
+        project = SimpleNamespace(metadata=SimpleNamespace(target_model={"entities": {}}))
+        validation_issue = ValidationError(
+            severity=severity,
+            entity="dataset",
+            field="data_type_id",
+            message="Target ID check is pending.",
+            code="DIRECT_FK_TARGET_CHECK_PENDING",
+        )
+        target_model_validator = MagicMock()
+        target_model_validator.validate.return_value = [validation_issue]
+        monkeypatch.setattr(validate_project, "TargetModelValidator", MagicMock(return_value=target_model_validator))
+
+        result = validate_project.ConformanceValidationExecutor()._execute(project, ignores=set())
+
+        assert result.passed is expected_passed
+        assert [issue.severity for issue in result.issues] == [severity]
+
+
+class TestDataValidationExecutor:
+    """Tests for structured findings produced during normalization."""
+
+    def test_execute_includes_normalizer_linker_issues_in_csv_results(self, monkeypatch, capsys):
+        """The CLI data workflow should return structured linker findings from its normalizer."""
+        validate_project = load_validate_project_module()
+        project = ShapeShiftProject(
+            cfg={
+                "metadata": {"name": "cli_test"},
+                "entities": {
+                    "orders": {
+                        "type": "fixed",
+                        "public_id": "order_id",
+                        "keys": ["value"],
+                        "columns": ["value"],
+                        "values": [[1]],
+                    }
+                },
+            }
+        )
+        linker_issue = LinkerValidationIssue(
+            issue_type="row_count_mismatch",
+            severity="warning",
+            local_entity="orders",
+            remote_entity="customers",
+            message="orders -> customers: join changed the row count",
+            metadata={"row_count_before": 4, "row_count_after": 2},
+        )
+        normalizer = SimpleNamespace(
+            table_store=TableStore({"orders": pd.DataFrame({"value": [1]})}),
+            unresolved_extra_columns={},
+            linker=SimpleNamespace(validators=[SimpleNamespace(issues=[linker_issue])]),
+            normalize=AsyncMock(),
+        )
+        monkeypatch.setattr(validate_project, "ShapeShifter", lambda _project: normalizer)
+
+        result = validate_project.DataValidationExecutor()._execute(project, ignores=set())
+
+        assert result.passed is True
+        assert [issue.code for issue in result.issues] == ["ROW_COUNT_MISMATCH"]
+
+        validate_project.print_workflow_results({"data": result})
+
+        assert (
+            "data;warning;orders;None;None;ROW_COUNT_MISMATCH;" "orders -> customers: join changed the row count"
+        ) in capsys.readouterr().out
+
+
+class TestMarkdownReport:
+    """Tests for Markdown validation output."""
+
+    def test_print_workflow_results_includes_issue_code_and_location(self, capsys):
+        """Markdown output should show issue codes and the relevant project location."""
+        validate_project = load_validate_project_module()
+        issue = CoreIssue(
+            severity="error",
+            entity="orders",
+            field="columns",
+            column="order_id",
+            message="Configured column is missing.",
+            code="COLUMN_NOT_FOUND",
+        )
+        results = {"structural": validate_project.WorkflowResult(name="structural", passed=False, issues=[issue])}
+
+        validate_project.print_workflow_results(results, output_format="report")
+
+        output = capsys.readouterr().out
+        assert "# Validation report" in output
+        assert "## Structural" in output
+        assert "### Error - `COLUMN_NOT_FOUND`" in output
+        assert "- **Entity:** `orders`" in output
+        assert "- **Field:** `columns`" in output
+        assert "- **Column:** `order_id`" in output
+        assert "- **Message:** Configured column is missing." in output
+        assert "- **Failed:** 1" in output
+
+    @pytest.mark.parametrize("option", ["--output-format", "--output--format"])
+    def test_cli_accepts_markdown_report_option(self, option: str, tmp_path: Path, monkeypatch):
+        """The CLI should select the Markdown report when requested."""
+        validate_project = load_validate_project_module()
+        project_file = tmp_path / "project.yml"
+        project_file.write_text("metadata: {}\n", encoding="utf-8")
+        issue = CoreIssue(
+            severity="error",
+            entity="orders",
+            message="Configured column is missing.",
+            code="COLUMN_NOT_FOUND",
+        )
+        result = validate_project.WorkflowResult(name="structural", passed=False, issues=[issue])
+        monkeypatch.setattr(validate_project, "setup_logging", MagicMock())
+        monkeypatch.setattr(validate_project, "load_project", MagicMock())
+        monkeypatch.setattr(validate_project, "run_workflows", MagicMock(return_value={"structural": result}))
+
+        cli_result = CliRunner().invoke(validate_project.main, [str(project_file), option, "report"])
+
+        assert cli_result.exit_code == 0
+        assert "# Validation report" in cli_result.output
+        assert "### Error - `COLUMN_NOT_FOUND`" in cli_result.output
 
 
 class TestExecute:
