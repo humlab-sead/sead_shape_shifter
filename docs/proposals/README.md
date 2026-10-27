@@ -7,6 +7,7 @@ This index covers proposals and initiative records that need attention or provid
 | Proposal | Status | Decision or scope |
 |---|---|---|
 | [Branch-Scoped Consumers For Mixed-Branch Parents](BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md) | Proposed follow-up | Let downstream entities select which branch of a mixed parent they consume. |
+| [Output Dataset Expectations](OUTPUT_DATASET_EXPECTATIONS/OUTPUT_DATASET_EXPECTATIONS.md) | Proposed change request | Check row counts, distinct business keys, and expected group counts on complete transformed output. |
 | [Report Target Model Coverage Against SEAD](SEAD_TARGET_MODEL_COVERAGE_BOUNDARY.md) | Proposed change request | Let each target model declare its SEAD coverage source and measure coverage with a CLI against the pinned snapshot or live SEAD; no separate manifest. |
 | [Publish Container Images From CI To GHCR And Deploy By Pull](GHCR_IMAGE_RELEASE.md) | Proposed change request | Build images in GitHub Actions, publish to GHCR, and deploy by digest-pinned pull instead of host-side builds and release archives. |
 | [Move Existing Projects To Provider-Schema Scopes](CHANGE_REQUEST_INGESTER/CUTOVER_AND_DEPLOYMENT/PROJECT_PROVIDER_SCOPE_CUTOVER.md) | Proposed cutover | Inventory old project scopes, decide migrate or abandon, assign one approved pair per project, and enable projects one at a time as operational work. |
