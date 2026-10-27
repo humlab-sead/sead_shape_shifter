@@ -112,7 +112,7 @@ class DataValidationExecutor(WorkflowExecutor):
         normalizer = ShapeShifter(project)
         asyncio.run(normalizer.normalize())
 
-        orchestrator = DataValidationOrchestrator(fetch_strategy=TableStoreDataFetchStrategy(normalizer.table_store))
+        orchestrator = DataValidationOrchestrator(fetch_strategy=TableStoreDataFetchStrategy(normalizer.table_store, normalizer=normalizer))
         issues: list[ValidationIssue] = asyncio.run(
             orchestrator.validate_all_entities(
                 core_project=project,

@@ -93,6 +93,20 @@ class PreviewDataFetchStrategy(DataFetchStrategy):
         return list(self._preview_issues.get((project_name, entity_name), []))
 
 
+def _get_normalizer_additional_issues(normalizer: ShapeShifter, entity_name: str) -> list[ValidationIssue]:
+    """Return structured validation issues recorded during normalization for one entity."""
+    issues: list[ValidationIssue] = []
+    unresolved_extra_columns = normalizer.unresolved_extra_columns.get(entity_name, {})
+    issues.extend(UnresolvedExtraColumnsValidator.validate(unresolved_extra_columns, entity_name))
+
+    for validator in normalizer.linker.validators:
+        for issue in getattr(validator, "issues", []):
+            if isinstance(issue, LinkerValidationIssue) and issue.local_entity == entity_name:
+                issues.append(ValidationMapper.from_linker_issue(issue))
+
+    return issues
+
+
 class FullDataFetchStrategy(DataFetchStrategy):
     """Strategy for fetching full normalized datasets."""
 
@@ -156,29 +170,28 @@ class FullDataFetchStrategy(DataFetchStrategy):
         if normalizer is None:
             return []
 
-        issues: list[ValidationIssue] = []
-        unresolved_extra_columns = normalizer.unresolved_extra_columns.get(entity_name, {})
-        issues.extend(UnresolvedExtraColumnsValidator.validate(unresolved_extra_columns, entity_name))
-
-        for validator in normalizer.linker.validators:
-            for issue in getattr(validator, "issues", []):
-                if isinstance(issue, LinkerValidationIssue) and issue.local_entity == entity_name:
-                    issues.append(ValidationMapper.from_linker_issue(issue))
-
-        return issues
+        return _get_normalizer_additional_issues(normalizer, entity_name)
 
 
 class TableStoreDataFetchStrategy(DataFetchStrategy):
-    """Strategy for fetching from pre-existing table store (already normalized)."""
+    """Strategy for fetching from a pre-existing table store (already normalized)."""
 
-    def __init__(self, table_store: TableStore) -> None:
+    def __init__(self, table_store: TableStore, normalizer: ShapeShifter | None = None) -> None:
         self.table_store: TableStore = table_store
+        self.normalizer: ShapeShifter | None = normalizer
 
     async def fetch(self, project_name: str, entity_name: str) -> pd.DataFrame:
         """Fetch from existing table store."""
         if entity_name not in self.table_store:
             raise KeyError(f"Entity '{entity_name}' is not available in the table store")
         return self.table_store[entity_name]
+
+    async def get_additional_issues(self, project_name: str, entity_name: str) -> list[ValidationIssue]:
+        """Return structured normalization issues when the normalizer is available."""
+        if self.normalizer is None:
+            return []
+
+        return _get_normalizer_additional_issues(self.normalizer, entity_name)
 
 
 class DataValidationOrchestrator:
