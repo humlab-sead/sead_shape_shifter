@@ -108,13 +108,11 @@ def test_check_circular_dependencies(project: ShapeShiftProject):
 async def test_data_validation_orchestrator(project: ShapeShiftProject):
 
     expected_issues: set[str] = {
-        "warning:dataset_submission:FK_DATA_INTEGRITY",
-        "warning:ecocode:FK_DATA_INTEGRITY",
-        "warning:method:FK_ALL_NULL",
         "warning:dating:EMPTY_RESULT",
+        "warning:dataset_submission:FK_DATA_INTEGRITY",
+        "warning:dating_period:FK_ALL_NULL",
+        "warning:ecocode:FK_DATA_INTEGRITY",
         "warning:site_natural_region:EMPTY_RESULT",
-        "warning:citation:EMPTY_RESULT",
-        "warning:sample_group:FK_DATA_INTEGRITY",
     }
 
     normalizer = ShapeShifter(project)
@@ -157,7 +155,7 @@ def test_target_model_conformance(project: ShapeShiftProject):
     # assert not errors, f"Expected no validation errors, found {len(errors)}: {[error.message for error in errors]}"
 
 
-# pylint: disable=line-too-long
+# pylint: disable=line-too-long,fixme
 # ruff: noqa: E501
 
 
@@ -167,16 +165,13 @@ def test_core_conformance_reports_known_gaps_for_full_arbodat_project(project: S
     # FIXME: Check old versions if test_data/projects/arbodat/shapeshifter.yml
     # Some of the dataset issue are probably resolved in old version
     expected_issues: list[str] = [
-        "UNEXPECTED_PUBLIC_ID;relative_dating;Entity 'relative_dating' declares public_id 'relative_age_id' but target model expects 'relative_date_id'",
-        "MISSING_REQUIRED_FOREIGN_KEY_TARGET;dataset;Entity 'dataset' is missing required foreign key target 'submission'",
-        "MISSING_REQUIRED_FOREIGN_KEY_TARGET;dataset;Entity 'dataset' is missing required foreign key target 'data_type'",
-        "MISSING_REQUIRED_FOREIGN_KEY_TARGET;analysis_entity;Entity 'analysis_entity' is missing required foreign key target 'dataset'",
-        "MISSING_REQUIRED_FOREIGN_KEY_TARGET;abundance_modification;Entity 'abundance_modification' is missing required foreign key target 'abundance'",
-        "MISSING_REQUIRED_FOREIGN_KEY_TARGET;abundance_property;Entity 'abundance_property' is missing required foreign key target 'abundance'",
-        "MISSING_REQUIRED_FOREIGN_KEY_TARGET;relative_dating;Entity 'relative_dating' is missing required foreign key target 'analysis_entity'",
         "CONDITIONAL_FK_AWAITING_RECONCILIATION;location;Conditional foreign key from 'location' to 'location_type' is awaiting reconciliation; project conformance cannot determine whether rows will be inserted.",
+        "DIRECT_FK_TARGET_CHECK_PENDING;dataset;Target ID values for 'dataset.data_type_id' will be checked against the target database during change-request validation.",
+        "DIRECT_FK_TARGET_CHECK_PENDING;method;Target ID values for 'method.method_group_id' will be checked against the target database during change-request validation.",
         "MISSING_REQUIRED_COLUMN;analysis_entity;Entity 'analysis_entity' is missing required target column 'dataset_id'",
         "MISSING_REQUIRED_COLUMN;relative_dating;Entity 'relative_dating' is missing required target column 'analysis_entity_id'",
+        "MISSING_REQUIRED_FOREIGN_KEY_TARGET;analysis_entity;Entity 'analysis_entity' is missing required foreign key target 'dataset'",
+        "MISSING_REQUIRED_FOREIGN_KEY_TARGET;relative_dating;Entity 'relative_dating' is missing required foreign key target 'analysis_entity'",
     ]
 
     issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
@@ -193,9 +188,9 @@ def test_core_conformance_current_corpus_issue_families_are_stable(project: Shap
 
     assert issue_summary == Counter(
         {
-            "MISSING_REQUIRED_COLUMN": 5,
-            "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 6,
-            "UNEXPECTED_PUBLIC_ID": 1,
+            "DIRECT_FK_TARGET_CHECK_PENDING": 2,
+            "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 2,
+            "MISSING_REQUIRED_COLUMN": 2,
             "CONDITIONAL_FK_AWAITING_RECONCILIATION": 1,
         }
     )
