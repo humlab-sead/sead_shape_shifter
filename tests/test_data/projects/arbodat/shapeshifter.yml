@@ -904,14 +904,6 @@ entities:
     - MIN1,0
     - MIN0,5
     - MIN0,25
-  method_group:
-    type: sql
-    data_source: sead
-    public_id: method_group_id
-    keys: [method_group_id]
-    columns: [method_group_id, group_name, description]
-    query: select "method_group_id", "group_name", "description" from public.tbl_method_groups
-    depends_on: []
   natural_region:
     type: sql
     source:
