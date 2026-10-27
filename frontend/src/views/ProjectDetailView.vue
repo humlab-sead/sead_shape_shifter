@@ -646,8 +646,8 @@
 
           <!-- YAML Tab -->
           <v-window-item value="yaml">
-            <!-- Sub-tab bar: only shown when project has a project-local target model file reference -->
-            <v-tabs v-if="hasEditableTargetModelYaml" v-model="activeYamlSubTab" density="compact" class="mb-3">
+            <!-- The target model sub-tab is available for project-local and shared file references. -->
+            <v-tabs v-if="hasTargetModelYaml" v-model="activeYamlSubTab" density="compact" class="mb-3">
               <v-tab value="project-yaml" prepend-icon="mdi-code-braces">Project YAML</v-tab>
               <v-tab value="target-model-yaml" prepend-icon="mdi-target">Target Model</v-tab>
             </v-tabs>
@@ -713,13 +713,12 @@
                 </v-card>
               </v-window-item>
 
-              <!-- Target Model sub-tab (only mounted when project has a string target_model file reference) -->
-              <v-window-item v-if="hasEditableTargetModelYaml" value="target-model-yaml">
+              <v-window-item v-if="hasTargetModelYaml" value="target-model-yaml">
                 <v-card variant="outlined">
                   <v-card-title class="d-flex align-center justify-space-between">
                     <div>
                       <v-icon icon="mdi-target" class="mr-2" />
-                      Edit Target Model YAML
+                      {{ isSharedTargetModel ? 'View Target Model YAML' : 'Edit Target Model YAML' }}
                     </div>
                     <div class="d-flex gap-2">
                       <v-menu>
@@ -768,6 +767,8 @@
                         Reload
                       </v-btn>
                       <v-btn
+                        v-if="!isSharedTargetModel"
+                        data-testid="save-target-model-yaml"
                         color="primary"
                         prepend-icon="mdi-content-save"
                         size="small"
@@ -780,6 +781,10 @@
                     </div>
                   </v-card-title>
                   <v-card-text>
+                    <v-alert v-if="isSharedTargetModel" type="info" variant="tonal" density="compact" class="mb-4">
+                      This shared target model is read-only. Download its documentation or edit the managed file outside
+                      this project.
+                    </v-alert>
                     <v-alert
                       v-if="targetModelYamlError"
                       type="error"
@@ -796,7 +801,7 @@
                       v-if="targetModelYamlContent !== null"
                       v-model="targetModelYamlContent"
                       height="calc(100vh - 450px)"
-                      :readonly="false"
+                      :readonly="isSharedTargetModel"
                       :validate-on-change="true"
                       mode="target-model"
                       @change="handleTargetModelYamlChange"
@@ -1170,30 +1175,31 @@ const targetModelYamlError = ref<string | null>(null)
 const targetModelYamlHasChanges = ref(false)
 const targetModelDocsDownloading = ref(false)
 
-function getProjectLocalTargetModelPath(targetModel: string | null | undefined): string | null {
-  if (!targetModel) {
+function getTargetModelLocation(targetModel: string | null | undefined): 'project' | 'shared' | null {
+  if (!targetModel?.trim()) {
     return null
   }
-  // strip any leading "@load:" or "@include:" prefix and whitespace, then check if the remaining string is a simple filename (no slashes)
-  const rawPath = targetModel
+
+  let targetModelPath = targetModel.trim()
   for (const prefix of ['@load:', '@include:']) {
-    if (rawPath.startsWith(prefix)) {
-      return rawPath.slice(prefix.length).trim().split(/[\\/]/).length === 1
-        ? rawPath.slice(prefix.length).trim()
-        : null
+    if (targetModelPath.startsWith(prefix)) {
+      targetModelPath = targetModelPath.slice(prefix.length).trim()
+      break
     }
   }
-  if (!rawPath) {
-    return null
+
+  if (targetModelPath.startsWith('${GLOBAL_TARGET_MODEL_DIR}/')) {
+    return 'shared'
   }
 
-  return rawPath.includes('/') || rawPath.includes('\\') ? null : rawPath
+  return targetModelPath.includes('/') || targetModelPath.includes('\\') ? null : 'project'
 }
 
-const editableTargetModelPath = computed(() =>
-  getProjectLocalTargetModelPath(selectedProject.value?.metadata?.target_model ?? null)
+const targetModelLocation = computed(() =>
+  getTargetModelLocation(selectedProject.value?.metadata?.target_model ?? null)
 )
-const hasEditableTargetModelYaml = computed(() => editableTargetModelPath.value !== null)
+const hasTargetModelYaml = computed(() => targetModelLocation.value !== null)
+const isSharedTargetModel = computed(() => targetModelLocation.value === 'shared')
 
 // Computed
 const mergedValidationResult = computed(() => {
@@ -2409,11 +2415,12 @@ async function handleLoadTargetModelYaml() {
 }
 
 function handleTargetModelYamlChange(content: string) {
+  if (isSharedTargetModel.value) return
   targetModelYamlHasChanges.value = content !== originalTargetModelYamlContent.value
 }
 
 async function handleSaveTargetModelYaml() {
-  if (!projectName.value || !targetModelYamlContent.value) return
+  if (!projectName.value || !targetModelYamlContent.value || isSharedTargetModel.value) return
 
   targetModelYamlSaving.value = true
   targetModelYamlError.value = null
@@ -2588,13 +2595,13 @@ watch(activeTab, async (newTab) => {
 })
 
 watch(activeYamlSubTab, async (newSubTab) => {
-  if (newSubTab === 'target-model-yaml' && targetModelYamlContent.value === null) {
+  if (newSubTab === 'target-model-yaml' && hasTargetModelYaml.value && targetModelYamlContent.value === null) {
     await handleLoadTargetModelYaml()
   }
 })
 
-watch(hasEditableTargetModelYaml, (isEditable) => {
-  if (!isEditable && activeYamlSubTab.value === 'target-model-yaml') {
+watch(hasTargetModelYaml, (hasTargetModel) => {
+  if (!hasTargetModel && activeYamlSubTab.value === 'target-model-yaml') {
     activeYamlSubTab.value = 'project-yaml'
   }
 })

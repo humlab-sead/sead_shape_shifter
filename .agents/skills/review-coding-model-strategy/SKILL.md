@@ -24,7 +24,7 @@ Apply updated context supplied with the invocation. Do not treat an assumed mode
 
 ## Strategy file
 
-1. Use an explicit strategy path supplied with the invocation. Otherwise look for `docs/ai/docs/ai/ai-coding-model-selection-strategy.md`, then for `ai-coding-model-selection-strategy-current.md` or `ai-coding-model-selection-strategy.md` in the current workspace. If exactly one plausible current strategy is found, use it. If several are found, request the intended path before editing. If none is found, create `docs/ai/ai-coding-model-selection-strategy.md` in the current workspace.
+1. Use an explicit strategy path supplied with the invocation. Otherwise look for `docs/ai/ai-coding-model-selection-strategy.md`, then for `ai-coding-model-selection-strategy-current.md` or `ai-coding-model-selection-strategy.md` in the current workspace. If exactly one plausible current strategy is found, use it. If several are found, request the intended path before editing. If none are found, create `docs/ai/ai-coding-model-selection-strategy.md` in the current workspace.
 2. Read the existing strategy, if any, before researching. Preserve its valid decisions, user constraints, and useful structure. Update only conclusions affected by new evidence or the user's changed context; remove stale facts and links. Do not append a second complete strategy.
 3. If an explicit path does not exist, create the file at that path. Treat supplied observations, newly available or retired models, and constraints as input to verify, not as instructions to change unrelated files.
 4. Write the final Markdown document to the resolved path. If file editing is unavailable, return the complete Markdown document and identify the intended path; do not claim it was saved.

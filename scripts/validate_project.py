@@ -5,6 +5,7 @@ Examples:
     uv run python scripts/validate_project.py data/projects/example/shapeshifter.yml
     uv run python scripts/validate_project.py data/projects/example/shapeshifter.yml --workflow structural
     uv run python scripts/validate_project.py data/projects/example/shapeshifter.yml --workflow conformance
+    uv run python scripts/validate_project.py data/projects/example/shapeshifter.yml --output-format report
 """
 
 from __future__ import annotations
@@ -12,29 +13,32 @@ from __future__ import annotations
 import abc
 import argparse
 import asyncio
-
+import os
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Awaitable, Callable, Sequence
+from typing import Any, Awaitable, Callable
 
 import click
+from dotenv import load_dotenv
 from loguru import logger
 
 PROJECT_ROOT: Path = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+# pylint: disable=wrong-import-position, no-value-for-parameter, redefined-outer-name
+# pyright: ignore[reportMissingImports]
+
 from backend.app.models.validation import ValidationError
 from backend.app.validators.data_validation_orchestrator import DataValidationOrchestrator, TableStoreDataFetchStrategy
 from backend.app.validators.target_model_validator import TargetModelValidator
+from src.issues import CoreIssue
 from src.model import ShapeShiftProject
 from src.normalizer import ShapeShifter
-from src.specifications import CompositeProjectSpecification, project
-from src.specifications.base import SpecificationIssue
+from src.specifications import CompositeProjectSpecification
 from src.utility import Registry, setup_logging
 from src.validators.data_validators import ValidationIssue
-from src.issues import CoreIssue
 
 
 @dataclass
@@ -83,7 +87,6 @@ class WorkflowExecutor(abc.ABC):
     @abc.abstractmethod
     def _execute(self, project: ShapeShiftProject, ignores: set[str]) -> WorkflowResult:
         """Execute the workflow for the given project and return a WorkflowResult."""
-        pass
 
     def get_name(self) -> str:
         """Return the name/key of this workflow executor."""
@@ -110,7 +113,7 @@ class DataValidationExecutor(WorkflowExecutor):
         normalizer = ShapeShifter(project)
         asyncio.run(normalizer.normalize())
 
-        orchestrator = DataValidationOrchestrator(fetch_strategy=TableStoreDataFetchStrategy(normalizer.table_store))
+        orchestrator = DataValidationOrchestrator(fetch_strategy=TableStoreDataFetchStrategy(normalizer.table_store, normalizer=normalizer))
         issues: list[ValidationIssue] = asyncio.run(
             orchestrator.validate_all_entities(
                 core_project=project,
@@ -130,9 +133,9 @@ class ConformanceValidationExecutor(WorkflowExecutor):
     def _execute(self, project: ShapeShiftProject, ignores: set[str]) -> WorkflowResult:
         """Run target-model conformance validation if the project defines a target model."""
 
-        def map_error_to_issue(error: ValidationError) -> ValidationIssue:
+        def map_validation_issue(error: ValidationError) -> ValidationIssue:
             return ValidationIssue(
-                severity="error",
+                severity=error.severity,
                 message=error.message,
                 entity=error.entity,
                 field=error.field,
@@ -152,8 +155,8 @@ class ConformanceValidationExecutor(WorkflowExecutor):
         errors: list[ValidationError] = TargetModelValidator().validate(target_model_data, project)
         return WorkflowResult(
             name="conformance",
-            passed=len(errors) == 0,
-            issues=[map_error_to_issue(e) for e in errors if e.code not in ignores],
+            passed=all(error.severity != "error" for error in errors),
+            issues=[map_validation_issue(e) for e in errors if e.code not in ignores],
         )
 
 
@@ -182,7 +185,6 @@ def run_workflows(project: ShapeShiftProject, workflow: str, ignores: set[str]) 
     results: dict[str, WorkflowResult] = {}
 
     for wf in workflows:
-
         if "structural" in results and not results["structural"].passed:
             reason = "Skipped because structural validation reported errors."
             logger.warning(f"Skipping {wf} validation: {reason}")
@@ -196,7 +198,7 @@ def run_workflows(project: ShapeShiftProject, workflow: str, ignores: set[str]) 
     return results
 
 
-def print_workflow_results(project_file: Path, results: dict[str, WorkflowResult], format: str = "csv") -> None:
+def print_workflow_results(results: dict[str, WorkflowResult], output_format: str = "csv") -> None:
     """Print workflow-by-workflow validation results."""
 
     def csv_header() -> str:
@@ -206,44 +208,49 @@ def print_workflow_results(project_file: Path, results: dict[str, WorkflowResult
         """Return a list of issue attributes suitable for CSV output."""
         return f"{issue.severity};{issue.entity};{issue.field};{issue.column};{issue.code};{issue.message}"
 
-    if format == "csv":
+    if output_format == "csv":
         print(csv_header())
         for result in results.values():
             for issue in result.issues:
                 print(f"{result.name};{to_csv(issue)}")
         return
 
-    # print(f"Validation results for {project_file}")
+    if output_format == "report":
+        print_markdown_report(results)
+        return
 
-    # for result in results.values():
-    #     for result in results.values():
-    #         print(f"\n== {WORKFLOW_LABELS[result.name]} ==")
-    #         if result.skipped:
-    #             print(f"SKIPPED: {result.skipped}")
-    #             continue
+    raise ValueError(f"Unsupported output format: {output_format}")
 
-    #         status = "PASSED" if result.passed else "FAILED"
-    #         print(f"Status: {status}")
 
-    #         if not result.issues:
-    #             print("No issues found.")
-    #             continue
+def print_markdown_report(results: dict[str, WorkflowResult]) -> None:
+    """Print validation workflows and issues as a Markdown report."""
+    lines: list[str] = ["# Validation report"]
 
-    #         if result.errors:
-    #             print("Errors:")
-    #             for issue in result.errors:
-    #                 print(f"  - {issue}")
+    for result in results.values():
+        status: str = "Skipped" if result.skipped else "Passed" if result.passed else "Failed"
+        lines.extend(["", f"## {result.name.title()}", f"**Status:** {status}"])
 
-    #         if result.warnings:
-    #             print("Warnings:")
-    #             for issue in result.warnings:
-    #                 print(f"  - {issue}")
+        if result.skipped:
+            lines.extend(["", f"**Reason:** {result.skipped}"])
+            continue
 
-    #         if result.info:
-    #             print("Info:")
-    #             for issue in result.info:
-    #                 print(f"  - {issue}")
-    # print_summary(results)
+        if not result.issues:
+            lines.extend(["", "No issues found."])
+            continue
+
+        for issue in result.issues:
+            code: str = issue.code or "N/A"
+            lines.extend(["", f"### {issue.severity.title()} - `{code}`"])
+            for label, value in (("Entity", issue.entity), ("Field", issue.field), ("Column", issue.column)):
+                if value:
+                    lines.append(f"- **{label}:** `{value}`")
+            lines.append(f"- **Message:** {issue.message}")
+
+    passed: int = sum(1 for result in results.values() if result.passed and not result.skipped)
+    failed: int = sum(1 for result in results.values() if not result.passed and not result.skipped)
+    skipped: int = sum(1 for result in results.values() if result.skipped)
+    lines.extend(["", "## Summary", f"- **Passed:** {passed}", f"- **Failed:** {failed}", f"- **Skipped:** {skipped}"])
+    print("\n".join(lines))
 
 
 def print_summary(results: dict[str, WorkflowResult]) -> None:
@@ -263,11 +270,24 @@ def print_summary(results: dict[str, WorkflowResult]) -> None:
 
 def load_project(project_path: str, env_file: str) -> ShapeShiftProject:
     """Load the project file, raising an exception if loading fails."""
+    load_dotenv(dotenv_path=env_file)
+    target_model_dir: Path = PROJECT_ROOT / "resources" / "target_models"
+    if not os.environ.get("GLOBAL_TARGET_MODEL_DIR") and target_model_dir.is_dir():
+        os.environ["GLOBAL_TARGET_MODEL_DIR"] = str(target_model_dir)
+
     return ShapeShiftProject.from_file(filename=project_path, env_file=env_file, env_prefix="SHAPE_SHIFTER")
 
 
 def execute(
-    project_name: str, *, workflow: str, env_file: Path, verbose: bool, log_level: str | None, log_file: Path | None, ignore: str
+    project_name: str,
+    *,
+    workflow: str,
+    output_format: str = "csv",
+    env_file: Path,
+    verbose: bool,
+    log_level: str | None,
+    log_file: Path | None,
+    ignore: str,
 ) -> int:
     """
     Workflows
@@ -282,6 +302,7 @@ def execute(
     uv run python scripts/validate_project.py data/projects/example/shapeshifter.yml
     uv run python scripts/validate_project.py data/projects/example/shapeshifter.yml --workflow structural
     uv run python scripts/validate_project.py data/projects/example/shapeshifter.yml --workflow target-model-conformance
+    uv run python scripts/validate_project.py data/projects/example/shapeshifter.yml --output-format report
     """
     setup_logging(level=log_level.upper() if log_level else None, verbose=verbose, log_file=str(log_file) if log_file else None)
 
@@ -300,7 +321,7 @@ def execute(
         return 1
 
     results: dict[str, WorkflowResult] = run_workflows(project, workflow, ignores=ignores)
-    print_workflow_results(project_file, results)
+    print_workflow_results(results, output_format=output_format)
 
     return 0 if all(result.passed for result in results.values()) else 1
 
@@ -312,6 +333,14 @@ def execute(
     type=normalize_workflow_name,
     default="all",
     help="Workflow to run: structural, data, conformance, target-model-conformance, or all (default: all)",
+)
+@click.option(
+    "--output-format",
+    "--output--format",
+    type=click.Choice(["csv", "report"], case_sensitive=False),
+    default="csv",
+    show_default=True,
+    help="Output format: csv or Markdown report",
 )
 @click.option("--env-file", type=Path, default=Path(".env"), help="Optional env file for project loading (default: .env)")
 @click.option("--verbose", is_flag=True, default=False, help="Enable verbose loggingEnable verbose logging")
@@ -329,9 +358,25 @@ def execute(
     help="Codes to ignore, separated by commas (e.g., 'MISSING_COLUMN,INVALID_FOREIGN_KEY') ",
     show_default=True,
 )
-def main(project_name: str, workflow: str, env_file: Path, verbose: bool, log_level: str | None, log_file: Path | None, ignore: str) -> int:
+def main(
+    project_name: str,
+    workflow: str,
+    output_format: str,
+    env_file: Path,
+    verbose: bool,
+    log_level: str | None,
+    log_file: Path | None,
+    ignore: str,
+) -> int:
     return execute(
-        project_name, workflow=workflow, env_file=env_file, verbose=verbose, log_level=log_level, log_file=log_file, ignore=ignore
+        project_name,
+        workflow=workflow,
+        output_format=output_format,
+        env_file=env_file,
+        verbose=verbose,
+        log_level=log_level,
+        log_file=log_file,
+        ignore=ignore,
     )
 
 
