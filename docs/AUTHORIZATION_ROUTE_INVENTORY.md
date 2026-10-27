@@ -4,7 +4,7 @@
 
 This inventory records the authorization requirement declared by every registered API route and the direct application routes mounted outside `api_router`. It is derived from the assembled FastAPI route table, `backend/app/api/v1/api.py`, and `backend/app/main.py` on the current branch. Update this document when adding, removing, or changing a route, mount, or authorization dependency.
 
-The current API-only runtime exposes 151 HTTP route entries under `/api/v1`, including the generated OpenAPI, Swagger UI, and ReDoc routes. It also exposes the Swagger OAuth redirect helper at `/docs/oauth2-redirect` and the repository documentation mount at `/docs/*`. The `/assets/*`, frontend SPA catch-all, and API-only `/` route are conditional on the frontend build state described below.
+The current API-only runtime exposes 150 HTTP route entries under `/api/v1`, including the generated OpenAPI, Swagger UI, and ReDoc routes. It also exposes the Swagger OAuth redirect helper at `/docs/oauth2-redirect` and the repository documentation mount at `/docs/*`. The `/assets/*`, frontend SPA catch-all, and API-only `/` route are conditional on the frontend build state described below.
 
 `UNDECLARED` means the route has no `authorization_requirement` metadata. It does not mean the route is anonymously accessible: trusted-proxy middleware requires authentication for all paths except `/api/v1/health` when enabled. An undeclared route still needs classification before authorization cutover; no row currently reads `UNDECLARED`.
 
@@ -115,7 +115,6 @@ Every row above except the health check requires an authenticated principal thro
 | `POST`   | `/api/v1/projects/{name}/validate/data`                          | `project:read` |
 | `POST`   | `/api/v1/projects/{name}/entities/{entity_name}/validate`        | `project:read` |
 | `POST`   | `/api/v1/projects/{name}/validate/target-model`                  | `project:read` |
-| `POST`   | `/api/v1/projects/{name}/entities/{entity_name}/validate-draft`  | `project:read` |
 | `GET`    | `/api/v1/projects/{name}/dependencies`                           | `project:read` |
 | `POST`   | `/api/v1/projects/{name}/dependencies/check`                     | `project:read` |
 | `POST`   | `/api/v1/projects/{name}/fixes/preview`                          | `project:read` |
