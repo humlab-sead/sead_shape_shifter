@@ -126,7 +126,7 @@ def test_lookup_runtime_options_skip_strict_null_validation_for_targeted_case():
     validator = ForeignKeyConstraintValidator(
         local_entity=entity,
         fk=fk,
-        runtime_options=ForeignKeyRuntimeOptions(enforce_strict_null_keys=False, use_null_safe_merge=True),
+        runtime_options=ForeignKeyRuntimeOptions(enforce_strict_null_keys=False, prevent_null_key_matches=True),
     )
 
     local_df = pd.DataFrame({"order_id": [1, 2], "customer_code": ["A", None]})

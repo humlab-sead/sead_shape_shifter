@@ -1658,7 +1658,7 @@ foreign_keys:
 - **Description**: Explicitly control whether missing values in foreign key key columns are tolerated
 - **Behavior**:
   - `false`: Strict override. Raise on missing key parts before merge.
-  - `true`: Tolerate missing key parts explicitly; null values still do not match each other.
+  - `true`: Tolerate missing key parts explicitly; a null key on one side does not match a null key on the other.
   - omitted: Use the runtime default for the join shape. For lookup-style `left` joins on alternative keys, missing local key parts are treated as unresolved links rather than hard errors.
 - **Example**:
   ```yaml
@@ -1672,7 +1672,7 @@ foreign_keys:
 - **Description**: Explicitly allow null key parts and treat nulls in corresponding key positions as equal during linking.
 - **Behavior**:
   - `true`: Null key parts are not rejected, and matching nulls can link. Other parts of a composite key must still match.
-  - `false` or omitted: Preserve existing behavior, including `allow_null_keys: true` allowing nulls without matching them.
+  - `false` or omitted: Preserve existing behavior, including `allow_null_keys: true` allowing nulls without matching null keys across the two sides.
   - `true` takes precedence over `allow_null_keys`.
 - **Example**:
   ```yaml
@@ -1906,9 +1906,9 @@ foreign_keys:
 - **Default**: `false`
 - **Description**: Explicitly control whether missing key parts are tolerated in foreign key columns
   - `false`: Raise error if the foreign key contains missing key parts
-  - `true`: Allow missing foreign key parts explicitly; null values still do not match each other
+  - `true`: Allow missing foreign key parts explicitly; a null key on one side does not match a null key on the other
   - omitted: Use the runtime default for the join shape
-- **Lookup-style `left` join default**: When omitted on a lookup-style `left` join that resolves a remote identity from alternative keys, missing local key parts are treated as unresolved links. The row is kept, the FK stays empty, and missing values never match missing values.
+- **Lookup-style `left` join default**: When omitted on a lookup-style `left` join that resolves a remote identity from alternative keys, missing local key parts are treated as unresolved links. The row is kept, the FK stays empty, and a missing key on one side does not match a missing key on the other.
 - **Interaction**: When `false` + `allow_unmatched_left: false`, ensures all rows have valid non-null foreign keys
 - **Use case**: Enforce mandatory relationships, detect missing reference data, or preserve an explicit strict override
 
@@ -1929,7 +1929,7 @@ foreign_keys:
 - **Default**: `false`
 - **Behavior**: When `true`, null key parts are allowed and matching nulls are treated as equal. For composite keys, all non-null parts must also match.
 - **Precedence**: `true` takes precedence over `allow_null_keys`, including an explicit `allow_null_keys: false`.
-- **Compatibility**: Omitted or `false` preserves current behavior. In particular, `allow_null_keys: true` continues to allow nulls without matching them.
+- **Compatibility**: Omitted or `false` preserves current behavior. In particular, `allow_null_keys: true` continues to allow nulls without matching null keys across the two sides.
 
 ```yaml
 foreign_keys:
@@ -1945,7 +1945,7 @@ foreign_keys:
 If a foreign key uses a `left` join and alternative business keys to resolve a remote identity, omitting `allow_null_keys` uses the lookup-style default:
 
 1. missing local key parts do not raise by default,
-2. missing values never match missing values,
+2. a missing key on one side does not match a missing key on the other,
 3. the local row is preserved,
 4. the resolved foreign key remains empty.
 
