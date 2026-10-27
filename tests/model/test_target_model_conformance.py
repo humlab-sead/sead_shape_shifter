@@ -659,8 +659,8 @@ def test_core_conformance_keeps_alias_like_names_strict() -> None:
             "sead_missing_sample_group",
             {
                 "MISSING_REQUIRED_COLUMN": 8,
+                "MISSING_REQUIRED_ENTITY": 7,
                 "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 6,
-                "MISSING_REQUIRED_ENTITY": 6,
                 "UNEXPECTED_PUBLIC_ID": 1,
                 "MISSING_BRIDGE_ENTITY": 1,
                 "CONDITIONAL_FK_AWAITING_RECONCILIATION": 1,
