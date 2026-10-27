@@ -215,39 +215,6 @@ def print_workflow_results(results: dict[str, WorkflowResult], output_format: st
                 print(f"{result.name};{to_csv(issue)}")
         return
 
-    # print(f"Validation results for {project_file}")
-
-    # for result in results.values():
-    #     for result in results.values():
-    #         print(f"\n== {WORKFLOW_LABELS[result.name]} ==")
-    #         if result.skipped:
-    #             print(f"SKIPPED: {result.skipped}")
-    #             continue
-
-    #         status = "PASSED" if result.passed else "FAILED"
-    #         print(f"Status: {status}")
-
-    #         if not result.issues:
-    #             print("No issues found.")
-    #             continue
-
-    #         if result.errors:
-    #             print("Errors:")
-    #             for issue in result.errors:
-    #                 print(f"  - {issue}")
-
-    #         if result.warnings:
-    #             print("Warnings:")
-    #             for issue in result.warnings:
-    #                 print(f"  - {issue}")
-
-    #         if result.info:
-    #             print("Info:")
-    #             for issue in result.info:
-    #                 print(f"  - {issue}")
-    # print_summary(results)
-
-
     if output_format == "report":
         print_markdown_report(results)
         return
