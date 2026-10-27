@@ -1,7 +1,9 @@
 import hashlib
 import time
-from dataclasses import dataclass
+from copy import deepcopy
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 from loguru import logger
@@ -24,6 +26,7 @@ class CacheMetadata:
     entity_name: str
     project_version: int
     entity_hash: str  # Hash of entity configuration
+    validation_issues: list[dict[str, Any]] = field(default_factory=list)
 
 
 class ShapeShiftCache:
@@ -119,6 +122,7 @@ class ShapeShiftCache:
         dataframe: pd.DataFrame,
         project_version: int = 0,
         entity_config: TableConfig | None = None,
+        validation_issues: list[dict[str, Any]] | None = None,
     ) -> None:
         """Cache DataFrame for entity with metadata including entity hash.
 
@@ -141,6 +145,7 @@ class ShapeShiftCache:
             entity_name=entity_name,
             project_version=project_version,
             entity_hash=entity_hash,
+            validation_issues=deepcopy(validation_issues or []),
         )
         logger.trace(f"Cached DataFrame for {entity_name} (version {project_version}, hash {entity_hash[:8]}, {len(dataframe)} rows)")
 
@@ -151,6 +156,7 @@ class ShapeShiftCache:
         target_entity: str,
         project_version: int = 0,
         entity_configs: dict[str, TableConfig] | None = None,
+        validation_issues_by_entity: dict[str, list[dict[str, Any]]] | None = None,
     ) -> None:
         """Cache all entities from table_store individually with entity hashes.
 
@@ -166,7 +172,8 @@ class ShapeShiftCache:
             entity_hash = entity_config.hash() if entity_config else "N/A"
             hash_str = entity_hash[:8] if isinstance(entity_hash, str) else "N/A"
             logger.trace(f"[SET_DATAFRAME] {project_name}/{entity_name}: project_version={project_version}, " f"entity_hash={hash_str}")
-            self.set_dataframe(project_name, entity_name, df, project_version, entity_config)
+            validation_issues = validation_issues_by_entity.get(entity_name, []) if validation_issues_by_entity else []
+            self.set_dataframe(project_name, entity_name, df, project_version, entity_config, validation_issues)
         logger.trace(
             f"[CACHE_SET_DONE] {project_name}/{target_entity}: Cached {len(table_store)} entities with "
             f"project_version={project_version}"
@@ -208,6 +215,8 @@ class ShapeShiftCache:
         found: bool
         data: pd.DataFrame | None
         dependencies: TableStore
+        validation_issues: list[dict[str, Any]] = field(default_factory=list)
+        dependency_validation_issues: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
 
     def fetch_cached_entity_data(
         self, project_name: str, entity_name: str, project_version: int, entity_config: TableConfig, shapeshift_config: ShapeShiftProject
@@ -215,7 +224,25 @@ class ShapeShiftCache:
         data: pd.DataFrame | None = self.get_dataframe(project_name, entity_name, project_version, entity_config)
         found: bool = data is not None
         dependencies: TableStore = self.get_dependencies(project_name, entity_config, project_version, shapeshift_config)
-        return self.CacheCheckResult(found=found, data=data, dependencies=dependencies)
+        validation_issues: list[dict[str, Any]] = []
+        if found:
+            metadata = self._metadata.get(self._generate_key(project_name, entity_name))
+            if metadata is not None:
+                validation_issues = deepcopy(metadata.validation_issues)
+
+        dependency_validation_issues: dict[str, list[dict[str, Any]]] = {}
+        for dependency_name in dependencies:
+            metadata = self._metadata.get(self._generate_key(project_name, dependency_name))
+            if metadata is not None:
+                dependency_validation_issues[dependency_name] = deepcopy(metadata.validation_issues)
+
+        return self.CacheCheckResult(
+            found=found,
+            data=data,
+            dependencies=dependencies,
+            validation_issues=validation_issues,
+            dependency_validation_issues=dependency_validation_issues,
+        )
 
     def get_available_entities(self, project_name: str) -> set[str]:
         """Get all entity names available in cache for a configuration."""

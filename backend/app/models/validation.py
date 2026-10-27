@@ -1,7 +1,7 @@
 """Pydantic models for validation results."""
 
 from enum import Enum
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -62,6 +62,7 @@ class ValidationError(BaseModel):
     category: ValidationCategory = Field(default=ValidationCategory.STRUCTURAL, description="Validation category")
     priority: ValidationPriority = Field(default=ValidationPriority.MEDIUM, description="Validation priority")
     auto_fixable: bool = Field(default=False, description="Whether this issue can be auto-fixed")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Additional issue details")
 
 
 class EntityDataValidationResult(BaseModel):

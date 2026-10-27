@@ -33,9 +33,8 @@ task_list:
   - site_type_group
   - site_type
   - site
-  - site_property_type
+  - property_type
   - site_property
-  - abundance_property_type
   - abundance_property
   - identification_level
   - sample_type
@@ -44,7 +43,6 @@ task_list:
   - relative_dating
   - location_type
   - location
-  - feature_property_type
   - feature_type
   - feature_property
   ignored:
@@ -55,8 +53,8 @@ task_list:
   - taxa_plant_sociological_behaviour
   - taxa_persistence
   - taxa_use_categories
-  - _project_contact
-  - _pcodes
+  - project_contact_helper
+  - pcodes_helper
   - cultural_group
   - dating_period
   - natural_region_group
@@ -70,10 +68,10 @@ notes:
     Foss Nordre was removed as a location from the imported locations due to being a site rather than a location. 
     There are several hits for Göteborg in SEAD, the most common id was selected (also for Tanum).  
     Deduplication does not work after the entity was materialized, therefore there are duplicates.
-  feature_property_type: |-
+  feature_property: |-
     Possible values needs review
     In the pilot project, okBefu is 1 for all features, gebäud is empty/0/1, okErh is 1 or 2
-  feature_property: |-
+
     If drop emtpy rows is set for the column feature_property_value, string values in the column are displayed as "Invalid number" in the preview.
 
     feature_property_value is the result of unnesting and has empty values for some feature properties.

@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type monaco from 'monaco-editor'
+import type { configureMonacoYaml } from 'monaco-yaml'
 
 const { configureMonacoYamlMock } = vi.hoisted(() => ({
-  configureMonacoYamlMock: vi.fn(),
+  configureMonacoYamlMock: vi.fn<typeof configureMonacoYaml>(),
 }))
 vi.mock('monaco-yaml', () => ({
   configureMonacoYaml: configureMonacoYamlMock,
@@ -33,7 +34,7 @@ describe('setupYamlIntelligence', () => {
       ])
     )
 
-    const entitySchema = options?.schemas.find((schema) => schema.uri.endsWith('/entity-schema.json'))?.schema as any
+    const entitySchema = options?.schemas?.find((schema) => schema.uri.endsWith('/entity-schema.json'))?.schema as any
     expect(entitySchema.properties.foreign_key_value_sources.default).toEqual({})
     expect(entitySchema.properties.foreign_key_value_sources.additionalProperties.enum).toEqual([
       'system_id',

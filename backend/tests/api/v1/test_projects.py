@@ -142,10 +142,10 @@ class TestProjectsGet:
         ]
         assert [option["label"] for option in options] == ["Project-local: model.yml", "Shared: model.yml"]
 
-    async def test_shared_target_model_yaml_cannot_be_read_or_updated_in_project_editor(
+    async def test_shared_target_model_yaml_can_be_read_but_not_updated_in_project_editor(
         self, tmp_path, monkeypatch, reset_services, authorized_client
     ):
-        """Shared model references should not expose the project YAML editor endpoints."""
+        """Shared models can be viewed but cannot be changed through the project editor."""
         projects_dir = tmp_path / "projects"
         target_models_dir = tmp_path / "shared" / "target-models"
         monkeypatch.setattr(settings, "PROJECTS_DIR", projects_dir)
@@ -187,7 +187,8 @@ class TestProjectsGet:
             json={"yaml_content": "model: {}\nentities: {}\n"},
         )
 
-        assert read_response.status_code == 403
+        assert read_response.status_code == 200
+        assert read_response.json()["yaml_content"] == "model: {}\nentities: {}\n"
         assert update_response.status_code == 403
 
 
