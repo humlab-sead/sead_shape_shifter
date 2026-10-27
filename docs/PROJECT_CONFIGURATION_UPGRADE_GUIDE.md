@@ -108,7 +108,9 @@ metadata:
 
 The deployment's `GLOBAL_TARGET_MODEL_DIR` defaults to `shared/target-models`.
 The selected model file must be present in that shared directory. Shared files
-are managed by deployment maintainers, not edited from the project editor.
+are managed by deployment maintainers, not edited from the project editor. In
+the Project Detail YAML tab, the selected shared model is available for
+read-only viewing and documentation downloads.
 Changes to a shared model can affect every project that references it. Use a
 project-local model only when the project needs a deliberate, distinct
 specification.

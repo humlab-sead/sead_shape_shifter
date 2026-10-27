@@ -173,6 +173,45 @@ entities: {}
     assert response.text.startswith("# Target Model Schema Reference")
 
 
+async def test_download_shared_target_model_docs(tmp_path, monkeypatch, reset_services_and_state, authorized_client):
+    """Shared target models can be exported through the project documentation endpoint."""
+
+    monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path / "projects")
+    shared_target_model_dir = tmp_path / "shared" / "target-models"
+    monkeypatch.setattr(settings, "GLOBAL_TARGET_MODEL_DIR", shared_target_model_dir)
+    shared_target_model_dir.mkdir(parents=True)
+    (shared_target_model_dir / "model.yml").write_text(
+        """
+model:
+  name: Shared Test Target Model
+  version: 1.0.0
+entities:
+  site:
+    role: fact
+    public_id: site_id
+""".lstrip(),
+        encoding="utf-8",
+    )
+
+    create_response = await authorized_client.post(
+        "/api/v1/projects",
+        json={"name": "test_project", "data_provider_code": "test-provider", "provider_schema": "schema-one"},
+    )
+    assert create_response.status_code == 201
+
+    metadata_response = await authorized_client.patch(
+        "/api/v1/projects/test_project/metadata",
+        json={"target_model": "@load: ${GLOBAL_TARGET_MODEL_DIR}/model.yml"},
+    )
+    assert metadata_response.status_code == 200
+
+    response = await authorized_client.get("/api/v1/projects/test_project/target-model-docs?format=markdown")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/markdown")
+    assert "Shared Test Target Model" in response.text
+
+
 @pytest.mark.parametrize(
     ("old_value", "new_value"),
     [

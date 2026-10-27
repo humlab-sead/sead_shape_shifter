@@ -744,13 +744,13 @@ async def update_project_raw_yaml(
 # ---------------------------------------------------------------------------
 
 
-def _resolve_target_model_path(project: Project, project_name: str) -> Path:
-    """Return the absolute path to the project-local target model file.
+def _resolve_target_model_path(project: Project, project_name: str, *, allow_shared_read: bool = False) -> Path:
+    """Return the absolute path to a project-local or explicitly shared target model file.
 
     Raises:
         NotFoundError: if project has no target_model or the file is missing.
         BadRequestError: if target_model is an inline dict (no backing file).
-        BaseAPIException (403): if the resolved path escapes the project directory.
+        BaseAPIException (403): if the path escapes its allowed directory or a shared file is requested for editing.
     """
     target_model: str | dict[str, Any] | None = project.metadata.target_model if project.metadata else None
     if target_model is None:
@@ -765,6 +765,22 @@ def _resolve_target_model_path(project: Project, project_name: str) -> Path:
             if raw.startswith(prefix):
                 rel_path: str = raw[len(prefix) :].lstrip(":").strip()
                 break
+
+    shared_reference_prefix = "${GLOBAL_TARGET_MODEL_DIR}/"
+    if rel_path.startswith(shared_reference_prefix):
+        if not allow_shared_read:
+            raise BaseAPIException("Shared target model files are read-only", 403)
+
+        shared_relative_path = rel_path[len(shared_reference_prefix) :]
+        try:
+            target_path = resolve_contained_path(shared_relative_path, settings.GLOBAL_TARGET_MODEL_DIR)
+        except ValueError as exc:
+            raise BaseAPIException("Shared target model files must stay within the configured shared directory", 403) from exc
+
+        if not target_path.is_file():
+            raise NotFoundError(f"Target model file not found: {target_path}")
+
+        return target_path
 
     if "${GLOBAL_TARGET_MODEL_DIR}" in rel_path:
         raise BaseAPIException("Shared target model files are read-only", 403)
@@ -799,10 +815,10 @@ async def get_project_target_model_yaml(
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
 ) -> dict[str, str]:
     """
-    Get the project-local target model file as a raw YAML string.
+    Get the configured target model file as a raw YAML string.
 
-    Only project-local files (inside the project directory) are served.
-    Shared/global spec files return 403.
+    Project-local and configured shared files can be read. Shared files cannot
+    be changed through the project editor.
 
     Args:
         name: Project name
@@ -812,7 +828,7 @@ async def get_project_target_model_yaml(
     """
     project_service: ProjectService = get_project_service()
     project: Project = project_service.load_project(authorized_project.resource.locator)
-    target_path: Path = _resolve_target_model_path(project, authorized_project.resource.locator)
+    target_path: Path = _resolve_target_model_path(project, authorized_project.resource.locator, allow_shared_read=True)
     yaml_content: str = target_path.read_text(encoding="utf-8")
     logger.info(f"Retrieved target model YAML for project '{name}'")
     return {"yaml_content": yaml_content}
