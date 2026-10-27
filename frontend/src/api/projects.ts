@@ -319,7 +319,7 @@ export const projectsApi = {
   },
 
   /**
-   * Get the project-local target model file as raw YAML
+   * Get the configured project-local or shared target model file as raw YAML
    */
   getTargetModelYaml: async (name: string): Promise<{ yaml_content: string }> => {
     return apiRequest<{ yaml_content: string }>({

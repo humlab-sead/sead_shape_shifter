@@ -49,6 +49,7 @@ const mockProjectState = vi.hoisted(() => ({
   selectedProjectRef: null as any,
   refreshProject: vi.fn(async () => undefined),
   getRawYaml: vi.fn(async () => ({ yaml_content: 'metadata: {}\nentities: {}\n' })),
+  getTargetModelYaml: vi.fn(async () => ({ yaml_content: 'model: {}\nentities: {}\n' })),
 }))
 
 vi.mock('vue-router', () => ({
@@ -261,7 +262,7 @@ vi.mock('@/api', () => ({
       clearLayout: vi.fn(async () => undefined),
       getRawYaml: mockProjectState.getRawYaml,
       updateRawYaml: vi.fn(async () => undefined),
-      getTargetModelYaml: vi.fn(async () => ({ content: '' })),
+      getTargetModelYaml: mockProjectState.getTargetModelYaml,
       updateTargetModelYaml: vi.fn(async () => undefined),
       downloadTargetModelDocs: vi.fn(async () => new Blob()),
     },
@@ -300,7 +301,10 @@ function mountProjectDetailView() {
         GraphLayoutDropdown: { template: '<div data-testid="graph-layout-dropdown" />' },
         ReconciliationView: { template: '<div data-testid="reconciliation-view" />' },
         MetadataEditor: { template: '<div data-testid="metadata-editor" />' },
-        YamlEditor: { template: '<div data-testid="yaml-editor" />' },
+        YamlEditor: {
+          props: { readonly: Boolean },
+          template: '<div data-testid="yaml-editor" :data-readonly="readonly ? \'true\' : \'false\'" />',
+        },
         MonacoTextEditor: { template: '<div data-testid="monaco-text-editor" />' },
         ExecuteDialog: { template: '<div data-testid="execute-dialog" />' },
         IngesterForm: { template: '<div data-testid="ingester-form" />' },
@@ -334,6 +338,8 @@ describe('ProjectDetailView', () => {
     mockProjectState.refreshProject.mockReset()
     mockProjectState.getRawYaml.mockReset()
     mockProjectState.getRawYaml.mockResolvedValue({ yaml_content: 'metadata: {}\nentities: {}\n' })
+    mockProjectState.getTargetModelYaml.mockReset()
+    mockProjectState.getTargetModelYaml.mockResolvedValue({ yaml_content: 'model: {}\nentities: {}\n' })
     mockGraphState.capturedOptions = null
     mockGraphState.removeNodeClass.mockReset()
     mockGraphState.removeEdgeClass.mockReset()
@@ -408,7 +414,29 @@ describe('ProjectDetailView', () => {
     expect(wrapper.text()).toContain('Target Model')
   })
 
-  it('hides the target-model yaml tab for shared target models', async () => {
+  it('shows shared target-model YAML as read-only and keeps documentation downloads available', async () => {
+    mockProjectState.selectedProjectRef.value = {
+      metadata: { name: 'arbodat', target_model: '@load: ${GLOBAL_TARGET_MODEL_DIR}/sead_standard_model.yml' },
+      options: {},
+      entities: {},
+    }
+
+    const wrapper = mountProjectDetailView()
+    const vm = wrapper.vm as any
+    vm.activeYamlSubTab = 'target-model-yaml'
+
+    await nextTick()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Target Model')
+    expect(wrapper.text()).toContain('Download Docs')
+    expect(wrapper.text()).toContain('This shared target model is read-only.')
+    expect(mockProjectState.getTargetModelYaml).toHaveBeenCalledWith('arbodat')
+    expect(wrapper.find('[data-testid="yaml-editor"][data-readonly="true"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="save-target-model-yaml"]').exists()).toBe(false)
+  })
+
+  it('hides the target-model yaml tab for unsupported path references', async () => {
     mockProjectState.selectedProjectRef.value = {
       metadata: { name: 'arbodat', target_model: '@load: resources/target_models/sead_standard_model.yml' },
       options: {},
