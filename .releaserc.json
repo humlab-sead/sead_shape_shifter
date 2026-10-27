@@ -38,14 +38,14 @@
       "@semantic-release/exec",
       {
         "verifyConditionsCmd": "echo 'Python project - no package.json needed'",
-        "prepareCmd": "sed -i 's/^version = \".*\"/version = \"${nextRelease.version}\"/' pyproject.toml && sed -i 's/^__version__ = \".*\"/__version__ = \"${nextRelease.version}\"/' backend/app/__init__.py",
-        "successCmd": "python3 scripts/generate_user_release_notes.py --version ${nextRelease.version} --update-github-release"
+        "prepareCmd": "sed -i 's/^version = \".*\"/version = \"${nextRelease.version}\"/' pyproject.toml && sed -i 's/^__version__ = \".*\"/__version__ = \"${nextRelease.version}\"/' backend/app/__init__.py && python3 scripts/generate_user_release_notes.py --version ${nextRelease.version} --force-heuristic",
+        "successCmd": "gh release edit v${nextRelease.version} --notes-file docs/whats-new/v${nextRelease.version}.md"
       }
     ],
     [
       "@semantic-release/git",
       {
-        "assets": ["CHANGELOG.md", "pyproject.toml", "backend/app/__init__.py"],
+        "assets": ["CHANGELOG.md", "pyproject.toml", "backend/app/__init__.py", "docs/whats-new/v*.md"],
         "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
       }
     ],
