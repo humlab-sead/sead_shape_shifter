@@ -158,6 +158,7 @@ def test_target_model_conformance(project: ShapeShiftProject):
 
 
 # pylint: disable=line-too-long
+# ruff: noqa: E501
 
 
 def test_core_conformance_reports_known_gaps_for_full_arbodat_project(project: ShapeShiftProject) -> None:
