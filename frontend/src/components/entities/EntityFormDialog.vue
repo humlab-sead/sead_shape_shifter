@@ -1,6 +1,8 @@
 <template>
   <v-dialog
     v-model="dialogModel"
+    location="top"
+    :offset="DIALOG_TOP_OFFSET"
     :width="dialogContainerWidth"
     :max-width="dialogContainerWidth"
     :height="dialogContainerHeight"
@@ -1099,6 +1101,8 @@ const DEFAULT_DIALOG_WIDTH = 1100
 const DEFAULT_DIALOG_HEIGHT = 820
 const MIN_DIALOG_WIDTH = 900
 const MIN_DIALOG_HEIGHT = 640
+const DIALOG_TOP_OFFSET = 56
+const DIALOG_BOTTOM_GAP = 16
 const SHOULD_DEBUG_ENTITY_FORM_DIALOG = import.meta.env.DEV && import.meta.env.MODE !== 'test'
 
 function debugEntityForm(...args: unknown[]): void {
@@ -1374,7 +1378,7 @@ const dialogContainerWidth = computed(() => {
 })
 
 const dialogContainerHeight = computed(() => {
-  if (isCompactScreen.value) return '94vh'
+  if (isCompactScreen.value) return `calc(100vh - ${DIALOG_TOP_OFFSET + DIALOG_BOTTOM_GAP}px)`
   return `${dialogSize.value.height}px`
 })
 
@@ -1729,16 +1733,17 @@ function toggleSplitView() {
 
 function getDialogSizeBounds() {
   const maxWidth = Math.max(MIN_DIALOG_WIDTH, Math.floor(window.innerWidth * 0.98))
-  const maxHeight = Math.max(MIN_DIALOG_HEIGHT, Math.floor(window.innerHeight * 0.96))
+  const maxHeight = Math.max(1, Math.floor(window.innerHeight - DIALOG_TOP_OFFSET - DIALOG_BOTTOM_GAP))
   return { maxWidth, maxHeight }
 }
 
 function clampDialogSize(width: number, height: number) {
   const { maxWidth, maxHeight } = getDialogSizeBounds()
+  const minHeight = Math.min(MIN_DIALOG_HEIGHT, maxHeight)
 
   return {
     width: Math.min(Math.max(Math.round(width), MIN_DIALOG_WIDTH), maxWidth),
-    height: Math.min(Math.max(Math.round(height), MIN_DIALOG_HEIGHT), maxHeight),
+    height: Math.min(Math.max(Math.round(height), minHeight), maxHeight),
   }
 }
 
@@ -3781,6 +3786,9 @@ watch(
 
 .entity-dialog-card {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .dialog-resize-handle {
@@ -3818,24 +3826,29 @@ watch(
 
 /* Dialog content height management */
 .dialog-content {
-  min-height: 600px;
-  max-height: calc(90vh - 120px);
-  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  overflow: hidden;
 }
 
 .form-content {
-  min-height: 600px;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 /* Split-pane layout */
 .split-container {
-  height: calc(100vh - 180px);
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
 }
 
 .split-layout {
   display: flex;
   height: 100%;
+  min-height: 0;
   overflow: hidden;
 }
 
