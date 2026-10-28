@@ -3,6 +3,7 @@
 ## Status
 
 - Proposed feature
+- Tracking issue: [#616](https://github.com/humlab-sead/sead_shape_shifter/issues/616)
 - Scope: Entity creation in the project editor
 - Goal: Start a project entity with its target name and public ID while showing the target requirements.
 
