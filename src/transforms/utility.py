@@ -117,7 +117,44 @@ def merge_with_nonmatching_null_keys(
     if temp_columns:
         merged_df = merged_df.drop(columns=temp_columns)
 
+    suffixes: tuple[str | None, str | None] = merge_kwargs.get("suffixes", ("_x", "_y"))
+    merged_df = _coalesce_same_named_merge_keys(merged_df, left_on, right_on, suffixes, how)
+
     return merged_df
+
+
+def _coalesce_same_named_merge_keys(
+    df: pd.DataFrame,
+    left_on: list[str],
+    right_on: list[str],
+    suffixes: tuple[str | None, str | None],
+    how: str,
+) -> pd.DataFrame:
+    """Return one output column for each same-named join-key pair."""
+    left_suffix, right_suffix = suffixes
+
+    for left_key, right_key in zip(left_on, right_on):
+        if left_key != right_key:
+            continue
+
+        left_column = f"{left_key}{left_suffix or ''}"
+        right_column = f"{right_key}{right_suffix or ''}"
+        if left_column == right_column or left_column not in df.columns or right_column not in df.columns:
+            continue
+
+        if how == "right":
+            key_values = df[right_column]
+        elif how == "outer":
+            key_values = df[left_column].combine_first(df[right_column])
+        else:
+            key_values = df[left_column]
+
+        df[left_key] = key_values
+        columns_to_drop = [column for column in (left_column, right_column) if column != left_key]
+        if columns_to_drop:
+            df = df.drop(columns=columns_to_drop)
+
+    return df
 
 
 def _coerce_compatible_merge_key_dtypes(

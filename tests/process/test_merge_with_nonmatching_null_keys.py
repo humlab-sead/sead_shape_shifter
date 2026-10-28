@@ -149,6 +149,53 @@ class TestNonmatchingNullKeysMerge:
         sentinel_cols = [c for c in result.columns if "__nullsafe" in c or "__ss_null" in c]
         assert sentinel_cols == []
 
+    @pytest.mark.parametrize("how", ["left", "inner", "right", "outer"])
+    @pytest.mark.parametrize("suffixes", [None, ("", "_remote"), ("_left", "_right")])
+    def test_same_named_join_keys_are_not_duplicated(self, how: str, suffixes: tuple[str, str] | None):
+        left = _df({"id": [1, None], "left_value": ["matched", "left-only"]})
+        right = _df({"id": [1, None, 2], "right_value": ["matched", "right-null", "right-only"]})
+        merge_options = {"suffixes": suffixes} if suffixes is not None else {}
+
+        result = merge_with_nonmatching_null_keys(
+            left,
+            right,
+            prevent_null_key_matches=True,
+            left_on=["id"],
+            right_on=["id"],
+            how=how,
+            **merge_options,
+        )
+
+        assert [column for column in result.columns if column.startswith("id")] == ["id"]
+        assert 1 in result["id"].tolist()
+        assert result["id"].isna().sum() == (2 if how == "outer" else 1 if how in {"left", "right"} else 0)
+        if how in {"left", "outer"}:
+            left_only = result[result["left_value"] == "left-only"]
+            assert len(left_only) == 1
+            assert pd.isna(left_only["right_value"].iloc[0])
+        if how in {"right", "outer"}:
+            assert 2 in result["id"].tolist()
+            assert "right-only" in result["right_value"].tolist()
+
+    def test_composite_same_named_join_keys_are_not_duplicated(self):
+        left = _df({"location_type": ["region", "region"], "location_name": ["North", None]})
+        right = _df({"location_type": ["region", "region"], "location_name": ["North", None], "id": [10, 20]})
+
+        result = merge_with_nonmatching_null_keys(
+            left,
+            right,
+            prevent_null_key_matches=True,
+            left_on=["location_type", "location_name"],
+            right_on=["location_type", "location_name"],
+            how="left",
+            suffixes=("", "_location"),
+        )
+
+        assert "location_type_location" not in result.columns
+        assert "location_name_location" not in result.columns
+        assert result["id"].tolist()[0] == 10
+        assert pd.isna(result["id"].tolist()[1])
+
     def test_mismatched_key_counts_raises(self):
         left = _df({"a": [1], "b": [2]})
         right = _df({"x": [1]})
