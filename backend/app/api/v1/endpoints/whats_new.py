@@ -8,6 +8,8 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
+from backend.app.authorization.dependencies import declare_authenticated_route
+
 router = APIRouter()
 
 WHATS_NEW_DIR: Path = Path(__file__).resolve().parents[5] / "docs" / "whats-new"
@@ -65,12 +67,14 @@ def _build_manifest() -> WhatsNewManifestResponse:
 
 
 @router.get("/whats-new", response_model=WhatsNewManifestResponse)
+@declare_authenticated_route
 async def get_whats_new_manifest() -> WhatsNewManifestResponse:
     """Return metadata for available what's-new markdown files."""
     return _build_manifest()
 
 
 @router.get("/whats-new/{version}/content", response_class=PlainTextResponse)
+@declare_authenticated_route
 async def get_whats_new_content(version: str) -> PlainTextResponse:
     """Return the markdown content for a specific what's-new note."""
     if not VERSION_VALUE_PATTERN.fullmatch(version):
