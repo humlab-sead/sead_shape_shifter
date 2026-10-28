@@ -12,7 +12,7 @@ The Add Entity form starts blank even when the project has a target model. The p
 
 ## Scope
 
-This plan covers the project-scoped read operation, the existing create form, and validation of the guided workflow. It excludes changes to the full project-template generator, command-line helper, target model, and create-mode Foreign Keys editor.
+This plan covers the project-scoped read operation, the existing create form, and validation of the guided workflow. It excludes changes to the full project-template generator, command-line helper, target model, create-mode Foreign Keys editor, and new missing-entity ordering or prioritization rules, which are deferred to a follow-up change request.
 
 ## Current Position
 
@@ -31,7 +31,7 @@ Provide the create form with target-model choices and reference information from
 **Focus**
 
 - Resolve the model through the project mapper under project read authorization. Distinguish no configured model from a configured model that cannot be loaded or parsed.
-- Return absent entity names, role and required labels, declared `public_id`, required non-generated columns, and required direct or bridged link paths.
+- Return absent entity names, role and required labels, declared `public_id`, required non-generated columns, and required direct or bridged link paths. Include `required_when.has_new_rows` so conditional links can be labeled without treating them as always required.
 - Keep reference requirements separate from the name and `public_id` used to start the draft; do not accept a browser-supplied model path.
 
 **Depends On**
@@ -46,15 +46,15 @@ Provide the create form with target-model choices and reference information from
 
 - `PH1-AC-1` (from `P-AC-1`) The operation returns every target-model entity absent from the project with its role and required status.
 - `PH1-AC-2` (from `P-AC-2`) No configured model and a model load or parse failure produce distinguishable results without changing the project.
-- `PH1-AC-3` (from `P-AC-8`) Returned requirements exclude generated columns from the required source-work list and represent `via` links as bridge paths.
+- `PH1-AC-3` (from `P-AC-8`) Returned requirements exclude generated columns from the required source-work list, represent `via` links as bridge paths, and include conditional links with their trigger entity.
 
 **Validation Milestones**
 
-- `VM-1` Confirm `PH1-AC-1`, `PH1-AC-2`, and `PH1-AC-3` for local, shared, inline, absent, missing, and invalid models, including read authorization.
+- `VM-1` Confirm `PH1-AC-1`, `PH1-AC-2`, and `PH1-AC-3` for local, shared, inline, absent, missing, and invalid models, including direct and bridged conditional links with their trigger entities and project read authorization.
 
 **Task-Plan Handoff**
 
-- Source criteria: `P-AC-1`, `P-AC-2`, `P-AC-8`. Preserve mapper-based resolution, project authorization, and the separation between reference requirements and saved entity fields. No blocking decision remains.
+- Source criteria: `P-AC-1`, `P-AC-2`, `P-AC-8`. Preserve mapper-based resolution, project authorization, and the separation between reference requirements and saved entity fields. Return conditional-link triggers without predicting reconciliation results or changing candidate prioritization. No blocking decision remains.
 
 **Readiness**
 
@@ -109,7 +109,7 @@ Show the target requirements beside the draft and keep the picker accurate after
 
 **Focus**
 
-- Display required non-generated columns, direct links, bridge paths, and missing entities as reference information.
+- Display required non-generated columns, direct links, bridge paths, and missing entities as reference information. Label links with a `required_when.has_new_rows` trigger as conditional and show the trigger entity.
 - Prevent target facts from populating project `columns`, `foreign_keys`, or `keys`. Leave source columns and joins to the existing editors.
 - Refresh candidates after creation and validate the guided workflow through structural and target-model conformance checks.
 
@@ -124,17 +124,17 @@ Show the target requirements beside the draft and keep the picker accurate after
 **Acceptance Criteria**
 
 - `PH3-AC-1` (from `P-AC-4`) Selecting an option adds no values to project `columns`, `foreign_keys`, or `keys`; only user-configured values are saved.
-- `PH3-AC-2` (from `P-AC-8`) The form shows required non-generated columns and direct or bridged link paths without suggesting a direct FK for a `via` link.
+- `PH3-AC-2` (from `P-AC-8`) The form shows required non-generated columns and direct or bridged link paths without suggesting a direct FK for a `via` link; conditional links are labeled Conditional, show their trigger, and explain when they are required.
 - `PH3-AC-3` (from `P-AC-7`) Existing entities are absent from the options, and a newly saved entity disappears after the list refreshes.
 - `PH3-AC-4` (from `P-AC-6`) Requirement display makes no project write; incomplete saved entities report remaining gaps through existing validation.
 
 **Validation Milestones**
 
-- `VM-3` Confirm `PH3-AC-1`, `PH3-AC-2`, `PH3-AC-3`, and `PH3-AC-4` with direct and `via` links, generated columns, a save and refresh, and validation of an incomplete entity.
+- `VM-3` Confirm `PH3-AC-1`, `PH3-AC-2`, `PH3-AC-3`, and `PH3-AC-4` with direct and `via` links, conditional triggers, generated columns, a save and refresh, and validation of an incomplete entity.
 
 **Task-Plan Handoff**
 
-- Source criteria: `P-AC-4`, `P-AC-6`, `P-AC-7`, `P-AC-8`. Keep requirements out of saved entity fields and keep joins in the post-create editor. No blocking decision remains.
+- Source criteria: `P-AC-4`, `P-AC-6`, `P-AC-7`, `P-AC-8`. Keep requirements out of saved entity fields and keep joins in the post-create editor. Show conditional-link triggers without predicting whether they will apply. Keep candidate ordering unchanged; improved prioritization is deferred to a follow-up change request. No blocking decision remains.
 
 **Readiness**
 
@@ -149,6 +149,6 @@ Ready for a task plan.
 
 ## Validation Strategy
 
-- `VM-1` checks the server contract and model resolution before the picker uses it.
+- `VM-1` checks the server contract, conditional-link triggers, and model resolution before the picker uses it.
 - `VM-2` checks draft behavior and the normal create action before requirement guidance is added.
-- `VM-3` checks the complete workflow, candidate refresh, and expected validation gaps after an incomplete save.
+- `VM-3` checks conditional-link guidance in the complete workflow, candidate refresh, and expected validation gaps after an incomplete save.
