@@ -52,7 +52,7 @@ Show the selected entity's role, description, target table, required non-generat
 
 For a direct required link, show its target entity. For a required link with `via`, show the bridge and final target as a path; do not suggest a direct FK from the selected entity to the final target. Mark any target or bridge in these paths that is absent from the project. The user adds those entities separately from the picker and configures joins in the existing Foreign Keys editor after creating the entity. The create form does not need a new FK editor.
 
-The target model does not specify a Shape Shifter source type. For a selected entity, require the user to choose a type instead of retaining the form's default without review. For a classifier, allow `fixed` or `sql` and explain the choice. The normal save may leave target requirements unmet; existing structural and conformance validation reports those gaps as the user completes the project.
+The target model does not specify a Shape Shifter source type. For a selected entity, require an explicit source-type choice; the form's default `entity` value does not count as that choice. For a classifier, allow `fixed` or `sql` and explain the choice. The normal save may leave target requirements unmet; existing structural and conformance validation reports those gaps as the user completes the project.
 
 ### Read the associated model on the server
 
@@ -76,6 +76,7 @@ The dialog submits only the completed entity form through the existing entity-cr
 ## Testing And Validation
 
 - Verify missing-entity filtering, required and role labels, name locking, clearing the picker, replacement confirmation, and unchanged manual creation.
+- Verify that a selected target entity cannot be saved with only the default `entity` type, and that saving requires an explicit source-type choice.
 - Check project authorization and local, shared, inline, absent, missing, and invalid model handling.
 - Use target models with a generated required column and a required `via` link. Confirm neither becomes a project source column or direct FK, while the required bridge path remains visible.
 - Confirm that only the normal save writes the entity, and that structural and conformance validation reports source or link gaps after an incomplete save.
@@ -90,12 +91,14 @@ The dialog submits only the completed entity form through the existing entity-cr
 - `P-AC-6`: Selecting a target entity does not write to the project. Only the normal create save persists form data.
 - `P-AC-7`: Existing project entities are not offered, and a newly saved entity is removed from the candidate list.
 - `P-AC-8`: The form shows required non-generated target columns and required link paths, including `via` bridges, without turning generated columns or bridged links into direct project mappings.
+- `P-AC-9`: For every selected target entity, saving requires an explicitly selected Shape Shifter source type; the default `entity` value alone does not satisfy this requirement.
 
 ## Planning Handoff
 
 - Preserve manual Add Entity and the existing save and validation flows.
 - Resolve only the project's associated target model on the server with project read authorization. Return target requirements separately from fields submitted on save.
 - Fill only the exact name and declared `public_id`. Keep the name fixed while selected; clearing selection restores manual name editing.
+- Require an explicit Shape Shifter source-type choice for every selected target entity; the default `entity` value alone is not a choice. For selected classifiers, allow only `fixed` or `sql`.
 - Treat required target columns and FK paths as reference information. Do not modify the full template generator, command-line helper, or create-mode FK editor.
 - Validate direct and bridged links, generated columns, incomplete saves, and all supported model reference forms. No product decision remains open for planning.
 
