@@ -1,6 +1,7 @@
 """Tests for ProjectMapper."""
 
 import pytest
+from loguru import logger
 
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.entity import AppendConfig, Entity, FilterConfig, ForeignKeyConfig, ForeignKeyConstraints, UnnestConfig
@@ -637,3 +638,66 @@ class TestEdgeCases:
         result = ProjectMapper.to_api_config(core_dict, "test")
 
         assert result.load_warnings == ["Entity 'abundance_source', row 1, column 'abundance': normalized '12' to 12 (int)"]
+
+    @pytest.mark.parametrize(
+        ("entity_config", "options", "expected_reason"),
+        [
+            (
+                {
+                    "type": "fixed",
+                    "columns": ["method_id"],
+                    "column_types": {"method_id": "unsupported"},
+                    "values": [[1]],
+                },
+                {},
+                "unsupported type 'unsupported'",
+            ),
+            (
+                {
+                    "type": "fixed",
+                    "columns": ["method_id", "name"],
+                    "values": [[1]],
+                },
+                {},
+                "expected 2 based on declared columns",
+            ),
+            (
+                {
+                    "type": "fixed",
+                    "columns": ["method_id"],
+                    "values": [["not-an-int"]],
+                },
+                {},
+                "not-an-int",
+            ),
+            (
+                {
+                    "type": "fixed",
+                    "columns": ["name"],
+                    "values": [["Sampling"]],
+                },
+                {"fixed_entity_types": {"conventions": [{"pattern": "name"}]}},
+                "must declare 'type'",
+            ),
+        ],
+    )
+    def test_to_api_config_logs_fixed_entity_validation_errors(self, entity_config: dict, options: dict, expected_reason: str):
+        """Invalid fixed-entity declarations remain editable and are logged separately from normalization warnings."""
+        core_dict = {
+            "metadata": {"name": "test", "type": "shapeshifter-project"},
+            "entities": {"method": entity_config},
+            "options": options,
+        }
+        messages: list[str] = []
+        sink_id = logger.add(lambda message: messages.append(str(message)), level="ERROR")
+        try:
+            result = ProjectMapper.to_api_config(core_dict, "test")
+        finally:
+            logger.remove(sink_id)
+
+        assert result.load_warnings == []
+        assert len(messages) == 1
+        assert "Fixed-entity validation error on load" in messages[0]
+        assert "project='test'" in messages[0]
+        assert "entity='method'" in messages[0]
+        assert expected_reason in messages[0]
