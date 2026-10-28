@@ -22,11 +22,18 @@ from backend.app.authorization.models import Action, AuthorizedResource, Princip
 from backend.app.authorization.service import AuthorizationService
 from backend.app.core.config import settings
 from backend.app.mappers.project_name_mapper import ProjectNameMapper
-from backend.app.models.project import Project, ProjectFileInfo, ProjectMetadata, TargetModelFileOption
+from backend.app.models.project import (
+    Project,
+    ProjectFileInfo,
+    ProjectMetadata,
+    TargetModelEntityOptionsResponse,
+    TargetModelFileOption,
+)
 from backend.app.models.validation import ValidationResult
 from backend.app.services.documentation_service import DocumentationService, get_documentation_service
 from backend.app.services.layout_sidecar_manager import LayoutSidecarManager, get_layout_sidecar_manager
 from backend.app.services.project_service import ProjectService, get_project_service
+from backend.app.services.target_model_entity_options_service import TargetModelEntityOptionsService
 from backend.app.services.validation_service import ValidationService, get_validation_service
 from backend.app.services.yaml_service import YamlService, YamlServiceError, get_yaml_service
 from backend.app.utils.error_handlers import handle_endpoint_errors
@@ -742,6 +749,17 @@ async def update_project_raw_yaml(
 # ---------------------------------------------------------------------------
 # Target Model YAML Endpoints
 # ---------------------------------------------------------------------------
+
+
+@router.get("/projects/{name}/target-model-entities", response_model=TargetModelEntityOptionsResponse)
+@handle_endpoint_errors
+async def get_project_target_model_entities(
+    name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
+) -> TargetModelEntityOptionsResponse:
+    """Return missing target-model entities for an authorized project."""
+    service = TargetModelEntityOptionsService()
+    return service.get_entity_options(authorized_project.resource.locator)
 
 
 def _resolve_target_model_path(project: Project, project_name: str, *, allow_shared_read: bool = False) -> Path:
