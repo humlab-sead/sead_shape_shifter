@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from loguru import logger
 
 from backend.app.authorization.dependencies import (
+    declare_authenticated_route,
     require_application_action,
     require_ingester_project,
     require_project,
@@ -37,6 +38,7 @@ def get_project_ingester_service() -> ProjectIngesterService:
 
 
 @router.get("", response_model=list[IngesterMetadataResponse])
+@declare_authenticated_route
 async def list_ingesters() -> list[IngesterMetadataResponse]:
     """List all available data ingesters.
 

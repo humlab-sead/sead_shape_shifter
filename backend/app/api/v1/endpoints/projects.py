@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 
 from backend.app.authorization.dependencies import (
     authorize_shared_data_source_reference,
+    declare_authenticated_route,
     get_authorization_service,
     get_principal,
     require_active_project,
@@ -135,6 +136,7 @@ class MetadataUpdateRequest(BaseModel):
 
 # Endpoints
 @router.get("/projects", response_model=list[ProjectMetadata])
+@declare_authenticated_route
 @handle_endpoint_errors
 async def list_projects(
     principal: Annotated[Principal, Depends(get_principal())],
