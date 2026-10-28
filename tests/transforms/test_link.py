@@ -388,6 +388,11 @@ def test_lookup_left_join_null_local_key_does_not_match_null_remote_key():
 
     assert linked_df["remote_id"].tolist()[0] == 7
     assert pd.isna(linked_df["remote_id"].tolist()[1])
+    assert "remote_code_remote" not in linked_df.columns
+
+    output_df = project.get_table("local").drop_fk_columns(linked_df)
+    assert "remote_code" in output_df.columns
+    assert "remote_code_remote" not in output_df.columns
 
 
 def test_lookup_inner_join_retains_strict_null_key_validation():
