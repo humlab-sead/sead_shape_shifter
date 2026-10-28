@@ -98,7 +98,20 @@ class ProjectMapper:
         """Collect non-fatal fixed-entity normalization warnings for project load responses."""
         warnings: list[str] = []
         source_name = filename or project_name
-        conventions: list[FixedEntityTypeConvention] = normalize_fixed_entity_type_conventions(cfg_dict.get("options", {}))
+        try:
+            conventions: list[FixedEntityTypeConvention] = normalize_fixed_entity_type_conventions(cfg_dict.get("options", {}))
+        except FixedEntityTypeConventionDeclarationError as exc:
+            fixed_entity_names = [
+                entity_name
+                for entity_name, entity_dict in cfg_dict.get("entities", {}).items()
+                if isinstance(entity_dict, dict) and entity_dict.get("type") == "fixed"
+            ]
+            if fixed_entity_names:
+                for entity_name in fixed_entity_names:
+                    ProjectMapper._log_load_error(project_name, source_name, entity_name, exc)
+            else:
+                ProjectMapper._log_load_error(project_name, source_name, None, exc)
+            return warnings
 
         for entity_name, entity_dict in cfg_dict.get("entities", {}).items():
             if not isinstance(entity_dict, dict) or entity_dict.get("type") != "fixed":
@@ -115,13 +128,8 @@ class ProjectMapper:
                     entity_name,
                     conventions,
                 )
-            except (
-                FixedEntityColumnTypeDeclarationError,
-                FixedEntityTypeConventionDeclarationError,
-                FixedEntityShapeValidationError,
-                FixedEntityTypeValidationError,
-            ):
-                # Invalid values belong to validation/persistence paths; load warnings only report successful normalizations.
+            except (FixedEntityColumnTypeDeclarationError, FixedEntityShapeValidationError, FixedEntityTypeValidationError) as exc:
+                ProjectMapper._log_load_error(project_name, source_name, entity_name, exc)
                 continue
 
             for warning in normalization_warnings:
@@ -129,6 +137,38 @@ class ProjectMapper:
                 ProjectMapper._log_load_warning(project_name, source_name, warning)
 
         return warnings
+
+    @staticmethod
+    def _log_load_error(
+        project_name: str,
+        source_name: str,
+        entity_name: str | None,
+        error: (
+            FixedEntityColumnTypeDeclarationError
+            | FixedEntityTypeConventionDeclarationError
+            | FixedEntityShapeValidationError
+            | FixedEntityTypeValidationError
+        ),
+    ) -> None:
+        """Log a fixed-entity validation error without preventing project editing."""
+        reason = str(error)
+        if isinstance(error, FixedEntityTypeValidationError):
+            issue_details = "; ".join(
+                f"row {issue.row_index + 1}, column '{issue.column_name}': {issue.reason} "
+                f"(value {issue.raw_value!r}, expected {issue.expected_type})"
+                for issue in error.issues
+            )
+            reason = f"{reason}: {issue_details}"
+
+        entity_detail = f" entity='{entity_name}'" if entity_name is not None else ""
+        logger.error(
+            "Fixed-entity validation error on load: project='{}' source='{}'{} error_type='{}' reason={!r}",
+            project_name,
+            source_name,
+            entity_detail,
+            type(error).__name__,
+            reason,
+        )
 
     @staticmethod
     def _log_load_warning(project_name: str, source_name: str, warning: FixedEntityNormalizationWarning) -> None:
