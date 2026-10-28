@@ -87,14 +87,15 @@ Let a user select a target entity and start a draft without changing the manual 
 - `PH2-AC-2` (from `P-AC-3`) Selection fills the exact name and declared `public_id`, locks the name, and protects edited identity fields on replacement; clearing selection restores name editing.
 - `PH2-AC-3` (from `P-AC-5`) A selected classifier can be saved only with `fixed` or `sql`.
 - `PH2-AC-4` (from `P-AC-6`) Selecting an option makes no project write; the existing save action persists the completed form.
+- `PH2-AC-5` (from `P-AC-9`) Saving a selected target entity is blocked until the user explicitly selects a Shape Shifter source type; the default `entity` value alone does not satisfy this requirement.
 
 **Validation Milestones**
 
-- `VM-2` Confirm `PH2-AC-1`, `PH2-AC-2`, `PH2-AC-3`, and `PH2-AC-4` in create mode, including manual fallback, selection changes, classifier type choice, and save timing.
+- `VM-2` Confirm `PH2-AC-1` through `PH2-AC-5` in create mode, including manual fallback, selection changes, explicit source-type selection, classifier type choice, and save timing.
 
 **Task-Plan Handoff**
 
-- Source criteria: `P-AC-2`, `P-AC-3`, `P-AC-5`, `P-AC-6`. Preserve the existing entity-create operation and manual form. Do not enable the Foreign Keys tab in create mode. No blocking decision remains.
+- Source criteria: `P-AC-2`, `P-AC-3`, `P-AC-5`, `P-AC-6`, `P-AC-9`. Preserve the existing entity-create operation and manual form. Require an explicit source-type choice for every selected target entity; the default `entity` value alone is not sufficient. Restrict selected classifiers to `fixed` or `sql`. Do not enable the Foreign Keys tab in create mode. No blocking decision remains.
 
 **Readiness**
 
