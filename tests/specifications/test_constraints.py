@@ -99,6 +99,21 @@ def test_post_merge_cardinality_and_unmatched_checks():
         )
 
 
+def test_valid_many_to_one_cardinality_constraint_still_runs():
+    """A valid cardinality setting continues to enforce row-count rules."""
+    project = build_project(constraints={"cardinality": "many_to_one"})
+    fk: ForeignKeyConfig = project.get_table("orders").foreign_keys[0]
+    entity: TableConfig = project.get_table("orders")
+    validator = ForeignKeyConstraintValidator(local_entity=entity, fk=fk)
+
+    local_df = pd.DataFrame({"order_id": [1, 2], "order_public_id": [None, None], "customer_id": [1, 2]})
+    remote_df = pd.DataFrame({"id": [1, 2]})
+    linked_df = pd.DataFrame({"order_id": [1, 1, 2], "customer_id": [1, 1, 2]})
+
+    with pytest.raises(ForeignKeyConstraintViolation, match="many_to_one cardinality violated"):
+        validator.validate_after_merge(local_df=local_df, remote_df=remote_df, linked_df=linked_df)
+
+
 def test_lookup_runtime_options_skip_strict_null_validation_for_targeted_case():
     """Lookup-style runtime options should bypass strict null-key validation."""
     cfg = {
