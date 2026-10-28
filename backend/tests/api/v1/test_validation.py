@@ -1,6 +1,7 @@
 """Tests for validation and dependency API endpoints."""
 
 import pytest
+import yaml
 
 from backend.app.core.config import settings
 from backend.app.services import dependency_service, project_service, validation_service, yaml_service
@@ -57,6 +58,68 @@ class TestEntityValidation:
         assert "is_valid" in data
         assert "errors" in data
         assert "warnings" in data
+
+    async def test_incomplete_target_entity_reports_remaining_gaps(self, tmp_path, monkeypatch, reset_services, authorized_client):
+        """Structural validation accepts the saved entity while target validation reports its missing requirements."""
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+
+        create_response = await authorized_client.post(
+            "/api/v1/projects",
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {
+                    "sample": {
+                        "type": "fixed",
+                        "public_id": "sample_id",
+                        "keys": ["sample_name"],
+                        "columns": ["sample_name"],
+                        "values": [["Sample"]],
+                    }
+                },
+            },
+        )
+        assert create_response.status_code == 201, create_response.text
+
+        raw_yaml_response = await authorized_client.get("/api/v1/projects/test_project/raw-yaml")
+        assert raw_yaml_response.status_code == 200, raw_yaml_response.text
+        project_yaml = yaml.safe_load(raw_yaml_response.json()["yaml_content"])
+        project_yaml["metadata"]["target_model"] = {
+            "model": {"name": "Test Target Model", "version": "1.0.0"},
+            "entities": {
+                "sample": {
+                    "required": True,
+                    "public_id": "sample_id",
+                    "columns": {"target_name": {"required": True}},
+                    "foreign_keys": [{"entity": "lookup", "required": True}],
+                },
+                "lookup": {"public_id": "lookup_id"},
+            },
+        }
+        update_response = await authorized_client.put(
+            "/api/v1/projects/test_project/raw-yaml",
+            json={"yaml_content": yaml.safe_dump(project_yaml, sort_keys=False)},
+        )
+        assert update_response.status_code == 200, update_response.text
+
+        structural_response = await authorized_client.post("/api/v1/projects/test_project/entities/sample/validate")
+        assert structural_response.status_code == 200, structural_response.text
+        structural_result = structural_response.json()
+        assert structural_result["is_valid"] is True
+        assert structural_result["errors"] == []
+
+        target_model_response = await authorized_client.post("/api/v1/projects/test_project/validate/target-model")
+        assert target_model_response.status_code == 200, target_model_response.text
+        target_model_result = target_model_response.json()
+        assert target_model_result["is_valid"] is False
+        assert {
+            (error["entity"], error["code"])
+            for error in target_model_result["errors"]
+        } >= {
+            ("sample", "MISSING_REQUIRED_COLUMN"),
+            ("sample", "MISSING_REQUIRED_FOREIGN_KEY_TARGET"),
+        }
 
     async def test_validate_nonexistent_entity(self, tmp_path, monkeypatch, reset_services, sample_entity_data, authorized_client):
         """Test validating non-existent entity."""
