@@ -693,6 +693,120 @@ describe('EntityFormDialog', () => {
     expect(mockState.update).not.toHaveBeenCalled()
   })
 
+  it('shows target requirements as reference data without adding them to the create payload', async () => {
+    mockState.getTargetModelEntityOptions.mockResolvedValue({
+      configured: true,
+      entities: [
+        createTargetModelEntityOption({
+          description: 'Target fact description',
+          target_table: 'tbl_target_fact',
+          required_columns: ['target_name'],
+          required_links: [
+            { path: ['parent'], missing_entities: ['parent'], required_when_has_new_rows: null },
+            { path: ['bridge', 'destination'], missing_entities: ['bridge'], required_when_has_new_rows: null },
+            {
+              path: ['conditional_target'],
+              missing_entities: ['conditional_target'],
+              required_when_has_new_rows: 'source_entity',
+            },
+          ],
+        }),
+      ],
+    })
+    const wrapper = mountEntityFormDialog()
+    await flushPromises()
+
+    const picker = findAutocompleteByLabel(wrapper, 'Start from target model')
+    picker!.vm.$emit('update:modelValue', 'target_fact')
+    await flushPromises()
+
+    const requirements = wrapper.find('[data-testid="target-model-requirements"]')
+    const requirementText = requirements.text().replace(/\s+/g, ' ')
+    expect(requirementText).toContain('Role: fact')
+    expect(requirementText).toContain('Target fact description')
+    expect(requirementText).toContain('tbl_target_fact')
+    expect(requirementText).toContain('Required columns')
+    expect(requirementText).toContain('target_name')
+    expect(requirementText).toContain('Required links')
+    expect(requirementText).toContain('Target: parent (not in project)')
+    expect(requirementText).toContain('Path: bridge (not in project) → destination')
+    expect(requirementText).toContain('Conditional')
+    expect(requirementText).toContain('source_entity')
+    expect(requirementText).toContain('one or more rows from source_entity for insertion')
+    expect(mockState.create).not.toHaveBeenCalled()
+    expect(mockState.update).not.toHaveBeenCalled()
+
+    const columnsCombobox = wrapper
+      .findAllComponents({ name: 'VCombobox' })
+      .find((component) => component.props('label') === 'Columns')
+    const keysCombobox = wrapper
+      .findAllComponents({ name: 'VCombobox' })
+      .find((component) => component.props('label') === 'Business Keys *')
+    columnsCombobox!.vm.$emit('update:modelValue', ['source_name', 'source_key'])
+    keysCombobox!.vm.$emit('update:modelValue', ['source_key'])
+    findSelectByLabel(wrapper, 'Type *')!.vm.$emit('update:modelValue', 'entity')
+    await flushPromises()
+
+    const saveButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Save')
+    expect(saveButton?.element.disabled).toBe(false)
+    await saveButton!.trigger('click')
+    await flushPromises()
+
+    expect(mockState.create).toHaveBeenCalledWith({
+      name: 'target_fact',
+      entity_data: expect.objectContaining({
+        type: 'entity',
+        columns: ['source_name', 'source_key'],
+        keys: ['source_key'],
+      }),
+    })
+    expect(mockState.create.mock.calls[0]?.[0].entity_data).not.toHaveProperty('foreign_keys')
+    expect(mockState.update).not.toHaveBeenCalled()
+  })
+
+  it('refreshes target options when create mode reopens after a save', async () => {
+    mockState.getTargetModelEntityOptions
+      .mockResolvedValueOnce({
+        configured: true,
+        entities: [createTargetModelEntityOption()],
+      })
+      .mockResolvedValueOnce({
+        configured: true,
+        entities: [createTargetModelEntityOption({ name: 'remaining_target' })],
+      })
+    const wrapper = mountEntityFormDialog()
+    await flushPromises()
+
+    findAutocompleteByLabel(wrapper, 'Start from target model')!.vm.$emit('update:modelValue', 'target_fact')
+    await flushPromises()
+    findSelectByLabel(wrapper, 'Type *')!.vm.$emit('update:modelValue', 'entity')
+    await flushPromises()
+
+    const saveButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Save')
+    expect(saveButton?.element.disabled).toBe(false)
+    await saveButton!.trigger('click')
+    await flushPromises()
+    expect(mockState.getTargetModelEntityOptions).toHaveBeenCalledTimes(1)
+    expect(wrapper.emitted('saved')?.at(-1)).toEqual(['target_fact'])
+
+    const savedEntity = createEntity('target_fact', {
+      type: 'entity',
+      public_id: 'target_fact_id',
+      keys: ['source_key'],
+      columns: ['source_key'],
+    })
+    await wrapper.setProps({ modelValue: false, mode: 'edit', entity: savedEntity })
+    await flushPromises()
+    await wrapper.setProps({ modelValue: true, mode: 'create', entity: undefined })
+    await flushPromises()
+
+    expect(mockState.getTargetModelEntityOptions).toHaveBeenCalledTimes(2)
+    expect(findAutocompleteByLabel(wrapper, 'Start from target model')?.props('items')).toEqual([
+      createTargetModelEntityOption({ name: 'remaining_target' }),
+    ])
+    expect(wrapper.text()).not.toContain('target_fact')
+  })
+
   it('limits selected classifiers to explicit fixed or sql types', async () => {
     mockState.getTargetModelEntityOptions.mockResolvedValue({
       configured: true,

@@ -232,6 +232,61 @@
                       </div>
                     </v-alert>
 
+                    <v-card
+                      v-if="selectedTargetEntity"
+                      class="mb-4"
+                      variant="tonal"
+                      data-testid="target-model-requirements"
+                    >
+                      <v-card-title class="text-subtitle-1">Target model requirements</v-card-title>
+                      <v-card-text class="pt-0">
+                        <p v-if="selectedTargetEntity.role"><strong>Role:</strong> {{ selectedTargetEntity.role }}</p>
+                        <p v-if="selectedTargetEntity.description">
+                          <strong>Description:</strong> {{ selectedTargetEntity.description }}
+                        </p>
+                        <p v-if="selectedTargetEntity.target_table">
+                          <strong>Target table:</strong> <code>{{ selectedTargetEntity.target_table }}</code>
+                        </p>
+
+                        <div class="mt-2">
+                          <div class="font-weight-medium">Required columns</div>
+                          <ul v-if="selectedTargetEntity.required_columns.length" class="pl-4">
+                            <li v-for="column in selectedTargetEntity.required_columns" :key="column">
+                              <code>{{ column }}</code>
+                            </li>
+                          </ul>
+                          <p v-else class="mb-0">No required columns.</p>
+                        </div>
+
+                        <div class="mt-2">
+                          <div class="font-weight-medium">Required links</div>
+                          <ul v-if="selectedTargetEntity.required_links.length" class="pl-4">
+                            <li v-for="(link, linkIndex) in selectedTargetEntity.required_links" :key="linkIndex">
+                              <span>{{ link.path.length > 1 ? 'Path' : 'Target' }}: </span>
+                              <template
+                                v-for="(entityName, entityIndex) in link.path"
+                                :key="`${linkIndex}-${entityIndex}`"
+                              >
+                                <span v-if="entityIndex > 0" aria-hidden="true"> → </span>
+                                <span>
+                                  {{ entityName }}
+                                  <span v-if="link.missing_entities.includes(entityName)" class="text-medium-emphasis">
+                                    (not in project)
+                                  </span>
+                                </span>
+                              </template>
+                              <div v-if="link.required_when_has_new_rows" class="mt-1">
+                                <v-chip size="x-small" color="info" variant="tonal">Conditional</v-chip>
+                                Required only if final reconciliation selects one or more rows from
+                                <code>{{ link.required_when_has_new_rows }}</code> for insertion.
+                              </div>
+                            </li>
+                          </ul>
+                          <p v-else class="mb-0">No required links.</p>
+                        </div>
+                      </v-card-text>
+                    </v-card>
+
                     <!-- File Options Row (for CSV, Excel types) -->
                     <div class="form-row" v-if="isFileType">
                       <v-row no-gutters>
