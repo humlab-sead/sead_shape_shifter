@@ -16,6 +16,7 @@ import type {
   BackupInfo,
   RestoreBackupRequest,
   MetadataUpdateRequest,
+  TargetModelEntityOptionsResponse,
 } from '../projects'
 
 // Mock the API client
@@ -97,6 +98,57 @@ describe('projectsApi', () => {
         url: '/projects/test-project/target-models',
       })
       expect(result).toEqual(options)
+    })
+  })
+
+  describe('getTargetModelEntityOptions', () => {
+    it('should return the associated target model entity options without reshaping them', async () => {
+      const options: TargetModelEntityOptionsResponse = {
+        configured: true,
+        entities: [
+          {
+            name: 'method',
+            role: 'classifier',
+            required: true,
+            description: 'Classification method',
+            target_table: 'tbl_method',
+            public_id: 'method_id',
+            required_columns: ['method_name'],
+            required_links: [
+              {
+                path: ['dataset'],
+                missing_entities: ['dataset'],
+                required_when_has_new_rows: null,
+              },
+            ],
+          },
+        ],
+      }
+      vi.mocked(apiRequest).mockResolvedValue(options)
+
+      const result = await projectsApi.getTargetModelEntityOptions('test-project')
+
+      expect(apiRequest).toHaveBeenCalledWith({
+        method: 'GET',
+        url: '/projects/test-project/target-model-entities',
+      })
+      expect(result).toEqual(options)
+    })
+
+    it('should return an unconfigured target model response', async () => {
+      const options: TargetModelEntityOptionsResponse = { configured: false, entities: [] }
+      vi.mocked(apiRequest).mockResolvedValue(options)
+
+      const result = await projectsApi.getTargetModelEntityOptions('test-project')
+
+      expect(result).toEqual(options)
+    })
+
+    it('should reject when the target model request fails', async () => {
+      const error = new Error('Configured target model could not be loaded')
+      vi.mocked(apiRequest).mockRejectedValue(error)
+
+      await expect(projectsApi.getTargetModelEntityOptions('test-project')).rejects.toBe(error)
     })
   })
 

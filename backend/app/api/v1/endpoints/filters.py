@@ -8,6 +8,7 @@ Enables dynamic form generation for filter types.
 from fastapi import APIRouter
 from loguru import logger
 
+from backend.app.authorization.dependencies import declare_authenticated_route
 from backend.app.models.filter_schema import FilterFieldMetadataResponse, FilterSchemaResponse
 from backend.app.utils.error_handlers import handle_endpoint_errors
 from src.transforms.filter_metadata import FilterSchemaRegistry
@@ -16,6 +17,7 @@ router = APIRouter(prefix="/filters", tags=["filters"])
 
 
 @router.get("/types", response_model=dict[str, FilterSchemaResponse], summary="Get available filter types")
+@declare_authenticated_route
 @handle_endpoint_errors
 async def list_filter_types() -> dict[str, FilterSchemaResponse]:
     """

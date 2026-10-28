@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from fastapi import APIRouter
 from pydantic import BaseModel
 
+from backend.app.authorization.dependencies import declare_public_route
 from backend.app.core.config import settings
 
 router = APIRouter()
@@ -20,6 +21,7 @@ class HealthResponse(BaseModel):
 
 
 @router.get("/health", response_model=HealthResponse)
+@declare_public_route
 async def health_check() -> HealthResponse:
     """
     Health check endpoint.

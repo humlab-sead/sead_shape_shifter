@@ -13,15 +13,11 @@
   "303": "Shape Shifter Documentation",
   "335": "TestCircularDependency",
   "341": "3. Implementation and Architecture Concepts",
-  "360": "5. Working with Entities",
   "368": "Remediation Plan",
-  "373": "3. Typical Workflow",
   "389": "Merged Entities",
   "390": "SEAD Shape Shifter Project Editor - Frontend",
   "391": "compilerOptions",
-  "406": "Document-specific rules",
   "419": "package.json",
   "421": "TestGetTaskStatus",
-  "592": "RTK - Rust Token Killer (Codex CLI)",
-  "608": "11. Advanced Features"
+  "592": "RTK - Rust Token Killer (Codex CLI)"
 }

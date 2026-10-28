@@ -11,7 +11,11 @@ from loguru import logger
 from pydantic import BaseModel, Field
 
 from backend.app.api.dependencies import get_schema_service
-from backend.app.authorization.dependencies import require_application_action, require_shared_data_source
+from backend.app.authorization.dependencies import (
+    declare_authenticated_route,
+    require_application_action,
+    require_shared_data_source,
+)
 from backend.app.authorization.models import Action, AuthorizedResource, Principal
 from backend.app.exceptions import SchemaIntrospectionError
 from backend.app.models.data_source import TableMetadata, TableSchema
@@ -63,6 +67,7 @@ async def list_tables(
 
 
 @router.post("/tables", response_model=list[TableMetadata], summary="List tables using data source config")
+@declare_authenticated_route
 @handle_endpoint_errors
 async def list_tables_with_config(
     request: DataSourceConfigRequest,
@@ -144,6 +149,7 @@ class TableSchemaRequest(BaseModel):
 
 
 @router.post("/tables/schema", response_model=TableSchema, summary="Get table schema using config")
+@declare_authenticated_route
 @handle_endpoint_errors
 async def get_table_schema_with_config(
     request: TableSchemaRequest,
