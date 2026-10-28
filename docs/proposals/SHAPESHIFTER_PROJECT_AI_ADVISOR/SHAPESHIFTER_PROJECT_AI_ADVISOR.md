@@ -411,6 +411,109 @@ The embedded Advisor and a local skill session have different access. The server
 
 ## Architecture
 
+### High-Level Diagrams
+
+These diagrams show the proposed design. Investigation tools and proposal/apply support are later capabilities, not part of the explanation MVP.
+
+#### Advisor components and information flow
+
+```mermaid
+flowchart TB
+    author[Project author] --> ui[Project Advisor UI]
+    ui --> api[Advisor API]
+    api --> service[Advisor service]
+
+    service --> context[Context assembly]
+    project[Project and validation state] --> context
+    deployment[Authorized deployment state] --> context
+    knowledge[Versioned knowledge pack] --> context
+    context --> policy[Provider disclosure and redaction]
+    policy --> model[Configured model]
+    model --> checks[Structured response and citation checks]
+    checks --> ui
+
+    model -. "Post-MVP: in-process tools" .-> function_tools[Function-tool adapter]
+    function_tools --> tools[Authoritative tool services]
+    mcp_caller[Authorized MCP caller] --> mcp[MCP adapter]
+    mcp --> tools
+    tools --> evidence[Evidence artifacts]
+    tools --> read_only[Approved read-only project operations]
+
+    classDef user fill:#e8f0fe,stroke:#6283b8,color:#1f2937;
+    classDef app fill:#e5f4ec,stroke:#5a9b71,color:#1f2937;
+    classDef data fill:#f3eefb,stroke:#8b73ad,color:#1f2937;
+    classDef later fill:#fff4dc,stroke:#c49a43,color:#1f2937;
+
+    class author,ui,mcp_caller user;
+    class api,service,context,policy,model,checks app;
+    class project,deployment,knowledge,evidence,read_only data;
+    class function_tools,tools,mcp later;
+```
+
+The embedded Advisor and the MCP adapter use the same authorized tool services. The model receives only context approved by the provider-specific disclosure policy; deterministic code checks returned claims and citations.
+
+#### Question and investigation flow
+
+```mermaid
+flowchart TB
+    question[User question] --> authorize[Authorize project access]
+    authorize --> assemble[Assemble redacted context and manifest]
+    assemble --> enough{Enough information?}
+    enough -- "No" --> clarify[Ask one focused question]
+    clarify --> question
+    enough -- "Yes" --> explain[Prepare explanation or recommendation]
+    explain --> investigate{Investigation needed and enabled?}
+    investigate -- "No" --> cite[Check claims, citations, scope, and support]
+    investigate -- "Yes: post-MVP" --> budget[Check tool permissions and run budget]
+    budget --> run[Run an approved, bounded operation]
+    run --> artifact[Record result, inputs, and limitations]
+    artifact --> interpret[Interpret evidence]
+    interpret --> cite
+    budget -- "Budget exhausted" --> limited[Report open questions and offer continuation]
+    limited --> cite
+    cite --> answer[Return answer with citations and limitations]
+
+    classDef decision fill:#fff4dc,stroke:#c49a43,color:#1f2937;
+    classDef action fill:#e5f4ec,stroke:#5a9b71,color:#1f2937;
+    classDef output fill:#e8f0fe,stroke:#6283b8,color:#1f2937;
+    classDef later fill:#f3eefb,stroke:#8b73ad,color:#1f2937;
+
+    class enough,investigate,budget decision;
+    class authorize,assemble,explain,run,interpret,cite action;
+    class question,clarify,limited,answer,artifact output;
+```
+
+The MVP follows the explanation path using existing project and validation context. Later investigation runs use fixed services, read-only access, resource limits, and recorded artifacts; a tool result supports a claim but does not by itself prove the tool or validator is correct.
+
+#### Future proposal and apply controls
+
+```mermaid
+flowchart TB
+    request[User requests a change] --> draft[Model drafts a proposal]
+    draft --> record[Application stores exact diff and digests]
+    record --> validate[Validate candidate configuration]
+    validate --> review[Show diff and validation result]
+    review --> decision{User approves this proposal?}
+    decision -- "No" --> rejected[Reject or leave pending]
+    decision -- "Yes" --> gate[Recheck identity, project access, approval, and freshness]
+    gate --> current{Proposal still current and authorized?}
+    current -- "No" --> stale[Block apply and request review]
+    current -- "Yes" --> apply[Apply exact approved diff]
+    apply --> result[Record result and recovery details]
+
+    classDef user fill:#e8f0fe,stroke:#6283b8,color:#1f2937;
+    classDef app fill:#e5f4ec,stroke:#5a9b71,color:#1f2937;
+    classDef decision fill:#fff4dc,stroke:#c49a43,color:#1f2937;
+    classDef blocked fill:#f3eefb,stroke:#8b73ad,color:#1f2937;
+
+    class request,review user;
+    class draft,record,validate,gate,apply,result app;
+    class decision,current decision;
+    class rejected,stale blocked;
+```
+
+This later path keeps approval and apply under application control. The model cannot authorize a change, and the apply operation is blocked if the approved diff or its base configuration has changed.
+
 ### Backend
 
 New backend feature area:

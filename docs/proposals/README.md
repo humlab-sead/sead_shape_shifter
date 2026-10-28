@@ -6,6 +6,7 @@ This index covers proposals and initiative records that need attention or provid
 
 | Proposal | Status | Decision or scope |
 |---|---|---|
+| [Linked Art Export from Shape Shifter](LINKED_ART_EXPORT/LINKED_ART_EXPORT.md) | Proposed change request — draft for review | Evaluate SEAD-to-Linked Art output through relational transformations and a registered output dispatcher before deciding on production support. |
 | [Branch-Scoped Consumers For Mixed-Branch Parents](BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md) | Proposed follow-up | Let downstream entities select which branch of a mixed parent they consume. |
 | [Output Dataset Expectations](OUTPUT_DATASET_EXPECTATIONS/OUTPUT_DATASET_EXPECTATIONS.md) | Proposed change request | Check row counts, distinct business keys, and expected group counts on complete transformed output. |
 | [Report Target Model Coverage Against SEAD](SEAD_TARGET_MODEL_COVERAGE_BOUNDARY.md) | Proposed change request | Let each target model declare its SEAD coverage source and measure coverage with a CLI against the pinned snapshot or live SEAD; no separate manifest. |
@@ -15,7 +16,6 @@ This index covers proposals and initiative records that need attention or provid
 | [Improve `@value` Guidance and Preview in Column Pickers](VALUE_REFERENCE_COLUMN_UX_ENHANCEMENT/VALUE_REFERENCE_COLUMN_UX_ENHANCEMENT.md) | Proposed feature | Add best-effort reference suggestions and column previews from cached entity data without backend resolution or validation changes. |
 | [Make `@value` References Usable in Column Pickers](VALUE_REFERENCE_COLUMN_PICKERS/VALUE_REFERENCE_COLUMN_PICKERS.md) | Proposed feature | Add guided reference entry, resolved-column previews, and explicit replacement without restoring long dropdown lists. |
 | [Security Hardening Follow-up](SECURITY_HARDENING_FOLLOWUP/SECURITY_HARDENING_FOLLOWUP.md) | Proposed change request | Remediate unresolved application, authorization, deployment, and verification issues, including safeguards for future generic ingester routes. |
-| [Scaffold Project Entities From an Associated Target Model](TARGET_MODEL_GUIDED_ENTITY_CREATION/TARGET_MODEL_GUIDED_ENTITY_CREATION.md) | Proposed feature | Add a target-model picker that prefills missing project entity drafts without guessing source settings. |
 | [AI Project Advisor](SHAPESHIFTER_PROJECT_AI_ADVISOR/SHAPESHIFTER_PROJECT_AI_ADVISOR.md) | Feature proposal | Provide project-scoped advice grounded in project state, SEAD knowledge, and source-level investigation. |
 
 ## Current Initiatives

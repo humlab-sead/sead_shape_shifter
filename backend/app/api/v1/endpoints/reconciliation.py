@@ -11,7 +11,7 @@ from fastapi.responses import StreamingResponse
 from loguru import logger
 from pydantic import ValidationError
 
-from backend.app.authorization.dependencies import require_operation, require_project
+from backend.app.authorization.dependencies import declare_authenticated_route, require_operation, require_project
 from backend.app.authorization.models import Action, AuthorizedResource
 from backend.app.clients.reconciliation_client import ReconciliationClient
 from backend.app.core.config import settings
@@ -41,6 +41,7 @@ async def get_reconciliation_service() -> ReconciliationService:
 
 
 @router.get("/reconciliation/health")
+@declare_authenticated_route
 @handle_endpoint_errors
 async def check_reconciliation_service_health(service: ReconciliationService = Depends(get_reconciliation_service)) -> dict:
     """
@@ -53,6 +54,7 @@ async def check_reconciliation_service_health(service: ReconciliationService = D
 
 
 @router.get("/reconciliation/manifest")
+@declare_authenticated_route
 @handle_endpoint_errors
 async def get_reconciliation_service_manifest(service: ReconciliationService = Depends(get_reconciliation_service)) -> dict:
     """

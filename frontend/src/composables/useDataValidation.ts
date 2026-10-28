@@ -3,6 +3,7 @@
  */
 import { ref, computed } from 'vue'
 import { apiClient } from '@/api/client'
+import { getErrorMessage } from '@/utils/errors'
 import type { ValidationResult, ValidationError } from '@/types/validation'
 
 export function useDataValidation() {
@@ -68,7 +69,7 @@ export function useDataValidation() {
     projectName: string,
     entityNames?: string[],
     validationMode: 'sample' | 'complete' = 'sample'
-  ): Promise<ValidationResult | null> {
+  ): Promise<ValidationResult> {
     loading.value = true
     error.value = null
     result.value = null
@@ -86,11 +87,10 @@ export function useDataValidation() {
       result.value = response.data
 
       return response.data
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Data validation failed'
-      error.value = message
+    } catch (err: unknown) {
+      error.value = getErrorMessage(err)
       console.error('Data validation error:', err)
-      return null
+      throw err
     } finally {
       loading.value = false
     }

@@ -108,7 +108,7 @@ export const useValidationStore = defineStore('validation', () => {
       validationResult.value = await api.projects.validate(projectName)
       return validationResult.value
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to validate project'
+      error.value = getErrorMessage(err)
       throw err
     } finally {
       loading.value = false
@@ -123,7 +123,7 @@ export const useValidationStore = defineStore('validation', () => {
       entityValidationResults.value.set(entityName, result)
       return result
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to validate entity'
+      error.value = getErrorMessage(err)
       throw err
     } finally {
       loading.value = false

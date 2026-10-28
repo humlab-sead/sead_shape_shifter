@@ -51,7 +51,7 @@ Sources: [proposal](TARGET_MODEL_GUIDED_ENTITY_CREATION.md) and [phase plan](TAR
 
 **Tasks**
 
-- [ ] `T1.1` **Add:** Typed response models for the contract above.
+- [x] `T1.1` **Add:** Typed response models for the contract above.
   - **Target:** `backend/app/models/project.py` (**NEW** model classes in an existing file).
   - **Current → required:** The API has a model-file picker DTO but no DTO for missing target entities or their requirements → expose the specified read-only option shape.
   - **Implementation:** Use Pydantic fields with concrete descriptions. Keep `role` nullable as declared by `EntitySpec`; include `required_when_has_new_rows: str | None` in each link option; keep link paths and missing names in reference fields. Do not use project `Entity` or project `foreign_keys` models for these target facts.
@@ -70,13 +70,13 @@ Sources: [proposal](TARGET_MODEL_GUIDED_ENTITY_CREATION.md) and [phase plan](TAR
 
 **Tasks**
 
-- [ ] `T2.1` **Implement:** A read service method accepting a project locator and returning `TargetModelEntityOptionsResponse`.
+- [x] `T2.1` **Implement:** A read service method accepting a project locator and returning `TargetModelEntityOptionsResponse`.
   - **Target:** `backend/app/services/target_model_entity_options_service.py` (**NEW**).
   - **Current → required:** No service projects an associated target model into missing entity options → load the project with `ProjectService.load_project`, check whether `metadata.target_model is None`, resolve configured models through `ProjectMapper.to_core`, parse with `TargetModel.model_validate`, and check `TargetModelSpecValidator.validate` before projection.
   - **Implementation:** Compare model entity names with `api_project.entities`. For each absent entity, copy only the declared identity and display facts; include columns where `required` is true and `generated` is false; include FK paths where `required` is true or `required_when` is present. For conditional links, copy `required_when.has_new_rows` to `required_when_has_new_rows`; use `None` for unconditional required links. Calculate missing path members from the project entity names. Use deterministic sorting. Convert expected model resolution, YAML, schema, or spec failures to `BadRequestError` with server-side logging; the public route must not reveal file paths or parser text. Do not swallow a configured missing file as an unconfigured model or attempt to determine whether reconciliation will satisfy a condition.
   - **Constraints:** No project write, independent file read, second directive resolver, or conformance run. Preserve the mapper's approved-root checks and do not alter `ValidationService.validate_target_model`.
   - **Validation:** `V-1`, `V-2`, `V-4`, `V-5`, `V-6`.
-- [ ] `T2.2` **Test:** Service projection and error distinctions.
+- [x] `T2.2` **Test:** Service projection and error distinctions.
   - **Target:** `backend/tests/services/test_target_model_entity_options_service.py` (**NEW**).
   - **Current → required:** No focused service tests exist → cover `None` versus configured empty/invalid models; filtering of already present entities; required-first sorting and nullable role/public ID; generated required columns; direct and `via` paths; missing path members; and conditional links with the exact `required_when.has_new_rows` trigger. Assert unconditional links have a null trigger and conditional links are not omitted or represented as unconditional. Mock `ProjectService.load_project` for unit cases and assert no write method is called.
   - **Constraints:** Keep fixtures small and avoid inferred source columns, joins, or keys.
@@ -94,13 +94,13 @@ Sources: [proposal](TARGET_MODEL_GUIDED_ENTITY_CREATION.md) and [phase plan](TAR
 
 **Tasks**
 
-- [ ] `T3.1` **Add:** `GET /projects/{name}/target-model-entities` to the existing projects router.
+- [x] `T3.1` **Add:** `GET /projects/{name}/target-model-entities` to the existing projects router.
   - **Target:** `backend/app/api/v1/endpoints/projects.py::router` (new route function).
   - **Current → required:** Existing routes expose target-model file references and project-local raw YAML, not missing entity options → return the new response model from the service.
   - **Implementation:** Require `AuthorizedResource` through `require_project(Action.READ)`, pass `authorized_project.resource.locator` to the service, and use `@handle_endpoint_errors`. Do not accept a model-path query or body field. The router is already registered, so no `api.py` change is needed.
   - **Constraints:** Keep the operation GET and read-only; preserve the raw YAML endpoint's local-only rule and the model-file list's meaning.
   - **Validation:** `V-2`, `V-3`, `V-4`, `V-5`, `V-6`.
-- [ ] `T3.2` **Test:** Project-scoped HTTP behavior and authorization.
+- [x] `T3.2` **Test:** Project-scoped HTTP behavior and authorization.
   - **Target:** `backend/tests/api/v1/test_target_model_entity_options.py` (**NEW**) and `backend/tests/authorization/test_cross_resource_access.py::test_authenticated_principal_cannot_cross_user_resource_boundaries` (existing).
   - **Current → required:** No route tests cover the new contract → create registered projects through POST, then test local and shared `@load` references, an inline model through raw YAML update, no model, a missing referenced file, an invalid model, and a configured valid model whose entities are all present. Assert HTTP status and response shape, including exact conditional trigger names; errors must not expose paths or parser text, responses must omit project `columns`/`foreign_keys`/`keys`, and project YAML must be unchanged by GET. Add the new path to the existing cross-user 404 case.
   - **Constraints:** Use the async `authorized_client` fixture and existing project setup patterns; keep the auth test's concealed `{"detail": "Resource not found"}` result.
@@ -110,22 +110,22 @@ Sources: [proposal](TARGET_MODEL_GUIDED_ENTITY_CREATION.md) and [phase plan](TAR
 
 ## Acceptance-Criteria Coverage
 
-| Criterion | Task IDs | Validation IDs | Expected evidence |
-| --- | --- | --- | --- |
-| `PH1-AC-1` → `P-AC-1` | `T1.1`, `T2.1`, `T2.2`, `T3.1`, `T3.2` | `V-1`, `V-2`, `V-3` | Every absent entity appears once with exact name, role, and required flag; present entities do not appear. |
-| `PH1-AC-2` → `P-AC-2` | `T2.1`, `T2.2`, `T3.1`, `T3.2` | `V-1`, `V-2`, `V-4` | Absent model gives HTTP 200/`configured: false`; configured missing or invalid model gives HTTP 400; GET leaves project YAML unchanged. |
-| `PH1-AC-3` → `P-AC-8` | `T1.1`, `T2.1`, `T2.2`, `T3.2` | `V-1`, `V-2` | Required generated columns are excluded; `via` returns `[bridge, target]`; conditional links are included with the exact trigger entity; absent path members are identified. |
+| Criterion | Task IDs | Validation IDs | Expected evidence | Execution evidence (2026-10-28) |
+| --- | --- | --- | --- | --- |
+| `PH1-AC-1` → `P-AC-1` | `T1.1`, `T2.1`, `T2.2`, `T3.1`, `T3.2` | `V-1`, `V-2`, `V-3` | Every absent entity appears once with exact name, role, and required flag; present entities do not appear. | Passed `V-1`, `V-2`, and `V-3`; absent and already-present entities, ordering, role, and required status are covered. |
+| `PH1-AC-2` → `P-AC-2` | `T2.1`, `T2.2`, `T3.1`, `T3.2` | `V-1`, `V-2`, `V-4` | Absent model gives HTTP 200/`configured: false`; configured missing or invalid model gives HTTP 400; GET leaves project YAML unchanged. | Passed `V-1`, `V-2`, and `V-4`; absent, missing, invalid, and configured models return distinct results, and GET leaves YAML unchanged. |
+| `PH1-AC-3` → `P-AC-8` | `T1.1`, `T2.1`, `T2.2`, `T3.2` | `V-1`, `V-2` | Required generated columns are excluded; `via` returns `[bridge, target]`; conditional links are included with the exact trigger entity; absent path members are identified. | Passed `V-1` and `V-2`; generated columns are excluded, bridge paths and missing members are returned, and conditional links include their exact trigger. |
 
 ## Validation And Testing
 
-| ID | Check and target | Command or method | Covers | Expected result | Baseline on 2026-10-20 |
-| --- | --- | --- | --- | --- | --- |
-| `V-1` | Service unit tests, including error and path cases | `.venv/bin/pytest -q -p no:cacheprovider backend/tests/services/test_target_model_entity_options_service.py` | `PH1-AC-1`–`3` | All planned service cases pass; unconditional and conditional links retain distinct trigger data. | Not run: test file is **NEW**. |
-| `V-2` | Authorized route integration: local/shared/inline/absent/missing/invalid models, exact response and no write | `.venv/bin/pytest -q -p no:cacheprovider backend/tests/api/v1/test_target_model_entity_options.py` | `PH1-AC-1`–`3` | HTTP 200 or 400 as specified; conditional trigger is present in the response; unchanged YAML; no source mapping fields in option data. | Not run: test file is **NEW**. |
-| `V-3` | Cross-user project authorization | `.venv/bin/pytest -q -p no:cacheprovider backend/tests/authorization/test_cross_resource_access.py -k 'test_authenticated_principal_cannot_cross_user_resource_boundaries'` | `PH1-AC-1`, read authorization | New route returns concealed 404 to a principal without project read access. | Pass: existing cross-resource case passed; new path is pending. |
-| `V-4` | Mapper and existing target-model route regression | `.venv/bin/pytest -q -p no:cacheprovider backend/tests/mappers/test_project_mapper_file_path_integration.py backend/tests/api/v1/test_projects.py -k 'target_model or target_models'` | `PH1-AC-2`, existing behavior | Local/shared resolution, approved-root rejection, file list, and raw YAML restrictions still pass. | Pass: 6 selected tests. |
-| `V-5` | Black formatting check | `.venv/bin/black --check backend/app/models/project.py backend/app/services/target_model_entity_options_service.py backend/app/api/v1/endpoints/projects.py backend/tests/services/test_target_model_entity_options_service.py backend/tests/api/v1/test_target_model_entity_options.py backend/tests/authorization/test_cross_resource_access.py` | Changed Python files | No formatting changes required. | Pass for existing model, route, and authorization files; **NEW** files pending. |
-| `V-6` | Ruff lint check | `.venv/bin/ruff check backend/app/models/project.py backend/app/services/target_model_entity_options_service.py backend/app/api/v1/endpoints/projects.py backend/tests/services/test_target_model_entity_options_service.py backend/tests/api/v1/test_target_model_entity_options.py backend/tests/authorization/test_cross_resource_access.py` | Changed Python files | No lint errors. | Pass for existing model and route files; **NEW** files pending. |
+| ID | Check and target | Command or method | Covers | Expected result | Baseline on 2026-10-20 | Execution result on 2026-10-28 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `V-1` | Service unit tests, including error and path cases | `.venv/bin/pytest -q -p no:cacheprovider backend/tests/services/test_target_model_entity_options_service.py` | `PH1-AC-1`–`3` | All planned service cases pass; unconditional and conditional links retain distinct trigger data. | Not run: test file is **NEW**. | Passed: 5 tests. |
+| `V-2` | Authorized route integration: local/shared/inline/absent/missing/invalid models, exact response and no write | `.venv/bin/pytest -q -p no:cacheprovider backend/tests/api/v1/test_target_model_entity_options.py` | `PH1-AC-1`–`3` | HTTP 200 or 400 as specified; conditional trigger is present in the response; unchanged YAML; no source mapping fields in option data. | Not run: test file is **NEW**. | Passed: 8 tests, including local, shared, inline, absent, missing, malformed YAML, schema-invalid model, and all-present cases. |
+| `V-3` | Cross-user project authorization | `.venv/bin/pytest -q -p no:cacheprovider backend/tests/authorization/test_cross_resource_access.py -k 'test_authenticated_principal_cannot_cross_user_resource_boundaries'` | `PH1-AC-1`, read authorization | New route returns concealed 404 to a principal without project read access. | Pass: existing cross-resource case passed; new path is pending. | Passed: the test includes the new route and confirms concealed 404. |
+| `V-4` | Mapper and existing target-model route regression | `.venv/bin/pytest -q -p no:cacheprovider backend/tests/mappers/test_project_mapper_file_path_integration.py backend/tests/api/v1/test_projects.py -k 'target_model or target_models'` | `PH1-AC-2`, existing behavior | Local/shared resolution, approved-root rejection, file list, and raw YAML restrictions still pass. | Pass: 6 selected tests. | Passed: all 6 selected tests. |
+| `V-5` | Black formatting check | `.venv/bin/black --check backend/app/models/project.py backend/app/services/target_model_entity_options_service.py backend/app/api/v1/endpoints/projects.py backend/tests/services/test_target_model_entity_options_service.py backend/tests/api/v1/test_target_model_entity_options.py backend/tests/authorization/test_cross_resource_access.py` | Changed Python files | No formatting changes required. | Pass for existing model, route, and authorization files; **NEW** files pending. | Passed: all 6 files are formatted. |
+| `V-6` | Ruff lint check | `.venv/bin/ruff check backend/app/models/project.py backend/app/services/target_model_entity_options_service.py backend/app/api/v1/endpoints/projects.py backend/tests/services/test_target_model_entity_options_service.py backend/tests/api/v1/test_target_model_entity_options.py backend/tests/authorization/test_cross_resource_access.py` | Changed Python files | No lint errors. | Pass for existing model and route files; **NEW** files pending. | Passed: no lint errors in all 6 files. |
 
 The baseline checks were read-only. `V-3`'s baseline confirms the existing concealment behavior, not the planned new path. The proposed test files must be created before `V-1`, `V-2`, `V-5`, or `V-6` can pass in full.
 
@@ -144,17 +144,17 @@ The baseline checks were read-only. `V-3`'s baseline confirms the existing conce
 
 | Area | Status | Dependencies | Notes |
 | --- | --- | --- | --- |
-| Area 1: Response | Not started | None | Contract fixed above. |
-| Area 2: Service | Not started | Area 1 | Uses mapper resolution and target-model parsing. |
-| Area 3: Route | Not started | Areas 1–2 | Projects router already registered. |
+| Area 1: Response | Complete | None | Typed response models match the read-only contract. |
+| Area 2: Service | Complete | Area 1 | Mapper resolution, validation, projection, sorting, and error distinctions are covered by `V-1`. |
+| Area 3: Route | Complete | Areas 1–2 | Read authorization, model sources, safe errors, and no-write behavior are covered by `V-2` and `V-3`. |
 
 ## Definition Of Done
 
-- [ ] `PH1-AC-1`/`P-AC-1`, `PH1-AC-2`/`P-AC-2`, and `PH1-AC-3`/`P-AC-8` have passing task and validation results in the coverage table.
-- [ ] All three work areas and six deliverables are complete; `VM-1` scenarios pass for local, shared, inline, absent, missing, and invalid models.
-- [ ] `V-1` through `V-6` pass, including read authorization and existing target-model route and mapper behavior.
-- [ ] The response is read-only and contains no inferred project `columns`, `foreign_keys`, or `keys`; existing project data and YAML remain unchanged after GET.
-- [ ] The route's response model documents the contract; no migration or generated artifact is needed.
-- [ ] Any deviation or follow-up is recorded, and no unresolved question affects implementation or validation.
+- [x] `PH1-AC-1`/`P-AC-1`, `PH1-AC-2`/`P-AC-2`, and `PH1-AC-3`/`P-AC-8` have passing task and validation results in the coverage table.
+- [x] All three work areas and six deliverables are complete; `VM-1` scenarios pass for local, shared, inline, absent, missing, and invalid models.
+- [x] `V-1` through `V-6` pass, including read authorization and existing target-model route and mapper behavior.
+- [x] The response is read-only and contains no inferred project `columns`, `foreign_keys`, or `keys`; existing project data and YAML remain unchanged after GET.
+- [x] The route's response model documents the contract; no migration or generated artifact is needed.
+- [x] Any deviation or follow-up is recorded, and no unresolved question affects implementation or validation.
 
 **Implementation handoff:** If repository state at execution time conflicts with a verified target or contract above, stop and report the conflicting source and its effect before changing the design or widening scope.
