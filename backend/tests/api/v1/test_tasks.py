@@ -4,6 +4,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
+import yaml
 
 from backend.app.core.config import settings
 from backend.app.models.validation import ValidationResult
@@ -206,6 +207,35 @@ class TestGetTaskStatus:
 
         response = await authorized_client.get("/api/v1/projects/nonexistent/tasks")
         assert response.status_code == 404
+
+    async def test_get_task_status_returns_load_error_instead_of_status(
+        self, tmp_path, monkeypatch, reset_services, sample_project_data, authorized_client
+    ):
+        """Task status reports project load errors instead of returning success-shaped entity statuses."""
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        create_response = await authorized_client.post("/api/v1/projects", json=sample_project_data)
+        assert create_response.status_code == 201, create_response.text
+
+        project_file = tmp_path / "test_project" / "shapeshifter.yml"
+        project_yaml = yaml.safe_load(project_file.read_text(encoding="utf-8"))
+        project_yaml["entities"]["method"] = {
+            "type": "fixed",
+            "keys": ["method_id"],
+            "columns": ["method_id"],
+            "column_types": {"method_id": "int"},
+            "values": [["not-an-integer"]],
+        }
+        project_file.write_text(yaml.safe_dump(project_yaml, sort_keys=False), encoding="utf-8")
+        reload_response = await authorized_client.post("/api/v1/projects/test_project/refresh")
+        assert reload_response.status_code == 200, reload_response.text
+
+        response = await authorized_client.get("/api/v1/projects/test_project/tasks")
+
+        assert response.status_code == 400
+        detail = response.json()["detail"]
+        assert detail["error_code"] == "PROJECT_LOAD_FAILED"
+        assert "configuration errors" in detail["message"]
+        assert detail["tips"]
 
 
 class TestMarkComplete:

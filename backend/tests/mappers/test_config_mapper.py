@@ -696,6 +696,11 @@ class TestEdgeCases:
             logger.remove(sink_id)
 
         assert result.load_warnings == []
+        assert len(result.load_errors) == 1
+        assert result.load_errors[0].severity == "error"
+        assert result.load_errors[0].entity == "method"
+        assert result.load_errors[0].message
+        assert result.load_errors[0].suggestion
         assert len(messages) == 1
         assert "Fixed-entity validation error on load" in messages[0]
         assert "project='test'" in messages[0]

@@ -7,6 +7,7 @@ from typing import Any, Literal, Type
 from pydantic import BaseModel, Field, field_serializer
 from pydantic.json_schema import GenerateJsonSchema
 
+from backend.app.models.validation import ValidationError
 from src.configuration import find_unresolved_directives
 
 
@@ -145,6 +146,7 @@ class Project(BaseModel):
     task_list: dict[str, Any] | None = Field(default=None, description="Task list for entity progress tracking")
     metadata: ProjectMetadata | None = Field(default=None, description="Project metadata")
     load_warnings: list[str] = Field(default_factory=list, description="Non-fatal normalization warnings detected while loading")
+    load_errors: list[ValidationError] = Field(default_factory=list, description="Configuration errors detected while loading")
 
     @property
     def ingesters(self) -> dict[str, Any]:
