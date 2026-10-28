@@ -15,11 +15,13 @@ from backend.app.mappers.entity_config_mapper import EntityConfigMapper, EntityC
 from backend.app.models.shapeshift import ColumnInfo, PreviewResult
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.utils.caches import ShapeShiftCache, ShapeShiftProjectCache
+from backend.app.utils.fixed_entity_errors import map_fixed_entity_shape_error
 from src.exceptions import FunctionalDependencyError, MissingBusinessKeyError
 from src.model import ShapeShiftProject, TableConfig
 from src.normalizer import ShapeShifter
 from src.specifications.constraints import ForeignKeyConstraintViolation, ForeignKeyNullConstraintViolation, ValidationIssue
 from src.table_store import TableStore
+from src.types.fixed_entity_types import FixedEntityShapeValidationError
 from src.validation_messages import format_validation_message_with_context
 
 
@@ -37,7 +39,7 @@ class ShapeShiftService:
         # Initialize entity config mapper factory for type-specific transformations
         self._mapper_factory = EntityConfigMapperFactory(self.settings)
 
-    def _resolve_entity_config(self, entity_config: dict[str, Any], context: EntityMapperContext) -> None:
+    def _resolve_entity_config(self, entity_config: dict[str, Any], context: EntityMapperContext, entity_name: str) -> None:
         """Apply type-specific transformations to entity config using strategy pattern.
 
         For file-based entities: resolves (filename, location) to absolute path.
@@ -52,7 +54,10 @@ class ShapeShiftService:
         # Get appropriate mapper based on entity type
         mapper: EntityConfigMapper = self._mapper_factory.get_mapper_for_entity(entity_config)
         # Apply transformation (API → Core: resolve paths)
-        entity_config.update(mapper.to_core(entity_config, context))
+        try:
+            entity_config.update(mapper.to_core(entity_config, context))
+        except FixedEntityShapeValidationError as error:
+            raise map_fixed_entity_shape_error(error, entity_name) from error
 
     async def preview_entity(
         self, project_name: str, entity_name: str, limit: int | None = 50, override_config: dict[str, Any] | None = None
@@ -92,7 +97,7 @@ class ShapeShiftService:
             # Apply type-specific transformation to override_config
             # (override bypasses ProjectMapper.to_core(), so we must transform here)
             context = EntityMapperContext(project_name=project_name, project_options=project.options)
-            self._resolve_entity_config(override_config, context)
+            self._resolve_entity_config(override_config, context, entity_name)
 
             # Clone project and replace entity config
             project = project.clone()

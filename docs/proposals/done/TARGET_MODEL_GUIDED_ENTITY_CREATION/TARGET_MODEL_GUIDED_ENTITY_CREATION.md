@@ -2,9 +2,12 @@
 
 ## Status
 
-- Proposed feature
+- **Implemented** on branch `target-model-guided-entity-creation` (Phase 3 commit: `a802c74c`).
+- Tracking issue: [#616](https://github.com/humlab-sead/sead_shape_shifter/issues/616)
 - Scope: Entity creation in the project editor
 - Goal: Start a project entity with its target name and public ID while showing the target requirements.
+- Validation: Phase 3 checks passed, including 76 frontend tests, target-model options and conformance tests, validation API tests, Vue type checking, ESLint on the committed Phase 3 files, and `git diff --check`. ESLint on the full working-tree component also reported one warning in an unrelated, unstaged hunk.
+- Follow-up: Changes to missing-entity ordering or prioritization remain outside this proposal and require a separate change request.
 
 ## Summary
 

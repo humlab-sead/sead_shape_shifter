@@ -3,6 +3,7 @@
  */
 import { ref, computed } from 'vue'
 import { apiClient } from '@/api/client'
+import { getErrorMessage } from '@/utils/errors'
 import type { ValidationResult } from '@/types/validation'
 
 export function useConformanceValidation() {
@@ -17,7 +18,7 @@ export function useConformanceValidation() {
   /**
    * Run target-model conformance validation on a project
    */
-  async function validateConformance(projectName: string): Promise<ValidationResult | null> {
+  async function validateConformance(projectName: string): Promise<ValidationResult> {
     loading.value = true
     error.value = null
     result.value = null
@@ -26,10 +27,10 @@ export function useConformanceValidation() {
       const response = await apiClient.post<ValidationResult>(`/projects/${projectName}/validate/target-model`)
       result.value = response.data
       return response.data
-    } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Conformance validation failed'
+    } catch (err: unknown) {
+      error.value = getErrorMessage(err)
       console.error('Conformance validation error:', err)
-      return null
+      throw err
     } finally {
       loading.value = false
     }

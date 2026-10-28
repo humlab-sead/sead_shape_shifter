@@ -31,6 +31,7 @@ export interface ApiError {
  */
 export interface StructuredError {
   error_type: string
+  error_code?: string
   message: string
   tips?: string[]
   context?: Record<string, any>

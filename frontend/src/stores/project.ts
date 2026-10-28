@@ -5,6 +5,7 @@ import { api } from '@/api'
 import { useSessionStore } from '@/stores/session'
 import { useEntityStore } from '@/stores/entity'
 import { useValidationStore } from '@/stores/validation'
+import { getErrorMessage } from '@/utils/errors'
 import type { Project, ProjectMetadata, ValidationResult } from '@/types'
 import type { ProjectCreateRequest, ProjectUpdateRequest, BackupInfo, MetadataUpdateRequest } from '@/api/projects'
 
@@ -144,7 +145,7 @@ export const useProjectStore = defineStore('project', () => {
       // logState('selectProject:after', { name })
       return selectedProject.value
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to load project'
+      error.value = getErrorMessage(err)
       throw err
     } finally {
       loading.value = false
@@ -160,7 +161,7 @@ export const useProjectStore = defineStore('project', () => {
       hasUnsavedChanges.value = false
       return selectedProject.value
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to refresh project'
+      error.value = getErrorMessage(err)
       throw err
     } finally {
       loading.value = false
@@ -305,7 +306,7 @@ export const useProjectStore = defineStore('project', () => {
       validationResult.value = await api.projects.validate(name)
       return validationResult.value
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to validate project'
+      error.value = getErrorMessage(err)
       throw err
     } finally {
       loading.value = false

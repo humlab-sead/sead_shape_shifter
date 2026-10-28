@@ -1,6 +1,8 @@
 <template>
   <v-dialog
     v-model="dialogModel"
+    location="top"
+    :offset="DIALOG_TOP_OFFSET"
     :width="dialogContainerWidth"
     :max-width="dialogContainerWidth"
     :height="dialogContainerHeight"
@@ -89,6 +91,35 @@
                   }"
                 >
                   <v-form ref="formRef" v-model="formValid" class="compact-form">
+                    <div
+                      v-if="
+                        mode === 'create' &&
+                        (targetModelEntitiesLoading ||
+                          targetModelEntityOptionsError ||
+                          targetModelEntityOptions.length > 0)
+                      "
+                      class="form-row"
+                    >
+                      <v-autocomplete
+                        v-if="targetModelEntityOptions.length > 0"
+                        :model-value="selectedTargetEntityName"
+                        :items="targetModelEntityOptions"
+                        item-title="name"
+                        item-value="name"
+                        label="Start from target model"
+                        variant="outlined"
+                        clearable
+                        :loading="targetModelEntitiesLoading"
+                        @update:model-value="handleTargetEntitySelection"
+                      />
+                      <div v-else-if="targetModelEntitiesLoading" class="text-caption">
+                        Loading target-model entities...
+                      </div>
+                      <v-alert v-if="targetModelEntityOptionsError" type="warning" variant="tonal" density="compact">
+                        {{ targetModelEntityOptionsError }}
+                      </v-alert>
+                    </div>
+
                     <!-- Entity Name, Type, and Source/Data Source on same row -->
                     <div class="form-row">
                       <v-row no-gutters>
@@ -98,11 +129,18 @@
                             v-model="formData.name"
                             label="Entity Name *"
                             :rules="nameRules"
+                            :readonly="Boolean(selectedTargetEntity)"
                             variant="outlined"
                             required
                           >
                             <template #message>
-                              <span class="text-caption">Unique identifier for this entity</span>
+                              <span class="text-caption">
+                                {{
+                                  selectedTargetEntity
+                                    ? 'Target entity name is fixed until you clear the selection'
+                                    : 'Unique identifier for this entity'
+                                }}
+                              </span>
                             </template>
                           </v-text-field>
                         </v-col>
@@ -110,13 +148,14 @@
                         <v-col cols="4" class="px-1">
                           <!-- Entity Type -->
                           <v-select
-                            v-model="formData.type"
-                            :items="entityTypeOptions"
+                            :model-value="entityTypeValue"
+                            :items="entityTypeOptionsForSelection"
                             label="Type *"
-                            :rules="requiredRule"
+                            :rules="entityTypeRules"
                             variant="outlined"
                             required
                             hide-details="auto"
+                            @update:model-value="handleEntityTypeSelection"
                           >
                             <template #append-inner>
                               <v-tooltip location="top" text="How this entity gets its data">
@@ -173,6 +212,80 @@
                         </v-col>
                       </v-row>
                     </div>
+
+                    <v-alert
+                      v-if="
+                        selectedTargetEntity &&
+                        (!sourceTypeExplicitlySelected || selectedTargetEntity.role === 'classifier')
+                      "
+                      type="info"
+                      variant="tonal"
+                      density="compact"
+                      class="mb-4"
+                    >
+                      <div v-if="!sourceTypeExplicitlySelected">
+                        Select a Shape Shifter type before saving this target entity. The default
+                        <code>entity</code> value does not count as a selection.
+                      </div>
+                      <div v-if="selectedTargetEntity.role === 'classifier'">
+                        Classifiers must use <code>fixed</code> values or an <code>sql</code> query.
+                      </div>
+                    </v-alert>
+
+                    <v-card
+                      v-if="selectedTargetEntity"
+                      class="mb-4"
+                      variant="tonal"
+                      data-testid="target-model-requirements"
+                    >
+                      <v-card-title class="text-subtitle-1">Target model requirements</v-card-title>
+                      <v-card-text class="pt-0">
+                        <p v-if="selectedTargetEntity.role"><strong>Role:</strong> {{ selectedTargetEntity.role }}</p>
+                        <p v-if="selectedTargetEntity.description">
+                          <strong>Description:</strong> {{ selectedTargetEntity.description }}
+                        </p>
+                        <p v-if="selectedTargetEntity.target_table">
+                          <strong>Target table:</strong> <code>{{ selectedTargetEntity.target_table }}</code>
+                        </p>
+
+                        <div class="mt-2">
+                          <div class="font-weight-medium">Required columns</div>
+                          <ul v-if="selectedTargetEntity.required_columns.length" class="pl-4">
+                            <li v-for="column in selectedTargetEntity.required_columns" :key="column">
+                              <code>{{ column }}</code>
+                            </li>
+                          </ul>
+                          <p v-else class="mb-0">No required columns.</p>
+                        </div>
+
+                        <div class="mt-2">
+                          <div class="font-weight-medium">Required links</div>
+                          <ul v-if="selectedTargetEntity.required_links.length" class="pl-4">
+                            <li v-for="(link, linkIndex) in selectedTargetEntity.required_links" :key="linkIndex">
+                              <span>{{ link.path.length > 1 ? 'Path' : 'Target' }}: </span>
+                              <template
+                                v-for="(entityName, entityIndex) in link.path"
+                                :key="`${linkIndex}-${entityIndex}`"
+                              >
+                                <span v-if="entityIndex > 0" aria-hidden="true"> → </span>
+                                <span>
+                                  {{ entityName }}
+                                  <span v-if="link.missing_entities.includes(entityName)" class="text-medium-emphasis">
+                                    (not in project)
+                                  </span>
+                                </span>
+                              </template>
+                              <div v-if="link.required_when_has_new_rows" class="mt-1">
+                                <v-chip size="x-small" color="info" variant="tonal">Conditional</v-chip>
+                                Required only if final reconciliation selects one or more rows from
+                                <code>{{ link.required_when_has_new_rows }}</code> for insertion.
+                              </div>
+                            </li>
+                          </ul>
+                          <p v-else class="mb-0">No required links.</p>
+                        </div>
+                      </v-card-text>
+                    </v-card>
 
                     <!-- File Options Row (for CSV, Excel types) -->
                     <div class="form-row" v-if="isFileType">
@@ -248,6 +361,22 @@
                         </v-col>
                       </v-row>
                     </div>
+
+                    <v-alert
+                      v-if="columnAvailabilityError"
+                      type="error"
+                      variant="tonal"
+                      density="compact"
+                      class="mb-4"
+                    >
+                      <div class="text-body-2">{{ columnAvailabilityError.message }}</div>
+                      <div v-if="columnAvailabilityError.tips?.length" class="mt-2">
+                        <div class="text-caption font-weight-bold">Suggestions:</div>
+                        <ul class="text-caption mt-1 pl-4">
+                          <li v-for="(tip, index) in columnAvailabilityError.tips" :key="index">{{ tip }}</li>
+                        </ul>
+                      </div>
+                    </v-alert>
 
                     <v-alert v-if="isMergedEntityType" type="info" variant="tonal" density="compact" class="mb-4">
                       <div class="text-caption">
@@ -1082,6 +1211,7 @@ import type { ValidationContext } from '@/utils/projectYamlValidator'
 import { defineAsyncComponent, nextTick } from 'vue'
 import { api } from '@/api'
 import type { EntityTypeInfo } from '@/api/data-sources'
+import type { TargetModelEntityOption } from '@/api/projects'
 import { queryApi } from '@/api/query'
 import {
   buildFixedFullColumns,
@@ -1099,6 +1229,8 @@ const DEFAULT_DIALOG_WIDTH = 1100
 const DEFAULT_DIALOG_HEIGHT = 820
 const MIN_DIALOG_WIDTH = 900
 const MIN_DIALOG_HEIGHT = 640
+const DIALOG_TOP_OFFSET = 56
+const DIALOG_BOTTOM_GAP = 16
 const SHOULD_DEBUG_ENTITY_FORM_DIALOG = import.meta.env.DEV && import.meta.env.MODE !== 'test'
 
 function debugEntityForm(...args: unknown[]): void {
@@ -1151,7 +1283,11 @@ const { entities, create, update } = useEntities({
 })
 
 const { getSuggestionsForEntity, loading: suggestionsLoading } = useSuggestions()
-const { availability: columnAvailability, refresh: refreshColumnAvailability } = useColumnAvailability()
+const {
+  availability: columnAvailability,
+  error: columnAvailabilityError,
+  refresh: refreshColumnAvailability,
+} = useColumnAvailability()
 const appSettings = useSettings()
 const fkSuggestionsEnabled = computed(() => appSettings.enableFkSuggestions.value)
 
@@ -1196,6 +1332,13 @@ const entityNameField = ref()
 const formValid = ref(false)
 const loading = ref(false)
 const error = ref<string | null>(null)
+const targetModelEntityOptions = ref<TargetModelEntityOption[]>([])
+const targetModelEntitiesLoading = ref(false)
+const targetModelEntityOptionsError = ref<string | null>(null)
+const selectedTargetEntityName = ref<string | null>(null)
+const sourceTypeExplicitlySelected = ref(false)
+const targetEntityIdentityBaseline = ref<{ name: string; publicId: string | null } | null>(null)
+let targetModelEntityOptionsRequestId = 0
 const renameConflictDependents = ref<string[]>([])
 const showSaveSuccess = ref(false)
 let saveSuccessTimeout: ReturnType<typeof setTimeout> | null = null
@@ -1374,7 +1517,7 @@ const dialogContainerWidth = computed(() => {
 })
 
 const dialogContainerHeight = computed(() => {
-  if (isCompactScreen.value) return '94vh'
+  if (isCompactScreen.value) return `calc(100vh - ${DIALOG_TOP_OFFSET + DIALOG_BOTTOM_GAP}px)`
   return `${dialogSize.value.height}px`
 })
 
@@ -1729,16 +1872,17 @@ function toggleSplitView() {
 
 function getDialogSizeBounds() {
   const maxWidth = Math.max(MIN_DIALOG_WIDTH, Math.floor(window.innerWidth * 0.98))
-  const maxHeight = Math.max(MIN_DIALOG_HEIGHT, Math.floor(window.innerHeight * 0.96))
+  const maxHeight = Math.max(1, Math.floor(window.innerHeight - DIALOG_TOP_OFFSET - DIALOG_BOTTOM_GAP))
   return { maxWidth, maxHeight }
 }
 
 function clampDialogSize(width: number, height: number) {
   const { maxWidth, maxHeight } = getDialogSizeBounds()
+  const minHeight = Math.min(MIN_DIALOG_HEIGHT, maxHeight)
 
   return {
     width: Math.min(Math.max(Math.round(width), MIN_DIALOG_WIDTH), maxWidth),
-    height: Math.min(Math.max(Math.round(height), MIN_DIALOG_HEIGHT), maxHeight),
+    height: Math.min(Math.max(Math.round(height), minHeight), maxHeight),
   }
 }
 
@@ -2542,6 +2686,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  targetModelEntityOptionsRequestId += 1
   window.removeEventListener('keydown', handleKeyPress)
   window.removeEventListener('resize', updateResponsiveDialogMode)
   document.body.classList.remove('entity-dialog-resizing')
@@ -2567,6 +2712,16 @@ const dialogModel = computed({
 })
 
 const entityTypeOptions = ref<EntityTypeInfo[]>([])
+const selectedTargetEntity = computed(
+  () => targetModelEntityOptions.value.find((option) => option.name === selectedTargetEntityName.value) ?? null
+)
+const entityTypeOptionsForSelection = computed(() => {
+  if (selectedTargetEntity.value?.role !== 'classifier') return entityTypeOptions.value
+  return entityTypeOptions.value.filter((option) => option.value === 'fixed' || option.value === 'sql')
+})
+const entityTypeValue = computed(() =>
+  selectedTargetEntity.value && !sourceTypeExplicitlySelected.value ? null : formData.value.type
+)
 
 const availableSourceEntities = computed(() => {
   return entities.value.filter((e) => e.name !== formData.value.name).map((e) => e.name)
@@ -2707,6 +2862,21 @@ const requiredRule = [
     return !!v || 'This field is required'
   },
 ]
+
+const entityTypeRules = computed(() => {
+  if (!selectedTargetEntity.value) return requiredRule
+
+  return [
+    (value: unknown) => {
+      if (!value) return 'Choose a Shape Shifter type for this target entity'
+      if (!sourceTypeExplicitlySelected.value) return 'Select a type before saving this target entity'
+      if (selectedTargetEntity.value?.role === 'classifier' && value !== 'fixed' && value !== 'sql') {
+        return 'Classifier entities must use fixed or sql'
+      }
+      return true
+    },
+  ]
+})
 
 const nameRules = [
   (v: string) => !!v || 'Entity name is required',
@@ -3004,6 +3174,16 @@ async function handleRetryMappingSync() {
 
 const isSaveDisabled = computed(() => {
   if (!formValid.value) return true
+  if (
+    props.mode === 'create' &&
+    selectedTargetEntity.value &&
+    (!sourceTypeExplicitlySelected.value ||
+      (selectedTargetEntity.value.role === 'classifier' &&
+        formData.value.type !== 'fixed' &&
+        formData.value.type !== 'sql'))
+  ) {
+    return true
+  }
   if (props.mode === 'edit') {
     // Never submit a positional save while external values cannot be mapped.
     if (fixedValuesLayoutError.value) return true
@@ -3018,6 +3198,16 @@ async function handleSubmit() {
 
   const { valid } = await formRef.value.validate()
   if (!valid) return
+  if (
+    props.mode === 'create' &&
+    selectedTargetEntity.value &&
+    (!sourceTypeExplicitlySelected.value ||
+      (selectedTargetEntity.value.role === 'classifier' &&
+        formData.value.type !== 'fixed' &&
+        formData.value.type !== 'sql'))
+  ) {
+    return
+  }
 
   loading.value = true
   error.value = null
@@ -3519,6 +3709,92 @@ function buildDefaultFormData(): FormData {
   }
 }
 
+function resetTargetModelEntityState(): void {
+  targetModelEntityOptionsRequestId += 1
+  targetModelEntityOptions.value = []
+  targetModelEntitiesLoading.value = false
+  targetModelEntityOptionsError.value = null
+  selectedTargetEntityName.value = null
+  sourceTypeExplicitlySelected.value = false
+  targetEntityIdentityBaseline.value = null
+}
+
+async function loadTargetModelEntityOptions(): Promise<void> {
+  const requestId = ++targetModelEntityOptionsRequestId
+  targetModelEntitiesLoading.value = true
+  targetModelEntityOptionsError.value = null
+
+  try {
+    const response = await api.projects.getTargetModelEntityOptions(props.projectName)
+    if (requestId !== targetModelEntityOptionsRequestId || !props.modelValue || props.mode !== 'create') return
+
+    targetModelEntityOptions.value = response.configured ? response.entities : []
+  } catch (err) {
+    if (requestId !== targetModelEntityOptionsRequestId || !props.modelValue || props.mode !== 'create') return
+
+    console.error('Failed to load target-model entity options:', err)
+    targetModelEntityOptionsError.value =
+      'Target-model entities could not be loaded. You can still create an entity manually.'
+  } finally {
+    if (requestId === targetModelEntityOptionsRequestId) {
+      targetModelEntitiesLoading.value = false
+    }
+  }
+}
+
+function handleTargetEntitySelection(value: unknown): void {
+  if (value === null || value === '') {
+    selectedTargetEntityName.value = null
+    sourceTypeExplicitlySelected.value = false
+    targetEntityIdentityBaseline.value = null
+    return
+  }
+  if (typeof value !== 'string') return
+
+  const option = targetModelEntityOptions.value.find((entityOption) => entityOption.name === value)
+  if (!option || option.name === selectedTargetEntityName.value) return
+
+  const baseline = targetEntityIdentityBaseline.value
+  const currentName = formData.value.name
+  const currentPublicId = formData.value.public_id
+  const nameWasEdited = baseline ? currentName !== baseline.name : currentName.trim().length > 0
+  const publicIdWillBeReplaced = option.public_id !== null
+  const publicIdWasEdited =
+    publicIdWillBeReplaced &&
+    (baseline ? currentPublicId !== (baseline.publicId ?? '') : currentPublicId.length > 0) &&
+    currentPublicId !== option.public_id
+
+  if (
+    ((nameWasEdited && currentName !== option.name) || publicIdWasEdited) &&
+    !window.confirm('Replace the edited entity name or public ID with the selected target-model values?')
+  ) {
+    return
+  }
+
+  formData.value.name = option.name
+  if (option.public_id !== null) {
+    formData.value.public_id = option.public_id
+  } else if (baseline?.publicId !== null && baseline?.publicId !== undefined && currentPublicId === baseline.publicId) {
+    formData.value.public_id = ''
+  }
+
+  selectedTargetEntityName.value = option.name
+  sourceTypeExplicitlySelected.value = false
+  targetEntityIdentityBaseline.value = { name: option.name, publicId: option.public_id }
+}
+
+function handleEntityTypeSelection(value: unknown): void {
+  if (typeof value !== 'string') return
+  if (selectedTargetEntity.value?.role === 'classifier' && value !== 'fixed' && value !== 'sql') {
+    return
+  }
+
+  formData.value.type = value
+  if (selectedTargetEntity.value) {
+    sourceTypeExplicitlySelected.value = true
+  }
+}
+
 // Note: Entity loading now handled in modelValue watcher below
 // This ensures we always fetch fresh data from the API when opening the dialog
 
@@ -3526,6 +3802,10 @@ function buildDefaultFormData(): FormData {
 watch(
   [() => props.modelValue, () => props.entity?.name, () => props.mode],
   async ([isOpen, entityName, mode]) => {
+    if (!isOpen || mode !== 'create') {
+      resetTargetModelEntityState()
+    }
+
     // Trigger reset when dialog opens in either mode:
     // - Create mode: always reset (no entity name required)
     // - Edit mode: reset when entity name is available
@@ -3611,6 +3891,7 @@ watch(
         }
       } else if (mode === 'create') {
         // Create mode: use default form data
+        resetTargetModelEntityState()
         currentEntity.value = null
         formData.value = buildDefaultFormData()
         yamlContent.value = ''
@@ -3621,6 +3902,7 @@ watch(
         // Place the cursor in the Entity Name field so the user can start typing immediately.
         await nextTick()
         entityNameField.value?.focus()
+        void loadTargetModelEntityOptions()
       }
     }
   },
@@ -3781,6 +4063,9 @@ watch(
 
 .entity-dialog-card {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .dialog-resize-handle {
@@ -3818,24 +4103,29 @@ watch(
 
 /* Dialog content height management */
 .dialog-content {
-  min-height: 600px;
-  max-height: calc(90vh - 120px);
-  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  overflow: hidden;
 }
 
 .form-content {
-  min-height: 600px;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 /* Split-pane layout */
 .split-container {
-  height: calc(100vh - 180px);
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
 }
 
 .split-layout {
   display: flex;
   height: 100%;
+  min-height: 0;
   overflow: hidden;
 }
 

@@ -1,9 +1,14 @@
-"""Tests for preview endpoint error mapping."""
+"""Tests for preview and column-availability error mapping."""
+
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, Mock
 
 import pytest
+from fastapi import HTTPException
 
-from backend.app.api.v1.endpoints.preview import _raise_fk_constraint_validation_error
-from backend.app.exceptions import ConstraintViolationError
+from backend.app.api.v1.endpoints import columns as columns_endpoint
+from backend.app.api.v1.endpoints.preview import _raise_fk_constraint_validation_error, preview_entity
+from backend.app.exceptions import ConstraintViolationError, ValidationError
 from src.specifications.constraints import ForeignKeyConstraintViolation, ForeignKeyNullConstraintViolation
 
 
@@ -37,3 +42,55 @@ def test_raise_fk_constraint_validation_error_preserves_generic_fk_violation() -
     exc = exc_info.value
     assert exc.message == "orders -> users: 2 duplicate right key(s) found (require_unique_right=True)"
     assert exc.context["constraint"] == "foreign_key"
+
+
+def _fixed_entity_shape_error() -> ValidationError:
+    return ValidationError(
+        message="Entity 'data_provider' row 0 has an invalid number of values.",
+        error_code="FIXED_ENTITY_SHAPE_INVALID",
+        tips=["Check the fixed entity's columns and values."],
+        context={"entity": "data_provider", "validation": "fixed_entity_shape"},
+        recoverable=True,
+    )
+
+
+@pytest.mark.asyncio
+async def test_preview_returns_structured_fixed_entity_validation_error() -> None:
+    preview_service = Mock()
+    preview_service.preview_entity = AsyncMock(side_effect=_fixed_entity_shape_error())
+    authorized_project = SimpleNamespace(resource=SimpleNamespace(locator="test_project"))
+
+    with pytest.raises(HTTPException) as exc_info:
+        await preview_entity(
+            authorized_project=authorized_project,
+            project_name="test_project",
+            entity_name="data_provider",
+            body=None,
+            limit=50,
+            preview_service=preview_service,
+        )
+
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.detail["error_code"] == "FIXED_ENTITY_SHAPE_INVALID"
+    assert exc_info.value.detail["message"] == "Entity 'data_provider' row 0 has an invalid number of values."
+
+
+@pytest.mark.asyncio
+async def test_column_availability_returns_structured_fixed_entity_validation_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    service = Mock()
+    service.get_column_availability.side_effect = _fixed_entity_shape_error()
+    monkeypatch.setattr(columns_endpoint, "StageAwareColumnService", lambda: service)
+    authorized_project = SimpleNamespace(resource=SimpleNamespace(locator="test_project"))
+    request = SimpleNamespace(entity_draft={"type": "entity"}, source_columns=None)
+
+    with pytest.raises(HTTPException) as exc_info:
+        await columns_endpoint.get_stage_aware_column_availability(
+            project_name="test_project",
+            entity_name="child",
+            request=request,
+            authorized_project=authorized_project,
+        )
+
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.detail["error_code"] == "FIXED_ENTITY_SHAPE_INVALID"
+    assert exc_info.value.detail["context"]["entity"] == "data_provider"

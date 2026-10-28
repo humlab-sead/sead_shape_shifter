@@ -6,7 +6,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query
 from loguru import logger
 
-from backend.app.authorization.dependencies import get_principal
+from backend.app.authorization.dependencies import declare_authenticated_route, get_principal
 from backend.app.core.config import get_settings
 
 router = APIRouter()
@@ -19,6 +19,7 @@ LogType = Literal["app", "error"]
 
 
 @router.get("/logs/{log_type}", dependencies=[Depends(logs_authenticated_dependency)])
+@declare_authenticated_route
 async def get_logs(
     log_type: LogType,
     lines: int = Query(default=500, ge=1, le=10000, description="Number of lines to fetch from end of file"),
@@ -70,6 +71,7 @@ async def get_logs(
 
 
 @router.get("/logs/{log_type}/download", dependencies=[Depends(logs_authenticated_dependency)])
+@declare_authenticated_route
 async def download_logs(log_type: LogType) -> dict[str, str]:
     """Get download path for log file.
 
