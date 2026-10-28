@@ -113,10 +113,7 @@ class TestEntityValidation:
         assert target_model_response.status_code == 200, target_model_response.text
         target_model_result = target_model_response.json()
         assert target_model_result["is_valid"] is False
-        assert {
-            (error["entity"], error["code"])
-            for error in target_model_result["errors"]
-        } >= {
+        assert {(error["entity"], error["code"]) for error in target_model_result["errors"]} >= {
             ("sample", "MISSING_REQUIRED_COLUMN"),
             ("sample", "MISSING_REQUIRED_FOREIGN_KEY_TARGET"),
         }
