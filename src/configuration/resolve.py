@@ -533,7 +533,6 @@ class EnvironmentVariableResolver(DirectiveResolver):
         return ResolvedDirective(value=result, should_resolve_recursively=False)
 
 
-@ResolverRegistry.register(key="@value")
 class ReferenceResolver(DirectiveResolver):
     """Resolve @value: cross-references within the resolved configuration.
 
@@ -547,6 +546,8 @@ class ReferenceResolver(DirectiveResolver):
       - List concatenation: ``"@value: base + ['b', 'c']"``
       - YAML-list flattening: ``["@value: path1", "@value: path2", "col_a"]``
     """
+
+    key: str = "@value"
 
     @property
     def resolve_key(self) -> str:
