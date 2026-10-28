@@ -341,6 +341,39 @@ class TestCompositeProjectSpecification:
         assert len(spec.errors) == 0
         assert len(spec.warnings) > 0
 
+    def test_composite_validation_reports_misspelled_fk_key(self):
+        project_cfg = {
+            "metadata": {"type": "shapeshifter-project"},
+            "entities": {
+                "parent": {
+                    "type": "entity",
+                    "columns": ["ref_id"],
+                    "keys": ["ref_id"],
+                    "public_id": "parent_id",
+                },
+                "child": {
+                    "type": "entity",
+                    "columns": ["parent_ref"],
+                    "keys": ["parent_ref"],
+                    "public_id": "child_id",
+                    "foreign_keys": [
+                        {
+                            "entity": "parent",
+                            "local_keys": ["parent_ref"],
+                            "remote_keys": ["ref_id"],
+                            "contraints": {"cardinality": "many_to_one"},
+                        }
+                    ],
+                },
+            },
+        }
+        spec = CompositeProjectSpecification(project_cfg)
+
+        assert spec.is_satisfied_by() is False
+        issue = next(issue for issue in spec.errors if issue.field == "foreign_keys[0].contraints")
+        assert issue.entity == "child"
+        assert "foreign key #1" in issue.message
+
     def test_default_specifications_used(self, valid_project_cfg):
         """Test that default specifications are used."""
         spec = CompositeProjectSpecification(valid_project_cfg)

@@ -1,6 +1,7 @@
 """Tests for @value: reference resolution (ReferenceResolver)."""
 
-from src.configuration.resolve import ReferenceResolver
+from src.configuration.resolve import ReferenceResolver, resolve_directives
+from src.specifications.project import CompositeProjectSpecification
 
 
 def _resolve(data: dict) -> dict:
@@ -97,3 +98,47 @@ def test_replace_references_with_space_after_directive() -> None:
     assert resolved["no_space"] == ["a", "b", "c"]
     assert resolved["with_space"] == ["a", "b", "c"]
     assert resolved["list_op"] == ["a", "b", "c", "d"]
+
+
+def test_resolve_directives_flattens_list_references_and_preserves_other_forms() -> None:
+    data: dict = {
+        "base": ["id", "name"],
+        "columns": ["local_id", "@value: base", "created_at"],
+        "scalar": "label",
+        "scalar_copy": "@value: scalar",
+        "extended": "@value: base + ['created_at']",
+    }
+
+    resolved: dict = resolve_directives(data)
+
+    assert resolved["columns"] == ["local_id", "id", "name", "created_at"]
+    assert resolved["scalar_copy"] == "label"
+    assert resolved["extended"] == ["id", "name", "created_at"]
+
+
+def test_resolve_directives_list_reference_passes_project_validation() -> None:
+    project_cfg: dict = {
+        "metadata": {"type": "shapeshifter-project"},
+        "entities": {
+            "source": {
+                "type": "sql",
+                "columns": ["id", "name"],
+                "keys": ["id"],
+                "data_source": "db1",
+                "query": "SELECT id, name FROM source",
+            },
+            "child": {
+                "type": "sql",
+                "columns": ["@value: entities.source.columns"],
+                "keys": ["id"],
+                "data_source": "db1",
+                "query": "SELECT id FROM child",
+            },
+        },
+        "options": {"data_sources": {"db1": {"driver": "postgresql"}}},
+    }
+
+    resolved: dict = resolve_directives(project_cfg)
+    validator = CompositeProjectSpecification(resolved)
+
+    assert validator.is_satisfied_by()

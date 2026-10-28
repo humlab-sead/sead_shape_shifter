@@ -1,9 +1,9 @@
-"""Unit tests for merge_with_null_safety and related helpers in src/transforms/utility.py."""
+"""Unit tests for nonmatching-null merges and related helpers in src/transforms/utility.py."""
 
 import pandas as pd
 import pytest
 
-from src.transforms.utility import merge_with_null_safety
+from src.transforms.utility import merge_with_nonmatching_null_keys
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -15,7 +15,7 @@ def _df(data: dict) -> pd.DataFrame:
 
 
 # ===========================================================================
-# Basic merge behaviour (no null-safety, no coercion)
+# Basic merge behavior (no null-key match prevention or coercion)
 # ===========================================================================
 
 
@@ -25,7 +25,7 @@ class TestBasicMerge:
         left = _df({"id": [1, 2, 3], "val": ["a", "b", "c"]})
         right = _df({"id": [2, 3, 4], "label": ["B", "C", "D"]})
 
-        result = merge_with_null_safety(left, right, left_on=["id"], right_on=["id"], how="inner")
+        result = merge_with_nonmatching_null_keys(left, right, left_on=["id"], right_on=["id"], how="inner")
 
         assert list(result["id"]) == [2, 3]
         assert list(result["label"]) == ["B", "C"]
@@ -34,16 +34,16 @@ class TestBasicMerge:
         left = _df({"id": [1, 2, 3], "val": ["a", "b", "c"]})
         right = _df({"id": [2, 3], "label": ["B", "C"]})
 
-        result = merge_with_null_safety(left, right, left_on=["id"], right_on=["id"], how="left")
+        result = merge_with_nonmatching_null_keys(left, right, left_on=["id"], right_on=["id"], how="left")
 
         assert len(result) == 3
         assert pd.isna(result.loc[result["id"] == 1, "label"].iloc[0])
 
-    def test_cross_merge_bypasses_coercion_and_null_safety(self):
+    def test_cross_merge_bypasses_coercion_and_null_key_match_prevention(self):
         left = _df({"x": [1, 2]})
         right = _df({"y": ["a", "b"]})
 
-        result = merge_with_null_safety(left, right, how="cross")
+        result = merge_with_nonmatching_null_keys(left, right, how="cross")
 
         assert len(result) == 4  # 2 × 2
 
@@ -52,26 +52,26 @@ class TestBasicMerge:
         left = _df({"key": [1, 2], "val": ["a", "b"]})
         right = _df({"key": [1, 2], "extra": ["x", "y"]})
 
-        result = merge_with_null_safety(left, right, on="key", how="inner")
+        result = merge_with_nonmatching_null_keys(left, right, on="key", how="inner")
 
         assert list(result["val"]) == ["a", "b"]
 
 
 # ===========================================================================
-# Null-safe merge (sentinel-based null handling)
+# Prevent null keys from matching (sentinel-based handling)
 # ===========================================================================
 
 
-class TestNullSafeMerge:
+class TestNonmatchingNullKeysMerge:
 
     def test_nulls_in_left_key_do_not_match_nulls_in_right_key(self):
         left = _df({"lid": [1, None, 3], "val": ["a", "b", "c"]})
         right = _df({"rid": [1, None, 3], "label": ["A", "B", "C"]})
 
-        result = merge_with_null_safety(
+        result = merge_with_nonmatching_null_keys(
             left,
             right,
-            use_null_safe_merge=True,
+            prevent_null_key_matches=True,
             left_on=["lid"],
             right_on=["rid"],
             how="inner",
@@ -81,14 +81,14 @@ class TestNullSafeMerge:
         assert len(result) == 2
         assert set(result["lid"].dropna().tolist()) == {1.0, 3.0}
 
-    def test_null_safe_left_merge_keeps_unmatched_nulls(self):
+    def test_nonmatching_null_left_merge_keeps_unmatched_nulls(self):
         left = _df({"lid": [1, None], "val": ["a", "b"]})
         right = _df({"rid": [1], "label": ["A"]})
 
-        result = merge_with_null_safety(
+        result = merge_with_nonmatching_null_keys(
             left,
             right,
-            use_null_safe_merge=True,
+            prevent_null_key_matches=True,
             left_on=["lid"],
             right_on=["rid"],
             how="left",
@@ -100,12 +100,12 @@ class TestNullSafeMerge:
         assert len(null_row) == 1
         assert pd.isna(null_row["label"].iloc[0])
 
-    def test_allow_null_keys_true_enables_null_safe_merge(self):
-        """allow_null_keys=True should activate null-safe mode."""
+    def test_allow_null_keys_true_prevents_null_key_matches(self):
+        """allow_null_keys=True permits nulls without matching them across merge sides."""
         left = _df({"lid": [1, None]})
         right = _df({"rid": [1, None]})
 
-        result = merge_with_null_safety(
+        result = merge_with_nonmatching_null_keys(
             left,
             right,
             allow_null_keys=True,
@@ -118,14 +118,14 @@ class TestNullSafeMerge:
         assert result["lid"].iloc[0] == 1.0
 
     def test_no_nulls_takes_fast_path(self):
-        """Without nulls in keys, null-safe mode uses pd.merge directly."""
+        """Without nulls in keys, the helper uses pd.merge directly."""
         left = _df({"id": [1, 2, 3]})
         right = _df({"id": [1, 2, 3], "label": ["A", "B", "C"]})
 
-        result = merge_with_null_safety(
+        result = merge_with_nonmatching_null_keys(
             left,
             right,
-            use_null_safe_merge=True,
+            prevent_null_key_matches=True,
             left_on=["id"],
             right_on=["id"],
             how="inner",
@@ -137,10 +137,10 @@ class TestNullSafeMerge:
         left = _df({"id": [1, None]})
         right = _df({"id": [1, None]})
 
-        result = merge_with_null_safety(
+        result = merge_with_nonmatching_null_keys(
             left,
             right,
-            use_null_safe_merge=True,
+            prevent_null_key_matches=True,
             left_on=["id"],
             right_on=["id"],
             how="left",
@@ -149,15 +149,62 @@ class TestNullSafeMerge:
         sentinel_cols = [c for c in result.columns if "__nullsafe" in c or "__ss_null" in c]
         assert sentinel_cols == []
 
+    @pytest.mark.parametrize("how", ["left", "inner", "right", "outer"])
+    @pytest.mark.parametrize("suffixes", [None, ("", "_remote"), ("_left", "_right")])
+    def test_same_named_join_keys_are_not_duplicated(self, how: str, suffixes: tuple[str, str] | None):
+        left = _df({"id": [1, None], "left_value": ["matched", "left-only"]})
+        right = _df({"id": [1, None, 2], "right_value": ["matched", "right-null", "right-only"]})
+        merge_options = {"suffixes": suffixes} if suffixes is not None else {}
+
+        result = merge_with_nonmatching_null_keys(
+            left,
+            right,
+            prevent_null_key_matches=True,
+            left_on=["id"],
+            right_on=["id"],
+            how=how,
+            **merge_options,
+        )
+
+        assert [column for column in result.columns if column.startswith("id")] == ["id"]
+        assert 1 in result["id"].tolist()
+        assert result["id"].isna().sum() == (2 if how == "outer" else 1 if how in {"left", "right"} else 0)
+        if how in {"left", "outer"}:
+            left_only = result[result["left_value"] == "left-only"]
+            assert len(left_only) == 1
+            assert pd.isna(left_only["right_value"].iloc[0])
+        if how in {"right", "outer"}:
+            assert 2 in result["id"].tolist()
+            assert "right-only" in result["right_value"].tolist()
+
+    def test_composite_same_named_join_keys_are_not_duplicated(self):
+        left = _df({"location_type": ["region", "region"], "location_name": ["North", None]})
+        right = _df({"location_type": ["region", "region"], "location_name": ["North", None], "id": [10, 20]})
+
+        result = merge_with_nonmatching_null_keys(
+            left,
+            right,
+            prevent_null_key_matches=True,
+            left_on=["location_type", "location_name"],
+            right_on=["location_type", "location_name"],
+            how="left",
+            suffixes=("", "_location"),
+        )
+
+        assert "location_type_location" not in result.columns
+        assert "location_name_location" not in result.columns
+        assert result["id"].tolist()[0] == 10
+        assert pd.isna(result["id"].tolist()[1])
+
     def test_mismatched_key_counts_raises(self):
         left = _df({"a": [1], "b": [2]})
         right = _df({"x": [1]})
 
         with pytest.raises(ValueError, match="Mismatched merge key counts"):
-            merge_with_null_safety(
+            merge_with_nonmatching_null_keys(
                 left,
                 right,
-                use_null_safe_merge=True,
+                prevent_null_key_matches=True,
                 left_on=["a", "b"],
                 right_on=["x"],
                 how="inner",
@@ -176,7 +223,7 @@ class TestDtypeCoercion:
         left = _df({"group_id": ["1", "17", "1"], "name": ["a", "b", "c"]})
         right = _df({"group_id": [1, 17], "label": ["grp1", "grp17"]})
 
-        result = merge_with_null_safety(left, right, left_on=["group_id"], right_on=["group_id"], how="left")
+        result = merge_with_nonmatching_null_keys(left, right, left_on=["group_id"], right_on=["group_id"], how="left")
 
         assert len(result) == 3
         assert list(result["label"]) == ["grp1", "grp17", "grp1"]
@@ -186,7 +233,7 @@ class TestDtypeCoercion:
         left = _df({"id": [1, 2], "val": ["a", "b"]})
         right = _df({"id": ["1", "2"], "extra": ["x", "y"]})
 
-        result = merge_with_null_safety(left, right, left_on=["id"], right_on=["id"], how="inner")
+        result = merge_with_nonmatching_null_keys(left, right, left_on=["id"], right_on=["id"], how="inner")
 
         assert len(result) == 2
 
@@ -199,14 +246,14 @@ class TestDtypeCoercion:
         # The coercion safety guard should reject this, and the merge should
         # still raise (incompatible types) rather than silently drop rows.
         with pytest.raises(Exception):
-            merge_with_null_safety(left, right, left_on=["code"], right_on=["code"], how="inner")
+            merge_with_nonmatching_null_keys(left, right, left_on=["code"], right_on=["code"], how="inner")
 
     def test_coercion_preserves_null_values(self):
         """Coercion must not inflate NaN counts (safety guard)."""
         left = _df({"id": ["1", None, "3"], "val": ["a", "b", "c"]})
         right = _df({"id": [1, 2, 3], "label": ["A", "B", "C"]})
 
-        result = merge_with_null_safety(left, right, left_on=["id"], right_on=["id"], how="left")
+        result = merge_with_nonmatching_null_keys(left, right, left_on=["id"], right_on=["id"], how="left")
 
         assert len(result) == 3
         # id=None row should have no label match
@@ -219,7 +266,7 @@ class TestDtypeCoercion:
         left = _df({"id": [1, 2, 3]})
         right = _df({"id": [2, 3, 4], "label": ["B", "C", "D"]})
 
-        result = merge_with_null_safety(left, right, left_on=["id"], right_on=["id"], how="inner")
+        result = merge_with_nonmatching_null_keys(left, right, left_on=["id"], right_on=["id"], how="inner")
 
         assert len(result) == 2
 
@@ -228,16 +275,16 @@ class TestDtypeCoercion:
         left = _df({"code": ["A", "B", "C"]})
         right = _df({"code": ["B", "C", "D"], "label": ["b", "c", "d"]})
 
-        result = merge_with_null_safety(left, right, left_on=["code"], right_on=["code"], how="inner")
+        result = merge_with_nonmatching_null_keys(left, right, left_on=["code"], right_on=["code"], how="inner")
 
         assert list(result["label"]) == ["b", "c"]
 
-    def test_coercion_combined_with_null_safe_merge(self):
-        """Coercion and null-safety work together correctly."""
+    def test_coercion_combined_with_nonmatching_null_keys(self):
+        """Dtype coercion and null-key match prevention work together."""
         left = _df({"id": ["1", None, "3"]})
         right = _df({"id": [1, 2, 3], "label": ["A", "B", "C"]})
 
-        result = merge_with_null_safety(
+        result = merge_with_nonmatching_null_keys(
             left,
             right,
             allow_null_keys=True,
@@ -255,7 +302,7 @@ class TestDtypeCoercion:
         left = _df({"a": ["1", "2"], "b": ["10", "20"], "val": ["x", "y"]})
         right = _df({"a": [1, 2], "b": [10, 20], "extra": ["X", "Y"]})
 
-        result = merge_with_null_safety(left, right, left_on=["a", "b"], right_on=["a", "b"], how="inner")
+        result = merge_with_nonmatching_null_keys(left, right, left_on=["a", "b"], right_on=["a", "b"], how="inner")
 
         assert len(result) == 2
         assert list(result["extra"]) == ["X", "Y"]

@@ -152,8 +152,8 @@ def test_link_foreign_key_left_join_keeps_null_local_keys_unmatched():
     assert all(column not in linked_df.columns for column in ["_merge_left_key_0", "_merge_right_key_0"])
 
 
-def test_link_foreign_key_uses_merge_with_null_safety(monkeypatch: pytest.MonkeyPatch):
-    """Lookup-style left joins should enable null-safe merge semantics by default."""
+def test_link_foreign_key_prevents_null_key_matches_by_default(monkeypatch: pytest.MonkeyPatch):
+    """Lookup-style left joins should prevent null-key matches by default."""
     project = ShapeShiftProject(
         cfg={
             "entities": {
@@ -177,14 +177,14 @@ def test_link_foreign_key_uses_merge_with_null_safety(monkeypatch: pytest.Monkey
     remote_df = pd.DataFrame({"system_id": [7], "remote_code": ["A"], "name": ["alpha"]})
     captured: dict[str, object] = {}
 
-    def fake_merge_with_null_safety(*, local_df, remote_df, allow_null_keys, **opts):
+    def fake_merge_with_nonmatching_null_keys(*, local_df, remote_df, allow_null_keys, **opts):
         captured["local_df"] = local_df.copy()
         captured["remote_df"] = remote_df.copy()
         captured["allow_null_keys"] = allow_null_keys
         captured["opts"] = opts
         return pd.DataFrame({"system_id": [100], "remote_code": ["A"], "value": ["matched"], "remote_id": [7]})
 
-    monkeypatch.setattr("src.transforms.link.merge_with_null_safety", fake_merge_with_null_safety)
+    monkeypatch.setattr("src.transforms.link.merge_with_nonmatching_null_keys", fake_merge_with_nonmatching_null_keys)
 
     linker = ForeignKeyLinker(project=project, table_store=TableStore({"local": local_df, "remote": remote_df}))
     linked_df = linker.link_foreign_key(local_df, fk_cfg, remote_df)
@@ -195,7 +195,7 @@ def test_link_foreign_key_uses_merge_with_null_safety(monkeypatch: pytest.Monkey
         "suffixes": ("", "_remote"),
         "left_on": ["remote_code"],
         "right_on": ["remote_code"],
-        "use_null_safe_merge": True,
+        "prevent_null_key_matches": True,
     }
     assert linked_df["remote_id"].tolist() == [7]
 
@@ -231,19 +231,19 @@ def test_link_foreign_key_passes_strict_null_policy_to_merge_helper(monkeypatch:
     remote_df = pd.DataFrame({"system_id": [7], "remote_code": ["A"], "name": ["alpha"]})
     captured: dict[str, object] = {}
 
-    def fake_merge_with_null_safety(*, local_df, remote_df, allow_null_keys, **opts):
+    def fake_merge_with_nonmatching_null_keys(*, local_df, remote_df, allow_null_keys, **opts):
         captured["allow_null_keys"] = allow_null_keys
         captured["opts"] = opts
         return pd.DataFrame({"system_id": [100], "remote_code": ["A"], "value": ["matched"], "remote_id": [7]})
 
-    monkeypatch.setattr("src.transforms.link.merge_with_null_safety", fake_merge_with_null_safety)
+    monkeypatch.setattr("src.transforms.link.merge_with_nonmatching_null_keys", fake_merge_with_nonmatching_null_keys)
 
     linker = ForeignKeyLinker(project=project, table_store=TableStore({"local": local_df, "remote": remote_df}))
     linker.link_foreign_key(local_df, fk_cfg, remote_df)
 
     assert captured["allow_null_keys"] is False
     assert isinstance(captured["opts"], dict)
-    assert captured["opts"]["use_null_safe_merge"] is False
+    assert captured["opts"]["prevent_null_key_matches"] is False
 
 
 @pytest.mark.parametrize(
@@ -301,7 +301,7 @@ def test_null_key_components_match_only_when_null_keys_equal_is_enabled(constrai
     assert linked_df["site_id"].tolist() == expected_site_ids
 
 
-def test_link_foreign_key_non_lookup_join_does_not_enable_null_safe_merge_by_default(monkeypatch: pytest.MonkeyPatch):
+def test_link_foreign_key_non_lookup_join_does_not_prevent_null_key_matches_by_default(monkeypatch: pytest.MonkeyPatch):
     """Identity-style joins should stay on the strict merge path when null policy is omitted."""
     project = ShapeShiftProject(
         cfg={
@@ -326,19 +326,19 @@ def test_link_foreign_key_non_lookup_join_does_not_enable_null_safe_merge_by_def
     remote_df = pd.DataFrame({"system_id": [7], "remote_id": [1], "name": ["alpha"]})
     captured: dict[str, object] = {}
 
-    def fake_merge_with_null_safety(*, local_df, remote_df, allow_null_keys, **opts):
+    def fake_merge_with_nonmatching_null_keys(*, local_df, remote_df, allow_null_keys, **opts):
         captured["allow_null_keys"] = allow_null_keys
         captured["opts"] = opts
         return pd.DataFrame({"system_id": [100], "remote_id": [1], "value": ["matched"]})
 
-    monkeypatch.setattr("src.transforms.link.merge_with_null_safety", fake_merge_with_null_safety)
+    monkeypatch.setattr("src.transforms.link.merge_with_nonmatching_null_keys", fake_merge_with_nonmatching_null_keys)
 
     linker = ForeignKeyLinker(project=project, table_store=TableStore({"local": local_df, "remote": remote_df}))
     linker.link_foreign_key(local_df, fk_cfg, remote_df)
 
     assert captured["allow_null_keys"] is False
     assert isinstance(captured["opts"], dict)
-    assert captured["opts"]["use_null_safe_merge"] is False
+    assert captured["opts"]["prevent_null_key_matches"] is False
 
 
 def test_lookup_left_join_null_local_key_does_not_match_null_remote_key():
@@ -388,6 +388,11 @@ def test_lookup_left_join_null_local_key_does_not_match_null_remote_key():
 
     assert linked_df["remote_id"].tolist()[0] == 7
     assert pd.isna(linked_df["remote_id"].tolist()[1])
+    assert "remote_code_remote" not in linked_df.columns
+
+    output_df = project.get_table("local").drop_fk_columns(linked_df)
+    assert "remote_code" in output_df.columns
+    assert "remote_code_remote" not in output_df.columns
 
 
 def test_lookup_inner_join_retains_strict_null_key_validation():
