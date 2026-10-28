@@ -6,6 +6,7 @@ import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 
 import ProjectDetailView from '../ProjectDetailView.vue'
+import type { ValidationResult } from '@/types'
 
 const mockGraphState = vi.hoisted(() => {
   const removeNodeClass = vi.fn()
@@ -28,7 +29,16 @@ const mockGraphState = vi.hoisted(() => {
     getCurrentPositions: vi.fn(() => ({})),
     fetchDependencies: vi.fn(async () => undefined),
     fetchEntities: vi.fn(async () => undefined),
-    validate: vi.fn(async () => undefined),
+    validate: vi.fn(
+      async (_name: string): Promise<ValidationResult> => ({
+        is_valid: true,
+        errors: [],
+        warnings: [],
+        info: [],
+        error_count: 0,
+        warning_count: 0,
+      })
+    ),
     validateEntity: vi.fn(async () => undefined),
     previewEntity: vi.fn(async () => null),
     selectProject: vi.fn(async () => undefined),
@@ -50,6 +60,10 @@ const mockProjectState = vi.hoisted(() => ({
   refreshProject: vi.fn(async () => undefined),
   getRawYaml: vi.fn(async () => ({ yaml_content: 'metadata: {}\nentities: {}\n' })),
   getTargetModelYaml: vi.fn(async () => ({ yaml_content: 'model: {}\nentities: {}\n' })),
+}))
+
+const mockTaskStatusState = vi.hoisted(() => ({
+  error: null as string | null,
 }))
 
 vi.mock('vue-router', () => ({
@@ -250,7 +264,7 @@ vi.mock('@/stores/taskStatus', () => ({
     markOngoing: vi.fn(async () => true),
     resetStatus: vi.fn(async () => true),
     markTodo: vi.fn(async () => true),
-    error: null,
+    error: mockTaskStatusState.error,
   }),
 }))
 
@@ -335,6 +349,8 @@ describe('ProjectDetailView', () => {
     window.localStorage.clear()
     window.localStorage.setItem('shapeshifter.graph.colorBy.arbodat', 'type')
     mockProjectState.selectedProjectRef.value = { metadata: {}, options: {} }
+    mockTaskStatusState.error = null
+    mockGraphState.validate.mockReset()
     mockProjectState.refreshProject.mockReset()
     mockProjectState.getRawYaml.mockReset()
     mockProjectState.getRawYaml.mockResolvedValue({ yaml_content: 'metadata: {}\nentities: {}\n' })
@@ -398,6 +414,67 @@ describe('ProjectDetailView', () => {
     expect(wrapper.text()).toContain('Load-Time Normalizations Detected')
     expect(wrapper.text()).toContain('Save the project to persist these changes.')
     expect(wrapper.text()).toContain("Entity 'method', row 1, column 'method_id': normalized '53' to 53 (int)")
+  })
+
+  it('renders project load errors with their suggested fixes', async () => {
+    mockProjectState.selectedProjectRef.value = {
+      metadata: { name: 'arbodat' },
+      options: {},
+      entities: {},
+      load_errors: [
+        {
+          severity: 'error',
+          code: 'FIXED_ENTITY_VALUE_INVALID',
+          message: "Entity 'method' has invalid fixed-entity values.",
+          suggestion: 'Correct the invalid value or change the declared column type.',
+        },
+      ],
+    }
+
+    const wrapper = mountProjectDetailView()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Project Load Errors')
+    expect(wrapper.text()).toContain("Entity 'method' has invalid fixed-entity values.")
+    expect(wrapper.text()).toContain('Correct the invalid value or change the declared column type.')
+  })
+
+  it('renders task status errors', async () => {
+    mockTaskStatusState.error = 'Could not load task status. Check the project configuration.'
+
+    const wrapper = mountProjectDetailView()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Task Status Unavailable')
+    expect(wrapper.text()).toContain('Could not load task status. Check the project configuration.')
+  })
+
+  it('shows validation errors instead of a success notification', async () => {
+    mockGraphState.validate.mockResolvedValue({
+      is_valid: false,
+      errors: [
+        {
+          severity: 'error',
+          message: 'Target model could not be loaded.',
+          suggestion: 'Check the configured target-model path.',
+        },
+      ],
+      warnings: [],
+      info: [],
+      error_count: 1,
+      warning_count: 0,
+    })
+
+    const wrapper = mountProjectDetailView()
+    await flushPromises()
+    await (wrapper.vm as any).handleValidate()
+    await flushPromises()
+
+    expect((wrapper.vm as any).showErrorSnackbar).toBe(true)
+    expect((wrapper.vm as any).errorMessage).toBe(
+      'Target model could not be loaded. — Check the configured target-model path.'
+    )
+    expect((wrapper.vm as any).showSuccessSnackbar).toBe(false)
   })
 
   it('shows the target-model yaml tab for project-local target models', async () => {

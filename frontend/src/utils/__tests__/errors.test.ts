@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { formatErrorMessage, parseStructuredError } from '../errors'
+import { formatErrorMessage, getErrorMessage, parseStructuredError } from '../errors'
 
 describe('Enhanced Error Parsing', () => {
   describe('formatErrorMessage', () => {
@@ -63,6 +63,26 @@ describe('Enhanced Error Parsing', () => {
       expect(result.errorType).toBe('ValidationError')
       expect(result.tips).toEqual(['Check the fixed entity columns and values.'])
       expect(structuredError?.error_code).toBe('FIXED_ENTITY_SHAPE_INVALID')
+    })
+
+    it('includes an actionable tip in the single-line error message', () => {
+      const axiosError = {
+        isAxiosError: true,
+        response: {
+          data: {
+            detail: {
+              error_type: 'ValidationError',
+              message: 'Project configuration could not be prepared.',
+              tips: ['Correct the fixed-entity values and retry validation.'],
+              recoverable: true,
+            },
+          },
+        },
+      }
+
+      expect(getErrorMessage(axiosError)).toBe(
+        'Project configuration could not be prepared. — Correct the fixed-entity values and retry validation.'
+      )
     })
 
     it('should parse structured constraint violations for FK missing-key guidance', () => {

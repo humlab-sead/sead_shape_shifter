@@ -59,6 +59,78 @@ class TestEntityValidation:
         assert "errors" in data
         assert "warnings" in data
 
+    async def test_data_validation_returns_fixed_entity_load_errors(
+        self, tmp_path, monkeypatch, reset_services, sample_entity_data, authorized_client
+    ):
+        """Data validation returns load-time coercion errors instead of an empty successful result."""
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        create_response = await authorized_client.post(
+            "/api/v1/projects",
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {"sample": sample_entity_data},
+            },
+        )
+        assert create_response.status_code == 201, create_response.text
+
+        project_file = tmp_path / "test_project" / "shapeshifter.yml"
+        project_yaml = yaml.safe_load(project_file.read_text(encoding="utf-8"))
+        project_yaml["entities"]["method"] = {
+            "type": "fixed",
+            "keys": ["method_id"],
+            "columns": ["method_id"],
+            "column_types": {"method_id": "int"},
+            "values": [["not-an-integer"]],
+        }
+        project_file.write_text(yaml.safe_dump(project_yaml, sort_keys=False), encoding="utf-8")
+
+        reload_response = await authorized_client.post("/api/v1/projects/test_project/refresh")
+        assert reload_response.status_code == 200, reload_response.text
+        assert reload_response.json()["load_errors"][0]["code"] == "FIXED_ENTITY_VALUE_INVALID"
+
+        response = await authorized_client.post("/api/v1/projects/test_project/validate/data")
+
+        assert response.status_code == 200, response.text
+        result = response.json()
+        assert result["is_valid"] is False
+        assert result["status"] == "failed"
+        assert any(issue["code"] == "FIXED_ENTITY_VALUE_INVALID" for issue in result["errors"])
+        assert any(issue["suggestion"] for issue in result["errors"])
+
+    async def test_missing_target_model_reference_is_not_reported_as_valid(
+        self, tmp_path, monkeypatch, reset_services, sample_entity_data, authorized_client
+    ):
+        """Conformance validation reports missing configured files as errors."""
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        create_response = await authorized_client.post(
+            "/api/v1/projects",
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {"sample": sample_entity_data},
+            },
+        )
+        assert create_response.status_code == 201, create_response.text
+
+        project_file = tmp_path / "test_project" / "shapeshifter.yml"
+        project_yaml = yaml.safe_load(project_file.read_text(encoding="utf-8"))
+        project_yaml["metadata"]["target_model"] = "@load: missing-target-model.yml"
+        project_file.write_text(yaml.safe_dump(project_yaml, sort_keys=False), encoding="utf-8")
+
+        reload_response = await authorized_client.post("/api/v1/projects/test_project/refresh")
+        assert reload_response.status_code == 200, reload_response.text
+
+        response = await authorized_client.post("/api/v1/projects/test_project/validate/target-model")
+
+        assert response.status_code == 200, response.text
+        result = response.json()
+        assert result["is_valid"] is False
+        assert result["errors"][0]["code"] == "TARGET_MODEL_LOAD_FAILED"
+        assert result["errors"][0]["suggestion"]
+
     async def test_incomplete_target_entity_reports_remaining_gaps(self, tmp_path, monkeypatch, reset_services, authorized_client):
         """Structural validation accepts the saved entity while target validation reports its missing requirements."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)

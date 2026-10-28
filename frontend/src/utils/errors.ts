@@ -169,11 +169,12 @@ export function parseStructuredError(error: unknown): StructuredError | null {
 }
 
 /**
- * Get a single line error message (for snackbars, etc.)
+ * Get a single-line error message and the first actionable tip, when available.
  */
 export function getErrorMessage(error: unknown): string {
   const formatted = formatErrorMessage(error)
-  return formatted.message
+  const firstTip = formatted.tips?.[0]
+  return firstTip ? `${formatted.message} — ${firstTip}` : formatted.message
 }
 
 /**

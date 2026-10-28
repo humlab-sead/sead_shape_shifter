@@ -30,6 +30,7 @@ from loguru import logger
 from backend.app.core.config import settings
 from backend.app.exceptions import ConfigurationError
 from backend.app.mappers.entity_config_mapper import EntityConfigMapper, EntityConfigMapperFactory, EntityMapperContext
+from backend.app.mappers.project_load_issue_collectors import PROJECT_LOAD_ISSUE_COLLECTORS
 from backend.app.middleware.correlation import get_correlation_id
 from backend.app.models import (
     Entity,
@@ -43,7 +44,6 @@ from backend.app.models.mapping_sync import (
     MappingSyncPending,
 )
 from backend.app.utils import convert_ruamel_types
-from backend.app.utils.fixed_entity_errors import map_fixed_entity_shape_error
 from src.configuration import find_unresolved_directives
 from src.model import ShapeShiftProject, TableConfig
 from src.path_resolution import resolve_contained_path
@@ -56,17 +56,6 @@ from src.reconciliation.fixed_entity_mapping_changes import (
 from src.reconciliation.mapping_manager import MappingManager
 from src.reconciliation.mapping_model import EntityMapping, EntityType, Link, MappingCatalog
 from src.reconciliation.mapping_validator import SidecarValidationError, validate_entity_mapping, validate_local_key
-from src.types.fixed_entity_types import (
-    FixedEntityColumnTypeDeclarationError,
-    FixedEntityNormalizationWarning,
-    FixedEntityShapeValidationError,
-    FixedEntityTypeCoercer,
-    FixedEntityTypeConvention,
-    FixedEntityTypeConventionDeclarationError,
-    FixedEntityTypeValidationError,
-    format_fixed_entity_normalization_warning,
-    normalize_fixed_entity_type_conventions,
-)
 
 
 class ProjectMapper:
@@ -92,99 +81,6 @@ class ProjectMapper:
                 validate_local_key(entity_mapping, entity_config)
             except SidecarValidationError as exc:
                 raise ConfigurationError(message=str(exc), specification="MappingSidecarSpecification") from exc
-
-    @staticmethod
-    def _collect_load_warnings(cfg_dict: dict[str, Any], project_name: str, filename: str | None = None) -> list[str]:
-        """Collect non-fatal fixed-entity normalization warnings for project load responses."""
-        warnings: list[str] = []
-        source_name = filename or project_name
-        try:
-            conventions: list[FixedEntityTypeConvention] = normalize_fixed_entity_type_conventions(cfg_dict.get("options", {}))
-        except FixedEntityTypeConventionDeclarationError as exc:
-            fixed_entity_names = [
-                entity_name
-                for entity_name, entity_dict in cfg_dict.get("entities", {}).items()
-                if isinstance(entity_dict, dict) and entity_dict.get("type") == "fixed"
-            ]
-            if fixed_entity_names:
-                for entity_name in fixed_entity_names:
-                    ProjectMapper._log_load_error(project_name, source_name, entity_name, exc)
-            else:
-                ProjectMapper._log_load_error(project_name, source_name, None, exc)
-            return warnings
-
-        for entity_name, entity_dict in cfg_dict.get("entities", {}).items():
-            if not isinstance(entity_dict, dict) or entity_dict.get("type") != "fixed":
-                continue
-
-            columns = entity_dict.get("columns")
-            if not isinstance(columns, list) or not columns:
-                continue
-
-            try:
-                _coerced_values, normalization_warnings = FixedEntityTypeCoercer.coerce_fixed_entity_values_with_warnings(
-                    entity_dict,
-                    columns,
-                    entity_name,
-                    conventions,
-                )
-            except (FixedEntityColumnTypeDeclarationError, FixedEntityShapeValidationError, FixedEntityTypeValidationError) as exc:
-                ProjectMapper._log_load_error(project_name, source_name, entity_name, exc)
-                continue
-
-            for warning in normalization_warnings:
-                warnings.append(format_fixed_entity_normalization_warning(warning))
-                ProjectMapper._log_load_warning(project_name, source_name, warning)
-
-        return warnings
-
-    @staticmethod
-    def _log_load_error(
-        project_name: str,
-        source_name: str,
-        entity_name: str | None,
-        error: (
-            FixedEntityColumnTypeDeclarationError
-            | FixedEntityTypeConventionDeclarationError
-            | FixedEntityShapeValidationError
-            | FixedEntityTypeValidationError
-        ),
-    ) -> None:
-        """Log a fixed-entity validation error without preventing project editing."""
-        reason = str(error)
-        if isinstance(error, FixedEntityTypeValidationError):
-            issue_details = "; ".join(
-                f"row {issue.row_index + 1}, column '{issue.column_name}': {issue.reason} "
-                f"(value {issue.raw_value!r}, expected {issue.expected_type})"
-                for issue in error.issues
-            )
-            reason = f"{reason}: {issue_details}"
-
-        entity_detail = f" entity='{entity_name}'" if entity_name is not None else ""
-        logger.error(
-            "Fixed-entity validation error on load: project='{}' source='{}'{} error_type='{}' reason={!r}",
-            project_name,
-            source_name,
-            entity_detail,
-            type(error).__name__,
-            reason,
-        )
-
-    @staticmethod
-    def _log_load_warning(project_name: str, source_name: str, warning: FixedEntityNormalizationWarning) -> None:
-        """Emit structured log details for a load-time fixed-entity normalization."""
-        logger.warning(
-            "Fixed entity normalization on load: project='{}' source='{}' entity='{}' row={} "
-            "column='{}' raw_value={!r} normalized_value={!r} target_type='{}'",
-            project_name,
-            source_name,
-            warning.entity_name,
-            warning.row_index + 1,
-            warning.column_name,
-            warning.raw_value,
-            warning.normalized_value,
-            warning.expected_type,
-        )
 
     @staticmethod
     def to_api_config(cfg_dict: dict[str, Any], name: str, filename: str | None = None) -> Project:
@@ -241,14 +137,15 @@ class ProjectMapper:
         # Map task_list (preserve as-is)
         task_list = cfg_dict.get("task_list")
 
-        load_warnings = ProjectMapper._collect_load_warnings(cfg_dict, name, filename)
+        load_issues = PROJECT_LOAD_ISSUE_COLLECTORS.collect(cfg_dict, name, filename)
 
         return Project(
             metadata=metadata,
             entities=entities,
             options=options,
             task_list=task_list,
-            load_warnings=load_warnings,
+            load_warnings=load_issues.warnings,
+            load_errors=load_issues.errors,
         )
 
     @staticmethod
@@ -342,10 +239,7 @@ class ProjectMapper:
             entity_input = dict(entity_dict)
             entity_input.setdefault("name", entity_name)
             mapper_context = EntityMapperContext(project_name=project_name, project_options=project_options)
-            try:
-                transformed = mapper.to_core(entity_input, mapper_context)
-            except FixedEntityShapeValidationError as error:
-                raise map_fixed_entity_shape_error(error, entity_name) from error
+            transformed = mapper.to_core(entity_input, mapper_context)
             transformed.pop("name", None)
             entity_dict.update(transformed)  # type: ignore[arg-type]
 
