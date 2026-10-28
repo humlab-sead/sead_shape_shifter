@@ -113,6 +113,7 @@ def get_validate_fk_service(
     description="Get a preview of entity data with all transformations applied",
     responses={
         200: {"description": "Preview data retrieved successfully"},
+        400: {"description": "Entity configuration or data is invalid"},
         404: {"description": "Project or entity not found"},
         500: {"description": "Preview generation failed"},
     },

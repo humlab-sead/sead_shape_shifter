@@ -39,6 +39,32 @@ describe('Enhanced Error Parsing', () => {
       expect(result.recoverable).toBe(true)
     })
 
+    it('should parse structured errors nested in FastAPI detail', () => {
+      const axiosError = {
+        isAxiosError: true,
+        response: {
+          data: {
+            detail: {
+              error_type: 'ValidationError',
+              error_code: 'FIXED_ENTITY_SHAPE_INVALID',
+              message: "Entity 'data_provider' row 0 has an invalid number of values.",
+              tips: ['Check the fixed entity columns and values.'],
+              context: { entity: 'data_provider' },
+              recoverable: true,
+            },
+          },
+        },
+      }
+
+      const result = formatErrorMessage(axiosError)
+      const structuredError = parseStructuredError(axiosError)
+
+      expect(result.message).toBe("Entity 'data_provider' row 0 has an invalid number of values.")
+      expect(result.errorType).toBe('ValidationError')
+      expect(result.tips).toEqual(['Check the fixed entity columns and values.'])
+      expect(structuredError?.error_code).toBe('FIXED_ENTITY_SHAPE_INVALID')
+    })
+
     it('should parse structured constraint violations for FK missing-key guidance', () => {
       const axiosError = {
         isAxiosError: true,
@@ -176,6 +202,23 @@ describe('Enhanced Error Parsing', () => {
       expect(result!.error_type).toBe('MissingDependencyError')
       expect(result!.message).toContain('non-existent entity')
       expect(result!.recoverable).toBe(true)
+    })
+
+    it('should extract structured errors nested in FastAPI detail', () => {
+      const axiosError = {
+        response: {
+          data: {
+            detail: {
+              error_type: 'ValidationError',
+              message: 'Fixed entity values do not match the declared shape.',
+              tips: ['Review the fixed entity.'],
+              recoverable: true,
+            },
+          },
+        },
+      }
+
+      expect(parseStructuredError(axiosError)?.error_type).toBe('ValidationError')
     })
 
     it('should return null for non-structured errors', () => {

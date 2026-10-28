@@ -18,6 +18,7 @@ router = APIRouter()
 @router.post(
     "/projects/{project_name}/entities/{entity_name}/column-availability",
     response_model=ColumnAvailabilityResponse,
+    responses={400: {"description": "Entity configuration is invalid"}},
 )
 @handle_endpoint_errors
 async def get_stage_aware_column_availability(

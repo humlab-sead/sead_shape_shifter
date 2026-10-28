@@ -489,14 +489,13 @@ class FixedEntityTypeCoercer:
     ) -> tuple[list[list[Any]], list[FixedEntityNormalizationWarning]]:
         """Coerce all values in a fixed entity to correct types.
 
-        Implements strict precedence:
-        1. Shape validation runs first (hard gate)
-        2. Type coercion runs second on shape-valid rows
-        3. Non-coercible non-empty values raise error
+        Accepts rows with either the declared data columns or the full managed
+        identity columns followed by the declared data columns. Shape validation
+        runs before type coercion.
 
         Args:
             entity_data: Entity configuration dict (must contain 'values' key)
-            columns: List of column names (defines expected column count)
+            columns: List of declared data column names
             entity_name: Entity name (for error messages)
 
         Returns:
@@ -530,16 +529,27 @@ class FixedEntityTypeCoercer:
                 f"based on declared columns"
             )
 
-        # Phase 1: Shape validation (hard gate)
-        for row_idx, row in enumerate(normalized_values):
-            if len(row) != len(columns):
+        public_id = entity_data.get("public_id") or entity_data.get("surrogate_id")
+        full_columns = build_fixed_entity_full_columns(columns, public_id if isinstance(public_id, str) else None)
+        row_columns = columns
+        if normalized_values:
+            row_length = len(normalized_values[0])
+            if row_length == len(full_columns) and row_length != len(columns):
+                row_columns = full_columns
+            elif row_length != len(columns):
                 raise FixedEntityShapeValidationError(
-                    f"Entity '{entity_name}' row {row_idx} has {len(row)} values; " f"expected {len(columns)} based on declared columns"
+                    f"Entity '{entity_name}' row 0 has {row_length} values; expected {len(columns)} based on declared columns "
+                    f"or {len(full_columns)} including identity columns"
                 )
+            for row_idx, row in enumerate(normalized_values[1:], start=1):
+                if len(row) != row_length:
+                    raise FixedEntityShapeValidationError(
+                        f"Entity '{entity_name}' row {row_idx} has {len(row)} values; expected consistent row length {row_length}"
+                    )
 
         normalized_column_types = normalize_fixed_entity_column_types(
             entity_name,
-            columns,
+            row_columns,
             entity_data.get("column_types"),
         )
 
@@ -551,7 +561,7 @@ class FixedEntityTypeCoercer:
         for row_idx, row in enumerate(normalized_values):
             coerced_row: list[Any] = []
             for col_idx, value in enumerate(row):
-                col_name = columns[col_idx]
+                col_name = row_columns[col_idx]
                 target_type_name = resolve_fixed_entity_runtime_type(col_name, normalized_column_types, conventions)
 
                 if target_type_name is None:

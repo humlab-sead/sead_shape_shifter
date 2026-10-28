@@ -21,8 +21,29 @@ function normalizeForeignKeyLanguage(text: string | undefined): string | undefin
 /**
  * Type guard to check if error response is a structured error
  */
-function isStructuredError(data: any): data is StructuredError {
-  return data && typeof data === 'object' && 'error_type' in data && 'message' in data && 'recoverable' in data
+function isStructuredError(data: unknown): data is StructuredError {
+  return (
+    data !== null &&
+    typeof data === 'object' &&
+    'error_type' in data &&
+    typeof data.error_type === 'string' &&
+    'message' in data &&
+    typeof data.message === 'string' &&
+    'recoverable' in data &&
+    typeof data.recoverable === 'boolean'
+  )
+}
+
+function getStructuredError(data: unknown): StructuredError | null {
+  if (isStructuredError(data)) {
+    return data
+  }
+
+  if (data !== null && typeof data === 'object' && 'detail' in data && isStructuredError(data.detail)) {
+    return data.detail
+  }
+
+  return null
 }
 
 /**
@@ -43,13 +64,14 @@ function extractErrorDetails(error: any): FormattedError {
     const data = error.response.data
 
     // **Priority 1: Structured domain exception format**
-    if (isStructuredError(data)) {
+    const structuredData = getStructuredError(data)
+    if (structuredData) {
       return {
-        message: normalizeForeignKeyLanguage(data.message) ?? data.message,
-        errorType: data.error_type,
-        tips: data.tips?.map((tip) => normalizeForeignKeyLanguage(tip) ?? tip),
-        context: data.context,
-        recoverable: data.recoverable,
+        message: normalizeForeignKeyLanguage(structuredData.message) ?? structuredData.message,
+        errorType: structuredData.error_type,
+        tips: structuredData.tips?.map((tip) => normalizeForeignKeyLanguage(tip) ?? tip),
+        context: structuredData.context,
+        recoverable: structuredData.recoverable,
       }
     }
 
@@ -141,9 +163,7 @@ export function formatErrorMessage(error: unknown): FormattedError {
 export function parseStructuredError(error: unknown): StructuredError | null {
   if (error && typeof error === 'object' && 'response' in error) {
     const axiosError = error as AxiosError
-    if (axiosError.response?.data && isStructuredError(axiosError.response.data)) {
-      return axiosError.response.data
-    }
+    return getStructuredError(axiosError.response?.data)
   }
   return null
 }
