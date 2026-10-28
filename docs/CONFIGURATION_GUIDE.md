@@ -1591,10 +1591,17 @@ foreign_keys:
       require_unique_left: bool
       require_unique_right: bool
       allow_null_keys: bool
+      null_keys_equal: bool
       
       # Row Count
       allow_row_decrease: bool
 ```
+
+Structural validation requires `constraints` to be a mapping. It checks constraint names and value types, and reports unknown fields in the
+foreign key configuration with the entity name and foreign key index. Supported cardinality values are `one_to_one`, `many_to_one`,
+`one_to_many`, and `many_to_many`; the other constraint values must be booleans.
+
+Validation checks only the entity's active `foreign_keys` configuration. It does not inspect or modify foreign keys saved in `materialized.source_state`. Those settings are validated when they are restored to the active entity configuration.
 
 #### Cardinality Constraints
 
