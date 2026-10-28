@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from loguru import logger
 
 from backend.app.api.dependencies import get_schema_service
+from backend.app.authorization.dependencies import declare_authenticated_route
 from backend.app.models.suggestion import EntitySuggestions, SuggestionsRequest
 from backend.app.services.schema_service import SchemaIntrospectionService
 from backend.app.services.suggestion_service import SuggestionService, get_suggestion_service
@@ -17,6 +18,7 @@ def get_suggestion_service_dep(schema_service: SchemaIntrospectionService = Depe
 
 
 @router.post("/analyze", summary="Analyze entities and generate suggestions")
+@declare_authenticated_route
 async def analyze_entities(
     request: SuggestionsRequest,
     schema_service: SchemaIntrospectionService = Depends(get_schema_service),
@@ -70,6 +72,7 @@ async def analyze_entities(
 
 
 @router.post("/entity", summary="Get suggestions for a single entity")
+@declare_authenticated_route
 async def suggest_for_entity(
     entity: dict,
     all_entities: list[dict],

@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 
 from backend.app.authorization.dependencies import (
     authorize_shared_data_source_reference,
+    declare_authenticated_route,
     get_authorization_service,
     get_principal,
     require_active_project,
@@ -22,11 +23,18 @@ from backend.app.authorization.models import Action, AuthorizedResource, Princip
 from backend.app.authorization.service import AuthorizationService
 from backend.app.core.config import settings
 from backend.app.mappers.project_name_mapper import ProjectNameMapper
-from backend.app.models.project import Project, ProjectFileInfo, ProjectMetadata, TargetModelFileOption
+from backend.app.models.project import (
+    Project,
+    ProjectFileInfo,
+    ProjectMetadata,
+    TargetModelEntityOptionsResponse,
+    TargetModelFileOption,
+)
 from backend.app.models.validation import ValidationResult
 from backend.app.services.documentation_service import DocumentationService, get_documentation_service
 from backend.app.services.layout_sidecar_manager import LayoutSidecarManager, get_layout_sidecar_manager
 from backend.app.services.project_service import ProjectService, get_project_service
+from backend.app.services.target_model_entity_options_service import TargetModelEntityOptionsService
 from backend.app.services.validation_service import ValidationService, get_validation_service
 from backend.app.services.yaml_service import YamlService, YamlServiceError, get_yaml_service
 from backend.app.utils.error_handlers import handle_endpoint_errors
@@ -128,6 +136,7 @@ class MetadataUpdateRequest(BaseModel):
 
 # Endpoints
 @router.get("/projects", response_model=list[ProjectMetadata])
+@declare_authenticated_route
 @handle_endpoint_errors
 async def list_projects(
     principal: Annotated[Principal, Depends(get_principal())],
@@ -742,6 +751,17 @@ async def update_project_raw_yaml(
 # ---------------------------------------------------------------------------
 # Target Model YAML Endpoints
 # ---------------------------------------------------------------------------
+
+
+@router.get("/projects/{name}/target-model-entities", response_model=TargetModelEntityOptionsResponse)
+@handle_endpoint_errors
+async def get_project_target_model_entities(
+    name: str,  # pylint: disable=unused-argument
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
+) -> TargetModelEntityOptionsResponse:
+    """Return missing target-model entities for an authorized project."""
+    service = TargetModelEntityOptionsService()
+    return service.get_entity_options(authorized_project.resource.locator)
 
 
 def _resolve_target_model_path(project: Project, project_name: str, *, allow_shared_read: bool = False) -> Path:
