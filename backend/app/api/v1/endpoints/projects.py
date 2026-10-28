@@ -754,7 +754,7 @@ async def update_project_raw_yaml(
 @router.get("/projects/{name}/target-model-entities", response_model=TargetModelEntityOptionsResponse)
 @handle_endpoint_errors
 async def get_project_target_model_entities(
-    name: str,
+    name: str,  # pylint: disable=unused-argument
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
 ) -> TargetModelEntityOptionsResponse:
     """Return missing target-model entities for an authorized project."""

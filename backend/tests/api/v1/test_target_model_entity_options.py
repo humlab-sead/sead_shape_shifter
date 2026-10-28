@@ -7,8 +7,8 @@ from backend.app.core.config import settings
 from backend.app.services import project_service, yaml_service
 
 
-@pytest.fixture
-def reset_services(monkeypatch):
+@pytest.fixture(name="reset_services")
+def _reset_services(monkeypatch):
     """Reset services that retain project paths between requests."""
     monkeypatch.setattr(project_service, "_project_service", None)
     monkeypatch.setattr(yaml_service, "_yaml_service", None)
@@ -97,7 +97,7 @@ async def _configure_model(client, projects_dir, target_models_dir, model_locati
 async def test_returns_target_options_without_changing_project_yaml(
     tmp_path,
     monkeypatch,
-    reset_services,
+    reset_services,  # pylint: disable=unused-argument
     authorized_client,
     model_location: str,
 ) -> None:
@@ -194,7 +194,7 @@ async def test_returns_target_options_without_changing_project_yaml(
 async def test_returns_unconfigured_state_when_project_has_no_target_model(
     tmp_path,
     monkeypatch,
-    reset_services,
+    reset_services,  # pylint: disable=unused-argument
     authorized_client,
 ) -> None:
     monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path / "projects")
@@ -217,7 +217,7 @@ async def test_returns_unconfigured_state_when_project_has_no_target_model(
 async def test_returns_safe_bad_request_for_configured_model_failures(
     tmp_path,
     monkeypatch,
-    reset_services,
+    reset_services,  # pylint: disable=unused-argument
     authorized_client,
     reference: str,
     model_yaml: str | None,
@@ -246,7 +246,7 @@ async def test_returns_safe_bad_request_for_configured_model_failures(
 async def test_returns_empty_list_when_all_target_entities_are_in_project(
     tmp_path,
     monkeypatch,
-    reset_services,
+    reset_services,  # pylint: disable=unused-argument
     authorized_client,
 ) -> None:
     projects_dir = tmp_path / "projects"

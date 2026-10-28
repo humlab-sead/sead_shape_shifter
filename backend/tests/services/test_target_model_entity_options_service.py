@@ -51,8 +51,8 @@ def _target_model() -> dict:
     }
 
 
-@pytest.fixture
-def project_service() -> Mock:
+@pytest.fixture(name="project_service")
+def _project_service() -> Mock:
     service = Mock(spec=ProjectService)
     return service
 
