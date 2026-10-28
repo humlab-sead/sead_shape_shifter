@@ -226,6 +226,25 @@ class TestFixedEntityConfigMapper:
             [10, 76, "Collecting", None],
         ]
 
+    def test_to_core_accepts_full_identity_rows_for_declared_data_columns(self, mapper: FixedEntityConfigMapper) -> None:
+        """Rows may include system_id and public_id before the declared data columns."""
+        config = {
+            "name": "data_provider",
+            "type": "fixed",
+            "public_id": "data_provider_id",
+            "columns": ["data_provider_code", "data_provider_name", "contact_id"],
+            "column_types": {
+                "data_provider_code": "string",
+                "data_provider_name": "string",
+                "contact_id": "int",
+            },
+            "values": [[1, 1, "arbodat-pilot", "Arbodat Pilot", None]],
+        }
+
+        result = mapper.to_core(config, EntityMapperContext(project_name="arbodat"))
+
+        assert result["values"] == [[1, 1, "arbodat-pilot", "Arbodat Pilot", None]]
+
     def test_to_core_normalizes_legacy_single_column_scalar_values(self, mapper: FixedEntityConfigMapper) -> None:
         """Single-column fixed entities may still arrive as a flat scalar list from legacy YAML."""
         config = {

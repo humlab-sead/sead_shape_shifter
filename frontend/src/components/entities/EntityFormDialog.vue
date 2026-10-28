@@ -362,6 +362,22 @@
                       </v-row>
                     </div>
 
+                    <v-alert
+                      v-if="columnAvailabilityError"
+                      type="error"
+                      variant="tonal"
+                      density="compact"
+                      class="mb-4"
+                    >
+                      <div class="text-body-2">{{ columnAvailabilityError.message }}</div>
+                      <div v-if="columnAvailabilityError.tips?.length" class="mt-2">
+                        <div class="text-caption font-weight-bold">Suggestions:</div>
+                        <ul class="text-caption mt-1 pl-4">
+                          <li v-for="(tip, index) in columnAvailabilityError.tips" :key="index">{{ tip }}</li>
+                        </ul>
+                      </div>
+                    </v-alert>
+
                     <v-alert v-if="isMergedEntityType" type="info" variant="tonal" density="compact" class="mb-4">
                       <div class="text-caption">
                         <strong>Merged entity configuration</strong><br />
@@ -1267,7 +1283,11 @@ const { entities, create, update } = useEntities({
 })
 
 const { getSuggestionsForEntity, loading: suggestionsLoading } = useSuggestions()
-const { availability: columnAvailability, refresh: refreshColumnAvailability } = useColumnAvailability()
+const {
+  availability: columnAvailability,
+  error: columnAvailabilityError,
+  refresh: refreshColumnAvailability,
+} = useColumnAvailability()
 const appSettings = useSettings()
 const fkSuggestionsEnabled = computed(() => appSettings.enableFkSuggestions.value)
 

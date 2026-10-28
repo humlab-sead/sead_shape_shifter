@@ -43,6 +43,7 @@ from backend.app.models.mapping_sync import (
     MappingSyncPending,
 )
 from backend.app.utils import convert_ruamel_types
+from backend.app.utils.fixed_entity_errors import map_fixed_entity_shape_error
 from src.configuration import find_unresolved_directives
 from src.model import ShapeShiftProject, TableConfig
 from src.path_resolution import resolve_contained_path
@@ -293,14 +294,18 @@ class ProjectMapper:
         # Other entities: no-op transformation
         project_name: str = api_config.metadata.name if api_config.metadata else (api_config.filename or "")
         mapper_factory = EntityConfigMapperFactory(settings)
-        mapper_context = EntityMapperContext(project_name=project_name, project_options=cfg_dict.get("options", {}))
+        project_options = cfg_dict.get("options", {})
 
         entities = cfg_dict.get("entities", {})
         for entity_name, entity_dict in entities.items():
             mapper: EntityConfigMapper = mapper_factory.get_mapper_for_entity(entity_dict)
             entity_input = dict(entity_dict)
             entity_input.setdefault("name", entity_name)
-            transformed = mapper.to_core(entity_input, mapper_context)
+            mapper_context = EntityMapperContext(project_name=project_name, project_options=project_options)
+            try:
+                transformed = mapper.to_core(entity_input, mapper_context)
+            except FixedEntityShapeValidationError as error:
+                raise map_fixed_entity_shape_error(error, entity_name) from error
             transformed.pop("name", None)
             entity_dict.update(transformed)  # type: ignore[arg-type]
 
