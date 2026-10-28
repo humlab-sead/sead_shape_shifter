@@ -116,8 +116,9 @@ const vuetify = createVuetify({ components, directives })
 const childStubs = {
   teleport: true,
   VDialog: {
-    props: ['modelValue'],
-    template: '<div class="v-dialog-stub"><slot /></div>',
+    props: ['modelValue', 'location', 'offset', 'height'],
+    template:
+      '<div class="v-dialog-stub" :data-location="location" :data-offset="offset" :data-height="height"><slot /></div>',
   },
   VTabs: {
     template: '<div class="v-tabs-stub"><slot /></div>',
@@ -417,6 +418,28 @@ describe('EntityFormDialog', () => {
     mockState.retryFixedEntityMapping.mockReset()
     mockState.setMappingSyncPending.mockReset()
     mockState.syncCachedEntity.mockReset()
+  })
+
+  it('keeps the editor below the app bar and within a short viewport', async () => {
+    const originalWidth = window.innerWidth
+    const originalHeight = window.innerHeight
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1440 })
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 650 })
+
+    const wrapper = mountEntityFormDialog()
+
+    try {
+      await nextTick()
+
+      const dialog = wrapper.find('.v-dialog-stub')
+      expect(dialog.attributes('data-location')).toBe('top')
+      expect(dialog.attributes('data-offset')).toBe('56')
+      expect(dialog.attributes('data-height')).toBe('578px')
+    } finally {
+      wrapper.unmount()
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth })
+      Object.defineProperty(window, 'innerHeight', { configurable: true, value: originalHeight })
+    }
   })
 
   it('loads persisted replacements into the ReplacementsEditor when the edit dialog opens', async () => {
