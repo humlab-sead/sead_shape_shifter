@@ -104,39 +104,6 @@
 
       <!-- Validation Results -->
       <div v-else>
-        <v-card v-if="hasDataValidationExecution" variant="outlined" class="mb-4">
-          <v-card-title>Data Validation Execution</v-card-title>
-          <v-card-text>
-            <div class="d-flex align-center flex-wrap ga-2">
-              <span v-if="validationResult?.validation_mode">
-                Mode: <strong>{{ dataValidationModeLabel }}</strong>
-              </span>
-              <v-chip v-if="validationResult?.status" :color="dataValidationStatusColor" size="small">
-                Run status: {{ validationResult.status }}
-              </v-chip>
-            </div>
-
-            <p v-if="validationResult?.status_reason" class="mt-3 mb-0">
-              {{ validationResult.status_reason }}
-            </p>
-
-            <div v-if="entityStatuses.length > 0" class="mt-3">
-              <p class="text-subtitle-2 mb-2">Entity execution</p>
-              <div v-for="[entityName, entityStatus] in entityStatuses" :key="entityName" class="mb-2">
-                <div class="d-flex align-center flex-wrap ga-2">
-                  <span class="font-weight-medium">{{ entityName }}</span>
-                  <v-chip :color="entityStatusColor(entityStatus.status)" size="x-small">
-                    {{ entityStatus.status }}
-                  </v-chip>
-                </div>
-                <p v-if="entityStatus.reason" class="text-body-2 text-medium-emphasis mb-0">
-                  {{ entityStatus.reason }}
-                </p>
-              </div>
-            </div>
-          </v-card-text>
-        </v-card>
-
         <!-- Summary Card -->
         <v-card variant="tonal" :color="summaryColor" class="mb-4">
           <v-card-text>
@@ -179,10 +146,46 @@
             By Entity
             <v-badge v-if="entityScopedIssues.length > 0" :content="entityScopedIssues.length" inline class="ml-2" />
           </v-tab>
+          <v-tab v-if="hasDataValidationExecution" value="execution">Execution</v-tab>
         </v-tabs>
 
         <!-- Messages List -->
         <v-window v-model="activeTab">
+          <v-window-item v-if="hasDataValidationExecution" value="execution">
+            <v-card variant="outlined" class="mb-4">
+              <v-card-title>Data Validation Execution</v-card-title>
+              <v-card-text>
+                <div class="d-flex align-center flex-wrap ga-2">
+                  <span v-if="validationResult?.validation_mode">
+                    Mode: <strong>{{ dataValidationModeLabel }}</strong>
+                  </span>
+                  <v-chip v-if="validationResult?.status" :color="dataValidationStatusColor" size="small">
+                    Run status: {{ validationResult.status }}
+                  </v-chip>
+                </div>
+
+                <p v-if="validationResult?.status_reason" class="mt-3 mb-0">
+                  {{ validationResult.status_reason }}
+                </p>
+
+                <div v-if="entityStatuses.length > 0" class="mt-3">
+                  <p class="text-subtitle-2 mb-2">Entity execution</p>
+                  <div v-for="[entityName, entityStatus] in entityStatuses" :key="entityName" class="mb-2">
+                    <div class="d-flex align-center flex-wrap ga-2">
+                      <span class="font-weight-medium">{{ entityName }}</span>
+                      <v-chip :color="entityStatusColor(entityStatus.status)" size="x-small">
+                        {{ entityStatus.status }}
+                      </v-chip>
+                    </div>
+                    <p v-if="entityStatus.reason" class="text-body-2 text-medium-emphasis mb-0">
+                      {{ entityStatus.reason }}
+                    </p>
+                  </div>
+                </div>
+              </v-card-text>
+            </v-card>
+          </v-window-item>
+
           <!-- All Issues -->
           <v-window-item value="all">
             <validation-message-list
@@ -349,7 +352,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useNotification } from '@/composables/useNotification'
 import { groupByEntityScope, type EntityDataValidationStatus, type ValidationResult } from '@/types'
 import ValidationMessageList from './ValidationMessageList.vue'
@@ -402,6 +405,11 @@ const hasDataValidationExecution = computed(
     props.validationResult?.status != null ||
     entityStatuses.value.length > 0
 )
+watch(hasDataValidationExecution, (hasExecution) => {
+  if (!hasExecution && activeTab.value === 'execution') {
+    activeTab.value = 'all'
+  }
+})
 const dataValidationModeLabel = computed(() =>
   props.validationResult?.validation_mode === 'sample' ? 'Sample' : 'Complete'
 )
