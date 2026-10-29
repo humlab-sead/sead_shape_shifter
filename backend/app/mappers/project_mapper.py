@@ -237,10 +237,8 @@ class ProjectMapper:
         for entity_name, entity_dict in entities.items():
             mapper: EntityConfigMapper = mapper_factory.get_mapper_for_entity(entity_dict)
             entity_input = dict(entity_dict)
-            entity_input.setdefault("name", entity_name)
             mapper_context = EntityMapperContext(project_name=project_name, project_options=project_options)
-            transformed = mapper.to_core(entity_input, mapper_context)
-            transformed.pop("name", None)
+            transformed = mapper.to_core(entity_input, mapper_context, entity_name=entity_name)
             entity_dict.update(transformed)  # type: ignore[arg-type]
 
         project = ShapeShiftProject(cfg=cfg_dict, filename=api_config.filename or "")
