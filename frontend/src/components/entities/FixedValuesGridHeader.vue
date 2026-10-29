@@ -19,7 +19,12 @@
       @mousedown.stop
       @change="onSelectChange"
     >
-      <option v-for="option in options" :key="`${columnName}-${option.value}`" :value="option.value">
+      <option
+        v-for="option in options"
+        :key="`${columnName}-${option.value}`"
+        class="column-type-header__option"
+        :value="option.value"
+      >
         {{ option.label }}
       </option>
     </select>
@@ -73,7 +78,7 @@ function onSelectChange(event: Event): void {
 <style scoped>
 .column-type-header {
   display: grid;
-  gap: 2px;
+  gap: 4px;
   width: 100%;
   min-width: 0;
   padding: 2px 0;
@@ -87,7 +92,7 @@ function onSelectChange(event: Event): void {
   background: transparent;
   color: inherit;
   font: inherit;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 600;
   line-height: 1.1;
   text-align: left;
@@ -111,8 +116,13 @@ function onSelectChange(event: Event): void {
   padding: 1px 2px;
   border: 1px solid rgba(var(--v-theme-on-surface), 0.18);
   border-radius: 4px;
-  background: rgb(var(--v-theme-background));
-  color: rgb(var(--v-theme-on-background));
-  font-size: 9px;
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
+  font-size: 10px;
+}
+
+.column-type-header__option {
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
 }
 </style>
