@@ -466,7 +466,7 @@
                           <!-- Keys (business keys) -->
                           <v-combobox
                             v-model="formData.keys"
-                            :items="columnAvailability?.business_keys ?? []"
+                            :items="getReferenceAwareItems(columnAvailability?.business_keys ?? [])"
                             label="Business Keys *"
                             variant="outlined"
                             multiple
@@ -474,6 +474,15 @@
                             closable-chips
                             persistent-placeholder
                           >
+                            <template #chip="{ item, props: chipProps }">
+                              <ValueReferenceChip
+                                v-if="typeof item.raw === 'string' && item.raw.trim().startsWith('@value:')"
+                                :value="item.raw"
+                                :chip-props="chipProps"
+                                :entities="completedCacheEntities"
+                              />
+                              <v-chip v-else v-bind="chipProps">{{ item.title }}</v-chip>
+                            </template>
                             <template #message>
                               <span class="text-caption">Natural key columns that uniquely identify records</span>
                             </template>
@@ -491,7 +500,11 @@
                         <v-col cols="8" class="pr-2">
                           <v-combobox
                             v-model="formData.columns"
-                            :items="columnAvailability?.columns ?? []"
+                            :items="
+                              formData.type === 'fixed'
+                                ? (columnAvailability?.columns ?? [])
+                                : getReferenceAwareItems(columnAvailability?.columns ?? [])
+                            "
                             label="Columns"
                             variant="outlined"
                             multiple
@@ -500,6 +513,19 @@
                             persistent-placeholder
                             :rules="formData.type === 'fixed' ? columnsRules : []"
                           >
+                            <template #chip="{ item, props: chipProps }">
+                              <ValueReferenceChip
+                                v-if="
+                                  formData.type !== 'fixed' &&
+                                  typeof item.raw === 'string' &&
+                                  item.raw.trim().startsWith('@value:')
+                                "
+                                :value="item.raw"
+                                :chip-props="chipProps"
+                                :entities="completedCacheEntities"
+                              />
+                              <v-chip v-else v-bind="chipProps">{{ item.title }}</v-chip>
+                            </template>
                             <template #message>
                               <span class="text-caption" v-if="formData.type === 'fixed'">
                                 Fixed values grid fields. Business keys select produced fields but do not add grid
@@ -728,7 +754,7 @@
 
                           <v-combobox
                             v-model="formData.drop_duplicates.columns"
-                            :items="columnAvailability?.drop_duplicates ?? []"
+                            :items="getReferenceAwareItems(columnAvailability?.drop_duplicates ?? [])"
                             label="Deduplication Columns"
                             variant="outlined"
                             multiple
@@ -737,6 +763,15 @@
                             persistent-placeholder
                             :disabled="!formData.drop_duplicates.enabled"
                           >
+                            <template #chip="{ item, props: chipProps }">
+                              <ValueReferenceChip
+                                v-if="typeof item.raw === 'string' && item.raw.trim().startsWith('@value:')"
+                                :value="item.raw"
+                                :chip-props="chipProps"
+                                :entities="completedCacheEntities"
+                              />
+                              <v-chip v-else v-bind="chipProps">{{ item.title }}</v-chip>
+                            </template>
                             <template #message>
                               <span class="text-caption">Columns to use for deduplication (empty = all columns)</span>
                             </template>
@@ -756,7 +791,7 @@
                           </v-row>
                           <v-combobox
                             v-model="formData.drop_empty_rows.columns"
-                            :items="columnAvailability?.drop_empty_rows ?? []"
+                            :items="getReferenceAwareItems(columnAvailability?.drop_empty_rows ?? [])"
                             label="Columns to Check for Empty Values"
                             variant="outlined"
                             multiple
@@ -765,6 +800,15 @@
                             persistent-placeholder
                             :disabled="!formData.drop_empty_rows.enabled"
                           >
+                            <template #chip="{ item, props: chipProps }">
+                              <ValueReferenceChip
+                                v-if="typeof item.raw === 'string' && item.raw.trim().startsWith('@value:')"
+                                :value="item.raw"
+                                :chip-props="chipProps"
+                                :entities="completedCacheEntities"
+                              />
+                              <v-chip v-else v-bind="chipProps">{{ item.title }}</v-chip>
+                            </template>
                             <template #message>
                               <span class="text-caption">Columns to check for empty values (empty = all columns)</span>
                             </template>
@@ -817,8 +861,9 @@
                   :available-entities="availableSourceEntities"
                   :project-name="projectName"
                   :entity-name="formData.name"
-                  :entity-columns="effectiveEntityColumns"
                   :column-candidates="columnAvailability?.foreign_keys ?? []"
+                  :reference-entities="completedCacheEntities"
+                  :reference-suggestions="referenceSuggestions"
                   :is-entity-saved="mode === 'edit'"
                   :has-unsaved-changes="hasPendingChanges"
                   @update:model-value="handleForeignKeysUpdate"
@@ -834,6 +879,8 @@
                   v-model="formData.advanced.unnest"
                   :id-var-columns="columnAvailability?.unnest.id_vars ?? []"
                   :value-var-columns="columnAvailability?.unnest.value_vars ?? []"
+                  :reference-entities="completedCacheEntities"
+                  :reference-suggestions="referenceSuggestions"
                 />
               </v-window-item>
 
@@ -1189,6 +1236,7 @@ import type { ColDef } from 'ag-grid-community'
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
 import ForeignKeyEditor from './ForeignKeyEditor.vue'
+import ValueReferenceChip from './ValueReferenceChip.vue'
 import FiltersEditor from './FiltersEditor.vue'
 import UnnestEditor from './UnnestEditor.vue'
 import AppendEditor from './AppendEditor.vue'
@@ -1205,6 +1253,7 @@ import type { ValidationContext } from '@/utils/projectYamlValidator'
 import { normalizeForeignKeyKeys, type ForeignKeyKeyInput } from './foreignKeyEditorUtils'
 import { defineAsyncComponent, nextTick } from 'vue'
 import { api } from '@/api'
+import { getValueReferenceSuggestions } from '@/utils/valueReferenceColumns'
 import type { EntityTypeInfo } from '@/api/data-sources'
 import type { TargetModelEntityOption } from '@/api/projects'
 import { queryApi } from '@/api/query'
@@ -1724,6 +1773,19 @@ const dialogContainerHeight = computed(() => {
 
 // Watch for initial tab from entity store overlay
 const entityStore = useEntityStore()
+const completedCacheEntities = computed<EntityResponse[] | null>(() => {
+  if (projectStore.currentProjectName !== props.projectName) {
+    return null
+  }
+
+  return entityStore.getCompletedEntitiesFor(props.projectName)
+})
+const referenceSuggestions = computed(() => getValueReferenceSuggestions(completedCacheEntities.value))
+
+function getReferenceAwareItems(ordinaryItems: string[]): string[] {
+  return [...new Set([...ordinaryItems, ...referenceSuggestions.value])]
+}
+
 watch(
   () => entityStore.overlayInitialTab,
   (tab) => {

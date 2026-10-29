@@ -151,9 +151,18 @@
                   :items="getLocalColumnItems(index)"
                   :error="localKeyErrors[index] !== undefined"
                   :messages="localKeyErrors[index]"
-                  @focus="loadDirectives"
                   @update:model-value="handleLocalKeysUpdate(index, $event)"
-                />
+                >
+                  <template #chip="{ item, props: chipProps }">
+                    <ValueReferenceChip
+                      v-if="typeof item.raw === 'string' && item.raw.trim().startsWith('@value:')"
+                      :value="item.raw"
+                      :chip-props="chipProps"
+                      :entities="referenceEntities ?? null"
+                    />
+                    <v-chip v-else v-bind="chipProps">{{ item.title }}</v-chip>
+                  </template>
+                </v-combobox>
               </v-col>
 
               <v-col cols="12" md="2" class="d-flex align-center justify-center">
@@ -173,9 +182,18 @@
                   :items="getRemoteKeyItems(index)"
                   :error="remoteKeyErrors[index] !== undefined"
                   :messages="remoteKeyErrors[index]"
-                  @focus="loadDirectives"
                   @update:model-value="handleRemoteKeysUpdate(index, $event)"
-                />
+                >
+                  <template #chip="{ item, props: chipProps }">
+                    <ValueReferenceChip
+                      v-if="typeof item.raw === 'string' && item.raw.trim().startsWith('@value:')"
+                      :value="item.raw"
+                      :chip-props="chipProps"
+                      :entities="referenceEntities ?? null"
+                    />
+                    <v-chip v-else v-bind="chipProps">{{ item.title }}</v-chip>
+                  </template>
+                </v-combobox>
               </v-col>
             </v-row>
 
@@ -323,20 +341,22 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import type { ForeignKeyColumnCandidates } from '@/api/entities'
+import type { EntityResponse, ForeignKeyColumnCandidates } from '@/api/entities'
 import type { ForeignKeyConfig, ForeignKeyConstraints } from '@/types'
 import ForeignKeyTester from './ForeignKeyTester.vue'
 import { useDirectiveValidation } from '@/composables/useDirectiveValidation'
 import { normalizeForeignKeyKeys } from './foreignKeyEditorUtils'
 import { getKeyPairRows, hasKeyCountMismatch, hasSuspiciousKeyReorder } from './foreignKeyPreviewUtils'
+import ValueReferenceChip from './ValueReferenceChip.vue'
 
 interface Props {
   modelValue: ForeignKeyConfig[]
   availableEntities?: string[]
   columnCandidates?: ForeignKeyColumnCandidates[]
+  referenceEntities?: EntityResponse[] | null
+  referenceSuggestions?: string[]
   projectName: string
   entityName: string
-  entityColumns?: string[] | string
   isEntitySaved?: boolean
   hasUnsavedChanges?: boolean
 }
@@ -344,7 +364,8 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   availableEntities: () => [],
   columnCandidates: () => [],
-  entityColumns: () => [],
+  referenceEntities: null,
+  referenceSuggestions: () => [],
   isEntitySaved: false,
   hasUnsavedChanges: false,
 })
@@ -493,31 +514,6 @@ async function handleRemoteKeysUpdate(fkIndex: number, value: unknown) {
   await validateRemoteKeys(fkIndex)
 }
 
-/**
- * Extract @value directives from entity columns configuration.
- */
-function extractColumnDirectives(): string[] {
-  const columns = props.entityColumns
-  if (!columns) return []
-
-  const directives: string[] = []
-
-  // Handle scalar directive string
-  if (typeof columns === 'string' && columns.trim().startsWith('@value:')) {
-    directives.push(columns.trim())
-  }
-  // Handle array of columns (may contain directive elements)
-  else if (Array.isArray(columns)) {
-    columns.forEach((col) => {
-      if (typeof col === 'string' && col.trim().startsWith('@value:')) {
-        directives.push(col.trim())
-      }
-    })
-  }
-
-  return directives
-}
-
 async function loadDirectives() {
   if (directivesLoaded) return
   directiveItems.value = await getValidDirectives(props.projectName)
@@ -537,15 +533,14 @@ function getLocalColumnItems(fkIndex: number): string[] {
     ...new Set([
       ...(candidates?.local_keys_before_unnest ?? []),
       ...(candidates?.local_keys_after_unnest ?? []),
-      ...directiveItems.value,
-      ...extractColumnDirectives(),
+      ...(props.referenceSuggestions ?? []),
     ]),
   ]
 }
 
 function getRemoteKeyItems(fkIndex: number): string[] {
   const candidates = getColumnCandidates(fkIndex)
-  return [...new Set([...(candidates?.remote_keys ?? []), ...directiveItems.value])]
+  return [...new Set([...(candidates?.remote_keys ?? []), ...(props.referenceSuggestions ?? [])])]
 }
 
 function getExtraColumnSourceItems(fkIndex: number): string[] {
