@@ -1,17 +1,17 @@
 # Graph Report - sead_shape_shifter  (2026-10-29)
 
 ## Corpus Check
-- 759 files · ~726,124 words
+- 759 files · ~726,106 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 26 file(s) not represented in the graph (top: (none) 12, .csv 4, .scss 2)
 
 ## Summary
-- 18347 nodes · 33404 edges · 1030 communities (942 shown, 88 thin omitted)
-- Extraction: 90% EXTRACTED · 10% INFERRED · 0% AMBIGUOUS · INFERRED: 3352 edges (avg confidence: 0.91)
+- 18347 nodes · 33398 edges · 1029 communities (945 shown, 84 thin omitted)
+- Extraction: 90% EXTRACTED · 10% INFERRED · 0% AMBIGUOUS · INFERRED: 3351 edges (avg confidence: 0.91)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `8a69c422`
+- Built from commit: `1b87a94e`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -32,11 +32,11 @@
 - EntityDataPreview.vue
 - ShapeShiftProject
 - SQLiteAuthorizationRepository
-- endpoints/materialization.py
-- ValidationPanel.vue
+- require_application_action
+- sessions.ts
 - DataSourceFormDialog.vue
 - ForeignKeyEditor.vue
-- .update_mapping
+- reconciliation/service.py
 - 4. Project Reference
 - _mask_value
 - operations.py
@@ -50,7 +50,7 @@
 - sql.py
 - ReconciliationGrid.vue
 - Any
-- Project
+- ProjectService
 - AuthorizedResource
 - Full Manual Checklist
 - SpecificationEditor.vue
@@ -67,10 +67,10 @@
 - expects
 - SIMS-SEAD Trust-Contract Adoption
 - BranchEditor.vue
-- dotget
-- .get_table
-- ProjectService
-- src/utility.py
+- Any
+- IngesterService
+- typing
+- Any
 - ThemeColorPicker.vue
 - source_rows
 - filters.py
@@ -92,8 +92,8 @@
 - validate_project.py
 - planning.py
 - .analyze_dependencies
-- MappingManager
-- Action
+- models/reconciliation.py
+- projects.py
 - ExecuteDialog.vue
 - ProjectDataSources.vue
 - reconciliation_result
@@ -107,15 +107,15 @@
 - SourceNode
 - ForeignKeyConfig
 - source_rows
-- constraints.py
+- types/ingester.ts
 - reconciliation_result
-- put_mapping_link
+- IngesterView.test.ts
 - ingester_service.py
 - FiltersEditor.vue
 - reconciliation_result
 - source_rows
 - site
-- ._update_values_locked
+- entities.py
 - Testing Appendix - Shape Shifter
 - business_keys.py
 - ResourceType
@@ -123,7 +123,7 @@
 - CustomLayoutConfig
 - reconciliation_result
 - reconciliation_result
-- useValidationStore
+- .validate_all_entities
 - .to_core
 - Shape Shifter Project Editor - Appendix
 - Proposal: Shared Data Review And Operator Contract
@@ -144,8 +144,8 @@
 - ReconciliationStatsCard.vue
 - useTaskStatus.ts
 - reconciliation_result
-- DataValidationOrchestrator
-- DataSourcesView.vue
+- FullDataFetchStrategy
+- ConfigValue
 - SuggestionsPanel.vue
 - reconciliation_result
 - reconciliation_result
@@ -167,7 +167,7 @@
 - location
 - sample_description_type
 - 06_indexes.sql
-- ProjectService
+- resolve_contained_path
 - Frontend Entry HTML
 - reconciliation_result
 - sample_description
@@ -185,19 +185,19 @@
 - Recommended Trigger Map
 - Move Existing Projects To Provider-Schema Scopes
 - Publish Container Images From CI To GHCR And Deploy By Pull
-- profile_projects_listing.py
+- Principal
 - TaskListSidecarManager
 - transform
 - SEAD Shape Shifter
 - DataLoader
 - test-sprint-1.sh
 - site_type_group
-- ResourceType
-- generate_target_model_schema_reference.py
+- fields.py
+- ConfigLike
 - CreateProjectDialog.vue
 - Proposal: Branch-Scoped Consumers For Mixed-Branch Parents
 - Any
-- useWhatsNew.ts
+- compare_target_models.py
 - resolve.py
 - SqlEditor.vue
 - frontend/package.json
@@ -234,13 +234,13 @@
 - review_staging_id_generators.py
 - Security Hardening Follow-up
 - ResolutionSource
-- endpoints/validation.py
+- mapping_model.py
 - OperationProgress
 - export_target_tables.py
 - steps
 - rules
-- ShapeShiftService
-- entities.py
+- ShapeShiftProject
+- Investigation findings: Create Entity from Table returns HTTP 500
 - TableStore
 - Proposal: Sead Change Request Update Handling For Existing Rows
 - What's New
@@ -268,7 +268,7 @@
 - dsl.py
 - Shape Shifter Diagrams
 - ShapeShiftService
-- AlternativeSearchDialog.vue
+- components.d.ts
 - datasetcontacts.policy.yml
 - rules
 - datescalendar.policy.yml
@@ -322,10 +322,10 @@
 - source
 - Ingester Configuration in Shape Shifter Projects
 - EntityMappingManager
-- vue
+- EntityListCard.vue
 - Reconciliation Workflow - User Guide
 - Target Model Conformance Manual Test Checklist
-- data_source_policy.py
+- data_sources.py
 - YamlEditor.vue
 - source
 - rules
@@ -345,7 +345,7 @@
 - steps
 - source
 - sanitize_columns
-- Authorization
+- Project Folder Navigation With Breadcrumbs
 - .resolve_config_env_vars
 - archer
 - TestCircularDependency
@@ -369,11 +369,11 @@
 - rules
 - source
 - transform
-- preview.py
+- models/__init__.py
 - speciesassociation.policy.yml
 - source
 - speciesbiology.policy.yml
-- USER_GUIDE.md
+- 2. Quick Start
 - source
 - speciesdistribution.policy.yml
 - source
@@ -383,7 +383,7 @@
 - public.tbl_taxa_tree_master
 - Remediation Plan
 - source
-- ConfigLike
+- ConfigStore
 - test_run.py
 - scripts
 - Investigation brief: Remaining SRP and entity-specific type-code concerns
@@ -391,8 +391,8 @@
 - Risks And Tradeoffs
 - Entity Editor Testing
 - 1. Data Import and Target Domain
-- CHANGE_REQUEST_INGESTER_POST_MVP/README.md
-- .execute_query
+- SEAD Change Request Ingester Post-MVP Proposals
+- IngesterForm.test.ts
 - bibliography.policy.yml
 - source
 - reconciliation
@@ -408,7 +408,7 @@
 - rules
 - resolvers
 - rules
-- project_load_issue_collector.py
+- dotget
 - source
 - resolvers
 - args
@@ -420,6 +420,7 @@
 - policy_context
 - expects
 - field_validator
+- CoreIssue
 - source
 - known_divergences
 - rules
@@ -465,7 +466,7 @@
 - rules
 - steps
 - Shape Shifter - Design
-- DSLException
+- vite.config.ts
 - public.tbl_analysis_values
 - fetch_relation_catalog
 - Shape Shifter Backend API
@@ -508,7 +509,7 @@
 - steps
 - Refresh the Shape Shifter Test Deployment
 - `@value` Column Picker UX Phase Plan
-- .is_satisfied_by
+- transforms/utility.py
 - AI Coding Model Selection Strategy
 - Architecture
 - Shape Shifter - Manual Testing Guide
@@ -585,7 +586,7 @@
 - What's New in v1.20.0
 - What's New in v1.21.0
 - LayoutSidecarManager
-- yaml_path_join
+- normalizeSubmissionIdentifier
 - Graph & Dependencies Testing
 - What's New in v1.22.0
 - What's New in v1.23.0
@@ -642,7 +643,7 @@
 - ApplicationState
 - row_2
 - row_3
-- inject_ingester_runtime_dependencies
+- ingester_runtime.py
 - policy_context
 - state
 - config
@@ -650,7 +651,7 @@
 - identity
 - identity
 - identity
-- ReconciliationProgressDialog.vue
+- projectYamlCompletions.ts
 - identity
 - identity
 - mappings
@@ -689,12 +690,12 @@
 - Handoff: Shared Data Review And Operator Contract
 - GraphDisplayOptionsDropdown.vue
 - [1.1.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.0.1...v1.1.0) (2026-01-12)
-- EntityResolutionSet
+- projectYamlValidator.ts
 - Key Architectural Patterns
 - Key Services
 - ConfigValue
 - source
-- typing
+- src/model.py
 - relative_age
 - source_rows
 - args
@@ -704,16 +705,17 @@
 - bind
 - Target Model Review: 2026-10-13
 - public.tbl_sites
+- prepare_copilot_release_notes.py
 - SourceNodeExtractorRegistry
 - stores/reconciliation.ts
 - Ingester
 - MaterializationConfig
 - Cross-Cutting Concerns
-- SQL Safety Policy
+- SingletonConfigProvider
 - Product Principles
 - Shape Shifter Semantic Rules
 - argparse
-- Output Dataset Expectations
+- applyIngesterDefaults
 - GeneratorReport
 - global_exception_handler
 - CONFIGURATION_GUIDE.md
@@ -721,7 +723,7 @@
 - resolvers
 - fields
 - resolvers
-- Stronger Idempotency And Re-submission Design Diagrams
+- 11. Advanced Features
 - helpers
 - update_detection
 - helpers
@@ -732,11 +734,12 @@
 - update_detection
 - handleValidate
 - resolvers
+- .is_satisfied_by_field
 - resolvers
 - resolvers
 - cs9_trace
 - EntityResolutionMetadata
-- export_manifest
+- 14. Troubleshooting
 - postprocess_result
 - postprocess_results
 - relative_age_range
@@ -780,16 +783,17 @@
 - resolvers
 - resolvers
 - resolvers
+- 9. Execute and Export
 - DirectiveValidationResult
-- What's New in v1.27.0
+- key
 - clampDialogSize
 - run_audit
 - 03_functions.sql
-- build_legacy_fixed_full_columns
+- 10. Dispatch and Data Ingestion
 - Capability Model
 - public.tbl_abundances
 - Test Fixture
-- Task Plan: Stronger Idempotency And Re-submission
+- 1. Introduction
 - src/mapping.py
 - allowBuilds
 - [2.0.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.26.1...v2.0.0) (2026-04-01)
@@ -805,11 +809,11 @@
 - update_detection
 - helpers
 - known_divergences
-- StateImportPlan
+- EndsWithIdValidator
 - .validate_text
 - update_detection
 - EntityTaskStatus
-- Work Breakdown
+- FieldTypeValidator
 - [2.4.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v2.3.0...v2.4.0) (2026-10-26)
 - known_divergences
 - rules
@@ -844,11 +848,11 @@
 - update_detection
 - helpers
 - known_divergences
-- Proposed Design
+- HasValueValidator
 - helpers
 - known_divergences
 - fetchColumns
-- ProjectsView.vue
+- CopyProjectDialog.vue
 - known_divergences
 - CorrelationMiddleware
 - known_divergences
@@ -891,6 +895,7 @@
 - meta
 - clampNodeLabelFontSize
 - meta
+- IsInColumnsValidator
 - 1.0.0 (2026-01-07)
 - ProxyAuthenticationMiddleware
 - Workflow Best Practices
@@ -981,6 +986,7 @@
 - 8. `method` and `method_group`
 - [1.24.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.23.0...v1.24.0) (2026-03-17)
 - [1.25.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.24.0...v1.25.0) (2026-03-21)
+- USER_GUIDE.md
 - [1.2.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.1.0...v1.2.0) (2026-01-12)
 - [1.3.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.2.0...v1.3.0) (2026-01-13)
 - [1.7.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.6.0...v1.7.0) (2026-01-15)
@@ -994,7 +1000,6 @@
 - [2.2.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v2.1.0...v2.2.0) (2026-09-23)
 - [2.3.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v2.2.0...v2.3.0) (2026-10-05)
 - [2.5.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v2.4.0...v2.5.0) (2026-10-27)
-- SafeLoaderIgnoreUnknown
 - CircularDependencyAlert.vue
 - verify_sims_identity_candidates.sh
 - policies
@@ -1043,7 +1048,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (1030 total, 88 thin omitted)
+## Communities (1029 total, 84 thin omitted)
 
 ### Community 0 - "pandas"
 Cohesion: 0.03
@@ -1055,7 +1060,7 @@ Nodes (110): activeDrawerError, activeDrawerLoading, activeTab, activeYamlSubTab
 
 ### Community 3 - "specifications/entity.py"
 Cohesion: 0.03
-Nodes (39): Common Implementation Tasks, Common Implementation Tasks, _normalise_local_key(), SidecarValidationError, validate_entity_mapping(), validate_local_key(), FieldValidatorRegistry, ProjectSpecification (+31 more)
+Nodes (40): Common Implementation Tasks, Common Implementation Tasks, FieldValidatorRegistry, ProjectSpecification, Specification, AppendSpecification, DataEntityFieldsSpecification, DependsOnResolvedSpecification (+32 more)
 
 ### Community 4 - "inline_staging_sql.py"
 Cohesion: 0.06
@@ -1063,19 +1068,19 @@ Nodes (32): _block(), _build_entity_plans(), _column_type(), _declared_column_ty
 
 ### Community 5 - "client.ts"
 Cohesion: 0.03
-Nodes (79): BackupInfo, MetadataUpdateRequest, ProjectCreateRequest, projectsApi, ProjectUpdateRequest, RestoreBackupRequest, TargetModelEntityOptionsResponse, TargetModelEntityRole (+71 more)
+Nodes (88): axios@^1.7.9, apiClient, apiRequest(), DataProvider, dataProvidersApi, DataProviderSchema, dataSourceFilesApi, excelMetadataApi (+80 more)
 
 ### Community 6 - "IngestionResult"
 Cohesion: 0.03
 Nodes (40): IngestionResult, ValidationResult, Deploy Rendering Rules, Ingest Flow, Public Table Input Flow, Retired File Input Flow, SEAD Change Request Diagrams, Shared Preparation Flow (+32 more)
 
 ### Community 7 - "IngesterForm.vue"
-Cohesion: 0.03
-Nodes (105): ingesterApi, projectRequest, activeDeployArtifactGuidance, appliedDefaultsKey, applyIngesterDefaults(), approvedDatatypes, availableIngesters, buildIngestRequest() (+97 more)
+Cohesion: 0.04
+Nodes (46): activeDeployArtifactGuidance, appliedDefaultsKey, approvedDatatypes, availableIngesters, canRunSelectedIngester, currentDeployStrategyGuidance, dataProviderCode, dataSourceStore (+38 more)
 
 ### Community 8 - ".add_error"
-Cohesion: 0.05
-Nodes (5): Specifications (`src/specifications/`), SpecificationIssue, EntityReferencesExistSpecification, FilterSpecification, check_if_has_cycle()
+Cohesion: 0.04
+Nodes (7): Specifications (`src/specifications/`), SpecificationIssue, EntityReferencesExistSpecification, FilterSpecification, IsProjectSpecification, build_fixed_entity_full_columns(), dotexists()
 
 ### Community 9 - "EntityFormDialog.vue"
 Cohesion: 0.02
@@ -1086,36 +1091,36 @@ Nodes (113): activeTab, appSettings, autoRefreshEnabled, {
 }, availableDataSources, availableProjectFiles, availableSourceEntities, BuildEntityConfigOptions (+105 more)
 
 ### Community 10 - "CreateEntityFromTableDialog.vue"
-Cohesion: 0.03
-Nodes (85): schemaApi, mockApiClient, dataSourceStore, error, isMounted, limit, loading, loadPreview() (+77 more)
+Cohesion: 0.02
+Nodes (115): dataSourcesApi, EntityTypeInfo, schemaApi, mockApiClient, dataSourceStore, error, isMounted, limit (+107 more)
 
 ### Community 11 - "normalizer.py"
-Cohesion: 0.06
-Nodes (14): Entity Editor Column Availability, Findings, Intended Suggestions, Resolver Direction, Runtime Call Sequence, FunctionalDependencyError, MissingBusinessKeyError, ShapeShifterCoreError (+6 more)
+Cohesion: 0.04
+Nodes (21): Entity Editor Column Availability, Intended Suggestions, Resolver Direction, Runtime Call Sequence, FunctionalDependencyError, MissingBusinessKeyError, ShapeShifterCoreError, SubsetService (+13 more)
 
 ### Community 12 - "TableConfig"
 Cohesion: 0.03
-Nodes (6): PreviewResultBuilder, _get_source_candidates(), TableConfig, get_append_column_rename_map(), get_effective_append_target_facing_columns(), process_merged_branch()
+Nodes (15): PreviewResultBuilder, Findings, _apply_extra_columns(), _get_source_candidates(), _link_candidates(), _ordered(), _processed_entity_columns(), resolve_column_availability() (+7 more)
 
 ### Community 13 - "EntityDataPreview.vue"
-Cohesion: 0.04
-Nodes (43): Props, Props, GlobalComponents, vue, emit, layoutLabel, LayoutType, Props (+35 more)
+Cohesion: 0.05
+Nodes (33): columnFilters, derivedColumns, emit, filteredRows, previewIssues, Props, sortColumn, sortDirection (+25 more)
 
 ### Community 14 - "ShapeShiftProject"
 Cohesion: 0.04
-Nodes (20): validate_project(), ShapeShiftProject, ConditionalForeignKeyConformanceValidator, ConformanceValidator, ConformanceValidatorRegistry, DirectForeignKeyPendingCheckValidator, EntityConformanceValidator, ForeignKeyConformanceValidator (+12 more)
+Nodes (21): FixedProviderRow, ConditionalForeignKeyConformanceValidator, ConformanceIssue, ConformanceValidator, ConformanceValidatorRegistry, DirectForeignKeyPendingCheckValidator, EntityConformanceValidator, ForeignKeyConformanceValidator (+13 more)
 
 ### Community 15 - "SQLiteAuthorizationRepository"
-Cohesion: 0.09
-Nodes (6): _apply_administrators(), _resource_depths(), SQLiteAuthorizationRepository, _uuid(), dev_bootstrap(), grant_application_role()
+Cohesion: 0.07
+Nodes (8): ApplicationRole, GrantSubjectType, _apply_administrators(), _apply_grants(), apply_manifest(), _apply_resources(), SQLiteAuthorizationRepository, _uuid()
 
-### Community 16 - "endpoints/materialization.py"
-Cohesion: 0.11
-Nodes (12): can_materialize(), get_materialization_service(), materialize_entity(), sync_mapping_from_materialized(), unmaterialize_entity(), CanMaterializeResponse, MaterializationResult, MaterializedMappingSyncRequest (+4 more)
+### Community 16 - "require_application_action"
+Cohesion: 0.07
+Nodes (16): health_check(), HealthResponse, _attach_authorization_requirement(), declare_public_route(), dependency(), require_active_project(), require_application_action(), require_authorized_session() (+8 more)
 
-### Community 17 - "ValidationPanel.vue"
-Cohesion: 0.05
-Nodes (57): apiClient, apiRequest(), DataProvider, dataProvidersApi, DataProviderSchema, dataSourceFilesApi, excelMetadataApi, healthApi (+49 more)
+### Community 17 - "sessions.ts"
+Cohesion: 0.12
+Nodes (22): closeSession(), createSession(), getCurrentSession(), listActiveSessions(), sessionsApi, mockApiClient, alertColor, alertIcon (+14 more)
 
 ### Community 18 - "DataSourceFormDialog.vue"
 Cohesion: 0.05
@@ -1130,20 +1135,20 @@ Nodes (50): {
 }, availableDriversFiltered, currentSchema, dataSourceStore, emit, errorMessage, fetchProjectFiles(), fileAccept (+42 more)
 
 ### Community 19 - "ForeignKeyEditor.vue"
-Cohesion: 0.05
-Nodes (55): Acceptance-Criteria Coverage, Area 1: Supply supported suggestions from the completed cache, Area 2: Preview a selected reference without editing it, Area 3: Confirm unchanged editor and validation behavior, Definition Of Done, Deliverables, Phase Summary, Progress Tracker (+47 more)
+Cohesion: 0.04
+Nodes (64): Acceptance-Criteria Coverage, Area 1: Supply supported suggestions from the completed cache, Area 2: Preview a selected reference without editing it, Area 3: Confirm unchanged editor and validation behavior, Definition Of Done, Deliverables, Phase Summary, Progress Tracker (+56 more)
+
+### Community 20 - "reconciliation/service.py"
+Cohesion: 0.03
+Nodes (15): get_preview_service(), OperationStatus, AutoReconcileResult, ColumnInfo, EntityPreviewError, PreviewRequest, PreviewResult, AnotherEntityReconciliationSourceResolver (+7 more)
 
 ### Community 21 - "4. Project Reference"
 Cohesion: 0.18
 Nodes (11): 1. Start the Reconciliation Service, 2. Create Reconciliation Project, 3. Include Reconciliation in Main Project, 4. Project Reference, Available Properties (by Entity Type), Available Service Types, Entity Specification Fields, Mapping Structure (Auto-generated) (+3 more)
 
 ### Community 23 - "operations.py"
-Cohesion: 0.07
-Nodes (31): AuthorizationState, StateChange, _application_role_order(), _audit_event_order(), backup_database(), development_bootstrap_required(), export_state(), _grant_detail() (+23 more)
-
-### Community 24 - "SqlLoader"
 Cohesion: 0.06
-Nodes (4): PostgresSqlLoader, SqliteLoader, SqlLoader, ensure_read_only_sql()
+Nodes (39): ApplicationRoleAssignment, AuthorizationState, StateChange, _application_role_order(), _audit_event_order(), backup_database(), development_bootstrap_required(), export_state() (+31 more)
 
 ### Community 25 - "QueryEditor.vue"
 Cohesion: 0.05
@@ -1154,24 +1159,24 @@ Cohesion: 0.06
 Nodes (29): availableColumns, buildOrderByClause(), buildWhereClause(), canGenerateSql, conditionLogic, conditions, conditionsPanel, dataSourceNames (+21 more)
 
 ### Community 27 - "useCytoscape"
-Cohesion: 0.10
-Nodes (26): useCytoscape(), applyLayout(), fit(), getStyleOptions(), initialize(), render(), reset(), updateElements() (+18 more)
+Cohesion: 0.07
+Nodes (35): useCytoscape(), applyLayout(), fit(), getStyleOptions(), initialize(), render(), reset(), updateElements() (+27 more)
 
 ### Community 28 - "entity_persistence_strategies.py"
-Cohesion: 0.07
-Nodes (11): SchemaValidationError, DefaultEntityPersistenceStrategy, EntityPersistenceStrategy, FixedEntityPersistenceStrategy, build_fixed_full_columns(), derive_fixed_schema(), FixedSchema, format_missing_fixed_keys_message() (+3 more)
+Cohesion: 0.09
+Nodes (8): SchemaValidationError, DefaultEntityPersistenceStrategy, EntityPersistenceStrategy, FixedEntityPersistenceStrategy, build_fixed_full_columns(), format_missing_fixed_keys_message(), normalize_fixed_entity(), normalize_fixed_entity_column_types()
 
 ### Community 29 - "ShapeShifter"
 Cohesion: 0.04
-Nodes (30): Architecture, Code Conventions, Cross-Cutting Rules, Documentation Vocabulary, graphify, Key References, rtk (Token Optimization), Shape Shifter – Agent Guide (+22 more)
+Nodes (35): TableStoreDataFetchStrategy, Architecture, Code Conventions, Cross-Cutting Rules, Documentation Vocabulary, graphify, Key References, rtk (Token Optimization) (+27 more)
 
 ### Community 30 - "composables/index.ts"
-Cohesion: 0.07
-Nodes (42): axios@^1.7.9, apiMocks, useErrorHandler(), handleError(), withErrorHandling(), UseErrorHandlerOptions, UseErrorHandlerReturn, useSimpleError() (+34 more)
+Cohesion: 0.06
+Nodes (46): apiMocks, useDependencies(), checkCircularDependencies(), clearDependencies(), UseDependenciesOptions, UseEntitiesOptions, useErrorHandler(), handleError() (+38 more)
 
 ### Community 31 - "sql.py"
-Cohesion: 0.09
-Nodes (11): extract_select_columns(), extract_tables(), get_statement_type(), has_where_clause(), has_wildcard_select(), _resolve_select_alias(), _find_forbidden_operation(), _has_executable_tokens() (+3 more)
+Cohesion: 0.06
+Nodes (19): QuerySecurityError, extract_select_columns(), extract_tables(), get_statement_type(), has_where_clause(), has_wildcard_select(), _resolve_select_alias(), Allowed SQL (+11 more)
 
 ### Community 32 - "ReconciliationGrid.vue"
 Cohesion: 0.06
@@ -1181,13 +1186,13 @@ Nodes (36): acceptCandidate(), alternativeSearchDialog, bulkAcceptDialog, bulkPr
 Cohesion: 0.16
 Nodes (7): DSLEvaluationError, PandasStringBackend, _extract(), _convert(), _convert(), _convert(), _convert()
 
-### Community 34 - "Project"
+### Community 34 - "ProjectService"
 Cohesion: 0.02
-Nodes (22): ApplicationStateManager, register_tips(), ConfigurationError, DataIntegrityError, DependencyError, EntityConflictError, ResourceConflictError, ResourceError (+14 more)
+Nodes (21): get_project_service(), ApplicationStateManager, EntityConflictError, ResourceConflictError, get_correlation_id(), Entity, FixResult, Project (+13 more)
 
 ### Community 35 - "AuthorizedResource"
 Cohesion: 0.03
-Nodes (52): get_help_doc(), invalidate_preview_cache(), auto_reconcile_entity(), auto_reconcile_entity_sync(), cancel_operation(), check_reconciliation_service_health(), create_registry(), delete_catalog() (+44 more)
+Nodes (66): delete_mapping_link(), get_entity_mapping(), get_mapping_link(), put_mapping_link(), retry_fixed_entity_mapping(), _to_entity_response(), _to_link_response(), can_materialize() (+58 more)
 
 ### Community 36 - "Full Manual Checklist"
 Cohesion: 0.05
@@ -1203,7 +1208,7 @@ Nodes (42): country_name, emit_codes, reconciliation_path, reconciliation_result
 
 ### Community 39 - "data_validation_orchestrator.py"
 Cohesion: 0.04
-Nodes (17): ValidationMapper, _get_normalizer_additional_issues(), ValidationIssue, AllowedValuesConformanceValidator, FKReferentialIntegrityConformanceValidator, NullabilityConformanceValidator, TypeCompatibilityConformanceValidator, BusinessKeyProducedValidator (+9 more)
+Nodes (18): ValidationMapper, DataValidationOrchestrator, _get_normalizer_additional_issues(), ValidationIssue, AllowedValuesConformanceValidator, FKReferentialIntegrityConformanceValidator, NullabilityConformanceValidator, TypeCompatibilityConformanceValidator (+10 more)
 
 ### Community 40 - "DataProviderService"
 Cohesion: 0.09
@@ -1215,11 +1220,11 @@ Nodes (42): 10. Verify SEAD Example Fixture with Broad Negative Coverage, 11. Ve
 
 ### Community 42 - "SuggestionService"
 Cohesion: 0.07
-Nodes (11): analyze_entities(), suggest_for_entity(), DependencySuggestion, EntitySuggestions, ForeignKeySuggestion, SuggestionsRequest, ColumnMatchStrategy, ExactColumnMatch (+3 more)
+Nodes (12): analyze_entities(), suggest_for_entity(), TableSchema, DependencySuggestion, EntitySuggestions, ForeignKeySuggestion, SuggestionsRequest, ColumnMatchStrategy (+4 more)
 
 ### Community 44 - "ValidationPanel.vue"
-Cohesion: 0.04
-Nodes (42): emit, Emits, enabledValidators, handleRun(), panel, Props, sampleSize, selectedEntities (+34 more)
+Cohesion: 0.03
+Nodes (70): emit, Emits, enabledValidators, handleRun(), panel, Props, sampleSize, selectedEntities (+62 more)
 
 ### Community 46 - "01_tables.sql"
 Cohesion: 0.03
@@ -1238,24 +1243,20 @@ Cohesion: 0.05
 Nodes (38): Active Documents, Cutover And Deployment, Gates To Resolve, D1 — Migration method: backfill SEAD → SIMS, no reconciliation, no remapping, D2 — Cross-schema integrity: verification checks, not hard foreign keys, D3 — Deprecate SEAD sequence minting for tracked entities, D4 — Rollout and cutover are separate CRs, D5 — Add missing UUID fields in SEAD for tracked entities (+30 more)
 
 ### Community 50 - "BranchEditor.vue"
-Cohesion: 0.06
-Nodes (24): branches, emit, lastEmittedValue, Props, IngesterProjectConfig, ProjectCreateRequest, ProjectFileInfo, ProjectListItem (+16 more)
-
-### Community 51 - "dotget"
-Cohesion: 0.06
-Nodes (15): FieldValidator, EndsWithIdValidator, FieldExistsValidator, FieldIsAbsentValidator, FieldIsNonEmptyValidator, FieldIsNotEmptyStringValidator, FieldIsStringListValidator, FieldTypeValidator (+7 more)
-
-### Community 52 - ".get_table"
 Cohesion: 0.07
-Nodes (5): FixedProviderRow, CanMaterializeSpecification, ConformanceIssue, has_target_facing_foreign_key_path(), is_valid_direct_public_id_foreign_key()
+Nodes (17): branches, emit, lastEmittedValue, Props, vuetify, AppendConfig, BranchConfig, Cardinality (+9 more)
 
-### Community 53 - "ProjectService"
-Cohesion: 0.04
-Nodes (16): list_backups(), _list_project_config_backups(), _project_directory(), _resolve_target_model_path(), restore_backup(), _build_listing_yaml_loader(), construct_mapping(), get_yaml_service() (+8 more)
+### Community 51 - "Any"
+Cohesion: 0.14
+Nodes (4): FieldIsAbsentValidator, FieldIsNonEmptyValidator, FieldIsNotEmptyStringValidator, FieldIsStringListValidator
 
-### Community 54 - "src/utility.py"
-Cohesion: 0.05
-Nodes (18): decorator(), create_db_uri(), dotexpand(), _ensure_key_property(), key(), filter_once_per_message(), find_parent_with(), get_connection_uri() (+10 more)
+### Community 53 - "typing"
+Cohesion: 0.02
+Nodes (29): get_app_state_manager(), register_tips(), CircularDependencyError, ConfigurationError, DataIntegrityError, DependencyError, DomainException, ResourceError (+21 more)
+
+### Community 54 - "Any"
+Cohesion: 0.15
+Nodes (7): get_connection_uri(), import_sub_modules(), load_resource_yaml(), recursive_filter_dict(), decorator(), resolve_specification(), sanitize_column_name()
 
 ### Community 55 - "ThemeColorPicker.vue"
 Cohesion: 0.11
@@ -1270,8 +1271,12 @@ Cohesion: 0.07
 Nodes (8): list_filter_types(), FilterFieldMetadataResponse, FilterSchemaResponse, ExistsInFilter, FilterFieldMetadata, FilterSchema, FilterSchemaRegistry, QueryFilter
 
 ### Community 58 - "SeadChangeRequestSimsAdapter"
+Cohesion: 0.08
+Nodes (7): IdentitySignal, ResolutionRequest, inject_ingester_runtime_dependencies(), _is_missing_value(), SeadChangeRequestReconciliationAdapter, SeadChangeRequestSimsAdapter, SimsResolveItem
+
+### Community 59 - "Parser"
 Cohesion: 0.09
-Nodes (4): IdentitySignal, ResolutionRequest, SeadChangeRequestSimsAdapter, SimsResolveItem
+Nodes (6): Call, DSLParseError, Parser, Token, Tokenizer, TokenType
 
 ### Community 60 - "Security Hardening Follow-up - Phase 2 Task Plan"
 Cohesion: 0.10
@@ -1286,32 +1291,32 @@ Cohesion: 0.05
 Nodes (36): reconciliation_path, reconciliation_result, fixture_version, message, severity, policy, state, step_hits (+28 more)
 
 ### Community 63 - "authorization.py"
-Cohesion: 0.11
-Nodes (23): initialize_database(), backup(), check_integrity(), _confirm_destructive(), export_manifest_command(), export_state_command(), grant(), import_state_command() (+15 more)
+Cohesion: 0.08
+Nodes (27): StateImportPlan, export_manifest(), initialize_database(), backup(), check_integrity(), _confirm_destructive(), dev_bootstrap(), export_manifest_command() (+19 more)
 
 ### Community 64 - "Phase Plan"
 Cohesion: 0.06
 Nodes (34): 1. Citation IDs do not match real validation codes, 1. No LLM prompt template, 2. No concrete API contract, 2. No message-to-source mapping, 3. Evidence artifact persistence undefined, 3. No error/fallback behavior, 4. Read-only data access unconfirmed, Brief assessment of Phases 6–8 (+26 more)
 
 ### Community 65 - "ProjectFileUploadCard.vue"
-Cohesion: 0.13
-Nodes (17): canShareWithAllProjects, deleteFile(), deletingFileName, fileInput, files, handleDrop(), handleFileSelect(), isDragging (+9 more)
+Cohesion: 0.08
+Nodes (24): canShareWithAllProjects, deleteFile(), deletingFileName, fileInput, files, handleDrop(), handleFileSelect(), isDragging (+16 more)
 
 ### Community 68 - "MaterializeDialog.vue"
 Cohesion: 0.05
 Nodes (38): CanMaterializeResponse, materializationApi, MaterializationResult, MaterializeRequest, UnmaterializationResult, UnmaterializeRequest, canMaterialize, close() (+30 more)
 
 ### Community 69 - "App.vue"
-Cohesion: 0.07
-Nodes (30): acknowledgedWhatsNewVersion, acknowledgeLatestWhatsNew(), Breadcrumb, breadcrumbs, Command, commands, commandSearch, currentProject (+22 more)
+Cohesion: 0.02
+Nodes (76): vue-router@^4.5.0, acknowledgedWhatsNewVersion, acknowledgeLatestWhatsNew(), Breadcrumb, breadcrumbs, Command, commands, commandSearch (+68 more)
 
 ### Community 70 - "input_resolution.py"
 Cohesion: 0.04
 Nodes (40): IngesterConfig, CollisionCheckResult, is_valid_submission_identifier(), normalize_submission_identifier(), SourceTableBundle, TrustedProjectContext, SeadChangeRequestIngester, _apply_trusted_context() (+32 more)
 
 ### Community 71 - "fixed_entity_types.py"
-Cohesion: 0.07
-Nodes (19): FixedEntityConfigMapper, FixedEntityLoadIssueCollector, map_fixed_entity_error(), map_fixed_entity_shape_error(), Root-cause assessment, FixedEntityColumnTypeDeclarationError, FixedEntityNormalizationWarning, FixedEntityShapeValidationError (+11 more)
+Cohesion: 0.05
+Nodes (24): FixedEntityConfigMapper, FixedEntityLoadIssueCollector, ProjectLoadIssueCollector, ProjectLoadIssueCollectorRegistry, ProjectLoadIssues, map_fixed_entity_error(), map_fixed_entity_shape_error(), Root-cause assessment (+16 more)
 
 ### Community 72 - "sql_rendering.py"
 Cohesion: 0.10
@@ -1322,20 +1327,24 @@ Cohesion: 0.03
 Nodes (62): LogDownloadResponse, LogLevel, LogResponse, logsApi, LogType, autoRefresh, cardStyle, cardTextStyle (+54 more)
 
 ### Community 74 - "validate_project.py"
-Cohesion: 0.05
-Nodes (14): ConformanceValidationExecutor, map_validation_issue(), execute(), load_project(), main(), print_markdown_report(), print_summary(), print_workflow_results() (+6 more)
+Cohesion: 0.06
+Nodes (14): ConformanceValidationExecutor, map_validation_issue(), DataValidationExecutor, execute(), load_project(), main(), print_markdown_report(), print_summary() (+6 more)
 
 ### Community 75 - "planning.py"
 Cohesion: 0.08
 Nodes (11): IdentityWorkPlan, _has_public_id_value(), _missing_action_for(), _missing_mutable_field_requirements(), plan_bundle(), plan_table(), staging_scope_errors(), _values_equal_for_existing_row_planning() (+3 more)
 
 ### Community 76 - ".analyze_dependencies"
-Cohesion: 0.07
-Nodes (16): SourceNodeService, calculate_depths(), find_cycles(), dfs(), topological_sort(), Backend Utilities, Design Principles, Graph Algorithms (+8 more)
+Cohesion: 0.10
+Nodes (15): calculate_depths(), find_cycles(), dfs(), topological_sort(), Backend Utilities, Design Principles, Graph Algorithms, `graph.py` - Graph Algorithms (+7 more)
 
-### Community 78 - "Action"
-Cohesion: 0.02
-Nodes (84): get_active_project_locator(), create_data_source(), delete_data_source(), get_data_source(), get_data_source_status(), get_excel_metadata(), list_data_source_files(), list_data_sources() (+76 more)
+### Community 77 - "models/reconciliation.py"
+Cohesion: 0.12
+Nodes (10): EntityResolutionCatalog, EntityResolutionCatalogCreateRequest, EntityResolutionCatalogUpdateRequest, EntityResolutionListItem, EntityResolutionSet, ExportToMappingResult, ReconciliationPreviewRow, ReconciliationRemote (+2 more)
+
+### Community 78 - "projects.py"
+Cohesion: 0.03
+Nodes (63): get_mapping_service(), activate_project(), BackupInfo, clear_custom_layout(), connect_data_source_to_project(), copy_project(), create_project(), CustomLayoutResponse (+55 more)
 
 ### Community 79 - "ExecuteDialog.vue"
 Cohesion: 0.06
@@ -1351,7 +1360,7 @@ Nodes (33): reconciliation_path, reconciliation_result, fixture_version, message
 
 ### Community 82 - "vitest"
 Cohesion: 0.02
-Nodes (66): vuetify@^3.11.4, @vue/test-utils@^2.4.6, TargetModelEntityOption, vuetify, childStubs, externalFixedEntity, findTextFieldByLabel(), fixedEntity (+58 more)
+Nodes (91): vuetify@^3.11.4, @vue/test-utils@^2.4.6, ColumnAvailabilityRequest, ColumnAvailabilityResponse, entitiesApi, EntityCreateRequest, EntityResponse, EntityUpdateRequest (+83 more)
 
 ### Community 83 - "ValidationError"
 Cohesion: 0.05
@@ -1359,7 +1368,7 @@ Nodes (23): FixAction, FixActionType, FixSuggestion, AutoFixService, AutoFixStra
 
 ### Community 84 - "Any"
 Cohesion: 0.06
-Nodes (4): get_tips(), DomainException, ForeignKeyError, MissingDependencyError
+Nodes (3): get_tips(), ForeignKeyError, MissingDependencyError
 
 ### Community 85 - "rules"
 Cohesion: 0.06
@@ -1378,36 +1387,36 @@ Cohesion: 0.03
 Nodes (60): tbl_abundance_ident_levels, tbl_abundance_modifications, tbl_abundances, tbl_alt_ref_types, tbl_analysis_entities, tbl_analysis_entity_prep_methods, tbl_analysis_values, tbl_biblio (+52 more)
 
 ### Community 89 - "SourceNode"
-Cohesion: 0.07
-Nodes (9): BaseFileSourceNodeExtractor, BaseSourceNodeExtractor, CsvFileSourceNodeExtractor, DependencyNode, ExcelFileSourceNodeExtractor, MaterializedFixedSourceNodeExtractor, NullSourceNodeExtractor, SourceNode (+1 more)
+Cohesion: 0.06
+Nodes (9): BaseFileSourceNodeExtractor, BaseSourceNodeExtractor, CsvFileSourceNodeExtractor, ExcelFileSourceNodeExtractor, MaterializedFixedSourceNodeExtractor, NullSourceNodeExtractor, SourceNode, SourceNodeService (+1 more)
 
 ### Community 90 - "ForeignKeyConfig"
-Cohesion: 0.03
-Nodes (23): Evidence ledger, Executive summary, Impact and extent, Implemented resolution, Investigation findings: issue #558 duplicate FK keys from nonmatching-null merges, References, Root-cause assessment, Unresolved questions and blockers (+15 more)
+Cohesion: 0.02
+Nodes (34): Evidence ledger, Executive summary, Impact and extent, Implemented resolution, Investigation findings: issue #558 duplicate FK keys from nonmatching-null merges, References, Root-cause assessment, Unresolved questions and blockers (+26 more)
 
 ### Community 91 - "source_rows"
 Cohesion: 0.06
 Nodes (32): reconciliation_path, reconciliation_result, fixture_version, message, severity, policy, state, step_hits (+24 more)
 
-### Community 92 - "constraints.py"
-Cohesion: 0.05
-Nodes (14): AllowRowDecreaseValidator, ConstraintValidator, _get_series(), ManyToOneCardinalityValidator, NullKeyValidator, OneToManyCardinalityValidator, OneToOneCardinalityValidator, UniqueLeftKeyValidator (+6 more)
+### Community 92 - "types/ingester.ts"
+Cohesion: 0.19
+Nodes (17): ingesterApi, projectRequest, ingestedResult, projectRequest, validResult, DatabaseConfig, DeployArtifact, IngesterConfig (+9 more)
 
 ### Community 93 - "reconciliation_result"
 Cohesion: 0.06
 Nodes (32): reconciliation_path, reconciliation_result, fixture_version, message, severity, policy, state, step_hits (+24 more)
 
-### Community 94 - "put_mapping_link"
-Cohesion: 0.10
-Nodes (11): delete_mapping_link(), get_entity_mapping(), get_mapping_link(), put_mapping_link(), _to_entity_response(), _to_link_response(), MappingDeleteResponse, MappingEntityResponse (+3 more)
+### Community 94 - "IngesterView.test.ts"
+Cohesion: 0.12
+Nodes (15): availableIngesters, { ingesters, selectedIngester, loading }, ingesterStore, props, useIngesterStore, availableIngesters, excludedIngesterKeys, ingesterStore (+7 more)
 
 ### Community 95 - "ingester_service.py"
-Cohesion: 0.09
-Nodes (9): list_ingesters(), IngesterMetadataResponse, IngestRequest, IngestResponse, ProjectSubmissionOptions, ValidateRequest, ValidateResponse, IngesterService (+1 more)
+Cohesion: 0.16
+Nodes (7): list_ingesters(), IngesterMetadataResponse, IngestRequest, IngestResponse, ProjectSubmissionOptions, ValidateRequest, ValidateResponse
 
 ### Community 96 - "FiltersEditor.vue"
-Cohesion: 0.09
-Nodes (23): emit, filters, filterTypes, getColumnWidth(), getFieldsForFilter(), handleAddFilter(), handleFilterTypeChange(), { loadFilterSchemas, getFilterSchema, getFilterTypes } (+15 more)
+Cohesion: 0.08
+Nodes (25): emit, filters, filterTypes, getColumnWidth(), getFieldsForFilter(), handleAddFilter(), handleFilterTypeChange(), { loadFilterSchemas, getFilterSchema, getFilterTypes } (+17 more)
 
 ### Community 97 - "reconciliation_result"
 Cohesion: 0.06
@@ -1421,9 +1430,9 @@ Nodes (30): reconciliation_path, reconciliation_result, fixture_version, message
 Cohesion: 0.06
 Nodes (31): nullable, type, altitude, latitude_dd, longitude_dd, national_site_identifier, site_description, site_name (+23 more)
 
-### Community 100 - "._update_values_locked"
-Cohesion: 0.08
-Nodes (6): get_entity_values(), update_entity_values(), EntityValuesData, EntityValuesService, get_entity_values_service(), _normalized_isnan_values()
+### Community 100 - "entities.py"
+Cohesion: 0.02
+Nodes (37): _build_entity_response(), create_entity(), delete_entity(), EntityCreateRequest, EntityResponse, EntityUpdateRequest, EntityValuesResponse, EntityValuesUpdateRequest (+29 more)
 
 ### Community 101 - "Testing Appendix - Shape Shifter"
 Cohesion: 0.07
@@ -1434,12 +1443,12 @@ Cohesion: 0.11
 Nodes (10): business_id_for_row(), business_key_errors(), BusinessKeyError, BusinessKeyPart, _decimal_text(), _declaration_errors(), encode_business_key(), _finite_decimal() (+2 more)
 
 ### Community 103 - "ResourceType"
-Cohesion: 0.08
-Nodes (9): ApplicationRole, ApplicationRoleAssignment, AuditEvent, ResourceReference, allowed_resource_roles(), AuthorizationPolicy, validate_resource_role(), _application_role_assignment() (+1 more)
+Cohesion: 0.10
+Nodes (8): AuditEvent, ResourceReference, ResourceType, allowed_resource_roles(), validate_resource_role(), _audit_event(), _resource(), _resource_depths()
 
 ### Community 104 - "endpoints/mapping.py"
-Cohesion: 0.05
-Nodes (19): retry_fixed_entity_mapping(), MappingSyncPending, MappingSyncRetryResult, _align_inline_rows(), FixedEntityMappingChangeService, get_fixed_entity_mapping_change_service(), _inline_values(), _is_fixed_entity() (+11 more)
+Cohesion: 0.06
+Nodes (12): _align_inline_rows(), _inline_values(), _is_fixed_entity(), _is_materialized(), _snapshot(), FixedEntityMappingSyncResult, FixedEntityMappingSyncService, apply_fixed_row_change_set() (+4 more)
 
 ### Community 105 - "CustomLayoutConfig"
 Cohesion: 0.08
@@ -1453,13 +1462,9 @@ Nodes (29): reconciliation_path, reconciliation_result, fixture_version, message
 Cohesion: 0.07
 Nodes (29): reconciliation_path, reconciliation_result, fixture_version, message, severity, policy, state, step_hits (+21 more)
 
-### Community 108 - "useValidationStore"
-Cohesion: 0.11
-Nodes (21): useDependencies(), checkCircularDependencies(), clearDependencies(), UseDependenciesOptions, useValidation(), getEntityValidation(), hasEntityErrors(), hasEntityWarnings() (+13 more)
-
 ### Community 109 - ".to_core"
-Cohesion: 0.10
-Nodes (8): Evidence ledger, Executive summary, Impact and extent, Investigation findings: Arbodat fixed-entity validation failure, References, Remediation options, Unresolved questions and blockers, Verification record
+Cohesion: 0.06
+Nodes (15): ShapeShiftProjectCache, Evidence ledger, Executive summary, Impact and extent, Investigation findings: Arbodat fixed-entity validation failure, References, Remediation options, Unresolved questions and blockers (+7 more)
 
 ### Community 110 - "Shape Shifter Project Editor - Appendix"
 Cohesion: 0.07
@@ -1490,12 +1495,12 @@ Cohesion: 0.07
 Nodes (28): reconciliation_path, reconciliation_result, fixture_version, message, severity, policy, state, step_hits (+20 more)
 
 ### Community 117 - "ResourceRecord"
-Cohesion: 0.07
-Nodes (6): get_authorization_repository(), MembershipSnapshot, Grant, GrantSubjectType, AuthorizationRepository, _grant()
+Cohesion: 0.05
+Nodes (18): delete_data_source(), get_authorization_repository(), Grant, ResourceRecord, AuthorizationRepository, _grant(), _register_development_resources(), Audit Records (+10 more)
 
 ### Community 118 - "MappingCatalog"
 Cohesion: 0.05
-Nodes (17): get_mapping_service(), ValidationError, MappingService, Mapping Sidecar Design, resolve_target_id(), MappingSnapshot, decode_local_key(), _decode_single() (+9 more)
+Nodes (9): ValidationError, MappingService, Mapping Sidecar Design, F2 — Mapping-sidecar synchronization in `MaterializationService`, MappingManager, EntityMapping, Link, MappingCatalog (+1 more)
 
 ### Community 119 - "reconciliation_result"
 Cohesion: 0.07
@@ -1519,11 +1524,11 @@ Nodes (33): Change Request Ingester MVP Field Usage, Checking Conformance Withou
 
 ### Community 124 - "schema_service.py"
 Cohesion: 0.08
-Nodes (3): SchemaIntrospectionError, safe_str_or_none(), SchemaCache
+Nodes (4): SchemaIntrospectionError, TableMetadata, safe_str_or_none(), SchemaCache
 
 ### Community 125 - "replace.py"
-Cohesion: 0.13
-Nodes (16): _apply_normalize_op_scalar(), _apply_replacement_rule(), apply_replacements(), BlankOutRule, ContainsRule, EndsWithRule, EqualsRule, _infer_rule_key() (+8 more)
+Cohesion: 0.19
+Nodes (13): _apply_normalize_op_scalar(), BlankOutRule, ContainsRule, EndsWithRule, EqualsRule, InRule, MapRule, RegexRule (+5 more)
 
 ### Community 126 - "ReconciliationStatsCard.vue"
 Cohesion: 0.11
@@ -1537,13 +1542,13 @@ Nodes (28): Props, completionColor, completionIcon, Props, stats, activeCount, a
 Cohesion: 0.07
 Nodes (27): reconciliation_path, reconciliation_result, fixture_version, message, severity, policy, state, step_hits (+19 more)
 
-### Community 129 - "DataValidationOrchestrator"
-Cohesion: 0.05
-Nodes (25): Backend Feature Checklist, Dependency Injection, Layer Boundary, Shape Shifter – Backend (`backend/`) Agent Rules, Target Model Conformance, Testing, Validation Orchestrator (`backend/app/validators/`), run_reconciliation() (+17 more)
+### Community 129 - "FullDataFetchStrategy"
+Cohesion: 0.08
+Nodes (10): Backend Feature Checklist, Dependency Injection, Layer Boundary, Shape Shifter – Backend (`backend/`) Agent Rules, Target Model Conformance, Testing, Validation Orchestrator (`backend/app/validators/`), DataFetchStrategy (+2 more)
 
-### Community 130 - "DataSourcesView.vue"
-Cohesion: 0.05
-Nodes (30): dataSourcesApi, EntityTypeInfo, ColumnMetadata, DataSourceConfig, DataSourceFormData, DataSourceStatus, DataSourceTestResult, DataSourceType (+22 more)
+### Community 130 - "ConfigValue"
+Cohesion: 0.15
+Nodes (4): Troubleshooting and Common Pitfalls, Implementation Rules, ConfigValue, recursive_update()
 
 ### Community 131 - "SuggestionsPanel.vue"
 Cohesion: 0.14
@@ -1574,8 +1579,8 @@ Cohesion: 0.23
 Nodes (16): foreign_keys, foreign_keys, entity, required, via, foreign_keys, foreign_keys, foreign_keys (+8 more)
 
 ### Community 138 - "Proposal: Define And Verify The SEAD Target Model Coverage Boundary"
-Cohesion: 0.06
-Nodes (31): 1. The model declares its own coverage source, 2. Entities carry their own provenance, 3. A CLI reports model-to-SEAD coverage, 4. Live SEAD mode, 5. Gap triage stays in documents, 6. Prose stops carrying counts, Acceptance Criteria, Alternatives Considered (+23 more)
+Cohesion: 0.08
+Nodes (25): 1. The model declares its own coverage source, 2. Entities carry their own provenance, 3. A CLI reports model-to-SEAD coverage, 4. Live SEAD mode, 5. Gap triage stays in documents, 6. Prose stops carrying counts, Acceptance Criteria, Alternatives Considered (+17 more)
 
 ### Community 139 - "ingest.py"
 Cohesion: 0.13
@@ -1594,12 +1599,12 @@ Cohesion: 0.08
 Nodes (25): reconciliation_path, reconciliation_result, fixture_version, message, severity, policy, state, step_hits (+17 more)
 
 ### Community 143 - "ExtraColumnEvaluator"
-Cohesion: 0.05
-Nodes (17): _apply_extra_columns(), _extra_column_dependencies(), _link_candidates(), _ordered(), _processed_entity_columns(), resolve_column_availability(), UnnestConfig, ExtraColumnsExpressionSpecification (+9 more)
+Cohesion: 0.08
+Nodes (6): _extra_column_dependencies(), ExtraColumnsExpressionSpecification, extract_column_references(), ExtraColumnEvaluator, interpolate_row(), to_str()
 
 ### Community 144 - "ReconciliationClient"
-Cohesion: 0.06
-Nodes (8): get_reconciliation_service(), ReconciliationClient, ReconciliationQuery, QueryBuildResult, main(), print_results(), run_reconciliation(), setup_logging()
+Cohesion: 0.07
+Nodes (7): get_reconciliation_service(), ReconciliationClient, ReconciliationCandidate, main(), print_results(), run_reconciliation(), setup_logging()
 
 ### Community 145 - "rules"
 Cohesion: 0.11
@@ -1613,10 +1618,6 @@ Nodes (12): Acceptance Criteria, Alternatives Considered, Current Behavior, Fina
 Cohesion: 0.17
 Nodes (4): _can_allocate_after_miss(), orchestrate_identity_assignments(), ReconciliationClientPort, SimsClientPort
 
-### Community 148 - "DuckDbWorkspace"
-Cohesion: 0.07
-Nodes (3): Covered Execution Paths, DuckDbLoader, DuckDbWorkspace
-
 ### Community 149 - "location"
 Cohesion: 0.08
 Nodes (25): default_lat_dd, default_long_dd, location_name, location_type_id, nullable, type, nullable, type (+17 more)
@@ -1629,9 +1630,9 @@ Nodes (25): type_description, type_name, sample_description_type, sample_type, c
 Cohesion: 0.08
 Nodes (29): idx_ecocode_groups_ecocode_system_id, idx_ecocode_groups_name, idx_ecocode_systems_biblio_id, idx_ecocode_systems_ecocode_group_id, idx_ecocodes_ecocode_definition_id, idx_ecocodes_taxon_id, idx_features_feature_type_id, idx_physical_sample_features_feature_id (+21 more)
 
-### Community 152 - "ProjectService"
-Cohesion: 0.02
-Nodes (14): get_project_service(), TargetModelFileOption, DocumentationService, FileManager, ProjectUtils, ProjectProviderBindingError, _is_bound_pair(), _key_declaration_errors() (+6 more)
+### Community 152 - "resolve_contained_path"
+Cohesion: 0.06
+Nodes (4): ProjectFileInfo, FileManager, resolve_contained_path(), resolve_managed_file_path()
 
 ### Community 154 - "reconciliation_result"
 Cohesion: 0.08
@@ -1666,8 +1667,8 @@ Cohesion: 0.08
 Nodes (20): deleteDialog, deletingSpec, editorDialog, emit, entityFieldsCache, getEntityFields(), headers, isNewSpec (+12 more)
 
 ### Community 162 - "proposals/README.md"
-Cohesion: 0.06
-Nodes (24): Acceptance Criteria, Current Behavior, Final Recommendation, Non-Goals, Problem, Project Folder Navigation With Breadcrumbs, Proposed Design, Recommended Delivery Order (+16 more)
+Cohesion: 0.05
+Nodes (31): Acceptance Criteria, Alternatives Considered, Current Behavior, Final Recommendation, Non-Goals, Output Dataset Expectations, Planning Handoff, Problem (+23 more)
 
 ### Community 163 - "_schema.yml"
 Cohesion: 0.12
@@ -1697,9 +1698,9 @@ Nodes (21): 1. Record the identity inventory first, 2. Decide per scope: migrate
 Cohesion: 0.10
 Nodes (21): Acceptance Criteria, Alignment with sead_authority_service, Alternatives Considered, Bundle handling, Current Behavior, Deploy-side pull and selection, Final Recommendation, GitHub free-tier compliance (+13 more)
 
-### Community 171 - "profile_projects_listing.py"
-Cohesion: 0.09
-Nodes (14): main(), _mean(), measure_scan(), milliseconds(), parse_args(), render_report(), RunResult, silence_logging() (+6 more)
+### Community 171 - "Principal"
+Cohesion: 0.06
+Nodes (21): _authorize_referenced_shared_data_sources(), AuthenticationAdapter, authorize_shared_data_source_reference(), _data_source_locator(), Principal, AuthorizationPolicy, AuthorizationService, import_backend() (+13 more)
 
 ### Community 173 - "transform"
 Cohesion: 0.12
@@ -1710,16 +1711,20 @@ Cohesion: 0.29
 Nodes (7): API, Capabilities, Documentation, License And Acknowledgments, Prerequisites, Quick Start, SEAD Shape Shifter
 
 ### Community 175 - "DataLoader"
-Cohesion: 0.06
-Nodes (5): DataLoader, LoaderType, ExcelLoader, FileLoader, LoaderInstanceSet
+Cohesion: 0.04
+Nodes (9): DataLoader, DataLoaderRegistry, LoaderType, ExcelLoader, FileLoader, FixedLoader, TransformerRegistry, FilterRegistry (+1 more)
 
 ### Community 177 - "site_type_group"
 Cohesion: 0.10
 Nodes (21): origin_code, origin_description, site_type_group, site_type_group_abbrev, site_type_group, nullable, type, nullable (+13 more)
 
-### Community 178 - "ResourceType"
-Cohesion: 0.14
-Nodes (13): ResourceRecord, ResourceType, _apply_grants(), apply_manifest(), _apply_resources(), _load_validated_manifest(), _manifest_subject(), reconcile_manifest() (+5 more)
+### Community 178 - "fields.py"
+Cohesion: 0.15
+Nodes (4): FieldExistsValidator, IsEmptyFieldValidator, IsOfCategoricalValuesValidator, KeysSubsetOfColumnsValidator
+
+### Community 179 - "ConfigLike"
+Cohesion: 0.16
+Nodes (3): Test Data, Fixtures, and Mocking Strategy, ConfigLike, MockConfigProvider
 
 ### Community 180 - "CreateProjectDialog.vue"
 Cohesion: 0.09
@@ -1730,24 +1735,24 @@ Cohesion: 0.10
 Nodes (20): Acceptance Criteria, Add broader branch-aware parent syntax first, Add templates or macros instead, Alternatives Considered, Current Behavior, Final Recommendation, Integration Tests, Keep using ordinary filters (+12 more)
 
 ### Community 182 - "Any"
-Cohesion: 0.25
-Nodes (10): _apply_normalize_op_series(), _as_sequence(), _coerce_scalar_for_match(), _coerce_series_for_match(), _coerce_values_for_match(), _compile_regex(), _is_ignore_case(), _normalize_for_match() (+2 more)
+Cohesion: 0.18
+Nodes (13): _apply_normalize_op_series(), _apply_replacement_rule(), apply_replacements(), _as_sequence(), _coerce_scalar_for_match(), _coerce_series_for_match(), _coerce_values_for_match(), _compile_regex() (+5 more)
 
-### Community 183 - "useWhatsNew.ts"
-Cohesion: 0.13
-Nodes (20): fetchManifest(), fetchNote(), getOrLoadManifest(), getOrLoadNote(), md, noteCache, parseNote(), parseSections() (+12 more)
+### Community 183 - "compare_target_models.py"
+Cohesion: 0.23
+Nodes (6): load_project(), load_target_model(), load_yaml(), main(), print_validation_summary(), validate_project()
 
 ### Community 184 - "resolve.py"
-Cohesion: 0.06
-Nodes (25): load_config(), inject_config(), decorated(), resolve_arguments(), get_config_provider(), set_config_provider(), replacer(), find_unresolved_directives() (+17 more)
+Cohesion: 0.04
+Nodes (35): load_config(), inject_config(), decorated(), resolve_arguments(), ConfigProvider, get_config_provider(), set_config_provider(), replacer() (+27 more)
 
 ### Community 185 - "SqlEditor.vue"
 Cohesion: 0.15
 Nodes (14): @guolao/vue-monaco-editor@^1.5.6, content, editorOptions, emit, Emits, handleChange(), Props, content (+6 more)
 
 ### Community 186 - "frontend/package.json"
-Cohesion: 0.05
-Nodes (58): devDependencies, eslint@^9.39.5, @eslint/js@^9.39.5, eslint-plugin-vue@^10.9.2, globals@^17.13.0, jsdom@^27.4.0, markdown-it@^14.1.0, @mdi/font@^7.4.47 (+50 more)
+Cohesion: 0.06
+Nodes (50): devDependencies, eslint@^9.39.5, @eslint/js@^9.39.5, eslint-plugin-vue@^10.9.2, globals@^17.13.0, jsdom@^27.4.0, markdown-it@^14.1.0, @mdi/font@^7.4.47 (+42 more)
 
 ### Community 187 - "steps"
 Cohesion: 0.11
@@ -1782,8 +1787,8 @@ Cohesion: 0.06
 Nodes (33): AppendSpecification, BranchConfig (for merged entities), CircularDependencySpecification, DataSourceExistsSpecification, DependsOnSpecification, DropDuplicatesSpecification, ends_with_id, Entity-Level Validations (+25 more)
 
 ### Community 196 - "Ingester Idempotency And Re-submission For SEAD Change Requests"
-Cohesion: 0.14
-Nodes (14): Acceptance Criteria, Alternatives Considered, Current Behavior, Final Recommendation, Ingester Idempotency And Re-submission For SEAD Change Requests, Non-Goals, Open Questions, Planning Handoff (+6 more)
+Cohesion: 0.04
+Nodes (45): Acceptance Criteria, Alternatives Considered, Current Behavior, Final Recommendation, Ingester Idempotency And Re-submission For SEAD Change Requests, Non-Goals, Open Questions, Operator Results (+37 more)
 
 ### Community 197 - "Security Hardening Follow-up — Phase Plan"
 Cohesion: 0.11
@@ -1842,8 +1847,8 @@ Cohesion: 0.11
 Nodes (17): Acceptance Criteria, Alternatives Considered, Current Behavior, Final Recommendation, Non-Goals, Open Questions, Planning Handoff, Problem (+9 more)
 
 ### Community 211 - "HelpView.vue"
-Cohesion: 0.07
-Nodes (23): vue-router@^4.5.0, expanded, HelpContent, helpContentMap, Props, route, app, configureMonacoWorkers() (+15 more)
+Cohesion: 0.10
+Nodes (20): ensureMarkdownPath(), isInternalHelpHref(), renderHelpMarkdown(), resolveHelpHref(), slugifyHeading(), useHelp(), loadHelp(), loadHelpSection() (+12 more)
 
 ### Community 212 - "config"
 Cohesion: 0.22
@@ -1873,13 +1878,13 @@ Nodes (7): candidate_children(), CandidateChild, classify_generator(), IdColumnI
 Cohesion: 0.12
 Nodes (17): Acceptance Criteria, Authorize future generic ingester operations, Current Behavior, Final Recommendation, Make authorization and deployment changes recoverable, Make verification results trustworthy, Non-Goals, Planning Handoff (+9 more)
 
-### Community 220 - "endpoints/validation.py"
-Cohesion: 0.10
-Nodes (11): apply_fixes(), check_dependencies(), get_dependencies(), preview_fixes(), validate_entity(), validate_target_model(), CircularDependencyError, FixResult (+3 more)
+### Community 219 - "ResolutionSource"
+Cohesion: 0.17
+Nodes (3): EntityResolutionSet, ResolutionSource, ReconciliationSourceStrategy
 
-### Community 221 - "OperationProgress"
-Cohesion: 0.06
-Nodes (4): event_generator(), OperationManager, OperationProgress, OperationStatus
+### Community 220 - "mapping_model.py"
+Cohesion: 0.19
+Nodes (6): resolve_target_id(), decode_local_key(), _decode_single(), encode_local_key(), _encode_single(), _split_compound()
 
 ### Community 222 - "export_target_tables.py"
 Cohesion: 0.13
@@ -1893,17 +1898,13 @@ Nodes (17): taxon_id, steps, steps, action, bind, bugs_table, comment, descripti
 Cohesion: 0.12
 Nodes (17): message, on_conflict, rules, count_many, count_one, count_zero, allow_deleted, bugs_table (+9 more)
 
-### Community 226 - "ShapeShiftService"
-Cohesion: 0.04
-Nodes (3): ShapeShiftService, ShapeShiftProjectCache, PreviewDataFetchStrategy
-
-### Community 227 - "entities.py"
-Cohesion: 0.04
-Nodes (29): _build_entity_response(), create_entity(), delete_entity(), EntityCreateRequest, EntityResponse, EntityUpdateRequest, EntityValuesResponse, EntityValuesUpdateRequest (+21 more)
+### Community 227 - "Investigation findings: Create Entity from Table returns HTTP 500"
+Cohesion: 0.20
+Nodes (9): Evidence ledger, Executive summary, Impact and extent, Investigation findings: Create Entity from Table returns HTTP 500, References, Remediation options, Timeline or causal chain, Unresolved questions and blockers (+1 more)
 
 ### Community 228 - "TableStore"
 Cohesion: 0.04
-Nodes (9): CsvDispatcher, DatabaseDispatcher, Dispatcher, ExcelDispatcher, IDispatcher, OpenpyxlExcelDispatcher, ZipCsvDispatcher, TableStore (+1 more)
+Nodes (10): CsvDispatcher, DatabaseDispatcher, Dispatcher, DispatchRegistry, ExcelDispatcher, IDispatcher, OpenpyxlExcelDispatcher, ZipCsvDispatcher (+2 more)
 
 ### Community 229 - "Proposal: Sead Change Request Update Handling For Existing Rows"
 Cohesion: 0.12
@@ -1922,8 +1923,8 @@ Cohesion: 0.14
 Nodes (23): Area 1: Identify a completed project cache, captureInitialSnapshot(), debugEntityForm(), dialogModel, emit, formDataToYaml(), getColumnsFromEntity(), handleAcceptDependency() (+15 more)
 
 ### Community 234 - "sys"
-Cohesion: 0.09
-Nodes (10): load_project(), load_target_model(), load_yaml(), main(), print_validation_summary(), run_workflow(), main(), setup_logging() (+2 more)
+Cohesion: 0.07
+Nodes (10): main(), run_workflow(), setup(), Data Loaders (`src/loaders/`), init_jvm_for_ucanaccess(), main(), setup_logging(), resolve_config() (+2 more)
 
 ### Community 235 - "steps"
 Cohesion: 0.10
@@ -1962,8 +1963,8 @@ Cohesion: 0.20
 Nodes (10): related_outputs, comment, item_helper, key_fields, mode, name, persistence, phase (+2 more)
 
 ### Community 244 - "API Routes"
-Cohesion: 0.09
-Nodes (17): health_check(), HealthResponse, declare_public_route(), API Routes, Authorization Route Inventory, Entities, Directives, And Validation, Help And Sessions, Ingester, Filters, Logs, And Release Notes (+9 more)
+Cohesion: 0.15
+Nodes (13): API Routes, Authorization Route Inventory, Entities, Directives, And Validation, Help And Sessions, Ingester, Filters, Logs, And Release Notes, Mapping, Execution, And Materialization, Projects, Public And Static Paths (+5 more)
 
 ### Community 245 - "related_outputs"
 Cohesion: 0.14
@@ -1994,20 +1995,20 @@ Cohesion: 0.67
 Nodes (3): saveWithVersionCheck(), startSession(), handleSave()
 
 ### Community 252 - "dsl.py"
-Cohesion: 0.10
-Nodes (11): Call, ColumnRef, DSLValidationError, Expr, FormulaParser, FunctionSpec, Literal, TokenType (+3 more)
+Cohesion: 0.12
+Nodes (8): DSLException, DSLValidationError, FormulaParser, FunctionSpec, SourceSpan, validate_arity(), ValidationConfig, Validator
 
 ### Community 253 - "Shape Shifter Diagrams"
 Cohesion: 0.15
 Nodes (13): Authorization Decision, Authorization Model, Deployment Architecture, Extensibility Registries, Grants And Resources, Presentation Versions, Project Editing Workflow, Reconciliation Workflow (+5 more)
 
 ### Community 254 - "ShapeShiftService"
-Cohesion: 0.09
+Cohesion: 0.10
 Nodes (3): CacheMetadata, ShapeShiftCache, CacheCheckResult
 
-### Community 255 - "AlternativeSearchDialog.vue"
-Cohesion: 0.13
-Nodes (15): @vueuse/core@^11.3.0, accept(), cancel(), dialogVisible, emit, onDialogChange(), onSearchInput, Props (+7 more)
+### Community 255 - "components.d.ts"
+Cohesion: 0.04
+Nodes (44): @vueuse/core@^11.3.0, Props, Props, GlobalComponents, vue, emit, layoutLabel, LayoutType (+36 more)
 
 ### Community 256 - "datasetcontacts.policy.yml"
 Cohesion: 0.13
@@ -2098,8 +2099,8 @@ Cohesion: 0.14
 Nodes (13): 1. CONFIGURATION_GUIDE.md - Data Source Append Section, 2. CONFIGURATION_GUIDE.md - Property Inheritance Section, 3. AppendEditor.vue - Info Notice, Benefits, Changes, Migration Impact, Next Steps, Overview (+5 more)
 
 ### Community 278 - "fixed_entity_mapping_retry.py"
-Cohesion: 0.06
-Nodes (24): as_mapping_target_id(), build_row_index(), compute_fixed_row_change_set(), default_local_key(), FixedEntityMappingChangeError, IndexedRow, LinkDelete, LinkUpsert (+16 more)
+Cohesion: 0.05
+Nodes (26): as_mapping_target_id(), build_row_index(), compute_fixed_row_change_set(), default_local_key(), FixedEntityMappingChangeError, IndexedRow, LinkDelete, LinkUpsert (+18 more)
 
 ### Community 279 - "attributes.policy.yml"
 Cohesion: 0.14
@@ -2217,9 +2218,9 @@ Nodes (14): comment, name, nullable, role, type, source, fields, identity_key (+
 Cohesion: 0.12
 Nodes (13): Benefits, Complete Example, Configuration Structure, `data_source` (required), Fields, Ingester Configuration in Shape Shifter Projects, Migration from Previous Version, `options` (optional) (+5 more)
 
-### Community 309 - "vue"
-Cohesion: 0.03
-Nodes (66): ColumnAvailabilityRequest, ColumnAvailabilityResponse, entitiesApi, EntityCreateRequest, EntityResponse, EntityUpdateRequest, EntityValuesResponse, EntityValuesUpdateRequest (+58 more)
+### Community 309 - "EntityListCard.vue"
+Cohesion: 0.07
+Nodes (25): dialogModel, emit, Emits, handleConfirm(), loading, Props, dialogMode, emit (+17 more)
 
 ### Community 310 - "Reconciliation Workflow - User Guide"
 Cohesion: 0.15
@@ -2229,13 +2230,13 @@ Nodes (13): 5.1 Investigate Unmatched, 5.2 Options for Unmatched Items, 7.1 Revi
 Cohesion: 0.17
 Nodes (12): Completion Criteria, Fixture A: Minimal Passing Custom Target Model, Fixture B: Built-In SEAD Negative Fixture, Fixture C: Built-In SEAD Conservative-Rule Fixture, Fixture Set, Overview, Preconditions, Quick Smoke Test (+4 more)
 
-### Community 312 - "data_source_policy.py"
-Cohesion: 0.05
-Nodes (24): list_drivers(), download_logs(), get_logs(), get_settings(), DataSourceTestResult, _allowed_env_var_prefixes(), _approved_ports(), _canonical_options() (+16 more)
+### Community 312 - "data_sources.py"
+Cohesion: 0.04
+Nodes (26): get_data_source_service(), create_data_source(), get_data_source(), get_data_source_status(), get_excel_metadata(), list_data_source_files(), list_data_sources(), list_drivers() (+18 more)
 
 ### Community 313 - "YamlEditor.vue"
-Cohesion: 0.07
-Nodes (41): monaco-editor@^0.52.0, monaco-yaml@^5.1.1, yaml@^2.3.4, content, editor, editorOptions, emit, Emits (+33 more)
+Cohesion: 0.10
+Nodes (23): monaco-editor@^0.52.0, monaco-yaml@^5.1.1, content, editor, editorOptions, emit, Emits, error (+15 more)
 
 ### Community 314 - "source"
 Cohesion: 0.15
@@ -2252,6 +2253,10 @@ Nodes (13): mcr_row, taxon_id, reconciliation, rules, strategy, bind, descriptio
 ### Community 317 - "source"
 Cohesion: 0.15
 Nodes (13): name, nullable, role, type, source, fields, identity_key, sql (+5 more)
+
+### Community 318 - "UCanAccessSqlLoader"
+Cohesion: 0.05
+Nodes (4): PostgresSqlLoader, SqliteLoader, UCanAccessSqlLoader, ensure_read_only_sql()
 
 ### Community 319 - "resolvers"
 Cohesion: 0.15
@@ -2305,9 +2310,9 @@ Nodes (13): comment, name, nullable, role, type, source, fields, identity_key (+
 Cohesion: 0.15
 Nodes (3): get_excel_metadata(), _parse_cell_range_max_column(), sanitize_columns()
 
-### Community 332 - "Authorization"
-Cohesion: 0.20
-Nodes (10): Audit Records, Authorization, Current Coverage, Denial Behavior, Deployment Roles, Moving A Resource Locator, Principals, Purpose (+2 more)
+### Community 332 - "Project Folder Navigation With Breadcrumbs"
+Cohesion: 0.15
+Nodes (13): Acceptance Criteria, Current Behavior, Final Recommendation, Non-Goals, Problem, Project Folder Navigation With Breadcrumbs, Proposed Design, Recommended Delivery Order (+5 more)
 
 ### Community 333 - ".resolve_config_env_vars"
 Cohesion: 0.17
@@ -2370,8 +2375,8 @@ Cohesion: 0.15
 Nodes (13): name, nullable, role, type, source, fields, identity_key, sql (+5 more)
 
 ### Community 348 - "membership.py"
-Cohesion: 0.13
-Nodes (3): GroupMembershipResolver, HttpGroupMembershipResolver, MembershipLookupStatus
+Cohesion: 0.12
+Nodes (4): GroupMembershipResolver, HttpGroupMembershipResolver, MembershipLookupStatus, MembershipSnapshot
 
 ### Community 349 - "5. Working with Entities"
 Cohesion: 0.17
@@ -2401,9 +2406,9 @@ Nodes (13): name, nullable, role, type, source, fields, identity_key, sql (+5 mo
 Cohesion: 0.19
 Nodes (13): mappings, nullable, target_field, transform, type, mappings, args, expr (+5 more)
 
-### Community 356 - "preview.py"
+### Community 356 - "models/__init__.py"
 Cohesion: 0.04
-Nodes (22): get_entity_sample(), get_preview_service(), get_validate_fk_service(), preview_entity(), _raise_fd_validation_error(), _raise_fk_constraint_validation_error(), test_foreign_key_join(), ConstraintViolationError (+14 more)
+Nodes (33): get_entity_sample(), get_validate_fk_service(), invalidate_preview_cache(), preview_entity(), _raise_fd_validation_error(), _raise_fk_constraint_validation_error(), test_foreign_key_join(), ConstraintViolationError (+25 more)
 
 ### Community 357 - "speciesassociation.policy.yml"
 Cohesion: 0.15
@@ -2417,9 +2422,9 @@ Nodes (13): comment, name, nullable, role, type, source, fields, identity_key (+
 Cohesion: 0.15
 Nodes (12): dependencies, policy, description, domain, tracing, bugs_table, sead_table, write_on (+4 more)
 
-### Community 360 - "USER_GUIDE.md"
-Cohesion: 0.04
-Nodes (48): 10. Dispatch and Data Ingestion, 11. Advanced Features, 12. YAML Editing, 14. Troubleshooting, 16. Additional Documentation, 1. Introduction, 2. Quick Start, 9. Execute and Export (+40 more)
+### Community 360 - "2. Quick Start"
+Cohesion: 0.25
+Nodes (8): 2. Quick Start, Assign a Pair to an Existing Project, Create an Entity, Create Your First Project, Export the Result, Preview the Data, Run Validation, Upload a Source File
 
 ### Community 361 - "source"
 Cohesion: 0.15
@@ -2457,10 +2462,6 @@ Nodes (26): Architecture, Basic Entity Structure, `data_source`, Data Source Pro
 Cohesion: 0.15
 Nodes (13): comment, name, nullable, role, type, source, fields, identity_key (+5 more)
 
-### Community 370 - "ConfigLike"
-Cohesion: 0.06
-Nodes (6): ConfigLike, ConfigProvider, ConfigStore, MockConfigProvider, reset_config_provider(), SingletonConfigProvider
-
 ### Community 371 - "test_run.py"
 Cohesion: 0.14
 Nodes (8): EntityTestResult, OutputFormat, TestProgress, TestRunOptions, TestRunRequest, TestRunResult, TestRunStatus, ValidationIssue
@@ -2489,9 +2490,13 @@ Nodes (12): Create New Entity, Edit Entity, Entity Editor - Advanced Tab, Entity
 Cohesion: 0.13
 Nodes (13): 1. Data Import and Target Domain, ETL, Glossary, Identifier, Import, Mapping, Provenance, Record (+5 more)
 
-### Community 378 - "CHANGE_REQUEST_INGESTER_POST_MVP/README.md"
-Cohesion: 0.22
+### Community 378 - "SEAD Change Request Ingester Post-MVP Proposals"
+Cohesion: 0.40
 Nodes (5): Boundary, Proposals, Purpose, SEAD Change Request Ingester Post-MVP Proposals, Status
+
+### Community 379 - "IngesterForm.test.ts"
+Cohesion: 0.17
+Nodes (7): dataSourceStore, ingesterStore, projectStore, selectStub, stubs, textareaStub, textFieldStub
 
 ### Community 380 - "bibliography.policy.yml"
 Cohesion: 0.17
@@ -2553,9 +2558,9 @@ Nodes (12): resolvers, args, description, name, returns, steps, used_by, action 
 Cohesion: 0.17
 Nodes (12): reconciliation, rules, strategy, bugs_table, comment, description, identifier_expr, name (+4 more)
 
-### Community 395 - "project_load_issue_collector.py"
-Cohesion: 0.13
-Nodes (3): ProjectLoadIssueCollector, ProjectLoadIssueCollectorRegistry, ProjectLoadIssues
+### Community 395 - "dotget"
+Cohesion: 0.17
+Nodes (3): IsExistingEntityValidator, dotexpand(), dotget()
 
 ### Community 396 - "source"
 Cohesion: 0.17
@@ -2638,8 +2643,8 @@ Cohesion: 0.17
 Nodes (12): code, message, severity, steps, action, bugs_table, emit, identifier_expr (+4 more)
 
 ### Community 418 - "schema.py"
-Cohesion: 0.05
-Nodes (20): get_schema_service(), DataSourceConfigRequest, get_table_schema(), get_table_schema_with_config(), get_type_mappings(), import_entity_from_table(), invalidate_cache(), list_tables() (+12 more)
+Cohesion: 0.06
+Nodes (16): get_schema_service(), DataSourceConfigRequest, get_table_schema(), get_table_schema_with_config(), get_type_mappings(), import_entity_from_table(), invalidate_cache(), list_tables() (+8 more)
 
 ### Community 419 - "package.json"
 Cohesion: 0.20
@@ -2773,9 +2778,9 @@ Nodes (11): reference, steps, action, bind, bugs_table, comment, identifier_expr
 Cohesion: 0.15
 Nodes (13): Audience and Scope, Backend (`backend/app/`), Components and Responsibilities, Constraints and Assumptions, Core (`src/`), Data and Persistence Design, Frontend (`frontend/src/`), High-Level Architecture (+5 more)
 
-### Community 453 - "DSLException"
-Cohesion: 0.19
-Nodes (4): DSLException, DSLParseError, SourceSpan, Tokenizer
+### Community 453 - "vite.config.ts"
+Cohesion: 0.20
+Nodes (8): unplugin-vue-components@^0.27.4, vite@^6.0.5, vite-plugin-vuetify@^2.1.2, @vitejs/plugin-vue@^5.2.1, unplugin-vue-components, vite, vite-plugin-vuetify, @vitejs/plugin-vue
 
 ### Community 455 - "fetch_relation_catalog"
 Cohesion: 0.16
@@ -2846,12 +2851,12 @@ Cohesion: 0.20
 Nodes (10): resolver_result, code, message, severity, alt_ref_type_id, issue, result_kind, sample_group_id (+2 more)
 
 ### Community 472 - "MaterializationService"
-Cohesion: 0.07
-Nodes (4): Materialization, MaterializationError, MaterializationService, resolve_fixed_entity_column_type()
+Cohesion: 0.05
+Nodes (14): Materialization, get_materialization_service(), materialize_entity(), sync_mapping_from_materialized(), unmaterialize_entity(), CanMaterializeResponse, MaterializationResult, MaterializedMappingSyncRequest (+6 more)
 
 ### Community 473 - "Shape Shifter - Testing Guide"
 Cohesion: 0.12
-Nodes (17): Audience and Scope, Backend tests (`backend/tests/`), CI Test Execution, Common Test Commands, Core tests (`tests/`), Frontend E2E tests (`frontend/tests/e2e/`), Frontend tests (`frontend/src/**/__tests__/`), Manual testing (+9 more)
+Nodes (16): Audience and Scope, Backend tests (`backend/tests/`), CI Test Execution, Common Test Commands, Core tests (`tests/`), Frontend E2E tests (`frontend/tests/e2e/`), Frontend tests (`frontend/src/**/__tests__/`), Manual testing (+8 more)
 
 ### Community 474 - "state"
 Cohesion: 0.20
@@ -2941,9 +2946,9 @@ Nodes (10): Caveats and follow-ups, Refresh the Shape Shifter Test Deployment, S
 Cohesion: 0.20
 Nodes (10): Cross-Phase Rules, Current Position, Phase 1: Safe cached reference data, Phase 2: Suggestions and explicit preview, Phase Plan, Problem, Scope, Summary (+2 more)
 
-### Community 496 - ".is_satisfied_by"
-Cohesion: 0.07
-Nodes (14): FixedLoader, FixedEntityFieldsSpecification, add_system_id(), _build_nonmatching_null_key(), _coalesce_same_named_merge_keys(), _coerce_compatible_merge_key_dtypes(), _create_nonmatching_null_key_columns(), _get_series() (+6 more)
+### Community 496 - "transforms/utility.py"
+Cohesion: 0.24
+Nodes (9): add_system_id(), _build_nonmatching_null_key(), _coalesce_same_named_merge_keys(), _coerce_compatible_merge_key_dtypes(), _create_nonmatching_null_key_columns(), _get_series(), _has_nulls_in_columns(), merge_with_nonmatching_null_keys() (+1 more)
 
 ### Community 497 - "AI Coding Model Selection Strategy"
 Cohesion: 0.22
@@ -3237,6 +3242,10 @@ Nodes (7): Fixes, Highlights, Improvements, Learn More, New Features, Upgrade No
 Cohesion: 0.25
 Nodes (7): Fixes, Highlights, Improvements, Learn More, New Features, Upgrade Notes, What's New in v1.21.0
 
+### Community 573 - "normalizeSubmissionIdentifier"
+Cohesion: 0.25
+Nodes (11): buildIngestRequest(), buildProjectRequest(), buildSubmissionContext(), buildValidateRequest(), handleIngest(), handleValidate(), isIdentifierProjectDerived, isSubmissionNameProjectDerived (+3 more)
+
 ### Community 574 - "Graph & Dependencies Testing"
 Cohesion: 0.20
 Nodes (10): Dependency Graph View, Graph Context Menu, Graph & Dependencies Testing, Graph Display Options, Graph Interaction, Graph Layout Options, Graph Performance, Optional: Circular Dependency Detection (+2 more)
@@ -3443,7 +3452,7 @@ Nodes (3): main(), sheet_name(), _vault()
 
 ### Community 628 - "ApplicationState"
 Cohesion: 0.03
-Nodes (23): get_authenticated_user(), get_current_session(), get_data_source_service(), get_session_id(), require_session(), close_session(), create_session(), get_current_session_info() (+15 more)
+Nodes (22): get_active_project_locator(), get_authenticated_user(), get_current_session(), get_session_id(), require_session(), close_session(), create_session(), get_current_session_info() (+14 more)
 
 ### Community 629 - "row_2"
 Cohesion: 0.25
@@ -3452,10 +3461,6 @@ Nodes (8): row_2, marked_for_deletion, persisted_action, record_type_id, record_
 ### Community 630 - "row_3"
 Cohesion: 0.25
 Nodes (8): row_3, marked_for_deletion, persisted_action, record_type_id, record_type_name, result_kind, site_id, site_other_record_id
-
-### Community 631 - "inject_ingester_runtime_dependencies"
-Cohesion: 0.16
-Nodes (4): inject_ingester_database_dependencies(), inject_ingester_runtime_dependencies(), _is_missing_value(), SeadChangeRequestReconciliationAdapter
 
 ### Community 632 - "policy_context"
 Cohesion: 0.25
@@ -3485,9 +3490,9 @@ Nodes (8): column, sequence, strategy, type, target, identity, system, table
 Cohesion: 0.25
 Nodes (8): column, sequence, strategy, type, target, identity, system, table
 
-### Community 639 - "ReconciliationProgressDialog.vue"
-Cohesion: 0.16
-Nodes (10): cancelling, emit, Emits, handleClose(), isOpen, OperationProgress, progress, Props (+2 more)
+### Community 639 - "projectYamlCompletions.ts"
+Cohesion: 0.33
+Nodes (9): yaml@^2.3.4, createCardinalitySuggestions(), createDataSourceSuggestions(), createEntitySuggestions(), createEntityTypeSuggestions(), createJoinTypeSuggestions(), extractEntityNames(), registerProjectCompletions() (+1 more)
 
 ### Community 640 - "identity"
 Cohesion: 0.25
@@ -3630,7 +3635,7 @@ Cohesion: 0.25
 Nodes (8): Architecture: Layer-Based Resolution, Example Code, Implementation Details, Layer Responsibilities, Mapper Layer, Resolution Rules, Service Layer, Why This Approach?
 
 ### Community 675 - "Handoff: Shared Data Review And Operator Contract"
-Cohesion: 0.20
+Cohesion: 0.25
 Nodes (8): Completed Work, Current State, Handoff: Shared Data Review And Operator Contract, Key References, Next Actions, Open Decisions, Purpose, Risks
 
 ### Community 676 - "GraphDisplayOptionsDropdown.vue"
@@ -3641,6 +3646,10 @@ Nodes (7): activeOptionsCount, emit, GraphDisplayOptions, hasActiveOptions, Prop
 Cohesion: 0.40
 Nodes (5): [1.0.1](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.0.0...v1.0.1) (2026-01-07), [1.1.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.0.1...v1.1.0) (2026-01-12), Bug Fixes, Bug Fixes, Features
 
+### Community 678 - "projectYamlValidator.ts"
+Cohesion: 0.40
+Nodes (9): buildIndex(), buildIndexFromContext(), createMarker(), DocIndex, findNodePosition(), validateEntityReferences(), validateProjectYaml(), validateTaskListReferences() (+1 more)
+
 ### Community 679 - "Key Architectural Patterns"
 Cohesion: 0.29
 Nodes (7): 1. Layer Separation, 2. State Management, 3. Environment Variable Resolution, 4. Preview Caching, Architecture, Key Architectural Patterns, Layered Structure
@@ -3650,16 +3659,16 @@ Cohesion: 0.29
 Nodes (7): Key Services, ProjectService, ReconciliationService, SchemaService, ShapeShiftService, ValidateForeignKeyService, ValidationService
 
 ### Community 681 - "ConfigValue"
-Cohesion: 0.10
-Nodes (13): Troubleshooting and Common Pitfalls, Architecture Caveat, Dependency Boundaries, Implementation Rules, References, Shape Shifter – Ingesters (`ingesters/`) Agent Rules, Structure, Testing (+5 more)
+Cohesion: 0.15
+Nodes (10): Architecture Caveat, Dependency Boundaries, References, Shape Shifter – Ingesters (`ingesters/`) Agent Rules, Structure, Testing, Configuration Issues, Import Errors (+2 more)
 
 ### Community 682 - "source"
 Cohesion: 0.29
 Nodes (7): source, identity_key, sql, system, table, trace_key, template
 
-### Community 683 - "typing"
-Cohesion: 0.02
-Nodes (67): execute_query(), get_query_service(), introspect_query_columns(), _resolve_data_source_config(), validate_query(), DataSourceMapper, ProjectMapper, safe_int_or_none() (+59 more)
+### Community 683 - "src/model.py"
+Cohesion: 0.04
+Nodes (40): execute_query(), get_query_service(), introspect_query_columns(), _resolve_data_source_config(), validate_query(), QueryExecutionError, DataSourceMapper, safe_int_or_none() (+32 more)
 
 ### Community 684 - "relative_age"
 Cohesion: 0.29
@@ -3697,21 +3706,21 @@ Nodes (7): 10. `data_provider` YAML style, 11. Aggregate-child inventory and roo
 Cohesion: 0.12
 Nodes (5): idx_site_locations_location_id, idx_site_locations_site_id, idx_taxa_tree_orders_order_id, tbl_record_types_norm_trgm, tbl_taxa_tree_orders_norm_trgm
 
+### Community 693 - "prepare_copilot_release_notes.py"
+Cohesion: 0.36
+Nodes (5): build_copilot_prompt(), build_filtered_context(), load_release_notes_module(), main(), run_heuristic_draft()
+
 ### Community 695 - "stores/reconciliation.ts"
 Cohesion: 0.25
 Nodes (13): reconciliationServiceApi, reconciliationSpecApi, Props, AutoReconcileResult, EntityResolutionCatalog, EntityResolutionCatalogCreateRequest, EntityResolutionCatalogUpdateRequest, EntityResolutionListItem (+5 more)
 
 ### Community 696 - "Ingester"
-Cohesion: 0.08
+Cohesion: 0.09
 Nodes (17): Ingester, TableSourceIngester, Adding a New Ingester, API (FastAPI), Architecture, Best Practices, CLI, Components (+9 more)
 
 ### Community 698 - "Cross-Cutting Concerns"
 Cohesion: 0.29
 Nodes (7): Asynchronous execution, Authentication and authorization, Caching, Cross-Cutting Concerns, Error handling, Security, Three-tier identity system
-
-### Community 699 - "SQL Safety Policy"
-Cohesion: 0.29
-Nodes (6): Allowed SQL, Enforcement Rules, Purpose, Rejected SQL, SQL Safety Policy, Verification
 
 ### Community 700 - "Product Principles"
 Cohesion: 0.33
@@ -3722,12 +3731,12 @@ Cohesion: 0.33
 Nodes (5): Adding rules, Files, Purpose, Rule format, Shape Shifter Semantic Rules
 
 ### Community 702 - "argparse"
-Cohesion: 0.12
-Nodes (10): build_copilot_prompt(), build_filtered_context(), load_release_notes_module(), main(), parse_args(), run_heuristic_draft(), build_parser(), main() (+2 more)
+Cohesion: 0.11
+Nodes (7): build_parser(), main(), parse_args(), build_parser(), main(), build_parser(), normalize_workflow_name()
 
-### Community 703 - "Output Dataset Expectations"
-Cohesion: 0.14
-Nodes (14): Acceptance Criteria, Alternatives Considered, Current Behavior, Final Recommendation, Non-Goals, Output Dataset Expectations, Planning Handoff, Problem (+6 more)
+### Community 703 - "applyIngesterDefaults"
+Cohesion: 0.22
+Nodes (9): applyIngesterDefaults(), createBaseForm(), createLocalTimestamp(), createProjectIdentifierDefault(), createSeadChangeRequestState(), createSubmissionNameDefault(), projectDerivedIdentifier, projectDerivedSubmissionName (+1 more)
 
 ### Community 704 - "GeneratorReport"
 Cohesion: 0.24
@@ -3735,7 +3744,7 @@ Nodes (4): generator_label(), GeneratorReport, print_report(), report_rows()
 
 ### Community 706 - "CONFIGURATION_GUIDE.md"
 Cohesion: 0.04
-Nodes (46): Branch source entities, Check results, Each employee should have unique ID, EntityConfig, Every sample MUST have a non-null type, Example: Employee has one set of details, Example: Many samples reference one sample type, Example: Many students in many courses (+38 more)
+Nodes (51): Branch source entities, Check results, Each employee should have unique ID, EntityConfig, Every sample MUST have a non-null type, Example: Employee has one set of details, Example: Many samples reference one sample type, Example: Many students in many courses (+43 more)
 
 ### Community 707 - "JSON Schemas for Monaco Editor"
 Cohesion: 0.33
@@ -3753,9 +3762,9 @@ Nodes (6): comment, name, nullable, role, type, fields
 Cohesion: 0.33
 Nodes (6): resolvers, args, description, name, returns, used_by
 
-### Community 711 - "Stronger Idempotency And Re-submission Design Diagrams"
-Cohesion: 0.22
-Nodes (9): Design Constraints, Durable Run State, Open Design Decisions, Proposed Request Sequence, Purpose, Row Classification Activity, Status, Stronger Idempotency And Re-submission Design Diagrams (+1 more)
+### Community 711 - "11. Advanced Features"
+Cohesion: 0.29
+Nodes (7): 11. Advanced Features, Backups, Dependencies Graph, Foreign Keys, Materialized Entities, Query Tester, Schema Explorer
 
 ### Community 712 - "helpers"
 Cohesion: 0.33
@@ -3808,6 +3817,10 @@ Nodes (6): resolvers, args, description, name, returns, used_by
 ### Community 725 - "cs9_trace"
 Cohesion: 0.33
 Nodes (6): bugs_identifier, bugs_table, sead_reference_id, sead_table, translated_compressed_data, cs9_trace
+
+### Community 727 - "14. Troubleshooting"
+Cohesion: 0.29
+Nodes (7): 14. Troubleshooting, Change Request Stops Because a Link Is Missing, Entity Preview Shows No Data, Execute Succeeds but Output Looks Wrong, Need to Undo Changes?, Project Will Not Save, Validation Fails
 
 ### Community 728 - "postprocess_result"
 Cohesion: 0.33
@@ -3977,9 +3990,13 @@ Nodes (6): resolvers, args, description, name, returns, used_by
 Cohesion: 0.33
 Nodes (6): resolvers, args, description, name, returns, used_by
 
-### Community 773 - "What's New in v1.27.0"
+### Community 771 - "9. Execute and Export"
 Cohesion: 0.33
-Nodes (5): DuckDB Internal SQL Loader (`type: internal`), Highlights, New Features, Upgrade Notes, What's New in v1.27.0
+Nodes (6): 9. Execute and Export, After Execution, Common Output Types, Execution Options, Recommended Execution Workflow, What Execute Does
+
+### Community 773 - "key"
+Cohesion: 0.33
+Nodes (3): decorator(), _ensure_key_property(), key()
 
 ### Community 774 - "clampDialogSize"
 Cohesion: 0.33
@@ -3993,9 +4010,9 @@ Nodes (5): build_argument_parser(), connect_read_only(), load_target_model(), ma
 Cohesion: 0.35
 Nodes (5): all_fks, all_fks_aggs, all_tables, public.table_dependency_levels(), table_level
 
-### Community 777 - "build_legacy_fixed_full_columns"
-Cohesion: 0.50
-Nodes (3): build_legacy_fixed_full_columns(), Verified observations and reproduction, build_fixed_entity_legacy_columns()
+### Community 777 - "10. Dispatch and Data Ingestion"
+Cohesion: 0.40
+Nodes (5): 10. Dispatch and Data Ingestion, Data Ingestion Page, Dispatch Tab (in Project Workspace), Execute vs. Dispatch vs. Ingestion, SEAD Change Request Requirements
 
 ### Community 778 - "Capability Model"
 Cohesion: 0.40
@@ -4009,9 +4026,9 @@ Nodes (6): idx_abundance_modifications_abundance_id, idx_abundance_modifications
 Cohesion: 0.40
 Nodes (5): Baseline Project Setup, Copy-Pastable Data, Expected Behavior of the Fixture, Fixture Goal, Test Fixture
 
-### Community 781 - "Task Plan: Stronger Idempotency And Re-submission"
-Cohesion: 0.20
-Nodes (10): Assumptions, Definition Of Done, Deliverables, Open Questions, Phase Summary, Progress Tracker, Risks And Mitigations, Scope (+2 more)
+### Community 781 - "1. Introduction"
+Cohesion: 0.40
+Nodes (5): 1. Introduction, Before You Start Editing, What Is Shape Shifter?, What Problems Does It Solve?, What You Can Do with Shape Shifter
 
 ### Community 783 - "allowBuilds"
 Cohesion: 0.40
@@ -4072,10 +4089,6 @@ Nodes (5): known_divergences, area, description, policy_choice, status
 ### Community 799 - "update_detection"
 Cohesion: 0.40
 Nodes (5): update_detection, comment, fields, on_change, strategy
-
-### Community 801 - "Work Breakdown"
-Cohesion: 0.29
-Nodes (7): 1. Define The Re-submission Contract, 2. Validate And Normalize Incoming Rows, 3. Add Prior-Run Lookup And Preflight Classification, 4. Make Artifact Generation And Deployment Replay-Safe, 5. Expose Operator Outcomes, 6. Validate Repeated, Interrupted, And Overlapping Runs, Work Breakdown
 
 ### Community 802 - "[2.4.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v2.3.0...v2.4.0) (2026-10-26)"
 Cohesion: 0.50
@@ -4213,10 +4226,6 @@ Nodes (5): helpers, description, name, signature, used_by
 Cohesion: 0.40
 Nodes (5): known_divergences, area, description, policy_choice, status
 
-### Community 837 - "Proposed Design"
-Cohesion: 0.40
-Nodes (5): Operator Results, Proposed Design, Replay-Safe Artifacts And Completion, Request Identity And Durable Run State, Source And Target Preflight
-
 ### Community 838 - "helpers"
 Cohesion: 0.40
 Nodes (5): helpers, description, name, signature, used_by
@@ -4229,9 +4238,9 @@ Nodes (5): known_divergences, area, description, policy_choice, status
 Cohesion: 0.67
 Nodes (4): fetchColumns(), fetchSheetOptions(), findSelectedFileInfo(), handleSheetSelection()
 
-### Community 841 - "ProjectsView.vue"
-Cohesion: 0.05
-Nodes (36): dialogModel, emit, Emits, handleConfirm(), loading, Props, dialogModel, emit (+28 more)
+### Community 841 - "CopyProjectDialog.vue"
+Cohesion: 0.17
+Nodes (15): dialogModel, emit, Emits, error, formRef, formValid, handleCancel(), handleClose() (+7 more)
 
 ### Community 842 - "known_divergences"
 Cohesion: 0.40
@@ -4489,6 +4498,10 @@ Nodes (4): tracing, bugs_table, sead_table, write_on
 Cohesion: 0.40
 Nodes (5): helpers, description, name, signature, used_by
 
+### Community 914 - "Expr"
+Cohesion: 0.21
+Nodes (5): ColumnRef, _demo(), Expr, FormulaEngine, Literal
+
 ### Community 915 - "Project Examples"
 Cohesion: 0.40
 Nodes (5): Complex Multi-Source Example, Custom SQL Query Source, Project Examples, Simple Reconciliation (Using Entity Preview), Using Another Entity's Data
@@ -4590,8 +4603,8 @@ Cohesion: 0.33
 Nodes (6): 12. Provider-supplied UUIDs as an identity signal, Current specification, Next steps, Observation, References, Review notes
 
 ### Community 940 - "generate_schemas.py"
-Cohesion: 0.12
-Nodes (11): apply_field_patches(), build_combined_schema(), build_loader_options_schema(), build_parser(), build_schema(), check_schemas_in_sync(), clean_schema(), generate_schemas() (+3 more)
+Cohesion: 0.09
+Nodes (12): apply_field_patches(), build_combined_schema(), build_loader_options_schema(), build_parser(), build_schema(), check_schemas_in_sync(), clean_schema(), generate_schemas() (+4 more)
 
 ### Community 941 - "[1.22.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.21.0...v1.22.0) (2026-03-06)"
 Cohesion: 0.67
@@ -4704,6 +4717,10 @@ Nodes (3): [1.24.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1
 ### Community 991 - "[1.25.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.24.0...v1.25.0) (2026-03-21)"
 Cohesion: 0.67
 Nodes (3): [1.25.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.24.0...v1.25.0) (2026-03-21), Bug Fixes, Features
+
+### Community 992 - "USER_GUIDE.md"
+Cohesion: 0.11
+Nodes (10): 12. YAML Editing, 16. Additional Documentation, Best Practices, Release Notes, Shape Shifter Project Editor — User Guide, Table of Contents, Technical References, User-Oriented References (+2 more)
 
 ### Community 993 - "[1.2.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.1.0...v1.2.0) (2026-01-12)"
 Cohesion: 0.67
@@ -4828,12 +4845,12 @@ Nodes (3): DO:, DON'T:, Reconciliation Best Practices
 ## Knowledge Gaps
 - **11 isolated node(s):** `TODO`, `ONGOING`, `DONE`, `IGNORED`, `CRITICAL` (+6 more)
   These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 10910 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **88 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **84 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Repository Findings` connect `buildEntityConfigFromFormData` to `ForeignKeyEditor.vue`, `useCytoscape`, `entities.py`, `buildEntityConfigFromFormData`?**
+- **Why does `Repository Findings` connect `buildEntityConfigFromFormData` to `useCytoscape`, `ForeignKeyEditor.vue`, `entities.py`, `buildEntityConfigFromFormData`?**
   _High betweenness centrality (0.123) - this node is a cross-community bridge._
 - **Are the 60 inferred relationships involving `TableConfig` (e.g. with `can_materialize()` and `ProjectMapper`) actually correct?**
   _`TableConfig` has 60 INFERRED edges - model-reasoned connections that need verification._
@@ -4841,7 +4858,7 @@ _Questions this graph is uniquely positioned to answer:_
   _11 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `pandas` be split into smaller, more focused modules?**
   _Cohesion score 0.033797729618163054 - nodes in this community are weakly interconnected._
-- **Why does `list_entities()` connect `entities.py` to `Project`, `AuthorizedResource`, `._update_values_locked`, `buildEntityConfigFromFormData`, `Action`, `ProjectService`?**
+- **Why does `list_entities()` connect `entities.py` to `buildEntityConfigFromFormData`, `ProjectService`, `AuthorizedResource`, `projects.py`?**
   _High betweenness centrality (0.119) - this node is a cross-community bridge._
 - **Are the 94 inferred relationships involving `ProjectService` (e.g. with `Testing` and `get_available_columns()`) actually correct?**
   _`ProjectService` has 94 INFERRED edges - model-reasoned connections that need verification._
