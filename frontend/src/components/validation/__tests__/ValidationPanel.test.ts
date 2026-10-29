@@ -89,6 +89,7 @@ describe('ValidationPanel', () => {
     expect(wrapper.text()).toContain('1 informational message')
     expect(wrapper.text()).toContain('All Issues 3')
     expect(wrapper.text()).toContain('Validation Failed')
+    expect(wrapper.find('button[value="execution"]').exists()).toBe(false)
   })
 
   it('shows an informational conditional result without calling it passed', () => {
@@ -136,6 +137,12 @@ describe('ValidationPanel', () => {
       },
     })
 
+    const executionTab = wrapper.find('button[value="execution"]')
+    const executionPanel = wrapper.find('div[value="execution"]')
+
+    expect(executionTab.exists()).toBe(true)
+    expect(executionPanel.text()).toContain('Data Validation Execution')
+    expect(executionPanel.text()).toContain('Mode: Sample')
     expect(wrapper.text()).toContain('Mode: Sample')
     expect(wrapper.text()).toContain('Run status: completed')
     expect(wrapper.text()).toContain('Validation Findings')

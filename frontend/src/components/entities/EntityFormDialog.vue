@@ -362,13 +362,7 @@
                       </v-row>
                     </div>
 
-                    <v-alert
-                      v-if="columnAvailabilityError"
-                      type="error"
-                      variant="tonal"
-                      density="compact"
-                      class="mb-4"
-                    >
+                    <v-alert v-if="columnAvailabilityError" type="error" variant="tonal" density="compact" class="mb-4">
                       <div class="text-body-2">{{ columnAvailabilityError.message }}</div>
                       <div v-if="columnAvailabilityError.tips?.length" class="mt-2">
                         <div class="text-caption font-weight-bold">Suggestions:</div>
@@ -472,7 +466,7 @@
                           <!-- Keys (business keys) -->
                           <v-combobox
                             v-model="formData.keys"
-                            :items="columnAvailability?.business_keys ?? []"
+                            :items="getReferenceAwareItems(columnAvailability?.business_keys ?? [])"
                             label="Business Keys *"
                             variant="outlined"
                             multiple
@@ -480,6 +474,15 @@
                             closable-chips
                             persistent-placeholder
                           >
+                            <template #chip="{ item, props: chipProps }">
+                              <ValueReferenceChip
+                                v-if="typeof item.raw === 'string' && item.raw.trim().startsWith('@value:')"
+                                :value="item.raw"
+                                :chip-props="chipProps"
+                                :entities="completedCacheEntities"
+                              />
+                              <v-chip v-else v-bind="chipProps">{{ item.title }}</v-chip>
+                            </template>
                             <template #message>
                               <span class="text-caption">Natural key columns that uniquely identify records</span>
                             </template>
@@ -497,7 +500,11 @@
                         <v-col cols="8" class="pr-2">
                           <v-combobox
                             v-model="formData.columns"
-                            :items="columnAvailability?.columns ?? []"
+                            :items="
+                              formData.type === 'fixed'
+                                ? (columnAvailability?.columns ?? [])
+                                : getReferenceAwareItems(columnAvailability?.columns ?? [])
+                            "
                             label="Columns"
                             variant="outlined"
                             multiple
@@ -506,6 +513,19 @@
                             persistent-placeholder
                             :rules="formData.type === 'fixed' ? columnsRules : []"
                           >
+                            <template #chip="{ item, props: chipProps }">
+                              <ValueReferenceChip
+                                v-if="
+                                  formData.type !== 'fixed' &&
+                                  typeof item.raw === 'string' &&
+                                  item.raw.trim().startsWith('@value:')
+                                "
+                                :value="item.raw"
+                                :chip-props="chipProps"
+                                :entities="completedCacheEntities"
+                              />
+                              <v-chip v-else v-bind="chipProps">{{ item.title }}</v-chip>
+                            </template>
                             <template #message>
                               <span class="text-caption" v-if="formData.type === 'fixed'">
                                 Fixed values grid fields. Business keys select produced fields but do not add grid
@@ -734,7 +754,7 @@
 
                           <v-combobox
                             v-model="formData.drop_duplicates.columns"
-                            :items="columnAvailability?.drop_duplicates ?? []"
+                            :items="getReferenceAwareItems(columnAvailability?.drop_duplicates ?? [])"
                             label="Deduplication Columns"
                             variant="outlined"
                             multiple
@@ -743,6 +763,15 @@
                             persistent-placeholder
                             :disabled="!formData.drop_duplicates.enabled"
                           >
+                            <template #chip="{ item, props: chipProps }">
+                              <ValueReferenceChip
+                                v-if="typeof item.raw === 'string' && item.raw.trim().startsWith('@value:')"
+                                :value="item.raw"
+                                :chip-props="chipProps"
+                                :entities="completedCacheEntities"
+                              />
+                              <v-chip v-else v-bind="chipProps">{{ item.title }}</v-chip>
+                            </template>
                             <template #message>
                               <span class="text-caption">Columns to use for deduplication (empty = all columns)</span>
                             </template>
@@ -762,7 +791,7 @@
                           </v-row>
                           <v-combobox
                             v-model="formData.drop_empty_rows.columns"
-                            :items="columnAvailability?.drop_empty_rows ?? []"
+                            :items="getReferenceAwareItems(columnAvailability?.drop_empty_rows ?? [])"
                             label="Columns to Check for Empty Values"
                             variant="outlined"
                             multiple
@@ -771,6 +800,15 @@
                             persistent-placeholder
                             :disabled="!formData.drop_empty_rows.enabled"
                           >
+                            <template #chip="{ item, props: chipProps }">
+                              <ValueReferenceChip
+                                v-if="typeof item.raw === 'string' && item.raw.trim().startsWith('@value:')"
+                                :value="item.raw"
+                                :chip-props="chipProps"
+                                :entities="completedCacheEntities"
+                              />
+                              <v-chip v-else v-bind="chipProps">{{ item.title }}</v-chip>
+                            </template>
                             <template #message>
                               <span class="text-caption">Columns to check for empty values (empty = all columns)</span>
                             </template>
@@ -823,8 +861,9 @@
                   :available-entities="availableSourceEntities"
                   :project-name="projectName"
                   :entity-name="formData.name"
-                  :entity-columns="effectiveEntityColumns"
                   :column-candidates="columnAvailability?.foreign_keys ?? []"
+                  :reference-entities="completedCacheEntities"
+                  :reference-suggestions="referenceSuggestions"
                   :is-entity-saved="mode === 'edit'"
                   :has-unsaved-changes="hasPendingChanges"
                   @update:model-value="handleForeignKeysUpdate"
@@ -840,6 +879,8 @@
                   v-model="formData.advanced.unnest"
                   :id-var-columns="columnAvailability?.unnest.id_vars ?? []"
                   :value-var-columns="columnAvailability?.unnest.value_vars ?? []"
+                  :reference-entities="completedCacheEntities"
+                  :reference-suggestions="referenceSuggestions"
                 />
               </v-window-item>
 
@@ -1195,6 +1236,7 @@ import type { ColDef } from 'ag-grid-community'
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
 import ForeignKeyEditor from './ForeignKeyEditor.vue'
+import ValueReferenceChip from './ValueReferenceChip.vue'
 import FiltersEditor from './FiltersEditor.vue'
 import UnnestEditor from './UnnestEditor.vue'
 import AppendEditor from './AppendEditor.vue'
@@ -1208,8 +1250,10 @@ import SqlEditor from '../common/SqlEditor.vue'
 import MaterializeDialog from './MaterializeDialog.vue'
 import UnmaterializeDialog from './UnmaterializeDialog.vue'
 import type { ValidationContext } from '@/utils/projectYamlValidator'
+import { normalizeForeignKeyKeys, type ForeignKeyKeyInput } from './foreignKeyEditorUtils'
 import { defineAsyncComponent, nextTick } from 'vue'
 import { api } from '@/api'
+import { getValueReferenceSuggestions } from '@/utils/valueReferenceColumns'
 import type { EntityTypeInfo } from '@/api/data-sources'
 import type { TargetModelEntityOption } from '@/api/projects'
 import { queryApi } from '@/api/query'
@@ -1464,6 +1508,211 @@ function normalizeChipField(value: unknown): string[] {
   return []
 }
 
+type RawChipFieldValue = string | string[]
+
+interface RawChipFieldRepresentation {
+  value: RawChipFieldValue | undefined
+  normalized: string[]
+  present: boolean
+  restorable: boolean
+}
+
+interface RawDropFieldRepresentation {
+  value: RawChipFieldValue | boolean | undefined
+  enabled: boolean
+  columns: string[]
+  present: boolean
+  restorable: boolean
+}
+
+interface RawFieldRepresentations {
+  keys: RawChipFieldRepresentation
+  columns: RawChipFieldRepresentation
+  foreignKeys: Array<{
+    localKeys: RawChipFieldRepresentation
+    remoteKeys: RawChipFieldRepresentation
+  }>
+  unnest: {
+    idVars: RawChipFieldRepresentation
+    valueVars: RawChipFieldRepresentation
+  } | null
+  dropDuplicates: RawDropFieldRepresentation
+  dropEmptyRows: RawDropFieldRepresentation
+}
+
+function normalizeForeignKeyChipField(value: unknown): string[] {
+  if (typeof value === 'string') {
+    return normalizeForeignKeyKeys(value)
+  }
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  const keyInputs = value.map((item): ForeignKeyKeyInput => {
+    if (typeof item === 'string') {
+      return item
+    }
+    if (typeof item === 'object' && item !== null && 'value' in item) {
+      const chipValue = (item as { value?: unknown }).value
+      return typeof chipValue === 'string' || chipValue === null ? { value: chipValue } : null
+    }
+    return null
+  })
+
+  return normalizeForeignKeyKeys(keyInputs)
+}
+
+function copyRawChipFieldValue(value: unknown): RawChipFieldValue | undefined {
+  if (typeof value === 'string') {
+    return value
+  }
+  if (Array.isArray(value) && value.every((item) => typeof item === 'string')) {
+    return [...value]
+  }
+  return undefined
+}
+
+function captureRawChipField(
+  value: unknown,
+  present: boolean,
+  normalize: (value: unknown) => string[] = normalizeChipField
+): RawChipFieldRepresentation {
+  const rawValue = copyRawChipFieldValue(value)
+  return {
+    value: rawValue,
+    normalized: normalize(value),
+    present,
+    restorable: !present || rawValue !== undefined,
+  }
+}
+
+function captureRawDropField(data: Record<string, unknown>, fieldName: string): RawDropFieldRepresentation {
+  const present = Object.prototype.hasOwnProperty.call(data, fieldName)
+  const value = data[fieldName]
+  const rawChipValue = copyRawChipFieldValue(value)
+  const rawValue = typeof value === 'boolean' ? value : rawChipValue
+
+  return {
+    value: rawValue,
+    enabled: value !== undefined && value !== null,
+    columns: normalizeChipField(value),
+    present,
+    restorable: !present || rawValue !== undefined,
+  }
+}
+
+function captureRawFieldRepresentations(data: Record<string, unknown>): RawFieldRepresentations {
+  const foreignKeys = Array.isArray(data.foreign_keys) ? data.foreign_keys : []
+  const unnest =
+    typeof data.unnest === 'object' && data.unnest !== null && !Array.isArray(data.unnest)
+      ? (data.unnest as Record<string, unknown>)
+      : null
+
+  return {
+    keys: captureRawChipField(data.keys, Object.prototype.hasOwnProperty.call(data, 'keys')),
+    columns: captureRawChipField(data.columns, Object.prototype.hasOwnProperty.call(data, 'columns')),
+    foreignKeys: foreignKeys.map((foreignKey) => {
+      const foreignKeyData =
+        typeof foreignKey === 'object' && foreignKey !== null && !Array.isArray(foreignKey)
+          ? (foreignKey as Record<string, unknown>)
+          : {}
+
+      return {
+        localKeys: captureRawChipField(
+          foreignKeyData.local_keys,
+          Object.prototype.hasOwnProperty.call(foreignKeyData, 'local_keys'),
+          normalizeForeignKeyChipField
+        ),
+        remoteKeys: captureRawChipField(
+          foreignKeyData.remote_keys,
+          Object.prototype.hasOwnProperty.call(foreignKeyData, 'remote_keys'),
+          normalizeForeignKeyChipField
+        ),
+      }
+    }),
+    unnest: unnest
+      ? {
+          idVars: captureRawChipField(unnest.id_vars, Object.prototype.hasOwnProperty.call(unnest, 'id_vars')),
+          valueVars: captureRawChipField(unnest.value_vars, Object.prototype.hasOwnProperty.call(unnest, 'value_vars')),
+        }
+      : null,
+    dropDuplicates: captureRawDropField(data, 'drop_duplicates'),
+    dropEmptyRows: captureRawDropField(data, 'drop_empty_rows'),
+  }
+}
+
+function haveSameStrings(left: string[], right: string[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index])
+}
+
+function getUnchangedRawChipField(
+  value: unknown,
+  representation: RawChipFieldRepresentation | undefined,
+  normalize: (value: unknown) => string[] = normalizeChipField
+): { unchanged: boolean; present: boolean; value?: RawChipFieldValue } {
+  if (!representation || !representation.restorable || !haveSameStrings(normalize(value), representation.normalized)) {
+    return { unchanged: false, present: false }
+  }
+
+  return {
+    unchanged: true,
+    present: representation.present,
+    value: Array.isArray(representation.value) ? [...representation.value] : representation.value,
+  }
+}
+
+function getUnchangedRawDropField(
+  field: FormData['drop_duplicates'],
+  representation: RawDropFieldRepresentation | undefined
+): { unchanged: boolean; present: boolean; value?: RawDropFieldRepresentation['value'] } {
+  if (
+    !representation ||
+    !representation.restorable ||
+    field.enabled !== representation.enabled ||
+    !haveSameStrings(normalizeChipField(field.columns), representation.columns)
+  ) {
+    return { unchanged: false, present: false }
+  }
+
+  return {
+    unchanged: true,
+    present: representation.present,
+    value: Array.isArray(representation.value) ? [...representation.value] : representation.value,
+  }
+}
+
+function normalizeForeignKeysForForm(value: unknown): any[] {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return value.map((foreignKey) => {
+    if (typeof foreignKey !== 'object' || foreignKey === null || Array.isArray(foreignKey)) {
+      return foreignKey
+    }
+
+    const foreignKeyData = foreignKey as Record<string, unknown>
+    return {
+      ...foreignKeyData,
+      local_keys: normalizeForeignKeyChipField(foreignKeyData.local_keys),
+      remote_keys: normalizeForeignKeyChipField(foreignKeyData.remote_keys),
+    }
+  })
+}
+
+function normalizeUnnestForForm(value: unknown): unknown | null {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return value || null
+  }
+
+  const unnest = value as Record<string, unknown>
+  return {
+    ...unnest,
+    id_vars: normalizeChipField(unnest.id_vars),
+    value_vars: normalizeChipField(unnest.value_vars),
+  }
+}
+
 const formData = ref<FormData>({
   name: '',
   type: 'entity',
@@ -1505,6 +1754,7 @@ const formData = ref<FormData>({
     replacements: undefined,
   },
 })
+const rawFieldRepresentations = ref<RawFieldRepresentations | null>(null)
 
 const activeTab = ref('basic')
 
@@ -1523,6 +1773,19 @@ const dialogContainerHeight = computed(() => {
 
 // Watch for initial tab from entity store overlay
 const entityStore = useEntityStore()
+const completedCacheEntities = computed<EntityResponse[] | null>(() => {
+  if (projectStore.currentProjectName !== props.projectName) {
+    return null
+  }
+
+  return entityStore.getCompletedEntitiesFor(props.projectName)
+})
+const referenceSuggestions = computed(() => getValueReferenceSuggestions(completedCacheEntities.value))
+
+function getReferenceAwareItems(ordinaryItems: string[]): string[] {
+  return [...new Set([...ordinaryItems, ...referenceSuggestions.value])]
+}
+
 watch(
   () => entityStore.overlayInitialTab,
   (tab) => {
@@ -1993,16 +2256,24 @@ function buildEntityConfigFromFormData(options: BuildEntityConfigOptions = {}): 
 
   const effectiveColumns =
     formData.value.type === 'sql' ? getSqlColumnsForPersistence(includeDerivedSqlColumns) : formData.value.columns
+  const rawRepresentations = rawFieldRepresentations.value
+  const unchangedKeys = getUnchangedRawChipField(formData.value.keys, rawRepresentations?.keys)
+  const unchangedColumns = getUnchangedRawChipField(effectiveColumns, rawRepresentations?.columns)
 
   const entityData: Record<string, unknown> = {
     type: formData.value.type,
-    keys: serializeKeysField(formData.value.keys),
+    keys:
+      unchangedKeys.unchanged && unchangedKeys.present && unchangedKeys.value !== undefined
+        ? unchangedKeys.value
+        : serializeKeysField(formData.value.keys),
     // For fixed entities, persist the produced data columns (managed identity
     // fields stay implicit). The positional grid/values order adds identity back.
     columns:
       formData.value.type === 'fixed'
         ? normalizeEditableFixedColumns(fixedValuesColumns.value, formData.value.public_id)
-        : serializeKeysField(effectiveColumns),
+        : unchangedColumns.unchanged && unchangedColumns.present && unchangedColumns.value !== undefined
+          ? unchangedColumns.value
+          : serializeKeysField(effectiveColumns),
   }
 
   // Always include public_id (even if null) to prevent field from being omitted
@@ -2072,7 +2343,7 @@ function buildEntityConfigFromFormData(options: BuildEntityConfigOptions = {}): 
   // Include foreign keys if any
   if (formData.value.foreign_keys.length > 0) {
     // Transform foreign keys: extract column values and preserve all FK settings.
-    entityData.foreign_keys = formData.value.foreign_keys.map((fk: any) => {
+    entityData.foreign_keys = formData.value.foreign_keys.map((fk: any, index: number) => {
       // Normalize FK keys arrays, then apply the same scalar-directive rule as serializeKeysField
       const normalizeFkKeys = (keys: any): string | string[] => {
         if (typeof keys === 'string' && keys.trim().startsWith('@value:')) {
@@ -2090,10 +2361,27 @@ function buildEntityConfigFromFormData(options: BuildEntityConfigOptions = {}): 
         return arr
       }
 
+      const originalFields = rawRepresentations?.foreignKeys[index]
+      const unchangedLocalKeys = getUnchangedRawChipField(
+        fk.local_keys,
+        originalFields?.localKeys,
+        normalizeForeignKeyChipField
+      )
+      const unchangedRemoteKeys = getUnchangedRawChipField(
+        fk.remote_keys,
+        originalFields?.remoteKeys,
+        normalizeForeignKeyChipField
+      )
       const transformedFk: Record<string, unknown> = {
         entity: fk.entity,
-        local_keys: normalizeFkKeys(fk.local_keys),
-        remote_keys: normalizeFkKeys(fk.remote_keys),
+        local_keys:
+          unchangedLocalKeys.unchanged && unchangedLocalKeys.present && unchangedLocalKeys.value !== undefined
+            ? unchangedLocalKeys.value
+            : normalizeFkKeys(fk.local_keys),
+        remote_keys:
+          unchangedRemoteKeys.unchanged && unchangedRemoteKeys.present && unchangedRemoteKeys.value !== undefined
+            ? unchangedRemoteKeys.value
+            : normalizeFkKeys(fk.remote_keys),
       }
 
       if (fk.how) {
@@ -2121,21 +2409,36 @@ function buildEntityConfigFromFormData(options: BuildEntityConfigOptions = {}): 
     entityData.depends_on = formData.value.depends_on
   }
 
-  // Include drop_duplicates if enabled
-  if (formData.value.drop_duplicates.enabled) {
+  const unchangedDropDuplicates = getUnchangedRawDropField(
+    formData.value.drop_duplicates,
+    rawRepresentations?.dropDuplicates
+  )
+  if (unchangedDropDuplicates.unchanged) {
+    if (unchangedDropDuplicates.present) {
+      entityData.drop_duplicates = unchangedDropDuplicates.value
+    }
+  } else if (formData.value.drop_duplicates.enabled) {
     if (formData.value.drop_duplicates.columns.length > 0) {
       entityData.drop_duplicates = formData.value.drop_duplicates.columns
     } else {
       entityData.drop_duplicates = true
     }
-
+  }
+  if (formData.value.drop_duplicates.enabled) {
     // Backend defaults missing check_functional_dependency to true.
     // Persist explicit value so unchecked state is respected.
     entityData.check_functional_dependency = formData.value.check_functional_dependency
   }
 
-  // Include drop_empty_rows if enabled
-  if (formData.value.drop_empty_rows.enabled) {
+  const unchangedDropEmptyRows = getUnchangedRawDropField(
+    formData.value.drop_empty_rows,
+    rawRepresentations?.dropEmptyRows
+  )
+  if (unchangedDropEmptyRows.unchanged) {
+    if (unchangedDropEmptyRows.present) {
+      entityData.drop_empty_rows = unchangedDropEmptyRows.value
+    }
+  } else if (formData.value.drop_empty_rows.enabled) {
     if (formData.value.drop_empty_rows.columns.length > 0) {
       entityData.drop_empty_rows = formData.value.drop_empty_rows.columns
     } else {
@@ -2148,7 +2451,32 @@ function buildEntityConfigFromFormData(options: BuildEntityConfigOptions = {}): 
     entityData.filters = formData.value.advanced.filters
   }
   if (formData.value.advanced.unnest) {
-    entityData.unnest = formData.value.advanced.unnest
+    const unnest = { ...formData.value.advanced.unnest }
+    const originalUnnest = rawRepresentations?.unnest
+    const unchangedIdVars = getUnchangedRawChipField(unnest.id_vars, originalUnnest?.idVars)
+    const unchangedValueVars = getUnchangedRawChipField(unnest.value_vars, originalUnnest?.valueVars)
+
+    if (unchangedIdVars.unchanged) {
+      if (!unchangedIdVars.present) {
+        delete unnest.id_vars
+      } else if (unchangedIdVars.value !== undefined) {
+        unnest.id_vars = unchangedIdVars.value
+      }
+    } else {
+      unnest.id_vars = normalizeChipField(unnest.id_vars)
+    }
+
+    if (unchangedValueVars.unchanged) {
+      if (!unchangedValueVars.present) {
+        delete unnest.value_vars
+      } else if (unchangedValueVars.value !== undefined) {
+        unnest.value_vars = unchangedValueVars.value
+      }
+    } else {
+      unnest.value_vars = normalizeChipField(unnest.value_vars)
+    }
+
+    entityData.unnest = unnest
   }
   if (formData.value.type !== 'merged' && formData.value.advanced.append?.length) {
     entityData.append = formData.value.advanced.append
@@ -2950,6 +3278,7 @@ function formDataToYaml(): string {
 function yamlToFormData(yamlString: string): boolean {
   try {
     const data = yaml.load(yamlString) as Record<string, any>
+    const rawRepresentations = captureRawFieldRepresentations(data)
     const normalizedKeys = normalizeChipField(data.keys)
     const publicId = data.public_id || data.surrogate_id || ''
     const normalizedColumns = normalizeChipField(data.columns)
@@ -2973,13 +3302,13 @@ function yamlToFormData(yamlString: string): boolean {
     const dropDuplicates = data.drop_duplicates
     const dropDuplicatesData = {
       enabled: dropDuplicates !== undefined && dropDuplicates !== null,
-      columns: Array.isArray(dropDuplicates) ? dropDuplicates : [],
+      columns: normalizeChipField(dropDuplicates),
     }
 
     const dropEmptyRows = data.drop_empty_rows
     const dropEmptyRowsData = {
       enabled: dropEmptyRows !== undefined && dropEmptyRows !== null,
-      columns: Array.isArray(dropEmptyRows) ? dropEmptyRows : [],
+      columns: normalizeChipField(dropEmptyRows),
     }
 
     const nestedCheckFunctionalDependency =
@@ -3016,14 +3345,14 @@ function yamlToFormData(yamlString: string): boolean {
           range: data.options?.range || '',
           location: data.options?.location || 'global',
         },
-        foreign_keys: Array.isArray(data.foreign_keys) ? data.foreign_keys : [],
+        foreign_keys: normalizeForeignKeysForForm(data.foreign_keys),
         depends_on: normalizeChipField(data.depends_on),
         drop_duplicates: dropDuplicatesData,
         drop_empty_rows: dropEmptyRowsData,
         check_functional_dependency: effectiveCheckFunctionalDependency,
         advanced: {
           filters: Array.isArray(data.filters) ? data.filters : [],
-          unnest: data.unnest || null,
+          unnest: normalizeUnnestForForm(data.unnest),
           append: Array.isArray(data.append) ? data.append : [],
           extra_columns: data.extra_columns || undefined,
           replacements: data.replacements || undefined,
@@ -3033,6 +3362,7 @@ function yamlToFormData(yamlString: string): boolean {
       suppressFixedSchemaRemap.value = false
     }
 
+    rawFieldRepresentations.value = rawRepresentations
     yamlError.value = null
     return true
   } catch (err) {
@@ -3434,7 +3764,7 @@ function handleMaterialized() {
     api.entities
       .get(props.projectName, props.entity.name)
       .then(async (freshEntity) => {
-        entityStore.syncCachedEntity(freshEntity)
+        entityStore.syncCachedEntity(freshEntity, props.projectName)
         currentEntity.value = freshEntity
         formData.value = buildFormDataFromEntity(freshEntity)
         await loadExternalValuesIfNeeded(freshEntity)
@@ -3466,7 +3796,7 @@ function handleUnmaterialized(unmaterializedEntities: string[]) {
     api.entities
       .get(props.projectName, props.entity.name)
       .then(async (freshEntity) => {
-        entityStore.syncCachedEntity(freshEntity)
+        entityStore.syncCachedEntity(freshEntity, props.projectName)
         currentEntity.value = freshEntity
         formData.value = buildFormDataFromEntity(freshEntity)
         await loadExternalValuesIfNeeded(freshEntity)
@@ -3495,6 +3825,7 @@ function handleUnmaterialized(unmaterializedEntities: string[]) {
 
 function buildFormDataFromEntity(entity: EntityResponse): FormData {
   fixedValuesLayoutError.value = null
+  const rawRepresentations = captureRawFieldRepresentations(entity.entity_data)
   const dropDuplicates = entity.entity_data.drop_duplicates
   const dropEmptyRows = entity.entity_data.drop_empty_rows
   const nestedCheckFunctionalDependency =
@@ -3549,7 +3880,7 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
     externalValuesEtag.value = null
   }
 
-  return {
+  const formDataFromEntity: FormData = {
     name: entity.name,
     type: (entity.entity_data.type as string) || 'entity',
     system_id: 'system_id', // Always standardized
@@ -3570,26 +3901,29 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
       range: (entity.entity_data.options as any)?.range || '',
       location: (entity.entity_data.options as any)?.location || 'global',
     },
-    foreign_keys: (entity.entity_data.foreign_keys as any[]) || [],
+    foreign_keys: normalizeForeignKeysForForm(entity.entity_data.foreign_keys),
     depends_on: normalizeChipField(entity.entity_data.depends_on),
     drop_duplicates: {
       enabled: dropDuplicates !== undefined && dropDuplicates !== null,
-      columns: Array.isArray(dropDuplicates) ? dropDuplicates : [],
+      columns: normalizeChipField(dropDuplicates),
     },
     drop_empty_rows: {
       enabled: dropEmptyRows !== undefined && dropEmptyRows !== null,
-      columns: Array.isArray(dropEmptyRows) ? dropEmptyRows : [],
+      columns: normalizeChipField(dropEmptyRows),
     },
     check_functional_dependency: effectiveCheckFunctionalDependency,
     advanced: {
       filters: (entity.entity_data.filters as any[]) || [],
-      unnest: entity.entity_data.unnest || null,
+      unnest: normalizeUnnestForForm(entity.entity_data.unnest),
       append: (entity.entity_data.append as any[]) || [],
       branches: (entity.entity_data.branches as any[]) || [],
       extra_columns: (entity.entity_data.extra_columns as Record<string, ExtraColumnValue>) || undefined,
       replacements: (entity.entity_data.replacements as Record<string, any>) || undefined,
     },
   }
+
+  rawFieldRepresentations.value = rawRepresentations
+  return formDataFromEntity
 }
 
 /**
@@ -3893,6 +4227,7 @@ watch(
         // Create mode: use default form data
         resetTargetModelEntityState()
         currentEntity.value = null
+        rawFieldRepresentations.value = null
         formData.value = buildDefaultFormData()
         yamlContent.value = ''
         await refreshFormValidity()
