@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import { createVuetify } from 'vuetify'
+import { load as loadYaml } from 'js-yaml'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 
@@ -180,7 +181,7 @@ const childStubs = {
   FiltersEditor: { template: '<div data-testid="filters-editor" />' },
   UnnestEditor: {
     name: 'UnnestEditor',
-    props: ['idVarColumns', 'valueVarColumns'],
+    props: ['modelValue', 'idVarColumns', 'valueVarColumns'],
     template: '<div data-testid="unnest-editor" />',
   },
   AppendEditor: { template: '<div data-testid="append-editor" />' },
@@ -1088,6 +1089,151 @@ describe('EntityFormDialog', () => {
     )
   })
 
+  it('preserves unchanged reference field shapes through form edits and invalid YAML', async () => {
+    mockState.update.mockResolvedValue({ warnings: [] })
+    const rawDropEmptyRows = ['@value: entities.site.columns', "@value: entities.site.keys + ['other']"]
+    const rawUnnest = {
+      id_vars: '@value: entities.site.keys',
+      value_vars: ['sample_id', '@value: entities.site.columns'],
+      var_name: 'variable',
+      value_name: 'value',
+    }
+    const entity = createEntity('round_trip_entity', {
+      type: 'entity',
+      public_id: 'round_trip_id',
+      keys: '@value: entities.site.keys',
+      columns: ['@value: entities.site.columns'],
+      foreign_keys: [
+        {
+          entity: 'site',
+          local_keys: '@value: entities.site.keys',
+          remote_keys: ['@value: entities.site.keys'],
+          how: 'left',
+        },
+        {
+          entity: 'other',
+          local_keys: ['local_id'],
+          remote_keys: "@value: entities.other.keys + ['other_id']",
+          how: 'inner',
+        },
+      ],
+      unnest: rawUnnest,
+      drop_duplicates: '@value: entities.site.keys',
+      drop_empty_rows: rawDropEmptyRows,
+    })
+    const wrapper = mountEntityFormDialog({ mode: 'edit', entity })
+
+    await flushPromises()
+    await nextTick()
+
+    const initialYaml = loadYaml(wrapper.findComponent({ name: 'YamlEditor' }).props('modelValue') as string) as Record<
+      string,
+      any
+    >
+    expect(initialYaml.keys).toBe('@value: entities.site.keys')
+    expect(initialYaml.columns).toEqual(['@value: entities.site.columns'])
+    expect(initialYaml.foreign_keys[0].local_keys).toBe('@value: entities.site.keys')
+    expect(initialYaml.foreign_keys[1].remote_keys).toBe("@value: entities.other.keys + ['other_id']")
+    expect(initialYaml.unnest).toEqual(rawUnnest)
+    expect(initialYaml.drop_duplicates).toBe('@value: entities.site.keys')
+    expect(initialYaml.drop_empty_rows).toEqual(rawDropEmptyRows)
+
+    const foreignKeyEditor = wrapper.findComponent({ name: 'ForeignKeyEditor' })
+    const foreignKeys = foreignKeyEditor.props('modelValue') as Array<Record<string, unknown>>
+    expect(foreignKeys[0]?.local_keys).toEqual(['@value: entities.site.keys'])
+    expect(foreignKeys[0]?.remote_keys).toEqual(['@value: entities.site.keys'])
+    expect(foreignKeys[1]?.local_keys).toEqual(['local_id'])
+    expect(foreignKeys[1]?.remote_keys).toEqual(["@value: entities.other.keys + ['other_id']"])
+
+    const unnestEditor = wrapper.findComponent({ name: 'UnnestEditor' })
+    expect(unnestEditor.props('modelValue')).toEqual({
+      ...rawUnnest,
+      id_vars: ['@value: entities.site.keys'],
+    })
+    foreignKeyEditor.vm.$emit('update:modelValue', foreignKeys)
+    unnestEditor.vm.$emit('update:modelValue', unnestEditor.props('modelValue'))
+
+    const yamlEditor = wrapper.findComponent({ name: 'YamlEditor' })
+    yamlEditor.vm.$emit('update:modelValue', 'name: [broken')
+    yamlEditor.vm.$emit('change', 'name: [broken')
+    yamlEditor.vm.$emit('validate', false, 'Invalid YAML')
+    await flushPromises()
+
+    await setTextFieldValue(wrapper, 'Public ID *', 'round_trip_public_id')
+    const saveButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Save')
+    expect(saveButton?.element.disabled).toBe(false)
+    await saveButton!.trigger('click')
+    await flushPromises()
+
+    expect(mockState.update).toHaveBeenCalledWith(
+      'round_trip_entity',
+      expect.objectContaining({
+        entity_data: expect.objectContaining({
+          public_id: 'round_trip_public_id',
+          keys: '@value: entities.site.keys',
+          columns: ['@value: entities.site.columns'],
+          foreign_keys: [
+            expect.objectContaining({
+              local_keys: '@value: entities.site.keys',
+              remote_keys: ['@value: entities.site.keys'],
+            }),
+            expect.objectContaining({
+              local_keys: ['local_id'],
+              remote_keys: "@value: entities.other.keys + ['other_id']",
+            }),
+          ],
+          unnest: rawUnnest,
+          drop_duplicates: '@value: entities.site.keys',
+          drop_empty_rows: rawDropEmptyRows,
+        }),
+      })
+    )
+  })
+
+  it('uses the shape of a valid YAML edit for subsequent saves', async () => {
+    mockState.update.mockResolvedValue({ warnings: [] })
+    const entity = createEntity('yaml_shape_entity', {
+      type: 'entity',
+      public_id: 'yaml_shape_id',
+      keys: ['@value: entities.site.keys'],
+      columns: ['sample_id'],
+    })
+    const wrapper = mountEntityFormDialog({ mode: 'edit', entity, initialTab: 'yaml' })
+
+    await flushPromises()
+    await nextTick()
+
+    const yamlEditor = wrapper.findComponent({ name: 'YamlEditor' })
+    const editedYaml = [
+      'name: yaml_shape_entity',
+      'type: entity',
+      'system_id: system_id',
+      'public_id: yaml_shape_id',
+      'keys: "@value: entities.site.keys"',
+      'columns:',
+      '  - sample_id',
+    ].join('\n')
+    yamlEditor.vm.$emit('update:modelValue', editedYaml)
+    yamlEditor.vm.$emit('change', editedYaml)
+    yamlEditor.vm.$emit('validate', true)
+    await flushPromises()
+
+    const saveButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Save')
+    expect(saveButton?.element.disabled).toBe(false)
+    await saveButton!.trigger('click')
+    await flushPromises()
+
+    expect(mockState.update).toHaveBeenCalledWith(
+      'yaml_shape_entity',
+      expect.objectContaining({
+        entity_data: expect.objectContaining({
+          keys: '@value: entities.site.keys',
+          columns: ['sample_id'],
+        }),
+      })
+    )
+  })
+
   it('does not treat a business key as a reserved extra-column name', async () => {
     // Regression for #506: an extra column may also be used as a business key.
     const entity = createEntity('sample', {
@@ -1626,7 +1772,7 @@ describe('EntityFormDialog', () => {
     await flushPromises()
 
     expect(mockState.getEntity).toHaveBeenCalledWith('arbodat', 'abundance_source')
-    expect(mockState.syncCachedEntity).toHaveBeenCalledWith(freshEntity)
+    expect(mockState.syncCachedEntity).toHaveBeenCalledWith(freshEntity, 'arbodat')
   })
 
   it('syncs the entity store cache after unmaterialization reload', async () => {
@@ -1660,7 +1806,7 @@ describe('EntityFormDialog', () => {
     await flushPromises()
 
     expect(mockState.getEntity).toHaveBeenCalledWith('arbodat', 'abundance_source')
-    expect(mockState.syncCachedEntity).toHaveBeenCalledWith(freshEntity)
+    expect(mockState.syncCachedEntity).toHaveBeenCalledWith(freshEntity, 'arbodat')
   })
 
   it('reports a partial save and offers retry when the inline save returns pending mapping', async () => {
