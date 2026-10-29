@@ -99,7 +99,7 @@ class TestDefaultEntityConfigMapper:
     def test_to_core_returns_unchanged_config(self, mapper: DefaultEntityConfigMapper) -> None:
         """Test that to_core returns config unchanged."""
         config = {"name": "test", "data_source": {"driver": "fixed"}}
-        result = mapper.to_core(config, EntityMapperContext(project_name="project"))
+        result = mapper.to_core(config, EntityMapperContext(project_name="project"), entity_name="test")
         assert result is config  # Same object
         assert result == {"name": "test", "data_source": {"driver": "fixed"}}
 
@@ -131,7 +131,7 @@ class TestFileBasedEntityConfigMapper:
         config = {"options": {"filename": "data.csv", "location": "global"}}
         mapper = factory.get_mapper("csv")
 
-        result = mapper.to_core(config, EntityMapperContext(project_name="test_project"))
+        result = mapper.to_core(config, EntityMapperContext(project_name="test_project"), entity_name="test_entity")
 
         expected_path = str(mock_settings.global_data_dir / "data.csv")
         assert result["options"]["filename"] == expected_path
@@ -142,7 +142,7 @@ class TestFileBasedEntityConfigMapper:
         config = {"options": {"filename": "data.csv", "location": "local"}}
         mapper = factory.get_mapper("csv")
 
-        result = mapper.to_core(config, EntityMapperContext(project_name="test_project"))
+        result = mapper.to_core(config, EntityMapperContext(project_name="test_project"), entity_name="test_entity")
 
         expected_path = str(mock_settings.projects_root / "test_project" / "data.csv")
         assert result["options"]["filename"] == expected_path
@@ -175,7 +175,7 @@ class TestFileBasedEntityConfigMapper:
         config = {"options": {"filename": "${GLOBAL_DATA_DIR}/data.csv"}}
         mapper = factory.get_mapper("csv")
 
-        result = mapper.to_core(config, EntityMapperContext(project_name="test_project"))
+        result = mapper.to_core(config, EntityMapperContext(project_name="test_project"), entity_name="test_entity")
 
         expected_path = str(mock_settings.global_data_dir / "data.csv")
         assert result["options"]["filename"] == expected_path
@@ -186,7 +186,7 @@ class TestFileBasedEntityConfigMapper:
         config = {"options": {"other_field": "value"}}
         mapper = factory.get_mapper("csv")
 
-        result = mapper.to_core(config, EntityMapperContext(project_name="test_project"))
+        result = mapper.to_core(config, EntityMapperContext(project_name="test_project"), entity_name="test_entity")
 
         assert result == config
 
@@ -221,7 +221,7 @@ class TestFixedEntityConfigMapper:
             ],
         }
 
-        result = mapper.to_core(config, EntityMapperContext(project_name="arbodat"))
+        result = mapper.to_core(config, EntityMapperContext(project_name="arbodat"), entity_name="method")
 
         assert result["values"] == [
             [9, 105, "Sampling", 17],
@@ -243,7 +243,7 @@ class TestFixedEntityConfigMapper:
             "values": [[1, 1, "arbodat-pilot", "Arbodat Pilot", None]],
         }
 
-        result = mapper.to_core(config, EntityMapperContext(project_name="arbodat"))
+        result = mapper.to_core(config, EntityMapperContext(project_name="arbodat"), entity_name="data_provider")
 
         assert result["values"] == [[1, 1, "arbodat-pilot", "Arbodat Pilot", None]]
 
@@ -256,7 +256,7 @@ class TestFixedEntityConfigMapper:
             "values": ["gebäud", "okBefu", "okErh"],
         }
 
-        result = mapper.to_core(config, EntityMapperContext(project_name="arbodat"))
+        result = mapper.to_core(config, EntityMapperContext(project_name="arbodat"), entity_name="feature_property_type")
 
         assert result["values"] == [["gebäud"], ["okBefu"], ["okErh"]]
 
@@ -270,7 +270,7 @@ class TestFixedEntityConfigMapper:
         }
 
         with pytest.raises(DomainValidationError) as exc:
-            mapper.to_core(config, EntityMapperContext(project_name="arbodat"))
+            mapper.to_core(config, EntityMapperContext(project_name="arbodat"), entity_name="method")
 
         assert exc.value.code == "FIXED_ENTITY_VALUE_INVALID"
         assert exc.value.context["entity"] == "method"
@@ -287,7 +287,7 @@ class TestFixedEntityConfigMapper:
             "values": [[1, "7", "Sampling"]],
         }
 
-        result = mapper.to_core(config, EntityMapperContext(project_name="arbodat"))
+        result = mapper.to_core(config, EntityMapperContext(project_name="arbodat"), entity_name="method")
 
         assert result["values"] == [[1, 7, "Sampling"]]
 
@@ -306,6 +306,7 @@ class TestFixedEntityConfigMapper:
                 project_name="arbodat",
                 project_options={"fixed_entity_types": {"conventions": [{"pattern": "abundance", "type": "int"}]}},
             ),
+            entity_name="abundance_source",
         )
 
         assert result["values"] == [[1, "Oak", 12]]
@@ -321,7 +322,7 @@ class TestFixedEntityConfigMapper:
         }
 
         with pytest.raises(DomainValidationError) as exc:
-            mapper.to_core(config, EntityMapperContext(project_name="arbodat"))
+            mapper.to_core(config, EntityMapperContext(project_name="arbodat"), entity_name="method")
 
         assert exc.value.code == "FIXED_ENTITY_COLUMN_TYPE_INVALID"
         assert exc.value.context["entity"] == "method"
@@ -338,7 +339,7 @@ class TestFixedEntityConfigMapper:
         }
 
         with pytest.raises(DomainValidationError, match="declares duplicate columns: FuTypGrup") as exc:
-            mapper.to_core(config, EntityMapperContext(project_name="arbodat"))
+            mapper.to_core(config, EntityMapperContext(project_name="arbodat"), entity_name="site_type_group")
 
         assert exc.value.code == "FIXED_ENTITY_SHAPE_INVALID"
         assert exc.value.context["entity"] == "site_type_group"
@@ -358,7 +359,7 @@ class TestFixedEntityConfigMapper:
         )
 
         with pytest.raises(DomainValidationError) as exc:
-            mapper.to_core(config, context)
+            mapper.to_core(config, context, entity_name="method")
 
         assert exc.value.code == "FIXED_ENTITY_TYPE_CONVENTION_INVALID"
         assert exc.value.context["entity"] == "method"

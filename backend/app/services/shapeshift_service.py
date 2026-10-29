@@ -52,10 +52,7 @@ class ShapeShiftService:
         # Get appropriate mapper based on entity type
         mapper: EntityConfigMapper = self._mapper_factory.get_mapper_for_entity(entity_config)
         # Apply transformation (API → Core: resolve paths)
-        entity_input = dict(entity_config)
-        entity_input.setdefault("name", entity_name)
-        transformed = mapper.to_core(entity_input, context)
-        transformed.pop("name", None)
+        transformed: dict[str, Any] = mapper.to_core(dict(entity_config), context, entity_name=entity_name)
         entity_config.update(transformed)
 
     async def preview_entity(

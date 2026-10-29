@@ -64,12 +64,13 @@ class EntityConfigMapper(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def to_core(self, entity_cfg: dict[str, Any], context: EntityMapperContext) -> dict[str, Any]:
+    def to_core(self, entity_cfg: dict[str, Any], context: EntityMapperContext, *, entity_name: str) -> dict[str, Any]:
         """Transform API entity config to Core format.
 
         Args:
             entity_cfg: Entity configuration from API layer
             context: Per-call mapper context
+            entity_name: Name of the entity being mapped
 
         Returns:
             Transformed configuration for Core layer
@@ -90,7 +91,7 @@ class DefaultEntityConfigMapper(EntityConfigMapper):
         """Return config unchanged (no transformation needed)."""
         return entity_cfg
 
-    def to_core(self, entity_cfg: dict[str, Any], context: EntityMapperContext) -> dict[str, Any]:
+    def to_core(self, entity_cfg: dict[str, Any], context: EntityMapperContext, *, entity_name: str) -> dict[str, Any]:
         """Return config unchanged (no transformation needed)."""
         return entity_cfg
 
@@ -141,12 +142,13 @@ class FileBasedEntityConfigMapper(EntityConfigMapper):
 
         return entity_cfg
 
-    def to_core(self, entity_cfg: dict[str, Any], context: EntityMapperContext) -> dict[str, Any]:
+    def to_core(self, entity_cfg: dict[str, Any], context: EntityMapperContext, *, entity_name: str) -> dict[str, Any]:
         """Resolve (filename, location) to absolute paths for Core.
 
         Args:
             entity_cfg: Entity config with filename and location fields
             context: Per-call mapper context
+            entity_name: Name of the entity being mapped
 
         Returns:
             Config with resolved absolute paths in options.filename
@@ -189,13 +191,12 @@ class FixedEntityConfigMapper(EntityConfigMapper):
         """Return config unchanged for API serialization."""
         return entity_cfg
 
-    def to_core(self, entity_cfg: dict[str, Any], context: EntityMapperContext) -> dict[str, Any]:
+    def to_core(self, entity_cfg: dict[str, Any], context: EntityMapperContext, *, entity_name: str) -> dict[str, Any]:
         """Coerce fixed entity values and raise actionable errors for invalid configuration."""
         columns = entity_cfg.get("columns", [])
         if not isinstance(columns, list) or not columns:
             return entity_cfg
 
-        entity_name = str(entity_cfg.get("name") or "<unknown>")
         try:
             conventions: list[FixedEntityTypeConvention] = normalize_fixed_entity_type_conventions(context.project_options)
             entity_cfg["values"] = FixedEntityTypeCoercer.coerce_fixed_entity_values(
