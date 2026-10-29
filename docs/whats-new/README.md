@@ -28,14 +28,15 @@ Do not use this directory for:
 - a short summary at the top
 - links to the technical changelog and GitHub release
 
-## Suggested Workflow
+## Maintaining Release Notes
 
-1. Let semantic-release continue generating `CHANGELOG.md`.
-2. During release preparation, the automation generates `docs/whats-new/vX.Y.Z.md` from the new changelog section and includes it in the release commit.
-3. After publishing, the automation uses that file as the GitHub Release body.
-4. Review and refine the generated summary if needed. If you change it after publication, update the GitHub Release body as well.
+1. **Write a note in each PR.** Complete the `User-facing release note` and `Upgrade notes` sections in [the PR template](../../.github/PULL_REQUEST_TEMPLATE.md). Use one or two plain-language sentences for visible changes. If a PR has no user-visible change or needs no user action, use the exact `None` text in the template.
+2. **Generate the release draft.** During a release, semantic-release runs `scripts/generate_user_release_notes.py` for the new version. It derives the main sections from `CHANGELOG.md` and adds a `Pending Release` snapshot of PRs merged into `staging` after the latest PR merged into `main`. The release automation publishes this generated file as the GitHub Release body.
+3. **Review and correct the published note.** Use the merged PRs' authored notes to replace vague or duplicated heuristic text with concise user-facing information. Check upgrade actions and remove duplicate staging-promotion entries where appropriate. The generator does not yet read PR-body note sections; [issue #628](https://github.com/humlab-sead/sead_shape_shifter/issues/628) tracks that follow-up.
+4. **Keep the file and release body in sync.** After editing `docs/whats-new/vX.Y.Z.md`, update the GitHub Release body with `gh release edit vX.Y.Z --notes-file docs/whats-new/vX.Y.Z.md`.
+5. **Refresh the pending snapshot when needed.** After more PRs merge into `staging`, rerun the generator for the latest version. Generation replaces the file, so review and reapply any manual edits afterward.
 
-The release hooks live in `.releaserc.json`. The preparation hook runs `scripts/generate_user_release_notes.py` in heuristic mode, so release note generation does not depend on an external API key. The success hook uses `gh` to set the matching GitHub Release body from the generated file.
+The release hooks live in `.releaserc.json`. The preparation hook runs the generator in heuristic mode, so it does not need an external AI API key. The latest-version run uses the `gh` CLI to read merged PRs for the pending section; `gh` must be installed and authenticated. Historical versions generated with `--generate-missing` do not receive the current pending list.
 
 For manual runs, optional AI mode environment variables are:
 
@@ -59,13 +60,15 @@ python3 scripts/prepare_copilot_release_notes.py --list-versions
 
 This does two things:
 
-1. Generates a heuristic draft release note file.
+1. Generates a draft release note file.
 2. Prints and saves a ready-to-paste Copilot CLI prompt with filtered, user-visible changelog context.
 
 By default it writes:
 
 - `docs/whats-new/vX.Y.Z.md`
 - `tmp/copilot-release-notes-vX.Y.Z.prompt.md`
+
+The prompt uses changelog content, not PR-body note sections. Review the resulting release note against the merged PRs before publishing or editing the GitHub Release.
 
 ## Writing Guidelines
 
