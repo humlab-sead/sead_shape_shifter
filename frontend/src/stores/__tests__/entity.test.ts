@@ -49,6 +49,17 @@ function makeEntity(
   }
 }
 
+function createDeferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise
+    reject = rejectPromise
+  })
+
+  return { promise, resolve, reject }
+}
+
 describe('useEntityStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
@@ -163,6 +174,8 @@ describe('useEntityStore', () => {
       expect(store.currentProjectName).toBe('test-project')
       expect(store.loading).toBe(false)
       expect(store.error).toBeNull()
+      expect(store.getCompletedEntitiesFor('test-project')).toEqual(mockEntities)
+      expect(store.getCompletedEntitiesFor('another-project')).toBeNull()
     })
 
     it('should resync selectedEntity to refreshed entity data', async () => {
@@ -181,12 +194,81 @@ describe('useEntityStore', () => {
     it('should handle fetch errors', async () => {
       const store = useEntityStore()
 
+      const cachedEntities = [makeEntity('cached-entity')]
+      vi.mocked(api.entities.list).mockResolvedValueOnce(cachedEntities)
+      await store.fetchEntities('test-project')
+
       vi.mocked(api.entities.list).mockRejectedValue(new Error('Fetch failed'))
 
       await expect(store.fetchEntities('test-project')).rejects.toThrow('Fetch failed')
 
       expect(store.error).toBe('Fetch failed')
       expect(store.loading).toBe(false)
+      expect(store.getCompletedEntitiesFor('test-project')).toBeNull()
+      expect(store.entities).toEqual(cachedEntities)
+    })
+
+    it('treats a successful empty list as a completed cache', async () => {
+      const store = useEntityStore()
+      vi.mocked(api.entities.list).mockResolvedValue([])
+
+      await store.fetchEntities('empty-project')
+
+      expect(store.getCompletedEntitiesFor('empty-project')).toEqual([])
+    })
+
+    it('withholds cache data during a project switch and ignores an older response', async () => {
+      const store = useEntityStore()
+      const projectARequest = createDeferred<EntityResponse[]>()
+      const projectBRequest = createDeferred<EntityResponse[]>()
+      vi.mocked(api.entities.list)
+        .mockReturnValueOnce(projectARequest.promise)
+        .mockReturnValueOnce(projectBRequest.promise)
+
+      const projectAFetch = store.fetchEntities('project-a')
+      expect(store.getCompletedEntitiesFor('project-a')).toBeNull()
+
+      const projectBFetch = store.fetchEntities('project-b')
+      expect(store.getCompletedEntitiesFor('project-b')).toBeNull()
+
+      const projectBEntities = [makeEntity('project-b-entity')]
+      projectBRequest.resolve(projectBEntities)
+      await projectBFetch
+
+      projectARequest.resolve([makeEntity('project-a-entity')])
+      await projectAFetch
+
+      expect(store.entities).toEqual(projectBEntities)
+      expect(store.getCompletedEntitiesFor('project-a')).toBeNull()
+      expect(store.getCompletedEntitiesFor('project-b')).toEqual(projectBEntities)
+    })
+
+    it('does not restore cache ownership when a pending request completes after reset', async () => {
+      const store = useEntityStore()
+      const request = createDeferred<EntityResponse[]>()
+      vi.mocked(api.entities.list).mockReturnValue(request.promise)
+
+      const fetchPromise = store.fetchEntities('test-project')
+      store.reset()
+      request.resolve([makeEntity('late-entity')])
+      await fetchPromise
+
+      expect(store.entities).toEqual([])
+      expect(store.currentProjectName).toBeNull()
+      expect(store.getCompletedEntitiesFor('test-project')).toBeNull()
+      expect(store.loading).toBe(false)
+    })
+
+    it('does not expose the completed cache for a different active project name', async () => {
+      const store = useEntityStore()
+      const mockEntities = [makeEntity('entity1')]
+      vi.mocked(api.entities.list).mockResolvedValue(mockEntities)
+
+      await store.fetchEntities('test-project')
+      store.currentProjectName = 'another-project'
+
+      expect(store.getCompletedEntitiesFor('test-project')).toBeNull()
+      expect(store.getCompletedEntitiesFor('another-project')).toBeNull()
     })
   })
 
@@ -211,6 +293,42 @@ describe('useEntityStore', () => {
       store.syncCachedEntity(refreshedEntity)
 
       expect(store.entities).toEqual([refreshedEntity])
+    })
+
+    it('retains ownership when same-project cache mutations complete', async () => {
+      const store = useEntityStore()
+      const existing = makeEntity('existing')
+      const created = makeEntity('created')
+      const updated = makeEntity('existing', { type: 'updated' })
+      const synced = makeEntity('synced')
+
+      vi.mocked(api.entities.list).mockResolvedValue([existing])
+      await store.fetchEntities('test-project')
+
+      vi.mocked(api.entities.create).mockResolvedValue(created)
+      await store.createEntity('test-project', { name: created.name, entity_data: created.entity_data })
+      expect(store.getCompletedEntitiesFor('test-project')).toEqual([existing, created])
+
+      vi.mocked(api.entities.update).mockResolvedValue(updated)
+      await store.updateEntity('test-project', existing.name, { entity_data: updated.entity_data })
+      expect(store.getCompletedEntitiesFor('test-project')).toEqual([updated, created])
+
+      vi.mocked(api.entities.delete).mockResolvedValue(undefined)
+      await store.deleteEntity('test-project', created.name)
+      store.syncCachedEntity(synced, 'test-project')
+
+      expect(store.getCompletedEntitiesFor('test-project')).toEqual([updated, synced])
+    })
+
+    it('invalidates ownership when a mutation cannot be tied to the cached project', async () => {
+      const store = useEntityStore()
+      vi.mocked(api.entities.list).mockResolvedValue([makeEntity('project-a-entity')])
+      await store.fetchEntities('project-a')
+
+      vi.mocked(api.entities.create).mockResolvedValue(makeEntity('project-b-entity'))
+      await store.createEntity('project-b', { name: 'project-b-entity', entity_data: {} })
+
+      expect(store.getCompletedEntitiesFor('project-a')).toBeNull()
     })
   })
 

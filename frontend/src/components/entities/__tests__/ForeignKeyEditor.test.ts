@@ -28,7 +28,14 @@ const ComboboxStub = {
   inheritAttrs: false,
   props: ['label', 'items', 'modelValue'],
   emits: ['focus', 'update:modelValue'],
-  template: '<div class="v-combobox-stub" />',
+  template:
+    '<div class="v-combobox-stub"><slot v-for="(item, index) in modelValue" name="chip" :item="{ raw: item, title: item }" :props="{ closable: true }" :key="index" /></div>',
+}
+
+const ValueReferenceChipStub = {
+  name: 'ValueReferenceChip',
+  props: ['value', 'chipProps', 'entities'],
+  template: '<span data-testid="value-reference-chip">{{ value }}</span>',
 }
 
 const ControlStub = {
@@ -50,6 +57,7 @@ const controlStubs = {
   VSelect: ControlStub,
   VTextField: ControlStub,
   VCombobox: ControlStub,
+  ValueReferenceChip: ValueReferenceChipStub,
 }
 
 describe('ForeignKeyEditor', () => {
@@ -91,6 +99,44 @@ describe('ForeignKeyEditor', () => {
     await wrapper.setProps({ hasUnsavedChanges: false })
 
     expect(tester.attributes('data-disabled')).toBe('false')
+  })
+
+  it('keeps reference keys as arrays for the child editor and emitted values', async () => {
+    const wrapper = shallowMount(ForeignKeyEditor, {
+      props: {
+        modelValue: [
+          {
+            entity: 'site',
+            local_keys: ['@value: entities.sample.keys'],
+            remote_keys: ['@value: entities.site.keys'],
+            how: 'inner',
+          },
+        ],
+        projectName: 'demo',
+        entityName: 'sample',
+      },
+      global: {
+        renderStubDefaultSlot: true,
+        stubs: { ...controlStubs, VCombobox: ComboboxStub },
+      },
+    })
+
+    const localInput = wrapper.findAllComponents(ComboboxStub).find((input) => input.props('label') === 'Local Keys')!
+    const remoteInput = wrapper.findAllComponents(ComboboxStub).find((input) => input.props('label') === 'Remote Keys')!
+
+    expect(localInput.props('modelValue')).toEqual(['@value: entities.sample.keys'])
+    expect(remoteInput.props('modelValue')).toEqual(['@value: entities.site.keys'])
+    expect(wrapper.findAllComponents({ name: 'ValueReferenceChip' })).toHaveLength(2)
+
+    localInput.vm.$emit('update:modelValue', ['@value: entities.sample.keys'])
+    await flushPromises()
+
+    expect(wrapper.emitted('update:modelValue')?.at(-1)?.[0]).toEqual([
+      expect.objectContaining({
+        local_keys: ['@value: entities.sample.keys'],
+        remote_keys: ['@value: entities.site.keys'],
+      }),
+    ])
   })
 
   it('shows the positional key pairs and warns when matching keys are reordered', () => {
@@ -311,11 +357,12 @@ describe('ForeignKeyEditor', () => {
     expect(getComboboxItems('Remote Keys')).toEqual(['location_id'])
   })
 
-  it('retains directive suggestions and validation for local and remote keys', async () => {
+  it('uses cached key suggestions and retains extra-column directives and key validation', async () => {
     const wrapper = shallowMount(ForeignKeyEditor, {
       props: {
-        modelValue: [{ entity: 'site', local_keys: [], remote_keys: [], how: 'inner' }],
-        entityColumns: ['@value:entity_column'],
+        modelValue: [
+          { entity: 'site', local_keys: [], remote_keys: [], how: 'inner', extra_columns: { site_code: 'code' } },
+        ],
         columnCandidates: [
           {
             index: 0,
@@ -326,6 +373,8 @@ describe('ForeignKeyEditor', () => {
             extra_column_sources: ['site_code'],
           },
         ],
+        referenceEntities: [],
+        referenceSuggestions: ['@value: entities.site.keys'],
         projectName: 'demo',
         entityName: 'sample',
       },
@@ -339,13 +388,21 @@ describe('ForeignKeyEditor', () => {
       wrapper.findAllComponents(ComboboxStub).find((input) => input.props('label') === label)!
     const localInput = getCombobox('Local Keys')
     const remoteInput = getCombobox('Remote Keys')
+    const extraColumnInput = getCombobox('Remote Column')
 
     localInput.vm.$emit('focus')
+    remoteInput.vm.$emit('focus')
+    await flushPromises()
+
+    expect(directiveMocks.getValidDirectives).not.toHaveBeenCalled()
+    expect(localInput.props('items')).toEqual(['site_name', '@value: entities.site.keys'])
+    expect(remoteInput.props('items')).toEqual(['site_id', '@value: entities.site.keys'])
+
+    extraColumnInput.vm.$emit('focus')
     await flushPromises()
 
     expect(directiveMocks.getValidDirectives).toHaveBeenCalledWith('demo')
-    expect(localInput.props('items')).toEqual(['site_name', '@value:available', '@value:entity_column'])
-    expect(remoteInput.props('items')).toEqual(['site_id', '@value:available'])
+    expect(extraColumnInput.props('items')).toEqual(['site_code', '@value:available'])
 
     localInput.vm.$emit('update:modelValue', ['@value:local'])
     remoteInput.vm.$emit('update:modelValue', ['@value:remote'])
