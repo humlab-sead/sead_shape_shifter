@@ -2,10 +2,10 @@
 
 ## Status
 
-- Proposed feature
+- Archived; superseded by [Improve `@value` Guidance and Preview in Column Pickers](../../done/VALUE_REFERENCE_COLUMN_UX_ENHANCEMENT/VALUE_REFERENCE_COLUMN_UX_ENHANCEMENT.md). This proposal will not be completed. Associated [PR #605](https://github.com/humlab-sead/sead_shape_shifter/pull/605) will not be merged.
 - Scope: Entity editor fields that accept column lists and `@value` references, except Fixed Entity Columns
 - Goal: Keep references convenient while making their columns visible and editable
-- Related: Supersedes the UI phases of the archived [Value Directive UX Plan](../done/VALUE_DIRECTIVE_UX_PLAN.md). Its list-flattening and scalar-shorthand work has shipped; its context-aware `/valid-directives` phase is replaced by the guided entry below, and its dangling-reference validation phase is folded into this proposal.
+- Related: Supersedes the UI phases of the archived [Value Directive UX Plan](../../done/VALUE_DIRECTIVE_UX_PLAN.md). Its list-flattening and scalar-shorthand work has shipped; its context-aware `/valid-directives` phase is replaced by the guided entry below, and its dangling-reference validation phase is folded into this proposal.
 
 ## Summary
 

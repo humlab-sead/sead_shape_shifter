@@ -6,7 +6,7 @@
 - Scope: Best-effort reference suggestions and column previews in entity column pickers
 - Goal: Help users enter and inspect column references without adding a backend resolution or validation workflow
 - Validation: No validation results are recorded in this proposal.
-- Related: The broader [Make `@value` References Usable in Column Pickers proposal](../../VALUE_REFERENCE_COLUMN_PICKERS/VALUE_REFERENCE_COLUMN_PICKERS.md) and its `value-reference-column-pickers` implementation branch are retained as prior work and a source of reusable code, not as the design for this change.
+- Related: The broader [Make `@value` References Usable in Column Pickers proposal](../../archive/VALUE_REFERENCE_COLUMN_PICKERS/VALUE_REFERENCE_COLUMN_PICKERS.md) and its `value-reference-column-pickers` implementation branch are retained as prior work and a source of reusable code, not as the design for this change.
 
 ## Summary
 
@@ -44,7 +44,7 @@ The entity list endpoint returns each entity's configuration in `entity_data`, a
 
 Some chip editors normalize a scalar reference into a list for display and emit the normalized list on update. For example, the foreign-key editor converts scalar `local_keys` and `remote_keys` to arrays. An unchanged load and save can therefore change the stored scalar/list representation unless the form adapter preserves it.
 
-The existing `value-reference-column-pickers` branch implements a broader draft-aware backend approach, including mapper-scoped resolution and project-level reference validation. This proposal treats that branch as a prototype. The broader [original proposal](../../VALUE_REFERENCE_COLUMN_PICKERS/VALUE_REFERENCE_COLUMN_PICKERS.md) remains unchanged.
+The existing `value-reference-column-pickers` branch implements a broader draft-aware backend approach, including mapper-scoped resolution and project-level reference validation. This proposal treats that branch as a prototype. The broader [original proposal](../../archive/VALUE_REFERENCE_COLUMN_PICKERS/VALUE_REFERENCE_COLUMN_PICKERS.md) remains unchanged.
 
 ## Proposed Design
 
