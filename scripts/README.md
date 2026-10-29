@@ -41,8 +41,9 @@ python scripts/print_target_model_entity.py \
 ## Release Notes Drafting
 
 The `prepare_copilot_release_notes.py` script prepares a user-facing release-notes draft for refinement with Copilot CLI.
-The underlying `generate_user_release_notes.py` script also supports local `.env` loading for AI-related variables when they are not already exported.
-Release-note bodies, Copilot prompts, and AI prompts are rendered from Jinja2 templates under `scripts/templates/`.
+The `generate_user_release_notes.py` script builds the release-note file from the selected version section in `CHANGELOG.md`. It supports heuristic or AI drafting, loads local `.env` values for AI settings when they are not already exported, and renders note and AI prompt content from Jinja2 templates under `scripts/templates/`.
+
+For the latest version in `CHANGELOG.md`, the generator also adds a `Pending Release` snapshot of PRs merged into `staging` after the latest PR merged into `main`. It uses `gh pr list`, so `gh` must be installed and authenticated for that run. The generator does not currently read the user-facing note or upgrade-note sections from PR descriptions; see [the What's New workflow](../docs/whats-new/README.md) and [issue #628](https://github.com/humlab-sead/sead_shape_shifter/issues/628).
 
 ## `prepare_copilot_release_notes.py`
 
@@ -90,17 +91,20 @@ python3 scripts/generate_user_release_notes.py --version 1.26.0 --force-heuristi
 
 ### What It Does
 
-- Generates a heuristic draft release note file using `generate_user_release_notes.py --force-heuristic`
-- Writes the draft by default to `docs/whats-new/vX.Y.Z.md`
-- Writes a ready-to-paste Copilot CLI prompt by default to `tmp/copilot-release-notes-vX.Y.Z.prompt.md`
-- Uses a filtered user-visible summary as prompt context instead of the full raw changelog section
-- Prints that prompt to stdout so it can be pasted directly into Copilot CLI
+- Reads the selected release section from `CHANGELOG.md` and writes `docs/whats-new/vX.Y.Z.md` by default.
+- Drafts highlights, new features, improvements, and fixes using local heuristics or AI. Use `--force-heuristic` to skip AI.
+- Adds the `Pending Release` PR snapshot only when generating the latest changelog version. `--generate-missing` includes it only if that changelog version is among the versions being generated.
+- Replaces the output file on each run. Review the generated content and reapply any manual edits after regenerating.
+- Can update the matching GitHub Release body when run with `--update-github-release`.
 
 ### Optional Arguments
 
-- `--draft-output`: Custom path for the generated draft markdown file
-- `--prompt-output`: Custom path for the generated Copilot prompt file
-- `--list-versions`: Print release versions available in `CHANGELOG.md` and exit
+- `--version X.Y.Z`: Generate one release note file.
+- `--generate-missing`: Generate files for missing changelog versions.
+- `--list-versions`: Print release versions available in `CHANGELOG.md` and exit.
+- `--output PATH`: Write the generated note to a custom path.
+- `--force-heuristic`: Do not use AI drafting.
+- `--update-github-release`: Update the matching GitHub Release body via `gh`.
 
 ## Deployment Scripts
 
