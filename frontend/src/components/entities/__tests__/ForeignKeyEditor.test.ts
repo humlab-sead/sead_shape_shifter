@@ -93,6 +93,43 @@ describe('ForeignKeyEditor', () => {
     expect(tester.attributes('data-disabled')).toBe('false')
   })
 
+  it('keeps reference keys as arrays for the child editor and emitted values', async () => {
+    const wrapper = shallowMount(ForeignKeyEditor, {
+      props: {
+        modelValue: [
+          {
+            entity: 'site',
+            local_keys: ['@value: entities.sample.keys'],
+            remote_keys: ['@value: entities.site.keys'],
+            how: 'inner',
+          },
+        ],
+        projectName: 'demo',
+        entityName: 'sample',
+      },
+      global: {
+        renderStubDefaultSlot: true,
+        stubs: { ...controlStubs, VCombobox: ComboboxStub },
+      },
+    })
+
+    const localInput = wrapper.findAllComponents(ComboboxStub).find((input) => input.props('label') === 'Local Keys')!
+    const remoteInput = wrapper.findAllComponents(ComboboxStub).find((input) => input.props('label') === 'Remote Keys')!
+
+    expect(localInput.props('modelValue')).toEqual(['@value: entities.sample.keys'])
+    expect(remoteInput.props('modelValue')).toEqual(['@value: entities.site.keys'])
+
+    localInput.vm.$emit('update:modelValue', ['@value: entities.sample.keys'])
+    await flushPromises()
+
+    expect(wrapper.emitted('update:modelValue')?.at(-1)?.[0]).toEqual([
+      expect.objectContaining({
+        local_keys: ['@value: entities.sample.keys'],
+        remote_keys: ['@value: entities.site.keys'],
+      }),
+    ])
+  })
+
   it('shows the positional key pairs and warns when matching keys are reordered', () => {
     const wrapper = shallowMount(ForeignKeyEditor, {
       props: {

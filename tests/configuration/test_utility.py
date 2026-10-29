@@ -116,6 +116,25 @@ def test_resolve_directives_flattens_list_references_and_preserves_other_forms()
     assert resolved["extended"] == ["id", "name", "created_at"]
 
 
+def test_resolve_nested_entity_column_references_preserves_order_and_duplicates() -> None:
+    data: dict = {
+        "entities": {
+            "site": {
+                "keys": ["site_id", "site_id"],
+                "columns": ["name", "@value: entities.site.keys"],
+            },
+            "sample": {
+                "keys": "@value: entities.site.columns",
+                "columns": ["sample_id", "@value: entities.sample.keys"],
+            },
+        }
+    }
+
+    resolved: dict = _resolve(data)
+
+    assert resolved["entities"]["sample"]["columns"] == ["sample_id", "name", "site_id", "site_id"]
+
+
 def test_resolve_directives_list_reference_passes_project_validation() -> None:
     project_cfg: dict = {
         "metadata": {"type": "shapeshifter-project"},
