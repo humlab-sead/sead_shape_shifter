@@ -26,7 +26,7 @@ def map_fixed_entity_error(
     """Convert fixed-entity configuration errors to actionable domain errors."""
     if isinstance(error, FixedEntityShapeValidationError):
         error_code = "FIXED_ENTITY_SHAPE_INVALID"
-        tip = "Check that each fixed-entity row matches its declared columns and supported identity-inclusive format."
+        tip = "Make each values row match the declared data columns, or use the full positional form with managed identity fields first."
         validation_type = "fixed_entity_shape"
         message = str(error)
         context: dict[str, object] = {"entity": entity_name, "validation": validation_type}

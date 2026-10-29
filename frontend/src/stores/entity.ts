@@ -14,6 +14,7 @@ export const useEntityStore = defineStore('entity', () => {
   const entities = ref<EntityResponse[]>([])
   const selectedEntity = ref<EntityResponse | null>(null)
   const currentProjectName = ref<string | null>(null)
+  const completedCacheProjectName = ref<string | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
   const hasUnsavedChanges = ref(false)
@@ -25,6 +26,7 @@ export const useEntityStore = defineStore('entity', () => {
   // Pending mapping changes from a partial fixed-row save, scoped to one project/entity.
   const mappingSyncPending = ref<MappingSyncPending | null>(null)
   const mappingSyncRetrying = ref(false)
+  let entityFetchGeneration = 0
 
   // Overlay state
   const showEditorOverlay = ref(false)
@@ -52,7 +54,27 @@ export const useEntityStore = defineStore('entity', () => {
     selectedEntity.value = refreshedEntity ?? null
   }
 
-  function syncCachedEntity(entity: EntityResponse) {
+  function getCompletedEntitiesFor(projectName: string): EntityResponse[] | null {
+    if (currentProjectName.value !== projectName || completedCacheProjectName.value !== projectName) {
+      return null
+    }
+
+    return entities.value
+  }
+
+  function retainCacheOwnershipForMutation(projectName: string) {
+    if (currentProjectName.value !== projectName || completedCacheProjectName.value !== projectName) {
+      completedCacheProjectName.value = null
+    }
+  }
+
+  function syncCachedEntity(entity: EntityResponse, projectName?: string) {
+    if (!projectName) {
+      completedCacheProjectName.value = null
+    } else {
+      retainCacheOwnershipForMutation(projectName)
+    }
+
     const index = entities.value.findIndex((cachedEntity: EntityResponse) => cachedEntity.name === entity.name)
 
     if (index === -1) {
@@ -110,18 +132,30 @@ export const useEntityStore = defineStore('entity', () => {
   // Actions
   async function fetchEntities(projectName: string) {
     // logState('fetchEntities:before', { projectName })
+    const requestGeneration = ++entityFetchGeneration
     loading.value = true
     error.value = null
     currentProjectName.value = projectName
+    completedCacheProjectName.value = null
     try {
-      entities.value = await api.entities.list(projectName)
+      const fetchedEntities = await api.entities.list(projectName)
+      if (requestGeneration !== entityFetchGeneration) {
+        return
+      }
+
+      entities.value = fetchedEntities
       syncSelectedEntityFromList()
+      completedCacheProjectName.value = projectName
       // logState('fetchEntities:after', { projectName })
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to fetch entities'
+      if (requestGeneration === entityFetchGeneration) {
+        error.value = err instanceof Error ? err.message : 'Failed to fetch entities'
+      }
       throw err
     } finally {
-      loading.value = false
+      if (requestGeneration === entityFetchGeneration) {
+        loading.value = false
+      }
     }
   }
 
@@ -152,6 +186,7 @@ export const useEntityStore = defineStore('entity', () => {
     error.value = null
     try {
       const entity = await api.entities.create(projectName, data)
+      retainCacheOwnershipForMutation(projectName)
       entities.value.push(entity)
       selectedEntity.value = entity
       hasUnsavedChanges.value = false
@@ -174,13 +209,14 @@ export const useEntityStore = defineStore('entity', () => {
     try {
       const ifMatch = entityByName.value(entityName)?.etag ?? selectedEntity.value?.etag
       const entity = await api.entities.update(projectName, entityName, data, ifMatch)
+      retainCacheOwnershipForMutation(projectName)
 
       // Update entity in list
       const index = entities.value.findIndex((e: EntityResponse) => e.name === entityName)
       if (index !== -1) {
         entities.value[index] = entity
       } else {
-        syncCachedEntity(entity)
+        syncCachedEntity(entity, projectName)
       }
 
       selectedEntity.value = entity
@@ -229,6 +265,7 @@ export const useEntityStore = defineStore('entity', () => {
     error.value = null
     try {
       await api.entities.delete(projectName, entityName)
+      retainCacheOwnershipForMutation(projectName)
       entities.value = entities.value.filter((e: EntityResponse) => e.name !== entityName)
       if (selectedEntity.value?.name === entityName) {
         selectedEntity.value = null
@@ -276,9 +313,11 @@ export const useEntityStore = defineStore('entity', () => {
 
   function reset() {
     // logState('reset:before')
+    entityFetchGeneration += 1
     entities.value = []
     selectedEntity.value = null
     currentProjectName.value = null
+    completedCacheProjectName.value = null
     loading.value = false
     error.value = null
     hasUnsavedChanges.value = false
@@ -323,6 +362,7 @@ export const useEntityStore = defineStore('entity', () => {
     rootEntities,
     childrenOf,
     hasForeignKeys,
+    getCompletedEntitiesFor,
     syncCachedEntity,
     // Actions
     fetchEntities,

@@ -6,10 +6,10 @@
 
 **Acceptance criteria** (`VM-1` in the phase plan):
 
-1. [ ] `PH1-AC-1` (from `P-AC-1`): Reference results are available only after a completed cache load for the active project.
-2. [ ] `PH1-AC-2` (from `P-AC-2`): Supported scalar and nested list-item references expand like Core, in the same order and with duplicates retained.
-3. [ ] `PH1-AC-3` (from `P-AC-3`): A missing cache, entity, or path, a cycle, or an unsupported nested value returns no partial columns.
-4. [ ] `PH1-AC-4` (from `P-AC-5`): An unchanged load and save retains scalar references, mixed lists, and legacy `+` expressions in their original scalar or list form.
+1. [x] `PH1-AC-1` (from `P-AC-1`): Reference results are available only after a completed cache load for the active project.
+2. [x] `PH1-AC-2` (from `P-AC-2`): Supported scalar and nested list-item references expand like Core, in the same order and with duplicates retained.
+3. [x] `PH1-AC-3` (from `P-AC-3`): A missing cache, entity, or path, a cycle, or an unsupported nested value returns no partial columns.
+4. [x] `PH1-AC-4` (from `P-AC-5`): An unchanged load and save retains scalar references, mixed lists, and legacy `+` expressions in their original scalar or list form.
 
 ## Repository Findings
 
@@ -43,12 +43,12 @@
 
 **Tasks:**
 
-* [ ] `T1.1` **Change:** Add a project-owned completed-cache check to the entity store.
+* [x] `T1.1` **Change:** Add a project-owned completed-cache check to the entity store.
   * **Target:** `frontend/src/stores/entity.ts::fetchEntities`, `reset`, `createEntity`, `updateEntity`, `deleteEntity`, `syncCachedEntity`; `frontend/src/components/entities/EntityFormDialog.vue::handleMaterialized`, `handleUnmaterialized`.
   * **Current → required:** The requested name can identify the previous list during a load → a proposed `getCompletedEntitiesFor(activeProjectName): EntityResponse[] | null` returns a list only when a successful, current load owns it. `[]` is a valid completed cache; `null` means unavailable.
   * **Implementation:** Keep completed ownership separate from `currentProjectName`. Invalidate it when a new list request begins or the store resets. Use a request generation so an older success or failure cannot re-establish ownership after a newer request or reset. Preserve ownership after same-project mutations; invalidate it if a mutation cannot be tied to the owned project. Pass `props.projectName` to the materialization refresh sync so that call can be checked. Leave normal entity-list and selected-entity behavior intact.
   * **Validation:** `V-1`: pending A→B switch, wrong active name, failed load, empty successful load, late response after reset, out-of-order responses, and same-project refresh.
-* [ ] `T1.2` **Test:** Extend store tests for ownership and request ordering.
+* [x] `T1.2` **Test:** Extend store tests for ownership and request ordering.
   * **Target:** `frontend/src/stores/__tests__/entity.test.ts::fetchEntities`, `reset`, cache mutation cases.
   * **Current → required:** Existing tests assert loaded entities and errors → new tests also assert the proposed cache check never exposes mixed, pending, or stale data.
   * **Implementation:** Use controlled promises for overlapping requests and reset; check that a completed empty list is distinct from unavailable. Check that same-project updates do not silently make ownership unknown and cross-project updates do not make a mixed list trusted.
@@ -66,12 +66,12 @@
 
 **Tasks:**
 
-* [ ] `T2.1` **Change:** Implement a pure reference parser and expansion helper.
+* [x] `T2.1` **Change:** Implement a pure reference parser and expansion helper.
   * **Target:** `frontend/src/utils/valueReferenceColumns.ts` **NEW**.
   * **Current → required:** There is no local expansion helper → a proposed `expandValueReference(reference: string, entities: EntityResponse[] | null): string[] | null` expands only complete `entities.<entity>.keys` or `.columns` paths from supplied cached entities, and returns `null` for unavailable cache input.
   * **Implementation:** At each referenced property, accept a literal string list, a scalar complete reference, or a mixed list of strings and complete references. Recursively flatten referenced lists in place; retain order and duplicates. Use a recursion stack so repeated sibling references are allowed but cycles fail. Reject missing paths, nulls, numbers, objects, nested arrays, partial or legacy `+` expressions, and other directive text as one unavailable result. Never return partial columns or mutate input. Keep `[]` distinct from `null`.
   * **Validation:** `V-2`, `V-3`; compare only supported acyclic forms with Core, and test failure cases in the frontend.
-* [ ] `T2.2` **Test:** Pin down expansion and Core parity.
+* [x] `T2.2` **Test:** Pin down expansion and Core parity.
   * **Target:** `frontend/src/utils/__tests__/valueReferenceColumns.test.ts` **NEW**; `tests/configuration/test_utility.py`.
   * **Current → required:** Core tests cover simple references and list flattening → both suites use `site.keys = ['site_id', 'site_id']`, `site.columns = ['name', '@value: entities.site.keys']`, `sample.keys = '@value: entities.site.columns'`, and `sample.columns = ['sample_id', '@value: entities.sample.keys']`. Both expect `['sample_id', 'name', 'site_id', 'site_id']` from `sample.columns`.
   * **Implementation:** Test scalar and mixed references, nested list items, duplicate order, empty list, and repeated sibling references. Test missing cache input, entity/path, cycles, unsupported nested values and syntax; assert `null` without partial output and no input mutation. Add a Core test for the positive fixture only; leave Core code unchanged.
@@ -89,12 +89,12 @@
 
 **Tasks:**
 
-* [ ] `T3.1` **Change:** Preserve each supported field's loaded scalar or list shape during form conversion.
+* [x] `T3.1` **Change:** Preserve each supported field's loaded scalar or list shape during form conversion.
   * **Target:** `frontend/src/components/entities/EntityFormDialog.vue::buildFormDataFromEntity`, `yamlToFormData`, `buildEntityConfigFromFormData`, `buildDirtySnapshot`.
   * **Current → required:** Normalized chip arrays and singleton-reference serializers can rewrite unchanged input → keep a raw value and normalized comparison value per affected field, restore the raw value only when that field has no semantic edit, and serialize edited fields using the existing form rules.
   * **Implementation:** Cover `keys`, non-fixed `columns`, each FK's `local_keys`/`remote_keys`, `unnest.id_vars`/`value_vars`, `drop_duplicates`, and `drop_empty_rows`. Normalize scalar unnest and drop-list references for array-based editors without losing their raw form; keep boolean drop settings and Fixed Entity Columns behavior. Refresh raw values when valid YAML is applied or an entity is reloaded; invalid YAML must not replace them. Ensure an unrelated edit and child array emissions do not change untouched fields in Save payloads or YAML view. Keep dirty-state comparison consistent with the serialized result.
   * **Validation:** `V-4`–`V-7`; test scalar, one-item list, mixed list, and legacy `+` text without expanding them.
-* [ ] `T3.2` **Test:** Exercise form and child-editor round trips.
+* [x] `T3.2` **Test:** Exercise form and child-editor round trips.
   * **Target:** `frontend/src/components/entities/__tests__/EntityFormDialog.test.ts`, `frontend/src/components/entities/__tests__/ForeignKeyEditor.test.ts`.
   * **Current → required:** Current tests cover ordinary saves and fixed rows → add edit-dialog cases that change an unrelated field, then assert the exact saved `entity_data` shapes for the fields above. Assert YAML-form switching keeps an explicit one-item list, and a valid YAML shape edit is respected. Simulate FK child normalization and verify the parent saves the original scalar if the keys are unchanged.
   * **Implementation:** Include a scalar `keys` reference, a one-item `columns` reference list, scalar and list FK keys, scalar `unnest.id_vars`, mixed `unnest.value_vars`, scalar `drop_duplicates`, list `drop_empty_rows`, and a legacy expression such as `@value: entities.site.keys + ['other']`. Use an unrelated valid form edit to enable Save; compare exact raw values in the update request. Retain the existing fixed-entity regression cases.
@@ -115,15 +115,15 @@
 
 Commands run from the stated directory. The baseline is from the planning checkout before implementation.
 
-| ID | Check and target | Command or method | Covers | Expected result | Baseline |
-| --- | --- | --- | --- | --- | --- |
-| `V-1` | Entity cache ownership and races | From `frontend/`: `rtk proxy pnpm test:run src/stores/__tests__/entity.test.ts` | `PH1-AC-1`, `PH1-AC-3` | Ownership cases and existing store tests pass. | Pass: 34 existing tests. |
-| `V-2` | Pure frontend expansion, positive and failure cases | From `frontend/`: `rtk proxy pnpm test:run src/utils/__tests__/valueReferenceColumns.test.ts` | `PH1-AC-2`, `PH1-AC-3` | Exact arrays or `null`; no partial output or mutation. | Not run: test file is **NEW**. |
-| `V-3` | Core parity fixture | From repo root: `rtk uv run pytest tests/configuration/test_utility.py -q` | `PH1-AC-2` | New positive fixture and existing Core tests pass; runtime code is unchanged. | Pass: 8 existing tests. The proposed nested fixture was also checked directly with `ReferenceResolver` and returned `['sample_id', 'name', 'site_id', 'site_id']`. |
-| `V-4` | Form, FK, and unnest regressions | From `frontend/`: `rtk proxy pnpm test:run src/components/entities/__tests__/EntityFormDialog.test.ts src/components/entities/__tests__/ForeignKeyEditor.test.ts src/components/entities/__tests__/UnnestEditor.test.ts` | `PH1-AC-4` | New shape cases and existing editor tests pass. | Pass: 35 existing tests. |
-| `V-5` | Frontend type check | From `frontend/`: `rtk proxy pnpm exec vue-tsc --noEmit` | Changed TypeScript and Vue contracts | No new diagnostics. | Fail: existing `TS7006` at `src/composables/__tests__/useMonacoYamlIntelligence.test.ts:36` (`schema` has implicit `any`). Do not change that unrelated test in this phase. |
-| `V-6` | Frontend lint on changed files | From `frontend/`: `rtk proxy pnpm exec eslint src/stores/entity.ts src/stores/__tests__/entity.test.ts src/utils/valueReferenceColumns.ts src/utils/__tests__/valueReferenceColumns.test.ts src/components/entities/EntityFormDialog.vue src/components/entities/__tests__/EntityFormDialog.test.ts src/components/entities/__tests__/ForeignKeyEditor.test.ts` | Phase 1 frontend changes | No lint errors. | Pass on the five existing targets; two **NEW** targets not run. |
-| `V-7` | Formatting and Core test lint | From `frontend/`: `rtk proxy pnpm exec prettier --check src/stores/entity.ts src/stores/__tests__/entity.test.ts src/utils/valueReferenceColumns.ts src/utils/__tests__/valueReferenceColumns.test.ts src/components/entities/EntityFormDialog.vue src/components/entities/__tests__/EntityFormDialog.test.ts src/components/entities/__tests__/ForeignKeyEditor.test.ts`. From repo root: `rtk uv run ruff check tests/configuration/test_utility.py` and `rtk uv run black --check tests/configuration/test_utility.py`. | Phase 1 changes | No formatting or Python lint errors. | Pass on the five existing frontend targets and Core test file; two **NEW** targets not run. |
+| ID | Check and target | Command or method | Covers | Expected result | Baseline | Execution |
+| --- | --- | --- | --- | --- | --- | --- |
+| `V-1` | Entity cache ownership and races | From `frontend/`: `rtk proxy pnpm test:run src/stores/__tests__/entity.test.ts` | `PH1-AC-1`, `PH1-AC-3` | Ownership cases and existing store tests pass. | Pass: 34 existing tests. | Pass: 40 tests. |
+| `V-2` | Pure frontend expansion, positive and failure cases | From `frontend/`: `rtk proxy pnpm test:run src/utils/__tests__/valueReferenceColumns.test.ts` | `PH1-AC-2`, `PH1-AC-3` | Exact arrays or `null`; no partial output or mutation. | Not run: test file is **NEW**. | Pass: 16 tests. |
+| `V-3` | Core parity fixture | From repo root: `rtk uv run pytest tests/configuration/test_utility.py -q` | `PH1-AC-2` | New positive fixture and existing Core tests pass; runtime code is unchanged. | Pass: 8 existing tests. The proposed nested fixture was also checked directly with `ReferenceResolver` and returned `['sample_id', 'name', 'site_id', 'site_id']`. | Pass: 11 tests. |
+| `V-4` | Form, FK, and unnest regressions | From `frontend/`: `rtk proxy pnpm test:run src/components/entities/__tests__/EntityFormDialog.test.ts src/components/entities/__tests__/ForeignKeyEditor.test.ts src/components/entities/__tests__/UnnestEditor.test.ts` | `PH1-AC-4` | New shape cases and existing editor tests pass. | Pass: 35 existing tests. | Pass: 51 tests. |
+| `V-5` | Frontend type check | From `frontend/`: `rtk proxy pnpm exec vue-tsc --noEmit` | Changed TypeScript and Vue contracts | No new diagnostics. | Fail: existing `TS7006` at `src/composables/__tests__/useMonacoYamlIntelligence.test.ts:36` (`schema` has implicit `any`). Do not change that unrelated test in this phase. | Pass: no diagnostics; the planning-time `TS7006` failure did not reproduce. |
+| `V-6` | Frontend lint on changed files | From `frontend/`: `rtk proxy pnpm exec eslint src/stores/entity.ts src/stores/__tests__/entity.test.ts src/utils/valueReferenceColumns.ts src/utils/__tests__/valueReferenceColumns.test.ts src/components/entities/EntityFormDialog.vue src/components/entities/__tests__/EntityFormDialog.test.ts src/components/entities/__tests__/ForeignKeyEditor.test.ts` | Phase 1 frontend changes | No lint errors. | Pass on the five existing targets; two **NEW** targets not run. | Pass: no errors or warnings. |
+| `V-7` | Formatting and Core test lint | From `frontend/`: `rtk proxy pnpm exec prettier --check src/stores/entity.ts src/stores/__tests__/entity.test.ts src/utils/valueReferenceColumns.ts src/utils/__tests__/valueReferenceColumns.test.ts src/components/entities/EntityFormDialog.vue src/components/entities/__tests__/EntityFormDialog.test.ts src/components/entities/__tests__/ForeignKeyEditor.test.ts`. From repo root: `rtk uv run ruff check tests/configuration/test_utility.py` and `rtk uv run black --check tests/configuration/test_utility.py`. | Phase 1 changes | No formatting or Python lint errors. | Pass on the five existing frontend targets and Core test file; two **NEW** targets not run. | Pass: Prettier, Ruff, and Black. |
 
 ## Deliverables
 
@@ -141,16 +141,16 @@ Commands run from the stated directory. The baseline is from the planning checko
 
 | Area | Status | Dependencies | Notes |
 | --- | --- | --- | --- |
-| Area 1: Completed project cache | Not started | None | Establish the data source for Phase 2. |
-| Area 2: Local expansion | Not started | Area 1 contract | Keep helper pure. |
-| Area 3: Form representation | Not started | Area 1 edit to dialog | No preview UI in this phase. |
+| Area 1: Completed project cache | Done | None | `V-1` passes: 40 tests cover completed ownership, project switches, failures, resets, ordering, and mutations. |
+| Area 2: Local expansion | Done | Area 1 contract | `V-2` passes: 16 tests; `V-3` passes: 11 Core tests including the nested parity fixture. |
+| Area 3: Form representation | Done | Area 1 edit to dialog | `V-4` passes: 51 editor tests verify raw-shape saves, YAML edits, child normalization, and existing fixed-entity behavior. |
 
 ## Definition Of Done
 
-* [ ] `PH1-AC-1`–`PH1-AC-4` have the task and validation results in the coverage table; `VM-1` is satisfied.
-* [ ] All Area 1–3 tasks and listed deliverables are complete.
-* [ ] `V-1`–`V-4`, `V-6`, and `V-7` pass; `V-5` has no diagnostics beyond the recorded baseline failure.
-* [ ] Fixed Entity Columns, ordinary field suggestions, Save behavior, and Core runtime behavior retain their existing results.
-* [ ] The Phase 2 handoff is the completed-cache check, expansion helper, and form representation rule; any deviation is documented.
-* [ ] No unresolved question affects implementation, correctness, or validation.
-* [ ] If implementation findings conflict with verified repository behavior in this plan, stop and report the difference before changing the design or scope.
+* [x] `PH1-AC-1`–`PH1-AC-4` have the task and validation results in the coverage table; `VM-1` is satisfied.
+* [x] All Area 1–3 tasks and listed deliverables are complete.
+* [x] `V-1`–`V-7` pass; the planning-time `V-5` diagnostic did not reproduce.
+* [x] Fixed Entity Columns, ordinary field suggestions, Save behavior, and Core runtime behavior retain their existing results.
+* [x] The Phase 2 handoff is the completed-cache check, expansion helper, and form representation rule; no deviations remain.
+* [x] No unresolved question affects implementation, correctness, or validation.
+* [x] Implementation findings match the verified repository behavior and stayed within the approved design and scope.
