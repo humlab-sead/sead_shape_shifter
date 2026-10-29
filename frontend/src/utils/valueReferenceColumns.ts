@@ -85,3 +85,22 @@ export function expandValueReference(reference: string, entities: EntityResponse
 
   return expandReference(reference, new Set())
 }
+
+/** Returns complete supported reference paths from a completed entity cache. */
+export function getValueReferenceSuggestions(entities: EntityResponse[] | null): string[] {
+  if (!entities) {
+    return []
+  }
+
+  const suggestions: string[] = []
+  for (const entity of entities) {
+    for (const propertyName of ['keys', 'columns'] as const) {
+      const reference = `@value: entities.${entity.name}.${propertyName}`
+      if (expandValueReference(reference, entities) !== null) {
+        suggestions.push(reference)
+      }
+    }
+  }
+
+  return suggestions
+}

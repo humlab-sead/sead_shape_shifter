@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { EntityResponse } from '@/api/entities'
-import { expandValueReference } from '../valueReferenceColumns'
+import { expandValueReference, getValueReferenceSuggestions } from '../valueReferenceColumns'
 
 function makeEntity(name: string, entity_data: Record<string, unknown>): EntityResponse {
   return { name, entity_data, etag: `${name}-etag` }
@@ -82,5 +82,45 @@ describe('expandValueReference', () => {
 
     expect(expandValueReference('@value: entities.sample.columns', entities)).toEqual(['sample_id', 'site_id'])
     expect(JSON.stringify(entities)).toBe(original)
+  })
+})
+
+describe('getValueReferenceSuggestions', () => {
+  it('returns only complete supported keys and columns references in cache order', () => {
+    const entities = [
+      makeEntity('site', {
+        keys: ['site_id'],
+        columns: ['name', '@value: entities.site.keys'],
+      }),
+      makeEntity('sample', {
+        keys: '@value: entities.site.columns',
+        columns: [],
+      }),
+      makeEntity('broken', {
+        keys: ['broken_id', ['nested']],
+        columns: '@value: entities.missing.columns',
+      }),
+      makeEntity('cycle', {
+        keys: '@value: entities.cycle.columns',
+        columns: '@value: entities.cycle.keys',
+      }),
+      makeEntity('partial', {
+        keys: "@value: entities.site.keys + ['other']",
+      }),
+    ]
+    const original = JSON.stringify(entities)
+
+    expect(getValueReferenceSuggestions(entities)).toEqual([
+      '@value: entities.site.keys',
+      '@value: entities.site.columns',
+      '@value: entities.sample.keys',
+      '@value: entities.sample.columns',
+    ])
+    expect(JSON.stringify(entities)).toBe(original)
+  })
+
+  it('returns no suggestions for an unavailable or empty cache', () => {
+    expect(getValueReferenceSuggestions(null)).toEqual([])
+    expect(getValueReferenceSuggestions([])).toEqual([])
   })
 })

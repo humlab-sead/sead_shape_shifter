@@ -76,6 +76,7 @@ declare module 'vue' {
     ValidationMessageList: typeof import('./components/validation/ValidationMessageList.vue')['default']
     ValidationPanel: typeof import('./components/validation/ValidationPanel.vue')['default']
     ValidationSuggestion: typeof import('./components/validation/ValidationSuggestion.vue')['default']
+    ValueReferenceChip: typeof import('./components/entities/ValueReferenceChip.vue')['default']
     YamlEditor: typeof import('./components/common/YamlEditor.vue')['default']
   }
 }
