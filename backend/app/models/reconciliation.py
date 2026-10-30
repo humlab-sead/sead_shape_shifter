@@ -1,8 +1,8 @@
 """Reconciliation models for entity matching against SEAD database."""
 
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class ReconciliationSource(BaseModel):
@@ -25,14 +25,22 @@ class ReconciliationRemote(BaseModel):
 class ResolvedEntityPair(BaseModel):
     """Single entity resolution entry linking source identity to target identity."""
 
-    source_value: Any = Field(..., description="Source field value")
-    target_id: int | None = Field(None, description="Target entity ID (None if unmatched)")
+    local_key_value: str = Field(..., min_length=1, description="Encoded ordered business key")
+    source_value: Any = Field(..., description="Search label (not row identity)")
+    status: Literal["proposed", "accepted", "rejected", "local-only"] = "proposed"
+    target_id: int | None = Field(None, description="Selected target ID for an accepted decision")
     confidence: float | None = Field(None, ge=0.0, le=1.0, description="Mapping confidence (0-1)")
-    notes: str | None = Field(None, description="Manual notes or auto-match info")
-    will_not_match: bool = Field(False, description="User marked as will not match (local-only identifier)")
+    notes: str | None = Field(None, description="Operator notes")
+    candidates: list["ReconciliationCandidate"] = Field(default_factory=list)
     created_at: str | None = Field(None, description="ISO timestamp")
     created_by: str | None = Field(None, description="User who created mapping")
     last_modified: str | None = Field(None, description="Last modification timestamp")
+
+    @model_validator(mode="after")
+    def validate_status(self) -> "ResolvedEntityPair":
+        if (self.status == "accepted") != (self.target_id is not None):
+            raise ValueError("Only an accepted decision may have a target_id, and accepted decisions require one")
+        return self
 
 
 class EntityResolutionSet(BaseModel):
@@ -54,7 +62,7 @@ class EntityResolutionSet(BaseModel):
         0.95,
         ge=0.0,
         le=1.0,
-        description="Score threshold for auto-accepting matches (default 95%)",
+        description="Legacy score threshold (retained for compatibility; matching never auto-accepts)",
     )
     review_threshold: float = Field(
         0.70,
@@ -64,11 +72,18 @@ class EntityResolutionSet(BaseModel):
     )
     mapping: list[ResolvedEntityPair] = Field(default_factory=list, description="Manual and auto-generated mappings")
 
+    @model_validator(mode="after")
+    def validate_unique_keys(self) -> "EntityResolutionSet":
+        keys = [decision.local_key_value for decision in self.mapping]
+        if len(keys) != len(set(keys)):
+            raise ValueError("Duplicate reconciliation decision local_key_value")
+        return self
+
 
 class EntityResolutionCatalog(BaseModel):
     """Complete entity resolution catalog for all entities."""
 
-    version: str = Field("2.0", description="Reconciliation format version")
+    version: Literal["3.0"] = Field("3.0", description="Reconciliation format version")
     service_url: str = Field(..., description="Base URL of OpenRefine reconciliation service")
     entities: dict[str, dict[str, EntityResolutionSet]] = Field(
         default_factory=dict, description="Entity name -> target field -> mapping spec"
@@ -131,17 +146,40 @@ class ReconciliationPreviewRow(BaseModel):
     confidence: float | None = None
     notes: str | None = None
     candidates: list[ReconciliationCandidate] | None = None
-    match_status: str | None = None  # "auto-matched", "needs-review", "unmatched"
+    match_status: str | None = None
 
 
 class AutoReconcileResult(BaseModel):
-    """Result of auto-reconciliation operation."""
+    """Results for all normalized rows considered by a matching operation."""
 
-    auto_accepted: int = Field(..., description="Count of auto-accepted matches")
-    needs_review: int = Field(..., description="Count of uncertain matches")
-    unmatched: int = Field(..., description="Count with no good matches")
-    total: int = Field(..., description="Total entities processed")
-    candidates: dict[str, list[ReconciliationCandidate]] = Field(default_factory=dict, description="Source key -> candidates mapping")
+    proposed: int = Field(..., description="Count of proposed decisions updated")
+    unmatched: int = Field(..., description="Count of keyed rows without candidates")
+    total: int = Field(..., description="Total normalized rows considered")
+    candidates: dict[str, list[ReconciliationCandidate]] = Field(default_factory=dict, description="Encoded key -> candidates")
+    errors: list["ReconciliationRowError"] = Field(default_factory=list)
+
+
+class ReconciliationRowError(BaseModel):
+    """One row that cannot be safely reconciled."""
+
+    row_index: int
+    local_key_value: str | None = None
+    message: str
+
+
+class DecisionUpdateRequest(BaseModel):
+    """Operator action addressed by the encoded business key."""
+
+    local_key_value: str = Field(..., min_length=1)
+    status: Literal["accepted", "rejected", "local-only"]
+    target_id: int | None = None
+    notes: str | None = None
+
+    @model_validator(mode="after")
+    def validate_status(self) -> "DecisionUpdateRequest":
+        if (self.status == "accepted") != (self.target_id is not None):
+            raise ValueError("Only accepted decisions may specify a target_id, and accepted decisions require one")
+        return self
 
 
 class ExportToMappingResult(BaseModel):

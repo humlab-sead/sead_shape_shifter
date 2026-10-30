@@ -73,7 +73,7 @@ def sample_recon_config(tmp_path):
     project_dir.mkdir(exist_ok=True)
 
     config = dto.EntityResolutionCatalog(
-        version="2.0",
+        version="3.0",
         service_url="http://localhost:8000",
         entities={
             "site": {
@@ -92,8 +92,12 @@ def sample_recon_config(tmp_path):
                     auto_accept_threshold=0.85,
                     review_threshold=0.60,
                     mapping=[
-                        dto.ResolvedEntityPair(source_value="test1", target_id=1, confidence=0.98, notes="Auto-matched", **{}),
-                        dto.ResolvedEntityPair(source_value="test2", target_id=2, confidence=0.85, notes="Auto-matched", **{}),
+                        dto.ResolvedEntityPair(
+                            local_key_value="site-1", source_value="test1", status="accepted", target_id=1, confidence=0.98
+                        ),
+                        dto.ResolvedEntityPair(
+                            local_key_value="site-2", source_value="test2", status="accepted", target_id=2, confidence=0.85
+                        ),
                     ],
                 ),
             }
@@ -139,7 +143,7 @@ class TestListSpecifications:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         # Create empty recon config in nested project structure
-        config = dto.EntityResolutionCatalog(version="2.0", service_url="http://localhost:8000", entities={})
+        config = dto.EntityResolutionCatalog(version="3.0", service_url="http://localhost:8000", entities={})
         config_file = tmp_path / "test_project" / "test_project-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(config.model_dump(exclude_none=True), f)

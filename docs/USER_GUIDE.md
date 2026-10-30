@@ -722,7 +722,7 @@ Examples:
 
 ## How Mappings Are Stored
 
-Reconciled ID links and manual overrides are persisted in a **mapping sidecar file** (`<project>-mapping.yml`) stored alongside `shapeshifter.yml`. This file is the single source of truth for all entity ID mappings.
+Applied ID links and manual overrides are persisted in a **mapping sidecar file** (`<project>-mapping.yml`) stored alongside `shapeshifter.yml`. This file is the source of truth for links applied during normalization. Reconciliation candidates and review decisions are held separately in `<project>-reconciliation.yml` and do not become applied links merely by being accepted there.
 
 Shape Shifter blocks renaming an entity that has a mapping entry, including an entry with no links. Ask a project maintainer to move or remove that entry before renaming the entity.
 
@@ -746,13 +746,12 @@ During normalization, mappings are applied in this order (first match wins):
 
 ## Reconciliation Workflow
 
-1. Configure reconciliation specs in the **Reconciliation** tab
-2. Select entity and field
-3. Run auto-reconcile
-4. Review matches in the review grid
-5. Accept or adjust mappings
-6. **Export** accepted links to the mapping sidecar
-7. Links in the sidecar are applied during normalization
+1. Configure a reconciliation specification for an entity and search field.
+2. Run candidate search against all normalized rows. Each result is addressed by its business key, not its search label. Missing or duplicate keys and missing labels are reported; matching never accepts a candidate for you.
+3. Use the keyed reconciliation API to review and record accepted, rejected, or local-only decisions. Rerunning candidate search preserves those decisions. The current review grid still sends search labels rather than business keys, so do not use it to save decisions until the UI is updated.
+4. To apply a link today, add it to the mapping sidecar through its manual link API. Reconciliation export is temporarily unavailable; accepted catalog decisions are not written to the sidecar and cannot affect normalization. Existing manual links remain usable.
+
+Old reconciliation catalogs are ignored with a warning; recreate their specifications and run candidate search again. Invalid or unsupported new catalogs fail rather than silently discarding their contents. The mapping sidecar is a separate file and is unaffected.
 
 ## Materialized Entity Edits
 

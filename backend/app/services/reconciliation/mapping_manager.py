@@ -6,6 +6,7 @@ from pathlib import Path
 
 import yaml
 from loguru import logger
+from pydantic import ValidationError as PydanticValidationError
 
 from backend.app.core.config import settings
 from backend.app.exceptions import ResourceConflictError, ResourceNotFoundError, ValidationError
@@ -14,6 +15,8 @@ from backend.app.models import reconciliation as dto
 from backend.app.models.project import Project
 from backend.app.services import ProjectService
 from src.reconciliation import model as core
+
+CATALOG_VERSION = "3.0"
 
 
 class EntityMappingManager:
@@ -60,15 +63,29 @@ class EntityMappingManager:
 
         if not filename.exists():
             logger.info(f"No reconciliation config found for '{project_name}', creating empty config")
-            dto_catalog = dto.EntityResolutionCatalog(service_url=settings.reconciliation_service_url, entities={}, version="2.0")
+            dto_catalog = dto.EntityResolutionCatalog(service_url=settings.reconciliation_service_url, entities={}, version=CATALOG_VERSION)
             return ReconciliationMapper.registry_to_domain(dto_catalog)
 
         logger.debug(f"Loading reconciliation config from {filename}")
-        with open(filename, "r", encoding="utf-8") as f:
-            data = yaml.safe_load(f) or {}
+        try:
+            with open(filename, "r", encoding="utf-8") as f:
+                data = yaml.safe_load(f)
+        except yaml.YAMLError as exc:
+            raise ValidationError(f"Malformed reconciliation catalog for '{project_name}'") from exc
 
-        # Map: YAML dict → DTO (Pydantic validation) → Domain
-        dto_catalog = dto.EntityResolutionCatalog(**data)
+        if not isinstance(data, dict):
+            raise ValidationError(f"Invalid reconciliation catalog for '{project_name}': expected a YAML mapping")
+        version = data.get("version")
+        if version != CATALOG_VERSION:
+            if version is None or version == "2.0":
+                logger.warning(f"Ignoring old-format reconciliation catalog in {filename}; recreate its specifications to reconcile rows")
+                return core.EntityResolutionCatalog(version=CATALOG_VERSION, service_url=settings.reconciliation_service_url)
+            raise ValidationError(f"Unsupported reconciliation catalog version {version!r} for '{project_name}'")
+
+        try:
+            dto_catalog = dto.EntityResolutionCatalog(**data)
+        except PydanticValidationError as exc:
+            raise ValidationError(f"Invalid reconciliation catalog for '{project_name}': check its fields and decisions") from exc
         return ReconciliationMapper.registry_to_domain(dto_catalog)
 
     def save_catalog(self, project_name: str, catalog: core.EntityResolutionCatalog, filename: Path | None = None) -> None:
@@ -83,6 +100,9 @@ class EntityMappingManager:
             filename: Optional custom config file path
         """
         filename = filename or self._get_default_catalog_filename(project_name)
+
+        if catalog.version != CATALOG_VERSION:
+            raise ValueError(f"Cannot save reconciliation catalog version {catalog.version!r}; expected {CATALOG_VERSION}")
 
         # Ensure parent directory exists
         filename.parent.mkdir(parents=True, exist_ok=True)

@@ -46,14 +46,26 @@ class ReconciliationMapper:
         )
 
     @staticmethod
+    def candidate_to_domain(dto: api.ReconciliationCandidate) -> core.ResolutionCandidate:
+        """Convert a matching-service candidate to a persisted domain value."""
+        return core.ResolutionCandidate(**dto.model_dump())
+
+    @staticmethod
+    def candidate_to_dto(domain: core.ResolutionCandidate) -> api.ReconciliationCandidate:
+        """Convert a persisted candidate to the API model."""
+        return api.ReconciliationCandidate(**vars(domain))
+
+    @staticmethod
     def mapping_item_to_domain(dto: api.ResolvedEntityPair) -> core.ResolvedEntityPair:
         """Convert EntityMappingItem DTO to domain model."""
         return core.ResolvedEntityPair(
+            local_key_value=dto.local_key_value,
             source_value=dto.source_value,
+            status=core.DecisionStatus(dto.status),
             target_id=dto.target_id,
             confidence=dto.confidence,
             notes=dto.notes,
-            will_not_match=dto.will_not_match,
+            candidates=[ReconciliationMapper.candidate_to_domain(candidate) for candidate in dto.candidates],
             created_at=dto.created_at,
             created_by=dto.created_by,
             last_modified=dto.last_modified,
@@ -63,11 +75,13 @@ class ReconciliationMapper:
     def mapping_item_to_dto(domain: core.ResolvedEntityPair) -> api.ResolvedEntityPair:
         """Convert EntityMappingItem domain to DTO."""
         return api.ResolvedEntityPair(
+            local_key_value=domain.local_key_value,
             source_value=domain.source_value,
+            status=domain.status.value,
             target_id=domain.target_id,
             confidence=domain.confidence,
             notes=domain.notes,
-            will_not_match=domain.will_not_match,
+            candidates=[ReconciliationMapper.candidate_to_dto(candidate) for candidate in domain.candidates],
             created_at=domain.created_at,
             created_by=domain.created_by,
             last_modified=domain.last_modified,
