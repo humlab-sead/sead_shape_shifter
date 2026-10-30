@@ -110,7 +110,6 @@
             <div class="d-flex align-center">
               <v-icon :icon="summaryIcon" size="48" class="mr-4" />
               <div>
-                <p class="text-subtitle-2 mb-1">Validation Findings</p>
                 <p class="text-h6 mb-1">{{ summaryTitle }}</p>
                 <p class="text-body-2">
                   {{ errorCount }} {{ errorCount === 1 ? 'error' : 'errors' }}, {{ warningCount }}
