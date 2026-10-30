@@ -6,6 +6,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type {
   EntityResolutionCatalog,
+  DeleteSpecificationResult,
   ReconciliationCandidate,
   AutoReconcileResult,
   ExportToMappingResult,
@@ -497,11 +498,17 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     entityName: string,
     targetField: string,
     force: boolean = false
-  ) {
+  ): Promise<number> {
     loadingSpecs.value = true
     specsError.value = null
     try {
-      const updatedConfig = await reconciliationSpecApi.deleteSpecification(projectName, entityName, targetField, force)
+      const result: DeleteSpecificationResult = await reconciliationSpecApi.deleteSpecification(
+        projectName,
+        entityName,
+        targetField,
+        force
+      )
+      const { removed_owned_links: removedOwnedLinks, ...updatedConfig } = result
       reconciliationConfig.value = updatedConfig
       // Reload specifications list
       await loadSpecifications(projectName)
@@ -509,6 +516,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
       if (selectedSpec.value?.entity_name === entityName && selectedSpec.value?.target_field === targetField) {
         selectedSpec.value = null
       }
+      return removedOwnedLinks
     } catch (e: any) {
       specsError.value = e.response?.data?.detail || 'Failed to delete specification'
       console.error('Failed to delete specification:', e)

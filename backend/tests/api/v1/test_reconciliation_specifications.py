@@ -9,6 +9,8 @@ from backend.app import models as dto
 from backend.app.core.config import settings
 from backend.app.models.reconciliation import ReconciliationRemote
 from backend.app.services import project_service, validation_service, yaml_service
+from backend.app.services.reconciliation.mapping_manager import EntityMappingManager
+from src.reconciliation.mapping_manager import MappingManager, MappingVersionConflictError
 
 # pylint: disable=redefined-outer-name, unused-argument
 
@@ -93,7 +95,7 @@ def sample_recon_config(tmp_path):
                     review_threshold=0.60,
                     mapping=[
                         dto.ResolvedEntityPair(
-                            local_key_value="site-1", source_value="test1", status="accepted", target_id=1, confidence=0.98
+                            local_key_value="site-1", source_value="test1", status="accepted", target_id=1, confidence=0.98,
                         ),
                         dto.ResolvedEntityPair(
                             local_key_value="site-2", source_value="test2", status="accepted", target_id=2, confidence=0.85
@@ -109,6 +111,39 @@ def sample_recon_config(tmp_path):
         yaml.dump(config.model_dump(exclude_none=True), f)
 
     return config_file
+
+
+def _write_mapping_sidecar(tmp_path, links: dict[str, dict]) -> None:
+    project_dir = tmp_path / "test_project"
+    sidecar = {
+        "version": "2.0",
+        "metadata": {
+            "project": "test_project",
+            "created_at": "2026-06-15T00:00:00Z",
+            "updated_at": "2026-06-15T00:00:00Z",
+        },
+        "entities": {
+            "site": {
+                "local_key": "site_code",
+                "public_id": "site_id",
+                "entity_type": "primary",
+                "links": links,
+            }
+        },
+    }
+    (project_dir / "test_project-mapping.yml").write_text(yaml.safe_dump(sidecar, sort_keys=False), encoding="utf-8")
+
+
+def _owned_link(owner: str, field: str, target_id: int = 101) -> dict:
+    return {
+        "target_id": target_id,
+        "source": "reconciliation",
+        "created_at": "2026-06-15T00:00:00Z",
+        "committed_at": "2026-06-15T00:00:00Z",
+        "owner": {"entity_name": owner, "target_field": field},
+        "verified_at": None,
+        "created_by": "reconciliation",
+    }
 
 
 class TestListSpecifications:
@@ -225,7 +260,7 @@ class TestCreateSpecification:
 
         response = await authorized_client.post("/api/v1/projects/test_project/reconciliation/mapping-registry", json=payload)
 
-        assert response.status_code == 409
+        assert response.status_code == 409, response.text
         detail = response.json()["detail"]
         assert "already exists" in detail["message"]
 
@@ -345,6 +380,8 @@ class TestDeleteSpecification:
         # site_code should be removed, but site_name should remain
         assert "site_code" not in config["entities"]["site"]
         assert "site_name" in config["entities"]["site"]
+        assert set(config) == {"version", "service_url", "entities", "removed_owned_links"}
+        assert config["removed_owned_links"] == 0
 
     async def test_delete_specification_with_mappings_no_force(
         self, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config, authorized_client
@@ -371,6 +408,111 @@ class TestDeleteSpecification:
         config = response.json()
         assert "site_name" not in config["entities"]["site"]
 
+    async def test_delete_removes_only_links_owned_by_the_specification(
+        self, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config, authorized_client
+    ):
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        _write_mapping_sidecar(
+            tmp_path,
+            {
+                "owned-name": _owned_link("site", "site_name"),
+                "owned-code": _owned_link("site", "site_code"),
+                "other-owner": _owned_link("sample", "sample_code"),
+                "manual": {"target_id": 202, "source": "manual", "created_by": "operator"},
+                "unowned": {"target_id": 303, "source": "reconciliation", "created_by": "legacy"},
+            },
+        )
+
+        response = await authorized_client.delete("/api/v1/projects/test_project/reconciliation/mapping-registry/site/site_name?force=true")
+
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["removed_owned_links"] == 1
+        assert set(body) == {"version", "service_url", "entities", "removed_owned_links"}
+        assert "site_name" not in body["entities"]["site"]
+        sidecar = yaml.safe_load((tmp_path / "test_project" / "test_project-mapping.yml").read_text(encoding="utf-8"))
+        links = sidecar["entities"]["site"]["links"]
+        assert "owned-name" not in links
+        assert {"owned-code", "other-owner", "manual", "unowned"} <= links.keys()
+
+    async def test_empty_specification_delete_cleans_previously_owned_links(
+        self, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config, authorized_client
+    ):
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        _write_mapping_sidecar(tmp_path, {"owned-code": _owned_link("site", "site_code")})
+
+        response = await authorized_client.delete("/api/v1/projects/test_project/reconciliation/mapping-registry/site/site_code")
+
+        assert response.status_code == 200, response.text
+        assert response.json()["removed_owned_links"] == 1
+        sidecar = yaml.safe_load((tmp_path / "test_project" / "test_project-mapping.yml").read_text(encoding="utf-8"))
+        assert sidecar["entities"]["site"]["links"] == {}
+
+    async def test_sidecar_version_conflict_keeps_specification_and_sidecar(
+        self, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config, authorized_client
+    ):
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        _write_mapping_sidecar(tmp_path, {"owned-code": _owned_link("site", "site_code")})
+        sidecar_path = tmp_path / "test_project" / "test_project-mapping.yml"
+        original_sidecar = sidecar_path.read_bytes()
+
+        def fail_save(*_args, **_kwargs):
+            raise MappingVersionConflictError("external write")
+
+        monkeypatch.setattr(MappingManager, "save", fail_save)
+        response = await authorized_client.delete("/api/v1/projects/test_project/reconciliation/mapping-registry/site/site_code")
+
+        assert response.status_code == 409
+        assert "changed during specification removal" in response.json()["detail"]["message"]
+        assert sidecar_path.read_bytes() == original_sidecar
+        catalog = yaml.safe_load((tmp_path / "test_project" / "test_project-reconciliation.yml").read_text(encoding="utf-8"))
+        assert "site_code" in catalog["entities"]["site"]
+
+    async def test_sidecar_write_failure_keeps_specification(
+        self, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config, authorized_client
+    ):
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        _write_mapping_sidecar(tmp_path, {"owned-code": _owned_link("site", "site_code")})
+        sidecar_path = tmp_path / "test_project" / "test_project-mapping.yml"
+        original_sidecar = sidecar_path.read_bytes()
+
+        def fail_save(*_args, **_kwargs):
+            raise OSError("sidecar write failed")
+
+        monkeypatch.setattr(MappingManager, "save", fail_save)
+        response = await authorized_client.delete("/api/v1/projects/test_project/reconciliation/mapping-registry/site/site_code")
+
+        assert response.status_code == 500
+        assert sidecar_path.read_bytes() == original_sidecar
+        catalog = yaml.safe_load((tmp_path / "test_project" / "test_project-reconciliation.yml").read_text(encoding="utf-8"))
+        assert "site_code" in catalog["entities"]["site"]
+
+    async def test_catalog_write_failure_reports_partial_cleanup(
+        self, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config, authorized_client
+    ):
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        _write_mapping_sidecar(
+            tmp_path,
+            {
+                "owned-code": _owned_link("site", "site_code"),
+                "manual": {"target_id": 202, "source": "manual", "created_by": "operator"},
+            },
+        )
+
+        def fail_save_catalog(*_args, **_kwargs):
+            raise OSError("catalog write failed")
+
+        monkeypatch.setattr(EntityMappingManager, "save_catalog", fail_save_catalog)
+        response = await authorized_client.delete("/api/v1/projects/test_project/reconciliation/mapping-registry/site/site_code")
+
+        assert response.status_code == 500
+        assert "still present" in response.json()["detail"]["message"]
+        assert "1 owned mapping link(s) were already removed" in response.json()["detail"]["message"]
+        catalog = yaml.safe_load((tmp_path / "test_project" / "test_project-reconciliation.yml").read_text(encoding="utf-8"))
+        assert "site_code" in catalog["entities"]["site"]
+        sidecar = yaml.safe_load((tmp_path / "test_project" / "test_project-mapping.yml").read_text(encoding="utf-8"))
+        assert set(sidecar["entities"]["site"]["links"]) == {"manual"}
+
     async def test_delete_specification_not_found(
         self, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config, authorized_client
     ):
@@ -380,6 +522,57 @@ class TestDeleteSpecification:
         response = await authorized_client.delete("/api/v1/projects/test_project/reconciliation/mapping-registry/site/nonexistent")
 
         assert response.status_code == 404
+
+
+@pytest.mark.parametrize("raw", [False, True], ids=["json", "raw-yaml"])
+async def test_whole_catalog_update_cleans_removed_spec_owned_links(
+    raw, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config, authorized_client
+):
+    monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+    _write_mapping_sidecar(
+        tmp_path,
+        {
+            "owned-name": _owned_link("site", "site_name"),
+            "owned-code": _owned_link("site", "site_code"),
+            "manual": {"target_id": 202, "source": "manual", "created_by": "operator"},
+        },
+    )
+    config_path = sample_recon_config
+    catalog = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    del catalog["entities"]["site"]["site_name"]
+
+    if raw:
+        response = await authorized_client.put(
+            "/api/v1/projects/test_project/reconciliation/raw",
+            content=yaml.safe_dump(catalog, sort_keys=False),
+            headers={"Content-Type": "text/plain"},
+        )
+    else:
+        response = await authorized_client.put("/api/v1/projects/test_project/reconciliation", json=catalog)
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert "site_name" not in body["entities"]["site"]
+    sidecar = yaml.safe_load((tmp_path / "test_project" / "test_project-mapping.yml").read_text(encoding="utf-8"))
+    links = sidecar["entities"]["site"]["links"]
+    assert "owned-name" not in links
+    assert {"owned-code", "manual"} <= links.keys()
+
+
+def test_catalog_save_uses_atomic_replace_and_preserves_old_file_on_failure(tmp_path, monkeypatch, sample_project, sample_recon_config):
+    manager = EntityMappingManager(project_service=MagicMock(), config_dir=tmp_path)
+    catalog = manager.load_catalog("test_project")
+    original = sample_recon_config.read_bytes()
+
+    def fail_replace(_source, _destination):
+        raise OSError("replace failed")
+
+    monkeypatch.setattr("backend.app.services.reconciliation.mapping_manager.os.replace", fail_replace)
+    with pytest.raises(OSError, match="replace failed"):
+        manager.save_catalog("test_project", catalog)
+
+    assert sample_recon_config.read_bytes() == original
+    assert not list(sample_recon_config.parent.glob(".test_project-reconciliation.yml.*.tmp"))
 
 
 class TestGetAvailableFields:

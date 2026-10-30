@@ -7,6 +7,7 @@ import type {
   EntityResolutionListItem,
   EntityResolutionCatalogCreateRequest,
   EntityResolutionCatalogUpdateRequest,
+  DeleteSpecificationResult,
   ExportToMappingResult,
   AutoReconcileResult,
   DecisionUpdateRequest,
@@ -71,8 +72,8 @@ export const reconciliationSpecApi = {
     entityName: string,
     targetField: string,
     force: boolean = false
-  ): Promise<EntityResolutionCatalog> => {
-    return apiRequest<EntityResolutionCatalog>({
+  ): Promise<DeleteSpecificationResult> => {
+    return apiRequest<DeleteSpecificationResult>({
       method: 'DELETE',
       url: `/projects/${projectName}/reconciliation/mapping-registry/${entityName}/${targetField}`,
       params: { force },

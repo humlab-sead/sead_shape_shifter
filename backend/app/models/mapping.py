@@ -13,6 +13,13 @@ class MappingLinkUpsertRequest(BaseModel):
     notes: str | None = Field(default=None, description="Optional notes stored with the mapping link.")
 
 
+class MappingLinkOwner(BaseModel):
+    """Specification that owns a reconciliation mapping link."""
+
+    entity_name: str
+    target_field: str
+
+
 class MappingLinkResponse(BaseModel):
     """API representation of a single mapping link."""
 
@@ -21,6 +28,8 @@ class MappingLinkResponse(BaseModel):
     confidence: float | None = None
     created_at: datetime
     committed_at: datetime | None = None
+    owner: MappingLinkOwner | None = None
+    verified_at: datetime | None = None
     notes: str | None = None
     created_by: str
     reviewed_by: str | None = None

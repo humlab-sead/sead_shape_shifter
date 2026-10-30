@@ -102,8 +102,7 @@ async def update_entity_mapping_registry(
     # Map DTO to domain model
     domain_config: core.EntityResolutionCatalog = ReconciliationMapper.registry_to_domain(recon_config)
 
-    # Service works with domain model
-    service.catalog_manager.save_catalog(authorized_project.resource.locator, domain_config)
+    service.replace_catalog(authorized_project.resource.locator, domain_config)
 
     # Return original DTO (unchanged)
     return recon_config
@@ -138,8 +137,7 @@ async def update_entity_resolution_catalog_raw(
         # Map DTO → Domain for service
         domain_config: core.EntityResolutionCatalog = ReconciliationMapper.registry_to_domain(catalog)
 
-        # Save
-        service.catalog_manager.save_catalog(authorized_project.resource.locator, domain_config)
+        service.replace_catalog(authorized_project.resource.locator, domain_config)
 
         return catalog
     except pyyaml.YAMLError as e:
@@ -484,9 +482,10 @@ async def export_reconciliation_to_mapping(
     service: ReconciliationService = Depends(get_reconciliation_service),
 ) -> api.ExportToMappingResult:
     """Copy reconciliation links for one entity field into the mapping sidecar."""
-    exported, skipped_manual = service.export_to_mapping(authorized_project.resource.locator, entity_name, target_field)
+    exported, removed, skipped_manual = service.export_to_mapping(authorized_project.resource.locator, entity_name, target_field)
     return api.ExportToMappingResult(
         exported=exported,
+        removed=removed,
         skipped_manual=skipped_manual,
         entity=entity_name,
         field=target_field,
@@ -655,7 +654,7 @@ async def delete_catalog(
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
     force: bool = Query(False, description="Force delete even if mappings exist"),
     service: ReconciliationService = Depends(get_reconciliation_service),
-) -> api.EntityResolutionCatalog:
+) -> api.EntityResolutionCatalogDeleteResult:
     """
     Delete a entity resolution catalog.
 
@@ -673,7 +672,7 @@ async def delete_catalog(
         BadRequestError: If catalog has mappings and force=False
     """
     # Service returns domain model
-    catalog: core.EntityResolutionCatalog = service.catalog_manager.delete(
+    catalog, removed_owned_links = service.delete_specification(
         project_name=authorized_project.resource.locator,
         entity_name=entity_name,
         target_field=target_field,
@@ -681,7 +680,11 @@ async def delete_catalog(
     )
 
     # Map to DTO for API response
-    return ReconciliationMapper.registry_to_dto(catalog)
+    catalog_dto = ReconciliationMapper.registry_to_dto(catalog)
+    return api.EntityResolutionCatalogDeleteResult(
+        **catalog_dto.model_dump(),
+        removed_owned_links=removed_owned_links,
+    )
 
 
 @router.get("/projects/{project_name}/reconciliation/available-fields/{entity_name}")

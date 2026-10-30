@@ -33,6 +33,8 @@ def _to_link_response(link: Link) -> api.MappingLinkResponse:
         confidence=link.confidence,
         created_at=link.created_at,
         committed_at=link.committed_at,
+        owner=api.MappingLinkOwner(entity_name=link.owner.entity_name, target_field=link.owner.target_field) if link.owner else None,
+        verified_at=link.verified_at,
         notes=link.notes,
         created_by=link.created_by,
         reviewed_by=link.reviewed_by,

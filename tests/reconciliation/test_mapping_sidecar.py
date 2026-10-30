@@ -11,6 +11,7 @@ from src.reconciliation.mapping_model import (
     EntityMapping,
     EntityType,
     Link,
+    LinkOwner,
     LinkSource,
     MappingCatalog,
     Metadata,
@@ -155,6 +156,45 @@ def test_mapping_manager_load_save_round_trip_preserves_catalog_fields(tmp_path)
     reloaded = MappingManager().load(project_dir)
 
     assert reloaded.model_dump(mode="json") == catalog.model_dump(mode="json")
+
+
+def test_mapping_manager_persists_owner_and_null_verification_without_changing_legacy_links(tmp_path) -> None:
+    project_dir = tmp_path / "demo-project"
+    project_dir.mkdir()
+    catalog = make_catalog()
+    owned_key = "owned"
+    catalog.entities["samples"].links[owned_key] = Link(
+        target_id=300,
+        source=LinkSource.RECONCILIATION,
+        created_by="reconciliation",
+        committed_at=datetime(2026, 1, 2, tzinfo=timezone.utc),
+        owner=LinkOwner(entity_name="samples", target_field="sample_code"),
+    )
+
+    MappingManager().save(catalog, project_dir)
+
+    sidecar = yaml.safe_load((project_dir / "demo-project-mapping.yml").read_text(encoding="utf-8"))
+    links = sidecar["entities"]["samples"]["links"]
+    assert links[owned_key]["owner"] == {"entity_name": "samples", "target_field": "sample_code"}
+    assert links[owned_key]["verified_at"] is None
+    assert "owner" not in links["SEAD|S1"]
+    assert "verified_at" not in links["SEAD|S1"]
+    assert MappingManager().load(project_dir).entities["samples"].links[owned_key].verified_at is None
+
+
+@pytest.mark.parametrize(
+    "owner",
+    [
+        {"entity_name": "", "target_field": "sample_code"},
+        {"entity_name": "samples", "target_field": ""},
+        {"entity_name": " ", "target_field": "sample_code"},
+        {"entity_name": "samples", "target_field": "  "},
+        {"entity_name": "samples"},
+    ],
+)
+def test_link_rejects_partial_or_blank_owner(owner: dict[str, str]) -> None:
+    with pytest.raises(ValueError):
+        Link(source=LinkSource.RECONCILIATION, created_by="reconciliation", owner=owner)
 
 
 def test_mapping_manager_snapshot_uses_exact_bytes_and_separate_missing_version(tmp_path) -> None:

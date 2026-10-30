@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Optional, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 # pylint: disable=no-member, comparison-with-itself
 
@@ -132,6 +132,19 @@ class LinkSource(str, Enum):
     IMPORT = "import"
 
 
+class LinkOwner(BaseModel):
+    """Specification that owns a reconciliation link."""
+
+    entity_name: str = Field(..., min_length=1)
+    target_field: str = Field(..., min_length=1)
+
+    @model_validator(mode="after")
+    def validate_nonempty_components(self) -> "LinkOwner":
+        if not self.entity_name.strip() or not self.target_field.strip():
+            raise ValueError("Link owner components must not be blank")
+        return self
+
+
 class EntityType(str, Enum):
     """Entity classification used for UI grouping and validation."""
 
@@ -153,6 +166,8 @@ class Link(BaseModel):
     confidence: Optional[float] = Field(default=None, ge=0.0, le=1.0)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     committed_at: Optional[datetime] = None
+    owner: LinkOwner | None = None
+    verified_at: datetime | None = None
     notes: Optional[str] = None
     created_by: str
     reviewed_by: Optional[str] = None

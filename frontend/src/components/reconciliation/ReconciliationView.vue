@@ -149,18 +149,20 @@
                   v-if="selectedEntity && selectedTarget && entitySpec"
                   data-testid="export-to-mapping-button"
                   variant="tonal"
-                  color="grey"
+                  color="primary"
                   prepend-icon="mdi-export"
-                  disabled
+                  :loading="loading"
+                  :disabled="loading"
                   class="ml-2"
+                  @click="handleExportToMapping"
                 >
-                  Export Unavailable
+                  Export to Mapping
                 </v-btn>
               </div>
 
               <v-alert type="info" variant="tonal" class="mb-4">
-                Reconciliation export is unavailable until Phase 3. Accepted decisions do not change normalized IDs; use
-                a manual link when a row needs an effective target ID.
+                Export accepted decisions to create committed sidecar links for normalization. Export does not verify
+                target IDs; manual and unowned links are protected, and reconciliation links remain unverified until Phase 5.
               </v-alert>
 
               <v-alert v-if="previewError" data-testid="preview-error" type="error" variant="tonal" class="mb-4">
@@ -387,6 +389,19 @@ function handleReconcileSpec(entityName: string, targetField: string) {
   activeTab.value = 'reconcile'
 }
 
+function getApiErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message) return error.message
+  if (typeof error === 'object' && error !== null && 'response' in error) {
+    const response = (error as { response?: { data?: { detail?: unknown } } }).response
+    const detail = response?.data?.detail
+    if (typeof detail === 'string') return detail
+    if (typeof detail === 'object' && detail !== null && 'message' in detail && typeof detail.message === 'string') {
+      return detail.message
+    }
+  }
+  return fallback
+}
+
 async function handleAutoReconcile() {
   if (!selectedEntity.value || !selectedTarget.value) return
 
@@ -421,6 +436,21 @@ async function handleAutoReconcile() {
     resultColor.value = 'error'
     showResultSnackbar.value = true
   }
+}
+
+async function handleExportToMapping() {
+  if (!selectedEntity.value || !selectedTarget.value) return
+
+  try {
+    const result = await reconciliationStore.exportToMapping(props.projectName, selectedEntity.value, selectedTarget.value)
+    resultMessage.value = `${result.exported} link(s) exported; ${result.removed} stale link(s) removed; `
+      + `${result.skipped_manual} protected link(s) skipped.`
+    resultColor.value = 'success'
+  } catch (error) {
+    resultMessage.value = `Reconciliation export failed: ${getApiErrorMessage(error, 'The export could not be completed.')}`
+    resultColor.value = 'error'
+  }
+  showResultSnackbar.value = true
 }
 
 async function handleUpdateMapping(request: DecisionUpdateRequest): Promise<void> {
