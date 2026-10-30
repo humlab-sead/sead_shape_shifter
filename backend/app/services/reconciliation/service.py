@@ -514,13 +514,23 @@ class ReconciliationService:
             previous = entity_mapping.get(local_key_value)
             if previous is None:
                 raise BadRequestError(f"No reconciliation row with business key {local_key_value!r}; run matching first")
+            confidence = None
+            if status == core.DecisionStatus.ACCEPTED and target_id is not None:
+                for candidate in previous.candidates:
+                    try:
+                        candidate_id = self._extract_id_from_uri(candidate.id)
+                    except BadRequestError:
+                        continue
+                    if candidate_id == target_id and candidate.score is not None:
+                        confidence = candidate.score / 100
+                        break
             decision = core.ResolvedEntityPair(
                 local_key_value=local_key_value,
                 source_value=previous.source_value,
                 status=status,
                 target_id=target_id,
-                confidence=1.0 if status == core.DecisionStatus.ACCEPTED else None,
-                notes=notes,
+                confidence=confidence,
+                notes=notes if notes is not None else previous.notes,
                 candidates=previous.candidates,
                 created_by="user",
                 created_at=previous.created_at,

@@ -747,9 +747,10 @@ During normalization, mappings are applied in this order (first match wins):
 ## Reconciliation Workflow
 
 1. Configure a reconciliation specification for an entity and search field.
-2. Run candidate search against all normalized rows. Each result is addressed by its business key, not its search label. Missing or duplicate keys and missing labels are reported; matching never accepts a candidate for you.
-3. Use the keyed reconciliation API to review and record accepted, rejected, or local-only decisions. Rerunning candidate search preserves those decisions. The current review grid still sends search labels rather than business keys, so do not use it to save decisions until the UI is updated.
-4. To apply a link today, add it to the mapping sidecar through its manual link API. Reconciliation export is temporarily unavailable; accepted catalog decisions are not written to the sidecar and cannot affect normalization. Existing manual links remain usable.
+2. Select **Find Candidates** to search the normalized rows. Each result is addressed by its encoded business key, not its search label. Missing or duplicate keys, missing labels, and row errors are reported. Candidate scores and thresholds are informational; matching never accepts a candidate for you.
+3. Review each row in the grid. Select a candidate before accepting it, or reject the row or mark it local-only. These decisions are saved by business key, and rerunning candidate search preserves them. Rows without decisions or candidates are unresolved; rows without a business key are unreviewable. Preview and matching failures are shown separately from an empty result.
+4. To apply a target ID, select **Add Manual Link** and enter the encoded business key and an integer target ID. This saves a trusted `source: manual` link in the mapping sidecar without checking the ID against SEAD. The committed sidecar ID is effective during the next normalization and takes precedence over the fixed row's saved `public_id`.
+5. Reconciliation export is unavailable until Phase 3. An accepted catalog decision is not a sidecar link and does not change normalized IDs. Existing committed sidecar links remain usable.
 
 Old reconciliation catalogs are ignored with a warning; recreate their specifications and run candidate search again. Invalid or unsupported new catalogs fail rather than silently discarding their contents. The mapping sidecar is a separate file and is unaffected.
 
@@ -757,8 +758,8 @@ Old reconciliation catalogs are ignored with a warning; recreate their specifica
 
 When editing a materialized entity and assigning `public_id` values:
 
-- Saving fixed rows updates links for ID or row-key changes and adds a missing link for a saved non-blank ID. Links at unaffected keys keep their source and details, even when a saved `public_id` is blank or older.
-- During normalization, committed manual links take precedence over reconciliation and imported links.
+- Saving fixed rows updates sidecar links for ID or row-key changes and adds a missing link for a saved non-blank ID. Saving the same key with the same row ID keeps its existing link and metadata, including a different manual target ID. Editing that row ID replaces the sidecar target with the saved ID. Links at unaffected keys keep their source and details.
+- During normalization, a committed manual link takes precedence over the fixed row's saved `public_id`, reconciliation-sourced links, and imported links. Adding a manual link does not edit the fixed row values or check the target ID against SEAD.
 
 Use **Sync from materialized entity** in Mapping Sidecar Management to seed or repair links from all saved rows. A request without options adds links only where no link exists and keeps every existing link. To rebuild manual links and remove stale manual entries, explicitly set `replace_manual_links` to `true`. A rebuilt link can replace another source at the same key because the sidecar stores one link per key.
 

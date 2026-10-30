@@ -3,6 +3,7 @@
 import asyncio
 from unittest.mock import AsyncMock, patch
 
+import pytest
 import yaml
 
 from backend.app.core.config import settings
@@ -49,7 +50,43 @@ def _write_catalog(tmp_path) -> None:
                 "site_name": {
                     "remote": {"service_type": "site"},
                     "mapping": [
-                        {"local_key_value": key, "source_value": "Same", "status": "proposed", "candidates": []} for key in ("A", "B")
+                        {
+                            "local_key_value": key,
+                            "source_value": "Same",
+                            "status": "proposed",
+                            "notes": "Keep these notes" if key == "A" else None,
+                            "candidates": (
+                                [
+                                    {
+                                        "id": "https://w3id.org/sead/id/site/101",
+                                        "name": "Same",
+                                        "score": 82,
+                                        "type": [],
+                                    },
+                                    {
+                                        "id": "https://w3id.org/sead/id/site/102",
+                                        "name": "Score unavailable",
+                                        "score": None,
+                                        "type": [],
+                                    },
+                                    {
+                                        "id": "https://w3id.org/sead/id/site/103",
+                                        "name": "Zero score",
+                                        "score": 0,
+                                        "type": [],
+                                    },
+                                    {
+                                        "id": "https://w3id.org/sead/id/site/104",
+                                        "name": "Full score",
+                                        "score": 100,
+                                        "type": [],
+                                    },
+                                ]
+                                if key == "A"
+                                else []
+                            ),
+                        }
+                        for key in ("A", "B")
                     ],
                 }
             }
@@ -82,7 +119,47 @@ class TestReconciliationDecisionRoutes:
 
         preview = await authorized_client.get(f"{path}/preview")
         assert preview.status_code == 200, preview.text
-        assert {row["local_key_value"]: row["status"] for row in preview.json()} == {"A": "accepted", "B": "rejected"}
+        preview_rows = {row["local_key_value"]: row for row in preview.json()}
+        assert {key: row["status"] for key, row in preview_rows.items()} == {"A": "accepted", "B": "rejected"}
+        assert preview_rows["A"]["confidence"] == 0.82
+        assert preview_rows["A"]["notes"] == "Keep these notes"
+        assert preview_rows["A"]["candidates"][0]["score"] == 82
+        assert preview_rows["B"]["confidence"] is None
+
+    async def test_accepting_candidate_without_score_does_not_invent_confidence(self, authorized_client, tmp_path, monkeypatch) -> None:
+        await _create_project(authorized_client, tmp_path, monkeypatch)
+        _write_catalog(tmp_path)
+        path = "/api/v1/projects/review/reconciliation/site/site_name"
+
+        accepted = await authorized_client.post(
+            f"{path}/mapping",
+            json={"local_key_value": "A", "status": "accepted", "target_id": 102},
+        )
+
+        assert accepted.status_code == 200, accepted.text
+        decisions = accepted.json()["entities"]["site"]["site_name"]["mapping"]
+        decision = next(item for item in decisions if item["local_key_value"] == "A")
+        assert decision["confidence"] is None
+        assert decision["notes"] == "Keep these notes"
+        assert len(decision["candidates"]) == 4
+
+    @pytest.mark.parametrize(("target_id", "expected_confidence"), [(103, 0.0), (104, 1.0)])
+    async def test_accepting_candidate_preserves_zero_and_full_scores_as_confidence(
+        self, target_id, expected_confidence, authorized_client, tmp_path, monkeypatch
+    ) -> None:
+        await _create_project(authorized_client, tmp_path, monkeypatch)
+        _write_catalog(tmp_path)
+        path = "/api/v1/projects/review/reconciliation/site/site_name"
+
+        accepted = await authorized_client.post(
+            f"{path}/mapping",
+            json={"local_key_value": "A", "status": "accepted", "target_id": target_id},
+        )
+
+        assert accepted.status_code == 200, accepted.text
+        decisions = accepted.json()["entities"]["site"]["site_name"]["mapping"]
+        decision = next(item for item in decisions if item["local_key_value"] == "A")
+        assert decision["confidence"] == expected_confidence
 
     async def test_label_only_and_invalid_edits_are_rejected(self, authorized_client, tmp_path, monkeypatch) -> None:
         await _create_project(authorized_client, tmp_path, monkeypatch)
