@@ -1,0 +1,60 @@
+title: Re-scope Phase 4 to a UAT-ready deployment and clarify access probes
+description:
+## Summary
+
+Re-scopes Phase 4 of the centralized authorization cutover from a production enforcement cutover to
+delivering and recording a deployment that user acceptance testing can be run against, and hands the
+production flip to a new successor proposal. The rationale recorded in the plan: the new server
+runs the authorization system from the outset, the old and new deployments never mix, and the
+remaining question is when users move — an operational event gated on user acceptance testing whose
+criteria this project does not own.
+
+ - CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md — goal and scope retargeted; Phase 4 retitled
+"Deliver And Record The UAT-Ready Deployment" with PH4-AC-1 to PH4-AC-5 and their P-AC-* mappings
+preserved; the production flip, user migration, UAT authoring, and the production Podman service
+model moved to Non-Goals; a dated scope-change note and Phase 4 completion added to Status; Phase 5
+dependencies and readiness adjusted to the existing deployment.
+ - New CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_4_TASK_PLAN.md — task plan for the narrowed
+scope, with all tasks checked off and validation results recorded from runs on 2026-09-22
+(deployment identity, route/ownership/audit blocking checks, access checks with reviewed projects,
+backup and rollback exercise, evidence pack).
+ - New UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md — deployment record with release, manifest, and
+backup identifiers, access-check and rollback transcripts, what is and is not verified, how a
+tester exercises the deployment, and open risks and decisions.
+ - New docs/proposals/future/PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md — successor proposal covering
+acceptance intake, per-user account and grant provisioning, the production service-model decision,
+the DNS and reverse-proxy repoint, the fallback window, and the production security record.
+ - container/scripts/verify/verify_authenticated_access.sh — now reads each principal's deployment
+roles from the deployed policy before probing and prints them as a principal-scope block; when a
+principal holds a read-granting role, the matching denied probe expects 200 and is labelled an
+expected privileged read instead of a false isolation failure; the summary states how many of the
+two isolation directions were actually verified, and the script says so and keeps the 404
+expectation when roles cannot be read.
+
+## User-facing release note
+
+Operators running the authenticated access check now see each test principal's deployment roles, and
+a privileged principal's read is recorded as an expected result rather than an isolation failure,
+so access-check evidence is easier to interpret. The cutover documentation now records a UAT-ready
+deployment on the new server and separates the production move into its own proposal.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+ - No CI status checks are reported for this PR (status check rollup is empty).
+ - Reported by the PR author: scripts/check_doc_links.sh passes, covering the new cross-document
+links, and git diff --check passes. These author-reported results were not independently verified
+here.
+ - The handoff record documents that the probe-script change passed bash -n, shellcheck -S warning,
+a local harness exercising three cases against a stand-in proxy, and the extracted role-lookup
+snippet run against a real authorization store; the record also states the in-container lookup has
+not yet run on the deployment host, which still runs the old script until this lands on dev and is
+re-synced.
+ - The test results recorded in the documentation (.venv/bin/pytest backend/tests/authorization -q:
+192 passed, 1 skipped; .venv/bin/pytest backend/tests -q: 1853 passed, 15 skipped) are Phase 4
+deployment evidence run on the deployment host, not checks executed for this PR.
+ - No tests or linters were executed against this PR in the current environment; the change is
+documentation plus the verification script described above.

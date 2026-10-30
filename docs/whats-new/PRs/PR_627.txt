@@ -1,0 +1,56 @@
+title: Add cached value-reference suggestions and previews to entity forms
+description:
+## Summary
+
+ - Entity form pickers (Business Keys, non-fixed Columns, Deduplication Columns, Drop Empty Rows, FK
+Local/Remote Keys, and unnest ID/Value Variables) now offer @value: entities.<entity>.keys|columns
+suggestions derived from a completed entity cache for the active project. The entity store gains a
+getCompletedEntitiesFor() ownership check with a fetch-generation guard so pending, failed, stale,
+or different-project loads never expose mixed data (frontend/src/stores/entity.ts, new
+frontend/src/utils/valueReferenceColumns.ts).
+ - New ValueReferenceChip.vue renders selected @value: chips with an explicit, keyboard-accessible
+read-only preview of the expanded columns ("Based on cached configuration"); unavailable references
+show no partial columns and never block editing or saving. FK Local/Remote key suggestion lists now
+use cached references instead of backend directive lookups, while existing directive validation on
+edits and extra-column source suggestions are retained.
+ - Unchanged reference fields keep their original scalar or list form on save: the dialog captures
+raw field representations (keys, columns, FK keys, unnest vars, drop settings) and restores them
+when a field has no semantic edit, so round-tripping does not rewrite @value: or legacy +
+expressions.
+ - ValidationPanel.vue moves the Data Validation Execution card into a conditional "Execution" tab
+that falls back to "All Issues" when execution data disappears.
+ - Backend refactor: EntityConfigMapper.to_core now takes a keyword-only entity_name argument,
+removing the temporary name injection/removal in ProjectMapper and the error-mapping try/except in
+ShapeShiftService; the fixed-entity shape error tip is reworded to be more actionable. Tests updated
+accordingly, plus a Core parity test for nested reference expansion in
+tests/configuration/test_utility.py.
+ - Documentation: adds the SRP/entity type-code investigation brief and findings (no production
+refactor performed), marks the Output Dataset Expectations proposal as approved with a phase plan
+and Phase 1 task plan (expectation checks are planned, not implemented in this PR), records Phase 1
+completion, and adds the Phase 2 task plan for the value-reference column UX.
+
+## User-facing release note
+
+Entity forms now suggest value references to other entities' keys and columns from the project's
+cached configuration, and you can preview a selected reference's expanded columns read-only without
+changing your saved configuration. Validation results now show execution details in a dedicated tab
+when available.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+ - CI: the validate and publish jobs of the Container Release workflow were skipped for this pull
+request; no CI test results are available.
+ - Recorded in the committed task plans (documentation, not reproduced by CI here): Phase 1 checks
+V-1–V-7 are recorded as passing — pnpm test:run on src/stores/__tests__/entity.test.ts (40 tests),
+src/utils/__tests__/valueReferenceColumns.test.ts (16 tests), pytest
+tests/configuration/test_utility.py -q (11 tests), the entity editor test suite (51 tests), plus
+vue-tsc --noEmit, ESLint, Prettier, Ruff, and Black. Phase 2 checks V-1–V-5 are recorded as passing
+— 58 helper/store tests, 53 picker tests, 10 ValueReferenceChip tests, 63 form/YAML/validation
+regression tests, and type/lint/format checks.
+ - Backend tests were updated for the new to_core(entity_name=...) signature and the fixed-entity
+error tip, and a new Core parity test was added, but no execution results for the backend suites are
+available.

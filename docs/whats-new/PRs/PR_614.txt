@@ -1,0 +1,66 @@
+title: Promote staging to main
+description:
+## Summary
+
+Promotes staging to main, bringing in the 62 commits ahead of main, including the merged dev to
+staging promotion in ]8;id=md-1mgdi22;https://github.com/humlab-sead/sead_shape_shifter/issues/613#613]8;;]8;;. The aggregate diff against main contains:]8;;
+
+ - Structured normalizer findings in validation results. ValidationMapper now converts foreign-key
+linker issues and structured preview issue payloads into data validation issues, and ValidationError
+gained a metadata field (mirrored in the frontend ValidationError type). The preview cache stores
+validation issues per entity, ShapeShiftService deduplicates and serves cached findings (including
+from the batch warm store), and the data validation orchestrator collects linker and
+unresolved-extra-column findings from preview, full-data, and table-store strategies without
+dependency duplicates.
+ - CLI validation improvements (scripts/validate_project.py): the data workflow now passes its
+normalizer to TableStoreDataFetchStrategy so structured findings (e.g. ROW_COUNT_MISMATCH) appear in
+results; conformance issues retain their severity and only error-severity issues fail the workflow;
+a new --output-format report option prints a Markdown report; and load_project loads the env file
+and falls back to the repository resources/target_models directory for GLOBAL_TARGET_MODEL_DIR when
+unset.
+ - Shared target model read-only access. The project target-model YAML endpoint accepts
+${GLOBAL_TARGET_MODEL_DIR}/… references for reading (editing still returns 403), shared models can
+be exported through the target-model-docs endpoint, and the Project Detail YAML tab shows the shared
+model in a read-only editor with an informational alert and no save button.
+ - ArboDat test project rework. Helper entities renamed (_pcodes → pcodes_helper, _project_contact →
+project_contact_helper), per-domain property-type entities consolidated into a single property_type
+entity with property_group keys, new submission/data_provider/submission_state entities and
+additional foreign-key declarations, and sead_standard_model.yml marks submission as required: true.
+Backend table_name_ignores and related docs updated to the new helper names.
+ - Updated test expectations. Arbodat conformance tests now expect a reduced issue set including
+DIRECT_FK_TARGET_CHECK_PENDING; backend, CLI, and frontend tests were added or adjusted for the
+behaviors above.
+ - Documentation. Two new investigation findings (FK integrity field semantics, CLI normalizer
+findings), a new Output Dataset Expectations proposal, a revised SEAD target-model coverage
+proposal, a missing-entity candidates report, an ArboDat configuration review, and an updated
+authorization route inventory.
+
+## User-facing release note
+
+Validation results and entity previews now report data-quality findings from normalization, such as
+join row-count changes, and the validate_project.py CLI can print results as a Markdown report with
+--output-format report. Projects referencing a shared target model can now view its YAML read-only
+in the project editor and download its documentation, while editing remains blocked.
+
+## Upgrade notes
+
+ - Projects or scripts that reference the old ArboDat helper entity names (_pcodes,
+_project_contact) or the per-domain property-type entities must use the renamed helpers
+(pcodes_helper, project_contact_helper) and the consolidated property_type entity; the backend
+table_name_ignores configuration was updated accordingly.
+ - The shared SEAD standard target model now marks the submission entity as required, which can add
+conformance findings for projects validated against it.
+ - When GLOBAL_TARGET_MODEL_DIR is unset, the validate_project.py CLI now defaults to the repository
+resources/target_models directory; set the variable (environment or env file) to keep a different
+shared model directory.
+
+## Validation
+
+ - No test suite was run for this promotion PR: the PR body states no additional aggregate test
+suite was run, and the only CI checks on the PR (Container Release validate and publish) were
+SKIPPED, not executed.
+ - The added investigation reports document test runs from the underlying work (for example focused
+pytest runs of the data-validator, CLI, and orchestrator suites reported as passing there); these
+were performed before this promotion and are not evidence of checks run on this PR.
+ - Updated backend, CLI, and frontend test files are included in the diff, but their execution
+results for this PR are unknown.

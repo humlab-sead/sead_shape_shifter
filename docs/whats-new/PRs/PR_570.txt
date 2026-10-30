@@ -1,0 +1,89 @@
+title: Add in-memory project handoff for Change Request ingester
+description:
+## Summary
+
+The SEAD Change Request ingester now receives normalized project tables in memory instead of reading
+an intermediate Excel workbook, and an authorized operator can validate and generate a
+change-request deploy bundle from a saved project through new project-only routes.
+
+ - New routes POST /api/v1/ingesters/sead_change_request/from-project/validate and
+.../from-project/ingest accept a strict ProjectIngesterRequest (extra="forbid"; no source, config,
+database, target-model, output-folder, or validate_first overrides) and require both project:execute
+on the located saved project and the interim application action run_ingesters.
+ - New ProjectIngesterService composes the operation: a direct-call authorization guard, mandatory
+CompositeProjectSpecification validation, a trusted IngesterConfig built only from backend-owned
+settings and server-selected values, no-write normalization, and dispatch to table methods; failures
+stop before normalization, SIMS, database, or bundle writes.
+ - Core workflow.py extracts normalize_project(), which applies the same options in the same order
+and returns the completed ShapeShifter without storing or logging; workflow() delegates and keeps
+its file-output behavior.
+ - A new runtime-checkable TableSourceIngester protocol (validate_tables / ingest_tables,
+diagnostic-only source_name) is exported from backend.app.ingesters; SeadChangeRequestIngester
+implements it. Its adapter deep-copies each DataFrame, sanitizes only caller-visible column labels,
+and preserves entity names, values, dtypes, and timezones.
+ - Change Request file input is retired: the shared /{key}/validate|ingest routes return HTTP 400
+for sead_change_request, ingester metadata reports no supported formats, the ingester's file methods
+return structured input failures, and a Path/str source is rejected before config.extra is read.
+ - All three deploy strategies (inline_insert, copy_csv, inline_staging) now render temporal values
+from the declared target column type: date targets use the calendar date, timezone-naive timestamp
+targets keep the literal calendar/clock fields with timezone metadata dropped without conversion,
+and explicitly timezone-aware target types fail with a clear error before artifact writing.
+ - Frontend: typed ProjectIngesterRequest/ProjectSubmissionOptions,
+ingesterApi.validateProject/ingestProject, store validateProject/ingestProject actions, and a
+Dispatch form that builds an allowlisted request from the open saved project (workbook path,
+ignore-columns, and data-source controls hidden for Change Request); ordinary file ingesters keep
+their existing routes.
+ - Documentation and planning: docs/OPERATIONS.md and docs/USER_GUIDE.md updated; Phase 1–5 task
+plans added and the phase plan marked complete; the companion CHANGE_REQUEST_TARGET_BUNDLE_ACCESS
+proposal/phase plan/REVIEW rewritten to defer the permission exception, exclusive per-run output,
+and read-only target-database rules to future work.
+
+## User-facing release note
+
+Operators can now open a saved project's Dispatch tab and validate and generate a SEAD Change
+Request deploy bundle directly from the project's normalized data, without supplying an intermediate
+workbook file. The old Change Request file-upload path is retired.
+
+## Upgrade notes
+
+ - Configure the new backend-owned target settings before using project-based generation:
+SHAPE_SHIFTER_INGEST_TARGET_HOST, SHAPE_SHIFTER_INGEST_TARGET_PORT (default 5432),
+SHAPE_SHIFTER_INGEST_TARGET_DBNAME, SHAPE_SHIFTER_INGEST_TARGET_USER, and
+SHAPE_SHIFTER_INGEST_OUTPUT_DIR; the target password must be provided via ~/.pgpass, not environment
+variables. See .env.example, deployment/container/resources/backend.env.example, and
+docs/OPERATIONS.md.
+ - Breaking change for API consumers: POST /api/v1/ingesters/sead_change_request/validate and
+.../ingest now return HTTP 400 (file input retired); use the new .../from-project/validate and
+.../ingest routes with the strict project request body.
+ - Callers need both project:execute on the saved project and the interim application-level
+run_ingesters permission; removal of the application permission is deferred to the companion
+target-bundle-access proposal.
+ - Target models that declare timezone-aware columns (timestamp with time zone / timestamptz) for
+Change Request entities now fail before bundle writing; such columns must be timezone-naive.
+
+## Validation
+
+No test CI results were available for this pull request: the checks rollup contains only the
+validate and publish jobs of the "Container Release" workflow, both SKIPPED. The outcomes below are
+the execution results recorded in the phase task plans included in this diff, not CI evidence.
+
+ - Phase 1 (recorded pass): backend test suite, frontend suite (739 tests), ruff, black, isort, git
+diff --check, and make check-doc-links passed; disposable-database checks (V-3) were collected but
+skipped for lack of a loopback PostgreSQL.
+ - Phase 2 (recorded pass): rtk .venv/bin/pytest tests/test_workflow.py -q (15 tests) plus
+regression suites (56 tests) passed.
+ - Phase 3 (recorded pass): checks V-1–V-7 passed; 17 disposable-PostgreSQL integration tests were
+skipped (no loopback database available).
+ - Phase 4 (recorded pass): rtk .venv/bin/pytest backend/tests/test_config.py
+backend/tests/models/test_project_ingester.py
+backend/tests/services/test_project_ingester_service.py -q and the listed
+regression/lint/format/whitespace commands passed.
+ - Phase 5 (recorded pass): rtk .venv/bin/pytest backend/tests/api/test_project_ingester_routes.py
+backend/tests/api/test_ingesters.py backend/tests/api/test_sead_change_request_project_scope.py
+backend/tests/services/test_project_ingester_service.py -q passed; rtk proxy pnpm --dir frontend
+exec vitest run src/api/__tests__/ingester.test.ts src/stores/__tests__/ingester.test.ts
+src/components/ingester/__tests__/IngesterForm.test.ts src/views/__tests__/IngesterView.test.ts
+passed (19 tests); backend ruff/black/isort, frontend vue-tsc --noEmit, ESLint, Prettier, make
+check-doc-links, and git diff --check passed.
+ - Not run: live target-database/SIMS end-to-end execution of generated bundles;
+disposable-PostgreSQL integration tests remained skipped in the recorded runs.

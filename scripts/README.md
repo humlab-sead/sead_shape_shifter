@@ -41,9 +41,9 @@ python scripts/print_target_model_entity.py \
 ## Release Notes Drafting
 
 The `prepare_copilot_release_notes.py` script prepares a user-facing release-notes draft for refinement with Copilot CLI.
-The `generate_user_release_notes.py` script builds the release-note file from the selected version section in `CHANGELOG.md`. It supports heuristic or AI drafting, loads local `.env` values for AI settings when they are not already exported, and renders note and AI prompt content from Jinja2 templates under `scripts/templates/`.
+The `generate_whats_new.py` script builds the release-note file from the authored user-facing and upgrade-note sections of merged PR descriptions. It uses `CHANGELOG.md` only for the selected version's date and prior-version cutoff. If an AI API key is configured, it consolidates overlapping PR notes; otherwise it preserves the authored notes. The older `generate_user_release_notes.py` script remains available for changelog-derived drafts.
 
-For the latest version in `CHANGELOG.md`, the generator also adds a `Pending Release` snapshot of PRs merged into `staging` after the latest PR merged into `main`. It uses `gh pr list`, so `gh` must be installed and authenticated for that run. The generator does not currently read the user-facing note or upgrade-note sections from PR descriptions; see [the What's New workflow](../docs/whats-new/README.md) and [issue #628](https://github.com/humlab-sead/sead_shape_shifter/issues/628).
+For the latest version in `CHANGELOG.md`, the PR-based generator also adds a `Pending Release` snapshot of PRs merged into `staging` after the latest PR merged into `main`, including their authored notes. It uses `gh pr list`, so `gh` must be installed and authenticated. See [the What's New workflow](../docs/whats-new/README.md).
 
 ## `prepare_copilot_release_notes.py`
 
@@ -56,28 +56,36 @@ python3 scripts/prepare_copilot_release_notes.py --version 1.24.0
 python3 scripts/prepare_copilot_release_notes.py --list-versions
 ```
 
-## `generate_user_release_notes.py`
+## `generate_whats_new.py`
+
+### Usage
+
+```bash
+# Generate notes from merged PR descriptions (heuristic fallback)
+make release-notes VERSION=2.5.0
+
+# Allow configured AI to consolidate overlapping notes
+make release-notes-ai VERSION=2.5.0
+
+# Direct usage
+python3 scripts/generate_whats_new.py --version 2.5.0
+```
+
+The script requires authenticated `gh` access to merged PRs. It replaces the output file on each run. See [the What's New workflow](../docs/whats-new/README.md) for the version-selection and pending-staging behavior.
+
+## `generate_user_release_notes.py` (legacy changelog-based generator)
+
+The legacy generator remains available for listing versions and producing drafts directly from changelog entries.
 
 ### Quick Start
 
 ```bash
 # Generate release notes for all missing versions since the last one
-make release-notes-missing           # Uses heuristic mode (fast)
-make release-notes-missing-ai        # Uses AI mode (requires API key)
+make release-notes-missing
+make release-notes-missing-ai
 
-# Generate release notes for a specific version
-make release-notes VERSION=1.26.0    # Uses heuristic mode
-make release-notes-ai VERSION=1.26.0 # Uses AI mode
-
-# List all available versions
-make release-notes-list
-```
-
-### Direct Usage
-
-```bash
 # List versions available in CHANGELOG.md
-python3 scripts/generate_user_release_notes.py --list-versions
+make release-notes-list
 
 # Generate release notes for all missing versions (heuristic mode)
 python3 scripts/generate_user_release_notes.py --generate-missing --force-heuristic
