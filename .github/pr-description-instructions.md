@@ -1,43 +1,58 @@
 # Pull Request Title and Description
 
-Use these instructions when drafting or generating a pull request title and description.
+Use these instructions when generating a pull request title and description.
 
 ## Review the change
 
-- Read the complete diff against the target branch, including relevant tests and documentation.
-- Use linked issue or task context when available, but treat the code and verified behavior as authoritative.
-- Describe only changes present in the diff. Do not guess at intent, claim unverified behavior, or invent validation results.
+- Base the description on the diff against the target branch. Inspect the complete diff, including relevant tests and documentation, when available.
+- Consult linked issues, change requests, proposals, and related code when accessible to understand the problem and terminology. Treat the diff and verified behavior as authoritative for what this PR implements.
+- Consult commit history only when necessary to clarify the change. Commit messages, plans, and issue descriptions are not evidence that behavior was implemented.
+- Describe only changes supported by the available evidence. Do not guess at intent, claim unverified behavior, invent validation results, or imply that unavailable sources were inspected.
+- Keep investigation limited to material relevant to this PR. If evidence is incomplete or conflicting, qualify the claim rather than filling gaps with assumptions.
 
 ## Title
 
-- Write a concise title that states the main change or user-visible outcome.
-- Use specific terms from the change; avoid vague titles such as "Updates" or "Improvements".
+- Write a concise, specific title describing the main change or user-visible outcome.
+- Prefer fewer than 72 characters without sacrificing clarity.
+- Use terminology found in the change; avoid vague titles such as "Updates" or "Improvements".
 - Do not add a period at the end.
-- Include an issue reference only when one is known and relevant.
+- Include an issue reference only when it is known and relevant.
 
 ## Description
 
-Use `.github/pull_request_template.md` as the required structure. Keep its headings and order, replace its HTML comments with completed content, and do not omit a section.
+Use `.github/pull_request_template.md` as the required structure. Produce a ready-to-use Markdown description with these headings, in exactly this order:
+
+1. `## Summary`
+2. `## User-facing release note`
+3. `## Upgrade notes`
+4. `## Validation`
+
+Keep all four sections. Replace template comments with completed content or the specified fallback text. Do not reproduce the HTML comments, add unrelated sections, or wrap the description in a code fence.
 
 ### Summary
 
-State what changed and why. Include the main behavior or result, and keep implementation detail to what helps reviewers understand the change.
+State what changed and why. Explain the main behavior or result, focusing on information useful to reviewers. Include implementation detail only when needed to understand the change. Distinguish implemented changes from planned or proposed work.
 
 ### User-facing release note
 
-Draft a release-note candidate that helps the PR author write the final user-facing note. In 1-2 plain-language sentences, explain what users can now do or notice and, where useful, why it helps them. Avoid internal implementation details, and only describe benefits supported by the change. If there is no user-visible change, write exactly: `None - no user-visible change.`
+Provide a release-note candidate for the PR author to review. In one or two plain-language sentences, explain what users can now do or notice and, when supported, why it is useful. Avoid internal implementation details and speculative benefits.
 
-Use these sources to identify and verify the user-visible change:
-
-- Start with the PR diff. Follow changed code and configuration through the affected user-facing workflows, and check relevant tests and documentation to confirm observable behavior.
-- Use linked issues, change requests, or proposals to understand the user problem, intended benefit, and terminology. Include only goals implemented in this PR.
-- Consult commit history only when needed to clarify the change; commit messages and plans do not prove that behavior shipped.
-- Keep the search limited to related material. If sources conflict, describe only behavior supported by the PR diff and relevant validation.
+- If the change is confirmed to have no user-visible effect, write exactly: `None - no user-visible change.`
+- If the user-visible impact cannot be determined from available evidence, write: `User-visible impact not verified.`
 
 ### Upgrade notes
 
-State any action users must take to upgrade or continue using the project. If no action is needed, write exactly: `None - no user action required.`
+Describe any actions required to upgrade or continue using the project, including actions for end users, administrators, deployers, or API consumers, where applicable. Include required migrations, configuration changes, and breaking changes supported by the evidence.
+
+- If no action is required based on the available evidence, write exactly: `None - no user action required.`
+- If upgrade impact cannot be determined, write: `Upgrade impact not verified.`
 
 ### Validation
 
-List the checks actually run and their outcomes. Explain relevant checks that were not run; never imply a check passed if it was not run. If no checks were run, say so and give the reason when known.
+Report only checks and outcomes supported by available evidence. Distinguish:
+
+- Checks confirmed as passed or failed, including the relevant command or test suite when known.
+- Checks explicitly known not to have been run, with the reason when known.
+- Checks whose execution or results are unknown.
+
+Do not infer that checks passed or were not run merely because results are unavailable. If no validation evidence is available, write: `Not verified: validation results unavailable.`
