@@ -75,9 +75,14 @@ export interface ReconciliationRowError {
 
 export interface ExportToMappingResult {
   exported: number
+  removed: number
   skipped_manual: number
   entity: string
   field: string
+}
+
+export interface DeleteSpecificationResult extends EntityResolutionCatalog {
+  removed_owned_links: number
 }
 
 export interface ReconciliationPreviewRow {
@@ -97,9 +102,16 @@ export interface MappingLink {
   confidence?: number | null
   created_at: string
   committed_at?: string | null
+  owner?: MappingLinkOwner | null
+  verified_at?: string | null
   notes?: string | null
   created_by: string
   reviewed_by?: string | null
+}
+
+export interface MappingLinkOwner {
+  entity_name: string
+  target_field: string
 }
 
 export interface MappingEntityResponse {

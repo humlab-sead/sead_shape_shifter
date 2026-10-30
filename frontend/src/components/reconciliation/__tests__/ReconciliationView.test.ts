@@ -70,7 +70,7 @@ const reconciliationStore = reactive({
   loadMappingData: vi.fn(async () => {}),
   putManualMapping: vi.fn(async () => ({})),
   saveEntityResolutionCatalogRaw: vi.fn(async () => {}),
-  exportToMapping: vi.fn(async () => ({ exported: 2, skipped_manual: 1, entity: 'site', field: 'site_code' })),
+  exportToMapping: vi.fn(async () => ({ exported: 2, removed: 1, skipped_manual: 1, entity: 'site', field: 'site_code' })),
 })
 
 vi.mock('@/stores/reconciliation', () => ({
@@ -142,6 +142,7 @@ describe('ReconciliationView', () => {
     reconciliationStore.mappingLoading = {}
     reconciliationStore.exportToMapping = vi.fn(async () => ({
       exported: 2,
+      removed: 1,
       skipped_manual: 1,
       entity: 'site',
       field: 'site_code',
@@ -155,7 +156,7 @@ describe('ReconciliationView', () => {
     expect(wrapper.get('[data-testid="yaml-editor"]').attributes('data-mode')).toBe('reconciliation')
   })
 
-  it('keeps reconciliation export unavailable until the later export phase', async () => {
+  it('exports accepted links and reports created, removed, and protected link counts', async () => {
     const wrapper = await mountView()
 
     await wrapper.get('[data-testid="open-reconcile"]').trigger('click')
@@ -164,11 +165,25 @@ describe('ReconciliationView', () => {
     const exportButton = wrapper.get('[data-testid="export-to-mapping-button"]')
 
     await exportButton.trigger('click')
-    await nextTick()
+    await flushPromises()
 
-    expect(exportButton.attributes('disabled')).toBeDefined()
-    expect(reconciliationStore.exportToMapping).not.toHaveBeenCalled()
-    expect(wrapper.text()).toContain('Reconciliation export is unavailable until Phase 3')
+    expect(exportButton.attributes('disabled')).toBeUndefined()
+    expect(reconciliationStore.exportToMapping).toHaveBeenCalledWith('test_project', 'site', 'site_code')
+    expect(wrapper.text()).toContain('2 link(s) exported; 1 stale link(s) removed; 1 protected link(s) skipped.')
+  })
+
+  it('reports an export conflict without showing a successful result', async () => {
+    reconciliationStore.exportToMapping = vi.fn().mockRejectedValue({
+      response: { data: { detail: { message: 'Another specification owns this key' } } },
+    })
+    const wrapper = await mountView()
+
+    await wrapper.get('[data-testid="open-reconcile"]').trigger('click')
+    await wrapper.get('[data-testid="export-to-mapping-button"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Reconciliation export failed: Another specification owns this key')
+    expect(wrapper.text()).not.toContain('link(s) exported')
   })
 
   it('saves a manual sidecar link for an explicit encoded key and accepts target ID zero', async () => {

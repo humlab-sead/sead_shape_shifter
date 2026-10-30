@@ -10,7 +10,7 @@ from loguru import logger
 
 from backend.app.clients.reconciliation_client import ReconciliationClient, ReconciliationQuery
 from backend.app.core.operation_manager import OperationStatus, operation_manager
-from backend.app.exceptions import ResourceNotFoundError, ValidationError
+from backend.app.exceptions import ConfigurationError, DomainException, ResourceConflictError, ResourceNotFoundError, ValidationError
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.mappers.reconciliation_mapper import ReconciliationMapper
 from backend.app.models import AutoReconcileResult, Project, ReconciliationCandidate
@@ -23,7 +23,8 @@ from backend.app.services.reconciliation.resolvers import ReconciliationSourceRe
 from backend.app.utils.exceptions import BadRequestError, NotFoundError
 from src.model import ShapeShiftProject
 from src.reconciliation import model as core
-from src.reconciliation.mapping_model import encode_local_key
+from src.reconciliation.mapping_manager import MappingVersionConflictError
+from src.reconciliation.mapping_model import EntityMapping, EntityType, Link, LinkOwner, LinkSource, encode_local_key
 from src.reconciliation.source_strategy import ReconciliationSourceStrategy, SourceStrategyType
 from src.types.fixed_entity_types import is_missing_fixed_entity_value
 
@@ -157,6 +158,7 @@ class ReconciliationService:
         self.config_dir = Path(config_dir)
         self.reconciliation_client: ReconciliationClient = reconciliation_client
         self.project_service: ProjectService = ProjectService()
+        self.mapping_service: MappingService = MappingService(self.project_service)
         self.query_builder: ReconciliationQueryService = ReconciliationQueryService()
         self.shapeshift_service: ShapeShiftService | None = None
 
@@ -297,13 +299,13 @@ class ReconciliationService:
             return int(match.group(1))
         raise BadRequestError(f"Cannot extract numeric ID from URI: {uri}")
 
-    def export_to_mapping(self, project_name: str, entity_name: str, target_field: str) -> tuple[int, int]:
-        """Copy accepted reconciliation links into the mapping sidecar under the project lock."""
+    def export_to_mapping(self, project_name: str, entity_name: str, target_field: str) -> tuple[int, int, int]:
+        """Export accepted decisions and remove stale links owned by one specification."""
         with self.project_service._get_lock(project_name):
             return self._export_to_mapping_locked(project_name, entity_name, target_field)
 
-    def _export_to_mapping_locked(self, project_name: str, entity_name: str, target_field: str) -> tuple[int, int]:
-        """Refuse export until reviewed links have owned, verified export semantics."""
+    def _export_to_mapping_locked(self, project_name: str, entity_name: str, target_field: str) -> tuple[int, int, int]:
+        """Reconcile one specification's accepted decisions against a fresh sidecar snapshot."""
         reconciliation_catalog: core.EntityResolutionCatalog = self.catalog_manager.load_catalog(project_name)
         resolution_set: core.EntityResolutionSet | None = reconciliation_catalog.get(entity_name, target_field)
         if resolution_set is None:
@@ -312,7 +314,205 @@ class ReconciliationService:
                 resource_type="entity_mapping",
                 resource_id=f"{entity_name}.{target_field}",
             )
-        raise ValidationError("Reconciliation export is unavailable until owned, verified export is implemented")
+
+        project = self.project_service.load_project(project_name)
+        try:
+            core_project: ShapeShiftProject = ProjectMapper.to_core(project)
+        except ConfigurationError as exc:
+            if exc.context.get("specification") != "MappingSidecarSpecification":
+                raise
+            raise ResourceConflictError(
+                f"Mapping metadata for entity '{entity_name}' does not match the project business key and public_id",
+                resource_type="mapping-entity",
+                resource_id=entity_name,
+            ) from exc
+        try:
+            table = core_project.get_table(entity_name)
+        except KeyError as exc:
+            raise ResourceNotFoundError(
+                f"Entity '{entity_name}' not found",
+                resource_type="entity",
+                resource_id=entity_name,
+            ) from exc
+
+        expected_local_key = self.mapping_service._default_local_key(table)
+        expected_public_id = table.public_id
+        if not expected_public_id:
+            raise ValidationError(f"Entity '{entity_name}' has no public_id configured for reconciliation export")
+
+        project_path = MappingService._project_path(project, project_name)
+        mapping_manager = self.mapping_service.manager
+        snapshot = mapping_manager.load_snapshot(project_path)
+        sidecar = snapshot.catalog
+        existing_entity_mapping = sidecar.entities.get(entity_name)  # pylint: disable=no-member
+        if existing_entity_mapping is not None and (
+            existing_entity_mapping.local_key != expected_local_key or existing_entity_mapping.public_id != expected_public_id
+        ):
+            raise ResourceConflictError(
+                f"Mapping metadata for entity '{entity_name}' does not match the project business key and public_id",
+                resource_type="mapping-entity",
+                resource_id=entity_name,
+            )
+
+        owner = LinkOwner(entity_name=entity_name, target_field=target_field)
+        accepted = {
+            decision.local_key_value: decision for decision in resolution_set.links if decision.status == core.DecisionStatus.ACCEPTED
+        }
+
+        for local_key_value in accepted:
+            existing_link = existing_entity_mapping.links.get(local_key_value) if existing_entity_mapping else None
+            if existing_link is not None and existing_link.owner is not None and existing_link.owner != owner:
+                raise ResourceConflictError(
+                    f"Mapping key {local_key_value!r} is owned by {existing_link.owner.entity_name}.{existing_link.owner.target_field}",
+                    resource_type="mapping-link",
+                    resource_id=f"{entity_name}:{local_key_value}",
+                )
+            for other_entity, target_mappings in reconciliation_catalog.entities.items():
+                if other_entity != entity_name:
+                    continue
+                for other_field, other_spec in target_mappings.items():
+                    if (other_entity, other_field) == (entity_name, target_field):
+                        continue
+                    if any(
+                        decision.local_key_value == local_key_value and decision.status == core.DecisionStatus.ACCEPTED
+                        for decision in other_spec.links
+                    ):
+                        raise ResourceConflictError(
+                            f"Another reconciliation specification has an accepted claim for key {local_key_value!r}",
+                            resource_type="mapping-link",
+                            resource_id=f"{entity_name}:{local_key_value}",
+                        )
+
+        entity_mapping = existing_entity_mapping or EntityMapping(
+            local_key=expected_local_key,
+            public_id=expected_public_id,
+            entity_type=EntityType.PRIMARY,
+        )
+        removed = 0
+        for local_key_value, link in list(entity_mapping.links.items()):
+            if link.owner == owner and local_key_value not in accepted:
+                del entity_mapping.links[local_key_value]
+                removed += 1
+
+        exported = 0
+        skipped_manual = 0
+        committed_at = datetime.now(timezone.utc)
+        for local_key_value, decision in accepted.items():
+            existing_link = entity_mapping.links.get(local_key_value)
+            if existing_link is not None and existing_link.owner is None:
+                skipped_manual += 1
+                continue
+            if existing_link is not None and (  # pylint: disable=too-many-boolean-expressions
+                existing_link.source == LinkSource.RECONCILIATION
+                and existing_link.owner == owner
+                and existing_link.target_id == decision.target_id
+                and existing_link.confidence == decision.confidence
+                and existing_link.notes == decision.notes
+                and existing_link.committed_at is not None
+            ):
+                continue
+
+            entity_mapping.links[local_key_value] = Link(
+                target_id=decision.target_id,
+                source=LinkSource.RECONCILIATION,
+                confidence=decision.confidence,
+                committed_at=committed_at,
+                owner=owner,
+                verified_at=None,
+                notes=decision.notes,
+                created_by="reconciliation",
+            )
+            exported += 1
+
+        if exported or removed:
+            sidecar.entities[entity_name] = entity_mapping
+            try:
+                mapping_manager.save(sidecar, project_path, expected_version=snapshot.content_version)
+            except MappingVersionConflictError as exc:
+                raise ResourceConflictError(
+                    "The mapping sidecar changed during reconciliation export. Reload it and retry.",
+                    resource_type="mapping-sidecar",
+                    resource_id=project_name,
+                ) from exc
+
+        return exported, removed, skipped_manual
+
+    def replace_catalog(self, project_name: str, catalog: core.EntityResolutionCatalog) -> None:
+        """Save a whole catalog and remove links owned by specifications it removes."""
+        with self.project_service._get_lock(project_name):
+            previous = self.catalog_manager.load_catalog(project_name)
+            removed_owners = {
+                (entity_name, target_field)
+                for entity_name, target_mappings in previous.entities.items()
+                for target_field in target_mappings
+                if not catalog.exists(entity_name, target_field)
+            }
+            removed_links = self._remove_owned_mapping_links_locked(project_name, removed_owners)
+            try:
+                self.catalog_manager.save_catalog(project_name, catalog)
+            except OSError as exc:
+                if removed_links:
+                    raise DomainException(
+                        "The reconciliation catalog was not saved. The removed specifications are still present, but "
+                        f"{removed_links} owned mapping link(s) were already removed. Retry saving the catalog.",
+                        context={"removed_owned_links": removed_links},
+                    ) from exc
+                raise
+
+    def delete_specification(
+        self,
+        project_name: str,
+        entity_name: str,
+        target_field: str,
+        force: bool = False,
+    ) -> tuple[core.EntityResolutionCatalog, int]:
+        """Delete a specification after removing only its owned sidecar links."""
+        with self.project_service._get_lock(project_name):
+            catalog = self.catalog_manager.load_catalog(project_name)
+            self.catalog_manager.remove_specification(catalog, entity_name, target_field, force)
+            removed_links = self._remove_owned_mapping_links_locked(project_name, {(entity_name, target_field)})
+            try:
+                self.catalog_manager.save_catalog(project_name, catalog)
+            except OSError as exc:
+                if removed_links:
+                    raise DomainException(
+                        f"Specification '{entity_name}.{target_field}' is still present, but {removed_links} owned "
+                        "mapping link(s) were already removed. Retry the deletion.",
+                        context={"entity_name": entity_name, "target_field": target_field, "removed_owned_links": removed_links},
+                    ) from exc
+                raise
+            return catalog, removed_links
+
+    def _remove_owned_mapping_links_locked(self, project_name: str, owners: set[tuple[str, str]]) -> int:
+        """Remove specified owners' links from a fresh sidecar snapshot while holding the project lock."""
+        if not owners:
+            return 0
+
+        project = self.project_service.load_project(project_name)
+        project_path = MappingService._project_path(project, project_name)
+        mapping_manager = self.mapping_service.manager
+        snapshot = mapping_manager.load_snapshot(project_path)
+        removed = 0
+        for entity_mapping in snapshot.catalog.entities.values():  # pylint: disable=no-member
+            stale_keys = [
+                local_key_value
+                for local_key_value, link in entity_mapping.links.items()
+                if link.owner is not None and (link.owner.entity_name, link.owner.target_field) in owners
+            ]
+            for local_key_value in stale_keys:
+                del entity_mapping.links[local_key_value]
+                removed += 1
+
+        if removed:
+            try:
+                mapping_manager.save(snapshot.catalog, project_path, expected_version=snapshot.content_version)
+            except MappingVersionConflictError as exc:
+                raise ResourceConflictError(
+                    "The mapping sidecar changed during specification removal. Reload it and retry.",
+                    resource_type="mapping-sidecar",
+                    resource_id=project_name,
+                ) from exc
+        return removed
 
     async def auto_reconcile_entity(
         self,

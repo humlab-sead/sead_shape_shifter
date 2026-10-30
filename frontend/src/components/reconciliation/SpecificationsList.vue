@@ -150,6 +150,7 @@
               <v-tooltip text="Delete specification" location="top">
                 <template #activator="{ props }">
                   <v-btn
+                    data-testid="delete-specification-button"
                     icon="mdi-delete"
                     size="small"
                     variant="text"
@@ -193,7 +194,7 @@
             <div class="font-weight-bold">
               Warning: This specification has {{ specToDelete.mapping_count }} existing mappings
             </div>
-            <div class="text-caption mt-1">All mappings will be permanently deleted.</div>
+            <div class="text-caption mt-1">            Reconciliation decisions and links owned by this specification will be removed. Manual and unowned links are kept.</div>
           </v-alert>
 
           <p v-else class="text-caption text-grey mt-4">This action cannot be undone.</p>
@@ -202,7 +203,15 @@
         <v-card-actions>
           <v-spacer />
           <v-btn @click="deleteDialog = false">Cancel</v-btn>
-          <v-btn color="error" variant="elevated" :loading="deletingSpec" @click="performDelete"> Delete </v-btn>
+          <v-btn
+            data-testid="confirm-delete-specification"
+            color="error"
+            variant="elevated"
+            :loading="deletingSpec"
+            @click="performDelete"
+          >
+            Delete
+          </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -286,7 +295,7 @@ async function performDelete() {
 
   deletingSpec.value = true
   try {
-    await reconciliationStore.deleteSpecification(
+    const removedOwnedLinks = await reconciliationStore.deleteSpecification(
       props.projectName,
       specToDelete.value.entity_name,
       specToDelete.value.target_field,
@@ -294,7 +303,7 @@ async function performDelete() {
     )
     deleteDialog.value = false
     specToDelete.value = null
-    success('Specification deleted successfully')
+    success(`Specification deleted. ${removedOwnedLinks} owned mapping link(s) removed.`)
   } catch (err: any) {
     console.error('Failed to delete specification:', err)
     const message = err.response?.data?.detail || err.message || 'Unknown error'

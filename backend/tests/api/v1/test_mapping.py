@@ -123,6 +123,31 @@ class TestMappingApi:
         assert body["local_key_value"] == "A"
         assert body["link"]["target_id"] == 10
         assert body["link"]["source"] == "manual"
+        assert body["link"]["owner"] is None
+        assert body["link"]["verified_at"] is None
+
+    async def test_get_mapping_link_returns_owner_and_verification_time(self, tmp_path: Path, monkeypatch, authorized_client) -> None:
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        await _create_project(authorized_client)
+        _write_mapping_sidecar(tmp_path)
+        sidecar_path = tmp_path / "test_project" / "test_project-mapping.yml"
+        sidecar = yaml.safe_load(sidecar_path.read_text(encoding="utf-8"))
+        sidecar["entities"]["site"]["links"]["owned"] = {
+            "target_id": 101,
+            "source": "reconciliation",
+            "created_at": "2026-06-15T00:00:00Z",
+            "committed_at": "2026-06-15T00:00:00Z",
+            "owner": {"entity_name": "site", "target_field": "site_code"},
+            "verified_at": "2026-06-16T00:00:00Z",
+            "created_by": "reconciliation",
+        }
+        sidecar_path.write_text(yaml.safe_dump(sidecar, sort_keys=False), encoding="utf-8")
+
+        response = await authorized_client.get("/api/v1/projects/test_project/mapping/site/owned")
+
+        assert response.status_code == 200
+        assert response.json()["link"]["owner"] == {"entity_name": "site", "target_field": "site_code"}
+        assert response.json()["link"]["verified_at"] == "2026-06-16T00:00:00Z"
 
     async def test_get_single_mapping_link_returns_404_for_missing_entity(self, tmp_path: Path, monkeypatch, authorized_client) -> None:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)

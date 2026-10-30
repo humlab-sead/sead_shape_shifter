@@ -732,6 +732,8 @@ The mapping sidecar stores per-entity links with full provenance:
 
 - **source**: who or what created the link (`manual`, `reconciliation`, `import`)
 - **committed_at**: when the link was finalized (null = draft, not yet applied)
+- **owner**: the reconciliation entity and target field that own an exported link; absent for older, manual, and imported links
+- **verified_at**: when a link was checked against SEAD; reconciliation exports leave this null until Phase 5 adds verification
 - **confidence**: match confidence (0.0–1.0)
 - **created_by / reviewed_by**: audit trail
 
@@ -750,7 +752,8 @@ During normalization, mappings are applied in this order (first match wins):
 2. Select **Find Candidates** to search the normalized rows. Each result is addressed by its encoded business key, not its search label. Missing or duplicate keys, missing labels, and row errors are reported. Candidate scores and thresholds are informational; matching never accepts a candidate for you.
 3. Review each row in the grid. Select a candidate before accepting it, or reject the row or mark it local-only. These decisions are saved by business key, and rerunning candidate search preserves them. Rows without decisions or candidates are unresolved; rows without a business key are unreviewable. Preview and matching failures are shown separately from an empty result.
 4. To apply a target ID, select **Add Manual Link** and enter the encoded business key and an integer target ID. This saves a trusted `source: manual` link in the mapping sidecar without checking the ID against SEAD. The committed sidecar ID is effective during the next normalization and takes precedence over the fixed row's saved `public_id`.
-5. Reconciliation export is unavailable until Phase 3. An accepted catalog decision is not a sidecar link and does not change normalized IDs. Existing committed sidecar links remain usable.
+5. Select **Export to Mapping** to copy accepted decisions into the mapping sidecar. An accepted catalog decision does not change normalized IDs until it is exported. Re-export updates only links owned by that specification and removes its stale owned links; manual and unowned links are protected. A conflicting owner or mismatched sidecar metadata stops the export without changing the sidecar. Export does not check target IDs against SEAD, so `verified_at` remains null until Phase 5 adds verification.
+6. Deleting a specification or replacing the catalog removes only the owned links for specifications that are removed. Cleanup saves the sidecar before the catalog; the two files are not updated in one transaction. If the catalog save fails after cleanup, the error reports the partial operation so you can retry.
 
 Old reconciliation catalogs are ignored with a warning; recreate their specifications and run candidate search again. Invalid or unsupported new catalogs fail rather than silently discarding their contents. The mapping sidecar is a separate file and is unaffected.
 
