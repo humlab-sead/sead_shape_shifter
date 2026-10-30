@@ -1,7 +1,7 @@
 # Graph Report - sead_shape_shifter  (2026-10-30)
 
 ## Corpus Check
-- 771 files · ~756,886 words
+- 771 files · ~756,906 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 26 file(s) not represented in the graph (top: (none) 12, .csv 4, .scss 2)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `675ee3c6`
+- Built from commit: `58527905`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -4701,7 +4701,7 @@ _Questions this graph is uniquely positioned to answer:_
 - **Should `pandas` be split into smaller, more focused modules?**
   _Cohesion score 0.026629422718808193 - nodes in this community are weakly interconnected._
 - **Why does `vue` connect `vue` to `ProjectDetailView.vue`, `SuggestionsPanel.vue`, `types/ingester.ts`, `MetadataEditor.vue`, `IngesterForm.vue`, `EntityFormDialog.vue`, `vitest`, `EntityDataPreview.vue`, `DataSourceFormDialog.vue`, `ForeignKeyEditor.vue`, `ReconciliationView.vue`, `QueryEditor.vue`, `QueryBuilder.vue`, `useCytoscape`, `composables/index.ts`, `ReconciliationGrid.vue`, `SpecificationEditor.vue`, `ValidationPanel.vue`, `EntityFormDialog.test.ts`, `FixedValuesGrid.vue`, `stores/reconciliation.ts`, `CreateProjectDialog.vue`, `ProjectFileUploadCard.vue`, `YamlEditor.vue`, `frontend/package.json`, `client.ts`, `ExtraColumnsEditor.vue`, `SpecificationsList.vue`, `MaterializeDialog.vue`, `App.vue`, `IngesterView.test.ts`, `PreviewFixesModal.vue`, `EntityEditorOverlay.vue`, `ExecuteDialog.vue`, `ProjectDataSources.vue`, `HelpView.vue`, `ReplacementsEditor.vue`, `FiltersEditor.vue`, `ProjectsView.vue`, `FixedValuesGridHeader.vue`, `AlternativeSearchDialog.vue`, `BranchEditor.vue`, `IngesterForm.test.ts`, `ThemeColorPicker.vue`, `AppendEditor.vue`, `ReconciliationProgressDialog.vue`, `SpecificationsList.test.ts`, `PreviewMatchedDataDialog.vue`, `LogViewerOverlay.vue`, `ReconciliationStatsCard.vue`, `vue`?**
-  _High betweenness centrality (0.049) - this node is a cross-community bridge._
+  _High betweenness centrality (0.050) - this node is a cross-community bridge._
 - **Are the 94 inferred relationships involving `ProjectService` (e.g. with `Testing` and `get_available_columns()`) actually correct?**
   _`ProjectService` has 94 INFERRED edges - model-reasoned connections that need verification._
 - **Should `ProjectDetailView.vue` be split into smaller, more focused modules?**

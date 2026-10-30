@@ -10,6 +10,7 @@ from uuid import UUID, uuid4
 import httpx
 import pandas as pd
 import psycopg
+from psycopg.rows import TupleRow
 import pytest
 from psycopg import sql
 
@@ -225,8 +226,9 @@ class TestSeadChangeRequestSimsAdapter:
 
         assert len(sims_client.resolve_requests) == 1
         request = sims_client.resolve_requests[0]
-        assert request.run_id == "run-123"
-        assert len(request.requests) == 2
+        assert hasattr(request, "run_id")
+        assert request.run_id == "run-123" # type: ignore
+        assert len(request.requests) == 2  # type: ignore
         assert result["binding_set_uuid"] == "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
         assert result["binding_set_state"] == "confirmed"
 
@@ -244,7 +246,7 @@ class TestSeadChangeRequestSimsAdapter:
         await adapter.resolve_batch([SimsResolveItem(entity_name="sample", row={"name": "A"})], context)
 
         request = sims_client.resolve_requests[0]
-        assert request.run_id
+        assert request.run_id  # type: ignore
 
     @pytest.mark.asyncio
     async def test_reconciliation_result_flows_through_adapter_into_sims_request(self):
@@ -269,8 +271,8 @@ class TestSeadChangeRequestSimsAdapter:
         assert assignment.state == ChangeRowState.RECONCILED_CLASSIFIER
         assert assignment.target_id == 77
         assert result.binding_set_uuid == "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
-        assert resolve_request.requests[0].approved_aggregate_id == 77
-        assert resolve_request.model_dump(mode="json")["requests"][0]["approved_aggregate_id"] == 77
+        assert resolve_request.requests[0].approved_aggregate_id == 77  # type: ignore
+        assert resolve_request.model_dump(mode="json")["requests"][0]["approved_aggregate_id"] == 77  # type: ignore    
 
     @pytest.mark.asyncio
     async def test_reconciliation_conflict_blocks_row_without_using_approved_id(self):
@@ -348,6 +350,10 @@ async def test_approved_site_match_through_real_sims_service():
     conflicting_aggregate_id = os.getenv("SIMS_DISPOSABLE_CONFLICT_SITE_AGGREGATE_ID")
     if not all((base_url, approved_aggregate_id, conflicting_aggregate_id)):
         pytest.skip("Set the three SIMS_DISPOSABLE_* variables for the disposable service test")
+
+    assert approved_aggregate_id is not None
+    assert conflicting_aggregate_id is not None
+    assert base_url is not None
 
     approved_id = int(approved_aggregate_id)
     conflicting_id = int(conflicting_aggregate_id)
@@ -484,7 +490,7 @@ async def test_target_verification_reads_do_not_advance_database_sequence():
         pytest.skip("Set SEAD_DISPOSABLE_POSTGRES_* variables for the loopback disposable database test")
     if host not in {"localhost", "127.0.0.1", "::1"}:
         pytest.fail("The disposable PostgreSQL integration test only accepts a loopback host")
-
+    assert port is not None
     connection_kwargs: dict[str, Any] = {
         "host": host,
         "port": int(port),
@@ -501,11 +507,15 @@ async def test_target_verification_reads_do_not_advance_database_sequence():
                 "SELECT pg_get_serial_sequence(%s, %s)",
                 ("public.tbl_submissions", "submission_id"),
             )
-            sequence_name = (await cursor.fetchone())[0]
+            data: TupleRow | None = await cursor.fetchone()
+            assert data is not None
+            sequence_name = data[0]
             assert sequence_name is not None
             sequence_identifier = sql.Identifier(*(part.strip('"') for part in sequence_name.split(".")))
             await cursor.execute(sql.SQL("SELECT last_value, is_called FROM {}").format(sequence_identifier))
-            previous_value, was_called = await cursor.fetchone()
+            data: TupleRow | None = await cursor.fetchone()
+            assert data is not None
+            previous_value, was_called = data
 
     checker = SeadChangeRequestTargetCollisionChecker(**connection_kwargs)
     await checker.target_id_exists("tbl_submissions", "submission_id", previous_value)
@@ -514,7 +524,9 @@ async def test_target_verification_reads_do_not_advance_database_sequence():
     async with await psycopg.AsyncConnection.connect(**connection_kwargs) as connection:
         async with connection.cursor() as cursor:
             await cursor.execute(sql.SQL("SELECT last_value, is_called FROM {}").format(sequence_identifier))
-            current_value, is_called = await cursor.fetchone()
+            data: TupleRow | None = await cursor.fetchone()
+            assert data is not None
+            current_value, is_called = data
 
     assert (current_value, is_called) == (previous_value, was_called)
 
@@ -572,8 +584,9 @@ class TestTrustedScopeAndBusinessKeys:
             {"site_name": "A", "site_code": 7, "unrelated": "ignored"},
             minimal_submission_context(),
         )
-
-        identity_value = sims_client.resolve_requests[0].requests[0].primary_signal.identity_value
+        assert sims_client.resolve_requests is not None
+        assert len(sims_client.resolve_requests) > 0
+        identity_value = sims_client.resolve_requests[0].requests[0].primary_signal.identity_value  # type: ignore
         assert identity_value == '[1,[["site_name","string","A"],["site_code","number","7"]]]'
 
     @pytest.mark.asyncio
@@ -587,8 +600,8 @@ class TestTrustedScopeAndBusinessKeys:
 
             async def resolve(self, request: object) -> FakeResolveResponse:
                 self.resolve_requests.append(request)
-                scope_name = request.scope_name
-                identity_value = request.requests[0].primary_signal.identity_value
+                scope_name = request.scope_name  # type: ignore
+                identity_value = request.requests[0].primary_signal.identity_value  # type: ignore
                 identity_key = (scope_name, identity_value)
                 target_id = self.identity_ids.setdefault(identity_key, 500 + len(self.identity_ids))
                 return FakeResolveResponse(self.binding_set_uuid, self.lifecycle_state, target_id=target_id)
@@ -648,11 +661,11 @@ class TestTrustedScopeAndBusinessKeys:
         assert first["target_id"] == second["target_id"]
         assert different_key["target_id"] != first["target_id"]
         assert different_scope["target_id"] != first["target_id"]
-        assert [request.run_id for request in sims_client.resolve_requests] == ["first-run", "second-run", "third-run", "fourth-run"]
-        assert {request.scope_name for request in sims_client.resolve_requests} == {TEST_SCOPE_NAME, "provider://mal/other-project"}
+        assert [request.run_id for request in sims_client.resolve_requests] == ["first-run", "second-run", "third-run", "fourth-run"]  # type: ignore
+        assert {request.scope_name for request in sims_client.resolve_requests} == {TEST_SCOPE_NAME, "provider://mal/other-project"}  # type: ignore
         assert (
-            sims_client.resolve_requests[0].requests[0].primary_signal.identity_value
-            == sims_client.resolve_requests[1].requests[0].primary_signal.identity_value
+            sims_client.resolve_requests[0].requests[0].primary_signal.identity_value  # type: ignore
+            == sims_client.resolve_requests[1].requests[0].primary_signal.identity_value  # type: ignore
         )
 
     @pytest.mark.asyncio
@@ -672,7 +685,7 @@ class TestTrustedScopeAndBusinessKeys:
 
         await adapter.allocate_entity("sample", {"sample_id": None, "name": "A"}, minimal_submission_context())
 
-        identity_value = sims_client.resolve_requests[0].requests[0].primary_signal.identity_value
+        identity_value = sims_client.resolve_requests[0].requests[0].primary_signal.identity_value  # type: ignore
         assert identity_value == "sample:name=A"
 
 

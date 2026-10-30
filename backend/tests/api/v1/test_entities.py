@@ -12,8 +12,8 @@ from backend.app.main import app
 from backend.app.models.data_source import ColumnMetadata, TableSchema
 from backend.app.services import project_service, validation_service, yaml_service
 from backend.app.services.schema_service import SchemaIntrospectionService
-from src.reconciliation.mapping_manager import MappingManager
 from src.normalizer import ShapeShifter
+from src.reconciliation.mapping_manager import MappingManager
 
 # pylint: disable=redefined-outer-name, unused-argument
 

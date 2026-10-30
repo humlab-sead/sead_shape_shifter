@@ -157,7 +157,7 @@ class ReconciliationMapper:
                 entities_dto[entity_name][target_field] = ReconciliationMapper.entity_mapping_to_dto(mapping_domain)
 
         return api.EntityResolutionCatalog(
-            version=domain.version,
+            version=domain.version,  # type: ignore
             service_url=domain.service_url,
             entities=entities_dto,
         )
