@@ -84,6 +84,11 @@
 				"onAutoForward": "ignore"
 			}
 		},
-		"peacock.remoteColor": "#445740"
+		"peacock.remoteColor": "#445740",
+		"github.copilot.chat.pullRequestDescriptionGeneration.instructions": [
+			{
+				"file": ".github/pr-description-instructions.md"
+			}
+		],
 	}
 }
