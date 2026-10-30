@@ -52,6 +52,7 @@ Core pipeline order matters: Extract → Filter → Link → Unnest → Translat
 - Run broader tests when a change crosses layers.
 - When completing work tracked by a task or phase plan, update its progress tracker, checklist, status, and deliverables in the same change; do not leave completed work marked as not started.
 - When touching project YAML, validate against `.github/instructions/shapeshifter-configuration.instructions.md`.
+- When drafting a pull request title or description, follow `.github/pr-description-instructions.md` and use `.github/pull_request_template.md` as the required structure.
 
 ## Cross-cutting instructions
 

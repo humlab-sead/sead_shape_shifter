@@ -57,6 +57,7 @@ These files live under `instructions/features/` and cover specific subsystems.
 | File                                                       | When to read it                                                   |
 |------------------------------------------------------------|-------------------------------------------------------------------|
 | `instructions/github-workflow.instructions.md`             | Creating a GitHub issue, preparing a commit, or writing a handoff |
+| `pr-description-instructions.md`                           | Drafting a pull request title or description                      |
 | `instructions/phase-plan.instructions.md`                  | Creating or updating a phased implementation plan                 |
 | `instructions/task-plan.instructions.md`                   | Creating or updating a task plan for one development phase        |
 | `instructions/proposal-document-structure.instructions.md` | Creating or editing proposal documents in `docs/proposals/`       |
