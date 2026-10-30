@@ -34,7 +34,7 @@ def test_release_prs_include_staging_changes_until_the_main_promotion(tmp_path: 
     generator = load_generator_module()
     changelog_path = tmp_path / "CHANGELOG.md"
     changelog_path.write_text(
-        "# [2.5.0](https://example.test/2.5.0) (2026-10-27)\n\n" "# [2.4.0](https://example.test/2.4.0) (2026-10-26)\n",
+        "# [2.5.0](https://example.test/2.5.0) (2026-10-27)\n\n# [2.4.0](https://example.test/2.4.0) (2026-10-26)\n",
         encoding="utf-8",
     )
     context = generator.read_release_context(changelog_path, "2.5.0")
@@ -71,7 +71,7 @@ def test_pending_release_keeps_titles_dates_and_authored_notes():
         generator,
         42,
         "2026-10-28T19:35:16Z",
-        "## User-facing release note\n\nUsers can preview cached columns.\n\n" "## Upgrade notes\n\nNone - no user action required.\n",
+        "## User-facing release note\n\nUsers can preview cached columns.\n\n## Upgrade notes\n\nNone - no user action required.\n",
     )
     context = generator.ReleaseContext("2.5.0", dt.date(2026, 10, 27), dt.date(2026, 10, 26))
 
@@ -95,7 +95,7 @@ def test_heuristic_release_content_uses_pr_notes_not_changelog_details():
         generator,
         7,
         "2026-10-27T16:00:00Z",
-        "## User-facing release note\n\nUsers can preview cached entity columns.\n\n" "## Upgrade notes\n\nNone.\n",
+        "## User-facing release note\n\nUsers can preview cached entity columns.\n\n## Upgrade notes\n\nNone.\n",
     )
     notes = generator.get_pull_request_notes([pull_request])
     context = generator.ReleaseContext("2.5.0", dt.date(2026, 10, 27), dt.date(2026, 10, 26))
@@ -111,7 +111,7 @@ def test_latest_version_check_uses_version_when_release_dates_match(tmp_path: Pa
     generator = load_generator_module()
     changelog_path = tmp_path / "CHANGELOG.md"
     changelog_path.write_text(
-        "# [2.5.1](https://example.test/2.5.1) (2026-10-27)\n\n" "# [2.5.0](https://example.test/2.5.0) (2026-10-27)\n",
+        "# [2.5.1](https://example.test/2.5.1) (2026-10-27)\n\n# [2.5.0](https://example.test/2.5.0) (2026-10-27)\n",
         encoding="utf-8",
     )
 
