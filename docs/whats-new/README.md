@@ -70,6 +70,35 @@ By default it writes:
 
 The prompt uses changelog content, not PR-body note sections. Review the resulting release note against the merged PRs before publishing or editing the GitHub Release.
 
+## PR Description Drafts
+
+Generate editable PR descriptions with:
+
+```bash
+.venv/bin/python scripts/update_pr_descriptions.py 620-627 --draft
+```
+
+The command writes one file per PR to `docs/whats-new/PRs/PR_<number>.txt`. Each file starts with the title on one line, followed by `description:` and the complete Markdown body:
+
+```text
+title: Add a project validation check
+description:
+## Summary
+...
+```
+
+Draft generation requires a model, provider type, provider URL, and API key. Set `PR_DESCRIPTION_DEFAULT_MODEL`, `PR_DESCRIPTION_DEFAULT_PROVIDER_TYPE`, `PR_DESCRIPTION_DEFAULT_PROVIDER_BASE_URL`, and `PR_DESCRIPTION_DEFAULT_PROVIDER_KEY` in the repository-root `.env`, or provide equivalent `COPILOT_PROVIDER_*` environment variables. `--model` can supply the model identifier. The script has no built-in model, endpoint, provider type, or key defaults, and it does not read VS Code's secret store.
+
+Review and edit these files, then publish the saved contents with:
+
+```bash
+.venv/bin/python scripts/update_pr_descriptions.py 620-627 --publish
+```
+
+Draft generation skips existing files without querying Copilot unless `--force` is provided. It writes each successful draft immediately and continues after individual PR failures; failed PRs are reported and make the command exit nonzero. Publishing validates every requested file before updating any PR and does not regenerate descriptions.
+
+Use `--verbose` with `--draft` to print the raw Copilot response when response parsing or validation fails. The configured API key is redacted from this output.
+
 ## Writing Guidelines
 
 Prefer:
