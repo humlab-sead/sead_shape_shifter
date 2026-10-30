@@ -13,6 +13,7 @@ from backend.app.models.data_source import ColumnMetadata, TableSchema
 from backend.app.services import project_service, validation_service, yaml_service
 from backend.app.services.schema_service import SchemaIntrospectionService
 from src.reconciliation.mapping_manager import MappingManager
+from src.normalizer import ShapeShifter
 
 # pylint: disable=redefined-outer-name, unused-argument
 
@@ -1580,6 +1581,101 @@ def _write_sidecar_entry(project_folder, entity_name: str, *, local_key: str, pu
         ),
         encoding="utf-8",
     )
+
+
+class TestFixedRowMappingLifecycle:
+    """Manual sidecar links remain effective across both fixed-row save paths."""
+
+    @pytest.mark.parametrize("storage_kind", ["inline", "materialized"])
+    async def test_manual_link_survives_unchanged_save_and_is_replaced_after_id_edit(
+        self, storage_kind, tmp_path, monkeypatch, reset_services, authorized_client
+    ):
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        project_folder = tmp_path / "test_project"
+        columns = ["system_id", "site_id", "site_code"]
+        rows = [[1, 10, "A"], [2, 20, "B"]]
+        entity_data = {
+            "type": "fixed",
+            "columns": columns,
+            "values": rows,
+            "public_id": "site_id",
+            "keys": ["site_code"],
+        }
+        if storage_kind == "materialized":
+            materialized_folder = project_folder / "materialized"
+            materialized_folder.mkdir(parents=True)
+            pd.DataFrame(rows, columns=columns).to_parquet(materialized_folder / "site.parquet", index=False)
+            entity_data["values"] = "@load:materialized/site.parquet"
+            entity_data["materialized"] = {
+                "enabled": True,
+                "source_state": {"type": "csv", "public_id": "site_id", "keys": ["site_code"]},
+                "materialized_at": "2026-06-15T00:00:00Z",
+            }
+
+        created = await authorized_client.post(
+            "/api/v1/projects",
+            json={
+                "name": "test_project",
+                "data_provider_code": "test-provider",
+                "provider_schema": "schema-one",
+                "entities": {"site": entity_data},
+            },
+        )
+        assert created.status_code == 201, created.text
+
+        manual = await authorized_client.put(
+            "/api/v1/projects/test_project/mapping/site/A",
+            json={"target_id": 99, "notes": "Manual override"},
+        )
+        assert manual.status_code == 200, manual.text
+
+        sidecar_path = project_folder / "test_project-mapping.yml"
+        sidecar = yaml.safe_load(sidecar_path.read_text(encoding="utf-8"))
+        untouched_link = {
+            "target_id": 200,
+            "source": "import",
+            "confidence": 0.6,
+            "created_at": "2026-06-15T00:00:00Z",
+            "committed_at": "2026-06-15T00:00:00Z",
+            "notes": "Preserve this imported link",
+            "created_by": "importer",
+        }
+        sidecar["entities"]["site"]["links"]["B"] = untouched_link
+        sidecar_path.write_text(yaml.safe_dump(sidecar, sort_keys=False), encoding="utf-8")
+
+        async def save_rows(updated_rows: list[list[int | str]]) -> None:
+            if storage_kind == "inline":
+                updated_entity = {**entity_data, "values": updated_rows}
+                response = await authorized_client.put(
+                    "/api/v1/projects/test_project/entities/site",
+                    json={"entity_data": updated_entity},
+                )
+            else:
+                response = await authorized_client.put(
+                    "/api/v1/projects/test_project/entities/site/values",
+                    json={"columns": columns, "values": updated_rows},
+                )
+            assert response.status_code == 200, response.text
+
+        async def normalized_site_ids() -> list[int]:
+            normalizer = ShapeShifter(project=str(project_folder / "shapeshifter.yml"), default_entity="site")
+            await normalizer.normalize()
+            return [int(value) for value in normalizer.table_store["site"]["site_id"].tolist()]
+
+        await save_rows(rows)
+        unchanged_sidecar = yaml.safe_load(sidecar_path.read_text(encoding="utf-8"))
+        unchanged_links = unchanged_sidecar["entities"]["site"]["links"]
+        assert (unchanged_links["A"]["target_id"], unchanged_links["A"]["source"]) == (99, "manual")
+        assert unchanged_links["B"] == untouched_link
+        assert await normalized_site_ids() == [99, 200]
+
+        changed_rows = [[1, 11, "A"], [2, 20, "B"]]
+        await save_rows(changed_rows)
+        changed_sidecar = yaml.safe_load(sidecar_path.read_text(encoding="utf-8"))
+        changed_links = changed_sidecar["entities"]["site"]["links"]
+        assert (changed_links["A"]["target_id"], changed_links["A"]["source"]) == (11, "manual")
+        assert changed_links["B"] == untouched_link
+        assert await normalized_site_ids() == [11, 200]
 
 
 class TestPartialMappingSave:

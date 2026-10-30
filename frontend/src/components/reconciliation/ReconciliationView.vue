@@ -124,57 +124,151 @@
                 <!-- Auto-Reconcile Button -->
                 <v-btn
                   v-if="selectedEntity && entitySpec"
+                  data-testid="find-candidates-button"
                   variant="tonal"
                   color="primary"
                   prepend-icon="mdi-auto-fix"
                   :loading="loading"
                   @click="handleAutoReconcile"
                 >
-                  Run Auto-Reconcile
+                  Find Candidates
+                </v-btn>
+
+                <v-btn
+                  v-if="selectedEntity"
+                  data-testid="manual-link-open"
+                  variant="tonal"
+                  color="secondary"
+                  prepend-icon="mdi-link-variant"
+                  @click="openManualLinkDialog()"
+                >
+                  Add Manual Link
                 </v-btn>
 
                 <v-btn
                   v-if="selectedEntity && selectedTarget && entitySpec"
                   data-testid="export-to-mapping-button"
                   variant="tonal"
-                  color="secondary"
+                  color="grey"
                   prepend-icon="mdi-export"
-                  :loading="exportingToMapping"
-                  :disabled="exportingToMapping"
+                  disabled
                   class="ml-2"
-                  @click="handleExportToMapping"
                 >
-                  Export to Mapping
+                  Export Unavailable
                 </v-btn>
               </div>
+
+              <v-alert type="info" variant="tonal" class="mb-4">
+                Reconciliation export is unavailable until Phase 3. Accepted decisions do not change normalized IDs; use
+                a manual link when a row needs an effective target ID.
+              </v-alert>
+
+              <v-alert v-if="previewError" data-testid="preview-error" type="error" variant="tonal" class="mb-4">
+                Preview could not be loaded: {{ previewError }}
+              </v-alert>
+
+              <v-alert v-if="mappingError" data-testid="mapping-error" type="error" variant="tonal" class="mb-4">
+                Mapping sidecar could not be loaded: {{ mappingError }}. Effective IDs are unavailable until it loads.
+              </v-alert>
+
+              <v-alert v-if="autoReconcileError" data-testid="matching-error" type="error" variant="tonal" class="mb-4">
+                Candidate search failed: {{ autoReconcileError }}
+              </v-alert>
+
+              <v-alert
+                v-if="autoReconcileResult"
+                data-testid="matching-result"
+                type="success"
+                variant="tonal"
+                class="mb-4"
+              >
+                Candidate search considered {{ autoReconcileResult.total }} rows, updated
+                {{ autoReconcileResult.proposed }} proposed decisions, and found no candidates for
+                {{ autoReconcileResult.unmatched }} rows. {{ autoReconcileResult.errors.length }} rows need attention.
+                <ul v-if="autoReconcileResult.errors.length" class="mt-2">
+                  <li v-for="(rowError, index) in autoReconcileResult.errors" :key="`${rowError.row_index}-${index}`">
+                    Row {{ rowError.row_index + 1
+                    }}{{ rowError.local_key_value ? ` (${rowError.local_key_value})` : '' }}:
+                    {{ rowError.message }}
+                  </li>
+                </ul>
+              </v-alert>
 
               <!-- Reconciliation Grid -->
               <reconciliation-grid
                 v-if="selectedEntity && selectedTarget && entitySpec && entityPreviewData.length"
                 :entity-spec="entitySpec"
                 :preview-data="entityPreviewData"
-                :loading="loading"
+                :mapping-data="entityMappingData"
+                :loading="loading || mappingIsLoading"
                 :project-name="projectName"
                 :entity-name="selectedEntity"
                 :target-field="selectedTarget"
-                @update:mapping="handleUpdateMapping"
-                @save="handleSaveChanges"
+                :submit-decision="handleUpdateMapping"
+                @manual-link="openManualLinkDialog"
               />
 
               <!-- Empty State - No Data -->
-              <v-card v-else variant="outlined" class="pa-8 text-center">
+              <v-card
+                v-else-if="!previewError && !entityPreviewData.length"
+                variant="outlined"
+                class="pa-8 text-center"
+              >
                 <v-icon icon="mdi-database-off-outline" size="64" color="grey" />
-                <h3 class="text-h6 mt-4 mb-2">No Data Available</h3>
+                <h3 class="text-h6 mt-4 mb-2">No Preview Rows</h3>
                 <p class="text-grey">
-                  Run auto-reconcile to fetch and process entity data, then review and adjust mappings as needed
+                  Find candidates to create proposals, or add a manual link by entering its encoded business key and
+                  target ID.
                 </p>
-                <v-btn class="mt-4" variant="tonal" @click="activeTab = 'setup'"> Go to Setup </v-btn>
               </v-card>
             </div>
           </v-window-item>
         </v-window>
       </v-card-text>
     </v-card>
+
+    <v-dialog v-model="manualLinkDialog" max-width="600">
+      <v-card>
+        <v-card-title>Add Manual Link</v-card-title>
+        <v-card-subtitle>
+          This saves a trusted manual mapping link. It does not check the target ID against SEAD.
+        </v-card-subtitle>
+        <v-card-text>
+          <v-text-field
+            v-model="manualLocalKeyValue"
+            data-testid="manual-link-key"
+            label="Encoded business key"
+            placeholder="Enter the encoded local key"
+            variant="outlined"
+          />
+          <v-text-field
+            v-model="manualTargetId"
+            data-testid="manual-link-target-id"
+            label="Target ID"
+            inputmode="numeric"
+            variant="outlined"
+          />
+          <v-textarea v-model="manualNotes" label="Notes (optional)" rows="2" variant="outlined" />
+          <v-alert v-if="manualLinkError" data-testid="manual-link-error" type="error" variant="tonal">
+            {{ manualLinkError }}
+          </v-alert>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="manualLinkDialog = false">Cancel</v-btn>
+          <v-btn
+            data-testid="manual-link-submit"
+            variant="tonal"
+            color="primary"
+            :loading="savingManualLink"
+            :disabled="savingManualLink"
+            @click="saveManualLink"
+          >
+            Save Manual Link
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <!-- Result Snackbar -->
     <v-snackbar v-model="showResultSnackbar" :color="resultColor" timeout="5000">
@@ -193,7 +287,12 @@ import { storeToRefs } from 'pinia'
 import ReconciliationGrid from './ReconciliationGrid.vue'
 import SpecificationsList from './SpecificationsList.vue'
 import YamlEditor from '@/components/common/YamlEditor.vue'
-import type { ReconciliationPreviewRow } from '@/types'
+import type {
+  AutoReconcileResult,
+  DecisionUpdateRequest,
+  MappingEntityResponse,
+  ReconciliationPreviewRow,
+} from '@/types/reconciliation'
 import yaml from 'js-yaml'
 
 interface Props {
@@ -204,8 +303,18 @@ const props = defineProps<Props>()
 
 // Store
 const reconciliationStore = useReconciliationStore()
-const { reconciliationConfig, loading, reconcilableEntities, previewData, getEntityTargets, specifications } =
-  storeToRefs(reconciliationStore)
+const {
+  reconciliationConfig,
+  loading,
+  reconcilableEntities,
+  previewData,
+  previewErrors,
+  mappingData,
+  mappingErrors,
+  mappingLoading,
+  getEntityTargets,
+  specifications,
+} = storeToRefs(reconciliationStore)
 
 // Local state
 const activeTab = ref<string>('configuration') // Tab state: configuration, reconcile
@@ -218,7 +327,14 @@ const resultColor = ref('success')
 const serviceStatus = ref<{ status: string; service_name?: string; error?: string } | null>(null)
 const serviceManifest = ref<any>(null)
 const availableEntityTypes = ref<number>(0)
-const exportingToMapping = ref(false)
+const autoReconcileResult = ref<AutoReconcileResult | null>(null)
+const autoReconcileError = ref<string | null>(null)
+const manualLinkDialog = ref(false)
+const manualLocalKeyValue = ref('')
+const manualTargetId = ref('')
+const manualNotes = ref('')
+const manualLinkError = ref<string | null>(null)
+const savingManualLink = ref(false)
 
 // YAML Editor state
 const yamlContent = ref('')
@@ -240,8 +356,28 @@ const entitySpec = computed(() => {
 })
 
 const entityPreviewData = computed(() => {
-  if (!selectedEntity.value) return []
-  return previewData.value[selectedEntity.value] || []
+  if (!selectedEntity.value || !selectedTarget.value) return []
+  return previewData.value[props.projectName]?.[selectedEntity.value]?.[selectedTarget.value] || []
+})
+
+const previewError = computed(() => {
+  if (!selectedEntity.value || !selectedTarget.value) return null
+  return previewErrors.value[props.projectName]?.[selectedEntity.value]?.[selectedTarget.value] ?? null
+})
+
+const entityMappingData = computed<MappingEntityResponse | null>(() => {
+  if (!selectedEntity.value) return null
+  return mappingData.value[props.projectName]?.[selectedEntity.value] ?? null
+})
+
+const mappingError = computed(() => {
+  if (!selectedEntity.value) return null
+  return mappingErrors.value[props.projectName]?.[selectedEntity.value] ?? null
+})
+
+const mappingIsLoading = computed(() => {
+  if (!selectedEntity.value) return false
+  return mappingLoading.value[props.projectName]?.[selectedEntity.value] ?? false
 })
 
 // Methods
@@ -254,88 +390,96 @@ function handleReconcileSpec(entityName: string, targetField: string) {
 async function handleAutoReconcile() {
   if (!selectedEntity.value || !selectedTarget.value) return
 
+  autoReconcileError.value = null
+  autoReconcileResult.value = null
   try {
-    // Convert percentage to decimal (e.g., 95 -> 0.95)
     const thresholdDecimal = autoAcceptThreshold.value / 100
-    const result = await reconciliationStore.autoReconcile(
+    autoReconcileResult.value = await reconciliationStore.autoReconcile(
       props.projectName,
       selectedEntity.value,
       selectedTarget.value,
-      thresholdDecimal
+      thresholdDecimal,
+      entitySpec.value?.review_threshold
     )
 
-    // Reload preview data to show updated results
-    await reconciliationStore.loadPreviewData(props.projectName, selectedEntity.value, selectedTarget.value)
+    try {
+      await reconciliationStore.loadPreviewData(props.projectName, selectedEntity.value, selectedTarget.value)
+    } catch (previewLoadError) {
+      console.error('[ReconciliationView] Candidate search succeeded but preview reload failed:', previewLoadError)
+    }
 
-    resultMessage.value = `Auto-reconciliation complete: ${result.auto_accepted} auto-matched, ${result.needs_review} need review, ${result.unmatched} unmatched`
+    resultMessage.value = `Candidate search considered ${autoReconcileResult.value.total} rows; ${autoReconcileResult.value.proposed} proposals updated and ${autoReconcileResult.value.unmatched} rows had no candidates.`
     resultColor.value = 'success'
     showResultSnackbar.value = true
 
-    // Switch to reconcile tab to show results
     if (entityPreviewData.value.length > 0) {
       activeTab.value = 'reconcile'
     }
   } catch (e: any) {
-    resultMessage.value = `Auto-reconciliation failed: ${e.message}`
+    autoReconcileError.value = e.response?.data?.detail || e.message || 'The matching request could not be completed.'
+    resultMessage.value = `Candidate search failed: ${autoReconcileError.value}`
     resultColor.value = 'error'
     showResultSnackbar.value = true
   }
 }
 
-async function handleUpdateMapping(row: ReconciliationPreviewRow, targetId: number | null, notes?: string) {
-  if (!selectedEntity.value || !selectedTarget.value || !entitySpec.value) return
+async function handleUpdateMapping(request: DecisionUpdateRequest): Promise<void> {
+  if (!selectedEntity.value || !selectedTarget.value) {
+    throw new Error('Select an entity and target before saving a decision.')
+  }
+  await reconciliationStore.updateMapping(props.projectName, selectedEntity.value, selectedTarget.value, request)
+}
 
+function openManualLinkDialog(row?: ReconciliationPreviewRow) {
+  manualLocalKeyValue.value = row?.local_key_value ?? ''
+  manualTargetId.value = ''
+  manualNotes.value = ''
+  manualLinkError.value = null
+  manualLinkDialog.value = true
+}
+
+async function saveManualLink() {
+  if (!selectedEntity.value) {
+    manualLinkError.value = 'Select an entity before adding a manual link.'
+    return
+  }
+  const key = manualLocalKeyValue.value.trim()
+  if (!key) {
+    manualLinkError.value = 'Enter the encoded business key.'
+    return
+  }
+  const targetText = manualTargetId.value.trim()
+  if (!/^-?\d+$/.test(targetText)) {
+    manualLinkError.value = 'Enter a whole-number target ID.'
+    return
+  }
+  const targetId = Number(targetText)
+  if (!Number.isSafeInteger(targetId)) {
+    manualLinkError.value = 'The target ID is outside the supported integer range.'
+    return
+  }
+
+  savingManualLink.value = true
+  manualLinkError.value = null
   try {
-    // Extract the source value for the target field
-    const sourceValue = row[selectedTarget.value]
-    await reconciliationStore.updateMapping(
+    await reconciliationStore.putManualMapping(
       props.projectName,
       selectedEntity.value,
-      selectedTarget.value,
-      sourceValue,
+      key,
       targetId,
-      notes
+      manualNotes.value.trim() || undefined
     )
-  } catch (e: any) {
-    resultMessage.value = `Failed to update mapping: ${e.message}`
-    resultColor.value = 'error'
-    showResultSnackbar.value = true
-  }
-}
-
-async function handleSaveChanges() {
-  try {
-    await reconciliationStore.saveEntityResolutionCatalog(props.projectName)
-    resultMessage.value = 'Changes saved successfully'
+    manualLinkDialog.value = false
+    resultMessage.value = `Manual link saved for key ${key}; target ID ${targetId} is effective after normalization.`
     resultColor.value = 'success'
     showResultSnackbar.value = true
   } catch (e: any) {
-    resultMessage.value = `Failed to save changes: ${e.message}`
-    resultColor.value = 'error'
-    showResultSnackbar.value = true
-  }
-}
-
-async function handleExportToMapping() {
-  if (!selectedEntity.value || !selectedTarget.value) return
-
-  exportingToMapping.value = true
-  try {
-    const result = await reconciliationStore.exportToMapping(
-      props.projectName,
-      selectedEntity.value,
-      selectedTarget.value
-    )
-
-    resultMessage.value = `Exported ${result.exported} links to mapping. Skipped ${result.skipped_manual} existing manual links.`
-    resultColor.value = 'success'
-    showResultSnackbar.value = true
-  } catch (e: any) {
-    resultMessage.value = `Failed to export to mapping: ${e.message}`
+    manualLinkError.value = e.message || 'The manual link could not be saved.'
+    resultMessage.value = `Manual link failed: ${manualLinkError.value}`
     resultColor.value = 'error'
     showResultSnackbar.value = true
   } finally {
-    exportingToMapping.value = false
+    savingManualLink.value = false
   }
 }
 
@@ -472,10 +616,25 @@ watch(
   { immediate: true }
 )
 
+watch(
+  [() => props.projectName, selectedEntity],
+  async ([projectName, entityName]) => {
+    if (!projectName || !entityName) return
+    try {
+      await reconciliationStore.loadMappingData(projectName, entityName)
+    } catch (e) {
+      console.error('[ReconciliationView] Failed to load mapping sidecar:', e)
+    }
+  },
+  { immediate: true }
+)
+
 // Watch for target changes and load preview data
 watch(
   [selectedEntity, selectedTarget],
   async ([newEntity, newTarget]) => {
+    autoReconcileResult.value = null
+    autoReconcileError.value = null
     if (newEntity && newTarget && entitySpec.value) {
       // Sync slider with entity spec threshold when target changes (convert decimal to percentage)
       if (entitySpec.value.auto_accept_threshold) {

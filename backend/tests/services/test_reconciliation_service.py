@@ -852,7 +852,7 @@ class TestReconciliationService:
         assert links.target_id == 123
         assert links.source_value == "Same"
         assert links.notes == "Manual link"
-        assert links.confidence == 1.0
+        assert links.confidence is None
 
     def test_update_mapping_updates_existing(self, reconciliation_service: ReconciliationService, tmp_path, catalog):
         """Test update_mapping updates existing mapping."""
