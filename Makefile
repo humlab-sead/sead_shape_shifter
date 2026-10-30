@@ -483,7 +483,7 @@ release-notes:
 		exit 1; \
 	fi
 	@echo "Generating release notes for version $(VERSION)..."
-	@uv run python scripts/generate_user_release_notes.py --version $(VERSION) --force-heuristic
+	@uv run python scripts/generate_whats_new.py --version $(VERSION) --force-heuristic
 
 .PHONY: release-notes-ai
 release-notes-ai:
@@ -492,7 +492,7 @@ release-notes-ai:
 		exit 1; \
 	fi
 	@echo "Generating release notes for version $(VERSION) with AI..."
-	@uv run python scripts/generate_user_release_notes.py --version $(VERSION)
+	@uv run python scripts/generate_whats_new.py --version $(VERSION)
 
 ################################################################################
 # Presentation

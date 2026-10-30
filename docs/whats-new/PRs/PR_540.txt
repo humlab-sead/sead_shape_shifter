@@ -1,0 +1,72 @@
+title: feat(core): make business keys declarative over produced columns
+description:
+## Summary
+
+Makes keys describe fields an entity already produces instead of selecting, creating, or reordering
+output columns, and establishes one authoritative fixed column ordering (system_id, then public_id,
+then produced data columns) across Core, backend, and frontend.
+
+ - Core: TableConfig.keys_and_columns, get_columns, values_column_order, and
+get_target_facing_columns no longer insert keys into output selection or ordering; extraction and
+SQL loaders keep producer-defined (configured or detected) column order. A new
+MissingBusinessKeyError is raised when processed output lacks a configured key, and the re-enabled
+keys_subset_of_columns rule now checks keys against configured and generated producers (columns,
+extra_columns, foreign_keys, unnest), deferring loader-discovered fields to runtime.
+ - Fixed schema & persistence: build_fixed_entity_full_columns drops key insertion; backend
+derive_fixed_schema/normalize_fixed_entity persist data-only columns (managed identities excluded)
+and rebuild the full order on read. Fixed structural validation adds duplicate-column and
+key-outside-fixed-schema errors.
+ - Backend values & materialization: fixed-values GET normalizes compatible stored permutations in
+memory without writing; PUT accepts the authoritative order or the exact recognized legacy order
+(remapped by column name) and rejects unknown, duplicate, incomplete, or width-mismatched requests
+before any file or directory write. Materialization no longer pads absent keys with null columns and
+fails before saving. Mapping sync now receives the normalized saved rows.
+ - Data validation: new BusinessKeyProducedValidator reports BUSINESS_KEY_NOT_PRODUCED issues,
+including mapping normalization-time MissingBusinessKeyError failures into structured issues.
+ - Frontend: the entity editor hydrates grid order and roles from fixed_schema metadata, keys no
+longer add grid columns, and external values whose columns do not match the active schema disable
+saving with a visible error.
+ - Docs: glossary and user guide document the authoritative fixed column ordering; the proposal tree
+is archived under docs/proposals/done/DECLARATIVE_BUSINESS_KEYS/ with phase task plans.
+
+The PR body notes this targets dev and relates to issues ]8;id=md-uqu33f;https://github.com/humlab-sead/sead_shape_shifter/issues/324#324]8;;]8;;–#326 and ]8;;]8;id=md-1q5xjev;https://github.com/humlab-sead/sead_shape_shifter/issues/535#535]8;;]8;;–#537; retiring the ]8;;
+legacy fixed-values request-order path is deferred to ]8;id=md-1mu2b37;https://github.com/humlab-sead/sead_shape_shifter/issues/539#539]8;;]8;; (not implemented here).]8;;
+
+## User-facing release note
+
+Business keys now label fields the entity already produces: adding a key no longer creates or
+reorders a column, and a key that nothing produces is reported with a clear error telling you to add
+the field to columns or configure the producer that creates it. The fixed-values grid always shows
+the stored row order (identity columns first, then data columns), and rows keep their values matched
+to their column names.
+
+## Upgrade notes
+
+ - Fixed entity columns in project YAML now store only produced data fields; managed identity
+columns (system_id, public_id) are stripped on save. Existing stored configs that include identity
+columns are read without rewriting files.
+ - Fixed-values PUT requests must use the authoritative positional order or the exact recognized
+legacy identity/keys/data order, which is remapped by column name; unknown, duplicate, incomplete,
+or ambiguous orders are rejected (422) without writing. The legacy path remains for now and its
+retirement is tracked separately (]8;id=md-1mu2b37;https://github.com/humlab-sead/sead_shape_shifter/issues/539#539]8;;]8;;).]8;;
+ - Projects that configure a business key with no producer will now fail structural or runtime
+validation; add the missing field to columns or configure the producing feature. No data migration
+is required.
+
+## Validation
+
+No CI check results were available for this pull request (status rollup empty). The following
+outcomes are recorded in the phase task-plan documents included in the diff and in the PR body; they
+were not independently re-run for this description:
+
+ - Phase 2 grouped pytest run over fixed schema, persistence, materialization, values service, and
+entity API tests: recorded as passing (387 tests); a full-suite run reported 17 failures that
+reproduce at the base commit (pre-existing).
+ - Phase 3 frontend: pnpm test:run focused files and full suite (708 tests) recorded as passing;
+vue-tsc --noEmit passing; eslint 0 errors (pre-existing warnings only); prettier --check failing
+only on pre-existing issues in unchanged lines.
+ - PR body additionally states: Phase 1–4 task-plan milestones passed, frontend pnpm test:run,
+vue-tsc --noEmit, and eslint clean on changed files, Python black and ruff clean with the suite
+matching the pre-existing dev baseline, and a survey finding no existing project configures an
+unproduced business key. Execution of these could not be independently verified from the supplied
+evidence.

@@ -50,7 +50,7 @@ PROMPT_TEMPLATE = (
     "Return the PR title on the first line. On the next line, write the exact separator "
     f"{COPILOT_BODY_SEPARATOR}. After that line, write the full PR body as Markdown, preserving its line breaks. "
     "Do not add labels, quotes, JSON, Markdown fences, or commentary. The body must contain the four required Markdown "
-    "headings in the exact order specified by the instructions."
+    "headings in the exact order specified by the instructions, each starting with the literal '## '."
 )
 
 
@@ -209,13 +209,26 @@ def validate_draft(value: Any) -> dict[str, str]:
     return {"title": title, "body": body}
 
 
+def normalize_bare_body_headings(body: str) -> str:
+    """Add Markdown heading markers when all required labels appear unmarked and in order."""
+    labels = [heading.removeprefix("## ") for heading in EXPECTED_HEADINGS]
+    lines = body.splitlines()
+    found_labels = [(index, line.strip()) for index, line in enumerate(lines) if line.strip() in labels]
+    if [label for _, label in found_labels] != labels:
+        return body
+
+    for line_index, label in found_labels:
+        lines[line_index] = f"## {label}"
+    return "\n".join(lines)
+
+
 def parse_copilot_response(response: str) -> dict[str, str]:
     """Parse a title and Markdown body separated by a dedicated line."""
     normalized_response = response.strip().replace("\r\n", "\n")
     title, separator, body = normalized_response.partition(f"\n{COPILOT_BODY_SEPARATOR}\n")
     if not separator:
         raise ValueError(f"Copilot response must put {COPILOT_BODY_SEPARATOR} after the title on its own line.")
-    return validate_draft({"title": title, "body": body})
+    return validate_draft({"title": title, "body": normalize_bare_body_headings(body)})
 
 
 def configure_copilot_environment(model: str | None) -> tuple[str, dict[str, str]]:

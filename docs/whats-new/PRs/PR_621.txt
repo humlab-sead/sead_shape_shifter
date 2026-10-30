@@ -1,0 +1,65 @@
+title: Add target-model guided entity creation, verify auth route metadata
+description:
+## Summary
+
+Two related changes are included in this PR:
+
+Authorization route inventory maintenance. Endpoints that were classified only in
+AUTHORIZATION_ROUTE_INVENTORY.md now carry their classification in code: new
+declare_authenticated_route / declare_public_route decorators in
+backend/app/authorization/dependencies.py attach authorization_requirement metadata to endpoints
+without adding a runtime check, and are applied to the metadata, log, suggestion, schema,
+reconciliation, help-docs, what's-new, and other authenticated routes (the health check is marked
+public; generated docs routes are marked in main.py). require_project metadata now records a
+condition (key=sead_change_request) for the conditional Change Request check. The route tests drop
+the hand-maintained path sets and add test_route_inventory_matches_authorization_metadata, which
+compares each inventory requirement label with the assembled endpoint/dependency metadata; the
+UNDECLARED and enforcement pending concepts and the dated classification review are removed.
+Lifecycle and background-task coverage moved from the inventory into AUTHORIZATION.md as a new
+"Resource Lifecycle And Background Operations" section.
+
+Target-model guided entity creation (Phases 1–3). New read-only backend support:
+TargetModelEntityOptionsService projects a project's associated target model into missing-entity
+options (name, role, required flag, description, target table, public ID, required non-generated
+columns, and required links with direct/via paths, missing path entities, and conditional
+required_when_has_new_rows triggers), exposed via GET /api/v1/projects/{name}/target-model-entities
+behind project:read. Absent models return configured: false; configured-but-missing/invalid models
+return HTTP 400 without exposing paths or parser text; GET never writes project YAML. On the
+frontend, EntityFormDialog create mode gains a "Start from target model" picker that prefills and
+locks the entity name and public ID (with confirmation before replacing edited values), requires an
+explicit source type (classifiers restricted to fixed/sql), shows target requirements as read-only
+reference data that never enter the save payload, and refreshes candidates when create mode reopens
+after a save. The proposal and phase plans moved to docs/proposals/done/ with completed task
+checkboxes and recorded execution results.
+
+## User-facing release note
+
+When adding an entity to a project with an associated target model, users can now pick a missing
+target-model entity in the "Start from target model" picker: the entity name and public ID are
+prefilled, the target's required columns and links (including conditional links) are shown as
+reference information, and the entity is saved only through the normal create action. Manual entity
+creation remains fully usable when no target model is configured or the options request fails.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+No CI test results are available for this PR: the only status checks reported (Container Release
+validate and publish) were SKIPPED. The following outcomes are recorded in the PR's own task-plan
+and proposal documents (execution dates 2026-10-28) and were not independently re-run here:
+
+ - Backend pytest (per Phase 1 plan): backend/tests/services/test_target_model_entity_options.py
+passed (5 tests); backend/tests/api/v1/test_target_model_entity_options.py passed (8 tests, covering
+local/shared/inline/absent/missing/invalid models); the cross-user authorization case in
+backend/tests/authorization/test_cross_resource_access.py and the mapper/target-model regression (6
+tests) passed; black --check and ruff check on the changed Python files passed.
+ - Frontend (per Phase 2/3 plans): vitest run on EntityFormDialog.test.ts and projects.test.ts
+passed (76 tests); vue-tsc --noEmit passed; targeted ESLint on the dialog and its test passed, with
+one warning reported in an unrelated, unstaged hunk when linting the full working-tree component;
+git diff --check passed.
+ - Target-model validator and core conformance suites, and backend/tests/api/v1/test_validation.py
+including the new incomplete-saved-entity regression case, are recorded as passing.
+ - Execution of the updated/added route-metadata tests in
+backend/tests/authorization/test_route_authentication.py is not evidenced in the available sources.

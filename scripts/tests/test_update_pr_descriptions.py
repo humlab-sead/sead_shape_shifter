@@ -45,6 +45,13 @@ def test_parse_copilot_response_preserves_multiline_markdown_and_quotes() -> Non
     assert update_pr_descriptions.parse_copilot_response(response) == {"title": "Example PR title", "body": body}
 
 
+def test_parse_copilot_response_adds_markdown_to_ordered_bare_section_labels() -> None:
+    body = VALID_BODY.replace("## ", "")
+    response = f"Example PR title\n{update_pr_descriptions.COPILOT_BODY_SEPARATOR}\n{body}"
+
+    assert update_pr_descriptions.parse_copilot_response(response) == make_draft()
+
+
 @pytest.mark.parametrize("verbose", [False, True])
 def test_generate_draft_logs_invalid_response_only_when_verbose(
     tmp_path: Path,
