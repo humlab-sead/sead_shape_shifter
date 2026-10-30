@@ -83,7 +83,7 @@ class EntityResolutionSet(BaseModel):
 class EntityResolutionCatalog(BaseModel):
     """Complete entity resolution catalog for all entities."""
 
-    version: Literal["3.0"] = Field("3.0", description="Reconciliation format version")
+    version: str = Field("3.0", description="Reconciliation format version")
     service_url: str = Field(..., description="Base URL of OpenRefine reconciliation service")
     entities: dict[str, dict[str, EntityResolutionSet]] = Field(
         default_factory=dict, description="Entity name -> target field -> mapping spec"
