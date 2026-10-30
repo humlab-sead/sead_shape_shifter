@@ -90,5 +90,6 @@
 				"file": ".github/pr-description-instructions.md"
 			}
 		],
+		 "chat.utilitySmallModel": "customendpoint/RadixArk/Qwen3.8-Flash-Next-NVFP4"
 	}
 }
