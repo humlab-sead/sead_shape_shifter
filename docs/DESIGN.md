@@ -247,7 +247,7 @@ entities:
 4. Draft links (`committed_at: null`) — skipped
 
 **Write paths**:
-- **Reconciliation export**: user accepts auto-matched links → copied from reconciliation catalog to sidecar with `source: "reconciliation"`
+- **Reconciliation export**: currently blocked. Candidate search and operator decisions are stored separately; owned, verified export to the sidecar is not yet implemented
 - **Fixed-row save**: ID and row-key changes affect only their keys, and a saved non-blank ID with no link gets one; untouched links and their metadata remain as stored
 - **Administrative materialized rebuild**: the default adds links only at absent keys; an explicit replacement request rebuilds manual links from saved non-blank IDs and removes stale manual links. A generated manual link can replace another source at the same key because the sidecar stores one link per key
 - **Direct API**: `PUT /projects/{project}/mapping/{entity}/{key}` for manual link creation
@@ -258,6 +258,10 @@ entities:
 - `local_key` must be a business key, not `system_id` or `public_id`
 
 **Python models**: `src/reconciliation/mapping_model.py` (Pydantic v2: `MappingCatalog`, `EntityMapping`, `Link`, `LinkSource`)
+
+### Reconciliation Decision Catalog
+
+The separate `<project>-reconciliation.yml` catalog uses version `3.0`. Matching considers all normalized target rows, identifies each by the ordered business key (`keys` or the sidecar's `local_key`), and stores proposed candidates without automatically accepting them. Equal search labels remain distinct; missing or duplicate keys and unjoinable search-source rows produce errors rather than guessed links. Accepted, rejected, and local-only operator decisions survive matching reruns. Loading an old-format catalog ignores its decisions with a warning and leaves the file unchanged; malformed and unknown future versions fail explicitly. The mapping sidecar retains its independent version `2.0` and is not modified by matching or decision edits.
 
 **Related proposal**: `docs/proposals/done/RECONCILIATION_PERSISTENCE_CONSOLIDATION.md`
 

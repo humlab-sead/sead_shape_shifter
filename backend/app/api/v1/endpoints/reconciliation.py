@@ -128,7 +128,11 @@ async def update_entity_resolution_catalog_raw(
         # Parse YAML
         config_dict = pyyaml.safe_load(yaml_content)
 
-        # Validate against model (DTO)
+        if not isinstance(config_dict, dict):
+            raise BadRequestError("Reconciliation catalog must be a YAML mapping")
+        if config_dict.get("version") != "3.0":
+            raise BadRequestError("Only reconciliation catalog version 3.0 may be saved")
+
         catalog: api.EntityResolutionCatalog = api.EntityResolutionCatalog(**config_dict)
 
         # Map DTO → Domain for service
@@ -173,7 +177,7 @@ async def auto_reconcile_entity(
     service: ReconciliationService = Depends(get_reconciliation_service),
 ) -> dict[str, str]:
     """
-    Start automatic reconciliation for an entity (async with progress tracking).
+    Start candidate matching for an entity (async with progress tracking).
 
     Returns an operation_id that can be used to track progress via SSE.
 
@@ -181,7 +185,7 @@ async def auto_reconcile_entity(
         project_name: Project name
         entity_name: Entity to reconcile
         target_field: Target field to reconcile
-        threshold: Auto-accept threshold (default 0.95 = 95%)
+        threshold: Legacy score threshold (does not accept candidates)
         review_threshold: Review threshold (default uses entity spec value)
 
     Returns:
@@ -336,7 +340,7 @@ async def auto_reconcile_entity_sync(
     service: ReconciliationService = Depends(get_reconciliation_service),
 ) -> api.AutoReconcileResult:
     """
-    Automatically reconcile entity (synchronous - blocks until complete).
+    Find candidates for an entity (synchronous - blocks until complete).
 
     This is the original endpoint kept for backward compatibility.
     For progress tracking, use POST /auto-reconcile instead.
@@ -345,7 +349,7 @@ async def auto_reconcile_entity_sync(
         project_name: Project name
         entity_name: Entity to reconcile
         target_field: Target field to reconcile
-        threshold: Auto-accept threshold (default 0.95 = 95%)
+        threshold: Legacy score threshold (does not accept candidates)
         review_threshold: Review threshold (default uses entity spec value)
 
     Returns:
@@ -426,34 +430,19 @@ async def update_mapping(
     project_name: str,  # pylint: disable=unused-argument
     entity_name: str,
     target_field: str,
-    source_value: Any,
+    decision: api.DecisionUpdateRequest,
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
-    target_id: int | None = None,
-    notes: str | None = None,
     service: ReconciliationService = Depends(get_reconciliation_service),
 ) -> api.EntityResolutionCatalog:
-    """
-    Update or remove a single entity resolution entry.
-
-    Args:
-        project_name: Project name
-        entity_name: Entity name
-        target_field: Target field to reconcile
-        source_value: Source value (single value, not list)
-        target_id: Remote system's entity ID (null to remove mapping)
-        notes: Optional notes
-
-    Returns:
-        Updated entity resolution catalog
-    """
-    # Service returns domain model
+    """Persist an explicit operator decision for an encoded business key."""
     domain_registry: core.EntityResolutionCatalog = service.update_mapping(
         project_name=authorized_project.resource.locator,
         entity_name=entity_name,
         target_field=target_field,
-        source_value=source_value,
-        target_id=target_id,
-        notes=notes,
+        local_key_value=decision.local_key_value,
+        status=core.DecisionStatus(decision.status),
+        target_id=decision.target_id,
+        notes=decision.notes,
     )
 
     # Map to DTO for API response
@@ -467,28 +456,15 @@ async def delete_mapping(
     entity_name: str,
     target_field: str,
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
-    source_value: Any = Query(...),
+    local_key_value: str = Query(..., min_length=1),
     service: ReconciliationService = Depends(get_reconciliation_service),
 ) -> api.EntityResolutionCatalog:
-    """
-    Delete a mapping entry.
-
-    Args:
-        project_name: Project name
-        entity_name: Entity name
-        target_field: Target field to reconcile
-        source_value: Source value to delete (single value, not list)
-
-    Returns:
-        Updated entity resolution catalog
-    """
-    # Service returns domain model
-    catalog: core.EntityResolutionCatalog = service.update_mapping(
+    """Delete a decision by encoded business key."""
+    catalog: core.EntityResolutionCatalog = service.delete_decision(
         project_name=authorized_project.resource.locator,
         entity_name=entity_name,
         target_field=target_field,
-        source_value=source_value,
-        target_id=None,  # None = delete
+        local_key_value=local_key_value,
     )
 
     # Map to DTO for API response
@@ -523,8 +499,8 @@ async def mark_as_unmatched(
     project_name: str,  # pylint: disable=unused-argument
     entity_name: str,
     target_field: str,
-    source_value: Any,
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
+    local_key_value: str = Query(..., min_length=1),
     notes: str | None = None,
     service: ReconciliationService = Depends(get_reconciliation_service),
 ) -> api.EntityResolutionCatalog:
@@ -535,7 +511,7 @@ async def mark_as_unmatched(
         project_name: Project name
         entity_name: Entity name
         target_field: Target field to reconcile
-        source_value: Source value (single value, not list)
+        local_key_value: Encoded business key
         notes: Optional reason/notes for why it won't match
 
     Returns:
@@ -546,7 +522,7 @@ async def mark_as_unmatched(
         project_name=authorized_project.resource.locator,
         entity_name=entity_name,
         target_field=target_field,
-        source_value=source_value,
+        local_key_value=local_key_value,
         notes=notes,
     )
 
