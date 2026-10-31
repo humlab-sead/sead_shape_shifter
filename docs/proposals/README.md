@@ -6,6 +6,7 @@ This index covers proposals and initiative records that need attention or provid
 
 | Proposal | Status | Decision or scope |
 |---|---|---|
+| [Foreign-Key Link Troubleshooter](FOREIGN_KEY_LINK_TROUBLESHOOTER/FOREIGN_KEY_LINK_TROUBLESHOOTER.md) | Proposed feature — draft for review | Diagnose a specific linking warning with read-only A/B inputs, trial join keys, and row-level match results without saving changes. |
 | [Linked Art Export from Shape Shifter](LINKED_ART_EXPORT/LINKED_ART_EXPORT.md) | Proposed change request — draft for review | Evaluate SEAD-to-Linked Art output through relational transformations and a registered output dispatcher before deciding on production support. |
 | [Reliable Reconciliation Links to Existing SEAD Entities](RECONCILIATION_MVP/RECONCILIATION_MVP.md) | Proposed change request — draft for review | Make reconciliation a human-reviewed, idempotent loop on normalized data: business-key decisions, owned links, one SEAD-existence check at export, and offline normalization. |
 | [Branch-Scoped Consumers For Mixed-Branch Parents](BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md) | Proposed follow-up | Let downstream entities select which branch of a mixed parent they consume. |
