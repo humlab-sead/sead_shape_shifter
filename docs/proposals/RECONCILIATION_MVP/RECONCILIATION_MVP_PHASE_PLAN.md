@@ -4,7 +4,7 @@ Source proposal: [RECONCILIATION_MVP.md](RECONCILIATION_MVP.md) (Shape Shifter).
 
 ## Summary
 
-This plan sequences the reconciliation MVP for the entity type `site` into seven phases across two repositories. Three Shape Shifter phases (1 to 3) need no Authority Service change and deliver key-correct, owner-tagged, idempotent links with offline normalization. One Authority Service phase (4) adds the read-only candidate check, readiness check, and the SIMS binding rule. Later phases add the export check (5), the ingester rule (6), and end-to-end validation (7).
+This plan sequences the reconciliation MVP for the entity type `site` into seven phases across two repositories. Three Shape Shifter phases (1 to 3) need no Authority Service change and deliver key-correct, owner-tagged, idempotent links with offline normalization. One Authority Service phase (4) adds the read-only candidate check, readiness check, and the SIMS binding rule. Later phases add the export check (5), explicit local-only approvals and the ingester rule (6), and end-to-end validation (7).
 
 Acceptance criteria are cited by repository prefix: `SS-AC-n` for Shape Shifter and `AS-AC-n` for the Authority Service. The `P-AC-n` source column in each phase maps to these IDs. The proposals are drafts; this plan assumes their current decisions.
 
@@ -38,7 +38,7 @@ Verified in current code or configuration:
 - The target-entity resolver reads entity output rows with `limit=1000`. Export writes the raw source value as the key.
 - The mapping-link `PUT` endpoint stores a manual link under the project lock.
 - The deployment runs one backend worker.
-- The ingester treats any non-empty `public_id` as a reference to an existing entity and has its own candidate-picking adapter.
+- - The ingester treats any non-empty `public_id` as a reference to an existing entity and has its own candidate-picking adapter. Its normalized-table input has no operator-decision metadata, so a missing ID cannot distinguish a local-only approval from an undecided row.
 - The Authority Service has no candidate check or readiness endpoint. `/reconcile` and `/identity` have no application-level authentication.
 - SIMS does not filter approved-ID resolution by lifecycle state.
 - The `site` ID allocator and tracked identities for existing rows require separate adoption work.
@@ -171,7 +171,7 @@ Export decisions as owner-tagged sidecar links that can be removed safely, and k
 
 - Source criteria: `SS-AC-4`, `SS-AC-6`.
 - Fixed decisions: cleanup on specification delete; unowned links treated as manual; keep atomic, version-checked sidecar writes; one backend worker.
-- Constraint: in this phase export writes no link for a local-only decision. Phase 6 may extend export once the local-only question is decided.
+- Constraint: in this phase export writes no sidecar entry for a local-only decision. Phase 6 adds a separate approval, not a targetless link.
 
 **Readiness**
 
@@ -268,43 +268,45 @@ Ready for a task plan, once Phases 3 and 4 have delivered their outputs.
 
 **Goal**
 
-Make the change-request ingester resolve existing entities only through sidecar links and block unreconciled rows.
+Make the change-request ingester block undecided rows and allocate new IDs only for exported local-only approvals in modes that permit allocation.
 
 **Focus**
 
 - Stop the ingester's own candidate picking; never pass an unreviewed candidate to SIMS.
-- Resolve an existing entity only when normalization set its `public_id` from a sidecar link.
-- Block, not allocate, a row of a reconciled entity that has no operator decision.
-- Decide how a local-only decision reaches the ingester, and extend export if needed.
+- Export local-only decisions as owner-tagged approvals keyed by encoded business key, separate from links to existing IDs. Re-export and specification deletion remove only that owner's stale approvals; protect manual and unowned links and stop on another owner's claim or a conflicting manual or unowned link.
+- Pass committed approvals from the authorized sidecar to the ingester as trusted metadata alongside normalized tables. Do not write a null target ID to `public_id` or add an approval column to the data.
+- Resolve an existing ID from a sidecar link; retain the existing pre-linked-ID path. Block rejected and undecided reconciled rows rather than treating a missing ID as a miss eligible for allocation.
+- Allocate for an explicit local-only approval only with `reconcile-exact` or `reconcile-fuzzy`. `lookup-only` and `lookup-extensible` never allocate through this ingester.
 
 **Depends On**
 
 - Phase 1 decision store.
 - Phase 3 owned export.
-- Decision: how a local-only decision reaches the ingester (proposal open question).
 
 **Outputs**
 
-- An ingester that cannot create duplicate entities from unreconciled rows.
+- Owner-tagged local-only approvals in the sidecar and an ingester that cannot allocate from an undecided row.
 
 **Acceptance Criteria**
 
 - `PH6-AC-1` (from `SS-AC-7`) The ingester does not select or pass an unreviewed candidate to SIMS.
-- `PH6-AC-2` (from `SS-AC-7`) A row resolves to an existing entity only through a sidecar link, and a row of a reconciled entity without an operator decision is blocked, not allocated.
+- `PH6-AC-2` (from `SS-AC-7`) An existing-ID link is applied by normalization, a pre-linked ID keeps its existing path unless an approval conflicts, and a rejected or undecided reconciled row with no ID is blocked rather than allocated.
+- `PH6-AC-3` (from `SS-AC-4`, `SS-AC-7`) Exported local-only approvals are distinct from ID links, keyed and owned by specification, removed only for their owner when stale or on deletion, and passed to the ingester as trusted metadata without changing `public_id`.
+- `PH6-AC-4` (from `SS-AC-7`) An exported local-only approval may allocate with `reconcile-exact` or `reconcile-fuzzy` but cannot allocate with `lookup-only` or `lookup-extensible`.
 
 **Validation Milestones**
 
-- `VM-13` Ingester tests cover a link-resolved row, a pre-linked ID, and an unreconciled row, for each reconciliation mode that applies to `site` (`PH6-AC-1`, `PH6-AC-2`).
+- `VM-13` Export and ingester tests cover accepted links, pre-linked IDs, approved local-only rows, rejected and undecided rows, changed decisions, stale-approval cleanup, conflicting owners and protected links, a pre-linked-ID conflict, and all four reconciliation modes. Only explicitly approved rows allocate where permitted; no unreviewed candidate reaches SIMS (`PH6-AC-1` to `PH6-AC-4`).
 
 **Task-Plan Handoff**
 
-- Source criteria: `SS-AC-7`.
-- Fixed decisions: the ingester does not read `verified_at`; no current project relies on its candidate picking; SIMS enforces tracked identity at binding.
-- Blocking question: can a sidecar link without a target carry a local-only decision, and how does it interact with `lookup-only`, `lookup-extensible`, `reconcile-exact`, and `reconcile-fuzzy`? This can change both the export format and the ingester tests.
+- Source criteria: `SS-AC-4` (owned cleanup), `SS-AC-7`.
+- Fixed decisions: export makes a local-only decision effective through a separate sidecar approval, not a targetless link; only `reconcile-exact` and `reconcile-fuzzy` permit approved allocation. The ingester does not read `verified_at` or pick candidates; no current project relies on its candidate picking; SIMS enforces tracked identity at binding.
+- Constraint: reject conflicting approvals and existing IDs rather than silently allocating; keep the proposal's pre-linked-ID path for non-conflicting rows.
 
 **Readiness**
 
-Requires a named decision: how a local-only decision reaches the ingester.
+Ready for a task plan once Phases 1 and 3 have delivered their outputs.
 
 ### Phase 7: End-to-End Validation
 
@@ -315,7 +317,7 @@ Prove the full workflow for `site` against real services, including repeated run
 **Focus**
 
 - Run review, export, normalization, and change-request generation against a disposable database-backed reconciliation service and SIMS.
-- Confirm actual `public_id` and downstream foreign-key values for accepted and rejected cases.
+- Confirm actual `public_id` and downstream foreign-key values for accepted, local-only, rejected, and undecided cases.
 - Confirm a health-only service cannot pass readiness.
 
 **Depends On**
@@ -330,12 +332,12 @@ Prove the full workflow for `site` against real services, including repeated run
 **Acceptance Criteria**
 
 - `PH7-AC-1` (from `SS-AC-1`) A reviewed `site` workflow sets the intended `public_id` and foreign-key values, and rerunning review, export, and normalization without changes gives identical results.
-- `PH7-AC-2` (from `SS-AC-8`) One end-to-end test covers the success path and the rejection, rerun, changed-decision, stale-link, absent-row, and unavailable-service cases.
+- `PH7-AC-2` (from `SS-AC-8`) One end-to-end test covers the success path and the local-only approval, undecided-row block, rejection, rerun, changed-decision, stale-link, absent-row, and unavailable-service cases.
 - `PH7-AC-3` (from `SS-AC-8`, `AS-AC-6`) A health-only service cannot pass readiness, and an approved existing `site` binds through SIMS after adoption.
 
 **Validation Milestones**
 
-- `VM-14` The end-to-end run records actual target IDs and foreign-key values for accepted and rejected cases (`PH7-AC-1`, `PH7-AC-2`).
+- `VM-14` The end-to-end run records actual target IDs and foreign-key values for accepted, local-only, rejected, and undecided cases (`PH7-AC-1`, `PH7-AC-2`).
 - `VM-15` Readiness fails against a health-only or incomplete service, and a binding succeeds after adoption (`PH7-AC-3`).
 
 **Task-Plan Handoff**
@@ -354,6 +356,7 @@ Requires a named decision: an owner for the SIMS adoption work.
 - The Authority proposal is the normative contract. Shape Shifter code must not restate candidate URI rules.
 - `site` is the only pilot type. Do not generalize to other types before Phase 7 passes.
 - No auto-accept. A catalog match is not an applied link.
+- Only exported local-only approvals authorize allocation for reconciled rows. A missing `public_id` alone never does.
 - Keep the two-store design, manual-link precedence, `system_id` relationships, and version-checked sidecar writes.
 - Keep one backend worker per project data directory.
 - Update this plan and the proposals together when a decision changes.
@@ -368,4 +371,4 @@ Requires a named decision: an owner for the SIMS adoption work.
 
 ## Final Recommendation
 
-Start Phases 1, 2, 3, and 4 now: they are ready for task plans and have no open decision. Resolve the local-only decision before Phase 6 and name an owner for the SIMS adoption work before Phase 7. Do not call the workflow an MVP until Phase 7 passes.
+Start Phases 1, 2, 3, and 4 now: they are ready for task plans and have no open decision. The local-only contract is settled for Phase 6; name an owner for the SIMS adoption work before Phase 7. Do not call the workflow an MVP until Phase 7 passes.

@@ -10,7 +10,7 @@
 
 Reconciliation is a qualitative task with an operator in the loop. The matching service suggests candidates and the operator decides. This proposal keeps the existing reconciliation catalog and the explicit export to the mapping sidecar, and fixes what makes the result unreliable today: decisions are stored by search label instead of business key, only 1,000 rows are processed, review actions do not match the backend, reruns can overwrite operator decisions, and exported links have no owner and are never cleaned up.
 
-The design rests on the three-tier identity system. A decision identifies a row by its `keys` (business key), which stay the same between runs. The decision's result is the row's `public_id`. The local `system_id` is never stored in a decision. Because the same keys always lead to the same `public_id`, rerunning review, export, and normalization is idempotent.
+The design rests on the three-tier identity system. A decision identifies a row by its `keys` (business key), which stay the same between runs. An accepted existing-entity decision supplies the row's `public_id`; an exported local-only decision authorizes new-ID allocation during change-request generation. The local `system_id` is never stored in a decision. Exporting the same decisions and normalizing the same data produce the same links and `public_id` values.
 
 Normalization stays offline and unchanged: it applies committed sidecar links without calling any service. The one live check is a read-only test, run at export, that the chosen candidate still exists in SEAD. SIMS rules for existing IDs stay where they are enforced today: at SIMS resolve and bind during change-request generation.
 
@@ -26,6 +26,7 @@ Shape Shifter can export a resolved ID and apply it during normalization when th
 - Reruns can replace operator decisions, and re-export does not remove a link rejected after an earlier export.
 - A sidecar `Link` records `source: reconciliation` but not which specification wrote it, so stale links cannot be removed safely.
 - The change-request ingester picks the top fuzzy candidate without requiring `match=true` and passes it to SIMS. A row that already has a `public_id` skips that path entirely.
+- A missing `public_id` does not distinguish an operator-approved new entity from a row that has not been reviewed; the ingester's normalized-table input carries no decision metadata.
 
 ## Scope
 
@@ -35,7 +36,7 @@ Shape Shifter can export a resolved ID and apply it during normalization when th
 - Let the operator enter a link manually (key and target ID), for example for entities with fixed values.
 - Export with a specification owner and a verification timestamp on each reconciliation link, and remove only that owner's stale links.
 - Check at export that the candidate exists in SEAD, using the Authority Service.
-- Make the change-request ingester use operator-approved links only.
+- Make the change-request ingester use exported links for existing IDs and exported local-only approvals for new-ID allocation.
 - Show failures, unresolved rows, and unverified links to the operator.
 
 ## Non-Goals
@@ -56,6 +57,7 @@ Shape Shifter can export a resolved ID and apply it during normalization when th
 - The target-entity resolver reads the entity's output rows through the preview service with `limit=1000`. Export writes the raw reconciliation source value as the sidecar key instead of the `local_key` ([resolvers](../../../backend/app/services/reconciliation/resolvers.py#L72), [export](../../../backend/app/services/reconciliation/service.py#L237)).
 - UI and backend disagree on the manual-decision request format, and confidence is displayed inconsistently ([routes](../../../backend/app/api/v1/endpoints/reconciliation.py#L423), [view](../../../frontend/src/components/reconciliation/ReconciliationView.vue#L254), [grid](../../../frontend/src/components/reconciliation/ReconciliationGrid.vue#L400)). These were reported in the assessment and not re-verified for this revision.
 - The ingester adapter selects a top candidate without a threshold or `match=true` ([adapter](../../../backend/app/services/ingester_runtime.py#L320), [planning](../../../ingesters/sead_change_request/planning.py#L96)).
+- The ingester's normalized-table bundle has no operator-decision metadata, and a missing `public_id` is planned as reconciliation work ([bundle](../../../ingesters/sead_change_request/contracts.py#L84), [planning](../../../ingesters/sead_change_request/planning.py#L28)).
 - In the assessed local environment, a real `site` reconciliation request returned HTTP 500 because `authority.fuzzy_site` was missing. This is an environment-specific observation.
 - No `source: reconciliation` links were found under `data/projects`.
 
@@ -87,7 +89,7 @@ An operator can add a link by entering the key and the target ID in the review v
 
 ### Export and ownership
 
-Explicit export remains the point where decisions become committed sidecar links.
+Explicit export remains the point where decisions become committed sidecar entries.
 
 - Each exported reconciliation link records its owner, the pair `(entity_name, target_field)`, as a new optional `owner` field, and `verified_at`, the time the SEAD check passed (empty when not verified).
 - Export reconciles only that owner's links against its current accepted decisions. A rejected or removed decision removes its previously exported link.
@@ -95,6 +97,8 @@ Explicit export remains the point where decisions become committed sidecar links
 - If two specifications claim the same sidecar key, export stops and reports the conflict.
 - A link without an owner (hand-edited or created before this change) is treated like a manual link: cleanup never removes it, and normalization still applies it.
 - Keep atomic, version-checked sidecar writes and the current fixed-row synchronization.
+
+A local-only decision exports an owner-tagged approval in the sidecar, keyed by the same encoded business key but stored separately from ID links. It is not a `Link` with `target_id: null`: committed links still mean "use this existing ID." Re-export removes stale approvals belonging to that specification when decisions change or disappear; deleting the specification removes its approvals. Export stops on conflicting owners or a conflicting manual or unowned link for the same key, without deleting that link. A rejected or removed decision exports neither an ID link nor an allocation approval.
 
 ### Verification at export
 
@@ -108,13 +112,14 @@ The check is read-only. It does not bind, allocate, or write any SIMS state.
 
 ### Normalization
 
-No change. Normalization applies committed links offline from the sidecar, in the existing precedence order, with no network call. A run with the same sidecar and data gives the same `public_id` values every time.
+No change to ID assignment. Normalization applies committed ID links offline from the sidecar, in the existing precedence order, with no network call. Local-only approvals do not write a null target ID to `public_id` or add an approval column to the data. A run with the same sidecar and data gives the same `public_id` values every time.
 
 ### Change-request ingester
 
-- The ingester's own lookup no longer approves a match. It never takes the top fuzzy candidate and never passes an unreviewed candidate to SIMS. A row resolves to an existing entity only when normalization has set its `public_id` from a sidecar link.
-- A row of a reconciled entity with no operator decision is unresolved and blocked. It is never treated as a miss that SIMS may allocate a new ID for. This prevents duplicate sites from rows that were simply not reconciled yet.
-- The ingester does not read `verified_at`. It sees only `public_id` values, and SIMS enforces tracked identity when it binds the ID. Unverified links are visible in the review UI and the export result instead.
+- The backend supplies approvals from the authorized project's committed sidecar to the ingester as trusted metadata alongside normalized tables. A catalog decision that has not been exported does not authorize allocation.
+- The ingester's own lookup no longer approves a match. It never takes the top fuzzy candidate and never passes an unreviewed candidate to SIMS. Normalization supplies existing IDs from sidecar links; a missing ID alone never authorizes allocation.
+- A reconciled row with no ID and no exported local-only approval is blocked, whether its decision is rejected or still undecided. An explicit local-only approval may allocate with `reconcile-exact` or `reconcile-fuzzy`; `lookup-only` and `lookup-extensible` never allocate through this ingester. A pre-linked ID conflicting with a local-only approval is blocked rather than silently allocated.
+- The ingester does not read `verified_at` or the decision catalog. SIMS enforces tracked identity when it binds an existing ID. Unverified links are visible in the review UI and the export result instead.
 - Pre-linked IDs are referenced as existing IDs through the current path. This proposal adds no provider binding for reference-only imports.
 
 ## Alternatives Considered
@@ -124,6 +129,7 @@ No change. Normalization applies committed links offline from the sidecar, in th
 - **Auto-accept high-scoring candidates:** Rejected for the MVP. Scores rank candidates but cannot disambiguate equal labels or preserve rejections, and thresholds add rules without removing the need for review.
 - **Limit MVP to fields that equal the business key:** Cannot link entities found by a different label or tell duplicate names apart.
 - **Replace the two stores with one now:** Broadens migration risk; correct alignment of the current stores addresses the decision.
+- **Use a targetless sidecar link for local-only:** Rejected. Normalization writes a committed link's `target_id` into `public_id`; a null target could erase an existing ID, while the ingester still could not distinguish approval from an undecided row.
 
 ## Risks And Tradeoffs
 
@@ -133,6 +139,7 @@ No change. Normalization applies committed links offline from the sidecar, in th
 - **Volume:** Processing all rows costs more than a 1,000-row preview. Use batching and progress reporting.
 - **Concurrency:** The project lock is process-local. The deployment runs one backend worker, which [OPERATIONS.md](../../OPERATIONS.md) already requires and the container `CMD` enforces with `--workers 1`. This proposal adds no cross-process locking and depends on that constraint; revisit only if multi-worker deployment is planned ([mapping sync status](../done/MATERIALIZED_ENTITY_MAPPING_SYNC/MATERIALIZED_ENTITY_MAPPING_SYNC.md)).
 - **Manual links:** They are trusted and not checked against SEAD, so a typo in a target ID is not detected. SIMS enforces tracked identity when the ID is bound.
+- **Allocation approvals:** Exported local-only approvals add a separate sidecar entry and trusted ingester input. Export must prevent conflicting ownership and links, and the ingester must reject missing or inconsistent approval metadata rather than treating an unreviewed row as an allocation miss.
 
 ## Testing And Validation
 
@@ -142,24 +149,25 @@ Use focused Core, API, UI, and ingester tests, plus an end-to-end run against a 
 - more than 1,000 rows
 - accept, reject, local-only, and manual actions, and a rerun that preserves them
 - a manual link on a `type: fixed` entity: it survives a fixed-row save that does not change that key's ID, is applied by normalization over the row's own ID, and is replaced only when that key's row ID is edited
-- re-export after a rejection, after a specification delete, and with two conflicting specifications
+- re-export after a rejection, a change between accepted and local-only, a specification delete, and with two conflicting specifications
 - unowned and manual links surviving cleanup
+- exported local-only approvals being removed when stale, and conflicts with a pre-linked ID or a manual link being blocked
 - a candidate reported as absent or invalid, and an unavailable service at export
 - normalization with no network access producing the same `public_id` and downstream foreign-key values on repeated runs
-- change-request generation with a link-resolved row, a pre-linked ID, and an unreconciled row of a reconciled entity (blocked, not allocated)
+- change-request generation with a link-resolved row, a pre-linked ID, an approved local-only row, a rejected row, and an undecided row; test all four reconciliation modes so only an approved `reconcile-exact` or `reconcile-fuzzy` row may allocate
 
 Verify actual target IDs and downstream foreign-key values, not only HTTP responses or link counts. Test the service with a real match request, not only health or manifest checks.
 
 ## Acceptance Criteria
 
 - `SS-AC-1` For entity type `site`, a reviewed match-to-import workflow runs against a real database-backed service, and normalization sets the intended `public_id` and downstream foreign-key values. Rerunning review, export, and normalization without changes gives identical results.
-- `SS-AC-2` Every row is considered, including beyond 1,000 rows. Each decision and exported link uses the ordered business key, including compound keys. Duplicate labels never share a decision. Missing or duplicate keys are reported.
+- `SS-AC-2` Every row is considered, including beyond 1,000 rows. Each decision, exported link, and local-only approval uses the ordered business key, including compound keys. Duplicate labels never share a decision. Missing or duplicate keys are reported.
 - `SS-AC-3` The UI persists accept, reject, local-only, and manual decisions, shows candidates and confidence on one scale, and reports failures and unresolved rows. Reruns never change an operator decision. No candidate is accepted without an operator action.
-- `SS-AC-4` Export records `owner` and `verified_at` on each reconciliation link, removes only that owner's stale links (including on specification delete), never removes manual or unowned links, and stops on conflicting owners. An old-format catalog is ignored without error.
+- `SS-AC-4` Export records `owner` and `verified_at` on each reconciliation link and owner on each separate local-only approval. It removes only that owner's stale links and approvals (including on specification delete), never removes manual or unowned links, and stops on another owner's claim or a conflicting manual or unowned link. An old-format catalog is ignored without error.
 - `SS-AC-5` At export, a candidate the Authority Service reports as absent or invalid is not exported; an unavailable service results in an exported link with empty `verified_at`, shown as unverified.
 - `SS-AC-6` Normalization applies committed links with no network call and unchanged precedence.
-- `SS-AC-7` The change-request ingester does not select or pass an unreviewed candidate to SIMS. A row resolves to an existing entity only through a sidecar link, and a row of a reconciled entity without an operator decision is blocked, not allocated.
-- `SS-AC-8` A disposable, database-backed end-to-end test covers the success path and the rejection, rerun, changed-decision, stale-link, absent-row, and unavailable-service cases. A health-only service cannot pass readiness.
+- `SS-AC-7` The change-request ingester does not select or pass an unreviewed candidate to SIMS. Existing-ID links set `public_id`, pre-linked IDs keep their existing path unless an approval conflicts, and rejected or undecided reconciled rows without an ID are blocked. Only exported local-only approvals passed as trusted metadata may allocate, and only with `reconcile-exact` or `reconcile-fuzzy`; `lookup-only` and `lookup-extensible` never allocate.
+- `SS-AC-8` A disposable, database-backed end-to-end test covers the success path and the local-only approval, undecided-row block, rejection, rerun, changed-decision, stale-link, absent-row, and unavailable-service cases. A health-only service cannot pass readiness.
 
 ## Planning Handoff
 
@@ -172,7 +180,8 @@ Verify actual target IDs and downstream foreign-key values, not only HTTP respon
 - Cleanup of a removed specification runs when the specification is deleted.
 - Manual links, including for fixed-valued entities, go through the existing mapping-link endpoint as `source: manual`, are not checked by the Authority Service, and do not edit fixed rows.
 - No cross-process sidecar locking. One backend worker per project data directory is a deployment constraint, already stated in [OPERATIONS.md](../../OPERATIONS.md).
-- The change-request ingester does not read `verified_at` and does not pick candidates. It resolves existing entities only through sidecar links, and blocks unreconciled rows of reconciled entities. No current project relies on the ingester's own candidate picking.
+- Exported local-only approvals are distinct from ID links, keyed and owned by specification, and passed from the authorized sidecar as trusted ingester metadata. A missing `public_id` alone never permits allocation.
+- The change-request ingester does not read `verified_at` or pick candidates. It uses sidecar links for existing IDs, keeps the pre-linked-ID path, blocks rejected and undecided reconciled rows without IDs, and permits approved allocation only for `reconcile-exact` and `reconcile-fuzzy`. No current project relies on its own candidate picking.
 - The Authority Service proposal is the single normative contract; this proposal does not restate candidate URI rules.
 - Acceptance criteria use the `SS-AC-` prefix here and `AS-AC-` in the Authority Service proposal. This differs from the repository's usual `P-AC-` form so that phase plans can cite both documents without collisions.
 
@@ -188,12 +197,11 @@ Verify actual target IDs and downstream foreign-key values, not only HTTP respon
 
 **Validation**
 
-- Show actual normalized IDs and downstream references for accepted and rejected cases, not passing counts of mocked tests.
+- Show actual normalized IDs and downstream references for accepted, local-only, rejected, and undecided cases, not passing counts of mocked tests.
 
 ## Open Questions
 
 - **Existing-data adoption into SIMS for `site`:** Tracked in [Adopt Existing `site` Rows into SIMS as `materialized`](https://github.com/humlab-sead/sead_authority_service/blob/main/docs/proposals/SIMS_EXISTING_SITE_ADOPTION.md). It does not block reconciliation links but blocks end-to-end import of existing sites through SIMS. Its owner must be named before the ingester phase is validated end to end.
-- **How a local-only decision reaches the ingester:** An operator's "local-only" decision means the row is a new entity, and the ingester must be able to tell that apart from an unreconciled row. The sidecar link has an optional `target_id`, but whether a link without a target can carry this decision, and how it interacts with the per-entity reconciliation modes (`lookup-only`, `lookup-extensible`, `reconcile-exact`, `reconcile-fuzzy`), is not verified. Resolve before the ingester phase.
 
 ## Final Recommendation
 
