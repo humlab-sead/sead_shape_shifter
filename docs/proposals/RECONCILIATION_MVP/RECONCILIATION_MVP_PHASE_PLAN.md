@@ -26,7 +26,7 @@ It does not cover:
 - Auto-accept of candidates.
 - Live verification during normalization.
 - SEAD cutover or competing-writer coordination.
-- The SIMS adoption work itself, which has its own proposal and an unnamed owner. This plan treats it as a prerequisite for Phase 7.
+- The SIMS adoption work itself, which has its own proposal and is owned by Roger Mähler. Completed adoption is a prerequisite for Phase 7.
 - Staffing, dates, or release scheduling.
 
 ## Current Position
@@ -323,7 +323,7 @@ Prove the full workflow for `site` against real services, including repeated run
 **Depends On**
 
 - Phases 2, 5, and 6 outputs, and Phase 4 binding rule.
-- SIMS adoption of existing `site` rows (separate proposal; owner not yet named).
+- SIMS adoption of existing `site` rows (separate proposal; owner: Roger Mähler).
 
 **Outputs**
 
@@ -343,11 +343,11 @@ Prove the full workflow for `site` against real services, including repeated run
 **Task-Plan Handoff**
 
 - Source criteria: `SS-AC-1`, `SS-AC-8`, `AS-AC-6`.
-- Blocking question: who owns and schedules the SIMS adoption of existing `site` rows? Without it, existing-site binding cannot be validated.
+- SIMS adoption owner: Roger Mähler. Coordinate its schedule with him; existing-site binding cannot be validated until adoption is complete.
 
 **Readiness**
 
-Requires a named decision: an owner for the SIMS adoption work.
+Ready for a task plan.
 
 ## Cross-Phase Rules
 
@@ -371,4 +371,4 @@ Requires a named decision: an owner for the SIMS adoption work.
 
 ## Final Recommendation
 
-Start Phases 1, 2, 3, and 4 now: they are ready for task plans and have no open decision. The local-only contract is settled for Phase 6; name an owner for the SIMS adoption work before Phase 7. Do not call the workflow an MVP until Phase 7 passes.
+Start Phases 1, 2, 3, and 4 now: they are ready for task plans and have no open decision. The local-only contract is settled for Phase 6. Roger Mähler owns the SIMS adoption work; Phase 7 is ready for a task plan, but existing-site binding validation depends on that adoption being complete. Do not call the workflow an MVP until Phase 7 passes.
