@@ -4,6 +4,7 @@ import pkgutil
 import re
 import sys
 import unicodedata
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, Callable, Generic, Literal, Self, TypeVar
 
@@ -163,7 +164,7 @@ def find_parent_with(path: Path | str, filename: str) -> Path:
     return project_root
 
 
-def unique(seq: list[Any] | None) -> list[Any]:
+def unique(seq: Iterable[Any] | None) -> list[Any]:
     if seq is None:
         return []
     seen: set[Any] = set()

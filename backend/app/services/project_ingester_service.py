@@ -1,6 +1,6 @@
 """Compose project validation and table-based ingester operations."""
 
-from typing import Any
+from typing import Any, cast
 
 from loguru import logger
 from pydantic import ValidationError as PydanticValidationError
@@ -8,7 +8,13 @@ from pydantic import ValidationError as PydanticValidationError
 from backend.app.authorization.models import Action, AuthorizedResource, ResourceType
 from backend.app.core.config import Settings, get_settings
 from backend.app.exceptions import ConfigurationError
-from backend.app.ingesters.protocol import IngesterConfig, IngestionResult, TableSourceIngester, ValidationResult
+from backend.app.ingesters.protocol import (
+    ConfiguredTableIngester,
+    IngesterConfig,
+    IngestionResult,
+    TableSourceIngester,
+    ValidationResult,
+)
 from backend.app.ingesters.registry import get_ingester_registry
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.ingester import IngestResponse, ProjectIngesterRequest, ValidateResponse
@@ -66,7 +72,7 @@ class ProjectIngesterService:
         )
         tables = shapeshifter.table_store
         self._log_table_counts(project_name, tables)
-        ingester: TableSourceIngester = ingester_class(config)
+        ingester: TableSourceIngester = ingester_class(config=config)
         result: ValidationResult = await ingester.validate_tables(tables, source_name=f"project:{project_name}")
 
         return ValidateResponse(
@@ -107,7 +113,7 @@ class ProjectIngesterService:
         )
         tables = shapeshifter.table_store
         self._log_table_counts(project_name, tables)
-        ingester: TableSourceIngester = ingester_class(config)
+        ingester: TableSourceIngester = ingester_class(config=config)
         result: IngestionResult = await ingester.ingest_tables(
             tables,
             source_name=f"project:{project_name}",
@@ -173,7 +179,7 @@ class ProjectIngesterService:
         return project, core_project, warnings, []
 
     @staticmethod
-    def _get_table_ingester(key: str) -> type[TableSourceIngester] | ValidateResponse:
+    def _get_table_ingester(key: str) -> type[ConfiguredTableIngester] | ValidateResponse:
         """Return the registered table ingester or a clear file-input-required error."""
         ingester_class = get_ingester_registry().get(key)
         if ingester_class is None:
@@ -181,7 +187,7 @@ class ProjectIngesterService:
         if not issubclass(ingester_class, TableSourceIngester):
             message = f"Ingester '{key}' requires file input and does not support normalized tables"
             return ValidateResponse(is_valid=False, errors=[message])
-        return ingester_class
+        return cast(type[ConfiguredTableIngester], ingester_class)
 
     def _create_trusted_config(
         self,
@@ -234,21 +240,28 @@ class ProjectIngesterService:
             extra["deploy_strategy"] = request.deploy_strategy
 
         extra = inject_ingester_runtime_dependencies(key, extra, self.settings)
+        host = self.settings.INGEST_TARGET_HOST
+        port = self.settings.INGEST_TARGET_PORT
+        dbname = self.settings.INGEST_TARGET_DBNAME
+        user = self.settings.INGEST_TARGET_USER
+        if host is None or dbname is None or user is None:
+            raise ProjectIngesterConfigurationError("Missing required ingester database configuration")
         extra = inject_ingester_database_dependencies(
             key,
             extra,
             {
-                "host": self.settings.INGEST_TARGET_HOST,
-                "port": self.settings.INGEST_TARGET_PORT,
-                "dbname": self.settings.INGEST_TARGET_DBNAME,
-                "user": self.settings.INGEST_TARGET_USER,
+                "host": host,
+                "port": port,
+                "dbname": dbname,
+                "user": user,
             },
         )
+
         return IngesterConfig(
-            host=self.settings.INGEST_TARGET_HOST,
-            port=self.settings.INGEST_TARGET_PORT,
-            dbname=self.settings.INGEST_TARGET_DBNAME,
-            user=self.settings.INGEST_TARGET_USER,
+            host=host,
+            port=port,
+            dbname=dbname,
+            user=user,
             submission_name=request.submission_context.submission_name,
             data_types=request.submission_context.datatype,
             output_folder=str(self.settings.INGEST_OUTPUT_DIR),

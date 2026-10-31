@@ -34,7 +34,7 @@ class GroupMembershipResolver(Protocol):
 
     def resolve_members(self, group_id: str) -> MembershipSnapshot:
         """Return the current review result for one group."""
-
+        ...
 
 class HttpGroupMembershipResolver:
     """Read group members from a configured trusted HTTP provider."""

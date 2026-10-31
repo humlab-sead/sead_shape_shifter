@@ -436,6 +436,8 @@ class ProjectMapper:
         deletes: list[LinkDelete] = []
         for operation in pending.operations:
             if operation.op == "upsert":
+                if operation.target_id is None:
+                    raise ValueError("Upsert operation must have a target_id")
                 upserts.append(
                     LinkUpsert(
                         key=operation.key,
