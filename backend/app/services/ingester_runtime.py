@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -11,7 +10,6 @@ import psycopg
 from loguru import logger
 from psycopg import sql
 
-from backend.app.clients.reconciliation_client import ReconciliationClient, ReconciliationQuery
 from backend.app.clients.sims_client import SimsClient
 from backend.app.core.config import Settings
 from backend.app.models.sims import CapabilitiesResponse, IdentitySignal, IdentityType, ResolutionRequest, ResolveRequest
@@ -33,14 +31,6 @@ def inject_ingester_runtime_dependencies(ingester_key: str | None, extra: dict[s
             SimsClient(base_url=settings.SIMS_SERVICE_URL),
             created_by=resolved_extra.get("sims_created_by"),
             business_keys=trusted_project_context.business_keys if trusted_project_context is not None else None,
-        ),
-    )
-    resolved_extra.setdefault(
-        "reconciliation_client",
-        SeadChangeRequestReconciliationAdapter(
-            ReconciliationClient(base_url=settings.RECONCILIATION_SERVICE_URL),
-            query_columns=resolved_extra.get("reconciliation_query_columns"),
-            entity_types=resolved_extra.get("reconciliation_entity_types"),
         ),
     )
     return resolved_extra
@@ -301,69 +291,6 @@ class SeadChangeRequestSimsAdapter:
             return entity_name
 
         return f"{entity_name}:" + "|".join(serialized_pairs)
-
-
-class SeadChangeRequestReconciliationAdapter:
-    """Thin adapter from the ingester orchestration seam to the backend reconciliation client."""
-
-    def __init__(
-        self,
-        reconciliation_client: ReconciliationClient,
-        *,
-        query_columns: dict[str, list[str]] | None = None,
-        entity_types: dict[str, str] | None = None,
-    ) -> None:
-        self._reconciliation_client = reconciliation_client
-        self._query_columns = query_columns or {}
-        self._entity_types = entity_types or {}
-
-    async def reconcile_entity(self, entity_name: str, row: dict[str, Any]) -> int | None:
-        """Run a single-row reconciliation query and return the extracted target ID."""
-        query_text = self._build_query_text(entity_name, row)
-        if query_text is None:
-            logger.warning(f"Cannot reconcile '{entity_name}': row has no non-empty queryable values")
-            return None
-
-        query = ReconciliationQuery(
-            query=query_text,
-            entity_type=self._entity_types.get(entity_name, entity_name),
-        )
-        results = await self._reconciliation_client.reconcile_batch({"row-0": query})
-        candidates = results.get("row-0", [])
-        best_candidate = self._pick_best_candidate(candidates)
-        if best_candidate is None:
-            return None
-
-        return self._extract_target_id(best_candidate.id)
-
-    def _build_query_text(self, entity_name: str, row: dict[str, Any]) -> str | None:
-        columns = self._query_columns.get(entity_name)
-        if not columns:
-            columns = [key for key in row if key != "system_id" and not key.endswith("_id")]
-
-        values = [str(row[column]).strip() for column in columns if column in row and not _is_missing_value(row[column])]
-        values = [value for value in values if value]
-        if not values:
-            return None
-        return " ".join(values)
-
-    @staticmethod
-    def _pick_best_candidate(candidates: list[Any]) -> Any | None:
-        if not candidates:
-            return None
-
-        exact_matches = [candidate for candidate in candidates if getattr(candidate, "match", False)]
-        if exact_matches:
-            return max(exact_matches, key=lambda candidate: getattr(candidate, "score", 0) or 0)
-        return max(candidates, key=lambda candidate: getattr(candidate, "score", 0) or 0)
-
-    @staticmethod
-    def _extract_target_id(candidate_id: str) -> int | None:
-        match = re.search(r"(\d+)$", candidate_id)
-        if match is None:
-            logger.warning(f"Could not extract integer target ID from reconciliation candidate '{candidate_id}'")
-            return None
-        return int(match.group(1))
 
 
 class SeadChangeRequestTargetCollisionChecker:

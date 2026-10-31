@@ -13,6 +13,8 @@ from typing import Any
 
 import pandas as pd
 
+from src.reconciliation.mapping_model import LocalOnlyApproval
+
 APPROVED_DATATYPES: frozenset[str] = frozenset(
     {
         "mal",
@@ -55,7 +57,7 @@ class PlannedRowAction(StrEnum):
     BLOCK_EXISTING_UPDATE = "block_existing_update"
     ALLOCATE = "allocate"
     RESERVE_DATABASE_ID = "reserve_database_id"
-    RECONCILE = "reconcile"
+    BLOCK_RECONCILIATION = "block_reconciliation"
     EVALUATE_BRIDGE = "evaluate_bridge"
     INHERIT_AGGREGATE = "inherit_aggregate"
     DEFER_TO_DEPLOYMENT = "defer_to_deployment"
@@ -120,6 +122,8 @@ class TrustedProjectContext:
     - ``data_provider_id`` is the operator-reconciled SEAD provider ID from the project's
       fixed row;
     - ``business_keys`` maps each tracked entity to its ordered ``EntityConfig.keys``.
+    - ``mapping_project_name``, ``local_key_columns_by_entity``, and
+      ``local_only_approvals`` carry committed approvals from the normalized sidecar.
 
     The ingester rejects conflicting caller values and never derives these values from
     request metadata.
@@ -131,6 +135,9 @@ class TrustedProjectContext:
     scope_name: str
     data_provider_id: int
     business_keys: dict[str, tuple[str, ...]] = field(default_factory=dict)
+    mapping_project_name: str | None = None
+    local_key_columns_by_entity: dict[str, tuple[str, ...]] = field(default_factory=dict)
+    local_only_approvals: dict[str, dict[str, LocalOnlyApproval]] = field(default_factory=dict)
 
 
 @dataclass(slots=True)
@@ -151,6 +158,7 @@ class PlannedTable:
     planned_actions: pd.Series
     mutable_fields: list[str] | None = None
     diagnostics: list[str] = field(default_factory=list)
+    blocked_row_reasons: dict[object, str] = field(default_factory=dict)
 
 
 @dataclass(slots=True)
@@ -161,7 +169,7 @@ class IdentityWorkPlan:
     update_candidate_rows: dict[str, pd.DataFrame] = field(default_factory=dict)
     blocked_existing_update_rows: dict[str, pd.DataFrame] = field(default_factory=dict)
     allocation_rows: dict[str, pd.DataFrame] = field(default_factory=dict)
-    reconciliation_rows: dict[str, pd.DataFrame] = field(default_factory=dict)
+    blocked_reconciliation_rows: dict[str, pd.DataFrame] = field(default_factory=dict)
     bridge_rows: dict[str, pd.DataFrame] = field(default_factory=dict)
     inherit_rows: dict[str, pd.DataFrame] = field(default_factory=dict)
 
@@ -182,8 +190,8 @@ class IdentityWorkPlan:
         return sum(len(frame.index) for frame in self.allocation_rows.values())
 
     @property
-    def total_reconciliation_rows(self) -> int:
-        return sum(len(frame.index) for frame in self.reconciliation_rows.values())
+    def total_blocked_reconciliation_rows(self) -> int:
+        return sum(len(frame.index) for frame in self.blocked_reconciliation_rows.values())
 
     @property
     def total_bridge_rows(self) -> int:

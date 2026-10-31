@@ -666,7 +666,7 @@ async def delete_catalog(
         BadRequestError: If catalog has mappings and force=False
     """
     # Service returns domain model
-    catalog, removed_owned_links = service.delete_specification(
+    catalog, removed_owned_links, removed_owned_approvals = service.delete_specification(
         project_name=authorized_project.resource.locator,
         entity_name=entity_name,
         target_field=target_field,
@@ -678,6 +678,7 @@ async def delete_catalog(
     return api.EntityResolutionCatalogDeleteResult(
         **catalog_dto.model_dump(),
         removed_owned_links=removed_owned_links,
+        removed_owned_approvals=removed_owned_approvals,
     )
 
 

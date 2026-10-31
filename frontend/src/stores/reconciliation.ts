@@ -504,7 +504,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     entityName: string,
     targetField: string,
     force: boolean = false
-  ): Promise<number> {
+  ): Promise<{ removedOwnedLinks: number; removedOwnedApprovals: number }> {
     loadingSpecs.value = true
     specsError.value = null
     try {
@@ -514,7 +514,11 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
         targetField,
         force
       )
-      const { removed_owned_links: removedOwnedLinks, ...updatedConfig } = result
+      const {
+        removed_owned_links: removedOwnedLinks,
+        removed_owned_approvals: removedOwnedApprovals,
+        ...updatedConfig
+      } = result
       reconciliationConfig.value = updatedConfig
       // Reload specifications list
       await loadSpecifications(projectName)
@@ -522,7 +526,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
       if (selectedSpec.value?.entity_name === entityName && selectedSpec.value?.target_field === targetField) {
         selectedSpec.value = null
       }
-      return removedOwnedLinks
+      return { removedOwnedLinks, removedOwnedApprovals }
     } catch (e: any) {
       specsError.value = e.response?.data?.detail || 'Failed to delete specification'
       console.error('Failed to delete specification:', e)

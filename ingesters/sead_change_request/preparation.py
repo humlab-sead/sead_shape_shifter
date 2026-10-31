@@ -3,13 +3,14 @@
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
-from ingesters.sead_change_request.capability_preflight import preflight_capabilities
+from ingesters.sead_change_request.capability_preflight import has_sims_identity_operations, preflight_capabilities
 from ingesters.sead_change_request.contracts import (
     CapabilityPreflightResult,
     ChangeRequestPackage,
     IdentityAssignment,
     IdentityResolutionResult,
     IdentityWorkPlan,
+    LocalOnlyApproval,
     PendingConfirmationReport,
     PlannedTable,
     SourceTableBundle,
@@ -50,6 +51,8 @@ class ResolvedInputs:
     deploy_strategy: Any | None
     staging_target_schema: str | None = None
     trusted_project_context: TrustedProjectContext | None = None
+    local_key_columns_by_entity: dict[str, tuple[str, ...]] = field(default_factory=dict)
+    local_only_approvals: dict[str, dict[str, LocalOnlyApproval]] = field(default_factory=dict)
 
     @property
     def is_staging(self) -> bool:
@@ -93,24 +96,29 @@ async def prepare_change_request(
     planned: PlannedBundle,
     *,
     sims_client: Any | None,
-    reconciliation_client: Any | None,
     collision_checker: Any | None = None,
 ) -> PreparationResult:
     """Run the shared preparation workflow after inputs are resolved."""
-    preflight_result: CapabilityPreflightResult | None = await _run_capability_preflight(
-        planned.tables,
-        inputs.target_model,
-        sims_client,
-    )
-
-    orchestration_result: IdentityOrchestrationResult = await orchestrate_identity_assignments(
-        planned.tables,
-        inputs.submission_context,
-        sims_client=sims_client,
-        reconciliation_client=reconciliation_client,
-        target_model_entities=inputs.target_model.entities,
-        fallback_assignments=inputs.fallback_assignments,
-    )
+    preflight_result: CapabilityPreflightResult | None = None
+    orchestration_result: IdentityOrchestrationResult
+    if planned.errors:
+        orchestration_result = IdentityOrchestrationResult()
+    else:
+        preflight_result = await _run_capability_preflight(
+            planned.tables,
+            inputs.target_model,
+            sims_client,
+        )
+        if preflight_result is not None and preflight_result.has_blockers:
+            orchestration_result = IdentityOrchestrationResult(assignments=inputs.fallback_assignments)
+        else:
+            orchestration_result = await orchestrate_identity_assignments(
+                planned.tables,
+                inputs.submission_context,
+                sims_client=sims_client,
+                target_model_entities=inputs.target_model.entities,
+                fallback_assignments=inputs.fallback_assignments,
+            )
     if orchestration_result.binding_set_uuid and not inputs.submission_context.binding_set_uuid:
         inputs.submission_context.binding_set_uuid = orchestration_result.binding_set_uuid
 
@@ -200,7 +208,7 @@ async def _run_capability_preflight(
     capability discovery, so callers without preflight support keep the existing
     non-SIMS behavior.
     """
-    if sims_client is None:
+    if sims_client is None or not has_sims_identity_operations(planned_tables, target_model):
         return None
     get_capabilities = getattr(sims_client, "get_capabilities", None)
     if get_capabilities is None:

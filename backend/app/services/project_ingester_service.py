@@ -1,5 +1,6 @@
 """Compose project validation and table-based ingester operations."""
 
+from dataclasses import replace
 from typing import Any
 
 from loguru import logger
@@ -16,8 +17,10 @@ from backend.app.models.project import Project
 from backend.app.services.ingester_runtime import inject_ingester_database_dependencies, inject_ingester_runtime_dependencies
 from backend.app.services.project_data_provider_service import ProjectDataProviderError, ProjectDataProviderService
 from backend.app.services.project_service import ProjectService, get_project_service
+from ingesters.sead_change_request.contracts import TrustedProjectContext
 from ingesters.sead_change_request.input_resolution import TRUSTED_PROJECT_CONTEXT_KEY
 from src.specifications import CompositeProjectSpecification
+from src.reconciliation.mapping_model import MappingCatalog
 from src.target_model.conformance import ConformanceIssue, ForeignKeyValueSourceConformanceValidator
 from src.target_model.models import TargetModel
 from src.workflow import normalize_project
@@ -64,6 +67,10 @@ class ProjectIngesterService:
             default_entity=request.default_entity,
             env_file=None,
         )
+        try:
+            config = self._attach_local_only_approvals(key, project_name, config, shapeshifter.mapping_catalog)
+        except ProjectIngesterConfigurationError as exc:
+            return ValidateResponse(is_valid=False, errors=[str(exc)], warnings=project_warnings)
         tables = shapeshifter.table_store
         self._log_table_counts(project_name, tables)
         ingester: TableSourceIngester = ingester_class(config)
@@ -105,6 +112,10 @@ class ProjectIngesterService:
             default_entity=request.default_entity,
             env_file=None,
         )
+        try:
+            config = self._attach_local_only_approvals(key, project_name, config, shapeshifter.mapping_catalog)
+        except ProjectIngesterConfigurationError as exc:
+            return self._ingestion_failure("Ingestion configuration failed", [str(exc)])
         tables = shapeshifter.table_store
         self._log_table_counts(project_name, tables)
         ingester: TableSourceIngester = ingester_class(config)
@@ -254,6 +265,46 @@ class ProjectIngesterService:
             output_folder=str(self.settings.INGEST_OUTPUT_DIR),
             extra=extra,
         )
+
+    @staticmethod
+    def _attach_local_only_approvals(
+        key: str,
+        project_name: str,
+        config: IngesterConfig,
+        mapping_catalog: MappingCatalog | None,
+    ) -> IngesterConfig:
+        """Attach committed approvals from the normalization snapshot to the Change Request config."""
+        if key != "sead_change_request" or mapping_catalog is None:
+            return config
+        if mapping_catalog.metadata.project != project_name:
+            raise ProjectIngesterConfigurationError(
+                f"Mapping sidecar project '{mapping_catalog.metadata.project}' does not match authorized project '{project_name}'"
+            )
+
+        extra: dict[str, Any] = config.extra or {}
+        trusted_context = extra.get(TRUSTED_PROJECT_CONTEXT_KEY)
+        if not isinstance(trusted_context, TrustedProjectContext):
+            raise ProjectIngesterConfigurationError("Change Request approvals require backend-owned trusted project context")
+
+        local_key_columns_by_entity: dict[str, tuple[str, ...]] = {}
+        local_only_approvals = {}
+        for entity_name, entity_mapping in mapping_catalog.entities.items():
+            committed_approvals = mapping_catalog.committed_local_only_approvals_by_entity(entity_name)
+            if not committed_approvals:
+                continue
+            local_key_columns_by_entity[entity_name] = (
+                (entity_mapping.local_key,) if isinstance(entity_mapping.local_key, str) else tuple(entity_mapping.local_key)
+            )
+            local_only_approvals[entity_name] = committed_approvals
+
+        updated_context = replace(
+            trusted_context,
+            mapping_project_name=mapping_catalog.metadata.project,
+            local_key_columns_by_entity=local_key_columns_by_entity,
+            local_only_approvals=local_only_approvals,
+        )
+        config.extra = {**extra, TRUSTED_PROJECT_CONTEXT_KEY: updated_context}
+        return config
 
     @staticmethod
     def _format_direct_fk_issues(issues: list[ConformanceIssue]) -> str:

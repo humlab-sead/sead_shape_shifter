@@ -145,6 +145,13 @@ class LinkOwner(BaseModel):
         return self
 
 
+class LocalOnlyApproval(BaseModel):
+    """A committed approval to allocate a new target ID for one business key."""
+
+    owner: LinkOwner
+    committed_at: datetime | None = None
+
+
 class EntityType(str, Enum):
     """Entity classification used for UI grouping and validation."""
 
@@ -181,6 +188,7 @@ class EntityMapping(BaseModel):
     entity_type: EntityType = EntityType.PRIMARY
     description: Optional[str] = None
     links: dict[str, Link] = Field(default_factory=dict)
+    local_only_approvals: dict[str, LocalOnlyApproval] = Field(default_factory=dict)
 
 
 class Metadata(BaseModel):
@@ -237,3 +245,10 @@ class MappingCatalog(BaseModel):
         if entity is None:
             return {}
         return {k: v for k, v in entity.links.items() if v.committed_at is None}
+
+    def committed_local_only_approvals_by_entity(self, entity_name: str) -> dict[str, LocalOnlyApproval]:
+        """Return committed local-only approvals for *entity_name*."""
+        entity: EntityMapping | None = self.entities.get(entity_name)
+        if entity is None:
+            return {}
+        return {key: approval for key, approval in entity.local_only_approvals.items() if approval.committed_at is not None}

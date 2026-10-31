@@ -74,6 +74,8 @@ const reconciliationStore = reactive({
   exportToMapping: vi.fn(async () => ({
     exported: 2,
     removed: 1,
+    exported_local_only_approvals: 1,
+    removed_local_only_approvals: 2,
     skipped_manual: 1,
     entity: 'site',
     field: 'site_code',
@@ -152,6 +154,8 @@ describe('ReconciliationView', () => {
     reconciliationStore.exportToMapping = vi.fn(async () => ({
       exported: 2,
       removed: 1,
+      exported_local_only_approvals: 1,
+      removed_local_only_approvals: 2,
       skipped_manual: 1,
       entity: 'site',
       field: 'site_code',
@@ -166,7 +170,7 @@ describe('ReconciliationView', () => {
     expect(wrapper.get('[data-testid="yaml-editor"]').attributes('data-mode')).toBe('reconciliation')
   })
 
-  it('exports accepted links and reports created, removed, and protected link counts', async () => {
+  it('exports accepted links and local-only approvals with separate counts', async () => {
     const wrapper = await mountView()
 
     await wrapper.get('[data-testid="open-reconcile"]').trigger('click')
@@ -180,13 +184,18 @@ describe('ReconciliationView', () => {
     expect(exportButton.attributes('disabled')).toBeUndefined()
     expect(reconciliationStore.exportToMapping).toHaveBeenCalledWith('test_project', 'site', 'site_code')
     expect(reconciliationStore.loadMappingData).toHaveBeenCalledWith('test_project', 'site')
-    expect(wrapper.text()).toContain('2 link(s) exported; 1 stale link(s) removed; 1 protected link(s) skipped.')
+    expect(wrapper.text()).toContain(
+      '2 link(s) exported; 1 stale link(s) removed; 1 local-only approval(s) exported; '
+      + '2 stale local-only approval(s) removed; 1 protected link(s) skipped.'
+    )
   })
 
   it('reports per-key rejected and unverified export outcomes', async () => {
     reconciliationStore.exportToMapping = vi.fn(async () => ({
       exported: 1,
       removed: 1,
+      exported_local_only_approvals: 0,
+      removed_local_only_approvals: 0,
       skipped_manual: 0,
       entity: 'site',
       field: 'site_code',

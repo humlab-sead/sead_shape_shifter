@@ -78,6 +78,8 @@ export interface ReconciliationRowError {
 export interface ExportToMappingResult {
   exported: number
   removed: number
+  exported_local_only_approvals: number
+  removed_local_only_approvals: number
   skipped_manual: number
   entity: string
   field: string
@@ -92,6 +94,7 @@ export interface ExportToMappingOutcome {
 
 export interface DeleteSpecificationResult extends EntityResolutionCatalog {
   removed_owned_links: number
+  removed_owned_approvals: number
 }
 
 export interface ReconciliationPreviewRow {

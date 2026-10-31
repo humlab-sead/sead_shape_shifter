@@ -161,9 +161,9 @@
               </div>
 
               <v-alert type="info" variant="tonal" class="mb-4">
-                Export checks accepted candidates against SEAD. Missing or invalid candidates are not exported; links
-                exported while the service is unavailable remain unverified until you export again. Manual and unowned
-                links are protected.
+                Export checks accepted candidates against SEAD and records local-only approvals separately. Missing or
+                invalid candidates are not exported; links exported while the service is unavailable remain unverified
+                until you export again. Manual and unowned links are protected.
               </v-alert>
 
               <v-alert v-if="previewError" data-testid="preview-error" type="error" variant="tonal" class="mb-4">
@@ -447,6 +447,8 @@ async function handleExportToMapping() {
     const targetField = selectedTarget.value
     const result = await reconciliationStore.exportToMapping(props.projectName, entityName, targetField)
     const summary = `${result.exported} link(s) exported; ${result.removed} stale link(s) removed; `
+      + `${result.exported_local_only_approvals} local-only approval(s) exported; `
+      + `${result.removed_local_only_approvals} stale local-only approval(s) removed; `
       + `${result.skipped_manual} protected link(s) skipped.`
 
     try {

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from ingesters.sead_change_request.contracts import CapabilityPreflightResult, PlannedTable
+from ingesters.sead_change_request.contracts import CapabilityPreflightResult, PlannedRowAction, PlannedTable
 from src.target_model.effective_identity import resolve_effective_identity
 from src.target_model.models import EntitySpec, TargetModel
 
@@ -53,7 +53,7 @@ def preflight_capabilities(
             continue
 
         checked_entities.append(entity_name)
-        required = _required_sims_operations(entity_spec)
+        required = _required_sims_operations(entity_spec, planned_table)
         if not required:
             continue
 
@@ -75,23 +75,22 @@ def preflight_capabilities(
     )
 
 
-def _required_sims_operations(spec: EntitySpec) -> set[str]:
-    """Return the SIMS operations an entity's effective identity mode requires.
+def has_sims_identity_operations(planned: list[PlannedTable], target_model: TargetModel) -> bool:
+    """Return whether planned rows require a SIMS identity operation."""
+    for planned_table in planned:
+        entity_spec = target_model.entities.get(planned_table.entity_name)
+        if entity_spec is not None and _required_sims_operations(entity_spec, planned_table):
+            return True
+    return False
 
-    Tracked entities allocate a new tracked aggregate. Reconciled entities bind
-    an approved existing aggregate identity; `lookup-only` and `lookup-extensible`
-    strategies never allocate, while `reconcile-exact` and `reconcile-fuzzy` may
-    allocate after an approved miss. Child and derived entities have no SIMS
-    operation.
-    """
+
+def _required_sims_operations(spec: EntitySpec, planned_table: PlannedTable) -> set[str]:
+    """Return the SIMS operations required by the rows actually planned for an entity."""
     effective = resolve_effective_identity(spec)
 
-    if effective.identity_tracking == "tracked":
+    if effective.identity_tracking in {"tracked", "reconciled"} and bool(
+        (planned_table.planned_actions == PlannedRowAction.ALLOCATE).any()
+    ):
         return {"allocate_new"}
-
-    if effective.identity_tracking == "reconciled":
-        if effective.reconciliation in ("lookup-only", "lookup-extensible"):
-            return {"bind_existing"}
-        return {"bind_existing", "allocate_new"}
 
     return set()

@@ -58,16 +58,6 @@ class _SimsClient:
         return None
 
 
-class _ReconciliationClient:
-    """Return a configured existing target ID for reconciled lookups."""
-
-    def __init__(self, target_ids: dict[str, int] | None = None) -> None:
-        self.target_ids = target_ids or {}
-
-    async def reconcile_entity(self, entity_name: str, row: dict) -> int | None:
-        return self.target_ids.get(entity_name)
-
-
 def _connection_parameters() -> dict[str, Any]:
     """Return disposable connection parameters or skip the test."""
     host = os.getenv("SEAD_DISPOSABLE_POSTGRES_HOST")
@@ -231,7 +221,6 @@ def _ingester(
     schema: str | None,
     output_folder: Any,
     sims: _SimsClient | None = None,
-    reconciliation: _ReconciliationClient | None = None,
     target_model: dict[str, Any] | None = None,
 ) -> SeadChangeRequestIngester:
     """Build an ingester configured for inline staging."""
@@ -247,7 +236,6 @@ def _ingester(
                 "target_model": target_model or _target_model(),
                 "submission_context": _submission_context(),
                 "sims_client": sims or _SimsClient(),
-                "reconciliation_client": reconciliation or _ReconciliationClient({"site": 7001}),
                 "deploy_strategy": "inline_staging",
                 "staging_target_schema": schema,
             },
@@ -516,7 +504,6 @@ class TestInlineStagingRejections:
                 tables,
                 schema=disposable_schema,
                 output_folder=tmp_path,
-                reconciliation=_ReconciliationClient({}),
                 target_model=model,
             )
         )

@@ -149,6 +149,8 @@ describe('reconciliation store', () => {
     const result = {
       exported: 1,
       removed: 0,
+      exported_local_only_approvals: 0,
+      removed_local_only_approvals: 0,
       skipped_manual: 0,
       entity: 'site',
       field: 'site_code',

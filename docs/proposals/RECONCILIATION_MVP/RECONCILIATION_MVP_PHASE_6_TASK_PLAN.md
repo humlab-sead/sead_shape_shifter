@@ -10,10 +10,10 @@
 
 **Acceptance criteria**
 
-1. [ ] `PH6-AC-1` (from `SS-AC-7`): The ingester never selects or passes an unreviewed candidate to SIMS.
-2. [ ] `PH6-AC-2` (from `SS-AC-7`): Normalization applies existing-ID links; a non-conflicting pre-linked ID keeps its existing path; rejected and undecided reconciled rows without an ID are blocked.
-3. [ ] `PH6-AC-3` (from `SS-AC-4`, `SS-AC-7`): Exported local-only approvals are separate, owner-tagged sidecar entries keyed by the encoded business key. Only their owner can remove stale approvals, and the authorized backend supplies them as trusted ingester metadata without changing `public_id`.
-4. [ ] `PH6-AC-4` (from `SS-AC-7`): An exported local-only approval can allocate with `reconcile-exact` or `reconcile-fuzzy`, but cannot allocate with `lookup-only` or `lookup-extensible`.
+1. [x] `PH6-AC-1` (from `SS-AC-7`): The ingester never selects or passes an unreviewed candidate to SIMS.
+2. [x] `PH6-AC-2` (from `SS-AC-7`): Normalization applies existing-ID links; a non-conflicting pre-linked ID keeps its existing path; rejected and undecided reconciled rows without an ID are blocked.
+3. [x] `PH6-AC-3` (from `SS-AC-4`, `SS-AC-7`): Exported local-only approvals are separate, owner-tagged sidecar entries keyed by the encoded business key. Only their owner can remove stale approvals, and the authorized backend supplies them as trusted ingester metadata without changing `public_id`.
+4. [x] `PH6-AC-4` (from `SS-AC-7`): An exported local-only approval can allocate with `reconcile-exact` or `reconcile-fuzzy`, but cannot allocate with `lookup-only` or `lookup-extensible`.
 
 **Constraints:** Keep the two stores and explicit export. Do not treat `Link(target_id=None)` as an approval, read the decision catalog or `verified_at` from the ingester, add approval columns to normalized data, call a matching service during ingestion, or change Core `system_id` relationships. Keep manual and unowned links protected and sidecar saves version-checked. Existing pre-linked IDs and tracked, child, and derived entity behavior remain supported.
 
@@ -51,17 +51,17 @@
 
 **Tasks:**
 
-* [ ] `T1.1` **Change:** Add a typed sidecar collection for committed local-only approvals, separate from `EntityMapping.links`.
+* [x] `T1.1` **Change:** Add a typed sidecar collection for committed local-only approvals, separate from `EntityMapping.links`.
   * **Target:** `src/reconciliation/mapping_model.py::EntityMapping` and `MappingCatalog`; `tests/reconciliation/test_mapping_sidecar.py`.
   * **Current -> required:** Only ID links are persisted -> an approval has an encoded key, required specification owner, and explicit committed state; legacy YAML loads with no approvals.
   * **Implementation:** Reuse `LinkOwner` and the sidecar manager's existing serialization/version checks. Do not create a targetless `Link`, change `committed_links_by_entity`, or alter normalization's ID assignment.
   * **Validation:** `V-1`: old fixture, compound key, round-trip, malformed owner, draft/uncommitted entry rejection, and no null-ID application.
-* [ ] `T1.2` **Change:** Export and clean approvals together with owned links.
+* [x] `T1.2` **Change:** Export and clean approvals together with owned links.
   * **Target:** `backend/app/services/reconciliation/service.py::{_export_to_mapping_locked, _remove_owned_mapping_links_locked, delete_specification, replace_catalog}`; `backend/tests/api/v1/test_reconciliation_export.py`, `backend/tests/api/v1/test_reconciliation_specifications.py`, `backend/tests/services/test_mapping_write_coordination.py`.
   * **Current -> required:** Local-only is ignored -> export adds its approval, replaces its former owned ID link, and removes stale approvals on changed/rejected/deleted decisions and on specification deletion or whole-catalog replacement.
   * **Implementation:** Check claims against other specifications and sidecar entries before mutating; conflict with a manual/unowned link or other owner fails without a write. Reuse the project lock, fresh snapshot, expected version, atomic save, and sidecar-first specification removal. Do not rewrite an unchanged sidecar. Retain the existing partial-failure report when catalog persistence fails.
   * **Validation:** `V-2`: accepted/local-only/rejected transitions, re-export byte equality, owner and protected-link conflicts, compound keys, version conflict, every specification-removal route, and accurate cleanup counts.
-* [ ] `T1.3` **Change:** Report approval creation and removal without calling them links.
+* [x] `T1.3` **Change:** Report approval creation and removal without calling them links.
   * **Target:** `backend/app/models/reconciliation.py::{ExportToMappingResult, EntityResolutionCatalogDeleteResult}`, `backend/app/api/v1/endpoints/reconciliation.py::{export_reconciliation_to_mapping, delete_specification}`, `frontend/src/types/reconciliation.ts`, `frontend/src/stores/reconciliation.ts::deleteSpecification`, `frontend/src/components/reconciliation/{ReconciliationView,SpecificationsList}.vue`, `frontend/src/components/reconciliation/__tests__/{ReconciliationView,SpecificationsList}.test.ts`.
   * **Current -> required:** API and UI report link counts only -> additive approval counts are visible, and existing `exported`, `removed`, `skipped_manual`, and `removed_owned_links` retain their link-only meanings.
   * **Implementation:** Preserve existing response fields and route authorization. Strip both deletion-count fields before assigning catalog state and return both counts to the list view. Show a failure, not success, on conflicts; update the typed UI contract and deletion/export feedback together.
@@ -79,12 +79,12 @@
 
 **Tasks:**
 
-* [ ] `T2.1` **Change:** Attach approvals from the authorized project's normalization snapshot to SEAD Change Request configuration.
+* [x] `T2.1` **Change:** Attach approvals from the authorized project's normalization snapshot to SEAD Change Request configuration.
   * **Target:** `backend/app/services/project_ingester_service.py::{validate_project_tables, ingest_project_tables}`; `backend/tests/services/test_project_ingester_service.py`, `backend/tests/api/test_project_ingester_routes.py`.
   * **Current -> required:** The project service sends normalized tables but no decision metadata -> after `normalize_project`, both operations pass typed approvals from the same loaded `mapping_catalog` in backend-owned `IngesterConfig.extra`.
   * **Implementation:** Share one helper between the two operations; require the authorized project and sidecar metadata to agree. Do not read a second, possibly different sidecar snapshot, accept approval overrides from the request or `source_name`, or change `TableSourceIngester`.
   * **Validation:** `V-4`: matching authorized project and sidecar, wrong project/forged metadata, missing sidecar, validation/ingest parity, and unchanged non-Change-Request behavior; reject malformed state before SIMS or output writes.
-* [ ] `T2.2` **Change:** Validate approval metadata and key-to-row correspondence before planning identity work.
+* [x] `T2.2` **Change:** Validate approval metadata and key-to-row correspondence before planning identity work.
   * **Target:** `ingesters/sead_change_request/input_resolution.py::resolve_inputs`, `ingesters/sead_change_request/preparation.py::ResolvedInputs`, `ingesters/sead_change_request/ingester.py::{_resolve_inputs, _validate_business_keys}`, `backend/tests/ingesters/{test_sead_change_request_input_resolution,test_sead_change_request_ingester}.py`.
   * **Current -> required:** `ResolvedInputs` contains no approvals -> trusted, committed approvals can be matched to reconciled rows by the ordered business key, while missing approval metadata authorizes nothing.
   * **Implementation:** Reject invalid owner/project, mismatched key declaration, absent or duplicate key values, and an approval conflicting with a pre-linked or sidecar-applied ID before provider lookup or any SIMS call. An exported approval with no current row must not allocate a row. Do not consult the unexported decision catalog.
@@ -102,12 +102,12 @@
 
 **Tasks:**
 
-* [ ] `T3.1` **Change:** Plan reconciled rows from the effective mode and trusted approval set.
+* [x] `T3.1` **Change:** Plan reconciled rows from the effective mode and trusted approval set.
   * **Target:** `ingesters/sead_change_request/planning.py::{plan_table, plan_bundle}`, `ingesters/sead_change_request/ingester.py::_prepare_resolved_inputs`, `backend/tests/ingesters/test_sead_change_request_planning.py`.
   * **Current -> required:** Every missing reconciled ID plans `RECONCILE` -> only approved `reconcile-exact`/`reconcile-fuzzy` rows plan allocation; rejected/undecided and approved lookup-mode rows plan a block with a reason.
   * **Implementation:** Keep existing-ID, tracked, child, derived, database-sequence, and staging behavior outside the pilot unchanged. Make conflicts and plan errors stop before SIMS work, including with validation disabled; do not turn an unapproved miss into `ALLOCATE`.
   * **Validation:** `V-3`: four modes crossed with approval present/absent, non-conflicting existing IDs, contradictory IDs, and tracked/child/derived regression cases.
-* [ ] `T3.2` **Change:** Remove the ingester's candidate-picking path for reconciled rows.
+* [x] `T3.2` **Change:** Remove the ingester's candidate-picking path for reconciled rows.
   * **Target:** `ingesters/sead_change_request/orchestration.py::orchestrate_identity_assignments`, `ingesters/sead_change_request/preparation.py::prepare_change_request`, `backend/app/services/ingester_runtime.py::{inject_ingester_runtime_dependencies, SeadChangeRequestReconciliationAdapter}`, `backend/tests/ingesters/{test_sead_change_request_orchestration,test_sead_change_request_runtime,test_sead_change_request_ingester}.py`.
   * **Current -> required:** `RECONCILE` invokes an injected matching adapter and may allocate after its miss -> no candidate is selected or sent to SIMS; only the planned, approved allocation sends an allocation request.
   * **Implementation:** Remove the unused adapter injection and candidate-selection behavior, retain the injected SIMS client and its capability/binding rules, and give blocked rows an explicit result in both `validate_tables` and `ingest_tables`. Update existing adapter/miss tests to assert the approved and unapproved paths rather than treating a service miss as operator approval.
@@ -125,7 +125,7 @@
 
 **Tasks:**
 
-* [ ] `T4.1` **Change:** Complete cross-layer regression and update the user guide and this progress tracker.
+* [x] `T4.1` **Change:** Complete cross-layer regression and update the user guide and this progress tracker.
   * **Target:** `backend/tests/api/v1/test_reconciliation_export.py`, `backend/tests/services/test_project_ingester_service.py`, `backend/tests/ingesters/test_sead_change_request_ingester.py`, `tests/process/test_shapeshifter.py`, `docs/USER_GUIDE.md`, this task plan.
   * **Current -> required:** The guide describes only links and current export behavior -> document separate exported approvals, blocked undecided rows, and permitted modes; show existing ID and Core local FK results remain unchanged on repeated offline normalization.
   * **Implementation:** Keep Authority verification (Phase 5) and real-service SIMS adoption (Phase 7) separate. Run focused contract and regression checks, record exact results, and stop if current code or tests invalidate the plan instead of redesigning Phase 6 during implementation.
@@ -146,14 +146,14 @@
 
 Use the root `.venv/`; commands run from the repository root unless noted. `rtk` may prefix the commands without changing the check.
 
-| ID | Check and target | Exact command or method | Covers | Expected result | Baseline (2026-10-31) |
+| ID | Check and target | Exact command or method | Covers | Expected result | Implementation result |
 | --- | --- | --- | --- | --- | --- |
-| `V-1` | Sidecar schema and offline ID application: `tests/reconciliation/test_mapping_sidecar.py`, `tests/process/test_shapeshifter.py`; legacy YAML, valid/invalid approvals, compound keys, unchanged IDs | `.venv/bin/pytest -q tests/reconciliation/test_mapping_sidecar.py tests/process/test_shapeshifter.py` | `PH6-AC-2`, `PH6-AC-3` | Old links parse; approval round-trips independently; no null `public_id` or Core FK change. | Not run (combined command): sidecar file passed in the focused Python baseline; normalization file and new assertions not run. |
-| `V-2` | Owned export, cleanup, counts, conflicts: `backend/tests/api/v1/test_reconciliation_export.py`, `backend/tests/api/v1/test_reconciliation_specifications.py`, `backend/tests/services/test_mapping_write_coordination.py` | `.venv/bin/pytest -q backend/tests/api/v1/test_reconciliation_export.py backend/tests/api/v1/test_reconciliation_specifications.py backend/tests/services/test_mapping_write_coordination.py` | `PH6-AC-3` | Acceptance/local-only/rejection and deletion produce correct links, approvals, counts, protected conflicts, and no-op bytes. | Not run (combined command): export and specification files passed in the focused Python baseline; write-coordination file and new assertions not run. |
-| `V-3` | Planner/orchestrator and ingestion: `backend/tests/ingesters/{test_sead_change_request_planning,test_sead_change_request_orchestration,test_sead_change_request_ingester,test_sead_change_request_runtime,test_sead_change_request_input_resolution,test_sead_change_request_preflight}.py` | `.venv/bin/pytest -q backend/tests/ingesters/test_sead_change_request_planning.py backend/tests/ingesters/test_sead_change_request_orchestration.py backend/tests/ingesters/test_sead_change_request_ingester.py backend/tests/ingesters/test_sead_change_request_runtime.py backend/tests/ingesters/test_sead_change_request_input_resolution.py backend/tests/ingesters/test_sead_change_request_preflight.py` | `PH6-AC-1`, `PH6-AC-2`, `PH6-AC-4` | Four-mode matrix, approved vs missing approval, trusted keys, no candidate selection; tracked and staging regressions pass. | Pass: all six files passed across three focused baseline commands; the ingester/runtime command reported three skipped tests. |
-| `V-4` | Authorized project wiring and failures: `backend/tests/services/test_project_ingester_service.py`, `backend/tests/api/test_project_ingester_routes.py`, `backend/tests/api/test_sead_change_request_project_scope.py` | `.venv/bin/pytest -q backend/tests/services/test_project_ingester_service.py backend/tests/api/test_project_ingester_routes.py backend/tests/api/test_sead_change_request_project_scope.py` | `PH6-AC-1` to `PH6-AC-4` | Project validate and ingest share the same sidecar approvals; unauthorized or forged inputs fail before SIMS/output; other ingesters unchanged. | Not run (combined command): service and Change Request project-scope files passed in focused baselines; project-ingester route file and new assertions not run. |
-| `V-5` | Frontend feedback and offline regression: `frontend/src/components/reconciliation/__tests__/{ReconciliationView,SpecificationsList}.test.ts`; `backend/tests/api/v1/test_reconciliation_export.py`, `tests/process/test_shapeshifter.py` | `cd frontend && pnpm exec vitest run src/components/reconciliation/__tests__/ReconciliationView.test.ts src/components/reconciliation/__tests__/SpecificationsList.test.ts` and `.venv/bin/pytest -q backend/tests/api/v1/test_reconciliation_export.py tests/process/test_shapeshifter.py` | `PH6-AC-2`, `PH6-AC-3` | Correct approval/link counts and errors; two offline normalizations keep effective IDs and child FK values. | Pass: UI command, 10 tests; existing export FK test passed in Python baseline. Not run: combined Python command, process file, or planned approval assertions. |
-| `V-6` | Formatting, type checking, docs and tracker: changed Python/TS files and `docs/USER_GUIDE.md` | Run independently: `uv run black --check src/reconciliation/mapping_model.py backend/app/services/reconciliation/service.py backend/app/services/project_ingester_service.py backend/app/services/ingester_runtime.py backend/app/models/reconciliation.py backend/app/api/v1/endpoints/reconciliation.py ingesters/sead_change_request`; `uv run pyright --threads 2 src backend`; `cd frontend && pnpm exec vue-tsc --noEmit`; `make check-doc-links`. Run Black on any other modified Python test files as well. | All criteria and contracts | Formatting and frontend/doc checks pass; type errors in changed code are fixed, and pre-existing workspace diagnostics are reported separately rather than called a pass. | Pass: `make check-doc-links` on this plan. Not run: other checks, no Phase 6 code changes. The Phase 3 tracker records 134 workspace Pyright diagnostics; re-establish and compare the baseline during implementation. |
+| `V-1` | Sidecar schema and offline ID application: `tests/reconciliation/test_mapping_sidecar.py`, `tests/process/test_shapeshifter.py`; legacy YAML, valid/invalid approvals, compound keys, unchanged IDs | `.venv/bin/pytest -q tests/reconciliation/test_mapping_sidecar.py tests/process/test_shapeshifter.py` | `PH6-AC-2`, `PH6-AC-3` | Old links parse; approval round-trips independently; no null `public_id` or Core FK change. | Pass: combined command completed; legacy sidecars and offline normalization retain IDs and Core FK values, and approvals round-trip separately without null-ID application. |
+| `V-2` | Owned export, cleanup, counts, conflicts: `backend/tests/api/v1/test_reconciliation_export.py`, `backend/tests/api/v1/test_reconciliation_specifications.py`, `backend/tests/services/test_mapping_write_coordination.py` | `.venv/bin/pytest -q backend/tests/api/v1/test_reconciliation_export.py backend/tests/api/v1/test_reconciliation_specifications.py backend/tests/services/test_mapping_write_coordination.py` | `PH6-AC-3` | Acceptance/local-only/rejection and deletion produce correct links, approvals, counts, protected conflicts, and no-op bytes. | Pass: combined command completed; owned link/approval export, cleanup, conflict, idempotency, and write-coordination cases passed. |
+| `V-3` | Planner/orchestrator and ingestion: `backend/tests/ingesters/{test_sead_change_request_planning,test_sead_change_request_orchestration,test_sead_change_request_ingester,test_sead_change_request_runtime,test_sead_change_request_input_resolution,test_sead_change_request_preflight}.py` | `.venv/bin/pytest -q backend/tests/ingesters/test_sead_change_request_planning.py backend/tests/ingesters/test_sead_change_request_orchestration.py backend/tests/ingesters/test_sead_change_request_ingester.py backend/tests/ingesters/test_sead_change_request_runtime.py backend/tests/ingesters/test_sead_change_request_input_resolution.py backend/tests/ingesters/test_sead_change_request_preflight.py` | `PH6-AC-1`, `PH6-AC-2`, `PH6-AC-4` | Four-mode matrix, approved vs missing approval, trusted keys, no candidate selection; tracked and staging regressions pass. | Pass: all six files passed; two tests skipped. Approved exact/fuzzy allocation, lookup-mode blocking, and no-candidate-selection checks passed. |
+| `V-4` | Authorized project wiring and failures: `backend/tests/services/test_project_ingester_service.py`, `backend/tests/api/test_project_ingester_routes.py`, `backend/tests/api/test_sead_change_request_project_scope.py` | `.venv/bin/pytest -q backend/tests/services/test_project_ingester_service.py backend/tests/api/test_project_ingester_routes.py backend/tests/api/test_sead_change_request_project_scope.py` | `PH6-AC-1` to `PH6-AC-4` | Project validate and ingest share the same sidecar approvals; unauthorized or forged inputs fail before SIMS/output; other ingesters unchanged. | Pass: combined command completed; project validate/ingest share snapshot approvals, routes reject caller-supplied trusted metadata, and project-scope checks passed. |
+| `V-5` | Frontend feedback and offline regression: `frontend/src/components/reconciliation/__tests__/{ReconciliationView,SpecificationsList}.test.ts`; `backend/tests/api/v1/test_reconciliation_export.py`, `tests/process/test_shapeshifter.py` | `cd frontend && pnpm exec vitest run src/components/reconciliation/__tests__/ReconciliationView.test.ts src/components/reconciliation/__tests__/SpecificationsList.test.ts` and `.venv/bin/pytest -q backend/tests/api/v1/test_reconciliation_export.py tests/process/test_shapeshifter.py` | `PH6-AC-2`, `PH6-AC-3` | Correct approval/link counts and errors; two offline normalizations keep effective IDs and child FK values. | Pass: UI command passed (12 tests) and the combined Python command passed; approval/count feedback and offline ID/Core FK regression passed. |
+| `V-6` | Formatting, type checking, docs and tracker: changed Python/TS files and `docs/USER_GUIDE.md` | Run independently: `uv run black --check src/reconciliation/mapping_model.py backend/app/services/reconciliation/service.py backend/app/services/project_ingester_service.py backend/app/services/ingester_runtime.py backend/app/models/reconciliation.py backend/app/api/v1/endpoints/reconciliation.py ingesters/sead_change_request`; `uv run pyright --threads 2 src backend`; `cd frontend && pnpm exec vue-tsc --noEmit`; `make check-doc-links`. Run Black on any other modified Python test files as well. | All criteria and contracts | Formatting and frontend/doc checks pass; type errors in changed code are fixed, and pre-existing workspace diagnostics are reported separately rather than called a pass. | Partial: Black check (43 files unchanged), Vue type check, and doc-link check passed. Pyright exits nonzero with 147 diagnostics at clean HEAD and in the worktree (0 added/removed); Phase 3's recorded 134 is 13 below the current baseline. No new Pyright diagnostics were introduced. |
 
 ## Deliverables
 
@@ -171,19 +171,19 @@ Use the root `.venv/`; commands run from the repository root unless noted. `rtk`
 
 | Area | Status | Dependencies | Notes |
 | --- | --- | --- | --- |
-| Area 1: Persist and export approvals | Not started | Phase 1 and Phase 3 outputs | Establish sidecar format and owner-specific cleanup first. |
-| Area 2: Supply trusted approvals | Not started | Area 1 | Reuse the normalization snapshot for both project operations. |
-| Area 3: Block and allocate by mode | Not started | Area 2 | Remove candidate selection after trusted input is available. |
-| Area 4: Preserve behavior and document | Not started | Areas 1-3 | Validate `VM-13` and update user guidance. |
+| Area 1: Persist and export approvals | Done | Phase 1 and Phase 3 outputs | `T1.1`-`T1.3` complete; V-1, V-2, and V-5 passed. |
+| Area 2: Supply trusted approvals | Done | Area 1 | `T2.1`-`T2.2` complete; V-3 and V-4 passed. |
+| Area 3: Block and allocate by mode | Done | Area 2 | `T3.1`-`T3.2` complete; V-3 passed with two skipped tests. |
+| Area 4: Preserve behavior and document | Done | Areas 1-3 | `T4.1` complete; V-1 through V-6 results recorded. |
 
 ## Definition Of Done
 
-* [ ] `PH6-AC-1` to `PH6-AC-4` have `VM-13` evidence from `V-1` through `V-5`, including actual sidecar state, normalized IDs, SIMS requests, and blocked row results.
-* [ ] Every work area and deliverable is complete; `V-1` through `V-6` are run and results recorded.
-* [ ] Manual/unowned links, pre-linked IDs without conflict, tracked allocation, local Core FKs, and offline normalization have regression coverage.
-* [ ] API, frontend, sidecar, ingester, and user-guide contracts agree; new errors are explicit, not success-shaped fallbacks.
-* [ ] Existing Pyright diagnostics are distinguished from new errors, and deviations/follow-up work are documented.
-* [ ] No unresolved question affects correctness or validation; stop and report if the implementation encounters repository behavior that contradicts this plan.
+* [x] `PH6-AC-1` to `PH6-AC-4` have `VM-13` evidence from `V-1` through `V-5`, including actual sidecar state, normalized IDs, SIMS requests, and blocked row results.
+* [x] Every work area and deliverable is complete; `V-1` through `V-6` are run and results recorded.
+* [x] Manual/unowned links, pre-linked IDs without conflict, tracked allocation, local Core FKs, and offline normalization have regression coverage.
+* [x] API, frontend, sidecar, ingester, and user-guide contracts agree; new errors are explicit, not success-shaped fallbacks.
+* [x] Existing Pyright diagnostics are distinguished from new errors, and deviations/follow-up work are documented.
+* [x] No unresolved question affects correctness or validation; stop and report if the implementation encounters repository behavior that contradicts this plan.
 
 ## Risks And Open Questions
 
