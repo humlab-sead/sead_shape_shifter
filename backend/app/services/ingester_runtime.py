@@ -13,7 +13,12 @@ from psycopg import sql
 from backend.app.clients.sims_client import SimsClient
 from backend.app.core.config import Settings
 from backend.app.models.sims import CapabilitiesResponse, IdentitySignal, IdentityType, ResolutionRequest, ResolveRequest
-from ingesters.sead_change_request.contracts import SimsResolveItem, SubmissionContext, TrustedProjectContext
+from ingesters.sead_change_request.contracts import (
+    DatabaseSequenceReservationError,
+    SimsResolveItem,
+    SubmissionContext,
+    TrustedProjectContext,
+)
 from ingesters.sead_change_request.input_resolution import TRUSTED_PROJECT_CONTEXT_KEY
 from src.business_keys import BusinessKeyError, business_id_for_row
 
@@ -294,7 +299,7 @@ class SeadChangeRequestSimsAdapter:
 
 
 class SeadChangeRequestTargetCollisionChecker:
-    """PostgreSQL adapter for read-only target row and ID collision checks."""
+    """PostgreSQL adapter for target checks and database-sequence ID reservations."""
 
     def __init__(
         self,
@@ -337,6 +342,29 @@ class SeadChangeRequestTargetCollisionChecker:
                 await cursor.execute(statement, (schema_name, relation_name, public_id_column))
                 row = await cursor.fetchone()
         return str(row[0]) if row is not None else None
+
+    async def reserve_database_id(self, table_name: str, public_id_column: str) -> int:
+        """Reserve one target ID from the sequence owned by a table column."""
+        schema_name, relation_name = self._split_table_name(table_name)
+        if not schema_name or not relation_name or not public_id_column:
+            raise DatabaseSequenceReservationError("Target table and public-ID column names must be non-empty")
+
+        statement = sql.SQL("SELECT nextval(pg_get_serial_sequence(%s, %s)::regclass)")
+        try:
+            async with await psycopg.AsyncConnection.connect(**self._connection_kwargs) as connection:
+                async with connection.cursor() as cursor:
+                    await cursor.execute(statement, (f"{schema_name}.{relation_name}", public_id_column))
+                    row = await cursor.fetchone()
+        except psycopg.Error as exc:
+            raise DatabaseSequenceReservationError(
+                f"Could not reserve a database-sequence ID for '{table_name}.{public_id_column}': {exc}"
+            ) from exc
+
+        if row is None or row[0] is None:
+            raise DatabaseSequenceReservationError(f"Target column '{table_name}.{public_id_column}' has no associated database sequence")
+        if isinstance(row[0], bool) or not isinstance(row[0], int):
+            raise DatabaseSequenceReservationError(f"Target sequence for '{table_name}.{public_id_column}' returned an invalid ID")
+        return row[0]
 
     async def row_exists(self, table_name: str, filters: dict[str, object]) -> bool:
         if not filters:

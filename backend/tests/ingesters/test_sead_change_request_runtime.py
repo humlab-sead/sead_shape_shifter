@@ -10,9 +10,9 @@ from uuid import UUID, uuid4
 import httpx
 import pandas as pd
 import psycopg
-from psycopg.rows import TupleRow
 import pytest
 from psycopg import sql
+from psycopg.rows import TupleRow
 
 from backend.app.clients.sims_client import SimsClient
 from backend.app.ingesters.protocol import IngesterConfig
@@ -22,7 +22,13 @@ from backend.app.services.ingester_runtime import (
     SeadChangeRequestTargetCollisionChecker,
 )
 from ingesters.sead_change_request import ChangeRowState, orchestrate_identity_assignments, plan_table
-from ingesters.sead_change_request.contracts import PlannedRowAction, PlannedTable, SimsResolveItem, SubmissionContext
+from ingesters.sead_change_request.contracts import (
+    DatabaseSequenceReservationError,
+    PlannedRowAction,
+    PlannedTable,
+    SimsResolveItem,
+    SubmissionContext,
+)
 from ingesters.sead_change_request.input_resolution import SubmissionContextError, resolve_inputs
 from src.reconciliation.mapping_model import encode_local_key
 from src.target_model.models import EntitySpec
@@ -410,6 +416,76 @@ async def test_target_verification_reads_do_not_advance_database_sequence():
             current_value, is_called = data
 
     assert (current_value, is_called) == (previous_value, was_called)
+
+
+class TestTargetCollisionCheckerDatabaseSequenceReservation:
+    """Tests for target IDs reserved from database-owned sequences."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("table_name", "default_schema", "expected_table"),
+        [
+            ("tbl_submissions", "public", "public.tbl_submissions"),
+            ("archive.tbl_submissions", "public", "archive.tbl_submissions"),
+        ],
+    )
+    async def test_reserves_id_from_the_column_sequence(self, table_name, default_schema, expected_table):
+        cursor = MagicMock()
+        cursor.execute = AsyncMock()
+        cursor.fetchone = AsyncMock(return_value=(902,))
+        cursor.__aenter__ = AsyncMock(return_value=cursor)
+        cursor.__aexit__ = AsyncMock(return_value=None)
+        connection = MagicMock()
+        connection.cursor = MagicMock(return_value=cursor)
+        connection.__aenter__ = AsyncMock(return_value=connection)
+        connection.__aexit__ = AsyncMock(return_value=None)
+        checker = SeadChangeRequestTargetCollisionChecker(
+            host="localhost",
+            port=5432,
+            dbname="test_db",
+            user="test_user",
+            default_schema=default_schema,
+        )
+
+        with patch(
+            "backend.app.services.ingester_runtime.psycopg.AsyncConnection.connect",
+            AsyncMock(return_value=connection),
+        ):
+            target_id = await checker.reserve_database_id(table_name, "submission_id")
+
+        assert target_id == 902
+        assert cursor.execute.await_args.args[1] == (expected_table, "submission_id")
+
+    @pytest.mark.asyncio
+    async def test_missing_column_sequence_raises_reservation_error(self):
+        cursor = MagicMock()
+        cursor.execute = AsyncMock()
+        cursor.fetchone = AsyncMock(return_value=(None,))
+        cursor.__aenter__ = AsyncMock(return_value=cursor)
+        cursor.__aexit__ = AsyncMock(return_value=None)
+        connection = MagicMock()
+        connection.cursor = MagicMock(return_value=cursor)
+        connection.__aenter__ = AsyncMock(return_value=connection)
+        connection.__aexit__ = AsyncMock(return_value=None)
+        checker = SeadChangeRequestTargetCollisionChecker(host="localhost", port=5432, dbname="test_db", user="test_user")
+
+        with patch(
+            "backend.app.services.ingester_runtime.psycopg.AsyncConnection.connect",
+            AsyncMock(return_value=connection),
+        ):
+            with pytest.raises(DatabaseSequenceReservationError, match="no associated database sequence"):
+                await checker.reserve_database_id("tbl_submissions", "submission_id")
+
+    @pytest.mark.asyncio
+    async def test_database_errors_are_reported_as_reservation_errors(self):
+        checker = SeadChangeRequestTargetCollisionChecker(host="localhost", port=5432, dbname="test_db", user="test_user")
+
+        with patch(
+            "backend.app.services.ingester_runtime.psycopg.AsyncConnection.connect",
+            AsyncMock(side_effect=psycopg.OperationalError("connection refused")),
+        ):
+            with pytest.raises(DatabaseSequenceReservationError, match="Could not reserve a database-sequence ID"):
+                await checker.reserve_database_id("tbl_submissions", "submission_id")
 
 
 class TestTrustedScopeAndBusinessKeys:

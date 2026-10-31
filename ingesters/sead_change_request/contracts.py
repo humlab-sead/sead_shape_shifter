@@ -13,7 +13,7 @@ from typing import Any
 
 import pandas as pd
 
-from src.reconciliation.mapping_model import LocalOnlyApproval
+from src.reconciliation.mapping_model import LinkOwner, LocalOnlyApproval
 
 APPROVED_DATATYPES: frozenset[str] = frozenset(
     {
@@ -36,6 +36,10 @@ CHANGE_REQUEST_FILE_INPUT_RETIRED_MESSAGE = (
     "Normalized tables must reach the ingester in memory."
 )
 """Caller-facing reason returned when a retired Change Request file entry point is used."""
+
+
+class DatabaseSequenceReservationError(RuntimeError):
+    """Raised when the target database cannot reserve an ID from a declared sequence."""
 
 
 class ChangeRowState(StrEnum):
@@ -124,6 +128,10 @@ class TrustedProjectContext:
     - ``business_keys`` maps each tracked entity to its ordered ``EntityConfig.keys``.
     - ``mapping_project_name``, ``local_key_columns_by_entity``, and
       ``local_only_approvals`` carry committed approvals from the normalized sidecar.
+    - ``verified_local_only_approval_owners`` records each approval owner after the backend
+      confirms the matching reconciliation specification and local-only decision.
+    - ``verified_reconciliation_links`` carries accepted target IDs whose owner and current
+      accepted decision the backend verified.
 
     The ingester rejects conflicting caller values and never derives these values from
     request metadata.
@@ -138,6 +146,8 @@ class TrustedProjectContext:
     mapping_project_name: str | None = None
     local_key_columns_by_entity: dict[str, tuple[str, ...]] = field(default_factory=dict)
     local_only_approvals: dict[str, dict[str, LocalOnlyApproval]] = field(default_factory=dict)
+    verified_local_only_approval_owners: dict[str, dict[str, LinkOwner]] = field(default_factory=dict)
+    verified_reconciliation_links: dict[str, dict[str, int]] = field(default_factory=dict)
 
 
 @dataclass(slots=True)

@@ -268,6 +268,28 @@ class TestResolvePlannedTables:
         assert resolved.resolved_target_ids.tolist() == [101]
         assert result.blocked_rows == 0
 
+    def test_verified_existing_links_require_and_use_the_sims_binding(self):
+        frame = pd.DataFrame({"site_id": [501], "site_name": ["Accepted Site"]})
+        planned_table = _planned("site", frame, PlannedRowAction.REFERENCE_EXISTING)
+        target_model = minimal_target_model(site={"role": "lookup", "public_id": "site_id"})
+        approved_targets = {"site": {0: 501}}
+
+        unbound = resolve_planned_tables([planned_table], target_model, approved_existing_target_ids=approved_targets)
+
+        assert unbound.tables["site"].row_states.tolist() == [ChangeRowState.BLOCKED_UNRESOLVED]
+        assert unbound.tables["site"].resolved_target_ids.isna().tolist() == [True]
+        assert "was not bound by SIMS" in unbound.diagnostics[0]
+
+        bound = resolve_planned_tables(
+            [planned_table],
+            target_model,
+            assignments={"site": {0: IdentityAssignment(state=ChangeRowState.RECONCILED_CLASSIFIER, target_id=501)}},
+            approved_existing_target_ids=approved_targets,
+        )
+
+        assert bound.tables["site"].row_states.tolist() == [ChangeRowState.EXISTING_ENTITY]
+        assert bound.tables["site"].resolved_target_ids.tolist() == [501]
+
     def test_assigned_rows_resolve_to_delivery1_states(self):
         """Allocated, blocked, and bridge rows should take their states from injected assignments."""
         classifier_frame = pd.DataFrame({"class_id": [None], "name": ["A"]})

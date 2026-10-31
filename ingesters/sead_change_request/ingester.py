@@ -217,7 +217,8 @@ class SeadChangeRequestIngester:
             for encoded_key, approval in approvals.items():
                 if approval.committed_at is None:
                     errors.append(f"Local-only approval for '{entity_name}' key '{encoded_key}' is not committed")
-                if approval.owner.entity_name != entity_name or approval.owner.target_field != entity_spec.public_id:
+                verified_owner = trusted_context.verified_local_only_approval_owners.get(entity_name, {}).get(encoded_key)
+                if approval.owner != verified_owner:
                     errors.append(f"Local-only approval for '{entity_name}' key '{encoded_key}' has an invalid owner")
 
                 matching_rows = rows_by_encoded_key.get(encoded_key, [])
