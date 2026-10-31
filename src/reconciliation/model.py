@@ -62,6 +62,7 @@ class ResolvedEntityPair:
     created_at: str | None = None
     created_by: str | None = None
     last_modified: str | None = None
+    candidate_id: str | None = None
 
     def __post_init__(self) -> None:
         if not self.local_key_value:
@@ -70,6 +71,10 @@ class ResolvedEntityPair:
             raise ValueError("An accepted decision requires a target_id")
         if self.status != DecisionStatus.ACCEPTED and self.target_id is not None:
             raise ValueError("Only an accepted decision may have a target_id")
+        if self.candidate_id is not None and not self.candidate_id.strip():
+            raise ValueError("A candidate_id must not be blank")
+        if self.status != DecisionStatus.ACCEPTED and self.candidate_id is not None:
+            raise ValueError("Only an accepted decision may have a candidate_id")
 
 
 @dataclass

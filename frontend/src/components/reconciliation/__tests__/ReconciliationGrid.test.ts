@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
-import type { ReconciliationPreviewRow } from '@/types'
+import type { MappingEntityResponse, ReconciliationCandidate, ReconciliationPreviewRow } from '@/types'
 
 vi.mock('ag-grid-vue3', () => ({
   AgGridVue: {
@@ -15,8 +15,10 @@ vi.mock('ag-grid-vue3', () => ({
           <span data-testid="row-status">{{ row.status_display }}</span>
           <span data-testid="row-confidence">{{ row.confidence_percent == null ? 'Unknown' : Math.round(row.confidence_percent) + '%' }}</span>
           <span data-testid="row-errors">{{ row.errors_display || '—' }}</span>
+          <span data-testid="effective-id-status">{{ row.effective_id_status }}</span>
           <button :data-local-key="row.local_key_value" data-action="reject">Reject</button>
           <button :data-local-key="row.local_key_value" data-action="review">Review</button>
+          <button :data-local-key="row.local_key_value" data-action="search">Search</button>
           <button :data-local-key="row.local_key_value" data-action="local-only">Local-only</button>
         </div>
       </div>
@@ -25,6 +27,7 @@ vi.mock('ag-grid-vue3', () => ({
 }))
 
 import ReconciliationGrid from '../ReconciliationGrid.vue'
+import AlternativeSearchDialog from '../AlternativeSearchDialog.vue'
 import PreviewMatchedDataDialog from '../PreviewMatchedDataDialog.vue'
 
 const passthrough = (tag: string) =>
@@ -85,7 +88,8 @@ function makeRow(localKeyValue: string) {
 
 function mountGrid(
   submitDecision = vi.fn().mockResolvedValue(undefined),
-  previewData: ReconciliationPreviewRow[] = [makeRow('A')]
+  previewData: ReconciliationPreviewRow[] = [makeRow('A')],
+  mappingData: MappingEntityResponse | null = null
 ) {
   const row = previewData[0]!
   const wrapper = mount(ReconciliationGrid, {
@@ -99,7 +103,7 @@ function mountGrid(
         mapping: [],
       },
       previewData,
-      mappingData: null,
+      mappingData,
       projectName: 'project',
       entityName: 'site',
       targetField: 'site_name',
@@ -151,7 +155,74 @@ describe('ReconciliationGrid', () => {
     await wrapper.get('[data-testid="accept-candidate"]').trigger('click')
     await flushPromises()
 
-    expect(submitDecision).toHaveBeenCalledWith({ local_key_value: 'A', status: 'accepted', target_id: 102 })
+    expect(submitDecision).toHaveBeenCalledWith({
+      local_key_value: 'A',
+      status: 'accepted',
+      target_id: 102,
+      candidate_id: 'https://w3id.org/sead/id/site/102',
+    })
+  })
+
+  it('submits the exact alternative candidate URI selected in search', async () => {
+    const { wrapper, submitDecision } = mountGrid()
+    const alternative: ReconciliationCandidate = {
+      id: 'https://authority.example.test/site/105',
+      name: 'Alternative site',
+      score: 76,
+      type: [],
+    }
+
+    await wrapper.get('button[data-action="search"]').trigger('click')
+    wrapper.findComponent(AlternativeSearchDialog).vm.$emit('accept', alternative)
+    await flushPromises()
+
+    expect(submitDecision).toHaveBeenCalledWith({
+      local_key_value: 'A',
+      status: 'accepted',
+      target_id: 105,
+      candidate_id: alternative.id,
+    })
+  })
+
+  it('shows legacy accepted decisions that need candidate re-acceptance and sidecar link status', () => {
+    const mappingData: MappingEntityResponse = {
+      entity_name: 'site',
+      local_key: 'site_code',
+      public_id: 'site_id',
+      entity_type: 'primary',
+      links: {
+        A: {
+          target_id: 101,
+          source: 'reconciliation',
+          created_at: '2026-10-30T00:00:00Z',
+          committed_at: '2026-10-30T00:00:00Z',
+          verified_at: '2026-10-30T00:01:00Z',
+          created_by: 'reconciliation',
+        },
+        B: {
+          target_id: 102,
+          source: 'reconciliation',
+          created_at: '2026-10-30T00:00:00Z',
+          committed_at: '2026-10-30T00:00:00Z',
+          created_by: 'reconciliation',
+        },
+        C: {
+          target_id: 103,
+          source: 'manual',
+          created_at: '2026-10-30T00:00:00Z',
+          committed_at: '2026-10-30T00:00:00Z',
+          created_by: 'user',
+        },
+      },
+    }
+    const legacy = { ...makeRow('D'), status: 'accepted' as const }
+    const rows = [makeRow('A'), makeRow('B'), makeRow('C'), legacy]
+    const { wrapper } = mountGrid(vi.fn(), rows, mappingData)
+
+    expect(wrapper.text()).toContain('Accepted · re-accept candidate')
+    expect(wrapper.text()).toContain('reconciliation · verified 2026-10-30T00:01:00Z')
+    expect(wrapper.text()).toContain('reconciliation · unverified')
+    expect(wrapper.text()).toContain('Trusted manual · not checked')
   })
 
   it('displays unresolved rows and row-specific errors separately', () => {

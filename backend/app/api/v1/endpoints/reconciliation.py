@@ -441,6 +441,7 @@ async def update_mapping(
         status=core.DecisionStatus(decision.status),
         target_id=decision.target_id,
         notes=decision.notes,
+        candidate_id=decision.candidate_id,
     )
 
     # Map to DTO for API response
@@ -481,15 +482,8 @@ async def export_reconciliation_to_mapping(
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
     service: ReconciliationService = Depends(get_reconciliation_service),
 ) -> api.ExportToMappingResult:
-    """Copy reconciliation links for one entity field into the mapping sidecar."""
-    exported, removed, skipped_manual = service.export_to_mapping(authorized_project.resource.locator, entity_name, target_field)
-    return api.ExportToMappingResult(
-        exported=exported,
-        removed=removed,
-        skipped_manual=skipped_manual,
-        entity=entity_name,
-        field=target_field,
-    )
+    """Verify accepted candidates and export their links into the mapping sidecar."""
+    return await service.export_to_mapping(authorized_project.resource.locator, entity_name, target_field)
 
 
 @router.post("/projects/{project_name}/reconciliation/{entity_name}/{target_field}/mark-unmatched")

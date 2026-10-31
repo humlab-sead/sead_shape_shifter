@@ -1,11 +1,14 @@
 """Tests for exporting reconciliation links into the mapping sidecar."""
 
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
+import pytest
 import yaml
 
+from backend.app.clients.reconciliation_client import CandidateVerificationUnavailableError, ReconciliationClient
 from backend.app.core.config import settings
+from backend.app.models.reconciliation import CandidateVerificationResult
 from backend.app.services import project_service, validation_service, yaml_service
 from src.normalizer import ShapeShifter
 from src.reconciliation.mapping_manager import MappingManager, MappingVersionConflictError
@@ -72,6 +75,7 @@ def _write_reconciliation_catalog(tmp_path: Path) -> None:
                             "source_value": "A",
                             "status": "accepted",
                             "target_id": 101,
+                            "candidate_id": "https://w3id.org/sead/id/site/101",
                             "confidence": 0.98,
                             "notes": "Matched by reconciliation",
                         },
@@ -80,6 +84,7 @@ def _write_reconciliation_catalog(tmp_path: Path) -> None:
                             "source_value": "B",
                             "status": "accepted",
                             "target_id": 202,
+                            "candidate_id": "https://w3id.org/sead/id/site/202",
                             "confidence": 0.88,
                         },
                         {
@@ -116,6 +121,7 @@ def _write_sample_reconciliation_catalog(tmp_path: Path) -> None:
                             "source_value": "A",
                             "status": "accepted",
                             "target_id": 101,
+                            "candidate_id": "https://w3id.org/sead/id/sample/101",
                             "confidence": 0.98,
                             "notes": "Matched by reconciliation",
                         },
@@ -124,6 +130,7 @@ def _write_sample_reconciliation_catalog(tmp_path: Path) -> None:
                             "source_value": "B",
                             "status": "accepted",
                             "target_id": 202,
+                            "candidate_id": "https://w3id.org/sead/id/sample/202",
                             "confidence": 0.88,
                         },
                     ],
@@ -180,6 +187,46 @@ def _reset_singletons() -> None:
     yaml_service._yaml_service = None
 
 
+@pytest.fixture(autouse=True)
+def verify_existing_candidates(monkeypatch):
+    async def verify(_client, items):
+        results = []
+        for item in items:
+            try:
+                aggregate_id = int(item.id.rsplit("/", 1)[-1])
+            except ValueError:
+                results.append(
+                    CandidateVerificationResult(
+                        type=item.type,
+                        id=item.id,
+                        outcome="invalid_candidate",
+                        aggregate_id=None,
+                    )
+                )
+            else:
+                if aggregate_id <= 0:
+                    results.append(
+                        CandidateVerificationResult(
+                            type=item.type,
+                            id=item.id,
+                            outcome="invalid_candidate",
+                            aggregate_id=None,
+                        )
+                    )
+                else:
+                    results.append(
+                        CandidateVerificationResult(
+                            type=item.type,
+                            id=item.id,
+                            outcome="exists",
+                            aggregate_id=aggregate_id,
+                        )
+                    )
+        return results
+
+    monkeypatch.setattr(ReconciliationClient, "verify_candidates", verify)
+
+
 class TestReconciliationExportApi:
     """Route tests for exporting reconciliation links to the mapping sidecar."""
 
@@ -207,12 +254,13 @@ class TestReconciliationExportApi:
             "skipped_manual": 1,
             "entity": "site",
             "field": "site_code",
+            "outcomes": [{"local_key_value": "B", "outcome": "verified", "reason": None}],
         }
         sidecar = yaml.safe_load(sidecar_path.read_text(encoding="utf-8"))
         assert sidecar["entities"]["site"]["links"]["A"]["source"] == "manual"
         assert sidecar["entities"]["site"]["links"]["B"]["target_id"] == 202
         assert sidecar["entities"]["site"]["links"]["B"]["owner"] == {"entity_name": "site", "target_field": "site_code"}
-        assert sidecar["entities"]["site"]["links"]["B"]["verified_at"] is None
+        assert sidecar["entities"]["site"]["links"]["B"]["verified_at"] is not None
         original = sidecar_path.read_bytes()
 
         response = await authorized_client.post("/api/v1/projects/test_project/reconciliation/site/site_code/export-to-mapping")
@@ -222,6 +270,170 @@ class TestReconciliationExportApi:
         assert response.json()["removed"] == 0
         assert response.json()["skipped_manual"] == 1
         assert sidecar_path.read_bytes() == original
+
+    async def test_manual_legacy_link_needs_no_candidate_verification(self, tmp_path: Path, monkeypatch, authorized_client) -> None:
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        await _create_project(authorized_client, "site", _SITE_ENTITY)
+        _write_reconciliation_catalog(tmp_path)
+        catalog = _read_reconciliation_catalog(tmp_path)
+        decision = catalog["entities"]["site"]["site_code"]["mapping"][0]
+        decision.pop("candidate_id")
+        catalog["entities"]["site"]["site_code"]["mapping"] = [decision]
+        _write_reconciliation_catalog_data(tmp_path, catalog)
+        _write_mapping_sidecar(tmp_path)
+        sidecar_path = tmp_path / "test_project" / "test_project-mapping.yml"
+        original = sidecar_path.read_bytes()
+
+        with patch.object(ReconciliationClient, "verify_candidates", new=AsyncMock()) as verify:
+            response = await authorized_client.post("/api/v1/projects/test_project/reconciliation/site/site_code/export-to-mapping")
+
+        assert response.status_code == 200, response.text
+        assert response.json()["skipped_manual"] == 1
+        assert response.json()["outcomes"] == []
+        verify.assert_not_awaited()
+        assert sidecar_path.read_bytes() == original
+
+    async def test_legacy_accepted_decision_requires_reacceptance_before_export(
+        self, tmp_path: Path, monkeypatch, authorized_client
+    ) -> None:
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        await _create_project(authorized_client, "site", _SITE_ENTITY)
+        _write_reconciliation_catalog(tmp_path)
+        catalog = _read_reconciliation_catalog(tmp_path)
+        decision = catalog["entities"]["site"]["site_code"]["mapping"][0]
+        decision.pop("candidate_id")
+        catalog["entities"]["site"]["site_code"]["mapping"] = [decision]
+        _write_reconciliation_catalog_data(tmp_path, catalog)
+
+        with patch.object(ReconciliationClient, "verify_candidates", new=AsyncMock()) as verify:
+            response = await authorized_client.post("/api/v1/projects/test_project/reconciliation/site/site_code/export-to-mapping")
+
+        assert response.status_code == 400
+        assert "re-accepted" in response.json()["detail"]["message"]
+        verify.assert_not_awaited()
+        assert not (tmp_path / "test_project" / "test_project-mapping.yml").exists()
+
+    async def test_verification_outage_exports_unverified_then_retry_verifies_link(
+        self, tmp_path: Path, monkeypatch, authorized_client
+    ) -> None:
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        await _create_project(authorized_client, "site", _SITE_ENTITY)
+        _write_reconciliation_catalog(tmp_path)
+        path = "/api/v1/projects/test_project/reconciliation/site/site_code/export-to-mapping"
+
+        with patch.object(
+            ReconciliationClient,
+            "verify_candidates",
+            new=AsyncMock(side_effect=CandidateVerificationUnavailableError("offline")),
+        ):
+            unavailable = await authorized_client.post(path)
+
+        assert unavailable.status_code == 200, unavailable.text
+        assert {item["outcome"] for item in unavailable.json()["outcomes"]} == {"unverified"}
+        sidecar_path = tmp_path / "test_project" / "test_project-mapping.yml"
+        sidecar = yaml.safe_load(sidecar_path.read_text(encoding="utf-8"))
+        assert all(link["verified_at"] is None for link in sidecar["entities"]["site"]["links"].values())
+
+        retried = await authorized_client.post(path)
+
+        assert retried.status_code == 200, retried.text
+        assert {item["outcome"] for item in retried.json()["outcomes"]} == {"verified"}
+        sidecar = yaml.safe_load(sidecar_path.read_text(encoding="utf-8"))
+        assert all(link["verified_at"] is not None for link in sidecar["entities"]["site"]["links"].values())
+
+    async def test_not_found_and_invalid_candidates_remove_only_their_owned_links(
+        self, tmp_path: Path, monkeypatch, authorized_client
+    ) -> None:
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        await _create_project(authorized_client, "site", _SITE_ENTITY)
+        _write_reconciliation_catalog(tmp_path)
+        path = "/api/v1/projects/test_project/reconciliation/site/site_code/export-to-mapping"
+        first = await authorized_client.post(path)
+        assert first.status_code == 200, first.text
+
+        async def reject_candidates(_client, items):
+            return [
+                CandidateVerificationResult(
+                    type=item.type,
+                    id=item.id,
+                    outcome="not_found" if item.id.endswith("/101") else "invalid_candidate",
+                    aggregate_id=None,
+                )
+                for item in items
+            ]
+
+        with patch.object(ReconciliationClient, "verify_candidates", new=reject_candidates):
+            response = await authorized_client.post(path)
+
+        assert response.status_code == 200, response.text
+        assert response.json()["exported"] == 0
+        assert response.json()["removed"] == 2
+        assert [item["outcome"] for item in response.json()["outcomes"]] == ["not_found", "invalid_candidate"]
+        sidecar = yaml.safe_load((tmp_path / "test_project" / "test_project-mapping.yml").read_text(encoding="utf-8"))
+        assert sidecar["entities"]["site"]["links"] == {}
+
+    async def test_mismatched_verified_target_id_does_not_write_links(self, tmp_path: Path, monkeypatch, authorized_client) -> None:
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        await _create_project(authorized_client, "site", _SITE_ENTITY)
+        _write_reconciliation_catalog(tmp_path)
+
+        async def mismatch(_client, items):
+            return [
+                CandidateVerificationResult(
+                    type=item.type,
+                    id=item.id,
+                    outcome="exists",
+                    aggregate_id=int(item.id.rsplit("/", 1)[-1]) + 1,
+                )
+                for item in items
+            ]
+
+        with patch.object(ReconciliationClient, "verify_candidates", new=mismatch):
+            response = await authorized_client.post("/api/v1/projects/test_project/reconciliation/site/site_code/export-to-mapping")
+
+        assert response.status_code == 500
+        assert "different target ID" in response.json()["detail"]["message"]
+        assert not (tmp_path / "test_project" / "test_project-mapping.yml").exists()
+
+    @pytest.mark.parametrize("changed_input", ["catalog", "project", "sidecar"])
+    async def test_export_rejects_inputs_changed_during_verification(
+        self, changed_input, tmp_path: Path, monkeypatch, authorized_client
+    ) -> None:
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        await _create_project(authorized_client, "site", _SITE_ENTITY)
+        _write_reconciliation_catalog(tmp_path)
+        _write_mapping_sidecar(tmp_path)
+        project_dir = tmp_path / "test_project"
+        input_paths = {
+            "catalog": project_dir / "test_project-reconciliation.yml",
+            "project": _project_path(tmp_path),
+            "sidecar": project_dir / "test_project-mapping.yml",
+        }
+        changed_path = input_paths[changed_input]
+        original_changed_bytes = changed_path.read_bytes()
+        sidecar_path = input_paths["sidecar"]
+        original_sidecar_bytes = sidecar_path.read_bytes()
+
+        async def change_input_during_verification(_client, items):
+            changed_path.write_bytes(original_changed_bytes + b"\n# concurrent edit\n")
+            return [
+                CandidateVerificationResult(
+                    type=item.type,
+                    id=item.id,
+                    outcome="exists",
+                    aggregate_id=int(item.id.rsplit("/", 1)[-1]),
+                )
+                for item in items
+            ]
+
+        with patch.object(ReconciliationClient, "verify_candidates", new=change_input_during_verification):
+            response = await authorized_client.post("/api/v1/projects/test_project/reconciliation/site/site_code/export-to-mapping")
+
+        assert response.status_code == 409, response.text
+        assert "changed during candidate verification" in response.json()["detail"]["message"]
+        assert changed_path.read_bytes() == original_changed_bytes + b"\n# concurrent edit\n"
+        expected_sidecar = original_sidecar_bytes + b"\n# concurrent edit\n" if changed_input == "sidecar" else original_sidecar_bytes
+        assert sidecar_path.read_bytes() == expected_sidecar
 
     async def test_export_updates_an_owned_link_when_its_accepted_target_changes(
         self, tmp_path: Path, monkeypatch, authorized_client
@@ -236,6 +448,7 @@ class TestReconciliationExportApi:
         catalog = _read_reconciliation_catalog(tmp_path)
         decision = next(item for item in catalog["entities"]["site"]["site_code"]["mapping"] if item["local_key_value"] == "B")
         decision["target_id"] = 303
+        decision["candidate_id"] = "https://w3id.org/sead/id/site/303"
         _write_reconciliation_catalog_data(tmp_path, catalog)
 
         response = await authorized_client.post("/api/v1/projects/test_project/reconciliation/site/site_code/export-to-mapping")
@@ -279,6 +492,7 @@ class TestReconciliationExportApi:
         decision = next(item for item in catalog["entities"]["site"]["site_code"]["mapping"] if item["local_key_value"] == "B")
         decision["status"] = "rejected"
         decision["target_id"] = None
+        decision["candidate_id"] = None
         _write_reconciliation_catalog_data(tmp_path, catalog)
 
         response = await authorized_client.post("/api/v1/projects/test_project/reconciliation/site/site_code/export-to-mapping")
@@ -289,7 +503,7 @@ class TestReconciliationExportApi:
         sidecar = yaml.safe_load((tmp_path / "test_project" / "test_project-mapping.yml").read_text(encoding="utf-8"))
         assert "B" not in sidecar["entities"]["site"]["links"]
 
-    async def test_export_uses_encoded_compound_keys_and_accepts_target_id_zero(
+    async def test_export_does_not_write_an_invalid_candidate_for_a_compound_key(
         self, tmp_path: Path, monkeypatch, authorized_client
     ) -> None:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
@@ -310,6 +524,7 @@ class TestReconciliationExportApi:
                 "source_value": "A/B",
                 "status": "accepted",
                 "target_id": 0,
+                "candidate_id": "https://w3id.org/sead/id/site/0",
             }
         ]
         _write_reconciliation_catalog_data(tmp_path, catalog)
@@ -318,17 +533,20 @@ class TestReconciliationExportApi:
 
         assert response.status_code == 200, response.text
         assert response.json() == {
-            "exported": 1,
+            "exported": 0,
             "removed": 0,
             "skipped_manual": 0,
             "entity": "site",
             "field": "site_code",
+            "outcomes": [
+                {
+                    "local_key_value": encoded_key,
+                    "outcome": "invalid_candidate",
+                    "reason": "The selected candidate URI is invalid for this entity type.",
+                }
+            ],
         }
-        sidecar = yaml.safe_load((tmp_path / "test_project" / "test_project-mapping.yml").read_text(encoding="utf-8"))
-        site_mapping = sidecar["entities"]["site"]
-        assert site_mapping["local_key"] == ["region", "site_code"]
-        assert site_mapping["links"][encoded_key]["target_id"] == 0
-        assert site_mapping["links"][encoded_key]["owner"] == {"entity_name": "site", "target_field": "site_code"}
+        assert not (tmp_path / "test_project" / "test_project-mapping.yml").exists()
 
     async def test_export_to_mapping_returns_404_when_reconciliation_catalog_is_missing(
         self, tmp_path: Path, monkeypatch, authorized_client
@@ -454,7 +672,13 @@ class TestReconciliationExportApi:
         _write_reconciliation_catalog(tmp_path)
         catalog = _read_reconciliation_catalog(tmp_path)
         catalog["entities"]["site"]["site_code"]["mapping"].append(
-            {"local_key_value": "D", "source_value": "D", "status": "accepted", "target_id": 404}
+            {
+                "local_key_value": "D",
+                "source_value": "D",
+                "status": "accepted",
+                "target_id": 404,
+                "candidate_id": "https://w3id.org/sead/id/site/404",
+            }
         )
         _write_reconciliation_catalog_data(tmp_path, catalog)
         _write_mapping_sidecar(tmp_path)

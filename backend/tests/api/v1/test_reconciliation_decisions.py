@@ -6,9 +6,10 @@ from unittest.mock import AsyncMock, patch
 import pytest
 import yaml
 
+from backend.app.clients.reconciliation_client import ReconciliationClient
 from backend.app.core.config import settings
 from backend.app.core.operation_manager import operation_manager
-from backend.app.models.reconciliation import AutoReconcileResult, ReconciliationCandidate
+from backend.app.models.reconciliation import AutoReconcileResult, CandidateVerificationResult, ReconciliationCandidate
 from backend.app.services import project_service, validation_service, yaml_service
 from backend.app.services.reconciliation.service import ReconciliationService
 
@@ -107,14 +108,22 @@ class TestReconciliationDecisionRoutes:
         _write_catalog(tmp_path)
         path = "/api/v1/projects/review/reconciliation/site/site_name"
 
-        accepted = await authorized_client.post(f"{path}/mapping", json={"local_key_value": "A", "status": "accepted", "target_id": 101})
+        accepted = await authorized_client.post(
+            f"{path}/mapping",
+            json={
+                "local_key_value": "A",
+                "status": "accepted",
+                "target_id": 101,
+                "candidate_id": "https://w3id.org/sead/id/site/101",
+            },
+        )
         assert accepted.status_code == 200, accepted.text
         rejected = await authorized_client.post(f"{path}/mapping", json={"local_key_value": "B", "status": "rejected"})
         assert rejected.status_code == 200, rejected.text
         decisions = rejected.json()["entities"]["site"]["site_name"]["mapping"]
-        assert {item["local_key_value"]: (item["status"], item["target_id"]) for item in decisions} == {
-            "A": ("accepted", 101),
-            "B": ("rejected", None),
+        assert {item["local_key_value"]: (item["status"], item["target_id"], item["candidate_id"]) for item in decisions} == {
+            "A": ("accepted", 101, "https://w3id.org/sead/id/site/101"),
+            "B": ("rejected", None, None),
         }
 
         preview = await authorized_client.get(f"{path}/preview")
@@ -122,9 +131,17 @@ class TestReconciliationDecisionRoutes:
         preview_rows = {row["local_key_value"]: row for row in preview.json()}
         assert {key: row["status"] for key, row in preview_rows.items()} == {"A": "accepted", "B": "rejected"}
         assert preview_rows["A"]["confidence"] == 0.82
+        assert preview_rows["A"]["candidate_id"] == "https://w3id.org/sead/id/site/101"
         assert preview_rows["A"]["notes"] == "Keep these notes"
         assert preview_rows["A"]["candidates"][0]["score"] == 82
         assert preview_rows["B"]["confidence"] is None
+
+        rejected_accepted = await authorized_client.post(f"{path}/mapping", json={"local_key_value": "A", "status": "rejected"})
+        assert rejected_accepted.status_code == 200, rejected_accepted.text
+        rejected_decision = next(
+            item for item in rejected_accepted.json()["entities"]["site"]["site_name"]["mapping"] if item["local_key_value"] == "A"
+        )
+        assert rejected_decision["candidate_id"] is None
 
     async def test_accepting_candidate_without_score_does_not_invent_confidence(self, authorized_client, tmp_path, monkeypatch) -> None:
         await _create_project(authorized_client, tmp_path, monkeypatch)
@@ -133,7 +150,12 @@ class TestReconciliationDecisionRoutes:
 
         accepted = await authorized_client.post(
             f"{path}/mapping",
-            json={"local_key_value": "A", "status": "accepted", "target_id": 102},
+            json={
+                "local_key_value": "A",
+                "status": "accepted",
+                "target_id": 102,
+                "candidate_id": "https://w3id.org/sead/id/site/102",
+            },
         )
 
         assert accepted.status_code == 200, accepted.text
@@ -142,6 +164,29 @@ class TestReconciliationDecisionRoutes:
         assert decision["confidence"] is None
         assert decision["notes"] == "Keep these notes"
         assert len(decision["candidates"]) == 4
+
+    async def test_alternative_uri_with_same_target_id_does_not_reuse_saved_candidate_confidence(
+        self, authorized_client, tmp_path, monkeypatch
+    ) -> None:
+        await _create_project(authorized_client, tmp_path, monkeypatch)
+        _write_catalog(tmp_path)
+        path = "/api/v1/projects/review/reconciliation/site/site_name"
+        alternative_uri = "https://authority.example.test/site/101"
+
+        accepted = await authorized_client.post(
+            f"{path}/mapping",
+            json={
+                "local_key_value": "A",
+                "status": "accepted",
+                "target_id": 101,
+                "candidate_id": alternative_uri,
+            },
+        )
+
+        assert accepted.status_code == 200, accepted.text
+        decision = next(item for item in accepted.json()["entities"]["site"]["site_name"]["mapping"] if item["local_key_value"] == "A")
+        assert decision["candidate_id"] == alternative_uri
+        assert decision["confidence"] is None
 
     @pytest.mark.parametrize(("target_id", "expected_confidence"), [(103, 0.0), (104, 1.0)])
     async def test_accepting_candidate_preserves_zero_and_full_scores_as_confidence(
@@ -153,7 +198,12 @@ class TestReconciliationDecisionRoutes:
 
         accepted = await authorized_client.post(
             f"{path}/mapping",
-            json={"local_key_value": "A", "status": "accepted", "target_id": target_id},
+            json={
+                "local_key_value": "A",
+                "status": "accepted",
+                "target_id": target_id,
+                "candidate_id": f"https://w3id.org/sead/id/site/{target_id}",
+            },
         )
 
         assert accepted.status_code == 200, accepted.text
@@ -169,9 +219,24 @@ class TestReconciliationDecisionRoutes:
             {"source_value": "Same", "target_id": 101},
             {"local_key_value": "A", "status": "accepted"},
             {"local_key_value": "A", "status": "rejected", "target_id": 101},
+            {"local_key_value": "A", "status": "rejected", "candidate_id": "https://w3id.org/sead/id/site/101"},
         ):
             response = await authorized_client.post(f"{path}/mapping", json=payload)
             assert response.status_code == 422, response.text
+        catalog_path = tmp_path / "review" / "review-reconciliation.yml"
+        original_catalog = catalog_path.read_bytes()
+        mismatch = await authorized_client.post(
+            f"{path}/mapping",
+            json={
+                "local_key_value": "A",
+                "status": "accepted",
+                "target_id": 101,
+                "candidate_id": "https://w3id.org/sead/id/site/102",
+            },
+        )
+        assert mismatch.status_code == 400, mismatch.text
+        assert "does not match" in mismatch.json()["detail"]["message"]
+        assert catalog_path.read_bytes() == original_catalog
         unknown = await authorized_client.post(f"{path}/mapping", json={"local_key_value": "X", "status": "local-only"})
         assert unknown.status_code == 400, unknown.text
         old_delete = await authorized_client.delete(f"{path}/mapping", params={"source_value": "Same"})
@@ -209,15 +274,41 @@ class TestReconciliationDecisionRoutes:
             assert message in response.json()["detail"]["message"]
             assert path.read_text(encoding="utf-8") == contents
 
-    async def test_export_is_disabled_without_modifying_sidecar(self, authorized_client, tmp_path, monkeypatch) -> None:
+    async def test_export_verifies_an_accepted_candidate(self, authorized_client, tmp_path, monkeypatch) -> None:
         await _create_project(authorized_client, tmp_path, monkeypatch)
         _write_catalog(tmp_path)
-        sidecar = tmp_path / "review" / "review-mapping.yml"
-        sidecar.write_text("manual-link-data: intact\n", encoding="utf-8")
-        original = sidecar.read_bytes()
-        response = await authorized_client.post("/api/v1/projects/review/reconciliation/site/site_name/export-to-mapping")
-        assert response.status_code == 400, response.text
-        assert sidecar.read_bytes() == original
+        path = "/api/v1/projects/review/reconciliation/site/site_name"
+        accepted = await authorized_client.post(
+            f"{path}/mapping",
+            json={
+                "local_key_value": "A",
+                "status": "accepted",
+                "target_id": 101,
+                "candidate_id": "https://w3id.org/sead/id/site/101",
+            },
+        )
+        assert accepted.status_code == 200, accepted.text
+
+        with patch.object(
+            ReconciliationClient,
+            "verify_candidates",
+            new=AsyncMock(
+                return_value=[
+                    CandidateVerificationResult(
+                        type="site",
+                        id="https://w3id.org/sead/id/site/101",
+                        outcome="exists",
+                        aggregate_id=101,
+                    )
+                ]
+            ),
+        ):
+            response = await authorized_client.post(f"{path}/export-to-mapping")
+
+        assert response.status_code == 200, response.text
+        assert response.json()["outcomes"] == [{"local_key_value": "A", "outcome": "verified", "reason": None}]
+        sidecar = yaml.safe_load((tmp_path / "review" / "review-mapping.yml").read_text(encoding="utf-8"))
+        assert sidecar["entities"]["site"]["links"]["A"]["verified_at"]
 
     async def test_sync_and_async_routes_use_keyed_candidate_matching(self, authorized_client, tmp_path, monkeypatch) -> None:
         await _create_project(authorized_client, tmp_path, monkeypatch)

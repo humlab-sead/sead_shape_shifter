@@ -228,7 +228,11 @@ const gridRows = computed(() =>
       effective_id_status: committedLink
         ? committedLink.source === 'manual'
           ? 'Trusted manual · not checked'
-          : `${committedLink.source} · not checked`
+          : committedLink.source === 'reconciliation'
+            ? committedLink.verified_at
+              ? `reconciliation · verified ${committedLink.verified_at}`
+              : 'reconciliation · unverified'
+            : `${committedLink.source} · not checked`
         : props.mappingData
           ? 'Saved row ID'
           : 'Sidecar unavailable',
@@ -359,6 +363,7 @@ function formatStatus(row: ReconciliationPreviewRow | undefined): string {
   if (row.errors?.length) return 'Needs attention'
   if (row.status == null || (row.status === 'proposed' && !row.candidates?.length)) return 'Unresolved'
   if (row.status === 'local-only') return 'Local-only'
+  if (row.status === 'accepted' && !row.candidate_id) return 'Accepted · re-accept candidate'
   if (row.status === 'accepted' || row.status === 'rejected' || row.status === 'proposed') {
     return row.status.charAt(0).toUpperCase() + row.status.slice(1)
   }
@@ -401,6 +406,7 @@ async function persistDecision(
   row: ReconciliationPreviewRow,
   status: DecisionUpdateRequest['status'],
   targetId?: number,
+  candidateId?: string,
   notes?: string
 ): Promise<boolean> {
   const key = row.local_key_value
@@ -416,6 +422,7 @@ async function persistDecision(
       local_key_value: key,
       status,
       ...(targetId === undefined ? {} : { target_id: targetId }),
+      ...(candidateId === undefined ? {} : { candidate_id: candidateId }),
       ...(notes === undefined ? {} : { notes }),
     }
     await props.submitDecision(request)
@@ -447,7 +454,7 @@ async function acceptCandidate() {
     actionError.value = `Candidate ID is not a numeric target ID: ${candidate.id}`
     return
   }
-  if (await persistDecision(row, 'accepted', targetId)) candidateDialog.value = false
+  if (await persistDecision(row, 'accepted', targetId, candidate.id)) candidateDialog.value = false
 }
 
 function handleGridClick(event: MouseEvent) {
@@ -490,7 +497,7 @@ async function handleAlternativeAccept(candidate: ReconciliationCandidate) {
     actionError.value = `Candidate ID is not a numeric target ID: ${candidate.id}`
     return
   }
-  await persistDecision(row, 'accepted', targetId)
+  await persistDecision(row, 'accepted', targetId, candidate.id)
 }
 
 async function confirmLocalOnly() {
@@ -498,6 +505,7 @@ async function confirmLocalOnly() {
   const saved = await persistDecision(
     selectedRow.value,
     'local-only',
+    undefined,
     undefined,
     localOnlyNotes.value.trim() || undefined
   )

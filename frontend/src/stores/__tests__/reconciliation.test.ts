@@ -132,4 +132,33 @@ describe('reconciliation store', () => {
     expect(mocks.reconciliationServiceApi.getEntityMapping).toHaveBeenCalledWith('project', 'site')
     expect(store.mappingData.project?.site?.links?.['A/B']?.target_id).toBe(0)
   })
+
+  it('invalidates cached mapping data after a successful reconciliation export', async () => {
+    const store = useReconciliationStore()
+    store.mappingData = {
+      project: {
+        site: {
+          entity_name: 'site',
+          local_key: 'site_code',
+          public_id: 'site_id',
+          entity_type: 'primary',
+          links: {},
+        },
+      },
+    }
+    const result = {
+      exported: 1,
+      removed: 0,
+      skipped_manual: 0,
+      entity: 'site',
+      field: 'site_code',
+      outcomes: [{ local_key_value: 'A', outcome: 'verified' as const }],
+    }
+    mocks.reconciliationServiceApi.exportToMapping.mockResolvedValue(result)
+
+    await expect(store.exportToMapping('project', 'site', 'site_code')).resolves.toEqual(result)
+
+    expect(mocks.reconciliationServiceApi.exportToMapping).toHaveBeenCalledWith('project', 'site', 'site_code')
+    expect(store.mappingData.project?.site).toBeUndefined()
+  })
 })
