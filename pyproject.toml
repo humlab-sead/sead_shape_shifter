@@ -49,6 +49,8 @@ dev = [
     "pytest-cov>=4.1.0,<5",
     "vulture>=2.14",
     "pytest-xdist>=3.8.0",
+    # Type stubs for pandas; keep in sync with the pandas major/minor version above.
+    "pandas-stubs>=2.3.3,<2.4",
 ]
 # All dependencies (for full development setup)
 all = [
