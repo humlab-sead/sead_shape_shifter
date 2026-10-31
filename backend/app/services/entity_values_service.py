@@ -27,7 +27,9 @@ from src.types.fixed_entity_types import normalize_fixed_entity_column_types, re
 def _normalized_isnan_values(df: pd.DataFrame) -> list[list[object]]:
     """Convert pandas extension dtypes / nullable values to Python objects
     Replace pd.NA, np.nan, pd.NaT with None for JSON serialization and consistent API behavior."""
-    return df.astype(object).where(pd.notna(df), None).values.tolist()
+    values = df.astype(object).to_numpy(copy=True)
+    values[~pd.notna(df).to_numpy()] = None
+    return values.tolist()
 
 
 class EntityValuesData:

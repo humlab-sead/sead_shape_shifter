@@ -210,10 +210,10 @@ class NaturalKeyUniquenessValidator:
             return []
 
         # Count unique duplicate rows
-        duplicate_count = len(duplicates[key_columns].drop_duplicates())
+        duplicate_count = len(duplicates[key_columns].drop_duplicates())  # type: ignore
 
         # Get sample duplicate values
-        sample_duplicates = duplicates[key_columns].drop_duplicates().head(5)
+        sample_duplicates = duplicates[key_columns].drop_duplicates().head(5)  # type: ignore
         sample_str = ", ".join([str(tuple(row)) for _, row in sample_duplicates.iterrows()])
 
         return [
@@ -416,8 +416,8 @@ class ForeignKeyIntegrityValidator:
             return []  # Remote column issue
 
         # Null key parts are excluded unless the FK explicitly treats nulls as equal.
-        local_fk_values: pd.DataFrame = local_df[local_keys].drop_duplicates()
-        remote_key_values: pd.DataFrame = remote_df[remote_keys].drop_duplicates()
+        local_fk_values: pd.DataFrame = local_df[local_keys].drop_duplicates()  # type: ignore
+        remote_key_values: pd.DataFrame = remote_df[remote_keys].drop_duplicates()  # type: ignore
         if not null_keys_equal:
             local_fk_values = local_fk_values.dropna()
             remote_key_values = remote_key_values.dropna()
@@ -552,7 +552,7 @@ class DataTypeCompatibilityValidator:
             # and skip the type comparison — the data error is more actionable.
             if not local_df.empty and local_df[local_col].isna().all():
                 issues.append(
-                    ValidationIssue(
+                    ValidationIssue(  # type: ignore
                         severity="warning",
                         entity=entity_name,
                         field="foreign_keys[].local_keys",

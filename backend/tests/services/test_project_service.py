@@ -2,7 +2,7 @@
 
 from copy import deepcopy
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -448,7 +448,7 @@ options:
         assert not (service.projects_dir / "unbound-copy").exists()
 
     def test_save_allows_first_assignment_to_legacy_project(self, service: ProjectService):
-        service.state.get.return_value = None
+        cast(MagicMock, service.state).get.return_value = None
         project_dir = service.projects_dir / "legacy"
         project_dir.mkdir()
         (project_dir / "shapeshifter.yml").write_text(
@@ -480,7 +480,7 @@ options:
         assert not (project_path.parent / "backups").exists()
 
     def test_save_rejects_stale_unbound_snapshot_after_first_assignment(self, service: ProjectService):
-        service.state.get.return_value = None
+        cast(MagicMock, service.state).get.return_value = None
         project_dir = service.projects_dir / "legacy"
         project_dir.mkdir()
         project_path = project_dir / "shapeshifter.yml"

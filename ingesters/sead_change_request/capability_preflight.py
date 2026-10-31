@@ -8,6 +8,7 @@ and derived entities require no SIMS operation and are checked without blocking.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Protocol
 
 from ingesters.sead_change_request.contracts import CapabilityPreflightResult, PlannedTable
@@ -24,10 +25,18 @@ class EntityCapability(Protocol):
 
 
 class CapabilitiesSource(Protocol):
-    """Versioned SIMS capability response consumed by preflight."""
+    """Versioned SIMS capability response consumed by preflight.
 
-    version: str
-    entities: list[EntityCapability]
+    Members are read-only properties so callers may pass any object whose
+    ``entities`` is a sequence of capability entries, including Pydantic
+    response models holding a mutable list.
+    """
+
+    @property
+    def version(self) -> str: ...
+
+    @property
+    def entities(self) -> Sequence[EntityCapability]: ...
 
 
 def preflight_capabilities(

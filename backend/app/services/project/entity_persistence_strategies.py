@@ -204,7 +204,7 @@ class FixedEntityPersistenceStrategy:
         normalized_df = df.copy()
 
         if "system_id" not in normalized_df.columns:
-            normalized_df.insert(0, "system_id", range(1, len(normalized_df) + 1))
+            normalized_df.insert(0, "system_id", list(range(1, len(normalized_df) + 1)))
 
         if public_id and public_id not in normalized_df.columns:
             normalized_df[public_id] = [None] * len(normalized_df)

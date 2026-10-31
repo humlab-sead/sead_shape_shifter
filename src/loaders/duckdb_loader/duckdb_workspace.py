@@ -41,6 +41,17 @@ class DuckDbWorkspace:
         self._registered_object_ids: dict[str, int] = {}
         self.register_queue: dict[str, pd.DataFrame] = {}
 
+    @property
+    def _active_connection(self) -> duckdb.DuckDBPyConnection:
+        """Return the open connection.
+
+        Raises RuntimeError when the workspace is closed, so callers do not need
+        to handle a closed workspace as a separate type.
+        """
+        if self.connection is None:
+            raise RuntimeError("DuckDB workspace is closed")
+        return self.connection
+
     def _configure_runtime_policy(self) -> None:
         """Disable DuckDB features that would let untrusted SQL reach files or extensions."""
         for statement in (
@@ -49,7 +60,7 @@ class DuckDbWorkspace:
             "SET autoload_known_extensions=false",
             "SET allow_community_extensions=false",
         ):
-            self.connection.execute(statement)
+            self._active_connection.execute(statement)
 
     def _ensure_transient_sql(self, sql: str) -> None:
         """Reject DuckDB-specific file and network access that is not needed for the internal workspace."""
@@ -89,7 +100,7 @@ class DuckDbWorkspace:
             self.unregister_entity(entity_name)
 
         logger.trace(f"duckdb: registering entity '{entity_name}' with shape {df.shape}")
-        self.connection.register(entity_name, df)
+        self._active_connection.register(entity_name, df)
 
         self._registered.add(entity_name)
         self._registered_object_ids[entity_name] = object_id
@@ -110,7 +121,7 @@ class DuckDbWorkspace:
         logger.trace(f"duckdb: unregistering entity '{entity_name}'")
 
         try:
-            self.connection.unregister(entity_name)
+            self._active_connection.unregister(entity_name)
         except duckdb.CatalogException:
             pass
 
@@ -130,17 +141,17 @@ class DuckDbWorkspace:
     def execute(self, sql: str) -> duckdb.DuckDBPyConnection:
         self._validate_sql(sql)
         self.flush()
-        return self.connection.execute(sql)
+        return self._active_connection.execute(sql)
 
     def query_df(self, sql: str) -> pd.DataFrame:
         self._validate_sql(sql)
         self.flush()
-        return self.connection.execute(sql).df()
+        return self._active_connection.execute(sql).df()
 
     def query_scalar(self, sql: str) -> Any:
         self._validate_sql(sql)
         self.flush()
-        row: tuple[Any, ...] | None = self.connection.execute(sql).fetchone()
+        row: tuple[Any, ...] | None = self._active_connection.execute(sql).fetchone()
 
         if row is None:
             return None
@@ -149,7 +160,7 @@ class DuckDbWorkspace:
 
     def explain(self, sql: str) -> pd.DataFrame:
         self._validate_sql(sql)
-        return self.connection.execute(f"EXPLAIN {sql}").df()
+        return self._active_connection.execute(f"EXPLAIN {sql}").df()
 
     def list_registered(self) -> list[str]:
         return sorted(self._registered | self.register_queue.keys())
@@ -161,15 +172,16 @@ class DuckDbWorkspace:
         that are queried repeatedly and are expensive to scan from Pandas.
         """
         temp_name: str = f"__df_{entity_name}"
-        self.connection.register(temp_name, df)
+        connection = self._active_connection
+        connection.register(temp_name, df)
 
         try:
             if replace:
-                self.connection.execute(f'CREATE OR REPLACE TABLE "{entity_name}" AS SELECT * FROM "{temp_name}"')
+                connection.execute(f'CREATE OR REPLACE TABLE "{entity_name}" AS SELECT * FROM "{temp_name}"')
             else:
-                self.connection.execute(f'CREATE TABLE "{entity_name}" AS SELECT * FROM "{temp_name}"')
+                connection.execute(f'CREATE TABLE "{entity_name}" AS SELECT * FROM "{temp_name}"')
         finally:
-            self.connection.unregister(temp_name)
+            connection.unregister(temp_name)
 
         self._registered.add(entity_name)
         self._registered_object_ids[entity_name] = id(df)

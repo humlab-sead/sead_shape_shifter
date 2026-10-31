@@ -34,23 +34,23 @@ class DataSourceConfig(BaseModel):
     driver: str = Field(..., description="Data source driver type")
 
     # Database connection fields (optional, used for PostgreSQL, SQLite)
-    host: Optional[str] = Field(None, description="Database host")
-    port: Optional[int] = Field(None, description="Database port", ge=1, le=65535)
-    database: Optional[str] = Field(None, description="Database name")
-    dbname: Optional[str] = Field(None, description="Database name (alias for database)")
-    username: Optional[str] = Field(None, description="Database username")
-    password: Optional[SecretStr] = Field(None, description="Database password (sensitive)")
+    host: Optional[str] = Field(default=None, description="Database host")
+    port: Optional[int] = Field(default=None, description="Database port", ge=1, le=65535)
+    database: Optional[str] = Field(default=None, description="Database name")
+    dbname: Optional[str] = Field(default=None, description="Database name (alias for database)")
+    username: Optional[str] = Field(default=None, description="Database username")
+    password: Optional[SecretStr] = Field(default=None, description="Database password (sensitive)")
 
     # Custom connection string (advanced)
-    connection_string: Optional[str] = Field(None, description="Custom connection string")
+    connection_string: Optional[str] = Field(default=None, description="Custom connection string")
 
     # Additional options (driver-specific)
     options: Optional[dict[str, Any]] = Field(
-        None, description="Driver-specific options (e.g., ucanaccess_dir for Access, pandas options for CSV)"
+        default=None, description="Driver-specific options (e.g., ucanaccess_dir for Access, pandas options for CSV)"
     )
 
     # Metadata
-    description: Optional[str] = Field(None, description="Human-readable description")
+    description: Optional[str] = Field(default=None, description="Human-readable description")
 
     @property
     def effective_database(self) -> Optional[str]:

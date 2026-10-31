@@ -1,6 +1,7 @@
 """Tests for preview and column-availability error mapping."""
 
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -54,6 +55,12 @@ def _fixed_entity_shape_error() -> ValidationError:
     )
 
 
+def _error_detail(exc: HTTPException) -> dict[str, Any]:
+    """Return the structured error payload carried by the exception detail."""
+    assert isinstance(exc.detail, dict)
+    return exc.detail
+
+
 @pytest.mark.asyncio
 async def test_preview_returns_structured_fixed_entity_validation_error() -> None:
     preview_service = Mock()
@@ -71,8 +78,9 @@ async def test_preview_returns_structured_fixed_entity_validation_error() -> Non
         )
 
     assert exc_info.value.status_code == 400
-    assert exc_info.value.detail["error_code"] == "FIXED_ENTITY_SHAPE_INVALID"
-    assert exc_info.value.detail["message"] == "Entity 'data_provider' row 0 has an invalid number of values."
+    detail = _error_detail(exc_info.value)
+    assert detail["error_code"] == "FIXED_ENTITY_SHAPE_INVALID"
+    assert detail["message"] == "Entity 'data_provider' row 0 has an invalid number of values."
 
 
 @pytest.mark.asyncio
@@ -92,5 +100,6 @@ async def test_column_availability_returns_structured_fixed_entity_validation_er
         )
 
     assert exc_info.value.status_code == 400
-    assert exc_info.value.detail["error_code"] == "FIXED_ENTITY_SHAPE_INVALID"
-    assert exc_info.value.detail["context"]["entity"] == "data_provider"
+    detail = _error_detail(exc_info.value)
+    assert detail["error_code"] == "FIXED_ENTITY_SHAPE_INVALID"
+    assert detail["context"]["entity"] == "data_provider"

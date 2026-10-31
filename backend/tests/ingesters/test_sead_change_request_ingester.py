@@ -14,7 +14,7 @@ import pytest
 
 from backend.app.ingesters import IngesterConfig
 from backend.app.ingesters.protocol import IngestionResult, ValidationResult
-from backend.app.models.sims import CapabilitiesResponse, EntityCapabilityResponse
+from backend.app.models.sims import CapabilitiesResponse, EntityCapabilityResponse, ResolveRequest
 from backend.app.services.ingester_runtime import SeadChangeRequestSimsAdapter
 from ingesters.sead_change_request import ChangeRowState, DeployArtifact, SourceTableBundle
 from ingesters.sead_change_request.contracts import (
@@ -147,7 +147,7 @@ class FakeBackendSimsClient:
         self.resolve_error = resolve_error
         self.associated_change_requests: list[tuple[str, str]] = []
 
-    async def resolve(self, request: object):
+    async def resolve(self, request: ResolveRequest):
         if self.resolve_error is not None:
             raise self.resolve_error
         outcomes = []
@@ -2843,6 +2843,7 @@ class TestSeadChangeRequestIngesterStagingValidation:
 
         assert result.success is False
         assert result.message == "Validation failed"
+        assert result.error_details is not None
         assert "existing tracked root" in result.error_details
 
 
