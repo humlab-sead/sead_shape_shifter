@@ -45,7 +45,7 @@ const reconciliationStore = reactive({
   specsError: null as string | null,
   loadSpecifications: vi.fn(async () => {}),
   getAvailableFields: vi.fn(async () => ['site_code']),
-  deleteSpecification: vi.fn(async () => 3),
+  deleteSpecification: vi.fn(async () => ({ removedOwnedLinks: 3, removedOwnedApprovals: 2 })),
 })
 
 vi.mock('@/stores/reconciliation', () => ({
@@ -115,7 +115,7 @@ describe('SpecificationsList', () => {
     reconciliationStore.specsError = null
     reconciliationStore.loadSpecifications = vi.fn(async () => {})
     reconciliationStore.getAvailableFields = vi.fn(async () => ['site_code'])
-    reconciliationStore.deleteSpecification = vi.fn(async () => 3)
+    reconciliationStore.deleteSpecification = vi.fn(async () => ({ removedOwnedLinks: 3, removedOwnedApprovals: 2 }))
     notificationMocks.success.mockReset()
     notificationMocks.error.mockReset()
     apiMocks.deleteSpecification.mockReset()
@@ -130,7 +130,9 @@ describe('SpecificationsList', () => {
     await flushPromises()
 
     expect(reconciliationStore.deleteSpecification).toHaveBeenCalledWith('test_project', 'site', 'site_code', true)
-    expect(notificationMocks.success).toHaveBeenCalledWith('Specification deleted. 3 owned mapping link(s) removed.')
+    expect(notificationMocks.success).toHaveBeenCalledWith(
+      'Specification deleted. 3 owned mapping link(s) and 2 local-only approval(s) removed.'
+    )
     expect(notificationMocks.error).not.toHaveBeenCalled()
     expect(wrapper.find('[data-testid="delete-dialog"]').exists()).toBe(false)
   })
@@ -154,7 +156,7 @@ describe('SpecificationsList', () => {
 })
 
 describe('reconciliation store deletion result', () => {
-  it('returns the owned-link count and stores the catalog-shaped response', async () => {
+  it('returns owned-entry counts and stores the catalog-shaped response', async () => {
     const { useReconciliationStore } = await vi.importActual<typeof import('@/stores/reconciliation')>(
       '@/stores/reconciliation'
     )
@@ -165,12 +167,16 @@ describe('reconciliation store deletion result', () => {
       service_url: 'http://localhost:8000',
       entities: { site: {} },
     }
-    apiMocks.deleteSpecification.mockResolvedValue({ ...updatedCatalog, removed_owned_links: 2 })
+    apiMocks.deleteSpecification.mockResolvedValue({
+      ...updatedCatalog,
+      removed_owned_links: 2,
+      removed_owned_approvals: 1,
+    })
     apiMocks.listSpecifications.mockResolvedValue([])
 
-    const removedOwnedLinks = await store.deleteSpecification('test_project', 'site', 'site_code', true)
+    const removedEntries = await store.deleteSpecification('test_project', 'site', 'site_code', true)
 
-    expect(removedOwnedLinks).toBe(2)
+    expect(removedEntries).toEqual({ removedOwnedLinks: 2, removedOwnedApprovals: 1 })
     expect(store.reconciliationConfig).toEqual(updatedCatalog)
     expect(store.specifications).toEqual([])
   })

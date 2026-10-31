@@ -295,7 +295,7 @@ async function performDelete() {
 
   deletingSpec.value = true
   try {
-    const removedOwnedLinks = await reconciliationStore.deleteSpecification(
+    const removedEntries = await reconciliationStore.deleteSpecification(
       props.projectName,
       specToDelete.value.entity_name,
       specToDelete.value.target_field,
@@ -303,7 +303,10 @@ async function performDelete() {
     )
     deleteDialog.value = false
     specToDelete.value = null
-    success(`Specification deleted. ${removedOwnedLinks} owned mapping link(s) removed.`)
+    success(
+      `Specification deleted. ${removedEntries.removedOwnedLinks} owned mapping link(s) and `
+      + `${removedEntries.removedOwnedApprovals} local-only approval(s) removed.`
+    )
   } catch (err: any) {
     console.error('Failed to delete specification:', err)
     const message = err.response?.data?.detail || err.message || 'Unknown error'

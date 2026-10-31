@@ -95,7 +95,11 @@ def sample_recon_config(tmp_path):
                     review_threshold=0.60,
                     mapping=[
                         dto.ResolvedEntityPair(
-                            local_key_value="site-1", source_value="test1", status="accepted", target_id=1, confidence=0.98,
+                            local_key_value="site-1",
+                            source_value="test1",
+                            status="accepted",
+                            target_id=1,
+                            confidence=0.98,
                         ),
                         dto.ResolvedEntityPair(
                             local_key_value="site-2", source_value="test2", status="accepted", target_id=2, confidence=0.85
@@ -113,7 +117,7 @@ def sample_recon_config(tmp_path):
     return config_file
 
 
-def _write_mapping_sidecar(tmp_path, links: dict[str, dict]) -> None:
+def _write_mapping_sidecar(tmp_path, links: dict[str, dict], local_only_approvals: dict[str, dict] | None = None) -> None:
     project_dir = tmp_path / "test_project"
     sidecar = {
         "version": "2.0",
@@ -128,6 +132,7 @@ def _write_mapping_sidecar(tmp_path, links: dict[str, dict]) -> None:
                 "public_id": "site_id",
                 "entity_type": "primary",
                 "links": links,
+                "local_only_approvals": local_only_approvals or {},
             }
         },
     }
@@ -143,6 +148,13 @@ def _owned_link(owner: str, field: str, target_id: int = 101) -> dict:
         "owner": {"entity_name": owner, "target_field": field},
         "verified_at": None,
         "created_by": "reconciliation",
+    }
+
+
+def _owned_approval(owner: str, field: str) -> dict:
+    return {
+        "owner": {"entity_name": owner, "target_field": field},
+        "committed_at": "2026-06-15T00:00:00Z",
     }
 
 
@@ -380,8 +392,9 @@ class TestDeleteSpecification:
         # site_code should be removed, but site_name should remain
         assert "site_code" not in config["entities"]["site"]
         assert "site_name" in config["entities"]["site"]
-        assert set(config) == {"version", "service_url", "entities", "removed_owned_links"}
+        assert set(config) == {"version", "service_url", "entities", "removed_owned_links", "removed_owned_approvals"}
         assert config["removed_owned_links"] == 0
+        assert config["removed_owned_approvals"] == 0
 
     async def test_delete_specification_with_mappings_no_force(
         self, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config, authorized_client
@@ -421,6 +434,11 @@ class TestDeleteSpecification:
                 "manual": {"target_id": 202, "source": "manual", "created_by": "operator"},
                 "unowned": {"target_id": 303, "source": "reconciliation", "created_by": "legacy"},
             },
+            {
+                "owned-name": _owned_approval("site", "site_name"),
+                "owned-code": _owned_approval("site", "site_code"),
+                "other-owner": _owned_approval("sample", "sample_code"),
+            },
         )
 
         response = await authorized_client.delete("/api/v1/projects/test_project/reconciliation/mapping-registry/site/site_name?force=true")
@@ -428,31 +446,45 @@ class TestDeleteSpecification:
         assert response.status_code == 200, response.text
         body = response.json()
         assert body["removed_owned_links"] == 1
-        assert set(body) == {"version", "service_url", "entities", "removed_owned_links"}
+        assert body["removed_owned_approvals"] == 1
+        assert set(body) == {"version", "service_url", "entities", "removed_owned_links", "removed_owned_approvals"}
         assert "site_name" not in body["entities"]["site"]
         sidecar = yaml.safe_load((tmp_path / "test_project" / "test_project-mapping.yml").read_text(encoding="utf-8"))
         links = sidecar["entities"]["site"]["links"]
         assert "owned-name" not in links
         assert {"owned-code", "other-owner", "manual", "unowned"} <= links.keys()
+        approvals = sidecar["entities"]["site"]["local_only_approvals"]
+        assert "owned-name" not in approvals
+        assert {"owned-code", "other-owner"} <= approvals.keys()
 
     async def test_empty_specification_delete_cleans_previously_owned_links(
         self, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config, authorized_client
     ):
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
-        _write_mapping_sidecar(tmp_path, {"owned-code": _owned_link("site", "site_code")})
+        _write_mapping_sidecar(
+            tmp_path,
+            {"owned-code": _owned_link("site", "site_code")},
+            {"owned-approval": _owned_approval("site", "site_code")},
+        )
 
         response = await authorized_client.delete("/api/v1/projects/test_project/reconciliation/mapping-registry/site/site_code")
 
         assert response.status_code == 200, response.text
         assert response.json()["removed_owned_links"] == 1
+        assert response.json()["removed_owned_approvals"] == 1
         sidecar = yaml.safe_load((tmp_path / "test_project" / "test_project-mapping.yml").read_text(encoding="utf-8"))
         assert sidecar["entities"]["site"]["links"] == {}
+        assert sidecar["entities"]["site"]["local_only_approvals"] == {}
 
     async def test_sidecar_version_conflict_keeps_specification_and_sidecar(
         self, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config, authorized_client
     ):
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
-        _write_mapping_sidecar(tmp_path, {"owned-code": _owned_link("site", "site_code")})
+        _write_mapping_sidecar(
+            tmp_path,
+            {"owned-code": _owned_link("site", "site_code")},
+            {"owned-approval": _owned_approval("site", "site_code")},
+        )
         sidecar_path = tmp_path / "test_project" / "test_project-mapping.yml"
         original_sidecar = sidecar_path.read_bytes()
 
@@ -472,7 +504,11 @@ class TestDeleteSpecification:
         self, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config, authorized_client
     ):
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
-        _write_mapping_sidecar(tmp_path, {"owned-code": _owned_link("site", "site_code")})
+        _write_mapping_sidecar(
+            tmp_path,
+            {"owned-code": _owned_link("site", "site_code")},
+            {"owned-approval": _owned_approval("site", "site_code")},
+        )
         sidecar_path = tmp_path / "test_project" / "test_project-mapping.yml"
         original_sidecar = sidecar_path.read_bytes()
 
@@ -497,6 +533,7 @@ class TestDeleteSpecification:
                 "owned-code": _owned_link("site", "site_code"),
                 "manual": {"target_id": 202, "source": "manual", "created_by": "operator"},
             },
+            {"owned-approval": _owned_approval("site", "site_code")},
         )
 
         def fail_save_catalog(*_args, **_kwargs):
@@ -507,11 +544,12 @@ class TestDeleteSpecification:
 
         assert response.status_code == 500
         assert "still present" in response.json()["detail"]["message"]
-        assert "1 owned mapping link(s) were already removed" in response.json()["detail"]["message"]
+        assert "1 owned mapping link(s) and 1 local-only approval(s) were already removed" in response.json()["detail"]["message"]
         catalog = yaml.safe_load((tmp_path / "test_project" / "test_project-reconciliation.yml").read_text(encoding="utf-8"))
         assert "site_code" in catalog["entities"]["site"]
         sidecar = yaml.safe_load((tmp_path / "test_project" / "test_project-mapping.yml").read_text(encoding="utf-8"))
         assert set(sidecar["entities"]["site"]["links"]) == {"manual"}
+        assert sidecar["entities"]["site"]["local_only_approvals"] == {}
 
     async def test_delete_specification_not_found(
         self, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config, authorized_client
@@ -536,6 +574,7 @@ async def test_whole_catalog_update_cleans_removed_spec_owned_links(
             "owned-code": _owned_link("site", "site_code"),
             "manual": {"target_id": 202, "source": "manual", "created_by": "operator"},
         },
+        {"owned-name": _owned_approval("site", "site_name"), "owned-code": _owned_approval("site", "site_code")},
     )
     config_path = sample_recon_config
     catalog = yaml.safe_load(config_path.read_text(encoding="utf-8"))
@@ -557,6 +596,9 @@ async def test_whole_catalog_update_cleans_removed_spec_owned_links(
     links = sidecar["entities"]["site"]["links"]
     assert "owned-name" not in links
     assert {"owned-code", "manual"} <= links.keys()
+    approvals = sidecar["entities"]["site"]["local_only_approvals"]
+    assert "owned-name" not in approvals
+    assert "owned-code" in approvals
 
 
 def test_catalog_save_uses_atomic_replace_and_preserves_old_file_on_failure(tmp_path, monkeypatch, sample_project, sample_recon_config):

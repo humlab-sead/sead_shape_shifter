@@ -5,7 +5,7 @@ import pytest
 
 from backend.app.models.sims import CapabilitiesResponse, EntityCapabilityResponse
 from ingesters.sead_change_request.capability_preflight import preflight_capabilities
-from ingesters.sead_change_request.contracts import PlannedTable
+from ingesters.sead_change_request.contracts import PlannedRowAction, PlannedTable
 from src.target_model.models import TargetModel
 
 
@@ -19,11 +19,11 @@ def _model(**entities: dict) -> TargetModel:
     )
 
 
-def _planned(*entity_names: str) -> list[PlannedTable]:
+def _planned(*entity_names: str, action: PlannedRowAction = PlannedRowAction.ALLOCATE) -> list[PlannedTable]:
     tables: list[PlannedTable] = []
     for name in entity_names:
         frame = pd.DataFrame()
-        actions = pd.Series(dtype="object")
+        actions = pd.Series([action], index=[0], dtype="object")
         tables.append(PlannedTable(entity_name=name, frame=frame, planned_actions=actions))
     return tables
 
@@ -76,10 +76,9 @@ class TestPreflightCapabilities:
 
         assert not result.has_blockers
 
-    def test_lookup_only_entity_never_requires_allocation(self):
-        # A lookup-only entity only needs bind_existing; a missing allocate_new must not block.
+    def test_lookup_only_approved_row_does_not_require_allocation(self):
         result = preflight_capabilities(
-            _planned("taxa_tree_master"),
+            _planned("taxa_tree_master", action=PlannedRowAction.BLOCK_RECONCILIATION),
             _model(
                 taxa_tree_master={
                     "role": "classifier",
@@ -94,8 +93,7 @@ class TestPreflightCapabilities:
         assert not result.has_blockers
         assert not result.diagnostics
 
-    def test_reconcile_exact_entity_requires_bind_and_allocate(self):
-        # reconcile-exact can bind a match or allocate after an approved miss, so both are required.
+    def test_approved_reconcile_exact_row_requires_only_allocation(self):
         result = preflight_capabilities(
             _planned("site"),
             _model(site={"role": "lookup", "public_id": "site_id"}),
@@ -128,9 +126,9 @@ class TestPreflightCapabilities:
         assert not result.has_blockers
         assert result.checked_entities == ["sample_dimension", "sample_taxon"]
 
-    def test_missing_bind_existing_blocks_reconciled_entity(self):
+    def test_unapproved_reconciled_row_does_not_request_capabilities(self):
         result = preflight_capabilities(
-            _planned("taxa_tree_master"),
+            _planned("taxa_tree_master", action=PlannedRowAction.BLOCK_RECONCILIATION),
             _model(
                 taxa_tree_master={
                     "role": "classifier",
@@ -142,8 +140,8 @@ class TestPreflightCapabilities:
             _capabilities(_capability("taxa_tree_master", bind_existing=False, allocate_new=False)),
         )
 
-        assert result.has_blockers
-        assert "Operation 'bind_existing' is not supported for entity type 'taxa_tree_master'" in result.diagnostics
+        assert not result.has_blockers
+        assert not result.diagnostics
 
     @pytest.mark.parametrize(
         "entity_spec",

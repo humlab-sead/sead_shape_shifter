@@ -96,9 +96,10 @@ class EntityResolutionCatalog(BaseModel):
 
 
 class EntityResolutionCatalogDeleteResult(EntityResolutionCatalog):
-    """Updated reconciliation catalog and count of removed owned sidecar links."""
+    """Updated reconciliation catalog and counts of removed owned sidecar entries."""
 
     removed_owned_links: int = Field(..., ge=0, description="Count of owned mapping links removed with the specification.")
+    removed_owned_approvals: int = Field(0, ge=0, description="Count of owned local-only approvals removed with the specification.")
 
 
 class EntityResolutionListItem(BaseModel):
@@ -236,10 +237,12 @@ class ExportToMappingOutcome(BaseModel):
 
 
 class ExportToMappingResult(BaseModel):
-    """Result of exporting reconciliation links into the mapping sidecar."""
+    """Result of exporting reconciliation links and local-only approvals into the mapping sidecar."""
 
     exported: int = Field(..., description="Count of reconciliation links written to the mapping sidecar.")
     removed: int = Field(..., description="Count of stale owned links removed from the mapping sidecar.")
+    exported_local_only_approvals: int = Field(0, description="Count of local-only approvals written to the mapping sidecar.")
+    removed_local_only_approvals: int = Field(0, description="Count of stale owned local-only approvals removed from the mapping sidecar.")
     skipped_manual: int = Field(..., description="Count of reconciliation links skipped because a manual mapping already exists.")
     entity: str = Field(..., description="Entity name whose links were exported.")
     field: str = Field(..., description="Reconciliation field used as the source key during export.")

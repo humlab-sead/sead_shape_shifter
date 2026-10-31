@@ -21,6 +21,7 @@ from backend.app.services.project_data_provider_service import ProjectDataProvid
 from backend.app.services.project_ingester_service import ProjectIngesterService
 from ingesters.sead_change_request.contracts import TrustedProjectContext
 from ingesters.sead_change_request.ingester import SeadChangeRequestIngester
+from src.reconciliation.mapping_model import EntityMapping, LinkOwner, LocalOnlyApproval, MappingCatalog, Metadata
 
 
 def authorized_project(
@@ -246,7 +247,10 @@ def install_common_mocks(
 
     async def normalize(project, *, translate, drop_foreign_keys, default_entity, env_file):
         calls.append(("normalize", (project, translate, drop_foreign_keys, default_entity, env_file)))
-        return SimpleNamespace(table_store=table_store or {"sample": pd.DataFrame({"sample_id": [1, 2]})})
+        return SimpleNamespace(
+            table_store=table_store or {"sample": pd.DataFrame({"sample_id": [1, 2]})},
+            mapping_catalog=None,
+        )
 
     monkeypatch.setattr(project_ingester_module, "normalize_project", normalize)
     return project_service, calls
@@ -322,6 +326,84 @@ async def test_authorized_project_executor_needs_no_application_role(monkeypatch
         assert result.success is True
     assert project_service.loaded == ["pilot"]
     assert calls[0][0] == "normalize"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("method_name", ["validate_project_tables", "ingest_project_tables"])
+async def test_project_operations_attach_committed_approvals_from_normalization_snapshot(monkeypatch, tmp_path, method_name) -> None:
+    """Validation and ingestion pass the same typed, committed sidecar approvals."""
+    project_service, calls = install_common_mocks(
+        monkeypatch,
+        table_store={"site": pd.DataFrame({"site_id": [None], "site_name": ["Nordic Site"]})},
+    )
+    approval = LocalOnlyApproval(
+        owner=LinkOwner(entity_name="site", target_field="site_id"),
+        committed_at=datetime(2026, 10, 31, tzinfo=UTC),
+    )
+    catalog = MappingCatalog(
+        metadata=Metadata(project="pilot"),
+        entities={
+            "site": EntityMapping(
+                local_key="site_name",
+                public_id="site_id",
+                local_only_approvals={"Nordic Site": approval},
+            )
+        },
+    )
+
+    async def normalize(project, *, translate, drop_foreign_keys, default_entity, env_file):
+        calls.append(("normalize", (project, translate, drop_foreign_keys, default_entity, env_file)))
+        return SimpleNamespace(
+            table_store={"site": pd.DataFrame({"site_id": [None], "site_name": ["Nordic Site"]})},
+            mapping_catalog=catalog,
+        )
+
+    monkeypatch.setattr(project_ingester_module, "normalize_project", normalize)
+    provider_context = TrustedProjectContext(
+        project_name="pilot",
+        provider_code="SEAD",
+        provider_schema="pilot",
+        scope_name="provider://pilot",
+        data_provider_id=51,
+        business_keys={"site": ("site_name",)},
+    )
+    service = project_ingester_service(
+        project_service,
+        provider_service=FakeProjectDataProviderService(provider_context),
+        runtime_settings=settings(tmp_path),
+    )
+    FakeTableIngester.instances.clear()
+
+    result = await getattr(service, method_name)("sead_change_request", authorized_project(), request())
+
+    assert result.is_valid if method_name == "validate_project_tables" else result.success
+    ingester_config = FakeTableIngester.instances[-1].config
+    attached = ingester_config.extra["trusted_project_context"]
+    assert attached.mapping_project_name == "pilot"
+    assert attached.local_key_columns_by_entity == {"site": ("site_name",)}
+    assert attached.local_only_approvals == {"site": {"Nordic Site": approval}}
+    assert sum(call[0] == "normalize" for call in calls) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("method_name", ["validate_project_tables", "ingest_project_tables"])
+async def test_project_operations_reject_sidecar_for_different_project(monkeypatch, tmp_path, method_name) -> None:
+    """A normalization snapshot from another project must not reach the ingester."""
+    project_service, _ = install_common_mocks(monkeypatch)
+    catalog = MappingCatalog(metadata=Metadata(project="other-project"))
+
+    async def normalize(*_args, **_kwargs):
+        return SimpleNamespace(table_store={}, mapping_catalog=catalog)
+
+    monkeypatch.setattr(project_ingester_module, "normalize_project", normalize)
+    service = project_ingester_service(project_service, runtime_settings=settings(tmp_path))
+    FakeTableIngester.instances.clear()
+
+    result = await getattr(service, method_name)("sead_change_request", authorized_project(), request())
+
+    assert result.is_valid is False if method_name == "validate_project_tables" else result.success is False
+    assert "does not match authorized project" in (result.errors[0] if method_name == "validate_project_tables" else result.error_details)
+    assert not FakeTableIngester.instances
 
 
 @pytest.mark.asyncio
@@ -703,7 +785,7 @@ async def test_saved_direct_fk_map_reaches_validation_and_ingestion_through_real
 
     async def normalize(mapped_project, *, translate, drop_foreign_keys, default_entity, env_file):  # pylint: disable=unused-argument
         assert mapped_project.get_table("location").foreign_keys == []
-        return SimpleNamespace(table_store=source_tables)
+        return SimpleNamespace(table_store=source_tables, mapping_catalog=None)
 
     monkeypatch.setattr(project_ingester_module, "normalize_project", normalize)
 
@@ -772,7 +854,7 @@ async def test_saved_default_and_explicit_system_id_keep_the_core_link_and_confi
     monkeypatch.setattr(project_ingester_module, "CompositeProjectSpecification", ValidSpecification)
 
     async def normalize(*_args, **_kwargs):
-        return SimpleNamespace(table_store={"location": pd.DataFrame({"location_type_id": [1]})})
+        return SimpleNamespace(table_store={"location": pd.DataFrame({"location_type_id": [1]})}, mapping_catalog=None)
 
     monkeypatch.setattr(project_ingester_module, "normalize_project", normalize)
     monkeypatch.setattr(

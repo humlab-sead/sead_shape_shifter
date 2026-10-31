@@ -43,7 +43,16 @@ from backend.app.utils.exceptions import BadRequestError, NotFoundError
 from src.model import ShapeShiftProject
 from src.reconciliation import model as core
 from src.reconciliation.mapping_manager import MappingSnapshot, MappingVersionConflictError
-from src.reconciliation.mapping_model import EntityMapping, EntityType, Link, LinkOwner, LinkSource, MappingCatalog, encode_local_key
+from src.reconciliation.mapping_model import (
+    EntityMapping,
+    EntityType,
+    Link,
+    LinkOwner,
+    LinkSource,
+    LocalOnlyApproval,
+    MappingCatalog,
+    encode_local_key,
+)
 from src.reconciliation.source_strategy import ReconciliationSourceStrategy, SourceStrategyType
 from src.types.fixed_entity_types import is_missing_fixed_entity_value
 
@@ -76,6 +85,7 @@ class ReconciliationExportPreflight:
     expected_public_id: str
     owner: LinkOwner
     accepted: dict[str, core.ResolvedEntityPair]
+    local_only: dict[str, core.ResolvedEntityPair]
     exportable: dict[str, core.ResolvedEntityPair]
     verification_items: dict[str, CandidateVerificationRequestItem]
     skipped_manual: int
@@ -417,15 +427,36 @@ class ReconciliationService:
         accepted = {
             decision.local_key_value: decision for decision in resolution_set.links if decision.status == core.DecisionStatus.ACCEPTED
         }
+        local_only = {
+            decision.local_key_value: decision for decision in resolution_set.links if decision.status == core.DecisionStatus.LOCAL_ONLY
+        }
         exportable: dict[str, core.ResolvedEntityPair] = {}
         skipped_manual = 0
 
-        for local_key_value in accepted:
+        for local_key_value in dict.fromkeys((*accepted, *local_only)):
             existing_link = existing_entity_mapping.links.get(local_key_value) if existing_entity_mapping else None
+            existing_approval = existing_entity_mapping.local_only_approvals.get(local_key_value) if existing_entity_mapping else None
             if existing_link is not None and existing_link.owner is not None and existing_link.owner != owner:
                 raise ResourceConflictError(
                     f"Mapping key {local_key_value!r} is owned by {existing_link.owner.entity_name}.{existing_link.owner.target_field}",
                     resource_type="mapping-link",
+                    resource_id=f"{entity_name}:{local_key_value}",
+                )
+            if existing_approval is not None and existing_approval.owner != owner:
+                raise ResourceConflictError(
+                    f"Mapping key {local_key_value!r} has a local-only approval owned by "
+                    f"{existing_approval.owner.entity_name}.{existing_approval.owner.target_field}",
+                    resource_type="mapping-local-only-approval",
+                    resource_id=f"{entity_name}:{local_key_value}",
+                )
+            if (
+                local_key_value in local_only
+                and existing_link is not None
+                and (existing_link.source != LinkSource.RECONCILIATION or existing_link.owner is None)
+            ):
+                raise ResourceConflictError(
+                    f"Mapping key {local_key_value!r} has a protected link and cannot receive a local-only approval",
+                    resource_type="mapping-local-only-approval",
                     resource_id=f"{entity_name}:{local_key_value}",
                 )
             for other_entity, target_mappings in reconciliation_catalog.entities.items():
@@ -435,18 +466,19 @@ class ReconciliationService:
                     if (other_entity, other_field) == (entity_name, target_field):
                         continue
                     if any(
-                        decision.local_key_value == local_key_value and decision.status == core.DecisionStatus.ACCEPTED
+                        decision.local_key_value == local_key_value
+                        and decision.status in {core.DecisionStatus.ACCEPTED, core.DecisionStatus.LOCAL_ONLY}
                         for decision in other_spec.links
                     ):
                         raise ResourceConflictError(
-                            f"Another reconciliation specification has an accepted claim for key {local_key_value!r}",
+                            f"Another reconciliation specification has a claim for key {local_key_value!r}",
                             resource_type="mapping-link",
                             resource_id=f"{entity_name}:{local_key_value}",
                         )
 
-            if existing_link is not None and existing_link.owner is None:
+            if local_key_value in accepted and existing_link is not None and existing_link.owner is None:
                 skipped_manual += 1
-            else:
+            elif local_key_value in accepted:
                 exportable[local_key_value] = accepted[local_key_value]
 
         missing_candidate_keys = [key for key, decision in exportable.items() if not decision.candidate_id]
@@ -481,6 +513,7 @@ class ReconciliationService:
             expected_public_id=expected_public_id,
             owner=owner,
             accepted=accepted,
+            local_only=local_only,
             exportable=exportable,
             verification_items=verification_items,
             skipped_manual=skipped_manual,
@@ -610,7 +643,14 @@ class ReconciliationService:
                 del entity_mapping.links[local_key_value]
                 removed += 1
 
+        removed_local_only_approvals = 0
+        for local_key_value, approval in list(entity_mapping.local_only_approvals.items()):
+            if approval.owner == preflight.owner and local_key_value not in preflight.local_only:
+                del entity_mapping.local_only_approvals[local_key_value]
+                removed_local_only_approvals += 1
+
         exported = 0
+        exported_local_only_approvals = 0
         committed_at = datetime.now(timezone.utc)
         for local_key_value, decision in preflight.exportable.items():
             outcome = outcomes.get(local_key_value)
@@ -647,7 +687,17 @@ class ReconciliationService:
             )
             exported += 1
 
-        if exported or removed:
+        for local_key_value in preflight.local_only:
+            existing_approval = entity_mapping.local_only_approvals.get(local_key_value)
+            if existing_approval is not None and existing_approval.owner == preflight.owner and existing_approval.committed_at is not None:
+                continue
+            entity_mapping.local_only_approvals[local_key_value] = LocalOnlyApproval(
+                owner=preflight.owner,
+                committed_at=committed_at,
+            )
+            exported_local_only_approvals += 1
+
+        if exported or removed or exported_local_only_approvals or removed_local_only_approvals:
             sidecar.entities[preflight.entity_name] = entity_mapping
             try:
                 self.mapping_service.manager.save(
@@ -665,6 +715,8 @@ class ReconciliationService:
         return ExportToMappingResult(
             exported=exported,
             removed=removed,
+            exported_local_only_approvals=exported_local_only_approvals,
+            removed_local_only_approvals=removed_local_only_approvals,
             skipped_manual=preflight.skipped_manual,
             entity=preflight.entity_name,
             field=preflight.target_field,
@@ -681,15 +733,19 @@ class ReconciliationService:
                 for target_field in target_mappings
                 if not catalog.exists(entity_name, target_field)
             }
-            removed_links = self._remove_owned_mapping_links_locked(project_name, removed_owners)
+            removed_links, removed_approvals = self._remove_owned_mapping_links_locked(project_name, removed_owners)
             try:
                 self.catalog_manager.save_catalog(project_name, catalog)
             except OSError as exc:
-                if removed_links:
+                if removed_links or removed_approvals:
                     raise DomainException(
                         "The reconciliation catalog was not saved. The removed specifications are still present, but "
-                        f"{removed_links} owned mapping link(s) were already removed. Retry saving the catalog.",
-                        context={"removed_owned_links": removed_links},
+                        f"{removed_links} owned mapping link(s) and {removed_approvals} local-only approval(s) were already "
+                        "removed. Retry saving the catalog.",
+                        context={
+                            "removed_owned_links": removed_links,
+                            "removed_owned_approvals": removed_approvals,
+                        },
                     ) from exc
                 raise
 
@@ -699,34 +755,40 @@ class ReconciliationService:
         entity_name: str,
         target_field: str,
         force: bool = False,
-    ) -> tuple[core.EntityResolutionCatalog, int]:
-        """Delete a specification after removing only its owned sidecar links."""
+    ) -> tuple[core.EntityResolutionCatalog, int, int]:
+        """Delete a specification after removing only its owned sidecar entries."""
         with self.project_service._get_lock(project_name):
             catalog = self.catalog_manager.load_catalog(project_name)
             self.catalog_manager.remove_specification(catalog, entity_name, target_field, force)
-            removed_links = self._remove_owned_mapping_links_locked(project_name, {(entity_name, target_field)})
+            removed_links, removed_approvals = self._remove_owned_mapping_links_locked(project_name, {(entity_name, target_field)})
             try:
                 self.catalog_manager.save_catalog(project_name, catalog)
             except OSError as exc:
-                if removed_links:
+                if removed_links or removed_approvals:
                     raise DomainException(
                         f"Specification '{entity_name}.{target_field}' is still present, but {removed_links} owned "
-                        "mapping link(s) were already removed. Retry the deletion.",
-                        context={"entity_name": entity_name, "target_field": target_field, "removed_owned_links": removed_links},
+                        f"mapping link(s) and {removed_approvals} local-only approval(s) were already removed. Retry the deletion.",
+                        context={
+                            "entity_name": entity_name,
+                            "target_field": target_field,
+                            "removed_owned_links": removed_links,
+                            "removed_owned_approvals": removed_approvals,
+                        },
                     ) from exc
                 raise
-            return catalog, removed_links
+            return catalog, removed_links, removed_approvals
 
-    def _remove_owned_mapping_links_locked(self, project_name: str, owners: set[tuple[str, str]]) -> int:
-        """Remove specified owners' links from a fresh sidecar snapshot while holding the project lock."""
+    def _remove_owned_mapping_links_locked(self, project_name: str, owners: set[tuple[str, str]]) -> tuple[int, int]:
+        """Remove specified owners' links and approvals from a fresh sidecar snapshot under the project lock."""
         if not owners:
-            return 0
+            return 0, 0
 
         project = self.project_service.load_project(project_name)
         project_path = MappingService._project_path(project, project_name)
         mapping_manager = self.mapping_service.manager
         snapshot = mapping_manager.load_snapshot(project_path)
         removed = 0
+        removed_approvals = 0
         for entity_mapping in snapshot.catalog.entities.values():  # pylint: disable=no-member
             stale_keys = [
                 local_key_value
@@ -736,8 +798,16 @@ class ReconciliationService:
             for local_key_value in stale_keys:
                 del entity_mapping.links[local_key_value]
                 removed += 1
+            stale_approval_keys = [
+                local_key_value
+                for local_key_value, approval in entity_mapping.local_only_approvals.items()
+                if (approval.owner.entity_name, approval.owner.target_field) in owners
+            ]
+            for local_key_value in stale_approval_keys:
+                del entity_mapping.local_only_approvals[local_key_value]
+                removed_approvals += 1
 
-        if removed:
+        if removed or removed_approvals:
             try:
                 mapping_manager.save(snapshot.catalog, project_path, expected_version=snapshot.content_version)
             except MappingVersionConflictError as exc:
@@ -746,7 +816,7 @@ class ReconciliationService:
                     resource_type="mapping-sidecar",
                     resource_id=project_name,
                 ) from exc
-        return removed
+        return removed, removed_approvals
 
     async def auto_reconcile_entity(
         self,

@@ -13,6 +13,7 @@ from src.reconciliation.mapping_model import (
     Link,
     LinkOwner,
     LinkSource,
+    LocalOnlyApproval,
     MappingCatalog,
     Metadata,
     decode_local_key,
@@ -180,6 +181,56 @@ def test_mapping_manager_persists_owner_and_null_verification_without_changing_l
     assert "owner" not in links["SEAD|S1"]
     assert "verified_at" not in links["SEAD|S1"]
     assert MappingManager().load(project_dir).entities["samples"].links[owned_key].verified_at is None
+
+
+def test_mapping_manager_persists_local_only_approval_separately_from_links(tmp_path) -> None:
+    project_dir = tmp_path / "demo-project"
+    project_dir.mkdir()
+    catalog = make_catalog()
+    encoded_key = encode_local_key(["site_code", "sample_code"], ["SE|AD", "S1"])
+    catalog.entities["samples"].local_only_approvals[encoded_key] = LocalOnlyApproval(
+        owner=LinkOwner(entity_name="samples", target_field="sample_code"),
+        committed_at=datetime(2026, 1, 2, tzinfo=timezone.utc),
+    )
+
+    MappingManager().save(catalog, project_dir)
+
+    sidecar = yaml.safe_load((project_dir / "demo-project-mapping.yml").read_text(encoding="utf-8"))
+    entity = sidecar["entities"]["samples"]
+    assert set(entity["links"]) == set(catalog.entities["samples"].links)
+    assert encoded_key not in entity["links"]
+    assert entity["local_only_approvals"][encoded_key] == {
+        "owner": {"entity_name": "samples", "target_field": "sample_code"},
+        "committed_at": "2026-01-02T00:00:00Z",
+    }
+
+    reloaded = MappingManager().load(project_dir)
+    assert reloaded.committed_local_only_approvals_by_entity("samples") == {
+        encoded_key: catalog.entities["samples"].local_only_approvals[encoded_key]
+    }
+    assert reloaded.committed_local_only_approvals_by_entity("missing") == {}
+
+
+def test_mapping_catalog_ignores_uncommitted_local_only_approvals() -> None:
+    catalog = make_catalog()
+    catalog.entities["samples"].local_only_approvals["S1"] = LocalOnlyApproval(
+        owner=LinkOwner(entity_name="samples", target_field="sample_code")
+    )
+
+    assert catalog.committed_local_only_approvals_by_entity("samples") == {}
+
+
+@pytest.mark.parametrize(
+    "approval",
+    [
+        {},
+        {"owner": {"entity_name": "samples", "target_field": ""}},
+        {"owner": {"entity_name": " ", "target_field": "sample_code"}},
+    ],
+)
+def test_local_only_approval_requires_a_valid_owner(approval: dict) -> None:
+    with pytest.raises(ValueError):
+        LocalOnlyApproval.model_validate(approval)
 
 
 @pytest.mark.parametrize(

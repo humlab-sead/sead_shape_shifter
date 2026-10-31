@@ -8,6 +8,7 @@ from typing import Any
 from uuid import uuid4
 
 import pandas as pd
+from pydantic import ValidationError as PydanticValidationError
 
 from backend.app.ingesters.protocol import IngesterConfig
 from ingesters.sead_change_request.contracts import (
@@ -15,6 +16,7 @@ from ingesters.sead_change_request.contracts import (
     CHANGE_REQUEST_FILE_INPUT_RETIRED_MESSAGE,
     ChangeRowState,
     IdentityAssignment,
+    LocalOnlyApproval,
     SourceTableBundle,
     SubmissionContext,
     TrustedProjectContext,
@@ -24,6 +26,7 @@ from ingesters.sead_change_request.contracts import (
 from ingesters.sead_change_request.preparation import ResolvedInputs
 from ingesters.sead_change_request.sql_builder import STAGING_TARGET_SCHEMA_KEY, resolve_deploy_artifact_strategy
 from src.target_model.models import TargetModel
+from src.reconciliation.mapping_model import encode_local_key
 from src.utility import sanitize_columns
 
 TRUSTED_PROJECT_CONTEXT_KEY = "trusted_project_context"
@@ -90,6 +93,13 @@ class BusinessKeyValidationError(InputResolutionError):
     ingest_message = "Invalid business keys"
 
 
+class ReconciliationApprovalError(InputResolutionError):
+    """Raised when trusted local-only approval metadata is incomplete or inconsistent."""
+
+    scope = "reconciliation-approvals"
+    ingest_message = "Invalid reconciliation approvals"
+
+
 def resolve_inputs(config: IngesterConfig, source: object) -> ResolvedInputs:
     """Load and validate all expected inputs for the shared workflow.
 
@@ -122,6 +132,8 @@ def resolve_inputs(config: IngesterConfig, source: object) -> ResolvedInputs:
         deploy_strategy=deploy_strategy,
         staging_target_schema=staging_target_schema,
         trusted_project_context=trusted_project_context,
+        local_key_columns_by_entity=(trusted_project_context.local_key_columns_by_entity if trusted_project_context is not None else {}),
+        local_only_approvals=trusted_project_context.local_only_approvals if trusted_project_context is not None else {},
     )
 
 
@@ -266,9 +278,20 @@ def _resolve_trusted_project_context(config: IngesterConfig) -> TrustedProjectCo
     if raw_context is None:
         return None
     if isinstance(raw_context, TrustedProjectContext):
-        if not raw_context.scope_name.strip():
+        if not isinstance(raw_context.scope_name, str) or not raw_context.scope_name.strip():
             raise SubmissionContextError("Trusted project context requires a non-empty scope name")
-        return raw_context
+        mapping_project_name, local_key_columns_by_entity, local_only_approvals = _resolve_local_only_approval_metadata(
+            raw_context.project_name,
+            raw_context.mapping_project_name,
+            raw_context.local_key_columns_by_entity,
+            raw_context.local_only_approvals,
+        )
+        return replace(
+            raw_context,
+            mapping_project_name=mapping_project_name,
+            local_key_columns_by_entity=local_key_columns_by_entity,
+            local_only_approvals=local_only_approvals,
+        )
     if not isinstance(raw_context, dict):
         raise SubmissionContextError(f"'{TRUSTED_PROJECT_CONTEXT_KEY}' must be a TrustedProjectContext")
 
@@ -278,6 +301,12 @@ def _resolve_trusted_project_context(config: IngesterConfig) -> TrustedProjectCo
     scope_name = raw_context.get("scope_name")
     data_provider_id = raw_context.get("data_provider_id")
     raw_keys = raw_context.get("business_keys") or {}
+    mapping_project_name, local_key_columns_by_entity, local_only_approvals = _resolve_local_only_approval_metadata(
+        project_name,
+        raw_context.get("mapping_project_name"),
+        raw_context.get("local_key_columns_by_entity") or {},
+        raw_context.get("local_only_approvals") or {},
+    )
 
     for label, value in (
         ("project_name", project_name),
@@ -307,7 +336,69 @@ def _resolve_trusted_project_context(config: IngesterConfig) -> TrustedProjectCo
         scope_name=scope_name.strip(),
         data_provider_id=data_provider_id,
         business_keys=business_keys,
+        mapping_project_name=mapping_project_name,
+        local_key_columns_by_entity=local_key_columns_by_entity,
+        local_only_approvals=local_only_approvals,
     )
+
+
+def _resolve_local_only_approval_metadata(
+    project_name: Any,
+    mapping_project_name: Any,
+    raw_key_columns: Any,
+    raw_approvals: Any,
+) -> tuple[str | None, dict[str, tuple[str, ...]], dict[str, dict[str, LocalOnlyApproval]]]:
+    """Validate and type the backend-owned local-only approval metadata."""
+    has_approvals = isinstance(raw_approvals, Mapping) and bool(raw_approvals)
+    if mapping_project_name is not None and (not isinstance(mapping_project_name, str) or not mapping_project_name.strip()):
+        raise ReconciliationApprovalError("Mapping sidecar project name must be a non-empty string")
+    if mapping_project_name is not None and mapping_project_name != project_name:
+        raise ReconciliationApprovalError(
+            f"Mapping sidecar project '{mapping_project_name}' does not match trusted project '{project_name}'"
+        )
+    if has_approvals and mapping_project_name != project_name:
+        raise ReconciliationApprovalError("Local-only approvals require mapping sidecar metadata for the trusted project")
+    if not isinstance(raw_key_columns, Mapping):
+        raise ReconciliationApprovalError("Local-only approval key declarations must map entity names to ordered key columns")
+    if not isinstance(raw_approvals, Mapping):
+        raise ReconciliationApprovalError("Local-only approvals must map entity names to encoded business keys")
+
+    key_columns_by_entity: dict[str, tuple[str, ...]] = {}
+    for entity_name, raw_columns in raw_key_columns.items():
+        if not isinstance(entity_name, str) or not entity_name.strip():
+            raise ReconciliationApprovalError("Local-only approval key declarations require non-empty entity names")
+        if isinstance(raw_columns, str):
+            columns = (raw_columns,)
+        elif isinstance(raw_columns, (list, tuple)) and all(isinstance(column, str) for column in raw_columns):
+            columns = tuple(raw_columns)
+        else:
+            raise ReconciliationApprovalError(
+                f"Local-only approval key declaration for '{entity_name}' must be an ordered list of column names"
+            )
+        if not columns or any(not column.strip() for column in columns):
+            raise ReconciliationApprovalError(f"Local-only approval key declaration for '{entity_name}' cannot be empty or blank")
+        if len(set(columns)) != len(columns):
+            raise ReconciliationApprovalError(f"Local-only approval key declaration for '{entity_name}' contains duplicate columns")
+        key_columns_by_entity[entity_name] = columns
+
+    approvals_by_entity: dict[str, dict[str, LocalOnlyApproval]] = {}
+    for entity_name, raw_entity_approvals in raw_approvals.items():
+        if not isinstance(entity_name, str) or not entity_name.strip():
+            raise ReconciliationApprovalError("Local-only approvals require non-empty entity names")
+        if not isinstance(raw_entity_approvals, Mapping):
+            raise ReconciliationApprovalError(f"Local-only approvals for '{entity_name}' must map encoded keys to approval records")
+        approvals: dict[str, LocalOnlyApproval] = {}
+        for encoded_key, raw_approval in raw_entity_approvals.items():
+            if not isinstance(encoded_key, str) or not encoded_key:
+                raise ReconciliationApprovalError(f"Local-only approvals for '{entity_name}' require non-empty encoded keys")
+            try:
+                approvals[encoded_key] = LocalOnlyApproval.model_validate(raw_approval)
+            except (PydanticValidationError, TypeError, ValueError) as exc:
+                raise ReconciliationApprovalError(f"Local-only approval for '{entity_name}' key '{encoded_key}' is invalid: {exc}") from exc
+        if approvals:
+            approvals_by_entity[entity_name] = approvals
+
+    return mapping_project_name, key_columns_by_entity, approvals_by_entity
 
 
 def _resolve_submission_context(

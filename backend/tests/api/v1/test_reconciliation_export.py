@@ -3,6 +3,7 @@
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
+import pandas as pd
 import pytest
 import yaml
 
@@ -142,7 +143,11 @@ def _write_sample_reconciliation_catalog(tmp_path: Path) -> None:
         yaml.dump(catalog, handle, sort_keys=False)
 
 
-def _write_mapping_sidecar(tmp_path: Path) -> None:
+def _write_mapping_sidecar(
+    tmp_path: Path,
+    local_only_approvals: dict[str, dict] | None = None,
+    links: dict[str, dict] | None = None,
+) -> None:
     sidecar = {
         "version": "2.0",
         "metadata": {
@@ -155,15 +160,20 @@ def _write_mapping_sidecar(tmp_path: Path) -> None:
                 "local_key": "site_code",
                 "public_id": "site_id",
                 "entity_type": "primary",
-                "links": {
-                    "A": {
-                        "target_id": 10,
-                        "source": "manual",
-                        "created_at": "2026-06-15T00:00:00Z",
-                        "committed_at": "2026-06-15T00:00:00Z",
-                        "created_by": "user",
+                "links": (
+                    links
+                    if links is not None
+                    else {
+                        "A": {
+                            "target_id": 10,
+                            "source": "manual",
+                            "created_at": "2026-06-15T00:00:00Z",
+                            "committed_at": "2026-06-15T00:00:00Z",
+                            "created_by": "user",
+                        }
                     }
-                },
+                ),
+                "local_only_approvals": local_only_approvals or {},
             }
         },
     }
@@ -251,6 +261,8 @@ class TestReconciliationExportApi:
         assert response.json() == {
             "exported": 1,
             "removed": 0,
+            "exported_local_only_approvals": 1,
+            "removed_local_only_approvals": 0,
             "skipped_manual": 1,
             "entity": "site",
             "field": "site_code",
@@ -261,6 +273,9 @@ class TestReconciliationExportApi:
         assert sidecar["entities"]["site"]["links"]["B"]["target_id"] == 202
         assert sidecar["entities"]["site"]["links"]["B"]["owner"] == {"entity_name": "site", "target_field": "site_code"}
         assert sidecar["entities"]["site"]["links"]["B"]["verified_at"] is not None
+        approval = sidecar["entities"]["site"]["local_only_approvals"]["C"]
+        assert approval["owner"] == {"entity_name": "site", "target_field": "site_code"}
+        assert approval["committed_at"]
         original = sidecar_path.read_bytes()
 
         response = await authorized_client.post("/api/v1/projects/test_project/reconciliation/site/site_code/export-to-mapping")
@@ -268,6 +283,8 @@ class TestReconciliationExportApi:
         assert response.status_code == 200, response.text
         assert response.json()["exported"] == 0
         assert response.json()["removed"] == 0
+        assert response.json()["exported_local_only_approvals"] == 0
+        assert response.json()["removed_local_only_approvals"] == 0
         assert response.json()["skipped_manual"] == 1
         assert sidecar_path.read_bytes() == original
 
@@ -459,7 +476,9 @@ class TestReconciliationExportApi:
         sidecar = yaml.safe_load((tmp_path / "test_project" / "test_project-mapping.yml").read_text(encoding="utf-8"))
         assert sidecar["entities"]["site"]["links"]["B"]["target_id"] == 303
 
-    async def test_export_ignores_proposed_and_local_only_decisions(self, tmp_path: Path, monkeypatch, authorized_client) -> None:
+    async def test_export_records_local_only_approvals_without_creating_id_links(
+        self, tmp_path: Path, monkeypatch, authorized_client
+    ) -> None:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
         await _create_project(authorized_client, "site", _SITE_ENTITY)
         _write_reconciliation_catalog(tmp_path)
@@ -478,8 +497,14 @@ class TestReconciliationExportApi:
 
         assert response.status_code == 200, response.text
         assert response.json()["exported"] == 2
+        assert response.json()["exported_local_only_approvals"] == 1
+        assert response.json()["removed_local_only_approvals"] == 0
         sidecar = yaml.safe_load((tmp_path / "test_project" / "test_project-mapping.yml").read_text(encoding="utf-8"))
         assert set(sidecar["entities"]["site"]["links"]) == {"A", "B"}
+        approval = sidecar["entities"]["site"]["local_only_approvals"]["C"]
+        assert approval["owner"] == {"entity_name": "site", "target_field": "site_code"}
+        assert approval["committed_at"] is not None
+        assert "target_id" not in approval
 
     async def test_export_removes_owned_links_when_decision_is_rejected(self, tmp_path: Path, monkeypatch, authorized_client) -> None:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
@@ -493,6 +518,8 @@ class TestReconciliationExportApi:
         decision["status"] = "rejected"
         decision["target_id"] = None
         decision["candidate_id"] = None
+        local_only_decision = next(item for item in catalog["entities"]["site"]["site_code"]["mapping"] if item["local_key_value"] == "C")
+        local_only_decision["status"] = "rejected"
         _write_reconciliation_catalog_data(tmp_path, catalog)
 
         response = await authorized_client.post("/api/v1/projects/test_project/reconciliation/site/site_code/export-to-mapping")
@@ -500,8 +527,10 @@ class TestReconciliationExportApi:
         assert response.status_code == 200, response.text
         assert response.json()["exported"] == 0
         assert response.json()["removed"] == 1
+        assert response.json()["removed_local_only_approvals"] == 1
         sidecar = yaml.safe_load((tmp_path / "test_project" / "test_project-mapping.yml").read_text(encoding="utf-8"))
         assert "B" not in sidecar["entities"]["site"]["links"]
+        assert "C" not in sidecar["entities"]["site"]["local_only_approvals"]
 
     async def test_export_does_not_write_an_invalid_candidate_for_a_compound_key(
         self, tmp_path: Path, monkeypatch, authorized_client
@@ -535,6 +564,8 @@ class TestReconciliationExportApi:
         assert response.json() == {
             "exported": 0,
             "removed": 0,
+            "exported_local_only_approvals": 0,
+            "removed_local_only_approvals": 0,
             "skipped_manual": 0,
             "entity": "site",
             "field": "site_code",
@@ -588,8 +619,12 @@ class TestReconciliationExportApi:
         assert "owned by" in response.json()["detail"]["message"]
         assert sidecar_path.read_bytes() == original
 
-    async def test_export_conflicts_with_another_accepted_claim_before_any_write(
-        self, tmp_path: Path, monkeypatch, authorized_client
+    @pytest.mark.parametrize(
+        ("claim_status", "target_id"),
+        [("accepted", 303), ("local-only", None)],
+    )
+    async def test_export_conflicts_with_another_claim_before_any_write(
+        self, tmp_path: Path, monkeypatch, authorized_client, claim_status: str, target_id: int | None
     ) -> None:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
         await _create_project(authorized_client, "site", _SITE_ENTITY)
@@ -597,7 +632,12 @@ class TestReconciliationExportApi:
         catalog = _read_reconciliation_catalog(tmp_path)
         other_spec = dict(catalog["entities"]["site"]["site_code"])
         other_spec["mapping"] = [
-            {"local_key_value": "B", "source_value": "B", "status": "accepted", "target_id": 303},
+            {
+                "local_key_value": "B",
+                "source_value": "B",
+                "status": claim_status,
+                "target_id": target_id,
+            },
         ]
         catalog["entities"]["site"]["other_field"] = other_spec
         _write_reconciliation_catalog_data(tmp_path, catalog)
@@ -605,8 +645,44 @@ class TestReconciliationExportApi:
         response = await authorized_client.post("/api/v1/projects/test_project/reconciliation/site/site_code/export-to-mapping")
 
         assert response.status_code == 409
-        assert "accepted claim" in response.json()["detail"]["message"]
+        assert "claim for key" in response.json()["detail"]["message"]
         assert not (tmp_path / "test_project" / "test_project-mapping.yml").exists()
+
+    async def test_local_only_export_conflicts_with_protected_link_or_other_owner_approval(
+        self, tmp_path: Path, monkeypatch, authorized_client
+    ) -> None:
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        await _create_project(authorized_client, "site", _SITE_ENTITY)
+        _write_reconciliation_catalog(tmp_path)
+        protected_link = {
+            "target_id": 909,
+            "source": "manual",
+            "created_at": "2026-06-15T00:00:00Z",
+            "committed_at": "2026-06-15T00:00:00Z",
+            "created_by": "operator",
+        }
+        _write_mapping_sidecar(tmp_path, links={"C": protected_link})
+        sidecar_path = tmp_path / "test_project" / "test_project-mapping.yml"
+        original = sidecar_path.read_bytes()
+
+        response = await authorized_client.post("/api/v1/projects/test_project/reconciliation/site/site_code/export-to-mapping")
+
+        assert response.status_code == 409
+        assert "protected link" in response.json()["detail"]["message"]
+        assert sidecar_path.read_bytes() == original
+
+        other_owner_approval = {
+            "owner": {"entity_name": "sample", "target_field": "sample_code"},
+            "committed_at": "2026-06-15T00:00:00Z",
+        }
+        _write_mapping_sidecar(tmp_path, local_only_approvals={"C": other_owner_approval})
+        original = sidecar_path.read_bytes()
+
+        response = await authorized_client.post("/api/v1/projects/test_project/reconciliation/site/site_code/export-to-mapping")
+
+        assert response.status_code == 409
+        assert "local-only approval owned by sample.sample_code" in response.json()["detail"]["message"]
+        assert sidecar_path.read_bytes() == original
 
     async def test_export_rejects_mismatched_sidecar_metadata_without_mutating_it(
         self, tmp_path: Path, monkeypatch, authorized_client
@@ -655,7 +731,7 @@ class TestReconciliationExportApi:
                 "public_id": "site_id",
                 "keys": ["site_code"],
                 "columns": ["system_id", "site_id", "site_code"],
-                "values": [[1, 10, "A"], [2, 20, "B"], [3, 30, "C"], [4, 40, "D"]],
+                "values": [[1, 10, "A"], [2, 20, "B"], [3, 30, "C"], [4, 40, "D"], [5, None, "E"]],
             },
             "sample": {
                 "type": "fixed",
@@ -671,6 +747,13 @@ class TestReconciliationExportApi:
         await _create_project_with_entities(authorized_client, entities)
         _write_reconciliation_catalog(tmp_path)
         catalog = _read_reconciliation_catalog(tmp_path)
+        decision_c = next(item for item in catalog["entities"]["site"]["site_code"]["mapping"] if item["local_key_value"] == "C")
+        decision_c["status"] = "rejected"
+        decision_e = dict(decision_c)
+        decision_e["local_key_value"] = "E"
+        decision_e["source_value"] = "E"
+        decision_e["status"] = "local-only"
+        catalog["entities"]["site"]["site_code"]["mapping"].append(decision_e)
         catalog["entities"]["site"]["site_code"]["mapping"].append(
             {
                 "local_key_value": "D",
@@ -706,6 +789,11 @@ class TestReconciliationExportApi:
         assert response.json()["exported"] == 1
         assert response.json()["removed"] == 0
         assert response.json()["skipped_manual"] == 2
+        assert response.json()["exported_local_only_approvals"] == 1
+        assert response.json()["removed_local_only_approvals"] == 0
+        exported_sidecar = yaml.safe_load(sidecar_path.read_text(encoding="utf-8"))
+        assert "E" not in exported_sidecar["entities"]["site"]["links"]
+        assert exported_sidecar["entities"]["site"]["local_only_approvals"]["E"]["committed_at"]
         with patch("httpx.AsyncClient.request", side_effect=AssertionError("Normalization must not make network requests")):
             results = []
             for _ in range(2):
@@ -713,9 +801,14 @@ class TestReconciliationExportApi:
                 await normalizer.normalize()
                 sites = normalizer.table_store["site"].set_index("site_code")["site_id"]
                 child_site_ids = normalizer.table_store["sample"]["site_id"].tolist()
-                results.append(({key: int(value) for key, value in sites.items()}, [int(value) for value in child_site_ids]))
+                results.append(
+                    (
+                        {key: None if bool(pd.isna(value)) else int(value) for key, value in sites.items()},
+                        [int(value) for value in child_site_ids],
+                    )
+                )
 
         assert results == [
-            ({"A": 111, "B": 202, "C": 30, "D": 444}, [2]),
-            ({"A": 111, "B": 202, "C": 30, "D": 444}, [2]),
+            ({"A": 111, "B": 202, "C": 30, "D": 444, "E": None}, [2]),
+            ({"A": 111, "B": 202, "C": 30, "D": 444, "E": None}, [2]),
         ]
