@@ -25,8 +25,8 @@ from ingesters.sead_change_request.contracts import (
 )
 from ingesters.sead_change_request.preparation import ResolvedInputs
 from ingesters.sead_change_request.sql_builder import STAGING_TARGET_SCHEMA_KEY, resolve_deploy_artifact_strategy
+from src.reconciliation.mapping_model import LinkOwner, encode_local_key
 from src.target_model.models import TargetModel
-from src.reconciliation.mapping_model import encode_local_key
 from src.utility import sanitize_columns
 
 TRUSTED_PROJECT_CONTEXT_KEY = "trusted_project_context"
@@ -286,11 +286,18 @@ def _resolve_trusted_project_context(config: IngesterConfig) -> TrustedProjectCo
             raw_context.local_key_columns_by_entity,
             raw_context.local_only_approvals,
         )
+        verified_local_only_approval_owners = _resolve_verified_local_only_approval_owners(raw_context.verified_local_only_approval_owners)
+        verified_reconciliation_links = _resolve_verified_reconciliation_links(raw_context.verified_reconciliation_links)
+        _require_reconciliation_link_key_columns(verified_reconciliation_links, local_key_columns_by_entity)
+        if verified_reconciliation_links and mapping_project_name != raw_context.project_name:
+            raise ReconciliationApprovalError("Verified reconciliation links require mapping sidecar metadata for the trusted project")
         return replace(
             raw_context,
             mapping_project_name=mapping_project_name,
             local_key_columns_by_entity=local_key_columns_by_entity,
             local_only_approvals=local_only_approvals,
+            verified_local_only_approval_owners=verified_local_only_approval_owners,
+            verified_reconciliation_links=verified_reconciliation_links,
         )
     if not isinstance(raw_context, dict):
         raise SubmissionContextError(f"'{TRUSTED_PROJECT_CONTEXT_KEY}' must be a TrustedProjectContext")
@@ -307,6 +314,11 @@ def _resolve_trusted_project_context(config: IngesterConfig) -> TrustedProjectCo
         raw_context.get("local_key_columns_by_entity") or {},
         raw_context.get("local_only_approvals") or {},
     )
+    verified_local_only_approval_owners = _resolve_verified_local_only_approval_owners(
+        raw_context.get("verified_local_only_approval_owners") or {}
+    )
+    verified_reconciliation_links = _resolve_verified_reconciliation_links(raw_context.get("verified_reconciliation_links") or {})
+    _require_reconciliation_link_key_columns(verified_reconciliation_links, local_key_columns_by_entity)
 
     for label, value in (
         ("project_name", project_name),
@@ -320,6 +332,8 @@ def _resolve_trusted_project_context(config: IngesterConfig) -> TrustedProjectCo
         raise SubmissionContextError("Trusted project context requires a positive integer data_provider_id")
     if not isinstance(raw_keys, dict):
         raise SubmissionContextError("Trusted project context business_keys must map entity names to key lists")
+    if verified_reconciliation_links and mapping_project_name != project_name:
+        raise ReconciliationApprovalError("Verified reconciliation links require mapping sidecar metadata for the trusted project")
 
     business_keys: dict[str, tuple[str, ...]] = {}
     for entity_name, key_columns in raw_keys.items():
@@ -339,6 +353,8 @@ def _resolve_trusted_project_context(config: IngesterConfig) -> TrustedProjectCo
         mapping_project_name=mapping_project_name,
         local_key_columns_by_entity=local_key_columns_by_entity,
         local_only_approvals=local_only_approvals,
+        verified_local_only_approval_owners=verified_local_only_approval_owners,
+        verified_reconciliation_links=verified_reconciliation_links,
     )
 
 
@@ -399,6 +415,71 @@ def _resolve_local_only_approval_metadata(
             approvals_by_entity[entity_name] = approvals
 
     return mapping_project_name, key_columns_by_entity, approvals_by_entity
+
+
+def _resolve_verified_local_only_approval_owners(raw_owners: Any) -> dict[str, dict[str, LinkOwner]]:
+    """Validate owner metadata checked against the saved reconciliation catalog."""
+    if not isinstance(raw_owners, Mapping):
+        raise ReconciliationApprovalError("Verified local-only approval owners must map entities to encoded business keys")
+
+    owners_by_entity: dict[str, dict[str, LinkOwner]] = {}
+    for entity_name, raw_entity_owners in raw_owners.items():
+        if not isinstance(entity_name, str) or not entity_name.strip():
+            raise ReconciliationApprovalError("Verified local-only approval owners require non-empty entity names")
+        if not isinstance(raw_entity_owners, Mapping):
+            raise ReconciliationApprovalError(f"Verified local-only approval owners for '{entity_name}' must map encoded keys to owners")
+
+        owners: dict[str, LinkOwner] = {}
+        for encoded_key, raw_owner in raw_entity_owners.items():
+            if not isinstance(encoded_key, str) or not encoded_key:
+                raise ReconciliationApprovalError(f"Verified local-only approval owners for '{entity_name}' require non-empty encoded keys")
+            try:
+                owners[encoded_key] = LinkOwner.model_validate(raw_owner)
+            except (PydanticValidationError, TypeError, ValueError) as exc:
+                raise ReconciliationApprovalError(
+                    f"Verified local-only approval owner for '{entity_name}' key '{encoded_key}' is invalid: {exc}"
+                ) from exc
+        if owners:
+            owners_by_entity[entity_name] = owners
+
+    return owners_by_entity
+
+
+def _resolve_verified_reconciliation_links(raw_links: Any) -> dict[str, dict[str, int]]:
+    """Validate target IDs for accepted reconciliation links verified by the backend."""
+    if not isinstance(raw_links, Mapping):
+        raise ReconciliationApprovalError("Verified reconciliation links must map entities to encoded business keys")
+
+    links_by_entity: dict[str, dict[str, int]] = {}
+    for entity_name, raw_entity_links in raw_links.items():
+        if not isinstance(entity_name, str) or not entity_name.strip():
+            raise ReconciliationApprovalError("Verified reconciliation links require non-empty entity names")
+        if not isinstance(raw_entity_links, Mapping):
+            raise ReconciliationApprovalError(f"Verified reconciliation links for '{entity_name}' must map encoded keys to target IDs")
+
+        links: dict[str, int] = {}
+        for encoded_key, target_id in raw_entity_links.items():
+            if not isinstance(encoded_key, str) or not encoded_key:
+                raise ReconciliationApprovalError(f"Verified reconciliation links for '{entity_name}' require non-empty encoded keys")
+            if not isinstance(target_id, int) or isinstance(target_id, bool) or target_id <= 0:
+                raise ReconciliationApprovalError(
+                    f"Verified reconciliation link for '{entity_name}' key '{encoded_key}' requires a positive integer target ID"
+                )
+            links[encoded_key] = target_id
+        if links:
+            links_by_entity[entity_name] = links
+
+    return links_by_entity
+
+
+def _require_reconciliation_link_key_columns(
+    links_by_entity: dict[str, dict[str, int]],
+    key_columns_by_entity: dict[str, tuple[str, ...]],
+) -> None:
+    """Require saved local-key columns for each backend-verified reconciliation link."""
+    for entity_name in links_by_entity:
+        if not key_columns_by_entity.get(entity_name):
+            raise ReconciliationApprovalError(f"Verified reconciliation links for '{entity_name}' require saved local-key columns")
 
 
 def _resolve_submission_context(

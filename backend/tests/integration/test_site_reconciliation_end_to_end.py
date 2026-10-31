@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 from collections.abc import AsyncIterator, Iterator
 from pathlib import Path
@@ -19,6 +20,7 @@ from backend.app.clients.reconciliation_client import ReconciliationClient, Reco
 from backend.app.core.config import settings
 from backend.app.models.reconciliation import CandidateVerificationRequestItem
 from backend.app.services import project_service, validation_service, yaml_service
+from src.business_keys import business_id_for_row
 from src.normalizer import ShapeShifter
 
 pytestmark = pytest.mark.integration
@@ -77,6 +79,74 @@ async def _require_readiness(client: httpx.AsyncClient) -> None:
     assert response.status_code == 200, f"Site readiness failed: HTTP {response.status_code}"
     result = response.json()
     assert result.get("ready") is True and result.get("type") == "site", f"Site readiness failed: {result.get('reason')}"
+
+
+async def _site_allocator_snapshot(parameters: dict[str, object]) -> tuple[int, int]:
+    """Return the site allocator value and tracked-identity count."""
+    async with await psycopg.AsyncConnection.connect(**parameters) as connection:
+        async with connection.cursor() as cursor:
+            await cursor.execute("SELECT next_internal_id FROM sead_identity.internal_id_allocators WHERE entity_type = 'site'")
+            allocator = await cursor.fetchone()
+            await cursor.execute("SELECT count(*) FROM sead_identity.tracked_identities WHERE entity_type = 'site'")
+            tracked_count = await cursor.fetchone()
+    assert allocator is not None and tracked_count is not None, "The site SIMS allocator must be initialized."
+    return int(allocator[0]), int(tracked_count[0])
+
+
+async def _site_identity_evidence(parameters: dict[str, object], scope_name: str) -> list[tuple[str, int | None, str | None, str | None]]:
+    """Read site business keys and any SIMS bindings in one provider scope."""
+    async with await psycopg.AsyncConnection.connect(**parameters) as connection:
+        async with connection.cursor() as cursor:
+            await cursor.execute(
+                """
+                SELECT identity_key.key_value, tracked.aggregate_id, binding.method, tracked.lifecycle_state
+                FROM sead_identity.source_scopes AS scope
+                JOIN sead_identity.source_identities AS source_identity USING (scope_uuid)
+                JOIN sead_identity.source_identity_keys AS identity_key USING (source_identity_uuid)
+                LEFT JOIN sead_identity.bindings AS binding USING (source_identity_uuid)
+                LEFT JOIN sead_identity.tracked_identities AS tracked USING (tracked_identity_uuid)
+                WHERE scope.scope_name = %s
+                  AND source_identity.entity_type = 'site'
+                  AND identity_key.key_type = 'business_key'
+                """,
+                (scope_name,),
+            )
+            rows = await cursor.fetchall()
+    return [
+        (
+            str(key_value),
+            int(aggregate_id) if aggregate_id is not None else None,
+            str(method) if method is not None else None,
+            str(lifecycle_state) if lifecycle_state is not None else None,
+        )
+        for key_value, aggregate_id, method, lifecycle_state in rows
+    ]
+
+
+async def _first_existing_method_id(parameters: dict[str, object]) -> int:
+    """Return an existing method ID for the required sample-group target row."""
+    async with await psycopg.AsyncConnection.connect(**parameters) as connection:
+        async with connection.cursor() as cursor:
+            await cursor.execute("SELECT method_id FROM public.tbl_methods ORDER BY method_id LIMIT 1")
+            row = await cursor.fetchone()
+    assert row is not None, "The disposable target database must contain a method row."
+    return int(row[0])
+
+
+def _inserted_column_value(deploy_sql: str, table_name: str, column_name: str) -> str:
+    """Return one value from a generated single-row INSERT statement."""
+    pattern = re.compile(
+        rf'INSERT\s+INTO\s+(?:(?:"?[A-Za-z_][A-Za-z_0-9]*"?)\.)?"?{re.escape(table_name)}"?'
+        rf"\s*\((?P<columns>[^)]*)\)\s*VALUES\s*\((?P<values>[^)]*)\)",
+        re.IGNORECASE | re.DOTALL,
+    )
+    match = pattern.search(deploy_sql)
+    assert match is not None, f"No INSERT statement for '{table_name}' was found in the generated artifact."
+    columns = [column.strip().strip('"') for column in match.group("columns").split(",")]
+    values = [value.strip() for value in match.group("values").split(",")]
+    assert len(columns) == len(values), f"INSERT column/value count differs for '{table_name}'."
+    assert column_name in columns, f"Column '{column_name}' is absent from the '{table_name}' INSERT."
+    return values[columns.index(column_name)].strip("'")
 
 
 @pytest.fixture
@@ -167,6 +237,7 @@ async def _create_project(
     *,
     keys: tuple[str, ...] = ("accepted", "local", "rejected", "undecided"),
     child: bool = True,
+    method_id: int | None = None,
     provider: tuple[int, str] | None = None,
 ) -> Path:
     """Create an authorized, isolated site project with a child Core link."""
@@ -180,7 +251,7 @@ async def _create_project(
         }
     }
     if child:
-        entities["sample_group"] = {
+        sample_group: dict = {
             "type": "fixed",
             "public_id": "sample_group_id",
             "keys": ["sample_group_name"],
@@ -190,6 +261,10 @@ async def _create_project(
             "extra_columns": {"site_ref": 10001},
             "foreign_keys": [{"entity": "site", "local_keys": ["site_ref"], "remote_keys": ["system_id"]}],
         }
+        if method_id is not None:
+            sample_group["extra_columns"] = {"site_ref": 10001, "method_id": method_id}
+            sample_group["foreign_key_value_sources"] = {"method": "public_id"}
+        entities["sample_group"] = sample_group
     if provider is not None:
         entities["data_provider"] = {
             "type": "fixed",
@@ -252,6 +327,21 @@ async def _attach_target_model(client: httpx.AsyncClient, directory: Path, name:
                 "target_table": "tbl_sites",
                 "identity_tracking": "reconciled",
                 "reconciliation": "reconcile-exact",
+            },
+            "method": {"role": "lookup", "public_id": "method_id", "target_table": "tbl_methods"},
+            "sample_group": {
+                "role": "fact",
+                "public_id": "sample_group_id",
+                "public_id_generation": "database_sequence",
+                "target_table": "tbl_sample_groups",
+                "identity_tracking": "child",
+                "aggregate_parent": "site",
+                "columns": {
+                    "site_id": {"required": True, "type": "integer", "nullable": False},
+                    "method_id": {"required": True, "type": "integer", "nullable": False},
+                    "sample_group_name": {"required": True, "type": "string", "nullable": True},
+                },
+                "foreign_keys": [{"entity": "site", "required": True}, {"entity": "method", "required": True}],
             },
             "data_provider": {"role": "lookup", "public_id": "data_provider_id", "target_table": "tbl_data_providers"},
         },
@@ -344,8 +434,10 @@ async def test_review_export_offline_normalization_and_transitions(authorized_cl
 
 
 @pytest.mark.asyncio
-async def test_unreviewed_and_rejected_rows_block_ingestion(authorized_client, adopted_site) -> None:
+async def test_unreviewed_and_rejected_rows_block_ingestion(authorized_client, adopted_site, monkeypatch, tmp_path: Path) -> None:
     site_id, label, uri, provider_id, provider_code = adopted_site
+    parameters = _require_disposable_settings(monkeypatch, tmp_path)
+    allocator_before = await _site_allocator_snapshot(parameters)
     name = f"phase7-block-{uuid4().hex[:12]}"
     directory = await _create_project(
         authorized_client, name, label, keys=("accepted", "rejected", "undecided"), child=False, provider=(provider_id, provider_code)
@@ -366,14 +458,29 @@ async def test_unreviewed_and_rejected_rows_block_ingestion(authorized_client, a
     assert ingested.json()["success"] is False
     assert ingested.json()["deploy_artifact"] is None
     assert ingested.json()["output_path"] is None
+    assert await _site_allocator_snapshot(parameters) == allocator_before
+    scope_name = f"provider://{provider_code}/schema-one"
+    business_keys = {record[0] for record in await _site_identity_evidence(parameters, scope_name)}
+    for key in ("rejected", "undecided"):
+        expected_key = business_id_for_row(["national_site_identifier"], {"national_site_identifier": key})
+        assert expected_key not in business_keys, f"Blocked '{key}' row was sent to SIMS."
 
 
 @pytest.mark.asyncio
-async def test_adopted_binding_and_local_only_allocation(authorized_client, adopted_site) -> None:
+async def test_adopted_binding_and_local_only_allocation(authorized_client, adopted_site, monkeypatch, tmp_path: Path) -> None:
     site_id, label, uri, provider_id, provider_code = adopted_site
+    parameters = _require_disposable_settings(monkeypatch, tmp_path)
+    method_id = await _first_existing_method_id(parameters)
+    allocator_before = await _site_allocator_snapshot(parameters)
     name = f"phase7-bind-{uuid4().hex[:12]}"
     directory = await _create_project(
-        authorized_client, name, label, keys=("accepted", "local"), child=False, provider=(provider_id, provider_code)
+        authorized_client,
+        name,
+        label,
+        keys=("accepted", "local"),
+        child=True,
+        method_id=method_id,
+        provider=(provider_id, provider_code),
     )
     await _attach_target_model(authorized_client, directory, name)
     path = await _register_site_reconciliation(authorized_client, name)
@@ -381,6 +488,20 @@ async def test_adopted_binding_and_local_only_allocation(authorized_client, adop
     await _decision(authorized_client, path, "local", "local-only")
     exported = await _export(authorized_client, path)
     assert exported["exported"] == exported["exported_local_only_approvals"] == 1
+    with pytest.MonkeyPatch.context() as no_network:
+        no_network.setattr(httpx.AsyncClient, "request", lambda *_args, **_kwargs: pytest.fail("Normalization used HTTP"))
+        normalization_results = []
+        for _ in range(2):
+            normalizer = ShapeShifter(project=str(directory / "shapeshifter.yml"))
+            await normalizer.normalize()
+            sites = normalizer.table_store["site"].set_index("national_site_identifier")
+            site_ids = {key: None if pd.isna(value) else int(value) for key, value in sites["site_id"].items()}
+            child = normalizer.table_store["sample_group"].iloc[0]
+            normalization_results.append((site_ids, int(child["site_id"]), int(child["method_id"])))
+    assert normalization_results == [
+        ({"accepted": site_id, "local": None}, 10001, method_id),
+        ({"accepted": site_id, "local": None}, 10001, method_id),
+    ]
     request = _submission(name)
     endpoint = "/api/v1/ingesters/sead_change_request/from-project"
     validated = await authorized_client.post(f"{endpoint}/validate", json=request)
@@ -390,8 +511,114 @@ async def test_adopted_binding_and_local_only_allocation(authorized_client, adop
     result = ingested.json()
     assert result["deploy_artifact"] is not None
     assert result["output_path"] and Path(result["output_path"]).is_relative_to(settings.INGEST_OUTPUT_DIR)
-    assert str(site_id) in result["deploy_artifact"]["deploy_sql"]
-    print(f"Phase 7 SIMS adopted site ID: {site_id}; artifact: {result['output_path']}")
+    deploy_artifact = result["deploy_artifact"]
+    direct_foreign_keys = deploy_artifact["metadata_artifact"]["direct_target_id_foreign_keys"]
+    assert direct_foreign_keys == [{"source_entity": "sample_group", "target_entity": "method", "column": "method_id"}]
+    package_child_id = _inserted_column_value(deploy_artifact["deploy_sql"], "tbl_sample_groups", "sample_group_id")
+    assert package_child_id.isdigit()
+    package_child_site_id = _inserted_column_value(deploy_artifact["deploy_sql"], "tbl_sample_groups", "site_id")
+    assert package_child_site_id == str(site_id)
+    assert package_child_site_id != str(normalization_results[0][1])
+    package_child_method_id = _inserted_column_value(deploy_artifact["deploy_sql"], "tbl_sample_groups", "method_id")
+    assert package_child_method_id == str(method_id)
+    async with await psycopg.AsyncConnection.connect(**parameters) as connection:
+        async with connection.cursor() as cursor:
+            await cursor.execute("SELECT EXISTS (SELECT 1 FROM public.tbl_sites WHERE site_id = %s)", (site_id,))
+            assert (await cursor.fetchone())[0] is True
+            await cursor.execute("SELECT EXISTS (SELECT 1 FROM public.tbl_methods WHERE method_id = %s)", (method_id,))
+            assert (await cursor.fetchone())[0] is True
+
+    allocated_site_id = allocator_before[0]
+    allocator_after = await _site_allocator_snapshot(parameters)
+    assert allocator_after == (allocator_before[0] + 1, allocator_before[1] + 1)
+    scope_name = f"provider://{provider_code}/schema-one"
+    identity_evidence = await _site_identity_evidence(parameters, scope_name)
+    accepted_business_key = business_id_for_row(["national_site_identifier"], {"national_site_identifier": "accepted"})
+    local_business_key = business_id_for_row(["national_site_identifier"], {"national_site_identifier": "local"})
+    assert any(
+        key_value == accepted_business_key and aggregate_id == site_id and lifecycle_state == "materialized"
+        for key_value, aggregate_id, _, lifecycle_state in identity_evidence
+    )
+    assert any(
+        key_value == local_business_key and aggregate_id == allocated_site_id and method == "allocated"
+        for key_value, aggregate_id, method, _ in identity_evidence
+    )
+    print(
+        f"Phase 7 IDs: adopted site={site_id}, local-only site={allocated_site_id}, "
+        f"sample_group={package_child_id}, method={method_id}; "
+        f"Core child site_id={normalization_results[0][1]}, "
+        f"package child site_id={package_child_site_id}, "
+        f"package child method_id={package_child_method_id}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_export_outage_recovery_preserves_manual_and_unowned_links(
+    authorized_client, adopted_site, monkeypatch, tmp_path: Path
+) -> None:
+    site_id, label, uri, _, _ = adopted_site
+    live_service_url = settings.RECONCILIATION_SERVICE_URL
+    name = f"phase7-outage-{uuid4().hex[:12]}"
+    directory = await _create_project(authorized_client, name, label, keys=("accepted",), child=False)
+    path = await _register_site_reconciliation(authorized_client, name)
+    await _decision(authorized_client, path, "accepted", "accepted", site_id, uri)
+    await _export(authorized_client, path)
+
+    sidecar_path = directory / f"{name}-mapping.yml"
+    sidecar = _sidecar(directory, name)
+    protected_links = {
+        "manual-protected": {
+            "target_id": site_id,
+            "source": "manual",
+            "created_at": "2026-10-31T12:00:00Z",
+            "committed_at": "2026-10-31T12:00:00Z",
+            "created_by": "phase7-manual",
+        },
+        "unowned-protected": {
+            "target_id": site_id,
+            "source": "reconciliation",
+            "created_at": "2026-10-31T12:00:00Z",
+            "committed_at": "2026-10-31T12:00:00Z",
+            "created_by": "phase7-unowned",
+        },
+    }
+    sidecar["entities"]["site"]["links"].update(protected_links)
+    sidecar_path.write_text(yaml.safe_dump(sidecar, sort_keys=False), encoding="utf-8")
+
+    await _decision(authorized_client, path, "accepted", "rejected")
+    removed = await _export(authorized_client, path)
+    assert removed["removed"] == 1
+    links = _sidecar(directory, name)["entities"]["site"]["links"]
+    assert set(links) == set(protected_links)
+    for key, expected in protected_links.items():
+        assert links[key]["target_id"] == expected["target_id"]
+        assert links[key]["source"] == expected["source"]
+        assert links[key].get("owner") is None
+
+    await _decision(authorized_client, path, "accepted", "accepted", site_id, uri)
+    monkeypatch.setattr(settings, "RECONCILIATION_SERVICE_URL", "http://127.0.0.1:1")
+    unavailable = await _export(authorized_client, path)
+    assert unavailable["outcomes"] == [
+        {
+            "local_key_value": "accepted",
+            "outcome": "unverified",
+            "reason": "The Authority Service is unavailable; this link was exported without verification. Retry export when it is available.",
+        }
+    ]
+    unverified_sidecar = _sidecar(directory, name)["entities"]["site"]
+    assert unverified_sidecar["links"]["accepted"]["verified_at"] is None
+    assert unverified_sidecar["links"]["accepted"]["owner"] == {"entity_name": "site", "target_field": "site_name"}
+    assert set(unverified_sidecar["links"]) == {"accepted", *protected_links}
+
+    monkeypatch.setattr(settings, "RECONCILIATION_SERVICE_URL", live_service_url)
+    retried = await _export(authorized_client, path)
+    assert retried["outcomes"] == [{"local_key_value": "accepted", "outcome": "verified", "reason": None}]
+    verified_sidecar = _sidecar(directory, name)["entities"]["site"]
+    assert verified_sidecar["links"]["accepted"]["verified_at"]
+    for key, expected in protected_links.items():
+        assert verified_sidecar["links"][key]["target_id"] == expected["target_id"]
+        assert verified_sidecar["links"][key]["source"] == expected["source"]
+        assert verified_sidecar["links"][key].get("owner") is None
 
 
 @pytest.mark.asyncio

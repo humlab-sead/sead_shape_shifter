@@ -21,7 +21,15 @@ from backend.app.services.project_data_provider_service import ProjectDataProvid
 from backend.app.services.project_ingester_service import ProjectIngesterService
 from ingesters.sead_change_request.contracts import TrustedProjectContext
 from ingesters.sead_change_request.ingester import SeadChangeRequestIngester
-from src.reconciliation.mapping_model import EntityMapping, LinkOwner, LocalOnlyApproval, MappingCatalog, Metadata
+from src.reconciliation.mapping_model import EntityMapping, Link, LinkOwner, LinkSource, LocalOnlyApproval, MappingCatalog, Metadata
+from src.reconciliation.model import (
+    DecisionStatus,
+    EntityResolutionCatalog,
+    EntityResolutionMetadata,
+    EntityResolutionSet,
+    ResolutionTarget,
+    ResolvedEntityPair,
+)
 
 
 def authorized_project(
@@ -62,6 +70,33 @@ def valid_target_model() -> dict[str, Any]:
         "entities": {"sample": {"role": "fact", "public_id": "sample_id"}},
         "constraints": [],
     }
+
+
+def local_only_reconciliation_catalog(
+    *,
+    target_field: str = "site_name",
+    decision_key: str = "Nordic Site",
+    decision_status: DecisionStatus = DecisionStatus.LOCAL_ONLY,
+) -> EntityResolutionCatalog:
+    """Build a saved reconciliation catalog with one decision."""
+    return EntityResolutionCatalog(
+        version="3.0",
+        service_url="",
+        entities={
+            "site": {
+                target_field: EntityResolutionSet(
+                    metadata=EntityResolutionMetadata(remote=ResolutionTarget()),
+                    links=[
+                        ResolvedEntityPair(
+                            local_key_value=decision_key,
+                            source_value="Nordic Site",
+                            status=decision_status,
+                        )
+                    ],
+                )
+            }
+        },
+    )
 
 
 def direct_fk_target_model() -> dict[str, Any]:
@@ -331,14 +366,24 @@ async def test_authorized_project_executor_needs_no_application_role(monkeypatch
 @pytest.mark.asyncio
 @pytest.mark.parametrize("method_name", ["validate_project_tables", "ingest_project_tables"])
 async def test_project_operations_attach_committed_approvals_from_normalization_snapshot(monkeypatch, tmp_path, method_name) -> None:
-    """Validation and ingestion pass the same typed, committed sidecar approvals."""
+    """Validation and ingestion pass verified links and committed local-only approvals."""
     project_service, calls = install_common_mocks(
         monkeypatch,
-        table_store={"site": pd.DataFrame({"site_id": [None], "site_name": ["Nordic Site"]})},
+        table_store={"site": pd.DataFrame({"site_id": [42, None], "site_name": ["Accepted Site", "Nordic Site"]})},
+    )
+    committed_at = datetime(2026, 10, 31, tzinfo=UTC)
+    owner = LinkOwner(entity_name="site", target_field="site_name")
+    accepted_link = Link(
+        target_id=42,
+        source=LinkSource.RECONCILIATION,
+        committed_at=committed_at,
+        owner=owner,
+        verified_at=committed_at,
+        created_by="operator",
     )
     approval = LocalOnlyApproval(
-        owner=LinkOwner(entity_name="site", target_field="site_id"),
-        committed_at=datetime(2026, 10, 31, tzinfo=UTC),
+        owner=owner,
+        committed_at=committed_at,
     )
     catalog = MappingCatalog(
         metadata=Metadata(project="pilot"),
@@ -346,6 +391,29 @@ async def test_project_operations_attach_committed_approvals_from_normalization_
             "site": EntityMapping(
                 local_key="site_name",
                 public_id="site_id",
+                links={
+                    "Accepted Site": accepted_link,
+                    "Manual Site": Link(
+                        target_id=43,
+                        source=LinkSource.MANUAL,
+                        committed_at=committed_at,
+                        created_by="operator",
+                    ),
+                    "Unowned Site": Link(
+                        target_id=44,
+                        source=LinkSource.RECONCILIATION,
+                        committed_at=committed_at,
+                        verified_at=committed_at,
+                        created_by="operator",
+                    ),
+                    "Unverified Site": Link(
+                        target_id=45,
+                        source=LinkSource.RECONCILIATION,
+                        committed_at=committed_at,
+                        owner=owner,
+                        created_by="operator",
+                    ),
+                },
                 local_only_approvals={"Nordic Site": approval},
             )
         },
@@ -354,7 +422,7 @@ async def test_project_operations_attach_committed_approvals_from_normalization_
     async def normalize(project, *, translate, drop_foreign_keys, default_entity, env_file):
         calls.append(("normalize", (project, translate, drop_foreign_keys, default_entity, env_file)))
         return SimpleNamespace(
-            table_store={"site": pd.DataFrame({"site_id": [None], "site_name": ["Nordic Site"]})},
+            table_store={"site": pd.DataFrame({"site_id": [42, None], "site_name": ["Accepted Site", "Nordic Site"]})},
             mapping_catalog=catalog,
         )
 
@@ -372,6 +440,31 @@ async def test_project_operations_attach_committed_approvals_from_normalization_
         provider_service=FakeProjectDataProviderService(provider_context),
         runtime_settings=settings(tmp_path),
     )
+    reconciliation_catalog = EntityResolutionCatalog(
+        version="3.0",
+        service_url="",
+        entities={
+            "site": {
+                "site_name": EntityResolutionSet(
+                    metadata=EntityResolutionMetadata(remote=ResolutionTarget()),
+                    links=[
+                        ResolvedEntityPair(
+                            local_key_value="Accepted Site",
+                            source_value="Accepted Site",
+                            status=DecisionStatus.ACCEPTED,
+                            target_id=42,
+                        ),
+                        ResolvedEntityPair(
+                            local_key_value="Nordic Site",
+                            source_value="Nordic Site",
+                            status=DecisionStatus.LOCAL_ONLY,
+                        ),
+                    ],
+                )
+            }
+        },
+    )
+    monkeypatch.setattr(service.reconciliation_catalog_manager, "load_catalog", lambda _project_name: reconciliation_catalog)
     FakeTableIngester.instances.clear()
 
     result = await getattr(service, method_name)("sead_change_request", authorized_project(), request())
@@ -382,7 +475,68 @@ async def test_project_operations_attach_committed_approvals_from_normalization_
     assert attached.mapping_project_name == "pilot"
     assert attached.local_key_columns_by_entity == {"site": ("site_name",)}
     assert attached.local_only_approvals == {"site": {"Nordic Site": approval}}
+    assert attached.verified_local_only_approval_owners == {"site": {"Nordic Site": approval.owner}}
+    assert attached.verified_reconciliation_links == {"site": {"Accepted Site": 42}}
     assert sum(call[0] == "normalize" for call in calls) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("method_name", ["validate_project_tables", "ingest_project_tables"])
+@pytest.mark.parametrize(
+    ("catalog", "expected_error"),
+    [
+        (EntityResolutionCatalog(version="3.0", service_url="", entities={}), "references missing reconciliation specification"),
+        (local_only_reconciliation_catalog(decision_key="different-key"), "has no matching local-only decision"),
+        (
+            local_only_reconciliation_catalog(decision_status=DecisionStatus.PROPOSED),
+            "has no matching local-only decision",
+        ),
+    ],
+)
+async def test_project_operations_reject_unverified_local_only_approval(
+    monkeypatch, tmp_path, method_name, catalog, expected_error
+) -> None:
+    """A sidecar approval must match its saved specification and local-only decision."""
+    project_service, _ = install_common_mocks(
+        monkeypatch,
+        table_store={"site": pd.DataFrame({"site_id": [None], "site_name": ["Nordic Site"]})},
+    )
+    approval = LocalOnlyApproval(
+        owner=LinkOwner(entity_name="site", target_field="site_name"),
+        committed_at=datetime(2026, 10, 31, tzinfo=UTC),
+    )
+    mapping_catalog = MappingCatalog(
+        metadata=Metadata(project="pilot"),
+        entities={
+            "site": EntityMapping(
+                local_key="site_name",
+                public_id="site_id",
+                local_only_approvals={"Nordic Site": approval},
+            )
+        },
+    )
+
+    async def normalize(project, *, translate, drop_foreign_keys, default_entity, env_file):
+        return SimpleNamespace(
+            table_store={"site": pd.DataFrame({"site_id": [None], "site_name": ["Nordic Site"]})},
+            mapping_catalog=mapping_catalog,
+        )
+
+    monkeypatch.setattr(project_ingester_module, "normalize_project", normalize)
+    service = project_ingester_service(project_service, runtime_settings=settings(tmp_path))
+    monkeypatch.setattr(service.reconciliation_catalog_manager, "load_catalog", lambda _project_name: catalog)
+    FakeTableIngester.instances.clear()
+
+    result = await getattr(service, method_name)("sead_change_request", authorized_project(), request())
+
+    if method_name == "validate_project_tables":
+        assert result.is_valid is False
+        error = result.errors[0]
+    else:
+        assert result.success is False
+        error = result.error_details or ""
+    assert expected_error in error
+    assert not FakeTableIngester.instances
 
 
 @pytest.mark.asyncio

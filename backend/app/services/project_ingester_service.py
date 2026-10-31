@@ -1,6 +1,7 @@
 """Compose project validation and table-based ingester operations."""
 
 from dataclasses import replace
+from pathlib import Path
 from typing import Any
 
 from loguru import logger
@@ -9,6 +10,7 @@ from pydantic import ValidationError as PydanticValidationError
 from backend.app.authorization.models import Action, AuthorizedResource, ResourceType
 from backend.app.core.config import Settings, get_settings
 from backend.app.exceptions import ConfigurationError
+from backend.app.exceptions import ValidationError as DomainValidationError
 from backend.app.ingesters.protocol import IngesterConfig, IngestionResult, TableSourceIngester, ValidationResult
 from backend.app.ingesters.registry import get_ingester_registry
 from backend.app.mappers.project_mapper import ProjectMapper
@@ -17,10 +19,12 @@ from backend.app.models.project import Project
 from backend.app.services.ingester_runtime import inject_ingester_database_dependencies, inject_ingester_runtime_dependencies
 from backend.app.services.project_data_provider_service import ProjectDataProviderError, ProjectDataProviderService
 from backend.app.services.project_service import ProjectService, get_project_service
+from backend.app.services.reconciliation.mapping_manager import EntityMappingManager
 from ingesters.sead_change_request.contracts import TrustedProjectContext
 from ingesters.sead_change_request.input_resolution import TRUSTED_PROJECT_CONTEXT_KEY
+from src.reconciliation.mapping_model import Link, LinkOwner, LinkSource, LocalOnlyApproval, MappingCatalog
+from src.reconciliation.model import DecisionStatus
 from src.specifications import CompositeProjectSpecification
-from src.reconciliation.mapping_model import MappingCatalog
 from src.target_model.conformance import ConformanceIssue, ForeignKeyValueSourceConformanceValidator
 from src.target_model.models import TargetModel
 from src.workflow import normalize_project
@@ -38,6 +42,10 @@ class ProjectIngesterService:
         self.project_service = project_service or get_project_service()
         self.project_data_provider_service = project_data_provider_service or ProjectDataProviderService()
         self.settings = settings or get_settings()
+        self.reconciliation_catalog_manager = EntityMappingManager(
+            project_service=self.project_service,
+            config_dir=Path(self.settings.PROJECTS_DIR),
+        )
 
     async def validate_project_tables(
         self,
@@ -266,14 +274,14 @@ class ProjectIngesterService:
             extra=extra,
         )
 
-    @staticmethod
     def _attach_local_only_approvals(
+        self,
         key: str,
         project_name: str,
         config: IngesterConfig,
         mapping_catalog: MappingCatalog | None,
     ) -> IngesterConfig:
-        """Attach committed approvals from the normalization snapshot to the Change Request config."""
+        """Verify and attach committed reconciliation links and local-only approvals."""
         if key != "sead_change_request" or mapping_catalog is None:
             return config
         if mapping_catalog.metadata.project != project_name:
@@ -287,21 +295,81 @@ class ProjectIngesterService:
             raise ProjectIngesterConfigurationError("Change Request approvals require backend-owned trusted project context")
 
         local_key_columns_by_entity: dict[str, tuple[str, ...]] = {}
-        local_only_approvals = {}
+        local_only_approvals: dict[str, dict[str, LocalOnlyApproval]] = {}
+        candidate_reconciliation_links: dict[str, dict[str, Link]] = {}
         for entity_name, entity_mapping in mapping_catalog.entities.items():
+            committed_links = mapping_catalog.committed_links_by_entity(entity_name)
             committed_approvals = mapping_catalog.committed_local_only_approvals_by_entity(entity_name)
-            if not committed_approvals:
+            if not committed_links and not committed_approvals:
                 continue
             local_key_columns_by_entity[entity_name] = (
                 (entity_mapping.local_key,) if isinstance(entity_mapping.local_key, str) else tuple(entity_mapping.local_key)
             )
-            local_only_approvals[entity_name] = committed_approvals
+            if committed_approvals:
+                local_only_approvals[entity_name] = committed_approvals
+            eligible_links = {
+                encoded_key: link
+                for encoded_key, link in committed_links.items()
+                if link.source == LinkSource.RECONCILIATION
+                and link.owner is not None
+                and link.verified_at is not None
+                and link.target_id is not None
+                and link.target_id > 0
+            }
+            if eligible_links:
+                candidate_reconciliation_links[entity_name] = eligible_links
+
+        verified_local_only_approval_owners: dict[str, dict[str, LinkOwner]] = {}
+        verified_reconciliation_links: dict[str, dict[str, int]] = {}
+        if local_only_approvals or candidate_reconciliation_links:
+            try:
+                reconciliation_catalog = self.reconciliation_catalog_manager.load_catalog(project_name)
+            except DomainValidationError as exc:
+                raise ProjectIngesterConfigurationError(
+                    f"Reconciliation catalog for project '{project_name}' could not be validated: {exc}"
+                ) from exc
+
+            for entity_name, approvals in local_only_approvals.items():
+                for encoded_key, approval in approvals.items():
+                    owner = approval.owner
+                    if owner.entity_name != entity_name:
+                        raise ProjectIngesterConfigurationError(
+                            f"Local-only approval for '{entity_name}' key '{encoded_key}' has an invalid owner entity"
+                        )
+                    resolution_set = reconciliation_catalog.get(owner.entity_name, owner.target_field)
+                    if resolution_set is None:
+                        raise ProjectIngesterConfigurationError(
+                            f"Local-only approval for '{entity_name}' key '{encoded_key}' references missing "
+                            f"reconciliation specification '{owner.entity_name}.{owner.target_field}'"
+                        )
+                    decision = resolution_set.get(encoded_key)
+                    if decision is None or decision.status != DecisionStatus.LOCAL_ONLY:
+                        raise ProjectIngesterConfigurationError(
+                            f"Local-only approval for '{entity_name}' key '{encoded_key}' has no matching local-only "
+                            f"decision in reconciliation specification '{owner.entity_name}.{owner.target_field}'"
+                        )
+                    verified_local_only_approval_owners.setdefault(entity_name, {})[encoded_key] = owner
+
+            for entity_name, links in candidate_reconciliation_links.items():
+                for encoded_key, link in links.items():
+                    owner = link.owner
+                    if owner is None or owner.entity_name != entity_name:
+                        continue
+                    resolution_set = reconciliation_catalog.get(owner.entity_name, owner.target_field)
+                    if resolution_set is None:
+                        continue
+                    decision = resolution_set.get(encoded_key)
+                    if decision is None or decision.status != DecisionStatus.ACCEPTED or decision.target_id != link.target_id:
+                        continue
+                    verified_reconciliation_links.setdefault(entity_name, {})[encoded_key] = link.target_id
 
         updated_context = replace(
             trusted_context,
             mapping_project_name=mapping_catalog.metadata.project,
             local_key_columns_by_entity=local_key_columns_by_entity,
             local_only_approvals=local_only_approvals,
+            verified_local_only_approval_owners=verified_local_only_approval_owners,
+            verified_reconciliation_links=verified_reconciliation_links,
         )
         config.extra = {**extra, TRUSTED_PROJECT_CONTEXT_KEY: updated_context}
         return config

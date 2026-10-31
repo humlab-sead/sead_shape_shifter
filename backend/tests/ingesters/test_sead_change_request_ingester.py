@@ -403,6 +403,7 @@ def minimal_trusted_project_context(
     mapping_project_name: str | None = None,
     local_key_columns_by_entity: dict[str, tuple[str, ...]] | None = None,
     local_only_approvals: dict[str, dict[str, LocalOnlyApproval]] | None = None,
+    verified_local_only_approval_owners: dict[str, dict[str, LinkOwner]] | None = None,
 ) -> TrustedProjectContext:
     """Build the backend-owned project facts used by Change Request ingester tests."""
     return TrustedProjectContext(
@@ -415,19 +416,22 @@ def minimal_trusted_project_context(
         mapping_project_name=mapping_project_name,
         local_key_columns_by_entity=local_key_columns_by_entity if local_key_columns_by_entity is not None else {},
         local_only_approvals=local_only_approvals if local_only_approvals is not None else {},
+        verified_local_only_approval_owners=(
+            verified_local_only_approval_owners if verified_local_only_approval_owners is not None else {}
+        ),
     )
 
 
 def trusted_context_with_local_only_approval(
     entity_name: str,
-    public_id: str,
     key_columns: tuple[str, ...],
     key_values: tuple[object, ...],
+    owner_target_field: str,
 ) -> TrustedProjectContext:
     """Build trusted project metadata for one committed local-only approval."""
     encoded_key = encode_local_key(list(key_columns), list(key_values))
     approval = LocalOnlyApproval(
-        owner=LinkOwner(entity_name=entity_name, target_field=public_id),
+        owner=LinkOwner(entity_name=entity_name, target_field=owner_target_field),
         committed_at=datetime.fromisoformat("2026-05-23T22:00:00+00:00"),
     )
     return minimal_trusted_project_context(
@@ -435,6 +439,7 @@ def trusted_context_with_local_only_approval(
         mapping_project_name="test-project",
         local_key_columns_by_entity={entity_name: key_columns},
         local_only_approvals={entity_name: {encoded_key: approval}},
+        verified_local_only_approval_owners={entity_name: {encoded_key: approval.owner}},
     )
 
 
@@ -2498,9 +2503,9 @@ class TestSeadChangeRequestIngesterIngest:
                     "submission_context": minimal_submission_context(change_request_name="deploy/mixed-pilot"),
                     "trusted_project_context": trusted_context_with_local_only_approval(
                         "taxon",
-                        "taxon_id",
                         ("taxon_name",),
                         ("Approved Taxon",),
+                        owner_target_field="taxon_name",
                     ),
                     "sims_client": sims_client,
                     "collision_checker": FakeCollisionChecker(),
@@ -2590,9 +2595,9 @@ class TestSeadChangeRequestIngesterIngest:
                     "submission_context": minimal_submission_context(change_request_name="deploy/backend-bridge"),
                     "trusted_project_context": trusted_context_with_local_only_approval(
                         "taxon",
-                        "taxon_id",
                         ("taxon_name",),
                         ("Approved Taxon",),
+                        owner_target_field="taxon_name",
                     ),
                     "sims_client": adapter,
                     "collision_checker": FakeCollisionChecker(),
@@ -2639,9 +2644,9 @@ class TestSeadChangeRequestIngesterIngest:
                     "submission_context": minimal_submission_context(),
                     "trusted_project_context": trusted_context_with_local_only_approval(
                         "taxon",
-                        "taxon_id",
                         ("taxon_name",),
                         ("Approved taxon",),
+                        owner_target_field="taxon_name",
                     ),
                     "sims_client": adapter,
                 },
@@ -2780,13 +2785,7 @@ class TestDatabaseSequenceIdentity:
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize("deploy_strategy", ["inline_insert", "copy_csv", "inline_staging"])
-    async def test_validation_and_ingestion_block_unresolved_ids_without_allocator_calls(self, tmp_path, deploy_strategy):
-        class UnexpectedAllocator:
-            """Fail if preparation attempts to consume a target sequence."""
-
-            async def reserve_target_id(self, table_name: str, public_id_column: str) -> int:
-                raise AssertionError(f"Unexpected target sequence allocation for {table_name}.{public_id_column}")
-
+    async def test_validation_and_ingestion_block_when_sequence_reserver_is_unavailable(self, tmp_path, deploy_strategy):
         sims_client = CountingSimsClient()
         extra: dict[str, Any] = {
             "tables": {"sample": pd.DataFrame({"sample_id": [None], "sample_name": ["A"]})},
@@ -2802,7 +2801,6 @@ class TestDatabaseSequenceIdentity:
             ),
             "submission_context": minimal_submission_context(),
             "sims_client": sims_client,
-            "target_id_allocator": UnexpectedAllocator(),
             "deploy_strategy": deploy_strategy,
         }
         if deploy_strategy == "inline_staging":
@@ -2823,9 +2821,9 @@ class TestDatabaseSequenceIdentity:
         ingestion = await ingest_bundle(ingester, validate_first=False)
 
         assert validation.is_valid is False
-        assert any("pre-resolve it before Change Request validation or bundle generation" in error for error in validation.errors)
+        assert any("database sequence reservation is unavailable" in error for error in validation.errors)
         assert ingestion.success is False
-        assert "pre-resolve it before Change Request validation or bundle generation" in (ingestion.error_details or "")
+        assert "database sequence reservation is unavailable" in (ingestion.error_details or "")
         assert sims_client.batch_calls == 0
 
 
@@ -3049,7 +3047,8 @@ class TestLocalOnlyApprovals:
         key_values: tuple[object, ...] = ("A", "Shared name"),
         mapping_project_name: str | None = "test-project",
         owner_entity_name: str = "site",
-        owner_target_field: str = "site_id",
+        owner_target_field: str = "site_name",
+        verified_owner_target_field: str | None = "site_name",
     ) -> TrustedProjectContext:
         encoded_key = encode_local_key(list(key_columns), list(key_values))
         approval = LocalOnlyApproval(
@@ -3061,6 +3060,18 @@ class TestLocalOnlyApprovals:
             mapping_project_name=mapping_project_name,
             local_key_columns_by_entity={"site": key_columns},
             local_only_approvals={"site": {encoded_key: approval}},
+            verified_local_only_approval_owners=(
+                {}
+                if verified_owner_target_field is None
+                else {
+                    "site": {
+                        encoded_key: LinkOwner(
+                            entity_name=owner_entity_name,
+                            target_field=verified_owner_target_field,
+                        )
+                    }
+                }
+            ),
         )
 
     @staticmethod
@@ -3116,6 +3127,7 @@ class TestLocalOnlyApprovals:
         [
             ("wrong_project", "does not match trusted project"),
             ("wrong_owner", "has an invalid owner"),
+            ("unverified_owner", "has an invalid owner"),
             ("mismatched_keys", "do not match the trusted ordered business-key declaration"),
             ("absent_row", "has no current source row"),
             ("prelinked_id", "conflicts with its existing public ID"),
@@ -3129,6 +3141,8 @@ class TestLocalOnlyApprovals:
             context_options["mapping_project_name"] = "another-project"
         elif case == "wrong_owner":
             context_options["owner_target_field"] = "other_id"
+        elif case == "unverified_owner":
+            context_options["verified_owner_target_field"] = None
         elif case == "mismatched_keys":
             context_options["key_columns"] = ("site_name", "site_code")
             context_options["key_values"] = ("Shared name", "A")
