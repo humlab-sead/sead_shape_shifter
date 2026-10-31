@@ -73,7 +73,7 @@ class FakeBackendSimsClient:
         self.lifecycle_state = lifecycle_state
         self.target_id = target_id
         self.resolve_error = resolve_error
-        self.resolve_requests: list[object] = []
+        self.resolve_requests: list[ResolveRequest] = []
         self.associated_change_requests: list[tuple[UUID, str]] = []
 
     async def resolve(self, request: ResolveRequest) -> FakeResolveResponse:
@@ -346,7 +346,7 @@ async def test_approved_site_match_through_real_sims_service():
     base_url = os.getenv("SIMS_DISPOSABLE_INTEGRATION_URL")
     approved_aggregate_id = os.getenv("SIMS_DISPOSABLE_APPROVED_SITE_AGGREGATE_ID")
     conflicting_aggregate_id = os.getenv("SIMS_DISPOSABLE_CONFLICT_SITE_AGGREGATE_ID")
-    if not all((base_url, approved_aggregate_id, conflicting_aggregate_id)):
+    if not (base_url and approved_aggregate_id and conflicting_aggregate_id):
         pytest.skip("Set the three SIMS_DISPOSABLE_* variables for the disposable service test")
 
     approved_id = int(approved_aggregate_id)
@@ -480,7 +480,7 @@ async def test_target_verification_reads_do_not_advance_database_sequence():
     port = os.getenv("SEAD_DISPOSABLE_POSTGRES_PORT")
     dbname = os.getenv("SEAD_DISPOSABLE_POSTGRES_DB")
     user = os.getenv("SEAD_DISPOSABLE_POSTGRES_USER")
-    if not all((host, port, dbname, user)):
+    if not (host and port and dbname and user):
         pytest.skip("Set SEAD_DISPOSABLE_POSTGRES_* variables for the loopback disposable database test")
     if host not in {"localhost", "127.0.0.1", "::1"}:
         pytest.fail("The disposable PostgreSQL integration test only accepts a loopback host")
@@ -501,11 +501,15 @@ async def test_target_verification_reads_do_not_advance_database_sequence():
                 "SELECT pg_get_serial_sequence(%s, %s)",
                 ("public.tbl_submissions", "submission_id"),
             )
-            sequence_name = (await cursor.fetchone())[0]
+            sequence_row = await cursor.fetchone()
+            assert sequence_row is not None
+            sequence_name = sequence_row[0]
             assert sequence_name is not None
             sequence_identifier = sql.Identifier(*(part.strip('"') for part in sequence_name.split(".")))
             await cursor.execute(sql.SQL("SELECT last_value, is_called FROM {}").format(sequence_identifier))
-            previous_value, was_called = await cursor.fetchone()
+            previous_row = await cursor.fetchone()
+            assert previous_row is not None
+            previous_value, was_called = previous_row
 
     checker = SeadChangeRequestTargetCollisionChecker(**connection_kwargs)
     await checker.target_id_exists("tbl_submissions", "submission_id", previous_value)
@@ -514,7 +518,9 @@ async def test_target_verification_reads_do_not_advance_database_sequence():
     async with await psycopg.AsyncConnection.connect(**connection_kwargs) as connection:
         async with connection.cursor() as cursor:
             await cursor.execute(sql.SQL("SELECT last_value, is_called FROM {}").format(sequence_identifier))
-            current_value, is_called = await cursor.fetchone()
+            current_row = await cursor.fetchone()
+            assert current_row is not None
+            current_value, is_called = current_row
 
     assert (current_value, is_called) == (previous_value, was_called)
 
@@ -585,7 +591,7 @@ class TestTrustedScopeAndBusinessKeys:
                 super().__init__()
                 self.identity_ids: dict[tuple[str, str], int] = {}
 
-            async def resolve(self, request: object) -> FakeResolveResponse:
+            async def resolve(self, request: ResolveRequest) -> FakeResolveResponse:
                 self.resolve_requests.append(request)
                 scope_name = request.scope_name
                 identity_value = request.requests[0].primary_signal.identity_value

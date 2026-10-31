@@ -28,7 +28,7 @@ async def test_global_exception_handler_returns_stable_redacted_response() -> No
     finally:
         correlation_id_var.reset(token)
 
-    body = response.body.decode()
+    body = bytes(response.body).decode()
     assert response.status_code == 500
     assert "super-secret" not in body
     assert "db-secret" not in body

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from src.issues import CoreIssue
 from src.target_model.effective_identity import resolve_aggregate_chain, resolve_effective_identity
-from src.target_model.models import EntitySpec, ForeignKeySpec, TargetModel
+from src.target_model.models import EntitySpec, ForeignKeySpec, RequiredWhenSpec, TargetModel
 
 CHAIN_ISSUE_CODES: frozenset[str] = frozenset(
     {
@@ -63,7 +63,7 @@ class TargetModelSpecValidator:
                     )
 
                 if foreign_key.required_when is not None:
-                    issues.extend(self._validate_required_when(target_model, entity_name, foreign_key))
+                    issues.extend(self._validate_required_when(target_model, entity_name, foreign_key, foreign_key.required_when))
 
             for unique_set in entity_spec.unique_sets:
                 for column_name in unique_set:
@@ -108,10 +108,12 @@ class TargetModelSpecValidator:
         return issues
 
     @staticmethod
-    def _validate_required_when(target_model: TargetModel, entity_name: str, foreign_key: ForeignKeySpec) -> list[SpecValidationIssue]:
+    def _validate_required_when(
+        target_model: TargetModel, entity_name: str, foreign_key: ForeignKeySpec, required_when: RequiredWhenSpec
+    ) -> list[SpecValidationIssue]:
         """Validate that a conditional FK names its owning source and a target with a public ID."""
         issues: list[SpecValidationIssue] = []
-        source_entity = foreign_key.required_when.has_new_rows
+        source_entity = required_when.has_new_rows
 
         if "required" in foreign_key.model_fields_set:
             issues.append(

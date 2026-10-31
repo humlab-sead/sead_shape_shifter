@@ -164,7 +164,7 @@ def _is_allowed_host(host: str) -> bool:
         if not resolved_addresses:
             return False
 
-        return all(_is_allowed_host(resolved_address) for resolved_address in resolved_addresses)
+        return all(_is_allowed_host(str(resolved_address)) for resolved_address in resolved_addresses)
 
     return ip_address.is_loopback or ip_address.is_private
 

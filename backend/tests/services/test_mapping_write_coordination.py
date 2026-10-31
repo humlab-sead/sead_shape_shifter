@@ -2,10 +2,11 @@
 
 from threading import Event, Lock, Thread, current_thread
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, cast
 
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.services.mapping_service import MappingService
+from backend.app.services.project_service import ProjectService
 from src.model import TableConfig
 from src.reconciliation.mapping_manager import MappingManager
 
@@ -54,8 +55,8 @@ def test_mapping_services_serialize_sidecar_updates(tmp_path, monkeypatch) -> No
         _get_lock=lambda _project_name: lock,
         load_project=lambda _project_name: SimpleNamespace(filename=str(project_file)),
     )
-    first_service = MappingService(project_service)
-    second_service = MappingService(project_service)
+    first_service = MappingService(cast(ProjectService, project_service))
+    second_service = MappingService(cast(ProjectService, project_service))
     original_load_snapshot = MappingManager.load_snapshot
 
     def controlled_load_snapshot(manager: MappingManager, path: str):
