@@ -4,6 +4,7 @@ import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import { nextTick, reactive, toRefs } from 'vue'
+import type { ExportToMappingOutcome } from '@/types'
 
 import ReconciliationView from '../ReconciliationView.vue'
 
@@ -70,7 +71,14 @@ const reconciliationStore = reactive({
   loadMappingData: vi.fn(async () => {}),
   putManualMapping: vi.fn(async () => ({})),
   saveEntityResolutionCatalogRaw: vi.fn(async () => {}),
-  exportToMapping: vi.fn(async () => ({ exported: 2, removed: 1, skipped_manual: 1, entity: 'site', field: 'site_code' })),
+  exportToMapping: vi.fn(async () => ({
+    exported: 2,
+    removed: 1,
+    skipped_manual: 1,
+    entity: 'site',
+    field: 'site_code',
+    outcomes: [] as ExportToMappingOutcome[],
+  })),
 })
 
 vi.mock('@/stores/reconciliation', () => ({
@@ -140,12 +148,14 @@ describe('ReconciliationView', () => {
     reconciliationStore.mappingData = { test_project: { site: null } }
     reconciliationStore.mappingErrors = {}
     reconciliationStore.mappingLoading = {}
+    reconciliationStore.loadMappingData = vi.fn(async () => {})
     reconciliationStore.exportToMapping = vi.fn(async () => ({
       exported: 2,
       removed: 1,
       skipped_manual: 1,
       entity: 'site',
       field: 'site_code',
+      outcomes: [] as ExportToMappingOutcome[],
     }))
     reconciliationStore.putManualMapping = vi.fn(async () => ({}))
   })
@@ -169,7 +179,42 @@ describe('ReconciliationView', () => {
 
     expect(exportButton.attributes('disabled')).toBeUndefined()
     expect(reconciliationStore.exportToMapping).toHaveBeenCalledWith('test_project', 'site', 'site_code')
+    expect(reconciliationStore.loadMappingData).toHaveBeenCalledWith('test_project', 'site')
     expect(wrapper.text()).toContain('2 link(s) exported; 1 stale link(s) removed; 1 protected link(s) skipped.')
+  })
+
+  it('reports per-key rejected and unverified export outcomes', async () => {
+    reconciliationStore.exportToMapping = vi.fn(async () => ({
+      exported: 1,
+      removed: 1,
+      skipped_manual: 0,
+      entity: 'site',
+      field: 'site_code',
+      outcomes: [
+        { local_key_value: 'A', outcome: 'not_found' as const, reason: 'Candidate is absent.' },
+        { local_key_value: 'B', outcome: 'unverified' as const, reason: 'Authority Service is offline.' },
+      ],
+    }))
+    const wrapper = await mountView()
+
+    await wrapper.get('[data-testid="open-reconcile"]').trigger('click')
+    await wrapper.get('[data-testid="export-to-mapping-button"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Not exported: A: Candidate is absent.')
+    expect(wrapper.text()).toContain('Unverified: B: Authority Service is offline.')
+  })
+
+  it('reports successful export when refreshing mapping status fails', async () => {
+    reconciliationStore.loadMappingData = vi.fn().mockRejectedValue(new Error('Mapping refresh unavailable'))
+    const wrapper = await mountView()
+
+    await wrapper.get('[data-testid="open-reconcile"]').trigger('click')
+    await wrapper.get('[data-testid="export-to-mapping-button"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Export succeeded, but mapping status could not be refreshed')
+    expect(wrapper.text()).toContain('Mapping refresh unavailable')
   })
 
   it('reports an export conflict without showing a successful result', async () => {

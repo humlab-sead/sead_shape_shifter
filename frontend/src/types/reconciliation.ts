@@ -18,6 +18,7 @@ export interface ResolvedEntityPair {
   source_value: unknown
   status: ReconciliationDecisionStatus
   target_id: number | null
+  candidate_id?: string | null
   confidence?: number | null
   notes?: string | null
   candidates: ReconciliationCandidate[]
@@ -32,6 +33,7 @@ export interface DecisionUpdateRequest {
   local_key_value: string
   status: Exclude<ReconciliationDecisionStatus, 'proposed'>
   target_id?: number
+  candidate_id?: string
   notes?: string
 }
 
@@ -79,6 +81,13 @@ export interface ExportToMappingResult {
   skipped_manual: number
   entity: string
   field: string
+  outcomes: ExportToMappingOutcome[]
+}
+
+export interface ExportToMappingOutcome {
+  local_key_value: string
+  outcome: 'verified' | 'not_found' | 'invalid_candidate' | 'unverified'
+  reason?: string | null
 }
 
 export interface DeleteSpecificationResult extends EntityResolutionCatalog {
@@ -90,6 +99,7 @@ export interface ReconciliationPreviewRow {
   local_key_value?: string | null
   status?: ReconciliationDecisionStatus | null
   target_id?: number | null
+  candidate_id?: string | null
   confidence?: number | null
   notes?: string | null
   candidates?: ReconciliationCandidate[]

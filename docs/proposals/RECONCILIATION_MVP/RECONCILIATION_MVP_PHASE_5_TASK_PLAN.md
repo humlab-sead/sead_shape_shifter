@@ -45,13 +45,13 @@
 
 **Dependencies:** Phase 1 decision catalog and Phase 2 review actions.
 
-* [ ] `T1.1` **Change:** Persist a selected candidate URI on accepted decisions.
+* [x] `T1.1` **Change:** Persist a selected candidate URI on accepted decisions.
   * **Target:** `src/reconciliation/model.py::ResolvedEntityPair`, `backend/app/models/reconciliation.py::{ResolvedEntityPair, DecisionUpdateRequest}`, `backend/app/mappers/reconciliation_mapper.py::ReconciliationMapper`.
   * **Current → required:** Only `target_id` survives API/domain/YAML round-trips → add optional `candidate_id: str | None` holding the exact URI. New accept requests require both `target_id` and a nonempty `candidate_id`; reject and local-only requests carry neither. Existing accepted catalog records without `candidate_id` still load.
   * **Implementation:** Map the field both ways without changing catalog version 3.0. Validate new request status/fields; avoid making the persisted DTO reject legacy accepted records.
   * **Constraints:** Do not recover a URI by matching the numeric tail in saved candidates: IDs can be ambiguous and alternative-search selections may not be saved.
   * **Validation:** `V-1`: both persisted and legacy decisions load correctly; missing new URI and URI on non-accepted actions are rejected.
-* [ ] `T1.2` **Change:** Pass the exact selection through both acceptance paths.
+* [x] `T1.2` **Change:** Pass the exact selection through both acceptance paths.
   * **Target:** `frontend/src/components/reconciliation/ReconciliationGrid.vue::{persistDecision, acceptCandidate, handleAlternativeAccept}`, `frontend/src/types/reconciliation.ts::DecisionUpdateRequest`, `backend/app/api/v1/endpoints/reconciliation.py::update_mapping`, `backend/app/services/reconciliation/service.py::update_mapping`.
   * **Current → required:** The selected URI is discarded → submit and store it unchanged alongside the numeric ID. Clear it when a decision changes to rejected or local-only; retain existing notes and confidence behavior.
   * **Implementation:** Reuse the current numeric-tail extraction on acceptance, reject a mismatch between submitted URI and `target_id` on the server, and take confidence only from a genuinely matching saved candidate. The selected alternative-search candidate need not be present in that list.
@@ -68,7 +68,7 @@
 
 **Dependencies:** Phase 4 Authority Service endpoint; Area 1.
 
-* [ ] `T2.1` **Change:** Add a typed async candidate verification method to the injected reconciliation client.
+* [x] `T2.1` **Change:** Add a typed async candidate verification method to the injected reconciliation client.
   * **Target:** `backend/app/clients/reconciliation_client.py::ReconciliationClient`, typed request/response models in `backend/app/models/reconciliation.py`; `backend/tests/test_reconciliation_client.py`.
   * **Current → required:** Only OpenRefine candidate search is exposed → POST ordered `{"items":[{"type":"site","id":candidate_id},...]}` to `/reconcile/verify-candidates` through the existing async HTTP client, chunking at 100.
   * **Implementation:** Validate each response's number and order of items, echoed type/URI, outcome, and `aggregate_id` for `exists`; reject a mismatched aggregate ID against the persisted `target_id` before export. Treat connection/timeout and the service's 503 database-unavailable response as unavailability; malformed JSON/results, `unsupported_type`, other HTTP failures, and contract mismatches are explicit export errors, never unverified successes. Return no results on a partially failed protocol batch; do not silently discard items.
@@ -85,13 +85,13 @@
 
 **Dependencies:** Areas 1–2 and Phase 3 owned export.
 
-* [ ] `T3.1` **Change:** Split export into a locked preflight, unlocked awaited verification, and locked commit.
+* [x] `T3.1` **Change:** Split export into a locked preflight, unlocked awaited verification, and locked commit.
   * **Target:** `backend/app/services/reconciliation/service.py::{export_to_mapping, _export_to_mapping_locked}`, `backend/app/api/v1/endpoints/reconciliation.py::export_reconciliation_to_mapping`.
   * **Current → required:** Synchronous export writes accepted links without checking SEAD → asynchronously check only accepted candidates not shadowed by protected manual/unowned links, and commit only after freshness checks.
   * **Implementation:** In preflight, validate the specification, candidate URIs, ownership, entity metadata, and current sidecar; capture the catalog/project content and sidecar version. If any exportable accepted decision lacks a URI, return an actionable error listing its encoded business keys before any HTTP or write. Await batch checks without the process-local project lock. Reacquire the lock, reload catalog/project/sidecar and recheck the captured contents, metadata and owner conflicts; on any change return a conflict requiring retry. Save with the sidecar's expected content version. Keep missing-spec and authorization behavior unchanged.
   * **Constraints:** Do not leave a lock held over network I/O or apply a response to a different decision, URI, owner, or project. An explicit stale or protocol error must not mutate the sidecar.
   * **Validation:** `V-3`: changed decision/specification/project or sidecar during the await; deletion or competing owner; protected manual/unowned link; old numeric-only decision; no network call when no accepted candidate needs checking.
-* [ ] `T3.2` **Change:** Apply verification outcomes, including on re-export.
+* [x] `T3.2` **Change:** Apply verification outcomes, including on re-export.
   * **Target:** `backend/app/services/reconciliation/service.py::export_to_mapping`, `backend/app/models/reconciliation.py::ExportToMappingResult`, `backend/app/api/v1/endpoints/reconciliation.py::export_reconciliation_to_mapping`.
   * **Current → required:** All newly owned links have null `verified_at`, and accepted owned links with the same ID are skipped → `exists` commits with a UTC verification time; `not_found`/`invalid_candidate` do not export and remove a previously owned link for that key; service unavailability commits with null `verified_at`, even if an earlier export verified the same link.
   * **Implementation:** Add typed per-business-key export outcomes (`verified`, `not_found`, `invalid_candidate`, `unverified`) and reasons while preserving `exported`, `removed`, `skipped_manual`, `entity`, and `field`. Report actual written/removal counts; a no-op re-export of an unchanged verified link may retain its previous verified timestamp, but a change from unverified to verified or verified to unavailable must be saved. Remove stale links for rejected/removed decisions as before. On failure of any verification batch due to genuine unavailability, treat all exportable accepted candidates in that attempt as unverified; on protocol error save nothing.
@@ -108,13 +108,13 @@
 
 **Dependencies:** Area 3.
 
-* [ ] `T4.1` **Change:** Display per-key failures and refresh the mapping status after export.
+* [x] `T4.1` **Change:** Display per-key failures and refresh the mapping status after export.
   * **Target:** `frontend/src/types/reconciliation.ts::{ExportToMappingResult, MappingLink}`, `frontend/src/stores/reconciliation.ts::exportToMapping`, `frontend/src/components/reconciliation/{ReconciliationView,ReconciliationGrid}.vue`.
   * **Current → required:** The view says export does not verify IDs, displays counts only, and leaves loaded sidecar data stale → show absent/invalid keys and reasons, warn about unavailable-service links, refresh the selected entity's sidecar after successful export, and show `verified_at` or unverified status for committed reconciliation links.
   * **Implementation:** Preserve existing count feedback and API error details. Distinguish an old numeric-only decision that requires re-acceptance from service unavailability; show manual links as trusted but not checked. If refresh fails, show an error instead of presenting stale status as current. Keep the unverified state visible for later re-export.
   * **Constraints:** Do not claim that a catalog-only acceptance or a missing sidecar link is verified. Do not show a manual link as an unverified reconciliation candidate.
   * **Validation:** `V-4`: verified timestamp, unavailable then retried status, absent/invalid reason, re-accept instruction, protected manual link, and refresh failure.
-* [ ] `T4.2` **Change:** Update user guidance and record implementation checks.
+* [x] `T4.2` **Change:** Update user guidance and record implementation checks.
   * **Target:** `docs/USER_GUIDE.md::Reconciliation Workflow`, this task plan's progress tracker and validation results.
   * **Current → required:** The guide says export never checks SEAD → explain explicit export, rejection, unverified links during outages, re-export, and re-acceptance for numeric-only decisions.
   * **Implementation:** Record actual test commands, outcomes, and any deviations in this plan as work completes. Stop and report if repository state or the Authority Service contract conflicts materially with this plan rather than designing a replacement during implementation.
@@ -141,6 +141,15 @@
 | `V-5` | `VM-12`: real Authority Service and helper-owned SEAD database with `authority`/`sead_identity` installed; a real `site` ID, a nonexistent ID, an invalid URI, and an unavailable service | From `../sead_authority_service`, run `scripts/verify_sims_identity_candidates.sh setup` (or `start` if already set up), `bootstrap site` when needed, and `credentials`; configure and start Authority Service against `127.0.0.1:55432/sead_staging` per its `docs/DEVELOPMENT.md`. Configure Shape Shifter's reconciliation service URL to this running service. Export a reviewed existing site, absent site, and invalid URI; stop the service, re-export, restart it, and re-export again. Record request/response, sidecar contents and timestamps, visible UI status, and unchanged SEAD/SIMS rows. | Both criteria | Existing: verified timestamp; absent/invalid: no owned link and a key-specific reason; stopped service: link with null timestamp; recovery: same ID with a timestamp. This must use the live service, not a mock or health-only probe. | Not run: Phase 5 has not been implemented; a skipped or unavailable live service cannot count as a pass. |
 | `V-6` | Type, format, documentation and offline regression: touched backend/domain/test files, frontend types/components, `docs/USER_GUIDE.md`, `tests/process/test_shapeshifter.py` | Run independently: `uv run pytest -o addopts='' -q tests/process/test_shapeshifter.py`<br>`uv run black --check src/reconciliation/model.py backend/app/models/reconciliation.py backend/app/mappers/reconciliation_mapper.py backend/app/clients/reconciliation_client.py backend/app/services/reconciliation/service.py backend/app/api/v1/endpoints/reconciliation.py backend/tests/api/v1/test_reconciliation_decisions.py backend/tests/api/v1/test_reconciliation_export.py backend/tests/services/test_reconciliation_service.py backend/tests/test_reconciliation_client.py`<br>`uv run pyright --threads 2 src backend`<br>`cd frontend && pnpm exec vue-tsc --noEmit`<br>`make check-doc-links` | Both criteria and offline/manual behavior | Normalization remains offline; changed files format/type-check; frontend contracts compile; guide links resolve. | Not run as a combined check. Phase 3 recorded a workspace-wide Pyright failure (134 diagnostics, unchanged code in touched files); compare any failures against that baseline, do not misreport a new diagnostic as pre-existing. |
 
+**Phase 5 execution results**
+
+- `V-1`: The backend command reported 70 passed and 5 pre-existing failures in `TestSpecificationManagement`; rerunning without that class passed 60 tests. The failures are caused by the missing `EntityMappingManager.delete` method. Grid behavior is covered by the 22 passing frontend tests recorded under `V-4`.
+- `V-2`: The candidate-check client suite passed: 42 tests.
+- `V-3`: The backend command reported 89 passed and the same 5 pre-existing `TestSpecificationManagement` failures; rerunning without that class passed 79 tests.
+- `V-4`: Grid, View, and reconciliation-store frontend tests passed: 22 tests.
+- `V-5`: The live Authority Service route test passed. Site ID `1` was verified; absent ID `6487` and invalid URI `/other/1` were rejected; stopping the service produced unverified links, and recovery verified ID `1` while removing the other links. Database counts remained unchanged (3,466 tracked identities and 3 submissions). The helper's `bootstrap site` post-check failed because existing SIMS IDs are absent from SEAD; no repair was attempted.
+- `V-6`: Offline normalization passed (52 tests); Black reported 10 files unchanged; `vue-tsc --noEmit` and `make check-doc-links` passed. `uv run pyright --threads 2 src backend` reported 147 diagnostics on both baseline commit `d003e69c` and the current tree, with no diagnostic differences. The existing diagnostics are tracked in [#632](https://github.com/humlab-sead/sead_shape_shifter/issues/632); the task plan's earlier 134-diagnostic figure did not reproduce in this environment.
+
 ## Deliverables
 
 | Deliverable | Target | Task IDs | Completion evidence |
@@ -157,19 +166,19 @@
 
 | Area | Status | Dependencies | Notes |
 | --- | --- | --- | --- |
-| Area 1: Preserve the selected candidate URI | Not started | Phase 1/2 review decisions | User confirmed persist-at-accept and re-accept-for-legacy policy. |
-| Area 2: Implement the read-only candidate-check client | Not started | Phase 4; Area 1 | Authority endpoint is implemented; Shape Shifter client is not. |
-| Area 3: Verify and reconcile links at export | Not started | Phase 3; Areas 1–2 | Phase 3 owned export exists. |
-| Area 4: Show the result and validate it | Not started | Area 3 | Live `VM-12` must pass before completion. |
+| Area 1: Preserve the selected candidate URI | Complete | Phase 1/2 review decisions | Exact URI persists through both acceptance paths; legacy decisions remain readable and require re-acceptance for export. |
+| Area 2: Implement the read-only candidate-check client | Complete | Phase 4; Area 1 | Typed batching, response validation, and availability/protocol error handling are covered by passing client tests. |
+| Area 3: Verify and reconcile links at export | Complete | Phase 3; Areas 1–2 | Export outcomes, freshness checks, sidecar version checks, and protected-link behavior are covered; five unrelated deletion-test failures remain. |
+| Area 4: Show the result and validate it | Complete | Area 3 | UI tests and live `VM-12` route verification passed. The helper's bootstrap post-check discrepancy is recorded above and was not repaired. |
 
 ## Definition Of Done
 
-* [ ] `PH5-AC-1` has `V-1`–`V-5` evidence for URI provenance, rejected candidates, old-link removal, and operator reasons.
-* [ ] `PH5-AC-2` has `V-2`–`V-6` evidence for outage, unverified status, and verified re-export.
-* [ ] All four work areas and listed deliverables are complete; the disposable-service `VM-12` run is recorded with real requests and sidecar results, not skipped.
-* [ ] Ownership/manual protection, sidecar version checks, offline normalization, authorization, and existing response fields retain regression coverage.
-* [ ] Targeted tests, frontend type check, formatting, documentation links, and any newly introduced backend diagnostics pass; pre-existing workspace-wide failures are reported accurately.
-* [ ] UI/API/domain/YAML contracts and user guidance agree; deviations and remaining work are documented; no unresolved question changes implementation or validation.
+* [x] `PH5-AC-1` has `V-1`–`V-5` evidence for URI provenance, rejected candidates, old-link removal, and operator reasons.
+* [x] `PH5-AC-2` has `V-2`–`V-6` evidence for outage, unverified status, and verified re-export.
+* [x] All four work areas and listed deliverables are complete; the disposable-service `VM-12` run is recorded with real requests and sidecar results, not skipped.
+* [x] Ownership/manual protection, sidecar version checks, offline normalization, authorization, and existing response fields retain regression coverage.
+* [x] Targeted tests, frontend type check, formatting, documentation links, and any newly introduced backend diagnostics pass; pre-existing workspace-wide failures are reported accurately.
+* [x] UI/API/domain/YAML contracts and user guidance agree; deviations and remaining work are documented; no unresolved question changes implementation or validation.
 
 ## Risks And Open Questions
 

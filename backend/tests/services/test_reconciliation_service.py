@@ -845,6 +845,7 @@ class TestReconciliationService:
             status=core.DecisionStatus.ACCEPTED,
             target_id=123,
             notes="Manual link",
+            candidate_id="https://w3id.org/sead/id/site/123",
         )
 
         assert len(updated.entities["site"]["site_code"].links) == 1
@@ -885,6 +886,7 @@ class TestReconciliationService:
             status=core.DecisionStatus.ACCEPTED,
             target_id=200,
             notes="Updated mapping",
+            candidate_id="https://w3id.org/sead/id/site/200",
         )
 
         assert len(updated.entities["site"]["site_code"].links) == 1
@@ -1095,7 +1097,16 @@ class TestReconciliationService:
         )
 
         async def respond(queries):
-            reconciliation_service.update_mapping("editing", "site", "site_name", "A", core.DecisionStatus.ACCEPTED, 101, "reviewed")
+            reconciliation_service.update_mapping(
+                "editing",
+                "site",
+                "site_name",
+                "A",
+                core.DecisionStatus.ACCEPTED,
+                101,
+                "reviewed",
+                candidate_id="site/101",
+            )
             return {"q0": [dto.ReconciliationCandidate(id="new", name="New", score=100.0)]}
 
         mock_recon_client.reconcile_batch.side_effect = respond

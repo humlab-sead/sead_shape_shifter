@@ -161,8 +161,9 @@
               </div>
 
               <v-alert type="info" variant="tonal" class="mb-4">
-                Export accepted decisions to create committed sidecar links for normalization. Export does not verify
-                target IDs; manual and unowned links are protected, and reconciliation links remain unverified until Phase 5.
+                Export checks accepted candidates against SEAD. Missing or invalid candidates are not exported; links
+                exported while the service is unavailable remain unverified until you export again. Manual and unowned
+                links are protected.
               </v-alert>
 
               <v-alert v-if="previewError" data-testid="preview-error" type="error" variant="tonal" class="mb-4">
@@ -442,10 +443,35 @@ async function handleExportToMapping() {
   if (!selectedEntity.value || !selectedTarget.value) return
 
   try {
-    const result = await reconciliationStore.exportToMapping(props.projectName, selectedEntity.value, selectedTarget.value)
-    resultMessage.value = `${result.exported} link(s) exported; ${result.removed} stale link(s) removed; `
+    const entityName = selectedEntity.value
+    const targetField = selectedTarget.value
+    const result = await reconciliationStore.exportToMapping(props.projectName, entityName, targetField)
+    const summary = `${result.exported} link(s) exported; ${result.removed} stale link(s) removed; `
       + `${result.skipped_manual} protected link(s) skipped.`
-    resultColor.value = 'success'
+
+    try {
+      await reconciliationStore.loadMappingData(props.projectName, entityName)
+    } catch (refreshError) {
+      resultMessage.value = `${summary} Export succeeded, but mapping status could not be refreshed: `
+        + getApiErrorMessage(refreshError, 'The mapping sidecar could not be reloaded.')
+      resultColor.value = 'error'
+      showResultSnackbar.value = true
+      return
+    }
+
+    const rejected = result.outcomes
+      .filter((outcome) => outcome.outcome === 'not_found' || outcome.outcome === 'invalid_candidate')
+      .map((outcome) => `${outcome.local_key_value}: ${outcome.reason ?? outcome.outcome}`)
+    const unverified = result.outcomes
+      .filter((outcome) => outcome.outcome === 'unverified')
+      .map((outcome) => `${outcome.local_key_value}: ${outcome.reason ?? 'Verification is still needed.'}`)
+    const details = [
+      rejected.length ? `Not exported: ${rejected.join('; ')}` : '',
+      unverified.length ? `Unverified: ${unverified.join('; ')}` : '',
+    ].filter(Boolean)
+
+    resultMessage.value = details.length ? `${summary} ${details.join(' ')}` : summary
+    resultColor.value = details.length ? 'warning' : 'success'
   } catch (error) {
     resultMessage.value = `Reconciliation export failed: ${getApiErrorMessage(error, 'The export could not be completed.')}`
     resultColor.value = 'error'

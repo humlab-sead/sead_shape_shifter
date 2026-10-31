@@ -7,14 +7,33 @@ from pathlib import Path
 from typing import Any
 
 from loguru import logger
+from pydantic import ValidationError as PydanticValidationError
 
-from backend.app.clients.reconciliation_client import ReconciliationClient, ReconciliationQuery
+from backend.app.clients.reconciliation_client import (
+    CandidateVerificationProtocolError,
+    CandidateVerificationUnavailableError,
+    ReconciliationClient,
+    ReconciliationQuery,
+)
 from backend.app.core.operation_manager import OperationStatus, operation_manager
-from backend.app.exceptions import ConfigurationError, DomainException, ResourceConflictError, ResourceNotFoundError, ValidationError
+from backend.app.exceptions import (
+    ConfigurationError,
+    DependencyError,
+    DomainException,
+    ResourceConflictError,
+    ResourceNotFoundError,
+    ValidationError,
+)
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.mappers.reconciliation_mapper import ReconciliationMapper
 from backend.app.models import AutoReconcileResult, Project, ReconciliationCandidate
-from backend.app.models.reconciliation import ReconciliationRowError
+from backend.app.models.reconciliation import (
+    CandidateVerificationRequestItem,
+    CandidateVerificationResult,
+    ExportToMappingOutcome,
+    ExportToMappingResult,
+    ReconciliationRowError,
+)
 from backend.app.models.shapeshift import PreviewResult
 from backend.app.services import ProjectService, ShapeShiftService
 from backend.app.services.mapping_service import MappingService
@@ -23,8 +42,8 @@ from backend.app.services.reconciliation.resolvers import ReconciliationSourceRe
 from backend.app.utils.exceptions import BadRequestError, NotFoundError
 from src.model import ShapeShiftProject
 from src.reconciliation import model as core
-from src.reconciliation.mapping_manager import MappingVersionConflictError
-from src.reconciliation.mapping_model import EntityMapping, EntityType, Link, LinkOwner, LinkSource, encode_local_key
+from src.reconciliation.mapping_manager import MappingSnapshot, MappingVersionConflictError
+from src.reconciliation.mapping_model import EntityMapping, EntityType, Link, LinkOwner, LinkSource, MappingCatalog, encode_local_key
 from src.reconciliation.source_strategy import ReconciliationSourceStrategy, SourceStrategyType
 from src.types.fixed_entity_types import is_missing_fixed_entity_value
 
@@ -36,6 +55,30 @@ class ResolvedSourceRows:
     rows: list[dict[str, Any]]
     local_key: str | list[str]
     errors: list[ReconciliationRowError] = field(default_factory=list)
+
+
+@dataclass
+class ReconciliationExportPreflight:
+    """Files and decisions captured before awaiting candidate verification."""
+
+    project_name: str
+    entity_name: str
+    target_field: str
+    project_path: str
+    catalog_path: Path
+    catalog_content: bytes | None
+    project_file_path: Path
+    project_content: bytes
+    sidecar_path: Path
+    sidecar_content: bytes | None
+    sidecar_snapshot: MappingSnapshot
+    expected_local_key: str | list[str]
+    expected_public_id: str
+    owner: LinkOwner
+    accepted: dict[str, core.ResolvedEntityPair]
+    exportable: dict[str, core.ResolvedEntityPair]
+    verification_items: dict[str, CandidateVerificationRequestItem]
+    skipped_manual: int
 
 
 class ReconciliationQueryService:
@@ -211,6 +254,7 @@ class ReconciliationService:
                 "local_key_value": key,
                 "status": mapping.status.value if mapping else None,
                 "target_id": mapping.target_id if mapping else None,
+                "candidate_id": mapping.candidate_id if mapping else None,
                 "confidence": mapping.confidence if mapping else None,
                 "notes": mapping.notes if mapping else "",
                 "candidates": (
@@ -299,15 +343,19 @@ class ReconciliationService:
             return int(match.group(1))
         raise BadRequestError(f"Cannot extract numeric ID from URI: {uri}")
 
-    def export_to_mapping(self, project_name: str, entity_name: str, target_field: str) -> tuple[int, int, int]:
-        """Export accepted decisions and remove stale links owned by one specification."""
-        with self.project_service._get_lock(project_name):
-            return self._export_to_mapping_locked(project_name, entity_name, target_field)
+    @staticmethod
+    def _read_optional_file(path: Path) -> bytes | None:
+        try:
+            return path.read_bytes()
+        except FileNotFoundError:
+            return None
 
-    def _export_to_mapping_locked(self, project_name: str, entity_name: str, target_field: str) -> tuple[int, int, int]:
-        """Reconcile one specification's accepted decisions against a fresh sidecar snapshot."""
-        reconciliation_catalog: core.EntityResolutionCatalog = self.catalog_manager.load_catalog(project_name)
-        resolution_set: core.EntityResolutionSet | None = reconciliation_catalog.get(entity_name, target_field)
+    def _prepare_export_to_mapping_locked(self, project_name: str, entity_name: str, target_field: str) -> ReconciliationExportPreflight:
+        """Validate one export and capture the files it depends on."""
+        catalog_path = self.catalog_manager._get_default_catalog_filename(project_name)
+        catalog_content = self._read_optional_file(catalog_path)
+        reconciliation_catalog = self.catalog_manager.load_catalog(project_name)
+        resolution_set = reconciliation_catalog.get(entity_name, target_field)
         if resolution_set is None:
             raise ResourceNotFoundError(
                 f"No reconciliation registry for entity '{entity_name}' target '{target_field}'",
@@ -316,6 +364,16 @@ class ReconciliationService:
             )
 
         project = self.project_service.load_project(project_name)
+        project_path = MappingService._project_path(project, project_name)
+        project_file_path = Path(project.filename) if project.filename else Path(project_path)
+        project_content = self._read_optional_file(project_file_path)
+        if project_content is None:
+            raise ResourceNotFoundError(
+                f"Project configuration was not found for '{project_name}'",
+                resource_type="project",
+                resource_id=project_name,
+            )
+
         try:
             core_project: ShapeShiftProject = ProjectMapper.to_core(project)
         except ConfigurationError as exc:
@@ -340,11 +398,12 @@ class ReconciliationService:
         if not expected_public_id:
             raise ValidationError(f"Entity '{entity_name}' has no public_id configured for reconciliation export")
 
-        project_path = MappingService._project_path(project, project_name)
         mapping_manager = self.mapping_service.manager
-        snapshot = mapping_manager.load_snapshot(project_path)
-        sidecar = snapshot.catalog
-        existing_entity_mapping = sidecar.entities.get(entity_name)  # pylint: disable=no-member
+        sidecar_path = mapping_manager._sidecar_path(project_path)
+        sidecar_snapshot = mapping_manager.load_snapshot(project_path)
+        sidecar_content = self._read_optional_file(sidecar_path)
+        sidecar = sidecar_snapshot.catalog
+        existing_entity_mapping = sidecar.entities.get(entity_name)
         if existing_entity_mapping is not None and (
             existing_entity_mapping.local_key != expected_local_key or existing_entity_mapping.public_id != expected_public_id
         ):
@@ -358,6 +417,8 @@ class ReconciliationService:
         accepted = {
             decision.local_key_value: decision for decision in resolution_set.links if decision.status == core.DecisionStatus.ACCEPTED
         }
+        exportable: dict[str, core.ResolvedEntityPair] = {}
+        skipped_manual = 0
 
         for local_key_value in accepted:
             existing_link = existing_entity_mapping.links.get(local_key_value) if existing_entity_mapping else None
@@ -383,33 +444,195 @@ class ReconciliationService:
                             resource_id=f"{entity_name}:{local_key_value}",
                         )
 
-        entity_mapping = existing_entity_mapping or EntityMapping(
-            local_key=expected_local_key,
-            public_id=expected_public_id,
+            if existing_link is not None and existing_link.owner is None:
+                skipped_manual += 1
+            else:
+                exportable[local_key_value] = accepted[local_key_value]
+
+        missing_candidate_keys = [key for key, decision in exportable.items() if not decision.candidate_id]
+        if missing_candidate_keys:
+            keys = ", ".join(repr(key) for key in missing_candidate_keys)
+            raise ValidationError(
+                f"Accepted decisions need to be re-accepted with their selected candidate before export. Business key(s): {keys}"
+            )
+
+        service_type = resolution_set.metadata.remote.service_type
+        if exportable and not service_type:
+            raise ConfigurationError(f"Entity '{entity_name}' has no reconciliation service type configured")
+        verification_items = {
+            key: CandidateVerificationRequestItem(type=service_type.lower(), id=decision.candidate_id)
+            for key, decision in exportable.items()
+            if decision.candidate_id is not None and service_type is not None
+        }
+
+        return ReconciliationExportPreflight(
+            project_name=project_name,
+            entity_name=entity_name,
+            target_field=target_field,
+            project_path=project_path,
+            catalog_path=catalog_path,
+            catalog_content=catalog_content,
+            project_file_path=project_file_path,
+            project_content=project_content,
+            sidecar_path=sidecar_path,
+            sidecar_content=sidecar_content,
+            sidecar_snapshot=sidecar_snapshot,
+            expected_local_key=expected_local_key,
+            expected_public_id=expected_public_id,
+            owner=owner,
+            accepted=accepted,
+            exportable=exportable,
+            verification_items=verification_items,
+            skipped_manual=skipped_manual,
+        )
+
+    def _export_inputs_unchanged(self, preflight: ReconciliationExportPreflight) -> bool:
+        return (
+            self._read_optional_file(preflight.catalog_path) == preflight.catalog_content
+            and self._read_optional_file(preflight.project_file_path) == preflight.project_content
+            and self._read_optional_file(preflight.sidecar_path) == preflight.sidecar_content
+        )
+
+    def _raise_export_changed_conflict(self, project_name: str) -> None:
+        raise ResourceConflictError(
+            "The reconciliation catalog, project configuration, or mapping sidecar changed during candidate verification. Reload and retry.",
+            resource_type="reconciliation-export",
+            resource_id=project_name,
+        )
+
+    def _refresh_export_preflight_locked(self, preflight: ReconciliationExportPreflight) -> ReconciliationExportPreflight:
+        """Reload export inputs and reject any change made during candidate verification."""
+        if not self._export_inputs_unchanged(preflight):
+            self._raise_export_changed_conflict(preflight.project_name)
+
+        try:
+            current = self._prepare_export_to_mapping_locked(preflight.project_name, preflight.entity_name, preflight.target_field)
+        except (DomainException, PydanticValidationError, BadRequestError, NotFoundError) as exc:
+            if not self._export_inputs_unchanged(preflight):
+                self._raise_export_changed_conflict(preflight.project_name)
+            raise exc
+
+        if (
+            current.catalog_content != preflight.catalog_content
+            or current.project_content != preflight.project_content
+            or current.sidecar_content != preflight.sidecar_content
+            or current.sidecar_snapshot.content_version != preflight.sidecar_snapshot.content_version
+        ):
+            self._raise_export_changed_conflict(preflight.project_name)
+        return current
+
+    @staticmethod
+    def _validate_candidate_verification_results(
+        preflight: ReconciliationExportPreflight, results: list[CandidateVerificationResult]
+    ) -> None:
+        expected_items = list(preflight.verification_items.items())
+        if len(results) != len(expected_items):
+            raise CandidateVerificationProtocolError("The Authority Service returned a different number of candidate results")
+
+        for (local_key_value, request_item), result in zip(expected_items, results, strict=True):
+            if result.type != request_item.type or result.id != request_item.id:
+                raise CandidateVerificationProtocolError("The Authority Service returned candidate results in a different order")
+            if result.outcome == "unsupported_type":
+                raise CandidateVerificationProtocolError(f"The Authority Service does not support candidate type {result.type!r}")
+            if result.outcome == "exists" and result.aggregate_id != preflight.exportable[local_key_value].target_id:
+                raise CandidateVerificationProtocolError(
+                    f"The Authority Service resolved a different target ID for business key {local_key_value!r}"
+                )
+
+    async def export_to_mapping(self, project_name: str, entity_name: str, target_field: str) -> ExportToMappingResult:
+        """Verify accepted candidates and update only the links owned by this specification."""
+        with self.project_service._get_lock(project_name):
+            preflight = self._prepare_export_to_mapping_locked(project_name, entity_name, target_field)
+            if not preflight.verification_items:
+                return self._export_to_mapping_locked(preflight, None, unavailable=False)
+
+        verification_results: list[CandidateVerificationResult] | None = None
+        unavailable = False
+        try:
+            verification_results = await self.reconciliation_client.verify_candidates(list(preflight.verification_items.values()))
+        except CandidateVerificationUnavailableError:
+            unavailable = True
+        except CandidateVerificationProtocolError as exc:
+            raise DependencyError(f"Candidate verification failed; no mapping links were changed: {exc}") from exc
+
+        with self.project_service._get_lock(project_name):
+            current = self._refresh_export_preflight_locked(preflight)
+            if verification_results is not None:
+                try:
+                    self._validate_candidate_verification_results(current, verification_results)
+                except CandidateVerificationProtocolError as exc:
+                    raise DependencyError(f"Candidate verification failed; no mapping links were changed: {exc}") from exc
+            return self._export_to_mapping_locked(current, verification_results, unavailable=unavailable)
+
+    def _export_to_mapping_locked(
+        self,
+        preflight: ReconciliationExportPreflight,
+        verification_results: list[CandidateVerificationResult] | None,
+        *,
+        unavailable: bool,
+    ) -> ExportToMappingResult:
+        """Apply verified outcomes to the captured sidecar and save with its version."""
+        outcomes: dict[str, ExportToMappingOutcome] = {}
+        if unavailable:
+            for local_key_value in preflight.verification_items:
+                outcomes[local_key_value] = ExportToMappingOutcome(
+                    local_key_value=local_key_value,
+                    outcome="unverified",
+                    reason="The Authority Service is unavailable; this link was exported without verification. Retry export when it is available.",
+                )
+        elif verification_results is not None:
+            for (local_key_value, _), result in zip(preflight.verification_items.items(), verification_results, strict=True):
+                if result.outcome == "exists":
+                    outcomes[local_key_value] = ExportToMappingOutcome(local_key_value=local_key_value, outcome="verified")
+                elif result.outcome == "not_found":
+                    outcomes[local_key_value] = ExportToMappingOutcome(
+                        local_key_value=local_key_value,
+                        outcome="not_found",
+                        reason="The candidate was not found in SEAD.",
+                    )
+                elif result.outcome == "invalid_candidate":
+                    outcomes[local_key_value] = ExportToMappingOutcome(
+                        local_key_value=local_key_value,
+                        outcome="invalid_candidate",
+                        reason="The selected candidate URI is invalid for this entity type.",
+                    )
+
+        sidecar: MappingCatalog = preflight.sidecar_snapshot.catalog
+        entity_mapping = sidecar.entities.get(preflight.entity_name) or EntityMapping(
+            local_key=preflight.expected_local_key,
+            public_id=preflight.expected_public_id,
             entity_type=EntityType.PRIMARY,
         )
+        failed_keys = {key for key, outcome in outcomes.items() if outcome.outcome in {"not_found", "invalid_candidate"}}
         removed = 0
         for local_key_value, link in list(entity_mapping.links.items()):
-            if link.owner == owner and local_key_value not in accepted:
+            if link.owner == preflight.owner and (local_key_value not in preflight.accepted or local_key_value in failed_keys):
                 del entity_mapping.links[local_key_value]
                 removed += 1
 
         exported = 0
-        skipped_manual = 0
         committed_at = datetime.now(timezone.utc)
-        for local_key_value, decision in accepted.items():
-            existing_link = entity_mapping.links.get(local_key_value)
-            if existing_link is not None and existing_link.owner is None:
-                skipped_manual += 1
+        for local_key_value, decision in preflight.exportable.items():
+            outcome = outcomes.get(local_key_value)
+            if outcome is None or outcome.outcome in {"not_found", "invalid_candidate"}:
                 continue
-            if existing_link is not None and (  # pylint: disable=too-many-boolean-expressions
-                existing_link.source == LinkSource.RECONCILIATION
-                and existing_link.owner == owner
+
+            verified_at = committed_at if outcome.outcome == "verified" else None
+            existing_link = entity_mapping.links.get(local_key_value)
+            same_link = (
+                existing_link is not None
+                and existing_link.source == LinkSource.RECONCILIATION
+                and existing_link.owner == preflight.owner
                 and existing_link.target_id == decision.target_id
                 and existing_link.confidence == decision.confidence
                 and existing_link.notes == decision.notes
                 and existing_link.committed_at is not None
-            ):
+                and (
+                    (outcome.outcome == "verified" and existing_link.verified_at is not None)
+                    or (outcome.outcome == "unverified" and existing_link.verified_at is None)
+                )
+            )
+            if same_link:
                 continue
 
             entity_mapping.links[local_key_value] = Link(
@@ -417,25 +640,36 @@ class ReconciliationService:
                 source=LinkSource.RECONCILIATION,
                 confidence=decision.confidence,
                 committed_at=committed_at,
-                owner=owner,
-                verified_at=None,
+                owner=preflight.owner,
+                verified_at=verified_at,
                 notes=decision.notes,
                 created_by="reconciliation",
             )
             exported += 1
 
         if exported or removed:
-            sidecar.entities[entity_name] = entity_mapping
+            sidecar.entities[preflight.entity_name] = entity_mapping
             try:
-                mapping_manager.save(sidecar, project_path, expected_version=snapshot.content_version)
+                self.mapping_service.manager.save(
+                    sidecar,
+                    preflight.project_path,
+                    expected_version=preflight.sidecar_snapshot.content_version,
+                )
             except MappingVersionConflictError as exc:
                 raise ResourceConflictError(
                     "The mapping sidecar changed during reconciliation export. Reload it and retry.",
                     resource_type="mapping-sidecar",
-                    resource_id=project_name,
+                    resource_id=preflight.project_name,
                 ) from exc
 
-        return exported, removed, skipped_manual
+        return ExportToMappingResult(
+            exported=exported,
+            removed=removed,
+            skipped_manual=preflight.skipped_manual,
+            entity=preflight.entity_name,
+            field=preflight.target_field,
+            outcomes=list(outcomes.values()),
+        )
 
     def replace_catalog(self, project_name: str, catalog: core.EntityResolutionCatalog) -> None:
         """Save a whole catalog and remove links owned by specifications it removes."""
@@ -704,6 +938,7 @@ class ReconciliationService:
         status: core.DecisionStatus,
         target_id: int | None,
         notes: str | None = None,
+        candidate_id: str | None = None,
     ) -> core.EntityResolutionCatalog:
         """Save an explicit operator decision for an existing business key."""
         with self.project_service._get_lock(project_name):
@@ -714,14 +949,19 @@ class ReconciliationService:
             previous = entity_mapping.get(local_key_value)
             if previous is None:
                 raise BadRequestError(f"No reconciliation row with business key {local_key_value!r}; run matching first")
+
+            if status == core.DecisionStatus.ACCEPTED:
+                if target_id is None or candidate_id is None or not candidate_id.strip():
+                    raise ValidationError("Accepting a candidate requires its URI and numeric target ID")
+                if self._extract_id_from_uri(candidate_id) != target_id:
+                    raise ValidationError("The selected candidate URI does not match the supplied target ID")
+            elif candidate_id is not None:
+                raise ValidationError("Only accepted decisions may include a candidate URI")
+
             confidence = None
-            if status == core.DecisionStatus.ACCEPTED and target_id is not None:
+            if status == core.DecisionStatus.ACCEPTED and candidate_id is not None:
                 for candidate in previous.candidates:
-                    try:
-                        candidate_id = self._extract_id_from_uri(candidate.id)
-                    except BadRequestError:
-                        continue
-                    if candidate_id == target_id and candidate.score is not None:
+                    if candidate.id == candidate_id and candidate.score is not None:
                         confidence = candidate.score / 100
                         break
             decision = core.ResolvedEntityPair(
@@ -729,6 +969,7 @@ class ReconciliationService:
                 source_value=previous.source_value,
                 status=status,
                 target_id=target_id,
+                candidate_id=candidate_id,
                 confidence=confidence,
                 notes=notes if notes is not None else previous.notes,
                 candidates=previous.candidates,

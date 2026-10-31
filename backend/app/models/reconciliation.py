@@ -29,6 +29,7 @@ class ResolvedEntityPair(BaseModel):
     source_value: Any = Field(..., description="Search label (not row identity)")
     status: Literal["proposed", "accepted", "rejected", "local-only"] = "proposed"
     target_id: int | None = Field(None, description="Selected target ID for an accepted decision")
+    candidate_id: str | None = Field(default=None, description="Exact selected candidate URI")
     confidence: float | None = Field(None, ge=0.0, le=1.0, description="Mapping confidence (0-1)")
     notes: str | None = Field(None, description="Operator notes")
     candidates: list["ReconciliationCandidate"] = Field(default_factory=list)
@@ -40,6 +41,10 @@ class ResolvedEntityPair(BaseModel):
     def validate_status(self) -> "ResolvedEntityPair":
         if (self.status == "accepted") != (self.target_id is not None):
             raise ValueError("Only an accepted decision may have a target_id, and accepted decisions require one")
+        if self.candidate_id is not None and not self.candidate_id.strip():
+            raise ValueError("A candidate_id must not be blank")
+        if self.status != "accepted" and self.candidate_id is not None:
+            raise ValueError("Only an accepted decision may have a candidate_id")
         return self
 
 
@@ -179,13 +184,55 @@ class DecisionUpdateRequest(BaseModel):
     local_key_value: str = Field(..., min_length=1)
     status: Literal["accepted", "rejected", "local-only"]
     target_id: int | None = None
+    candidate_id: str | None = Field(default=None)
     notes: str | None = None
 
     @model_validator(mode="after")
     def validate_status(self) -> "DecisionUpdateRequest":
         if (self.status == "accepted") != (self.target_id is not None):
             raise ValueError("Only accepted decisions may specify a target_id, and accepted decisions require one")
+        if self.status == "accepted" and (self.candidate_id is None or not self.candidate_id.strip()):
+            raise ValueError("An accepted decision requires a non-empty candidate_id")
+        if self.status != "accepted" and self.candidate_id is not None:
+            raise ValueError("Only accepted decisions may specify a candidate_id")
         return self
+
+
+class CandidateVerificationRequestItem(BaseModel):
+    """One exact candidate URI sent to the Authority Service."""
+
+    type: str = Field(..., min_length=1)
+    id: str = Field(..., min_length=1)
+
+
+class CandidateVerificationResult(BaseModel):
+    """Authority Service result for one candidate URI."""
+
+    type: str
+    id: str
+    outcome: Literal["exists", "not_found", "invalid_candidate", "unsupported_type"]
+    entity_type: str | None = None
+    aggregate_id: int | None = Field(None, gt=0)
+
+    @model_validator(mode="after")
+    def validate_aggregate_id(self) -> "CandidateVerificationResult":
+        if (self.outcome == "exists") != (self.aggregate_id is not None):
+            raise ValueError("Only an existing candidate may include an aggregate_id")
+        return self
+
+
+class CandidateVerificationResponse(BaseModel):
+    """Ordered candidate-check results returned by the Authority Service."""
+
+    results: list[CandidateVerificationResult]
+
+
+class ExportToMappingOutcome(BaseModel):
+    """Export result for one encoded business key."""
+
+    local_key_value: str = Field(..., min_length=1)
+    outcome: Literal["verified", "not_found", "invalid_candidate", "unverified"]
+    reason: str | None = None
 
 
 class ExportToMappingResult(BaseModel):
@@ -196,3 +243,4 @@ class ExportToMappingResult(BaseModel):
     skipped_manual: int = Field(..., description="Count of reconciliation links skipped because a manual mapping already exists.")
     entity: str = Field(..., description="Entity name whose links were exported.")
     field: str = Field(..., description="Reconciliation field used as the source key during export.")
+    outcomes: list[ExportToMappingOutcome] = Field(default_factory=list, description="Verification outcome for each checked business key.")

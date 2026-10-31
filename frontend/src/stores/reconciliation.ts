@@ -405,7 +405,13 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     loading.value = true
     error.value = null
     try {
-      return await reconciliationServiceApi.exportToMapping(projectName, entityName, targetField)
+      const result = await reconciliationServiceApi.exportToMapping(projectName, entityName, targetField)
+      const requestKey = JSON.stringify([projectName, entityName])
+      mappingRequestVersions.set(requestKey, (mappingRequestVersions.get(requestKey) ?? 0) + 1)
+      const projectMappings = { ...(mappingData.value[projectName] ?? {}) }
+      delete projectMappings[entityName]
+      mappingData.value = { ...mappingData.value, [projectName]: projectMappings }
+      return result
     } catch (e: any) {
       error.value = e.response?.data?.detail || 'Failed to export reconciliation links to mapping'
       console.error('Failed to export reconciliation links to mapping:', e)
