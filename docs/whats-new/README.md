@@ -125,6 +125,16 @@ A failed draft names the single problem it found and quotes the offending value,
 
 A title that only breaks the length or punctuation rule is repaired rather than rejected, because the body costs the most to generate and a rejected title would discard it. Trailing punctuation is removed, and an over-long title is shortened at a clause boundary, or at the last whole word when no boundary fits. Each repair prints a warning naming the original and the replacement, so a shortened title is visible and can be replaced with a hand-written one before publishing. The advice to keep titles short still applies: a repaired title is usable, not ideal.
 
+Terminal escape sequences are removed from every response before a draft is written. The Copilot CLI renders the model's final message as terminal Markdown, so links arrive wrapped in OSC 8 hyperlink escapes such as `ESC ] 8 ; id=… ; URL BEL` and colours arrive as CSI escapes. Those sequences are meaningless in a draft file and would render as noise on GitHub. The same removal runs when a draft file is read, so a file written by an older run is cleaned on its next publication.
+
+Repair existing draft files in place with:
+
+```bash
+.venv/bin/python scripts/update_pr_descriptions.py 528-546 --clean-drafts
+```
+
+That mode rewrites each draft without escape sequences, reports what changed, and leaves an unparseable file untouched rather than overwriting a hand-edited one. It never publishes.
+
 ## Recording Commits Without a Pull Request
 
 Commits pushed straight to a base branch have no pull request to describe them, so add `--include-orphaned` to record them against the pull request that followed:
