@@ -29,6 +29,7 @@ from ingesters.sead_change_request.contracts import (
 from ingesters.sead_change_request.input_resolution import (
     BusinessKeyValidationError,
     InputResolutionError,
+    ReconciliationApprovalError,
     SubmissionContextError,
     TargetModelError,
     _build_source_bundle,
@@ -47,6 +48,7 @@ from ingesters.sead_change_request.result_builders import (
 from ingesters.sead_change_request.sql_builder import build_deploy_artifact
 from ingesters.sead_change_request.submission_tables import DERIVED_SUBMISSION_TABLES, build_submission_source_bundle
 from src.business_keys import business_key_errors
+from src.reconciliation.mapping_model import encode_local_key
 from src.target_model.effective_identity import resolve_effective_identity
 
 
@@ -93,6 +95,10 @@ class SeadChangeRequestIngester:
             inputs.target_model.entities,
             mutable_fields_by_entity=inputs.mutable_fields_by_entity,
             existing_row_update_entities=inputs.existing_row_update_entities,
+            local_key_columns_by_entity=inputs.local_key_columns_by_entity,
+            approved_local_only_keys_by_entity={
+                entity_name: set(approvals) for entity_name, approvals in inputs.local_only_approvals.items()
+            },
             staging=inputs.is_staging,
         )
 
@@ -100,7 +106,6 @@ class SeadChangeRequestIngester:
             inputs,
             planned,
             sims_client=self._get_client("sims_client"),
-            reconciliation_client=self._get_client("reconciliation_client"),
             collision_checker=self._get_client("collision_checker"),
         )
 
@@ -138,6 +143,7 @@ class SeadChangeRequestIngester:
             return
 
         errors: list[str] = []
+        valid_key_entities: set[str] = set()
         for entity_name, declared_keys in trusted_project_context.business_keys.items():
             frame = inputs.bundle.tables.get(entity_name)
             entity_spec = inputs.target_model.entities.get(entity_name)
@@ -148,18 +154,91 @@ class SeadChangeRequestIngester:
                 continue
             if identity_tracking not in {"tracked", "reconciled"}:
                 continue
-            errors.extend(
-                business_key_errors(
-                    entity_name,
-                    declared_keys,
-                    frame,
-                    public_id=entity_spec.public_id,
-                    entity_label="Reconciled entity" if identity_tracking == "reconciled" else "Tracked entity",
-                )
+            entity_errors = business_key_errors(
+                entity_name,
+                declared_keys,
+                frame,
+                public_id=entity_spec.public_id,
+                entity_label="Reconciled entity" if identity_tracking == "reconciled" else "Tracked entity",
             )
+            errors.extend(entity_errors)
+            if not entity_errors:
+                valid_key_entities.add(entity_name)
 
         if errors:
             raise BusinessKeyValidationError("\n".join(errors))
+
+        approval_errors = self._local_only_approval_errors(inputs, valid_key_entities)
+        if approval_errors:
+            raise ReconciliationApprovalError("\n".join(approval_errors))
+
+    @staticmethod
+    def _local_only_approval_errors(inputs: ResolvedInputs, valid_key_entities: set[str]) -> list[str]:
+        """Check approval ownership and match each approval to one unresolved source row."""
+        trusted_context = inputs.trusted_project_context
+        if trusted_context is None:
+            return []
+
+        errors: list[str] = []
+        for entity_name, approvals in inputs.local_only_approvals.items():
+            entity_spec = inputs.target_model.entities.get(entity_name)
+            frame = inputs.bundle.tables.get(entity_name)
+            key_columns = inputs.local_key_columns_by_entity.get(entity_name)
+            declared_keys = trusted_context.business_keys.get(entity_name)
+
+            if trusted_context.mapping_project_name != trusted_context.project_name:
+                errors.append(f"Local-only approvals for '{entity_name}' do not belong to the trusted project")
+            if entity_spec is None:
+                errors.append(f"Local-only approvals reference entity '{entity_name}' outside the target model")
+                continue
+            if frame is None:
+                errors.append(f"Local-only approvals for '{entity_name}' do not match a current source table")
+                continue
+            if resolve_effective_identity(entity_spec).identity_tracking != "reconciled":
+                errors.append(f"Local-only approvals are only valid for reconciled entity '{entity_name}'")
+                continue
+            if not key_columns or declared_keys is None or tuple(key_columns) != tuple(declared_keys):
+                errors.append(f"Local-only approval keys for '{entity_name}' do not match the trusted ordered business-key declaration")
+                continue
+            if entity_name not in valid_key_entities:
+                continue
+            if not entity_spec.public_id:
+                errors.append(f"Local-only approvals for '{entity_name}' require target-model public_id metadata")
+                continue
+
+            rows_by_encoded_key: dict[str, list[object]] = {}
+            for row_index in frame.index:
+                encoded_key = encode_local_key(
+                    list(key_columns),
+                    [frame.at[row_index, column] for column in key_columns],
+                )
+                rows_by_encoded_key.setdefault(encoded_key, []).append(row_index)
+
+            for encoded_key, approval in approvals.items():
+                if approval.committed_at is None:
+                    errors.append(f"Local-only approval for '{entity_name}' key '{encoded_key}' is not committed")
+                verified_owner = trusted_context.verified_local_only_approval_owners.get(entity_name, {}).get(encoded_key)
+                if approval.owner != verified_owner:
+                    errors.append(f"Local-only approval for '{entity_name}' key '{encoded_key}' has an invalid owner")
+
+                matching_rows = rows_by_encoded_key.get(encoded_key, [])
+                if not matching_rows:
+                    errors.append(f"Local-only approval for '{entity_name}' key '{encoded_key}' has no current source row")
+                    continue
+                if len(matching_rows) > 1:
+                    errors.append(f"Local-only approval for '{entity_name}' key '{encoded_key}' matches more than one source row")
+                    continue
+
+                row_index = matching_rows[0]
+                public_id = frame.at[row_index, entity_spec.public_id]
+                if isinstance(public_id, str):
+                    has_public_id = bool(public_id.strip())
+                else:
+                    has_public_id = public_id is not None and not bool(pd.isna(public_id))
+                if has_public_id:
+                    errors.append(f"Local-only approval for '{entity_name}' row '{row_index}' conflicts with its existing public ID")
+
+        return errors
 
     async def _verify_provider_row(self, inputs: ResolvedInputs) -> None:
         """Confirm the trusted provider ID and code identify one existing SEAD provider row."""

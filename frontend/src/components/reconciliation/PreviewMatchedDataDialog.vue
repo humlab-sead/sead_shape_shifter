@@ -8,7 +8,9 @@
         <v-btn icon="mdi-close" variant="text" @click="show = false" />
       </v-card-title>
 
-      <v-card-subtitle class="py-3"> Preview of final output with SEAD IDs and matched names </v-card-subtitle>
+      <v-card-subtitle class="py-3">
+        Preview of row decisions. Accepted decisions are not applied to output until a mapping link is committed.
+      </v-card-subtitle>
 
       <v-divider />
 
@@ -16,7 +18,7 @@
       <v-toolbar density="comfortable" color="transparent" flat>
         <v-switch
           v-model="showOnlyMatched"
-          label="Show only matched rows"
+          label="Show only accepted decisions"
           density="compact"
           hide-details
           color="primary"
@@ -25,7 +27,7 @@
 
         <v-switch
           v-model="showOnlyChanged"
-          label="Show only changed rows"
+          label="Show only reviewed rows"
           density="compact"
           hide-details
           color="primary"
@@ -58,19 +60,20 @@
               <th v-for="column in displayColumns" :key="column" class="text-left">
                 {{ formatColumnName(column) }}
               </th>
-              <th class="text-left">SEAD ID</th>
-              <th class="text-left">Matched Name</th>
-              <th class="text-left">Confidence</th>
-              <th class="text-left">Status</th>
+              <th class="text-left">Decision ID</th>
+              <th class="text-left">Selected Candidate</th>
+              <th class="text-left">Decision Confidence</th>
+              <th class="text-left">Decision Status</th>
+              <th class="text-left">Row Errors</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(row, idx) in filteredPreviewData" :key="idx" :class="getRowClass(row)">
+            <tr v-for="(row, idx) in filteredPreviewData" :key="row.local_key_value ?? idx" :class="getRowClass(row)">
               <td v-for="column in displayColumns" :key="column">
                 {{ row[column] ?? '—' }}
               </td>
               <td>
-                <v-chip v-if="row.target_id" size="small" color="primary" variant="tonal">
+                <v-chip v-if="row.target_id != null" size="small" color="primary" variant="tonal">
                   {{ row.target_id }}
                 </v-chip>
                 <span v-else class="text-grey">—</span>
@@ -79,7 +82,7 @@
                 <span v-if="row.matched_name" class="font-weight-medium">
                   {{ row.matched_name }}
                 </span>
-                <span v-else class="text-grey">Not matched</span>
+                <span v-else class="text-grey">No candidate selected</span>
               </td>
               <td>
                 <v-chip
@@ -88,7 +91,7 @@
                   :color="getConfidenceColor(row.confidence)"
                   variant="tonal"
                 >
-                  {{ Math.round(row.confidence) }}%
+                  {{ Math.round(row.confidence * 100) }}%
                 </v-chip>
                 <span v-else class="text-grey">—</span>
               </td>
@@ -97,6 +100,7 @@
                   {{ getStatusLabel(row) }}
                 </v-chip>
               </td>
+              <td>{{ row.errors?.join('; ') || '—' }}</td>
             </tr>
           </tbody>
         </v-table>
@@ -112,16 +116,17 @@
       <v-card-actions>
         <v-chip size="small" variant="text">
           <v-icon start size="small">mdi-check-circle</v-icon>
-          {{ stats.matched }} matched
+          {{ stats.accepted }} accepted
         </v-chip>
         <v-chip size="small" variant="text">
           <v-icon start size="small">mdi-close-circle</v-icon>
-          {{ stats.unmatched }} unmatched
+          {{ stats.rejected }} rejected
         </v-chip>
         <v-chip size="small" variant="text">
           <v-icon start size="small">mdi-cancel</v-icon>
-          {{ stats.willNotMatch }} won't match
+          {{ stats.localOnly }} local-only
         </v-chip>
+        <v-chip size="small" variant="text"> {{ stats.unresolved }} unresolved · {{ stats.errors }} errors </v-chip>
         <v-spacer />
         <v-btn variant="text" @click="show = false">Close</v-btn>
       </v-card-actions>
@@ -170,11 +175,11 @@ const filteredPreviewData = computed(() => {
   let filtered = props.previewData
 
   if (showOnlyMatched.value) {
-    filtered = filtered.filter((row) => row.target_id != null && !row.will_not_match)
+    filtered = filtered.filter((row) => row.status === 'accepted')
   }
 
   if (showOnlyChanged.value) {
-    filtered = filtered.filter((row) => row.target_id != null || row.will_not_match)
+    filtered = filtered.filter((row) => row.status != null)
   }
 
   return filtered
@@ -182,11 +187,14 @@ const filteredPreviewData = computed(() => {
 
 // Statistics
 const stats = computed(() => {
-  const matched = props.previewData.filter((row) => row.target_id != null && !row.will_not_match).length
-  const willNotMatch = props.previewData.filter((row) => row.will_not_match).length
-  const unmatched = props.previewData.length - matched - willNotMatch
-
-  return { matched, unmatched, willNotMatch }
+  const accepted = props.previewData.filter((row) => row.status === 'accepted').length
+  const rejected = props.previewData.filter((row) => row.status === 'rejected').length
+  const localOnly = props.previewData.filter((row) => row.status === 'local-only').length
+  const unresolved = props.previewData.filter(
+    (row) => !row.local_key_value || row.status == null || row.status === 'proposed'
+  ).length
+  const errors = props.previewData.filter((row) => Boolean(row.errors?.length)).length
+  return { accepted, rejected, localOnly, unresolved, errors }
 })
 
 // Helper functions
@@ -198,45 +206,37 @@ function formatColumnName(column: string): string {
 }
 
 function getRowClass(row: ReconciliationPreviewRow): string {
-  if (row.will_not_match) {
-    return 'bg-grey-lighten-3 text-decoration-line-through'
-  }
-
-  if (row.target_id) {
-    const autoAcceptThreshold = props.entitySpec?.auto_accept_threshold || 95
-    if ((row.confidence ?? 0) >= autoAcceptThreshold) {
-      return 'bg-green-lighten-5'
-    }
-    return 'bg-orange-lighten-5'
-  }
-
-  return 'bg-red-lighten-5'
+  if (row.errors?.length) return 'bg-orange-lighten-5'
+  if (row.status === 'accepted') return 'bg-green-lighten-5'
+  if (row.status === 'rejected') return 'bg-red-lighten-5'
+  if (row.status === 'local-only') return 'bg-grey-lighten-3'
+  if (row.status === 'proposed') return 'bg-amber-lighten-5'
+  return 'bg-grey-lighten-5'
 }
 
 function getConfidenceColor(confidence: number): string {
-  if (confidence >= 95) return 'success'
-  if (confidence >= 70) return 'warning'
+  const percentage = confidence * 100
+  if (percentage >= (props.entitySpec?.auto_accept_threshold ?? 0.95) * 100) return 'success'
+  if (percentage >= (props.entitySpec?.review_threshold ?? 0.7) * 100) return 'warning'
   return 'error'
 }
 
 function getStatusColor(row: ReconciliationPreviewRow): string {
-  if (row.will_not_match) return 'grey'
-  if (row.target_id) {
-    const autoAcceptThreshold = props.entitySpec?.auto_accept_threshold || 95
-    if ((row.confidence ?? 0) >= autoAcceptThreshold) return 'success'
-    return 'warning'
-  }
-  return 'error'
+  if (row.errors?.length) return 'error'
+  if (row.status === 'accepted') return 'success'
+  if (row.status === 'rejected') return 'error'
+  if (row.status === 'local-only') return 'grey'
+  if (row.status === 'proposed') return 'warning'
+  return 'info'
 }
 
 function getStatusLabel(row: ReconciliationPreviewRow): string {
-  if (row.will_not_match) return "Won't Match"
-  if (row.target_id) {
-    const autoAcceptThreshold = props.entitySpec?.auto_accept_threshold || 95
-    if ((row.confidence ?? 0) >= autoAcceptThreshold) return 'Auto-Matched'
-    return 'Manual Match'
-  }
-  return 'Unmatched'
+  if (!row.local_key_value) return 'Unreviewable'
+  if (row.errors?.length) return 'Needs attention'
+  if (row.status == null || (row.status === 'proposed' && !row.candidates?.length)) return 'Unresolved'
+  if (row.status === 'local-only') return 'Local-only'
+  if (row.status) return row.status.charAt(0).toUpperCase() + row.status.slice(1)
+  return 'Unreviewable'
 }
 
 // Export to CSV
@@ -244,7 +244,14 @@ function exportPreview() {
   if (filteredPreviewData.value.length === 0) return
 
   // Build CSV header
-  const headers = [...displayColumns.value, 'target_id', 'matched_name', 'confidence', 'status']
+  const headers = [
+    ...displayColumns.value,
+    'decision_target_id',
+    'selected_candidate',
+    'decision_confidence_percent',
+    'decision_status',
+    'row_errors',
+  ]
 
   // Build CSV rows
   const csvRows = filteredPreviewData.value.map((row) => {
@@ -260,9 +267,10 @@ function exportPreview() {
     })
 
     values.push(row.target_id?.toString() || '')
-    values.push(row.matched_name || '')
-    values.push(row.confidence != null ? Math.round(row.confidence).toString() : '')
+    values.push(row.matched_name == null ? '' : String(row.matched_name))
+    values.push(row.confidence != null ? Math.round(row.confidence * 100).toString() : '')
     values.push(getStatusLabel(row))
+    values.push(row.errors?.join('; ') || '')
 
     return values.join(',')
   })

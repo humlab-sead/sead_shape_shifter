@@ -5,8 +5,24 @@ from typing import Any
 
 import httpx
 from loguru import logger
+from pydantic import ValidationError
 
-from backend.app.models.reconciliation import ReconciliationCandidate
+from backend.app.models.reconciliation import (
+    CandidateVerificationRequestItem,
+    CandidateVerificationResponse,
+    CandidateVerificationResult,
+    ReconciliationCandidate,
+)
+
+_CANDIDATE_VERIFICATION_BATCH_SIZE = 100
+
+
+class CandidateVerificationUnavailableError(Exception):
+    """Raised when the Authority Service or its SEAD database is unavailable."""
+
+
+class CandidateVerificationProtocolError(Exception):
+    """Raised when the Authority Service returns an invalid verification response."""
 
 
 class ReconciliationQuery:
@@ -60,6 +76,55 @@ class ReconciliationClient:
         if self._client is not None:
             await self._client.aclose()
             self._client = None
+
+    async def verify_candidates(self, items: list[CandidateVerificationRequestItem]) -> list[CandidateVerificationResult]:
+        """Check candidate URIs in ordered batches of at most 100."""
+        if not items:
+            return []
+
+        client = await self._get_client()
+        verified: list[CandidateVerificationResult] = []
+        for offset in range(0, len(items), _CANDIDATE_VERIFICATION_BATCH_SIZE):
+            batch = items[offset : offset + _CANDIDATE_VERIFICATION_BATCH_SIZE]
+            try:
+                response = await client.post(
+                    f"{self.base_url}/reconcile/verify-candidates",
+                    json={"items": [item.model_dump() for item in batch]},
+                )
+            except (httpx.ConnectError, httpx.TimeoutException) as exc:
+                raise CandidateVerificationUnavailableError("The Authority Service is unavailable") from exc
+            except httpx.HTTPError as exc:
+                raise CandidateVerificationProtocolError("The Authority Service request failed") from exc
+
+            if response.status_code == 503:
+                raise CandidateVerificationUnavailableError("The Authority Service cannot access the SEAD database")
+            try:
+                response.raise_for_status()
+            except httpx.HTTPStatusError as exc:
+                raise CandidateVerificationProtocolError(f"The Authority Service returned HTTP {response.status_code}") from exc
+
+            try:
+                response_data = response.json()
+            except ValueError as exc:
+                raise CandidateVerificationProtocolError("The Authority Service returned invalid JSON") from exc
+
+            try:
+                parsed_response = CandidateVerificationResponse.model_validate(response_data)
+            except ValidationError as exc:
+                raise CandidateVerificationProtocolError("The Authority Service returned an invalid candidate-check response") from exc
+
+            if len(parsed_response.results) != len(batch):
+                raise CandidateVerificationProtocolError("The Authority Service returned a different number of candidate results")
+
+            for requested, result in zip(batch, parsed_response.results, strict=True):
+                if result.type != requested.type or result.id != requested.id:
+                    raise CandidateVerificationProtocolError("The Authority Service returned candidate results in a different order")
+                if result.outcome == "unsupported_type":
+                    raise CandidateVerificationProtocolError(f"The Authority Service does not support candidate type {result.type!r}")
+
+            verified.extend(parsed_response.results)
+
+        return verified
 
     async def reconcile_batch(self, queries: dict[str, ReconciliationQuery]) -> dict[str, list[ReconciliationCandidate]]:
         """

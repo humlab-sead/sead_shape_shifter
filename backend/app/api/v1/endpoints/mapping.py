@@ -33,6 +33,8 @@ def _to_link_response(link: Link) -> api.MappingLinkResponse:
         confidence=link.confidence,
         created_at=link.created_at,
         committed_at=link.committed_at,
+        owner=api.MappingLinkOwner(entity_name=link.owner.entity_name, target_field=link.owner.target_field) if link.owner else None,
+        verified_at=link.verified_at,
         notes=link.notes,
         created_by=link.created_by,
         reviewed_by=link.reviewed_by,
@@ -96,7 +98,7 @@ async def get_entity_mapping(
     return _to_entity_response(entity_name, entity_mapping)
 
 
-@router.get("/projects/{project_name}/mapping/{entity_name}/{local_key_value}", response_model=api.MappingLinkRecordResponse)
+@router.get("/projects/{project_name}/mapping/{entity_name}/{local_key_value:path}", response_model=api.MappingLinkRecordResponse)
 @handle_endpoint_errors
 async def get_mapping_link(
     project_name: str,  # pylint: disable=unused-argument
@@ -116,7 +118,7 @@ async def get_mapping_link(
     )
 
 
-@router.put("/projects/{project_name}/mapping/{entity_name}/{local_key_value}", response_model=api.MappingLinkRecordResponse)
+@router.put("/projects/{project_name}/mapping/{entity_name}/{local_key_value:path}", response_model=api.MappingLinkRecordResponse)
 @handle_endpoint_errors
 async def put_mapping_link(
     project_name: str,  # pylint: disable=unused-argument
@@ -144,7 +146,7 @@ async def put_mapping_link(
     )
 
 
-@router.delete("/projects/{project_name}/mapping/{entity_name}/{local_key_value}", response_model=api.MappingDeleteResponse)
+@router.delete("/projects/{project_name}/mapping/{entity_name}/{local_key_value:path}", response_model=api.MappingDeleteResponse)
 @handle_endpoint_errors
 async def delete_mapping_link(
     project_name: str,  # pylint: disable=unused-argument

@@ -232,8 +232,9 @@ statements run only when the downstream operator executes the emitted artifact.
 Optional injected collaborators include:
 
 - `sims_client`: allocates entities, derives bridge rows, and manages Binding Set state
-- `reconciliation_client`: resolves classifier-like rows to existing target IDs
 - `collision_checker`: confirms the fixed provider row and checks whether rendered rows would collide with target data
+
+Reconciled rows are allocated only when the authorized project service supplies a committed local-only approval for the row's business key and the effective mode is `reconcile-exact` or `reconcile-fuzzy`. Other missing reconciled IDs are blocked without candidate selection.
 
 ## Artifact Output
 
