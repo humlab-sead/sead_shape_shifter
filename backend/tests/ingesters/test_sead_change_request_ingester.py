@@ -20,27 +20,19 @@ from ingesters.sead_change_request import ChangeRowState, DeployArtifact, Source
 from ingesters.sead_change_request.contracts import (
     CHANGE_REQUEST_FILE_INPUT_RETIRED_MESSAGE,
     FIXED_PROVIDER_TARGET_TABLE,
+    PlannedRowAction,
     SimsResolveItem,
     SubmissionContext,
     TrustedProjectContext,
     resolve_bundle_name,
 )
 from ingesters.sead_change_request.ingester import SeadChangeRequestIngester
+from src.reconciliation.mapping_model import LinkOwner, LocalOnlyApproval, encode_local_key
 
 # pylint: disable=unused-argument
 
 TEST_SCOPE_NAME = "provider://mal/test-pilot"
 """Provider-schema scope used by ingester tests instead of a project-name fallback."""
-
-
-class FakeReconciliationClient:
-    """Simple fake reconciliation client for ingester tests."""
-
-    def __init__(self, target_id: int | None) -> None:
-        self.target_id = target_id
-
-    async def reconcile_entity(self, entity_name: str, row: dict) -> int | None:
-        return self.target_id
 
 
 class FakeSimsClient:
@@ -408,6 +400,10 @@ def minimal_trusted_project_context(
     provider_code: str = "SEAD",
     data_provider_id: int = 51,
     business_keys: dict[str, tuple[str, ...]] | None = None,
+    mapping_project_name: str | None = None,
+    local_key_columns_by_entity: dict[str, tuple[str, ...]] | None = None,
+    local_only_approvals: dict[str, dict[str, LocalOnlyApproval]] | None = None,
+    verified_local_only_approval_owners: dict[str, dict[str, LinkOwner]] | None = None,
 ) -> TrustedProjectContext:
     """Build the backend-owned project facts used by Change Request ingester tests."""
     return TrustedProjectContext(
@@ -417,6 +413,33 @@ def minimal_trusted_project_context(
         scope_name=TEST_SCOPE_NAME,
         data_provider_id=data_provider_id,
         business_keys=business_keys if business_keys is not None else {},
+        mapping_project_name=mapping_project_name,
+        local_key_columns_by_entity=local_key_columns_by_entity if local_key_columns_by_entity is not None else {},
+        local_only_approvals=local_only_approvals if local_only_approvals is not None else {},
+        verified_local_only_approval_owners=(
+            verified_local_only_approval_owners if verified_local_only_approval_owners is not None else {}
+        ),
+    )
+
+
+def trusted_context_with_local_only_approval(
+    entity_name: str,
+    key_columns: tuple[str, ...],
+    key_values: tuple[object, ...],
+    owner_target_field: str,
+) -> TrustedProjectContext:
+    """Build trusted project metadata for one committed local-only approval."""
+    encoded_key = encode_local_key(list(key_columns), list(key_values))
+    approval = LocalOnlyApproval(
+        owner=LinkOwner(entity_name=entity_name, target_field=owner_target_field),
+        committed_at=datetime.fromisoformat("2026-05-23T22:00:00+00:00"),
+    )
+    return minimal_trusted_project_context(
+        business_keys={entity_name: key_columns},
+        mapping_project_name="test-project",
+        local_key_columns_by_entity={entity_name: key_columns},
+        local_only_approvals={entity_name: {encoded_key: approval}},
+        verified_local_only_approval_owners={entity_name: {encoded_key: approval.owner}},
     )
 
 
@@ -592,7 +615,6 @@ class TestSeadChangeRequestIngesterValidation:
                     "tables": {"dataset": pd.DataFrame({"dataset_id": [None]})},
                     "target_model": submission_target_model(),
                     "submission_context": minimal_submission_context(data_provider_code=None),
-                    "reconciliation_client": FakeReconciliationClient(target_id=51),
                 },
             )
         )
@@ -1501,7 +1523,6 @@ class TestSeadChangeRequestIngesterIngest:
                     "submission_context": minimal_submission_context(),
                     "trusted_project_context": minimal_trusted_project_context(),
                     "collision_checker": verified_provider_row(),
-                    "reconciliation_client": FakeReconciliationClient(target_id=51),
                     "sims_client": FakeSimsClient(
                         binding_set_state="confirmed",
                         target_id=501,
@@ -1548,7 +1569,6 @@ class TestSeadChangeRequestIngesterIngest:
                     "deploy_strategy": "copy_csv",
                     "trusted_project_context": minimal_trusted_project_context(),
                     "collision_checker": verified_provider_row(),
-                    "reconciliation_client": FakeReconciliationClient(target_id=51),
                     "sims_client": FakeSimsClient(
                         binding_set_state="confirmed",
                         target_id=501,
@@ -2432,7 +2452,7 @@ class TestSeadChangeRequestIngesterIngest:
 
     @pytest.mark.asyncio
     async def test_ingest_runs_mixed_pilot_bundle(self, tmp_path):
-        """Ingest should handle a mixed pilot bundle with existing, allocated, reconciled, and bridge rows."""
+        """Ingest should handle existing, allocated, approved local-only, and bridge rows."""
         sims_client = FakeSimsClient(binding_set_state="confirmed", target_id=501)
         ingester = SeadChangeRequestIngester(
             IngesterConfig(
@@ -2454,7 +2474,7 @@ class TestSeadChangeRequestIngesterIngest:
                             {
                                 "system_id": [10, 11],
                                 "taxon_id": [9001, None],
-                                "taxon_name": ["Existing Taxon", "Reconciled Taxon"],
+                                "taxon_name": ["Existing Taxon", "Approved Taxon"],
                             }
                         ),
                         "sample_taxon": pd.DataFrame(
@@ -2467,7 +2487,12 @@ class TestSeadChangeRequestIngesterIngest:
                     },
                     "target_model": minimal_target_model(
                         sample={"role": "fact", "public_id": "sample_id", "target_table": "tbl_sample"},
-                        taxon={"role": "classifier", "public_id": "taxon_id", "target_table": "tbl_taxon"},
+                        taxon={
+                            "role": "classifier",
+                            "public_id": "taxon_id",
+                            "target_table": "tbl_taxon",
+                            "reconciliation": "reconcile-exact",
+                        },
                         sample_taxon={
                             "role": "bridge",
                             "target_table": "tbl_sample_taxon",
@@ -2476,8 +2501,13 @@ class TestSeadChangeRequestIngesterIngest:
                         },
                     ),
                     "submission_context": minimal_submission_context(change_request_name="deploy/mixed-pilot"),
+                    "trusted_project_context": trusted_context_with_local_only_approval(
+                        "taxon",
+                        ("taxon_name",),
+                        ("Approved Taxon",),
+                        owner_target_field="taxon_name",
+                    ),
                     "sims_client": sims_client,
-                    "reconciliation_client": FakeReconciliationClient(target_id=9200),
                     "collision_checker": FakeCollisionChecker(),
                 },
             )
@@ -2487,8 +2517,8 @@ class TestSeadChangeRequestIngesterIngest:
 
         assert result.success is True
         assert result.message.startswith("Deploy artifact emitted to '")
-        assert result.tables_processed == 2
-        assert result.records_inserted == 2
+        assert result.tables_processed == 3
+        assert result.records_inserted == 3
         assert result.error_details is None
         assert sims_client.associated_change_requests == [("binding-123", "deploy/mixed-pilot")]
         assert result.deploy_artifact is not None
@@ -2497,15 +2527,15 @@ class TestSeadChangeRequestIngesterIngest:
         assert result.deploy_artifact["metadata"]["change_request_associated"] is True
         assert result.deploy_artifact["metadata"]["deploy_strategy"] == "inline_insert"
         assert result.deploy_artifact["metadata"]["verify_placeholder"] is True
-        assert result.deploy_artifact["metadata_artifact"]["deploy_statement_count"] == 2
+        assert result.deploy_artifact["metadata_artifact"]["deploy_statement_count"] == 3
         assert result.deploy_artifact["metadata_artifact"]["deploy_strategy"] == "inline_insert"
         assert result.deploy_artifact["metadata_artifact"]["verify_placeholder"] is True
         assert 'INSERT INTO "tbl_sample" ("sample_id", "sample_name") VALUES (501, ' in result.deploy_artifact["deploy_sql"]
+        assert 'INSERT INTO "tbl_taxon" ("taxon_id", "taxon_name") VALUES (501, ' in result.deploy_artifact["deploy_sql"]
         assert (
-            'INSERT INTO "tbl_sample_taxon" ("sample_id", "taxon_id", "abundance") VALUES (501, 9200, 3);'
+            'INSERT INTO "tbl_sample_taxon" ("sample_id", "taxon_id", "abundance") VALUES (501, 501, 3);'
             in result.deploy_artifact["deploy_sql"]
         )
-        assert "tbl_taxon" not in result.deploy_artifact["deploy_sql"]
         assert "Existing Sample" not in result.deploy_artifact["deploy_sql"]
         bundle_name = expected_bundle_name(change_request_name="deploy/mixed-pilot")
         assert (emitted_bundle_dir(tmp_path, bundle_name) / "deploy" / f"{bundle_name}.sql").exists()
@@ -2536,7 +2566,7 @@ class TestSeadChangeRequestIngesterIngest:
                             {
                                 "system_id": [10, 11],
                                 "taxon_id": [9001, None],
-                                "taxon_name": ["Existing Taxon", "Reconciled Taxon"],
+                                "taxon_name": ["Existing Taxon", "Approved Taxon"],
                             }
                         ),
                         "sample_taxon": pd.DataFrame(
@@ -2549,7 +2579,12 @@ class TestSeadChangeRequestIngesterIngest:
                     },
                     "target_model": minimal_target_model(
                         sample={"role": "fact", "public_id": "sample_id", "target_table": "tbl_sample"},
-                        taxon={"role": "classifier", "public_id": "taxon_id", "target_table": "tbl_taxon"},
+                        taxon={
+                            "role": "classifier",
+                            "public_id": "taxon_id",
+                            "target_table": "tbl_taxon",
+                            "reconciliation": "reconcile-exact",
+                        },
                         sample_taxon={
                             "role": "bridge",
                             "target_table": "tbl_sample_taxon",
@@ -2558,9 +2593,13 @@ class TestSeadChangeRequestIngesterIngest:
                         },
                     ),
                     "submission_context": minimal_submission_context(change_request_name="deploy/backend-bridge"),
-                    "trusted_project_context": minimal_trusted_project_context(),
+                    "trusted_project_context": trusted_context_with_local_only_approval(
+                        "taxon",
+                        ("taxon_name",),
+                        ("Approved Taxon",),
+                        owner_target_field="taxon_name",
+                    ),
                     "sims_client": adapter,
-                    "reconciliation_client": FakeReconciliationClient(target_id=9200),
                     "collision_checker": FakeCollisionChecker(),
                 },
             )
@@ -2569,19 +2608,20 @@ class TestSeadChangeRequestIngesterIngest:
         result = await ingest_bundle(ingester)
 
         assert result.success is True
-        assert result.records_inserted == 2
+        assert result.records_inserted == 3
         assert result.deploy_artifact is not None
+        assert 'INSERT INTO "tbl_taxon" ("taxon_id", "taxon_name") VALUES (501, ' in result.deploy_artifact["deploy_sql"]
         assert (
-            'INSERT INTO "tbl_sample_taxon" ("sample_id", "taxon_id", "abundance") VALUES (501, 9200, 3);'
+            'INSERT INTO "tbl_sample_taxon" ("sample_id", "taxon_id", "abundance") VALUES (501, 501, 3);'
             in result.deploy_artifact["deploy_sql"]
         )
         bundle_name = expected_bundle_name(change_request_name="deploy/backend-bridge")
         assert (emitted_bundle_dir(tmp_path, bundle_name) / "deploy" / f"{bundle_name}.sql").exists()
 
     @pytest.mark.asyncio
-    async def test_ingest_blocks_artifact_when_approved_match_conflicts_with_sims(self, tmp_path):
+    async def test_ingest_blocks_artifact_when_approved_allocation_conflicts_with_sims(self, tmp_path):
         request = httpx.Request("POST", "http://sims.test/identity/resolve")
-        response = httpx.Response(409, request=request, text="approved aggregate ID is already bound elsewhere")
+        response = httpx.Response(409, request=request, text="business key is already bound elsewhere")
         conflict = httpx.HTTPStatusError("409 Conflict", request=request, response=response)
         adapter = SeadChangeRequestSimsAdapter(cast(Any, FakeBackendSimsClient(resolve_error=conflict)))
         ingester = SeadChangeRequestIngester(
@@ -2593,11 +2633,22 @@ class TestSeadChangeRequestIngesterIngest:
                 output_folder=str(tmp_path),
                 extra={
                     "tables": {"taxon": pd.DataFrame({"taxon_id": [None], "taxon_name": ["Approved taxon"]})},
-                    "target_model": minimal_target_model(taxon={"role": "classifier", "public_id": "taxon_id", "target_table": "tbl_taxa"}),
+                    "target_model": minimal_target_model(
+                        taxon={
+                            "role": "classifier",
+                            "public_id": "taxon_id",
+                            "target_table": "tbl_taxa",
+                            "reconciliation": "reconcile-exact",
+                        }
+                    ),
                     "submission_context": minimal_submission_context(),
-                    "trusted_project_context": minimal_trusted_project_context(),
+                    "trusted_project_context": trusted_context_with_local_only_approval(
+                        "taxon",
+                        ("taxon_name",),
+                        ("Approved taxon",),
+                        owner_target_field="taxon_name",
+                    ),
                     "sims_client": adapter,
-                    "reconciliation_client": FakeReconciliationClient(target_id=77),
                 },
             )
         )
@@ -2607,7 +2658,7 @@ class TestSeadChangeRequestIngesterIngest:
         assert result.success is False
         assert result.message == "Identity resolution incomplete"
         assert "HTTP 409" in (result.error_details or "")
-        assert "already bound elsewhere" in (result.error_details or "")
+        assert "business key is already bound elsewhere" in (result.error_details or "")
         assert result.deploy_artifact is None
         assert not list(tmp_path.iterdir())
 
@@ -2713,7 +2764,6 @@ class TestSeadChangeRequestIngesterStaging:
                     "target_model": staging_target_model(),
                     "submission_context": minimal_submission_context(),
                     "sims_client": sims_client,
-                    "reconciliation_client": FakeReconciliationClient(target_id=7001),
                     "deploy_strategy": "inline_staging",
                     "staging_target_schema": "public",
                 },
@@ -2735,13 +2785,7 @@ class TestDatabaseSequenceIdentity:
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize("deploy_strategy", ["inline_insert", "copy_csv", "inline_staging"])
-    async def test_validation_and_ingestion_block_unresolved_ids_without_allocator_calls(self, tmp_path, deploy_strategy):
-        class UnexpectedAllocator:
-            """Fail if preparation attempts to consume a target sequence."""
-
-            async def reserve_target_id(self, table_name: str, public_id_column: str) -> int:
-                raise AssertionError(f"Unexpected target sequence allocation for {table_name}.{public_id_column}")
-
+    async def test_validation_and_ingestion_block_when_sequence_reserver_is_unavailable(self, tmp_path, deploy_strategy):
         sims_client = CountingSimsClient()
         extra: dict[str, Any] = {
             "tables": {"sample": pd.DataFrame({"sample_id": [None], "sample_name": ["A"]})},
@@ -2757,7 +2801,6 @@ class TestDatabaseSequenceIdentity:
             ),
             "submission_context": minimal_submission_context(),
             "sims_client": sims_client,
-            "target_id_allocator": UnexpectedAllocator(),
             "deploy_strategy": deploy_strategy,
         }
         if deploy_strategy == "inline_staging":
@@ -2778,9 +2821,9 @@ class TestDatabaseSequenceIdentity:
         ingestion = await ingest_bundle(ingester, validate_first=False)
 
         assert validation.is_valid is False
-        assert any("pre-resolve it before Change Request validation or bundle generation" in error for error in validation.errors)
+        assert any("database sequence reservation is unavailable" in error for error in validation.errors)
         assert ingestion.success is False
-        assert "pre-resolve it before Change Request validation or bundle generation" in (ingestion.error_details or "")
+        assert "database sequence reservation is unavailable" in (ingestion.error_details or "")
         assert sims_client.batch_calls == 0
 
 
@@ -2832,7 +2875,6 @@ class TestSeadChangeRequestIngesterStagingValidation:
                     "target_model": staging_target_model(),
                     "submission_context": minimal_submission_context(),
                     "sims_client": FakeSimsClient(target_id=501),
-                    "reconciliation_client": FakeReconciliationClient(target_id=7001),
                     "deploy_strategy": "inline_staging",
                     "staging_target_schema": "public",
                 },
@@ -2992,6 +3034,143 @@ class TestDeclaredBusinessKeys:
         assert sims_client.batch_calls == 1
         assert result.deploy_artifact is not None
         assert "'001'" in result.deploy_artifact["deploy_sql"]
+
+
+class TestLocalOnlyApprovals:
+    """Only current rows with trusted exported approvals may allocate reconciled IDs."""
+
+    @staticmethod
+    def _trusted_context(
+        *,
+        key_columns: tuple[str, ...] = ("site_code", "site_name"),
+        declared_keys: tuple[str, ...] = ("site_code", "site_name"),
+        key_values: tuple[object, ...] = ("A", "Shared name"),
+        mapping_project_name: str | None = "test-project",
+        owner_entity_name: str = "site",
+        owner_target_field: str = "site_name",
+        verified_owner_target_field: str | None = "site_name",
+    ) -> TrustedProjectContext:
+        encoded_key = encode_local_key(list(key_columns), list(key_values))
+        approval = LocalOnlyApproval(
+            owner=LinkOwner(entity_name=owner_entity_name, target_field=owner_target_field),
+            committed_at=datetime.fromisoformat("2026-05-23T22:00:00+00:00"),
+        )
+        return minimal_trusted_project_context(
+            business_keys={"site": declared_keys},
+            mapping_project_name=mapping_project_name,
+            local_key_columns_by_entity={"site": key_columns},
+            local_only_approvals={"site": {encoded_key: approval}},
+            verified_local_only_approval_owners=(
+                {}
+                if verified_owner_target_field is None
+                else {
+                    "site": {
+                        encoded_key: LinkOwner(
+                            entity_name=owner_entity_name,
+                            target_field=verified_owner_target_field,
+                        )
+                    }
+                }
+            ),
+        )
+
+    @staticmethod
+    def _ingester(
+        tmp_path: Path,
+        frame: pd.DataFrame,
+        context: TrustedProjectContext,
+        sims_client: CountingSimsClient,
+    ) -> SeadChangeRequestIngester:
+        return SeadChangeRequestIngester(
+            IngesterConfig(
+                host="localhost",
+                port=5432,
+                dbname="test_db",
+                user="test_user",
+                output_folder=str(tmp_path),
+                extra={
+                    "tables": {"site": frame},
+                    "target_model": minimal_target_model(site={"role": "lookup", "public_id": "site_id", "target_table": "tbl_sites"}),
+                    "submission_context": minimal_submission_context(),
+                    "trusted_project_context": context,
+                    "sims_client": sims_client,
+                },
+            )
+        )
+
+    @pytest.mark.asyncio
+    async def test_compound_approval_matches_keys_not_duplicate_labels(self, tmp_path):
+        frame = pd.DataFrame(
+            {
+                "site_id": [None, None],
+                "site_code": ["A", "B"],
+                "site_name": ["Shared name", "Shared name"],
+            }
+        )
+        sims_client = CountingSimsClient(target_id=501)
+        ingester = self._ingester(tmp_path, frame, self._trusted_context(), sims_client)
+
+        preparation = await ingester._prepare_change_request(SourceTableBundle(tables={"site": frame}))
+
+        assignments = preparation.orchestration_result.assignments["site"]
+        assert preparation.planned.tables[0].planned_actions.tolist() == [
+            PlannedRowAction.ALLOCATE,
+            PlannedRowAction.BLOCK_RECONCILIATION,
+        ]
+        assert assignments[0].state == ChangeRowState.NEWLY_ALLOCATED_ENTITY
+        assert assignments[1].state == ChangeRowState.BLOCKED_UNRESOLVED
+        assert sims_client.batch_calls == 1
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("case", "expected_error"),
+        [
+            ("wrong_project", "does not match trusted project"),
+            ("wrong_owner", "has an invalid owner"),
+            ("unverified_owner", "has an invalid owner"),
+            ("mismatched_keys", "do not match the trusted ordered business-key declaration"),
+            ("absent_row", "has no current source row"),
+            ("prelinked_id", "conflicts with its existing public ID"),
+            ("duplicate_key", "share one business key value"),
+        ],
+    )
+    async def test_invalid_approval_fails_before_sims_or_artifact_writes(self, tmp_path, case, expected_error):
+        frame = pd.DataFrame({"site_id": [None], "site_code": ["A"], "site_name": ["Shared name"]})
+        context_options: dict[str, Any] = {}
+        if case == "wrong_project":
+            context_options["mapping_project_name"] = "another-project"
+        elif case == "wrong_owner":
+            context_options["owner_target_field"] = "other_id"
+        elif case == "unverified_owner":
+            context_options["verified_owner_target_field"] = None
+        elif case == "mismatched_keys":
+            context_options["key_columns"] = ("site_name", "site_code")
+            context_options["key_values"] = ("Shared name", "A")
+        elif case == "absent_row":
+            context_options["key_values"] = ("missing", "Shared name")
+        elif case == "prelinked_id":
+            frame.at[0, "site_id"] = 7001
+        elif case == "duplicate_key":
+            frame = pd.DataFrame(
+                {
+                    "site_id": [None, None],
+                    "site_code": ["A", "A"],
+                    "site_name": ["Shared name", "Shared name"],
+                }
+            )
+
+        sims_client = CountingSimsClient(target_id=501)
+        ingester = self._ingester(tmp_path, frame, self._trusted_context(**context_options), sims_client)
+
+        validation = await validate_bundle(ingester)
+        ingestion = await ingest_bundle(ingester, validate_first=False)
+
+        assert validation.is_valid is False
+        assert expected_error in " ".join(validation.errors)
+        assert ingestion.success is False
+        assert expected_error in (ingestion.error_details or "")
+        assert sims_client.batch_calls == 0
+        assert not list(tmp_path.iterdir())
 
 
 class TestRetiredFileInput:

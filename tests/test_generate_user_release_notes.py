@@ -119,7 +119,7 @@ class TestPendingReleaseSection:
         generator = load_generator_module()
         changelog_path = tmp_path / "CHANGELOG.md"
         changelog_path.write_text(
-            "# [2.5.0](https://example.test/2.5.0) (2026-10-27)\n\n" "# [2.4.0](https://example.test/2.4.0) (2026-10-26)\n",
+            "# [2.5.0](https://example.test/2.5.0) (2026-10-27)\n\n# [2.4.0](https://example.test/2.4.0) (2026-10-26)\n",
             encoding="utf-8",
         )
 
