@@ -372,7 +372,12 @@ class ProjectIngesterService:
                     if resolution_set is None:
                         continue
                     decision = resolution_set.get(encoded_key)
-                    if decision is None or decision.status != DecisionStatus.ACCEPTED or decision.target_id != link.target_id:
+                    if (
+                        decision is None
+                        or link.target_id is None
+                        or decision.status != DecisionStatus.ACCEPTED
+                        or decision.target_id != link.target_id
+                    ):
                         continue
                     verified_reconciliation_links.setdefault(entity_name, {})[encoded_key] = link.target_id
 

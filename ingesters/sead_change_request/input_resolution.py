@@ -209,7 +209,7 @@ def _resolve_source_bundle(config: IngesterConfig, source: object) -> SourceTabl
     raise SourceBundleError("Unsupported source type for sead_change_request ingestion")
 
 
-def _build_source_bundle(tables: Mapping[object, object], *, source_name: str = "") -> SourceTableBundle:
+def _build_source_bundle(tables: Mapping[Any, Any], *, source_name: str = "") -> SourceTableBundle:
     """Build a validated source bundle from a raw table mapping.
 
     Each accepted DataFrame is deep-copied so the caller keeps ownership of its
@@ -320,14 +320,14 @@ def _resolve_trusted_project_context(config: IngesterConfig) -> TrustedProjectCo
     verified_reconciliation_links = _resolve_verified_reconciliation_links(raw_context.get("verified_reconciliation_links") or {})
     _require_reconciliation_link_key_columns(verified_reconciliation_links, local_key_columns_by_entity)
 
-    for label, value in (
-        ("project_name", project_name),
-        ("provider_code", provider_code),
-        ("provider_schema", provider_schema),
-        ("scope_name", scope_name),
-    ):
-        if not isinstance(value, str) or not value.strip():
-            raise SubmissionContextError(f"Trusted project context requires a non-empty {label}")
+    if not isinstance(project_name, str) or not project_name.strip():
+        raise SubmissionContextError("Trusted project context requires a non-empty project_name")
+    if not isinstance(provider_code, str) or not provider_code.strip():
+        raise SubmissionContextError("Trusted project context requires a non-empty provider_code")
+    if not isinstance(provider_schema, str) or not provider_schema.strip():
+        raise SubmissionContextError("Trusted project context requires a non-empty provider_schema")
+    if not isinstance(scope_name, str) or not scope_name.strip():
+        raise SubmissionContextError("Trusted project context requires a non-empty scope_name")
     if not isinstance(data_provider_id, int) or isinstance(data_provider_id, bool) or data_provider_id <= 0:
         raise SubmissionContextError("Trusted project context requires a positive integer data_provider_id")
     if not isinstance(raw_keys, dict):
