@@ -7,6 +7,7 @@ import re
 import subprocess
 from collections.abc import AsyncIterator, Iterator
 from pathlib import Path
+from typing import Any
 from urllib.parse import urlsplit
 from uuid import uuid4
 
@@ -39,7 +40,7 @@ def _isolate_project_services() -> Iterator[None]:
     yaml_service._yaml_service = None
 
 
-def _require_disposable_settings(monkeypatch, tmp_path: Path) -> dict[str, object]:
+def _require_disposable_settings(monkeypatch, tmp_path: Path) -> dict[str, Any]:
     """Require the helper-owned loopback database and point both clients at it."""
     host = os.getenv("SEAD_DISPOSABLE_POSTGRES_HOST")
     port = os.getenv("SEAD_DISPOSABLE_POSTGRES_PORT") or "55432"
@@ -62,7 +63,7 @@ def _require_disposable_settings(monkeypatch, tmp_path: Path) -> dict[str, objec
         check=True,
     )
     assert container.stdout.strip() == "true", "The disposable database must belong to the Authority Service helper."
-    parameters: dict[str, object] = {"host": host, "port": int(port), "dbname": dbname, "user": user, "connect_timeout": 5}
+    parameters: dict[str, Any] = {"host": host, "port": int(port), "dbname": dbname, "user": user, "connect_timeout": 5}
     monkeypatch.setattr(settings, "RECONCILIATION_SERVICE_URL", service_url)
     monkeypatch.setattr(settings, "SIMS_SERVICE_URL", service_url)
     monkeypatch.setattr(settings, "INGEST_TARGET_HOST", host)
@@ -81,7 +82,7 @@ async def _require_readiness(client: httpx.AsyncClient) -> None:
     assert result.get("ready") is True and result.get("type") == "site", f"Site readiness failed: {result.get('reason')}"
 
 
-async def _site_allocator_snapshot(parameters: dict[str, object]) -> tuple[int, int]:
+async def _site_allocator_snapshot(parameters: dict[str, Any]) -> tuple[int, int]:
     """Return the site allocator value and tracked-identity count."""
     async with await psycopg.AsyncConnection.connect(**parameters) as connection:
         async with connection.cursor() as cursor:
@@ -93,7 +94,7 @@ async def _site_allocator_snapshot(parameters: dict[str, object]) -> tuple[int, 
     return int(allocator[0]), int(tracked_count[0])
 
 
-async def _site_identity_evidence(parameters: dict[str, object], scope_name: str) -> list[tuple[str, int | None, str | None, str | None]]:
+async def _site_identity_evidence(parameters: dict[str, Any], scope_name: str) -> list[tuple[str, int | None, str | None, str | None]]:
     """Read site business keys and any SIMS bindings in one provider scope."""
     async with await psycopg.AsyncConnection.connect(**parameters) as connection:
         async with connection.cursor() as cursor:
@@ -123,7 +124,7 @@ async def _site_identity_evidence(parameters: dict[str, object], scope_name: str
     ]
 
 
-async def _first_existing_method_id(parameters: dict[str, object]) -> int:
+async def _first_existing_method_id(parameters: dict[str, Any]) -> int:
     """Return an existing method ID for the required sample-group target row."""
     async with await psycopg.AsyncConnection.connect(**parameters) as connection:
         async with connection.cursor() as cursor:
@@ -516,7 +517,8 @@ async def test_adopted_binding_and_local_only_allocation(authorized_client, adop
     assert ingested.status_code == 200 and ingested.json()["success"], ingested.text
     result = ingested.json()
     assert result["deploy_artifact"] is not None
-    assert result["output_path"] and Path(result["output_path"]).is_relative_to(settings.INGEST_OUTPUT_DIR)
+    assert result["output_path"] and settings.INGEST_OUTPUT_DIR is not None
+    assert Path(result["output_path"]).is_relative_to(settings.INGEST_OUTPUT_DIR)
     deploy_artifact = result["deploy_artifact"]
     direct_foreign_keys = deploy_artifact["metadata_artifact"]["direct_target_id_foreign_keys"]
     assert direct_foreign_keys == [{"source_entity": "sample_group", "target_entity": "method", "column": "method_id"}]

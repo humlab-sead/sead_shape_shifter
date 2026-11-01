@@ -28,14 +28,14 @@ class ResolvedEntityPair(BaseModel):
     local_key_value: str = Field(..., min_length=1, description="Encoded ordered business key")
     source_value: Any = Field(..., description="Search label (not row identity)")
     status: Literal["proposed", "accepted", "rejected", "local-only"] = "proposed"
-    target_id: int | None = Field(None, description="Selected target ID for an accepted decision")
+    target_id: int | None = Field(default=None, description="Selected target ID for an accepted decision")
     candidate_id: str | None = Field(default=None, description="Exact selected candidate URI")
-    confidence: float | None = Field(None, ge=0.0, le=1.0, description="Mapping confidence (0-1)")
-    notes: str | None = Field(None, description="Operator notes")
+    confidence: float | None = Field(default=None, ge=0.0, le=1.0, description="Mapping confidence (0-1)")
+    notes: str | None = Field(default=None, description="Operator notes")
     candidates: list["ReconciliationCandidate"] = Field(default_factory=list)
-    created_at: str | None = Field(None, description="ISO timestamp")
-    created_by: str | None = Field(None, description="User who created mapping")
-    last_modified: str | None = Field(None, description="Last modification timestamp")
+    created_at: str | None = Field(default=None, description="ISO timestamp")
+    created_by: str | None = Field(default=None, description="User who created mapping")
+    last_modified: str | None = Field(default=None, description="Last modification timestamp")
 
     @model_validator(mode="after")
     def validate_status(self) -> "ResolvedEntityPair":
@@ -107,7 +107,7 @@ class EntityResolutionListItem(BaseModel):
 
     entity_name: str = Field(..., description="Entity name")
     target_field: str = Field(..., description="Target field name")
-    source: str | ReconciliationSource | None = Field(None, description="Data source specification")
+    source: str | ReconciliationSource | None = Field(default=None, description="Data source specification")
     property_mappings: dict[str, str] = Field(default_factory=dict, description="Property mappings")
     remote: ReconciliationRemote = Field(..., description="Remote entity configuration")
     auto_accept_threshold: float = Field(..., description="Auto-accept threshold")
@@ -127,7 +127,7 @@ class EntityResolutionCatalogCreateRequest(BaseModel):
 class EntityResolutionCatalogUpdateRequest(BaseModel):
     """Request to update resolution catalog entry (excludes entity/target/mapping)."""
 
-    source: str | ReconciliationSource | None = Field(None, description="Data source specification")
+    source: str | ReconciliationSource | None = Field(default=None, description="Data source specification")
     property_mappings: dict[str, str] = Field(default_factory=dict, description="Property mappings")
     remote: ReconciliationRemote = Field(..., description="Remote entity configuration")
     auto_accept_threshold: float = Field(0.95, ge=0.0, le=1.0, description="Auto-accept threshold")
@@ -142,11 +142,11 @@ class ReconciliationCandidate(BaseModel):
 
     id: str = Field(..., description="Unique identifier URI")
     name: str = Field(..., description="Display name")
-    score: float | None = Field(None, description="Match confidence score (0-100)")
-    match: bool | None = Field(None, description="High-confidence match flag")
+    score: float | None = Field(default=None, description="Match confidence score (0-100)")
+    match: bool | None = Field(default=None, description="High-confidence match flag")
     type: list[dict[str, str]] = Field(default_factory=list, description="Entity type info")
-    distance_km: float | None = Field(None, description="Geographic distance (for sites)")
-    description: str | None = Field(None, description="Additional context")
+    distance_km: float | None = Field(default=None, description="Geographic distance (for sites)")
+    description: str | None = Field(default=None, description="Additional context")
 
 
 class ReconciliationPreviewRow(BaseModel):
@@ -213,7 +213,7 @@ class CandidateVerificationResult(BaseModel):
     id: str
     outcome: Literal["exists", "not_found", "invalid_candidate", "unsupported_type"]
     entity_type: str | None = None
-    aggregate_id: int | None = Field(None, gt=0)
+    aggregate_id: int | None = Field(default=None, gt=0)
 
     @model_validator(mode="after")
     def validate_aggregate_id(self) -> "CandidateVerificationResult":

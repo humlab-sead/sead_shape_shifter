@@ -1060,8 +1060,8 @@ class TestReconciliationService:
         )
         mock_recon_client.reconcile_batch.return_value = {"q3": [dto.ReconciliationCandidate(id="new", name="New", score=100.0)]}
         with patch.object(reconciliation_service, "get_resolved_source_data", new=AsyncMock(return_value=source)):
-            for _ in range(2):
-                result = await reconciliation_service.auto_reconcile_entity("rerun", "site", "site_name", sample_entity_spec)
+            result = await reconciliation_service.auto_reconcile_entity("rerun", "site", "site_name", sample_entity_spec)
+            result = await reconciliation_service.auto_reconcile_entity("rerun", "site", "site_name", sample_entity_spec)
 
         assert result.proposed == 1
         assert list(mock_recon_client.reconcile_batch.call_args.args[0]) == ["q3"]
@@ -1465,9 +1465,16 @@ class TestSpecificationManagement:
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
-        updated_config = reconciliation_service.catalog_manager.delete("test", "site", "site_code", force=False)
+        mock_project = MagicMock()
+        mock_project.filename = None
+        with patch.object(reconciliation_service.project_service, "load_project", return_value=mock_project):
+            updated_config, removed_links, removed_approvals = reconciliation_service.delete_specification(
+                "test", "site", "site_code", force=False
+            )
 
         assert "site_code" not in updated_config.entities.get("site", {})
+        assert removed_links == 0
+        assert removed_approvals == 0
 
     def test_delete_specification_with_mappings_no_force(self, reconciliation_service: ReconciliationService, tmp_path, catalog):
         """Test deleting specification with mappings raises error without force."""
@@ -1492,8 +1499,11 @@ class TestSpecificationManagement:
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
-        with pytest.raises(ValidationError, match="Cannot delete existing mapping.*from catalog"):
-            reconciliation_service.catalog_manager.delete("test", "site", "site_code", force=False)
+        mock_project = MagicMock()
+        mock_project.filename = None
+        with patch.object(reconciliation_service.project_service, "load_project", return_value=mock_project):
+            with pytest.raises(ValidationError, match="Cannot delete existing mapping.*from catalog"):
+                reconciliation_service.delete_specification("test", "site", "site_code", force=False)
 
     def test_delete_specification_with_mappings_force(self, reconciliation_service: ReconciliationService, tmp_path, catalog):
         """Test force deleting specification with mappings succeeds."""
@@ -1529,9 +1539,16 @@ class TestSpecificationManagement:
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
-        updated_config = reconciliation_service.catalog_manager.delete("test", "site", "site_code", force=True)
+        mock_project = MagicMock()
+        mock_project.filename = None
+        with patch.object(reconciliation_service.project_service, "load_project", return_value=mock_project):
+            updated_config, removed_links, removed_approvals = reconciliation_service.delete_specification(
+                "test", "site", "site_code", force=True
+            )
 
         assert "site_code" not in updated_config.entities.get("site", {})
+        assert removed_links == 0
+        assert removed_approvals == 0
 
     def test_delete_specification_not_found(self, reconciliation_service: ReconciliationService, tmp_path, catalog):
         """Test deleting non-existent specification raises error."""
@@ -1542,8 +1559,11 @@ class TestSpecificationManagement:
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
-        with pytest.raises(ResourceNotFoundError, match="not found"):
-            reconciliation_service.catalog_manager.delete("test", "site", "nonexistent_field")
+        mock_project = MagicMock()
+        mock_project.filename = None
+        with patch.object(reconciliation_service.project_service, "load_project", return_value=mock_project):
+            with pytest.raises(ResourceNotFoundError, match="not found"):
+                reconciliation_service.delete_specification("test", "site", "nonexistent_field")
 
     def test_delete_last_specification_removes_entity(self, reconciliation_service: ReconciliationService, tmp_path, catalog):
         """Test deleting last specification removes entity from config."""
@@ -1554,7 +1574,10 @@ class TestSpecificationManagement:
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
-        updated_config = reconciliation_service.catalog_manager.delete("test", "site", "site_code")
+        mock_project = MagicMock()
+        mock_project.filename = None
+        with patch.object(reconciliation_service.project_service, "load_project", return_value=mock_project):
+            updated_config, _, _ = reconciliation_service.delete_specification("test", "site", "site_code")
 
         # Entity should be removed entirely
         assert "site" not in updated_config.entities

@@ -979,7 +979,11 @@ class ReconciliationService:
                         ]
                         continue
                     latest_mapping.add(decision)
-            proposed_keys = {key for key in candidate_map if latest_mapping.get(key).status == core.DecisionStatus.PROPOSED}
+            proposed_keys = {
+                key
+                for key in candidate_map
+                if (entry := latest_mapping.get(key)) is not None and entry.status == core.DecisionStatus.PROPOSED
+            }
             proposed = len(proposed_keys)
             unmatched = sum(not candidate_map[key] for key in proposed_keys)
             self.catalog_manager.save_catalog(project_name, latest_catalog)
