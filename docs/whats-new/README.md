@@ -121,6 +121,8 @@ Draft generation skips existing files without querying Copilot unless `--force` 
 
 Use `--verbose` with `--draft` to print the raw Copilot response when response parsing or validation fails. The configured API key is redacted from this output.
 
+A failed draft names the single problem it found and quotes the offending value, so `--verbose` is only needed when the model's overall response is in question. The title must be one line of at most 71 characters with no trailing period, matching the rule in [the PR-description instructions](../../.github/pr-description-instructions.md). When a model writes a preamble before the title, the last line before the body separator is used as the title, so a narrated response still produces a usable draft.
+
 ## Recording Commits Without a Pull Request
 
 Commits pushed straight to a base branch have no pull request to describe them, so add `--include-orphaned` to record them against the pull request that followed:
@@ -139,6 +141,25 @@ Housekeeping commits are filtered out of the list by default. A commit counts as
 - Every changed path is inside `.github/` or `.vscode/`, or is `sead_shape_shifter.code-workspace`, so the commit changes contributor configuration.
 
 One path outside those locations keeps the commit, because the commit then carries a real change. The filtering is never silent: the section names the filtered counts, and the command reports the totals on standard error. Pass `--show-all-orphaned` to list every detected commit instead.
+
+## Drafting Every Pull Request
+
+Historically generated PR descriptions can be regenerated for a whole repository with one command:
+
+```bash
+# Show what would be drafted without writing anything
+.venv/bin/python scripts/draft_all_pr_descriptions.py --dry-run
+
+# Draft every merged pull request that has no draft file yet
+.venv/bin/python scripts/draft_all_pr_descriptions.py
+
+# Redraft everything, newest first, in batches of 10
+.venv/bin/python scripts/draft_all_pr_descriptions.py --force --newest-first --batch-size 10
+```
+
+The script enumerates pull requests with `gh pr list` and drives `scripts/update_pr_descriptions.py` with `--draft --include-orphaned`. Existing draft files are kept unless `--force` is given, so an interrupted run resumes where it stopped and a later run retries only the missing drafts. It confirms the Copilot configuration before drafting; pass `--no-preflight` when every pull request in the set is a promotion, which needs no model.
+
+The script relays the target script's output as it runs and ends with a summary of drafted, failed, and skipped pull requests. It never publishes: review `docs/whats-new/PRs/`, then publish with `scripts/update_pr_descriptions.py --publish`.
 
 ## Writing Guidelines
 
