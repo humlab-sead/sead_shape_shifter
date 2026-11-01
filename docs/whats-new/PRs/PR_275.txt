@@ -1,0 +1,37 @@
+title: Add Files tab to upload project data files to project folders
+description:
+## Summary
+
+This PR adds a Files tab to the project detail view so users can upload data files (.xlsx, .xls,
+.csv) directly into a project's folder, where they are immediately usable in entity configurations
+with location: local.
+
+ - Backend (backend/app/api/v1/endpoints/projects.py): two new endpoints — POST
+/projects/{name}/files (uploads a file via ProjectService.save_project_file, restricted to .xlsx,
+.xls, .csv) and GET /projects/{name}/files (lists the project's Excel/CSV data files via
+ProjectService.list_project_files).
+ - Frontend: a new ProjectFileUploadCard.vue component with a drag-and-drop zone, multi-file
+selection, upload progress/success/error alerts, and a list of uploaded files with size and location
+(Project vs Shared) chips. It is wired into a new "Files" tab in ProjectDetailView.vue.
+projectsApi.uploadFile now posts FormData through apiClient directly with an explicit
+multipart/form-data header instead of going through apiRequest. The ProjectFileInfo type gains a
+location: 'global' | 'local' field.
+ - Config cleanup (backend/app/core/config.py, main.py, docs/other/LOGGING.md): the LOGS_DIR setting
+and its LOG_DIR backward-compatibility alias are consolidated into a single LOG_DIR setting;
+logging configuration and docs now use LOG_DIR.
+
+## User-facing release note
+
+Users can now open a project's new Files tab and drag-and-drop or browse to upload Excel and CSV
+data files into the project folder, then use them in entity configurations with location: local.
+Uploaded files are listed with their size and location.
+
+## Upgrade notes
+
+The LOGS_DIR backend setting (previously an alias of LOG_DIR) has been removed; deployments that set
+LOGS_DIR should use LOG_DIR instead. No database migrations are involved.
+
+## Validation
+
+Not verified: validation results unavailable. No CI status checks are recorded for this pull
+request, and no test or lint results were included in the available evidence.

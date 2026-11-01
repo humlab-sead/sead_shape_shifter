@@ -1,0 +1,46 @@
+title: Move data source connection test logic into loaders
+description:
+## Summary
+
+Implements #26 by moving vendor- and loader-specific connection-test logic out of the backend
+DataSourceService and into the core loader classes:
+
+ - DataLoader now declares an abstract test_connection() method returning a new ConnectTestResult
+dataclass (with create_empty helper) defined in src/loaders/base_loader.py.
+ - SqlLoader.test_connection() performs table introspection via get_tables() and loads a SELECT TOP
+1 query against the first table, reporting table count and row count; CsvLoader.test_connection()
+checks file accessibility and reads a sample of rows; FixedLoader/FixedLoader2 return a trivial
+successful result ("No test performed").
+ - DataSourceService.test_connection() is reduced to resolving environment variables, mapping to the
+core config, and delegating to the loader obtained from DataLoaders. Roughly 200 lines of
+driver-specific code were removed (_test_database_connection, _test_file_connection,
+_get_test_query, _resolve_env_vars, _resolve_config_env_vars).
+ - DataSourceConfig (backend model) drops is_database_source()/is_file_source() and gains
+resolve_config_env_vars(), create_failure(), and from_core_result() for bridging core
+ConnectTestResult values to DataSourceTestResult.
+ - Tests were reorganized into a new tests/loaders/ package with new coverage for CSV, SQL
+(SQLite/PostgreSQL/UCanAccess, mocked), and fixed loader connection tests; existing loader tests
+were moved there.
+ - The remainder is linting/formatting cleanup (pylint disables, f-string and encoding fixes,
+generic typing for replace_env_vars, import reordering), a VS Code debug launch configuration, and
+TODO.md bookkeeping.
+
+Caveat: the fallback config-file lookup in _get_raw_data_sources_from_yaml and the sys.path
+manipulation in ValidationService are commented out rather than removed, with a FIXME: #25 noting
+the raw-config-finding logic needs improvement.
+
+## User-facing release note
+
+Testing a data source connection now runs through the loader for each source type, so database, CSV,
+and fixed sources are tested the same way, with results such as table counts and sample rows
+reported back.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+Not verified: validation results unavailable. No CI check results were attached to the pull request,
+so the outcome of the added and updated test suites (tests/loaders/, backend/tests/) is unknown;
+the author's claim that tests and linting were fixed could not be confirmed from available evidence.

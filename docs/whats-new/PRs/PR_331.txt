@@ -1,0 +1,63 @@
+title: Centralize fixed-entity persistence and fix workflow regressions
+description:
+## Summary
+
+This PR centralizes fixed-entity persistence and materialization behind a strategy registry and
+fixes several workflow regressions surfaced while validating that refactor.
+
+ - New EntityPersistenceStrategyRegistry with FixedEntityPersistenceStrategy and a default strategy;
+EntityOperations now delegates entity validation/normalization to the resolved strategy instead of
+the inline _validate_fixed_entity_shape checks.
+ - New backend/app/utils/fixed_schema.py derives an authoritative fixed-entity schema (full_columns,
+editable_columns, identity_columns, key_columns, order_source). Fixed entities are normalized to
+canonical column order (system_id, public id, keys, then data columns) on persistence, and the
+entity API endpoints return this fixed_schema metadata.
+ - EntityValuesService rejects fixed-entity value updates that do not use the authoritative full
+column order; materialization normalizes dataframes to canonical columns and stores inline values
+from the normalized dataframe.
+ - The frontend entity form now consumes backend-provided fixed_schema.editable_columns instead of
+reconstructing stored column order locally; buildFixedValuesColumns always builds the canonical
+order.
+ - New shared src/path_resolution.resolve_managed_file_path helper is used by both the backend
+FilePathResolver and the core ShapeShifter, which now resolves location: local file sources relative
+to the loaded project file directory.
+ - FK linking now merges via merge_with_null_safety in src/transforms/utility.py, so rows with null
+local keys stay unmatched (per constraints.allow_null_keys) instead of failing the merge; the
+docstring notes residual sentinel-collision edge cases.
+ - Fixed-entity specifications accept dict-backed values rows (validation no longer assumes
+list-of-lists), and sub-table concatenation excludes all-NA columns from dtype inference before
+restoring the expected schema.
+ - Workflow tests now point at ./data/projects/arbodat/shapeshifter.yml instead of the arbodat-copy
+variant. A TODO entry documents a remaining known issue with local file resolution when the project
+folder name differs from metadata.name.
+
+## User-facing release note
+
+Fixed data entities now keep a consistent, backend-owned column order across the editor, value
+updates, and materialization, so column/value misalignment errors in the entity form are avoided.
+File sources marked location: local load relative to the project file's folder, and foreign-key
+links with empty key values now leave rows unmatched instead of failing the workflow.
+
+## Upgrade notes
+
+ - API consumers updating fixed-entity values (PUT .../entities/{name}/values) must send the
+backend's authoritative full column order (including system_id, public id, and key columns); updates
+with other column sets are now rejected with a ValueError.
+ - Stored fixed-entity columns are rewritten to the canonical full order on save; consumers reading
+project YAML will see system_id, public id, and key columns prepended.
+ - Materialized fixed entities now store inline values from the normalized dataframe (canonical
+columns) rather than the previous raw inline values.
+
+## Validation
+
+ - CI status rollup for this pull request is empty; no automated CI results are available to
+confirm.
+ - The pull request description lists the following commands as run by the author, but their
+execution and outcomes could not be independently verified from the available evidence:
+  - pytest test_workflow.py -k test_validate_project_file -q
+  - pytest test_workflow.py -k test_access_database_csv_workflow -q
+  - pytest test_link.py -q
+  - pytest test_entity.py -q
+  - pytest test_path_resolution.py test_local_file_resolution.py test_file_path_resolver.py -q
+ - The pull request was merged (merge commit 3409377), but no test or check results are included in
+the available evidence to report as passed or failed.

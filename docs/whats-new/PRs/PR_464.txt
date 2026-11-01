@@ -1,0 +1,42 @@
+title: Add graphify knowledge graph and assistant hooks
+description:
+## Summary
+
+Integrates the graphify knowledge-graph toolchain into the repository so codebase questions can be
+answered from a pre-built graph instead of raw file browsing.
+
+ - Dev dependencies: graphifyy[all]>=0.8.36 and pre-commit>=4.6.0 added to the dev group in
+pyproject.toml; uv.lock updated accordingly (+2156 lines of transitive deps such as networkx,
+tree-sitter grammars, anthropic, datasketch).
+ - Committed generated graph output under graphify-out/ (AST cache, GRAPH_REPORT.md, analysis/label
+files), which accounts for most of the 489 changed files. .graphifyignore controls which sources are
+graphed, and .gitignore now excludes graphify-out/*-*-* and graphify-out/cost.json.
+ - Assistant tooling: new .claude/settings.json PreToolUse hooks that suggest graphify
+query/explain/path instead of grep/find or sequential file reads when graphify-out/graph.json
+exists, and .codex/hooks.json running graphify hook-check before Bash calls (via a machine-local
+absolute venv path).
+ - Guidance: a graphify usage section added to AGENTS.md and a new CLAUDE.md with the same rules
+(query-first workflow, graphify update . after code changes).
+ - Pre-commit configuration changed alongside: ruff-format and the local check-imports hook were
+removed, and black (23.9.1) and isort (5.12.0) hooks pinned to python3.13 were added.
+
+## User-facing release note
+
+Contributors and AI coding assistants now work against a committed project knowledge graph: graphify
+query, graphify explain, and graphify path return focused subgraph answers, and assistant hooks
+automatically steer codebase lookups toward these commands instead of full-file reads.
+
+## Upgrade notes
+
+ - Sync the environment (uv sync) to install the new graphifyy[all] dev dependency and its
+transitive packages.
+ - Re-install pre-commit hooks: formatting is now handled by black + isort instead of ruff-format,
+and the local check-imports hook has been removed.
+ - .codex/hooks.json hard-codes a machine-local absolute path (/home/roger/.../.venv/bin/graphify
+hook-check); other developers must adjust it to their own virtualenv location.
+
+## Validation
+
+Not verified: validation results unavailable. The pull request's status check rollup is empty and no
+test or CI results are included in the available evidence; the diff itself contains no test
+changes. The PR was merged into dev on 2026-06-11.

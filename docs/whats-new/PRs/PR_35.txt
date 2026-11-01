@@ -1,0 +1,73 @@
+title: Preserve macros on save and simplify data source management
+description:
+## Summary
+
+This PR fixes the loss of configuration macros (@include:, @value:, ${ENV_VAR}) when saving, and
+reworks how data sources are managed.
+
+ - Config persistence (src/configuration/config.py): a new Config.save() method (also added to the
+ConfigLike protocol) writes updates back to the raw YAML file instead of the resolved data, so
+directives and environment-variable macros are preserved. It creates a timestamped backup before
+writing and applies dotted-path updates; saving without updates falls back to resolved data with a
+warning.
+ - Configuration file identification: ConfigurationService now lists/loads only YAML files
+containing an entities key (invalid files are skipped rather than listed), and DataSourceService
+identifies data source files by probing for a top-level driver key.
+ - Global data source files: DataSourceService was rewritten to manage standalone YAML files (e.g.
+sead-options.yml) in the configurations directory instead of entries inside a single configuration.
+The /data-sources endpoints now address sources by filename, and configurations reference them via
+@include: entries in options.data_sources.
+ - New endpoints: get the active configuration name, activate (load) a configuration into the
+ConfigStore, and list/connect/disconnect data sources for a configuration. The frontend gains a
+ConfigurationDataSources.vue tab on the configuration detail view for connecting and disconnecting
+global data sources.
+ - Configuration update semantics: PUT /configurations/{name} now updates only options and preserves
+entities from disk, preventing stale frontend data from overwriting entities.
+ - Env-var resolution boundary: resolution now happens only in the mapper layer
+(DataSourceMapper.to_core_config); API models keep raw ${VAR} values for editing, and core receives
+fully resolved configs.
+ - Core renames: src/config_model.py → src/model.py, TablesConfig → ShapeShiftConfig (with
+from_file/resolve loaders), and ArbodatSurveyNormalizer → ShapeShifter with a required config
+argument.
+ - Driver schemas: driver field metadata supports aliases (e.g. hostname, db, file), used by the
+mapper when resolving option values; SQL loaders gained dialect-specific get_test_query and an
+auto_detect_columns option.
+ - Backend settings: Settings now uses the SHAPE_SHIFTER_ env prefix, and
+CONFIGURATIONS_DIR/BACKUPS_DIR defaults changed to relative paths.
+ - Supporting work: centralized service/model exports in __init__ modules, widespread type
+annotations, a schema → schema_name rename in table metadata (backend and frontend types), a new
+pytest settings fixture (backend/tests/conftest.py) with test configuration data, and documentation
+consolidation (new docs/LIFE_SPAN.md, removal of archived phase/sprint documents).
+
+## User-facing release note
+
+Saving a configuration now keeps macros such as @include:, @value: and ${ENV_VAR} references intact
+instead of expanding them, and data sources are managed as separate global files that can be
+connected to or disconnected from a configuration from a new "Data Sources" tab, with a backup
+written before each save.
+
+## Upgrade notes
+
+ - Backend settings environment variables now require the SHAPE_SHIFTER_ prefix (e.g.
+SHAPE_SHIFTER_CONFIGURATIONS_DIR), and the defaults for CONFIGURATIONS_DIR/BACKUPS_DIR changed from
+the project input/ and backups/ directories to relative ./configurations and ./backups; set
+SHAPE_SHIFTER_CONFIGURATIONS_DIR to point at your configuration/data-source directory.
+ - The data source REST API now addresses sources by filename instead of by name, and data sources
+are expected to live as individual YAML files referenced from configurations via @include: entries;
+existing inline options.data_sources blocks are not migrated by this PR.
+ - PUT /api/v1/configurations/{name} no longer replaces entities (options only); entity changes must
+go through the /entities endpoints.
+ - Code that imports core classes must be updated: src.config_model → src.model, TablesConfig →
+ShapeShiftConfig, and ArbodatSurveyNormalizer → ShapeShifter (which now requires a config argument).
+ - API consumers reading table metadata must use the renamed schema_name field.
+
+## Validation
+
+ - No CI results are available for this pull request: the status check rollup is empty, so no checks
+are confirmed as passed or failed.
+ - The diff updates and extends backend and core test suites (e.g.
+backend/tests/test_data_source_api.py, tests/test_config_model.py, tests/test_normalizer.py), adds a
+settings fixture (backend/tests/conftest.py), test configuration data, and converts a debug script
+into an integration test that skips when required environment variables are missing. Whether these
+tests were executed, and their outcomes, is not established by the available evidence.
+ - Not verified: validation results unavailable.

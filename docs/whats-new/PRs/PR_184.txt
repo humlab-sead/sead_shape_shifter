@@ -1,0 +1,63 @@
+title: Implement three-tier identity system for entities
+description:
+## Summary
+
+Replaces the ambiguous surrogate_id field with a three-tier identity model for entities:
+
+ 1. system_id — a standardized, auto-managed local identifier. The column is always named system_id
+and is auto-populated with sequential values (1, 2, 3...) by all loaders; it is read-only in the UI.
+ 2. keys — business/natural key columns from source data, used for duplicate detection and
+foreign-key matching (existing field, now documented and labeled as business keys).
+ 3. public_id — the target-system primary key name. It defines the column name used on export and
+the FK column names in child entities (FK column name = parent's public_id, FK values = parent's
+system_id).
+
+Implementation changes:
+
+ - Core pipeline (src/model.py, src/normalizer.py, src/loaders/*, src/transforms/link.py,
+src/transforms/utility.py, src/dispatch.py): add_surrogate_id is renamed to add_system_id (with a
+backward-compatibility alias); loaders and the normalizer add the system_id column; ForeignKeyLinker
+names FK columns from the parent's public_id; column ordering and Excel dispatch coloring use
+system_id/public_id. TableConfig.surrogate_id is kept as a deprecated property delegating to
+system_id.
+ - Validation (src/specifications/entity.py): SurrogateIdSpecification becomes
+PublicIdSpecification; a missing _id suffix is now an error (was a warning), and fixed entities now
+require public_id (error if missing, accepting legacy surrogate_id).
+ - Backend model (backend/app/models/entity.py): adds system_id and public_id fields; a validator
+migrates a set surrogate_id to public_id when public_id is absent; public_id must end with _id.
+ - Frontend (EntityFormDialog.vue): the entity form shows three identity sections — a disabled
+System ID field, a required Public ID field with _id/snake_case validation rules, and Business Keys
+— and migrates surrogate_id to public_id when reading YAML or API responses.
+ - Documentation: CONFIGURATION_GUIDE.md, USER_GUIDE.md, and FRONTEND_MANUAL_TESTING_GUIDE.md
+document the new model and backward compatibility; new docs IDENTITY_SYSTEM_SUMMARY.md,
+IMPLEMENTATION_PLAN_THREE_TIER_IDENTITY.md, and FUTURE_ENHANCEMENTS_THREE_TIER_IDENTITY.md describe
+the design, plan, and optional future work (the latter two are planning documents, not evidence of
+implemented features). Four frontend docs were moved into frontend/docs/.
+ - Tests: backend and core tests were updated to the new fields, including a backward-compatibility
+test that a legacy surrogate_id migrates to public_id.
+
+## User-facing release note
+
+Entities now use a clearer three-part identity setup: a read-only, auto-numbered System ID, Business
+Keys from your source data, and a required Public ID that names the primary key in the target
+system and the foreign key columns in child entities. Existing configurations that use the old
+surrogate_id field keep working and are automatically migrated to public_id.
+
+## Upgrade notes
+
+No manual migration is required: legacy surrogate_id configurations are automatically migrated to
+public_id (in both the backend model and the frontend form), and public_id takes precedence if both
+fields are present. However, validation has been tightened, so previously accepted configurations
+may now report errors:
+
+ - public_id (or legacy surrogate_id) is now required for fixed entities (error if missing).
+ - An ID not ending with _id is now an error instead of a warning.
+ - Foreign key columns in child entities are now named after the parent entity's public_id; verify
+exported schemas if you relied on the previous naming.
+
+## Validation
+
+Not verified: validation results unavailable. No CI check results were reported for this pull
+request. The diff updates backend and core unit tests (e.g. backend/tests/models/test_entity.py,
+tests/specifications/test_entity.py, tests/model/test_model.py) to cover the new identity fields,
+migration, and validation rules, but no execution results for these tests are available.

@@ -2,65 +2,71 @@ title: Implement direct target ID foreign keys
 description:
 ## Summary
 
-Adds an opt-in foreign_key_value_sources entity declaration so a SEAD change-request project can
-supply an existing target ID directly in an eligible FK column instead of translating a local
-system_id through a referenced project entity. A public_id declaration creates no Core FK link or
-dependency; omission or an explicit system_id entry keeps the existing local-link behavior.
+Adds an opt-in per-entity project declaration, foreign_key_value_sources, that lets a project tell
+the SEAD change-request ingester that a target-model foreign-key column already holds an existing
+target ID (public_id) instead of a local Core system_id link. The declaration applies only to the
+change-request package: it never creates a Core FK link or dependency, and omitting it (or declaring
+system_id) keeps the existing local-link behavior.
 
 Key changes:
 
- - Project model and API: new typed foreign_key_value_sources field on Entity and a TableConfig
-accessor, preserved through ProjectMapper round trips; regenerated entitySchema.json for the Monaco
-editor. The scaffold/template generator still emits only local-ID links.
- - Conformance and specifications: new ForeignKeyValueSourceSpecification and
-ForeignKeyValueSourceConformanceValidator reject malformed maps, unknown or via relationships,
-missing target public_id/target_table, Core-link conflicts, and missing output columns with distinct
-DIRECT_FK_* codes. Valid direct declarations suppress false
-missing-target/induced-entity/orphan-facts errors, keep globally required entities required, and
-report a non-overridable informational DIRECT_FK_TARGET_CHECK_PENDING. validate_target_model now
-fails with DIRECT_FK_TARGET_MODEL_UNAVAILABLE when a declaration exists but the target model cannot
-be resolved.
- - Change-request ingester: the value-source map is resolved and validated from IngesterConfig.extra
-and carried through preparation. New direct_fk_validation.py checks each packaged non-null direct
-value against the target database (read-only integer column-type and row-existence lookups via a new
-target_id_column_type method on SeadChangeRequestTargetCollisionChecker) and fails closed on
-malformed, absent, non-integer-column, or unavailable-lookup cases in both validate_tables() and
-ingest_tables(). Direct FK values bypass local-ID projection, staging known-ID mappings, and
-pending-deployment masks across all three deploy strategies, and used direct FKs are listed in the
-emitted manifest under direct_target_id_foreign_keys.
- - Saved-project service: ProjectIngesterService derives the map from the resolved Core project
-(never from caller input), runs a direct-mode conformance preflight before normalization, and passes
-the map only to the sead_change_request ingester.
- - Documentation: docs/CONFIGURATION_GUIDE.md, AGENTS.md, and src/AGENTS.md distinguish Core
-local-ID links from direct target IDs in change-request packages; four new phase-plan documents
+ - Project model and editor: TableConfig.foreign_key_value_sources (Core accessor, no
+link/dependency side effects) and a typed Entity.foreign_key_value_sources field (literals
+system_id/public_id) preserved through ProjectMapper; regenerated entitySchema.json and Monaco
+coverage.
+ - Validation and conformance: new ForeignKeyValueSourceSpecification rejects malformed maps and
+non-empty maps without metadata.target_model (DIRECT_FK_VALUE_SOURCE_INVALID,
+DIRECT_FK_TARGET_MODEL_REQUIRED); new ForeignKeyValueSourceConformanceValidator reports distinct
+codes for unknown relationships, via FKs, missing public_id/target_table, Core-link conflicts, and
+missing output columns; a non-overridable DirectForeignKeyPendingCheckValidator emits an
+informational DIRECT_FK_TARGET_CHECK_PENDING. Valid direct declarations satisfy required-FK,
+induced-entity, and no-orphan-facts checks while globally required target entities remain required.
+validate_target_model now fails with DIRECT_FK_TARGET_MODEL_UNAVAILABLE when a direct map exists but
+the target model cannot be resolved, instead of silently passing.
+ - Ingester: input_resolution accepts and validates a standalone foreign_key_value_sources map in
+IngesterConfig.extra; target projection, staging eligibility, package building, and inline-staging
+SQL bypass local system_id mapping for declared direct FKs; the new direct_fk_validation.py checks
+each packaged non-null direct ID through a read-only target lookup (integer column type plus row
+existence) in both validate_tables() and ingest_tables(), failing closed when the ID is malformed,
+absent, non-integer, or the lookup is unavailable. Supplied IDs never become KnownIdMapping/sidecar
+entries, and used direct FKs are listed in the emitted manifest under direct_target_id_foreign_keys.
+ - Saved-project flow: ProjectIngesterService derives the map from the resolved Core project and
+passes it only to sead_change_request; direct-mode conformance errors stop validation/ingestion
+before normalization, and strict route request fields keep callers from injecting the map.
+ - Docs: new CONFIGURATION_GUIDE.md section and qualified AGENTS.md/src/AGENTS.md identity-tier
+rules distinguish Core local-ID links from supplied target IDs; four phase-plan/task-plan documents
 under docs/proposals/DIRECT_TARGET_ID_FOREIGN_KEYS/ record the design and execution.
 
 ## User-facing release note
 
-Projects can now declare foreign_key_value_sources: <target>: public_id on an entity so a
-change-request package can use an existing SEAD target ID directly in a foreign-key column, without
-adding a helper entity or local link; supplied IDs are verified against the target database before
-the package is accepted.
+Projects can now declare that a change-request foreign-key column already contains an existing SEAD
+target ID (foreign_key_value_sources: <target>: public_id), so that relationship no longer needs a
+helper project entity to translate local IDs. The ingester verifies every supplied ID against the
+target database before accepting the package, and the package manifest records which foreign keys
+used direct target IDs.
 
 ## Upgrade notes
 
-No action is required for existing projects: the new foreign_key_value_sources field is optional,
-and omitted or system_id entries retain the previous local-link behavior and diagnostics. Callers
-cannot supply the map through ingester request payloads; it is derived only from the saved project.
-See docs/CONFIGURATION_GUIDE.md for the declaration rules and limits.
+No action is required for existing projects: an omitted or system_id declaration keeps the current
+local-link behavior and package output. Projects that adopt public_id mode must resolve
+metadata.target_model, output the target FK column, avoid a conflicting Core foreign_keys link to
+the same target, and have the target database reachable, because the read-only ID lookup is
+mandatory and validation/ingestion fail when it is unavailable. Change-request manifests may now
+include a new direct_target_id_foreign_keys entry when a package uses direct IDs.
 
 ## Validation
 
- - CI on this PR: the only checks in the status rollup are the Container Release workflow's validate
-and publish jobs, both SKIPPED. No CI test-suite results are available for this PR.
- - The execution records added in this PR's phase task plans report results (author-recorded, not
-independently verified here): focused and regression pytest runs (ingester, service, route,
-conformance, target-model, specification, schema-generator suites) passed; a disposable PostgreSQL
-integration test (backend/tests/ingesters/test_sead_change_request_direct_fk_postgres.py) reportedly
-ran without skips against a loopback PostgreSQL 17 container, accepting an existing ID and
-rejecting absent/unavailable IDs; rtk make lint, git diff --check, make check-doc-links, and make
-check-schemas reportedly passed. Optional database- and SIMS-dependent tests skipped where those
-services were not configured.
- - Extensive new automated coverage is included in the diff (unit tests for models, mapper,
-specifications, conformance, service, routes, projection, package builder, SQL builder, and runtime
-lookups); their execution in CI is not evidenced by the available check results.
+ - CI on the pull request: only the Container Release workflow ran; its validate and publish jobs
+concluded SKIPPED. No test-suite CI results are available from the checks rollup.
+ - The task-plan execution records added in this PR (author-recorded, not independently verified by
+CI) report: focused pytest runs for the ingester, service, route, specification, conformance, model,
+schema-generator, and Monaco editor tests passing; the new disposable-PostgreSQL integration test
+backend/tests/ingesters/test_sead_change_request_direct_fk_postgres.py run without skips against a
+temporary loopback PostgreSQL 17 container (accepted ID 42 present in deploy artifact and manifest;
+absent ID 99999 and an unavailable lookup failed with no bundle emitted); rtk make lint, git diff
+--check, make check-doc-links, and make check-schemas passing; and 18 optional integration cases
+skipped because their disposable PostgreSQL or SIMS services were not configured.
+ - The ArboDat pilot recorded in the Phase 3 execution report measured zero removable optional
+helper entities (2 before, 2 after), with all 13 globally required target entities retained.
+ - No validation commands were run while preparing this description; results above are reported from
+the evidence in the PR diff and metadata only.

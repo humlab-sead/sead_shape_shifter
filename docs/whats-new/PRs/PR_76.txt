@@ -1,0 +1,78 @@
+title: Refactor ShapeShift service with hash-based cache and metadata editing
+description:
+## Summary
+
+This PR refactors the entity-preview pipeline and configuration handling across the backend, core
+library, and frontend.
+
+ - Service rename: PreviewService/PreviewCache are renamed to ShapeShiftService/ShapeShiftCache,
+with all endpoints, services, validators, and tests updated accordingly.
+ - Hash-based cache invalidation: New backend/app/utils/caches.py stores per-entity DataFrames with
+CacheMetadata and validates entries in three tiers: TTL (300 s), configuration version from
+ApplicationState, and an xxhash-based hash of each entity configuration (TableConfig.hash()). Cached
+dependency DataFrames are validated and reused across preview runs, and ShapeShiftConfigCache
+caches resolved configs with version tracking. Behavior is documented in
+docs/HASH_BASED_CACHE_INVALIDATION.md.
+ - Configuration metadata editing: New PATCH /api/v1/configurations/{name}/metadata endpoint (with
+rename and conflict handling in ConfigurationService.update_metadata), a default_entity metadata
+field, ISO 8601 timestamp serialization, and a new MetadataEditor.vue component wired through the
+API client and configuration store.
+ - Class-based driver schemas: Data loaders now define their DriverSchema as a ClassVar, and
+DriverSchemaRegistry introspects registered loader classes instead of loading
+input/driver_schemas.yml, which is removed.
+ - Excel support: New OpenPyxlLoader (sheet and cell-range support) and a new openpyxl dispatch mode
+that writes styled workbooks (colored key/surrogate/system-id columns, auto-sized columns, safe
+sheet names).
+ - Core changes: ShapeShiftConfig now carries a filename and gains clone()/resolve();
+ShapeShiftConfig.resolve() is replaced by from_source(); config reference resolution moves to
+Config.resolve_references() with deep-copy semantics to prevent input mutation; dispatchers receive
+the configuration; database dispatch now reads dispatch.database from config options.
+ - Query and preview behavior: The query service now rejects all non-SELECT statements and delegates
+row limiting to per-driver inject_limit() (e.g. TOP for MS Access); the preview endpoint accepts
+limit=null to return all rows (up to 10000).
+ - Structured validation findings: Specifications report SpecificationIssue objects carrying
+entity/field/column context instead of plain strings, and ValidationService maps them directly
+rather than parsing messages.
+ - Frontend fixes and UI: Preview ag-grid colors now follow the Vuetify theme (dark-mode
+readability), the entity dialog gains a live preview tab with refresh and row-count display,
+advanced entity config syncing is reworked, and the data-sources view shows driver-aware connection
+details.
+ - Tooling and docs: New semantic-release GitHub workflow and corrected .releaserc.json repository
+URL; xxhash added as a dependency; coverage now includes backend/app; extensive new/reorganized
+backend and core test suites; new developer, manual-testing, cache-invalidation, and
+schema-refactoring guides; several stale report documents removed.
+
+The PR body states it fixes issues #48, #49, #52, #53, #54, #55, #58, #59, #61, #65, and #75;
+linked-issue details were not available in the provided context, so individual issue closure is not
+independently verified here.
+
+## User-facing release note
+
+Entity previews now stay current automatically: cached results are invalidated when a configuration
+or an individual entity's definition changes, and previews can optionally return all rows. Users can
+also edit a configuration's metadata (name, description, version, default entity) directly in the
+UI, load data from Excel files, and export styled Excel output with color-coded key columns;
+preview-grid text is now readable in dark mode.
+
+## Upgrade notes
+
+ - Reinstall dependencies: xxhash was added to pyproject.toml (lockfile updated).
+ - input/driver_schemas.yml is removed; driver configuration schemas now live in the loader classes
+as ClassVar[DriverSchema] definitions. Any customizations previously made in that YAML must be moved
+into the corresponding loader class.
+ - Code calling the core API must be updated: ShapeShiftConfig.resolve() is replaced by
+ShapeShiftConfig.from_source(), and the ShapeShiftConfig constructor now requires an explicit cfg
+(and optional filename).
+ - Database dispatch now reads its connection settings from the configuration's dispatch.database
+options instead of global configuration; a missing section raises an error.
+ - SQL query execution now rejects all non-SELECT statements, and preview/query row limits are
+applied per driver (MS Access uses TOP); queries that previously passed other statement types will
+now fail validation.
+
+## Validation
+
+ - Not verified: validation results unavailable. The pull request data contains no CI check results
+(statusCheckRollup is empty), so no test or check outcomes can be reported as passed or failed.
+ - The PR was merged into dev on 2025-12-31 (merge commit f391014), but no execution evidence for
+the added test suites (new backend service tests, tests/configuration/, loader, dispatcher, and
+preview tests) is included in the available data.

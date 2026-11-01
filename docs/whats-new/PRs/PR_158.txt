@@ -1,0 +1,47 @@
+title: Add context-sensitive help, quick YAML editing and resizable sidebar
+description:
+## Summary
+
+This PR adds several frontend usability enhancements to the Shape Shifter project editor:
+
+ - Context-sensitive help (frontend/src/components/ContextHelp.vue, new): a "Context Help" accordion
+embedded in the application sidebar that shows tips and interaction shortcuts tailored to the
+current route and, on the project detail view, the active tab (dependencies, entities, validation,
+data sources, etc.). To make this possible, ProjectDetailView.vue now mirrors the active tab into
+the route tab query parameter.
+ - Quick YAML editing from the dependency graph: clicking a node now opens a redesigned right drawer
+(widened to 500px) with an embedded YAML editor for the selected entity, including load/save state,
+unsaved-changes confirmation, error alerts, and a circular-dependency warning. Saving validates the
+YAML, updates the entity via the entity store, marks the project as changed, and re-renders the
+graph. Data source nodes show an informational panel instead of an editor. The previous read-only
+node info list and the standalone "Edit Entity" button were replaced, and the separate Legend
+button/dialog (NodeLegend) was removed from the graph toolbar.
+ - "Create New Node" button in the graph FAB toolbar that switches to the Entities tab to start a
+new entity.
+ - Resizable sidebar (App.vue): a drag handle lets users resize the navigation drawer between 240
+and 500px; the chosen width is persisted in localStorage.
+ - Documentation and planning material: new docs/GRAPH_SEARCH_FEATURE.md (graph search design
+proposal) and docs/TASK_LIST_FEATURE_PROPOSAL.md (task list feature proposal) — both are proposals,
+not implemented here; TODO.md gains entries for issues #155, #156, #157 and the task-list idea; 
+docs/SYSTEM_DIAGRAMS.md receives mermaid diagram layout/style tweaks.
+ - Sample data: input/arbodat-test.yml gains a layout.custom section with saved node coordinates and
+layout metadata, exercising the custom graph layout storage format.
+
+The PR description on GitHub also mentions a backend port update and renaming the "Dependencies" tab
+to "Graph"; neither change appears in this diff and is not reflected here.
+
+## User-facing release note
+
+Help panels in the sidebar now explain what you can do on each screen, including graph interactions.
+Clicking a node in the dependency graph opens a quick YAML editor so you can edit and save an
+entity without leaving the graph, a new button lets you create an entity from the graph, and the
+sidebar can be dragged to a comfortable width.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+Not verified: validation results unavailable. No CI check results were attached to the pull request,
+and no test output was available in the provided evidence.

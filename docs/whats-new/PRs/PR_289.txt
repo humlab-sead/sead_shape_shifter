@@ -1,0 +1,50 @@
+title: Merge dev into main
+description:
+<!-- promotion-pr -->
+
+## Summary
+
+This pull request promotes the dev branch (f1239b2) into main, carrying the changes accumulated on
+dev since the previous promotion. The diff spans 93 files across the pipeline core, backend API,
+frontend, and documentation, including:
+
+ - A new entity values service (backend/app/services/entity_values_service.py) with expanded entity
+endpoints and backend validation/error handling changes.
+ - A new extra-columns transform (src/transforms/extra_columns.py) with supporting changes to the
+entity specification, model, and normalizer.
+ - Materialization service changes and a new frontend entity-form materialization helper.
+ - Frontend editor updates (entity form dialog, append editor, foreign key editor, external
+values/replacements/unnest editors) and a new project file upload card.
+ - New backend and frontend test files (test_entity_values_service.py,
+test_materialization_service.py, entityFormMaterialization.test.ts) and expanded existing tests.
+ - Documentation updates: new aggregate model design docs, an interpolated extra-columns
+implementation plan, refreshed SEAD SQL reference dumps, and archived historical planning docs.
+ - Tooling/config changes: new .sqlfluff configuration, Makefile and Docker tweaks, and updates to
+.github/copilot-instructions.md.
+
+Included PRs
+
+The pull request numbers carried by this promotion cannot be determined from the available evidence
+(no linked issues or commit history were provided). The author's original description lists the
+following fixes as included on dev, but these claims are not individually verified here:
+
+ - Materialized entity editor save/round-trip fixes (@load and materialized metadata preservation)
+ - External values column alignment and clearer backend validation for values shape mismatches
+ - Foreign key editor save behavior fixes (join type/constraint changes persist and affect save
+state)
+ - Entity editor UX fixes (tab reset and save-state consistency)
+
+## User-facing release note
+
+None - no user-visible change.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+Not verified: validation results unavailable. No status check results are recorded for this pull
+request (statusCheckRollup is empty), and the author's description asked reviewers to run the
+standard validation/checklist before merge. New test files are included in the diff, but no
+execution results for them are available.

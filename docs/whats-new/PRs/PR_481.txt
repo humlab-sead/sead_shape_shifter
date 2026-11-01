@@ -1,0 +1,56 @@
+title: Enforce server-managed data sources and redact error details
+description:
+## Summary
+
+This PR adds a server-managed policy for data sources and stops raw exception details from reaching
+API clients, as part of Phase 4 of the MITIGATE_SECURITY_ISSUES plan.
+
+ - New backend/app/services/data_source_policy.py centralizes validation used by the data-source
+mapper and service: custom connection strings are rejected, ${VAR} environment references must match
+approved prefixes (new setting DATA_SOURCE_ALLOWED_ENV_VAR_PREFIXES, default SEAD_,SHAPE_SHIFTER_),
+internal-category drivers are rejected, hosts must be loopback/private or the approved SEAD_HOST
+value (with DNS/IP resolution checks), ports must be in the approved set (5432 or SEAD_PORT), and
+path fields are resolved against the application root. to_core_config now routes through this policy
+instead of resolving environment variables itself.
+ - Data-source create and update validate the configuration before it is persisted.
+ - New backend/app/utils/public_errors.py provides public_error_detail(), which returns a stable
+message plus the current correlation ID. Data-source and query endpoints, the error-handler
+decorator, schema-service errors, connection-test results, and loader connection-test messages now
+use generic public text instead of str(e); server logs keep the exception class name and correlation
+ID but not the raw message.
+ - In query_service.py, ValueError from policy validation is surfaced as a QuerySecurityError (400)
+rather than a generic execution failure.
+ - Tests were updated/added for policy rejection (connection strings, unapproved env vars),
+correlation-ID-only error details, and redacted loader messages. Documentation updates archive the
+completed Phase 4 task plan, mark its tasks done in the parent phase plan, and defer ingester
+route/destination work to the dedicated ingester authorization plan.
+
+## User-facing release note
+
+Data source configurations are now validated against server-managed rules, so setups with custom
+connection strings, unapproved environment variables, or unapproved hosts/ports are rejected with a
+clear error. Failure messages shown to users no longer include internal error details; instead they
+include a correlation ID that support can use to find the details in server logs.
+
+## Upgrade notes
+
+ - Deployers can control the approved environment-variable prefixes via the new
+DATA_SOURCE_ALLOWED_ENV_VAR_PREFIXES setting (comma-separated, default SEAD_,SHAPE_SHIFTER_).
+Approved host and port may be extended with the existing SEAD_HOST and SEAD_PORT environment
+variables.
+ - Existing data source definitions that use custom connection strings, references to environment
+variables outside the approved prefixes, or non-approved hosts/ports will now fail validation on
+create/update and when mapped for use; such configurations must be adjusted to approved
+server-managed settings.
+ - API consumers should not rely on exception text in error responses: details are replaced by a
+generic message plus a correlation ID.
+
+## Validation
+
+ - No CI results were available for this pull request (status check rollup was empty), so execution
+and outcomes of the test suites are unknown.
+ - The diff adds or updates tests (e.g. backend/tests/mappers/test_data_source_mapper.py,
+backend/tests/services/test_data_source_service.py, backend/tests/test_data_source_api.py,
+backend/tests/test_error_handlers.py, tests/loaders/test_sql_loaders.py), but there is no evidence
+in the available sources that these tests were run or passed.
+ - Not verified: validation results unavailable.

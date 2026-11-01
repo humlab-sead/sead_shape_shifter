@@ -1,0 +1,43 @@
+title: Edit entities from the graph view with overlay editor and context menu
+description:
+## Summary
+
+This PR lets entities be edited directly from the project's dependency graph view instead of
+requiring a round trip through the entity list, addressing the workflow improvements tracked in #140
+and #141.
+
+ - Double-click to edit: useCytoscape now handles dbltap on nodes (with a 250 ms delay on single
+taps so the two do not conflict). Double-clicking a node opens the entity editor as an overlay on
+top of the graph, wired through new showEditorOverlay / overlayEntityName state and
+openEditorOverlay / closeEditorOverlay actions in the entity store. After a save from the overlay,
+the dependency graph is refetched.
+ - Right-click context menu: A new GraphNodeContextMenu.vue component appears at the click position
+(via a new cxttap handler in useCytoscape) with three actions:
+  - Preview Data — navigates to the test-run view with the entity preselected.
+  - Duplicate Entity — creates a <name>_copy entity (with a uniqueness counter) from the source
+entity's data, clearing any reconciliation spec, then refreshes the graph.
+  - Delete Entity — deletes the entity after a confirmation prompt, then refreshes the graph.
+ - Graph rendering improvements: updateElements in useCytoscape now performs incremental updates —
+existing nodes keep their positions, only new elements are added and laid out, and removed elements
+are dropped — instead of clearing and re-adding everything. The composable also re-mounts Cytoscape
+when Vue recreates the container div, and the dependencies tab no longer shows the full loading
+state on refreshes once graph data exists.
+ - A new EntityEditorOverlay.vue component adds a full-height overlay editor layout with editing
+tabs, a form/split/preview view toggle, unsaved-changes handling, and Esc / Ctrl+S shortcuts.
+ - input/arbodat-test.yml receives formatting-only changes (quote style, list indentation, removal
+of inline comments), and TODO.md is updated to reflect the delivered scope.
+
+## User-facing release note
+
+You can now edit an entity directly from the dependency graph by double-clicking its node, which
+opens the editor as an overlay without leaving the graph. Right-clicking a node opens a context menu
+to preview the entity's data, duplicate the entity, or delete it.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+Not verified: validation results unavailable. No CI check results were available for this pull
+request, and the diff includes no automated tests covering the new graph interactions.

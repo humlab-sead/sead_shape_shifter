@@ -1,0 +1,72 @@
+title: Add security hardening phase 1 containment and env-var allowlist
+description:
+## Summary
+
+Implements phase 1 of the Security Hardening Follow-up proposal, closing the CRITICAL request-path
+findings (ledger IDs S1, A1/A1b, A2, B1–B2) recorded in the phase plan:
+
+ - SPA catch-all containment (S1): serve_spa in backend/app/main.py now resolves the requested path
+through resolve_contained_path via a new resolve_spa_file helper. Paths that resolve outside
+frontend/dist (absolute paths, .. traversal, symlink escapes) fall back to index.html, preserving
+client-side routing without exposing files outside the build.
+ - Environment-variable allowlist (A1, A1b): replace_env_vars in src/utility.py gains an
+allowed_vars parameter; when supplied, ${NAME} for names outside the set resolves to empty and never
+reads the environment. The allowlist is threaded through ResolutionContext, resolve_directives, and
+ShapeShiftProject.resolve, and is populated from a new Settings.RESOLVER_ALLOWED_ENV_VARS setting
+(defaulting to the names real project YAML uses, e.g. APPLICATION_ROOT, GLOBAL_DATA_DIR, SEAD_HOST),
+surfaced as env_opts["allowed_vars"] so both preview resolution paths are gated. Trusted internal
+callers keep unrestricted behavior via allowed_vars=None.
+ - Fail-closed entity mapper selection (A2): EntityConfigMapperFactory.get_mapper now treats
+FILE_BASED_DRIVERS (csv, tsv, xlsx, xls, openpyxl) as authoritative: a file-capable type with no
+containment mapper (tsv, xls) raises BadRequestError (HTTP 400) before any file read, instead of
+passing options.filename through the no-op default mapper. SQL-family, entity, merged, and fixed
+types are unchanged.
+ - Project path containment (B1–B2): new ProjectUtils.resolve_project_dir/resolve_project_file
+validate a project name and resolve the mapped path under PROJECTS_DIR via resolve_contained_path,
+rejecting traversal, absolute names, and colon aliases (e.g. up:../victim) with BadRequestError.
+ProjectOperations.create_project, copy_project, delete_project, and update_metadata route every
+caller-supplied name through this resolver (wired via a project_dir_resolver callback from
+ProjectService, with a local fallback), so collision checks compare resolved, contained paths.
+Namespaced namespace:project locators continue to work.
+ - Documentation: adds the Security Hardening Follow-up proposal, seven-phase plan, completed phase
+1 task plan, and docs/testing/SECURITY_LEDGER_REPRODUCTION.md (isolated-run recipe for the untracked
+ledger's root-only test package), linked from docs/TESTING.md.
+
+## User-facing release note
+
+The application now refuses requests that try to read files outside the web build or the managed
+projects directory, and configuration values such as ${SECRET} in project or preview input no longer
+expose environment variables that are not on the approved list. Project names that attempt to
+escape the projects root (for example ../../victim or an absolute path) are rejected with a clear
+400 error, while normal namespaced names like arbodat:arbodat-copy keep working.
+
+## Upgrade notes
+
+ - ${VAR} substitution in project and data-source configuration is now limited to the approved
+variable set. If legitimate project YAML references a variable outside the default list, add its
+name to the new RESOLVER_ALLOWED_ENV_VARS setting (comma-separated).
+ - Behavior changes for previously accepted inputs: entity types tsv and xls are now rejected as
+unsupported at the preview boundary, and project names that resolve outside the projects root now
+fail with HTTP 400 (BadRequestError) instead of being joined onto the projects root. Existing
+ResourceConflictError/ResourceNotFoundError semantics are unchanged.
+ - No migrations or other deployment actions are required by this change.
+
+## Validation
+
+ - No CI check results are attached to this pull request (statusCheckRollup is empty), so no checks
+are confirmed by CI here.
+ - The phase 1 task plan (committed in this PR) records the following results, dated 2026-09-23/24;
+they are the author's recorded evidence, not independently verified by CI:
+  - uv run pytest backend/tests/api/test_spa_catchall_containment.py -v — pass (7 tests).
+  - uv run pytest backend/tests/test_env_var_allowlist.py -v — pass (6 tests).
+  - uv run pytest backend/tests/mappers/test_entity_config_mapper.py -v — pass (31 tests).
+  - uv run pytest backend/tests/services/test_project_utils.py
+backend/tests/services/test_project_service.py backend/tests/services/project -v — pass (16 new
+cases).
+  - uv run pytest backend/tests -v — 1911 tests, 0 failed, 0 errors, 15 skipped; recorded as zero
+new failures against the trunk baseline.
+  - make lint (Black + isort) — clean on all changed Python files.
+  - Manual V-5: the ledger package run in a throwaway container per
+docs/testing/SECURITY_LEDGER_REPRODUCTION.md, recorded 2026-09-24 with a before/after host-state
+diff empty.
+ - Execution of the new tests in CI or by reviewers is unknown from the available evidence.

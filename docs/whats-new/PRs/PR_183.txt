@@ -1,0 +1,53 @@
+title: Rename data entity type to entity and refactor dependency analysis
+description:
+## Summary
+
+ - Renames the entity source type data to entity across the core pipeline, backend API
+models/services, frontend types/components, tests, and documentation. The accepted entity types are
+now entity, sql, fixed, csv, xlsx, and openpyxl.
+ - Refactors DependencyService: cycle detection, topological sort, and depth calculation move to a
+new pure-function module backend/app/utils/graph.py, and SQL table extraction moves to
+backend/app/utils/sql.py using sqlparse instead of regex. Source-node extraction is restructured
+into a SourceNodeService with per-type extractors (SQL, file, no-op). The dependency graph now also
+emits provides edges from depends_on relationships, and entity-type entities get their source added
+as a dependency.
+ - Adds a LoaderType enum and a loader_type() class method to data loaders, plus registry helpers
+get_loader_types() / get_loader_keys_by_type(). FixedLoader is now registered only under the fixed
+key (previously also data).
+ - Entity field validation replaces its if/elif type dispatch with a registry
+(ENTITY_TYPE_SPECIFICATION) of per-type specifications.
+ - Frontend entity editor fixes: the source-entity selector is disabled when editing, columns are
+hydrated from the chosen source entity, sheet/column selections are preserved during initial load,
+stale previews are cleared when switching entities, the fixed-values grid shows an explanatory alert
+when no columns are defined, the unnest editor offers available columns as selectable items, and
+the preview grid layout is corrected. The dependency graph UI (legend, cytoscape styles, adapter)
+recognizes csv, xlsx, and openpyxl nodes and provides edges.
+ - Adds unit tests for the graph utilities, SQL table extraction, and loader-type registration;
+existing tests and docs are updated for the rename. TODO.md gains a design proposal for local vs
+remote identity fields (proposed only, not implemented). A new sample project
+projects/strucke_test.yml is added and one replacements include is removed from
+projects/arbodat-test.yml.
+
+## User-facing release note
+
+Entities previously configured with type: data are now configured as type: entity, shown in the UI
+as "Data (Derived)". Editing entities is more reliable: the grid for fixed-value entities displays
+correctly, columns are offered from the selected source entity, stale previews no longer linger when
+switching entities, and CSV/Excel entity types appear with their own colors in the dependency
+graph.
+
+## Upgrade notes
+
+Breaking configuration change: project YAML files must replace type: data with type: entity in
+entity definitions and append entries — the backend model and validation no longer accept data as an
+entity type. Omitted type now defaults to entity instead of data.
+
+## Validation
+
+ - No CI check results are available for this pull request (the status check rollup is empty), so
+execution and outcomes of the test suites are unknown.
+ - The diff adds new test files (backend/tests/utils/test_graph.py, backend/tests/utils/test_sql.py,
+tests/loaders/test_data_loaders.py) and updates numerous existing tests for the type rename, but no
+run results for them are available.
+ - The pull request was merged into dev (merge commit 00e5b70), but no check outcomes are reported
+in the available evidence.

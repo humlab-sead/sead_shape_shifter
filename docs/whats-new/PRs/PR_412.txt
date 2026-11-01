@@ -1,0 +1,56 @@
+title: Add target-model conformance, merged entities, and editor UX features
+description:
+## Summary
+
+This pull request merges the dev branch into main as a feature bundle (169 changed files). Based on
+the changed paths and the pull request metadata (the full diff could not be retrieved because it
+exceeded GitHub's 20,000-line limit), the change covers:
+
+ - Target-aware conformance checking: a new src/target_model package (conformance engine, Pydantic
+models, spec validator, template/documentation generators with HTML/Markdown templates), a new
+backend target_model_validator.py with validation endpoint/mapper/service wiring, and frontend
+support (useConformanceValidation.ts, updated ValidationPanel/ValidationMessageList,
+targetModelSchema.json) for viewing conformance results in the VALIDATION tab and editing target
+models via the YAML editor. Initial SEAD v2 target model specifications
+(target_models/specs/sead_v2.yml, sead_v2_extended.yml) and example specs are added, along with new
+guides (docs/TARGET_MODEL_GUIDE.md, docs/TARGET_MODEL_DOCUMENTATION_GUIDE.md) and a
+scripts/compare_target_models.py / generate_target_model_docs.py tooling.
+ - New "merge" entity type for entities that pull data from multiple sources (changes to
+src/specifications/entity.py, src/model.py, backend entity operations and endpoints, plus new
+merged-entity API/config/integration tests; the FIRST_CLASS_MERGED_PARENT_ENTITIES proposal moved to
+done/).
+ - Clipboard paste into the fixed values grid (fixedValuesGridClipboard.ts and its test).
+ - Entity-level optimistic locking for improved multi-user/locking behavior (new optimistic-locking
+and boundary-persistence tests; related proposals moved to done/).
+ - User-facing What's New changelog: new docs/whats-new/v1.25.0.md and v1.26.0.md entries and an
+extended generate_user_release_notes.py script.
+ - Append improvements with source-based position alignment (reworked AppendEditor.vue, append
+integration/model tests, SOURCE_BASED_APPEND_WITH_POSITION_ALIGNMENT proposal moved to done/).
+ - Column-wise transform DSL and staged execution updates in src/transforms/dsl.py and
+extra_columns.py.
+ - Additional items listed by the author and reflected in touched paths: simplified cardinality
+constraints, deferred foreign-key linking executed after normalization of all entities, archiving of
+the full project folder on deletion, a generated shape-shifter YAML schema, a new BranchEditor.vue,
+and general UX improvements and bug fixes.
+
+## User-facing release note
+
+Users can now check a project against a target model specification (such as the bundled SEAD v2
+spec) from the VALIDATION tab and view or edit the target model in the YAML editor, and can create
+"merge" entities that combine data from multiple sources. The fixed values grid now accepts pasted
+clipboard data, and an in-app What's New changelog surfaces recent feature updates.
+
+## Upgrade notes
+
+Upgrade impact not verified. The diff content was unavailable (it exceeded the retrievable size
+limit), so required migrations, configuration changes, or breaking changes for existing projects
+could not be confirmed from the available evidence.
+
+## Validation
+
+Not verified: validation results unavailable. The CI status rollup for this pull request is empty,
+so no checks are confirmed as passed or failed. The change adds numerous test files (backend
+API/service tests, frontend unit tests, and Python target-model/merged-entity/integration tests),
+but their execution and outcomes are unknown from the available evidence. The pull request was
+merged (merge commit 477c1d5), but no check results were recorded to indicate what, if anything, was
+run beforehand.

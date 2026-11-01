@@ -1,0 +1,52 @@
+title: Promote dev into main: task system, nested projects, path fixes, docs
+description:
+<!-- promotion-pr -->
+
+## Summary
+
+This pull request promotes dev into main, carrying 157 changed files across backend, frontend, core,
+and documentation. Per the diff, the promotion includes:
+
+ - Task system expansion: new task endpoints (todo, ongoing, flag toggle, notes), task state moved
+to a sidecar file (shapeshifter.tasks.yml), completion-percentage statistics, and status vocabulary
+changes (e.g. completed → done, new ongoing/flagged states).
+ - Custom graph layouts persisted in a sidecar file via a new layout sidecar manager, with migration
+from legacy in-file options.layout data.
+ - Nested project structure handling: backup, restore, and layout endpoints resolve project
+directories through ProjectNameMapper.to_path.
+ - Entity API responses now carry authoritative fixed-schema metadata (derive_fixed_schema), plus
+new entity persistence strategies.
+ - Data source and path-resolution changes: file-based sources store their path in options.filename,
+driver schemas expose file extensions, and a new shared src/path_resolution.py helper resolves
+global/local managed file paths for core and backend.
+ - Core pipeline updates: fixed loader and validation accept dict-shaped externally loaded rows,
+unnest raises configuration errors instead of deferring on missing value_vars, foreign-key linking
+supports null-safe merges (allow_null_keys), and derived entities are validated against public_id
+collisions with their source.
+ - Frontend: reworked project detail and projects list views, task-graph filtering and status
+coloring, and the Query Tester visual builder tab disabled with an availability notice.
+ - Documentation refresh: change-request docs moved to docs/archive/, new docs/features/ backlog
+documents, and updated agent instructions.
+
+Included PRs
+
+The included pull request numbers could not be determined from the available evidence: the supplied
+metadata contains no commit list or linked pull requests, and no CI or branch-comparison data was
+provided.
+
+## User-facing release note
+
+None - no user-visible change.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+No CI check results were reported for this pull request (the status check rollup is empty), so no
+checks can be confirmed as passed or failed. The merge into main is recorded (merge commit 357ea2e,
+merged 2026-03-14). The diff adds or updates backend, frontend, and core test files (for example
+tests/test_path_resolution.py, tests/transforms/test_unnest_validation_error.py,
+frontend/src/utils/__tests__/taskGraph.test.ts), but no execution results for them are available.
+Not verified: validation results unavailable.
