@@ -158,10 +158,11 @@ Use only the helper-owned disposable database and Authority Service. Do not stop
    export SEAD_AUTHORITY_OPTIONS_DATABASE_PORT=55432
    export SEAD_AUTHORITY_OPTIONS_DATABASE_DBNAME=sead_staging
    export SEAD_AUTHORITY_OPTIONS_DATABASE_USER=postgres
+   export PGPASSFILE=./tmp/name-of-temporary-password-file
    make serve
    ```
 
-   Keep `PGPASSFILE` set to the temporary mode-600 password file used for the disposable database. Do not copy its password into `.env` or this plan.
+   Keep `PGPASSFILE` set to the temporary mode-600 password file (pgpass-phase7-v5) used for the disposable database. Do not copy its password into `.env` or this plan.
 
    From another terminal, confirm readiness:
 
