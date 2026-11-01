@@ -1,6 +1,9 @@
 ## Summary
 
-<!-- What changed and why? Focus on the main behavior or result. -->
+<!-- What changed and why? Focus on the main behavior or result.
+     Promotion pull requests (`dev` into `staging`, `staging` into `main`) use
+     .github/promotion_pr_template.md instead. They must not repeat the release-note text of the
+     pull requests they carry. -->
 
 ## User-facing release note
 
