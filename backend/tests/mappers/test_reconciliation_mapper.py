@@ -100,11 +100,12 @@ class TestEntityResolutionItemMapper:
     def test_mapping_item_to_domain(self):
         """Test converting mapping item DTO to domain."""
         dto = api.ResolvedEntityPair(
+            local_key_value="SITE-1",
             source_value="Test Site",
+            status="accepted",
             target_id=123,
             confidence=0.95,
             notes="Auto-matched",
-            will_not_match=False,
             created_at="2024-01-01T00:00:00Z",
             created_by="system",
             last_modified="2024-01-01T00:00:00Z",
@@ -117,16 +118,18 @@ class TestEntityResolutionItemMapper:
         assert domain.target_id == 123
         assert domain.confidence == 0.95
         assert domain.notes == "Auto-matched"
-        assert domain.will_not_match is False
+        assert domain.local_key_value == "SITE-1"
+        assert domain.status == core.DecisionStatus.ACCEPTED
 
     def test_mapping_item_to_dto(self):
         """Test converting mapping item domain to DTO."""
         domain = core.ResolvedEntityPair(
+            local_key_value="SITE-1",
             source_value="Test Site",
+            status=core.DecisionStatus.ACCEPTED,
             target_id=123,
             confidence=0.95,
             notes="Auto-matched",
-            will_not_match=False,
             created_at="2024-01-01T00:00:00Z",
             created_by="system",
             last_modified="2024-01-01T00:00:00Z",
@@ -143,11 +146,12 @@ class TestEntityResolutionItemMapper:
     def test_mapping_item_roundtrip(self):
         """Test DTO -> Domain -> DTO roundtrip."""
         original = api.ResolvedEntityPair(
+            local_key_value="SITE-1",
             source_value="Test Site",
+            status="accepted",
             target_id=123,
             confidence=0.95,
             notes="Auto-matched",
-            will_not_match=False,
             created_at="2024-01-01T00:00:00Z",
             created_by="system",
             last_modified="2024-01-01T00:00:00Z",
@@ -172,11 +176,12 @@ class TestEntityResolutionMapper:
             review_threshold=0.70,
             mapping=[
                 api.ResolvedEntityPair(
+                    local_key_value="SITE-1",
                     source_value="Test",
+                    status="accepted",
                     target_id=123,
                     confidence=0.98,
                     notes="Auto-matched",
-                    will_not_match=False,
                     created_at="2024-01-01T00:00:00Z",
                     created_by="system",
                     last_modified="2024-01-01T00:00:00Z",
@@ -223,7 +228,11 @@ class TestEntityResolutionMapper:
                 auto_accept_threshold=0.95,
                 review_threshold=0.70,
             ),
-            links=[core.ResolvedEntityPair(source_value="Test", target_id=123, confidence=0.98)],
+            links=[
+                core.ResolvedEntityPair(
+                    local_key_value="SITE-1", source_value="Test", status=core.DecisionStatus.ACCEPTED, target_id=123, confidence=0.98
+                )
+            ],
         )
 
         dto = ReconciliationMapper.entity_mapping_to_dto(domain)
@@ -243,11 +252,12 @@ class TestEntityResolutionMapper:
             review_threshold=0.70,
             mapping=[
                 api.ResolvedEntityPair(
+                    local_key_value="SITE-1",
                     source_value="Test",
+                    status="accepted",
                     target_id=123,
                     confidence=0.98,
                     notes="Auto-matched",
-                    will_not_match=False,
                     created_at="2024-01-01T00:00:00Z",
                     created_by="system",
                     last_modified="2024-01-01T00:00:00Z",
@@ -267,7 +277,7 @@ class TestEntityResolutionRegistryMapper:
     def test_registry_to_domain(self):
         """Test converting registry DTO to domain."""
         dto = api.EntityResolutionCatalog(
-            version="2.0",
+            version="3.0",
             service_url="http://localhost:8000",
             entities={
                 "site": {
@@ -275,11 +285,12 @@ class TestEntityResolutionRegistryMapper:
                         remote=api.ReconciliationRemote(service_type="site", columns=["latitude", "longitude"]),
                         mapping=[
                             api.ResolvedEntityPair(
+                                local_key_value="SITE-1",
                                 source_value="Test",
+                                status="accepted",
                                 target_id=123,
                                 confidence=0.98,
                                 notes="Auto-matched",
-                                will_not_match=False,
                                 created_at="2024-01-01T00:00:00Z",
                                 created_by="system",
                                 last_modified="2024-01-01T00:00:00Z",
@@ -301,7 +312,7 @@ class TestEntityResolutionRegistryMapper:
         domain = ReconciliationMapper.registry_to_domain(dto)
 
         assert isinstance(domain, core.EntityResolutionCatalog)
-        assert domain.version == "2.0"
+        assert domain.version == "3.0"
         assert domain.service_url == "http://localhost:8000"
         assert "site" in domain.entities
         assert "site_name" in domain.entities["site"]
@@ -310,13 +321,17 @@ class TestEntityResolutionRegistryMapper:
     def test_registry_to_dto(self):
         """Test converting registry domain to DTO."""
         domain = core.EntityResolutionCatalog(
-            version="2.0",
+            version="3.0",
             service_url="http://localhost:8000",
             entities={
                 "site": {
                     "site_name": core.EntityResolutionSet(
                         metadata=core.EntityResolutionMetadata(remote=core.ResolutionTarget(service_type="site")),
-                        links=[core.ResolvedEntityPair(source_value="Test", target_id=123)],
+                        links=[
+                            core.ResolvedEntityPair(
+                                local_key_value="SITE-1", source_value="Test", status=core.DecisionStatus.ACCEPTED, target_id=123
+                            )
+                        ],
                     )
                 }
             },
@@ -325,7 +340,7 @@ class TestEntityResolutionRegistryMapper:
         dto = ReconciliationMapper.registry_to_dto(domain)
 
         assert isinstance(dto, api.EntityResolutionCatalog)
-        assert dto.version == "2.0"
+        assert dto.version == "3.0"
         assert dto.service_url == "http://localhost:8000"
         assert "site" in dto.entities
         assert "site_name" in dto.entities["site"]
@@ -334,7 +349,7 @@ class TestEntityResolutionRegistryMapper:
     def test_registry_roundtrip(self):
         """Test DTO -> Domain -> DTO roundtrip."""
         original = api.EntityResolutionCatalog(
-            version="2.0",
+            version="3.0",
             service_url="http://localhost:8000",
             entities={
                 "site": {
@@ -342,11 +357,12 @@ class TestEntityResolutionRegistryMapper:
                         remote=api.ReconciliationRemote(service_type="site"),
                         mapping=[
                             api.ResolvedEntityPair(
+                                local_key_value="SITE-1",
                                 source_value="Test",
+                                status="accepted",
                                 target_id=123,
                                 confidence=0.98,
                                 notes="Auto-matched",
-                                will_not_match=False,
                                 created_at="2024-01-01T00:00:00Z",
                                 created_by="system",
                                 last_modified="2024-01-01T00:00:00Z",
@@ -382,14 +398,14 @@ class TestDomainModelMethods:
             ),
         )
 
-        item = core.ResolvedEntityPair(source_value="Test", target_id=123)
+        item = core.ResolvedEntityPair(local_key_value="SITE-1", source_value="Test", status=core.DecisionStatus.ACCEPTED, target_id=123)
         mapping.add(item)
 
         assert len(mapping.links) == 1
         assert mapping.links[0].source_value == "Test"
 
-        # Adding another item with same source_value should replace
-        item2 = core.ResolvedEntityPair(source_value="Test", target_id=456)
+        # Adding another item with the same business key should replace it.
+        item2 = core.ResolvedEntityPair(local_key_value="SITE-1", source_value="Other", status=core.DecisionStatus.ACCEPTED, target_id=456)
         mapping.add(item2)
 
         assert len(mapping.links) == 1
@@ -402,12 +418,12 @@ class TestDomainModelMethods:
                 remote=core.ResolutionTarget(service_type="site"),
             ),
             links=[
-                core.ResolvedEntityPair(source_value="Test1", target_id=123),
-                core.ResolvedEntityPair(source_value="Test2", target_id=456),
+                core.ResolvedEntityPair(local_key_value="SITE-1", source_value="Test1", status=core.DecisionStatus.ACCEPTED, target_id=123),
+                core.ResolvedEntityPair(local_key_value="SITE-2", source_value="Test2", status=core.DecisionStatus.ACCEPTED, target_id=456),
             ],
         )
 
-        result = mapping.remove("Test1")
+        result = mapping.remove("SITE-1")
 
         assert result is True
         assert len(mapping.links) == 1
@@ -424,11 +440,11 @@ class TestDomainModelMethods:
                 remote=core.ResolutionTarget(service_type="site"),
             ),
             links=[
-                core.ResolvedEntityPair(source_value="Test1", target_id=123),
+                core.ResolvedEntityPair(local_key_value="SITE-1", source_value="Test1", status=core.DecisionStatus.ACCEPTED, target_id=123),
             ],
         )
 
-        item = mapping.get("Test1")
+        item = mapping.get("SITE-1")
         assert item is not None
         assert item.target_id == 123
 
@@ -438,7 +454,7 @@ class TestDomainModelMethods:
     def test_registry_add_mapping(self):
         """Test adding mapping to registry."""
         registry = core.EntityResolutionCatalog(
-            version="2.0",
+            version="3.0",
             service_url="http://localhost:8000",
         )
 
@@ -463,7 +479,7 @@ class TestDomainModelMethods:
         )
 
         registry = core.EntityResolutionCatalog(
-            version="2.0",
+            version="3.0",
             service_url="http://localhost:8000",
             entities={"site": {"site_name": mapping}},
         )

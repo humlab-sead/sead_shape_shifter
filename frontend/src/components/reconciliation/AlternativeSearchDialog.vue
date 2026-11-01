@@ -28,7 +28,13 @@
         />
 
         <!-- Search Results -->
-        <div v-if="searched" class="mt-4">
+        <div v-if="searchError" class="mt-4">
+          <v-alert data-testid="search-error" type="error" variant="tonal">
+            Candidate search failed: {{ searchError }}
+          </v-alert>
+        </div>
+
+        <div v-else-if="searched" class="mt-4">
           <v-list v-if="suggestions.length > 0" density="compact">
             <v-list-subheader>{{ suggestions.length }} Results</v-list-subheader>
 
@@ -41,9 +47,9 @@
               class="suggestion-item"
             >
               <template #prepend>
-                <v-avatar :color="getScoreColor((suggestion.score ?? 0) * 100)" size="40">
+                <v-avatar :color="suggestion.score == null ? 'grey' : getScoreColor(suggestion.score)" size="40">
                   <span class="text-white font-weight-bold">
-                    {{ Math.round((suggestion.score ?? 0) * 100) }}
+                    {{ suggestion.score == null ? '—' : `${Math.round(suggestion.score)}%` }}
                   </span>
                 </v-avatar>
               </template>
@@ -93,7 +99,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
-import { apiClient } from '@/api/client'
+import { reconciliationServiceApi } from '@/api/reconciliation'
 import type { ReconciliationCandidate } from '@/types'
 
 interface Props {
@@ -118,6 +124,7 @@ const dialogVisible = ref(props.modelValue)
 const searchTerm = ref('')
 const searching = ref(false)
 const searched = ref(false)
+const searchError = ref<string | null>(null)
 const suggestions = ref<ReconciliationCandidate[]>([])
 const selectedSuggestion = ref<ReconciliationCandidate | null>(null)
 
@@ -131,6 +138,7 @@ watch(
       searchTerm.value = props.originalQuery || ''
       selectedSuggestion.value = null
       searched.value = false
+      searchError.value = null
       suggestions.value = []
     }
   }
@@ -152,20 +160,20 @@ async function searchAlternatives() {
 
   searching.value = true
   searched.value = false
+  searchError.value = null
 
   try {
-    // Call the reconciliation suggest endpoint using apiClient
-    const response = await apiClient.get(
-      `/projects/${props.projectName}/reconciliation/${props.entityName}/${props.targetField}/suggest`,
-      { params: { query: searchTerm.value } }
+    suggestions.value = await reconciliationServiceApi.suggestEntities(
+      props.projectName,
+      props.entityName,
+      props.targetField,
+      searchTerm.value
     )
-
-    suggestions.value = response.data.candidates || response.data || []
     searched.value = true
   } catch (error) {
     console.error('Alternative search failed:', error)
     suggestions.value = []
-    searched.value = true
+    searchError.value = error instanceof Error ? error.message : 'The request could not be completed.'
   } finally {
     searching.value = false
   }
@@ -183,8 +191,10 @@ function selectSuggestion(suggestion: ReconciliationCandidate) {
 
 // Get score color
 function getScoreColor(score: number): string {
-  if (score >= 95) return 'success'
-  if (score >= 80) return 'warning'
+  const high = 95
+  const review = 70
+  if (score >= high) return 'success'
+  if (score >= review) return 'warning'
   return 'info'
 }
 

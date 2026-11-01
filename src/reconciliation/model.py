@@ -5,6 +5,7 @@ They mirror the Pydantic DTO models but use dataclasses for flexibility and inde
 """
 
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Any
 
 
@@ -26,17 +27,54 @@ class ResolutionTarget:
 
 
 @dataclass
-class ResolvedEntityPair:
-    """Single entity resolution mapping entry linking source value to Target ID."""
+class ResolutionCandidate:
+    """Candidate returned by the matching service for a normalized row."""
 
+    id: str
+    name: str
+    score: float | None = None
+    match: bool | None = None
+    type: list[dict[str, str]] = field(default_factory=list)
+    distance_km: float | None = None
+    description: str | None = None
+
+
+class DecisionStatus(str, Enum):
+    """Review state of a reconciliation decision."""
+
+    PROPOSED = "proposed"
+    ACCEPTED = "accepted"
+    REJECTED = "rejected"
+    LOCAL_ONLY = "local-only"
+
+
+@dataclass
+class ResolvedEntityPair:
+    """Review decision for one encoded business key."""
+
+    local_key_value: str
     source_value: Any
+    status: DecisionStatus = DecisionStatus.PROPOSED
     target_id: int | None = None
     confidence: float | None = None
     notes: str | None = None
-    will_not_match: bool = False
+    candidates: list[ResolutionCandidate] = field(default_factory=list)
     created_at: str | None = None
     created_by: str | None = None
     last_modified: str | None = None
+    candidate_id: str | None = None
+
+    def __post_init__(self) -> None:
+        if not self.local_key_value:
+            raise ValueError("A reconciliation decision requires an encoded local_key_value")
+        if self.status == DecisionStatus.ACCEPTED and self.target_id is None:
+            raise ValueError("An accepted decision requires a target_id")
+        if self.status != DecisionStatus.ACCEPTED and self.target_id is not None:
+            raise ValueError("Only an accepted decision may have a target_id")
+        if self.candidate_id is not None and not self.candidate_id.strip():
+            raise ValueError("A candidate_id must not be blank")
+        if self.status != DecisionStatus.ACCEPTED and self.candidate_id is not None:
+            raise ValueError("Only an accepted decision may have a candidate_id")
 
 
 @dataclass
@@ -80,28 +118,33 @@ class EntityResolutionSet:
     metadata: EntityResolutionMetadata
     links: list[ResolvedEntityPair] = field(default_factory=list)
 
+    def __post_init__(self) -> None:
+        keys = [link.local_key_value for link in self.links]
+        if len(keys) != len(set(keys)):
+            raise ValueError("Duplicate reconciliation decision local_key_value")
+
     def add(self, item: ResolvedEntityPair) -> None:
         """Add or update a mapping item.
 
-        If a mapping for the same source_value exists, it will be replaced.
+        If a mapping for the same business key exists, it will be replaced.
         """
-        self.links = [m for m in self.links if m.source_value != item.source_value]
+        self.links = [m for m in self.links if m.local_key_value != item.local_key_value]
         self.links.append(item)
 
-    def remove(self, source_value: Any) -> bool:
+    def remove(self, local_key_value: str) -> bool:
         """Remove a mapping item by source value.
 
         Returns:
             True if item was found and removed, False otherwise
         """
         original_length: int = len(self.links)
-        self.links = [m for m in self.links if m.source_value != source_value]
+        self.links = [m for m in self.links if m.local_key_value != local_key_value]
         return len(self.links) < original_length
 
-    def get(self, source_value: Any) -> ResolvedEntityPair | None:
-        """Get mapping item by source value."""
+    def get(self, local_key_value: str) -> ResolvedEntityPair | None:
+        """Get a decision by encoded business key."""
         for item in self.links:
-            if item.source_value == source_value:
+            if item.local_key_value == local_key_value:
                 return item
         return None
 

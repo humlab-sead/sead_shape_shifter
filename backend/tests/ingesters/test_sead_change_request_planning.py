@@ -12,6 +12,7 @@ from ingesters.sead_change_request.contracts import (
     classify_submission_outcomes,
 )
 from ingesters.sead_change_request.planning import staging_scope_errors
+from src.reconciliation.mapping_model import encode_local_key
 from src.target_model.models import EntitySpec
 
 
@@ -38,14 +39,18 @@ class TestPlanTable:
             PlannedRowAction.REFERENCE_EXISTING,
         ]
 
-    def test_classifier_rows_missing_public_id_plan_for_reconciliation(self):
-        """Classifier rows without public_id should plan for reconciliation first."""
+    def test_classifier_rows_without_approval_plan_for_a_block(self):
+        """Classifier rows without public_id must not select reconciliation candidates."""
         frame = pd.DataFrame({"class_id": [None, ""], "name": ["A", "B"]})
         entity_spec = EntitySpec(role="classifier", public_id="class_id")
 
         plan = plan_table("abundance_class", frame, entity_spec)
 
-        assert plan.planned_actions.tolist() == [PlannedRowAction.RECONCILE, PlannedRowAction.RECONCILE]
+        assert plan.planned_actions.tolist() == [
+            PlannedRowAction.BLOCK_RECONCILIATION,
+            PlannedRowAction.BLOCK_RECONCILIATION,
+        ]
+        assert set(plan.blocked_row_reasons) == {0, 1}
 
     def test_database_sequence_public_ids_plan_for_target_reservation(self):
         """Explicitly non-tracked entities can reserve public IDs from a database sequence."""
@@ -159,15 +164,65 @@ class TestPlanTable:
         assert plan.planned_actions.tolist() == [PlannedRowAction.ALLOCATE]
         assert not plan.diagnostics
 
-    def test_lookup_rows_route_to_reconciliation_not_allocation(self):
-        """A lookup entity missing its public ID should reconcile, not allocate."""
+    def test_lookup_rows_without_approval_are_blocked(self):
+        """A lookup entity missing its public ID must not allocate without an exported approval."""
         frame = pd.DataFrame({"site_id": [None], "site_name": ["Nordic Site"]})
         entity_spec = EntitySpec(role="lookup", public_id="site_id")
 
         plan = plan_table("site", frame, entity_spec)
 
-        assert plan.planned_actions.tolist() == [PlannedRowAction.RECONCILE]
+        assert plan.planned_actions.tolist() == [PlannedRowAction.BLOCK_RECONCILIATION]
+        assert "No exported local-only approval" in plan.blocked_row_reasons[0]
         assert not plan.diagnostics
+
+    @pytest.mark.parametrize(
+        ("mode", "approved", "expected_action"),
+        [
+            ("reconcile-exact", False, PlannedRowAction.BLOCK_RECONCILIATION),
+            ("reconcile-exact", True, PlannedRowAction.ALLOCATE),
+            ("reconcile-fuzzy", False, PlannedRowAction.BLOCK_RECONCILIATION),
+            ("reconcile-fuzzy", True, PlannedRowAction.ALLOCATE),
+            ("lookup-only", False, PlannedRowAction.BLOCK_RECONCILIATION),
+            ("lookup-only", True, PlannedRowAction.BLOCK_RECONCILIATION),
+            ("lookup-extensible", False, PlannedRowAction.BLOCK_RECONCILIATION),
+            ("lookup-extensible", True, PlannedRowAction.BLOCK_RECONCILIATION),
+        ],
+    )
+    def test_reconciled_rows_allocate_only_for_approved_allocation_modes(self, mode, approved, expected_action):
+        frame = pd.DataFrame({"site_id": [None], "site_name": ["Nordic Site"]})
+        entity_spec = EntitySpec(
+            role="lookup",
+            public_id="site_id",
+            identity_tracking="reconciled",
+            reconciliation=mode,
+        )
+        approved_keys = {encode_local_key("site_name", "Nordic Site")} if approved else set()
+
+        plan = plan_table(
+            "site",
+            frame,
+            entity_spec,
+            local_key_columns=("site_name",),
+            approved_local_only_keys=approved_keys,
+        )
+
+        assert plan.planned_actions.tolist() == [expected_action]
+        if expected_action == PlannedRowAction.BLOCK_RECONCILIATION:
+            assert plan.blocked_row_reasons[0]
+
+    def test_existing_id_keeps_reference_path_even_when_approval_key_is_supplied(self):
+        frame = pd.DataFrame({"site_id": [501], "site_name": ["Nordic Site"]})
+        entity_spec = EntitySpec(role="lookup", public_id="site_id")
+
+        plan = plan_table(
+            "site",
+            frame,
+            entity_spec,
+            local_key_columns=("site_name",),
+            approved_local_only_keys={encode_local_key("site_name", "Nordic Site")},
+        )
+
+        assert plan.planned_actions.tolist() == [PlannedRowAction.REFERENCE_EXISTING]
 
     def test_child_rows_route_to_aggregate_inheritance(self):
         """A child entity missing its public ID should inherit from its aggregate parent, not allocate."""

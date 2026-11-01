@@ -87,7 +87,11 @@ class TestBuildChangeRequestPackage:
                 entity_name="sample",
                 frame=sample_frame,
                 planned_actions=pd.Series(
-                    [PlannedRowAction.REFERENCE_EXISTING, PlannedRowAction.ALLOCATE, PlannedRowAction.RECONCILE],
+                    [
+                        PlannedRowAction.REFERENCE_EXISTING,
+                        PlannedRowAction.ALLOCATE,
+                        PlannedRowAction.BLOCK_RECONCILIATION,
+                    ],
                     index=sample_frame.index,
                     name="_planned_action",
                 ),

@@ -70,8 +70,10 @@ class TargetEntityReconciliationSourceResolver(ReconciliationSourceResolver):
     """Loads data from the target entity itself (implements SourceStrategyType.TARGET_ENTITY)."""
 
     async def resolve(self, entity_name: str, entity_mapping: core.EntityResolutionSet) -> list[dict]:
-        logger.debug(f"Using preview data from entity '{entity_name}'")
-        preview_result: PreviewResult = await self.preview_service.preview_entity(self.project_name, entity_name, limit=1000)
+        logger.debug(f"Using normalized data from entity '{entity_name}'")
+        preview_result: PreviewResult = await self.preview_service.preview_entity(self.project_name, entity_name, limit=None)
+        if preview_result.estimated_total_rows is not None and len(preview_result.rows) != preview_result.estimated_total_rows:
+            raise RuntimeError(f"Reconciliation source '{entity_name}' was truncated")
         return preview_result.rows
 
 
@@ -89,7 +91,9 @@ class AnotherEntityReconciliationSourceResolver(ReconciliationSourceResolver):
         if source not in self.project.tables:
             raise NotFoundError(f"Source entity '{source}' not found in project")
 
-        preview_result: PreviewResult = await self.preview_service.preview_entity(self.project_name, source, limit=1000)
+        preview_result: PreviewResult = await self.preview_service.preview_entity(self.project_name, source, limit=None)
+        if preview_result.estimated_total_rows is not None and len(preview_result.rows) != preview_result.estimated_total_rows:
+            raise RuntimeError(f"Reconciliation search source '{source}' was truncated")
         source_data = preview_result.rows
 
         logger.debug(f"Fetched {len(source_data)} rows from entity '{source}'")

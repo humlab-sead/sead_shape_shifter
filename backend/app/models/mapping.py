@@ -8,9 +8,16 @@ from pydantic import BaseModel, Field
 class MappingLinkUpsertRequest(BaseModel):
     """Request body for creating or updating a manual mapping link."""
 
-    target_id: int = Field(..., description="Resolved public_id value to assign to this local key.")
+    target_id: int = Field(..., gt=0, description="Resolved public_id value to assign to this local key.")
     confidence: float | None = Field(default=None, ge=0.0, le=1.0, description="Optional confidence score for the manual link.")
     notes: str | None = Field(default=None, description="Optional notes stored with the mapping link.")
+
+
+class MappingLinkOwner(BaseModel):
+    """Specification that owns a reconciliation mapping link."""
+
+    entity_name: str
+    target_field: str
 
 
 class MappingLinkResponse(BaseModel):
@@ -21,6 +28,8 @@ class MappingLinkResponse(BaseModel):
     confidence: float | None = None
     created_at: datetime
     committed_at: datetime | None = None
+    owner: MappingLinkOwner | None = None
+    verified_at: datetime | None = None
     notes: str | None = None
     created_by: str
     reviewed_by: str | None = None

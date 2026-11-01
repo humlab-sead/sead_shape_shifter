@@ -437,11 +437,11 @@ class ProjectMapper:
         for operation in pending.operations:
             if operation.op == "upsert":
                 if operation.target_id is None:
-                    raise ValueError("Upsert operation must have a target_id")
+                    raise ValueError("upsert operation requires target_id")
                 upserts.append(
                     LinkUpsert(
                         key=operation.key,
-                        target_id=int(operation.target_id),
+                        target_id=operation.target_id,
                         previous_saved_id=None,
                         new_saved_id=operation.expected_saved_id,
                         previous_link=ProjectMapper._sync_to_link(operation.prior_link),

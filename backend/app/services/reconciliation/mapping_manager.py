@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import os
+import tempfile
 from pathlib import Path
 
 import yaml
 from loguru import logger
+from pydantic import ValidationError as PydanticValidationError
 
 from backend.app.core.config import settings
 from backend.app.exceptions import ResourceConflictError, ResourceNotFoundError, ValidationError
@@ -14,6 +17,8 @@ from backend.app.models import reconciliation as dto
 from backend.app.models.project import Project
 from backend.app.services import ProjectService
 from src.reconciliation import model as core
+
+CATALOG_VERSION = "3.0"
 
 
 class EntityMappingManager:
@@ -60,15 +65,29 @@ class EntityMappingManager:
 
         if not filename.exists():
             logger.info(f"No reconciliation config found for '{project_name}', creating empty config")
-            dto_catalog = dto.EntityResolutionCatalog(service_url=settings.reconciliation_service_url, entities={}, version="2.0")
+            dto_catalog = dto.EntityResolutionCatalog(service_url=settings.reconciliation_service_url, entities={}, version=CATALOG_VERSION)
             return ReconciliationMapper.registry_to_domain(dto_catalog)
 
         logger.debug(f"Loading reconciliation config from {filename}")
-        with open(filename, "r", encoding="utf-8") as f:
-            data = yaml.safe_load(f) or {}
+        try:
+            with open(filename, "r", encoding="utf-8") as f:
+                data = yaml.safe_load(f)
+        except yaml.YAMLError as exc:
+            raise ValidationError(f"Malformed reconciliation catalog for '{project_name}'") from exc
 
-        # Map: YAML dict → DTO (Pydantic validation) → Domain
-        dto_catalog = dto.EntityResolutionCatalog(**data)
+        if not isinstance(data, dict):
+            raise ValidationError(f"Invalid reconciliation catalog for '{project_name}': expected a YAML mapping")
+        version = data.get("version")
+        if version != CATALOG_VERSION:
+            if version is None or version == "2.0":
+                logger.warning(f"Ignoring old-format reconciliation catalog in {filename}; recreate its specifications to reconcile rows")
+                return core.EntityResolutionCatalog(version=CATALOG_VERSION, service_url=settings.reconciliation_service_url)
+            raise ValidationError(f"Unsupported reconciliation catalog version {version!r} for '{project_name}'")
+
+        try:
+            dto_catalog = dto.EntityResolutionCatalog(**data)
+        except PydanticValidationError as exc:
+            raise ValidationError(f"Invalid reconciliation catalog for '{project_name}': check its fields and decisions") from exc
         return ReconciliationMapper.registry_to_domain(dto_catalog)
 
     def save_catalog(self, project_name: str, catalog: core.EntityResolutionCatalog, filename: Path | None = None) -> None:
@@ -84,6 +103,9 @@ class EntityMappingManager:
         """
         filename = filename or self._get_default_catalog_filename(project_name)
 
+        if catalog.version != CATALOG_VERSION:
+            raise ValueError(f"Cannot save reconciliation catalog version {catalog.version!r}; expected {CATALOG_VERSION}")
+
         # Ensure parent directory exists
         filename.parent.mkdir(parents=True, exist_ok=True)
 
@@ -91,8 +113,28 @@ class EntityMappingManager:
         dto_catalog: dto.EntityResolutionCatalog = ReconciliationMapper.registry_to_dto(catalog)
 
         logger.info(f"Saving reconciliation config to {filename}")
-        with open(filename, "w", encoding="utf-8") as f:
-            yaml.dump(dto_catalog.model_dump(exclude_none=True), f, default_flow_style=False, sort_keys=False, allow_unicode=True)
+        temporary_path: Path | None = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                encoding="utf-8",
+                dir=filename.parent,
+                prefix=f".{filename.name}.",
+                suffix=".tmp",
+                delete=False,
+            ) as output:
+                temporary_path = Path(output.name)
+                yaml.dump(
+                    dto_catalog.model_dump(exclude_none=True),
+                    output,
+                    default_flow_style=False,
+                    sort_keys=False,
+                    allow_unicode=True,
+                )
+            os.replace(temporary_path, filename)
+        finally:
+            if temporary_path is not None:
+                temporary_path.unlink(missing_ok=True)
 
     def list_entity_mappings(self, project_name: str) -> list[dto.EntityResolutionListItem]:
         """
@@ -243,28 +285,14 @@ class EntityMappingManager:
         logger.info(f"Updated metadata for entity mapping {entity_name}.{target_field}")
         return catalog
 
-    def delete(self, project_name: str, entity_name: str, target_field: str, force: bool = False) -> core.EntityResolutionCatalog:
-        """
-        Delete an entity-field resolution set from resolution catalog.
-
-        Works with domain models throughout.
-
-        Args:
-            project_name: Project name
-            entity_name: Entity name
-            target_field: Target field name
-            force: If False, raises error if catalog has mappings
-
-        Returns:
-            Updated entity mapping catalog (domain model)
-
-        Raises:
-            ResourceNotFoundError: If mapping catalog doesn't exist
-            ValidationError: If mapping catalog has mappings and force=False
-        """
-        catalog: core.EntityResolutionCatalog = self.load_catalog(project_name)
-
-        # Check if catalog exists using domain model method
+    def remove_specification(
+        self,
+        catalog: core.EntityResolutionCatalog,
+        entity_name: str,
+        target_field: str,
+        force: bool = False,
+    ) -> int:
+        """Remove a specification from an in-memory catalog without persisting it."""
         mapping: core.EntityResolutionSet | None = catalog.get(entity_name, target_field)
         if mapping is None:
             raise ResourceNotFoundError(
@@ -280,14 +308,10 @@ class EntityMappingManager:
                 context={"entity": entity_name, "target_field": target_field, "mapping_count": mapping.count()},
             )
 
-        # Delete catalog using domain model method
         mapping_count: int = mapping.count()
         catalog.remove(entity_name, target_field)
-
-        # Save and return
-        self.save_catalog(project_name, catalog)
         logger.info(
             f"Deleted {entity_name}.{target_field} from catalog "
             f"({mapping_count} mappings {'forcefully removed' if force else 'removed'})"
         )
-        return catalog
+        return mapping_count
