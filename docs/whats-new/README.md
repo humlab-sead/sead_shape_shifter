@@ -135,6 +135,10 @@ Repair existing draft files in place with:
 
 That mode rewrites each draft without escape sequences, reports what changed, and leaves an unparseable file untouched rather than overwriting a hand-edited one. It never publishes.
 
+Large pull requests are diffed from local git objects rather than through `gh pr diff`, which refuses any pull request that changes more than 300 files. Generated `graphify-out/` output inflates that count heavily — one pull request reported 670 changed files, 634 of them under `graphify-out/`, so excluding generated paths at the source reduced a 62 MB diff to 184 KB across 36 real files. The local diff is used when both the base and head commits are present in the clone; otherwise the script falls back to `gh pr diff`, and if that also fails it sends the changed paths so a draft is still produced. The input file records which source was used under a `Diff source` heading.
+
+A model occasionally returns a response that cannot be parsed and a good one on the next attempt, so drafting retries. `--attempts` controls how many times the model is asked (default 2), and a successful response is never re-requested.
+
 ## Recording Commits Without a Pull Request
 
 Commits pushed straight to a base branch have no pull request to describe them, so add `--include-orphaned` to record them against the pull request that followed:

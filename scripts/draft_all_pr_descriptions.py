@@ -81,6 +81,11 @@ def parse_args() -> argparse.Namespace:
         help=f"Pull requests per target-script invocation (default: {DEFAULT_BATCH_SIZE})",
     )
     parser.add_argument("--model", help="Copilot model identifier, passed through to the target script")
+    parser.add_argument(
+        "--attempts",
+        type=int,
+        help="How many times the target script should retry a response that does not parse",
+    )
     parser.add_argument("--show-all-orphaned", action="store_true", help="List every detected commit instead of filtering housekeeping")
     parser.add_argument(
         "--no-preflight",
@@ -183,6 +188,8 @@ def build_child_command(batch: list[int], args: argparse.Namespace) -> list[str]
         command.append("--show-all-orphaned")
     if args.model:
         command.extend(["--model", args.model])
+    if args.attempts is not None:
+        command.extend(["--attempts", str(args.attempts)])
     if args.repo:
         command.extend(["--repo", args.repo])
     return command

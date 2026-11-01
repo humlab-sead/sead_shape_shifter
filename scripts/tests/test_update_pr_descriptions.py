@@ -72,11 +72,11 @@ def test_generate_draft_logs_invalid_response_only_when_verbose(
     monkeypatch.setattr(update_pr_descriptions, "run_command", lambda *args, **kwargs: "malformed test-key response")
 
     with pytest.raises(ValueError, match="after the title"):
-        update_pr_descriptions.generate_draft({}, None, verbose=verbose)
+        update_pr_descriptions.generate_draft({}, None, verbose=verbose, attempts=1)
 
     logged = capsys.readouterr().err
     if verbose:
-        assert "Raw Copilot response:" in logged
+        assert "Raw Copilot response" in logged
         assert "malformed [REDACTED] response" in logged
         assert "test-key" not in logged
     else:
@@ -251,7 +251,7 @@ def test_draft_mode_writes_files_without_publishing(tmp_path: Path, monkeypatch:
     monkeypatch.setattr(update_pr_descriptions.shutil, "which", lambda _: "/usr/bin/fake")
     monkeypatch.setattr(update_pr_descriptions, "configure_copilot_environment", lambda model: ("test-model", {}))
     monkeypatch.setattr(update_pr_descriptions, "load_pr_context", lambda number, repo: {"metadata": {"number": number}})
-    monkeypatch.setattr(update_pr_descriptions, "generate_draft", lambda context, model, *, verbose=False: make_draft())
+    monkeypatch.setattr(update_pr_descriptions, "generate_draft", lambda context, model, *, verbose=False, attempts=2: make_draft())
     monkeypatch.setattr(update_pr_descriptions, "publish_draft", lambda *args: pytest.fail("draft mode published a PR"))
     monkeypatch.setattr(sys, "argv", ["update_pr_descriptions.py", "627", "--draft"])
 
@@ -296,7 +296,9 @@ def test_draft_batch_writes_successes_skips_existing_and_continues_after_failure
         queried.append(number)
         return {"metadata": {"number": number}}
 
-    def fake_generate_draft(context: dict[str, dict[str, int]], _model: str | None, *, verbose: bool = False) -> dict[str, str]:
+    def fake_generate_draft(
+        context: dict[str, dict[str, int]], _model: str | None, *, verbose: bool = False, attempts: int = 2
+    ) -> dict[str, str]:
         verbose_values.append(verbose)
         number = context["metadata"]["number"]
         if number == 628:
@@ -1090,3 +1092,182 @@ def test_clean_drafts_mode_reports_each_file(
     assert "PR #528: removed 2 escape sequence(s)" in captured.out
     assert "PR #529: already clean" in captured.out
     assert "Cleaned 1 of 2 draft file(s)." in captured.err
+
+
+PR_477_BASE = "f85fad0c85398d889ffd2d277d345276b9561070"
+
+
+def test_local_pr_diff_is_skipped_when_the_commits_are_not_present(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(update_pr_descriptions, "local_commit_exists", lambda oid: False)
+
+    assert update_pr_descriptions.local_pr_diff("base", "head") is None
+
+
+def test_local_pr_diff_excludes_generated_graph_paths(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(update_pr_descriptions, "local_commit_exists", lambda oid: True)
+    commands: list[list[str]] = []
+
+    def fake_run(command: list[str], **kwargs: object) -> CompletedProcess[str]:
+        commands.append(command)
+        return CompletedProcess(command, 0, stdout="diff --git a/app.py b/app.py\n", stderr="")
+
+    monkeypatch.setattr(update_pr_descriptions.subprocess, "run", fake_run)
+
+    diff = update_pr_descriptions.local_pr_diff("base", "head")
+
+    assert diff == "diff --git a/app.py b/app.py\n"
+    assert commands[0][:3] == ["git", "diff", "base...head"]
+    assert ":(exclude)graphify-out" in commands[0]
+
+
+def test_local_pr_diff_returns_none_when_git_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(update_pr_descriptions, "local_commit_exists", lambda oid: True)
+    monkeypatch.setattr(
+        update_pr_descriptions.subprocess,
+        "run",
+        lambda command, **kwargs: CompletedProcess(command, 128, stdout="", stderr="fatal"),
+    )
+
+    assert update_pr_descriptions.local_pr_diff("base", "head") is None
+
+
+def test_load_pr_diff_prefers_the_local_diff(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(update_pr_descriptions, "local_pr_diff", lambda base, head: "local patch")
+    monkeypatch.setattr(
+        update_pr_descriptions,
+        "run_command",
+        lambda *args, **kwargs: pytest.fail("gh pr diff was called despite a local diff"),
+    )
+
+    diff, source = update_pr_descriptions.load_pr_diff(477, {"baseRefOid": "b", "headRefOid": "h"}, None)
+
+    assert diff == "local patch"
+    assert "local git diff" in source
+
+
+def test_load_pr_diff_falls_back_when_gh_refuses_a_large_pull_request(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The 300-file limit must not fail the draft; changed paths still reach the model."""
+    monkeypatch.setattr(update_pr_descriptions, "local_pr_diff", lambda base, head: None)
+
+    def refuse_diff(*args: object, **kwargs: object) -> str:
+        raise update_pr_descriptions.CommandError(
+            "Command failed (gh pr diff): could not find pull request diff: HTTP 406: "
+            "Sorry, the diff exceeded the maximum number of files (300)."
+        )
+
+    monkeypatch.setattr(update_pr_descriptions, "run_command", refuse_diff)
+    metadata = {"files": [{"path": "backend/app.py"}, {"path": "frontend/src/App.vue"}]}
+
+    diff, source = update_pr_descriptions.load_pr_diff(477, metadata, None)
+
+    assert "only the changed paths are listed" in diff
+    assert "- backend/app.py" in diff
+    assert "- frontend/src/App.vue" in diff
+    assert "HTTP 406" in diff
+    assert "changed paths only" in source
+
+
+def test_load_pr_context_uses_the_paginated_file_list_when_the_metadata_list_is_truncated(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`gh pr view --json files` caps at 100 entries, which would hide extra files."""
+    metadata = {
+        "number": 477,
+        "changedFiles": 150,
+        "files": [{"path": f"file_{index}.py"} for index in range(100)],
+        "closingIssuesReferences": [],
+    }
+    monkeypatch.setattr(update_pr_descriptions, "run_command", lambda *args, **kwargs: json.dumps(metadata))
+    monkeypatch.setattr(
+        update_pr_descriptions,
+        "list_pull_request_files",
+        lambda number, repo: [{"path": f"file_{index}.py"} for index in range(150)],
+    )
+    monkeypatch.setattr(update_pr_descriptions, "load_pr_diff", lambda number, meta, repo: ("patch", "test"))
+    monkeypatch.setattr(update_pr_descriptions, "get_issue_context", lambda references, repo: [])
+
+    context = update_pr_descriptions.load_pr_context(477, None)
+
+    assert len(context["metadata"]["files"]) == 150
+
+
+def test_load_pr_context_keeps_the_metadata_file_list_when_it_is_complete(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    metadata = {"number": 549, "changedFiles": 2, "files": [{"path": "a.py"}, {"path": "b.py"}], "closingIssuesReferences": []}
+    monkeypatch.setattr(update_pr_descriptions, "run_command", lambda *args, **kwargs: json.dumps(metadata))
+    monkeypatch.setattr(
+        update_pr_descriptions,
+        "list_pull_request_files",
+        lambda number, repo: pytest.fail("paginated file list was requested unnecessarily"),
+    )
+    monkeypatch.setattr(update_pr_descriptions, "load_pr_diff", lambda number, meta, repo: ("patch", "test"))
+    monkeypatch.setattr(update_pr_descriptions, "get_issue_context", lambda references, repo: [])
+
+    context = update_pr_descriptions.load_pr_context(549, None)
+
+    assert len(context["metadata"]["files"]) == 2
+
+
+def test_load_pr_context_reports_the_diff_source_in_the_rendered_input(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        update_pr_descriptions,
+        "INSTRUCTIONS_PATH",
+        Path("/tmp/nonexistent-instructions.md"),
+    )
+    context = {"metadata": {}, "linked_issues": [], "diff": "patch", "diff_source": "local git diff", "omitted_generated_paths": []}
+    monkeypatch.setattr(Path, "read_text", lambda self, encoding=None: "text")
+
+    rendered = update_pr_descriptions.render_context(context)
+
+    assert "## Diff source" in rendered
+    assert "local git diff" in rendered
+
+
+def test_generate_draft_retries_a_malformed_response(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    responses = iter(["no separator here", f"Add a check\n{update_pr_descriptions.COPILOT_BODY_SEPARATOR}\n{VALID_BODY}"])
+    monkeypatch.setattr(
+        update_pr_descriptions,
+        "request_copilot_response",
+        lambda context, model: (next(responses), {}),
+    )
+
+    draft = update_pr_descriptions.generate_draft({}, None, attempts=2)
+
+    assert draft["title"] == "Add a check"
+    assert "retrying" in capsys.readouterr().err
+
+
+def test_generate_draft_reports_the_last_error_after_all_attempts(monkeypatch: pytest.MonkeyPatch) -> None:
+    attempts: list[int] = []
+    monkeypatch.setattr(
+        update_pr_descriptions,
+        "request_copilot_response",
+        lambda context, model: (attempts.append(1) or "no separator", {}),
+    )
+
+    with pytest.raises(ValueError, match="without the separator"):
+        update_pr_descriptions.generate_draft({}, None, attempts=3)
+
+    assert len(attempts) == 3
+
+
+def test_generate_draft_does_not_retry_a_successful_response(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[int] = []
+
+    def respond(context: object, model: object) -> tuple[str, dict[str, str]]:
+        calls.append(1)
+        return f"Add a check\n{update_pr_descriptions.COPILOT_BODY_SEPARATOR}\n{VALID_BODY}", {}
+
+    monkeypatch.setattr(update_pr_descriptions, "request_copilot_response", respond)
+
+    update_pr_descriptions.generate_draft({}, None, attempts=3)
+
+    assert len(calls) == 1
+
+
+def test_main_rejects_zero_attempts(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    monkeypatch.setattr(sys, "argv", ["update_pr_descriptions.py", "477", "--draft", "--attempts", "0"])
+
+    assert update_pr_descriptions.main() == 2
+    assert "--attempts must be at least 1." in capsys.readouterr().err
