@@ -8,7 +8,7 @@ import yaml
 
 from backend.app.clients.reconciliation_client import ReconciliationClient
 from backend.app.core.config import settings
-from backend.app.core.operation_manager import operation_manager
+from backend.app.core.operation_manager import OperationStatus, operation_manager
 from backend.app.models.reconciliation import AutoReconcileResult, CandidateVerificationResult, ReconciliationCandidate
 from backend.app.services import project_service, validation_service, yaml_service
 from backend.app.services.reconciliation.service import ReconciliationService
@@ -340,3 +340,23 @@ class TestReconciliationDecisionRoutes:
         assert reconcile.await_count == 2
         assert all(call.kwargs["entity_mapping"].links[0].local_key_value == "A" for call in reconcile.await_args_list)
         operation_manager.cleanup_operation(async_response.json()["operation_id"])
+
+    async def test_cancelled_async_reconciliation_remains_cancelled(self, authorized_client, tmp_path, monkeypatch) -> None:
+        await _create_project(authorized_client, tmp_path, monkeypatch)
+        _write_catalog(tmp_path)
+
+        async def cancel_and_raise(**kwargs):
+            assert operation_manager.cancel_operation(kwargs["operation_id"])
+            raise RuntimeError("Reconciliation cancelled for site")
+
+        path = "/api/v1/projects/review/reconciliation/site/site_name"
+        with patch.object(ReconciliationService, "auto_reconcile_entity", new=AsyncMock(side_effect=cancel_and_raise)):
+            response = await authorized_client.post(f"{path}/auto-reconcile")
+            operation_id = response.json()["operation_id"]
+            await asyncio.sleep(0)
+
+        assert response.status_code == 200, response.text
+        progress = operation_manager.get_progress(operation_id)
+        assert progress is not None
+        assert progress.status == OperationStatus.CANCELLED
+        operation_manager.cleanup_operation(operation_id)

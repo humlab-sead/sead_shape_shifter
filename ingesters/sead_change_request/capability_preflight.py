@@ -34,6 +34,8 @@ def preflight_capabilities(
     planned: list[PlannedTable],
     target_model: TargetModel,
     capabilities: CapabilitiesSource,
+    *,
+    approved_existing_target_ids: dict[str, dict[object, int]] | None = None,
 ) -> CapabilityPreflightResult:
     """Return a capability check result for the planned identity work.
 
@@ -53,7 +55,11 @@ def preflight_capabilities(
             continue
 
         checked_entities.append(entity_name)
-        required = _required_sims_operations(entity_spec, planned_table)
+        required = _required_sims_operations(
+            entity_spec,
+            planned_table,
+            (approved_existing_target_ids or {}).get(entity_name),
+        )
         if not required:
             continue
 
@@ -75,22 +81,40 @@ def preflight_capabilities(
     )
 
 
-def has_sims_identity_operations(planned: list[PlannedTable], target_model: TargetModel) -> bool:
+def has_sims_identity_operations(
+    planned: list[PlannedTable],
+    target_model: TargetModel,
+    *,
+    approved_existing_target_ids: dict[str, dict[object, int]] | None = None,
+) -> bool:
     """Return whether planned rows require a SIMS identity operation."""
     for planned_table in planned:
         entity_spec = target_model.entities.get(planned_table.entity_name)
-        if entity_spec is not None and _required_sims_operations(entity_spec, planned_table):
+        approved_targets = (approved_existing_target_ids or {}).get(planned_table.entity_name)
+        if entity_spec is not None and _required_sims_operations(entity_spec, planned_table, approved_targets):
             return True
     return False
 
 
-def _required_sims_operations(spec: EntitySpec, planned_table: PlannedTable) -> set[str]:
+def _required_sims_operations(
+    spec: EntitySpec,
+    planned_table: PlannedTable,
+    approved_existing_target_ids: dict[object, int] | None = None,
+) -> set[str]:
     """Return the SIMS operations required by the rows actually planned for an entity."""
     effective = resolve_effective_identity(spec)
+    required: set[str] = set()
 
     if effective.identity_tracking in {"tracked", "reconciled"} and bool(
         (planned_table.planned_actions == PlannedRowAction.ALLOCATE).any()
     ):
-        return {"allocate_new"}
+        required.add("allocate_new")
 
-    return set()
+    existing_actions = {PlannedRowAction.REFERENCE_EXISTING, PlannedRowAction.UPDATE_EXISTING_CANDIDATE}
+    if approved_existing_target_ids and any(
+        row_index in approved_existing_target_ids and action in existing_actions
+        for row_index, action in planned_table.planned_actions.items()
+    ):
+        required.add("bind_existing")
+
+    return required

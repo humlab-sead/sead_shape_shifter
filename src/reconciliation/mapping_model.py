@@ -168,7 +168,7 @@ class EntityType(str, Enum):
 class Link(BaseModel):
     """A single local-key-to-target-ID mapping entry."""
 
-    target_id: Optional[int] = None
+    target_id: Optional[int] = Field(default=None, gt=0)
     source: LinkSource
     confidence: Optional[float] = Field(default=None, ge=0.0, le=1.0)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

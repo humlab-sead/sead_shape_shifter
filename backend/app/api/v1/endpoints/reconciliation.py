@@ -225,8 +225,11 @@ async def auto_reconcile_entity(
                 operation_id=operation_id,
             )
         except Exception as e:  # pylint: disable=broad-except
-            logger.error(f"Reconciliation failed: {e}")
-            operation_manager.fail_operation(operation_id, str(e))
+            if operation_manager.is_cancelled(operation_id):
+                logger.info(f"Reconciliation cancelled: {e}")
+            else:
+                logger.error(f"Reconciliation failed: {e}")
+                operation_manager.fail_operation(operation_id, str(e))
 
     # Run in background
     asyncio.create_task(run_reconciliation())

@@ -1,11 +1,15 @@
 """Tests for SIMS capability preflight."""
 
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
+
 import pandas as pd
 import pytest
 
 from backend.app.models.sims import CapabilitiesResponse, EntityCapabilityResponse
 from ingesters.sead_change_request.capability_preflight import preflight_capabilities
 from ingesters.sead_change_request.contracts import PlannedRowAction, PlannedTable
+from ingesters.sead_change_request.preparation import _run_capability_preflight
 from src.target_model.models import TargetModel
 
 
@@ -93,7 +97,7 @@ class TestPreflightCapabilities:
         assert not result.has_blockers
         assert not result.diagnostics
 
-    def test_approved_reconcile_exact_row_requires_only_allocation(self):
+    def test_allocate_row_requires_allocate_new(self):
         result = preflight_capabilities(
             _planned("site"),
             _model(site={"role": "lookup", "public_id": "site_id"}),
@@ -102,6 +106,35 @@ class TestPreflightCapabilities:
 
         assert result.has_blockers
         assert "Operation 'allocate_new' is not supported for entity type 'site'" in result.diagnostics
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("bind_existing", [False, True])
+    async def test_verified_existing_link_checks_bind_existing_capability(self, bind_existing: bool):
+        planned = _planned("site", action=PlannedRowAction.REFERENCE_EXISTING)
+        capabilities = _capabilities(_capability("site", bind_existing=bind_existing, allocate_new=False))
+        sims_client = SimpleNamespace(get_capabilities=AsyncMock(return_value=capabilities))
+
+        result = await _run_capability_preflight(
+            planned,
+            _model(site={"role": "lookup", "public_id": "site_id"}),
+            sims_client,
+            approved_existing_target_ids={"site": {0: 101}},
+        )
+
+        assert result is not None
+        assert result.has_blockers is (not bind_existing)
+        assert ("Operation 'bind_existing' is not supported for entity type 'site'" in result.diagnostics) is (not bind_existing)
+        sims_client.get_capabilities.assert_awaited_once()
+
+    def test_existing_row_without_verified_link_does_not_require_binding(self):
+        result = preflight_capabilities(
+            _planned("site", action=PlannedRowAction.REFERENCE_EXISTING),
+            _model(site={"role": "lookup", "public_id": "site_id"}),
+            _capabilities(_capability("site", bind_existing=False, allocate_new=False)),
+        )
+
+        assert not result.has_blockers
+        assert not result.diagnostics
 
     def test_unlisted_entity_is_unsupported(self):
         result = preflight_capabilities(
