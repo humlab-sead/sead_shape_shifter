@@ -736,7 +736,7 @@ class ProjectService:
             ResourceConflictError: If project already exists
         """
         self.utils.validate_project_name(name)
-        self.provider_binding_service.require_registered_pair(
+        data_provider_code, provider_schema = self.provider_binding_service.require_registered_pair(
             {"data_provider_code": data_provider_code, "provider_schema": provider_schema}
         )
         return self.operations.create_project(

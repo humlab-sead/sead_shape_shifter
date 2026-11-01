@@ -272,7 +272,7 @@ class TestResolvePlannedTables:
         frame = pd.DataFrame({"site_id": [501], "site_name": ["Accepted Site"]})
         planned_table = _planned("site", frame, PlannedRowAction.REFERENCE_EXISTING)
         target_model = minimal_target_model(site={"role": "lookup", "public_id": "site_id"})
-        approved_targets = {"site": {0: 501}}
+        approved_targets: dict[str, dict[object, int]] = {"site": {0: 501}}
 
         unbound = resolve_planned_tables([planned_table], target_model, approved_existing_target_ids=approved_targets)
 

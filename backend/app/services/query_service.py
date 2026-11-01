@@ -45,7 +45,7 @@ class QueryService:
 
     FORBIDDEN_KEYWORDS: set[str] = set()
 
-    async def _read_sql_with_limits(self, loader: SqlLoader, query: str, timeout: int) -> pd.DataFrame:
+    async def _read_sql_with_limits(self, loader: SqlLoader, query: str, timeout: float) -> pd.DataFrame:
         """Run a query with the shared concurrency and timeout limits."""
         async with QUERY_EXECUTION_SEMAPHORE:
             return await asyncio.wait_for(loader.read_sql(query), timeout=timeout)
@@ -94,7 +94,7 @@ class QueryService:
         ds_cfg: api.DataSourceConfig,
         query: str,
         limit: int | None = 100,
-        timeout: int = 30,
+        timeout: float = 30,
         memory_limit_mb: int = MAX_QUERY_MEMORY_MB,
     ) -> QueryResult:
         """

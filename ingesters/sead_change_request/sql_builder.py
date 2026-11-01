@@ -395,7 +395,8 @@ def _direct_fk_metadata(change_package: ChangeRequestPackage, target_model: Targ
         if column_spec is not None and column_spec.generated:
             continue
         used = False
-        for row_index, row in package_table.frame.iterrows():
+        for iter_index, row in package_table.frame.iterrows():
+            row_index = cast(int, iter_index)
             if _is_update_row(package_table, row_index):
                 assigned_columns = update_assignment_columns(row, source_spec.public_id or "", package_table.mutable_fields)
                 if direct_fk.column_name not in assigned_columns:
