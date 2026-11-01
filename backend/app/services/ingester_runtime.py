@@ -7,7 +7,6 @@ from uuid import UUID, uuid4
 
 import httpx
 import psycopg
-from loguru import logger
 from psycopg import sql
 
 from backend.app.clients.sims_client import SimsClient

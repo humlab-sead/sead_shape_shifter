@@ -528,7 +528,8 @@ class ReconciliationService:
 
     def _raise_export_changed_conflict(self, project_name: str) -> None:
         raise ResourceConflictError(
-            "The reconciliation catalog, project configuration, or mapping sidecar changed during candidate verification. Reload and retry.",
+            "The reconciliation catalog, project configuration, or mapping sidecar "
+            "changed during candidate verification. Reload and retry.",
             resource_type="reconciliation-export",
             resource_id=project_name,
         )
@@ -611,7 +612,8 @@ class ReconciliationService:
                 outcomes[local_key_value] = ExportToMappingOutcome(
                     local_key_value=local_key_value,
                     outcome="unverified",
-                    reason="The Authority Service is unavailable; this link was exported without verification. Retry export when it is available.",
+                    reason="The Authority Service is unavailable; this link was exported without verification. "
+                    "Retry export when it is available.",
                 )
         elif verification_results is not None:
             for (local_key_value, _), result in zip(preflight.verification_items.items(), verification_results, strict=True):
