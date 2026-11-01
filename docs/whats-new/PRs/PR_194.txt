@@ -1,0 +1,63 @@
+title: Add entity materialization and improve caching mechanisms
+description:
+## Summary
+
+ - Entity materialization: New feature to freeze dynamic (SQL/entity) entities into static fixed
+entities. Adds can-materialize, materialize and unmaterialize API endpoints, a
+MaterializationService, MaterializationConfig on entity configs, and
+CanMaterializeSpecification/MaterializationSpecification validators. Data is stored per entity as
+parquet, csv, or inline values (small tables). Unmaterializing restores the original source
+definition and supports cascading to dependent materialized entities (HTTP 409 when a cascade
+confirmation is required). UI gains Materialize/Unmaterialize dialogs and a "Materialized" chip on
+entities.
+ - Caching / entity state sync fix (#188, #189): Removed the server-side project cache — 
+ProjectService.load_project now always reads the project from disk, and an ApplicationStateManager
+tracks state versions. The frontend entity editor now fetches the entity fresh from the API when the
+dialog opens, so changes are no longer lost or hidden when an entity is re-opened.
+ - Identity system overhaul: Renamed surrogate_id to public_id throughout the codebase, API, docs,
+tests and project YAMLs. TableConfig no longer falls back to surrogate_id. Established a three-tier
+identity model (system_id, keys, public_id); identity columns are now explicit in fixed entities'
+columns, and the normalizer adds system_id/public_id columns and moves keys to the front during
+normalize(). Foreign-key columns are named after the parent's public_id and carry the parent's
+system_id values.
+ - Append improvements (#192): SQL-like UNION semantics with new align_by_position (rename 
+append-source columns positionally) and column_mapping (explicit renames) options,
+apply_column_renaming with validation (column-count mismatch and unknown mapping keys raise errors),
+and public_id handling after concatenation.
+ - Logging consolidation: Central loguru setup (backend/app/core/logging_config.py, setup_logging()
+in src/utility.py) with rotation/retention/compression to app.log and error.log, plus a global
+backend exception handler. New optional settings: LOGS_DIR, LOG_* (level, rotation, retention,
+compression) and ENABLE_FK_SUGGESTIONS (foreign-key suggestions now off by default, with a frontend
+settings toggle).
+ - Miscellaneous: Removed the QueryPlan/explain feature from backend and QueryEditor;
+YamlService.load converts ruamel types to plain Python objects and writes short lists in flow style;
+ForeignKeyLinker refactored to take the project and link by entity name; specification error
+reporting unified via get_report()/has_errors(); Docker Makefile/compose fixes; deleted a stale
+project xlsx; version bumped to 1.15.0.
+
+## User-facing release note
+
+You can now "materialize" an entity: its computed data is frozen into a static table (with an option
+to unmaterialize and restore the live definition, including dependent entities). The entity editor
+always shows the latest saved state when re-opened, fixing the issue where recent changes were not
+visible. Append sources can now align columns by position or via an explicit column mapping, and
+foreign-key suggestions are disabled by default (enable them in settings).
+
+## Upgrade notes
+
+ - Breaking: Project YAMLs must rename surrogate_id to public_id; the old key is no longer read (no
+fallback). Fixed entities' columns lists should explicitly include the system_id and public_id
+identity columns, and values rows must match that column layout.
+ - New optional environment settings: SHAPE_SHIFTER_LOGS_DIR and SHAPE_SHIFTER_LOG_* (level,
+rotation, retention, compression) for logging, and ENABLE_FK_SUGGESTIONS (default off) to re-enable
+foreign-key suggestions.
+ - Materialization is opt-in per entity; no data migration is required. Existing non-materialized
+entities behave as before apart from the identity-column changes above.
+
+## Validation
+
+Not verified: validation results unavailable. The pull request metadata contains no CI check results
+(statusCheckRollup is empty). The diff includes new and updated unit/integration tests
+(materialization model and specification tests, append align_by_position/column_mapping tests,
+loader/model/transform test updates), but no execution results were supplied, so their pass/fail
+status is not asserted here.

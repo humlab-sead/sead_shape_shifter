@@ -1,0 +1,49 @@
+title: Add standalone Docker build target with minimal build context
+description:
+## Summary
+
+This PR reworks the Docker build setup so the image can be built from GitHub without a full checkout
+of the repository:
+
+ - docker/Makefile: Adds a new docker-build-standalone target that builds from GitHub using a
+minimal build context from any directory. It stages a temporary context containing only the lib/
+directory (UCanAccess library, not tracked in git), writes a .dockerignore that excludes everything
+else, and busts the cache from the remote main commit SHA. A new GIT_REF build variable (defaulting
+to main) selects the branch/tag to clone. The existing docker-build-github and docker-build-tag
+targets now build from the current directory (.) instead of $(DOCKER_DIR)/.., with notes that they
+must be run from the project root.
+ - docker/Dockerfile: The lib/ directory is now copied directly from the build context instead of
+from the source-resolver stage, since it is not part of the git clone. User/group creation falls
+back to renaming an existing group/user (groupmod/usermod) when the requested GID/UID already exists
+in the base image. Ownership setup adds chmod -R u+w /app so the shapeshifter user can write to the
+application tree. Comments around the context copy were clarified.
+ - backend/__init__.py: Removes the import-time creation of the backend directory structure (models,
+services, api, tests directories and their __init__.py files).
+ - .vscode/settings.json: Editor color-customization tweaks (activity bar, status bar, and title bar
+colors changed from red to green tones).
+ - TODO.md: Adds an unfinished note proposing a "custom" layout for the dependency graph that would
+save node positions; this is a proposed idea, not implemented work.
+
+## User-facing release note
+
+The Docker image can now be built from GitHub in a standalone way (make docker-build-standalone)
+from any directory, as long as the lib/ (UCanAccess) directory is present, without needing a full
+repository checkout as build context.
+
+## Upgrade notes
+
+ - The lib/ directory (UCanAccess library) is no longer taken from the git clone and must be present
+in the Docker build context. For standalone builds, lib/ must exist in the current directory; the
+Makefile target fails with an error if it is missing.
+ - docker-build-github and docker-build-tag must now be run from the project root directory, as they
+build the context from ..
+ - backend/__init__.py no longer creates the models, services, api, and tests directories (and their
+__init__.py files) automatically on import; environments that relied on this side effect must
+provide those directories themselves.
+
+## Validation
+
+No validation results are available: the CI check rollup for this pull request is empty, and no test
+or build command outcomes were reported. The pull request was merged into main on 2026-01-14 (merge
+commit ab3fdcf), but no evidence confirms which checks, if any, were run or passed. Not verified:
+validation results unavailable.

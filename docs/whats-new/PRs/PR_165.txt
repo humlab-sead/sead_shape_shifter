@@ -1,0 +1,64 @@
+title: Add entity task list and streamline graph view toolbar
+description:
+## Summary
+
+Introduces a lightweight, non-enforcing task list for tracking entity progress in Shape Shifter
+projects, and reduces Graph view toolbar clutter.
+
+Backend:
+
+ - New TaskList core class in src/model.py storing required_entities, completed, and ignored lists
+in a new optional task_list section of the project YAML, with mark_completed / mark_ignored /
+reset_status operations.
+ - New TaskService and /projects/{name}/tasks endpoints: compute per-entity status
+(done/todo/ignored) with derived priority (critical/ready/waiting/optional), blocked_by analysis
+from depend_on and foreign-key parents, validation and preview availability, and completion
+statistics. Entities can be marked complete (only if validation passes and preview generates),
+ignored, or reset; the task list can be auto-initialized via POST /projects/{name}/tasks/initialize
+using all, required-only, or dependency-order strategies.
+ - ProjectMapper and ProjectService now carry the task_list section through API↔Core conversion and
+project creation; handle_endpoint_errors now lets HTTPException pass through unchanged.
+
+Frontend:
+
+ - New task UI in the Graph view: TaskFilterDropdown/TaskFilterPanel (filter nodes by
+todo/done/ignored/blocked/critical with counts), TaskCompletionStats and a graph overlay showing
+completion percentage, a Pinia taskStatus store and useTaskStatus composable, and node context-menu
+actions (mark done, ignore, reset). Task state is rendered as Cytoscape node classes.
+ - Graph toolbar consolidated into GraphLayoutDropdown (hierarchical/force/custom, save/clear custom
+layout) and GraphDisplayOptionsDropdown (node/edge labels, source nodes), replacing the individual
+toggle buttons (TODO #163). useCytoscape now refreshes classes on existing elements during 
+incremental updates.
+
+Also includes supporting changes: a deploy-to-sead-tools copy script, Docker UID/GID default and
+.pgpass mount adjustments, a no-cache build target, expanded Layer Boundary Architecture
+documentation in DEVELOPER_GUIDE.md, AGENTS.md, and copilot-instructions.md, a
+TASK_LIST_INTEGRATION_GUIDE.md, and TODO.md cleanup. The change corresponds to TODO items #161 (task
+list) and #163 (graph toolbar clutter) tracked in TODO.md.
+
+## User-facing release note
+
+You can now track entity progress in the graph view: mark entities as done, ignored, or reset them,
+filter the graph by task status, and see a completion percentage for the project. The graph toolbar
+is also tidier, with layout and display options grouped into two dropdowns.
+
+## Upgrade notes
+
+ - Docker deployment defaults changed: USER_UID/USER_GID now default to 1002:33 (instead of
+1000:1000) in docker-compose.yml and the Dockerfile, and the .pgpass mount path changed to
+./data/.pgpass/.pgpass. Deployers must override these values or adjust host permissions/mounts
+accordingly.
+ - Project YAML gains an optional task_list section (required_entities, completed, ignored).
+Existing projects without it remain valid; use POST /projects/{name}/tasks/initialize to generate
+one.
+
+## Validation
+
+ - New backend tests were added in this PR: backend/tests/api/v1/test_tasks.py (task endpoints),
+backend/tests/services/test_task_service.py (status computation, priorities, mark/ignore/reset), and
+backend/tests/services/test_task_service_initialize.py (initialization strategies). Whether these
+suites were executed, and their results, is unknown: no CI check results were available for this
+pull request.
+ - No frontend tests were included in the diff, and no frontend validation evidence is available.
+ - The pull request was merged into main (merge commit ac01bae, 2026-01-16); no check rollup results
+were reported.

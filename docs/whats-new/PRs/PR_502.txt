@@ -1,0 +1,52 @@
+title: Record Phase 5 Podman verification and archive the cutover proposal
+description:
+## Summary
+
+Completes Phase 5 of the centralized-authorization cutover — verify the Podman deployment and record
+the security result — and archives the proposal folder under docs/proposals/done/. This is the
+Phase 5 work that PR #501 (dev → main, released as v2.2.0) did not include because it had not 
+reached dev yet.
+
+ - Deployment record — new PODMAN_DEPLOYMENT_RECORD.md records the frozen release unit (source
+commit dbff5ab9…4f96, image ID 6a487db7…04a8, the locally computed manifest digest, and the OCI
+labels), the exposure, container-configuration, grant, proxy-identity, access, route-classification,
+log-review, and rollback results, the limitations, and three approved exceptions with owners: the
+off-host network probe (accepted by Roger Mähler), the unread PostgreSQL server log (owner
+super.sead.se), and the carried credential-rotation exception. Checks that could not run (V-5.6,
+nginx -t/-T) are recorded as not run, never as passes.
+ - Security record — SECURITY_CHECK.md gains a Podman Deployment Verification Record (2026-09-23)
+with the tested commit, image identity, per-check results, limitations, and approved exceptions.
+ - Phase plans — the cutover plan now reads Phases 1, 2, 2A, 3, 4, and 5 complete with a Phase 5
+completion statement; the Phase 5 task plan is added and closed with its deliverables and definition
+of done.
+ - Two prior records corrected — the deployment-verification handoff no longer claims an open
+host-log review (closed in Phase 5), and the test-environment handoff no longer asks to confirm
+bulgaria-arbodat-lookup-options (the definition was removed on 2026-09-22).
+ - New proposal — docs/proposals/RELEASE_CYCLE_EVIDENCE_AND_LOCKING/README.md proposes a release
+unit, a locked run record with checksums, and delta reporting between runs; it is a proposed process
+change only, with no tooling implemented here.
+ - Archive — the proposal folder moves from docs/proposals/CENTRALIZED_AUTHORIZATION_CUTOVER/ to
+docs/proposals/done/CENTRALIZED_AUTHORIZATION_CUTOVER/; relative links are rewritten for the new
+depth and inbound references from docs/AUTHORIZATION.md and the future/ proposals are updated.
+
+No production flip; it stays out of scope for this cutover.
+
+## User-facing release note
+
+None - no user-visible change.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+ - This PR changes documentation only; no code or test files are modified.
+ - Confirmed as reported by the author and recorded in the Phase 5 task plan (V-5.13):
+scripts/check_doc_links.sh — passed (Documentation links are valid); git diff --check — clean.
+ - Host-side verification results cited in the new records (e.g. .venv/bin/pytest
+backend/tests/authorization -q returning 192 passed, 1 skipped on 2026-09-23, the access check,
+firewall, container-configuration, and grant checks) are deployment-verification outcomes recorded
+during Phase 5 execution, not checks re-run for this pull request.
+ - No CI status checks are reported for this pull request (status check rollup is empty); execution
+of repository test suites for this documentation-only diff is unknown.

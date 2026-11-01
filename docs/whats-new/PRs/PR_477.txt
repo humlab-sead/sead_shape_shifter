@@ -1,0 +1,63 @@
+title: Persist SEAD change request submission metadata
+description:
+## Summary
+
+The sead_change_request ingester's submission metadata is now persisted instead of being re-entered
+on every run, and each run is recorded in the SEAD submission model.
+
+ - Project metadata and defaults: ProjectMetadata gains an optional data_provider_code, preserved
+through ProjectMapper in both directions. Stable ingester defaults (datatype, deploy_strategy,
+author) under options.ingesters.sead_change_request.defaults round-trip through the mapper, and
+IngesterForm.vue applies them once when a project and ingester are opened while keeping per-run
+overrides.
+ - Submission rows: A new submission_tables.py derives one tbl_submissions row per run (Pending
+state, generated submission_uuid, upload_date from the run timestamp, submission_identifier,
+issue_identifier, author, provider reference) plus lookup-only data_provider and submission_state
+rows, and links only newly created datasets via submission_id. The ingester resolves the provider by
+data_provider_code through the reconciliation client; missing or unknown codes fail validation and
+providers are never allocated. Source-owned submission, submission_state, or data_provider tables
+are rejected.
+ - Renamed field: issue_number is renamed to issue_identifier across the ingester contract, input
+resolution, SQL headers/manifest, backend tests, and the frontend form.
+ - Target models: The bundled minimal, standard, and superset SEAD models (and their maintained test
+copies) add optional data_provider, submission_state, submission, submission_task_type, and
+submission_task entities, a dataset.submission_id foreign key, and a nullable
+dataset_contact.event_date included in dated contact identity. target_projection.py now skips parent
+FK resolution when a nullable FK column is entirely null.
+ - Documentation: Adds the REFACTOR_SEAD_SUBMISSION_METADATA proposal and task plan, an archived
+early working note, and AI-development presentation docs; minor VSCode theme settings are also
+updated.
+
+## User-facing release note
+
+SEAD change request runs now remember stable values such as datatype, deploy strategy, and author
+per project, so the ingester form opens prefilled and reruns stay consistent. Each run also records
+a submission in SEAD that references the project's data provider and groups the newly delivered
+datasets.
+
+## Upgrade notes
+
+ - The submission context field issue_number is renamed to issue_identifier; API consumers and any
+tooling that builds submission context payloads must use the new name.
+ - Projects whose target model contains a submission entity must set metadata.data_provider_code;
+missing or unknown codes are validation errors, and the ingester never allocates a provider.
+ - Generated artifacts that emit submission rows require the upstream SEAD DDL (tbl_submissions,
+tbl_data_providers, tbl_submission_states, and related tables, plus tbl_datasets.submission_id) to
+be deployed before the change package can run. This upstream dependency is documented in the
+proposal; the migration itself is out of scope for this repository.
+
+## Validation
+
+ - New and updated tests are included in the diff: ingester validation/ingest tests (provider
+resolution failures, submission and dataset emission for inline INSERT and copy-CSV), a new derived
+submission-tables test module, a target-projection null-FK test, a config-mapper round-trip test,
+extended target-model spec tests, and an extended IngesterForm Vitest case.
+ - The task plan shipped with this PR records the focused pytest suites
+(backend/tests/mappers/test_config_mapper.py, tests/target_model/test_spec_files.py,
+backend/tests/ingesters/test_sead_change_request_*.py) and the focused Vitest file as passing; these
+are recorded in the plan document rather than independently reproduced here.
+ - Known not run: execution of generated artifacts against a disposable PostgreSQL database with the
+upstream DDL — the task plan marks this area Blocked because no migrated-database harness exists in
+the repository.
+ - CI check results for this pull request are unavailable (the status check rollup is empty), so no
+CI outcome is reported.

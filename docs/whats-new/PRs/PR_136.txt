@@ -1,0 +1,45 @@
+title: Add ingester configuration support and enhance project detail loading
+description:
+## Summary
+
+Introduces an ingesters section under options in the Shape Shifter project file (fixes #134). Each 
+ingester entry can define a data_source reference, ingester-specific options (e.g. transfer_format,
+ignore_columns, do_register, explode), and policies.
+
+ - Backend: Project model (backend/app/models/project.py) and ShapeShiftProject (src/model.py)
+expose the ingester configurations via an ingesters property, with get_ingester_config() on the core
+model.
+ - Frontend: IngesterForm.vue no longer asks for an output folder or manual database
+host/port/name/user. It instead reads the selected project's ingester config, displays the target
+database resolved from the referenced data source (with a warning if the data source is missing),
+and pre-populates ignore-columns, register, and explode defaults from the project file. Data sources
+are fetched on mount.
+ - Project loading: ProjectDetailView.vue now always loads the project on mount and on project-name
+changes (removing the "already selected" short-circuit), and ProjectsView.vue navigates directly to
+the detail view, letting it handle loading.
+ - Docs and examples: new docs/INGESTER_CONFIGURATION.md and input/example-ingester-config.yml;
+input/arbodat-test.yml gains a sead ingester section. The ingestion view description was reworded to
+"Import Shape Shifter output to a database using registered ingesters."
+ - Housekeeping: removed the logging block from backend/app/scripts/config.yml, minor
+.vscode/settings.json theme tweaks, regenerated output/table_shapes.tsv (row/column counts unchanged
+per table; ordering changed and taxa shows 12 vs 13 columns), and TODO notes for this feature.
+
+## User-facing release note
+
+The data ingestion form now takes its target database and default settings (ignored columns,
+register and explode options) from the project file's new ingesters section instead of requiring
+manual database details, so ingestion runs with consistent, version-controlled defaults that can
+still be overridden before submitting.
+
+## Upgrade notes
+
+To use the new ingestion defaults, add an ingesters section under options in your project file and
+point each ingester's data_source at an entry in options.data_sources (see
+input/example-ingester-config.yml and docs/INGESTER_CONFIGURATION.md). Without it, the ingestion
+form shows a warning that no target database is configured for the ingester, since the previous
+manual database host/port/name/user fields and the output folder field were removed from the form.
+
+## Validation
+
+Not verified: validation results unavailable. No CI check results were reported for this pull
+request, and the diff contains no automated tests.

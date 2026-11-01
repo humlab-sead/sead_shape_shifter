@@ -1,0 +1,64 @@
+title: docs: consolidate documentation and retire docker path
+description:
+## Summary
+
+This PR consolidates the project's documentation around the supported rootless Podman deployment
+(container/) and removes the retired Docker deployment path.
+
+ - README.md is reduced from a 502-line front door with a Docker quick start, full developer
+install, CLI reference, and architecture deep-dive to a 60-line overview with a Podman quick start
+(make setup && make build && make up && make healthcheck from container/) and links to the owning
+documents.
+ - docs/OPERATIONS.md is rewritten as a Podman-only operations overview (operational invariants,
+runtime configuration table verified against backend/app/core/config.py, data layout, backups,
+release/verification/rollback), with detailed procedures pointing to container/README.md and
+container/DEPLOYMENT.md.
+ - docs/DIAGRAMS.md is trimmed from 1397 to 155 lines: narrative sections removed, numbering made
+continuous, and the deployment diagram updated to the Podman/NGINX/systemd topology.
+ - docs/README.md is rebuilt as a documentation map with one row per active document; broken
+proposal links are repointed and REQUIREMENTS.md is retained as the requirements baseline.
+ - docs/USER_GUIDE.md drops YAML semantics and the CLI reference owned by
+docs/CONFIGURATION_GUIDE.md and links to it instead; a broken docs/docs/ link is fixed.
+ - The docker/ directory (Dockerfile, docker-compose.yml, build.sh, Makefile, deploy scripts, and
+docs) is deleted, along with the root Makefile Docker section (include docker/Makefile,
+docker-patch-frontend). The root Makefile now adds a check-doc-links target wired into lint, backed
+by the new scripts/check_doc_links.sh, which scans active root, docs/, and container/ Markdown for
+broken relative links.
+ - Agent instruction files (.github/instructions/operations.instructions.md, readme.instructions.md)
+now name container/ paths as trusted sources; historical docker/ references in the security
+proposal are annotated as historical; the documentation-consolidation task plan is moved to
+docs/proposals/done/ with its checks marked complete.
+
+Closes #486. No changes touch src/, backend/app/, frontend/src/, ingesters/, or tests.
+
+## User-facing release note
+
+Project documentation now has a single clear front door: the README, user guide, operations guide,
+and diagrams all describe the supported Podman deployment, with a quick start (make setup, make
+build, make up, make healthcheck) and links to the guide that owns each topic. Docker-based
+deployment instructions have been removed.
+
+## Upgrade notes
+
+Operators using the retired docker/ path must move to the supported Podman deployment in container/:
+the docker/ directory and the root Makefile Docker targets (docker-build, docker-up,
+docker-restart, docker-patch-frontend, and friends) are deleted. Follow container/README.md for
+setup, configuration, and lifecycle commands, and container/DEPLOYMENT.md for hosts, NGINX, systemd,
+and multiple environments. The documented first-start sequence is make setup && make build && make
+up && make healthcheck, with persistent data under ../container-data (DATA_DIR). No application
+configuration or data migrations are introduced by this PR.
+
+## Validation
+
+ - No CI status checks are reported for this pull request (the status check rollup is empty), so no
+independently confirmed CI results are available.
+ - The consolidated task plan
+(docs/proposals/done/DOCUMENTATION_CONSOLIDATION/DOCUMENTATION_CONSOLIDATION_TASK_PLAN.md, included
+in this diff) records the author's validation results: make check-doc-links passes for active root,
+docs, and container Markdown; make -n frontend-coverage exits 0 after the docker/Makefile include is
+removed; size targets met (README 60 lines, docs/README.md 83 lines, docs/OPERATIONS.md 1118
+words); git grep finds no active docker/ deployment references; and the diff contains no changes
+under src/, backend/app/, frontend/src/, ingesters/, or tests/. These are author-recorded results,
+not CI-verified.
+ - The task plan states no unit, integration, or contract test run was required because the phase
+changes no code. Whether the broader test suite (make test) was run for this branch is unknown.

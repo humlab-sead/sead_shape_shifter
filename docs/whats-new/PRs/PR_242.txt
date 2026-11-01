@@ -1,0 +1,46 @@
+title: Fix lost-update and ghost-entity bugs in project state management
+description:
+## Summary
+
+Fixes two state-management bugs in the backend (entity loss during concurrent/sequential entity
+creation, and ghost entities after delete + recreate of a project with the same name) and adds unit
+tests covering the fixes.
+
+ - ProjectService.load_project() now returns a deep copy (model_copy(deep=True)) of cached projects,
+preventing mutation-through-reference lost updates.
+ - Mutating operations (add_entity_by_name, update_entity_by_name, delete_entity_by_name,
+delete_project) are serialized per project via class-level threading.Lock instances.
+ - New _invalidate_all_caches() clears all three server-side cache layers on project delete and
+defensively on create; new invalidate_project() methods were added to ShapeShiftCache and
+ShapeShiftProjectCache in backend/app/utils/caches.py.
+ - save_project() now performs a read-back verification (_verify_save) that logs an error if the
+entity count on disk does not match what was written; ProjectMapper.to_core_dict() gained a similar
+entity-count mismatch check.
+ - New CorrelationMiddleware (backend/app/middleware/correlation.py) assigns an 8-char correlation
+ID per HTTP request (from X-Correlation-ID or generated), stores it in a ContextVar, echoes it in
+the response header, and is used to tag structured log messages throughout the service, state
+manager, and caches. The blanket logger.disable in caches.py was removed.
+ - Frontend Pinia stores reset the entity store on project switch, create, and delete to prevent
+stale frontend state, and gained logState() diagnostic helpers.
+ - Adds docs/STATE_MANAGEMENT_ANALYSIS.md documenting the bug analysis and fixes, plus three new
+backend test files (test_state_management.py, test_correlation_middleware.py,
+test_cache_invalidation.py). Remaining changes are logging, lint, and whitespace cleanups.
+
+## User-facing release note
+
+Entity changes made in quick succession are no longer silently lost, and recreating a project with
+the name of a recently deleted project no longer shows leftover "ghost" entities from the deleted
+project.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+Not verified: validation results unavailable. No CI check results were reported for this pull
+request (status check rollup is empty). Three new backend test files exercising the locking,
+copy-on-read, save-verification, cache-invalidation, and correlation-ID behavior are included in the
+diff, but their execution and outcomes are not confirmed by the available evidence. The added
+analysis document claims all core, backend, and frontend suites pass, but this is the PR author's
+claim and was not independently verified here.

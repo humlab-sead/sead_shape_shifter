@@ -1,0 +1,43 @@
+title: Enhance entity preview to accept unsaved entity configurations
+description:
+## Summary
+
+The entity preview feature now accepts an unsaved entity configuration so users can preview changes
+in the entity editor before saving them, improving the iterative "REPL" workflow (tracked as TODO
+#214 in TODO.md).
+
+ - The POST /api/v1/projects/{project}/entities/{entity}/preview endpoint accepts an optional
+entity_config body parameter.
+ - ShapeShiftService.preview_entity gains an override_config argument: when provided, the service
+clones the project, replaces the entity's configuration with the override, and rebuilds tables from
+it. Cache lookups, cache writes, and the warm table-store fast path are all bypassed while an
+override is in use, so previews of unsaved state never pollute the cache.
+ - The frontend (useEntityPreview composable and EntityFormDialog.vue) sends the current form data
+with manual and debounced auto-refresh preview calls, so the live preview reflects in-progress
+edits.
+ - Two new unit tests cover previewing with an override config and confirm the override bypasses the
+cache on repeated calls.
+
+Note: the diff also removes the local setup lines (entity_cfg, table_store, builder) from the
+existing test_build_preview_result test while leaving its builder.build(...) call in place, which
+appears to be an unintended deletion. The diff additionally comments out a hint template in
+EntityFormDialog.vue and adds several unrelated TODO/FIXME items to TODO.md.
+
+## User-facing release note
+
+You can now preview an entity while editing it — the live preview in the entity editor reflects your
+unsaved changes immediately, without needing to save the entity first.
+
+## Upgrade notes
+
+None - no user action required. The entity_config body parameter on the preview endpoint is
+optional, so existing API callers are unaffected.
+
+## Validation
+
+ - New unit tests were added in backend/tests/services/test_shapeshift_service.py
+(test_preview_entity_with_override_config, test_preview_entity_override_bypasses_cache), but no
+evidence is available that they were executed.
+ - No CI check results are available for this pull request (status check rollup is empty), so
+execution and outcomes of the test suite are unknown.
+ - Not verified: validation results unavailable.

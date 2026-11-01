@@ -1,0 +1,57 @@
+title: Add data validation run status and fix unnest and data-source bugs
+description:
+## Summary
+
+This PR fixes several bugs from an October 24th fixing session (closes #557 and #602) and makes 
+data-validation execution transparency a first-class result.
+
+ - Validation execution status: ValidationResult now carries a status
+(completed/partial/failed/skipped), a status_reason, and per-entity entity_statuses. The
+DataValidationOrchestrator runs entity checks in dependency order, records each entity as completed,
+failed, or skipped (with a reason), and skips dependents of failed entities while letting
+independent entities continue. A failed or skipped run reports is_valid: false.
+ - No partial-table validation: FullDataFetchStrategy gained a prepare() step that normalizes the
+whole project up front; if normalization fails or leaves incomplete entities, dataframe validators
+no longer inspect partial tables. Fetches for missing entities now raise KeyError instead of
+silently returning empty frames, and structural validation errors short-circuit data validation
+before core mapping.
+ - Unnest overlap recovery: Columns listed in both id_vars and value_vars are now a structural
+warning instead of an error; at runtime the overlapping columns stay identifiers and are excluded
+from the melt. If all value_vars overlap, a new UnnestSkippedError marks the entity incomplete,
+removes its pre-unnest frame from the table store, and skips its dependents without blocking
+independent entities.
+ - drop_empty_rows staging: A list or mapping subset now runs after unnest and before the second FK
+link when all selected columns are present, so empty rows are removed before strict FK-null
+validation; true or unavailable subsets still run in final cleanup.
+ - Data-source resolution fixes: Inline data sources keep their explicit name (previously duplicated
+into the config), the entity generator resolves schemas from the global data-source directory, and
+@include: references resolve through ProjectMapper.to_core() so shared and project-local includes
+work when generating entities from a table.
+ - The frontend ValidationPanel shows a "Data Validation Execution" card with mode, run status,
+reasons, and per-entity statuses. Proposal documentation for @value column pickers was reorganized
+into a folder and its scope refined.
+
+## User-facing release note
+
+The validation panel now shows how a data-validation run actually executed: the selected mode, an
+overall run status, and per-entity results with reasons when a check failed or was skipped, so
+silent gaps in validation are visible. Unnest configurations that list a column in both id_vars and
+value_vars now work (the column is kept as an identifier with a warning) instead of being rejected,
+and entities can be generated from tables backed by shared @include data sources.
+
+## Upgrade notes
+
+No configuration migration is required. Note one behavior change: an unnest configuration with
+overlapping id_vars/value_vars columns previously failed structural validation and now passes with a
+warning; at runtime the overlapping columns are kept as identifiers and excluded from the melted
+values, and if every value_vars column overlaps, the entity is marked incomplete rather than the
+project failing at unnest.
+
+## Validation
+
+ - Confirmed: the PR was merged into dev (merge commit f516e0b).
+ - Confirmed: the only CI check runs on the PR (Container Release workflow jobs validate and
+publish) completed with conclusion SKIPPED; they did not execute tests.
+ - The diff adds or updates tests across the backend (backend/tests/...), frontend
+(ValidationPanel.test.ts), and core Python suites (tests/...), but the supplied evidence does not
+show these suites being run; their results are unknown.

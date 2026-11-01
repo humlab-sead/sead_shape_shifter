@@ -1,0 +1,66 @@
+title: Implement SIMS identity allocation phases 1-3 in the ingester
+description:
+## Summary
+
+Implements SIMS identity allocation phases 1–3 in the SEAD change request ingester:
+
+ - Shared identity contract: New src/target_model/effective_identity.py resolves each entity's
+effective identity_tracking, reconciliation, and aggregate_parent from documented role defaults. The
+spec validator and SIMS documentation generator now delegate to this single resolver instead of
+maintaining duplicate private copies.
+ - Model-driven planning: plan_table and collision checks route rows by effective identity mode
+instead of raw role: tracked → allocate, reconciled → reconcile, derived → bridge evaluation, and a
+new INHERIT_AGGREGATE action for child rows with an aggregate_parent. Lookup-only misses block
+instead of allocating; only reconcile-exact/reconcile-fuzzy may allocate after an approved miss.
+ - Fail-closed capability preflight: New ingesters/sead_change_request/capability_preflight.py
+compares planned operations against the SIMS GET /identity/capabilities response (new
+get_capabilities() client call and capability DTOs), records the target-model name and version, and
+blocks unsupported or unlisted entities before orchestration and artifact generation. Preflight
+diagnostics surface in validation errors and failed ingestion results.
+ - Ordered batch resolution: The ingester collects all SIMS identity work into one resolve_batch
+call keyed by a persisted run_id idempotency key (added to SubmissionContext, resolved/minted in
+input resolution, required on ResolveRequest). Outcomes map back to rows by request order; batch
+errors block all submitted rows.
+ - Manual confirmation: The ingester no longer auto-confirms proposed Binding Sets; a proposed set
+blocks finalization until confirmed externally.
+ - Supporting changes: Target-model table export to Excel (scripts/export_target_tables.py with a
+make export-target-tables target), a make development-authorization bootstrap target and local
+development auth settings, a user-facing presentation (docs/presentations/PRESENTATION_USERS.md)
+with reworked onboarding deck, SIMS cutover/deployment and trust-contract planning documents, and a
+fix to the dating material entity's identity column and unique set (dating_material_name →
+material_dated) in sead_superset_model.yml.
+
+## User-facing release note
+
+Change request submissions now resolve all SIMS identities in a single ordered batch and check SIMS
+capabilities up front, so unsupported operations stop the submission before any output is written
+instead of failing mid-run. Proposed Binding Sets now require manual confirmation before a
+submission can finalize.
+
+## Upgrade notes
+
+ - Binding Set confirmation is now manual: the ingester no longer confirms proposed Binding Sets, so
+workflows that relied on auto-confirmation must confirm sets externally before the submission
+proceeds.
+ - Callers may pass run_id in the submission context to reuse the SIMS idempotency key across
+retries; when absent, a fresh UUID is minted per execution.
+ - The dating material entity in resources/target_models/sead_superset_model.yml now uses
+material_dated (instead of dating_material_name) as its identity column and unique set; consumers of
+that entity's model metadata should update accordingly.
+
+## Validation
+
+ - The diff adds or updates unit tests covering preflight (test_sead_change_request_preflight.py),
+orchestration batching, no-auto-confirm, and lookup-only/reconcile-exact routing
+(test_sead_change_request_orchestration.py), planning routes (test_sead_change_request_planning.py),
+contracts and run ID (test_sead_change_request_contracts.py), input resolution
+(test_sead_change_request_input_resolution.py), runtime batch resolve
+(test_sead_change_request_runtime.py), deploy-strategy identity parity
+(test_sead_change_request_sql_builder.py), identity work inheritance
+(test_sead_change_request_identity_work.py), ingester flows (test_sead_change_request_ingester.py),
+and the shared resolver (tests/target_model/test_effective_identity.py).
+ - No CI status check results were available for this pull request (the status check rollup is
+empty), so execution and outcomes of these tests are unverified here.
+ - A recorded baseline in the phase 2 task plan notes a pre-implementation pytest run over the
+existing ingester and validator suites passing (55 tests); this predates the change and does not
+verify the new code.

@@ -1,0 +1,42 @@
+title: Add entity generation from database tables with UI dialog
+description:
+## Summary
+
+Implements #217: users can now create an entity of type sql by specifying a data source, a table, 
+and an entity name.
+
+ - Backend: Adds EntityGeneratorService (backend/app/services/entity_generator_service.py) and a new
+endpoint POST /projects/{project_name}/entities/generate-from-table. The service validates that the
+project exists and the entity name does not conflict, introspects the table via
+SchemaIntrospectionService, and generates an entity configuration with type: sql, the selected
+data_source, a SELECT
+  * FROM [schema.]table query, keys populated from detected primary keys (empty list if none, all
+columns for composite PKs), and public_id set to {table_name}_id. The generated entity is added to
+the project and returned with status 201.
+ - Frontend: Adds CreateEntityFromTableDialog.vue, opened from a new "Create Entity from Table"
+button on each connected data source in ProjectDataSources.vue. The dialog lists tables (with row
+counts and schema names), auto-fills the entity name from the selected table, fetches the table
+schema to show a live YAML preview of the generated configuration, and calls the new
+entitiesApi.generateFromTable client method. Errors (e.g. load/create failures) are surfaced in the
+dialog.
+ - TODO.md: Removes the completed auto-detect-columns rethink item and several tracked TODO items
+(#215, #214), and records the design notes for this feature under #217.
+
+## User-facing release note
+
+You can now create a SQL entity straight from a database table: on a project's Data Sources tab,
+click the new "Create Entity from Table" button next to a connected data source, pick a table, and
+optionally give the entity a name. The entity is generated with a SELECT * query, the table's
+primary keys, and a public id, with a configuration preview shown before you create it.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+Not verified: validation results unavailable. No CI check results are attached to the pull request
+(statusCheckRollup is empty), and no test run outcomes are available. A new pytest suite,
+backend/tests/services/test_entity_generator_service.py, was added with the change covering basic
+generation, custom entity names, schema-prefixed queries, tables without primary keys, composite
+primary keys, missing projects, and duplicate entity names; whether it was executed is unknown.

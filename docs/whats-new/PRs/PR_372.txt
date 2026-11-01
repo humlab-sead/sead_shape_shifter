@@ -1,0 +1,80 @@
+title: Improve validation refresh, entity editing, filters, and release notes
+description:
+## Summary
+
+This PR (merging dev into main) bundles a set of frontend, backend, and core-library changes:
+
+ - Fresh data validation results (#352): Removed the 5-minute client-side cache from the 
+useDataValidation composable so every explicit "Run Data Validation" fetches current results. Also
+fixed an inverted empty-data guard in the backend data_validation_orchestrator that returned early
+when data was present.
+ - Reliable entity edit requests: EntityListCard now buffers an incoming entityToEdit request and
+opens the entity once the list has finished loading, emitting an entity-edit-request-consumed event
+so the parent can clear the request (covered by a new EntityListCard.test.ts).
+ - Open entities from validation results: Entity chips in ValidationMessageList are clickable and
+propagate an open-entity event through ValidationPanel to ProjectDetailView, which switches to the
+Entities tab and opens the entity editor.
+ - SQL column synchronization: EntityFormDialog shows pending/mismatch alerts for detected SQL
+columns and a "Use detected columns" action, and persists detected columns on save. The SQL loader
+now validates auto-detected columns against the stored entity schema, and the UCanAccess loader
+prefers JDBC column labels, canonicalizes alias casing, and preserves query case when injecting TOP
+limits.
+ - Foreign-key missing-key behavior: Lookup-style left joins on alternative keys now default to
+keeping rows with missing key parts unresolved (null-safe merge; missing never matches missing) when
+allow_null_keys is omitted; explicit true/false still override. UI labels and error messages were
+reworded from "Allow Null Keys" to "Allow Missing Join Keys".
+ - Tiny DSL for extra_columns: New src/transforms/dsl.py implements a hand-written parser/evaluator
+for formula expressions starting with = (e.g. =concat(upper(code), '-', trim(name))) with
+whitelisted functions (concat, upper, lower, trim, substr, coalesce), == literal escaping, and
+deferral until referenced columns exist. extra_columns evaluation and extraction dependency
+collection were extended accordingly.
+ - Staged filter execution: Filters accept an optional stage (extract, after_link, after_unnest);
+the normalizer applies filters at each stage, a new FilterSpecification validates stage values and
+stage-aware column availability, and the FiltersEditor gains a stage selector plus a pipeline
+diagram.
+ - User-facing release notes ("What's New"): New /api/v1/whats-new manifest endpoint, useWhatsNew
+composable, WhatsNewView archive page, startup dialog, unread badge, and home-page card; generation
+scripts (generate_user_release_notes.py, prepare_copilot_release_notes.py) with Jinja2 templates,
+semantic-release integration, and a generated docs/whats-new/ archive (v1.1.0–v1.24.0).
+ - Schema explorer and query explorer polish: Scrollable, denser column lists in TableDetailsPanel,
+table-list reload on refresh in SchemaExplorerView, and a restructured QueryEditor toolbar with
+filtered advisory warnings.
+ - Other changes: New validation that non-fixed entities must not list derived system_id in columns;
+dependency-graph edges changed from tuples to objects with type/label/frozen metadata;
+src/survey2excel.py renamed to src/shapeshift.py; Playwright e2e specs marked skipped; documentation
+and proposals updated.
+
+## User-facing release note
+
+Data validation now always shows current results instead of stale cached issues, and validation
+messages let you click an entity name to open it directly in the editor. You can also write formula
+expressions in extra columns (e.g. =concat(upper(code), '-', trim(name))), choose when entity
+filters run (after extract, link, or unnest), and browse user-friendly release notes in the new
+What's New section.
+
+## Upgrade notes
+
+ - Lookup-style left foreign keys that resolve remote identities from alternative keys now keep rows
+with missing key parts unresolved by default when allow_null_keys is omitted (previously this
+raised by default). Set allow_null_keys: false explicitly to restore strict errors, or true to
+tolerate missing keys.
+ - New validation rejects non-fixed entities that list the derived system_id column in columns;
+remove such entries from project YAML before upgrading.
+ - The CLI entry point src/survey2excel.py is renamed to src/shapeshift.py; update any scripts or
+docs that invoke the old path.
+ - Existing filters without a stage keep their legacy after-extract timing; no migration is
+required.
+ - Playwright end-to-end specs are currently disabled (marked skipped) and retained for future
+re-enablement.
+
+## Validation
+
+ - No CI check results were available for this pull request (statusCheckRollup was empty), so no
+checks can be reported as passed or failed.
+ - The diff adds or updates backend pytest suites (e.g. backend/tests/api/v1/test_whats_new.py,
+tests/transforms/test_dsl.py, tests/transforms/test_extra_columns_dsl_integration.py,
+tests/loaders/test_sql_loaders.py, tests/specifications/test_entity.py), frontend Vitest suites
+(e.g. frontend/src/components/entities/__tests__/EntityListCard.test.ts), and disables the
+Playwright e2e specs; execution results for these suites are unknown from the available evidence.
+ - The pull request was merged into main on 2026-03-21; the merge itself is not evidence that tests
+passed.

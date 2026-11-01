@@ -1,0 +1,44 @@
+title: Simplify Docker Compose setup and clean up backend imports
+description:
+## Summary
+
+Streamlines the Docker workflow and tidies backend code:
+
+ - Makefile: all docker-* targets now run docker compose from within the docker/ directory instead
+of passing -f docker/docker-compose.yml, and the startup messages report the app URL using the
+configurable ${BACKEND_PORT} instead of a hard-coded
+  8012. docker-restart now performs an explicit down/up cycle.
+ - docker/docker-compose.yml: drops the obsolete top-level version: '3.8' key and removes the inline
+environment: block; runtime settings now come solely from ./data/backend.env via env_file.
+ - Backend cleanup: removes unused imports (from tkinter import E in models/__init__.py, networkx in
+ingester_service.py, typing.Type in the ingester registry), hoists the Ingesters import in main.py
+to module level, moves the CliRunner import to module scope in the CLI test fixture, and reformats
+Ingesters.discover(...) calls.
+ - pyproject.toml: httpx moves from the dev optional group to the main dependencies.
+ - Adds a sead_shape_shifter.code-workspace file and updates VS Code activity bar/status bar colors
+in .vscode/settings.json.
+
+Fixes #143.
+
+## User-facing release note
+
+The Docker helper commands (make docker-up, docker-down, docker-logs, docker-restart, etc.) are
+simplified, and the reported application URL now reflects the configured backend port instead of a
+fixed port number.
+
+## Upgrade notes
+
+ - The compose file no longer sets inline defaults for SHAPE_SHIFTER_* and SEAD_* environment
+variables; all container environment settings must be provided in docker/data/backend.env. Deployers
+should verify that file defines the settings they rely on (e.g. SHAPE_SHIFTER_ENVIRONMENT,
+SHAPE_SHIFTER_ALLOWED_ORIGINS), since values previously defaulted in the compose file are no longer
+injected there.
+ - The obsolete version: '3.8' key was removed from docker-compose.yml; no action is needed for
+Docker Compose v2 users.
+ - httpx is now a required runtime dependency rather than a dev-only one; a normal dependency
+install picks this up automatically.
+
+## Validation
+
+Not verified: validation results unavailable. No CI check results were reported for this pull
+request, and no test-run evidence was supplied. The pull request was merged into main.

@@ -1,0 +1,58 @@
+title: Resolve config paths under application root and add @load directive
+description:
+## Summary
+
+Refactors YAML configuration loading and path resolution so that relative paths resolve predictably
+against an application root, and separates raw data loading from directive resolution via a new
+@load: directive.
+
+ - src/configuration: replaces the Config/load_config-centric resolution stack with module-level
+helpers (load_resolved_yaml, resolve_directives, load_yaml_file, load_data_file, is_yaml_file),
+removes the old replace_references/list-expression machinery, and threads runtime_root /
+application_root_env_var through resolution so relative @include:/@load: paths resolve from the
+first existing source file or the runtime root.
+ - backend/app/core/config.py: APPLICATION_ROOT now defaults to the current working directory (was
+the package directory) and is configurable via SHAPE_SHIFTER_APPLICATION_ROOT; a model_validator
+resolves relative PROJECTS_DIR, LOG_DIR, and GLOBAL_DATA_* paths under the application root.
+SHAPE_SHIFTER_ENV_FILE can point at the env file.
+ - New @load: directive loads referenced YAML/CSV/TSV/JSON/Parquet data raw (no further directive
+resolution), while @include: keeps recursive resolution. The metadata.target_model convention moves
+from @include: to @load: across backend, frontend (MetadataEditor.vue, ProjectDetailView.vue), docs,
+and test fixtures; both prefixes are still stripped when resolving target models.
+ - Moves TaskList and LayoutOptions out of src/model.py into a new src/sidecars package;
+ShapeShiftProject.from_file/resolve now use load_resolved_yaml/resolve_directives with runtime-root
+options.
+ - Adds a resources/reconciliation_policies/ corpus (~35 BugsCEP policy YAMLs with schema and
+fixtures), archives the completed BugsCEP policy-fidelity proposal under docs/proposals/done/, and
+adds new proposals (BugsCEP importer migration decision, AI Advisor).
+ - Expands AI-agent tooling and docs: new docs/GLOSSARY.md, agent prompt files and instructions
+under .github/, a shapeshifter-configuration skill, CLAUDE.md as a symlink to AGENTS.md, plus
+operational docs updates (CONFIGURATION_GUIDE @load semantics, OPERATIONS env table).
+ - Adds a SEAD "superset" target model test fixture (sead_superset_model.yml) and parametrizes
+spec-file tests over all specs.
+
+## User-facing release note
+
+Project files now reference their target model with @load: (e.g. target_model: '@load:
+sead_standard_model.yml'), and the web editor's target-model combobox writes this prefix; existing
+@include: references still resolve. Relative path settings (projects dir, log dir, global data
+paths) now resolve against the application root regardless of the working directory the app is
+started from, making behavior consistent between the API, CLI, and tests.
+
+## Upgrade notes
+
+ - The default APPLICATION_ROOT changed from the installed package directory to the current working
+directory. Deployments that relied on the old default should set SHAPE_SHIFTER_APPLICATION_ROOT
+explicitly; relative SHAPE_SHIFTER_* path values are now resolved beneath it.
+ - Prefer @load: over @include: for metadata.target_model in project files; the included model is
+loaded raw without recursive directive resolution. Both prefixes remain accepted by the resolver.
+ - Python callers importing TaskList/LayoutOptions from src.model must import from src.sidecars;
+load_config/resolve_references/is_config_path usages should migrate to
+load_resolved_yaml/resolve_directives/is_yaml_file.
+
+## Validation
+
+Not verified: validation results unavailable. The pull request metadata contains no CI check results
+(statusCheckRollup is empty). The diff adds and updates tests (e.g. backend/tests/test_config.py,
+tests/configuration/test_config.py, tests/configuration/test_path_utils.py, parametrized spec
+tests), but no evidence is supplied that they were executed.

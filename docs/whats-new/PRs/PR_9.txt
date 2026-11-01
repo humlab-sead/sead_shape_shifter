@@ -1,0 +1,58 @@
+title: Add replacements, GIS transforms, query field, and config validations
+description:
+## Summary
+
+This milestone release (dev → main) reorganizes the data-processing framework and adds several
+configuration capabilities:
+
+ - SQL query field: SQL entities now use a dedicated query key instead of embedding SQL in values:
+"sql: ...". The old form still works but is flagged as deprecated in TableConfig.query. The sample
+input/arbodat-database.yml was migrated to the new format.
+ - Value replacements: Entities can define per-column old→new value mappings (e.g. coordinate system
+names → EPSG codes), applied after column extraction in SubsetService.get_subset. New
+input/replacements.yml is included via @include and referenced with @value: expressions.
+ - drop_empty_rows dict form: Empty-row removal now accepts a mapping of column → list of values to
+treat as empty (e.g. abundance_property_value: [null, ""]), in addition to bool and column lists.
+ - Loader reorganization: Loaders moved to a registry-based design (DataLoaders in
+src/loaders/base_loader.py) with fixed, csv, postgres, and ucanaccess loaders; SqlLoaderFactory,
+interface.py, loader.py, and transform.py were removed. TablesConfig.resolve_loader() picks the
+loader from data_source or type.
+ - GIS transforms: New src/transforms package with geo_split (split "lat,lon" strings) and
+geo_convert_crs (coordinate-system conversion via new pyproj dependency).
+ - Configuration validation: Added SqlDataSpecification and DataSourceExistsSpecification, enhanced
+FixedDataSpecification and AppendConfigurationSpecification, and reordered
+CompositeConfigSpecification. New docs/VALIDATION_IMPROVEMENTS.md documents them. The survey2excel
+CLI gained --validate-then-exit and --default-entity (the input_csv and --sep arguments were
+removed; the source CSV is now configured as an entity).
+ - Foreign-key constraint simplification: Removed require_all_left_matched,
+require_all_right_matched, min_match_rate, max_row_increase_pct, and max_row_increase_abs; docs and
+examples now use allow_unmatched_left/allow_unmatched_right. Validators are registered with sub_key
+values (e.g. per cardinality) and the shared Registry now rejects duplicate keys.
+ - Normalizer state: ProcessState/ArbodatSurveyNormalizer now track processed entities via the table
+store and support a default_entity fallback source. Note that the finalize() steps (drop FK
+columns, add system_id, move keys) are currently commented out in this diff.
+
+## User-facing release note
+
+You can now replace column values through simple mapping tables in the configuration (for example,
+mapping coordinate system names to EPSG codes), drop rows based on custom "empty" values per column,
+write SQL queries under a clearer query: key, and validate a configuration on its own with
+--validate-then-exit before running the full normalization.
+
+## Upgrade notes
+
+ - Migrate SQL entities from values: "sql: ..." to the new query: key; the old form still works but
+is deprecated.
+ - Remove the foreign-key constraint options require_all_left_matched, require_all_right_matched,
+min_match_rate, max_row_increase_pct, and max_row_increase_abs from configurations; express
+strictness with allow_unmatched_left: false / allow_unmatched_right: false instead.
+ - The survey2excel CLI no longer accepts an input_csv argument or --sep; the input CSV must be
+defined as an entity in the configuration, with --default-entity selecting the fallback source.
+ - Install the new pyproj dependency (added to pyproject.toml and uv.lock).
+
+## Validation
+
+Not verified: validation results unavailable. No CI check results are attached to this pull request
+(statusCheckRollup is empty). The diff adds and updates extensive unit and integration tests (e.g.
+tests/test_config_model.py, tests/test_utility_functions.py, tests/test_normalizer.py,
+tests/test_append_*), but their execution and outcomes are not shown in the available evidence.

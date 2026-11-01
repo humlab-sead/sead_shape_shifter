@@ -1,0 +1,62 @@
+title: Remove deprecated SEAD ingester; fix grants, project switch, notes
+description:
+## Summary
+
+This PR bundles three bug fixes and a removal:
+
+ - Reject unknown grant roles (backend authorization). A new validate_resource_role /
+allowed_resource_roles helper in backend/app/authorization/policy.py is now enforced in
+SQLiteAuthorizationRepository.add_grant, state import/restore, manifest inspection/application, and
+the sead-authorization grant CLI (its --role option is a restricted click.Choice). Previously a
+misspelled role was silently accepted and recorded while granting nothing; now it fails before any
+records are written, with an error naming the grant and listing the roles allowed for that resource
+type. Tests cover mutation, manifest, and snapshot-import rejection paths.
+ - Clear validation state on project switch (frontend). useProjectStore.selectProject now clears
+both the project store's validation result and the shared validation store (entity results, error)
+when the activated project differs from the current one, so stale validation output from a previous
+project no longer appears.
+ - Enable note deletion (frontend). ProjectDetailView.handleSaveDrawerNote now calls
+api.tasks.removeNote when the saved content is blank after trimming, instead of saving an empty
+note, and updates the node/graph state accordingly.
+ - Remove the deprecated SEAD Clearinghouse ingester (#569). The entire ingesters/sead/ package, its
+unit/integration tests, fixtures, and its documentation were deleted. The sead key no longer
+registers, and the generic file routes no longer serve it; sead_change_request is the only ingester
+implementation. Test targets (Makefile, pyproject.toml testpaths, VS Code pytest args), env
+examples, and docs were updated to match, and the SHAPE_SHIFTER_ENABLED_INGESTERS documentation now
+shows the JSON-list format with sead_change_request as the supported key.
+ - Proposal bookkeeping. INGESTER_AUTHORIZATION_TASKS was archived (merged into
+SECURITY_HARDENING_FOLLOWUP, which now records the removal and adds a future-enablement gate
+requiring per-resource authorization and containment before any new ingester uses the generic file
+routes); cross-references in completed plans and docs/AUTHORIZATION*.md were updated.
+
+The PR body states this fixes #578, #579, #584, and #569; linked-issue details were not available 
+here, so per-issue mapping is not asserted.
+
+## User-facing release note
+
+Clearing a project node's note and saving now deletes the note, and validation results no longer
+carry over when you switch projects. The legacy SEAD Clearinghouse ingester has been removed; the
+SEAD Change Request ingester is now the only available ingester, and invalid grant role names are
+rejected with an error listing the valid roles instead of being silently ignored.
+
+## Upgrade notes
+
+ - Any deployment that enabled the sead ingester must remove it from
+SHAPE_SHIFTER_ENABLED_INGESTERS; the value is a JSON list (e.g. '["sead_change_request"]'), and the
+backend env example now ships that default.
+ - API or CLI callers using the sead ingester key (e.g. POST /api/v1/ingesters/sead/validate|ingest,
+python -m backend.app.scripts.ingest ... sead) must move to sead_change_request and its
+project-only routes; the removed key no longer resolves.
+ - Authorization manifests and state snapshots that contain a role not defined for a resource type
+will now fail to apply or import until corrected; fix the role spelling first. The
+sead-authorization grant CLI likewise accepts only known role names.
+
+## Validation
+
+ - CI evidence available for this pull request is limited to the Container Release workflow: the
+validate and publish jobs both completed with conclusion SKIPPED. The pull request was merged on
+2026-10-23.
+ - The diff adds or updates backend pytest cases (authorization mutations, operations, state
+snapshot, ingester infrastructure, ingest CLI, ingester API routes) and frontend Vitest cases
+(project store, ingester store/API, ProjectDetailView), but no execution results for these suites
+are available in the supplied evidence; their outcomes are unknown and are not reported as passed.

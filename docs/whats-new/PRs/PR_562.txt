@@ -1,0 +1,63 @@
+title: Sync mapping links after fixed entity saves
+description:
+## Summary
+
+ - Fixed-entity saves now synchronize the mapping sidecar from a before/after comparison of saved
+rows instead of rebuilding all manual links. Both save paths (inline entity update and external
+@load: values) compute an affected-key change set and apply it under the project lock: added rows,
+deliberate ID edits/clears, row removals, and row-key changes update only their encoded keys, while
+untouched links keep their source and metadata. The external values route's automatic full-rebuild
+call was removed.
+ - Invalid mapping inputs (missing stored mapping columns, missing/blank/duplicate encoded keys,
+invalid changed non-blank IDs) are rejected before any row or file write; entity renames are blocked
+with HTTP 409 when the entity has a mapping sidecar entry.
+ - If the sidecar write fails after rows are persisted, both save routes return HTTP 200 with a
+structured mapping_sync pending payload instead of a failure. A new PATCH
+/projects/{project}/mapping/retry-fixed-entity/{entity} endpoint applies only the recorded remaining
+changes (repeated retry is a no-op; changed affected keys return HTTP 409 with changed_keys). The
+frontend reports the partial save, keeps the dialog open, and offers a retry without resending rows.
+ - MappingManager gained disk-byte SHA-256 content versions, fresh snapshots, and expected-version
+atomic saves; all backend sidecar writers (mapping CRUD, reconciliation export, administrative
+rebuild, save-time sync) now hold the shared project lock and use versioned writes.
+ - The administrative rebuild (PATCH .../mapping/from-materialized/{entity}) is additive by default
+— it adds links only at absent keys and reports manual_links_added; full manual-link replacement now
+requires replace_manual_links: true. Default compound keys use a shared ordered safe_keys helper in
+both the mapping API and materialization paths.
+ - Adds the MATERIALIZED_ENTITY_MAPPING_SYNC proposal with phase plans, and updates USER_GUIDE.md,
+DESIGN.md, OPERATIONS.md, and the authorization route inventory to match the shipped behavior.
+
+## User-facing release note
+
+Saving a fixed entity now updates its mapping links only where you changed IDs or row keys, leaving
+other links and their history intact, and if the mapping update fails after the rows are saved the
+editor reports a partial save with a Retry mapping action. The "Sync from materialized entity" admin
+operation now only adds missing links unless you explicitly ask it to replace manual links.
+
+## Upgrade notes
+
+ - Breaking behavior change for API consumers: PATCH
+/projects/{project}/mapping/from-materialized/{entity} no longer replaces all manual links when
+called without a body; it now only adds links at absent keys. Callers that relied on full
+replacement must send {"replace_manual_links": true}. The response adds manual_links_added and keeps
+manual_links_replaced (zero in additive mode).
+ - Renaming an entity that has a mapping sidecar entry now fails with HTTP 409; remove or migrate
+that entry before renaming.
+ - No data migrations are required; the mapping sidecar schema and normalization precedence are
+unchanged.
+
+## Validation
+
+ - Reported by the PR author and recorded in the added Phase 4 task plan: the grouped Core/backend
+regression suite passed, covering fixed-row changes, retry, mapping writes, materialized rebuilds,
+and API behavior (pytest tests/reconciliation/... backend/tests/... -q as listed in the plan
+document).
+ - Frontend entity API/store/dialog tests passed: 3 Vitest files, 79 tests (pnpm exec vitest run
+src/api/__tests__/entities.test.ts src/stores/__tests__/entity.test.ts
+src/components/entities/__tests__/EntityFormDialog.test.ts).
+ - Ruff, Black, and isort checks passed on changed Python files; git diff --check origin/dev...HEAD
+passed.
+ - make check-doc-links reports one pre-existing broken link in unchanged
+docs/SPEC_DRIVEN_PROCESS.md; the added documentation introduces no relative document links.
+ - Repository CI provided no test results for this pull request: the only checks on the merged
+commit were the Container Release validate and publish jobs, both SKIPPED. The test outcomes above
+are author-reported and documented in the plan files, not independently confirmed by CI.

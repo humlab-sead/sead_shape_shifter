@@ -1,0 +1,78 @@
+title: Add centralized authorization system cutover
+description:
+## Summary
+
+Replaces the legacy, file-based project access checks with a centralized authorization system and
+deploys it to the test target environment. Previously, access was decided per request from project
+YAML and shared NGINX configuration, which made ownership hard to review and forced redeploys for
+every access change. This branch stores administrators, resources, and grants in a SQLite store
+behind a single decision path, with a manifest that can be reviewed, applied, reconciled, exported,
+backed up, and restored.
+
+Key changes in the diff:
+
+ - Authorization core (backend/app/authorization/): require_project gains a body_locator mode for
+routes that carry the locator only in the JSON body; a new require_active_project dependency
+authorizes the application-state active project with a concealed 404 on denial; a new
+export_manifest operation writes active resources and grants as JSON or YAML; manifest parsing now
+detects JSON vs YAML from file content, so extensionless, piped, and streamed input work;
+application roles are reframed as deployment roles with a new project_maintainer role; the SQLite
+repository connection accepts cross-thread use and the database file is chmod 600.
+ - API enforcement: ingester validate/ingest endpoints require the run_ingesters deployment action;
+log endpoints now require only an authenticated principal (the logs are global); session creation
+authorizes the project from the request body; the active-project-name endpoint is gated on read
+access to the active project; project metadata updates no longer rename projects (the name field is
+documented as ignored).
+ - Operator tooling (backend/app/scripts/authorization.py, container/scripts/authorization.sh):
+migration, reconciliation, backup, restore, integrity, grant, and role commands.
+ - Deployment layout (container/): three-directory target layout (~/container for replaceable code,
+~/config for configuration and policy, ~/container-data for mutable data); environment files
+(deployment.env, backend.env, .pgpass) move to the config directory; the systemd user service starts
+with --no-build; new rebuild-image.sh and a bootstrap script for authentication/authorization
+setup; a new verification suite under container/scripts/verify/ covering health, containment,
+firewall, logs, credential rotation, rollback exercise, and container configuration.
+ - Policy data: resources/authorization/test-initial-manifest.yaml adds the reviewed initial
+manifest of projects, shared data sources, administrators, and grants.
+ - Tests and docs: expanded authorization tests (route authentication and classification,
+dependencies, operations, mutations, cross-resource access); updated AUTHORIZATION.md,
+OPERATIONS.md, AUTHORIZATION_ROUTE_INVENTORY.md, DIAGRAMS.md; proposal, phase plans, and
+test-environment handoff documents added.
+
+## User-facing release note
+
+Project and shared-data-source access is now centrally managed and enforced: users see and can work
+with only the projects they have been granted, and projects they cannot access are concealed rather
+than merely refused. Operators can change who can access what by reviewing and applying an
+authorization manifest, without redeploying the application.
+
+## Upgrade notes
+
+Deployers must migrate to the new target layout before or during this cutover:
+
+ - Configuration moves out of the data directory: deployment.env, backend.env, and .pgpass now live
+in ~/config (created by make setup); mutable data stays in ~/container-data and code in ~/container.
+ - The authorization SQLite database must be initialized and an authorization manifest applied;
+container/scripts/deploy/bootstrap-authentication-and-authorization.sh and the sead-authorization
+CLI provide the migration, apply, reconcile, backup, and restore steps.
+container/resources/authorization.env.example documents the new authorization environment settings.
+ - The systemd user service now starts the stack with --no-build; use
+container/scripts/deploy/rebuild-image.sh when an image rebuild is needed.
+ - API consumers: project metadata updates no longer rename a project; the name field in the update
+request is ignored.
+
+## Validation
+
+ - No CI status checks are attached to this pull request (the status check rollup is empty), so no
+automated CI results are available from the provided evidence.
+ - The author's description reports manual verification on the test target (humlabsead,
+test-shape-shifter.sead.se, 2026-09-22), which was not independently confirmed here: focused
+authorization suite and full backend suite passing at e38f4bc6; manifest applied and reconciled with
+32 resources, 3 administrators, 32 grants and 0 missing; an access matrix showing unauthenticated
+401, granted project 200, concealed denied 404, and administrator 200; rollback restore, backup
+integrity, external HTTPS, firewall inspection, and credential rotation checks; and git diff --check
+and scripts/check_doc_links.sh passing.
+ - Per the same author report, two acceptance items remain open: the reviewed dataset (26 projects,
+6 shared data sources) is not provisioned on the test deployment (PH3-AC-4 open), and final
+release-candidate image validation is deferred until merge to dev (PH3-AC-1 partially complete).
+ - Execution of the repository's automated test suites in CI is unknown; no workflow runs were
+included in the available evidence.

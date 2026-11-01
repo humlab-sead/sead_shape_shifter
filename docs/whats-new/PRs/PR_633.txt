@@ -1,0 +1,51 @@
+title: Fix Pyright errors and add pandas-stubs for type checking
+description:
+## Summary
+
+This PR clears Pyright type errors across the backend, ingesters, and core src packages, and adds
+the tooling that surfaced them: pyright>=1.1.414 and pandas-stubs>=2.3.3,<2.4 are added to the dev
+dependency group in pyproject.toml (with uv.lock updated accordingly), and the pyproject comment
+references a make pyright target.
+
+Most changes are typing-only: Pydantic Field(None, ...) positional defaults rewritten as
+Field(default=None, ...) in the model layer, cast() and narrowed locals for pandas-stubs findings
+(e.g. iterrows() index types, drop_duplicates() results), wider parameter types (Iterable instead of
+list/Container), timeout widened from int to float in query_service, and read-only protocol
+properties for the SIMS CapabilitiesSource. Tests gained cast, explicit types, a few pyright: ignore
+comments with explanations, and a refactor of the reconciliation delete_specification tests to call
+the service method instead of catalog_manager.delete directly.
+
+A few small runtime-safety changes accompany the type fixes:
+
+ - A new ConfiguredTableIngester protocol combines Ingester and TableSourceIngester;
+ProjectIngesterService now rejects registered table ingesters that lack the configured lifecycle
+with an explicit error, and raises ProjectIngesterConfigurationError when required
+INGEST_TARGET_HOST/DBNAME/USER settings are missing instead of passing None through.
+ - auto_reconcile_entity and _attach_local_only_approvals gained None guards so a missing mapping
+entry or target ID no longer compares against None.
+ - _normalized_isnan_values in entity_values_service was reimplemented with to_numpy and a new test
+confirms it preserves one empty value row per index row for zero-column DataFrames.
+ - The DuckDB workspace routes all operations through a new _active_connection property that raises
+RuntimeError when the workspace is closed.
+
+## User-facing release note
+
+User-visible impact not verified.
+
+## Upgrade notes
+
+ - Developers: re-sync the development environment (e.g. uv sync with the dev extra) to pick up the
+new pyright and pandas-stubs packages.
+ - Deployers of the backend: project validation and ingestion now fail fast with a configuration
+error if INGEST_TARGET_HOST, INGEST_TARGET_DBNAME, or INGEST_TARGET_USER are unset, and ingesters
+registered for normalized-table input must implement the configured ingester lifecycle (Ingester
+plus table methods) or they are rejected with an explicit error.
+
+## Validation
+
+ - CI rollup for this PR shows only the Container Release workflow checks validate and publish; both
+completed with conclusion SKIPPED, so no test or lint results were produced by CI for this change.
+ - Execution of pyright (referenced via make pyright in pyproject.toml) is unknown: no run results
+are available in the supplied evidence.
+ - The original PR description states all tests passed after the changes, but this claim could not
+be independently confirmed from the available CI data.

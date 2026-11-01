@@ -1,0 +1,53 @@
+title: Enhance system_id stability for fixed entities with validation
+description:
+## Summary
+
+This PR makes system_id a stable, concrete identifier for fixed value entities so that FK
+relationships survive row adds, deletes, and reordering:
+
+ - Core (src/transforms/utility.py): add_system_id no longer regenerates sequential IDs
+unconditionally. If the column already exists, existing values are preserved and only nulls are
+filled with sequential values starting from max(existing) + 1; the column is created sequentially
+(starting at 1) only when missing, and is coerced to integer type and placed first.
+ - Core validation (src/specifications/entity.py): New FixedEntitySystemIdSpecification (registered
+as fixed_entity_system_id) validates fixed entities' system_id values — no nulls
+(SYSTEM_ID_NULL_VALUES), uniqueness (SYSTEM_ID_DUPLICATE_VALUES), and positive integers
+(SYSTEM_ID_INVALID_TYPE / SYSTEM_ID_INVALID_VALUE). Non-fixed entities and entities without a
+system_id column pass.
+ - Backend auto-fix (backend/app/services/auto_fix_service.py, backend/app/models/fix.py): New
+UPDATE_VALUES fix action type and three confirmation-required auto-fix strategies for the null,
+duplicate, and invalid system_id issue codes. AutoFixService._update_values applies the
+corresponding repairs (fill nulls, reassign duplicates preserving first occurrence, replace invalid
+values) to a fixed entity's values array.
+ - Frontend (frontend/src/components/entities/FixedValuesGrid.vue): The grid now displays the actual
+system_id values from the configuration instead of rowIndex + 1, and new rows are assigned
+max(system_id) + 1 instead of rowCount +
+  1. Cell edits are committed immediately via singleClickEdit, stopEditingWhenCellsLoseFocus, a
+cell-editing-stopped handler, and explicit stopEditing() calls before reads, deletes, and row adds.
+ - Tests: Adds TestFixedEntitySystemIdSpecification (valid, non-sequential, missing column, null,
+duplicate, invalid type/value, multiple errors, non-fixed skip) and TestAddSystemId (creation,
+preservation, null filling, type conversion, column ordering, alias equivalence with
+add_surrogate_id). backend/tests/mappers/test_entity_config_mapper.py is updated to match current
+mapper/settings APIs (e.g. APPLICATION_ROOT, xlsx driver) and some obsolete mapper-selection tests
+are removed.
+ - Docs/other: Adds docs/IMPLEMENTATION_PLAN_ROBUST_SYSTEM_ID.md describing the design and
+scenarios; adds a TODO note on brittle system_id handling for fixed entities; minor
+whitespace/import cleanup in mappers, validation service, and Excel loader tests.
+
+## User-facing release note
+
+The fixed value entity editor now shows and keeps the real system_id values, and new rows receive
+the next ID above the current maximum, so IDs stay stable when rows are added, deleted, or reordered
+and related links no longer break. Invalid system_id values (nulls, duplicates, non-positive or
+non-integer IDs) are reported during validation and can be repaired with a single confirmed
+auto-fix.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+Not verified: validation results unavailable. No CI check results were available for this pull
+request. New unit tests for add_system_id and FixedEntitySystemIdSpecification are included in the
+diff, but their execution and outcomes are not verified from the available evidence.

@@ -1,0 +1,61 @@
+title: feat: stage-aware column suggestions for the entity editor
+description:
+## Summary
+
+Replaces the entity editor's ad-hoc column suggestion sources with a single operation-aware,
+draft-aware resolver, so each editor combobox suggests only columns that exist at that control's
+pipeline stage.
+
+ - Core: adds src/column_availability.py, a pure resolver that models source/input fields and
+pipeline stages (extract, FK link, unnest, deferred extra columns, filters, deduplication,
+drop-empty, identity assignment). It performs no loader or query execution; with incomplete metadata
+it returns advisory, possibly incomplete candidates. A test pins the candidate sets against the
+normalizer's actual runtime checkpoints.
+ - Backend: adds POST /projects/{project_name}/entities/{entity_name}/column-availability, which
+evaluates an unsaved entity draft plus selected parent entities (via StageAwareColumnService and new
+request/response models). The legacy GET .../columns contract and ColumnIntrospectionService
+behavior are preserved.
+ - Frontend: adds a shared useColumnAvailability composable that issues one debounced (300 ms),
+version-guarded request per draft/parent state, and wires the Columns, Business Keys, Replacements,
+Drop Duplicates, Drop Empty Rows, unnest id_vars/value_vars, and FK local/remote key and
+extra-column source controls to operation-specific results. FK local keys honor unsaved draft edits
+and configured link order; remote keys/sources use the selected parent's processed output. The
+legacy useColumnIntrospection composable is removed; filter fields remain text inputs.
+ - Docs: archives the proposal, phase plan, and task plans under
+docs/proposals/done/STAGE_AWARE_COLUMN_SUGGESTIONS/.
+
+Suggestions remain advisory: controls stay free-text and validation/execution remain the authority
+for runtime availability. The PR description states it closes #527 and fixes #511.
+
+## User-facing release note
+
+Column pickers in the entity editor now suggest the columns that are actually available at each step
+of the entity's pipeline — for example, columns added by a foreign-key link or by unnesting —
+instead of one mixed list everywhere. Suggestions update as you edit an unsaved entity, and you can
+still type any column name.
+
+## Upgrade notes
+
+None - no user action required. The existing GET
+/projects/{project_name}/entities/{entity_name}/columns endpoint is unchanged; the new endpoint is
+additive.
+
+## Validation
+
+New test suites are included in the diff: tests/process/test_column_availability.py (core resolver,
+including a test comparing candidates against normalizer runtime checkpoints),
+backend/tests/api/v1/test_columns.py, backend/tests/services/test_stage_aware_column_service.py, and
+frontend unit tests for useColumnAvailability, the entities API, and entity editor components
+(EntityFormDialog, ForeignKeyEditor, UnnestEditor, FiltersEditor).
+
+The PR description reports the following runs, which could not be independently confirmed from the
+available evidence (no CI check results were included with this pull request's data):
+
+ - Core resolver: uv run pytest -o addopts= tests/process/test_column_availability.py -q — reported
+7 passed.
+ - Backend: test_columns.py, test_stage_aware_column_service.py,
+test_column_introspection_service.py — reported 17 passed.
+ - Frontend: useColumnAvailability, entities API, entity editor components — reported 104 passed (15
+files).
+
+Playwright e2e suites remain skipped (converted to test.describe.skip), so they were not exercised.

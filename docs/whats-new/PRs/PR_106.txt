@@ -1,0 +1,55 @@
+title: Initial release of SEAD Shape Shifter v0.1.0
+description:
+## Summary
+
+This is the initial release of the SEAD Shape Shifter (v0.1.0), promoting the dev branch to main so
+semantic-release can publish the first version. The change delivers the full mono-repo in three
+parts:
+
+ - Core engine (src/): the declarative YAML transformation pipeline (extract → filter → link →
+unnest → translate → store), loaders for CSV, Excel, PostgreSQL, and MS Access (via
+UCanAccess/JDBC), and a new foreign-key constraint system supporting cardinality, match-requirement,
+uniqueness, null-handling, and row-count rules. The foreign-key YAML spec now uses
+local_keys/remote_keys plus a constraints block instead of the previous keys list.
+ - FastAPI backend (backend/app/): REST API under /api/v1 for projects, data sources, schema
+introspection, entities, preview, query, execute, validation, suggestions, sessions, reconciliation,
+test runs, and health checks, with services for multi-type validation, auto-fix with
+backup/rollback, and a 3-tier cached entity preview.
+ - Vue 3 frontend (frontend/): web-based project editor with Monaco YAML editing, validation panel,
+visual entity tree, form-based properties panel, and Pinia state management.
+
+Supporting changes include a new release.yml workflow (semantic-release on pushes to main), a
+corrected repositoryUrl in .releaserc.json, expanded Makefile targets for unified installation (make
+install with [all] extras), backend/frontend run/test/lint recipes, reorganized test suites (new
+tests/specifications/ and backend/tests/; older top-level test files removed), and documentation
+(RELEASE_NOTES_v0.1.0.md, updated README, backend README, and agent/coding-guidance files).
+
+## User-facing release note
+
+SEAD Shape Shifter v0.1.0 is now released: a web-based project editor for building data
+transformation configurations, with a Monaco YAML editor, real-time validation, an entity tree,
+form-based property editing, and one-click auto-fix with backups and rollback. The underlying engine
+harmonizes CSV, Excel, PostgreSQL, and MS Access sources into a target schema using declarative
+YAML projects with foreign-key constraint validation.
+
+## Upgrade notes
+
+ - Install now uses a unified Python environment: make install (or uv pip install -e ".[all]")
+installs core + API + dev dependencies; install-core and install-api targets provide slimmer
+installs.
+ - Foreign-key definitions in project YAML changed from keys: [...] to local_keys/remote_keys with
+an optional constraints block (cardinality, allow_unmatched_left, require_unique_right,
+allow_null_keys, etc.); existing project files using the old keys form need updating.
+ - MS Access support requires the UCanAccess JDBC driver (scripts/install-uncanccess.sh) and a Java
+JRE.
+ - Local services run via make backend-run (FastAPI on :8012) and make frontend-run (Vite on :5173).
+
+## Validation
+
+No CI check results are available for this pull request (statusCheckRollup is empty), so no checks
+can be reported as passed or failed. The diff adds extensive test suites (tests/, backend/tests/,
+frontend test scripts) and Makefile targets (make test, make backend-test, make frontend-test), but
+their execution and outcomes are unknown from the available evidence. Performance and coverage
+figures quoted in the README and release notes are documentation claims, not verified results.
+
+Not verified: validation results unavailable.

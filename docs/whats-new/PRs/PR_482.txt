@@ -1,0 +1,56 @@
+title: chore: sync main with dev test release (ingester, policies, docs)
+description:
+## Summary
+
+This pull request merges dev into main (2,170 changed files) so main reflects the current test
+release. What the diff shows:
+
+ - New sead_change_request ingester (ingesters/sead_change_request/): contracts, input resolution,
+planning/preparation, orchestration, SQL builder, collision checks, identity resolution, artifact
+writer, plus README and diagrams.
+ - New SIMS client (backend/app/clients/sims_client.py) for the sead_authority_service /identity
+endpoints (resolve, binding sets, change detection), with a new SIMS_SERVICE_URL setting.
+ - Reconciliation: new mapping sidecar modules (src/reconciliation/mapping_manager.py,
+mapping_model.py, mapping_validator.py), a read-only PostgreSQL collision checker, and per-entity
+reconciliation policy packages under resources/reconciliation_policies/ (policy YAML, fixtures,
+codegen instructions, decision logs).
+ - Configuration rework: ConfigValue added (src/configuration/config_value.py), resolve.py extended,
+setup.py/interface.py removed; backend settings now resolve PROJECTS_DIR, LOG_DIR, and shared data
+paths against APPLICATION_ROOT and support SHAPE_SHIFTER_APPLICATION_ROOT / SHAPE_SHIFTER_ENV_FILE.
+ - Target models: relocated from target_models/ to resources/target_models/; added
+sead_standard_model.yml and sead_superset_model.yml, schema-reference generation
+(src/target_model/schema_reference.py, scripts/generate_target_model_schema_reference.py), and
+target-model data validators.
+ - Core additions: DuckDB loader (src/loaders/duckdb_loader/), branch transform, src/table_store.py,
+task-list and graph-layout sidecars, src/types/fixed_entity_types.py, and null-safe merge handling.
+ - Frontend: FixedValuesGrid rework with a new header component, updated entity/project/target-model
+JSON schemas, reconciliation view and ingester form updates with new tests.
+ - Tooling and docs: prompts moved from prompts/ to .github/prompts/, extensive new
+.github/instructions/ files, new AGENTS.md guides, .claude//.codex/ agent settings, a slimmed
+.github/copilot-instructions.md, new scripts (validate_project.py, profile_workflow.py), systemd/ssh
+resources, and updated uv.lock.
+
+## User-facing release note
+
+Shape Shifter now includes a SEAD change-request ingester that turns source submissions into
+reviewed change-request packages, and per-entity reconciliation policies help match incoming rows
+against existing SEAD data. The project editor also gains an improved fixed-values grid and a DuckDB
+data loader.
+
+## Upgrade notes
+
+ - Target model files moved from target_models/ to resources/target_models/; update any paths that
+reference the old location.
+ - Relative data paths (projects/, logs/, shared/) are now resolved against APPLICATION_ROOT; set
+SHAPE_SHIFTER_APPLICATION_ROOT or SHAPE_SHIFTER_ENV_FILE if you relied on the previous
+working-directory-based resolution.
+ - A new optional SHAPE_SHIFTER_SIMS_SERVICE_URL setting points to the authority service for
+/identity endpoints; set it if you use the SIMS/change-request features.
+ - Copilot prompt files moved from prompts/ to .github/prompts/; update any editor shortcuts or
+links to the old paths.
+
+## Validation
+
+Not verified: validation results unavailable. The pull request's check rollup is empty, so no CI
+results were reported. The diff adds and updates extensive test suites (core, backend, ingester, and
+frontend tests), but no execution results for them are available in the provided evidence.
