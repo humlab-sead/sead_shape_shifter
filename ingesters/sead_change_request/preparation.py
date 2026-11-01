@@ -114,6 +114,7 @@ async def prepare_change_request(
             planned.tables,
             inputs.target_model,
             sims_client,
+            approved_existing_target_ids=approved_existing_target_ids,
         )
         if preflight_result is not None and preflight_result.has_blockers:
             orchestration_result = IdentityOrchestrationResult(assignments=inputs.fallback_assignments)
@@ -261,6 +262,8 @@ async def _run_capability_preflight(
     planned_tables: list[PlannedTable],
     target_model: TargetModel,
     sims_client: Any | None,
+    *,
+    approved_existing_target_ids: dict[str, dict[object, int]] | None = None,
 ) -> CapabilityPreflightResult | None:
     """Run capability preflight when the SIMS client publishes capabilities.
 
@@ -268,13 +271,22 @@ async def _run_capability_preflight(
     capability discovery, so callers without preflight support keep the existing
     non-SIMS behavior.
     """
-    if sims_client is None or not has_sims_identity_operations(planned_tables, target_model):
+    if sims_client is None or not has_sims_identity_operations(
+        planned_tables,
+        target_model,
+        approved_existing_target_ids=approved_existing_target_ids,
+    ):
         return None
     get_capabilities = getattr(sims_client, "get_capabilities", None)
     if get_capabilities is None:
         return None
     capabilities = await get_capabilities()
-    return preflight_capabilities(planned_tables, target_model, capabilities)
+    return preflight_capabilities(
+        planned_tables,
+        target_model,
+        capabilities,
+        approved_existing_target_ids=approved_existing_target_ids,
+    )
 
 
 def _build_pending_confirmation_report(

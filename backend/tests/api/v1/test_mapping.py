@@ -205,7 +205,7 @@ class TestMappingApi:
         await _create_project(authorized_client)
 
         keys = ["A/B", encode_local_key(["first", "second"], ["A|B", "C/D"])]
-        for target_id, key in enumerate(keys):
+        for target_id, key in enumerate(keys, start=1):
             encoded_key = quote(key, safe="")
             url = f"/api/v1/projects/test_project/mapping/site/{encoded_key}"
             saved = await authorized_client.put(url, json={"target_id": target_id, "notes": "Encoded key"})
@@ -219,7 +219,7 @@ class TestMappingApi:
             assert loaded.json()["link"]["source"] == "manual"
 
         sidecar = yaml.safe_load((tmp_path / "test_project" / "test_project-mapping.yml").read_text(encoding="utf-8"))
-        assert sidecar["entities"]["site"]["links"]["A/B"]["target_id"] == 0
+        assert sidecar["entities"]["site"]["links"]["A/B"]["target_id"] == 1
 
     async def test_put_mapping_link_rejects_non_integer_target_id(self, tmp_path: Path, monkeypatch, authorized_client) -> None:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
@@ -231,6 +231,19 @@ class TestMappingApi:
         )
 
         assert response.status_code == 422, response.text
+
+    async def test_put_mapping_link_rejects_non_positive_target_ids(self, tmp_path: Path, monkeypatch, authorized_client) -> None:
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        await _create_project(authorized_client)
+
+        for target_id in (0, -1):
+            response = await authorized_client.put(
+                "/api/v1/projects/test_project/mapping/site/A",
+                json={"target_id": target_id},
+            )
+            assert response.status_code == 422, response.text
+
+        assert not (tmp_path / "test_project" / "test_project-mapping.yml").exists()
 
     async def test_delete_mapping_link_removes_saved_link(self, tmp_path: Path, monkeypatch, authorized_client) -> None:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)

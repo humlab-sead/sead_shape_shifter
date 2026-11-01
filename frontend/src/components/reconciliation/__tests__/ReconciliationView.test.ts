@@ -240,7 +240,7 @@ describe('ReconciliationView', () => {
     expect(wrapper.text()).not.toContain('link(s) exported')
   })
 
-  it('saves a manual sidecar link for an explicit encoded key and accepts target ID zero', async () => {
+  it.each(['0', '-1'])('rejects non-positive manual target ID %s', async (targetId) => {
     const wrapper = await mountView()
 
     await wrapper.get('[data-testid="open-reconcile"]').trigger('click')
@@ -249,12 +249,28 @@ describe('ReconciliationView', () => {
     await nextTick()
 
     await wrapper.get('[data-testid="manual-link-key"] input').setValue('A/B')
-    await wrapper.get('[data-testid="manual-link-target-id"] input').setValue('0')
+    await wrapper.get('[data-testid="manual-link-target-id"] input').setValue(targetId)
     await wrapper.get('[data-testid="manual-link-submit"]').trigger('click')
     await nextTick()
+
+    expect(reconciliationStore.putManualMapping).not.toHaveBeenCalled()
+    expect(wrapper.get('[data-testid="manual-link-error"]').text()).toContain('positive whole-number target ID')
+  })
+
+  it('saves a manual sidecar link for an explicit encoded key and positive target ID', async () => {
+    const wrapper = await mountView()
+
+    await wrapper.get('[data-testid="open-reconcile"]').trigger('click')
+    await nextTick()
+    await wrapper.get('[data-testid="manual-link-open"]').trigger('click')
     await nextTick()
 
-    expect(reconciliationStore.putManualMapping).toHaveBeenCalledWith('test_project', 'site', 'A/B', 0, undefined)
+    await wrapper.get('[data-testid="manual-link-key"] input').setValue('A/B')
+    await wrapper.get('[data-testid="manual-link-target-id"] input').setValue('12')
+    await wrapper.get('[data-testid="manual-link-submit"]').trigger('click')
+    await flushPromises()
+
+    expect(reconciliationStore.putManualMapping).toHaveBeenCalledWith('test_project', 'site', 'A/B', 12, undefined)
     expect(wrapper.text()).toContain('Manual link saved')
   })
 

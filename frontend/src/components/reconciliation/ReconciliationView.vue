@@ -507,8 +507,8 @@ async function saveManualLink() {
     return
   }
   const targetText = manualTargetId.value.trim()
-  if (!/^-?\d+$/.test(targetText)) {
-    manualLinkError.value = 'Enter a whole-number target ID.'
+  if (!/^[1-9]\d*$/.test(targetText)) {
+    manualLinkError.value = 'Enter a positive whole-number target ID.'
     return
   }
   const targetId = Number(targetText)

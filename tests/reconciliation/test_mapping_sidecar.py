@@ -85,6 +85,12 @@ def make_catalog() -> MappingCatalog:
     )
 
 
+@pytest.mark.parametrize("target_id", [0, -1])
+def test_link_rejects_non_positive_target_ids(target_id: int) -> None:
+    with pytest.raises(ValueError):
+        make_link(target_id=target_id, source=LinkSource.MANUAL)
+
+
 def test_mapping_catalog_parses_valid_yaml_fixture() -> None:
     fixture = yaml.safe_load(
         """
