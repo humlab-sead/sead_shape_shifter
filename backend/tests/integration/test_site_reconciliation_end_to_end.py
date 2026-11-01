@@ -158,13 +158,15 @@ async def adopted_site(monkeypatch, tmp_path: Path) -> AsyncIterator[tuple[int, 
         async with connection.cursor() as cursor:
             await cursor.execute("SELECT to_regprocedure('authority.fuzzy_site(text,integer)')")
             assert (await cursor.fetchone())[0] is not None, "Install the site match function before Phase 7."
-            await cursor.execute("""
+            await cursor.execute(
+                """
                 SELECT s.site_id, s.label
                 FROM authority.site s
                 JOIN sead_identity.tracked_identities t ON t.entity_type = 'site' AND t.aggregate_id = s.site_id
                 WHERE t.lifecycle_state = 'materialized' AND s.label IS NOT NULL AND btrim(s.label) <> ''
                 ORDER BY s.site_id LIMIT 20
-                """)
+                """
+            )
             sites = await cursor.fetchall()
             assert sites, "Bootstrap existing sites into SIMS as materialized before Phase 7."
             await cursor.execute("SELECT next_internal_id FROM sead_identity.internal_id_allocators WHERE entity_type = 'site'")
