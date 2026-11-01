@@ -99,6 +99,25 @@ Draft generation skips existing files without querying Copilot unless `--force` 
 
 Use `--verbose` with `--draft` to print the raw Copilot response when response parsing or validation fails. The configured API key is redacted from this output.
 
+## Recording Commits Without a Pull Request
+
+Commits pushed straight to a base branch have no pull request to describe them, so add `--include-orphaned` to record them against the pull request that followed:
+
+```bash
+.venv/bin/python scripts/update_pr_descriptions.py 620-634 --draft --include-orphaned
+```
+
+The script compares the previous merged pull request into the same base branch with the pull request being drafted, then lists the commits on that branch's first-parent chain that no merged pull request carried. The result is appended as a `Detected orphaned commits` section. The section is omitted when nothing is listed, and it is replaced rather than duplicated when a draft is regenerated. The oldest pull request into a branch has no earlier pull request to compare against, so its draft reports no commits.
+
+Housekeeping commits are filtered out of the list by default. A commit counts as housekeeping when any of these applies:
+
+- Its subject is machine-written: `chore(release): X.Y.Z [skip ci]`, `feat(release): add vX.Y.Z release notes…`, or `chore: updated graphify graph`.
+- Every changed path is inside `graphify-out/`, which holds generated output.
+- Every changed path is inside `docs/`, so the commit changes documentation only.
+- Every changed path is inside `.github/` or `.vscode/`, or is `sead_shape_shifter.code-workspace`, so the commit changes contributor configuration.
+
+One path outside those locations keeps the commit, because the commit then carries a real change. The filtering is never silent: the section names the filtered counts, and the command reports the totals on standard error. Pass `--show-all-orphaned` to list every detected commit instead.
+
 ## Writing Guidelines
 
 Prefer:

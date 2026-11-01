@@ -45,6 +45,26 @@ The `generate_whats_new.py` script builds the release-note file from the authore
 
 For the latest version in `CHANGELOG.md`, the PR-based generator also adds a `Pending Release` snapshot of PRs merged into `staging` after the latest PR merged into `main`, including their authored notes. It uses `gh pr list`, so `gh` must be installed and authenticated. See [the What's New workflow](../docs/whats-new/README.md).
 
+## `update_pr_descriptions.py`
+
+### Usage
+
+```bash
+# Draft into docs/whats-new/PRs/PR_<number>.txt
+python3 scripts/update_pr_descriptions.py 620-634 --draft
+
+# Record commits that reached the base branch without a pull request
+python3 scripts/update_pr_descriptions.py 620-634 --draft --include-orphaned
+
+# List every detected commit instead of filtering housekeeping
+python3 scripts/update_pr_descriptions.py 620-634 --draft --include-orphaned --show-all-orphaned
+
+# Publish the reviewed files
+python3 scripts/update_pr_descriptions.py 620-634 --publish
+```
+
+`--include-orphaned` appends a `Detected orphaned commits` section covering the commits pushed to the base branch between the previous merged pull request and this one. Generated output, release bookkeeping, documentation-only commits, and contributor configuration are filtered out of that section by default, and the filtered counts stay visible in the section and on standard error. See [the What's New workflow](../docs/whats-new/README.md#recording-commits-without-a-pull-request).
+
 ## `prepare_copilot_release_notes.py`
 
 ### Usage
