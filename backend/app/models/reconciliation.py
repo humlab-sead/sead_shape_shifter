@@ -41,7 +41,7 @@ class ResolvedEntityPair(BaseModel):
     def validate_status(self) -> "ResolvedEntityPair":
         if (self.status == "accepted") != (self.target_id is not None):
             raise ValueError("Only an accepted decision may have a target_id, and accepted decisions require one")
-        if self.candidate_id is not None and not self.candidate_id.strip():  # type: ignore
+        if self.candidate_id is not None and not self.candidate_id.strip():  # pylint: disable=no-member
             raise ValueError("A candidate_id must not be blank")
         if self.status != "accepted" and self.candidate_id is not None:
             raise ValueError("Only an accepted decision may have a candidate_id")
@@ -192,7 +192,7 @@ class DecisionUpdateRequest(BaseModel):
     def validate_status(self) -> "DecisionUpdateRequest":
         if (self.status == "accepted") != (self.target_id is not None):
             raise ValueError("Only accepted decisions may specify a target_id, and accepted decisions require one")
-        if self.status == "accepted" and (self.candidate_id is None or not self.candidate_id.strip()):  # type: ignore
+        if self.status == "accepted" and (self.candidate_id is None or not self.candidate_id.strip()):  # pylint: disable=no-member
             raise ValueError("An accepted decision requires a non-empty candidate_id")
         if self.status != "accepted" and self.candidate_id is not None:
             raise ValueError("Only accepted decisions may specify a candidate_id")

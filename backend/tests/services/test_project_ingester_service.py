@@ -516,7 +516,14 @@ async def test_project_operations_reject_unverified_local_only_approval(
         },
     )
 
-    async def normalize(project, *, translate, drop_foreign_keys, default_entity, env_file):
+    async def normalize(
+        project,  # pylint: disable=unused-argument
+        *,
+        translate,  # pylint: disable=unused-argument
+        drop_foreign_keys,  # pylint: disable=unused-argument
+        default_entity,  # pylint: disable=unused-argument
+        env_file,  # pylint: disable=unused-argument
+    ):
         return SimpleNamespace(
             table_store={"site": pd.DataFrame({"site_id": [None], "site_name": ["Nordic Site"]})},
             mapping_catalog=mapping_catalog,

@@ -563,9 +563,7 @@ async def test_adopted_binding_and_local_only_allocation(authorized_client, adop
 
 
 @pytest.mark.asyncio
-async def test_export_outage_recovery_preserves_manual_and_unowned_links(
-    authorized_client, adopted_site, monkeypatch, tmp_path: Path
-) -> None:
+async def test_export_outage_recovery_preserves_manual_and_unowned_links(authorized_client, adopted_site, monkeypatch) -> None:
     site_id, label, uri, _, _ = adopted_site
     live_service_url = settings.RECONCILIATION_SERVICE_URL
     name = f"phase7-outage-{uuid4().hex[:12]}"

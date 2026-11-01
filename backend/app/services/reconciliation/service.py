@@ -413,7 +413,7 @@ class ReconciliationService:
         sidecar_snapshot: MappingSnapshot = mapping_manager.load_snapshot(project_path)
         sidecar_content: bytes | None = self._read_optional_file(sidecar_path)
         sidecar: MappingCatalog = sidecar_snapshot.catalog
-        existing_entity_mapping: EntityMapping | None = sidecar.entities.get(entity_name)  # type: ignore
+        existing_entity_mapping: EntityMapping | None = sidecar.entities.get(entity_name)  # pylint: disable=no-member
         if existing_entity_mapping is not None and (
             existing_entity_mapping.local_key != expected_local_key or existing_entity_mapping.public_id != expected_public_id
         ):
