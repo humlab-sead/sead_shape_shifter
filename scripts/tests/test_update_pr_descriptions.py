@@ -767,3 +767,93 @@ def test_included_prs_requires_draft_mode(monkeypatch: pytest.MonkeyPatch, capsy
 
     assert update_pr_descriptions.main() == 2
     assert "--included-prs can only be used with --draft." in capsys.readouterr().err
+
+
+PREAMBLE_RESPONSE = (
+    """I have reviewed the full diff, metadata, and template. This is a feature PR
+(feature-branch -> dev), not a promotion PR, and no CI results are available.
+
+Migrate projects to a folder-based layout
+<<<PR_DESCRIPTION_BODY>>>
+"""
+    + VALID_BODY
+)
+
+
+def test_parse_copilot_response_takes_the_last_line_when_the_model_narrates_first() -> None:
+    draft = update_pr_descriptions.parse_copilot_response(PREAMBLE_RESPONSE)
+
+    assert draft["title"] == "Migrate projects to a folder-based layout"
+
+
+@pytest.mark.parametrize(
+    ("preamble", "expected"),
+    [
+        ("Add a validation check", "Add a validation check"),
+        ("Title: Add a validation check", "Add a validation check"),
+        ("**Title:** Add a validation check", "Add a validation check"),
+        ("## Title: Add a validation check", "Add a validation check"),
+        ('"Add a validation check"', "Add a validation check"),
+        ("`Add a validation check`", "Add a validation check"),
+        ("**Add a validation check**", "Add a validation check"),
+        ("Title: **Add a validation check**", "Add a validation check"),
+    ],
+)
+def test_parse_copilot_response_normalises_labels_and_wrapping(preamble: str, expected: str) -> None:
+    response = f"{preamble}\n{update_pr_descriptions.COPILOT_BODY_SEPARATOR}\n{VALID_BODY}"
+
+    assert update_pr_descriptions.parse_copilot_response(response)["title"] == expected
+
+
+def test_parse_copilot_response_reports_a_missing_separator_with_the_length() -> None:
+    with pytest.raises(ValueError, match="without the separator"):
+        update_pr_descriptions.parse_copilot_response("Only a title and no separator")
+
+
+def test_parse_copilot_response_keeps_a_title_at_the_length_limit() -> None:
+    title = "a" * update_pr_descriptions.TITLE_LENGTH_LIMIT
+    response = f"{title}\n{update_pr_descriptions.COPILOT_BODY_SEPARATOR}\n{VALID_BODY}"
+
+    assert update_pr_descriptions.parse_copilot_response(response)["title"] == title
+
+
+@pytest.mark.parametrize(
+    ("case", "title", "expected"),
+    [
+        ("empty", "", "Generated title is empty."),
+        ("multiline", "First line\nSecond line", "spans 2 line(s) instead of one"),
+        ("long", "a" * 72, "is 72 characters; the limit is 71"),
+        ("period", "Add a validation check.", "ends with a period"),
+        ("ok", "Add a validation check", None),
+    ],
+)
+def test_describe_title_problem_names_the_single_failing_condition(case: str, title: str, expected: str | None) -> None:
+    problem = update_pr_descriptions.describe_title_problem(title)
+
+    if expected is None:
+        assert problem is None
+    else:
+        assert problem is not None
+        assert expected in problem, case
+
+
+def test_validate_draft_raises_only_the_matching_title_problem() -> None:
+    with pytest.raises(ValueError, match="is 72 characters"):
+        update_pr_descriptions.validate_draft({"title": "a" * 72, "body": VALID_BODY})
+
+    with pytest.raises(ValueError, match="ends with a period"):
+        update_pr_descriptions.validate_draft({"title": "Add a check.", "body": VALID_BODY})
+
+
+def test_validate_draft_names_unexpected_headings() -> None:
+    body = VALID_BODY.replace("## Validation", "## Extra")
+
+    with pytest.raises(ValueError, match="Found: ## Summary, ## User-facing release note, ## Upgrade notes, ## Extra"):
+        update_pr_descriptions.validate_draft({"title": "Example PR title", "body": body})
+
+
+def test_validate_draft_names_headings_without_content() -> None:
+    body = VALID_BODY.replace("None - no user action required.", "")
+
+    with pytest.raises(ValueError, match="has no content under: ## Upgrade notes"):
+        update_pr_descriptions.validate_draft({"title": "Example PR title", "body": body})

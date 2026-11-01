@@ -70,6 +70,26 @@ Promotion pull requests (`dev` into `staging`, or `staging` into `main`) are dra
 
 `--include-orphaned` appends a `Detected orphaned commits` section covering the commits pushed to the base branch between the previous merged pull request and this one. Generated output, release bookkeeping, documentation-only commits, and contributor configuration are filtered out of that section by default, and the filtered counts stay visible in the section and on standard error. See [the What's New workflow](../docs/whats-new/README.md#recording-commits-without-a-pull-request).
 
+## `draft_all_pr_descriptions.py`
+
+### Usage
+
+```bash
+# Show the plan without writing anything
+python3 scripts/draft_all_pr_descriptions.py --dry-run
+
+# Draft every merged pull request that has no draft file yet
+python3 scripts/draft_all_pr_descriptions.py
+
+# Redraft everything, newest first, in batches of 10
+python3 scripts/draft_all_pr_descriptions.py --force --newest-first --batch-size 10
+
+# Include closed and open pull requests, newest first
+python3 scripts/draft_all_pr_descriptions.py --state all --newest-first
+```
+
+Enumerates pull requests with `gh pr list` and drives `update_pr_descriptions.py` with `--draft --include-orphaned`. Existing drafts are kept unless `--force` is given, so an interrupted run resumes and a later run retries only missing drafts. `--batch-size` controls how many pull requests each invocation receives. `--limit` caps the run size, `--fail-fast` stops after the first failing batch, and `--no-preflight` skips the Copilot configuration check for promotion-only sets. It never publishes. See [the What's New workflow](../docs/whats-new/README.md#drafting-every-pull-request).
+
 ## `prepare_copilot_release_notes.py`
 
 ### Usage

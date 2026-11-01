@@ -13,10 +13,11 @@ Use these instructions when generating a pull request title and description.
 ## Title
 
 - Write a concise, specific title describing the main change or user-visible outcome.
-- Prefer fewer than 72 characters without sacrificing clarity.
+- Keep the title to at most 71 characters, including spaces. A longer title is rejected.
 - Use terminology found in the change; avoid vague titles such as "Updates" or "Improvements".
 - Do not add a period at the end.
 - Include an issue reference only when it is known and relevant.
+- Write the title on one line with no label, quotes, or bold markers.
 
 ## Description
 
