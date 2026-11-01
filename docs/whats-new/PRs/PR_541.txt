@@ -1,0 +1,59 @@
+title: Publish container release v0.1.0 and merge main into container-release
+description:
+## Summary
+
+First promotion of the independently versioned container release stream. Adds container/VERSION
+(0.1.0), the container-release workflow, and the
+container/scripts/verify/verify_container_release.sh verifier. PRs targeting container-release only
+validate (plain X.Y.Z version that strictly increases over existing container-v* tags, required
+deployment files, archive layout, and main merged); the post-merge workflow publishes exactly one
+container-vX.Y.Z tag and GitHub Release with a checksummed archive, and refuses to overwrite an
+existing tag.
+
+Container lifecycle scripts (up.sh, down.sh, logs.sh, status.sh) are consolidated into a single
+scripts/container.sh dispatcher used by the Makefile targets and the systemd unit. UCanAccess is now
+downloaded and pinned (5.0.1) inside the Containerfile, removing make install-ucanaccess and the
+container/lib staging; the frontend build pins pnpm 10.34.6. Adds operator scripts adopt-project.sh
+and move-project.sh, plus a sead-authorization move-resource command that moves a resource locator
+while keeping its UUID and grants and records a resource_locator_changed audit event.
+
+The branch also merges main, so the reviewed container/ tree carries the latest application changes;
+the diff against container-release includes those changes, among them entity rename with
+dependent-reference checks and task-sidecar note moves, a draft-aware column-availability endpoint
+(POST .../column-availability), backend declarative business keys (fixed rows ordered identity
+columns then produced data columns; keys no longer add columns; the exact legacy values order is
+remapped by name), project locators anchored to the project file path, a fast listing YAML loader
+for project discovery, FK join tests against unsaved configurations, and project backup
+listing/restore restricted to shapeshifter.yml backups.
+
+## User-facing release note
+
+Container deployment files are now published as versioned GitHub Releases, starting with
+container-v0.1.0, that operators can download, verify with a checksum, and select by exact tag,
+independently of application releases on main.
+
+## Upgrade notes
+
+ - make install-ucanaccess and container/lib/ucanaccess are gone; UCanAccess is downloaded during
+the image build, so no JARs need to travel with the deployment bundle.
+ - Lifecycle entry points changed: up.sh, down.sh, logs.sh, and status.sh are replaced by
+scripts/container.sh <action>. The shipped systemd unit already uses the new dispatcher; update
+custom units or scripts that call the old files.
+ - After renaming or moving a project folder, run container/scripts/move-project.sh (or
+sead-authorization move-resource) so the authorization locator moves with the folder and grants are
+kept; restart the container if the moved project was the active editing project.
+ - Fixed-entity values requests now use the authoritative column order (managed identity columns,
+then produced data columns). The exact legacy order is still recognized and remapped by name; other
+orders are rejected.
+
+## Validation
+
+ - Passed: validate check (Container Release workflow) on the PR — verified the version, required
+files, archive layout, and that main is merged (completed 2026-10-10).
+ - Skipped by design: the publish job on the PR; it runs only on push to container-release.
+ - The PR was merged on 2026-10-10; the outcome of the post-merge publish run is not part of the
+available evidence.
+ - Backend and frontend test suites: no execution results for this PR are available in the supplied
+CI evidence. The added and updated tests (for example backend/tests/api/v1/test_columns.py,
+test_declarative_business_keys_integration.py, and
+backend/tests/authorization/test_move_resource.py) were not observed running here.

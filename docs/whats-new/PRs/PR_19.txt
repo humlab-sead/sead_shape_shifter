@@ -1,0 +1,70 @@
+title: Fix frontend config/entity issues; add driver schema registry
+description:
+## Summary
+
+This PR fixes several frontend issues reported during a UI walkthrough and introduces a driver
+schema registry that drives data source configuration end to end.
+
+Frontend fixes:
+
+ - The Entities view is no longer a Sprint 5.2 placeholder: it now shows a "No Configuration Loaded"
+state with a link to browse configurations, and renders the loaded configuration's entities via
+EntityListCard once a configuration is available. A new currentConfigName getter in the
+configuration store makes the sidebar and views aware of the loaded configuration.
+ - The dependency graph's "FORCE DIRECTED" layout now works: DependencyGraphView.vue implements a
+simple force-directed simulation (repulsion, edge attraction, damping, bounds clamping) instead of
+always using the hierarchical layout.
+ - The app is renamed to "SEAD Shape Shifter" in the drawer, app bar, home view, and document title;
+the Settings placeholder no longer references a sprint date.
+
+Backend / data sources:
+
+ - New DriverSchemaRegistry (src/loaders/driver_metadata.py) loads per-driver configuration schemas
+from input/driver_schemas.yml (postgresql, access/ucanaccess, sqlite, csv). A new endpoint GET
+/api/v1/data-sources/drivers exposes these schemas, and DataSourceMapper.to_core_config now maps API
+configs to core configs schema-aware (required-field checks, defaults, password extraction from
+SecretStr).
+ - DataSourceFormDialog.vue was rewritten to render form fields dynamically from the driver schema
+(via a new useDriverSchema composable and driver-schema.ts types) instead of hardcoded database/file
+field blocks.
+ - Data source connection testing was fixed: environment variable references (${VAR}) are preserved
+unresolved when listing/editing data sources (read raw from YAML, including @include: directives)
+and resolved only when testing a connection; driver-specific test queries were added, and
+Access/UCanAccess tests use table introspection (SELECT TOP 1
+  * FROM [table]) since they don't support SELECT 1.
+ - The backend-run Makefile target now invokes uvicorn directly with --reload-dir backend/app and
+debug logging; uvicorn[standard] was added as a dev dependency group.
+
+Also included: new docs (DRIVER_SCHEMA_REGISTRY.md, ENVIRONMENT_VARIABLES.md), new backend test
+files (mapper, driver schema, schema loader, env var resolution/preservation) plus manual debug
+scripts, and two allow_null_keys: false constraints commented out in input/arbodat-database.yml. The
+PR body states it fixes issues #11, #12, #14, #15 and #17; linked issue details were not available
+for this review.
+
+## User-facing release note
+
+The Entities page now works once a configuration is loaded, the dependency graph's force-directed
+layout renders correctly, and the data source editor shows only the fields relevant to the selected
+driver (PostgreSQL, MS Access, SQLite, or CSV). Testing a data source connection now works with
+environment variable references such as ${SEAD_HOST}, which remain visible and editable in the UI.
+
+## Upgrade notes
+
+ - The new file input/driver_schemas.yml is required at runtime: the driver schema registry raises
+an error if it is missing, so it must be deployed with the application.
+ - make backend-run now calls uvicorn directly instead of uv run uvicorn; uvicorn[standard] was
+added to the dev dependency group, so environments must have it installed (e.g. via uv sync with the
+dev group) and on PATH.
+ - Two allow_null_keys: false join constraints were commented out in input/arbodat-database.yml;
+users relying on that sample configuration should note the changed validation behavior.
+
+## Validation
+
+ - New pytest test files were added (test_data_source_mapper.py, test_driver_schema.py,
+test_driver_schema_loader.py, test_env_var_resolution.py, test_env_var_preservation.py,
+test_debug_connections.py) plus manual debug/demo scripts, but no execution results for them are
+available in the provided evidence.
+ - No CI status checks are reported for this pull request (the status check rollup is empty), so no
+checks can be confirmed as passed or failed.
+ - The pull request was merged into dev (merge commit 2050f15d, 2025-12-17), but no test or CI
+output accompanies the merge.

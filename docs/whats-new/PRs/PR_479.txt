@@ -1,0 +1,60 @@
+title: Constrain filesystem and project configuration access
+description:
+## Summary
+
+This PR enforces server-owned filesystem boundaries across the backend and configuration layer,
+closing arbitrary file read/write paths identified in the security-hardening work (Phase 2 of the
+MITIGATE_SECURITY_ISSUES proposal).
+
+ - Adds a shared containment guard, resolve_contained_path() in src/path_resolution.py, which
+resolves symlinks before the check, rejects absolute paths (unless explicitly allowed) and parent
+traversal, and requires the resolved path to remain inside the approved root via is_relative_to().
+resolve_managed_file_path() now routes through it instead of returning absolute filenames unchanged.
+ - Applies the guard to file access throughout the API: project endpoints (projects.py), project
+file browsing and uploads (file_manager.py), backup create/list/restore (yaml_service.py), execution
+output targets (execute_service.py, including a re-check after parent-directory creation to catch
+symlink swaps), entity values file resolution, and FilePathResolver. Backup and file listings now
+skip entries that resolve outside their root (e.g. outside symlinks).
+ - Confines @include/@load directive resolution: resolve_directives() and
+ShapeShiftProject.resolve() accept an allowed_roots set, and the backend passes the project
+directory plus the shared data and data-source roots. Directive files outside those roots raise a
+non-sensitive error.
+ - Documents the approved root set (projects, shared data, shared data sources, logs, temporary
+files) in docs/OPERATIONS.md, records the completed Phase 2 task plan, archives SECURITY_CHECK.md,
+and adds a deferred sub-proposal for ingester filesystem boundaries
+(INGESTER_FILESYSTEM_BOUNDARIES.md); ingester source/output_folder confinement is explicitly out of
+scope here.
+ - Adds regression tests for traversal, absolute paths, symlink escapes, cross-project references,
+and time-of-check/time-of-use swaps. The PR also removes several authorization-repository mutation
+tests (test_mutations.py) unrelated to path confinement; no replacement tests for the removed cases
+appear in this diff.
+
+## User-facing release note
+
+File access through the Shape Shifter API is now confined to server-managed directories: uploads,
+backups, downloads, execution outputs, and project configuration directives (@include/@load) can no
+longer reach files outside the approved project and shared-data roots, with absolute paths,
+traversal, and symlink escapes rejected by a clear error.
+
+## Upgrade notes
+
+ - Project configurations that reference files by absolute path or that use @include/@load
+directives pointing outside the approved roots (the project directory,
+SHAPE_SHIFTER_GLOBAL_DATA_DIR, or SHAPE_SHIFTER_GLOBAL_DATA_SOURCE_DIR) will now be rejected;
+migrate such references beneath an approved root.
+ - Backup restore accepts only a backup name from the authorized project's own backup listing;
+traversal-style names (e.g. ../other-project/backups/...) now return 404.
+ - The approved root set and its configuration variables are documented in docs/OPERATIONS.md
+("Approved file roots").
+
+## Validation
+
+ - No CI check results were available for this pull request (the status check rollup is empty), so
+test execution and outcomes are unknown; the pull request was merged on 2026-09-08.
+ - The diff adds focused regression tests (not verified as executed here):
+tests/test_path_resolution.py, tests/configuration/test_config.py,
+backend/tests/utils/test_file_path_resolver.py, backend/tests/services/test_file_manager.py,
+backend/tests/services/test_execute_service_output_paths.py (new), and
+backend/tests/api/v1/test_projects.py.
+ - The Phase 2 task plan added in this PR states focused tests pass, but that is documentation, not
+verified CI evidence.

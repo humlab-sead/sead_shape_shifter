@@ -1,0 +1,60 @@
+title: Implement existing-row updates and submission outcome classification
+description:
+## Summary
+
+This PR completes the data-provider submission lifecycle work for the sead_change_request ingester
+(lifecycle phases 1–3) and archives the corresponding proposal set.
+
+Key implementation changes:
+
+ - Phase 1 – lifecycle contracts (contracts.py): new LifecycleVersionState (live / superseded /
+pending_review / blocked), LogicalRecordVersion metadata, and a validate_one_live_version invariant
+check that reports logical records with more than one live version.
+ - Phase 2 – outcome classification (contracts.py, preparation.py, result_builders.py): new
+classify_submission_outcomes groups submission rows into new_data, no_op, allowed_update,
+pending_review, and blocked, honoring a per-entity mutable-field scope, and surfaces an "Outcome
+classification: …" diagnostic plus identity-work queue counts in validation infos.
+ - Phase 3A – existing-row update planning (planning.py, input_resolution.py, identity_work.py,
+orchestration.py, identity_resolution.py): new UPDATE_EXISTING_CANDIDATE and BLOCK_EXISTING_UPDATE
+planned actions. Existing rows whose configured mutable fields (with <field>__existing baseline
+columns) differ become update candidates; rows with missing mutable baselines, or entities outside
+the optional existing_row_update_entities first-slice allowlist, are blocked with diagnostics. Two
+new optional ingester config keys are resolved and validated: mutable_fields_by_entity and
+existing_row_update_entities.
+ - Phase 3B – SQL/artifact rendering (package_builder.py, sql_builder.py): the change package now
+carries planned actions and mutable fields, and accepted update candidates render as UPDATE … SET …
+WHERE <public_id> = … statements in both the inline-insert and copy-CSV deploy strategies (inserts
+still go through the CSV sidecars). Rendered insert/copy columns now exclude system_id and
+  *__existing baseline columns.
+ - Documentation: the lifecycle policy is promoted to a durable reference
+(docs/DATA_PROVIDER_SUBMISSION_LIFECYCLE.md), the provider-lifecycle proposal set is archived under
+docs/proposals/CHANGE_REQUEST_INGESTER/done/, a separate shared-data review/operator contract
+proposal is added, proposal resources move to a resources/ folder, and
+TARGET_MODEL_SCHEMA_REFERENCE.md tables are reformatted. An Arbodat project review-findings note is
+added under tests/test_data/projects/arbodat/.
+
+## User-facing release note
+
+The change-request ingester can now handle corrections to existing rows: submissions are classified
+into outcomes (new data, no-op, allowed update, pending review, blocked), and accepted updates to
+configured mutable fields are delivered as explicit UPDATE statements in the deploy artifact, while
+ambiguous or out-of-scope changes are blocked with clear diagnostics instead of being applied
+silently.
+
+## Upgrade notes
+
+No action is required to keep existing behavior: without the new optional mutable_fields_by_entity
+configuration, existing rows continue to be planned as reference-only, and
+existing_row_update_entities can optionally restrict which entities may take the first existing-row
+update slice. Note one artifact change: rendered INSERT and \copy payloads now exclude system_id and
+*__existing baseline columns, so any tooling that depended on those columns appearing in deploy SQL
+or CSV sidecars needs updating.
+
+## Validation
+
+ - New and updated unit tests are included in this PR covering lifecycle contracts, outcome
+classification, planning/orchestration routing, package building, SQL rendering, and end-to-end
+ingester validate/ingest behavior (backend/tests/ingesters/test_sead_change_request_*.py).
+ - No CI check results are recorded for this pull request (status check rollup is empty), so
+execution and outcomes of these tests are unknown and are not claimed as passed here.
+ - The PR was merged into dev (merge commit 8ad1a84); no other validation evidence is available.

@@ -1,0 +1,68 @@
+title: Add "ingestion" capability to Shape Shifter workflow (#129)
+description:
+## Summary
+
+Integrates the SEAD Clearinghouse Import system into Shape Shifter as a modular "ingester"
+capability, so data submissions (Excel files) can be validated and ingested into a SEAD PostgreSQL
+database from within the application.
+
+Key changes:
+
+ - Ingester infrastructure (backend/app/ingesters/): a runtime-checkable Ingester protocol
+(get_metadata, validate, ingest), configuration and result dataclasses (IngesterConfig,
+ValidationResult, IngestionResult), and an Ingesters registry using the existing Registry pattern
+for auto-discovery of ingesters.
+ - SEAD ingester (backend/app/ingesters/sead/): a SeadIngester registered under key sead, bringing
+over the clearinghouse import workflow — schema loading (SchemaService/SeadSchema), transformation
+policies, validation specifications (table/column types, primary key, system_id, foreign keys,
+non-nullable columns, etc.), CSV dispatch (to_csv dispatcher producing
+tables/columns/records/recordvalues files), CSV upload into clearing_house staging tables,
+submission registration, and explode to public tables.
+ - REST API: new /api/v1/ingesters endpoints — GET /ingesters (list registered ingesters), POST
+/ingesters/{key}/validate, and POST /ingesters/{key}/ingest — backed by a new IngesterService and
+Pydantic request/response models.
+ - CLI: new backend/app.scripts.ingest Click tool (list-ingesters, validate, ingest commands, JSON
+config file support) with a sead-ingest console entry point added to pyproject.toml.
+ - Frontend: a new "Data Ingestion" page (/ingesters route, nav entry) with an ingester list, a
+configuration form (source file, submission name, data types, database connection, ignore-column
+patterns, register/explode switches), and Validate/Ingest actions backed by a Pinia store and API
+client.
+ - Tests: new suites for the ingester registry/protocol, API endpoints, and CLI
+(backend/tests/ingesters/, backend/tests/api/test_ingesters.py,
+backend/tests/scripts/test_ingest_cli.py); minor updates to existing state-manager/model/workflow
+tests.
+ - Docs & tooling: ingester development guide in AGENTS.md, backend/app/ingesters/README.md, the
+docs/INGESTER_INTEGRATION_PLAN.md design document, and a Makefile rename of the ruff-check-fix
+target to ruff.
+
+docs/INGESTER_INTEGRATION_PLAN.md is a design/roadmap document; items listed there as future phases
+or enhancements are not necessarily implemented by this PR.
+
+## User-facing release note
+
+Shape Shifter can now ingest data submissions into a SEAD Clearinghouse database: users can select
+an ingester on the new "Data Ingestion" page (or via the API or the sead-ingest CLI), validate an
+Excel file against the SEAD schema, and then register, upload and explode the submission into the
+database.
+
+## Upgrade notes
+
+ - Install/refresh the project (e.g. uv sync / editable install) so the new sead-ingest console
+script entry point is registered.
+ - The SEAD ingester requires network access to a SEAD PostgreSQL database with the clearing_house
+import schema (tables clearinghouse_import_tables/clearinghouse_import_columns and the
+staging/explode functions); database host, port, database name and user are supplied per request via
+the API/CLI/UI configuration, not new environment settings.
+ - Makefile users: the ruff-check-fix target has been renamed to ruff (make lint still runs tidy,
+ruff and pylint).
+
+## Validation
+
+ - New test suites were added in this PR (pytest backend/tests/ingesters/, pytest
+backend/tests/api/test_ingesters.py, pytest backend/tests/scripts/test_ingest_cli.py), but no
+execution results for them are available in the provided evidence; their pass/fail status is
+unknown.
+ - No CI check results were reported for this pull request (status check rollup is empty), so it is
+unknown whether the repository's test/lint commands were run.
+ - The pull request was merged into dev (merge commit 1836992f745c6979abf95218177727c0ce669978), but
+no validation outcomes are confirmed by the available evidence.

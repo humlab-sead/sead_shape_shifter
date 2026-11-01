@@ -2,88 +2,81 @@ title: Add in-memory project handoff for Change Request ingester
 description:
 ## Summary
 
-The SEAD Change Request ingester now receives normalized project tables in memory instead of reading
-an intermediate Excel workbook, and an authorized operator can validate and generate a
-change-request deploy bundle from a saved project through new project-only routes.
+Adds an in-memory handoff that lets operators validate and ingest a saved project as a SEAD Change
+Request without an intermediate workbook file, and retires the Change Request file input.
 
- - New routes POST /api/v1/ingesters/sead_change_request/from-project/validate and
-.../from-project/ingest accept a strict ProjectIngesterRequest (extra="forbid"; no source, config,
-database, target-model, output-folder, or validate_first overrides) and require both project:execute
-on the located saved project and the interim application action run_ingesters.
- - New ProjectIngesterService composes the operation: a direct-call authorization guard, mandatory
-CompositeProjectSpecification validation, a trusted IngesterConfig built only from backend-owned
-settings and server-selected values, no-write normalization, and dispatch to table methods; failures
-stop before normalization, SIMS, database, or bundle writes.
- - Core workflow.py extracts normalize_project(), which applies the same options in the same order
-and returns the completed ShapeShifter without storing or logging; workflow() delegates and keeps
-its file-output behavior.
- - A new runtime-checkable TableSourceIngester protocol (validate_tables / ingest_tables,
-diagnostic-only source_name) is exported from backend.app.ingesters; SeadChangeRequestIngester
-implements it. Its adapter deep-copies each DataFrame, sanitizes only caller-visible column labels,
-and preserves entity names, values, dtypes, and timezones.
- - Change Request file input is retired: the shared /{key}/validate|ingest routes return HTTP 400
-for sead_change_request, ingester metadata reports no supported formats, the ingester's file methods
-return structured input failures, and a Path/str source is rejected before config.extra is read.
- - All three deploy strategies (inline_insert, copy_csv, inline_staging) now render temporal values
-from the declared target column type: date targets use the calendar date, timezone-naive timestamp
-targets keep the literal calendar/clock fields with timezone metadata dropped without conversion,
-and explicitly timezone-aware target types fail with a clear error before artifact writing.
- - Frontend: typed ProjectIngesterRequest/ProjectSubmissionOptions,
-ingesterApi.validateProject/ingestProject, store validateProject/ingestProject actions, and a
-Dispatch form that builds an allowlisted request from the open saved project (workbook path,
-ignore-columns, and data-source controls hidden for Change Request); ordinary file ingesters keep
-their existing routes.
- - Documentation and planning: docs/OPERATIONS.md and docs/USER_GUIDE.md updated; Phase 1–5 task
-plans added and the phase plan marked complete; the companion CHANGE_REQUEST_TARGET_BUNDLE_ACCESS
-proposal/phase plan/REVIEW rewritten to defer the permission exception, exclusive per-run output,
-and read-only target-database rules to future work.
+ - Project-only routes and helper: New POST
+/api/v1/ingesters/sead_change_request/from-project/validate and /from-project/ingest routes use a
+strict ProjectIngesterRequest (extra="forbid": no source, config, database, output_folder, or nested
+identity overrides). They require project:execute on the named saved project plus the interim
+application run_ingesters action. The new ProjectIngesterService re-checks the authorized resource,
+locator match, and application action on direct calls, then mandatorily validates the saved project
+specification before normalizing it and passing the tables to the ingester.
+ - Table input capability: A separate runtime-checkable TableSourceIngester protocol
+(validate_tables() / ingest_tables()) is added beside the unchanged Ingester protocol.
+SeadChangeRequestIngester implements it with an adapter that deep-copies supplied DataFrames,
+sanitizes only caller-visible column labels, and preserves entity names, values, dtypes, and
+timezones.
+ - Retired file input: The shared /{key}/validate and /{key}/ingest routes, the shared
+IngesterService, and the ingester's public validate()/ingest() methods now reject Change Request
+workbook/path input with a clear message before any project load, source read, SIMS call, or file
+write. Metadata reports no supported formats for this ingester.
+ - Backend-owned settings: New settings INGEST_TARGET_HOST/PORT/DBNAME/USER and INGEST_OUTPUT_DIR
+supply the target connection and managed bundle root; requests and project YAML cannot select them.
+Missing required values fail before normalization or SIMS access.
+ - Core normalization step: src/workflow.py extracts a no-write normalize_project() that returns the
+completed ShapeShifter; workflow() delegates to it and keeps its file output and shape logging
+unchanged.
+ - Temporal rendering rule: All three deploy strategies (inline_insert, copy_csv, inline_staging)
+render date targets as the calendar date and keep the normalized clock fields for timezone-naive
+timestamps (timezone metadata dropped without conversion); explicitly timezone-aware target column
+types fail before a bundle is written.
+ - Frontend: The Dispatch tab's SEAD Change Request form no longer shows a source path, fixes the
+project locator to the open saved project, and calls new validateProject/ingestProject API/store
+actions; ordinary file-based ingesters keep the existing routes.
+ - Docs and plans: .env.example, backend.env.example, docs/OPERATIONS.md, and docs/USER_GUIDE.md
+document the new settings and workflow; the IN_MEMORY_INGESTER_HANDOFF phase/task plans are added
+and the CHANGE_REQUEST_TARGET_BUNDLE_ACCESS proposal documents are updated to reflect the shipped
+handoff.
 
 ## User-facing release note
 
-Operators can now open a saved project's Dispatch tab and validate and generate a SEAD Change
-Request deploy bundle directly from the project's normalized data, without supplying an intermediate
-workbook file. The old Change Request file-upload path is retired.
+Operators can now validate a saved project and generate its SEAD Change Request deploy bundle
+directly from the project's Dispatch tab, without a workbook path or a prior Execute run. The old
+Change Request file-upload workflow is retired and now returns a clear "file input retired" error.
 
 ## Upgrade notes
 
- - Configure the new backend-owned target settings before using project-based generation:
-SHAPE_SHIFTER_INGEST_TARGET_HOST, SHAPE_SHIFTER_INGEST_TARGET_PORT (default 5432),
-SHAPE_SHIFTER_INGEST_TARGET_DBNAME, SHAPE_SHIFTER_INGEST_TARGET_USER, and
-SHAPE_SHIFTER_INGEST_OUTPUT_DIR; the target password must be provided via ~/.pgpass, not environment
-variables. See .env.example, deployment/container/resources/backend.env.example, and
-docs/OPERATIONS.md.
- - Breaking change for API consumers: POST /api/v1/ingesters/sead_change_request/validate and
-.../ingest now return HTTP 400 (file input retired); use the new .../from-project/validate and
-.../ingest routes with the strict project request body.
- - Callers need both project:execute on the saved project and the interim application-level
-run_ingesters permission; removal of the application permission is deferred to the companion
-target-bundle-access proposal.
- - Target models that declare timezone-aware columns (timestamp with time zone / timestamptz) for
-Change Request entities now fail before bundle writing; such columns must be timezone-naive.
+ - Deployers who want the project-based Change Request workflow must configure
+SHAPE_SHIFTER_INGEST_TARGET_HOST, SHAPE_SHIFTER_INGEST_TARGET_PORT,
+SHAPE_SHIFTER_INGEST_TARGET_DBNAME, SHAPE_SHIFTER_INGEST_TARGET_USER, and a writable
+SHAPE_SHIFTER_INGEST_OUTPUT_DIR (relative paths resolve under SHAPE_SHIFTER_APPLICATION_ROOT); the
+target password belongs in the deployment user's PostgreSQL password file, not in env files. The
+workflow fails with a configuration error until these are set.
+ - Breaking for API consumers: POST /api/v1/ingesters/sead_change_request/validate and /ingest now
+return HTTP 400 for file input. Callers must switch to the new from-project/validate /
+from-project/ingest routes with the strict project request body. Other ingesters' file routes are
+unchanged.
+ - No database migrations are included.
 
 ## Validation
 
-No test CI results were available for this pull request: the checks rollup contains only the
-validate and publish jobs of the "Container Release" workflow, both SKIPPED. The outcomes below are
-the execution results recorded in the phase task plans included in this diff, not CI evidence.
-
- - Phase 1 (recorded pass): backend test suite, frontend suite (739 tests), ruff, black, isort, git
-diff --check, and make check-doc-links passed; disposable-database checks (V-3) were collected but
-skipped for lack of a loopback PostgreSQL.
- - Phase 2 (recorded pass): rtk .venv/bin/pytest tests/test_workflow.py -q (15 tests) plus
-regression suites (56 tests) passed.
- - Phase 3 (recorded pass): checks V-1–V-7 passed; 17 disposable-PostgreSQL integration tests were
-skipped (no loopback database available).
- - Phase 4 (recorded pass): rtk .venv/bin/pytest backend/tests/test_config.py
-backend/tests/models/test_project_ingester.py
-backend/tests/services/test_project_ingester_service.py -q and the listed
-regression/lint/format/whitespace commands passed.
- - Phase 5 (recorded pass): rtk .venv/bin/pytest backend/tests/api/test_project_ingester_routes.py
-backend/tests/api/test_ingesters.py backend/tests/api/test_sead_change_request_project_scope.py
-backend/tests/services/test_project_ingester_service.py -q passed; rtk proxy pnpm --dir frontend
-exec vitest run src/api/__tests__/ingester.test.ts src/stores/__tests__/ingester.test.ts
-src/components/ingester/__tests__/IngesterForm.test.ts src/views/__tests__/IngesterView.test.ts
-passed (19 tests); backend ruff/black/isort, frontend vue-tsc --noEmit, ESLint, Prettier, make
-check-doc-links, and git diff --check passed.
- - Not run: live target-database/SIMS end-to-end execution of generated bundles;
-disposable-PostgreSQL integration tests remained skipped in the recorded runs.
+ - Recorded as passed in the task plans merged with this PR (execution date 2026-10-19): rtk uv run
+pytest tests/test_workflow.py -q (15 tests); the combined
+provider-workflow/shape-log/service-access/dispatcher regression run (56 tests); rtk uv run pytest
+backend/tests/api/test_ingesters.py
+backend/tests/ingesters/test_sead_change_request_input_resolution.py -q (47 tests); focused ingester
+suites test_ingester_infrastructure.py, test_sead_change_request_input_resolution.py,
+test_sead_change_request_ingester.py, and test_sead_change_request_sql_builder.py; a full
+backend/tests/ingesters run with 17 loopback-only PostgreSQL integration tests skipped; and ruff
+check, black --check, isort --check-only, and git diff --check on the changed files.
+ - New test files in the diff cover the project routes
+(backend/tests/api/test_project_ingester_routes.py), the composition helper
+(backend/tests/services/test_project_ingester_service.py), the strict request model
+(backend/tests/models/test_project_ingester.py), settings (backend/tests/test_config.py), and the
+Core workflow (tests/test_workflow.py); their execution is covered by the recorded runs above.
+ - Frontend Vitest suites were added/updated (ingester API, store, and IngesterForm tests), but no
+individual execution result for them is recorded in the diff; the PR author reports the focused
+frontend tests passed during implementation.
+ - CI on the pull request shows only the Container Release workflow's validate and publish jobs,
+both SKIPPED; no other CI test results are available for this branch.

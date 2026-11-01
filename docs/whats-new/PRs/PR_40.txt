@@ -1,0 +1,46 @@
+title: feat: add compact mode, persisted UI settings and editor fixes
+description:
+## Summary
+
+This PR adds a persistent interface-settings layer to the frontend and applies a set of UI/UX fixes
+across the entity screens.
+
+ - New useSettings composable (frontend/src/composables/useSettings.ts) stores compactMode,
+animationsEnabled, and railNavigation in localStorage (shape-shifter-settings), applies them to the
+document root (compact-mode / no-animations classes and Vuetify spacing variables), and exposes
+reset, export, and import helpers.
+ - SettingsView.vue now binds the Interface section to this composable, adds an "Auto-collapse
+navigation" switch, tooltips for each option, a text-input sample in the theme preview, and a "Reset
+Interface Settings" confirmation dialog.
+ - New global stylesheet (frontend/src/styles/global.css, imported from main.ts) defines the
+compact-mode sizing overrides (cards, toolbars, lists, buttons, chips, tables, tabs, spacing
+utilities) and the animation-disabling rules.
+ - App.vue reads and watches the railNavigation setting so the navigation drawer starts collapsed to
+a rail when enabled on wide screens.
+ - New reusable SqlEditor.vue component wraps @guolao/vue-monaco-editor with SQL suggestions;
+EntityFormDialog.vue replaces the plain SQL textarea with it and switches field hints from
+persistent-hint to a compact #message slot, plus a truncated dialog title.
+ - EntityListCard.vue uses a compact-density list with smaller icons/buttons and a single-row title
+layout, including compact-mode styles.
+ - ForeignKeyEditor.vue replaces the static target-entity chip with an editable v-autocomplete bound
+to fk.entity over availableEntities; TODO.md marks the related "Nothing happens when clicking Add
+in FK Editor" item (#39) as done.
+ - vuetify.ts adds global defaults (ripple on, comfortable density for inputs/lists/chips, card
+elevation 1).
+
+## User-facing release note
+
+The Settings page now lets you enable a compact interface, turn animations off, and auto-collapse
+the side navigation, with your choices saved between sessions and a one-click reset. Entity screens
+are denser, SQL queries are edited in a full editor with suggestions, and foreign-key target
+entities can now be selected directly in the FK editor.
+
+## Upgrade notes
+
+None - no user action required. Interface preferences are stored client-side in browser localStorage
+under the key shape-shifter-settings; no migrations or configuration changes are involved.
+
+## Validation
+
+Not verified: validation results unavailable. No CI check results were reported for this pull
+request, and no test or build output was included in the available evidence.

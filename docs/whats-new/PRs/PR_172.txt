@@ -1,0 +1,55 @@
+title: Add Playwright E2E setup and fix project filename truncation
+description:
+## Summary
+
+This PR introduces Playwright end-to-end testing for the frontend and fixes a project filename
+handling bug in the backend, along with supporting documentation and branding updates.
+
+ - Backend fix: ProjectService now derives project file paths with removesuffix('.yml') instead of
+rstrip('.yml') when loading and saving projects. rstrip strips any trailing characters in the set
+{'.', 'y', 'm', 'l'}, which truncated project names such as test_config_manual (evidenced by the
+renamed input/test_config_manua.yml fixture, whose trailing l had been cut off). A regression test
+(test_create_configuration_name_ending_in_yml_chars) exercises names ending in those characters, and
+a load-modify-save roundtrip test was added.
+ - Test consolidation: the duplicate backend/tests/services/test_config_service.py was deleted and
+test_config_service2.py was renamed to test_project_service.py, with selected cases (multi-entity
+load, roundtrip) merged into it.
+ - Playwright E2E initialization: adds frontend/playwright.config.ts (Chromium project, baseURL
+http://localhost:5173, dev server auto-start via webServer, CI-aware retries/workers), four spec 
+suites (00-smoke, 01-project-management, 02-validation-workflow, 03-entity-management), reusable
+project fixtures, test:e2e* npm scripts, @playwright/test and svg2img dev dependencies, gitignore
+entries for Playwright artifacts, and two setup/quickstart guides.
+ - Frontend branding/UI: new SEAD SVG logos and favicons (replacing the removed PNG logo), SVG
+favicon plus theme-color and updated page title in index.html, and minor App.vue toolbar tweaks
+(title layout, simplified theme-toggle button, removed dead logo import).
+ - Documentation: docs/FRONTEND_MANUAL_TESTING_GUIDE.md and input/20260113_MANUAL_TESTING.md were
+expanded with new sections (graph/dependencies, reconciliation, ingester testing) and a terminology
+shift from "configuration" to "project"; TODO.md was reorganized (completed items removed, an
+AI-generated prioritization appendix added). The input/test_config_manua.yml fixture was renamed to
+test_config_manual.yml and gained a type: shapeshifter-project metadata field.
+
+The PR body references issues #143, #169, #170 and #171; linked issue details were not available for
+this description, and the supplied diff contains no Docker-related file changes despite the PR
+title/body mentioning Docker configuration.
+
+## User-facing release note
+
+Projects whose names end in letters such as "l", "m" or "y" (or a dot) are now saved and reopened
+under their full name instead of a truncated filename. The app also shows an updated SEAD logo,
+favicon, and page title.
+
+## Upgrade notes
+
+ - Frontend developers must reinstall dependencies (pnpm install) to pick up the new
+@playwright/test and svg2img dev dependencies, and install Playwright browsers before running the
+new test:e2e* scripts (they expect the dev server on http://localhost:5173, which the Playwright 
+config starts automatically).
+ - Anyone referencing the sample file input/test_config_manua.yml must use the new name
+input/test_config_manual.yml.
+
+## Validation
+
+Not verified: validation results unavailable. No CI check results were supplied for this pull
+request (the status check rollup is empty), and no test-run outputs are included in the available
+evidence. New backend regression tests and Playwright E2E specs were added, but their execution and
+outcomes are unknown. The pull request was merged into dev on 2026-01-18.

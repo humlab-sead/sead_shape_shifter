@@ -1,0 +1,69 @@
+title: feat: first alpha release of Shape Shifter
+description:
+## Summary
+
+This is the first alpha release of Shape Shifter, delivered as a dev → main merge (510 files
+changed). It packages the three components of the mono-repo — the core Python library (src/), the
+FastAPI backend, and the Vue frontend — plus the SEAD ingester (ingesters/sead/) into a deployable
+alpha.
+
+Key changes visible in the diff:
+
+ - Core library: new replace transform (src/transforms/replace.py), filter metadata support, a new
+src/reconciliation/ domain module (model + source strategy), pure-domain data validators
+(src/validators/), expanded entity specifications, path utilities, and Excel/SQL loader
+improvements.
+ - Backend: new endpoints for columns, directives, and filters; the monolithic reconciliation
+service is replaced by a backend/app/services/reconciliation/ package with a mapper; data validation
+moves to a DataValidationOrchestrator calling pure domain validators; the project service is split
+into a services/project/ package; new centralized exceptions, error tips, and request-correlation
+middleware; a file-path resolver and column-introspection service. The experimental test-run feature
+(endpoint, service, and frontend UI) is removed.
+ - Frontend: new components including a log viewer overlay, create-entity-from-table dialog,
+replacements editor, copy-project dialog, and preview error display; updated user guide.
+ - Housekeeping: documentation restructured (current guides kept, historical notes moved to
+docs/archive/, new ingester and testing guides added), sample project configs and generated output/
+CSVs removed from the repository, and AI-agent tooling added (AGENTS.md, prompts/, updated copilot
+instructions).
+
+## User-facing release note
+
+Shape Shifter's first alpha is now available: users can create transformation projects, define and
+preview entities from Excel, CSV, or database sources, apply filters, replacements and links,
+reconcile lookup values, and materialize normalized SEAD tables through the web interface.
+
+## Upgrade notes
+
+This is the first release on main, so no migration is required for new installs. For anyone
+following the dev branch: the experimental test-run feature (API endpoints, service, and UI) has
+been removed, and sample project files and generated output/ CSVs are no longer tracked in the
+repository — keep any needed project YAML/Excel files outside the repo working tree.
+
+## Validation
+
+ - No CI check results are available for this pull request (the status check rollup is empty), so
+test-suite outcomes cannot be reported as passed or failed.
+ - New and updated backend, core, ingester, and frontend tests are included in the diff, but their
+execution and results are unknown from the available evidence.
+ - The pull request was merged into main on 2026-02-21 (merge commit 3b4a048); no further validation
+evidence is provided.
+
+## Detected orphaned commits
+
+Commits pushed directly to the base branch after the previous merged pull request. Each
+commit below reached the base branch without a pull request of its own.
+
+- `7e12199` feat: add custom item template for breadcrumbs in App.vue (#199) (2026-01-31)
+- `fc65a98` Merge branch 'main' of github.com:humlab-sead/sead_shape_shifter (2026-01-31)
+- `6e5628b` feat: add entity type to various entities in arbodat-test.yml (2026-01-31)
+- `4bf1140` feat: add validation for entity type field in EntityFieldsBaseSpecification (2026-01-31)
+- `e5ac919` feat(backend): add consistent entity key ordering in YAML output (2026-01-31)
+- `0751a74` fix: update shape-shifter version to 1.18.0 in uv.lock (2026-01-31)
+- `ab6d9d7` feat: add entity type "file" for file-based entities and improve entity editor with columns picklist (2026-01-31)
+- `da4d282` Merge branch 'main' of github.com:humlab-sead/sead_shape_shifter (2026-01-31)
+- `7764baf` fix: update shape-shifter version to 1.19.0 in uv.lock (2026-01-31)
+- `e2ea0be` Merge branch 'main' of github.com:humlab-sead/sead_shape_shifter (2026-01-31)
+- `09d20ce` fix: update shape-shifter version to 1.20.0 in uv.lock; reorder imports in test_suggestion_service.py; clean up yaml_service.py (2026-01-31)
+- `701c29b` Merge branch 'main' of github.com:humlab-sead/sead_shape_shifter (2026-01-31)
+
+Filtered 1 housekeeping commit(s): release-version-bump 1.

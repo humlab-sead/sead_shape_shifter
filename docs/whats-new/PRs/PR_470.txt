@@ -1,0 +1,54 @@
+title: Add semantic rules catalog and loader options schema generation
+description:
+## Summary
+
+This PR establishes a machine-readable semantic validation layer for Shape Shifter project YAML and
+closes the gap between the generated JSON Schema and the fields users actually author.
+
+ - Semantic rules catalog: New docs/rules/semantic_rules.yml encodes entity-type contracts as
+conditional rules (e.g. entity.xlsx.requires_filename, entity.sql.requires_data_source with the
+@internal exemption, entity.duckdb.requires_query/requires_depends_on,
+entity.merged.requires_branches/requires_public_id), file-existence checks for xlsx/openpyxl/csv
+loaders, and a cross-entity reference.entity_must_exist consistency rule. Each rule carries
+severity, category, diagnostic message, suggested fix, confidence, and source references.
+docs/rules/README.md documents the format and maintenance workflow.
+ - Agent instructions: New docs/ai/semantic-rules-agent.md and
+.github/instructions/semantic-rules.instructions.md define how AI agents create and maintain the
+rule catalog (source priority, rule fields, check kinds, confidence rules).
+ - Pydantic model additions: backend/app/models/entity.py adds options, check_functional_dependency,
+surrogate_name, type_names, and replacements to Entity, and defer_dependency to ForeignKeyConfig.
+All are additive fields with defaults, so the generated schema now describes user-authored YAML
+fields that were previously invisible.
+ - Loader options schema: scripts/generate_schemas.py now builds the options property from
+registered file-loader DriverSchema entries via DriverSchemaRegistry.all() (deduplicated by driver,
+database loaders excluded), emitting a oneOf array per loader.
+frontend/src/schemas/entitySchema.json was regenerated with the new fields and options.oneOf for
+sqlite, access, csv, xlsx, and openpyxl.
+ - Configuration instructions rework:
+.github/instructions/shapeshifter-configuration.instructions.md was rewritten as a compact rule
+source with an entity type contract table, FK constraint, append, unnest, and false-positive
+guidance; the shapeshifter-configuration skill now loads it via a new symlinked reference and an
+expanded SKILL.md workflow.
+ - Supporting changes: A draft proposal document
+(docs/proposals/YAML_SCHEMA_AUTHORITATIVE_REFERENCE.md) records the design rationale, and
+.vscode/settings.json gets expanded file-watcher exclusions and vitest watcher settings.
+
+## User-facing release note
+
+Project YAML editing in the Monaco editor now autocompletes loader options (filename, sheet_name,
+range, etc.) and previously undocumented entity fields such as replacements and defer_dependency,
+and AI assistants can validate project files against a machine-readable rule catalog that flags
+common mistakes like a missing options.filename on an Excel entity.
+
+## Upgrade notes
+
+None - no user action required. The new Pydantic fields are additive with defaults and only widen
+what the generated schema describes; the regenerated entitySchema.json ships with the frontend.
+
+## Validation
+
+Not verified: validation results unavailable. No CI check results were reported for this pull
+request (statusCheckRollup is empty). The proposal document in the diff lists planned validation
+commands (make lint, make test, schema regeneration, scripts/validate_project.py), but its own
+progress tracker marks the validation area "Not started" while its checklist is ticked; these are
+planning artifacts, not evidence that any check actually ran.

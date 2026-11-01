@@ -1,0 +1,73 @@
+title: Add CSV-in-ZIP dispatch, output download, and stricter project
+description:
+## Summary
+
+This PR bundles several fixes and enhancements to the dispatch, validation, and execution flows
+(referenced in the PR description as issues #101–#104):
+
+ - CSV-in-ZIP dispatcher (zipcsv): ZipCsvDispatcher now actually writes a ZIP archive — it writes
+CSVs to a temporary directory and archives them to the target path instead of leaving loose CSV
+files in a folder. Each dispatcher registration now declares an extension (.zip, .xlsx, or None),
+exposed via DispatcherMetadata.
+ - openpyxl aRGB fix: Excel styling now converts #RRGGBB/RRGGBB colors to openpyxl's required
+FFRRGGBB ARGB format via a _to_argb helper, fixing the error raised when dispatching with the
+openpyxl dispatcher.
+ - Filename/extension matching: the execute dialog validates that a file target path ends with the
+selected dispatcher's extension.
+ - Execution output download: a new GET /projects/{name}/execute/download endpoint serves dispatched
+files; ExecuteResult gains target_type and download_path, file targets get a timestamp suffix to
+avoid overwrites, and the frontend shows a "Download result file" button after a successful run.
+ - Specification system refactor: the monolithic src/specifications.py (804 lines) is replaced by a
+src/specifications/ package (base, fields, entity, fields, foreign_key, project) with a registry of
+field validators, composite specifications, and severity-aware SpecificationIssue reporting.
+Validation errors are now surfaced in execute results (error_details joins the collected messages)
+and via get_report().
+ - Project metadata rules: project files must now carry a metadata section with type:
+shapeshifter-project; ProjectYamlSpecification, IsProjectSpecification, and the backend
+mapper/services were updated accordingly, and the filename is now the authoritative project name
+(renames via metadata update are ignored; a rename_project path is referenced instead).
+ - Core model cleanup: TableConfig/ForeignKeyConfig/UnnestConfig take entities_cfg/fk_cfg instead of
+the full config (breaking rename of the cfg keyword), safe_values/safe_columns normalize fixed-data
+input, and FixedLoader validates through FixedEntityFieldsSpecification. workflow() no longer takes
+validate_then_exit; the CLI validates separately.
+ - Frontend: the standalone /graph route and DependencyGraphView.vue were removed (the graph lives
+in the project's Dependencies tab, now with a legend dialog and force layout default); the
+reconciliation view was consolidated into Configuration and "Reconcile & Review" tabs with
+per-specification reconcile actions and specification validation alerts; project name is locked in
+the metadata editor.
+ - Docs: new docs/ADDING_VALIDATORS.md and docs/SPECIFICATION_REFACTORING_REVIEW.md;
+CONFIGURATION_GUIDE.md documents the metadata section and per-field validation rules; sample
+input/*.yml files were updated to the new metadata format.
+
+## User-facing release note
+
+After a successful workflow run with a file dispatcher, the result dialog now offers a "Download
+result file" button, and each run writes a timestamped output file so previous results are not
+overwritten. The ZIP-CSV option now produces a real .zip archive, Excel exports no longer fail on
+column colors, and the output path field warns when the filename extension does not match the
+selected dispatcher.
+
+## Upgrade notes
+
+ - Project YAML files must now include a metadata section with type: shapeshifter-project; files
+without it fail validation. The bundled input/*.yml samples were updated as examples.
+ - The project name is now derived from the filename: sending a new name in a metadata update is
+ignored (use renaming of the file instead), and any metadata.name in the YAML is overridden by the
+filename.
+ - File dispatcher targets are automatically given a timestamp suffix (e.g.
+out_20260107_182055.xlsx); scripts that referenced the exact dispatched filename should account for
+this.
+ - The /graph frontend route was removed; the dependency graph is only available in the Dependencies
+tab of a project.
+ - Python consumers of the core model must update the TableConfig(cfg=...) keyword to
+TableConfig(entities_cfg=...); workflow() no longer accepts validate_then_exit (call
+validate_project instead).
+
+## Validation
+
+Not verified: validation results unavailable. No CI check results were supplied with this pull
+request (the status check rollup is empty). The diff adds and updates extensive tests (new
+tests/specifications/ suite for base, entity, fields, foreign key, and project specifications;
+updated loader, model, workflow, and backend service/API tests), but there is no evidence in the
+available sources that any test suite or lint command was executed. The pull request was merged into
+dev on 2026-01-07.

@@ -1,0 +1,76 @@
+title: Add Docker deployment, SEAD ingester system, and reconciliation UX
+description:
+## Summary
+
+This PR bundles several related changes on the dev branch into main:
+
+ - Ingester plugin system: Adds a protocol-based ingester infrastructure
+(backend/app/ingesters/protocol.py, registry.py) with dynamic discovery of ingester implementations
+from the top-level ingesters/ directory at application startup, test session start, and CLI load.
+New settings INGESTER_PATHS and ENABLED_INGESTERS control discovery. Exposed via REST endpoints (GET
+/api/v1/ingesters, POST /api/v1/ingesters/{key}/validate, POST /api/v1/ingesters/{key}/ingest), a
+Click CLI (backend/app/scripts/ingest.py, also installed as the sead-ingest console script), and a
+new frontend "Data Ingestion" view with Pinia store and API client.
+ - SEAD Clearinghouse ingester: Ports the SEAD Clearinghouse import pipeline to ingesters/sead/
+(Excel submission → policies → validation specifications → CSV dispatch → PostgreSQL
+upload/explode), with unit and integration test suites, builders/fixtures, and architecture/usage
+documentation.
+ - Multi-stage Docker deployment: New docker/ directory with a three-stage Dockerfile (Vite frontend
+build, Python dependency stage, slim runtime), docker-compose.yml, setup/build/test scripts, nginx
+and GitHub Actions examples, environment-variable reference, and Makefile docker-* targets. The
+FastAPI backend now serves the built frontend from frontend/dist via StaticFiles (SPA fallback),
+falling back to API-only mode when the build is absent.
+ - Reconciliation improvements: New backend endpoints for the reconciliation service manifest and
+raw-YAML config save; a YAML editing tab in the reconciliation view and specification editor
+(dual-mode form/YAML); a validation status column in the specifications list using the entity
+available-fields API (keys, columns, extra columns, FK joins, unnest columns); remote service types
+now populated from the service manifest; alternative search now passes the targetField; service
+status chip shows the available entity-type count.
+ - Session handling: Backend create_session reuses an existing active session for the same
+user/project instead of creating orphaned sessions on page refresh; the frontend useSession
+composable mirrors this reuse.
+ - User guide and help: Adds an "Execute Workflow" section to docs/USER_GUIDE.md, a copy at
+frontend/public/docs/USER_GUIDE.md, and a new in-app Help view (HelpView.vue, useHelp.ts) that
+renders the guide with markdown-it and quick section navigation; Execute-workflow cases added to the
+frontend manual testing guide.
+ - Core fixes: Case-insensitive source-column matching for extra_columns in src/extract.py,
+duplicate-column removal during column reordering in src/model.py, and Excel dispatcher updates
+(sorted sheets, configurable column colors, FK/source column styling) in src/dispatch.py.
+ - Housekeeping: Removes the obsolete scripts/migrate_reconciliation_v1_to_v2.py and
+tests/specifications/TEST_STATUS.md, archives old release/grid docs under docs/archive/, renames the
+ruff-check-fix Make target to ruff, and deletes the unused AdvancedEntityConfig.vue component.
+
+Tests accompany the ingester infrastructure, API endpoints, CLI, and state-manager session behavior;
+see Validation for execution status.
+
+## User-facing release note
+
+Shape Shifter can now be deployed with a single Docker Compose command, and users can validate and
+ingest Excel submissions into the SEAD Clearinghouse directly from the new Data Ingestion screen,
+REST API, or sead-ingest command-line tool. The app also includes an in-app user guide with quick
+navigation, and reconciliation specifications can now be edited in dual-mode form/YAML views with
+per-specification validation status.
+
+## Upgrade notes
+
+ - Breaking (Python imports): Ingester implementations moved from backend/app/ingesters/<name>/ to
+the top-level ingesters/<name>/ directory; import paths change from backend.app.ingesters.<name> to
+ingesters.<name> (documented in the repository instructions and ingesters/README.md).
+ - New optional configuration: INGESTER_PATHS (default ["ingesters"]) and ENABLED_INGESTERS
+(default: all discovered) control ingester discovery.
+ - Docker deployment: Create docker/data/backend.env, docker/data/frontend.env, and
+docker/data/.pgpass from the documented templates before running docker compose -f
+docker/docker-compose.yml up -d (app served on port 8012).
+ - Packaging: pyproject.toml now packages src*, backend*, and ingesters*, and installs a sead-ingest
+console script; reinstall in editable mode to pick this up.
+ - Removed tooling: scripts/migrate_reconciliation_v1_to_v2.py has been deleted; the Makefile target
+ruff-check-fix is now named ruff.
+ - Ignore rules: .gitignore now excludes input/*.xlsx and output/*.xlsx.
+
+## Validation
+
+Not verified: validation results unavailable. No CI check results were supplied with this pull
+request (the status check rollup is empty), so execution and outcomes of the added test suites (e.g.
+backend/tests/ingesters/, backend/tests/api/test_ingesters.py,
+backend/tests/scripts/test_ingest_cli.py, ingesters/sead/tests/) are unknown and are not claimed as
+passed here.

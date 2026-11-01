@@ -2,44 +2,45 @@ title: Enhance cached value reference UX in entity forms
 description:
 ## Summary
 
-Implements Phases 1–2 of the VALUE_REFERENCE_COLUMN_UX_ENHANCEMENT proposal so @value:
-entities.<entity>.keys/columns references are usable in the entity form:
+Implements Phases 1–2 of the value-reference column UX enhancement so @value:
+entities.<entity>.keys/columns references can be picked and inspected in the entity form without
+leaving the frontend.
 
- - Completed-cache gate (frontend/src/stores/entity.ts): new getCompletedEntitiesFor(projectName)
-returns entities only when a successful, current list load owns the cache ([] is valid, null means
-unavailable). A request-generation counter prevents stale or out-of-order responses from restoring
-ownership; syncCachedEntity now takes the project name, and same-project mutations retain ownership
-while cross-project ones invalidate it.
- - Pure expansion helper (frontend/src/utils/valueReferenceColumns.ts, new): expandValueReference()
-expands complete scalar/mixed/nested references in Core order with duplicates retained and returns
-null (never partial columns) for missing paths, cycles, or unsupported values;
-getValueReferenceSuggestions() lists only fully supported references from the cache.
- - Picker suggestions and preview: EntityFormDialog.vue, ForeignKeyEditor.vue, and UnnestEditor.vue
-append cache-derived reference choices to the ordinary candidates in Business Keys, non-fixed
-Columns, FK Local/Remote Keys, unnest ID/Value Variables, Deduplication Columns, and Drop Empty
-Rows. The new ValueReferenceChip.vue renders selected @value: chips with an explicit, read-only
-preview ("Based on cached configuration", "Preview unavailable", or an empty-result message) that
-never edits the model or triggers validation. FK Local/Remote key suggestions no longer mix in
-backend getValidDirectives() results or column-extracted directives; directive loading remains only
-for the extra-column source, and existing key edit validation is unchanged.
- - Raw-shape preservation: the dialog captures each supported field's raw scalar/list form on load
-or valid YAML apply and restores it on save when the field is semantically unchanged, so untouched
-references, mixed lists, and legacy + expressions round-trip exactly.
- - ValidationPanel UX: the "Data Validation Execution" card moves into a dedicated Execution tab
-that falls back to All Issues when execution data disappears.
- - Backend refactor: EntityConfigMapper.to_core() now receives a keyword-only entity_name instead of
-callers injecting/popping a name key in the config; shapeshift_service drops its local
-FixedEntityShapeValidationError mapping (the fixed mapper raises domain errors with the entity name
-directly), and the fixed-entity shape error tip was reworded.
- - Docs: Phase 1 task plan is marked complete with execution results; a new Phase 2 task plan
-records scope, validation, and completion.
+ - Completed-cache contract (frontend store): entity.ts adds getCompletedEntitiesFor(projectName),
+which returns entities only while a successful, current list load owns the cache (null when pending,
+failed, reset, or for another project). Request-generation counters prevent stale responses from
+re-establishing ownership; same-project mutations retain ownership and syncCachedEntity now takes
+the project name.
+ - Local expansion helper: New utils/valueReferenceColumns.ts provides expandValueReference() (pure,
+order- and duplicate-preserving, cycle- and unsupported-tree-safe, returns null rather than partial
+columns) and getValueReferenceSuggestions() (complete supported keys/columns paths only).
+ - Picker suggestions and preview: Business Keys, non-fixed Columns, Deduplication Columns, Drop
+Empty Rows, FK Local/Remote Keys, and unnest ID/Value Variables now offer cache-derived reference
+choices alongside their ordinary candidates. The new ValueReferenceChip.vue renders a
+keyboard-accessible, read-only preview of the expanded columns ("Based on cached configuration"),
+with explicit empty and unavailable states, and closes when the cache changes. Fixed-entity Columns
+are excluded.
+ - FK editor: Local/Remote key suggestion lists now use the cache-derived references instead of
+backend getValidDirectives() results loaded on focus; directive validation on key edits and the
+extra-column source suggestions are retained.
+ - Raw-shape preservation: The form captures each field's loaded scalar/list representation and
+restores it on save and in YAML when the field is semantically unchanged, so scalars, one-item
+lists, mixed lists, and legacy + expressions round-trip untouched.
+ - ValidationPanel: Data Validation Execution details moved from a standalone card into a dedicated
+"Execution" tab that hides itself when execution data disappears.
+ - Backend refactor: EntityConfigMapper.to_core now receives the entity name as a required keyword
+argument instead of injecting/popping a temporary name key; fixed-entity shape-error mapping moved
+into the mapper, and the shape-invalid tip text was reworded. No Core behavior change.
+ - Docs/tests: Phase 1 task plan updated with execution results; new Phase 2 task plan; new/extended
+Vitest suites (store, helper, chip, dialog, FK, unnest, ValidationPanel), updated backend mapper
+tests, and a Core parity fixture in tests/configuration/test_utility.py.
 
 ## User-facing release note
 
-In the entity form, column pickers now suggest complete @value references from the project's cached
-entities, and a preview button on a reference chip shows the exact columns it expands to without
-changing your configuration; saving an entity leaves untouched reference values exactly as they were
-written.
+In the entity form, column pickers now suggest supported @value references from the loaded project
+cache, and a preview button on a reference chip shows the exact columns it expands to, based on
+cached configuration, without changing your selection or saved YAML. Reference values you did not
+edit are saved back exactly as they were loaded.
 
 ## Upgrade notes
 
@@ -47,16 +48,20 @@ None - no user action required.
 
 ## Validation
 
- - CI on this PR shows only the Container Release workflow, with the validate and publish jobs
-SKIPPED; no test-suite CI results were available in the provided evidence.
- - The Phase 1 task plan (updated in this PR) records execution results: V-1 entity store tests pass
-(40), V-2 expansion helper tests pass (16), V-3 rtk uv run pytest
-tests/configuration/test_utility.py -q passes (11), V-4
-EntityFormDialog/ForeignKeyEditor/UnnestEditor tests pass (51), V-5 vue-tsc --noEmit reports no
-diagnostics, V-6 ESLint passes, and V-7 Prettier/Ruff/Black pass.
- - The Phase 2 task plan records: V-1 helper+store tests pass (58), V-2 picker tests pass (53), V-3
-new ValueReferenceChip.test.ts passes (10), V-4 form/FK/unnest/ProjectDetailView regressions pass
-(63), and V-5 type check, ESLint, and Prettier pass with a scope review confirming no backend/Core
-implementation changes beyond the mapper refactor listed above.
- - These results are as recorded by the author in the merged task-plan documents; they were not
-independently re-run as part of this description.
+ - CI on the merged commit shows only the Container Release workflow's validate and publish jobs,
+both SKIPPED; no other CI results are available.
+ - The task-plan documents included in this PR record the following executions as passing (results
+are as recorded in those documents, not independently re-run here):
+  - rtk proxy pnpm test:run src/stores/__tests__/entity.test.ts — Pass: 40 tests.
+  - rtk proxy pnpm test:run src/utils/__tests__/valueReferenceColumns.test.ts — Pass: 16 tests
+(Phase 1) / 18 in the combined Phase 2 run (58 with store tests).
+  - rtk uv run pytest tests/configuration/test_utility.py -q — Pass: 11 tests, including the nested
+parity fixture.
+  - rtk proxy pnpm test:run over EntityFormDialog, ForeignKeyEditor, UnnestEditor (and
+ProjectDetailView in Phase 2) — Pass: 51, then 53 and 63 tests.
+  - rtk proxy pnpm test:run src/components/entities/__tests__/ValueReferenceChip.test.ts — Pass: 10
+tests.
+  - rtk proxy pnpm exec vue-tsc --noEmit, ESLint, Prettier, ruff check, black --check — Pass, per
+the recorded plan tables.
+ - Execution of the full backend or frontend suites beyond the listed targets is unknown; no
+evidence was available that they were run.

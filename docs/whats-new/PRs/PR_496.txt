@@ -1,0 +1,50 @@
+title: Record Phase 3 authorization cutover evidence for dev release image
+description:
+## Summary
+
+Documentation-only update that records the Phase 3 evidence for the centralized authorization
+cutover against the post-merge dev release image and closes the target-content criterion now that
+the reviewed content is provisioned. No code, configuration, or script changes.
+
+In the Phase 3 task plan and the test-environment handoff:
+
+ - Ties the release identity to the merged dev revision: image shape-shifter:dev (image ID
+6a487db7…04a8) with OCI source revision dbff5ab95459652354c040b9d4fec6e2ead94f96, the dev merge
+commit for #495 and the checkout where the focused authorization and full backend suites passed; 
+GIT_REF=dev and IMAGE_NAME=shape-shifter:dev are recorded as the configuration revision, and the
+earlier d27b072c image is retained as documented baseline and rollback target.
+ - Records release-image re-verification: integrity-check passed and reconciliation reported
+Missing: 0 resources, 0 administrators, 0 grants; a fresh backup
+(authorization-20260922-130050.sqlite3) is byte-identical to the readiness backup, so authorization
+state did not change across the image switch.
+ - Closes PH3-AC-4: all 26 reviewed project locators resolve to a shapeshifter.yml and all 6
+reviewed shared data sources are listed by GET /api/v1/data-sources.
+ - Corrects acceptance-criteria statuses that had drifted behind the tracker (PH3-AC-1, PH3-AC-5,
+PH3-AC-6) and updates the validation matrix, area statuses, definition-of-done checkboxes, risks,
+and open decisions accordingly.
+ - Keeps explicit limitations: sead-options and bulgaria-arbodat-lookup-options are listed but
+unproven in use; the access matrix and container-level verification bundle were collected against
+the baseline image; credential rotation remains an operator attestation; the Phase 4 rollback
+decision owner (T4.2) is not yet named.
+
+## User-facing release note
+
+None - no user-visible change.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+ - No CI status checks are reported for this pull request (statusCheckRollup is empty), so no checks
+are confirmed as passed by CI.
+ - The PR description and the updated handoff/task-plan documents report that .venv/bin/pytest
+backend/tests/authorization -q and .venv/bin/pytest backend/tests -q passed at
+dbff5ab95459652354c040b9d4fec6e2ead94f96, and that git diff --check, scripts/check_doc_links.sh, and
+shell syntax checks for container/scripts/verify/*.sh and container/scripts/authorization.sh
+passed. These are author-recorded results in the documentation; their execution was not
+independently verified from the available evidence.
+ - The recorded target-environment checks (integrity check, reconciliation, backup comparison,
+content listing) are operator-collected evidence documented in the handoff, not checks run in CI for
+this PR.

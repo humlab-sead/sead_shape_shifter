@@ -1,0 +1,71 @@
+title: Bind projects to provider-schema scopes (Phases 1-4)
+description:
+## Summary
+
+Implements the four delivery phases of the PROJECT_DATA_PROVIDER_SCOPE proposal (now archived under
+docs/proposals/done/): every project is bound to a registered data provider / provider-schema pair,
+and SEAD Change Request ingestion runs strictly inside that provider-schema scope.
+
+ - Phase 1 — Curated provider registry: a read-only registry loaded from one YAML file per provider
+under the new SHAPE_SHIFTER_GLOBAL_DATA_PROVIDER_DIR directory (default shared/data-providers; the
+whole registry is rejected on any invalid file, duplicate code, or duplicate/mismatched scope). New
+authenticated read-only endpoint GET /api/v1/data-providers exposes the pairs and their
+provider://<code>/<provider_schema> scopes; the reviewed MAL registry ships read-only in the
+container image.
+ - Phase 2 — Project binding: data_provider_code and provider_schema are required at project
+creation and validated against the registry before any directory is created. Once assigned, the pair
+cannot be changed or removed through any application save path (metadata PATCH, raw YAML, backup
+restore, migrations, auto-fix); legacy unbound projects may receive one initial assignment. Bound
+projects must keep their declared business keys, and projects sharing a pair must declare identical
+keys.
+ - Phases 3/4 — Project-scoped Change Request ingestion: a new authorization dependency authorizes
+only the top-level project_name in the request (unknown or unauthorized projects get a concealed
+404). The backend builds a TrustedProjectContext (project, provider pair, scope, fixed
+data_provider_id, ordered EntityConfig.keys) that the ingester trusts over caller input; the
+sead-change-request:{project} name fallback and caller sims_scope_name overrides are removed. Before
+any SIMS call the ingester reconciles the fixed provider row against tbl_data_providers and
+validates declared business keys on the transformed delivery; keys serialize to a deterministic
+versioned business_id. The effective scope_name and run_id are reported in the ingest response,
+deploy artifact metadata, and emitted manifest for all three strategies.
+ - Frontend: provider/schema pickers in project creation and metadata editing (fixed read-only
+fields after assignment), the SEAD Change Request ingester is excluded from the project-independent
+Data Ingestion page and requires the saved project's Dispatch tab, and results display the effective
+scope and run ID.
+ - Proposed, not implemented: operational migration of existing projects to provider scopes is
+documented in a new cutover proposal
+(docs/proposals/CHANGE_REQUEST_INGESTER/CUTOVER_AND_DEPLOYMENT/PROJECT_PROVIDER_SCOPE_CUTOVER.md);
+existing checked-in projects remain unbound.
+
+## User-facing release note
+
+When creating a project, users now pick a registered data provider and provider schema, and that
+choice is fixed once assigned. SEAD Change Request runs always use the open project's registered
+scope and provider row, and the result now shows the SIMS scope and run ID used, so an operator can
+match an emitted bundle to the run that produced it.
+
+## Upgrade notes
+
+ - Deployers must provide the data provider registry directory: the new
+SHAPE_SHIFTER_GLOBAL_DATA_PROVIDER_DIR setting (default shared/data-providers) must contain valid
+provider YAML files. In the container it is mounted read-only from the image at
+/app/shared/data-providers and must not be overridden.
+ - Breaking API changes: project creation now requires data_provider_code and provider_schema
+(missing fields return 422, unregistered pairs 400); SEAD Change Request validate/ingest require a
+top-level project_name for an authorized saved project, and a caller-supplied sims_scope_name is
+rejected.
+ - An assigned provider-schema pair cannot be changed or removed through the application; tracked
+entities in Change Request runs must declare valid business keys, or the run is blocked before any
+SIMS or target-database access.
+ - Existing unbound projects keep working unbound; moving them to provider scopes is deferred to the
+separate cutover proposal and requires operator action per project.
+
+## Validation
+
+ - CI evidence in the pull request metadata shows only the two "Container Release" workflow checks,
+validate and publish, and both concluded SKIPPED. No test-suite results are reported in the
+available evidence.
+ - The diff adds and updates extensive backend tests (provider registry API and service, project
+binding, project-scoped Change Request ingestion, business-key serialization) and frontend tests
+(provider pickers, metadata editor, ingester form/list/view), but their execution and outcomes are
+not evidenced by the available sources and are not claimed as passed.
+ - Not verified: validation results for the test suites are unavailable.

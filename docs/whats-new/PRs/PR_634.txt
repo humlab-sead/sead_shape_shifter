@@ -1,0 +1,90 @@
+title: Reconciliation MVP: keyed decisions, owned links, and gated allocation
+description:
+## Summary
+
+Replaces the automatic reconcile-and-apply flow with a human-reviewed, idempotent loop over
+normalized data. Reconciliation decisions are stored in the <project>-reconciliation.yml catalog at
+version 3.0, keyed by encoded business keys (local_key_value) instead of source labels, with
+explicit proposed / accepted / rejected / local-only statuses. Candidate matching only proposes
+matches; operators accept, reject, or mark rows local-only, and decisions survive matching reruns.
+
+Key changes verified in the diff:
+
+ - Export to the mapping sidecar now verifies each accepted candidate URI against SEAD through the
+Authority Service (POST /reconcile/verify-candidates, ordered batches of 100) before writing.
+Written links carry an owner (entity + target field) and a verified_at timestamp; stale owned links
+and approvals are removed on re-export, while manual and unowned links are skipped and reported.
+ - Local-only approvals are stored in the sidecar separately from links (local_only_approvals). The
+backend verifies committed approvals and owned links against the reconciliation catalog and passes
+them to the ingester via the trusted project context; the ingester re-validates ownership, key
+declarations, and row matches before use.
+ - Planning renames the RECONCILE planned action to BLOCK_RECONCILIATION. A missing-ID row on a
+reconciled entity is planned as ALLOCATE only when it has a committed local-only approval and the
+entity uses reconcile-exact or reconcile-fuzzy; all other rows are blocked with a recorded reason.
+ - SeadChangeRequestReconciliationAdapter and the automatic reconciliation_client injection are
+removed from the ingester runtime; orchestration no longer reconciles rows itself. Database-sequence
+IDs are now reserved up front via a new reserve_database_id on the target collision checker, and
+SIMS allocation/bridge steps are skipped when a reservation fails.
+ - Reconciliation source resolvers fetch all normalized rows (limit=None) and raise on truncation
+instead of silently capping at 1000.
+ - Mapping link routes accept {local_key_value:path} so encoded keys containing slashes resolve;
+link responses expose owner and verified_at, and target_id must be positive.
+ - Version 2.0 (or version-less) reconciliation catalogs are ignored with a warning on load;
+malformed YAML or unknown future versions fail explicitly. Saving a catalog requires version 3.0.
+ - The Vue reconciliation view, grid, and store were reworked around the decision workflow
+(accept/reject/local-only by encoded key, candidate display, export outcomes).
+ - Adds the RECONCILIATION_MVP proposal and phase-plan documents, a site-reconciliation findings
+document, and a FOREIGN_KEY_LINK_TROUBLESHOOTER proposal; deletes the
+scripts/verify_sims_identity_candidates.sh helper.
+
+## User-facing release note
+
+Reconciliation now requires explicit operator review: candidate search proposes matches keyed by
+business key, and only accepted decisions whose SEAD target is verified at export time become
+applied links. Rows marked local-only allocate a new ID only for entities using reconcile-exact or
+reconcile-fuzzy mode; all other unresolved rows are blocked rather than silently matched.
+
+## Upgrade notes
+
+ - Existing <project>-reconciliation.yml files at version 2.0 (or without a version) are ignored
+with a warning on load. Recreate reconciliation specifications and rerun candidate matching to
+populate the new version 3.0 catalog.
+ - The mapping sidecar (<project>-mapping.yml) keeps its independent format; existing links continue
+to work, and owner, verified_at, and local_only_approvals are new optional fields written by the
+new export flow.
+ - The automatic reconciliation_client injection into the SEAD change request ingester is removed;
+remove any explicit injection or reconciliation_query_columns / reconciliation_entity_types
+configuration from custom setups.
+ - The RECONCILE planned-row action is renamed to BLOCK_RECONCILIATION (reconcile →
+block_reconciliation); update any code or tests referencing the old enum value.
+ - Database-sequence ID reservation can now consume a sequence value during both validation and
+ingestion, so unused ID gaps are expected.
+
+## Validation
+
+ - The PR was merged into dev (merge commit 691c6c1). The CI status rollup for the PR contains only
+the Container Release workflow, whose validate and publish checks were SKIPPED; no test-suite
+results are available in the provided CI data.
+ - The diff adds or updates extensive tests — backend API tests for reconciliation decisions,
+export, and specifications; a new site-reconciliation end-to-end integration test; ingester tests
+for planning, identity resolution, preflight, orchestration, and runtime; mapping sidecar and
+normalizer tests; and Vue store/component tests — but their execution and outcomes are not shown in
+the available evidence and are not reported as passed.
+ - No linked issues; no local test runs were performed as part of this description.
+
+## Detected orphaned commits
+
+Commits pushed directly to the base branch after the previous merged pull request. Each
+commit below reached the base branch without a pull request of its own.
+
+- `8563481` feat(release-notes): add pending PR snapshot (2026-10-29)
+- `c65c3c6` fix(frontend): clarify fixed-value column header styling (2026-10-29)
+- `39515fa` feat(profile-validation): add script for full data validation of Arbodat project (2026-10-30)
+- `9e9b190` fix: remove placeholder text from Dependency and Validation views (2026-10-30)
+- `29b903b` fix(validation): remove outdated descriptions and unused foreign key validator (2026-10-30)
+- `2cf37de` feat(validation): make results easier to scan (2026-10-30)
+- `2ee3475` feat: add script to generate and publish PR descriptions via Copilot CLI (2026-10-30)
+- `9fdce34` test: separate reconciliation client integration tests from unit tests (2026-10-30)
+- `1120baa` feat(release-notes): generate what's new from pr notes (2026-10-30)
+
+Filtered 13 housekeeping commit(s): contributor-config 6, docs-only 2, generated-graph 5.

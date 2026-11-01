@@ -1,0 +1,72 @@
+title: feat(target-model): enforce conditional FKs after reconciliation
+description:
+## Summary
+
+Adds a conditional target-model FK requirement, required_when: {has_new_rows: <entity>}, evaluated
+after reconciliation (closes #551). The condition becomes true only when final reconciliation 
+selects at least one row of the owning entity for insertion; only then does the FK require its
+lookup entity, declared link, FK column (named from the target's public_id), and non-null,
+resolvable values on those inserted rows. A submission whose rows all reconcile to existing records
+no longer fails a requirement it does not need.
+
+ - Format and spec validation: strict RequiredWhenSpec in src/target_model/models.py;
+TargetModelSpecValidator rejects an unknown or non-owning source entity, a via bridge, a target
+without public_id, and an FK declaring both required and required_when.
+ - Project-only conformance: new conditional_foreign_key rule reports
+CONDITIONAL_FK_AWAITING_RECONCILIATION as info; it cannot be promoted by severity overrides. The
+validation panel and message list now render info messages distinctly, including a "Conditional
+checks await reconciliation" summary.
+ - Reconciled enforcement: project_target_ids evaluates the condition from final row states
+(NEWLY_ALLOCATED_ENTITY, DERIVED_BRIDGE_ROW); matched, blocked, and update-only rows do not activate
+it. Missing lookup, missing FK column, null, and unresolved values are reported before package
+acceptance. Planned tables are now passed into project_target_ids so accepted update candidates keep
+their projected FK values. Unconditional required behavior is unchanged.
+ - Tooling and docs: generated schema reference and editor JSON schema expose the syntax (generation
+switched to Pydantic validation mode); the target-model guide, glossary, and user guide explain the
+reconciliation timing and inserted-row FK requirement; proposal and phase/task plans are archived
+under docs/proposals/done/CONDITIONAL_TARGET_MODEL_REQUIREMENTS/.
+ - Ancillary changes in this diff: resources/target_models/sead_minimal_model.yml is deleted;
+duplicate specs under tests/test_data/specs/ become symlinks to resources/target_models/; the
+superset model flips master_dataset, data_provider, citation, and contact to required: true; a
+target-model-csv Makefile helper is added.
+
+## User-facing release note
+
+Target-model authors can now mark a foreign key as required only when a change request actually
+inserts new rows, using required_when: {has_new_rows: <entity>}. A submission whose rows all match
+existing records no longer fails on that link requirement, while new rows with a missing or
+unresolvable link value are rejected before the change request is accepted. The validation panel
+also shows conditional checks that await reconciliation instead of hiding them.
+
+## Upgrade notes
+
+ - No migration is required, and existing models with unconditional required flags keep their
+current validation results.
+ - resources/target_models/sead_minimal_model.yml has been removed; anyone referencing it must
+switch to another target model.
+ - The shipped sead_superset_model.yml now marks master_dataset, data_provider, citation, and
+contact as required: true; projects validated against the superset model may need to include these
+entities.
+ - To use the new rule, omit unconditional required: true on the lookup entity and FK column, per
+the target-model guide; the rule is not yet activated in the superset model.
+
+## Validation
+
+No automated test workflow ran for this pull request: the only CI checks were the Container Release
+validate and publish jobs, both SKIPPED. The following results are recorded in the PR and the
+archived phase task plans (author-run, not reproduced by CI):
+
+ - pytest -q backend/tests/ingesters/test_sead_change_request_target_projection.py — passed, 17
+tests.
+ - pytest -q backend/tests/ingesters/test_sead_change_request_package_builder.py
+backend/tests/ingesters/test_sead_change_request_ingester.py — passed, 58 tests.
+ - Focused conformance, model, spec-validator, and schema-reference tests in tests/model/ and
+tests/target_model/ — passed per task-plan checks V-1–V-7; frontend
+ValidationPanel/ValidationMessageList tests passed (9 tests).
+ - black --check, isort --check-only, and git diff --check on changed files — reported passing.
+ - Known failures: test_core_conformance_reports_known_gaps_for_full_arbodat_project and
+test_core_conformance_current_corpus_issue_families_are_stable fail on unchanged conformance output
+and reproduce on a clean base worktree, so they are pre-existing baseline failures; the phase 1 plan
+also records four baseline validate_project failures in the full
+backend/tests/services/test_validation_service.py run.
+ - Execution of the full test suites beyond the commands above is unknown.

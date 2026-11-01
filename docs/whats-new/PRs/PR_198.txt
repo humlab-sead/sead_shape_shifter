@@ -1,0 +1,47 @@
+title: Fix breadcrumb routing, add log viewer and editor improvements (#196)
+description:
+## Summary
+
+ - Breadcrumb navigation in App.vue now uses client-side routing: breadcrumb entries carry a router
+to target instead of a plain href, so clicking Home or Projects navigates through the Vue router
+instead of calling the API for routing. Fixes #196.
+ - Added a backend logs API (backend/app/api/v1/endpoints/logs.py, mounted in api.py) with GET
+/logs/{log_type} (tail N lines, optional level filter) and GET /logs/{log_type}/download for app and
+error log files, read from the new LOG_DIR setting (aliased to the existing LOGS_DIR in config.py).
+ - The Settings view is restructured into General and Logs tabs. The Logs tab lists application or
+error logs with log-type, level and line-count selectors, manual refresh, optional 30-second
+auto-refresh, and download of the full log file, backed by a new logsApi client
+(frontend/src/api/logs.ts).
+ - Monaco editor workers are now configured at app startup via a new frontend/src/monaco.ts
+(configureMonacoWorkers() called from main.ts), wiring the editor and YAML workers.
+ - Entity editor overlay improvements: openEditorOverlay accepts an initial tab, the entity store
+tracks overlayInitialTab, and EntityFormDialog switches to the YAML tab accordingly.
+Ctrl/Cmd+double-click on a graph node in the dependency graph now opens the overlay directly on the
+YAML tab (useCytoscape.ts passes the modifier key state). Columns are also hydrated from the source
+for entity-type entities when the form loads.
+ - PreviewMatchedDataDialog now shows only the source columns from property_mappings instead of keys
+plus mapped columns.
+ - docker/Makefile: update-deploy-scripts now invokes ./rsync-to-sead-tools, docker-build no longer
+depends on deploy-shell, docker-restart runs from $(DEPLOY_DIR), and a new setup-permissions target
+was added.
+ - TODO.md was pruned of stale notes and a new TODO entry (#195) added.
+
+## User-facing release note
+
+Breadcrumb links now navigate within the app instantly instead of going through the server. The
+Settings page gains a Logs tab where you can view, filter by level, auto-refresh and download
+application and error logs, and Ctrl/Cmd+double-clicking an entity in the dependency graph opens its
+editor directly on the YAML tab.
+
+## Upgrade notes
+
+No end-user action is required; the new logs endpoints read from LOG_DIR, which defaults to the
+existing LOGS_DIR value (./logs). Deployers should note Makefile changes: update-deploy-scripts now
+calls ./rsync-to-sead-tools and docker-restart now operates from the deploy directory, so those
+scripts/paths must be present where the deployment tooling is used.
+
+## Validation
+
+Not verified: validation results unavailable. No CI check results are reported for this pull request
+(empty status check rollup), and the diff includes no tests. The pull request was merged, but no
+evidence of specific checks being run is available.

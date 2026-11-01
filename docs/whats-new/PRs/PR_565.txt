@@ -1,0 +1,78 @@
+title: Add deployment-time staging for change-request ingester
+description:
+## Summary
+
+Adds an opt-in inline_staging deploy strategy to the change-request ingester so child entities in a
+submitted bundle no longer need target IDs at generation time. Their IDs are allocated at deployment
+time, inside one transaction, after the affected tables are locked. This removes the failure modes
+of generation-time reservation: reserving IDs that may never be deployed, conflicts when two bundles
+are prepared concurrently, and derived-bridge entities whose ID comes from the target schema
+default.
+
+Phase 1 establishes eligibility and contracts:
+
+ - src/target_model/effective_identity.py: resolve_aggregate_chain() walks aggregate parents,
+detects cycles, and reports the root entity's identity_tracking and reconciliation.
+ - src/target_model/spec_validator.py: reports unknown parent, self-reference, cycle, unsupported
+root identity, and missing public_id as chain-level issues.
+ - src/target_model/insert_dependencies.py (new): deterministic insert plan with aggregate-parent
+and FK edges; cycle detection via Tarjan SCC.
+ - scripts/review_staging_id_generators.py (new): read-only audit of deployed ID generators; exits 1
+when a candidate is unsupported or needs manual review.
+ - resources/target_models/TARGET_MODEL_REVIEW_20261013.md: 40-child derived inventory, root-row
+rules, generator table, and lock contract.
+
+Phase 2 implements staging:
+
+ - staging_eligibility.py (new): root-row rules — a tracked root must be newly allocated with a
+target ID; a reconciled root must be existing, reconciled, or newly allocated with a target ID; a
+new value_type root is rejected.
+ - inline_staging_sql.py (new): renders one SQL statement per artifact entry covering generator
+checks, sorted SHARE ROW EXCLUSIVE locks, temporary staging tables, local-to-target ID map, sequence
+synchronization, allocation, FK resolution, unique-set checks, dependency-ordered inserts, and SIMS
+sequence sync.
+ - sql_rendering.py (new): shared identifier, relation, and literal quoting.
+ - sql_builder.py: inline_staging strategy with required staging_target_schema; the schema option is
+rejected for inline_insert and copy_csv.
+ - planning.py, preparation.py, package_builder.py, target_projection.py, collision_checks.py: child
+rows plan as DEFER_TO_DEPLOYMENT; pending IDs and pending FKs are deferred rather than reported
+missing; known-ID mappings are emitted only for references used by staged FKs.
+
+Existing direct-insert and copy-CSV artifacts remain the default. Known gaps recorded in the
+proposal docs: value_type_item is rejected until a deployed generator exists, and the public vs
+clearing_house schema ambiguity requires an explicit staging schema.
+
+## User-facing release note
+
+Deployers can now select the new inline_staging deploy strategy, which lets submitted child rows
+omit target IDs: the database assigns them when the release SQL runs, so bundles no longer reserve
+IDs that may never be deployed.
+
+## Upgrade notes
+
+No action is required for existing workflows; the current direct-insert and copy-CSV artifacts
+remain the default. To use the new strategy, set deploy_strategy to inline_staging and supply a
+non-empty staging_target_schema (relation names are ambiguous across the public and clearing_house
+schemas, so the schema must be explicit). The staging_target_schema option is rejected for the other
+strategies. Children of value_type roots remain unsupported until a deployed ID generator exists
+for value_type_item; such rows are rejected explicitly rather than silently skipped.
+
+## Validation
+
+ - CI rollup for this pull request contains only the Container Release workflow's validate and
+publish jobs, both SKIPPED; no CI test suite results are available.
+ - Author-reported (not independently confirmed by CI): unit and rendering regressions V-1–V-3, V-6
+pass; disposable loopback PostgreSQL tests V-4/V-5 pass 13 tests with no skips against
+postgres:17-alpine (PostgreSQL 17.11), covering multi-level chains, permuted identical payloads, a
+stale sequence, SIMS sequence sync, duplicate/existing unique_sets rejection, existing tracked-root
+rejection, a late primary-key conflict with rollback, and a competing writer timing out with
+LockNotAvailable. The corresponding tests in
+backend/tests/ingesters/test_sead_change_request_inline_staging.py skip unless
+SEAD_DISPOSABLE_POSTGRES_* variables are set, so their pass status cannot be verified from the
+available evidence.
+ - Author-reported: Ruff passes on the touched package; check_doc_links.sh and git diff --check are
+clean; ruff format --check and black --check already fail on files untouched by this branch, so only
+new modules were formatted.
+ - Author-reported: six pre-existing failures in backend/tests/data_providers/arbodat reproduce with
+the change set stashed and are unrelated to this branch.
+ - The full test suite execution status is unknown beyond the items above.

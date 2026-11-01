@@ -1,0 +1,84 @@
+title: Refactor target environment configuration layout
+description:
+## Summary
+
+This PR establishes a three-directory deployment layout for target environments: ~/container
+(replaceable code and build context), ~/config (environment configuration, credentials and policy,
+mode 700), and ~/container-data (mutable runtime data and state). Deployment settings move out of
+the checkout: the Makefile, scripts/load-env.sh, podman-compose.yml, the systemd unit, and all
+lifecycle, backup, authorization, verification, and deploy scripts now resolve CONFIG_DIR (default
+~/config) and DATA_DIR (default ~/container-data), with identical path-resolution rules in the
+Makefile (resolve_path) and the shell loader. CONFIG_DIR/deployment.env replaces container/.env, and
+CONFIG_DIR/backend.env plus CONFIG_DIR/.pgpass/.pgpass replace their container-data counterparts;
+there is no fallback to the retired paths.
+
+Key changes:
+
+ - make setup creates ~/config and copies generic templates (deployment.env, backend.env, .pgpass)
+without ever writing live configuration into the checkout, and reports missing operator-provisioned
+authorization inputs.
+ - The authorization bootstrap (bootstrap-authentication-and-authorization.sh) now reads
+authorization.env, authorization-manifest.yaml, and groups.d/shape-shifter.conf only from CONFIG_DIR
+— never from the repository secrets/ folder — and validates every input before touching htpasswd,
+group files, roles, or the manifest. A new container/resources/authorization.env.example template
+documents the inputs.
+ - backup.sh archives mutable data at the archive root and runtime configuration (deployment.env,
+backend.env, .pgpass) under config/ with modes preserved.
+ - build.sh stages the UCanAccess dependency from container/lib/ucanaccess into the repository-root
+build context when absent, so workdir and standalone builds use the same copy; install-ucanaccess.sh
+replaces the installed copy only after a successful download. UCanAccess stays in the checkout as a
+documented interim build-dependency exception.
+ - rebuild-image.sh now requires --deploy-user (no test-user default) and its --dry-run reports
+without acting; deploy helpers record settings in ~/config/deployment.env and never remove ~/config
+or ~/container-data when refreshing the checkout.
+ - Documentation (container/README.md, container/DEPLOYMENT.md including a new "Authorization
+inputs" section, docs/OPERATIONS.md) describes the three-directory layout and marks the old paths as
+retired. The cutover plan gains a Phase 2A section and a new
+TARGET_ENVIRONMENT_CONFIGURATION_LAYOUT_TASK_PLAN.md recording the migration plan and validation
+results.
+
+## User-facing release note
+
+Deployment configuration now lives in a ~/config directory next to the deployment checkout instead
+of inside it, so operators edit ~/config/deployment.env and ~/config/backend.env, and the
+~/container checkout can be replaced with a new release without touching configuration, credentials,
+data, or the authorization database.
+
+## Upgrade notes
+
+Breaking change for existing deployments — there is no fallback to container/.env, secrets/.env, or
+container-data/backend.env:
+
+ - Migrate settings: copy container/.env to ~/config/deployment.env, and
+~/container-data/backend.env and ~/container-data/.pgpass/.pgpass to ~/config/. Run make setup to
+create ~/config (mode 700) and any missing templates; existing files are never overwritten.
+ - Provision the authorization inputs by hand under ~/config before running the bootstrap:
+authorization.env (from container/resources/authorization.env.example), authorization-manifest.yaml,
+and groups.d/shape-shifter.conf. Deployment tooling does not copy policy or generate passwords.
+ - rebuild-image.sh now requires --deploy-user; the previous test-user default is removed.
+ - Direct podman-compose invocation is unsupported unless the operator explicitly exports CONFIG_DIR
+and CONTAINER_DATA_DIR; use the Makefile or lifecycle scripts.
+ - VITE_* build arguments and DEPLOY_ENVIRONMENTS are now read from ~/config/deployment.env.
+
+## Validation
+
+No CI status checks are reported for this pull request (statusCheckRollup is empty), so no automated
+check results are independently confirmed here.
+
+The added task plan (TARGET_ENVIRONMENT_CONFIGURATION_LAYOUT_TASK_PLAN.md) records author-run
+validation from 2026-09-21 (V-1 through V-20); these are documented outcomes, not CI-verified
+results:
+
+ - Recorded as passed: Makefile precedence and loader parity (V-1, V-3), Compose rendering and mount
+contract (V-2, V-4), fresh setup and idempotence (V-5, V-6), backup paths (V-7),
+verification-script paths (V-9), bootstrap shell validation and missing-file negative tests (V-11,
+V-12), manifest policy consistency (V-14), UCanAccess install (V-15), local and GitHub builds
+(V-16), and a checkout-replacement test with health check and integrity check (V-17).
+ - Recorded as partially run: authorization restore path (V-8) and manifest import via the container
+wrapper (V-13) — no running deployment container on the test host; stale-path scan (V-10) —
+remaining hits belonged to tasks completed later in the same change; deployment helper (V-18),
+nginx/systemd rendering (V-19), and documentation execution (V-20) — root-only or live-service steps
+could not run from the test account.
+ - Explicitly not run: NGINX vhost and systemd unit installation, and the authorization restore path
+on a live deployment; the Definition of Done leaves this item open, to be recorded on the target
+host before Phase 3.

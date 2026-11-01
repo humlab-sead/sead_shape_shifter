@@ -1,0 +1,65 @@
+title: feat(docker): Serve frontend from backend in single container (#143)
+description:
+## Summary
+
+Replaces the two-service Docker setup (separate backend on port 8012 and nginx frontend on port 80)
+with a single app service in which the FastAPI backend serves the built Vue frontend alongside the
+API on port 8012. The backend already had static-file serving logic, so the Docker configuration now
+matches the application's built-in capability.
+
+Key changes:
+
+ - docker-compose.yml: single app service built from the project root with docker/Dockerfile;
+frontend build args (VITE_API_BASE_URL, etc.) passed at build time; volume mounts for projects,
+input (read-only), output, backups, and logs; health check now probes /api/v1/health via Python's
+urllib.
+ - docker/Dockerfile: uses pnpm run build:skip-check, copies README.md and tolerates a missing
+uv.lock when installing Python dependencies, makes the UCanAccess lib/ copy unconditional, and
+raises the health-check start period to 40s against /api/v1/health.
+ - New .dockerignore to shrink the build context, and new docker/test-build.sh that builds the
+image, starts the container, waits for the health check, and probes the health, frontend, and
+API-docs endpoints.
+ - Makefile: Docker targets now call docker compose directly; adds docker-build-no-cache,
+docker-rebuild, docker-start, docker-stop, docker-ps, and docker-health; removes
+docker-setup/docker-test.
+ - Documentation: docker/README.md rewritten for the single-container architecture,
+docker/ENV_VARIABLES.md removed, a review summary added at docs/archive/CHANGES.md, and the root
+README quick start updated (create data directories, then docker-compose up -d --build). Note: the
+README links to a root DOCKER.md quick-start guide that does not appear in this diff.
+ - Frontend tests updated to match current API and adapter shapes: project.test.ts mocks
+api.projects.activate instead of api.projects.get; graphAdapter.test.ts uses { source, target } edge
+objects instead of tuples and the showNodeLabels option instead of showLabels.
+ - TODO.md gains a tech-debt entry referencing #143 plus UX improvement brainstorming notes.
+
+## User-facing release note
+
+Shape Shifter now runs as a single Docker container: the UI and API are both available at
+http://localhost:8012, so deployment is just creating the data directories and running 
+docker-compose up -d --build — no separate frontend container or port 80 mapping is needed.
+
+## Upgrade notes
+
+ - The compose stack changed from two services (backend, frontend) to one (app). Stop the old stack
+(docker-compose down), optionally remove the old shapeshifter-backend/shapeshifter-frontend images,
+then rebuild with docker-compose up -d --build.
+ - The frontend is no longer served on port 80; access the UI at http://localhost:8012/. Update 
+bookmarks, reverse proxies, and firewall rules accordingly.
+ - Create the expected data directories before starting: mkdir -p projects input output backups
+logs.
+ - The previous docker/data/ env-file setup (backend.env, frontend.env) is no longer the documented
+flow; configure runtime variables in docker-compose.yml or a .env file, and frontend build-time
+variables under build.args (these require an image rebuild to change). docker/ENV_VARIABLES.md was
+removed; see the rewritten docker/README.md.
+ - make docker-setup and make docker-test were removed; use the new targets (e.g. make docker-build,
+make docker-rebuild, make docker-health) or docker/test-build.sh.
+
+## Validation
+
+Not verified: validation results unavailable.
+
+ - No CI status checks are reported for this pull request; execution and results of any automated
+checks are unknown.
+ - The updated frontend unit tests (project.test.ts, graphAdapter.test.ts) are included in the diff,
+but there is no evidence in the available sources that they were run.
+ - docker/test-build.sh provides a manual build-and-health-check flow (build, container health wait,
+endpoint probes), but no results from running it are available.
