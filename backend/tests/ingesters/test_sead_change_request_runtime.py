@@ -70,7 +70,7 @@ class FakeBackendSimsClient:
         self.lifecycle_state = lifecycle_state
         self.target_id = target_id
         self.resolve_error = resolve_error
-        self.resolve_requests: list[object] = []
+        self.resolve_requests: list[ResolveRequest] = []
         self.associated_change_requests: list[tuple[UUID, str]] = []
 
     async def resolve(self, request: ResolveRequest) -> FakeResolveResponse:
@@ -373,7 +373,7 @@ async def test_target_verification_reads_do_not_advance_database_sequence():
     port = os.getenv("SEAD_DISPOSABLE_POSTGRES_PORT")
     dbname = os.getenv("SEAD_DISPOSABLE_POSTGRES_DB")
     user = os.getenv("SEAD_DISPOSABLE_POSTGRES_USER")
-    if not all((host, port, dbname, user)):
+    if not (host and port and dbname and user):
         pytest.skip("Set SEAD_DISPOSABLE_POSTGRES_* variables for the loopback disposable database test")
     if host not in {"localhost", "127.0.0.1", "::1"}:
         pytest.fail("The disposable PostgreSQL integration test only accepts a loopback host")
@@ -555,7 +555,7 @@ class TestTrustedScopeAndBusinessKeys:
                 super().__init__()
                 self.identity_ids: dict[tuple[str, str], int] = {}
 
-            async def resolve(self, request: object) -> FakeResolveResponse:
+            async def resolve(self, request: ResolveRequest) -> FakeResolveResponse:
                 self.resolve_requests.append(request)
                 scope_name = request.scope_name  # type: ignore
                 identity_value = request.requests[0].primary_signal.identity_value  # type: ignore

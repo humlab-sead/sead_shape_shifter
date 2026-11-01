@@ -2,7 +2,7 @@
 
 from decimal import Decimal, InvalidOperation
 from numbers import Integral, Real
-from typing import Protocol
+from typing import Any, Awaitable, Callable, Protocol, cast
 
 import pandas as pd
 
@@ -60,7 +60,8 @@ async def validate_direct_foreign_keys(
         if direct_fk.column_name in package_table.frame.columns:
             package_table.frame[direct_fk.column_name] = package_table.frame[direct_fk.column_name].astype(object)
 
-        for row_index, row in package_table.frame.iterrows():
+        for iter_index, row in package_table.frame.iterrows():
+            row_index = cast(int, iter_index)
             state = package_table.row_states.loc[row_index]
             is_insert = state in INSERT_ROW_STATES
             is_update = (
@@ -125,9 +126,11 @@ async def _check_target_values(
     exists_lookup = getattr(checker, "target_id_exists", None)
     if not callable(type_lookup) or not callable(exists_lookup):
         return _value_diagnostics(direct_fk, values, "target database lookup cannot verify the ID column and value")
+    column_type_lookup = cast(Callable[[str, str], Awaitable[Any]], type_lookup)
+    id_exists_lookup = cast(Callable[[str, str, int], Awaitable[bool]], exists_lookup)
 
     try:
-        column_type = await type_lookup(table_name, direct_fk.column_name)
+        column_type = await column_type_lookup(table_name, direct_fk.column_name)
     except Exception as exc:  # pylint: disable=broad-exception-caught
         return _value_diagnostics(
             direct_fk,
@@ -147,7 +150,7 @@ async def _check_target_values(
 
     for target_id, occurrences in values.items():
         try:
-            exists = await exists_lookup(table_name, direct_fk.column_name, target_id)
+            exists = await id_exists_lookup(table_name, direct_fk.column_name, target_id)
         except Exception as exc:  # pylint: disable=broad-exception-caught
             reason = f"target database could not check the ID ({exc})"
         else:
@@ -211,6 +214,6 @@ def _is_missing(value: object) -> bool:
     if value is None:
         return True
     try:
-        return bool(pd.isna(value))
+        return bool(pd.isna(cast(Any, value)))
     except (TypeError, ValueError):
         return False

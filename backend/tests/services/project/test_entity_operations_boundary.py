@@ -155,6 +155,7 @@ class TestUpdateEntityByNameBoundary:
 
     def test_rename_without_dependents_updates_default_entity_and_calls_rename_persistence(self) -> None:
         project = _make_project({"sample": _sample_entity()})
+        assert project.metadata is not None
         project.metadata.default_entity = "sample"
         ops, save_project, save_boundary = _make_operations(project, with_boundary=True)
         rename_callback = MagicMock()
