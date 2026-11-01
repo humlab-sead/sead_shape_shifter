@@ -213,7 +213,7 @@ class MaterializationService:
     @staticmethod
     def _rows_to_dataframe(columns: list[str], values: list[list[Any]]) -> pd.DataFrame:
         """Build a dataframe from saved materialized rows."""
-        return pd.DataFrame(values, columns=columns)
+        return pd.DataFrame(values, columns=pd.Index(columns))
 
     @staticmethod
     def _resolve_saved_full_columns(entity_cfg: dict[str, Any], columns: list[str]) -> list[str]:

@@ -28,13 +28,12 @@ class DuckDbWorkspace:
     )
 
     def __init__(self, database: str = ":memory:") -> None:
-        self.connection: duckdb.DuckDBPyConnection | None = None
 
         if database != ":memory:":
             raise ValueError("DuckDB workspace is transient and must use the in-memory database")
 
         self.database: str = database
-        self.connection = duckdb.connect(database=database)
+        self.connection: duckdb.DuckDBPyConnection = duckdb.connect(database=database)
         self._configure_runtime_policy()
 
         self._registered: set[str] = set()

@@ -36,6 +36,7 @@ class GroupMembershipResolver(Protocol):
         """Return the current review result for one group."""
         ...
 
+
 class HttpGroupMembershipResolver:
     """Read group members from a configured trusted HTTP provider."""
 

@@ -12,34 +12,31 @@ import pandas as pd
 import psycopg
 import pytest
 from psycopg import sql
+from psycopg.rows import TupleRow
 
 from backend.app.clients.sims_client import SimsClient
 from backend.app.ingesters.protocol import IngesterConfig
-from backend.app.models.reconciliation import ReconciliationCandidate
 from backend.app.models.sims import ResolveRequest, ResolveResponse
 from backend.app.services.ingester_runtime import (
-    SeadChangeRequestReconciliationAdapter,
     SeadChangeRequestSimsAdapter,
     SeadChangeRequestTargetCollisionChecker,
 )
-from ingesters.sead_change_request import ChangeRowState, orchestrate_identity_assignments
-from ingesters.sead_change_request.contracts import PlannedRowAction, PlannedTable, SimsResolveItem, SubmissionContext
+from ingesters.sead_change_request import ChangeRowState, orchestrate_identity_assignments, plan_table
+from ingesters.sead_change_request.contracts import (
+    DatabaseSequenceReservationError,
+    PlannedRowAction,
+    PlannedTable,
+    SimsResolveItem,
+    SubmissionContext,
+)
 from ingesters.sead_change_request.input_resolution import SubmissionContextError, resolve_inputs
+from src.reconciliation.mapping_model import encode_local_key
+from src.target_model.models import EntitySpec
 
 # pylint: disable=unused-argument
 
 TEST_SCOPE_NAME = "provider://mal/test-pilot"
 """Provider-schema scope used by adapter tests instead of a project-name fallback."""
-
-
-class FakeBackendReconciliationClient:
-    """Minimal fake backend reconciliation client."""
-
-    def __init__(self, results: dict[str, list[ReconciliationCandidate]]) -> None:
-        self.results = results
-
-    async def reconcile_batch(self, queries: dict[str, object]) -> dict[str, list[ReconciliationCandidate]]:
-        return self.results
 
 
 class FakeBindingSetResponse:
@@ -103,18 +100,6 @@ def minimal_submission_context() -> SubmissionContext:
     )
 
 
-class FakeReconciliationClient:
-    """Return a configured target ID or a reconciliation miss."""
-
-    def __init__(self, target_id: int | None = 77) -> None:
-        self.target_id = target_id
-        self.calls = 0
-
-    async def reconcile_entity(self, entity_name: str, row: dict[str, Any]) -> int | None:
-        self.calls += 1
-        return self.target_id
-
-
 class RecordingSimsClient(SimsClient):
     """Record responses from the real SIMS HTTP client."""
 
@@ -126,36 +111,6 @@ class RecordingSimsClient(SimsClient):
         response = await super().resolve(request)
         self.resolve_responses.append(response)
         return response
-
-
-class TestSeadChangeRequestReconciliationAdapter:
-    """Tests for the backend reconciliation adapter."""
-
-    @pytest.mark.asyncio
-    async def test_reconcile_entity_extracts_numeric_target_id(self):
-        adapter = SeadChangeRequestReconciliationAdapter(
-            cast(
-                Any,
-                FakeBackendReconciliationClient(
-                    {
-                        "row-0": [
-                            ReconciliationCandidate(
-                                id="https://example.org/entity/77",
-                                name="Class A",
-                                score=99.0,
-                                distance_km=None,
-                                description=None,
-                                match=True,
-                            )
-                        ]
-                    }
-                ),
-            )
-        )
-
-        target_id = await adapter.reconcile_entity("abundance_class", {"name": "Class A", "class_id": None})
-
-        assert target_id == 77
 
 
 class TestSeadChangeRequestSimsAdapter:
@@ -225,8 +180,9 @@ class TestSeadChangeRequestSimsAdapter:
 
         assert len(sims_client.resolve_requests) == 1
         request = sims_client.resolve_requests[0]
-        assert request.run_id == "run-123"
-        assert len(request.requests) == 2
+        assert hasattr(request, "run_id")
+        assert request.run_id == "run-123"  # type: ignore
+        assert len(request.requests) == 2  # type: ignore
         assert result["binding_set_uuid"] == "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
         assert result["binding_set_state"] == "confirmed"
 
@@ -244,53 +200,56 @@ class TestSeadChangeRequestSimsAdapter:
         await adapter.resolve_batch([SimsResolveItem(entity_name="sample", row={"name": "A"})], context)
 
         request = sims_client.resolve_requests[0]
-        assert request.run_id
+        assert request.run_id  # type: ignore
 
     @pytest.mark.asyncio
-    async def test_reconciliation_result_flows_through_adapter_into_sims_request(self):
+    async def test_unapproved_reconciled_row_never_reaches_sims(self):
         sims_client = FakeBackendSimsClient(target_id=77)
         adapter = SeadChangeRequestSimsAdapter(cast(Any, sims_client))
-        frame = pd.DataFrame({"site_name": ["Approved site"]})
+        frame = pd.DataFrame({"site_id": [None], "site_name": ["Unreviewed site"]})
         planned_table = PlannedTable(
             entity_name="site",
             frame=frame,
-            planned_actions=pd.Series([PlannedRowAction.RECONCILE], index=frame.index, name="_planned_action"),
+            planned_actions=pd.Series([PlannedRowAction.BLOCK_RECONCILIATION], index=frame.index, name="_planned_action"),
+            blocked_row_reasons={0: "No exported local-only approval authorizes allocation for this business key"},
         )
 
         result = await orchestrate_identity_assignments(
             [planned_table],
             minimal_submission_context(),
             sims_client=adapter,
-            reconciliation_client=FakeReconciliationClient(),
         )
 
         assignment = result.assignments["site"][0]
-        resolve_request = sims_client.resolve_requests[0]
-        assert assignment.state == ChangeRowState.RECONCILED_CLASSIFIER
-        assert assignment.target_id == 77
-        assert result.binding_set_uuid == "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
-        assert resolve_request.requests[0].approved_aggregate_id == 77
-        assert resolve_request.model_dump(mode="json")["requests"][0]["approved_aggregate_id"] == 77
+        assert assignment.state == ChangeRowState.BLOCKED_UNRESOLVED
+        assert not sims_client.resolve_requests
 
     @pytest.mark.asyncio
-    async def test_reconciliation_conflict_blocks_row_without_using_approved_id(self):
+    async def test_allocation_conflict_blocks_row(self):
         request = httpx.Request("POST", "http://sims.test/identity/resolve")
         response = httpx.Response(409, request=request, text="approved aggregate ID is already bound elsewhere")
         conflict = httpx.HTTPStatusError("409 Conflict", request=request, response=response)
         sims_client = FakeBackendSimsClient(resolve_error=conflict)
         adapter = SeadChangeRequestSimsAdapter(cast(Any, sims_client))
-        frame = pd.DataFrame({"site_name": ["Approved site"]})
-        planned_table = PlannedTable(
-            entity_name="site",
-            frame=frame,
-            planned_actions=pd.Series([PlannedRowAction.RECONCILE], index=frame.index, name="_planned_action"),
+        frame = pd.DataFrame({"site_id": [None], "site_name": ["Approved site"]})
+        entity_spec = EntitySpec(
+            role="lookup",
+            public_id="site_id",
+            identity_tracking="reconciled",
+            reconciliation="reconcile-exact",
+        )
+        planned_table = plan_table(
+            "site",
+            frame,
+            entity_spec,
+            local_key_columns=("site_name",),
+            approved_local_only_keys={encode_local_key("site_name", "Approved site")},
         )
 
         result = await orchestrate_identity_assignments(
             [planned_table],
             minimal_submission_context(),
             sims_client=adapter,
-            reconciliation_client=FakeReconciliationClient(),
         )
 
         assignment = result.assignments["site"][0]
@@ -341,78 +300,8 @@ class TestSeadChangeRequestSimsAdapter:
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_approved_site_match_through_real_sims_service():
-    """Send an approved site ID through Shape Shifter to a disposable SIMS service."""
-    base_url = os.getenv("SIMS_DISPOSABLE_INTEGRATION_URL")
-    approved_aggregate_id = os.getenv("SIMS_DISPOSABLE_APPROVED_SITE_AGGREGATE_ID")
-    conflicting_aggregate_id = os.getenv("SIMS_DISPOSABLE_CONFLICT_SITE_AGGREGATE_ID")
-    if not (base_url and approved_aggregate_id and conflicting_aggregate_id):
-        pytest.skip("Set the three SIMS_DISPOSABLE_* variables for the disposable service test")
-
-    approved_id = int(approved_aggregate_id)
-    conflicting_id = int(conflicting_aggregate_id)
-    assert approved_id > 0
-    assert conflicting_id > 0
-    assert conflicting_id != approved_id
-
-    source_key = f"shape-shifter-approved-site-{uuid4().hex}"
-    scope_name = f"sead://test-integration/shape-shifter/{uuid4().hex}"
-    sims_client = RecordingSimsClient(base_url)
-    adapter = SeadChangeRequestSimsAdapter(sims_client, created_by="local-disposable-verification")
-
-    async def resolve_site(submission_name: str, target_id: int):
-        frame = pd.DataFrame({"site_name": [source_key]})
-        planned_table = PlannedTable(
-            entity_name="site",
-            frame=frame,
-            planned_actions=pd.Series([PlannedRowAction.RECONCILE], index=frame.index, name="_planned_action"),
-        )
-        context = SubmissionContext(
-            submission_name=submission_name,
-            project_name="shape-shifter-disposable-verification",
-            timestamp=datetime.now(),
-            scope_name=scope_name,
-        )
-        return await orchestrate_identity_assignments(
-            [planned_table],
-            context,
-            sims_client=adapter,
-            reconciliation_client=FakeReconciliationClient(target_id),
-        )
-
-    try:
-        first_result = await resolve_site(f"first-{source_key}", approved_id)
-        first_assignment = first_result.assignments["site"][0]
-        first_outcome = sims_client.resolve_responses[-1].outcomes[0]
-        assert first_assignment.state == ChangeRowState.RECONCILED_CLASSIFIER
-        assert first_assignment.target_id == approved_id
-        assert first_outcome.target_id == approved_id
-        assert first_outcome.tracked_identity_uuid is not None
-        assert sims_client.resolve_responses[-1].binding_set.lifecycle_state.value == "confirmed"
-
-        second_result = await resolve_site(f"second-{source_key}", approved_id)
-        second_assignment = second_result.assignments["site"][0]
-        second_outcome = sims_client.resolve_responses[-1].outcomes[0]
-        assert second_assignment.state == ChangeRowState.RECONCILED_CLASSIFIER
-        assert second_assignment.target_id == approved_id
-        assert second_outcome.source_identity_uuid == first_outcome.source_identity_uuid
-        assert second_outcome.tracked_identity_uuid == first_outcome.tracked_identity_uuid
-        assert second_outcome.target_id == first_outcome.target_id
-        assert sims_client.resolve_responses[-1].binding_set.lifecycle_state.value == "confirmed"
-
-        conflict_result = await resolve_site(f"conflict-{source_key}", conflicting_id)
-        conflict_assignment = conflict_result.assignments["site"][0]
-        assert conflict_assignment.state == ChangeRowState.BLOCKED_UNRESOLVED
-        assert conflict_assignment.target_id is None
-        assert "HTTP 409" in (conflict_assignment.note or "")
-    finally:
-        await sims_client.close()
-
-
-@pytest.mark.integration
-@pytest.mark.asyncio
-async def test_reconciliation_miss_allocates_site_through_real_sims_service():
-    """Allocate a synthetic site after a mocked reconciliation miss."""
+async def test_exported_local_only_approval_allocates_site_through_real_sims_service():
+    """Allocate a synthetic site when its trusted business key has an exported approval."""
     base_url = os.getenv("SIMS_DISPOSABLE_INTEGRATION_URL")
     if not base_url:
         pytest.skip("Set SIMS_DISPOSABLE_INTEGRATION_URL for the disposable service test")
@@ -421,14 +310,21 @@ async def test_reconciliation_miss_allocates_site_through_real_sims_service():
     scope_name = f"sead://test-integration/shape-shifter/{uuid4().hex}"
     sims_client = RecordingSimsClient(base_url)
     adapter = SeadChangeRequestSimsAdapter(sims_client, created_by="local-disposable-verification")
-    reconciliation_client = FakeReconciliationClient(target_id=None)
 
     async def resolve_site(submission_name: str):
-        frame = pd.DataFrame({"site_name": [source_key]})
-        planned_table = PlannedTable(
-            entity_name="site",
-            frame=frame,
-            planned_actions=pd.Series([PlannedRowAction.RECONCILE], index=frame.index, name="_planned_action"),
+        frame = pd.DataFrame({"site_id": [None], "site_name": [source_key]})
+        entity_spec = EntitySpec(
+            role="lookup",
+            public_id="site_id",
+            identity_tracking="reconciled",
+            reconciliation="reconcile-exact",
+        )
+        planned_table = plan_table(
+            "site",
+            frame,
+            entity_spec,
+            local_key_columns=("site_name",),
+            approved_local_only_keys={encode_local_key("site_name", source_key)},
         )
         context = SubmissionContext(
             submission_name=submission_name,
@@ -440,7 +336,6 @@ async def test_reconciliation_miss_allocates_site_through_real_sims_service():
             [planned_table],
             context,
             sims_client=adapter,
-            reconciliation_client=reconciliation_client,
         )
 
     try:
@@ -448,7 +343,6 @@ async def test_reconciliation_miss_allocates_site_through_real_sims_service():
         first_assignment = first_result.assignments["site"][0]
         first_response = sims_client.resolve_responses[-1]
         first_outcome = first_response.outcomes[0]
-        assert reconciliation_client.calls == 1
         assert first_assignment.state == ChangeRowState.NEWLY_ALLOCATED_ENTITY
         assert first_assignment.target_id is not None
         assert first_outcome.outcome == "new"
@@ -460,7 +354,6 @@ async def test_reconciliation_miss_allocates_site_through_real_sims_service():
         retry_assignment = retry_result.assignments["site"][0]
         retry_response = sims_client.resolve_responses[-1]
         retry_outcome = retry_response.outcomes[0]
-        assert reconciliation_client.calls == 2
         assert retry_assignment.state == ChangeRowState.NEWLY_ALLOCATED_ENTITY
         assert retry_assignment.target_id == first_assignment.target_id
         assert retry_outcome.outcome == "matched"
@@ -484,7 +377,7 @@ async def test_target_verification_reads_do_not_advance_database_sequence():
         pytest.skip("Set SEAD_DISPOSABLE_POSTGRES_* variables for the loopback disposable database test")
     if host not in {"localhost", "127.0.0.1", "::1"}:
         pytest.fail("The disposable PostgreSQL integration test only accepts a loopback host")
-
+    assert port is not None
     connection_kwargs: dict[str, Any] = {
         "host": host,
         "port": int(port),
@@ -501,15 +394,15 @@ async def test_target_verification_reads_do_not_advance_database_sequence():
                 "SELECT pg_get_serial_sequence(%s, %s)",
                 ("public.tbl_submissions", "submission_id"),
             )
-            sequence_row = await cursor.fetchone()
-            assert sequence_row is not None
-            sequence_name = sequence_row[0]
+            data: TupleRow | None = await cursor.fetchone()
+            assert data is not None
+            sequence_name = data[0]
             assert sequence_name is not None
             sequence_identifier = sql.Identifier(*(part.strip('"') for part in sequence_name.split(".")))
             await cursor.execute(sql.SQL("SELECT last_value, is_called FROM {}").format(sequence_identifier))
-            previous_row = await cursor.fetchone()
-            assert previous_row is not None
-            previous_value, was_called = previous_row
+            data: TupleRow | None = await cursor.fetchone()
+            assert data is not None
+            previous_value, was_called = data
 
     checker = SeadChangeRequestTargetCollisionChecker(**connection_kwargs)
     await checker.target_id_exists("tbl_submissions", "submission_id", previous_value)
@@ -518,11 +411,81 @@ async def test_target_verification_reads_do_not_advance_database_sequence():
     async with await psycopg.AsyncConnection.connect(**connection_kwargs) as connection:
         async with connection.cursor() as cursor:
             await cursor.execute(sql.SQL("SELECT last_value, is_called FROM {}").format(sequence_identifier))
-            current_row = await cursor.fetchone()
-            assert current_row is not None
-            current_value, is_called = current_row
+            data: TupleRow | None = await cursor.fetchone()
+            assert data is not None
+            current_value, is_called = data
 
     assert (current_value, is_called) == (previous_value, was_called)
+
+
+class TestTargetCollisionCheckerDatabaseSequenceReservation:
+    """Tests for target IDs reserved from database-owned sequences."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("table_name", "default_schema", "expected_table"),
+        [
+            ("tbl_submissions", "public", "public.tbl_submissions"),
+            ("archive.tbl_submissions", "public", "archive.tbl_submissions"),
+        ],
+    )
+    async def test_reserves_id_from_the_column_sequence(self, table_name, default_schema, expected_table):
+        cursor = MagicMock()
+        cursor.execute = AsyncMock()
+        cursor.fetchone = AsyncMock(return_value=(902,))
+        cursor.__aenter__ = AsyncMock(return_value=cursor)
+        cursor.__aexit__ = AsyncMock(return_value=None)
+        connection = MagicMock()
+        connection.cursor = MagicMock(return_value=cursor)
+        connection.__aenter__ = AsyncMock(return_value=connection)
+        connection.__aexit__ = AsyncMock(return_value=None)
+        checker = SeadChangeRequestTargetCollisionChecker(
+            host="localhost",
+            port=5432,
+            dbname="test_db",
+            user="test_user",
+            default_schema=default_schema,
+        )
+
+        with patch(
+            "backend.app.services.ingester_runtime.psycopg.AsyncConnection.connect",
+            AsyncMock(return_value=connection),
+        ):
+            target_id = await checker.reserve_database_id(table_name, "submission_id")
+
+        assert target_id == 902
+        assert cursor.execute.await_args.args[1] == (expected_table, "submission_id")
+
+    @pytest.mark.asyncio
+    async def test_missing_column_sequence_raises_reservation_error(self):
+        cursor = MagicMock()
+        cursor.execute = AsyncMock()
+        cursor.fetchone = AsyncMock(return_value=(None,))
+        cursor.__aenter__ = AsyncMock(return_value=cursor)
+        cursor.__aexit__ = AsyncMock(return_value=None)
+        connection = MagicMock()
+        connection.cursor = MagicMock(return_value=cursor)
+        connection.__aenter__ = AsyncMock(return_value=connection)
+        connection.__aexit__ = AsyncMock(return_value=None)
+        checker = SeadChangeRequestTargetCollisionChecker(host="localhost", port=5432, dbname="test_db", user="test_user")
+
+        with patch(
+            "backend.app.services.ingester_runtime.psycopg.AsyncConnection.connect",
+            AsyncMock(return_value=connection),
+        ):
+            with pytest.raises(DatabaseSequenceReservationError, match="no associated database sequence"):
+                await checker.reserve_database_id("tbl_submissions", "submission_id")
+
+    @pytest.mark.asyncio
+    async def test_database_errors_are_reported_as_reservation_errors(self):
+        checker = SeadChangeRequestTargetCollisionChecker(host="localhost", port=5432, dbname="test_db", user="test_user")
+
+        with patch(
+            "backend.app.services.ingester_runtime.psycopg.AsyncConnection.connect",
+            AsyncMock(side_effect=psycopg.OperationalError("connection refused")),
+        ):
+            with pytest.raises(DatabaseSequenceReservationError, match="Could not reserve a database-sequence ID"):
+                await checker.reserve_database_id("tbl_submissions", "submission_id")
 
 
 class TestTrustedScopeAndBusinessKeys:
@@ -578,8 +541,9 @@ class TestTrustedScopeAndBusinessKeys:
             {"site_name": "A", "site_code": 7, "unrelated": "ignored"},
             minimal_submission_context(),
         )
-
-        identity_value = sims_client.resolve_requests[0].requests[0].primary_signal.identity_value
+        assert sims_client.resolve_requests is not None
+        assert len(sims_client.resolve_requests) > 0
+        identity_value = sims_client.resolve_requests[0].requests[0].primary_signal.identity_value  # type: ignore
         assert identity_value == '[1,[["site_name","string","A"],["site_code","number","7"]]]'
 
     @pytest.mark.asyncio
@@ -593,8 +557,8 @@ class TestTrustedScopeAndBusinessKeys:
 
             async def resolve(self, request: ResolveRequest) -> FakeResolveResponse:
                 self.resolve_requests.append(request)
-                scope_name = request.scope_name
-                identity_value = request.requests[0].primary_signal.identity_value
+                scope_name = request.scope_name  # type: ignore
+                identity_value = request.requests[0].primary_signal.identity_value  # type: ignore
                 identity_key = (scope_name, identity_value)
                 target_id = self.identity_ids.setdefault(identity_key, 500 + len(self.identity_ids))
                 return FakeResolveResponse(self.binding_set_uuid, self.lifecycle_state, target_id=target_id)
@@ -654,11 +618,19 @@ class TestTrustedScopeAndBusinessKeys:
         assert first["target_id"] == second["target_id"]
         assert different_key["target_id"] != first["target_id"]
         assert different_scope["target_id"] != first["target_id"]
-        assert [request.run_id for request in sims_client.resolve_requests] == ["first-run", "second-run", "third-run", "fourth-run"]
-        assert {request.scope_name for request in sims_client.resolve_requests} == {TEST_SCOPE_NAME, "provider://mal/other-project"}
+        assert [request.run_id for request in sims_client.resolve_requests] == [  # type: ignore
+            "first-run",
+            "second-run",
+            "third-run",
+            "fourth-run",
+        ]
+        assert {request.scope_name for request in sims_client.resolve_requests} == {  # type: ignore
+            TEST_SCOPE_NAME,
+            "provider://mal/other-project",
+        }
         assert (
-            sims_client.resolve_requests[0].requests[0].primary_signal.identity_value
-            == sims_client.resolve_requests[1].requests[0].primary_signal.identity_value
+            sims_client.resolve_requests[0].requests[0].primary_signal.identity_value  # type: ignore
+            == sims_client.resolve_requests[1].requests[0].primary_signal.identity_value  # type: ignore
         )
 
     @pytest.mark.asyncio
@@ -678,7 +650,7 @@ class TestTrustedScopeAndBusinessKeys:
 
         await adapter.allocate_entity("sample", {"sample_id": None, "name": "A"}, minimal_submission_context())
 
-        identity_value = sims_client.resolve_requests[0].requests[0].primary_signal.identity_value
+        identity_value = sims_client.resolve_requests[0].requests[0].primary_signal.identity_value  # type: ignore
         assert identity_value == "sample:name=A"
 
 

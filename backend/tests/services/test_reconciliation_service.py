@@ -16,6 +16,7 @@ from backend.app.services.reconciliation.resolvers import (
     SqlQueryReconciliationSourceResolver,
     TargetEntityReconciliationSourceResolver,
 )
+from backend.app.services.reconciliation.service import ResolvedSourceRows
 from backend.app.utils.exceptions import BadRequestError, NotFoundError
 from backend.tests.test_reconciliation_client import RECONCILIATION_SERVICE_URL
 from src.reconciliation import model as core
@@ -113,7 +114,7 @@ def sample_entity_spec_dto() -> dto.EntityResolutionSet:
 def catalog(sample_entity_spec_dto) -> dto.EntityResolutionCatalog:
     """Create sample EntityMappingRegistry (DTO for YAML serialization tests)."""
     return dto.EntityResolutionCatalog(
-        version="2.0",
+        version="3.0",
         service_url=RECONCILIATION_SERVICE_URL,
         entities={"site": {"site_code": sample_entity_spec_dto}},  # Nested: entity -> target -> spec
     )
@@ -239,7 +240,7 @@ class TestTargetEntityReconciliationSourceResolver:
             result = await resolver.resolve("site", sample_entity_spec)
 
             assert result == preview_data
-            mock_preview.assert_called_once_with("test_project", "site", limit=1000)
+            mock_preview.assert_called_once_with("test_project", "site", limit=None)
 
 
 class TestAnotherEntityReconciliationSourceResolver:
@@ -271,7 +272,7 @@ class TestAnotherEntityReconciliationSourceResolver:
             result = await resolver.resolve("sample", entity_spec)
 
             assert result == source_data
-            mock_preview.assert_called_once_with("test_project", "site", limit=1000)
+            mock_preview.assert_called_once_with("test_project", "site", limit=None)
 
     @pytest.mark.asyncio
     async def test_resolve_raises_for_missing_source_entity(self, mock_config_service, mock_core_project):
@@ -353,6 +354,38 @@ class TestSqlQueryReconciliationSourceResolver:
 class TestReconciliationQueryService:
     """Tests for ReconciliationQueryService."""
 
+    def test_equal_labels_and_compound_keys_do_not_merge(self, sample_entity_spec):
+        source = ResolvedSourceRows(
+            local_key=["site_code", "region"],
+            rows=[
+                {"site_code": "A|B", "region": "X", "site_name": "Same"},
+                {"site_code": "A", "region": "B|X", "site_name": "Same"},
+            ],
+        )
+        result = ReconciliationQueryService().create("site_name", sample_entity_spec, 3, source, "site")
+        assert result.queries["q0"].query == result.queries["q1"].query == "Same"
+        assert result.key_mapping == {"q0": r"A\|B|X", "q1": r"A|B\|X"}
+        assert result.errors == []
+        reversed_keys, reversed_errors = ReconciliationQueryService.index_rows(source.rows, ["region", "site_code"])
+        assert reversed_keys == {0: r"X|A\|B", 1: r"B\|X|A"}
+        assert not reversed_errors
+
+    def test_invalid_key_rows_are_reported_without_merging(self, sample_entity_spec):
+        source = ResolvedSourceRows(
+            local_key=["site_code", "region"],
+            rows=[
+                {"site_code": "A", "region": "X", "site_name": "Same"},
+                {"site_code": "A", "region": "X", "site_name": "Same"},
+                {"site_code": "B", "region": None, "site_name": "Other"},
+                {"site_code": "C", "region": "X", "site_name": ""},
+            ],
+        )
+        result = ReconciliationQueryService().create("site_name", sample_entity_spec, 3, source, "site")
+        assert result.queries == {}
+        assert {error.row_index for error in result.errors} == {0, 1, 2, 3}
+        assert [error.message for error in result.errors].count("Duplicate business key") == 2
+        assert result.row_keys == {3: "C|X"}
+
     def test_create_builds_queries_from_source_data(self, sample_entity_spec):
         """Test create builds queries correctly from source data."""
         service = ReconciliationQueryService()
@@ -366,7 +399,7 @@ class TestReconciliationQueryService:
             target_field="site_code",
             entity_mapping=sample_entity_spec,
             max_candidates=3,
-            source_data=source_data,
+            source_data=ResolvedSourceRows(rows=source_data, local_key="site_code"),
             service_type="site",
         )
 
@@ -399,7 +432,7 @@ class TestReconciliationQueryService:
             target_field="site_code",
             entity_mapping=sample_entity_spec,
             max_candidates=3,
-            source_data=source_data,
+            source_data=ResolvedSourceRows(rows=source_data, local_key="site_code"),
             service_type="site",
         )
 
@@ -408,6 +441,7 @@ class TestReconciliationQueryService:
         assert "q1" in result.queries
         assert result.queries["q1"].query == "SITE001"
         assert result.key_mapping["q1"] == "SITE001"
+        assert result.errors[0].row_index == 0
 
     def test_create_skips_empty_query_strings(self, sample_entity_spec):
         """Test create skips rows with empty query strings."""
@@ -422,11 +456,12 @@ class TestReconciliationQueryService:
             target_field="site_code",
             entity_mapping=sample_entity_spec,
             max_candidates=3,
-            source_data=source_data,
+            source_data=ResolvedSourceRows(rows=source_data, local_key="site_code"),
             service_type="site",
         )
 
         assert len(result.queries) == 1
+        assert result.errors[0].row_index == 0
 
     def test_create_excludes_none_properties(self, sample_entity_spec):
         """Test create excludes properties with None values."""
@@ -440,7 +475,7 @@ class TestReconciliationQueryService:
             target_field="site_code",
             entity_mapping=sample_entity_spec,
             max_candidates=3,
-            source_data=source_data,
+            source_data=ResolvedSourceRows(rows=source_data, local_key="site_code"),
             service_type="site",
         )
 
@@ -514,14 +549,21 @@ class TestReconciliationService:
                     mock_resolver_cls = MagicMock(return_value=mock_resolver)
 
                     # Mock get_resolver_cls_for_strategy to return our mock class
-                    with patch(
-                        "backend.app.services.reconciliation.service.ReconciliationSourceResolver.get_resolver_cls_for_strategy"
-                    ) as mock_get_cls:
+                    with (
+                        patch(
+                            "backend.app.services.reconciliation.service.ReconciliationSourceResolver.get_resolver_cls_for_strategy"
+                        ) as mock_get_cls,
+                        patch(
+                            "backend.app.services.reconciliation.service.MappingService.get_entity_mapping",
+                            return_value=MagicMock(local_key="site_code", public_id="site_id"),
+                        ),
+                    ):
                         mock_get_cls.return_value = mock_resolver_cls
 
                         result = await reconciliation_service.get_resolved_source_data("test_project", "site", sample_entity_spec)
 
-                        assert result == [{"key": "value"}]
+                        assert result.rows == [{"key": "value"}]
+                        assert result.local_key == "site_code"
 
                         # Verify domain strategy was used
                         mock_strategy.determine_strategy.assert_called_once_with("site", sample_entity_spec.metadata.source)
@@ -560,7 +602,7 @@ class TestReconciliationService:
 
         result = await reconciliation_service.auto_reconcile_entity("test_project", "site", "site_code", sample_entity_spec)
 
-        assert result.auto_accepted == 0
+        assert result.proposed == 0
         assert result.total == 0
         assert result.candidates == {}
 
@@ -570,18 +612,19 @@ class TestReconciliationService:
     ):
         """Test auto_reconcile_entity handles empty query list."""
         with patch.object(reconciliation_service, "get_resolved_source_data", new=AsyncMock()) as mock_source:
-            mock_source.return_value = [{"site_code": None}]  # Will be skipped
+            mock_source.return_value = ResolvedSourceRows(rows=[{"site_code": None}], local_key="site_code")
 
             result = await reconciliation_service.auto_reconcile_entity("test", "site", "site_code", sample_entity_spec)
 
-            assert result.total == 0
+            assert result.total == 1
+            assert result.errors[0].row_index == 0
             assert not mock_recon_client.reconcile_batch.called
 
     @pytest.mark.asyncio
-    async def test_auto_reconcile_entity_auto_accepts_high_scores(
+    async def test_auto_reconcile_entity_proposes_high_scores(
         self, reconciliation_service: ReconciliationService, tmp_path, sample_entity_spec: core.EntityResolutionSet
     ):
-        """Test auto_reconcile_entity auto-accepts candidates with high scores."""
+        """A high-scoring candidate remains proposed until an operator accepts it."""
         # Setup source data
         source_data = [{"site_code": "SITE001", "site_name": "Test Site"}]
 
@@ -599,7 +642,7 @@ class TestReconciliationService:
         ]
 
         with patch.object(reconciliation_service, "get_resolved_source_data", new=AsyncMock()) as mock_source:
-            mock_source.return_value = source_data
+            mock_source.return_value = ResolvedSourceRows(rows=source_data, local_key="site_code")
 
             reconciliation_service.reconciliation_client.reconcile_batch.return_value = {"q0": candidates}  # type: ignore
 
@@ -608,7 +651,7 @@ class TestReconciliationService:
             project_dir.mkdir(exist_ok=True)
             config_file = project_dir / "test-reconciliation.yml"
             config = {
-                "version": "2.0",
+                "version": "3.0",
                 "service_url": RECONCILIATION_SERVICE_URL,
                 "entities": {
                     "site": {
@@ -632,8 +675,7 @@ class TestReconciliationService:
 
             result = await reconciliation_service.auto_reconcile_entity("test", "site", "site_code", sample_entity_spec, max_candidates=3)
 
-            assert result.auto_accepted == 1
-            assert result.needs_review == 0
+            assert result.proposed == 1
             assert result.unmatched == 0
             assert result.total == 1
 
@@ -641,7 +683,10 @@ class TestReconciliationService:
             loaded_config = reconciliation_service.catalog_manager.load_catalog("test")
             assert len(loaded_config.entities["site"]["site_code"].links) == 1
             mapping = loaded_config.entities["site"]["site_code"].links[0]
-            assert mapping.target_id == 123
+            assert mapping.target_id is None
+            assert mapping.status == core.DecisionStatus.PROPOSED
+            assert mapping.candidates[0].id == "https://w3id.org/sead/id/site/123"
+            assert mapping.local_key_value == "SITE001"
             assert mapping.source_value == "SITE001"
 
     @pytest.mark.asyncio
@@ -658,7 +703,7 @@ class TestReconciliationService:
         ]
 
         with patch.object(reconciliation_service, "get_resolved_source_data", new=AsyncMock()) as mock_source:
-            mock_source.return_value = source_data
+            mock_source.return_value = ResolvedSourceRows(rows=source_data, local_key="site_code")
             reconciliation_service.reconciliation_client.reconcile_batch.return_value = {"q0": candidates}  # type: ignore
 
             # Create config in nested structure
@@ -666,7 +711,7 @@ class TestReconciliationService:
             project_dir.mkdir(exist_ok=True)
             config_file = project_dir / "test-reconciliation.yml"
             config = {
-                "version": "2.0",
+                "version": "3.0",
                 "service_url": RECONCILIATION_SERVICE_URL,
                 "entities": {
                     "site": {
@@ -690,8 +735,8 @@ class TestReconciliationService:
 
             result = await reconciliation_service.auto_reconcile_entity("test", "site", "site_code", sample_entity_spec)
 
-            assert result.auto_accepted == 0
-            assert result.needs_review == 1
+            assert result.proposed == 1
+            assert len(result.candidates["SITE001"]) == 1
             assert result.unmatched == 0
 
     @pytest.mark.asyncio
@@ -706,7 +751,7 @@ class TestReconciliationService:
         ]
 
         with patch.object(reconciliation_service, "get_resolved_source_data", new=AsyncMock()) as mock_source:
-            mock_source.return_value = source_data
+            mock_source.return_value = ResolvedSourceRows(rows=source_data, local_key="site_code")
             reconciliation_service.reconciliation_client.reconcile_batch.return_value = {"q0": candidates}
 
             # Create config in nested structure
@@ -714,7 +759,7 @@ class TestReconciliationService:
             project_dir.mkdir(exist_ok=True)
             config_file = project_dir / "test-reconciliation.yml"
             config = {
-                "version": "2.0",
+                "version": "3.0",
                 "service_url": RECONCILIATION_SERVICE_URL,
                 "entities": {
                     "site": {
@@ -738,9 +783,8 @@ class TestReconciliationService:
 
             result = await reconciliation_service.auto_reconcile_entity("test", "site", "site_code", sample_entity_spec)
 
-            assert result.auto_accepted == 0
-            assert result.needs_review == 0
-            assert result.unmatched == 1
+            assert result.proposed == 1
+            assert result.unmatched == 0
 
     @pytest.mark.asyncio
     async def test_auto_reconcile_entity_handles_no_candidates(self, reconciliation_service, tmp_path, sample_entity_spec):
@@ -748,7 +792,7 @@ class TestReconciliationService:
         source_data = [{"site_code": "SITE001"}]
 
         with patch.object(reconciliation_service, "get_resolved_source_data", new=AsyncMock()) as mock_source:
-            mock_source.return_value = source_data
+            mock_source.return_value = ResolvedSourceRows(rows=source_data, local_key="site_code")
             reconciliation_service.reconciliation_client.reconcile_batch.return_value = {"q0": []}
 
             # Create config in nested structure
@@ -756,7 +800,7 @@ class TestReconciliationService:
             project_dir.mkdir(exist_ok=True)
             config_file = project_dir / "test-reconciliation.yml"
             config = {
-                "version": "2.0",
+                "version": "3.0",
                 "service_url": RECONCILIATION_SERVICE_URL,
                 "entities": {
                     "site": {
@@ -784,7 +828,8 @@ class TestReconciliationService:
             assert result.total == 1
 
     def test_update_mapping_adds_new_mapping(self, reconciliation_service: ReconciliationService, tmp_path, catalog):
-        """Test update_mapping adds new mapping entry."""
+        """Test accepting a proposed entry by encoded key."""
+        catalog.entities["site"]["site_code"].mapping = [dto.ResolvedEntityPair(local_key_value="SITE001", source_value="Same")]
         # Create config in nested structure
         project_dir = tmp_path / "test"
         project_dir.mkdir(exist_ok=True)
@@ -796,29 +841,32 @@ class TestReconciliationService:
             "test",
             "site",
             "site_code",
-            source_value="SITE001",
+            local_key_value="SITE001",
+            status=core.DecisionStatus.ACCEPTED,
             target_id=123,
             notes="Manual link",
+            candidate_id="https://w3id.org/sead/id/site/123",
         )
 
         assert len(updated.entities["site"]["site_code"].links) == 1
         links = updated.entities["site"]["site_code"].links[0]
         assert links.target_id == 123
-        assert links.source_value == "SITE001"
+        assert links.source_value == "Same"
         assert links.notes == "Manual link"
-        assert links.confidence == 1.0
+        assert links.confidence is None
 
     def test_update_mapping_updates_existing(self, reconciliation_service: ReconciliationService, tmp_path, catalog):
         """Test update_mapping updates existing mapping."""
         # Add existing mapping
-        existing_mapping = core.ResolvedEntityPair(
+        existing_mapping = dto.ResolvedEntityPair(
+            local_key_value="SITE001",
             source_value="SITE001",
+            status="accepted",
             target_id=100,
             confidence=0.8,
             notes="Old mapping",
             created_by="system",
             created_at="2024-01-01T00:00:00Z",
-            will_not_match=False,
             last_modified="2024-01-02T00:00:00Z",
         )
         catalog.entities["site"]["site_code"].mapping = [existing_mapping]
@@ -834,9 +882,11 @@ class TestReconciliationService:
             "test",
             "site",
             "site_code",
-            source_value="SITE001",
+            local_key_value="SITE001",
+            status=core.DecisionStatus.ACCEPTED,
             target_id=200,
             notes="Updated mapping",
+            candidate_id="https://w3id.org/sead/id/site/200",
         )
 
         assert len(updated.entities["site"]["site_code"].links) == 1
@@ -849,13 +899,14 @@ class TestReconciliationService:
     ):
         """Test update_mapping removes mapping when target_id is None."""
         existing_mapping = dto.ResolvedEntityPair(
+            local_key_value="SITE001",
             source_value="SITE001",
+            status="accepted",
             target_id=100,
             confidence=0.8,
             notes="To remove",
             created_by="user",
             created_at="2024-01-01T00:00:00Z",
-            will_not_match=False,
             last_modified="2024-01-02T00:00:00Z",
         )
         catalog.entities["site"]["site_code"].mapping = [existing_mapping]
@@ -867,9 +918,7 @@ class TestReconciliationService:
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
-        updated: core.EntityResolutionCatalog = reconciliation_service.update_mapping(
-            "test", "site", "site_code", source_value="SITE001", target_id=None
-        )
+        updated: core.EntityResolutionCatalog = reconciliation_service.delete_decision("test", "site", "site_code", "SITE001")
 
         assert len(updated.entities["site"]["site_code"].links) == 0
 
@@ -879,13 +928,16 @@ class TestReconciliationService:
         project_dir = tmp_path / "test"
         project_dir.mkdir(exist_ok=True)
         config_file = project_dir / "test-reconciliation.yml"
-        config_file.write_text(yaml.dump({"version": "2.0", "service_url": RECONCILIATION_SERVICE_URL, "entities": {}}))
+        config_file.write_text(yaml.dump({"version": "3.0", "service_url": RECONCILIATION_SERVICE_URL, "entities": {}}))
 
         with pytest.raises(NotFoundError, match="Entity mapping for entity 'nonexistent' and target field 'field' not found"):
-            reconciliation_service.update_mapping("test", "nonexistent", "field", source_value="KEY", target_id=123)
+            reconciliation_service.update_mapping(
+                "test", "nonexistent", "field", local_key_value="KEY", status=core.DecisionStatus.ACCEPTED, target_id=123
+            )
 
     def test_mark_as_unmatched(self, reconciliation_service, tmp_path, catalog):
-        """Test mark_as_unmatched creates mapping with will_not_match=True."""
+        """Test mark_as_unmatched changes an existing row to local-only."""
+        catalog.entities["site"]["site_code"].mapping = [dto.ResolvedEntityPair(local_key_value="LOCAL_SITE", source_value="Same")]
         # Create config in nested structure
         project_dir = tmp_path / "test"
         project_dir.mkdir(exist_ok=True)
@@ -897,15 +949,16 @@ class TestReconciliationService:
             "test",
             "site",
             "site_code",
-            source_value="LOCAL_SITE",
+            local_key_value="LOCAL_SITE",
             notes="Local identifier only",
         )
 
         assert len(updated.entities["site"]["site_code"].links) == 1
         link: core.ResolvedEntityPair = updated.entities["site"]["site_code"].links[0]
-        assert link.source_value == "LOCAL_SITE"
+        assert link.local_key_value == "LOCAL_SITE"
+        assert link.source_value == "Same"
         assert link.target_id is None
-        assert link.will_not_match is True
+        assert link.status == core.DecisionStatus.LOCAL_ONLY
         assert link.notes == "Local identifier only"
         assert link.confidence is None
         assert link.last_modified is not None
@@ -913,14 +966,15 @@ class TestReconciliationService:
     def test_mark_as_unmatched_updates_existing(self, reconciliation_service: ReconciliationService, tmp_path, catalog):
         """Test mark_as_unmatched can convert existing mapping to unmatched."""
         # Add existing matched mapping
-        existing_mapping = core.ResolvedEntityPair(
+        existing_mapping = dto.ResolvedEntityPair(
+            local_key_value="SITE001",
             source_value="SITE001",
+            status="accepted",
             target_id=100,
             confidence=0.8,
             notes="Was matched",
             created_by="system",
             created_at="2024-01-01T00:00:00Z",
-            will_not_match=False,
             last_modified="2024-01-02T00:00:00Z",
         )
         catalog.entities["site"]["site_code"].mapping = [existing_mapping]
@@ -936,15 +990,190 @@ class TestReconciliationService:
             "test",
             "site",
             "site_code",
-            source_value="SITE001",
+            local_key_value="SITE001",
             notes="Changed to local-only",
         )
 
         assert len(updated.entities["site"]["site_code"].links) == 1
         link: core.ResolvedEntityPair = updated.entities["site"]["site_code"].links[0]
         assert link.target_id is None
-        assert link.will_not_match is True
+        assert link.status == core.DecisionStatus.LOCAL_ONLY
         assert link.notes == "Changed to local-only"
+
+    @pytest.mark.asyncio
+    async def test_all_normalized_rows_have_independent_proposals(self, reconciliation_service, sample_entity_spec, mock_recon_client):
+        source = ResolvedSourceRows(
+            local_key="site_code",
+            rows=[{"site_code": f"K{index:04}", "site_name": "Same"} for index in range(1001)],
+        )
+
+        async def respond(queries):
+            return {
+                query_id: [dto.ReconciliationCandidate(id="https://w3id.org/sead/id/site/123", name="Same", score=100.0)]
+                for query_id in queries
+            }
+
+        mock_recon_client.reconcile_batch.side_effect = respond
+        with (
+            patch.object(reconciliation_service, "get_resolved_source_data", new=AsyncMock(return_value=source)),
+            patch("backend.app.services.reconciliation.service.operation_manager.update_progress") as progress,
+            patch("backend.app.services.reconciliation.service.operation_manager.complete_operation"),
+        ):
+            result = await reconciliation_service.auto_reconcile_entity(
+                "rows", "site", "site_name", sample_entity_spec, operation_id="operation"
+            )
+
+        assert result.total == result.proposed == len(result.candidates) == 1001
+        assert result.errors == []
+        assert result.candidates["K1000"][0].score == 100.0
+        assert mock_recon_client.reconcile_batch.call_count == 21
+        assert any(call.kwargs.get("current") == 1001 for call in progress.call_args_list)
+        decisions = reconciliation_service.catalog_manager.load_catalog("rows").get("site", "site_name").links
+        assert len(decisions) == 1001
+        assert all(decision.status == core.DecisionStatus.PROPOSED and decision.target_id is None for decision in decisions)
+
+    @pytest.mark.asyncio
+    async def test_rerun_retains_operator_decisions(self, reconciliation_service, sample_entity_spec, mock_recon_client):
+        sample_entity_spec.links = [
+            core.ResolvedEntityPair(
+                local_key_value=key,
+                source_value="Same",
+                status=status,
+                target_id=target_id,
+                notes="operator",
+                candidates=[core.ResolutionCandidate(id="old", name="Original", score=70.0)],
+            )
+            for key, status, target_id in (
+                ("A", core.DecisionStatus.ACCEPTED, 101),
+                ("B", core.DecisionStatus.REJECTED, None),
+                ("C", core.DecisionStatus.LOCAL_ONLY, None),
+            )
+        ]
+        sample_entity_spec.links.append(core.ResolvedEntityPair(local_key_value="D", source_value="Same"))
+        registry = core.EntityResolutionCatalog(
+            version="3.0", service_url="http://localhost:8000", entities={"site": {"site_name": sample_entity_spec}}
+        )
+        reconciliation_service.catalog_manager.save_catalog("rerun", registry)
+        source = ResolvedSourceRows(
+            local_key="site_code",
+            rows=[{"site_code": key, "site_name": "Same"} for key in ("A", "B", "C", "D")],
+        )
+        mock_recon_client.reconcile_batch.return_value = {"q3": [dto.ReconciliationCandidate(id="new", name="New", score=100.0)]}
+        with patch.object(reconciliation_service, "get_resolved_source_data", new=AsyncMock(return_value=source)):
+            for _ in range(2):
+                result = await reconciliation_service.auto_reconcile_entity("rerun", "site", "site_name", sample_entity_spec)
+
+        assert result.proposed == 1
+        assert list(mock_recon_client.reconcile_batch.call_args.args[0]) == ["q3"]
+        decisions = {
+            item.local_key_value: item
+            for item in reconciliation_service.catalog_manager.load_catalog("rerun").get("site", "site_name").links
+        }
+        assert [
+            (decisions[key].status, decisions[key].target_id, decisions[key].notes, decisions[key].candidates[0].id)
+            for key in ("A", "B", "C")
+        ] == [
+            (core.DecisionStatus.ACCEPTED, 101, "operator", "old"),
+            (core.DecisionStatus.REJECTED, None, "operator", "old"),
+            (core.DecisionStatus.LOCAL_ONLY, None, "operator", "old"),
+        ]
+        assert decisions["D"].status == core.DecisionStatus.PROPOSED
+        assert decisions["D"].candidates[0].id == "new"
+
+    @pytest.mark.asyncio
+    async def test_decision_saved_during_matching_is_not_overwritten(self, reconciliation_service, sample_entity_spec, mock_recon_client):
+        sample_entity_spec.links = [
+            core.ResolvedEntityPair(
+                local_key_value="A",
+                source_value="Same",
+                candidates=[core.ResolutionCandidate(id="old", name="Original", score=70.0)],
+            )
+        ]
+        reconciliation_service.catalog_manager.save_catalog(
+            "editing",
+            core.EntityResolutionCatalog(
+                version="3.0", service_url="http://localhost:8000", entities={"site": {"site_name": sample_entity_spec}}
+            ),
+        )
+
+        async def respond(queries):
+            reconciliation_service.update_mapping(
+                "editing",
+                "site",
+                "site_name",
+                "A",
+                core.DecisionStatus.ACCEPTED,
+                101,
+                "reviewed",
+                candidate_id="site/101",
+            )
+            return {"q0": [dto.ReconciliationCandidate(id="new", name="New", score=100.0)]}
+
+        mock_recon_client.reconcile_batch.side_effect = respond
+        source = ResolvedSourceRows(local_key="site_code", rows=[{"site_code": "A", "site_name": "Same"}])
+        with patch.object(reconciliation_service, "get_resolved_source_data", new=AsyncMock(return_value=source)):
+            result = await reconciliation_service.auto_reconcile_entity("editing", "site", "site_name", sample_entity_spec)
+
+        decision = reconciliation_service.catalog_manager.load_catalog("editing").get("site", "site_name").links[0]
+        assert result.proposed == 0
+        assert result.candidates["A"][0].id == "old"
+        assert (decision.status, decision.target_id, decision.notes, decision.candidates[0].id) == (
+            core.DecisionStatus.ACCEPTED,
+            101,
+            "reviewed",
+            "old",
+        )
+
+    @pytest.mark.asyncio
+    async def test_ambiguous_search_source_is_rejected(self, reconciliation_service, sample_entity_spec, mock_core_project):
+        sample_entity_spec.metadata.source = "sample"
+        with (
+            patch.object(reconciliation_service.project_service, "load_project"),
+            patch("backend.app.services.reconciliation.service.ProjectMapper.to_core", return_value=mock_core_project),
+            patch(
+                "backend.app.services.reconciliation.service.MappingService.get_entity_mapping",
+                return_value=MagicMock(local_key="site_code", public_id="site_id"),
+            ),
+            patch("backend.app.services.reconciliation.service.ReconciliationSourceResolver.get_resolver_cls_for_strategy") as get_resolver,
+        ):
+
+            def choose(strategy):
+                rows = [{"site_code": "A", "site_name": "Same"}]
+                if strategy == SourceStrategyType.ANOTHER_ENTITY:
+                    rows *= 2
+                return MagicMock(return_value=MagicMock(resolve=AsyncMock(return_value=rows)))
+
+            get_resolver.side_effect = choose
+            with pytest.raises(ValidationError, match="duplicate business keys"):
+                await reconciliation_service.get_resolved_source_data("site-project", "site", sample_entity_spec)
+
+    @pytest.mark.parametrize("header", ["version: '2.0'\n", ""])
+    def test_old_catalog_is_ignored_but_invalid_future_is_rejected(self, reconciliation_service, tmp_path, header):
+        filename = tmp_path / "old-reconciliation.yml"
+        filename.write_text(f"{header}entities: {{site: {{site_code: {{mapping: []}}}}}}\n", encoding="utf-8")
+        original = filename.read_bytes()
+        assert reconciliation_service.catalog_manager.load_catalog("old", filename=filename).entities == {}
+        assert filename.read_bytes() == original
+        filename.write_text("version: '4.0'\nentities: {}\n", encoding="utf-8")
+        with pytest.raises(ValidationError, match="Unsupported reconciliation catalog version"):
+            reconciliation_service.catalog_manager.load_catalog("old", filename=filename)
+        filename.write_text("version: [\n", encoding="utf-8")
+        with pytest.raises(ValidationError, match="Malformed reconciliation catalog"):
+            reconciliation_service.catalog_manager.load_catalog("old", filename=filename)
+
+    @pytest.mark.asyncio
+    async def test_old_catalog_rows_can_be_proposed_again(self, reconciliation_service, sample_entity_spec, mock_recon_client, tmp_path):
+        project_dir = tmp_path / "old"
+        project_dir.mkdir()
+        catalog = project_dir / "old-reconciliation.yml"
+        catalog.write_text("version: '2.0'\nentities: {site: {site_name: {mapping: []}}}\n", encoding="utf-8")
+        source = ResolvedSourceRows(rows=[{"site_code": "A", "site_name": "Same"}], local_key="site_code")
+        mock_recon_client.reconcile_batch.return_value = {"q0": []}
+        with patch.object(reconciliation_service, "get_resolved_source_data", new=AsyncMock(return_value=source)):
+            result = await reconciliation_service.auto_reconcile_entity("old", "site", "site_name", sample_entity_spec)
+        assert result.total == result.proposed == 1
+        assert yaml.safe_load(catalog.read_text(encoding="utf-8"))["version"] == "3.0"
+        assert reconciliation_service.catalog_manager.load_catalog("old").get("site", "site_name").links[0].local_key_value == "A"
 
 
 class TestSpecificationManagement:
@@ -952,7 +1181,7 @@ class TestSpecificationManagement:
 
     def test_list_specifications_empty(self, reconciliation_service: ReconciliationService, tmp_path):
         """Test listing specifications when config has no entities."""
-        config = dto.EntityResolutionCatalog(version="2.0", service_url=RECONCILIATION_SERVICE_URL, entities={})
+        config = dto.EntityResolutionCatalog(version="3.0", service_url=RECONCILIATION_SERVICE_URL, entities={})
 
         # Create config in nested structure
         project_dir = tmp_path / "test"
@@ -967,7 +1196,7 @@ class TestSpecificationManagement:
     def test_list_specifications_multiple(self, reconciliation_service: ReconciliationService, tmp_path, sample_entity_spec_dto):
         """Test listing multiple specifications."""
         config = dto.EntityResolutionCatalog(
-            version="2.0",
+            version="3.0",
             service_url=RECONCILIATION_SERVICE_URL,
             entities={
                 "site": {
@@ -980,23 +1209,25 @@ class TestSpecificationManagement:
                         review_threshold=0.60,
                         mapping=[
                             dto.ResolvedEntityPair(
+                                local_key_value="SITE-1",
                                 source_value="test",
+                                status="accepted",
                                 target_id=1,
                                 confidence=0.9,
                                 notes="Existing mapping",
                                 created_by="user",
                                 created_at="2024-01-01T00:00:00Z",
-                                will_not_match=False,
                                 last_modified="2024-01-02T00:00:00Z",
                             ),
                             dto.ResolvedEntityPair(
+                                local_key_value="SITE-2",
                                 source_value="test2",
+                                status="accepted",
                                 target_id=2,
                                 confidence=0.8,
                                 notes="Another mapping",
                                 created_by="user",
                                 created_at="2024-01-03T00:00:00Z",
-                                will_not_match=False,
                                 last_modified="2024-01-04T00:00:00Z",
                             ),
                         ],
@@ -1163,14 +1394,15 @@ class TestSpecificationManagement:
         """Test updating specification preserves mapping."""
         # Add mapping to original spec
         catalog.entities["site"]["site_code"].mapping = [
-            core.ResolvedEntityPair(
+            dto.ResolvedEntityPair(
+                local_key_value="SITE001",
                 source_value="SITE001",
+                status="accepted",
                 target_id=100,
                 confidence=0.95,
                 notes="Existing mapping",
                 created_by="user",
                 created_at="2024-01-01T00:00:00Z",
-                will_not_match=False,
                 last_modified="2024-01-02T00:00:00Z",
             )
         ]
@@ -1240,14 +1472,15 @@ class TestSpecificationManagement:
     def test_delete_specification_with_mappings_no_force(self, reconciliation_service: ReconciliationService, tmp_path, catalog):
         """Test deleting specification with mappings raises error without force."""
         catalog.entities["site"]["site_code"].mapping = [
-            core.ResolvedEntityPair(
+            dto.ResolvedEntityPair(
+                local_key_value="SITE001",
                 source_value="SITE001",
+                status="accepted",
                 target_id=100,
                 confidence=0.95,
                 notes="Existing mapping",
                 created_by="user",
                 created_at="2024-01-01T00:00:00Z",
-                will_not_match=False,
                 last_modified="2024-01-02T00:00:00Z",
             )
         ]
@@ -1265,24 +1498,26 @@ class TestSpecificationManagement:
     def test_delete_specification_with_mappings_force(self, reconciliation_service: ReconciliationService, tmp_path, catalog):
         """Test force deleting specification with mappings succeeds."""
         catalog.entities["site"]["site_code"].mapping = [
-            core.ResolvedEntityPair(
+            dto.ResolvedEntityPair(
+                local_key_value="SITE001",
                 source_value="SITE001",
+                status="accepted",
                 target_id=100,
                 confidence=0.95,
                 notes="Existing mapping",
                 created_by="user",
                 created_at="2024-01-01T00:00:00Z",
-                will_not_match=False,
                 last_modified="2024-01-02T00:00:00Z",
             ),
-            core.ResolvedEntityPair(
+            dto.ResolvedEntityPair(
+                local_key_value="SITE002",
                 source_value="SITE002",
+                status="accepted",
                 target_id=101,
                 confidence=0.90,
                 notes="Another mapping",
                 created_by="user",
                 created_at="2024-01-03T00:00:00Z",
-                will_not_match=False,
                 last_modified="2024-01-04T00:00:00Z",
             ),
         ]
@@ -1351,32 +1586,35 @@ class TestSpecificationManagement:
     def test_get_mapping_count_success(self, reconciliation_service: ReconciliationService, tmp_path, catalog):
         """Test getting mapping count."""
         catalog.entities["site"]["site_code"].mapping = [
-            core.ResolvedEntityPair(
+            dto.ResolvedEntityPair(
+                local_key_value="SITE001",
                 source_value="SITE001",
+                status="accepted",
                 target_id=100,
                 confidence=0.99,
                 notes="Test note",
-                will_not_match=False,
                 created_by="user1",
                 created_at="2024-01-01T00:00:00Z",
                 last_modified="2024-01-02T00:00:00Z",
             ),
-            core.ResolvedEntityPair(
+            dto.ResolvedEntityPair(
+                local_key_value="SITE002",
                 source_value="SITE002",
+                status="accepted",
                 target_id=101,
                 confidence=0.95,
                 notes="Test note 2",
-                will_not_match=False,
                 created_by="user2",
                 created_at="2024-01-03T00:00:00Z",
                 last_modified="2024-01-04T00:00:00Z",
             ),
-            core.ResolvedEntityPair(
+            dto.ResolvedEntityPair(
+                local_key_value="SITE003",
                 source_value="SITE003",
+                status="local-only",
                 target_id=None,
                 confidence=None,
                 notes="Local only",
-                will_not_match=True,
                 created_by="user3",
                 created_at="2024-01-05T00:00:00Z",
                 last_modified="2024-01-06T00:00:00Z",

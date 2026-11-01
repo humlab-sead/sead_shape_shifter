@@ -16,8 +16,16 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from backend.app.clients.reconciliation_client import ReconciliationClient, ReconciliationQuery
-from backend.app.models.reconciliation import ReconciliationCandidate
+from backend.app.clients.reconciliation_client import (
+    CandidateVerificationProtocolError,
+    CandidateVerificationUnavailableError,
+    ReconciliationClient,
+    ReconciliationQuery,
+)
+from backend.app.models.reconciliation import (
+    CandidateVerificationRequestItem,
+    ReconciliationCandidate,
+)
 
 # pylint: disable=redefined-outer-name
 
@@ -112,6 +120,157 @@ class TestReconciliationClient:
         # Cleanup
         await client.close()
 
+
+class TestCandidateVerification:
+    @staticmethod
+    def _items(count: int) -> list[CandidateVerificationRequestItem]:
+        return [CandidateVerificationRequestItem(type="site", id=f"https://w3id.org/sead/id/site/{index + 1}") for index in range(count)]
+
+    @staticmethod
+    def _response(items: list[dict[str, str]]) -> MagicMock:
+        response = MagicMock()
+        response.status_code = 200
+        response.raise_for_status = MagicMock()
+        response.json = MagicMock(
+            return_value={
+                "results": [
+                    {
+                        **item,
+                        "outcome": "exists",
+                        "aggregate_id": int(item["id"].rsplit("/", 1)[-1]),
+                    }
+                    for item in items
+                ]
+            }
+        )
+        return response
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(("count", "expected_batch_sizes"), [(1, [1]), (100, [100]), (101, [100, 1])])
+    async def test_verification_batches_preserve_order_and_candidate_identity(self, count, expected_batch_sizes):
+        client = ReconciliationClient(base_url=RECONCILIATION_SERVICE_URL)
+        items = self._items(count)
+        chunks = [items[offset : offset + 100] for offset in range(0, count, 100)]
+        mock_http_client = AsyncMock()
+        mock_http_client.post.side_effect = [self._response([item.model_dump() for item in chunk]) for chunk in chunks]
+
+        with patch.object(client, "_get_client", return_value=mock_http_client):
+            results = await client.verify_candidates(items)
+
+        assert [len(call.kwargs["json"]["items"]) for call in mock_http_client.post.call_args_list] == expected_batch_sizes
+        assert [result.id for result in results] == [item.id for item in items]
+        assert [result.aggregate_id for result in results] == list(range(1, count + 1))
+
+    @pytest.mark.asyncio
+    async def test_empty_verification_does_not_make_a_request(self):
+        client = ReconciliationClient(base_url=RECONCILIATION_SERVICE_URL)
+        with patch.object(client, "_get_client", new=AsyncMock()) as get_client:
+            assert await client.verify_candidates([]) == []
+        get_client.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            {"results": []},
+            {
+                "results": [
+                    {
+                        "type": "site",
+                        "id": "https://w3id.org/sead/id/site/2",
+                        "outcome": "exists",
+                        "aggregate_id": 2,
+                    }
+                ]
+            },
+            {
+                "results": [
+                    {
+                        "type": "site",
+                        "id": "https://w3id.org/sead/id/site/1",
+                        "outcome": "unsupported_type",
+                    }
+                ]
+            },
+            {
+                "results": [
+                    {
+                        "type": "site",
+                        "id": "https://w3id.org/sead/id/site/1",
+                        "outcome": "exists",
+                    }
+                ]
+            },
+        ],
+    )
+    async def test_invalid_or_unsupported_verification_responses_raise_protocol_error(self, payload):
+        client = ReconciliationClient(base_url=RECONCILIATION_SERVICE_URL)
+        mock_http_client = AsyncMock()
+        response = MagicMock()
+        response.status_code = 200
+        response.raise_for_status = MagicMock()
+        response.json = MagicMock(return_value=payload)
+        mock_http_client.post.return_value = response
+
+        with patch.object(client, "_get_client", return_value=mock_http_client):
+            with pytest.raises(CandidateVerificationProtocolError):
+                await client.verify_candidates(self._items(1))
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "failure",
+        [
+            httpx.ConnectError("connection refused"),
+            httpx.TimeoutException("request timed out"),
+        ],
+    )
+    async def test_connection_and_timeout_failures_are_reported_as_unavailable(self, failure):
+        client = ReconciliationClient(base_url=RECONCILIATION_SERVICE_URL)
+        mock_http_client = AsyncMock()
+        mock_http_client.post.side_effect = failure
+
+        with patch.object(client, "_get_client", return_value=mock_http_client):
+            with pytest.raises(CandidateVerificationUnavailableError):
+                await client.verify_candidates(self._items(1))
+
+    @pytest.mark.asyncio
+    async def test_database_unavailable_status_is_reported_as_unavailable(self):
+        client = ReconciliationClient(base_url=RECONCILIATION_SERVICE_URL)
+        mock_http_client = AsyncMock()
+        response = MagicMock()
+        response.status_code = 503
+        mock_http_client.post.return_value = response
+
+        with patch.object(client, "_get_client", return_value=mock_http_client):
+            with pytest.raises(CandidateVerificationUnavailableError):
+                await client.verify_candidates(self._items(1))
+
+    @pytest.mark.asyncio
+    async def test_http_and_json_errors_are_reported_as_protocol_errors(self):
+        client = ReconciliationClient(base_url=RECONCILIATION_SERVICE_URL)
+        mock_http_client = AsyncMock()
+        response = MagicMock()
+        response.status_code = 500
+        response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "server error",
+            request=httpx.Request("POST", "http://authority/reconcile/verify-candidates"),
+            response=httpx.Response(500),
+        )
+        mock_http_client.post.return_value = response
+
+        with patch.object(client, "_get_client", return_value=mock_http_client):
+            with pytest.raises(CandidateVerificationProtocolError):
+                await client.verify_candidates(self._items(1))
+
+        response.status_code = 200
+        response.raise_for_status.side_effect = None
+        response.json.side_effect = ValueError("invalid JSON")
+        with patch.object(client, "_get_client", return_value=mock_http_client):
+            with pytest.raises(CandidateVerificationProtocolError):
+                await client.verify_candidates(self._items(1))
+
+
+class TestReconciliationClientLifecycle:
     @pytest.mark.asyncio
     async def test_get_client_reuses_existing(self):
         """Test that _get_client reuses existing client."""

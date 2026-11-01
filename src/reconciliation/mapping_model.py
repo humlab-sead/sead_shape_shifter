@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Optional, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 # pylint: disable=no-member, comparison-with-itself
 
@@ -132,6 +132,26 @@ class LinkSource(str, Enum):
     IMPORT = "import"
 
 
+class LinkOwner(BaseModel):
+    """Specification that owns a reconciliation link."""
+
+    entity_name: str = Field(..., min_length=1)
+    target_field: str = Field(..., min_length=1)
+
+    @model_validator(mode="after")
+    def validate_nonempty_components(self) -> "LinkOwner":
+        if not self.entity_name.strip() or not self.target_field.strip():
+            raise ValueError("Link owner components must not be blank")
+        return self
+
+
+class LocalOnlyApproval(BaseModel):
+    """A committed approval to allocate a new target ID for one business key."""
+
+    owner: LinkOwner
+    committed_at: datetime | None = None
+
+
 class EntityType(str, Enum):
     """Entity classification used for UI grouping and validation."""
 
@@ -148,11 +168,13 @@ class EntityType(str, Enum):
 class Link(BaseModel):
     """A single local-key-to-target-ID mapping entry."""
 
-    target_id: Optional[int] = None
+    target_id: Optional[int] = Field(default=None, gt=0)
     source: LinkSource
     confidence: Optional[float] = Field(default=None, ge=0.0, le=1.0)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     committed_at: Optional[datetime] = None
+    owner: LinkOwner | None = None
+    verified_at: datetime | None = None
     notes: Optional[str] = None
     created_by: str
     reviewed_by: Optional[str] = None
@@ -166,6 +188,7 @@ class EntityMapping(BaseModel):
     entity_type: EntityType = EntityType.PRIMARY
     description: Optional[str] = None
     links: dict[str, Link] = Field(default_factory=dict)
+    local_only_approvals: dict[str, LocalOnlyApproval] = Field(default_factory=dict)
 
 
 class Metadata(BaseModel):
@@ -222,3 +245,10 @@ class MappingCatalog(BaseModel):
         if entity is None:
             return {}
         return {k: v for k, v in entity.links.items() if v.committed_at is None}
+
+    def committed_local_only_approvals_by_entity(self, entity_name: str) -> dict[str, LocalOnlyApproval]:
+        """Return committed local-only approvals for *entity_name*."""
+        entity: EntityMapping | None = self.entities.get(entity_name)
+        if entity is None:
+            return {}
+        return {key: approval for key, approval in entity.local_only_approvals.items() if approval.committed_at is not None}
