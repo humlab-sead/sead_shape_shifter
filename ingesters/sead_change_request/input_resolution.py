@@ -25,7 +25,7 @@ from ingesters.sead_change_request.contracts import (
 )
 from ingesters.sead_change_request.preparation import ResolvedInputs
 from ingesters.sead_change_request.sql_builder import STAGING_TARGET_SCHEMA_KEY, resolve_deploy_artifact_strategy
-from src.reconciliation.mapping_model import LinkOwner, encode_local_key
+from src.reconciliation.mapping_model import LinkOwner
 from src.target_model.models import TargetModel
 from src.utility import sanitize_columns
 
