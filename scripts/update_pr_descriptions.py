@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import json
 import os
 import re
@@ -12,6 +13,9 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from collections import Counter
+from collections.abc import Sequence
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -23,12 +27,15 @@ TEMPLATE_PATH = REPO_ROOT / ".github" / "pull_request_template.md"
 PR_DRAFTS_DIR = REPO_ROOT / "docs" / "whats-new" / "PRs"
 PR_FIELDS = ",".join(
     (
+        "number",
         "title",
         "body",
         "baseRefName",
         "headRefName",
         "state",
         "url",
+        "mergedAt",
+        "mergeCommit",
         "files",
         "closingIssuesReferences",
         "statusCheckRollup",
@@ -40,6 +47,25 @@ EXPECTED_HEADINGS: list[str] = [
     "## Upgrade notes",
     "## Validation",
 ]
+ORPHANED_HEADING = "## Detected orphaned commits"
+ORPHANED_COMMIT_LIMIT = 50
+MERGED_PULL_REQUEST_FIELDS = "number,mergedAt,mergeCommit"
+
+# Subjects produced by tooling rather than by hand, so matching the text is stable. The
+# release version bump touches `backend/app/__init__.py`, which is inside the product tree,
+# so a path rule cannot identify it.
+HOUSEKEEPING_SUBJECT_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    ("release-version-bump", re.compile(r"^chore\(release\): ")),
+    ("release-note-commit", re.compile(r"^feat\(release\): add v[\d.]+ release notes")),
+    ("generated-graph", re.compile(r"^chore: updated graphify graph$")),
+)
+# A commit is housekeeping when every changed path falls inside one entry of a set. One
+# unrelated path keeps the commit, because the commit then carries a real change.
+GENERATED_PATH_SET: tuple[str, ...] = ("graphify-out/",)
+NON_PRODUCT_PATH_SETS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("docs-only", ("docs/",)),
+    ("contributor-config", (".github/", ".vscode/", "sead_shape_shifter.code-workspace")),
+)
 COPILOT_BODY_SEPARATOR = "<<<PR_DESCRIPTION_BODY>>>"
 PROMPT_TEMPLATE = (
     "Read the complete input file at {input_path} using the view tool. It contains the required PR-description "
@@ -56,6 +82,15 @@ PROMPT_TEMPLATE = (
 
 class CommandError(RuntimeError):
     """A required external command failed."""
+
+
+@dataclass(frozen=True)
+class OrphanedCommit:
+    """A commit pushed to a base branch without a pull request."""
+
+    sha: str
+    committed_at: dt.datetime
+    subject: str
 
 
 def parse_pr_specs(specs: list[str]) -> list[int]:
@@ -191,7 +226,11 @@ def render_context(context: dict[str, Any]) -> str:
 
 
 def validate_draft(value: Any) -> dict[str, str]:
-    """Validate the model response before displaying or applying it."""
+    """Validate the model response before displaying or applying it.
+
+    A draft built with `--include-orphaned` may end with the `Detected orphaned commits`
+    record, so that heading is accepted after the four required headings.
+    """
     if not isinstance(value, dict) or set(value) != {"title", "body"}:
         raise ValueError('Copilot response must be a JSON object with exactly "title" and "body" keys.')
     title = value["title"].strip() if isinstance(value["title"], str) else ""
@@ -199,7 +238,8 @@ def validate_draft(value: Any) -> dict[str, str]:
     if not title or "\n" in title or len(title) > 71 or title.endswith("."):
         raise ValueError("Generated title is empty, multiline, longer than 71 characters, or ends with a period.")
     headings = re.findall(r"^## .+$", body, flags=re.MULTILINE)
-    if not body.startswith(EXPECTED_HEADINGS[0]) or headings != EXPECTED_HEADINGS:
+    optional_heading = headings[:-1] == EXPECTED_HEADINGS and headings[-1:] == [ORPHANED_HEADING]
+    if not body.startswith(EXPECTED_HEADINGS[0]) or (headings != EXPECTED_HEADINGS and not optional_heading):
         raise ValueError("Generated body must contain the four required headings in order and no others.")
     if "<!--" in body or "-->" in body:
         raise ValueError("Generated body must not include template comments.")
@@ -370,6 +410,286 @@ def publish_draft(number: int, draft: dict[str, str], repo: str | None) -> None:
         body_path.unlink(missing_ok=True)
 
 
+def parse_github_timestamp(value: Any) -> dt.datetime | None:
+    """Parse a GitHub ISO 8601 timestamp into an aware datetime."""
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        parsed = dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return parsed if parsed.tzinfo is not None else parsed.replace(tzinfo=dt.timezone.utc)
+
+
+def merge_commit_oid(record: dict[str, Any]) -> str | None:
+    """Return the merge commit SHA recorded for a pull request."""
+    merge_commit = record.get("mergeCommit")
+    oid = merge_commit.get("oid") if isinstance(merge_commit, dict) else None
+    return oid if isinstance(oid, str) and oid else None
+
+
+def resolve_repository_slug(repo: str | None) -> str | None:
+    """Return the OWNER/REPO slug used by `gh api` calls."""
+    if repo:
+        return repo
+    try:
+        slug = run_command(["gh", "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"]).strip()
+    except CommandError:
+        return None
+    return slug or None
+
+
+def list_merged_pull_requests_into(base_ref: str, repo: str | None) -> list[dict[str, Any]]:
+    """Return merged pull requests that target one base branch."""
+    command = gh_command(
+        ["pr", "list", "--state", "merged", "--base", base_ref, "--limit", "200", "--json", MERGED_PULL_REQUEST_FIELDS],
+        repo,
+    )
+    try:
+        records = json.loads(run_command(command))
+    except (CommandError, json.JSONDecodeError):
+        return []
+    return [record for record in records if isinstance(record, dict)] if isinstance(records, list) else []
+
+
+def list_first_parent_commits(base_ref: str) -> list[tuple[str, dt.datetime, str]]:
+    """Return first-parent commits on a base branch with their committer time and subject.
+
+    Commits on the first-parent chain were added to the branch itself. Commits brought in from
+    a feature branch are reachable but are not on this chain.
+    """
+    for ref in (f"origin/{base_ref}", base_ref):
+        try:
+            result = subprocess.run(
+                ["git", "log", ref, "--first-parent", "--pretty=format:%H%x1f%cI%x1f%s"],
+                cwd=REPO_ROOT,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+        except FileNotFoundError:
+            return []
+        if result.returncode != 0:
+            continue
+        commits: list[tuple[str, dt.datetime, str]] = []
+        for line in result.stdout.splitlines():
+            parts = line.split("\x1f")
+            if len(parts) != 3:
+                continue
+            committed_at = parse_github_timestamp(parts[1])
+            if committed_at is not None:
+                commits.append((parts[0], committed_at, parts[2]))
+        return commits
+    return []
+
+
+def is_pull_request_merge_subject(subject: str) -> bool:
+    """Report whether a subject belongs to the merge commit GitHub creates for a pull request."""
+    return subject.startswith("Merge pull request #")
+
+
+def is_carried_by_merged_pull_request(sha: str, repository: str) -> bool:
+    """Report whether a merged pull request introduced a commit.
+
+    Open pull requests are ignored on purpose: any open pull request branched from the base
+    branch reports every base-branch commit as associated, which would hide direct pushes.
+    """
+    try:
+        output = run_command(
+            [
+                "gh",
+                "api",
+                f"repos/{repository}/commits/{sha}/pulls",
+                "--jq",
+                "[.[] | select(.merged_at != null)] | length",
+            ]
+        )
+    except CommandError:
+        return False
+    try:
+        return int(output.strip()) > 0
+    except ValueError:
+        return False
+
+
+def detect_orphaned_commits(metadata: dict[str, Any], repo: str | None = None) -> list[OrphanedCommit]:
+    """Return commits pushed directly to the base branch just before this pull request.
+
+    The window starts at the previous merged pull request into the same base branch and ends at
+    this pull request's merge time, or now when the pull request is still open. Commits carried
+    by a merged pull request are excluded, so only commits with no pull request remain. No
+    window exists when the base branch has no earlier merged pull request.
+    """
+    base_ref = metadata.get("baseRefName") or ""
+    if not base_ref:
+        return []
+    end = parse_github_timestamp(metadata.get("mergedAt")) or dt.datetime.now(dt.timezone.utc)
+    records = list_merged_pull_requests_into(base_ref, repo)
+    own_number = metadata.get("number")
+    own_oid = merge_commit_oid(metadata)
+
+    earlier_merges: list[dt.datetime] = []
+    covered: set[str] = set()
+    for record in records:
+        oid = merge_commit_oid(record)
+        if oid is not None:
+            covered.add(oid)
+        # Identify this pull request by number or merge commit, because the number is not
+        # always available.
+        is_self = record.get("number") == own_number or (own_oid is not None and oid == own_oid)
+        merged_at = parse_github_timestamp(record.get("mergedAt"))
+        if merged_at is not None and merged_at <= end and not is_self:
+            earlier_merges.append(merged_at)
+    if not earlier_merges:
+        return []
+
+    start = max(earlier_merges)
+    candidates = [
+        commit
+        for commit in list_first_parent_commits(base_ref)
+        if start < commit[1] <= end and commit[0] not in covered and not is_pull_request_merge_subject(commit[2])
+    ]
+
+    repository = resolve_repository_slug(repo)
+    orphaned = [
+        OrphanedCommit(sha=sha, committed_at=committed_at, subject=subject)
+        for sha, committed_at, subject in candidates
+        if repository is None or not is_carried_by_merged_pull_request(sha, repository)
+    ]
+    return sorted(orphaned, key=lambda commit: commit.committed_at)
+
+
+def commit_changed_paths(sha: str) -> list[str]:
+    """Return the paths a single commit changed."""
+    try:
+        result = subprocess.run(
+            ["git", "diff-tree", "--root", "--no-commit-id", "--name-only", "-r", sha],
+            cwd=REPO_ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+    except FileNotFoundError:
+        return []
+    if result.returncode != 0:
+        return []
+    return [line.strip() for line in result.stdout.splitlines() if line.strip()]
+
+
+def path_in_entry(path: str, entry: str) -> bool:
+    """Report whether a path equals a file entry or sits inside a directory entry."""
+    return path.startswith(entry.rstrip("/") + "/") if entry.endswith("/") else path == entry
+
+
+def paths_within(paths: Sequence[str], entries: Sequence[str]) -> bool:
+    """Report whether every path sits inside the supplied entries, and at least one path exists."""
+    return bool(paths) and all(any(path_in_entry(path, entry) for entry in entries) for path in paths)
+
+
+def housekeeping_reason(subject: str, paths: Sequence[str]) -> str | None:
+    """Return why a commit counts as housekeeping, or `None` when it carries a real change.
+
+    Generated output and machine-written subjects are always housekeeping. Documentation-only
+    and contributor-configuration commits are housekeeping because they carry no product
+    change for a reader of the release notes.
+    """
+    for reason, pattern in HOUSEKEEPING_SUBJECT_PATTERNS:
+        if pattern.search(subject):
+            return reason
+    if paths_within(paths, GENERATED_PATH_SET):
+        return "generated-graph"
+    for reason, entries in NON_PRODUCT_PATH_SETS:
+        if paths_within(paths, entries):
+            return reason
+    return None
+
+
+def split_housekeeping(commits: Sequence[OrphanedCommit]) -> tuple[list[OrphanedCommit], Counter[str]]:
+    """Split detected commits into listed commits and housekeeping counts by reason."""
+    listed: list[OrphanedCommit] = []
+    excluded: Counter[str] = Counter()
+    for commit in commits:
+        reason = housekeeping_reason(commit.subject, commit_changed_paths(commit.sha))
+        if reason is None:
+            listed.append(commit)
+        else:
+            excluded[reason] += 1
+    return listed, excluded
+
+
+def render_orphaned_section(commits: Sequence[OrphanedCommit], excluded: Counter[str] | None = None) -> str:
+    """Render the detected-commit record appended to a draft.
+
+    Returns an empty string when nothing is listed, so the record only appears when it has
+    something to report. Filtered housekeeping commits are summarised in one line, which keeps
+    the filtering visible in the published description.
+    """
+    if not commits:
+        return ""
+    lines = [
+        ORPHANED_HEADING,
+        "",
+        "Commits pushed directly to the base branch after the previous merged pull request. Each",
+        "commit below reached the base branch without a pull request of its own.",
+        "",
+    ]
+    for commit in commits[:ORPHANED_COMMIT_LIMIT]:
+        lines.append(f"- `{commit.sha[:7]}` {commit.subject} ({commit.committed_at.date().isoformat()})")
+    remaining = len(commits) - ORPHANED_COMMIT_LIMIT
+    if remaining > 0:
+        lines.append(f"- {remaining} further commit(s) are not listed.")
+    if excluded:
+        summary = ", ".join(f"{reason} {count}" for reason, count in sorted(excluded.items()))
+        lines.extend(["", f"Filtered {sum(excluded.values())} housekeeping commit(s): {summary}."])
+    return "\n".join(lines)
+
+
+def replace_orphaned_section(body: str, section: str) -> str:
+    """Replace any detected-commit record in a body, or append the supplied one."""
+    pattern = re.compile(rf"^{re.escape(ORPHANED_HEADING)}[ \t]*\r?\n.*?(?=^## |\Z)", re.MULTILINE | re.DOTALL)
+    cleaned = pattern.sub("", body).rstrip()
+    if not section:
+        return cleaned
+    return f"{cleaned}\n\n{section}"
+
+
+def attach_orphaned_section(
+    draft: dict[str, str],
+    commits: Sequence[OrphanedCommit],
+    excluded: Counter[str] | None = None,
+) -> dict[str, str]:
+    """Attach the detected-commit record to a draft and validate the result."""
+    body = replace_orphaned_section(draft["body"], render_orphaned_section(commits, excluded))
+    return validate_draft({"title": draft["title"], "body": body})
+
+
+def attach_detected_commits(
+    draft: dict[str, str],
+    metadata: dict[str, Any],
+    repo: str | None = None,
+    show_all: bool = False,
+) -> dict[str, str]:
+    """Detect, filter, and attach the orphaned-commit record, reporting what was filtered."""
+    number = metadata.get("number")
+    detected = detect_orphaned_commits(metadata, repo)
+    if show_all:
+        listed, excluded = list(detected), Counter[str]()
+    else:
+        listed, excluded = split_housekeeping(detected)
+    if not detected:
+        print(f"Detected no orphaned commits for PR #{number}.", file=sys.stderr)
+    elif excluded:
+        filtered = ", ".join(f"{reason} {count}" for reason, count in sorted(excluded.items()))
+        print(
+            f"Detected {len(detected)} orphaned commit(s) for PR #{number}: "
+            f"{len(listed)} listed, {sum(excluded.values())} filtered ({filtered}).",
+            file=sys.stderr,
+        )
+    else:
+        print(f"Detected {len(detected)} orphaned commit(s) for PR #{number}: all listed.", file=sys.stderr)
+    return attach_orphaned_section(draft, listed, excluded)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Generate editable PR drafts or publish reviewed PR description files.",
@@ -390,6 +710,22 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--force", action="store_true", help="With --draft, replace existing draft files")
     parser.add_argument("--verbose", action="store_true", help="With --draft, log the raw Copilot response when parsing fails")
+    parser.add_argument(
+        "--include-orphaned",
+        action="store_true",
+        help=(
+            "With --draft, append a 'Detected orphaned commits' section listing commits pushed to the base "
+            "branch without a pull request between the previous merged pull request and this one"
+        ),
+    )
+    parser.add_argument(
+        "--show-all-orphaned",
+        action="store_true",
+        help=(
+            "With --include-orphaned, list every detected commit instead of filtering generated output, "
+            "release bookkeeping, documentation-only commits, and contributor configuration"
+        ),
+    )
     return parser.parse_args()
 
 
@@ -405,6 +741,12 @@ def main() -> int:
         return 2
     if args.verbose and not args.draft:
         print("--verbose can only be used with --draft.", file=sys.stderr)
+        return 2
+    if args.show_all_orphaned and not args.include_orphaned:
+        print("--show-all-orphaned requires --include-orphaned.", file=sys.stderr)
+        return 2
+    if args.include_orphaned and not args.draft:
+        print("--include-orphaned can only be used with --draft.", file=sys.stderr)
         return 2
 
     draft_numbers: list[int] = []
@@ -436,6 +778,8 @@ def main() -> int:
             try:
                 context = load_pr_context(number, args.repo)
                 draft = generate_draft(context, args.model, verbose=args.verbose)
+                if args.include_orphaned:
+                    draft = attach_detected_commits(draft, context["metadata"], args.repo, args.show_all_orphaned)
                 path = draft_file_path(number)
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(serialize_draft_file(draft), encoding="utf-8")
