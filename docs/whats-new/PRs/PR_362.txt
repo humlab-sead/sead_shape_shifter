@@ -1,0 +1,50 @@
+title: Default lookup-style FK joins to null-safe unresolved links
+description:
+## Summary
+
+Implements the Phase 1 FK null-key behavior from
+docs/proposals/FK_LOOKUP_NULL_KEY_DEFAULT_BEHAVIOR.md (closes #353): lookup-style foreign-key 
+enrichment joins now default to keeping the local row with an unresolved FK instead of raising on
+null key parts, while null never matches null in the merge.
+
+Key implementation points:
+
+ - Adds ForeignKeyRuntimeOptions in src/specifications/constraints.py, which separates validation
+policy (enforce_strict_null_keys) from merge semantics (use_null_safe_merge), and threads it through
+ConstraintValidator and ForeignKeyConstraintValidator.
+ - Adds ForeignKeyConstraints.allow_null_keys_is_explicit in src/model.py so an omitted
+allow_null_keys is distinguished from an explicit value; explicit allow_null_keys: false remains a
+strict override.
+ - In src/transforms/link.py, _resolve_fk_runtime_options applies the lenient default only to the
+targeted structural case: how: left joins whose remote_keys are neither the remote system_id nor
+public_id. Non-lookup (identity) joins stay on the strict path.
+ - merge_with_null_safety in src/transforms/utility.py gains a use_null_safe_merge argument so
+null-safe merging can be enabled independently of allow_null_keys.
+ - Documentation: the lookup proposal records resolved decisions, the superseded
+FK_NULL_KEY_DEFAULT_BEHAVIOR.md is removed, and a new FK_NULL_KEY_POLICY_MODEL.md placeholder
+captures future Phase 2 policy questions.
+ - Housekeeping: ignores coverage/ in .dockerignore, deletes the stale docker/BUILD_TIME_REVIEW.md,
+and drops a deprecated path from frontend/tsconfig.json includes.
+
+## User-facing release note
+
+Foreign-key lookup joins that use alternative keys now leave a row's link unresolved (with the row
+preserved) when its key value is missing, instead of failing, and missing keys never falsely match
+each other. Setting allow_null_keys: false explicitly still enforces the previous strict behavior.
+
+## Upgrade notes
+
+This is a behavioral compatibility change: the YAML shape is unchanged, but for left joins on
+non-identity remote keys, omitting allow_null_keys now defaults to lenient null handling (row
+preserved, FK unresolved) rather than a hard failure. To keep the previous strict behavior for such
+a join, set allow_null_keys: false explicitly in its constraints. All other joins are unaffected.
+
+## Validation
+
+ - New regression tests were added in this PR covering explicit-vs-omitted allow_null_keys
+(tests/model/test_model.py), lenient runtime options bypassing strict null-key validation
+(tests/specifications/test_constraints.py), and linker behavior: null-safe merge enabled by default
+for lookup joins, strict path preserved for explicit false and identity joins, and
+null-not-matching-null in a real left join (tests/transforms/test_link.py).
+ - Execution results of these tests are unknown: no CI results were available with this pull request
+(status check rollup was empty), and the tests were not confirmed as run in the available evidence.

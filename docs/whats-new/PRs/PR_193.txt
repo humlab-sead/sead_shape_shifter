@@ -1,0 +1,86 @@
+title: Add entity materialization and SQL-like append with column renaming
+description:
+## Summary
+
+This PR adds an entity materialization feature and extends the append mechanism with SQL-like union
+behavior.
+
+Entity materialization (addresses TODO items referenced as #191 in TODO.md): entities can be 
+"frozen" to the output of a full normalization run.
+
+ - Core: new MaterializationConfig class and TableConfig.materialized / TableConfig.is_materialized
+properties in src/model.py; new CanMaterializeSpecification (src/specifications/materialize.py)
+enforcing that an entity is not already fixed/materialized and that all its dependencies are fixed
+or materialized; new MaterializationSpecification entity validator (must be type: fixed, must have
+values or data_file, must have source_state, warnings for missing metadata).
+ - Backend: new MaterializationService that runs the ShapeShifter normalization pipeline, stores the
+result as parquet, CSV, or inline YAML values, snapshots the original config into
+materialized.source_state, and saves the project; unmaterialization restores the snapshot, with
+cascade support for dependent materialized entities (HTTP 409 with affected entities when cascade is
+required). New endpoints: GET .../can-materialize, POST .../materialize, POST .../unmaterialize.
+Entity list/get responses now include a materialized field.
+ - Frontend: new MaterializeDialog and UnmaterializeDialog components, a "Materialized" status chip
+in the entity list, and a materialization.ts API client.
+ - Documentation: docs/ENTITY_MATERIALIZATION.md, docs/MATERIALIZATION_UI.md, and an updated
+reconciliation guide recommending materialization before reconciliation.
+
+Append improvements (referenced as #192 in TODO.md): append items now support align_by_position 
+(rename source columns to the parent's columns by position) and column_mapping (explicit rename
+map), enabling UNION-like concatenation of sources with different column names; AppendSpecification
+validates these options. public_id is filtered out of append source extractions and added after
+concatenation as a None-initialized column via the new TableConfig.add_public_id_column; identity
+columns (system_id, public_id) and key-first column ordering are now applied at the end of
+normalize() instead of in the workflow.
+
+Supporting changes:
+
+ - Centralized loguru logging: new backend/app/core/logging_config.configure_logging() with
+rotation/retention/compression settings (new LOGS_DIR, LOG_LEVEL, etc.), a global exception handler
+in main.py, and a unified setup_logging used by CLI/ingesters; the old ad-hoc logging setup in
+src/utility.py, error_handlers.py, and ingesters/sead/utility.py was removed.
+ - Foreign-key suggestions are now gated behind a new ENABLE_FK_SUGGESTIONS setting (default off)
+with a corresponding frontend settings switch.
+ - FK linking refactor: ForeignKeyLinker now holds the project;
+ForeignKeyConfigSpecification/ForeignKeyDataSpecification derive from Specification with
+error/warning reports; remote system_id is renamed to the remote public_id during merges;
+unprocessed remote entities are deferred instead of failing.
+ - YAML handling: YamlService.load() converts ruamel wrapper types to plain Python objects at the
+I/O boundary; short lists are saved in compact flow style; arbodat-test.yml was reformatted
+accordingly.
+ - SQL loader: expected-column handling now excludes computed (unnest/identity) columns, includes
+public_id when present in query results, and checks column count when check_column_names is false.
+ - Removed the unused query "Explain"/QueryPlan feature (backend model, API client, and QueryEditor
+UI).
+
+## User-facing release note
+
+Users can now freeze ("materialize") a dynamic entity into fixed values from the entity editor —
+choosing parquet, CSV, or inline storage — and restore it later ("unmaterialize", with cascade for
+dependent entities), which keeps reconciliation data stable. Appending tables now supports renaming
+the appended columns (by position or explicit mapping) so sources with different column names can be
+combined like a SQL union.
+
+## Upgrade notes
+
+ - Foreign key suggestions in the editor are now disabled by default; set ENABLE_FK_SUGGESTIONS=true
+(or enable the new "Enable foreign key suggestions" switch in Settings) to restore the previous
+always-on behavior.
+ - The backend now writes rotating logs to a logs/ directory (LOGS_DIR, LOG_LEVEL, LOG_FILE_ENABLED,
+LOG_ROTATION, LOG_RETENTION, LOG_COMPRESSION settings); no action required, but ensure the
+directory is writable.
+ - Materialization itself is opt-in and adds only optional YAML fields; projects without
+materialized entities are unaffected. Note that SQL entities with check_column_names: false now
+raise an error if the query result's column count does not match the configured keys/columns.
+
+## Validation
+
+ - No CI results are available for this pull request: the status check rollup in the supplied
+metadata is empty, so no checks can be reported as passed or failed.
+ - The diff adds and updates test suites covering the new behavior (e.g.
+tests/specifications/test_materialize.py, tests/model/test_materialization.py,
+backend/tests/specifications/test_materialization_spec.py, tests/model/test_append.py,
+tests/integration/test_append_integration.py, tests/loaders/test_fixed_loader.py,
+tests/transforms/test_link.py, backend/tests/utils/test_yaml_utils.py), but their execution and
+outcomes are not shown in the available evidence.
+ - The pull request was merged (merge commit ae6877fe5c7417d1d73ea731923b7df56c8fb574); this is
+repository metadata and is not evidence that any specific test suite passed.

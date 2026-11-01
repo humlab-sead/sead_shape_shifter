@@ -1,0 +1,71 @@
+title: Serve help and release notes via API; improve extra_columns ergonomics
+description:
+## Summary
+
+What changed and why:
+
+ - Help and release notes served through the API (fixes #373). A new help_docs endpoint (GET 
+/api/v1/help-docs/{doc_path}) serves repository markdown with path-traversal sanitization, and
+whats_new gains GET /api/v1/whats-new/{version}/content for individual release notes. The frontend
+useHelp and useWhatsNew composables now fetch markdown through /api/v1/... and fail fast if an HTML
+(SPA fallback) response is received, fixing cases where the Help view received SPA HTML and the
+What's New archive rendered only its header. HelpView supports a ?doc= query parameter, heading
+anchors, and rewritten internal docs links; the standalone frontend nginx config proxies /docs to
+the backend.
+ - extra_columns ergonomics and deferred evaluation follow-through. Added an entity-level preflight
+specification (ExtraColumnsExpressionSpecification) that validates formula syntax, interpolation
+placeholders, and impossible references before runtime, warning (not failing) on stage-order
+references that rely on deferred evaluation after FK linking or unnesting. extra_columns name
+conflicts with existing result columns (including system_id and public_id) changed from
+warning-and-skip to a validation error. The normalizer now tracks unresolved deferred extra columns
+(unresolved_extra_columns), a new UnresolvedExtraColumnsValidator reports them as structured
+EXTRA_COLUMN_UNRESOLVED errors in full-data validation, and preview responses include these issues
+plus is_derived/derived_from column flags rendered as "Derived" badges and a preview-notices alert
+in the UI. ExtraColumnEvaluator gains collect_source_dependencies and get_unresolved_extra_columns,
+and escaped == literals are handled as a distinct case. The ExtraColumnsEditor gains quick-pattern
+chips, inline diagnostics (duplicate/reserved names, unresolved references), and expression
+suggestions via a new extraColumnsEditorUtils module. docs/CONFIGURATION_GUIDE.md documents
+extra_columns as the canonical derived-value mechanism, and the derived-value follow-through
+proposal is recorded as done, closing the question of a second derived-value feature.
+ - Proposal standardization and new design proposals. Added docs/PROPOSAL_WRITING_GUIDE.md and
+docs/templates/PROPOSAL_TEMPLATE.md, wired into copilot instructions. Added standalone proposals
+extracted from the umbrella ergonomics document (ENTITY_SEMANTIC_ROLES.md,
+TARGET_SCHEMA_AWARE_VALIDATION.md, COMMENT_PRESERVING_SAVE_PATH.md with an implementation sketch,
+BOUNDARY_BASED_PROJECT_PERSISTENCE.md), renamed ENTITY_LEVEL_LOCKING.md to
+ENTITY_EDITOR_OPTIMISTIC_LOCKING.md with revised If-Match/cache-bypass design, and moved backlog
+documents from docs/features/ to docs/proposals/onhold/. These are documentation-only proposals; no
+implementation is claimed for them.
+ - Build and housekeeping. The Dockerfile collapses the separate frontend/backend source-resolver
+stages into a single source-${SOURCE} resolver with a dedicated lib-context stage, and the project
+version in uv.lock is bumped to 1.25.0.
+
+## User-facing release note
+
+The Help and What's New pages now load their markdown through backend API endpoints, so help
+documents and release notes display reliably instead of showing raw application HTML or an empty
+archive. Derived extra_columns values are marked as "Derived" in the data preview, broken
+derived-value expressions are reported with clear entity/field/expression context, and the
+extra-columns editor offers quick patterns, inline feedback, and suggestions.
+
+## Upgrade notes
+
+ - Breaking validation change: an extra_columns entry whose name conflicts with an existing source,
+key, ID, FK, or unnest output column now fails validation as an error (previously it was a warning
+and the value was silently skipped). Rename such derived columns before upgrading.
+ - Docker builds from the local workdir now require repository-root build context, and the lib/
+directory must be present in the build context in both workdir and github source modes.
+ - Deployments using the standalone frontend nginx config now proxy /docs to the backend container;
+no other configuration changes are indicated by the diff.
+
+## Validation
+
+ - No CI check results are available for this pull request (the status check rollup is empty), so no
+checks can be reported as passed or failed.
+ - The diff adds substantial test coverage: backend pytest tests for the help-docs and what's-new
+endpoints, shapeshift service preview/validation, validation service, and data validation
+orchestrator; core pytest tests for the extra-columns preflight specification, conflicts
+specification, evaluator dependency/unresolved tracking, and normalizer behavior; and frontend
+vitest tests for extraColumnsEditorUtils and useHelp markdown rendering. Execution and results of
+these tests are unknown from the available evidence.
+ - The pull request was merged into main (merge commit 6dd4743), but merging is not evidence that
+any specific test suite passed.

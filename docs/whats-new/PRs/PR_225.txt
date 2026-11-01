@@ -1,0 +1,56 @@
+title: Overhaul validation with pure domain validators and unnest fix
+description:
+## Summary
+
+This PR restructures the data-validation layer to remove circular dependencies between the backend
+services and validators, and fixes false-positive COLUMN_NOT_FOUND errors for entities whose columns
+are transformed by unnest (the PR body links this fix to #224; no linked-issue details were 
+available for verification).
+
+ - The 842-line backend/app/validators/data_validators.py (DataValidationService and its
+service-coupled validators) is deleted and replaced by pure, static, DataFrame-in /
+ValidationIssue-out domain validators in src/validators/data_validators.py, with a domain
+ValidationIssue dataclass that has no infrastructure dependencies.
+ - A new backend/app/validators/data_validation_orchestrator.py coordinates validation: it fetches
+entity data through an injected DataFetchStrategy (PreviewDataFetchStrategy, FullDataFetchStrategy,
+or TableStoreDataFetchStrategy), calls the domain validators per entity, and returns domain issues.
+The previous cache-warmup/asyncio.gather concurrency scheme is gone; entities are validated
+sequentially.
+ - A new ValidationMapper translates domain ValidationIssue values into API ValidationError models
+at the backend boundary.
+ - ValidationService now takes a data_orchestrator_factory (in place of data_validator_factory) and
+adds a use_full_data flag to validate_project_data, selecting full normalized data instead of
+preview samples; it loads and resolves the project before validation.
+ - ColumnExistsValidator is now unnest-aware: columns listed in unnest.value_vars are excluded from
+existence checks (they are melted away), while id_vars and the melt-produced var_name/value_name
+columns are still validated.
+ - AGENTS.md and .github/copilot-instructions.md are updated to document the
+orchestrator/dependency-injection pattern instead of the old factory pattern. Minor cleanups touch
+logging_config.py and the reconciliation service imports.
+
+## User-facing release note
+
+Data validation no longer reports spurious "column not found" errors for columns that are melted
+away by an entity's unnest configuration, so validation results for unnested entities are reliable.
+Validation can also be run against the full normalized dataset instead of preview samples via the
+new use_full_data option on the validation service.
+
+## Upgrade notes
+
+No end-user action is required. Code that imported backend.app.validators.data_validators (e.g.
+DataValidationService) must be updated: validators now live in src/validators/data_validators.py as
+pure static functions returning ValidationIssue, and orchestration moves to
+DataValidationOrchestrator with an injected data-fetch strategy. ValidationService's constructor
+argument changed from data_validator_factory to data_orchestrator_factory.
+
+## Validation
+
+ - New and updated tests are included in the diff: tests/validators/test_data_validators.py (domain
+validators, incl. unnest cases), backend/tests/validators/test_data_validation_orchestrator.py
+(orchestrator and fetch strategies), an updated backend/tests/services/test_validation_service.py,
+and a standalone test_unnest_validation.py script; the old backend/tests/test_data_validators.py was
+removed with the module it tested.
+ - No test-run or CI results are available in the provided evidence (statusCheckRollup is empty), so
+execution outcomes of these tests are unknown and are not reported as passed.
+ - The pull request was merged into dev (merge commit 263b47d), which evidences the merge only, not
+check results.

@@ -1,0 +1,62 @@
+title: Consolidate backend into single Python project and unify SQL loaders
+description:
+## Summary
+
+This PR completes the consolidation of the repository into a single Python project and refactors the
+backend and core loaders so the test suites run against one unified setup.
+
+ - Single project setup: Removed backend/pyproject.toml, backend/requirements.txt, and
+backend/Makefile. All Python code now installs and runs from the root project with a unified virtual
+environment; make backend-run starts backend.app.main:app with PYTHONPATH=.. Documentation
+(developer guide, copilot instructions) was updated accordingly, including the Python 3.13
+requirement.
+ - Unified SQL loaders: Replaced src/loaders/database_loaders.py with a new
+src/loaders/sql_loaders.py. An abstract SqlLoader base now owns read_sql, execute_scalar_sql,
+get_table_row_count, and abstract get_tables/get_table_schema, with vendor implementations for
+SQLite, PostgreSQL, and UCanAccess. Loaders register under multiple keys (e.g. postgres/postgresql,
+ucanaccess/access, csv/tsv), supported by a new multi-key registration in the Registry utility.
+ - Backend delegates introspection to core: SchemaIntrospectionService no longer contains per-driver
+SQL for PostgreSQL/Access/SQLite; it creates a core loader via new mappers (DataSourceMapper,
+TableSchemaMapper) and calls its schema methods. DataSourceService and QueryService likewise use
+DataSourceMapper instead of building legacy config dicts inline.
+ - Preview via normalizer: PreviewService now runs the full ArbodatSurveyNormalizer pipeline for
+entity previews (reporting applied filters, unnest, and foreign-key joins) instead of returning raw
+data.
+ - Removed query explain feature: The /query/explain endpoint, QueryService.explain_query, and
+related tests were deleted.
+ - Typing and bug fixes: Modernized typing.List/Dict annotations to built-in generics, migrated
+Pydantic class Config to model_config, added foreign_keys to TableSchema and row_count to
+PreviewResult, improved TablesConfig.get_table error handling and added clone(), fixed auto-fix
+error handling scope, and replaced frontend api imports with apiClient.
+ - Tests: Backend tests were rewritten to use FastAPI dependency_overrides and mocked loaders
+instead of patching module paths; a previously skipped foreign-key validator test was re-enabled.
+New test files cover schema endpoints (backend/tests/test_schema_endpoints.py) and core database
+loaders (tests/test_database_loaders.py). Append-processing tests were adjusted to a default root
+entity.
+
+## User-facing release note
+
+Entity previews in the configuration editor now run the full transformation pipeline, so previews
+reflect filters, unnest, and foreign-key joins instead of raw source data. Browser tabs and the
+frontend README now identify the app as the "SEAD Shape Shifter Configuration Editor".
+
+## Upgrade notes
+
+ - Python 3.13 or higher is now required (per the updated developer guide).
+ - The backend is no longer a separate project: delete any backend-specific virtual environment and
+install from the root project (e.g. uv pip install -e ".[api]"). backend/Makefile,
+backend/pyproject.toml, and backend/requirements.txt are gone; use the root Makefile targets.
+ - The backend ASGI entry point changed from app.main:app (with PYTHONPATH=.:backend) to
+backend.app.main:app (with PYTHONPATH=.), as reflected in make backend-run.
+ - Code importing src.loaders.database_loaders must switch to src.loaders.sql_loaders.
+ - The POST /api/v1/data-sources/{name}/query/explain endpoint was removed; API consumers relying on
+it must drop it.
+ - ngrok CORS origins are commented out in backend settings; developers using ngrok tunnels will
+need to re-enable or configure allowed origins themselves.
+
+## Validation
+
+Not verified: validation results unavailable. The pull request metadata contains no CI check results
+(statusCheckRollup is empty), and no test-run output was supplied. The diff adds and updates test
+suites (core loader tests, schema endpoint tests, rewritten backend service tests), but their
+execution and outcomes are not evidenced in the available material.

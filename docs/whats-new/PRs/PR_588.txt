@@ -1,29 +1,27 @@
-title: Title: fix(auth): use body source locator for project connections
+title: fix(auth): authorize project data-source connections from body source
 description:
 ## Summary
 
-Fixes a parameter collision in the shared data-source authorization dependency that caused POST
-/projects/{name}/data-sources to return 404 Resource not found when connecting a data source to a
-project. Previously, require_shared_data_source resolved the locator from route parameters (filename
-or name or data_source_name) before reading source_filename from the request body, so on the
-project connection route it treated the project path parameter (e.g. Roger-test) as the
-shared-source locator and looked up the wrong resource.
+The shared data-source authorization dependency previously resolved its locator from route
+parameters (filename, name, or data_source_name) before ever reading source_filename from the
+request body. On POST /projects/{name}/data-sources, FastAPI bound the project path parameter to the
+dependency's name argument, so the permission check looked up the project name as a shared data
+source and returned a concealed 404 Resource not found — this is the reported failure when pressing
+CONNECT on a new project (Refs #587).
 
-The dependency now accepts an explicit body_locator keyword that makes it read source_filename from
-the request body instead of route parameters, and the project endpoints' shared-source reader
-dependency is configured with body_locator=True. Other routes retain their existing path-parameter
-lookup. The PR adds regression tests covering route-parameter behavior, body-locator behavior, and
-the actual project connection route dependency, and adds an investigation findings document
-(docs/investigations/connect-sead-data-source-404/findings.md) documenting the root-cause analysis.
-Generated graph artifacts under graphify-out/ were also updated.
-
-Refs ]8;id=md-1qperp6;https://github.com/humlab-sead/sead_shape_shifter/issues/587#587]8;;
+require_shared_data_source now accepts a body_locator option that makes the dependency authorize the
+body's source_filename instead of any route parameter. The project connection route is configured
+with body_locator=True; all other routes keep their existing path-parameter lookup. Regression tests
+cover the body-locator route (a project name parameter must not override an authorized body source)
+and the default path-parameter behavior. The PR also adds
+docs/investigations/connect-sead-data-source-404/findings.md documenting the investigation and root
+cause.
 
 ## User-facing release note
 
-Users can now connect a SEAD (or other shared) data source to a project using the CONNECT action
-without the request failing with a "Resource not found" error, even when the project name differs
-from the selected source name.
+Connecting a shared data source (such as SEAD) to a project from the Connect dialog no longer fails
+with a 404 "Resource not found" error for users who have access to the project and the selected
+source.
 
 ## Upgrade notes
 
@@ -31,17 +29,17 @@ None - no user action required.
 
 ## Validation
 
- - The PR's CI status checks (validate and publish in the Container Release workflow) were SKIPPED,
-not run.
- - The investigation findings document added in this PR records the following as passed during
-development (not independently confirmed by CI in this PR):
-  - uv run pytest backend/tests/authorization/test_dependencies.py -q -n 0 --tb=short (19 passed, 1
-skipped)
-  - uv run pytest backend/tests/authorization backend/tests/api/v1/test_query_endpoints.py
+ - Results recorded in the investigation findings included in this PR (not independently re-run
+here):
+  - Passed: uv run pytest backend/tests/authorization/test_dependencies.py -q -n 0 --tb=short (19
+passed, 1 skipped).
+  - Passed: uv run pytest backend/tests/authorization backend/tests/api/v1/test_query_endpoints.py
 backend/tests/api/v1/test_schema_endpoints.py backend/tests/test_data_source_api.py -q -n 0
---tb=short (passed; 2 skipped)
-  - Black and isort checks on the changed Python files; git diff --check
-  - Pylance signature compatibility check (all 9 callers of require_shared_data_source remain
-compatible)
- - Per the findings document, live reproduction against the deployed instance and
-authorization-store inspection were not performed.
+--tb=short (passed, 2 skipped).
+  - Passed: Black and isort checks on the changed Python files, and git diff --check.
+ - New regression tests are included in backend/tests/authorization/test_dependencies.py; their
+execution in CI is not shown in the available evidence.
+ - CI on this pull request: the only reported checks are the Container Release workflow jobs
+validate and publish, both SKIPPED; no other CI results are available.
+ - Not performed: live reproduction against the deployed instance or authorization-store inspection,
+as noted in the findings document.

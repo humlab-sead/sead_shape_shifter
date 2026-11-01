@@ -1,0 +1,62 @@
+title: Rename configuration to project; add Cytoscape graph and tests
+description:
+## Summary
+
+This PR completes the application-wide rename of "configuration" to "project" (tracked as TODO #74),
+so the shape-shifting setup no longer clashes with the generic src/configuration/
+application-configuration framework, which is intentionally left untouched.
+
+ - Core (src/): ShapeShiftConfig is renamed to ShapeShiftProject, ConfigSpecification to
+ProjectSpecification, and the ShapeShifter constructor parameter is now project. Error and
+validation messages use project terminology.
+ - Backend: the configurations endpoints, service, models and mapper are renamed to projects
+(ConfigurationService → ProjectService, Configuration/ConfigMetadata → Project/ProjectMetadata,
+ConfigSession → ProjectSession). REST routes move from /api/v1/configurations/... to
+/api/v1/projects/..., and session/test-run request fields change from config_name to project_name.
+Settings rename CONFIGURATIONS_DIR → PROJECTS_DIR (default ./projects) and MAX_CONFIG_FILE_SIZE_MB →
+MAX_PROJECT_FILE_SIZE_MB.
+ - Frontend: stores, API clients, composables, views and components are renamed to project
+terminology (e.g. configuration.ts store → project.ts, useConfigurations → useProjects); the app
+title becomes "SEAD Shape Shifter Project Editor".
+ - Dependency graph: the custom SVG DependencyGraph.vue component is replaced with a
+Cytoscape.js-based visualization (new useCytoscape composable, graphAdapter utility and
+cytoscapeStyles config; cytoscape, cytoscape-cose-bilkent and cytoscape-dagre dependencies), with
+hierarchical/force layouts, cycle highlighting and a node-details drawer in the project detail view.
+ - Frontend tooling: Vitest is set up (vitest.config.ts, jsdom, v8 coverage), ESLint gets a flat
+config, and new test files cover the API layer, composables, stores, types and the graph adapter.
+New Makefile targets: frontend-lint, frontend-test, frontend-test-ui, frontend-coverage.
+ - Bug fixes: pandas FutureWarning fixes in the core — Series.replace now passes the mapping via the
+explicit to_replace= argument (src/extract.py), and empty DataFrames are filtered out before
+pd.concat (src/normalizer.py). The TODO list marks the resolved #71 project-listing
+modification-date bug as done.
+ - Tests reorganized: core tests are grouped into tests/integration/, tests/model/, tests/process/
+and tests/project/, duplicated utility test files are consolidated, and new process tests are added
+(extract, translate, replace, drop-duplicates, drop-empty, add-surrogate-id, misc).
+ - MIGRATION_PLAN_CONFIG_TO_PROJECT.md documents the rename plan; docs and READMEs are updated to
+project terminology.
+
+## User-facing release note
+
+The editor now refers to your shape-shifting setups as "projects" throughout the interface, and the
+entity dependency graph is now an interactive Cytoscape.js view with hierarchical or force layouts,
+cycle highlighting and clickable node details.
+
+## Upgrade notes
+
+This is a breaking rename for API consumers and deployers:
+
+ - REST routes moved from /api/v1/configurations/... to /api/v1/projects/...; update any external
+API clients.
+ - Session and test-run request/response payloads renamed config_name → project_name.
+ - Backend settings renamed: SHAPE_SHIFTER_CONFIGURATIONS_DIR → SHAPE_SHIFTER_PROJECTS_DIR (default
+directory changed from ./configurations to ./projects) and MAX_CONFIG_FILE_SIZE_MB →
+MAX_PROJECT_FILE_SIZE_MB. Update environment files and mount the new project directory where your
+YAML files live.
+ - Python API renamed: ShapeShiftConfig → ShapeShiftProject, ConfigSpecification →
+ProjectSpecification, and ShapeShifter(...) now takes a project argument instead of config.
+
+## Validation
+
+No CI check results are available for this pull request (the status check rollup is empty), so no
+checks can be reported as passed or failed. The PR adds backend test updates and a new frontend
+Vitest suite, but their execution and outcomes are unknown from the available evidence.

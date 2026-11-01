@@ -1,0 +1,39 @@
+title: feat(frontend): add entity-based append support in UI
+description:
+## Summary
+
+Extends the append configuration so entity-based row concatenation can be configured entirely
+through the Append Editor UI, alongside the existing Fixed Values and SQL Query strategies.
+
+ - Backend (AppendConfig in backend/app/models/entity.py): type becomes optional and new optional
+fields are added — source (entity name to append rows from), columns (column list, inheriting from
+parent when omitted), align_by_position, and column_mapping (explicit source→target column names).
+ - AppendEditor.vue: adds a "From Entity" append type with a source-entity selector, a "Column
+Alignment Options" panel (align-by-position toggle that clears any column mapping, plus
+add/edit/remove for explicit column mappings), and an optional columns override (JSON array).
+Internal state tracks appendType (derived from type or source on load) and a normalizeForAPI step
+converts editor state back to the API format; invalid JSON in values/columns is left for backend
+validation.
+ - EntityFormDialog.vue: passes the new available-entities prop (availableSourceEntities) into
+AppendEditor to populate the source-entity dropdown.
+
+The PR body states this closes #281, but no linked issue details were available for inspection.
+
+## User-facing release note
+
+Users can now choose "From Entity" in the Append Editor to append rows from another entity,
+selecting the source entity and configuring column alignment (by position or explicit name mapping)
+directly in the UI, instead of only Fixed Values or SQL Query appends.
+
+## Upgrade notes
+
+None - no user action required. The backend model change only makes type optional and adds optional
+fields, so existing fixed/sql append configurations remain valid; entity-based append fields are
+opt-in.
+
+## Validation
+
+Not verified: validation results unavailable. No CI check results were reported for this pull
+request (empty status check rollup), and no test commands or outcomes are included in the available
+evidence. The pull request was merged into dev (merge commit 5538695), but no individual checks can
+be confirmed as passed or failed.

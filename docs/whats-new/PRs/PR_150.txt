@@ -1,0 +1,56 @@
+title: feat: add configurable UID/GID to Docker setup and Makefile targets
+description:
+## Summary
+
+This PR makes the Docker deployment run as a configurable non-root user and consolidates the setup
+workflow into the Makefile.
+
+ - Dockerfile: new USER_UID/USER_GID build arguments (default 1000:1000) now drive both the --chown
+of the source context and creation of the shapeshifter user, so images can be built to match a host
+user's IDs.
+ - Makefile: adds USER_UID/USER_GID variables (auto-detected via id sead) passed to all build
+targets, plus new targets: setup (combined setup-volumes + setup-env), setup-volumes (creates data/
+subdirectories with correct ownership), setup-env (copies backend.env/.pgpass from templates),
+docker-validate (configuration preflight), and docker-test (build + start + health-endpoint
+integration test).
+ - docker-compose.yml: runs the container with user: "${USER_UID:-1000}:${USER_GID:-1000}", mounts
+data/.pgpass read-only, adds JSON-file log rotation, a dedicated bridge network, and switches the
+health check to /api/v1/health with a 40s start period.
+ - Removed scripts: build.sh, setup.sh, test.sh, test-build.sh, and nginx.conf.example are deleted
+in favor of the Makefile targets and updated examples.
+ - Examples/docs: github-actions.yml.example moved to docker/examples/ with documented build args
+and a health-check wait loop in the deploy step; docker/README.md gains setup, UID/GID override, and
+permission-troubleshooting instructions.
+ - Also adds a generated CHANGELOG.md (through v1.4.0) and bumps the project version in
+pyproject.toml from 1.2.0 to 1.4.0.
+
+## User-facing release note
+
+Docker deployments now run as a non-root user whose UID/GID can be set at build time (defaults to
+1000:1000), which fixes permission problems when writing to mounted data directories. Setup is
+simpler: one make setup command creates the required directories and configuration files, replacing
+the old shell scripts.
+
+## Upgrade notes
+
+ - The helper scripts docker/build.sh, docker/setup.sh, docker/test.sh, and docker/test-build.sh are
+removed. Use the Makefile equivalents instead: make setup (was setup.sh), make docker-build (was
+build.sh), and make docker-validate / make docker-test (were test.sh / test-build.sh).
+ - docker/nginx.conf.example has been deleted; deployments relying on it must maintain their own
+reverse-proxy configuration.
+ - The Makefile defaults USER_UID/USER_GID from the sead system user (id sead -u/-g). If that user
+does not exist on your host, override them explicitly (e.g. make docker-build USER_UID=$(id -u)
+USER_GID=$(id -g)), matching the value used for make setup-volumes and in docker-compose.yml.
+ - Existing docker/data/ directories may need ownership updated to the configured UID/GID (make
+setup-volumes does this via sudo chown).
+ - The container health check now probes /api/v1/health instead of /; external monitoring using the
+old root-URL probe should be updated.
+
+## Validation
+
+ - No CI check results are available for this pull request (statusCheckRollup is empty), so no
+checks can be reported as passed or failed.
+ - The new make docker-validate and make docker-test targets provide configuration validation and an
+integration test, but there is no evidence in the available sources that they were executed for
+this PR.
+ - Not verified: validation results unavailable.

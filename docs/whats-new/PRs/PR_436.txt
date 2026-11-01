@@ -1,0 +1,50 @@
+title: Add project-level fixed-entity type conventions
+description:
+## Summary
+
+Adds ordered, project-level fixed-entity type conventions configured under
+options.fixed_entity_types.conventions. Each rule pairs a glob-style column-name pattern with a type
+(int, string, float, bool, date); rules are evaluated in order and the first match wins. Resolution
+precedence is now explicit: per-entity column_types first, then the first matching project
+convention, then the built-in _id -> int fallback, with no inferred type for other undeclared
+non-_id columns.
+
+The resolved effective type is reused consistently across the load (FixedLoader), validation
+(FixedEntityFieldsSpecification), persistence (FixedEntityPersistenceStrategy), mapper load-warning
+collection, and materialization paths. Supporting changes include a new EntityMapperContext passed
+to entity config mappers, TableConfig exposure of project_options and normalized
+fixed_entity_type_conventions, a new FixedEntityTypeConventionDeclarationError for malformed
+convention blocks, and DRY sidecar storage of materialized column_types (types already covered by a
+convention are not restated in YAML). Invalid conventions fail project validation with clear
+messages.
+
+docs/CONFIGURATION_GUIDE.md documents the new options section, the proposal doc is updated to
+reflect shipped behavior, and a follow-up proposal
+(docs/proposals/future/FIXED_ENTITY_TYPE_CONVENTION_ENHANCEMENTS.md) captures deferred scope
+(entity-scoped conventions, target-model-informed typing, lineage UX, regex matching). Fixes #435.
+
+## User-facing release note
+
+Projects can now define reusable type conventions for fixed-entity columns once at the project level
+(for example, all columns matching abundance are treated as int), instead of repeating column_types
+on every entity. Matching columns are coerced and validated consistently when projects load, save,
+and materialize, while per-entity column_types still override conventions.
+
+## Upgrade notes
+
+None - no user action required. The feature is opt-in via the new optional
+options.fixed_entity_types.conventions block; projects without it keep existing behavior. Note that
+once a convention matches a column, values in that column are strictly validated, so invalid values
+will now be rejected.
+
+## Validation
+
+ - The PR author reported running uv run pytest -o addopts=''
+backend/tests/mappers/test_entity_config_mapper.py backend/tests/mappers/test_config_mapper.py -q;
+the result status is not independently confirmed in the available evidence.
+ - The PR author reported documentation diagnostics clean for the touched docs; result status not
+independently confirmed.
+ - New and updated tests are included in the diff (type resolution, coercion precedence, loader,
+specification, persistence, materialization, and mapper load-warning tests), but their execution
+results are unknown from the available evidence.
+ - No CI check results were available for this pull request (status check rollup was empty).

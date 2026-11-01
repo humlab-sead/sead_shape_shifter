@@ -1,0 +1,80 @@
+title: Add domain exception hierarchy with structured error responses and tips
+description:
+## Summary
+
+Replaces ad-hoc service exceptions and string-matching error handling with a centralized domain
+exception system across backend and frontend.
+
+Backend
+
+ - New backend/app/exceptions.py: a DomainException hierarchy
+(DataIntegrityError/ForeignKeyError/SchemaValidationError,
+DependencyError/CircularDependencyError/MissingDependencyError,
+ValidationError/ConstraintViolationError/ConfigurationError,
+ResourceError/ResourceNotFoundError/ResourceConflictError, QueryExecutionError/QuerySecurityError,
+SchemaIntrospectionError). Each exception carries a message, error code, tips, a recoverable flag,
+and context, and serializes via to_dict().
+ - New backend/app/error_tips.py: a centralized ERROR_TIPS registry mapping error codes to
+actionable tips, with context-based template formatting (get_tips) and register_tips.
+ - @handle_endpoint_errors now maps domain exceptions to HTTP statuses (404 not-found, 400
+integrity/validation, 409 conflict, 500 dependency/other) and returns structured detail objects;
+unexpected errors return a structured
+  500. Legacy string responses remain for ProjectServiceError/YamlServiceError.
+ - Services migrated to domain exceptions: ProjectService (e.g. ProjectNotFoundError/EntityNotFoundE
+rror/EntityAlreadyExistsError/InvalidProjectError/ProjectConflictError →
+ResourceNotFoundError/ResourceConflictError/ConfigurationError), QueryService,
+SchemaIntrospectionService (SchemaServiceError → SchemaIntrospectionError), and DependencyService
+(DependencyServiceError removed; analyze_dependencies gains a raise_on_cycle parameter, default
+False, preserving the informational behavior of existing endpoints).
+ - Schema endpoints no longer inspect exception strings to choose HTTP errors; the global handler in
+main.py now reports error_type and a generic message.
+
+Frontend
+
+ - New StructuredError/FormattedError types and frontend/src/utils/errors.ts with formatErrorMessage
+(priority: structured domain errors → legacy detail strings → fallbacks), parseStructuredError,
+getErrorMessage, and HTTP status helpers.
+ - New useErrorHandler/useSimpleError composables; ErrorAlert.vue extended with tips list,
+error-type badge, collapsible technical details, and recoverability-based styling; QueryEditor.vue
+and the validation store use the new utilities.
+
+Tests & docs
+
+ - Added backend/tests/test_exceptions.py, backend/tests/test_dependency_service_validation.py, and
+frontend/src/utils/__tests__/errors.test.ts; updated error-handler, project/query/schema service,
+and schema endpoint tests for the new exception types and structured responses.
+ - Added backend/app/ERROR_HANDLING.md, docs/ERROR_HANDLING_ARCHITECTURE.md, an implementation plan,
+and phase 1–3 summary documents.
+
+## User-facing release note
+
+When something goes wrong, users now see a clear error message with the error type and practical
+troubleshooting tips, plus an optional "Technical Details" section for debugging, instead of a bare
+error string.
+
+## Upgrade notes
+
+ - API error responses for domain errors changed shape: detail is now a structured object
+(error_type, error_code, message, tips, recoverable, context) instead of a plain string, and
+unexpected server errors also return a structured
+  500. API consumers that parsed detail as a string must be updated; legacy string responses remain
+only for ProjectServiceError/YamlServiceError and other non-domain exceptions.
+ - Several service-level exception classes were removed (ProjectNotFoundError, EntityNotFoundError,
+EntityAlreadyExistsError, InvalidProjectError, ProjectConflictError, DependencyServiceError,
+service-local QueryExecutionError/QuerySecurityError/SchemaServiceError); import the replacements
+from backend.app.exceptions.
+ - No database migrations or configuration changes are required. New ErrorAlert props are optional,
+so existing usages keep working.
+
+## Validation
+
+ - No CI results are available for this pull request (the status check rollup is empty), so no
+checks can be confirmed as passed or failed from CI.
+ - No test commands were executed as part of preparing this description.
+ - The documentation files included in this PR state test outcomes (e.g. 55 backend tests for
+exceptions/handlers/dependency validation, a 717-test backend regression run, 11 new frontend
+parsing tests, and 541 passing frontend unit tests), but these are claims within the PR's own
+documents and are not independently verified here. Note that the phase summaries describe test
+suites (such as 18 FK-validation tests) that do not exactly match the test files included in the
+diff, which contains dependency-graph tests and states that FK validation is covered by
+specifications elsewhere.

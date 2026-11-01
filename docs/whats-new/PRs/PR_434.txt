@@ -1,0 +1,52 @@
+title: feat(frontend): add fixed entity column type editing
+description:
+## Summary
+
+Adds frontend support for editing and persisting column_types on fixed entities, so declared column
+types round-trip through the entity form and drive value coercion in the fixed-values grid.
+
+ - EntityFormDialog.vue carries a column_types map in form data: it is hydrated from the entity
+(buildFormDataFromEntity) and from YAML edits, normalized against the fixed schema's full columns,
+and written back into entity_data.column_types on save (only when non-empty). The Entity type in
+types/entity.ts gains the optional column_types field.
+ - FixedValuesGrid.vue renders a per-column type selector (Auto / Integer / String) above the grid,
+showing whether a type is declared or inferred. Declared types the grid cannot yet edit (float,
+bool, date) appear as a "Preserve" option and their values are left untouched rather than coerced or
+dropped.
+ - fixedValuesGridClipboard.ts gains normalizeGridColumnTypes, a preserve grid column type, and
+type-aware coerceGridValue / coerceGridRows / applyClipboardMatrix: an explicit int declaration
+coerces columns whose names do not end in _id, while unsupported declared types pass values through
+unchanged.
+ - Validation reporting is restructured: coercion now yields structured GridValidationIssues,
+invalid cells are highlighted in the grid with per-cell tooltips, and the alert shows a per-column
+summary (e.g. "Column rank: 2 invalid values (rows 1, 3)") instead of a flat list of row errors.
+ - Supporting cleanups: debug logging in EntityFormDialog.vue is gated behind dev mode,
+HelpView.vue's hash watcher tolerates an undefined previous value, and several test files are
+updated (shared createEntityResponse fixtures with etag, useEntities tests now mount the composable
+inside a component and unmount afterwards, added VTextField/VSelect stubs in
+EntityListCard.test.ts).
+
+## User-facing release note
+
+When editing a fixed entity, each column now has a type selector so values can be declared as
+integers or strings, with invalid entries highlighted directly in the grid and summarized per
+column. Column types already declared in the entity definition (such as dates) are preserved when
+saving instead of being lost.
+
+## Upgrade notes
+
+None - no user action required. column_types is optional on entity data; entities without it keep
+the previous name-based inference behavior (columns ending in _id treated as integers).
+
+## Validation
+
+ - New and updated Vitest unit tests are included in this PR covering the change:
+EntityFormDialog.test.ts (loads column_types into the grid and persists updates on save),
+FixedValuesGrid.test.ts (declared int coercion, no coercion of unsupported declared types),
+fixedValuesGridClipboard.test.ts (type-aware inference/coercion, issue summarization, type
+normalization), plus fixture/harness updates in entities.test.ts, EntityListCard.test.ts, and
+useEntities.test.ts.
+ - Execution results for these tests are unknown: no CI status checks or test-run results were
+available in the evidence for this pull request.
+
+Not verified: validation results unavailable.

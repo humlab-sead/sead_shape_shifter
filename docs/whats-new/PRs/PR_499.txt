@@ -1,0 +1,48 @@
+title: Document host gateway requirement for container access to host services
+description:
+## Summary
+
+Documentation-only change; no code, configuration, or script changes.
+
+Adds a "Host services from the container" section to container/DEPLOYMENT.md documenting a
+deployment hazard: the container's network namespace cannot reach the host's own LAN address, so any
+configuration pointing at a service on the container host must use the host.docker.internal alias
+(already declared in podman-compose.yml via extra_hosts: "host.docker.internal:host-gateway"). The
+section records that host-side checks against the LAN address succeed while the container fails — a
+false positive — that the resulting generic Connection failed. Correlation ID: ... API error and
+container-side Connection refused read like a credentials problem, that .pgpass matches the host
+string verbatim so the alias needs its own entry, and that the alias resolves only inside the
+container, leaving host-side tools on the LAN hostname.
+
+Updates the centralized-authorization cutover handoff
+(TEST_ENVIRONMENT_AUTHORIZATION_CUTOVER_HANDOFF.md) to record sead-options as verified against the
+live database with SEAD_HOST=host.docker.internal, remove the now-resolved open decision about that
+connection, and leave bulgaria-arbodat-lookup-options as the single remaining unproven data source
+(listed with the access driver and no filename). A known-limitations entry links the handoff to the
+new deployment-guide section.
+
+## User-facing release note
+
+The deployment guide now explains that the container must reach services running on its host through
+host.docker.internal rather than the host's LAN address, and why a successful host-side connection
+check does not prove the container can connect.
+
+## Upgrade notes
+
+No action is required to adopt this documentation change itself. For deployments where a host
+service (for example PostgreSQL) runs on the container host, the newly documented requirement
+applies: point container configuration at host.docker.internal (e.g. SEAD_HOST=host.docker.internal)
+and add a matching .pgpass entry keyed to that host string, since .pgpass matches the host exactly
+as used.
+
+## Validation
+
+ - No CI status checks are recorded for this pull request (statusCheckRollup is empty), so no CI
+results can be reported as passed or failed.
+ - The PR body reports the following checks, which are author attestations rather than independently
+verified results: POST /api/v1/data-sources/sead-options/test returned success: true with
+table_count: 167; psycopg.connect inside the container to host.docker.internal:9023 returned
+PostgreSQL 16.4; git diff --check passed; and scripts/check_doc_links.sh passed, covering the new
+link from the handoff to the deployment guide.
+ - Execution status of the repository's test suites for this documentation-only change is unknown
+from the available evidence.

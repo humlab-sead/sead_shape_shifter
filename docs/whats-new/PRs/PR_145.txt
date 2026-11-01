@@ -1,0 +1,61 @@
+title: Rename ingest to dispatch, add graph editing and unified Docker setup
+description:
+## Summary
+
+Renames the "Data Ingestion" feature to "Dispatch" in the UI and moves it inside the project editor:
+the standalone /ingesters route and sidebar entry are removed, and a new Dispatch tab in
+ProjectDetailView hosts the ingester form, which now includes a dispatcher selector (auto-selecting
+when only one ingester is configured) and dispatch-oriented wording. Configuration is read from the
+project's options.ingesters section (issue #137).
+
+The dependency graph becomes an editing surface: double-clicking a node opens the entity editor as
+an overlay (via new showEditorOverlay/overlayEntityName state in the entity store), and
+right-clicking opens a new GraphNodeContextMenu with Preview, Duplicate, and Delete actions.
+useCytoscape gains dbltap/cxttap handlers with a delayed single click to avoid conflicts,
+incremental element updates that preserve node positions, and handling for container re-creation. A
+new EntityEditorOverlay.vue component with form/preview split view is also added. The API client now
+uses ?? for VITE_API_BASE_URL so an empty value keeps same-origin requests when the frontend is
+served by the backend.
+
+Docker deployment is consolidated into a single unified container: docker-compose.yml drops the
+separate nginx frontend service in favour of one app service (backend serving the built frontend on
+port 8012), a new .dockerignore is added, the Dockerfile is fixed (skip type-check build, missing
+uv.lock handling, required lib/ copy, health check against /api/v1/health with a longer start
+period), Makefile Docker targets are reworked (docker-rebuild, docker-ps, docker-health, aliases),
+and docker/README.md is rewritten while docker/ENV_VARIABLES.md is deleted. A docker/test-build.sh
+script exercises build, health and endpoint checks.
+
+Documentation is updated accordingly: new docs/SYSTEM_DIAGRAMS.md, docs/UI_REQUIREMENTS.md rewritten
+as a capabilities document, workshop presentation extended with a Dispatch section, planning docs
+moved to docs/archive/, and a manual testing guide added under input/. input/arbodat-test.yml is
+reformatted (quoting and list style, comments removed).
+
+## User-facing release note
+
+Data dispatch (formerly "Data Ingestion") now lives in a Dispatch tab inside each project, so you
+configure and send data to the target system without leaving the project editor. In the dependency
+graph you can now double-click an entity to edit it in an overlay and right-click for preview,
+duplicate and delete actions.
+
+## Upgrade notes
+
+ - The Docker setup is now a single app container; the separate backend and frontend services are
+gone. Stop the old stack (docker-compose down), then rebuild and start with docker-compose up -d
+--build. Only port 8012 is exposed (the frontend is served by the backend).
+ - Create the required directories before starting: mkdir -p projects input output backups logs.
+Runtime data is mounted from these host directories instead of the previous docker/data/ env-file
+setup; docker/ENV_VARIABLES.md has been removed and docker/README.md documents the new
+configuration.
+ - The /ingesters page has been removed; use the Dispatch tab in the project detail view instead.
+
+## Validation
+
+ - No CI check results are available for this pull request (statusCheckRollup is empty), so no
+checks can be reported as passed or failed.
+ - Frontend unit tests were updated to match the changes (graphAdapter.test.ts for the new
+edge/option format, project.test.ts for api.projects.activate); their execution and results are
+unknown.
+ - A new docker/test-build.sh script validates the Docker build, container health and the
+health/frontend/API-docs endpoints; no evidence of its execution results is available.
+ - A manual testing guide (input/20260113_MANUAL_TESTING.md) was added, but no recorded test
+outcomes accompany it.

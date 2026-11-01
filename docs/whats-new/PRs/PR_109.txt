@@ -1,0 +1,57 @@
+title: Add Docker deployment and serve frontend via FastAPI backend
+description:
+## Summary
+
+This PR adds a containerized deployment path for Shape Shifter and makes the FastAPI backend serve
+the built Vue 3 frontend directly, closing the TODO item #107 ("Publish frontend files via the 
+backend (FastAPI) server for easier deployment") referenced in the PR body.
+
+Key changes:
+
+ - Backend static serving (backend/app/main.py): when frontend/dist exists, the app mounts it via
+StaticFiles (assets plus an HTML-mode root mount for SPA routing) and logs the serving path. If the
+dist directory is missing, it logs a warning and falls back to API-only mode, keeping the previous
+JSON root endpoint.
+ - Multi-stage Dockerfile (docker/Dockerfile): stage 1 builds the frontend with Node 20/pnpm (Vite
+variables passed as build args), stage 2 installs Python dependencies with uv, and stage 3 assembles
+a python:3.13-slim runtime image (with default-jre-headless for UCanAccess and libpq5), running
+uvicorn on port 8012 with a built-in health check.
+ - Supporting Docker assets in docker/: docker-compose.yml (env-file driven, bind mounts under
+docker/data/, .pgpass mounted read-only, health check), setup.sh (creates the data directory tree
+and copies backend.env/frontend.env/.pgpass templates), build.sh, test.sh
+(prerequisite/structure/compose-config checks plus a python-builder target build), .dockerignore,
+example nginx reverse-proxy and GitHub Actions workflow files, plus docker/README.md and
+docker/ENV_VARIABLES.md documentation.
+ - Makefile: new docker-setup, docker-build, docker-test, docker-up, docker-down, docker-logs,
+docker-restart, docker-clean, and docker-shell targets.
+ - README.md: a Docker Quick Start section pointing at docker/README.md.
+ - TODO.md: housekeeping — removes completed items, restructures the extra_columns expression DSL
+notes, and lists #107 as an open TODO line despite the backend change above.
+ - Deleted tests/specifications/TEST_STATUS.md, a stale test-status summary note.
+
+## User-facing release note
+
+Shape Shifter can now be built and run with Docker (or Docker Compose) as a single container that
+serves both the web UI and the API at http://localhost:8012, so the frontend no longer needs a 
+separate web server. When no built frontend is present, the backend still runs in API-only mode.
+
+## Upgrade notes
+
+ - Deployers must initialize the Docker data directory before first run (make docker-setup or
+./docker/setup.sh), then edit docker/data/backend.env (SEAD database settings, CORS origins) and
+docker/data/.pgpass (permissions 600) — database passwords are expected in .pgpass, not environment
+variables.
+ - Frontend variables (VITE_*) are build-time only: changing them requires rebuilding the image, not
+just restarting the container.
+ - Behavior change for API consumers: when frontend/dist exists, the backend's / route serves the
+SPA's index.html instead of the previous JSON message ({"message": ..., "version": ..., "docs":
+...}); the JSON root endpoint only remains in API-only mode. API routes under the configured prefix
+are unaffected.
+ - Runtime data (projects, logs, output, backups, tmp) is bind-mounted from docker/data/ by the
+provided compose file; plan persistence accordingly.
+
+## Validation
+
+Not verified: validation results unavailable. No CI check results are recorded for this pull
+request, and there is no evidence that the included docker/test.sh (or any other suite) was
+executed. The PR was merged, but merge status is not evidence of passing checks.

@@ -1,0 +1,66 @@
+title: Move projects to folder-based structure with shapeshifter.yml
+description:
+## Summary
+
+This PR replaces the flat project layout (projects/<name>.yml) with a folder-based layout where each
+project lives in its own directory as <projects_dir>/<name>/shapeshifter.yml, and supports nested
+project names such as arbodat/arbodat-test.
+
+Key changes:
+
+ - ProjectService split into components (backend/app/services/project/): ProjectOperations
+(create/copy/delete/metadata), EntityOperations (entity CRUD, including the locked
+load/modify/save-by-name pattern), FileManager (uploads, listings, Excel metadata probing), and
+ProjectUtils (name sanitization and existence checks). ProjectService now delegates to these
+components while keeping its public API.
+ - Recursive discovery and nested paths: list_projects() now uses rglob("shapeshifter.yml") and
+derives project names from relative paths;
+load_project/save_project/create_project/delete_project/copy_project operate on project directories
+(delete removes the whole directory, copy copies it, including files like reconciliation.yml,
+translations.tsv, and backups/). Project name validation allows nested paths but rejects empty
+names, absolute paths, and .. traversal.
+ - Shared data paths for portability: new backend settings GLOBAL_DATA_DIR and
+GLOBAL_DATA_SOURCE_DIR (created with parents=True), plus a new PathResolver
+(src/configuration/path_utils.py) that expands ${VAR} environment variables inside paths and
+resolves relative paths against a base directory. SubConfigResolver (@include:) and LoadResolver
+(@load:) in src/configuration/config.py now route paths through PathResolver, enabling references
+like @include: ${GLOBAL_DATA_SOURCE_DIR}/sead-options.yml and @load: ${GLOBAL_DATA_DIR}/lookup.csv.
+ - Excel metadata extraction moved from ProjectService into a reusable
+backend/app/utils/excel_utils.py (with a dedicated cell-range parser).
+ - Removed backend/app/utils/reconciliation_migration.py (v1→v2 reconciliation config migration
+helpers).
+ - Documentation: added docs/PROJECT_STRUCTURE_MIGRATION_SUMMARY.md describing the new structure,
+environment variables, and portability usage.
+
+## User-facing release note
+
+Projects are now stored one per folder (<project>/shapeshifter.yml) and can be organized in nested
+subfolders (for example arbodat/arbodat-test), and configs can reference shared Excel/database files
+and included configs through portable ${GLOBAL_DATA_DIR} / ${GLOBAL_DATA_SOURCE_DIR} paths instead
+of hardcoded locations.
+
+## Upgrade notes
+
+ - Breaking layout change: the old flat structure (projects/*.yml) is no longer discovered or
+loaded. Move each project's YAML into its own directory as shapeshifter.yml (e.g.
+projects/aDNA-pilot/shapeshifter.yml); project names may now include path separators for nested
+folders.
+ - New settings: GLOBAL_DATA_DIR (default ./shared/shared-data) and GLOBAL_DATA_SOURCE_DIR (default
+./shared/data-sources) are added to backend settings and created at startup; override them via
+environment variables if shared data lives elsewhere.
+ - Project operations act on directories: deleting a project removes its entire directory, and
+copying a project copies the whole directory tree.
+ - The removed reconciliation_migration utility (v1→v2 reconciliation config migration) is no longer
+available; reconciliation configs should already be in v2 format.
+
+## Validation
+
+ - No CI check results are attached to this pull request (statusCheckRollup is empty), so no checks
+can be reported as passed or failed.
+ - The diff adds new test suites (backend/tests/services/test_file_manager.py,
+backend/tests/services/test_project_utils.py, backend/tests/utils/test_excel_utils.py,
+tests/configuration/test_path_utils.py) and updates existing tests (test_project_service.py,
+mapper/YAML/dependency-service tests) for the new structure; their execution and results are unknown
+from the available evidence.
+ - The migration summary document includes a "Testing Results" section, but it is documentation
+content, not verified CI or test output, and is not reported here as a passed check.

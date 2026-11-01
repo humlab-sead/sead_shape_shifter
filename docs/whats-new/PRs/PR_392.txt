@@ -1,0 +1,37 @@
+title: feat(backend): implement boundary-based project persistence
+description:
+## Summary
+
+Adds boundary-based persistence so project saves can replace a single section of shapeshifter.yml
+instead of regenerating the whole document. YamlService gains a comment-aware API —
+load_commented(), save_commented(), and merge_boundary() — built on ruamel.yaml CommentedMap, which
+loads the current document, replaces exactly one boundary (a top-level key such as metadata or
+options, or a nested entities[entity_name] entry, with None deleting it), and writes back atomically
+while preserving comments and formatting elsewhere in the file.
+
+ProjectService exposes save_metadata_boundary(), save_options_boundary(), and save_entity_boundary()
+on top of this primitive, each resolving the project file path and invalidating the state cache
+after the write. ProjectOperations.update_metadata() and
+EntityOperations.add/update/delete_entity_by_name() now route through optional boundary-save
+callbacks wired by ProjectService, falling back to the previous full-project save when no callback
+is provided. The PUT project-options endpoint now uses save_options_boundary() instead of
+force-reloading the full project and re-saving it, removing the stale-cache workaround. The proposal
+document was moved to docs/proposals/done/ and expanded.
+
+## User-facing release note
+
+Editing a project's options, metadata, or a single entity now preserves the rest of the project YAML
+file, including any comments and formatting users have added. Saves no longer rewrite the entire
+project document, reducing the chance of overwriting concurrent changes to other sections.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+Not verified: validation results unavailable. The PR adds three test files
+(test_yaml_service_boundary.py, test_project_service_boundary.py,
+test_entity_operations_boundary.py) covering comment preservation, boundary replacement, deletion,
+fallback behavior, and cache invalidation, but no test-run or CI results are available in the
+provided evidence (the status check rollup is empty), so their execution and outcomes are unknown.

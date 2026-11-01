@@ -1,0 +1,75 @@
+title: Add security hardening, release verification, and podman deployment
+description:
+## Summary
+
+Advances the MITIGATE_SECURITY_ISSUES work by merging security-regression-and-release-verification
+into security-hardening (40 commits, 137 files; fast-forward from base 0cb9d0ca).
+
+ - Security regression tests — new suites for route authentication and cross-resource access
+(backend/tests/authorization/), filesystem boundaries, response/logging redaction, and SQL/DuckDB
+regressions (backend/tests/security/), plus @include/@load directive path confinement
+(tests/configuration/test_directive_path_confinement.py).
+ - Backend hardening — authorization dependencies are now required (no optional defaults) on
+project, mapping, materialization, reconciliation, and upload endpoints; /api/v1/health no longer
+discloses projects_dir; the global exception handler returns a generic InternalServerError instead
+of raw exception text; new backend/app/utils/safe_logging.py redacts credentials and connection
+strings from logs; reconciliation errors use typed resource exceptions.
+ - SQL and DuckDB policy — src/sql_policy.py now classifies and rejects DCL statements; SQL loaders
+bind named parameters through SQLAlchemy text() instead of passing them to the driver as literals;
+the DuckDB workspace additionally blocks glob(); loader connection-test failures return generic
+messages.
+ - Podman deployment (container/) — Containerfile, podman-compose.yml (loopback-only published port
+127.0.0.1:${HOST_PORT}:8012, userns_mode: keep-id, all paths driven by CONTAINER_DATA_DIR), Makefile
+targets, lifecycle and deployment scripts, systemd user unit, backend.env.example, .pgpass.example,
+and deployment docs.
+ - Nginx TLS vhosts for the test site — container/test-shape-shifter.sead.se (TLS, Basic auth,
+forwards X-Authenticated-User, auth_basic off for the ACME location) and an HTTP-only bootstrap
+vhost for first-certificate issuance.
+ - Docs and agent assets — Phase 5 release-verification task plan and updated SECURITY_CHECK.md
+verification record, updated authorization route inventory, documentation consolidation task plan,
+and proposal/phase-plan/task-plan skills and instructions under .github/, .agents/, and .claude/.
+ - Version bumped to 2.1.0; sqlparse moved from the api extra to a core runtime dependency.
+
+## User-facing release note
+
+Application errors now return generic messages without exposing internal details, and server logs
+redact credentials. Deployments can run as a rootless Podman container reachable only through an
+authenticating nginx reverse proxy.
+
+## Upgrade notes
+
+ - The container/ directory replaces the Docker path as the supported deployment: build with make
+build (or make build-local), configure container-data/backend.env (mode 600), and keep PostgreSQL
+passwords in container-data/.pgpass/.pgpass, not in backend.env.
+ - Production mode requires SHAPE_SHIFTER_TRUSTED_PROXY_AUTH_ENABLED=true and a non-empty
+SHAPE_SHIFTER_AUTHORIZATION_BOOTSTRAP_ADMIN_PRINCIPALS; the reverse proxy must send the
+authenticated user in X-Authenticated-User (see
+container/scripts/deploy/nginx-shape-shifter.conf.template), otherwise the API returns 401.
+ - The published port is bound to 127.0.0.1 only; external access must go through nginx. Images
+previously built from dev still publish on all interfaces and must be rebuilt from this branch.
+ - Clients depending on the projects_dir field in /api/v1/health must stop reading it; the field was
+removed.
+ - sqlparse is now a core dependency; uv sync picks it up automatically.
+
+## Validation
+
+Recorded in the SECURITY_CHECK.md Phase 5 verification record included in this diff (tested commit
+4fc4e74f):
+
+ - Focused Phase 5 security suite: passed (471 tests), including disposable filesystem and DuckDB
+fixtures; no disposable PostgreSQL server was available for that run.
+ - uv run pytest tests -v: passed (1,648 passed, 1 skipped).
+ - uv run pytest backend/tests -v: failed (1,948 passed, 14 skipped, 1 failed) — the failure is a
+pre-existing, unrelated ingester test (test_sead_change_request_package_builder.py).
+ - make lint: passed (formatting, Ruff, Pylint, schema-reference checks).
+ - PostgreSQL read-only behavior checks passed using the pre-existing sead_ro account;
+dedicated-role and NOINHERIT configuration are recorded as DBA-owned deployment exceptions, and
+deployment verification remains incomplete.
+
+Stated by the PR author (not independently verified here): both nginx vhosts validated with nginx -t
+and exercised in a throwaway nginx instance (HTTP→HTTPS redirect, ACME path 200, unauthenticated /
+401, X-Authenticated-User forwarded), and a Let's Encrypt certificate issued for
+test-shape-shifter.sead.se with webroot authenticator and renewal configured.
+
+The author states the Python test suite was not re-run while opening this pull request. No CI status
+checks are attached to the pull request.

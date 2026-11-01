@@ -1,0 +1,87 @@
+title: feat(target-model): complete SEAD target-model follow-up tranche
+description:
+## Summary
+
+This PR completes the SEAD v2 target-model follow-up tranche (issues #447–#453) by adding a new 
+bundled spec, resources/target_models/sead_superset_model.yml, intended as the near-complete,
+provider-independent SEAD superset from which projects can curate subsets. It replaces
+sead_standard_model.yml as the bundled spec referenced throughout the docs.
+
+What the new superset adds over the previous model (verified at 92 entities by
+tests/target_model/test_spec_files.py):
+
+ - Sample-context entities: sample_horizon, sample_location, sample_location_type, sample_note
+(#447)
+ - Sample-group context entities: sample_group_coordinate, sample_group_dimension,
+sample_group_note, sample_group_reference (#448)
+ - Property-pattern slice on a shared property_type lookup: site_property, feature_property,
+site_natgridref, with abundance_property rewired to the shared property_type (#449)
+ - Generic analysis-value family: analysis_value plus typed variants (boolean, categorical, integer,
+numerical, dating range), range entities, analysis_note, analysis_identifier, analysis_taxon_count,
+analysis_value_dimension, and value-class/value-type lookups (#450)
+ - Shared value qualifier lookups value_qualifier and value_qualifier_symbol, referenced by sample
+dimensions and analysis value/range tables (#452)
+ - Sampling context and horizon lookups sample_group_sampling_context and horizon, wired into
+sample_group and sample_horizon (#453)
+ - Deferred-lookup reassessment (#451): promotes colour, sample_colour, project_type, project_stage,
+coordinate_system, taxa_synonyms, taxa_measured_attributes, rdb_system, rdb_code, and rdb; treats
+abundance_property_type as covered by shared property_type; records dating_period and
+natural_region* as Arbodat-specific and out of the shared superset
+
+Supporting changes:
+
+ - Target-model Pydantic models now use extra="forbid", so unknown keys in spec files are rejected
+at load instead of silently ignored; the regenerated frontend targetModelSchema.json mirrors this
+with additionalProperties: false.
+ - TargetModelSpecValidator gains aggregate-parent rules (unknown/self-referential parent, missing
+parent FK, child-identity conflicts) and identity-tracking/reconciliation combination rules, with
+role-based defaults resolved via _resolve_effective_sims.
+ - The backend TargetModelValidator now runs spec self-consistency validation first and returns
+issues with their specific codes (e.g. UNKNOWN_FOREIGN_KEY_ENTITY,
+MISSING_AGGREGATE_PARENT_FOREIGN_KEY) and conformance metadata before project conformance runs.
+ - scripts/generate_target_model_docs.py adds a sims output format (SIMS entity register) and the
+register template gains target table, business key, and required columns.
+ - Entity specs support new fields documented in TARGET_MODEL_GUIDE.md: identity_tracking,
+reconciliation, aggregate_parent, foreign_keys[].via, and columns[].description; the guide documents
+bridge-entity (via) conformance checking and strict parsing.
+ - Proposal docs (SEAD_V2_TARGET_MODEL_COMPLETENESS.md, SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md) are
+realigned with the implemented branch state, recording the promoted lookups and the explicit
+out-of-scope decisions.
+
+## User-facing release note
+
+Shape Shifter now ships a much broader bundled SEAD target model (92 entities) covering sample and
+sample-group context, site/feature properties, generic typed analysis values, value qualifiers,
+taxonomy/Red Data Book lookups, and project classification vocabularies, so projects can validate
+against a near-complete SEAD model and select curated subsets. Target-model validation now reports
+precise specification errors (such as unknown foreign-key targets or invalid aggregate-parent
+setups) instead of a generic invalid-model error, and model documentation can be generated as a SIMS
+entity register.
+
+## Upgrade notes
+
+ - Update project metadata.target_model references from sead_standard_model.yml to
+resources/target_models/sead_superset_model.yml where the bundled SEAD spec is intended; all docs
+and manual-test fixtures now point at the superset file.
+ - Target model YAML is parsed strictly: unknown keys in model, entity, column, foreign-key, naming,
+constraint, or metadata blocks now raise a load error instead of being ignored. Review custom specs
+for stray or misspelled keys before upgrading.
+ - The frontend projectSchema.json now requires entity_count in project metadata; project metadata
+documents that do not provide it will fail schema validation.
+
+## Validation
+
+ - The PR author reports running uv run pytest tests/target_model/test_spec_files.py
+tests/target_model/test_spec_validator.py tests/model/test_target_model_conformance.py
+backend/tests/validators/test_target_model_validator.py -q (per the PR description); the results
+were not independently confirmed here.
+ - No CI status checks are recorded on the pull request (status check rollup is empty), so automated
+CI outcomes are unknown.
+ - The pull request was merged into dev (merge commit 5d3d455b, 2026-05-27).
+ - New/updated automated coverage included in the diff (execution beyond the author-reported command
+above not separately verified here): superset spec load and entity assertions
+(test_sead_superset_spec_loads_and_validates), strict unknown-key rejection and
+aggregate-parent/identity-reconciliation validator tests
+(tests/target_model/test_spec_validator.py), sample/sample-group note conformance fixtures
+(tests/model/test_target_model_conformance.py, plus two new project fixtures), and backend
+spec-issue surfacing tests (backend/tests/validators/test_target_model_validator.py).
