@@ -12,7 +12,7 @@ import pytest
 
 from backend.app.authorization.models import Action, AuthorizedResource, Principal, ResourceRecord, ResourceType
 from backend.app.core.config import Settings
-from backend.app.ingesters.protocol import IngestionResult, ValidationResult
+from backend.app.ingesters.protocol import IngesterMetadata, IngestionResult, ValidationResult
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.ingester import ProjectIngesterRequest, ProjectSubmissionOptions
 from backend.app.models.project import Project, ProjectMetadata
@@ -174,6 +174,17 @@ class FakeTableIngester:
         deploy_artifact={"deploy_sql": "SELECT 1;"},
     )
 
+    @classmethod
+    def get_metadata(cls) -> IngesterMetadata:
+        return IngesterMetadata(
+            key="fake_table",
+            name="Fake table",
+            description="Test table ingester",
+            version="0.0.0",
+            supported_formats=[],
+            requires_config=True,
+        )
+
     def __init__(self, config) -> None:
         self.config = config
         self.validation_call: tuple[dict[str, pd.DataFrame], str] | None = None
@@ -193,6 +204,16 @@ class FakeTableIngester:
 
     async def ingest(self, source, validate_first: bool = True) -> IngestionResult:
         raise AssertionError("The file ingestion method must not be called")
+
+
+class FakeTableOnlyIngester:
+    """Expose table methods without the configured ingester lifecycle."""
+
+    async def validate_tables(self, tables, *, source_name: str = "") -> ValidationResult:
+        raise AssertionError("The table validation method must not be called")
+
+    async def ingest_tables(self, tables, *, source_name: str = "", validate_first: bool = True) -> IngestionResult:
+        raise AssertionError("The table ingestion method must not be called")
 
 
 class FakeFileIngester:
@@ -671,6 +692,23 @@ async def test_file_only_ingester_returns_file_input_error_without_normalization
     assert ingestion.success is False
     assert ingestion.message == "File input required"
     assert "file input" in (ingestion.error_details or "").lower()
+    assert not calls
+
+
+@pytest.mark.asyncio
+async def test_table_only_ingester_without_lifecycle_is_rejected(monkeypatch) -> None:
+    """Reject table-capable classes that lack the configured ingester lifecycle."""
+    project_service, calls = install_common_mocks(monkeypatch, registry_ingester=FakeTableOnlyIngester)
+    service = project_ingester_service(project_service)
+
+    validation = await service.validate_project_tables("sead", authorized_project(), request())
+    ingestion = await service.ingest_project_tables("sead", authorized_project(), request())
+
+    assert validation.is_valid is False
+    assert "configured table-ingester lifecycle" in validation.errors[0]
+    assert ingestion.success is False
+    assert ingestion.message == "File input required"
+    assert "configured table-ingester lifecycle" in (ingestion.error_details or "")
     assert not calls
 
 

@@ -28,7 +28,7 @@ def _normalized_isnan_values(df: pd.DataFrame) -> list[list[object]]:
     """Convert pandas extension dtypes / nullable values to Python objects
     Replace pd.NA, np.nan, pd.NaT with None for JSON serialization and consistent API behavior."""
     values = df.astype(object).to_numpy(copy=True)
-    values[~pd.notna(df).to_numpy()] = None
+    values[pd.isna(df).to_numpy(dtype=bool)] = None
     return values.tolist()
 
 

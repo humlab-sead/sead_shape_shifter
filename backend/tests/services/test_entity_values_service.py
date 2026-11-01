@@ -9,7 +9,7 @@ import pandas as pd
 import pytest
 import yaml
 
-from backend.app.services.entity_values_service import EntityValuesService, get_entity_values_service
+from backend.app.services.entity_values_service import EntityValuesService, _normalized_isnan_values, get_entity_values_service
 from backend.app.services.fixed_entity_mapping_sync_service import FixedEntityMappingSyncService
 from src.reconciliation.mapping_manager import MappingManager
 
@@ -58,6 +58,10 @@ class TestEntityValuesService:
     def service(self, mock_project_service):
         """Create entity values service with mocked dependencies."""
         return EntityValuesService(project_service=mock_project_service)
+
+    def test_normalized_values_preserves_rows_for_zero_column_frames(self):
+        """Return one empty value row for each DataFrame index when there are no columns."""
+        assert _normalized_isnan_values(pd.DataFrame(index=range(3))) == [[], [], []]
 
     def test_parse_load_directive_with_valid_directive(self, service):
         """Test parsing @load: directive."""
