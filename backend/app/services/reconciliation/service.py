@@ -42,7 +42,7 @@ from backend.app.services.reconciliation.resolvers import ReconciliationSourceRe
 from backend.app.utils.exceptions import BadRequestError, NotFoundError
 from src.model import ShapeShiftProject
 from src.reconciliation import model as core
-from src.reconciliation.mapping_manager import MappingSnapshot, MappingVersionConflictError
+from src.reconciliation.mapping_manager import MappingManager, MappingSnapshot, MappingVersionConflictError
 from src.reconciliation.mapping_model import (
     EntityMapping,
     EntityType,
@@ -408,12 +408,12 @@ class ReconciliationService:
         if not expected_public_id:
             raise ValidationError(f"Entity '{entity_name}' has no public_id configured for reconciliation export")
 
-        mapping_manager = self.mapping_service.manager
-        sidecar_path = mapping_manager._sidecar_path(project_path)
-        sidecar_snapshot = mapping_manager.load_snapshot(project_path)
-        sidecar_content = self._read_optional_file(sidecar_path)
-        sidecar = sidecar_snapshot.catalog
-        existing_entity_mapping = sidecar.entities.get(entity_name)
+        mapping_manager: MappingManager = self.mapping_service.manager
+        sidecar_path: Path = mapping_manager._sidecar_path(project_path)
+        sidecar_snapshot: MappingSnapshot = mapping_manager.load_snapshot(project_path)
+        sidecar_content: bytes | None = self._read_optional_file(sidecar_path)
+        sidecar: MappingCatalog = sidecar_snapshot.catalog
+        existing_entity_mapping: EntityMapping | None = sidecar.entities.get(entity_name)  # type: ignore
         if existing_entity_mapping is not None and (
             existing_entity_mapping.local_key != expected_local_key or existing_entity_mapping.public_id != expected_public_id
         ):
@@ -424,10 +424,10 @@ class ReconciliationService:
             )
 
         owner = LinkOwner(entity_name=entity_name, target_field=target_field)
-        accepted = {
+        accepted: dict[str, core.ResolvedEntityPair] = {
             decision.local_key_value: decision for decision in resolution_set.links if decision.status == core.DecisionStatus.ACCEPTED
         }
-        local_only = {
+        local_only: dict[str, core.ResolvedEntityPair] = {
             decision.local_key_value: decision for decision in resolution_set.links if decision.status == core.DecisionStatus.LOCAL_ONLY
         }
         exportable: dict[str, core.ResolvedEntityPair] = {}

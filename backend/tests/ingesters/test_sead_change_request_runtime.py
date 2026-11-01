@@ -618,8 +618,16 @@ class TestTrustedScopeAndBusinessKeys:
         assert first["target_id"] == second["target_id"]
         assert different_key["target_id"] != first["target_id"]
         assert different_scope["target_id"] != first["target_id"]
-        assert [request.run_id for request in sims_client.resolve_requests] == ["first-run", "second-run", "third-run", "fourth-run"]  # type: ignore
-        assert {request.scope_name for request in sims_client.resolve_requests} == {TEST_SCOPE_NAME, "provider://mal/other-project"}  # type: ignore
+        assert [request.run_id for request in sims_client.resolve_requests] == [  # type: ignore
+            "first-run",
+            "second-run",
+            "third-run",
+            "fourth-run",
+        ]
+        assert {request.scope_name for request in sims_client.resolve_requests} == {  # type: ignore
+            TEST_SCOPE_NAME,
+            "provider://mal/other-project",
+        }
         assert (
             sims_client.resolve_requests[0].requests[0].primary_signal.identity_value  # type: ignore
             == sims_client.resolve_requests[1].requests[0].primary_signal.identity_value  # type: ignore

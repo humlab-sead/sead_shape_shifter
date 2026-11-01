@@ -28,8 +28,8 @@ _RUN_LIVE = os.getenv("SIMS_INTEGRATION_DB") == "1"
 _SITE_LABEL = "org.sead-shape-shifter.sims-candidate-verification"
 
 
-@pytest.fixture(autouse=True)
-def isolate_project_services() -> Iterator[None]:
+@pytest.fixture(autouse=True, name="isolate_project_services")
+def _isolate_project_services() -> Iterator[None]:
     project_service._project_service = None
     validation_service._validation_service = None
     yaml_service._yaml_service = None
@@ -42,7 +42,7 @@ def isolate_project_services() -> Iterator[None]:
 def _require_disposable_settings(monkeypatch, tmp_path: Path) -> dict[str, object]:
     """Require the helper-owned loopback database and point both clients at it."""
     host = os.getenv("SEAD_DISPOSABLE_POSTGRES_HOST")
-    port = os.getenv("SEAD_DISPOSABLE_POSTGRES_PORT")
+    port = os.getenv("SEAD_DISPOSABLE_POSTGRES_PORT") or "55432"
     dbname = os.getenv("SEAD_DISPOSABLE_POSTGRES_DB")
     user = os.getenv("SEAD_DISPOSABLE_POSTGRES_USER")
     service_url = os.getenv("SEAD_DISPOSABLE_AUTHORITY_URL")
@@ -149,15 +149,17 @@ def _inserted_column_value(deploy_sql: str, table_name: str, column_name: str) -
     return values[columns.index(column_name)].strip("'")
 
 
-@pytest.fixture
-async def adopted_site(monkeypatch, tmp_path: Path) -> AsyncIterator[tuple[int, str, str, int, str]]:
+@pytest.fixture(name="adopted_site")
+async def _adopted_site(monkeypatch, tmp_path: Path) -> AsyncIterator[tuple[int, str, str, int, str]]:
     if not _RUN_LIVE:
         pytest.skip("Set SIMS_INTEGRATION_DB=1 for the helper-owned disposable database run")
     parameters = _require_disposable_settings(monkeypatch, tmp_path)
     async with await psycopg.AsyncConnection.connect(**parameters) as connection:
         async with connection.cursor() as cursor:
             await cursor.execute("SELECT to_regprocedure('authority.fuzzy_site(text,integer)')")
-            assert (await cursor.fetchone())[0] is not None, "Install the site match function before Phase 7."
+            data = await cursor.fetchone()
+            assert data is not None, "The site match function must exist."
+            assert data[0] is not None, "Install the site match function before Phase 7."
             await cursor.execute(
                 """
                 SELECT s.site_id, s.label
@@ -172,7 +174,9 @@ async def adopted_site(monkeypatch, tmp_path: Path) -> AsyncIterator[tuple[int, 
             await cursor.execute("SELECT next_internal_id FROM sead_identity.internal_id_allocators WHERE entity_type = 'site'")
             allocator = await cursor.fetchone()
             await cursor.execute("SELECT max(site_id) FROM authority.site")
-            maximum = (await cursor.fetchone())[0]
+            data = await cursor.fetchone()
+            assert data is not None, "Failed to fetch the maximum site_id."
+            maximum = data[0]
             assert allocator is not None and allocator[0] > maximum, "The site allocator must exceed existing SEAD site IDs."
 
     url = settings.RECONCILIATION_SERVICE_URL.rstrip("/")
@@ -206,7 +210,9 @@ async def adopted_site(monkeypatch, tmp_path: Path) -> AsyncIterator[tuple[int, 
                 """,
                 (provider_code,),
             )
-            provider_id = int((await cursor.fetchone())[0])
+            data = await cursor.fetchone()
+            assert data is not None, "Failed to fetch the provider_id."
+            provider_id = int(data[0])
     registry_path = Path(settings.GLOBAL_DATA_PROVIDER_DIR) / f"{provider_code}.yml"
     registry_path.write_text(
         yaml.safe_dump(
@@ -524,9 +530,13 @@ async def test_adopted_binding_and_local_only_allocation(authorized_client, adop
     async with await psycopg.AsyncConnection.connect(**parameters) as connection:
         async with connection.cursor() as cursor:
             await cursor.execute("SELECT EXISTS (SELECT 1 FROM public.tbl_sites WHERE site_id = %s)", (site_id,))
-            assert (await cursor.fetchone())[0] is True
+            data = await cursor.fetchone()
+            assert data is not None, "Failed to fetch site existence."
+            assert data[0] is True
             await cursor.execute("SELECT EXISTS (SELECT 1 FROM public.tbl_methods WHERE method_id = %s)", (method_id,))
-            assert (await cursor.fetchone())[0] is True
+            data = await cursor.fetchone()
+            assert data is not None, "Failed to fetch method existence."
+            assert data[0] is True
 
     allocated_site_id = allocator_before[0]
     allocator_after = await _site_allocator_snapshot(parameters)
