@@ -2,7 +2,7 @@
 
 from dataclasses import replace
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 from loguru import logger
 from pydantic import ValidationError as PydanticValidationError
@@ -206,7 +206,10 @@ class ProjectIngesterService:
         if not issubclass(ingester_class, TableSourceIngester):
             message = f"Ingester '{key}' requires file input and does not support normalized tables"
             return ValidateResponse(is_valid=False, errors=[message])
-        return cast(type[ConfiguredTableIngester], ingester_class)
+        if not issubclass(ingester_class, ConfiguredTableIngester):
+            message = f"Ingester '{key}' does not implement the configured table-ingester lifecycle"
+            return ValidateResponse(is_valid=False, errors=[message])
+        return ingester_class
 
     def _create_trusted_config(
         self,
