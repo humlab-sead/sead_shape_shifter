@@ -315,6 +315,15 @@ def normalize_bare_body_headings(body: str) -> str:
 
 TITLE_LABEL_PATTERN = re.compile(r"^(?:#{1,6}\s*)?(?:\*\*)?(?:pr\s+)?title(?:\*\*)?\s*:\s*", re.IGNORECASE)
 TITLE_WRAPPER_PATTERN = re.compile(r"^(?P<quote>[`\"'])(?P<text>.+)(?P=quote)$")
+# Clause boundaries give a shorter title that still reads as a complete phrase. Strong
+# separators start an explanation or a continuation, so cutting before them leaves the main
+# clause intact. A comma is deliberately absent: cutting at one leaves a dangling list item.
+TITLE_STRONG_SEPARATORS: tuple[str, ...] = (" — ", " – ", " - ", ": ", "; ")
+TITLE_WEAK_SEPARATORS: tuple[str, ...] = (" and ",)
+TITLE_TRAILING_PUNCTUATION = ".,;:—–-"
+# A shortened title below this length is too terse to describe a change, so shortening falls
+# back to the word boundary instead.
+MIN_SHORTENED_TITLE_LENGTH = 24
 
 
 def normalize_title_candidate(line: str) -> str:
@@ -324,6 +333,64 @@ def normalize_title_candidate(line: str) -> str:
     if wrapped:
         candidate = wrapped.group("text").strip()
     return candidate.strip().strip("*").strip()
+
+
+def clause_cut_position(window: str) -> int:
+    """Return the best clause boundary inside `window`, or -1 when none qualifies.
+
+    A weak separator is used only when the text before it does not end with a comma, because
+    that text would otherwise be an unfinished list such as ``reading, writing``.
+    """
+    cuts = [window.rfind(separator) for separator in TITLE_STRONG_SEPARATORS]
+    for separator in TITLE_WEAK_SEPARATORS:
+        position = window.rfind(separator)
+        if position >= 0 and not window[:position].rstrip().endswith(","):
+            cuts.append(position)
+    return max(cuts, default=-1)
+
+
+def shorten_title(title: str, limit: int = TITLE_LENGTH_LIMIT) -> str:
+    """Shorten a title to `limit` characters at a clause or word boundary.
+
+    Cutting at a clause boundary keeps the remaining text a complete phrase. When no boundary
+    lies far enough into the limit, the last whole word is kept, so the result never ends
+    mid-word.
+    """
+    if len(title) <= limit:
+        return title
+    window = title[:limit]
+
+    position = clause_cut_position(window)
+    if position >= MIN_SHORTENED_TITLE_LENGTH:
+        shortened = window[:position]
+    elif " " in window:
+        shortened = window.rsplit(" ", 1)[0]
+    else:
+        shortened = window
+    return shortened.rstrip().rstrip(TITLE_TRAILING_PUNCTUATION).strip()
+
+
+def repair_title(title: str) -> tuple[str, list[str]]:
+    """Return a usable title and notes describing each repair.
+
+    A rejected title discards an otherwise good body, and the body costs the most to generate,
+    so over-long titles are shortened rather than failing the draft. Repairs are reported so the
+    reviewer can replace the result with a hand-written title.
+    """
+    repaired = " ".join(title.split())
+    notes: list[str] = []
+    if repaired != title:
+        notes.append("collapsed whitespace in the title")
+    # `str.endswith` needs a tuple of suffixes; passing the character set as one string would
+    # only match that exact sequence.
+    if repaired.endswith(tuple(TITLE_TRAILING_PUNCTUATION)):
+        repaired = repaired.rstrip(TITLE_TRAILING_PUNCTUATION).strip()
+        notes.append("removed trailing punctuation from the title")
+    if len(repaired) > TITLE_LENGTH_LIMIT:
+        shortened = shorten_title(repaired)
+        notes.append(f"shortened the title from {len(repaired)} to {len(shortened)} characters: " f"{repaired[:60]!r} -> {shortened!r}")
+        repaired = shortened
+    return repaired, notes
 
 
 def select_title_from_preamble(preamble: str) -> str:
@@ -348,7 +415,10 @@ def parse_copilot_response(response: str) -> dict[str, str]:
             f"Copilot response must put {COPILOT_BODY_SEPARATOR} after the title on its own line. "
             f"Received {len(normalized_response)} character(s) without the separator."
         )
-    return validate_draft({"title": select_title_from_preamble(preamble), "body": normalize_bare_body_headings(body)})
+    title, notes = repair_title(select_title_from_preamble(preamble))
+    for note in notes:
+        print(f"Warning: {note}", file=sys.stderr)
+    return validate_draft({"title": title, "body": normalize_bare_body_headings(body)})
 
 
 def configure_copilot_environment(model: str | None) -> tuple[str, dict[str, str]]:

@@ -857,3 +857,104 @@ def test_validate_draft_names_headings_without_content() -> None:
 
     with pytest.raises(ValueError, match="has no content under: ## Upgrade notes"):
         update_pr_descriptions.validate_draft({"title": "Example PR title", "body": body})
+
+
+@pytest.mark.parametrize(
+    ("title", "expected"),
+    [
+        # No clause boundary: keep whole words only.
+        (
+            "Share target models across projects via shared/target-models directory and validate each reference",
+            "Share target models across projects via shared/target-models directory",
+        ),
+        # " and " after a comma would leave a dangling list, so the word boundary is used.
+        (
+            "Add support for reading, writing, and validating whole project directories including metadata",
+            "Add support for reading, writing, and validating whole project",
+        ),
+        # " and " after a complete clause is a good cut.
+        (
+            "Migrate projects to per-folder structure and split ProjectService into focused collaborators",
+            "Migrate projects to per-folder structure",
+        ),
+        # A colon introduces an explanation, so cutting before it keeps the main clause.
+        (
+            "Refactor the validation pipeline: collect all issues first, then report them together",
+            "Refactor the validation pipeline",
+        ),
+    ],
+)
+def test_shorten_title_cuts_at_a_readable_boundary(title: str, expected: str) -> None:
+    assert update_pr_descriptions.shorten_title(title) == expected
+
+
+def test_shorten_title_never_ends_mid_word_or_with_punctuation() -> None:
+    title = "Add " + " ".join(["wordy"] * 30)
+
+    shortened = update_pr_descriptions.shorten_title(title)
+
+    assert len(shortened) <= update_pr_descriptions.TITLE_LENGTH_LIMIT
+    assert shortened.endswith("wordy")
+    assert not shortened.endswith((".", ",", ";", ":"))
+
+
+def test_shorten_title_keeps_a_title_that_already_fits() -> None:
+    assert update_pr_descriptions.shorten_title("Add a validation check") == "Add a validation check"
+
+
+def test_repair_title_removes_trailing_punctuation_and_reports_it() -> None:
+    title, notes = update_pr_descriptions.repair_title("Add a validation check.")
+
+    assert title == "Add a validation check"
+    assert any("trailing punctuation" in note for note in notes)
+
+
+def test_repair_title_collapses_whitespace_and_reports_it() -> None:
+    title, notes = update_pr_descriptions.repair_title("Add   a\tvalidation check")
+
+    assert title == "Add a validation check"
+    assert any("whitespace" in note for note in notes)
+
+
+def test_repair_title_shortens_an_over_long_title_and_reports_both_lengths() -> None:
+    title, notes = update_pr_descriptions.repair_title("a" * 40 + " " + "b" * 60)
+
+    assert len(title) <= update_pr_descriptions.TITLE_LENGTH_LIMIT
+    assert any("shortened the title from 101 to" in note for note in notes)
+
+
+def test_repair_title_leaves_a_usable_title_alone() -> None:
+    title, notes = update_pr_descriptions.repair_title("Add a validation check")
+
+    assert title == "Add a validation check"
+    assert notes == []
+
+
+def test_parse_copilot_response_repairs_an_over_long_title_and_warns(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    title = "Share target models across projects via shared/target-models directory and validate each reference"
+    response = f"{title}\n{update_pr_descriptions.COPILOT_BODY_SEPARATOR}\n{VALID_BODY}"
+
+    draft = update_pr_descriptions.parse_copilot_response(response)
+
+    assert len(draft["title"]) <= update_pr_descriptions.TITLE_LENGTH_LIMIT
+    assert draft["title"] == "Share target models across projects via shared/target-models directory"
+    assert "Warning: shortened the title" in capsys.readouterr().err
+
+
+def test_parse_copilot_response_does_not_warn_for_a_usable_title(capsys: pytest.CaptureFixture[str]) -> None:
+    response = f"Add a validation check\n{update_pr_descriptions.COPILOT_BODY_SEPARATOR}\n{VALID_BODY}"
+
+    update_pr_descriptions.parse_copilot_response(response)
+
+    assert capsys.readouterr().err == ""
+
+
+def test_a_repaired_title_survives_the_draft_file_round_trip() -> None:
+    title = "Share target models across projects via shared/target-models directory and validate each reference"
+    response = f"{title}\n{update_pr_descriptions.COPILOT_BODY_SEPARATOR}\n{VALID_BODY}"
+
+    draft = update_pr_descriptions.parse_copilot_response(response)
+
+    assert update_pr_descriptions.parse_draft_file(update_pr_descriptions.serialize_draft_file(draft)) == draft

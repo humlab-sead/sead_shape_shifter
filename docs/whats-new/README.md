@@ -123,6 +123,8 @@ Use `--verbose` with `--draft` to print the raw Copilot response when response p
 
 A failed draft names the single problem it found and quotes the offending value, so `--verbose` is only needed when the model's overall response is in question. The title must be one line of at most 71 characters with no trailing period, matching the rule in [the PR-description instructions](../../.github/pr-description-instructions.md). When a model writes a preamble before the title, the last line before the body separator is used as the title, so a narrated response still produces a usable draft.
 
+A title that only breaks the length or punctuation rule is repaired rather than rejected, because the body costs the most to generate and a rejected title would discard it. Trailing punctuation is removed, and an over-long title is shortened at a clause boundary, or at the last whole word when no boundary fits. Each repair prints a warning naming the original and the replacement, so a shortened title is visible and can be replaced with a hand-written one before publishing. The advice to keep titles short still applies: a repaired title is usable, not ideal.
+
 ## Recording Commits Without a Pull Request
 
 Commits pushed straight to a base branch have no pull request to describe them, so add `--include-orphaned` to record them against the pull request that followed:
