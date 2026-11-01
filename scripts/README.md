@@ -59,6 +59,9 @@ python3 scripts/update_pr_descriptions.py 627 --draft --included-prs 621,626
 # Record commits that reached the base branch without a pull request
 python3 scripts/update_pr_descriptions.py 620-634 --draft --include-orphaned
 
+# Remove terminal escape sequences from existing drafts, without publishing
+python3 scripts/update_pr_descriptions.py 620-634 --clean-drafts
+
 # List every detected commit instead of filtering housekeeping
 python3 scripts/update_pr_descriptions.py 620-634 --draft --include-orphaned --show-all-orphaned
 

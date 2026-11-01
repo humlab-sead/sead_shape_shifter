@@ -958,3 +958,135 @@ def test_a_repaired_title_survives_the_draft_file_round_trip() -> None:
     draft = update_pr_descriptions.parse_copilot_response(response)
 
     assert update_pr_descriptions.parse_draft_file(update_pr_descriptions.serialize_draft_file(draft)) == draft
+
+
+OSC8_LINK = "\x1b]8;id=md-1abc;https://github.com/o/r/issues/421\x07#421\x1b]8;;\x07"
+
+
+def test_strip_terminal_escapes_removes_osc8_hyperlink_wrapping() -> None:
+    text = f"fixes {OSC8_LINK} and #526"
+
+    assert update_pr_descriptions.strip_terminal_escapes(text) == "fixes #421 and #526"
+
+
+def test_strip_terminal_escapes_removes_colour_codes() -> None:
+    assert update_pr_descriptions.strip_terminal_escapes("\x1b[1mbold\x1b[0m text") == "bold text"
+
+
+def test_strip_terminal_escapes_keeps_newlines_and_tabs() -> None:
+    text = "line one\nline\ttwo"
+
+    assert update_pr_descriptions.strip_terminal_escapes(text) == text
+
+
+def test_strip_terminal_escapes_removes_stray_control_characters() -> None:
+    assert update_pr_descriptions.strip_terminal_escapes("a\x07b\x00c\x7fd") == "abcd"
+
+
+def test_parse_copilot_response_strips_escape_sequences_from_the_body() -> None:
+    body = VALID_BODY.replace("Changed.", f"Changed {OSC8_LINK}.")
+    response = f"Add a validation check\n{update_pr_descriptions.COPILOT_BODY_SEPARATOR}\n{body}"
+
+    draft = update_pr_descriptions.parse_copilot_response(response)
+
+    assert "\x1b" not in draft["body"]
+    assert "\x07" not in draft["body"]
+    assert "Changed #421." in draft["body"]
+
+
+def test_parse_copilot_response_strips_escape_sequences_from_the_title() -> None:
+    response = f"Add {OSC8_LINK} support\n{update_pr_descriptions.COPILOT_BODY_SEPARATOR}\n{VALID_BODY}"
+
+    draft = update_pr_descriptions.parse_copilot_response(response)
+
+    assert draft["title"] == "Add #421 support"
+
+
+def test_parse_draft_file_strips_escape_sequences_from_an_existing_file() -> None:
+    body = VALID_BODY.replace("Changed.", f"Changed {OSC8_LINK}.")
+    content = update_pr_descriptions.serialize_draft_file({"title": "Example PR title", "body": body})
+
+    draft = update_pr_descriptions.parse_draft_file(content)
+
+    assert "\x1b" not in draft["body"]
+    assert "Changed #421." in draft["body"]
+
+
+def test_clean_draft_file_rewrites_a_file_that_contains_escape_sequences(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(update_pr_descriptions, "PR_DRAFTS_DIR", tmp_path)
+    body = VALID_BODY.replace("Changed.", f"Changed {OSC8_LINK}.")
+    (tmp_path / "PR_528.txt").write_text(
+        update_pr_descriptions.serialize_draft_file({"title": "Example PR title", "body": body}),
+        encoding="utf-8",
+    )
+
+    changed, description = update_pr_descriptions.clean_draft_file(528)
+
+    assert changed is True
+    assert "removed 2 escape sequence(s)" in description
+    assert "\x1b" not in (tmp_path / "PR_528.txt").read_text(encoding="utf-8")
+
+
+def test_clean_draft_file_reports_a_clean_file_without_rewriting_it(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(update_pr_descriptions, "PR_DRAFTS_DIR", tmp_path)
+    path = tmp_path / "PR_528.txt"
+    path.write_text(update_pr_descriptions.serialize_draft_file(make_draft()), encoding="utf-8")
+    before = path.stat().st_mtime_ns
+
+    changed, description = update_pr_descriptions.clean_draft_file(528)
+
+    assert changed is False
+    assert description == "already clean"
+    assert path.stat().st_mtime_ns == before
+
+
+def test_clean_draft_file_leaves_an_unparseable_file_untouched(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(update_pr_descriptions, "PR_DRAFTS_DIR", tmp_path)
+    path = tmp_path / "PR_528.txt"
+    path.write_text("hand edited, not a draft\n", encoding="utf-8")
+
+    changed, description = update_pr_descriptions.clean_draft_file(528)
+
+    assert changed is False
+    assert "left unchanged" in description
+    assert path.read_text(encoding="utf-8") == "hand edited, not a draft\n"
+
+
+def test_clean_draft_file_reports_a_missing_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(update_pr_descriptions, "PR_DRAFTS_DIR", tmp_path)
+
+    changed, description = update_pr_descriptions.clean_draft_file(528)
+
+    assert changed is False
+    assert "no draft file" in description
+
+
+def test_clean_drafts_mode_reports_each_file(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setattr(update_pr_descriptions, "PR_DRAFTS_DIR", tmp_path)
+    body = VALID_BODY.replace("Changed.", f"Changed {OSC8_LINK}.")
+    (tmp_path / "PR_528.txt").write_text(
+        update_pr_descriptions.serialize_draft_file({"title": "Example PR title", "body": body}),
+        encoding="utf-8",
+    )
+    (tmp_path / "PR_529.txt").write_text(update_pr_descriptions.serialize_draft_file(make_draft()), encoding="utf-8")
+    monkeypatch.setattr(update_pr_descriptions.shutil, "which", lambda _: "/usr/bin/fake")
+    monkeypatch.setattr(sys, "argv", ["update_pr_descriptions.py", "528-529", "--clean-drafts"])
+
+    assert update_pr_descriptions.main() == 0
+    captured = capsys.readouterr()
+    assert "PR #528: removed 2 escape sequence(s)" in captured.out
+    assert "PR #529: already clean" in captured.out
+    assert "Cleaned 1 of 2 draft file(s)." in captured.err

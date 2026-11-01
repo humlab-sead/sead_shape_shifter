@@ -79,6 +79,26 @@ NON_PRODUCT_PATH_SETS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("contributor-config", (".github/", ".vscode/", "sead_shape_shifter.code-workspace")),
 )
 COPILOT_BODY_SEPARATOR = "<<<PR_DESCRIPTION_BODY>>>"
+# Terminal escape sequences must never reach a draft file. The Copilot CLI renders the model's
+# final message as terminal Markdown, so links arrive wrapped in OSC 8 hyperlink escapes and
+# colour codes arrive as CSI escapes. JSON output from `gh` does not contain them.
+ANSI_ESCAPE_PATTERN = re.compile(
+    r"""
+    \x1b \] 8 ; [^\x07\x1b]* (?: \x07 | \x1b \\ )   # OSC 8 hyperlink: ESC ] 8 ; params ; URI terminator
+  | \x1b \] [^\x07\x1b]* (?: \x07 | \x1b \\ )       # any other OSC sequence
+  | \x1b \[ [0-9;?]* [\ -/]* [@-~]                  # CSI sequence, such as colour
+  | \x1b [@-Z\\-_]                                   # two-character escape
+  | [\x00-\x08\x0b\x0c\x0e-\x1f\x7f]                 # stray control characters, keeping tab and newline
+    """,
+    re.VERBOSE,
+)
+
+
+def strip_terminal_escapes(text: str) -> str:
+    """Remove terminal escape sequences and stray control characters from text."""
+    return ANSI_ESCAPE_PATTERN.sub("", text)
+
+
 # The PR-description instructions state the same limit. Validation and guidance must agree,
 # otherwise a response that follows the instruction is still rejected.
 TITLE_LENGTH_LIMIT = 71
@@ -407,8 +427,12 @@ def select_title_from_preamble(preamble: str) -> str:
 
 
 def parse_copilot_response(response: str) -> dict[str, str]:
-    """Parse a title and Markdown body separated by a dedicated line."""
-    normalized_response = response.strip().replace("\r\n", "\n")
+    """Parse a title and Markdown body separated by a dedicated line.
+
+    Terminal escape sequences are removed first, because the Copilot CLI renders the model's
+    final message as terminal Markdown and wraps links in OSC 8 hyperlink escapes.
+    """
+    normalized_response = strip_terminal_escapes(response).strip().replace("\r\n", "\n")
     preamble, separator, body = normalized_response.partition(f"\n{COPILOT_BODY_SEPARATOR}\n")
     if not separator:
         raise ValueError(
@@ -523,8 +547,8 @@ def serialize_draft_file(draft: dict[str, str]) -> str:
 
 
 def parse_draft_file(content: str) -> dict[str, str]:
-    """Read and validate a PR draft file."""
-    lines = content.splitlines()
+    """Read and validate a PR draft file, removing any terminal escape sequences."""
+    lines = strip_terminal_escapes(content).splitlines()
     if len(lines) < 3 or not lines[0].startswith("title: ") or lines[1] != "description:":
         raise ValueError("Draft must start with 'title: <title>' followed by 'description:'.")
     draft = {"title": lines[0][len("title: ") :], "body": "\n".join(lines[2:]).strip()}
@@ -993,6 +1017,28 @@ def build_draft(
     return build_promotion_draft(metadata, included)
 
 
+def clean_draft_file(number: int) -> tuple[bool, str]:
+    """Rewrite one draft file without terminal escape sequences.
+
+    Returns whether the file changed and a short description of the outcome. Files that cannot be
+    parsed are reported and left untouched, so a hand-edited draft is never overwritten blindly.
+    """
+    path = draft_file_path(number)
+    if not path.is_file():
+        return False, f"no draft file at {display_path(path)}"
+    original = path.read_text(encoding="utf-8")
+    try:
+        draft = parse_draft_file(original)
+    except (OSError, ValueError) as error:
+        return False, f"left unchanged: {error}"
+    cleaned = serialize_draft_file(draft)
+    if cleaned == original:
+        return False, "already clean"
+    path.write_text(cleaned, encoding="utf-8")
+    removed = original.count("\x1b")
+    return True, f"removed {removed} escape sequence(s)" if removed else "normalised formatting"
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Generate editable PR drafts or publish reviewed PR description files.",
@@ -1006,6 +1052,11 @@ def parse_args() -> argparse.Namespace:
     mode_group = parser.add_mutually_exclusive_group(required=True)
     mode_group.add_argument("--draft", action="store_true", help="Generate drafts in docs/whats-new/PRs/")
     mode_group.add_argument("--publish", action="store_true", help="Publish reviewed draft files from docs/whats-new/PRs/")
+    mode_group.add_argument(
+        "--clean-drafts",
+        action="store_true",
+        help="Rewrite draft files to remove terminal escape sequences and validate them, without publishing",
+    )
     parser.add_argument("--repo", help="GitHub repository in OWNER/REPO form; defaults to the current repository")
     parser.add_argument(
         "--model",
@@ -1066,6 +1117,15 @@ def main() -> int:
     except ValueError as error:
         print(error, file=sys.stderr)
         return 2
+
+    if args.clean_drafts:
+        changed = 0
+        for number in numbers:
+            was_changed, description = clean_draft_file(number)
+            changed += 1 if was_changed else 0
+            print(f"PR #{number}: {description}")
+        print(f"Cleaned {changed} of {len(numbers)} draft file(s).", file=sys.stderr)
+        return 0
 
     draft_numbers: list[int] = []
     if args.draft:
