@@ -28,6 +28,7 @@ def make_args(**overrides: object) -> argparse.Namespace:
         "limit": None,
         "batch_size": 25,
         "model": None,
+        "attempts": None,
         "show_all_orphaned": False,
         "no_preflight": False,
         "fail_fast": False,

@@ -87,6 +87,9 @@ python3 scripts/draft_all_pr_descriptions.py
 # Redraft everything, newest first, in batches of 10
 python3 scripts/draft_all_pr_descriptions.py --force --newest-first --batch-size 10
 
+# Retry a malformed model response up to three times per pull request
+python3 scripts/draft_all_pr_descriptions.py --attempts 3
+
 # Include closed and open pull requests, newest first
 python3 scripts/draft_all_pr_descriptions.py --state all --newest-first
 ```

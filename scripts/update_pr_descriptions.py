@@ -33,11 +33,13 @@ PR_FIELDS = ",".join(
         "baseRefName",
         "baseRefOid",
         "headRefName",
+        "headRefOid",
         "state",
         "url",
         "mergedAt",
         "mergeCommit",
         "files",
+        "changedFiles",
         "closingIssuesReferences",
         "statusCheckRollup",
     )
@@ -102,6 +104,9 @@ def strip_terminal_escapes(text: str) -> str:
 # The PR-description instructions state the same limit. Validation and guidance must agree,
 # otherwise a response that follows the instruction is still rejected.
 TITLE_LENGTH_LIMIT = 71
+# A model can return a malformed response once and a good one on the next attempt, so drafting
+# retries before reporting a failure. Retrying does not repeat a successful request.
+DEFAULT_DRAFT_ATTEMPTS = 2
 PROMPT_TEMPLATE = (
     "Read the complete input file at {input_path} using the view tool. It contains the required PR-description "
     "instructions, repository template, pull request metadata, linked issue details when available, CI results, and "
@@ -186,6 +191,83 @@ def is_generated_graphify_path(path: str) -> bool:
     return path.startswith("graphify-out/")
 
 
+def local_commit_exists(oid: str) -> bool:
+    """Report whether a commit object is present in the local clone."""
+    if not oid:
+        return False
+    try:
+        result = subprocess.run(
+            ["git", "cat-file", "-e", f"{oid}^{{commit}}"],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            check=False,
+        )
+    except FileNotFoundError:
+        return False
+    return result.returncode == 0
+
+
+def local_pr_diff(base_oid: str | None, head_oid: str | None) -> str | None:
+    """Return the PR diff computed from local git objects, excluding generated paths.
+
+    `gh pr diff` refuses pull requests that touch more than 300 files, and generated graphify
+    output inflates that count heavily: one run measured 670 changed files, of which 634 were
+    under `graphify-out/`. Excluding generated paths at the source keeps the diff small and
+    avoids the limit entirely. Returns `None` when the commits are not available locally.
+    """
+    if not base_oid or not head_oid or not local_commit_exists(base_oid) or not local_commit_exists(head_oid):
+        return None
+    try:
+        result = subprocess.run(
+            ["git", "diff", f"{base_oid}...{head_oid}", "--", ".", ":(exclude)graphify-out"],
+            cwd=REPO_ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+    except FileNotFoundError:
+        return None
+    if result.returncode != 0:
+        return None
+    return result.stdout
+
+
+def list_pull_request_files(number: int, repo: str | None) -> list[dict[str, Any]]:
+    """Return every changed file for a pull request, using the paginated files endpoint.
+
+    `gh pr view --json files` caps the list at 100 entries, so large pull requests would report
+    a truncated file list. The REST files endpoint paginates and reports the full set.
+    """
+    slug = resolve_repository_slug(repo)
+    if slug is None:
+        return []
+    try:
+        output = run_command(
+            [
+                "gh",
+                "api",
+                "--paginate",
+                f"repos/{slug}/pulls/{number}/files",
+                "--jq",
+                ".[] | {path: .filename, additions: .additions, deletions: .deletions, status: .status}",
+            ]
+        )
+    except CommandError:
+        return []
+    files: list[dict[str, Any]] = []
+    for line in output.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            record = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(record, dict) and isinstance(record.get("path"), str):
+            files.append(record)
+    return files
+
+
 def filter_graphify_diff(patch: str) -> str:
     """Remove generated graphify files while retaining all other patch content."""
     kept_lines: list[str] = []
@@ -221,16 +303,46 @@ def get_issue_context(references: list[dict[str, Any]], repo: str | None) -> lis
     return issue_context
 
 
+def load_pr_diff(number: int, metadata: dict[str, Any], repo: str | None) -> tuple[str, str]:
+    """Return the pull request diff and a short description of its source.
+
+    The local diff is preferred because it can exclude generated paths before the diff is
+    produced, whereas `gh pr diff` refuses pull requests over 300 files regardless of what is
+    excluded afterwards. It falls back to `gh pr diff` when the commits are unavailable, and to
+    a path-only summary when that also fails, so a huge pull request still yields a draft.
+    """
+    local = local_pr_diff(metadata.get("baseRefOid"), metadata.get("headRefOid"))
+    if local is not None:
+        return local, "local git diff, generated paths excluded"
+
+    try:
+        return filter_graphify_diff(run_command(gh_command(["pr", "diff", str(number)], repo))), "gh pr diff"
+    except CommandError as error:
+        paths = [file["path"] for file in metadata.get("files", [])]
+        summary = "\n".join(f"- {path}" for path in paths)
+        reason = str(error).splitlines()[0]
+        return (
+            "The complete diff could not be retrieved, so only the changed paths are listed.\n" f"Reason: {reason}\n\n{summary}",
+            "changed paths only: the diff was unavailable",
+        )
+
+
 def load_pr_context(number: int, repo: str | None) -> dict[str, Any]:
     """Fetch PR metadata, linked issue context, and its complete non-generated diff."""
     metadata = json.loads(run_command(gh_command(["pr", "view", str(number), "--json", PR_FIELDS], repo)))
-    raw_diff = run_command(gh_command(["pr", "diff", str(number)], repo))
-    diff = filter_graphify_diff(raw_diff)
+    declared_files = metadata.get("changedFiles")
+    reported_files = metadata.get("files", []) if isinstance(metadata.get("files"), list) else []
+    # `gh pr view --json files` silently truncates at 100 entries, so ask the paginated endpoint
+    # when the reported list is shorter than the pull request's own changed-file count.
+    if isinstance(declared_files, int) and declared_files > len(reported_files):
+        metadata["files"] = list_pull_request_files(number, repo) or reported_files
+    diff, diff_source = load_pr_diff(number, metadata, repo)
     files = [file for file in metadata.get("files", []) if not is_generated_graphify_path(file.get("path", ""))]
     return {
         "metadata": {**metadata, "files": files},
         "linked_issues": get_issue_context(metadata.get("closingIssuesReferences", []), repo),
         "diff": diff,
+        "diff_source": diff_source,
         "omitted_generated_paths": [
             file.get("path") for file in metadata.get("files", []) if is_generated_graphify_path(file.get("path", ""))
         ],
@@ -256,6 +368,8 @@ def render_context(context: dict[str, Any]) -> str:
             ),
             "## Generated diff paths omitted",
             json.dumps(context["omitted_generated_paths"], ensure_ascii=False),
+            "## Diff source",
+            context.get("diff_source", "unspecified"),
             "## Complete PR diff against the base branch",
             context["diff"],
         )
@@ -499,8 +613,8 @@ def configure_copilot_environment(model: str | None) -> tuple[str, dict[str, str
     return selected_model, environment
 
 
-def generate_draft(context: dict[str, Any], model: str | None, *, verbose: bool = False) -> dict[str, str]:
-    """Ask Copilot to draft a PR title and description using only supplied evidence."""
+def request_copilot_response(context: dict[str, Any], model: str | None) -> tuple[str, dict[str, str]]:
+    """Run the Copilot CLI once and return its raw response with the environment it used."""
     tmp_root = REPO_ROOT / "tmp"
     tmp_root.mkdir(exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="pr-description-", dir=tmp_root) as temporary_directory:
@@ -529,16 +643,41 @@ def generate_draft(context: dict[str, Any], model: str | None, *, verbose: bool 
             "--no-auto-update",
         ]
         command.extend(["--model", selected_model])
-        response = run_command(command, cwd=working_directory, env=environment, require_stdout=True)
-    try:
-        return parse_copilot_response(response)
-    except ValueError:
-        if verbose:
-            api_key = environment.get("COPILOT_PROVIDER_API_KEY")
-            logged_response = response.replace(api_key, "[REDACTED]") if api_key else response
-            print("Raw Copilot response:", file=sys.stderr)
-            print(logged_response, file=sys.stderr)
-        raise
+        return run_command(command, cwd=working_directory, env=environment, require_stdout=True), environment
+
+
+def generate_draft(
+    context: dict[str, Any],
+    model: str | None,
+    *,
+    verbose: bool = False,
+    attempts: int = DEFAULT_DRAFT_ATTEMPTS,
+) -> dict[str, str]:
+    """Ask Copilot to draft a PR title and description using only supplied evidence.
+
+    A model sometimes returns a malformed response for one attempt and a good one for the next,
+    so a parse failure is retried. Nothing is retried when the response parses, and the final
+    failure is reported with the last attempt's message.
+    """
+    last_error: ValueError | None = None
+    for attempt in range(1, max(attempts, 1) + 1):
+        response, environment = request_copilot_response(context, model)
+        try:
+            return parse_copilot_response(response)
+        except ValueError as error:
+            last_error = error
+            if verbose:
+                api_key = environment.get("COPILOT_PROVIDER_API_KEY")
+                logged_response = response.replace(api_key, "[REDACTED]") if api_key else response
+                print(f"Raw Copilot response (attempt {attempt}):", file=sys.stderr)
+                print(logged_response, file=sys.stderr)
+            if attempt < attempts:
+                print(
+                    f"Warning: draft attempt {attempt} of {attempts} failed ({error}); retrying.",
+                    file=sys.stderr,
+                )
+    assert last_error is not None
+    raise last_error
 
 
 def serialize_draft_file(draft: dict[str, str]) -> str:
@@ -1005,11 +1144,12 @@ def build_draft(
     verbose: bool = False,
     repo: str | None = None,
     included_prs: Sequence[int] | None = None,
+    attempts: int = DEFAULT_DRAFT_ATTEMPTS,
 ) -> dict[str, str]:
     """Return a promotion draft built from branch history, or ask Copilot for a change draft."""
     metadata = context["metadata"]
     if not is_promotion_pull_request(metadata):
-        return generate_draft(context, model, verbose=verbose)
+        return generate_draft(context, model, verbose=verbose, attempts=attempts)
     if included_prs:
         included: list[dict[str, Any]] = [{"number": number, "title": ""} for number in included_prs]
     else:
@@ -1065,6 +1205,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--force", action="store_true", help="With --draft, replace existing draft files")
     parser.add_argument("--verbose", action="store_true", help="With --draft, log the raw Copilot response when parsing fails")
     parser.add_argument(
+        "--attempts",
+        type=int,
+        default=DEFAULT_DRAFT_ATTEMPTS,
+        help=("With --draft, how many times to ask the model when a response does not parse " f"(default: {DEFAULT_DRAFT_ATTEMPTS})"),
+    )
+    parser.add_argument(
         "--include-orphaned",
         action="store_true",
         help=(
@@ -1102,6 +1248,9 @@ def main() -> int:
         return 2
     if args.verbose and not args.draft:
         print("--verbose can only be used with --draft.", file=sys.stderr)
+        return 2
+    if args.attempts < 1:
+        print("--attempts must be at least 1.", file=sys.stderr)
         return 2
     if args.show_all_orphaned and not args.include_orphaned:
         print("--show-all-orphaned requires --include-orphaned.", file=sys.stderr)
@@ -1157,6 +1306,7 @@ def main() -> int:
                     verbose=args.verbose,
                     repo=args.repo,
                     included_prs=included_prs,
+                    attempts=args.attempts,
                 )
                 if args.include_orphaned:
                     draft = attach_detected_commits(draft, context["metadata"], args.repo, args.show_all_orphaned)
