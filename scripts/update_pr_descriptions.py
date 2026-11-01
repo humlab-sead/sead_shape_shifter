@@ -31,6 +31,7 @@ PR_FIELDS = ",".join(
         "title",
         "body",
         "baseRefName",
+        "baseRefOid",
         "headRefName",
         "state",
         "url",
@@ -47,6 +48,17 @@ EXPECTED_HEADINGS: list[str] = [
     "## Upgrade notes",
     "## Validation",
 ]
+PROMOTION_HEADINGS: list[str] = [
+    "## Summary",
+    "## Included PRs",
+    "## User-facing release note",
+    "## Upgrade notes",
+    "## Validation",
+]
+ACCEPTED_HEADING_SETS: tuple[list[str], ...] = (EXPECTED_HEADINGS, PROMOTION_HEADINGS)
+PROMOTION_MARKER = "<!-- promotion-pr -->"
+PROMOTION_ROUTES = frozenset({("dev", "staging"), ("staging", "main")})
+PROMOTION_JSON_FIELDS = "number,title,mergedAt,mergeCommit,closingIssuesReferences"
 ORPHANED_HEADING = "## Detected orphaned commits"
 ORPHANED_COMMIT_LIMIT = 50
 MERGED_PULL_REQUEST_FIELDS = "number,mergedAt,mergeCommit"
@@ -225,25 +237,37 @@ def render_context(context: dict[str, Any]) -> str:
     )
 
 
-def validate_draft(value: Any) -> dict[str, str]:
-    """Validate the model response before displaying or applying it.
+def headings_match(headings: list[str], expected: list[str]) -> bool:
+    """Report whether headings match a required set, with an optional detected-commit record."""
+    if headings == expected:
+        return True
+    return headings[:-1] == expected and headings[-1:] == [ORPHANED_HEADING]
 
-    A draft built with `--include-orphaned` may end with the `Detected orphaned commits`
-    record, so that heading is accepted after the four required headings.
+
+def validate_draft(
+    value: Any,
+    heading_sets: Sequence[list[str]] = ACCEPTED_HEADING_SETS,
+) -> dict[str, str]:
+    """Validate a draft before displaying, saving, or applying it.
+
+    Promotion drafts keep the `<!-- promotion-pr -->` marker as their first line and add an
+    `Included PRs` section, so they are checked against their own heading set. A draft built
+    with `--include-orphaned` may end with the `Detected orphaned commits` record.
     """
     if not isinstance(value, dict) or set(value) != {"title", "body"}:
-        raise ValueError('Copilot response must be a JSON object with exactly "title" and "body" keys.')
+        raise ValueError('Draft must be a JSON object with exactly "title" and "body" keys.')
     title = value["title"].strip() if isinstance(value["title"], str) else ""
     body = value["body"].strip() if isinstance(value["body"], str) else ""
     if not title or "\n" in title or len(title) > 71 or title.endswith("."):
         raise ValueError("Generated title is empty, multiline, longer than 71 characters, or ends with a period.")
-    headings = re.findall(r"^## .+$", body, flags=re.MULTILINE)
-    optional_heading = headings[:-1] == EXPECTED_HEADINGS and headings[-1:] == [ORPHANED_HEADING]
-    if not body.startswith(EXPECTED_HEADINGS[0]) or (headings != EXPECTED_HEADINGS and not optional_heading):
-        raise ValueError("Generated body must contain the four required headings in order and no others.")
-    if "<!--" in body or "-->" in body:
+    checked_body = body[len(PROMOTION_MARKER) :].lstrip() if body.startswith(PROMOTION_MARKER) else body
+    headings = re.findall(r"^## .+$", checked_body, flags=re.MULTILINE)
+    matches_known_structure = any(headings_match(headings, expected) and checked_body.startswith(expected[0]) for expected in heading_sets)
+    if not matches_known_structure:
+        raise ValueError("Generated body must use one of the supported heading sets in order and no others.")
+    if "<!--" in checked_body or "-->" in checked_body:
         raise ValueError("Generated body must not include template comments.")
-    sections = re.split(r"^## .+$", body, flags=re.MULTILINE)[1:]
+    sections = re.split(r"^## .+$", checked_body, flags=re.MULTILINE)[1:]
     if any(not section.strip() for section in sections):
         raise ValueError("Generated body must include content under every required heading.")
     return {"title": title, "body": body}
@@ -690,6 +714,159 @@ def attach_detected_commits(
     return attach_orphaned_section(draft, listed, excluded)
 
 
+def local_commit_set(ref: str) -> set[str] | None:
+    """Return commits reachable from a local ref, or None when git cannot resolve it."""
+    try:
+        result = subprocess.run(["git", "rev-list", ref], cwd=REPO_ROOT, text=True, capture_output=True, check=False)
+    except FileNotFoundError:
+        return None
+    if result.returncode != 0:
+        return None
+    return {line.strip() for line in result.stdout.splitlines() if line.strip()}
+
+
+def is_promotion_pull_request(metadata: dict[str, Any]) -> bool:
+    """Report whether a pull request only promotes one branch into another."""
+    body = metadata.get("body") or ""
+    if PROMOTION_MARKER in body:
+        return True
+    return ((metadata.get("headRefName") or ""), (metadata.get("baseRefName") or "")) in PROMOTION_ROUTES
+
+
+def list_included_pull_requests(metadata: dict[str, Any], repo: str | None) -> list[dict[str, Any]]:
+    """Return pull requests merged into the promotion source branch but absent from its target.
+
+    The comparison uses commit ancestry and the promotion pull request's recorded base and merge
+    commits, so a historical promotion lists the pull requests it actually carried rather than
+    every pull request the target branch has absorbed since.
+    """
+    head_ref = metadata.get("headRefName") or ""
+    base_ref = metadata.get("baseRefName") or ""
+    if not head_ref or not base_ref:
+        return []
+    command = gh_command(
+        ["pr", "list", "--state", "merged", "--base", head_ref, "--limit", "200", "--json", PROMOTION_JSON_FIELDS],
+        repo,
+    )
+    try:
+        records = json.loads(run_command(command))
+    except (CommandError, json.JSONDecodeError):
+        return []
+    if not isinstance(records, list):
+        return []
+
+    base_ref_oid = metadata.get("baseRefOid")
+    base_commits = local_commit_set(base_ref_oid) if isinstance(base_ref_oid, str) and base_ref_oid else None
+    if base_commits is None:
+        base_commits = local_commit_set(f"origin/{base_ref}") or local_commit_set(base_ref)
+    promotion_oid = merge_commit_oid(metadata)
+    head_commits = local_commit_set(promotion_oid) if promotion_oid else None
+    promotion_merged_at = metadata.get("mergedAt")
+
+    included: list[dict[str, Any]] = []
+    for record in records:
+        if not isinstance(record, dict):
+            continue
+        oid = merge_commit_oid(record)
+        if base_commits is not None and oid is not None and oid in base_commits:
+            continue
+        if head_commits is not None:
+            if oid is None or oid not in head_commits:
+                continue
+        elif isinstance(promotion_merged_at, str) and str(record.get("mergedAt") or "") > promotion_merged_at:
+            continue
+        included.append(record)
+    return sorted(included, key=lambda record: (str(record.get("mergedAt") or ""), int(record.get("number") or 0)))
+
+
+def collect_issue_numbers(records: Sequence[dict[str, Any]]) -> list[int]:
+    """Collect linked issue numbers from included pull request records."""
+    numbers: list[int] = []
+    for record in records:
+        references = record.get("closingIssuesReferences")
+        if not isinstance(references, list):
+            continue
+        for reference in references:
+            number = reference.get("number") if isinstance(reference, dict) else None
+            if isinstance(number, int) and not isinstance(number, bool):
+                numbers.append(number)
+    return list(dict.fromkeys(numbers))
+
+
+def build_promotion_draft(metadata: dict[str, Any], included: Sequence[dict[str, Any]]) -> dict[str, str]:
+    """Build a promotion description that lists the pull requests it carries.
+
+    Promotion pull requests must not repeat release-note text from the pull requests they
+    carry, so the note sections use the template fallback wording.
+    """
+    head_ref = metadata.get("headRefName") or "the source branch"
+    base_ref = metadata.get("baseRefName") or "the target branch"
+    pull_request_url = metadata.get("url") or ""
+    repository_url = pull_request_url.split("/pull/")[0] if "/pull/" in pull_request_url else ""
+
+    lines = [
+        PROMOTION_MARKER,
+        "## Summary",
+        "",
+        f"Promotes `{head_ref}` into `{base_ref}`.",
+        "",
+        "This pull request introduces no change of its own. It carries the pull requests listed below and adds no separate release note.",
+        "",
+        "## Included PRs",
+        "",
+    ]
+    if included:
+        for record in included:
+            number = record.get("number")
+            title = " ".join(str(record.get("title") or "").split())
+            if repository_url and number:
+                lines.append(f"- [#{number}]({repository_url}/pull/{number}) {title}".rstrip())
+            else:
+                lines.append(f"- #{number} {title}".rstrip())
+        issue_numbers = collect_issue_numbers(included)
+        if issue_numbers:
+            lines.extend(["", "Linked issues: " + ", ".join(f"#{number}" for number in issue_numbers) + "."])
+    else:
+        lines.append("None detected - list the included pull requests before merging.")
+    lines.extend(
+        [
+            "",
+            "## User-facing release note",
+            "",
+            "None - no user-visible change.",
+            "",
+            "## Upgrade notes",
+            "",
+            "None - no user action required.",
+            "",
+            "## Validation",
+            "",
+            "Not verified: validation results are recorded on the included pull requests.",
+        ]
+    )
+    title = f"chore: promote {head_ref} into {base_ref}"
+    return validate_draft({"title": title, "body": "\n".join(lines)})
+
+
+def build_draft(
+    context: dict[str, Any],
+    model: str | None,
+    *,
+    verbose: bool = False,
+    repo: str | None = None,
+    included_prs: Sequence[int] | None = None,
+) -> dict[str, str]:
+    """Return a promotion draft built from branch history, or ask Copilot for a change draft."""
+    metadata = context["metadata"]
+    if not is_promotion_pull_request(metadata):
+        return generate_draft(context, model, verbose=verbose)
+    if included_prs:
+        included: list[dict[str, Any]] = [{"number": number, "title": ""} for number in included_prs]
+    else:
+        included = list_included_pull_requests(metadata, repo)
+    return build_promotion_draft(metadata, included)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Generate editable PR drafts or publish reviewed PR description files.",
@@ -726,6 +903,13 @@ def parse_args() -> argparse.Namespace:
             "release bookkeeping, documentation-only commits, and contributor configuration"
         ),
     )
+    parser.add_argument(
+        "--included-prs",
+        help=(
+            "With --draft, comma-separated pull request numbers to list in a promotion draft instead of "
+            "detecting them from branch history"
+        ),
+    )
     return parser.parse_args()
 
 
@@ -748,6 +932,14 @@ def main() -> int:
     if args.include_orphaned and not args.draft:
         print("--include-orphaned can only be used with --draft.", file=sys.stderr)
         return 2
+    if args.included_prs and not args.draft:
+        print("--included-prs can only be used with --draft.", file=sys.stderr)
+        return 2
+    try:
+        included_prs = parse_pr_specs([args.included_prs]) if args.included_prs else None
+    except ValueError as error:
+        print(error, file=sys.stderr)
+        return 2
 
     draft_numbers: list[int] = []
     if args.draft:
@@ -759,14 +951,10 @@ def main() -> int:
                 draft_numbers.append(number)
         if not draft_numbers:
             return 0
-        try:
-            configure_copilot_environment(args.model)
-        except ValueError as error:
-            print(error, file=sys.stderr)
-            return 2
 
-    required_commands = ("gh", "copilot") if args.draft else ("gh",)
-    for command in required_commands:
+    # Promotion drafts are built from repository history and need no model, so Copilot is
+    # configured per pull request instead of up front.
+    for command in ("gh",):
         if shutil.which(command) is None:
             print(f"Required command not found: {command}", file=sys.stderr)
             return 2
@@ -777,7 +965,13 @@ def main() -> int:
             print(f"Generating draft for PR #{number}...", file=sys.stderr)
             try:
                 context = load_pr_context(number, args.repo)
-                draft = generate_draft(context, args.model, verbose=args.verbose)
+                draft = build_draft(
+                    context,
+                    args.model,
+                    verbose=args.verbose,
+                    repo=args.repo,
+                    included_prs=included_prs,
+                )
                 if args.include_orphaned:
                     draft = attach_detected_commits(draft, context["metadata"], args.repo, args.show_all_orphaned)
                 path = draft_file_path(number)

@@ -41,9 +41,9 @@ python scripts/print_target_model_entity.py \
 ## Release Notes Drafting
 
 The `prepare_copilot_release_notes.py` script prepares a user-facing release-notes draft for refinement with Copilot CLI.
-The `generate_whats_new.py` script builds the release-note file from the authored user-facing and upgrade-note sections of merged PR descriptions. It uses `CHANGELOG.md` only for the selected version's date and prior-version cutoff. If an AI API key is configured, it consolidates overlapping PR notes; otherwise it preserves the authored notes. The older `generate_user_release_notes.py` script remains available for changelog-derived drafts.
+The `generate_whats_new.py` script builds the release-note file from the authored user-facing and upgrade-note sections of merged pull requests. It selects pull requests by commit ancestry: a pull request ships in release `Rn` when its merge commit is reachable from the release ref (`vRn` when the tag exists, otherwise `HEAD`) and not from the previous release ref. It reads pull requests whose base branch is `dev`, `staging`, or `main`, so feature pull requests are included even though they never target `main`. `CHANGELOG.md` supplies only the version date and previous version. If an AI API key is configured, it consolidates overlapping notes; otherwise it preserves the authored notes. The older `generate_user_release_notes.py` script remains available for changelog-derived drafts.
 
-For the latest version in `CHANGELOG.md`, the PR-based generator also adds a `Pending Release` snapshot of PRs merged into `staging` after the latest PR merged into `main`, including their authored notes. It uses `gh pr list`, so `gh` must be installed and authenticated. See [the What's New workflow](../docs/whats-new/README.md).
+Promotion pull requests carry the `<!-- promotion-pr -->` marker and contribute no notes of their own, so promoted changes are never reported twice. For the latest version in `CHANGELOG.md`, the generator also adds a `Pending Release` snapshot of merged pull requests that have not reached `main`, including their authored notes and the pull requests each promotion carries. It uses `gh pr list` and `git rev-list`, so `gh` must be authenticated and full history and tags must be available. See [the What's New workflow](../docs/whats-new/README.md).
 
 ## `update_pr_descriptions.py`
 
@@ -52,6 +52,9 @@ For the latest version in `CHANGELOG.md`, the PR-based generator also adds a `Pe
 ```bash
 # Draft into docs/whats-new/PRs/PR_<number>.txt
 python3 scripts/update_pr_descriptions.py 620-634 --draft
+
+# Override the detected included pull requests for a promotion
+python3 scripts/update_pr_descriptions.py 627 --draft --included-prs 621,626
 
 # Record commits that reached the base branch without a pull request
 python3 scripts/update_pr_descriptions.py 620-634 --draft --include-orphaned
@@ -62,6 +65,8 @@ python3 scripts/update_pr_descriptions.py 620-634 --draft --include-orphaned --s
 # Publish the reviewed files
 python3 scripts/update_pr_descriptions.py 620-634 --publish
 ```
+
+Promotion pull requests (`dev` into `staging`, or `staging` into `main`) are drafted from branch history without a model, listing the pull requests merged into the source branch and absent from the target branch.
 
 `--include-orphaned` appends a `Detected orphaned commits` section covering the commits pushed to the base branch between the previous merged pull request and this one. Generated output, release bookkeeping, documentation-only commits, and contributor configuration are filtered out of that section by default, and the filtered counts stay visible in the section and on standard error. See [the What's New workflow](../docs/whats-new/README.md#recording-commits-without-a-pull-request).
 

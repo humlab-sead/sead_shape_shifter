@@ -29,6 +29,18 @@ Use `.github/pull_request_template.md` as the required structure. Produce a read
 
 Keep all four sections. Replace template comments with completed content or the specified fallback text. Do not reproduce the HTML comments, add unrelated sections, or wrap the description in a code fence.
 
+### Promotion pull requests
+
+A promotion pull request moves one branch into the next stage of the pipeline: `dev` into `staging`, or `staging` into `main`. Use `.github/promotion_pr_template.md` for these, and start the body with the `<!-- promotion-pr -->` marker. Promotion descriptions use these headings, in exactly this order:
+
+1. `## Summary`
+2. `## Included PRs`
+3. `## User-facing release note`
+4. `## Upgrade notes`
+5. `## Validation`
+
+Each promotion is usually built from another pull request in this repository, so the description states only what is being promoted and lists the pull request numbers it carries. Promotion pull requests use the `None` fallbacks for the release-note and upgrade sections, because the release-note generator reads those sections from the pull requests listed under `Included PRs`. Do not restate their notes here.
+
 ### Summary
 
 State what changed and why. Explain the main behavior or result, focusing on information useful to reviewers. Include implementation detail only when needed to understand the change. Distinguish implemented changes from planned or proposed work.

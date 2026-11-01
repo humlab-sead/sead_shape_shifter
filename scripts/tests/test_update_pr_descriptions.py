@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
@@ -249,7 +250,7 @@ def test_draft_mode_writes_files_without_publishing(tmp_path: Path, monkeypatch:
     monkeypatch.setattr(update_pr_descriptions, "PR_DRAFTS_DIR", tmp_path)
     monkeypatch.setattr(update_pr_descriptions.shutil, "which", lambda _: "/usr/bin/fake")
     monkeypatch.setattr(update_pr_descriptions, "configure_copilot_environment", lambda model: ("test-model", {}))
-    monkeypatch.setattr(update_pr_descriptions, "load_pr_context", lambda number, repo: {"number": number})
+    monkeypatch.setattr(update_pr_descriptions, "load_pr_context", lambda number, repo: {"metadata": {"number": number}})
     monkeypatch.setattr(update_pr_descriptions, "generate_draft", lambda context, model, *, verbose=False: make_draft())
     monkeypatch.setattr(update_pr_descriptions, "publish_draft", lambda *args: pytest.fail("draft mode published a PR"))
     monkeypatch.setattr(sys, "argv", ["update_pr_descriptions.py", "627", "--draft"])
@@ -291,15 +292,16 @@ def test_draft_batch_writes_successes_skips_existing_and_continues_after_failure
     queried: list[int] = []
     verbose_values: list[bool] = []
 
-    def fake_load_pr_context(number: int, _repo: str | None) -> dict[str, int]:
+    def fake_load_pr_context(number: int, _repo: str | None) -> dict[str, dict[str, int]]:
         queried.append(number)
-        return {"number": number}
+        return {"metadata": {"number": number}}
 
-    def fake_generate_draft(context: dict[str, int], _model: str | None, *, verbose: bool = False) -> dict[str, str]:
+    def fake_generate_draft(context: dict[str, dict[str, int]], _model: str | None, *, verbose: bool = False) -> dict[str, str]:
         verbose_values.append(verbose)
-        if context["number"] == 628:
+        number = context["metadata"]["number"]
+        if number == 628:
             raise ValueError("invalid Copilot response")
-        return make_draft(f"Draft for PR #{context['number']}")
+        return make_draft(f"Draft for PR #{number}")
 
     monkeypatch.setattr(update_pr_descriptions, "load_pr_context", fake_load_pr_context)
     monkeypatch.setattr(update_pr_descriptions, "generate_draft", fake_generate_draft)
@@ -502,7 +504,7 @@ def test_validate_draft_accepts_a_trailing_orphaned_commit_record() -> None:
 def test_validate_draft_rejects_an_orphaned_record_before_the_required_sections() -> None:
     body = ORPHANED_BODY.replace(VALID_BODY, "").strip() + "\n\n" + VALID_BODY
 
-    with pytest.raises(ValueError, match="four required headings"):
+    with pytest.raises(ValueError, match="supported heading sets"):
         update_pr_descriptions.validate_draft({"title": "Example PR title", "body": body})
 
 
@@ -662,3 +664,106 @@ def test_show_all_orphaned_requires_include_orphaned(monkeypatch: pytest.MonkeyP
 
     assert update_pr_descriptions.main() == 2
     assert "--show-all-orphaned requires --include-orphaned." in capsys.readouterr().err
+
+
+def test_included_pull_requests_use_the_promotions_own_base_not_the_current_branch_tip(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A later promotion must not hide pull requests carried by an earlier one."""
+    merged_into_source = [
+        {"number": 626, "title": "Carried by this promotion", "mergedAt": "2026-10-29T17:59:16Z", "mergeCommit": {"oid": "carried"}},
+        {"number": 634, "title": "Merged after this promotion", "mergedAt": "2026-11-01T09:54:32Z", "mergeCommit": {"oid": "later"}},
+        {"number": 604, "title": "Already in the target", "mergedAt": "2026-10-24T21:31:12Z", "mergeCommit": {"oid": "already"}},
+    ]
+    monkeypatch.setattr(update_pr_descriptions, "run_command", lambda *args, **kwargs: json.dumps(merged_into_source))
+    commits = {
+        # The promotion's own base commit already contained the older pull request.
+        "base-oid": {"already"},
+        # The promotion's merge commit contained only one of the two newer pull requests.
+        "promotion-merge": {"already", "carried"},
+        # The current target branch now contains everything, including the later pull request.
+        "origin/staging": {"already", "carried", "later"},
+    }
+    monkeypatch.setattr(update_pr_descriptions, "local_commit_set", lambda ref: commits.get(ref))
+    metadata = {
+        "number": 627,
+        "headRefName": "dev",
+        "baseRefName": "staging",
+        "baseRefOid": "base-oid",
+        "mergedAt": "2026-10-29T18:04:35Z",
+        "mergeCommit": {"oid": "promotion-merge"},
+    }
+
+    included = update_pr_descriptions.list_included_pull_requests(metadata, None)
+
+    assert [record["number"] for record in included] == [626]
+
+
+def test_promotion_draft_lists_included_pull_requests_and_issue_references() -> None:
+    metadata = {"headRefName": "dev", "baseRefName": "staging", "url": "https://github.com/owner/repo/pull/627"}
+    included = [
+        {"number": 626, "title": "Enhance cached value reference UX", "closingIssuesReferences": [{"number": 612}]},
+        {"number": 621, "title": "Simplify route inventory", "closingIssuesReferences": [{"number": 610}]},
+    ]
+
+    draft = update_pr_descriptions.build_promotion_draft(metadata, included)
+
+    assert draft["title"] == "chore: promote dev into staging"
+    assert draft["body"].startswith(update_pr_descriptions.PROMOTION_MARKER)
+    assert "- [#626](https://github.com/owner/repo/pull/626) Enhance cached value reference UX" in draft["body"]
+    assert "- [#621](https://github.com/owner/repo/pull/621) Simplify route inventory" in draft["body"]
+    assert "Linked issues: #612, #610." in draft["body"]
+    assert "## User-facing release note\n\nNone - no user-visible change." in draft["body"]
+
+
+def test_build_draft_uses_branch_history_for_promotions_without_a_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        update_pr_descriptions,
+        "generate_draft",
+        lambda *args, **kwargs: pytest.fail("promotion draft consulted a model"),
+    )
+    monkeypatch.setattr(
+        update_pr_descriptions,
+        "list_included_pull_requests",
+        lambda metadata, repo: [{"number": 626, "title": "Carried"}],
+    )
+    context = {"metadata": {"headRefName": "dev", "baseRefName": "staging", "url": "https://github.com/o/r/pull/9"}}
+
+    draft = update_pr_descriptions.build_draft(context, None, repo=None)
+
+    assert "#626" in draft["body"]
+
+
+def test_included_prs_overrides_detection_for_a_promotion(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        update_pr_descriptions,
+        "list_included_pull_requests",
+        lambda metadata, repo: pytest.fail("detection ran despite --included-prs"),
+    )
+    context = {"metadata": {"headRefName": "dev", "baseRefName": "staging", "url": "https://github.com/o/r/pull/9"}}
+
+    draft = update_pr_descriptions.build_draft(context, None, included_prs=[621, 626])
+
+    assert "#621" in draft["body"]
+    assert "#626" in draft["body"]
+
+
+def test_promotion_draft_accepts_a_trailing_orphaned_commit_record() -> None:
+    metadata = {"headRefName": "dev", "baseRefName": "staging", "url": "https://github.com/owner/repo/pull/627"}
+    draft = update_pr_descriptions.build_promotion_draft(metadata, [{"number": 626, "title": "Carried"}])
+
+    with_orphaned = update_pr_descriptions.attach_detected_commits(
+        draft,
+        {"number": 627},
+        None,
+        True,
+    )
+
+    assert draft["body"] == update_pr_descriptions.replace_orphaned_section(with_orphaned["body"], "")
+
+
+def test_included_prs_requires_draft_mode(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    monkeypatch.setattr(sys, "argv", ["update_pr_descriptions.py", "627", "--publish", "--included-prs", "621"])
+
+    assert update_pr_descriptions.main() == 2
+    assert "--included-prs can only be used with --draft." in capsys.readouterr().err
