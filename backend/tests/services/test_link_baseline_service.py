@@ -401,6 +401,9 @@ async def assert_parity(cfg: dict[str, Any], *, local_entity: str, index: int) -
     assert result.row_count_after == warning.metadata["row_count_after"]
     assert row_findings(result.issues) == row_findings(production.issues)
     assert column_increases(result.issues) == column_increases(production.issues)
+    assert result._saved_project is not None
+    assert result._foreign_key is not None
+    assert result._foreign_key.identity_signature == saved.get_table(local_entity).foreign_keys[index].identity_signature
     assert result.local_rows is not None and result.remote_rows is not None
     assert_same_rows(production.local_rows, result.local_rows)
     assert_same_rows(production.remote_rows, result.remote_rows)
