@@ -54,14 +54,15 @@ python3 scripts/generate_whats_new.py --version 2.5.0 --source-branches dev,stag
 ```
 
 
-For manual runs, optional AI mode environment variables are:
+The What's New generators read these shared settings from the repository-root `.env` or the process environment:
 
-- `RELEASE_NOTES_API_KEY` or `OPENAI_API_KEY`
-- `RELEASE_NOTES_API_URL` for a custom OpenAI-compatible endpoint
-- `RELEASE_NOTES_MODEL` to override the default model
-- `RELEASE_NOTES_API_TIMEOUT` to adjust request timeout in seconds
+- `REPO_SCRIPTS_DEFAULT_MODEL`
+- `REPO_SCRIPTS_DEFAULT_PROVIDER_TYPE`
+- `REPO_SCRIPTS_DEFAULT_PROVIDER_BASE_URL`
+- `REPO_SCRIPTS_DEFAULT_PROVIDER_KEY`
+- `RELEASE_NOTES_API_TIMEOUT` to adjust request timeout in seconds (default: 60)
 
-For local runs, the script also checks the repo root `.env` file and loads those variables if they are not already exported in your shell. Exported environment variables still win.
+For `generate_whats_new.py` and `generate_user_release_notes.py`, the provider type must be `openai` or `openai-compatible`. The base URL should be the API root, such as a URL ending in `/v1`; the generator appends `/chat/completions`. The scripts do not supply a default model, endpoint, provider type, or key. They use heuristic notes when AI settings are absent, and warn and fall back when settings are incomplete or the provider type is unsupported. Exported `COPILOT_PROVIDER_*` values override the shared `.env` settings.
 
 ## Copilot CLI Drafting
 
@@ -103,7 +104,7 @@ description:
 ...
 ```
 
-Draft generation requires a model, provider type, provider URL, and API key. Set `PR_DESCRIPTION_DEFAULT_MODEL`, `PR_DESCRIPTION_DEFAULT_PROVIDER_TYPE`, `PR_DESCRIPTION_DEFAULT_PROVIDER_BASE_URL`, and `PR_DESCRIPTION_DEFAULT_PROVIDER_KEY` in the repository-root `.env`, or provide equivalent `COPILOT_PROVIDER_*` environment variables. `--model` can supply the model identifier. The script has no built-in model, endpoint, provider type, or key defaults, and it does not read VS Code's secret store.
+Draft generation requires a model, provider type, provider URL, and API key. Set `REPO_SCRIPTS_DEFAULT_MODEL`, `REPO_SCRIPTS_DEFAULT_PROVIDER_TYPE`, `REPO_SCRIPTS_DEFAULT_PROVIDER_BASE_URL`, and `REPO_SCRIPTS_DEFAULT_PROVIDER_KEY` in the repository-root `.env`, or provide equivalent `COPILOT_PROVIDER_*` environment variables. `--model` can supply the model identifier. The script has no built-in model, endpoint, provider type, or key defaults, and it does not read VS Code's secret store.
 
 Promotion pull requests are drafted without a model. When a pull request targets `main` from `staging`, or targets `staging` from `dev`, the script writes a promotion description that lists the pull requests merged into the source branch and absent from the target branch. The comparison uses the promotion pull request's own base and merge commits, so a historical promotion lists what it actually carried. Override detection with an explicit list when branch history is unavailable:
 
