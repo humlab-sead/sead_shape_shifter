@@ -1,0 +1,26 @@
+title: Deprecate Phase 2 implementation test scripts
+description:
+## Summary
+
+Removes the eleven ad-hoc bash validation scripts from docs/phase2/scripts/ (cross-browser testing,
+Sprint 4/5/5.2/5.3/6.1 and Sprint 8.1 API/health/performance/quick-wins test scripts, ~2,100 lines
+total). These were one-off implementation-phase test harnesses that called the local
+frontend/backend over curl and are no longer maintained. Alongside the deletions, the PR adds a
+binary archive docs/phase2/scripts.tar in the same directory; the diff does not expose its contents,
+so whether it preserves the deleted scripts was not verified. No application source, build, or
+configuration files are touched.
+
+## User-facing release note
+
+None - no user-visible change.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+Not verified: validation results unavailable. No status checks or CI results are reported for this
+pull request. The change consists solely of file deletions and one added binary archive under
+docs/phase2/, and the pull request was merged into dev on 2025-12-18; no test or lint commands were
+run against the supplied evidence.

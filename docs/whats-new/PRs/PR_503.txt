@@ -1,0 +1,48 @@
+title: Complete Phase 5 Podman verification and archive cutover docs
+description:
+## Summary
+
+This documentation-only pull request closes out Phase 5 of the centralized-authorization cutover and
+archives the completed planning records.
+
+ - Adds PODMAN_DEPLOYMENT_RECORD.md, the Phase 5 deployment record: it freezes the release unit
+(source commit dbff5ab9…4f96, image ID 6a487db7…04a8, locally computed manifest digest, deployed
+manifest checksum 43c03186…fb90) and records the exposure, container-configuration,
+PostgreSQL-grant, proxy identity-header, authenticated-access, route-classification, log-review, and
+rollback results for that unit, with two approved exceptions (off-host network probe, accepted by
+Roger Mähler; unread PostgreSQL server log, owned by super.sead.se).
+ - Adds the Phase 5 task plan and updates SECURITY_CHECK.md with a new Podman Deployment
+Verification Record (2026-09-23) carrying the tested commit, image identity, per-check results,
+limitations, and approved exceptions. The Phase 4 accepted risk (the corrected access-check script
+never run on the host) is marked retired after the 2026-09-23 run, and the previously open host-log
+review is closed: three of four log sources swept clear, the fourth excepted.
+ - Archives the cutover proposal folder by moving docs/proposals/CENTRALIZED_AUTHORIZATION_CUTOVER/
+under docs/proposals/done/ (completed task plans into a nested done/ directory) and updates every
+cross-reference in docs/AUTHORIZATION.md, the MITIGATE_SECURITY_ISSUES records, and the future/
+proposals to the new paths.
+ - Adds a new proposal, docs/proposals/RELEASE_CYCLE_EVIDENCE_AND_LOCKING/README.md, proposing a
+release unit, a checksum-locked run record, and delta reporting between verification runs; it is
+proposed process work only and implements no tooling.
+
+## User-facing release note
+
+None - no user-visible change.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+ - No CI status checks are attached to this pull request (statusCheckRollup is empty), so no CI
+results are available to report for the PR itself.
+ - The change is documentation-only; no code, tests, or deployment configuration are modified by the
+diff.
+ - Results recorded in the added documentation (not independently verified here): the
+route-classification suite .venv/bin/pytest backend/tests/authorization -q is recorded as 192
+passed, 1 skipped, exit 0; host-side verification checks (firewall, container configuration,
+PostgreSQL grants, proxy identity handling, authenticated access, log review) are recorded as passed
+with the two approved exceptions; and scripts/check_doc_links.sh and git diff --check are recorded
+as clean in the Phase 5 task plan's V-5.13 validation entry.
+ - The orchestrated single-pass capture (run_deployment_verification.sh, V-5.6) is recorded as not
+run as a separate pass, with the individual check transcripts filed instead.

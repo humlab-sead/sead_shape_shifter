@@ -145,7 +145,7 @@ describe('ValidationPanel', () => {
     expect(executionPanel.text()).toContain('Mode: Sample')
     expect(wrapper.text()).toContain('Mode: Sample')
     expect(wrapper.text()).toContain('Run status: completed')
-    expect(wrapper.text()).toContain('Validation Findings')
+    expect(wrapper.text()).not.toContain('Validation Findings')
     expect(wrapper.text()).toContain('Validation Failed')
   })
 

@@ -3,15 +3,17 @@
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
+import pandas as pd
+
 from ingesters.sead_change_request.contracts import (
     ChangeRowState,
+    DatabaseSequenceReservationError,
     IdentityAssignment,
     PlannedRowAction,
     PlannedTable,
     SimsResolveItem,
     SubmissionContext,
 )
-from src.target_model.effective_identity import resolve_effective_identity
 from src.target_model.models import EntitySpec
 
 SIMS_AGGREGATE_ID_CAPABILITY_NOTE = "SIMS allocation could not complete target projection because no SIMS aggregate ID was returned"
@@ -50,23 +52,10 @@ class SimsClientPort(Protocol):
     async def associate_change_request(self, binding_set_uuid: str, change_request_name: str) -> None: ...
 
 
-class ReconciliationClientPort(Protocol):
-    """Thin reconciliation client seam used by the ingester orchestration layer."""
+class DatabaseSequenceIdReserver(Protocol):
+    """Target database operation used to reserve IDs before SIMS allocations."""
 
-    async def reconcile_entity(self, entity_name: str, row: dict[str, Any]) -> int | None: ...
-
-
-def _can_allocate_after_miss(entity_spec: EntitySpec | None) -> bool:
-    """Return True when a reconciled miss may request SIMS allocation.
-
-    Only `reconcile-exact` and `reconcile-fuzzy` permit allocation after an
-    approved miss. `lookup-only` and `lookup-extensible` entities never allocate;
-    a missing entity spec fails closed rather than assuming allocation is allowed.
-    """
-    if entity_spec is None:
-        return False
-    effective = resolve_effective_identity(entity_spec)
-    return effective.identity_tracking == "reconciled" and effective.reconciliation in ("reconcile-exact", "reconcile-fuzzy")
+    async def reserve_database_id(self, table_name: str, public_id_column: str) -> int: ...
 
 
 async def orchestrate_identity_assignments(
@@ -74,11 +63,12 @@ async def orchestrate_identity_assignments(
     submission_context: SubmissionContext,
     *,
     sims_client: SimsClientPort | None = None,
-    reconciliation_client: ReconciliationClientPort | None = None,
+    database_sequence_reserver: DatabaseSequenceIdReserver | None = None,
     target_model_entities: dict[str, EntitySpec] | None = None,
     fallback_assignments: dict[str, dict[object, IdentityAssignment]] | None = None,
+    approved_existing_target_ids: dict[str, dict[object, int]] | None = None,
 ) -> IdentityOrchestrationResult:
-    """Build identity assignments using injected SIMS and reconciliation clients."""
+    """Build identity assignments using planned actions and the injected SIMS client."""
     assignments: dict[str, dict[object, IdentityAssignment]] = {
         entity_name: dict(entity_assignments) for entity_name, entity_assignments in (fallback_assignments or {}).items()
     }
@@ -87,12 +77,94 @@ async def orchestrate_identity_assignments(
     sims_assigned_rows: list[tuple[str, object]] = []
     binding_set_uuid: str | None = submission_context.binding_set_uuid
     binding_set_state: str | None = None
+    sequence_reservation_failed = False
+
+    for planned_table in planned_tables:
+        entity_assignments = assignments.setdefault(planned_table.entity_name, {})
+        for row_index, planned_action in planned_table.planned_actions.items():
+            if planned_action != PlannedRowAction.RESERVE_DATABASE_ID or row_index in entity_assignments:
+                continue
+
+            entity_spec = (target_model_entities or {}).get(planned_table.entity_name)
+            if entity_spec is None or not entity_spec.target_table or not entity_spec.public_id:
+                raise ValueError(
+                    f"Entity '{planned_table.entity_name}' requires database-sequence ID metadata with target_table and public_id"
+                )
+
+            if database_sequence_reserver is None:
+                entity_assignments[row_index] = IdentityAssignment(
+                    state=ChangeRowState.BLOCKED_UNRESOLVED,
+                    note=(f"Target database sequence reservation is unavailable for '{planned_table.entity_name}' " f"row '{row_index}'"),
+                )
+                sequence_reservation_failed = True
+                continue
+
+            try:
+                target_id = await database_sequence_reserver.reserve_database_id(entity_spec.target_table, entity_spec.public_id)
+            except DatabaseSequenceReservationError as exc:
+                entity_assignments[row_index] = IdentityAssignment(
+                    state=ChangeRowState.BLOCKED_UNRESOLVED,
+                    note=(f"Database-sequence ID reservation failed for '{planned_table.entity_name}' " f"row '{row_index}': {exc}"),
+                )
+                sequence_reservation_failed = True
+                continue
+
+            if isinstance(target_id, bool) or not isinstance(target_id, int):
+                entity_assignments[row_index] = IdentityAssignment(
+                    state=ChangeRowState.BLOCKED_UNRESOLVED,
+                    note=(
+                        f"Database-sequence ID reservation returned an invalid ID for " f"'{planned_table.entity_name}' row '{row_index}'"
+                    ),
+                )
+                sequence_reservation_failed = True
+                continue
+
+            entity_assignments[row_index] = IdentityAssignment(
+                state=ChangeRowState.NEWLY_ALLOCATED_ENTITY,
+                target_id=target_id,
+            )
 
     for planned_table in planned_tables:
         entity_assignments: dict[object, IdentityAssignment] = assignments.setdefault(planned_table.entity_name, {})
         entity_spec: EntitySpec | None = (target_model_entities or {}).get(planned_table.entity_name)
         for row_index, planned_action in planned_table.planned_actions.items():
             if planned_action in {PlannedRowAction.REFERENCE_EXISTING, PlannedRowAction.UPDATE_EXISTING_CANDIDATE}:
+                approved_target_id = (approved_existing_target_ids or {}).get(planned_table.entity_name, {}).get(row_index)
+                if approved_target_id is None:
+                    continue
+                if entity_spec is None or not entity_spec.public_id:
+                    entity_assignments[row_index] = IdentityAssignment(
+                        state=ChangeRowState.BLOCKED_UNRESOLVED,
+                        note=f"Verified reconciliation link for '{planned_table.entity_name}' has no target-model public ID",
+                    )
+                    continue
+                row_payload = {
+                    str(column_name): value for column_name, value in planned_table.frame.loc[[row_index]].iloc[0].to_dict().items()
+                }
+                normalized_target_id = row_payload.get(entity_spec.public_id)
+                if pd.isna(normalized_target_id) or normalized_target_id != approved_target_id:
+                    entity_assignments[row_index] = IdentityAssignment(
+                        state=ChangeRowState.BLOCKED_UNRESOLVED,
+                        note=(
+                            f"Verified reconciliation link for '{planned_table.entity_name}' row '{row_index}' "
+                            f"does not match normalized target ID '{entity_spec.public_id}'"
+                        ),
+                    )
+                    continue
+                if sims_client is None:
+                    entity_assignments[row_index] = IdentityAssignment(
+                        state=ChangeRowState.BLOCKED_UNRESOLVED,
+                        note=f"SIMS is unavailable to bind the verified '{planned_table.entity_name}' reconciliation link",
+                    )
+                    continue
+                sims_items.append(
+                    SimsResolveItem(
+                        entity_name=planned_table.entity_name,
+                        row=row_payload,
+                        approved_aggregate_id=approved_target_id,
+                    )
+                )
+                sims_targets.append((planned_table.entity_name, row_index))
                 continue
             if planned_action == PlannedRowAction.BLOCK_EXISTING_UPDATE:
                 entity_assignments[row_index] = IdentityAssignment(
@@ -103,66 +175,34 @@ async def orchestrate_identity_assignments(
                     ),
                 )
                 continue
+            if planned_action == PlannedRowAction.BLOCK_RECONCILIATION:
+                entity_assignments[row_index] = IdentityAssignment(
+                    state=ChangeRowState.BLOCKED_UNRESOLVED,
+                    note=planned_table.blocked_row_reasons.get(
+                        row_index,
+                        "No exported local-only approval authorizes allocation for this business key",
+                    ),
+                )
+                continue
             if row_index in entity_assignments:
                 continue
 
             row_payload = {str(column_name): value for column_name, value in planned_table.frame.loc[[row_index]].iloc[0].to_dict().items()}
 
             if planned_action == PlannedRowAction.RESERVE_DATABASE_ID:
-                entity_spec = (target_model_entities or {}).get(planned_table.entity_name)
-                if (
-                    entity_spec is None
-                    or entity_spec.public_id_generation != "database_sequence"
-                    or not entity_spec.target_table
-                    or not entity_spec.public_id
-                ):
-                    raise ValueError(
-                        f"Entity '{planned_table.entity_name}' requires database-sequence ID metadata " "with target_table and public_id"
-                    )
                 entity_assignments[row_index] = IdentityAssignment(
                     state=ChangeRowState.BLOCKED_UNRESOLVED,
-                    note=(
-                        f"Entity '{planned_table.entity_name}' has an unresolved database-sequence ID; "
-                        "pre-resolve it before Change Request validation or bundle generation"
-                    ),
+                    note=f"Database-sequence ID for '{planned_table.entity_name}' row '{row_index}' was not resolved",
                 )
                 continue
 
-            if planned_action == PlannedRowAction.RECONCILE:
-                if reconciliation_client is None:
+            if planned_action == PlannedRowAction.ALLOCATE and sims_client is not None:
+                if sequence_reservation_failed:
                     entity_assignments[row_index] = IdentityAssignment(
                         state=ChangeRowState.BLOCKED_UNRESOLVED,
-                        note=(f"Entity '{planned_table.entity_name}' requires reconciliation but no reconciliation client is configured"),
+                        note="SIMS allocation was skipped because a database-sequence ID could not be reserved",
                     )
                     continue
-                reconciled_target_id = await reconciliation_client.reconcile_entity(planned_table.entity_name, row_payload)
-                if reconciled_target_id is not None:
-                    if sims_client is not None:
-                        sims_items.append(
-                            SimsResolveItem(
-                                entity_name=planned_table.entity_name,
-                                row=row_payload,
-                                approved_aggregate_id=reconciled_target_id,
-                            )
-                        )
-                        sims_targets.append((planned_table.entity_name, row_index))
-                    else:
-                        entity_assignments[row_index] = IdentityAssignment(
-                            state=ChangeRowState.RECONCILED_CLASSIFIER,
-                            target_id=reconciled_target_id,
-                        )
-                    continue
-                if not _can_allocate_after_miss(entity_spec):
-                    entity_assignments[row_index] = IdentityAssignment(
-                        state=ChangeRowState.BLOCKED_UNRESOLVED,
-                        note=(
-                            f"Entity '{planned_table.entity_name}' has no approved reconciliation match "
-                            "and its strategy does not permit SIMS allocation"
-                        ),
-                    )
-                    continue
-
-            if planned_action in {PlannedRowAction.ALLOCATE, PlannedRowAction.RECONCILE} and sims_client is not None:
                 sims_items.append(
                     SimsResolveItem(
                         entity_name=planned_table.entity_name,
@@ -174,6 +214,12 @@ async def orchestrate_identity_assignments(
                 continue
 
             if planned_action == PlannedRowAction.EVALUATE_BRIDGE and sims_client is not None:
+                if sequence_reservation_failed:
+                    entity_assignments[row_index] = IdentityAssignment(
+                        state=ChangeRowState.BLOCKED_UNRESOLVED,
+                        note="SIMS bridge resolution was skipped because a database-sequence ID could not be reserved",
+                    )
+                    continue
                 bridge = await sims_client.derive_bridge_row(planned_table.entity_name, row_payload, submission_context)
                 bridge_state = bridge.get("state")
                 note = bridge.get("note")
@@ -206,7 +252,15 @@ async def orchestrate_identity_assignments(
             binding_set_uuid = batch.get("binding_set_uuid") or binding_set_uuid
             binding_set_state = batch.get("binding_set_state") or binding_set_state
 
-            for (entity_name, row_index), item, outcome in zip(sims_targets, sims_items, outcomes):
+            for outcome_index, (entity_name, row_index) in enumerate(sims_targets):
+                if outcome_index >= len(outcomes):
+                    assignments.setdefault(entity_name, {})[row_index] = IdentityAssignment(
+                        state=ChangeRowState.BLOCKED_UNRESOLVED,
+                        note=f"SIMS returned no identity outcome for '{entity_name}' row '{row_index}'",
+                    )
+                    continue
+                item = sims_items[outcome_index]
+                outcome = outcomes[outcome_index]
                 target_id = outcome.get("target_id")
                 if item.approved_aggregate_id is not None:
                     if target_id != item.approved_aggregate_id:

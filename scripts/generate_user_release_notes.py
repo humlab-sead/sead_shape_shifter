@@ -10,6 +10,8 @@ import os
 import re
 import subprocess
 import sys
+from dataclasses import dataclass
+from html import escape as escape_html
 from pathlib import Path
 from urllib import error, request
 
@@ -102,6 +104,28 @@ LOCAL_ENV_KEYS = {
 }
 
 
+@dataclass(frozen=True)
+class GitHubPullRequest:
+    number: int
+    title: str
+    merged_at: dt.datetime
+    url: str
+
+    @property
+    def display_title(self) -> str:
+        normalized_title = " ".join(self.title.split())
+        escaped_title = escape_html(normalized_title, quote=False)
+        return re.sub(
+            r"([\\`*_{}\[\]()#+\-.!|>~])",
+            lambda match: f"\\{match.group(1)}",
+            escaped_title,
+        )
+
+    @property
+    def merged_date(self) -> str:
+        return self.merged_at.date().isoformat()
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     version_group = parser.add_mutually_exclusive_group(required=True)
@@ -158,6 +182,99 @@ def render_template(template_name: str, **context: object) -> str:
     return template.render(**context)
 
 
+def list_merged_pull_requests(
+    repo_root: Path,
+    github_repository: str,
+    base_branch: str,
+) -> list[GitHubPullRequest]:
+    command = [
+        "gh",
+        "pr",
+        "list",
+        "--repo",
+        github_repository,
+        "--state",
+        "merged",
+        "--base",
+        base_branch,
+        "--limit",
+        "1000",
+        "--json",
+        "number,title,mergedAt",
+    ]
+    try:
+        result = subprocess.run(
+            command,
+            cwd=repo_root,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    except FileNotFoundError as error:
+        raise RuntimeError("GitHub CLI 'gh' is required to list pending release pull requests.") from error
+    except subprocess.TimeoutExpired as error:
+        raise RuntimeError(f"Timed out while listing merged pull requests into '{base_branch}'.") from error
+    except subprocess.CalledProcessError as error:
+        details = error.stderr.strip() if error.stderr else str(error)
+        raise RuntimeError(f"Failed to list merged pull requests into '{base_branch}': {details}") from error
+
+    try:
+        records = json.loads(result.stdout)
+    except json.JSONDecodeError as error:
+        raise ValueError(f"GitHub CLI returned invalid JSON for merged pull requests into '{base_branch}'.") from error
+
+    if not isinstance(records, list):
+        raise ValueError(f"GitHub CLI returned an invalid pull request list for '{base_branch}'.")
+
+    pull_requests: list[GitHubPullRequest] = []
+    for record in records:
+        if not isinstance(record, dict):
+            raise ValueError(f"GitHub CLI returned an invalid pull request for '{base_branch}'.")
+
+        number = record.get("number")
+        title = record.get("title")
+        merged_at = record.get("mergedAt")
+        if isinstance(number, bool) or not isinstance(number, int):
+            raise ValueError(f"GitHub CLI returned a pull request with an invalid number for '{base_branch}'.")
+        if not isinstance(title, str):
+            raise ValueError(f"GitHub CLI returned pull request #{number} without a valid title.")
+        if not isinstance(merged_at, str):
+            raise ValueError(f"GitHub CLI returned pull request #{number} without a merge timestamp.")
+
+        try:
+            merged_datetime = dt.datetime.fromisoformat(merged_at.replace("Z", "+00:00"))
+        except ValueError as error:
+            raise ValueError(f"GitHub CLI returned an invalid merge timestamp for pull request #{number}.") from error
+        if merged_datetime.tzinfo is None:
+            raise ValueError(f"GitHub CLI returned a merge timestamp without a timezone for pull request #{number}.")
+
+        pull_requests.append(
+            GitHubPullRequest(
+                number=number,
+                title=title,
+                merged_at=merged_datetime,
+                url=f"https://github.com/{github_repository}/pull/{number}",
+            )
+        )
+
+    return pull_requests
+
+
+def get_pending_release_pull_requests(repo_root: Path, github_repository: str) -> list[GitHubPullRequest]:
+    """Return PRs merged into staging after the latest PR merge into main."""
+    main_pull_requests = list_merged_pull_requests(repo_root, github_repository, "main")
+    if not main_pull_requests:
+        raise RuntimeError(f"No merged pull requests into 'main' were found for {github_repository}.")
+
+    latest_main_merge = max(pull_request.merged_at for pull_request in main_pull_requests)
+    staging_pull_requests = list_merged_pull_requests(repo_root, github_repository, "staging")
+    return sorted(
+        (pull_request for pull_request in staging_pull_requests if pull_request.merged_at > latest_main_merge),
+        key=lambda pull_request: pull_request.merged_at,
+    )
+
+
 def load_local_env(repo_root: Path) -> None:
     env_path = repo_root / ".env"
     if not env_path.exists():
@@ -195,6 +312,11 @@ def read_release_section(changelog_path: Path, version: str) -> tuple[str, str |
 def list_available_versions(changelog_path: Path) -> list[tuple[str, str]]:
     changelog = changelog_path.read_text(encoding="utf-8")
     return [(match.group("version"), match.group("date")) for match in VERSION_HEADING_PATTERN.finditer(changelog)]
+
+
+def is_latest_changelog_version(changelog_path: Path, version: str) -> bool:
+    versions = list_available_versions(changelog_path)
+    return bool(versions) and versions[0][0] == version
 
 
 def parse_sections(section_text: str) -> dict[str, list[str]]:
@@ -270,10 +392,10 @@ def get_latest_generated_version(whats_new_dir: Path) -> str | None:
     """Find the latest version that has a generated release note."""
     if not whats_new_dir.exists():
         return None
-    
+
     version_pattern = re.compile(r"^v(\d+\.\d+\.\d+)\.md$")
     versions: list[tuple[int, int, int, str]] = []
-    
+
     for file_path in whats_new_dir.iterdir():
         if not file_path.is_file():
             continue
@@ -287,10 +409,10 @@ def get_latest_generated_version(whats_new_dir: Path) -> str | None:
                     versions.append((major, minor, patch, version_str))
                 except ValueError:
                     continue
-    
+
     if not versions:
         return None
-    
+
     versions.sort(reverse=True)
     return versions[0][3]
 
@@ -299,14 +421,14 @@ def get_missing_versions(changelog_path: Path, whats_new_dir: Path) -> list[tupl
     """Get all versions from changelog that don't have generated release notes."""
     all_versions = list_available_versions(changelog_path)
     latest_generated = get_latest_generated_version(whats_new_dir)
-    
+
     if latest_generated is None:
         return all_versions
-    
+
     # Parse latest generated version
     latest_parts = latest_generated.split(".")
     latest_tuple = (int(latest_parts[0]), int(latest_parts[1]), int(latest_parts[2]))
-    
+
     missing: list[tuple[str, str]] = []
     for version, date in all_versions:
         parts = version.split(".")
@@ -317,7 +439,7 @@ def get_missing_versions(changelog_path: Path, whats_new_dir: Path) -> list[tupl
                     missing.append((version, date))
             except ValueError:
                 continue
-    
+
     # Return in chronological order (oldest first)
     return list(reversed(missing))
 
@@ -375,6 +497,7 @@ def build_release_notes(
     features: list[str],
     improvements: list[str],
     fixes: list[str],
+    pending_release_prs: list[GitHubPullRequest] | None = None,
 ) -> str:
     formatted_date = release_date or dt.date.today().isoformat()
     release_url = f"https://github.com/{github_repository}/releases/tag/v{version}"
@@ -386,6 +509,7 @@ def build_release_notes(
         features=features,
         improvements=improvements,
         fixes=fixes,
+        pending_release_prs=pending_release_prs,
         release_url=release_url,
     )
 
@@ -496,6 +620,57 @@ def maybe_generate_ai_draft(
     return content + ("\n" if not content.endswith("\n") else ""), f"ai:{model}"
 
 
+def preserve_pending_release_section(content: str, generated_draft: str) -> str:
+    section_pattern = re.compile(r"^## Pending Release[ \t]*\r?\n.*?(?=^## |\Z)", re.MULTILINE | re.DOTALL)
+    generated_section = section_pattern.search(generated_draft)
+    if not generated_section:
+        return content
+
+    section = generated_section.group(0).strip()
+    existing_section = section_pattern.search(content)
+    if existing_section:
+        return content[: existing_section.start()].rstrip() + "\n\n" + section + "\n\n" + content[existing_section.end() :].lstrip()
+
+    learn_more_heading = re.search(r"^## Learn More[ \t]*$", content, re.MULTILINE)
+    if learn_more_heading:
+        return content[: learn_more_heading.start()].rstrip() + "\n\n" + section + "\n\n" + content[learn_more_heading.start() :].lstrip()
+
+    return content.rstrip() + "\n\n" + section + "\n"
+
+
+def build_release_note_content(
+    version: str,
+    repo_root: Path,
+    changelog_path: Path,
+    github_repository: str,
+    force_heuristic: bool,
+    include_pending_release: bool,
+) -> tuple[str, str]:
+    section_text, release_date = read_release_section(changelog_path, version)
+    parsed_sections = parse_sections(section_text)
+    highlights, features, improvements, fixes = classify_sections(parsed_sections)
+    pending_release_prs = get_pending_release_pull_requests(repo_root, github_repository) if include_pending_release else None
+    heuristic_content = build_release_notes(
+        version=version,
+        release_date=release_date,
+        github_repository=github_repository,
+        highlights=highlights,
+        features=features,
+        improvements=improvements,
+        fixes=fixes,
+        pending_release_prs=pending_release_prs,
+    )
+    content, mode = maybe_generate_ai_draft(
+        version=version,
+        release_date=release_date,
+        github_repository=github_repository,
+        parsed_sections=parsed_sections,
+        heuristic_draft=heuristic_content,
+        force_heuristic=force_heuristic,
+    )
+    return preserve_pending_release_section(content, heuristic_content), mode
+
+
 def write_output(output_path: Path, content: str) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(content, encoding="utf-8")
@@ -526,29 +701,18 @@ def generate_release_notes_for_version(
     github_repository: str,
     force_heuristic: bool,
     update_github: bool,
+    include_pending_release: bool,
 ) -> bool:
     """Generate release notes for a single version. Returns True on success."""
     try:
         output_path = output_dir / f"v{version}.md"
-        section_text, release_date = read_release_section(changelog_path, version)
-        parsed_sections = parse_sections(section_text)
-        highlights, features, improvements, fixes = classify_sections(parsed_sections)
-        heuristic_content = build_release_notes(
+        content, mode = build_release_note_content(
             version=version,
-            release_date=release_date,
+            repo_root=repo_root,
+            changelog_path=changelog_path,
             github_repository=github_repository,
-            highlights=highlights,
-            features=features,
-            improvements=improvements,
-            fixes=fixes,
-        )
-        content, mode = maybe_generate_ai_draft(
-            version=version,
-            release_date=release_date,
-            github_repository=github_repository,
-            parsed_sections=parsed_sections,
-            heuristic_draft=heuristic_content,
             force_heuristic=force_heuristic,
+            include_pending_release=include_pending_release,
         )
         write_output(output_path, content)
 
@@ -577,15 +741,16 @@ def main() -> int:
 
     if args.generate_missing:
         missing_versions = get_missing_versions(changelog_path, whats_new_dir)
-        
+
         if not missing_versions:
             latest = get_latest_generated_version(whats_new_dir)
             print(f"No missing versions found. Latest generated: {latest or 'none'}", file=sys.stderr)
             return 0
-        
+
         print(f"Found {len(missing_versions)} missing version(s): {', '.join(v for v, _ in missing_versions)}", file=sys.stderr)
-        
+
         success_count = 0
+        latest_version = list_available_versions(changelog_path)[0][0]
         for version, _ in missing_versions:
             if generate_release_notes_for_version(
                 version=version,
@@ -595,33 +760,22 @@ def main() -> int:
                 github_repository=args.github_repository,
                 force_heuristic=args.force_heuristic,
                 update_github=args.update_github_release,
+                include_pending_release=version == latest_version,
             ):
                 success_count += 1
-        
+
         print(f"\nSuccessfully generated {success_count}/{len(missing_versions)} release notes", file=sys.stderr)
         return 0 if success_count == len(missing_versions) else 1
 
     # Single version mode
     output_path = args.output or repo_root / "docs" / "whats-new" / f"v{args.version}.md"
-    section_text, release_date = read_release_section(changelog_path, args.version)
-    parsed_sections = parse_sections(section_text)
-    highlights, features, improvements, fixes = classify_sections(parsed_sections)
-    heuristic_content = build_release_notes(
+    content, mode = build_release_note_content(
         version=args.version,
-        release_date=release_date,
+        repo_root=repo_root,
+        changelog_path=changelog_path,
         github_repository=args.github_repository,
-        highlights=highlights,
-        features=features,
-        improvements=improvements,
-        fixes=fixes,
-    )
-    content, mode = maybe_generate_ai_draft(
-        version=args.version,
-        release_date=release_date,
-        github_repository=args.github_repository,
-        parsed_sections=parsed_sections,
-        heuristic_draft=heuristic_content,
         force_heuristic=args.force_heuristic,
+        include_pending_release=is_latest_changelog_version(changelog_path, args.version),
     )
     write_output(output_path, content)
 

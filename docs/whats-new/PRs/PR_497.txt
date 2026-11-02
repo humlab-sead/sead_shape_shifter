@@ -1,0 +1,46 @@
+title: Record PostgreSQL rotation scope and Phase 4 rollback owner
+description:
+## Summary
+
+Documentation-only change that closes the last open definition-of-done items for the authorization
+cutover by recording two decisions in the Phase 3 evidence records.
+
+ - PostgreSQL rotation is out of scope by decision. Rotation checking is explicitly out of scope for
+every PostgreSQL database, including the SEAD database, as an approved exception dated 2026-09-22.
+In DEPLOYMENT_VERIFICATION_HANDOFF.md, the sead_ro .pgpass rotation row changes from a recorded
+failure ("remains pending rotation or an approved exception") to a resolved approved exception, and
+the handoff notes explain that the previously non-blocking rotation issue is now closed as declined
+rather than failed.
+ - Phase 4 ownership is named. Roger Mähler is recorded as the rollback decision owner and as the
+approver of exceptions for unavailable checks, which closes task T4.2 and marks Area 4 (test-target
+readiness handoff) as Done in the Phase 3 task plan.
+ - Evidence quality is recorded explicitly. The credential-rotation check lists credential labels
+and never verifies that a value changed, so the ADMIN_AUTH_PASSWORD/AUTH_PASSWORD result is stated
+as an operator attestation; no rotated value is retained in the repository.
+ - Corrections to stale records. The phase-plan dependency line and open questions are updated to
+reflect that release identity, backup retention, evidence linkage, and target-content disposition
+are closed; the handoff's first next action no longer asks where project content comes from (it is
+now provisioned) and instead points at confirming the configuration-dependent data sources; and the
+remaining open question becomes which release carries the accepted limitations into Phase
+  4. The sead-options connection and the release-image access checks remain recorded as limitations
+rather than failures.
+
+No code, configuration, or script files are modified.
+
+## User-facing release note
+
+None - no user-visible change.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+ - No CI status checks are recorded for this pull request (the status check rollup is empty), so no
+automated results can be confirmed from the available evidence.
+ - The change is documentation-only (three Markdown files under
+docs/proposals/CENTRALIZED_AUTHORIZATION_CUTOVER/); no test execution is evidenced in the supplied
+materials.
+ - Execution and results of any local checks (e.g., documentation link checks or diff whitespace
+checks) are unknown from the available evidence and are not reported as passed.

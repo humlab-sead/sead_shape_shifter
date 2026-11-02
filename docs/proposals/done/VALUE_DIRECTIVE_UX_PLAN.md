@@ -4,7 +4,7 @@
 
 - **Superseded and largely implemented.** Kept as a historical record; the phases below are not an active plan.
 - Shipped: Phase 1 (list flattening — now in `src/configuration/resolve.py`), Phase 2 (directive chips, scalar-shorthand round trip in `EntityFormDialog.vue`), and Phase 3 (scalar-preserving key normalization in `ForeignKeyEditor.vue`).
-- Superseded: Phase 4 (context-aware `/valid-directives`) and Phase 5 (dangling-reference specification) are folded into [Make `@value` References Usable in Column Pickers](../VALUE_REFERENCE_COLUMN_PICKERS/VALUE_REFERENCE_COLUMN_PICKERS.md). Its dropdown-based suggestion design is explicitly rejected there in favor of guided reference entry.
+- Superseded: Phase 4 (context-aware `/valid-directives`) and Phase 5 (dangling-reference specification) are folded into [Make `@value` References Usable in Column Pickers](../archive/VALUE_REFERENCE_COLUMN_PICKERS/VALUE_REFERENCE_COLUMN_PICKERS.md). Its dropdown-based suggestion design is explicitly rejected there in favor of guided reference entry.
 - Deferred: Phase 6 (legacy `+` expression read-only display) remains unscoped future work.
 - The "Current State" section below predates the shipped work and is no longer accurate.
 

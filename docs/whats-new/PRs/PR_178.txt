@@ -1,0 +1,36 @@
+title: Add support for CSV and Excel file types in the entity editor
+description:
+## Summary
+
+Extends the entity editor with three new entity types — csv, xlsx (Pandas loader), and openpyxl — so
+entities can load data directly from project files without first defining a separate data source.
+
+ - frontend/src/types/entity.ts: EntityType now includes csv, xlsx, and openpyxl; a new
+EntityFileOptions interface (filename, sep, encoding, sheet_name, range) is exposed via an options
+field on Entity.
+ - frontend/src/components/entities/EntityFormDialog.vue: adds a conditional File Options section
+with a filename autocomplete (populated from the existing GET /api/v1/data-sources/files endpoint,
+filtered by extension per type), a required delimiter select for CSV, and optional sheet-name and
+cell-range fields for the Excel types. Type switching clears irrelevant fields, and file options are
+kept in sync through form↔YAML serialization (formDataToYaml / yamlToFormData) and included in the
+create/update payload. Type labels were also relabeled (e.g. "Data (Derived)", "CSV File"), and the
+auto-preview watcher now triggers for any non-form view instead of only split view.
+ - docs/CSV_EXCEL_ENTITY_IMPLEMENTATION.md: new implementation guide covering the file-type YAML
+format, workflows, and a migration path from data-source-based file loading. The document states the
+backend loaders already accept these options; no backend code is changed in this PR.
+ - Three older docs (ADDING_VALIDATORS.md, TASK_LIST_INTEGRATION_GUIDE.md,
+YAML_INTELLIGENCE_IMPLEMENTATION.md) are moved unchanged into docs/archive/.
+
+## User-facing release note
+
+You can now create entities that read CSV or Excel files directly in the entity editor: pick the
+file from your project, choose a delimiter for CSV, and optionally set a sheet name or cell range
+for Excel — no separate data source configuration needed.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+Not verified: validation results unavailable.

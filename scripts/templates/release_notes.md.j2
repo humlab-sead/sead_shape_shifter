@@ -38,6 +38,17 @@ Date: {{ formatted_date }}
 
 - Draft only: review whether this release changes recommended workflows, configuration, or upgrade steps.
 
+{% if pending_release_prs is not none %}
+## Pending Release
+
+{% for pr in pending_release_prs -%}
+- [PR #{{ pr.number }}]({{ pr.url }}) {{ pr.display_title }} (merged {{ pr.merged_date }}).
+{% else -%}
+- No PRs are currently pending release.
+{% endfor %}
+
+{% endif %}
+
 ## Learn More
 
 - Technical changelog: CHANGELOG.md

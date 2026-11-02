@@ -1,0 +1,63 @@
+title: Sync PostgreSQL sequences after inserting SIMS-assigned IDs
+description:
+## Summary
+
+This PR resolves the sequence-safety gap that previously blocked the submission metadata workstream:
+generated change-request packages insert SIMS-assigned submission and dataset IDs explicitly, which
+left target PostgreSQL sequences behind and risked collisions with later default-generated IDs.
+
+ - Adds an optional synchronize_sequence_after_insert boolean to EntitySpec
+(src/target_model/models.py), documented in docs/TARGET_MODEL_SCHEMA_REFERENCE.md.
+ - The sead_change_request SQL builder (ingesters/sead_change_request/sql_builder.py) now prepends
+LOCK TABLE ... IN SHARE ROW EXCLUSIVE MODE statements and appends a DO block per opted-in table that
+resolves the column sequence via pg_get_serial_sequence and advances it with setval past the
+maximum inserted ID. This applies to both the inline INSERT and copy-CSV artifact paths, and raises
+a ValueError if an opted-in entity lacks target_table or public_id.
+ - TargetModelSpecValidator adds three rules: SEQUENCE_SYNC_REQUIRES_TARGET_ID,
+SEQUENCE_SYNC_REQUIRES_TRACKED_IDENTITY, and CONFLICTING_PUBLIC_ID_SEQUENCE_RULES (sequence sync
+cannot coexist with public_id_generation: database_sequence).
+ - Bundled minimal, standard, and superset target models (and their test-spec mirrors) mark dataset
+and submission as identity_tracking: tracked, reconciliation: allocate, and
+synchronize_sequence_after_insert: true.
+ - Documentation: the submission metadata proposal and task plan move to
+docs/proposals/CHANGE_REQUEST_INGESTER/done/REFACTOR_SEAD_SUBMISSION_METADATA/ and are marked
+complete; the PostgreSQL contract validation handoff records a 2026-10-12 run against a disposable
+refactored snapshot; cross-references across proposal indexes and archives are updated. The proposal
+notes that sequence updates are not rolled back with a failed package transaction, so retries can
+leave ID gaps.
+ - uv.lock shows the shape-shifter package version changing from 2.3.0 to 2.2.0; the diff does not
+explain this change.
+
+## User-facing release note
+
+Generated deployment packages now keep SEAD database ID sequences ahead of the submission and
+dataset IDs assigned by SIMS, so later database-generated IDs no longer collide with IDs inserted by
+a package.
+
+## Upgrade notes
+
+ - The new synchronize_sequence_after_insert flag defaults to false, so existing custom target
+models are unaffected unless opted in.
+ - Deployers: the updated documentation states that upstream SEAD schema deployment and legacy
+compatibility remain release dependencies outside this repository; generated packages are only
+eligible once those are deployed.
+ - Note for operators: sequence advancement is not undone if a package transaction fails, so a retry
+can leave gaps in the target sequence (IDs are skipped, not reused).
+
+## Validation
+
+ - CI on this pull request reports only the Container Release workflow's validate and publish jobs,
+both with conclusion SKIPPED. No automated test CI results are attached.
+ - The task plan in this PR records results from a 2026-10-12 run (recorded in documentation, not
+independently verified by CI here): mapper and metadata tests passed with one skip; target-model and
+conformance tests passed; the backend ingester regression suite passed with four
+environment-dependent skips; the focused frontend component test (3 tests) and pnpm build passed;
+focused artifact generation via .venv/bin/pytest
+backend/tests/ingesters/test_sead_change_request_ingester.py -q -k
+'test_ingest_emits_submission_and_links_new_dataset or
+test_ingest_copy_csv_emits_submission_and_dataset_payloads' passed 2 tests.
+ - The handoff documents that inline INSERT and copy-CSV artifacts passed
+tests/integration/submission_artifact_contract.sql on separate disposable Podman clones of a
+supplied refactored PostgreSQL snapshot, with sequences verified to advance (next values 2 and
+91925). These checks used a SIMS test double and did not exercise the live Authority Service.
+ - Execution of the new unit tests added in this diff beyond the recorded runs above is unknown.

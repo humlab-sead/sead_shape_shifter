@@ -1,0 +1,46 @@
+title: Add savable custom graph layout for the dependency graph
+description:
+## Summary
+
+Adds a "Custom" layout option to the project dependency graph so users can preserve their manual
+node positioning across sessions (fixes #153, per the PR body; issue details were not available in 
+the provided context).
+
+ - Backend (backend/app/api/v1/endpoints/projects.py): new endpoints GET, PUT, and DELETE
+/projects/{name}/layout to read, save, and clear per-project custom node positions. Layouts are
+stored under options.layout.custom in the project file, with _metadata (timestamp, layout version)
+written on save; positions for entities not present in the project are kept with a warning, and
+project backups are created by the existing save_project flow.
+ - Model (src/model.py): new LayoutPosition, CustomLayoutConfig, and LayoutOptions classes plus a
+layout_options cached property on ShapeShiftProject for accessing layout configuration.
+ - Frontend: a third layout toggle "Custom" (disabled until a layout is saved), "Save as Custom" and
+"Clear Custom" buttons, automatic switch to the saved layout when a project loads, and a
+preset-based Cytoscape layout that places entities without saved positions radially around the
+positioned ones. The graph tab was renamed from "Dependencies" to "Graph", graph controls moved into
+floating action buttons, and the graph container is now responsive (fills the viewport instead of a
+fixed 600 px).
+ - Housekeeping: dev backend port default changed from 8012 to 8013 (Makefile and Vite proxy),
+version bumped to 1.6.0 with CHANGELOG entries, and httpx moved from the dev extra to a core
+dependency in the lockfile.
+
+## User-facing release note
+
+You can now arrange the dependency graph nodes the way you like and click "Save as Custom" to store
+those positions with the project; the graph reopens in your saved layout on later sessions, and
+"Clear Custom" removes it. Graph controls (fit, zoom, reset, PNG export) are now floating buttons
+over a full-height graph area.
+
+## Upgrade notes
+
+ - The default local backend port changed from 8012 to 8013 (Makefile and the Vite dev proxy
+default). Update any local tooling or bookmarks that target the old port, or override BACKEND_PORT /
+VITE_API_BASE_URL.
+ - httpx is now a core (non-optional) dependency; reinstall dependencies (e.g. uv sync) after
+pulling.
+ - Saved layouts are written into the project file's options.layout.custom section, so project files
+that use this feature will change on disk (backups are created on save).
+
+## Validation
+
+Not verified: validation results unavailable. No CI check results were reported for this pull
+request, and the diff includes no tests, so no checks can be confirmed as run or passed.

@@ -1,0 +1,69 @@
+title: Support project-only change request bundles
+description:
+## Summary
+
+This PR implements the Change Request Target Bundle Access proposal (phases 1–3; task plans added
+under docs/proposals/CHANGE_REQUEST_TARGET_BUNDLE_ACCESS/) so the SEAD Change Request ingester ships
+as a safe project-only operator entry point:
+
+ - Authorization cutover: the project-only validate/ingest routes and the ProjectIngesterService
+direct helper now require only project:execute on the saved project named in the request body; the
+interim application:run_ingesters requirement was removed from those routes and the helper (the
+unused AuthorizationService dependency was dropped). Generic file ingester routes keep the
+application action, and retired Change Request file input still returns 400.
+ - Exclusive run folders: each ingest reserves
+<output_folder>/<YYYYMMDDTHHMMSSZ>_<sha256(run_id)>/<bundle_name> before any SIMS or file side
+effect, so a raw caller run ID never becomes a path component. A repeated run identity fails with a
+structured collision result before side effects; a failed run removes only the folder it reserved;
+the writer no longer replaces an existing bundle and rejects payload paths that escape the bundle.
+The written bundle directory now flows through IngestionResult.output_path into
+IngestResponse.output_path.
+ - Read-only target access: generation-time target sequence reservation was removed
+(TargetIdAllocatorPort, SeadChangeRequestTargetCollisionChecker.reserve_target_id); the target
+database is used only for read-only provider-row and collision checks. Unresolved non-SIMS
+database-sequence public IDs are now blocked before validation or bundle generation with a
+"pre-resolve it" diagnostic instead of consuming a sequence value.
+ - Stable identity and retries: invalid declared business keys now fail closed before any SIMS
+request instead of falling back to a shared entity name; pending-confirmation guidance names the
+effective run ID; the frontend ingester store generates one run ID per submission attempt, reuses it
+across validate/ingest/Binding-Set retry (including form remounts), and resets it on identity-field
+changes, form reset, or a successful bundle.
+ - Supporting changes: authorization docs, route inventory, user guide, and the ingester README
+updated to the shipped rules; tests substantially expanded (new artifact-writer suite, executor-only
+route workflow through the assembled app, identity-reuse and collision cases); pytest defaults to
+parallel execution via pytest-xdist, pylint -j 0, a jaydebeapi warning filter, sleep-free timing
+tests, and a grouped.get_group tuple fix in src/specifications/fd.py.
+
+## User-facing release note
+
+Operators with Execute access to a saved project can now validate and create SEAD Change Request
+bundles from that project without a separate application-level ingester permission, and each run
+writes to its own dated run folder whose path is reported in the response. When a Binding Set awaits
+confirmation, the guidance now shows the exact run ID to reuse for the retry.
+
+## Upgrade notes
+
+ - Bundle output location changed: bundles are nested under a run folder (<UTC
+timestamp>_<sha256(run_id)>/<bundle_name>) instead of directly under the output root. Consumers
+should use the output_path returned in the ingest response rather than reconstructing paths from the
+bundle name.
+ - Callers that relied on generation-time reservation of database-sequence public IDs must
+pre-resolve those IDs before validation or ingestion; the optional target_id_allocator collaborator
+was removed and unresolved IDs are now blocked.
+ - Code that constructs ProjectIngesterService must drop the authorization_service constructor
+argument.
+ - No database migrations or configuration changes are required.
+
+## Validation
+
+ - CI status rollup for this PR shows only the Container Release workflow, whose validate and
+publish jobs were SKIPPED; no CI test results are available for this change.
+ - The added phase task plans record execution evidence dated 2026-10-20: focused backend pytest
+suites (Change Request ingester, artifact writer, orchestration, runtime, SQL builder, project
+ingester service, project routes, authorization route tests), both frontend suites (17 tests),
+black/isort checks, make check-doc-links, and git diff --check are recorded as passing, with
+disposable PostgreSQL and live SIMS integration cases skipped because their service variables were
+not configured. These are recorded in the PR's own documentation, not independently verified CI
+results.
+ - Execution of the full backend or repository-wide test suite for this merge is unknown from the
+available evidence.

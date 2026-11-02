@@ -1,0 +1,65 @@
+title: Relocate SEAD ingester to top-level ingesters/ with dynamic discovery
+description:
+## Summary
+
+Moves the SEAD ingester implementation out of the backend package (backend/app/ingesters/sead/) into
+a new top-level ingesters/sead/ directory, turning ingesters into pluggable modules that the
+backend discovers at startup instead of importing manually.
+
+Key changes:
+
+ - IngesterRegistry gains a discover() method (with _load_ingester and an _initialized guard) that
+scans configured paths, dynamically imports each ingesters/<name>/ingester.py, and verifies the
+class registered itself via @Ingesters.register(). Discovery is triggered at three entry points:
+FastAPI lifespan startup (backend/app/main.py), the sead-ingest CLI (backend/app/scripts/ingest.py),
+and session-scoped autouse pytest fixtures in backend/tests/conftest.py and
+backend/tests/ingesters/conftest.py.
+ - New backend settings INGESTER_PATHS (default ["ingesters"]) and ENABLED_INGESTERS (default None =
+load all discovered) in backend/app/core/config.py.
+ - backend/app/ingesters/__init__.py no longer imports SeadIngester to trigger registration; the
+moved modules use ingesters.sead.* import paths, and pyproject.toml now includes backend* and
+ingesters* in the setuptools package find.
+ - Adds a SEAD ingester test suite under ingesters/sead/tests/: unit tests (builders-based, no DB),
+integration tests (marked, DB-dependent), shared fixtures/builders, and CSV/JSON schema metadata
+fixtures.
+ - Adds documentation: ingesters/README.md (how to create a new ingester), ingesters/sead/README.md
+and ARCHITECTURE.md, and docs/INGESTER_RELOCATION_ANALYSIS.md (relocation rationale and migration
+plan). AGENTS.md, .github/copilot-instructions.md, and docs/INGESTER_INTEGRATION_PLAN.md are updated
+for the new structure. A sample backend/app/scripts/config.yml is also added.
+
+This closes the relocation task referenced in the PR body as Fixes #131 (no linked-issue details
+were available for verification).
+
+## User-facing release note
+
+SEAD ingester data ingestion now works from a standalone ingesters/ directory: ingesters are found
+and loaded automatically when the backend, CLI, or tests start, and new ingesters can be dropped
+into ingesters/ without touching backend code. Which ingester folders are searched and loaded can be
+controlled with the new INGESTER_PATHS and ENABLED_INGESTERS settings.
+
+## Upgrade notes
+
+ - Breaking import-path change: code that imported backend.app.ingesters.sead (e.g. from
+backend.app.ingesters.sead import SeadIngester) must now import from ingesters.sead (e.g. from
+ingesters.sead import SeadIngester). SeadIngester is no longer exported from backend.app.ingesters.
+ - Ingesters are no longer registered by importing them in backend/app/ingesters/__init__.py; they
+are discovered at startup. Custom deployments that relied on manual registration must place
+ingesters under a discovered path (default ingesters/) with an ingester.py whose class uses
+@Ingesters.register(key="<dir-name>").
+ - Optional configuration: set INGESTER_PATHS to change search directories and ENABLED_INGESTERS to
+restrict which ingesters load (default loads all discovered).
+ - Reinstall in editable mode after pulling: pyproject.toml now packages backend* and ingesters*, so
+the workspace root must be on the Python path for discovery to import ingesters.<name>.ingester.
+
+## Validation
+
+ - No CI check results are attached to this pull request (statusCheckRollup is empty), so no checks
+can be reported as passed or failed.
+ - The diff adds a substantial SEAD ingester test suite (unit tests under
+ingesters/sead/tests/unit/, DB-dependent integration tests under ingesters/sead/tests/integration/)
+and discovery fixtures for the backend test sessions, but execution of these tests is not evidenced
+in the available data.
+ - The added docs/INGESTER_RELOCATION_ANALYSIS.md states the relocation was implemented "with tests
+passing"; this is documentation text from the branch, not a verified check result.
+
+Not verified: validation results unavailable.

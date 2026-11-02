@@ -39,7 +39,7 @@
                   <div>
                     <div class="font-weight-medium">Sample Data (Fast)</div>
                     <div class="text-caption text-grey">
-                      Validate using preview samples (up to 1000 rows per entity). Quick validation for development.
+                      Validate using preview samples (up to 1000 rows per entity).
                     </div>
                   </div>
                 </template>
@@ -49,8 +49,7 @@
                   <div>
                     <div class="font-weight-medium">Complete Data (Comprehensive)</div>
                     <div class="text-caption text-grey">
-                      Validate using full normalized dataset. Slower but catches all issues. Recommended before
-                      deployment.
+                      Validate using full normalized dataset. Slower but catches all issues.
                     </div>
                   </div>
                 </template>
@@ -122,22 +121,6 @@
                 <div>
                   <div class="font-weight-medium">Non-Empty Result</div>
                   <div class="text-caption text-grey">Warn when entities return no data</div>
-                </div>
-              </template>
-            </v-checkbox>
-
-            <v-checkbox
-              v-model="enabledValidators"
-              label="Foreign Key Data"
-              value="foreign_key_data"
-              density="compact"
-              hide-details
-              disabled
-            >
-              <template #label>
-                <div>
-                  <div class="font-weight-medium">Foreign Key Data</div>
-                  <div class="text-caption text-grey">Validate foreign key relationships in data (coming soon)</div>
                 </div>
               </template>
             </v-checkbox>

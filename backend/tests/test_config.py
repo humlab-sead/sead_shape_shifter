@@ -56,7 +56,8 @@ def test_ingester_output_directory_resolves_under_application_root(tmp_path) -> 
 
 def test_blank_ingester_output_directory_is_unconfigured(tmp_path) -> None:
     """A blank project-ingester output directory must not become the current directory."""
-    settings = Settings(APPLICATION_ROOT=tmp_path, INGEST_OUTPUT_DIR=" ")
+    # The blank-string before-validator accepts raw strings, which the declared Path type rejects.
+    settings = Settings(APPLICATION_ROOT=tmp_path, INGEST_OUTPUT_DIR=" ")  # pyright: ignore[reportArgumentType]
 
     assert settings.INGEST_OUTPUT_DIR is None
 

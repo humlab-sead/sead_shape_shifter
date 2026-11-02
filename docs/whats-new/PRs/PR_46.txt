@@ -1,0 +1,43 @@
+title: Add split-pane live preview to entity editor and dependency graph tab
+description:
+## Summary
+
+Frontend-only change (9 files) that reshapes the entity editing and configuration-browsing
+experience:
+
+ - EntityFormDialog.vue gains a split-pane layout: a toolbar toggle (also Ctrl+Shift+P) widens the
+dialog to 95vw and shows a live preview panel beside the form. The panel renders preview rows in an
+AG Grid table with row count, last-refresh timestamp, manual Refresh, an optional auto-refresh
+checkbox, and error/empty states. Preview is limited to 100 rows and is only available in edit mode.
+ - useEntityPreview.ts adds a lastRefresh timestamp and a debouncedPreviewEntity helper (1000 ms
+debounce via useDebounceFn from @vueuse/core) used for auto-refresh.
+ - New DependencyGraph.vue component (hierarchical and force-directed SVG layouts, label and
+cycle-highlight toggles, node/edge counts, circular-dependency alert, details drawer with
+dependencies/dependents and an Edit Entity action) is embedded as a new "Dependencies" tab in
+ConfigurationDetailView.vue.
+ - Navigation is consolidated toward configuration-centric use: sidebar links to Dependency Graph,
+Entities, and Validation are removed from App.vue, and HomeView.vue cards are replaced with
+Configurations and Data Sources entries.
+ - SPLIT_PANE_IMPLEMENTATION.md documents the feature; TODO.md marks the settings-view item done and
+lists remaining items for #41, #43, #44, #45.
+
+Caveats: despite the PR title and body claiming a "grid editor for fixed entity" (TODO #41 remains
+unchecked in the diff), the diff shows no fixed-entity grid editor; the grid appears only in the
+read-only preview. The graph's "Edit Entity" action currently only switches to the Entities tab and
+logs the request.
+
+## User-facing release note
+
+When editing a saved entity, you can now expand the dialog into a split view with a live data
+preview that refreshes on demand or automatically after changes, and each configuration page has a
+Dependencies tab that visualizes entity dependencies and highlights circular ones.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+Not verified: validation results unavailable. No CI check results were included with this pull
+request, and no test changes appear in the diff. The pull request was merged (merge commit 7bb88fc)
+with an empty status-check rollup, which is not evidence that checks ran or passed.

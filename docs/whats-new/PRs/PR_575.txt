@@ -1,0 +1,29 @@
+title: chore: promote dev into staging
+description:
+<!-- promotion-pr -->
+## Summary
+
+Promotes `dev` into `staging`.
+
+This pull request introduces no change of its own. It carries the pull requests listed below and adds no separate release note.
+
+## Included PRs
+
+- [#563](https://github.com/humlab-sead/sead_shape_shifter/pull/563) Deprecate central image registry machinery
+- [#565](https://github.com/humlab-sead/sead_shape_shifter/pull/565) Add deployment-time staging for change-request ingester
+- [#568](https://github.com/humlab-sead/sead_shape_shifter/pull/568) Bind projects to provider-schema scopes (Phases 1-4)
+- [#570](https://github.com/humlab-sead/sead_shape_shifter/pull/570) Add in-memory project handoff for Change Request ingester
+- [#572](https://github.com/humlab-sead/sead_shape_shifter/pull/572) Support project-only change request bundles
+- [#574](https://github.com/humlab-sead/sead_shape_shifter/pull/574) Add project file sharing and reconciliation YAML support
+
+## User-facing release note
+
+None - no user-visible change.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+Not verified: validation results are recorded on the included pull requests.

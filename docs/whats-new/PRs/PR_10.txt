@@ -1,0 +1,52 @@
+title: Add Shape Shifter web configuration editor with validation and auto-fix
+description:
+## Summary
+
+This PR delivers the first version (v0.1.0) of the Shape Shifter Configuration Editor, a web-based
+editor for transformation configurations, merged into dev from the shape-shifter-editor branch (278
+files changed).
+
+Main components added:
+
+ - FastAPI backend (backend/): a new API layer with versioned v1 endpoints for configurations,
+validation, auto-fix, entities, data sources, schema inspection, preview, query, suggestions, test
+runs, and health. It is built on service classes (config, validation, auto-fix, dependency, preview,
+query, schema, suggestion, test-run, type-mapping, YAML services) with Pydantic models and a
+validator suite. The auto-fix service supports previewing and applying fixes with backups and
+rollback (.gitignore adds a backups entry).
+ - Vue 3 + TypeScript frontend (frontend/): a Vite/pnpm single-page app with a Monaco-based YAML
+editor, validation panel, entity tree, properties panel, data-source and test-run views, plus
+stores, services, and tests.
+ - Unified Python environment: pyproject.toml gains api, dev, and all extras (adding FastAPI,
+uvicorn, pydantic, pydantic-settings, ruamel-yaml, sqlparse, networkx, pytest-cov and related
+tooling), and uv.lock is regenerated accordingly. The Makefile adds
+install/install-core/install-api, backend-run, backend-test, frontend-install/frontend-run, and
+ui-install targets, and test/lint/coverage recipes now cover backend/ alongside src and tests.
+ - Core library adjustments: small changes in src/ (config model, constraints, loaders, normalizer,
+GIS transforms) with matching test updates.
+ - Documentation: updated README.md, new RELEASE_NOTES_v0.1.0.md, backend/frontend READMEs, and
+user/developer guides.
+
+## User-facing release note
+
+You can now create and edit Shape Shifter transformation configurations in a web-based editor with
+real-time validation, a visual entity tree, form-based property editing, and one-click auto-fix
+suggestions that back up the configuration before applying changes.
+
+## Upgrade notes
+
+ - The core library and the new backend API now share one Python environment. Install with make
+install (or uv pip install -e ".[all]"); make install-core and make install-api provide slimmer
+installs. A separate backend virtual environment is no longer needed.
+ - New Makefile targets manage the app: make backend-run (API on port 8000, defaults to
+input/arbodat-database.yml via CONFIG_FILE), make backend-test, make frontend-install, and make
+frontend-run (dev server on port 5173, requires pnpm).
+ - make test, make black, make pylint, make tidy, and make test-coverage now also run over
+backend/app and backend/tests.
+
+## Validation
+
+Not verified: validation results unavailable. The pull request metadata reports no CI status checks
+(statusCheckRollup is empty), and no test or lint run results were included with this input.
+Test-coverage and pass-rate figures appearing in the added release notes are the PR author's claims
+and were not independently verified here.

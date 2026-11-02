@@ -1,0 +1,63 @@
+title: Add sead_change_request ingester for Delivery 1 change packages
+description:
+## Summary
+
+Implements the Delivery 1 baseline for a new SEAD change request ingester, registered as
+sead_change_request. The ingester accepts a DataFrame-first input contract (in-memory tables, a
+source bundle, or an Excel workbook path), plans each row against target-model metadata, resolves
+identities, and emits a forward-only change package only after the SIMS Binding Set is confirmed.
+
+Main pieces:
+
+ - New ingesters/sead_change_request package: planning (reference_existing / allocate / reconcile /
+evaluate_bridge), identity resolution into Delivery 1 row states (existing_entity,
+newly_allocated_entity, reconciled_classifier, derived_bridge_row, blocked_unresolved), thin client
+orchestration over SIMS and reconciliation seams, Binding Set confirmation handling with an
+operator-facing pending-confirmation report, PK/FK materialization from resolved target IDs,
+target-side collision checks (target-ID existence and bridge unique_sets uniqueness), in-memory
+package building, and insert-only deploy SQL rendered in a single transaction with explicit
+revert/verify placeholders (rollback and verification are not implemented in Delivery 1).
+ - New backend runtime module backend/app/services/ingester_runtime.py providing SIMS,
+reconciliation, and read-only PostgreSQL collision-checker adapters, injected into
+IngesterConfig.extra by IngesterService for the sead_change_request key without overwriting
+explicitly supplied clients.
+ - Protocol and API model extensions: ValidationResult gains pending_confirmation_report;
+IngestionResult gains deploy_artifact and pending_confirmation_report; ValidateResponse gains infos
+and pending_confirmation_report; IngestResponse gains error_details, deploy_artifact, and
+pending_confirmation_report. The /ingest endpoint now returns a structured IngestResponse with
+success: false instead of raising HTTP 500 for failed ingestions.
+ - SIMS ResolutionOutcome gains an optional target-facing target_id; the ingester reports an
+explicit capability-gap error when SIMS cannot provide one.
+ - Extensive new unit and integration tests for the ingester units, runtime adapters, backend
+service injection, registry registration, and API response structure; frontend ingester types
+updated to match the new response fields.
+ - Documentation: new Delivery 1 proposal and implementation-plan documents, restructured proposal
+README, archived review notes, updated ingester architecture instructions (allowed import boundaries
+for ingesters), and an output entry in .gitignore.
+
+## User-facing release note
+
+A new SEAD change request ingester turns a submission (Excel workbook or in-memory tables) into a
+forward-only deploy package — deploy SQL plus metadata — once the SIMS Binding Set is confirmed, and
+returns a clear report naming the blocked entities and the confirmation step needed when it cannot
+proceed.
+
+## Upgrade notes
+
+API consumers of the ingester endpoints should note the response changes: failed ingestions now
+return HTTP 200 with a structured response (success: false, error_details) instead of HTTP 500 with
+a detail message, and validate/ingest responses carry new optional fields (infos,
+pending_confirmation_report, deploy_artifact, error_details). Generated deploy packages are
+forward-only: revert.sql and verify.sql are placeholders and the metadata marks the package as
+non-revertible. No migrations or configuration changes are included in the diff.
+
+## Validation
+
+ - The pull request body lists ./.venv/bin/pytest
+backend/tests/ingesters/test_sead_change_request*.py backend/tests/api/test_ingesters.py
+backend/tests/ingesters/test_ingester_infrastructure.py tests/specifications/test_constraints.py -q
+as the validation command, but no pass/fail result for it is recorded in the available evidence.
+ - No CI status checks are attached to the pull request (status check rollup is empty), so CI
+execution and results are unknown.
+ - The pull request was merged (merge commit d8211b4), but no test or CI outcomes are available to
+confirm which checks passed.

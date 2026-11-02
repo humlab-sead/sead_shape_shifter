@@ -1,0 +1,64 @@
+title: Migrate reconciliation config to v2 format with target field support
+description:
+## Summary
+
+Reconciliation configuration moves from a v1 to a v2 YAML format. In v2, each entity can hold
+several reconciliation specifications, one per target field: entities[entity_name][target_field] =
+spec. The per-spec keys list is replaced by the target field itself (used as the nested key), the
+unused columns field is removed, and the config gains an explicit version field (default "2.0").
+Mapping entries now carry a single source_value instead of a source_values list.
+
+Supporting changes in this PR:
+
+ - Backend models/services: ReconciliationConfig.entities is now a nested entity → target field →
+spec dict; ReconciliationQueryService.create, preview, auto-reconcile, mapping update, and
+mark-unmatched methods take a target_field argument and match on a single source value.
+ - API endpoints: preview, auto-reconcile (async and sync), suggest, mapping (POST/DELETE), and
+mark-unmatched routes now include a {target_field} path segment, and specs are looked up per entity
++ target field.
+ - Auto-migration: backend/app/utils/reconciliation_migration.py detects the format version and
+migrates v1 configs on load (v1 specs are nested under their first key as the target field; entries
+with composite keys are reduced to the first key with a warning, and specs without keys are
+skipped). Migrated configs are saved back as v2.
+ - CLI script: scripts/migrate_reconciliation_v1_to_v2.py batch-migrates reconciliation.yml files
+under a projects directory, with --dry-run, verbose logging, and a .yml.v1.backup backup before
+writing.
+ - Frontend: the reconciliation view adds a target-field selector (auto-selecting the first target
+per entity), the grid pins a single target-field column and sends a single source_value, and the
+store/types call the new target-field-scoped endpoints.
+ - Docs/examples: input/example-reconciliation-v2.yml documents the v2 format; TODO.md records the
+rationale and follow-up work (spec editing, multiple specs per entity).
+ - Miscellaneous: small refactors in operation_manager.py (safe _initialized check),
+dependency_service.py (moved re import), a pylint disable entry in pyproject.toml, and test files
+updated to the v2 format.
+
+## User-facing release note
+
+An entity can now have multiple reconciliation specifications, one per target column: in the
+reconciliation view you select both an entity and a target field, and each target keeps its own
+specification and mappings. Existing v1 reconciliation files are recognized and converted
+automatically, so no manual conversion is required to keep reconciling.
+
+## Upgrade notes
+
+ - v1 reconciliation.yml files are auto-migrated to v2 the first time they are loaded and are then
+saved in v2 format. To migrate files up front, run python scripts/migrate_reconciliation_v1_to_v2.py
+[--dry-run] [--projects-dir PATH]; the script writes a .yml.v1.backup copy before modifying a file.
+ - Format changes for anyone maintaining these files or calling the API: specs are nested under
+entities[entity][target_field], the keys and columns fields are gone, a version: "2.0" field is
+included, and mapping entries use a single source_value instead of a source_values list.
+ - REST endpoints for reconciliation now require a {target_field} path segment (preview,
+auto-reconcile, auto-reconcile-sync, suggest, mapping, mark-unmatched); direct API consumers must
+update their calls.
+ - v1 specs with composite keys are not fully supported in v2: migration keeps only the first key as
+the target field and logs a warning, so such specs may need manual review after migration.
+
+## Validation
+
+Not verified: validation results unavailable.
+
+No CI check results are available for this pull request. The PR updates the reconciliation unit
+tests (backend/tests/services/test_reconciliation_service.py,
+backend/tests/test_reconciliation_client.py) and the arbodat-reconciliation.yml test fixture to the
+v2 format, but whether these tests were executed, and their outcomes, are unknown from the available
+evidence.

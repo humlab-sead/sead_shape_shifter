@@ -1,0 +1,40 @@
+title: Add settings view with theme presets, custom colors and dark mode
+description:
+## Summary
+
+Replaces the placeholder Settings page with a working settings view centered on theme management:
+
+ - New useTheme composable (frontend/src/composables/useTheme.ts) wraps the Vuetify theme API and
+adds localStorage persistence of the selected theme and custom color overrides, plus helpers for
+toggling dark mode, applying/resetting custom colors, and exporting/importing a theme configuration
+as JSON.
+ - Five theme presets are now available (light, dark, ocean, forest, sunset); the three new themes
+are defined in frontend/src/plugins/vuetify.ts, which also adds explicit dark: true/false flags to
+the existing light and dark themes.
+ - The rewritten SettingsView.vue provides theme preset cards with a "Current" indicator, a
+dark/light quick toggle, a reset-to-default action with a confirmation dialog, a live preview panel
+(color swatches and sample buttons/alerts), placeholder Interface switches (compact mode,
+animations), and an About card.
+ - New ThemeColorPicker.vue component lets users edit individual theme colors (primary, secondary,
+accent, error, info, success, warning) via color inputs, reset individual or all colors, and
+export/import the theme config as a JSON file.
+ - A dark-mode toggle button with tooltip was added to the application app bar in App.vue.
+ - TODO.md marks the frontend session-management item complete and adds new open items (testing
+entity configurations without full normalization; expanding the settings view with backend options
+such as temp directory and logging level). The Interface switches and those backend options are not
+implemented in this PR.
+
+## User-facing release note
+
+The Settings page now lets you choose from five theme presets (Light, Dark, Ocean, Forest, Sunset),
+switch between light and dark mode from the app bar, and customize individual theme colors, with
+your choices saved in the browser and restorable or transferable via JSON export/import.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+Not verified: validation results unavailable. No CI check results were reported for this pull
+request, and the diff contains no tests.

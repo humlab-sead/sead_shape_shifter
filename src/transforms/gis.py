@@ -83,7 +83,7 @@ class TransformSplitLatLong(Transformer):
 
         df: pd.DataFrame = data.copy()
 
-        s: pd.Series[str] = df[col].astype("string")
+        s: pd.Series = df[col].astype("string")
 
         split: pd.DataFrame = s.str.split(sep, n=1, expand=True)
 
@@ -92,12 +92,12 @@ class TransformSplitLatLong(Transformer):
                 f"Expected exactly one '{sep}' in values of column {col!r}, " f"but got {split.shape[1]} parts after splitting"
             )
 
-        lat_raw: pd.Series[str] = split[0].str.strip()
-        lon_raw: pd.Series[str] = split[1].str.strip()
+        lat_raw: pd.Series = split[0].str.strip()
+        lon_raw: pd.Series = split[1].str.strip()
 
         try:
-            lat: pd.Series[float] = pd.to_numeric(lat_raw, errors="raise")
-            lon: pd.Series[float] = pd.to_numeric(lon_raw, errors="raise")
+            lat: pd.Series = pd.to_numeric(lat_raw, errors="raise")
+            lon: pd.Series = pd.to_numeric(lon_raw, errors="raise")
         except Exception as e:
             # Try to identify a problematic value for a clearer message
             bad_lat: list[str] = lat_raw[~lat_raw.str.match(r"^[+-]?\d+(\.\d+)?$", na=True)].iloc[:5].tolist()

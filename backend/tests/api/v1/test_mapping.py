@@ -1,6 +1,7 @@
 """Tests for mapping sidecar CRUD API endpoints."""
 
 from pathlib import Path
+from urllib.parse import quote
 
 import yaml
 from httpx import ASGITransport, AsyncClient
@@ -8,6 +9,7 @@ from httpx import ASGITransport, AsyncClient
 from backend.app.core.config import settings
 from backend.app.main import app
 from backend.app.services import project_service, validation_service, yaml_service
+from src.reconciliation.mapping_model import encode_local_key
 
 # pylint: disable=redefined-outer-name, unused-argument
 
@@ -121,6 +123,31 @@ class TestMappingApi:
         assert body["local_key_value"] == "A"
         assert body["link"]["target_id"] == 10
         assert body["link"]["source"] == "manual"
+        assert body["link"]["owner"] is None
+        assert body["link"]["verified_at"] is None
+
+    async def test_get_mapping_link_returns_owner_and_verification_time(self, tmp_path: Path, monkeypatch, authorized_client) -> None:
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        await _create_project(authorized_client)
+        _write_mapping_sidecar(tmp_path)
+        sidecar_path = tmp_path / "test_project" / "test_project-mapping.yml"
+        sidecar = yaml.safe_load(sidecar_path.read_text(encoding="utf-8"))
+        sidecar["entities"]["site"]["links"]["owned"] = {
+            "target_id": 101,
+            "source": "reconciliation",
+            "created_at": "2026-06-15T00:00:00Z",
+            "committed_at": "2026-06-15T00:00:00Z",
+            "owner": {"entity_name": "site", "target_field": "site_code"},
+            "verified_at": "2026-06-16T00:00:00Z",
+            "created_by": "reconciliation",
+        }
+        sidecar_path.write_text(yaml.safe_dump(sidecar, sort_keys=False), encoding="utf-8")
+
+        response = await authorized_client.get("/api/v1/projects/test_project/mapping/site/owned")
+
+        assert response.status_code == 200
+        assert response.json()["link"]["owner"] == {"entity_name": "site", "target_field": "site_code"}
+        assert response.json()["link"]["verified_at"] == "2026-06-16T00:00:00Z"
 
     async def test_get_single_mapping_link_returns_404_for_missing_entity(self, tmp_path: Path, monkeypatch, authorized_client) -> None:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
@@ -170,6 +197,53 @@ class TestMappingApi:
         assert body["message"] == "Entity 'missing' not found"
         assert body["context"]["resource_type"] == "entity"
         assert body["context"]["resource_id"] == "missing"
+
+    async def test_mapping_link_routes_round_trip_encoded_slashes_and_compound_keys(
+        self, tmp_path: Path, monkeypatch, authorized_client
+    ) -> None:
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        await _create_project(authorized_client)
+
+        keys = ["A/B", encode_local_key(["first", "second"], ["A|B", "C/D"])]
+        for target_id, key in enumerate(keys, start=1):
+            encoded_key = quote(key, safe="")
+            url = f"/api/v1/projects/test_project/mapping/site/{encoded_key}"
+            saved = await authorized_client.put(url, json={"target_id": target_id, "notes": "Encoded key"})
+            assert saved.status_code == 200, saved.text
+            assert saved.json()["local_key_value"] == key
+            assert saved.json()["link"]["target_id"] == target_id
+
+            loaded = await authorized_client.get(url)
+            assert loaded.status_code == 200, loaded.text
+            assert loaded.json()["local_key_value"] == key
+            assert loaded.json()["link"]["source"] == "manual"
+
+        sidecar = yaml.safe_load((tmp_path / "test_project" / "test_project-mapping.yml").read_text(encoding="utf-8"))
+        assert sidecar["entities"]["site"]["links"]["A/B"]["target_id"] == 1
+
+    async def test_put_mapping_link_rejects_non_integer_target_id(self, tmp_path: Path, monkeypatch, authorized_client) -> None:
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        await _create_project(authorized_client)
+
+        response = await authorized_client.put(
+            "/api/v1/projects/test_project/mapping/site/A",
+            json={"target_id": "not-an-integer"},
+        )
+
+        assert response.status_code == 422, response.text
+
+    async def test_put_mapping_link_rejects_non_positive_target_ids(self, tmp_path: Path, monkeypatch, authorized_client) -> None:
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        await _create_project(authorized_client)
+
+        for target_id in (0, -1):
+            response = await authorized_client.put(
+                "/api/v1/projects/test_project/mapping/site/A",
+                json={"target_id": target_id},
+            )
+            assert response.status_code == 422, response.text
+
+        assert not (tmp_path / "test_project" / "test_project-mapping.yml").exists()
 
     async def test_delete_mapping_link_removes_saved_link(self, tmp_path: Path, monkeypatch, authorized_client) -> None:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)

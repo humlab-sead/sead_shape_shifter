@@ -179,9 +179,9 @@ class IngestResponse(BaseModel):
     success: bool = Field(..., description="Whether ingestion was successful")
     records_processed: int = Field(default=0, description="Number of records processed")
     message: str = Field(..., description="Status message")
-    submission_id: int | None = Field(None, description="Database submission ID if registered")
-    output_path: str | None = Field(None, description="Path to output files")
-    error_details: str | None = Field(None, description="Detailed error information when ingestion is incomplete or failed")
+    submission_id: int | None = Field(default=None, description="Database submission ID if registered")
+    output_path: str | None = Field(default=None, description="Path to output files")
+    error_details: str | None = Field(default=None, description="Detailed error information when ingestion is incomplete or failed")
     scope_name: str | None = Field(default=None, description="Effective SIMS scope used for this run")
     run_id: str | None = Field(default=None, description="Effective run ID within the SIMS scope")
     deploy_artifact: dict[str, Any] | None = Field(
