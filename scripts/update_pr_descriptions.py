@@ -568,10 +568,12 @@ def configure_copilot_environment(model: str | None) -> tuple[str, dict[str, str
         return value.strip() if value and value.strip() else None
 
     environment = os.environ.copy()
-    selected_model = model or environment.get("COPILOT_PROVIDER_MODEL_ID") or get_project_value("PR_DESCRIPTION_DEFAULT_MODEL")
-    provider_type = environment.get("COPILOT_PROVIDER_TYPE") or get_project_value("PR_DESCRIPTION_DEFAULT_PROVIDER_TYPE")
-    provider_base_url = environment.get("COPILOT_PROVIDER_BASE_URL") or get_project_value("PR_DESCRIPTION_DEFAULT_PROVIDER_BASE_URL")
-    provider_key = environment.get("COPILOT_PROVIDER_API_KEY") or get_project_value("PR_DESCRIPTION_DEFAULT_PROVIDER_KEY")
+    selected_model = model or environment.get("COPILOT_PROVIDER_MODEL_ID") or get_project_value("REPO_SCRIPTS_DEFAULT_MODEL")
+    provider_type = environment.get("COPILOT_PROVIDER_TYPE") or get_project_value("REPO_SCRIPTS_DEFAULT_PROVIDER_TYPE")
+    provider_base_url = environment.get("COPILOT_PROVIDER_BASE_URL") or get_project_value(
+        "REPO_SCRIPTS_DEFAULT_PROVIDER_BASE_URL"
+    )
+    provider_key = environment.get("COPILOT_PROVIDER_API_KEY") or get_project_value("REPO_SCRIPTS_DEFAULT_PROVIDER_KEY")
     selected_model = selected_model.strip() if selected_model and selected_model.strip() else None
     provider_type = provider_type.strip() if provider_type and provider_type.strip() else None
     provider_base_url = provider_base_url.strip() if provider_base_url and provider_base_url.strip() else None
@@ -579,13 +581,13 @@ def configure_copilot_environment(model: str | None) -> tuple[str, dict[str, str
 
     missing_settings: list[str] = []
     if not selected_model:
-        missing_settings.append("model (--model, COPILOT_PROVIDER_MODEL_ID, or PR_DESCRIPTION_DEFAULT_MODEL)")
+        missing_settings.append("model (--model, COPILOT_PROVIDER_MODEL_ID, or REPO_SCRIPTS_DEFAULT_MODEL)")
     if not provider_type:
-        missing_settings.append("provider type (COPILOT_PROVIDER_TYPE or PR_DESCRIPTION_DEFAULT_PROVIDER_TYPE)")
+        missing_settings.append("provider type (COPILOT_PROVIDER_TYPE or REPO_SCRIPTS_DEFAULT_PROVIDER_TYPE)")
     if not provider_base_url:
-        missing_settings.append("provider URL (COPILOT_PROVIDER_BASE_URL or PR_DESCRIPTION_DEFAULT_PROVIDER_BASE_URL)")
+        missing_settings.append("provider URL (COPILOT_PROVIDER_BASE_URL or REPO_SCRIPTS_DEFAULT_PROVIDER_BASE_URL)")
     if not provider_key:
-        missing_settings.append("API key (COPILOT_PROVIDER_API_KEY or PR_DESCRIPTION_DEFAULT_PROVIDER_KEY)")
+        missing_settings.append("API key (COPILOT_PROVIDER_API_KEY or REPO_SCRIPTS_DEFAULT_PROVIDER_KEY)")
     if missing_settings:
         raise ValueError("Missing required Copilot configuration: " + "; ".join(missing_settings))
     assert selected_model is not None
@@ -598,10 +600,10 @@ def configure_copilot_environment(model: str | None) -> tuple[str, dict[str, str
         "GH_TOKEN",
         "COPILOT_GITHUB_TOKEN",
         "COPILOT_ALLOW_ALL",
-        "PR_DESCRIPTION_DEFAULT_MODEL",
-        "PR_DESCRIPTION_DEFAULT_PROVIDER_TYPE",
-        "PR_DESCRIPTION_DEFAULT_PROVIDER_BASE_URL",
-        "PR_DESCRIPTION_DEFAULT_PROVIDER_KEY",
+        "REPO_SCRIPTS_DEFAULT_MODEL",
+        "REPO_SCRIPTS_DEFAULT_PROVIDER_TYPE",
+        "REPO_SCRIPTS_DEFAULT_PROVIDER_BASE_URL",
+        "REPO_SCRIPTS_DEFAULT_PROVIDER_KEY",
     ):
         environment.pop(key, None)
 
@@ -1200,7 +1202,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--repo", help="GitHub repository in OWNER/REPO form; defaults to the current repository")
     parser.add_argument(
         "--model",
-        help=("Copilot model identifier (required unless COPILOT_PROVIDER_MODEL_ID or PR_DESCRIPTION_DEFAULT_MODEL is set)"),
+        help=("Copilot model identifier (required unless COPILOT_PROVIDER_MODEL_ID or REPO_SCRIPTS_DEFAULT_MODEL is set)"),
     )
     parser.add_argument("--force", action="store_true", help="With --draft, replace existing draft files")
     parser.add_argument("--verbose", action="store_true", help="With --draft, log the raw Copilot response when parsing fails")

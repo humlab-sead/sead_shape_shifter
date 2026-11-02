@@ -2,6 +2,7 @@
 
 import datetime as dt
 import importlib.util
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -288,3 +289,114 @@ def test_latest_version_check_uses_version_when_release_dates_match(tmp_path: Pa
 
     assert generator.is_latest_changelog_version(changelog_path, "2.5.1")
     assert not generator.is_latest_changelog_version(changelog_path, "2.5.0")
+
+
+def test_load_local_env_reads_shared_provider_settings_and_preserves_exported_values(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    generator = load_generator_module()
+    (tmp_path / ".env").write_text(
+        "REPO_SCRIPTS_DEFAULT_MODEL=dotenv-model\n"
+        "REPO_SCRIPTS_DEFAULT_PROVIDER_TYPE=openai\n"
+        "REPO_SCRIPTS_DEFAULT_PROVIDER_BASE_URL=https://example.test/v1\n"
+        "REPO_SCRIPTS_DEFAULT_PROVIDER_KEY=dotenv-key\n",
+        encoding="utf-8",
+    )
+    for key in (
+        "REPO_SCRIPTS_DEFAULT_MODEL",
+        "REPO_SCRIPTS_DEFAULT_PROVIDER_TYPE",
+        "REPO_SCRIPTS_DEFAULT_PROVIDER_BASE_URL",
+        "REPO_SCRIPTS_DEFAULT_PROVIDER_KEY",
+    ):
+        monkeypatch.delenv(key, raising=False)
+    monkeypatch.setenv("REPO_SCRIPTS_DEFAULT_MODEL", "exported-model")
+
+    generator.load_local_env(tmp_path)
+
+    assert generator.os.environ["REPO_SCRIPTS_DEFAULT_MODEL"] == "exported-model"
+    assert generator.os.environ["REPO_SCRIPTS_DEFAULT_PROVIDER_TYPE"] == "openai"
+    assert generator.os.environ["REPO_SCRIPTS_DEFAULT_PROVIDER_BASE_URL"] == "https://example.test/v1"
+    assert generator.os.environ["REPO_SCRIPTS_DEFAULT_PROVIDER_KEY"] == "dotenv-key"
+
+
+def test_ai_notes_use_shared_openai_compatible_provider_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    generator = load_generator_module()
+    for key in (
+        "COPILOT_PROVIDER_MODEL_ID",
+        "COPILOT_PROVIDER_TYPE",
+        "COPILOT_PROVIDER_BASE_URL",
+        "COPILOT_PROVIDER_API_KEY",
+        "REPO_SCRIPTS_DEFAULT_MODEL",
+        "REPO_SCRIPTS_DEFAULT_PROVIDER_TYPE",
+        "REPO_SCRIPTS_DEFAULT_PROVIDER_BASE_URL",
+        "REPO_SCRIPTS_DEFAULT_PROVIDER_KEY",
+    ):
+        monkeypatch.delenv(key, raising=False)
+    monkeypatch.setenv("REPO_SCRIPTS_DEFAULT_MODEL", "configured-model")
+    monkeypatch.setenv("REPO_SCRIPTS_DEFAULT_PROVIDER_TYPE", "openai")
+    monkeypatch.setenv("REPO_SCRIPTS_DEFAULT_PROVIDER_BASE_URL", "https://example.test/v1/")
+    monkeypatch.setenv("REPO_SCRIPTS_DEFAULT_PROVIDER_KEY", "configured-key")
+    captured: dict[str, object] = {}
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return None
+
+        def read(self) -> bytes:
+            return json.dumps(
+                {
+                    "choices": [
+                        {
+                            "message": {
+                                "content": (
+                                    "# What's New in v2.5.0\n\n## Changes\n\n- Updated behavior.\n\n"
+                                    "## Upgrade Notes\n\n- None.\n"
+                                )
+                            }
+                        }
+                    ]
+                }
+            ).encode("utf-8")
+
+    def fake_urlopen(request, timeout: float):
+        captured["url"] = request.full_url
+        captured["body"] = json.loads(request.data.decode("utf-8"))
+        captured["authorization"] = request.get_header("Authorization")
+        captured["timeout"] = timeout
+        return FakeResponse()
+
+    monkeypatch.setattr(generator.request, "urlopen", fake_urlopen)
+    context = generator.ReleaseContext("2.5.0", dt.date(2026, 11, 2), "2.4.0")
+
+    content, mode = generator.maybe_generate_ai_notes(context, [], "heuristic draft", False)
+
+    assert mode == "ai:configured-model"
+    assert content.startswith("# What's New in v2.5.0")
+    assert captured["url"] == "https://example.test/v1/chat/completions"
+    assert captured["body"]["model"] == "configured-model"
+    assert captured["authorization"] == "Bearer configured-key"
+
+
+def test_ai_notes_use_heuristics_when_provider_configuration_is_absent(monkeypatch: pytest.MonkeyPatch) -> None:
+    generator = load_generator_module()
+    for key in (
+        "COPILOT_PROVIDER_MODEL_ID",
+        "COPILOT_PROVIDER_TYPE",
+        "COPILOT_PROVIDER_BASE_URL",
+        "COPILOT_PROVIDER_API_KEY",
+        "REPO_SCRIPTS_DEFAULT_MODEL",
+        "REPO_SCRIPTS_DEFAULT_PROVIDER_TYPE",
+        "REPO_SCRIPTS_DEFAULT_PROVIDER_BASE_URL",
+        "REPO_SCRIPTS_DEFAULT_PROVIDER_KEY",
+    ):
+        monkeypatch.delenv(key, raising=False)
+    context = generator.ReleaseContext("2.5.0", dt.date(2026, 11, 2), "2.4.0")
+
+    content, mode = generator.maybe_generate_ai_notes(context, [], "heuristic draft", False)
+
+    assert content == "heuristic draft"
+    assert mode == "heuristic"
