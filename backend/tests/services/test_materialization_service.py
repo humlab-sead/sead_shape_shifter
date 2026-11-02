@@ -900,7 +900,7 @@ class TestSyncMaterializedEntityMappings:
                         values=[
                             [1, 101, "Norway"],
                             [2, None, "Sweden"],
-                            [3, 0, "Denmark"],
+                            [3, 303, "Denmark"],
                             [4, None, "None ID"],
                             [5, float("nan"), "NaN ID"],
                             [6, "", "Empty ID"],
@@ -917,7 +917,7 @@ class TestSyncMaterializedEntityMappings:
         assert links["Norway"] == original_norway_link
         assert links["Sweden"].source == LinkSource.RECONCILIATION
         assert links["Sweden"].target_id == 20
-        assert links["Denmark"].target_id == 0
+        assert links["Denmark"].target_id == 303
         assert links["Denmark"].source == LinkSource.MANUAL
         assert links["Denmark"].created_by == "new-user"
         mock_save.assert_called_once_with(catalog, "/tmp/test-project/shapeshifter.yml", expected_version="sidecar-version")
