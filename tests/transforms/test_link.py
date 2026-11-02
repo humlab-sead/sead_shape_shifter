@@ -906,3 +906,101 @@ def test_link_foreign_key_avoids_duplicate_columns_when_public_id_in_remote_data
         assert len([c for c in linked_df.columns if c == "master_dataset_id"]) == 1
         # Verify the FK values are correct (should be the remote system_id values)
         assert linked_df["master_dataset_id"].tolist() == [1, 1]
+
+
+def build_same_pair_linker() -> tuple[ForeignKeyLinker, ShapeShiftProject]:
+    """Build a linker whose local entity has two foreign keys to the same remote entity."""
+    project = ShapeShiftProject(
+        cfg={
+            "entities": {
+                "local": {
+                    "columns": ["remote_code", "other_code"],
+                    "keys": ["remote_code"],
+                    "foreign_keys": [
+                        {
+                            "entity": "remote",
+                            "local_keys": ["remote_code"],
+                            "remote_keys": ["remote_code"],
+                            "how": "inner",
+                            "constraints": {"allow_row_decrease": True},
+                        },
+                        {
+                            "entity": "remote",
+                            "local_keys": ["other_code"],
+                            "remote_keys": ["remote_code"],
+                            "how": "inner",
+                            "constraints": {"allow_row_decrease": True},
+                        },
+                    ],
+                },
+                "remote": {
+                    "columns": ["remote_code"],
+                    "keys": ["remote_code"],
+                    "public_id": "remote_id",
+                },
+            }
+        }
+    )
+    local_df = pd.DataFrame({"system_id": [100, 101], "remote_code": ["A", "A"], "other_code": ["A", "missing"]})
+    remote_df = pd.DataFrame({"system_id": [7], "remote_code": ["A"]})
+    linker = ForeignKeyLinker(project=project, table_store=TableStore({"local": local_df, "remote": remote_df}))
+    return linker, project
+
+
+def test_link_foreign_key_records_fk_index_and_signature():
+    """A row-count warning names the saved foreign key that raised it."""
+    linker, project = build_same_pair_linker()
+    fk_cfg: ForeignKeyConfig = project.get_table("local").foreign_keys[1]
+    local_df = pd.DataFrame({"system_id": [100, 101], "remote_code": ["A", "A"], "other_code": ["A", "missing"]})
+    remote_df = pd.DataFrame({"system_id": [7], "remote_code": ["A"]})
+
+    linker.link_foreign_key(local_df, fk_cfg, remote_df)
+
+    issue = linker.validators[-1].issues[0]
+    assert issue.issue_type == "row_count_mismatch"
+    assert issue.metadata["fk_index"] == 1
+    assert issue.metadata["fk_signature"] == fk_cfg.identity_signature
+    assert issue.metadata["link_pass"] == "initial"
+
+
+def test_link_foreign_key_records_current_link_pass():
+    """The validator carries the linking pass set on the linker."""
+    linker, project = build_same_pair_linker()
+    fk_cfg: ForeignKeyConfig = project.get_table("local").foreign_keys[1]
+    local_df = pd.DataFrame({"system_id": [100, 101], "remote_code": ["A", "A"], "other_code": ["A", "missing"]})
+    remote_df = pd.DataFrame({"system_id": [7], "remote_code": ["A"]})
+
+    linker.link_pass = "after_unnest"
+    linker.link_foreign_key(local_df, fk_cfg, remote_df)
+
+    assert linker.validators[-1].issues[0].metadata["link_pass"] == "after_unnest"
+
+
+def test_link_foreign_key_without_constraints_records_no_issue():
+    """A foreign key without a constraints block adds no row-count warning."""
+    project = ShapeShiftProject(
+        cfg={
+            "entities": {
+                "local": {
+                    "columns": ["remote_code"],
+                    "keys": ["remote_code"],
+                    "foreign_keys": [
+                        {"entity": "remote", "local_keys": ["remote_code"], "remote_keys": ["remote_code"], "how": "inner"},
+                    ],
+                },
+                "remote": {
+                    "columns": ["remote_code"],
+                    "keys": ["remote_code"],
+                    "public_id": "remote_id",
+                },
+            }
+        }
+    )
+    fk_cfg: ForeignKeyConfig = project.get_table("local").foreign_keys[0]
+    local_df = pd.DataFrame({"system_id": [100, 101], "remote_code": ["A", "missing"]})
+    remote_df = pd.DataFrame({"system_id": [7], "remote_code": ["A"]})
+    linker = ForeignKeyLinker(project=project, table_store=TableStore({"local": local_df, "remote": remote_df}))
+
+    linker.link_foreign_key(local_df, fk_cfg, remote_df)
+
+    assert not linker.validators[-1].issues

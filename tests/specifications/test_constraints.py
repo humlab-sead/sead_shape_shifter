@@ -298,3 +298,65 @@ def test_pre_merge_remote_null_check_still_applies_to_new_remote_rows():
 
     with pytest.raises(ForeignKeyConstraintViolation, match="remote.*customer_code"):
         validator.validate_before_merge(local_df=local_df, remote_df=remote_df)
+
+
+def test_row_count_issue_records_fk_index_signature_and_link_pass():
+    """A row-count warning identifies the saved foreign key and the linking pass."""
+    project = build_project(constraints={"allow_row_decrease": False})
+    fk: ForeignKeyConfig = project.get_table("orders").foreign_keys[0]
+    entity: TableConfig = project.get_table("orders")
+    validator = ForeignKeyConstraintValidator(local_entity=entity, fk=fk, raise_on_violation=False)
+
+    local_df = pd.DataFrame({"order_id": [1, 2, 3], "order_public_id": [None, None, None], "customer_id": [1, 2, 3]})
+    remote_df = pd.DataFrame({"id": [1, 2, 3]})
+    linked_df = pd.DataFrame({"order_id": [1, 2], "customer_id": [1, 2]})
+
+    validator.validate_before_merge(local_df=local_df, remote_df=remote_df)
+    validator.validate_after_merge(local_df=local_df, remote_df=remote_df, linked_df=linked_df)
+
+    row_count_issues = [issue for issue in validator.issues if issue.issue_type == "row_count_mismatch"]
+    assert len(row_count_issues) == 1
+    metadata = row_count_issues[0].metadata
+    assert metadata["fk_index"] == 0
+    assert metadata["fk_signature"] == fk.identity_signature
+    assert metadata["link_pass"] == "initial"
+    assert metadata["row_count_before"] == 3
+    assert metadata["row_count_after"] == 2
+    assert metadata["join_type"] == "inner"
+
+
+def test_row_count_issue_records_deferred_retry_pass():
+    """The validator reports the linking pass assigned by its owner."""
+    project = build_project(constraints={"allow_row_decrease": True})
+    fk: ForeignKeyConfig = project.get_table("orders").foreign_keys[0]
+    entity: TableConfig = project.get_table("orders")
+    validator = ForeignKeyConstraintValidator(local_entity=entity, fk=fk)
+    validator.link_pass = "deferred_retry"
+
+    local_df = pd.DataFrame({"order_id": [1, 2, 3], "order_public_id": [None, None, None], "customer_id": [1, 2, 3]})
+    remote_df = pd.DataFrame({"id": [1, 2, 3]})
+    linked_df = pd.DataFrame({"order_id": [1, 2], "customer_id": [1, 2]})
+
+    validator.validate_before_merge(local_df=local_df, remote_df=remote_df)
+    validator.validate_after_merge(local_df=local_df, remote_df=remote_df, linked_df=linked_df)
+
+    row_count_issues = [issue for issue in validator.issues if issue.issue_type == "row_count_mismatch"]
+    assert len(row_count_issues) == 1
+    assert row_count_issues[0].metadata["link_pass"] == "deferred_retry"
+
+
+def test_foreign_key_without_constraints_records_no_issue():
+    """A foreign key without a constraints block still raises no issue."""
+    project = build_project(constraints={})
+    fk: ForeignKeyConfig = project.get_table("orders").foreign_keys[0]
+    entity: TableConfig = project.get_table("orders")
+    validator = ForeignKeyConstraintValidator(local_entity=entity, fk=fk)
+
+    local_df = pd.DataFrame({"order_id": [1, 2, 3], "order_public_id": [None, None, None], "customer_id": [1, 2, 3]})
+    remote_df = pd.DataFrame({"id": [1, 2, 3]})
+    linked_df = pd.DataFrame({"order_id": [1, 2], "customer_id": [1, 2]})
+
+    validator.validate_before_merge(local_df=local_df, remote_df=remote_df)
+    validator.validate_after_merge(local_df=local_df, remote_df=remote_df, linked_df=linked_df)
+
+    assert not validator.issues
