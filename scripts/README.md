@@ -73,6 +73,82 @@ Promotion pull requests (`dev` into `staging`, or `staging` into `main`) are dra
 
 `--include-orphaned` appends a `Detected orphaned commits` section covering the commits pushed to the base branch between the previous merged pull request and this one. Generated output, release bookkeeping, documentation-only commits, and contributor configuration are filtered out of that section by default, and the filtered counts stay visible in the section and on standard error. See [the What's New workflow](../docs/whats-new/README.md#recording-commits-without-a-pull-request).
 
+## `create_change_pr.py`
+
+`create_change_pr.py` moves uncommitted work onto a branch and merges it into
+`dev` through a pull request. Run it whenever a change touches `scripts/`,
+`src/`, `backend/`, `frontend/`, `ingesters/`, `tests/`, or
+`.github/workflows/`, because those paths need pull request provenance before
+`dev` can be promoted. See the
+[promotion guard workflow](../.github/workflows/promotion-guard.yml).
+
+```bash
+# Show the branch, commit message, file list, and pull request body first
+uv run python scripts/create_change_pr.py \
+  --type chore --scope deps \
+  --subject "upgrade dev tooling and adapt code to new checks" \
+  --path uv.lock --path src/loaders --path src/specifications \
+  --validation "uv run pylint -j 0 src tests backend ingesters: exit 0" \
+  --dry-run
+
+# Create the branch, commit, push, open the pull request, and merge it
+uv run python scripts/create_change_pr.py \
+  --type chore --scope deps \
+  --subject "upgrade dev tooling and adapt code to new checks" \
+  --path uv.lock --path src/loaders --path src/specifications
+
+# Open the pull request and stop before merging
+uv run python scripts/create_change_pr.py \
+  --type fix --subject "reject blank entity keys" \
+  --path src/validators --no-merge
+
+# Stage the whole working tree when every pending change is one logical commit
+uv run python scripts/create_change_pr.py \
+  --type feat --scope workflow \
+  --subject "add script and skill for change pull requests" \
+  --all --generate-description
+
+# Report the default pylint and pytest lines instead of typing them
+uv run python scripts/create_change_pr.py \
+  --type fix --subject "reject blank entity keys" \
+  --path src/validators --default-validation
+
+# Let Copilot draft the commit subject from the pending diff
+uv run python scripts/create_change_pr.py \
+  --generate-subject --all --default-validation --dry-run
+```
+
+The script stages only the paths given with `--path`, so unrelated work stays
+uncommitted. `--all` stages every pending change instead, for the case where the
+whole working tree is one logical commit; it is mutually exclusive with `--path`.
+Both modes refuse the literal blanket values such as `.`, reject a dirty index,
+and refuse `staging` and `main` as targets because those are promotion branches.
+The pull request body uses the four sections required by
+[.github/pull_request_template.md](../.github/pull_request_template.md);
+`--release-note`, `--upgrade-notes`, and `--validation` supply the content that
+the author knows, and the template fallback text is used otherwise.
+
+`--generate-description` runs `update_pr_descriptions.py` for the new pull
+request once it exists, so the Copilot-written description replaces the scaffold
+body. That step needs the Copilot provider settings described above, and it
+leaves a draft file under `docs/whats-new/PRs/` for you to commit or discard.
+
+`--default-validation` adds the two repository default lines,
+`uv run pylint -j 0 src tests backend ingesters: exit 0` and
+`pytest: all passed`, before any `--validation` lines you pass. The script never
+runs those checks, so it records text you are responsible for having verified.
+Run both commands yourself first, and pass `--validation` for narrower or
+different evidence.
+
+`--generate-subject` drafts the commit subject from the pending changes with
+Copilot CLI, so `--type`, `--scope`, and `--subject` can be omitted. It sends the
+status list, the tracked diff, and a short preview of each new untracked file,
+because a plain `git diff` omits new files. The result still passes the same
+checks as a hand-written subject, and `--subject` and `--generate-subject` are
+mutually exclusive. The call happens before the commit, so `--dry-run` shows the
+subject it would use. A generation failure stops the run and asks for
+`--subject`.
+
 ## `draft_all_pr_descriptions.py`
 
 ### Usage
