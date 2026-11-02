@@ -29,7 +29,7 @@
 
 set -euo pipefail
 
-readonly DEFAULT_PROTECTED_PATHS="scripts/:src/:backend/:frontend/:.github/workflows/"
+readonly DEFAULT_PROTECTED_PATHS="scripts/:src/:backend/:frontend/:ingesters/:tests/:.github/workflows/"
 readonly PROMOTION_BASE_BRANCHES="staging main"
 readonly PULL_REQUEST_MERGE_SUBJECT='^Merge pull request #[0-9]+'
 readonly SUMMARY_TITLE="Promotion provenance"
@@ -51,7 +51,7 @@ Environment:
   GITHUB_REPOSITORY Owner/name override. Defaults to the repository detected by gh.
   PROTECTED_PATHS   Colon-separated path prefixes that require provenance.
                     Defaults to:
-                      scripts/:src/:backend/:frontend/:.github/workflows/
+                      scripts/:src/:backend/:frontend/:ingesters/:tests/:.github/workflows/
 EOF
 }
 
