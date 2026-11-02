@@ -92,9 +92,10 @@ class LinkTrialService:
             fk_cfg=trial_fk_data,
             fk_index=saved_fk.fk_index,
         )
+        join_type: str = trial_fk.how or "inner"
 
-        if trial_fk.how not in ("inner", "left"):
-            return self._failed("unsupported_join", f"Trials do not support the '{trial_fk.how}' join type.")
+        if join_type not in ("inner", "left"):
+            return self._failed("unsupported_join", f"Trials do not support the '{join_type}' join type.")
 
         try:
             local_key_frame, remote_key_frame, mapped_remote_keys = self._prepare_key_frames(
@@ -111,7 +112,7 @@ class LinkTrialService:
                 trial_fk.local_keys,
                 mapped_remote_keys,
                 runtime_options,
-                trial_fk.how,
+                join_type,
             )
         except (KeyError, TypeError, ValueError) as exc:
             return self._failed("invalid_keys", str(exc))
@@ -187,7 +188,7 @@ class LinkTrialService:
     ) -> str | None:
         """Return a reason when the selected ordered keys are not available."""
         if (
-            not isinstance(local_keys, Sequence)
+            not isinstance(local_keys, Sequence)  # pylint: disable=too-many-boolean-expressions
             or isinstance(local_keys, (str, bytes))
             or not isinstance(remote_keys, Sequence)
             or isinstance(remote_keys, (str, bytes))

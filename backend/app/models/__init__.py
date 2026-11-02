@@ -40,6 +40,19 @@ from backend.app.models.join_test import (
     JoinTestResult,
     UnmatchedRow,
 )
+from backend.app.models.link_troubleshooter import (
+    LinkTroubleshootBaseline,
+    LinkTroubleshootKeyOptions,
+    LinkTroubleshootKeys,
+    LinkTroubleshootPagination,
+    LinkTroubleshootRelationship,
+    LinkTroubleshootRequest,
+    LinkTroubleshootResponse,
+    LinkTroubleshootRow,
+    LinkTroubleshootRowFilter,
+    LinkTroubleshootTotals,
+    LinkTroubleshootTrial,
+)
 from backend.app.models.mapping import (
     MappingDeleteResponse,
     MappingEntityResponse,

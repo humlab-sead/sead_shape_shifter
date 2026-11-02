@@ -448,7 +448,7 @@ class ForeignKeyConstraintValidator:
                         metadata={
                             "row_count_before": self.size_before_merge[0],
                             "row_count_after": self.size_after_merge[0],
-                            "join_type": self.fk.how,
+                            "join_type": self.fk.how or "inner",
                             "fk_index": self.fk.fk_index,
                             "fk_signature": self.fk.identity_signature,
                             "link_pass": self.link_pass,
