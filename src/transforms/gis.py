@@ -142,7 +142,7 @@ class ConvertCRS(Transformer):
             A new DataFrame with additional 'lon' and 'lat' columns in WGS84.
         """
         src_crs_label_column: str | None = opts.get("src_crs_label_column")
-        src_crs: str | pd.Series[str] | None = opts.get("src_crs")
+        src_crs: str | pd.Series | None = opts.get("src_crs")
         dst_crs: str | None = opts.get("dst_crs")
         lon_column: str | None = opts.get("lon_column", "lon")
         lat_column: str | None = opts.get("lat_column", "lat")
@@ -153,7 +153,7 @@ class ConvertCRS(Transformer):
 
         df: pd.DataFrame = data.copy()
         lon_source_column, lat_source_column = columns
-        resolved_src_crs: pd.Series[str] | str | None = (
+        resolved_src_crs: pd.Series | str | None = (
             df[src_crs_label_column] if src_crs_label_column and src_crs_label_column in df.columns else src_crs
         )
         assert resolved_src_crs is not None, "Source CRS could not be resolved"

@@ -92,8 +92,7 @@ def test_link_rejects_non_positive_target_ids(target_id: int) -> None:
 
 
 def test_mapping_catalog_parses_valid_yaml_fixture() -> None:
-    fixture = yaml.safe_load(
-        """
+    fixture = yaml.safe_load("""
 version: "2.0"
 metadata:
   project: demo-project
@@ -117,8 +116,7 @@ entities:
         notes: curated
         created_by: tester
         reviewed_by: reviewer
-"""
-    )
+""")
 
     catalog = MappingCatalog.model_validate(fixture)
 

@@ -101,6 +101,10 @@ class ProjectSpecification(Specification):
         super().__init__()
         self.project_cfg: dict[str, Any] = project_cfg
 
+    @abstractmethod
+    def is_satisfied_by(self, **kwargs) -> bool:
+        """Returns True when the project configuration satisfies this specification."""
+
     def get_entity_cfg(self, entity_name: str) -> dict[str, Any]:
         """Get the configuration for a specific entity."""
         return dotget(self.project_cfg, f"entities.{entity_name}", {})

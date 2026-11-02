@@ -80,12 +80,10 @@ def test_list_data_sources_with_include():
         # Create main config file with @include
         main_config_path = tmpdir_path / "main.yml"
         with open(main_config_path, "w", encoding="utf-8") as f:
-            f.write(
-                """options:
+            f.write("""options:
   data_sources:
     sead: "@include: sead-options.yml"
-"""
-            )
+""")
 
         service = DataSourceService(tmpdir_path)
 
