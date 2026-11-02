@@ -696,6 +696,8 @@ async def test_changed_source_rows_report_a_changed_warning() -> None:
     assert (result.row_count_before, result.row_count_after) == (4, 2)
     assert result.local_rows is None
     assert result.remote_rows is None
+    assert result._saved_project is not None
+    assert result._foreign_key is not None
 
 
 @pytest.mark.asyncio
@@ -713,6 +715,8 @@ async def test_warning_that_no_longer_occurs_is_not_reproduced() -> None:
     assert result.reason == "warning_not_raised"
     assert result.local_rows is None
     assert result.remote_rows is None
+    assert result._saved_project is not None
+    assert result._foreign_key is not None
 
 
 @pytest.mark.asyncio
@@ -729,6 +733,10 @@ async def test_missing_remote_entity_is_not_reproduced() -> None:
     assert result.status == "not_reproduced"
     assert result.reason == "remote_entity_not_found"
     assert result.remote_entity == "customers"
+    assert result._saved_project is not None
+    assert result._foreign_key is not None
+    assert result.local_rows is None
+    assert result.remote_rows is None
 
 
 @pytest.mark.asyncio
@@ -769,6 +777,8 @@ async def test_unresolvable_source_reports_a_replay_failure() -> None:
     assert result.status == "not_reproduced"
     assert result.reason == "replay_failed"
     assert result.local_rows is None
+    assert result._saved_project is not None
+    assert result._foreign_key is not None
 
 
 @pytest.mark.asyncio
@@ -782,6 +792,8 @@ async def test_missing_link_pass_is_rejected() -> None:
 
     assert result.status == "not_reproduced"
     assert result.reason == "missing_link_pass"
+    assert result._saved_project is not None
+    assert result._foreign_key is not None
 
 
 @pytest.mark.asyncio
@@ -794,6 +806,8 @@ async def test_unknown_link_pass_is_rejected() -> None:
 
     assert result.status == "not_reproduced"
     assert result.reason == "unknown_link_pass"
+    assert result._saved_project is not None
+    assert result._foreign_key is not None
 
 
 @pytest.mark.asyncio
@@ -810,6 +824,8 @@ async def test_unsupported_join_is_ineligible() -> None:
 
     assert result.status == "ineligible"
     assert result.reason == "unsupported_join"
+    assert result._saved_project is not None
+    assert result._foreign_key is not None
 
 
 @pytest.mark.asyncio

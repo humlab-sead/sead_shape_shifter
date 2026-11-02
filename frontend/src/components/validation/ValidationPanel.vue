@@ -190,26 +190,18 @@
             <validation-message-list
               :messages="allMessages"
               :empty-message="'No validation issues found. Project looks good!'"
-              @open-entity="handleOpenEntity"
+              v-on="listEvents"
             />
           </v-window-item>
 
           <!-- Errors Only -->
           <v-window-item value="errors">
-            <validation-message-list
-              :messages="errors"
-              :empty-message="'No errors found'"
-              @open-entity="handleOpenEntity"
-            />
+            <validation-message-list :messages="errors" :empty-message="'No errors found'" v-on="listEvents" />
           </v-window-item>
 
           <!-- Warnings Only -->
           <v-window-item value="warnings">
-            <validation-message-list
-              :messages="warnings"
-              :empty-message="'No warnings found'"
-              @open-entity="handleOpenEntity"
-            />
+            <validation-message-list :messages="warnings" :empty-message="'No warnings found'" v-on="listEvents" />
           </v-window-item>
 
           <!-- By Category -->
@@ -230,7 +222,7 @@
                   </div>
                 </v-expansion-panel-title>
                 <v-expansion-panel-text>
-                  <validation-message-list :messages="structuralIssues" @open-entity="handleOpenEntity" />
+                  <validation-message-list :messages="structuralIssues" v-on="listEvents" />
                 </v-expansion-panel-text>
               </v-expansion-panel>
 
@@ -249,7 +241,7 @@
                   </div>
                 </v-expansion-panel-title>
                 <v-expansion-panel-text>
-                  <validation-message-list :messages="dataIssues" @open-entity="handleOpenEntity" />
+                  <validation-message-list :messages="dataIssues" v-on="listEvents" />
                 </v-expansion-panel-text>
               </v-expansion-panel>
 
@@ -268,7 +260,7 @@
                   </div>
                 </v-expansion-panel-title>
                 <v-expansion-panel-text>
-                  <validation-message-list :messages="performanceIssues" @open-entity="handleOpenEntity" />
+                  <validation-message-list :messages="performanceIssues" v-on="listEvents" />
                 </v-expansion-panel-text>
               </v-expansion-panel>
 
@@ -287,7 +279,7 @@
                   </div>
                 </v-expansion-panel-title>
                 <v-expansion-panel-text>
-                  <validation-message-list :messages="conformanceIssues" @open-entity="handleOpenEntity" />
+                  <validation-message-list :messages="conformanceIssues" v-on="listEvents" />
                 </v-expansion-panel-text>
               </v-expansion-panel>
             </v-expansion-panels>
@@ -317,7 +309,7 @@
                     v-if="group.entityMessages.length > 0"
                     :messages="group.entityMessages"
                     :empty-message="'No entity-level issues found'"
-                    @open-entity="handleOpenEntity"
+                    v-on="listEvents"
                   />
 
                   <v-expansion-panels v-if="group.branchGroups.length > 0" variant="accordion" class="mt-3">
@@ -336,7 +328,7 @@
                         </div>
                       </v-expansion-panel-title>
                       <v-expansion-panel-text>
-                        <validation-message-list :messages="branchGroup.messages" @open-entity="handleOpenEntity" />
+                        <validation-message-list :messages="branchGroup.messages" v-on="listEvents" />
                       </v-expansion-panel-text>
                     </v-expansion-panel>
                   </v-expansion-panels>
@@ -353,7 +345,12 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useNotification } from '@/composables/useNotification'
-import { groupByEntityScope, type EntityDataValidationStatus, type ValidationResult } from '@/types'
+import {
+  groupByEntityScope,
+  type EntityDataValidationStatus,
+  type ValidationError,
+  type ValidationResult,
+} from '@/types'
 import ValidationMessageList from './ValidationMessageList.vue'
 import DataValidationConfig from './DataValidationConfig.vue'
 
@@ -377,12 +374,17 @@ interface Emits {
   (e: 'validate-data', config?: ValidationConfig): void
   (e: 'validate-target-model'): void
   (e: 'open-entity', entityName: string): void
+  (e: 'troubleshoot', message: ValidationError): void
 }
 
 const props = withDefaults(defineProps<Props>(), {
   availableEntities: () => [],
 })
 const emit = defineEmits<Emits>()
+const listEvents = {
+  'open-entity': handleOpenEntity,
+  troubleshoot: (message: ValidationError) => emit('troubleshoot', message),
+}
 
 const activeTab = ref('all')
 const showDataConfig = ref(false)

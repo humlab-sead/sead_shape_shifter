@@ -207,6 +207,8 @@ class LinkBaselineService:
                 remote_entity=resolution.fk.remote_entity if resolution.fk else None,
                 fk_index=resolution.fk_index,
                 link_pass=resolution.link_pass,
+                _saved_project=saved_project if resolution.fk is not None else None,
+                _foreign_key=resolution.fk,
             )
 
         fk: ForeignKeyConfig = cast(ForeignKeyConfig, resolution.fk)
@@ -214,11 +216,23 @@ class LinkBaselineService:
 
         if not saved_project.has_table(remote_entity):
             return self._stop(
-                "remote_entity_not_found", f"Remote entity '{remote_entity}' is not in the project", local_entity, fk, resolution
+                "remote_entity_not_found",
+                f"Remote entity '{remote_entity}' is not in the project",
+                local_entity,
+                fk,
+                resolution,
+                saved_project=saved_project,
             )
 
         if resolution.link_pass is None:
-            return self._stop("missing_link_pass", "The warning does not record a linking pass", local_entity, fk, resolution)
+            return self._stop(
+                "missing_link_pass",
+                "The warning does not record a linking pass",
+                local_entity,
+                fk,
+                resolution,
+                saved_project=saved_project,
+            )
 
         if resolution.link_pass not in LINK_PASSES:
             return self._stop(
@@ -227,6 +241,7 @@ class LinkBaselineService:
                 local_entity,
                 fk,
                 resolution,
+                saved_project=saved_project,
             )
 
         expected_before: int | None = _as_int(metadata.get("row_count_before"))
@@ -234,7 +249,14 @@ class LinkBaselineService:
         expected_join: str = str(metadata.get("join_type") or fk.how or "inner")
 
         if expected_before is None or expected_after is None:
-            return self._stop("missing_warning_counts", "The warning does not record both row counts", local_entity, fk, resolution)
+            return self._stop(
+                "missing_warning_counts",
+                "The warning does not record both row counts",
+                local_entity,
+                fk,
+                resolution,
+                saved_project=saved_project,
+            )
 
         if expected_join != (fk.how or "inner"):
             return self._stop(
@@ -243,6 +265,7 @@ class LinkBaselineService:
                 local_entity,
                 fk,
                 resolution,
+                saved_project=saved_project,
             )
 
         replay_project: ShapeShiftProject = build_replay_project(saved_project, resolution)
@@ -251,7 +274,7 @@ class LinkBaselineService:
             replay_store: TableStore = await self._replay(replay_project, local_entity, remote_entity)
             return self._link(replay_store, saved_project, replay_project, fk, resolution, expected_before, expected_after)
         except _BaselineStop as stop:
-            return self._stop(stop.reason, stop.message, local_entity, fk, resolution)
+            return self._stop(stop.reason, stop.message, local_entity, fk, resolution, saved_project=saved_project)
 
     async def _replay(self, replay_project: ShapeShiftProject, local_entity: str, remote_entity: str) -> TableStore:
         """Run the production pipeline on the temporary config and return its tables."""
@@ -349,6 +372,8 @@ class LinkBaselineService:
                 row_count_before=observed_before,
                 row_count_after=observed_after,
                 issues=issues,
+                _saved_project=saved_project,
+                _foreign_key=fk,
             )
 
         warning: ValidationIssue = selected[0]
@@ -373,6 +398,8 @@ class LinkBaselineService:
                 row_count_before=observed_before,
                 row_count_after=observed_after,
                 issues=issues,
+                _saved_project=saved_project,
+                _foreign_key=fk,
             )
 
         return self._result(
@@ -399,6 +426,7 @@ class LinkBaselineService:
         local_entity: str,
         fk: ForeignKeyConfig | None = None,
         resolution: LinkIssueResolution | None = None,
+        saved_project: ShapeShiftProject | None = None,
     ) -> LinkBaselineResult:
         """Return a non-reproduced result for a named cause."""
         logger.info(f"[link-baseline]: cannot reproduce warning: {reason}: {message}")
@@ -410,6 +438,8 @@ class LinkBaselineService:
             remote_entity=fk.remote_entity if fk else None,
             fk_index=fk.fk_index if fk else None,
             link_pass=resolution.link_pass if resolution else None,
+            _saved_project=saved_project,
+            _foreign_key=fk,
         )
 
     @staticmethod

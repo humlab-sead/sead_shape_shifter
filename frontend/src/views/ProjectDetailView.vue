@@ -627,6 +627,7 @@
               @validate-data="handleDataValidate"
               @validate-target-model="handleConformanceValidate"
               @open-entity="handleOpenValidationEntity"
+              @troubleshoot="handleTroubleshoot"
               @apply-fix="handleApplyFix"
               @apply-all-fixes="handleApplyAllFixes"
             />
@@ -933,6 +934,13 @@
       </v-card>
     </v-dialog>
 
+    <link-troubleshooter-dialog
+      v-if="troubleshootMessage"
+      v-model="showLinkTroubleshooter"
+      :project-name="projectName"
+      :message="troubleshootMessage"
+    />
+
     <!-- Execute Dialog -->
     <execute-dialog v-model="showExecuteDialog" :project-name="projectName" @executed="handleExecuted" />
 
@@ -982,12 +990,13 @@ import { getTaskStatusNodeClasses, shouldShowNodeForTaskFilter } from '@/utils/t
 import { useEntityStore } from '@/stores/entity'
 import { useTaskStatusStore } from '@/stores/taskStatus'
 import { getErrorMessage } from '@/utils/errors'
-import type { CustomGraphLayout, ValidationResult } from '@/types'
+import type { CustomGraphLayout, ValidationError, ValidationResult } from '@/types'
 import type { GraphColorByMode } from '@/utils/taskGraph'
 import type { TaskFilter } from '@/components/dependencies/TaskFilterDropdown.vue'
 import EntityListCard from '@/components/entities/EntityListCard.vue'
 import EntityFormDialog from '@/components/entities/EntityFormDialog.vue'
 import ValidationPanel from '@/components/validation/ValidationPanel.vue'
+import LinkTroubleshooterDialog from '@/components/validation/LinkTroubleshooterDialog.vue'
 import PreviewFixesModal from '@/components/validation/PreviewFixesModal.vue'
 import ProjectDataSources from '@/components/ProjectDataSources.vue'
 import SessionIndicator from '@/components/SessionIndicator.vue'
@@ -1094,6 +1103,8 @@ const activeTab = ref('entities')
 const activeYamlSubTab = ref('project-yaml')
 const showBackupsDialog = ref(false)
 const showExecuteDialog = ref(false)
+const showLinkTroubleshooter = ref(false)
+const troubleshootMessage = ref<ValidationError | null>(null)
 const showSuccessSnackbar = ref(false)
 const successMessage = ref('')
 const showErrorSnackbar = ref(false)
@@ -1108,6 +1119,12 @@ const createTodoEntityName = ref('')
 const createTodoNote = ref('')
 const createTodoSaving = ref(false)
 const createTodoError = ref<string | null>(null)
+
+watch(showLinkTroubleshooter, (isOpen) => {
+  if (!isOpen) {
+    troubleshootMessage.value = null
+  }
+})
 
 // Graph state
 const graphContainer = ref<HTMLElement | null>(null)
@@ -1682,6 +1699,11 @@ function handleEditEntity(entityName: string) {
 
 function handleOpenValidationEntity(entityName: string) {
   handleEditEntity(entityName)
+}
+
+function handleTroubleshoot(message: ValidationError) {
+  troubleshootMessage.value = message
+  showLinkTroubleshooter.value = true
 }
 
 function handleEntityEditRequestConsumed(entityName: string) {

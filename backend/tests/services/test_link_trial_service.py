@@ -14,7 +14,6 @@ from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.services.link_baseline_service import LinkBaselineResult
 from backend.app.services.link_trial_service import LinkTrialService
 from src.model import ForeignKeyConfig, ShapeShiftProject
-from src.specifications.constraints import ValidationIssue
 from src.transforms.link import ForeignKeyLinker
 
 
@@ -35,7 +34,8 @@ def make_baseline(
     *,
     local_keys: list[str] | None = None,
     remote_keys: list[str] | None = None,
-    how: str = "inner",
+    how: str | None = "inner",
+    omit_how: bool = False,
     constraints: dict[str, Any] | None = None,
     link_pass: str = "initial",
 ) -> LinkBaselineResult:
@@ -49,8 +49,9 @@ def make_baseline(
         "entity": "customers",
         "local_keys": saved_local_keys,
         "remote_keys": saved_remote_keys,
-        "how": how,
     }
+    if not omit_how:
+        fk_data["how"] = how
     if constraints is not None:
         fk_data["constraints"] = constraints
 
@@ -143,6 +144,33 @@ def test_trial_reports_cancelling_loss_and_expansion(how: str, expected_output: 
     assert [row.output_row_contribution for row in result.a_rows] == ([0, 2] if how == "inner" else [1, 2])
     assert result.a_rows[0].remote_match_count == 0
     assert result.a_rows[1].remote_match_count == 2
+
+
+@pytest.mark.parametrize(("how", "omit_how"), [(None, False), (None, True)])
+def test_trial_treats_missing_join_type_as_inner(how: str | None, omit_how: bool, tmp_path) -> None:
+    local_rows = pd.DataFrame({"customer_code": ["matched", "missing"]})
+    remote_rows = pd.DataFrame({"system_id": [1], "code": ["matched"]})
+    baseline = make_baseline(
+        local_rows,
+        remote_rows,
+        local_keys=["customer_code"],
+        remote_keys=["code"],
+        how=how,
+        omit_how=omit_how,
+        constraints={"allow_row_decrease": True},
+    )
+
+    result = service_with_limit(10, tmp_path).run_trial(
+        baseline,
+        local_keys=["customer_code"],
+        remote_keys=["code"],
+    )
+
+    assert result.status == "complete"
+    assert result.output_rows == 1
+    assert result.unmatched_a_rows == 1
+    assert result.a_rows is not None
+    assert [row.output_row_contribution for row in result.a_rows] == [1, 0]
 
 
 @pytest.mark.parametrize(

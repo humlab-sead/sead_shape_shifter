@@ -325,6 +325,43 @@ def test_row_count_issue_records_fk_index_signature_and_link_pass():
     assert metadata["join_type"] == "inner"
 
 
+@pytest.mark.parametrize("how", [None, "missing"])
+def test_row_count_issue_records_effective_inner_join_type(how: str | None) -> None:
+    """A missing or explicitly null join type is recorded as the effective inner join."""
+    cfg = {
+        "entities": {
+            "orders": {
+                "public_id": "order_public_id",
+                "columns": ["order_id", "order_public_id", "customer_id"],
+                "foreign_keys": [
+                    {
+                        "entity": "customers",
+                        "local_keys": ["customer_id"],
+                        "remote_keys": ["id"],
+                        "constraints": {"allow_row_decrease": False},
+                    }
+                ],
+            },
+            "customers": {"columns": ["id"]},
+        }
+    }
+    if how is None:
+        cfg["entities"]["orders"]["foreign_keys"][0]["how"] = None
+
+    project = ShapeShiftProject(cfg=cfg)
+    fk: ForeignKeyConfig = project.get_table("orders").foreign_keys[0]
+    validator = ForeignKeyConstraintValidator(local_entity=project.get_table("orders"), fk=fk, raise_on_violation=False)
+    local_df = pd.DataFrame({"customer_id": [1, 2]})
+    remote_df = pd.DataFrame({"id": [1, 2]})
+    linked_df = pd.DataFrame({"customer_id": [1]})
+
+    validator.validate_before_merge(local_df=local_df, remote_df=remote_df)
+    validator.validate_after_merge(local_df=local_df, remote_df=remote_df, linked_df=linked_df)
+
+    row_count_issue = next(issue for issue in validator.issues if issue.issue_type == "row_count_mismatch")
+    assert row_count_issue.metadata["join_type"] == "inner"
+
+
 def test_row_count_issue_records_deferred_retry_pass():
     """The validator reports the linking pass assigned by its owner."""
     project = build_project(constraints={"allow_row_decrease": True})
