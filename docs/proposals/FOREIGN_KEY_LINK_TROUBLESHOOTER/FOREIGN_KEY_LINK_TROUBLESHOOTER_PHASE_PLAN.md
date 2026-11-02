@@ -19,6 +19,7 @@ It excludes right, outer, and cross joins; changing entities, join type, or cons
 ## Current Position
 
 - The proposal is approved. The FK-identity decision is recorded in Phase 1, and the link-input decision is recorded in Phase 2: a temporary entity config replays the production pipeline instead of retaining frames from a normal run.
+- Phase 1's FK identity resolution, Phase 2's baseline replay, and Phase 3's trial diagnostics are implemented and committed; their outputs are available to Phase 4.
 - The linker applies FKs in sequence, updates A after each link, and can retry deferred links. Its row-count warning includes A, B, before and after counts, and join type, but no FK identifier or affected rows.
 - Issue metadata already reaches the API and the browser unchanged, so identifying the FK is a change at the link site, not a new transport path.
 - The existing Test Join reads limited processed entity previews and performs its own left merge. The current preview route already uses project read authorization; the troubleshooter must apply the same rule.
@@ -196,11 +197,11 @@ Let a user open a supported warning, inspect baseline and trial results, and dis
 
 **Task-Plan Handoff**
 
-- Source: `P-AC-1`, `P-AC-3`–`P-AC-5`. Fixed: read-only access, bounded details, no save action, and no action for unsupported joins. Blocking dependency: the result and status contracts from Phases 1–3.
+- Source: `P-AC-1`, `P-AC-3`–`P-AC-5`. Fixed: read-only access, bounded details, no save action, and no action for unsupported joins. The Phase 1–3 result and status contracts are implemented; the Phase 4 task plan fixes stateless requests, the 500-row response cap, and client-side eligibility backed by server eligibility. No blocking phase-level decision remains.
 
 **Readiness**
 
-Requires the Phase 1–3 outputs and their resolved decisions.
+Ready for a task plan.
 
 ## Cross-Phase Rules
 
