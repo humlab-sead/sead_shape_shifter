@@ -11,3 +11,4 @@ description: "Use when asked to create a GitHub issue and commit changes, prepar
 - Include `Closes #<issue>` or `Fixes #<issue>` when the commit should close the related issue.
 - For issue creation, keep the body concise with three sections: `Problem`, `Solution`, and `Files`.
 - If `gh issue create` is needed, prefer `--body-file - <<'EOF'` to avoid shell substitution problems.
+- When uncommitted work must reach `dev` through review, run `scripts/create_change_pr.py` instead of assembling branch, commit, push, and `gh pr create` calls by hand. It stages only the `--path` values it is given, refuses blanket paths, and writes the required pull request body sections.

@@ -494,6 +494,22 @@ release-notes-ai:
 	@echo "Generating release notes for version $(VERSION) with AI..."
 	@uv run python scripts/generate_whats_new.py --version $(VERSION)
 
+# Fast-track: stage every pending change, let Copilot draft the commit subject and the PR
+# description, and merge into dev. The commit type comes from the drafted subject, so review
+# `make push-chore-pr-dry` first when the change is not purely housekeeping.
+.PHONY: push-chore-pr
+push-chore-pr:
+	@echo "Creating a chore pull request from every pending change..."
+	@uv run python scripts/create_change_pr.py \
+		--generate-subject --all --generate-description --default-validation
+	@echo "✓ Change pull request merged into dev"
+
+# Same workflow without creating anything: prints the drafted subject, file list, and body.
+.PHONY: push-chore-pr-dry
+push-chore-pr-dry:
+	@uv run python scripts/create_change_pr.py \
+		--generate-subject --all --generate-description --default-validation --dry-run
+
 ################################################################################
 # Presentation
 ################################################################################
