@@ -135,6 +135,61 @@ class TestCircularDependency:
 
     @pytest.mark.asyncio
     @with_test_config
+    async def test_deferred_link_records_its_linking_pass(self, test_provider):
+        """A deferred link runs in the deferred retry pass, not in its first linking pass."""
+        config = {
+            "entities": {
+                "abundance": {
+                    "type": "fixed",
+                    "keys": ["abundance_id"],
+                    "public_id": "abundance_id",
+                    "columns": ["abundance_id", "taxon_id", "analysis_entity_id"],
+                    "values": [
+                        [1, 101, 1],
+                        [2, 102, 2],
+                    ],
+                    "foreign_keys": [
+                        {
+                            "entity": "analysis_entity",
+                            "local_keys": ["analysis_entity_id"],
+                            "remote_keys": ["analysis_entity_id"],
+                            "defer_dependency": True,
+                        }
+                    ],
+                },
+                "analysis_entity": {
+                    "type": "fixed",
+                    "keys": ["analysis_entity_id"],
+                    "public_id": "analysis_entity_id",
+                    "columns": ["analysis_entity_id"],
+                    "values": [],
+                    "append": [
+                        {
+                            "source": "abundance",
+                            "columns": ["analysis_entity_id"],
+                        },
+                    ],
+                },
+            },
+        }
+
+        project = ShapeShiftProject(cfg=config, filename="test-circular.yml")
+        normalizer = ShapeShifter(project=project)
+        observed: list[tuple[str, str]] = []
+        original_link = normalizer.linker.link_entity
+
+        def record_link(entity_name: str) -> bool:
+            observed.append((entity_name, normalizer.linker.link_pass))
+            return original_link(entity_name)
+
+        normalizer.linker.link_entity = record_link
+        await normalizer.normalize()
+
+        assert observed[0] == ("abundance", "initial")
+        assert ("abundance", "deferred_retry") in observed
+
+    @pytest.mark.asyncio
+    @with_test_config
     async def test_complex_circular_dependency_with_three_entities(self, test_provider):
         """Test circular dependency with three entities: A -> B -> C -> A."""
 

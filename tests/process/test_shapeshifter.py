@@ -736,6 +736,95 @@ class TestShapeShifter:
             entity_names = [args["entity_name"] for args in call_args_list]
             assert set(entity_names) == {"survey", "site", "sample"}
 
+    def test_retry_linking_marks_deferred_retry_pass(self):
+        """Every retry call runs with the deferred retry pass and leaves the linker on the initial pass."""
+        config = ShapeShiftProject(
+            cfg={
+                "entities": {
+                    "survey": {"depends_on": []},
+                    "site": {"depends_on": []},
+                }
+            }
+        )
+        normalizer = ShapeShifter(project=config, default_entity="survey")
+        observed: list[str] = []
+        linker = Mock(deferred_tracker=Mock(deferred={"survey", "site"}))
+        linker.link_entity.side_effect = lambda entity_name: observed.append(linker.link_pass)
+        normalizer.linker = linker
+
+        normalizer.retry_linking()
+
+        assert observed == ["deferred_retry", "deferred_retry"]
+        assert linker.link_pass == "initial"
+
+    def test_retry_linking_restores_initial_pass_when_linking_raises(self):
+        """A failing retry still returns the linker to the initial pass."""
+        config = ShapeShiftProject(cfg={"entities": {"survey": {"depends_on": []}}})
+        normalizer = ShapeShifter(project=config, default_entity="survey")
+        linker = Mock(deferred_tracker=Mock(deferred={"survey"}))
+        linker.link_entity.side_effect = RuntimeError("link failed")
+        normalizer.linker = linker
+
+        with pytest.raises(RuntimeError, match="link failed"):
+            normalizer.retry_linking()
+
+        assert linker.link_pass == "initial"
+
+    @pytest.mark.asyncio
+    async def test_process_entity_marks_after_unnest_pass(self, monkeypatch: pytest.MonkeyPatch):
+        """The second linking call of an unnesting entity runs with the after-unnest pass."""
+        project = ShapeShiftProject(
+            cfg={
+                "entities": {
+                    "site": {
+                        "type": "fixed",
+                        "public_id": "site_id",
+                        "keys": ["site_code"],
+                        "columns": ["site_code", "site_name"],
+                    },
+                    "measurement": {
+                        "type": "entity",
+                        "keys": ["site_code"],
+                        "columns": ["site_code", "measure_a", "measure_b"],
+                        "foreign_keys": [{"entity": "site", "local_keys": ["site_code"], "remote_keys": ["site_code"], "how": "left"}],
+                        "unnest": {
+                            "id_vars": ["site_code"],
+                            "value_vars": ["measure_a", "measure_b"],
+                            "var_name": "variable",
+                            "value_name": "value",
+                        },
+                        "check_functional_dependency": False,
+                    },
+                }
+            }
+        )
+        source = pd.DataFrame({"site_code": ["a", "b"], "measure_a": [1, 1], "measure_b": [2, 2]})
+        parent = pd.DataFrame({"system_id": [1, 2], "site_code": ["a", "b"], "site_name": ["North", "South"]})
+        normalizer = ShapeShifter(project=project, table_store=TableStore({"site": parent}))
+        observed: list[str] = []
+
+        async def get_source_subset(*_args: Any, **_kwargs: Any) -> pd.DataFrame:
+            return source.copy()
+
+        original_link = normalizer.linker.link_entity
+
+        def record_link(entity_name: str) -> bool:
+            if entity_name == "measurement":
+                observed.append(normalizer.linker.link_pass)
+            return original_link(entity_name)
+
+        monkeypatch.setattr(normalizer, "get_subset", get_source_subset)
+        monkeypatch.setattr(normalizer.linker, "link_entity", record_link)
+
+        try:
+            await normalizer._process_entity("measurement", SubsetService())
+        finally:
+            normalizer.duckdb_workspace.close()
+            normalizer.loaders.close_all()
+
+        assert observed == ["initial", "after_unnest"]
+        assert normalizer.linker.link_pass == "initial"
+
     @pytest.mark.asyncio
     async def test_normalize_with_circular_dependency(self, survey_only_config: ShapeShiftProject):
         """Test that normalize raises error for circular dependencies."""
