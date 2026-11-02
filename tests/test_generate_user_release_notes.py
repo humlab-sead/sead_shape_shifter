@@ -205,3 +205,57 @@ class TestPendingReleaseSection:
 
         assert content.index("## Pending Release") < content.index("## Learn More")
         assert "[PR #42](https://github.com/humlab-sead/sead_shape_shifter/pull/42)" in content
+
+
+def test_legacy_ai_generator_uses_shared_provider_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    generator = load_generator_module()
+    for key in (
+        "COPILOT_PROVIDER_MODEL_ID",
+        "COPILOT_PROVIDER_TYPE",
+        "COPILOT_PROVIDER_BASE_URL",
+        "COPILOT_PROVIDER_API_KEY",
+        "REPO_SCRIPTS_DEFAULT_MODEL",
+        "REPO_SCRIPTS_DEFAULT_PROVIDER_TYPE",
+        "REPO_SCRIPTS_DEFAULT_PROVIDER_BASE_URL",
+        "REPO_SCRIPTS_DEFAULT_PROVIDER_KEY",
+    ):
+        monkeypatch.delenv(key, raising=False)
+    monkeypatch.setenv("REPO_SCRIPTS_DEFAULT_MODEL", "configured-model")
+    monkeypatch.setenv("REPO_SCRIPTS_DEFAULT_PROVIDER_TYPE", "openai")
+    monkeypatch.setenv("REPO_SCRIPTS_DEFAULT_PROVIDER_BASE_URL", "https://example.test/v1")
+    monkeypatch.setenv("REPO_SCRIPTS_DEFAULT_PROVIDER_KEY", "configured-key")
+    captured: dict[str, object] = {}
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return None
+
+        def read(self) -> bytes:
+            return json.dumps({"choices": [{"message": {"content": "AI-generated draft"}}]}).encode("utf-8")
+
+    def fake_urlopen(request, timeout: float):
+        captured["url"] = request.full_url
+        captured["body"] = json.loads(request.data.decode("utf-8"))
+        captured["authorization"] = request.get_header("Authorization")
+        captured["timeout"] = timeout
+        return FakeResponse()
+
+    monkeypatch.setattr(generator.request, "urlopen", fake_urlopen)
+
+    content, mode = generator.maybe_generate_ai_draft(
+        version="2.5.0",
+        release_date="2026-11-02",
+        github_repository="humlab-sead/sead_shape_shifter",
+        parsed_sections={},
+        heuristic_draft="heuristic draft",
+        force_heuristic=False,
+    )
+
+    assert content == "AI-generated draft\n"
+    assert mode == "ai:configured-model"
+    assert captured["url"] == "https://example.test/v1/chat/completions"
+    assert captured["body"]["model"] == "configured-model"
+    assert captured["authorization"] == "Bearer configured-key"

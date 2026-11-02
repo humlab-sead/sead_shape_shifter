@@ -58,7 +58,15 @@ def test_reconciliation_schema_covers_nested_catalog_specifications() -> None:
                         "remote": {"service_type": "site", "columns": ["name"]},
                         "auto_accept_threshold": 0.95,
                         "review_threshold": 0.7,
-                        "mapping": [{"source_value": "Example", "target_id": 1, "confidence": 0.9}],
+                        "mapping": [
+                            {
+                                "local_key_value": "Example",
+                                "source_value": "Example",
+                                "status": "accepted",
+                                "target_id": 1,
+                                "confidence": 0.9,
+                            }
+                        ],
                     }
                 }
             },
