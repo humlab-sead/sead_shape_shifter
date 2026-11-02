@@ -114,10 +114,10 @@ def test_generate_draft_uses_configured_model_and_passes_api_key(
     monkeypatch.setattr(update_pr_descriptions, "REPO_ROOT", tmp_path)
     monkeypatch.setattr(update_pr_descriptions, "render_context", lambda context: "context")
     (tmp_path / ".env").write_text(
-        "PR_DESCRIPTION_DEFAULT_MODEL=dotenv-model\n"
-        "PR_DESCRIPTION_DEFAULT_PROVIDER_TYPE=openai\n"
-        "PR_DESCRIPTION_DEFAULT_PROVIDER_BASE_URL=http://localhost:9000/v1\n"
-        "PR_DESCRIPTION_DEFAULT_PROVIDER_KEY=dotenv-secret\n",
+        "REPO_SCRIPTS_DEFAULT_MODEL=dotenv-model\n"
+        "REPO_SCRIPTS_DEFAULT_PROVIDER_TYPE=openai\n"
+        "REPO_SCRIPTS_DEFAULT_PROVIDER_BASE_URL=http://localhost:9000/v1\n"
+        "REPO_SCRIPTS_DEFAULT_PROVIDER_KEY=dotenv-secret\n",
         encoding="utf-8",
     )
     for key in (
@@ -125,10 +125,10 @@ def test_generate_draft_uses_configured_model_and_passes_api_key(
         "COPILOT_PROVIDER_BASE_URL",
         "COPILOT_PROVIDER_MODEL_ID",
         "COPILOT_PROVIDER_WIRE_MODEL",
-        "PR_DESCRIPTION_DEFAULT_MODEL",
-        "PR_DESCRIPTION_DEFAULT_PROVIDER_TYPE",
-        "PR_DESCRIPTION_DEFAULT_PROVIDER_BASE_URL",
-        "PR_DESCRIPTION_DEFAULT_PROVIDER_KEY",
+        "REPO_SCRIPTS_DEFAULT_MODEL",
+        "REPO_SCRIPTS_DEFAULT_PROVIDER_TYPE",
+        "REPO_SCRIPTS_DEFAULT_PROVIDER_BASE_URL",
+        "REPO_SCRIPTS_DEFAULT_PROVIDER_KEY",
     ):
         monkeypatch.delenv(key, raising=False)
     monkeypatch.setenv("COPILOT_PROVIDER_API_KEY", "configured-key")
@@ -178,10 +178,10 @@ def test_configure_copilot_environment_reads_project_dotenv_defaults(
 ) -> None:
     monkeypatch.setattr(update_pr_descriptions, "REPO_ROOT", tmp_path)
     (tmp_path / ".env").write_text(
-        "PR_DESCRIPTION_DEFAULT_MODEL=dotenv-model\n"
-        "PR_DESCRIPTION_DEFAULT_PROVIDER_TYPE=openai\n"
-        "PR_DESCRIPTION_DEFAULT_PROVIDER_BASE_URL=http://localhost:9000/v1\n"
-        "PR_DESCRIPTION_DEFAULT_PROVIDER_KEY=dotenv-secret\n",
+        "REPO_SCRIPTS_DEFAULT_MODEL=dotenv-model\n"
+        "REPO_SCRIPTS_DEFAULT_PROVIDER_TYPE=openai\n"
+        "REPO_SCRIPTS_DEFAULT_PROVIDER_BASE_URL=http://localhost:9000/v1\n"
+        "REPO_SCRIPTS_DEFAULT_PROVIDER_KEY=dotenv-secret\n",
         encoding="utf-8",
     )
     for key in (
@@ -190,10 +190,10 @@ def test_configure_copilot_environment_reads_project_dotenv_defaults(
         "COPILOT_PROVIDER_TYPE",
         "COPILOT_PROVIDER_BASE_URL",
         "COPILOT_PROVIDER_API_KEY",
-        "PR_DESCRIPTION_DEFAULT_MODEL",
-        "PR_DESCRIPTION_DEFAULT_PROVIDER_TYPE",
-        "PR_DESCRIPTION_DEFAULT_PROVIDER_BASE_URL",
-        "PR_DESCRIPTION_DEFAULT_PROVIDER_KEY",
+        "REPO_SCRIPTS_DEFAULT_MODEL",
+        "REPO_SCRIPTS_DEFAULT_PROVIDER_TYPE",
+        "REPO_SCRIPTS_DEFAULT_PROVIDER_BASE_URL",
+        "REPO_SCRIPTS_DEFAULT_PROVIDER_KEY",
     ):
         monkeypatch.delenv(key, raising=False)
 
@@ -205,10 +205,10 @@ def test_configure_copilot_environment_reads_project_dotenv_defaults(
     assert environment["COPILOT_PROVIDER_TYPE"] == "openai"
     assert environment["COPILOT_PROVIDER_BASE_URL"] == "http://localhost:9000/v1"
     assert environment["COPILOT_PROVIDER_API_KEY"] == "dotenv-secret"
-    assert "PR_DESCRIPTION_DEFAULT_PROVIDER_KEY" not in environment
+    assert "REPO_SCRIPTS_DEFAULT_PROVIDER_KEY" not in environment
 
-    monkeypatch.setenv("PR_DESCRIPTION_DEFAULT_MODEL", "exported-model")
-    monkeypatch.setenv("PR_DESCRIPTION_DEFAULT_PROVIDER_KEY", "exported-secret")
+    monkeypatch.setenv("REPO_SCRIPTS_DEFAULT_MODEL", "exported-model")
+    monkeypatch.setenv("REPO_SCRIPTS_DEFAULT_PROVIDER_KEY", "exported-secret")
     exported_model, exported_environment = update_pr_descriptions.configure_copilot_environment(None)
     assert exported_model == "exported-model"
     assert exported_environment["COPILOT_PROVIDER_API_KEY"] == "exported-secret"
@@ -224,20 +224,20 @@ def test_configure_copilot_environment_fails_when_required_values_are_missing(
         "COPILOT_PROVIDER_TYPE",
         "COPILOT_PROVIDER_BASE_URL",
         "COPILOT_PROVIDER_API_KEY",
-        "PR_DESCRIPTION_DEFAULT_MODEL",
-        "PR_DESCRIPTION_DEFAULT_PROVIDER_TYPE",
-        "PR_DESCRIPTION_DEFAULT_PROVIDER_BASE_URL",
-        "PR_DESCRIPTION_DEFAULT_PROVIDER_KEY",
+        "REPO_SCRIPTS_DEFAULT_MODEL",
+        "REPO_SCRIPTS_DEFAULT_PROVIDER_TYPE",
+        "REPO_SCRIPTS_DEFAULT_PROVIDER_BASE_URL",
+        "REPO_SCRIPTS_DEFAULT_PROVIDER_KEY",
     ):
         monkeypatch.delenv(key, raising=False)
 
     with pytest.raises(ValueError, match="Missing required Copilot configuration") as error:
         update_pr_descriptions.configure_copilot_environment(None)
 
-    assert "PR_DESCRIPTION_DEFAULT_MODEL" in str(error.value)
-    assert "PR_DESCRIPTION_DEFAULT_PROVIDER_TYPE" in str(error.value)
-    assert "PR_DESCRIPTION_DEFAULT_PROVIDER_BASE_URL" in str(error.value)
-    assert "PR_DESCRIPTION_DEFAULT_PROVIDER_KEY" in str(error.value)
+    assert "REPO_SCRIPTS_DEFAULT_MODEL" in str(error.value)
+    assert "REPO_SCRIPTS_DEFAULT_PROVIDER_TYPE" in str(error.value)
+    assert "REPO_SCRIPTS_DEFAULT_PROVIDER_BASE_URL" in str(error.value)
+    assert "REPO_SCRIPTS_DEFAULT_PROVIDER_KEY" in str(error.value)
 
 
 def test_draft_file_format_round_trips_title_and_description() -> None:
