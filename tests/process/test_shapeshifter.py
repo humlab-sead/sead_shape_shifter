@@ -1,5 +1,6 @@
 """Unit tests for arbodat normalizer classes."""
 
+import ast
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -8,6 +9,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pandas as pd
 import pytest
 
+import src.normalizer as src_normalizer
 from src.extract import SubsetService
 from src.loaders.base_loader import DataLoader
 from src.model import ShapeShiftProject, TableConfig
@@ -1557,3 +1559,106 @@ entities:
 
         # Should return None or log warning
         assert loader is None
+
+
+def _normalizer_call_label(call: ast.Call) -> str:
+    """Return a dotted name for one call expression."""
+    func = call.func
+    if isinstance(func, ast.Name):
+        return func.id
+    if isinstance(func, ast.Attribute):
+        parts: list[str] = [func.attr]
+        value = func.value
+        while isinstance(value, ast.Attribute):
+            parts.append(value.attr)
+            value = value.value
+        if isinstance(value, ast.Name):
+            parts.append(value.id)
+        return ".".join(reversed(parts))
+    return ast.dump(func)
+
+
+def _ordered_calls(node: ast.AST) -> list[ast.Call]:
+    """Return the calls inside a node in source order."""
+    calls = [child for child in ast.walk(node) if isinstance(child, ast.Call)]
+    return sorted(calls, key=lambda call: (call.lineno, call.col_offset))
+
+
+def _process_entity_function() -> ast.FunctionDef | ast.AsyncFunctionDef:
+    """Return the parsed body of ``ShapeShifter._process_entity``."""
+    source_path = Path(src_normalizer.__file__)
+    tree = ast.parse(source_path.read_text(encoding="utf-8"))
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ClassDef) and node.name == "ShapeShifter":
+            for child in node.body:
+                if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)) and child.name == "_process_entity":
+                    return child
+    raise AssertionError("ShapeShifter._process_entity was not found")
+
+
+def test_process_entity_post_link_stages_match_the_baseline_projection_contract() -> None:
+    """Every pipeline stage after the last link is covered by the baseline projection rules.
+
+    The foreign-key baseline truncates the saved entity config so that it reaches
+    one linking pass. That is only correct while the stages that run after the
+    last ``_link_entity`` call are the ones the projection already handles:
+
+    - stage filters (after_link, after_unnest)
+    - unnest-dependent deduplication
+    - duplicate-key checks and empty-row drops
+    - identity columns and mapping-sidecar links
+    - deferred retry
+    - extra-column verification and column reordering
+
+    A new stage call in this region fails the test until the projection rules and
+    this list are updated together.
+    """
+    process_entity = _process_entity_function()
+
+    link_calls: list[ast.Call] = [
+        call
+        for statement in process_entity.body
+        for call in _ordered_calls(statement)
+        if _normalizer_call_label(call) == "self._link_entity"
+    ]
+    assert link_calls, "_process_entity no longer links entities"
+
+    link_passes: list[str] = [
+        keyword.value.value for call in link_calls for keyword in call.keywords if keyword.arg == "link_pass"  # type: ignore[attr-defined]
+    ]
+    assert link_passes == ["initial", "after_unnest"]
+
+    last_link = link_calls[-1]
+    last_statement_index: int = max(index for index, statement in enumerate(process_entity.body) if last_link in _ordered_calls(statement))
+
+    post_link_calls: list[str] = []
+    for index, statement in enumerate(process_entity.body):
+        if index < last_statement_index:
+            continue
+        for call in _ordered_calls(statement):
+            if index == last_statement_index and call.lineno <= last_link.lineno:
+                continue
+            post_link_calls.append(_normalizer_call_label(call))
+
+    # Plain collection helpers inside the same statements are not pipeline stages.
+    ignored_helpers: set[str] = {"set", "table_cfg.extra_columns.items", "self.unresolved_extra_columns.pop"}
+    stages: list[str] = [call for call in post_link_calls if call not in ignored_helpers]
+
+    assert stages == [
+        "self._evaluate_deferred_extra_columns",
+        "apply_filters",
+        "self.drop_duplicates",
+        "self._check_duplicate_keys",
+        "drop_empty_rows",
+        "add_system_id",
+        "table_cfg.add_public_id_column",
+        "self._apply_mapping_sidecar_links",
+        "self.retry_linking",
+        "self.extra_col_evaluator.get_unresolved_extra_columns",
+        "self.extra_col_evaluator.verify_extra_columns",
+        "self.project.reorder_columns",
+    ], (
+        "The pipeline stages after the last link changed. Update "
+        "backend/app/services/link_baseline_service.py so the temporary config still "
+        "reproduces a link input, then update this contract."
+    )
