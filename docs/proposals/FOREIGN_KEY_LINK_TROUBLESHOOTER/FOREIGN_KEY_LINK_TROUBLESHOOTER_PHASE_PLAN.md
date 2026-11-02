@@ -133,11 +133,11 @@ Compare alternative key pairs on the baseline inputs and explain row loss and ex
 
 - Accept only available A/B key pairs, preserving compound-key order while keeping entities, join type, and constraints fixed.
 - Count unmatched A rows and A rows with multiple B matches under the production null policy, including partially null compound keys and inner-join rows removed from output.
-- Enforce an explicit computation limit and report failure or incomplete totals when a full comparison cannot be produced.
+- Enforce a configurable output-row limit using preflight estimates for the production join and diagnostic left join; report an explicit incomplete result above the limit.
 
 **Depends On**
 
-- Phase 2's link inputs and baseline behavior; a decision on complete-result limits and incomplete-result reporting.
+- Phase 2's link inputs and baseline behavior; the approved output-row limit and incomplete-result contract.
 
 **Outputs**
 
@@ -156,11 +156,12 @@ Compare alternative key pairs on the baseline inputs and explain row loss and ex
 
 **Task-Plan Handoff**
 
-- Source: `P-AC-3`–`P-AC-5`. Fixed: key-pair-only trials, production null semantics, complete totals only when computed, and no writes. Blocking decision: the resource limit and the status returned when complete totals cannot be calculated.
+- Source: `P-AC-3`–`P-AC-5`. Fixed: key-pair-only trials, production null semantics, complete totals only when computed, and no writes.
+- Budget decision: estimate complete production and diagnostic output row counts from key frequencies using production key coercion and null behavior. Check both estimates before materializing either merge. Use the backend setting `LINK_TRIAL_MAX_OUTPUT_ROWS`, default `1,000,000`, exposed as `SHAPE_SHIFTER_LINK_TRIAL_MAX_OUTPUT_ROWS`; allow exactly the limit and return `incomplete` with a reason and no totals or row details above it.
 
 **Readiness**
 
-Requires the Phase 2 output and the named limit and incomplete-result decision.
+Ready for a task plan.
 
 ### Phase 4: Present the bounded comparison
 

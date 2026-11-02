@@ -58,6 +58,8 @@ class LinkBaselineResult:
         issues: Validation issues raised by the selected link in this replay.
         local_rows: Replay input of the local entity, only when reproduction is proven.
         remote_rows: Replay input of the remote entity, only when reproduction is proven.
+        _saved_project: Resolved project retained in memory for internal trial execution.
+        _foreign_key: Saved foreign key retained in memory for internal trial execution.
     """
 
     status: BaselineStatus
@@ -72,6 +74,8 @@ class LinkBaselineResult:
     issues: tuple[ValidationIssue, ...] = ()
     local_rows: pd.DataFrame | None = field(default=None, repr=False, compare=False)
     remote_rows: pd.DataFrame | None = field(default=None, repr=False, compare=False)
+    _saved_project: ShapeShiftProject | None = field(default=None, repr=False, compare=False)
+    _foreign_key: ForeignKeyConfig | None = field(default=None, repr=False, compare=False)
 
     @property
     def is_reproduced(self) -> bool:
@@ -384,6 +388,8 @@ class LinkBaselineService:
             issues=issues,
             local_rows=local_rows,
             remote_rows=remote_rows,
+            _saved_project=saved_project,
+            _foreign_key=fk,
         )
 
     def _stop(
@@ -421,6 +427,8 @@ class LinkBaselineService:
         issues: tuple[ValidationIssue, ...] = (),
         local_rows: pd.DataFrame | None = None,
         remote_rows: pd.DataFrame | None = None,
+        _saved_project: ShapeShiftProject | None = None,
+        _foreign_key: ForeignKeyConfig | None = None,
     ) -> LinkBaselineResult:
         """Build one baseline result."""
         return LinkBaselineResult(
@@ -436,6 +444,8 @@ class LinkBaselineService:
             issues=issues,
             local_rows=local_rows,
             remote_rows=remote_rows,
+            _saved_project=_saved_project,
+            _foreign_key=_foreign_key,
         )
 
 
