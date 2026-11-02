@@ -165,6 +165,48 @@ python3 scripts/generate_user_release_notes.py --version 1.26.0 --force-heuristi
 - `--force-heuristic`: Do not use AI drafting.
 - `--update-github-release`: Update the matching GitHub Release body via `gh`.
 
+## `verify_promotion_provenance.sh`
+
+Fails a promotion when code changes were pushed straight to the source branch instead of arriving through a pull request. Direct pushes have no review record and cannot appear in generated release notes, because the generator reads merged pull requests only.
+
+### Quick Start
+
+```bash
+# Check a dev into staging promotion before opening the pull request
+GH_TOKEN=$(gh auth token) scripts/verify_promotion_provenance.sh \
+  --base origin/staging --head origin/dev
+
+# Check one explicit range
+scripts/verify_promotion_provenance.sh --base 7a90e566 --head f4c8a177
+```
+
+### What It Does
+
+- Walks the first-parent chain from `--head` back to `--base`. That chain is the source branch's own history.
+- Passes merge commits whose subject is `Merge pull request #<n>`, and does not inspect the commits they merge.
+- Treats every other commit on the chain as a squash merge, rebase merge, or direct push. It passes when GitHub associates the commit with a pull request whose base branch is not `staging` or `main`. Promotion pull requests are ignored, because merging a promotion associates it with every commit it carries.
+- Reports each failing commit, its subject, and the protected paths it changes. Writes a Markdown summary to `GITHUB_STEP_SUMMARY` when that variable is set.
+
+### Protected Paths
+
+`scripts/`, `src/`, `backend/`, `frontend/`, `ingesters/`, `tests/`, and `.github/workflows/`. Override with the colon-separated `PROTECTED_PATHS` environment variable, for example `PROTECTED_PATHS="src/:backend/"` to check only backend code.
+
+### Exit Codes
+
+- `0`: every commit touching a protected path carries pull request provenance.
+- `1`: at least one such commit has none.
+- `2`: usage error, unknown ref, or failed GitHub API request.
+
+### Automation
+
+`.github/workflows/promotion-guard.yml` runs the script on pull requests into `staging` and `main`. The workflow is advisory until it is added as a required status check on the repository ruleset. Commits already on the target branch are outside the range, so the check reports only what a promotion adds.
+
+### Known Limitation
+
+Squash and rebase merges pass only if GitHub still associates the resulting commit with its pull request. Merge commits are recognised from their subject and do not depend on that association, which is how this repository currently merges pull requests.
+
+A pull request cannot repair an earlier direct push. Opening a pull request from a branch that contains the pushed commit associates that commit with the pull request while the branch exists, but the association disappears once the branch is merged and deleted. Fix a reported commit by reverting it through a pull request and re-applying the change on its own branch, or promote it with an explicit override.
+
 ## Deployment Scripts
 
 These scripts package the deployment steps from the container deployment guide into reusable command-line helpers. They are host tools: run them from a repository checkout. They live in `deployment/container-host/`, outside the `deployment/container/` release bundle, so they are never shipped in a release archive.
