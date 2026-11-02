@@ -52,6 +52,10 @@ FALLBACK_RELEASE_NOTE = "User-visible impact not verified."
 FALLBACK_UPGRADE_NOTES = "Upgrade impact not verified."
 FALLBACK_VALIDATION = "Not verified: validation results unavailable."
 
+# The description draft is written after the pull request exists, so it arrives as a second
+# commit on the same branch. The repository already tracks these draft files.
+DRAFT_COMMIT_TEMPLATE = "docs(whats-new): record the description for pull request #{number}"
+
 # Reported by --default-validation. These are recorded, not executed: the script never runs the
 # checks, so confirm they passed before merging. pylint covers every source folder that the
 # repository lint target covers, and pytest covers the whole configured test path set.
@@ -70,13 +74,45 @@ DIFF_PREVIEW_LIMIT = 8000
 UNTRACKED_PREVIEW_LIMIT = 1200
 UNTRACKED_FILE_LIMIT = 5
 
+# The model is asked for a shorter line than the hard limit, so a slightly wordy answer still fits.
+SUBJECT_TARGET_LENGTH = 60
+# Shortening keeps at least this much description after the `type(scope): ` prefix.
+MIN_DESCRIPTION_LENGTH = 12
+# A clause cut can leave a dangling connector, so these are trimmed from the end.
+TRAILING_FILLER_WORDS = frozenset(
+    {
+        "a",
+        "an",
+        "and",
+        "as",
+        "at",
+        "but",
+        "by",
+        "for",
+        "from",
+        "in",
+        "into",
+        "of",
+        "on",
+        "or",
+        "so",
+        "that",
+        "the",
+        "to",
+        "when",
+        "while",
+        "with",
+    }
+)
+
 SUBJECT_PROMPT = """Write one Conventional Commit subject line for the changes below.
 
 Rules:
 - Format: `<type>(<scope>): <description>`, or `<type>: <description>` when no scope is clear.
 - Use one of these types: {types}.
 - Lowercase description, imperative mood, no trailing period.
-- The whole line must be at most {limit} characters.
+- Aim for at most {target} characters and never exceed {limit}. Drop the scope before dropping
+  the meaning.
 - Reply with the line alone: no quotes, no backticks, no code fence, no explanation.
 
 Changes:
@@ -215,11 +251,42 @@ def parse_generated_subject(response: str) -> str:
     raise WorkflowError("Could not find a Conventional Commit subject line in the model response.")
 
 
+def shorten_subject(line: str, limit: int = MAX_SUBJECT_LENGTH) -> str:
+    """Return an over-long generated subject shortened at a clause or word boundary.
+
+    Only the description is shortened, so the `type(scope): ` prefix survives. A rejected
+    subject would abort the whole workflow, and the drafted text is still the best available
+    summary, so it is repaired rather than discarded. The caller reports the repair.
+    """
+    match = CONVENTIONAL_SUBJECT_PATTERN.match(line)
+    if match is None:
+        raise WorkflowError(f"Cannot shorten a subject that is not a Conventional Commit line: {line!r}")
+    description = match.group("description")
+    prefix = line[: match.start("description")]
+    budget = limit - len(prefix)
+    if budget < MIN_DESCRIPTION_LENGTH:
+        raise WorkflowError(f"No room to shorten the generated subject; pass --subject instead: {line!r}")
+    shortened: str = load_description_module().shorten_title(description, budget)
+    shortened = shortened.rstrip(" .;:,-)").strip()
+    words = shortened.split()
+    while words and words[-1].lower() in TRAILING_FILLER_WORDS:
+        words.pop()
+    shortened = " ".join(words)
+    if len(shortened) < MIN_DESCRIPTION_LENGTH:
+        raise WorkflowError(f"Shortening the generated subject lost too much meaning; pass --subject instead: {line!r}")
+    return f"{prefix}{shortened}"
+
+
 def generate_subject(preview: str) -> str:
     """Ask Copilot for a commit subject and return it after validating repository rules."""
     module = load_description_module()
     model, environment = module.configure_copilot_environment(None)
-    prompt = SUBJECT_PROMPT.format(types=", ".join(sorted(COMMIT_TYPES)), limit=MAX_SUBJECT_LENGTH, preview=preview)
+    prompt = SUBJECT_PROMPT.format(
+        types=", ".join(sorted(COMMIT_TYPES)),
+        target=SUBJECT_TARGET_LENGTH,
+        limit=MAX_SUBJECT_LENGTH,
+        preview=preview,
+    )
     command = [
         "copilot",
         "-C",
@@ -244,7 +311,15 @@ def generate_subject(preview: str) -> str:
     if result.returncode != 0:
         detail = (result.stderr or result.stdout or "").strip()
         raise WorkflowError(f"Copilot could not draft a subject; pass --subject instead.\n{detail}")
-    return validate_subject_line(parse_generated_subject(result.stdout))
+    candidate = parse_generated_subject(result.stdout)
+    if len(candidate) > MAX_SUBJECT_LENGTH:
+        repaired = shorten_subject(candidate)
+        print(
+            f"Shortened the generated subject from {len(candidate)} to {len(repaired)} characters: {repaired!r}",
+            file=sys.stderr,
+        )
+        candidate = repaired
+    return validate_subject_line(candidate)
 
 
 
@@ -333,6 +408,7 @@ class Plan:
     merge: bool = True
     keep_branch: bool = False
     generate_description: bool = False
+    commit_description_draft: bool = True
 
 
 def pending_paths(runner: CommandRunner, paths: Sequence[str]) -> list[str]:
@@ -451,6 +527,7 @@ def build_plan(args: argparse.Namespace) -> Plan:
         merge=not args.no_merge,
         keep_branch=args.keep_branch,
         generate_description=args.generate_description,
+        commit_description_draft=args.commit_description_draft,
     )
 
 
@@ -476,6 +553,9 @@ def print_plan(plan: Plan) -> None:
     print(f"  gh pr create --base {plan.base} --head {plan.branch} --title {plan.subject!r}")
     if plan.generate_description:
         print(f"  python {DESCRIPTION_SCRIPT.name} <pr> --draft && ... --publish")
+        if plan.commit_description_draft:
+            print("  git add -- docs/whats-new/PRs/PR_<pr>.txt")
+            print(f"  git commit -m {DRAFT_COMMIT_TEMPLATE.format(number='<pr>')!r} && git push")
     if plan.merge:
         print(f"  gh pr merge <pr> --{plan.merge_method}" + ("" if plan.keep_branch else " --delete-branch"))
         for line in merge_followup(base=plan.base, branch=plan.branch, keep_branch=plan.keep_branch):
@@ -513,8 +593,13 @@ def create_pull_request(plan: Plan) -> int:
     return int(match.group(1))
 
 
-def generate_description(number: int) -> None:
-    """Ask the existing Copilot-backed script to draft and publish the pull request description."""
+def generate_description(number: int, *, plan: Plan) -> None:
+    """Ask the existing Copilot-backed script to draft and publish the pull request description.
+
+    The draft step writes a tracked file under ``docs/whats-new/PRs/``. By default that file is
+    committed and pushed to the pull request branch, so the archive entry ships with the change
+    instead of being left in the working tree.
+    """
     for mode in ("--draft", "--publish"):
         result = subprocess.run(
             [sys.executable, str(DESCRIPTION_SCRIPT), str(number), mode],
@@ -530,6 +615,34 @@ def generate_description(number: int) -> None:
             print(f"Retry later with: python scripts/update_pr_descriptions.py {number} --draft --publish", file=sys.stderr)
             return
         print(result.stdout.strip())
+    if plan.commit_description_draft:
+        commit_description_draft(number, plan=plan)
+
+
+def commit_description_draft(number: int, *, plan: Plan) -> None:
+    """Commit and push the generated draft file so the pull request carries its own record.
+
+    The file is only committed when it actually changed, because a previous run may already
+    have archived it.
+    """
+    draft_path: Path = load_description_module().draft_file_path(number)
+    if not draft_path.is_file():
+        print(f"No draft file at {draft_path}; nothing to commit.", file=sys.stderr)
+        return
+    try:
+        relative = draft_path.relative_to(REPO_ROOT)
+    except ValueError:
+        print(f"Draft file {draft_path} is outside the repository; not committing it.", file=sys.stderr)
+        return
+    pending = plan.runner.read(["git", "status", "--porcelain=v1", "--", str(relative)])
+    if not pending:
+        print(f"Draft file {relative} is unchanged; nothing to commit.")
+        return
+    message = DRAFT_COMMIT_TEMPLATE.format(number=number)
+    plan.runner.change(["git", "add", "--", str(relative)])
+    plan.runner.change(["git", "commit", "-m", message])
+    plan.runner.change(["git", "push"])
+    print(f"Committed {relative} to {plan.branch}.")
 
 
 def merge_followup(*, base: str, branch: str, keep_branch: bool) -> list[str]:
@@ -580,7 +693,7 @@ def execute(plan: Plan) -> int:
     print(f"Opened pull request #{number} into {plan.base}.")
 
     if plan.generate_description:
-        generate_description(number)
+        generate_description(number, plan=plan)
 
     if not plan.merge:
         print(f"Pull request #{number} left open: gh pr merge {number} --{plan.merge_method}")
@@ -655,6 +768,15 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument("--generate-description", action="store_true", help="Draft and publish the description with Copilot CLI.")
+    parser.add_argument(
+        "--commit-description-draft",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "With --generate-description, commit the generated draft file to the pull request branch "
+            "(default: on). Use --no-commit-description-draft to leave it untracked."
+        ),
+    )
     parser.add_argument("--merge-method", choices=("merge", "squash", "rebase"), default="merge", help="Merge method (default: merge).")
     parser.add_argument("--no-merge", action="store_true", help="Open the pull request and stop.")
     parser.add_argument("--keep-branch", action="store_true", help="Keep the local and remote branch after merging.")

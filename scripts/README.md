@@ -130,8 +130,12 @@ the author knows, and the template fallback text is used otherwise.
 
 `--generate-description` runs `update_pr_descriptions.py` for the new pull
 request once it exists, so the Copilot-written description replaces the scaffold
-body. That step needs the Copilot provider settings described above, and it
-leaves a draft file under `docs/whats-new/PRs/` for you to commit or discard.
+body. That step needs the Copilot provider settings described above. The draft
+file it writes under `docs/whats-new/PRs/` is committed and pushed to the pull
+request branch by default, as a second commit named
+`docs(whats-new): record the description for pull request #<n>`, because the
+repository tracks those files. Pass `--no-commit-description-draft` to leave the
+file untracked instead.
 
 `--default-validation` adds the two repository default lines,
 `uv run pylint -j 0 src tests backend ingesters: exit 0` and

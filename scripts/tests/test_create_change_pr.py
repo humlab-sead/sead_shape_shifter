@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import types
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 
@@ -130,6 +131,110 @@ def test_ensure_no_new_changes_rejects_a_vanished_file() -> None:
     plan = make_plan(["a.txt", "b.txt"], " M a.txt\0")
     with pytest.raises(create_change_pr.WorkflowError, match="vanished: b.txt"):
         create_change_pr.ensure_no_new_changes(plan)
+
+
+class RecordingRunner:
+    """Record the change commands a plan would run."""
+
+    def __init__(self, pending: str = "") -> None:
+        self.pending = pending
+        self.commands: list[list[str]] = []
+
+    def read(self, command: list[str]) -> str:
+        self.commands.append(["read", *command])
+        return self.pending
+
+    def change(self, command: list[str]) -> str:
+        self.commands.append(list(command))
+        return ""
+
+
+def test_commit_description_draft_records_the_generated_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    draft = tmp_path / "docs" / "whats-new" / "PRs" / "PR_643.txt"
+    draft.parent.mkdir(parents=True)
+    draft.write_text("title: t\ndescription:\nbody\n", encoding="utf-8")
+    monkeypatch.setattr(create_change_pr, "REPO_ROOT", tmp_path)
+
+    module = types.SimpleNamespace(draft_file_path=lambda number: draft)
+    monkeypatch.setattr(create_change_pr, "load_description_module", lambda: module)
+
+    runner = RecordingRunner(pending="?? docs/whats-new/PRs/PR_643.txt")
+    plan = create_change_pr.Plan(
+        runner=runner,  # type: ignore[arg-type]
+        base="dev",
+        branch="feat/x",
+        message="feat: x",
+        subject="feat: x",
+    )
+    create_change_pr.commit_description_draft(643, plan=plan)
+
+    changes = [command for command in runner.commands if command[0] != "read"]
+    assert changes == [
+        ["git", "add", "--", "docs/whats-new/PRs/PR_643.txt"],
+        ["git", "commit", "-m", "docs(whats-new): record the description for pull request #643"],
+        ["git", "push"],
+    ]
+
+
+def test_commit_description_draft_skips_an_unchanged_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    draft = tmp_path / "docs" / "whats-new" / "PRs" / "PR_643.txt"
+    draft.parent.mkdir(parents=True)
+    draft.write_text("x\n", encoding="utf-8")
+    monkeypatch.setattr(create_change_pr, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(create_change_pr, "load_description_module", lambda: types.SimpleNamespace(draft_file_path=lambda number: draft))
+
+    runner = RecordingRunner(pending="")
+    plan = create_change_pr.Plan(runner=runner, base="dev", branch="feat/x", message="feat: x", subject="feat: x")  # type: ignore[arg-type]
+    create_change_pr.commit_description_draft(643, plan=plan)
+
+    assert [command for command in runner.commands if command[0] != "read"] == []
+
+
+def test_commit_description_draft_skips_a_missing_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    draft = tmp_path / "docs" / "whats-new" / "PRs" / "PR_999.txt"
+    monkeypatch.setattr(create_change_pr, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(create_change_pr, "load_description_module", lambda: types.SimpleNamespace(draft_file_path=lambda number: draft))
+
+    runner = RecordingRunner()
+    plan = create_change_pr.Plan(runner=runner, base="dev", branch="feat/x", message="feat: x", subject="feat: x")  # type: ignore[arg-type]
+    create_change_pr.commit_description_draft(999, plan=plan)
+
+    assert [command for command in runner.commands if command[0] != "read"] == []
+
+
+def test_draft_commit_subject_stays_within_the_length_limit() -> None:
+    line = create_change_pr.DRAFT_COMMIT_TEMPLATE.format(number=643)
+    create_change_pr.validate_subject_line(line)
+
+
+def test_shorten_subject_keeps_the_prefix_and_fits_the_limit() -> None:
+    long_line = "feat(workflow): add script and skill for change pull requests with draft commit"
+    shortened = create_change_pr.shorten_subject(long_line)
+    assert len(shortened) <= create_change_pr.MAX_SUBJECT_LENGTH
+    assert shortened.startswith("feat(workflow): ")
+    create_change_pr.validate_subject_line(shortened)
+
+
+def test_shorten_subject_drops_a_dangling_connector() -> None:
+    shortened = create_change_pr.shorten_subject(
+        "feat(workflow): add script and skill for change pull requests with draft commit"
+    )
+    assert not shortened.endswith(" with")
+
+
+def test_shorten_subject_leaves_a_fitting_line_untouched() -> None:
+    line = "chore: keep this line"
+    assert create_change_pr.shorten_subject(line) == line
+
+
+def test_shorten_subject_rejects_roomless_prefix() -> None:
+    with pytest.raises(create_change_pr.WorkflowError, match="No room to shorten"):
+        create_change_pr.shorten_subject("chore(" + "x" * 60 + "): describe the change")
+
+
+def test_shorten_subject_rejects_a_non_conventional_line() -> None:
+    with pytest.raises(create_change_pr.WorkflowError, match="not a Conventional Commit"):
+        create_change_pr.shorten_subject("just some words that are too long to fit the limit here")
 
 
 def test_branch_name_for_slugifies_subject() -> None:
