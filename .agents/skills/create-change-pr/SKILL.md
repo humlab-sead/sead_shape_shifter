@@ -99,8 +99,9 @@ absent or the endpoint is unreachable, the step warns and the scaffold body
 stays, which is not a workflow failure.
 
 When the description is generated, read the published result before reporting
-success. The draft is a tracked file under `docs/whats-new/PRs/`, so commit or
-discard it deliberately afterwards — the script never stages it for you.
+success. The draft file is committed to the pull request branch by default, so
+the pull request carries its own record; pass `--no-commit-description-draft`
+when the user does not want a second commit.
 
 ## Merge
 
