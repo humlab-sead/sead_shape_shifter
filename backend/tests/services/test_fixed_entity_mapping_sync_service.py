@@ -29,9 +29,9 @@ def test_sync_service_applies_recorded_upsert_and_returns_versions(tmp_path) -> 
         upserts=(
             LinkUpsert(
                 key="A",
-                target_id=0,
+                target_id=7,
                 previous_saved_id=None,
-                new_saved_id=0,
+                new_saved_id=7,
                 previous_link=None,
             ),
         ),
@@ -51,7 +51,7 @@ def test_sync_service_applies_recorded_upsert_and_returns_versions(tmp_path) -> 
     assert result.row_version == "rows-v1"
     assert result.sidecar_version == saved_snapshot.content_version
     assert result.sidecar_version != MISSING_CONTENT_VERSION
-    assert link.target_id == 0
+    assert link.target_id == 7
     assert link.source == LinkSource.MANUAL
     assert link.created_by == "test-user"
 

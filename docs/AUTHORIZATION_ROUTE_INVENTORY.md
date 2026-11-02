@@ -203,9 +203,9 @@ Every row above except the health check requires an authenticated principal thro
 | Method   | Path                                                                      | Requirement       |
 |----------|---------------------------------------------------------------------------|-------------------|
 | `GET`    | `/api/v1/projects/{project_name}/mapping/{entity_name}`                   | `project:read`    |
-| `GET`    | `/api/v1/projects/{project_name}/mapping/{entity_name}/{local_key_value}` | `project:read`    |
-| `PUT`    | `/api/v1/projects/{project_name}/mapping/{entity_name}/{local_key_value}` | `project:edit`    |
-| `DELETE` | `/api/v1/projects/{project_name}/mapping/{entity_name}/{local_key_value}` | `project:edit`    |
+| `GET`    | `/api/v1/projects/{project_name}/mapping/{entity_name}/{local_key_value:path}` | `project:read`    |
+| `PUT`    | `/api/v1/projects/{project_name}/mapping/{entity_name}/{local_key_value:path}` | `project:edit`    |
+| `DELETE` | `/api/v1/projects/{project_name}/mapping/{entity_name}/{local_key_value:path}` | `project:edit`    |
 | `GET`    | `/api/v1/dispatchers`                                                     | `authenticated`   |
 | `POST`   | `/api/v1/projects/{name}/execute`                                         | `project:execute` |
 | `GET`    | `/api/v1/projects/{name}/execute/download`                                | `project:read`    |

@@ -21,7 +21,7 @@ Use these instructions when generating a pull request title and description.
 
 ## Description
 
-Use `.github/pull_request_template.md` as the required structure. Produce a ready-to-use Markdown description with these headings, in exactly this order:
+For standard, non-promotion pull requests, use `.github/pull_request_template.md` as the required structure. Produce a ready-to-use Markdown description with these headings, in exactly this order:
 
 1. `## Summary`
 2. `## User-facing release note`
@@ -39,6 +39,10 @@ A promotion pull request moves one branch into the next stage of the pipeline: `
 3. `## User-facing release note`
 4. `## Upgrade notes`
 5. `## Validation`
+
+Treat any request for a PR message, title, or description that says `dev` is being promoted to `staging` as a promotion request, even if the user does not call it a promotion. Use `.github/promotion_pr_template.md`, not the general PR template. If the user asks only for a message and provides no title, use `Promote dev to staging` as the title and provide the promotion-template body.
+
+Keep promotion bodies compact: put `## Summary` immediately after the marker, use at most one blank line between Markdown blocks, and keep `Included PRs` list items consecutive without blank lines.
 
 Each promotion is usually built from another pull request in this repository, so the description states only what is being promoted and lists the pull request numbers it carries. Promotion pull requests use the `None` fallbacks for the release-note and upgrade sections, because the release-note generator reads those sections from the pull requests listed under `Included PRs`. Do not restate their notes here.
 
