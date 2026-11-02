@@ -1,0 +1,38 @@
+title: Add ingester configuration support and enhance project detail loading
+description:
+## Summary
+
+Introduces an ingesters section under options in the Shape Shifter project file so ingester defaults
+and ingester-module-specific values can be defined per project. On the backend, both
+ShapeShiftProject (src/model.py) and the Pydantic Project model gain accessors that read the
+ingesters map from options (including a get_ingester_config helper). In the frontend,
+IngesterForm.vue no longer exposes manual database connection fields or an output-folder field;
+instead it reads the selected project's ingester config to resolve the target database from the
+referenced data_source, shows it in an info alert (with a warning when the data source is missing or
+unconfigured), and pre-populates defaults such as ignore columns, register, and explode flags from
+the project configuration. ProjectDetailView.vue now always loads the project on mount and on
+project-name changes (removing the "already selected" short-circuit), and ProjectsView.vue navigates
+directly to the detail view and lets it handle loading. The PR also adds
+docs/INGESTER_CONFIGURATION.md documenting the section's fields and SEAD ingester policies, an
+input/example-ingester-config.yml example, an ingesters section in input/arbodat-test.yml, and
+removes the logging block from backend/app/scripts/config.yml.
+
+## User-facing release note
+
+Project files can now define an ingesters section with a target data source and default options, and
+the Data Ingestion form uses these settings automatically: the target database is shown from the
+project's data source instead of being typed in manually, and options such as ignore columns are
+pre-filled.
+
+## Upgrade notes
+
+To use the new ingestion defaults, add an ingesters section to your project file's options and point
+its data_source at an entry in options.data_sources (see docs/INGESTER_CONFIGURATION.md and
+input/example-ingester-config.yml). The ingestion form no longer lets you enter database
+host/port/name/user manually, so projects without an ingesters.<name>.data_source configuration will
+see a warning that no target database is configured.
+
+## Validation
+
+Not verified: validation results unavailable. No CI check results were reported for this pull
+request, and no test or lint commands were run as part of generating this description.

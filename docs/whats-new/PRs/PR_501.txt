@@ -1,0 +1,52 @@
+title: Release: authorization cutover and security hardening to main
+description:
+<!-- promotion-pr -->
+
+## Summary
+
+Promotes dev into main, releasing the work accumulated since v2.1.0. The diff (1,500 changed files
+against main) is dominated by:
+
+ - Centralized authorization — a new backend/app/authorization/ package (policy, repository, grants,
+deployment roles, audit events, FastAPI dependencies), trusted-proxy identity handling via an
+AuthenticationAdapter, and route-level enforcement that conceals unauthorized resources as 404
+responses. Existing backend API tests were converted to async tests using a new authorized_client
+fixture, and a new backend/tests/authorization/ suite covers the adapter, dependencies, route
+authentication, and cross-resource access.
+ - SQL safety — a shared read-only statement policy in src/sql_policy.py now used by the core
+loaders and the backend.
+ - Deployment and verification — runtime tooling moved from docker/ to a Podman-based container/
+tree (bootstrap, nginx auth configuration, manifest import/export/backup/rollback, and
+container/scripts/verify/ checks), plus PostgreSQL read-only role scripts under scripts/postgres/.
+ - Documentation — authorization policy and route inventory docs, and archived cutover phase plans
+and handoffs under docs/proposals/.
+
+The PR description states origin/main was a clean ancestor of origin/dev and the merge carries 269
+commits; the merge completed as commit 43c92b4.
+
+Included PRs
+
+Individual pull request numbers carried by this promotion cannot be identified from the available
+evidence (no commit list or linked issues were provided). Per the PR description, the branch carries
+269 commits since v2.1.0, whose verifiable scope in the diff is described above: the centralized
+authorization system, the SQL read-only policy, the container deployment/verification tooling, and
+the associated documentation.
+
+## User-facing release note
+
+None - no user-visible change.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+ - No CI check results are available: the pull request's status check rollup is empty, so workflow
+outcomes are unknown (not confirmed passed or failed).
+ - Author-reported checks (from the PR description, not independently verified here):
+scripts/check_doc_links.sh reported as passing, and release unit/rollback exercises reported as
+performed during cutover Phase 4/5, recorded in
+docs/proposals/done/CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md.
+ - The added test suites (e.g. backend/tests/authorization/) are present in the diff, but their
+execution results are not included in the available evidence.

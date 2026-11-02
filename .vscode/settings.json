@@ -64,6 +64,11 @@
         "**/sead-tools/**": true
     },
     "git.confirmSync": false,
+    "github.copilot.chat.pullRequestDescriptionGeneration.instructions": [
+        {
+            "file": ".github/pr-description-instructions.md"
+        }
+    ],
     "gitlens.rebaseEditor.ordering": "asc",
     "markdownlint.config": {
         "MD007": false,

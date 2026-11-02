@@ -12,7 +12,8 @@ from src.extract import SubsetService
 from src.loaders.base_loader import DataLoader
 from src.model import ShapeShiftProject, TableConfig
 from src.normalizer import ProcessState, ShapeShifter
-from src.reconciliation.mapping_model import EntityMapping, Link, LinkSource, MappingCatalog, Metadata, encode_local_key
+from src.reconciliation.mapping_manager import MappingManager
+from src.reconciliation.mapping_model import EntityMapping, Link, LinkOwner, LinkSource, MappingCatalog, Metadata, encode_local_key
 from src.table_store import TableStore
 
 # pylint: disable=redefined-outer-name
@@ -1275,6 +1276,127 @@ class TestShapeShifter:
             await normalizer.normalize()
 
         assert normalizer.table_store["sample"]["sample_id"].tolist() == [None]
+
+    @pytest.mark.asyncio
+    async def test_normalize_applies_owned_links_offline_and_keeps_child_foreign_keys_local(self, tmp_path: Path):
+        project_dir = tmp_path / "demo-project"
+        project_dir.mkdir()
+        project_file = project_dir / "shapeshifter.yml"
+        project_file.write_text("entities: {}\n", encoding="utf-8")
+        (project_dir / "demo-project-reconciliation.yml").write_text(
+            """version: "3.0"
+service_url: http://localhost:8000
+entities:
+  site:
+    site_code:
+      source: null
+      property_mappings: {}
+      remote:
+        service_type: site
+        columns: []
+      auto_accept_threshold: 0.95
+      review_threshold: 0.7
+      mapping:
+        - local_key_value: B
+          source_value: B
+          status: accepted
+          target_id: 999
+""",
+            encoding="utf-8",
+        )
+
+        def make_project() -> ShapeShiftProject:
+            return ShapeShiftProject(
+                cfg={
+                    "entities": {
+                        "site": {
+                            "type": "fixed",
+                            "public_id": "site_id",
+                            "keys": ["site_code"],
+                            "columns": ["system_id", "site_id", "site_code"],
+                            "values": [[1, 10, "A"], [2, 20, "B"], [3, 30, "C"], [4, 40, "D"]],
+                        },
+                        "sample": {
+                            "type": "fixed",
+                            "public_id": "sample_id",
+                            "keys": ["sample_code"],
+                            "columns": ["system_id", "sample_id", "sample_code"],
+                            "values": [[1, 500, "S-B"]],
+                            "depends_on": ["site"],
+                            "extra_columns": {"site_ref": 2},
+                            "foreign_keys": [
+                                {"entity": "site", "local_keys": ["site_ref"], "remote_keys": ["system_id"]},
+                            ],
+                        },
+                    }
+                },
+                filename=str(project_file),
+            )
+
+        committed_at = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        sidecar = MappingCatalog(
+            metadata=Metadata(project="demo-project", created_at=committed_at),
+            entities={
+                "site": EntityMapping(
+                    local_key="site_code",
+                    public_id="site_id",
+                    links={
+                        "A": Link(
+                            target_id=111,
+                            source=LinkSource.RECONCILIATION,
+                            created_by="reconciliation",
+                            created_at=committed_at,
+                            committed_at=committed_at,
+                            owner=LinkOwner(entity_name="site", target_field="site_code"),
+                            verified_at=None,
+                        ),
+                        "B": Link(
+                            target_id=222,
+                            source=LinkSource.RECONCILIATION,
+                            created_by="legacy",
+                            created_at=committed_at,
+                        ),
+                        "C": Link(
+                            target_id=333,
+                            source=LinkSource.IMPORT,
+                            created_by="import",
+                            created_at=committed_at,
+                        ),
+                        "D": Link(
+                            target_id=444,
+                            source=LinkSource.RECONCILIATION,
+                            created_by="legacy",
+                            created_at=committed_at,
+                            committed_at=committed_at,
+                        ),
+                    },
+                )
+            },
+        )
+        MappingManager().save(sidecar, str(project_file))
+
+        results = []
+        with patch("httpx.AsyncClient.request", side_effect=AssertionError("Normalization must not make network requests")):
+            for _ in range(2):
+                normalizer = ShapeShifter(project=make_project())
+                await normalizer.normalize()
+                sites = normalizer.table_store["site"].set_index("site_code")
+                results.append(
+                    (
+                        {key: int(value) for key, value in sites["site_id"].items()},
+                        [int(value) for value in normalizer.table_store["sample"]["site_id"]],
+                        {key: int(value) for key, value in sites["system_id"].items()},
+                    )
+                )
+
+        expected_public_ids = {"A": 111, "B": 20, "C": 30, "D": 444}
+        expected_parent_system_ids = {"A": 1, "B": 2, "C": 3, "D": 4}
+        assert results == [
+            (expected_public_ids, [2], expected_parent_system_ids),
+            (expected_public_ids, [2], expected_parent_system_ids),
+        ]
+        assert results[0][1][0] == results[0][2]["B"]
+        assert results[0][1][0] != results[0][0]["B"]
 
     def test_log_shapes_writes_tsv(self, tmp_path: Path, survey_only_config: ShapeShiftProject):
         """log_shapes should write table shapes TSV next to target."""

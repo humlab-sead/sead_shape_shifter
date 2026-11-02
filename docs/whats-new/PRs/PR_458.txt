@@ -1,0 +1,64 @@
+title: feat(target-model): finish conformance backlog rollout
+description:
+## Summary
+
+Closes out the TARGET_MODEL_CONFORMANCE_ENHANCEMENTS backlog on one branch by delivering the
+remaining conformance, format, and severity work:
+
+ - New conformance validators: no_orphan_facts (fact entities present in a project must reach a
+lookup or classifier when the target model declares the constraint; warning by default, error when
+required: strict) and schema_aware_append (append branches must provide the parent's required
+target-facing columns after column_mapping/align_by_position renaming, emitting
+APPEND_MISSING_REQUIRED_COLUMN).
+ - Transitive FK support: ForeignKeyConformanceValidator now walks the project's target-facing FK
+graph before reporting MISSING_REQUIRED_FOREIGN_KEY_TARGET, removing direct-only false positives
+such as sample → sample_group → site.
+ - Severity controls and rule disabling: projects can set options.validation.disabled_rules and
+options.validation.severity_overrides; unknown or invalid keys surface as warnings
+(UNKNOWN_DISABLED_CONFORMANCE_RULE, UNKNOWN_CONFORMANCE_SEVERITY_OVERRIDE,
+INVALID_CONFORMANCE_SEVERITY_OVERRIDE). The backend validation service now groups conformance issues
+into errors, warnings, and info instead of forcing everything to error.
+ - Format extensions: model.format_version (defaults to "1"), ColumnSpec.generated (required
+generated columns no longer trigger missing-column errors, including in append checks),
+ColumnSpec.allowed_values with type: enum (spec validator enforces the pairing; new
+AllowedValuesConformanceValidator emits VALUE_NOT_IN_ALLOWED_SET on produced data), and
+GlobalConstraint.required.
+ - Architecture: new GlobalConformanceValidator base type for multi-entity checks; existing global
+validators migrated to it.
+ - SEAD superset spec: added taxonomic_order_system and taxonomic_order entities (96 → 98), closing
+the last identified taxonomy coverage gap.
+ - Frontend: the target-model YAML edit tab is now shown only for project-local @include: references
+and hidden for shared/global spec files.
+ - Docs: TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md moved to done/ as a closed consolidation record;
+speculative follow-ups split into new future proposals (ADVANCED_FK_VALIDATION_MODES.md,
+TARGET_MODEL_ECOSYSTEM_ENHANCEMENTS.md); remaining non-ecosystem follow-up is tracked in #457, which
+stays open by design.
+
+## User-facing release note
+
+Target-model conformance now reports findings at the right level of urgency: new checks catch
+orphaned fact entities and append sources that omit required target columns, transitive foreign-key
+paths no longer produce false errors, and projects can silence or re-rank individual conformance
+rules in their YAML. Target models can also declare generated columns and enum allowed values, which
+the validator now understands and enforces.
+
+## Upgrade notes
+
+None - no user action required. All new format fields (format_version, generated, allowed_values,
+constraint required) are optional and default to previous behavior. Note that projects may see new
+conformance findings after this change (for example APPEND_MISSING_REQUIRED_COLUMN and
+ORPHAN_FACT_ENTITY warnings), and is_valid remains driven only by error-severity issues.
+
+## Validation
+
+ - The PR description reports the author ran: uv run pytest
+tests/target_model/test_schema_reference.py tests/target_model/test_models.py
+tests/model/test_target_model_conformance.py backend/tests/validators/test_target_model_validator.py
+backend/tests/services/test_validation_service.py -q, python scripts/generate_schemas.py --check,
+and python scripts/generate_target_model_schema_reference.py --check. The supplied evidence does not
+include the outcomes of these commands.
+ - No CI status checks are attached to the pull request (empty status rollup), so CI results are
+unknown.
+ - New test coverage is included in the diff (core conformance, backend adapter/service, spec
+validator, data validators, model parsing, and frontend tab visibility tests), but their execution
+results are not available in the supplied evidence.

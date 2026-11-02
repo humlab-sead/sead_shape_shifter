@@ -1,0 +1,47 @@
+title: feat: entity-level optimistic locking with ETag support
+description:
+## Summary
+
+Adds entity-level optimistic locking to the entity update flow so concurrent edits of the same
+entity no longer fall back to last-writer-wins.
+
+ - Backend: compute_entity_etag derives a stable, content-based ETag (first 16 hex chars of the
+SHA-256 of the entity's canonical JSON). EntityResponse now always includes an etag field. PUT
+/projects/{project}/entities/{entity} accepts an optional If-Match header; when supplied, the update
+becomes a compare-and-swap: the project is force-loaded from disk and, if the recomputed ETag
+differs, the request is rejected with a new EntityConflictError (HTTP 409, error code
+ENTITY_CONFLICT) whose context carries the current server-side ETag and entity data, so the client
+can prompt a reload without a second round-trip. Omitting If-Match keeps the previous unconditional
+update behavior.
+ - Frontend: the entity API client forwards the loaded entity's ETag as If-Match on saves, and the
+entity store captures a conflictInfo state (entity name, current ETag, current entity) when a 409 is
+returned.
+ - Docs: ENTITY_EDITOR_OPTIMISTIC_LOCKING.md is moved to docs/proposals/done/ and marked
+implemented; docs/README.md proposal index is reorganized accordingly.
+
+The PR body references issue #393 as the fixed issue; its details were not available for this 
+description.
+
+## User-facing release note
+
+When you save an entity that another user has already modified, Shape Shifter now detects the clash
+and reports a conflict ("reload before saving") instead of silently overwriting the other edit,
+helping you keep concurrent changes intact.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+ - A new unit test suite was added,
+backend/tests/services/project/test_entity_operations_optimistic_locking.py (262 lines), covering
+ETag stability and content sensitivity, conditional update success on ETag match,
+EntityConflictError on mismatch (with current_etag/current_entity context), ResourceNotFoundError
+for missing entities, force-reload behavior only on the conditional path, and the unconditional
+backward-compatible path. Execution results for these tests are unknown; no run output was
+available.
+ - No CI check results were available for this pull request (the status check rollup was empty), so
+it is unknown whether the suite or other checks were executed before merge.
+ - The pull request was merged into dev on 2026-03-29; merging itself is not evidence that tests
+passed.

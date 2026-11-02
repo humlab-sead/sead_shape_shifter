@@ -1,0 +1,53 @@
+title: Add entity Task List feature and reduce Graph view toolbar clutter
+description:
+## Summary
+
+Adds a lightweight, non-enforcing Task List for tracking entity progress in Shape Shifter projects,
+and consolidates the Graph view toolbar into dropdowns.
+
+ - Core domain: New TaskList class in src/model.py exposes required_entities, completed, and ignored
+lists from a new optional task_list section of the project YAML, with mark_completed / mark_ignored
+/ reset_status operations. ProjectMapper and the API Project model round-trip the section.
+ - Backend API: New tasks router (GET /projects/{name}/tasks, POST .../tasks/initialize, POST
+.../tasks/{entity}/complete, POST .../tasks/{entity}/ignore, DELETE .../tasks/{entity}) backed by a
+new TaskService. Status combines stored state with derived state (validation results, preview
+availability, dependency/FK blockers) and computes per-entity priority (critical, ready, waiting,
+optional) plus completion statistics. Marking an entity done requires passing validation and
+successful preview generation.
+ - Frontend: New useTaskStatus composable, taskStatus Pinia store, and tasks API client.
+ProjectDetailView gains task status node styling on the graph, a task filter dropdown
+(all/todo/done/ignored/blocked/critical), a completion-stats overlay, and context-menu actions (mark
+done, ignore, reset). The graph toolbar's layout buttons and label/source toggles are replaced by
+GraphLayoutDropdown and GraphDisplayOptionsDropdown components to reduce clutter.
+ - Documentation: New docs/TASK_LIST_INTEGRATION_GUIDE.md; expanded layer-boundary/mapper
+architecture sections in DEVELOPER_GUIDE.md, AGENTS.md, and .github/copilot-instructions.md; TODO.md
+trimmed, with the Task List and toolbar-clutter items recorded as #161 and #163.
+ - Docker: Default container USER_UID/USER_GID changed from 1000:1000 to 1002:33, .pgpass bind-mount
+path changed to ./data/.pgpass/.pgpass, new docker-build-github-no-cache Make target, new
+deploy-to-sead-tools copy script, and expanded .dockerignore data exclusions.
+
+## User-facing release note
+
+You can now track entity progress with a Task List: mark entities as done or ignored from the graph
+node context menu, filter the graph by status (to do, done, ignored, blocked, critical), and see
+completion percentage in an overlay on the graph. The Graph view toolbar is also less cluttered,
+with layout and display options grouped into dropdowns.
+
+## Upgrade notes
+
+ - Docker deployments: The default container user/group changed from 1000:1000 to 1002:33 (still
+overridable via the USER_UID/USER_GID environment variables). If you rely on the defaults, verify
+file permissions on mounted data/ volumes.
+ - .pgpass mount: The PostgreSQL .pgpass bind mount moved from ./data/.pgpass to
+./data/.pgpass/.pgpass; deployers must place the file at the new nested path.
+ - Project files: The new task_list YAML section is optional; existing projects load unchanged and
+task features simply report an uninitialized task list until initialized via the new endpoint or UI.
+
+## Validation
+
+ - New backend test suites were added with this PR (backend/tests/api/v1/test_tasks.py,
+backend/tests/services/test_task_service.py, backend/tests/services/test_task_service_initialize.py)
+covering the task endpoints, status computation, priority rules, and initialization strategies;
+their execution results are not available in the provided evidence.
+ - No CI check results were reported for this pull request, so test and build outcomes are unknown
+and are not claimed as passed.

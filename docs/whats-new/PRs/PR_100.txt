@@ -1,0 +1,63 @@
+title: Add full management capabilities for project reconciliation
+description:
+## Summary
+
+Adds end-to-end management of a project's reconciliation specifications, replacing the previous
+read-only/threshold-only editing. The reconciliation workflow is now project-focused: a flattened
+list shows every entity + target-field specification with its remote type, mapping count, and
+thresholds.
+
+Backend:
+
+ - New REST endpoints under /projects/{project_name}/reconciliation/: list, create, update, and
+delete specifications, plus available-fields/{entity_name} (target-field options from the entity
+preview schema) and mapping-count per specification.
+ - New service methods in ReconciliationService (list_specifications, create_specification,
+update_specification, delete_specification, get_available_target_fields, get_mapping_count) that
+validate entity existence, reject duplicate entity + target-field combinations, preserve existing
+mappings on update, and refuse deletion of specifications with mappings unless force=true. Updated
+configurations are persisted to the project's reconciliation YAML.
+ - New models SpecificationListItem, SpecificationCreateRequest, SpecificationUpdateRequest;
+ReconciliationRemote drops the data_source, entity, and key fields (only service_type remains).
+ - ProjectMapper.to_core_config helper added for entity-existence validation.
+
+Frontend:
+
+ - New Configuration tab in the reconciliation view with a SpecificationsList table (remote-type and
+mapping-count indicators, edit/delete actions) and a SpecificationEditor dialog
+(entity/target-field selection for new specs, read-only on edit; source type, remote type, property
+mappings, and threshold editing; delete confirmation warns when mappings exist).
+ - New reconciliationSpecApi client, Pinia store state/actions for specification CRUD, and matching
+TypeScript types.
+
+Sample configuration input/arbodat-test-reconciliation.yml is migrated to the nested entity →
+target-field format (version: '2.0'), removing the old keys/columns fields. The PR also includes
+ruff configuration updates, a ruff-check-fix Makefile target, and resulting lint cleanups across
+src/, backend/, and tests.
+
+## User-facing release note
+
+Users can now view, add, edit, and delete a project's reconciliation specifications from a new
+Configuration tab in the reconciliation view, with warnings and confirmation when deleting a
+specification that already has mappings.
+
+## Upgrade notes
+
+ - The reconciliation YAML format changes: specifications are now nested under each entity by target
+field (e.g. site: site_name: {...}) with version: '2.0', and the per-specification keys and columns
+fields are removed. Existing reconciliation files need to be migrated to this format;
+input/arbodat-test-reconciliation.yml shows the migrated structure.
+ - API consumers: the data_source, entity, and key fields have been removed from the remote entity
+configuration (ReconciliationRemote); only service_type remains.
+
+## Validation
+
+ - No CI check results are recorded for this pull request (statusCheckRollup is empty), and no test
+execution output was provided, so test outcomes cannot be reported as passed or failed.
+ - The diff adds substantial test coverage: a new
+backend/tests/api/v1/test_reconciliation_specifications.py covering all new endpoints (list, create,
+update, delete, available-fields, mapping-count, including error cases) and a new
+TestSpecificationManagement suite in backend/tests/services/test_reconciliation_service.py; whether
+these suites were executed is unknown.
+ - The pull request was merged into dev (merge commit 4abf8e8), but no validation evidence
+accompanies the merge.

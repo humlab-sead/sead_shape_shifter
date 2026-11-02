@@ -6,6 +6,7 @@ import pytest
 
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.entity import ForeignKeyConfig as ApiForeignKeyConfig
+from backend.app.models.entity import ForeignKeyConstraints
 from backend.app.models.shapeshift import PreviewResult
 from backend.app.services import validate_fk_service
 from backend.app.services.validate_fk_service import ValidateForeignKeyService
@@ -157,7 +158,7 @@ async def test_test_unsaved_foreign_key_config_does_not_use_saved_index(
             local_keys=["customer_id"],
             remote_keys=["id"],
             how="left",
-            constraints={"cardinality": "one_to_one"},
+            constraints=ForeignKeyConstraints(cardinality="one_to_one"),
         ),
     )
 

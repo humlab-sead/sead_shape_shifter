@@ -1,0 +1,59 @@
+title: Add custom graph layout, context-sensitive help and graph tools
+description:
+## Summary
+
+This PR delivers a set of dependency-graph and general UX improvements (closes #153; the PR body 
+also references #155 and #156):
+
+ - Custom graph layout (#153): Node positions can now be saved per project and restored across 
+sessions.
+  - Backend: new GET/PUT/DELETE /projects/{name}/layout endpoints in
+backend/app/api/v1/endpoints/projects.py. Positions are stored under options.layout.custom in the
+project YAML (with _metadata for last_updated/layout_version); saving and clearing create backups
+via the existing save_project flow.
+  - Model: LayoutPosition, CustomLayoutConfig, and LayoutOptions classes plus a layout_options
+cached property added to src/model.py.
+  - Frontend: a third "Custom" layout option (Cytoscape preset layout) with "Save as Custom" and
+"Clear Custom" buttons, automatic loading and switching to a saved layout when a project opens, and
+radial placement of new nodes that have no saved position (useCytoscape.getCurrentPositions,
+graphAdapter preset configuration, projectsApi.getLayout/saveLayout/clearLayout).
+ - Context-sensitive help (#155): New ContextHelp.vue accordion in the navigation sidebar showing 
+tips and shortcuts per route and per project-detail tab; the active tab is now mirrored into the
+route query so help follows the tab.
+ - Graph tooling (#156): Floating action buttons (fit, zoom in/out, reset, create new node, export 
+PNG) overlay the graph; the "create new node" button switches to the Entities tab. The
+"Dependencies" tab is renamed "Graph", and the legend dialog was removed.
+ - Quick YAML editing in the node drawer: The entity details drawer now embeds a YAML editor with
+load/save/cancel and unsaved-changes confirmation, replacing the previous read-only info list.
+ - Resizable sidebar: The navigation drawer can be dragged between 240–500 px, with the width
+persisted in localStorage.
+ - Chores and docs: Package version bumped to 1.6.0 with httpx moved from the dev extra to a core
+dependency; default backend port changed from 8012 to 8013 (Makefile and Vite dev proxy);
+docs/SYSTEM_DIAGRAMS.md updated; new proposal documents docs/GRAPH_SEARCH_FEATURE.md and
+docs/TASK_LIST_FEATURE_PROPOSAL.md (design proposals only — not implemented in this PR); TODO.md
+extended.
+
+## User-facing release note
+
+You can now arrange the dependency graph the way you think about your data and keep it that way:
+drag nodes into place, click "Save as Custom", and the graph reopens in your saved layout next time
+(shared with everyone via the project file). The sidebar also shows context-sensitive tips and
+shortcuts for the view you are in, and the graph gains floating tools for zooming, resetting,
+creating a node, and quick YAML editing from the node drawer.
+
+## Upgrade notes
+
+ - The default backend port changed from 8012 to 8013 (BACKEND_PORT in the Makefile and the Vite
+dev-server proxy default). Update any local setup, scripts, or VITE_API_BASE_URL overrides that
+assume port 8012.
+ - httpx is now a core runtime dependency (previously only in the dev extra); reinstall dependencies
+after pulling (e.g. uv sync).
+ - Saved layouts are stored in the project YAML under options.layout.custom (see
+input/arbodat-test.yml for an example). This section is optional and requires no migration of
+existing projects.
+
+## Validation
+
+Not verified: validation results unavailable. No CI check results were reported for this pull
+request (empty status check rollup), and the diff contains no test changes, so no executed checks
+can be confirmed as passed or failed.

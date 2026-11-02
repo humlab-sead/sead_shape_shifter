@@ -1,0 +1,87 @@
+title: feat(container): versioned releases and setup simplification
+description:
+## Summary
+
+Brings the container-deploy-versioning branch into dev: the container/ tree becomes an independently
+versioned, published release bundle with an administrator-driven install/select/rollback flow, plus
+several core fixes.
+
+ - Container release pipeline: new container/VERSION, a Container Release workflow
+(.github/workflows/container-release.yml) that validates PRs into the protected container-release
+branch and publishes one container-vX.Y.Z tag, GitHub Release, archive, and sha256 checksum on
+merge, and a read-only verifier container/scripts/verify/verify_container_release.sh (dir and
+archive modes) that checks the version, required deployment files, and archive layout.
+ - Release manager: new administrator-owned container/scripts/deploy/manage_container_release.sh
+(installed as shape-shifter-container-release) with install, activate, status, and rollback per
+deployment user. Releases are stored root-owned under
+/opt/shape-shifter/<user>/container-releases/<tag>/ and selected through a ~/container symlink;
+installation verifies the tag, checksum, archive paths, and bundle contents. GIT_REF and IMAGE_NAME
+remain independent of the selected container release.
+ - Home-relative paths: relative CONFIG_DIR, DATA_DIR, and CONTAINER_DATA_DIR overrides now resolve
+from $HOME (consistently in load-env.sh and the Makefile) instead of beside the checkout, so
+configuration and data stay outside the selected release.
+ - Lifecycle consolidation: up.sh, down.sh, logs.sh, and status.sh are replaced by a single
+scripts/container.sh dispatcher used by the Make targets and the systemd unit; the unused
+setup-env/setup-directories Make targets and the uncalled rebuild-image.sh are removed. The deploy
+helper and sync-to-deploy no longer overwrite an administrator-selected release (sync-to-deploy
+refuses manager-owned targets), and get-install.sh becomes a host prerequisite check only.
+ - Core fixes: the normalizer's runtime key check now accepts managed identity columns (system_id,
+public_id) as business keys and scans duplicates only over columns already present, fixing a
+KeyError for composite keys mixing a managed identity column with a produced column; append configs
+keep explicitly declared append columns; the keys validator and unnest/FK column specifications now
+align with the keys model (keys must name produced columns); site_type_id is restored in the SEAD
+superset target model; the archie script shebang is fixed; the frontend has_note task-graph filter
+now excludes entities with undefined status; the UCanAccess note in backend.env.example reflects
+that the Containerfile downloads the driver.
+ - Tooling and docs: adds a PR review agent, the review-pr skill with publish_review.py, the
+CONTAINER_DEPLOY_VERSIONING proposal/phase/task plans and the CONTAINER_SETUP_SIMPLIFICATION
+proposal, and updates container/README.md, DEPLOYMENT.md, and docs/OPERATIONS.md for the release
+flow. Version metadata is bumped to 2.3.0 (pyproject.toml, backend/app/__init__.py, CHANGELOG.md).
+ - Tests: new regression suites container/tests/test_release_manager.sh, test_path_resolution.sh,
+test_lifecycle.sh, and test_verify_inventory.sh, plus new Python tests for managed identity keys and
+the keys validator, and updated spec/transform tests.
+
+## User-facing release note
+
+Administrators can now install, select, and roll back versioned container releases
+(container-vX.Y.Z) per environment through a single host script, without changing the application
+image settings. Entity configurations can also use the system-generated ID columns as business keys
+without triggering false missing-key or duplicate-scan errors, and the task graph's "has note"
+filter no longer shows untracked entities.
+
+## Upgrade notes
+
+Existing container deployments must move to the release flow:
+
+ 1. Install the host manager once: sudo install -o root -g root -m 0755
+container/scripts/deploy/manage_container_release.sh
+/usr/local/sbin/shape-shifter-container-release.
+ 2. Move a pre-release ~/container directory aside (e.g. sudo -u USER mv ~/container
+~/container.pre-release), then install and activate an exact release; activate refuses to replace a
+real directory.
+ 3. Reinstall the systemd unit (make service-install) because it now starts the container through
+scripts/container.sh; the removed scripts up.sh, down.sh, logs.sh, and status.sh no longer exist —
+use the make targets or scripts/container.sh <action>.
+ 4. Check relative path overrides: a relative CONFIG_DIR/DATA_DIR/CONTAINER_DATA_DIR in
+~/config/deployment.env now resolves under the user's home, not beside the checkout, so the old
+DATA_DIR=../container-data spelling must be rewritten (e.g. DATA_DIR=container-data).
+ 5. The removed Make targets setup-env and setup-directories have no replacement targets; use make
+setup.
+
+~/config and ~/container-data are untouched by release install, activation, and rollback. See
+container/DEPLOYMENT.md ("Install and select a container release" and the migration sections) for
+the full procedure.
+
+## Validation
+
+ - Container Release workflow on this PR: both jobs (validate, publish) reported SKIPPED; their
+conditions only apply to PRs targeting container-release or pushes to it, so no CI test execution is
+evidenced here.
+ - The PR description states that the container/tests/*.sh suites pass, verify_container_release.sh
+passes in dir and archive mode, and the core specs, process, and transforms tests covering the
+changed behavior pass. These outcomes are author-reported; the available evidence does not
+independently confirm their execution.
+ - New and updated tests are present in the diff (container/tests/,
+tests/process/test_shapeshifter.py, tests/specifications/, tests/transforms/,
+frontend/src/utils/__tests__/taskGraph.test.ts); their execution results are unknown from the
+available evidence.

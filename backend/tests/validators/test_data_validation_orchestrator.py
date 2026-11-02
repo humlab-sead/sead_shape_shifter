@@ -149,7 +149,7 @@ async def test_orchestrator_marks_unavailable_entity_failed_without_dataframe_ch
     assert issues == []
     assert orchestrator.status == DataValidationStatus.FAILED
     assert orchestrator.entity_statuses["test_entity"].status == EntityDataValidationStatus.FAILED
-    assert "missing_key" in orchestrator.entity_statuses["test_entity"].reason
+    assert "missing_key" in (orchestrator.entity_statuses["test_entity"].reason or "")
 
 
 @pytest.mark.asyncio
@@ -197,7 +197,7 @@ async def test_full_data_strategy_does_not_validate_partial_tables_after_normali
     assert issues == []
     assert orchestrator.status == DataValidationStatus.FAILED
     assert orchestrator.entity_statuses["broken_entity"].status == EntityDataValidationStatus.FAILED
-    assert "missing_key" in orchestrator.entity_statuses["broken_entity"].reason
+    assert "missing_key" in (orchestrator.entity_statuses["broken_entity"].reason or "")
     assert orchestrator.entity_statuses["later_entity"].status == EntityDataValidationStatus.SKIPPED
 
 
@@ -234,7 +234,7 @@ async def test_full_data_strategy_does_not_validate_incomplete_normalization_out
     assert issues == []
     assert orchestrator.status == DataValidationStatus.FAILED
     assert orchestrator.entity_statuses["broken_entity"].status == EntityDataValidationStatus.FAILED
-    assert "overlap" in orchestrator.entity_statuses["broken_entity"].reason
+    assert "overlap" in (orchestrator.entity_statuses["broken_entity"].reason or "")
     assert orchestrator.entity_statuses["later_entity"].status == EntityDataValidationStatus.SKIPPED
 
 

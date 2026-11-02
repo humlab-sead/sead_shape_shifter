@@ -1,0 +1,47 @@
+title: Add YAML schema validation and autocompletion in Monaco editor
+description:
+## Summary
+
+Adds YAML intelligence to the Monaco-based YAML editors so project and entity YAML can be validated
+and completed against the Shape Shifter configuration format (closes #166).
+
+ - New monaco-yaml and yaml dependencies; new composable useMonacoYamlIntelligence.ts configures
+monaco-yaml (schema validation, hover, completion, formatting) with one of two new JSON Schemas:
+projectSchema.json (full project files: metadata, entities, options/data sources, task list) or
+entitySchema.json (single-entity definitions without the project wrapper).
+ - New custom validator projectYamlValidator.ts reports Monaco markers for domain cross-references
+that JSON Schema cannot express: unknown entity names in depends_on, foreign_keys.entity,
+filters.exists_in.entity, append, task_list entries (warnings, full-project mode only), and @value:
+entities.* expressions. An optional ValidationContext (entity names, data source names, current
+entity name) allows the same validation to run when editing a single entity in isolation.
+ - New completion provider projectYamlCompletions.ts suggests entity and data source names (from the
+document or injected context), join types (left/inner/outer), cardinality values, and entity types
+(sql/fixed) based on the current line.
+ - YamlEditor.vue gains mode (project | entity) and validationContext props, initializes YAML
+intelligence on mount, and re-runs custom validation on change and on context change.
+EntityFormDialog.vue uses entity mode and supplies a context built from the other entities and
+available data sources, excluding the entity being edited.
+ - Documentation: docs/YAML_INTELLIGENCE.md (design guide) and
+frontend/YAML_INTELLIGENCE_IMPLEMENTATION.md (implementation/testing/troubleshooting notes). The
+implementation docs state known limitations: error positions for @value: expressions are approximate
+and validation runs on every change.
+ - Minor housekeeping: TODO entry added for this feature; input/arbodat-test.yml sample changed from
+type: sql to type: data for the abundance entity.
+
+## User-facing release note
+
+When editing project or entity YAML, the editor now highlights structural errors and invalid
+references (for example an unknown entity in depends_on or foreign_keys) and offers context-aware
+autocompletion for entity names, data sources, join types, and other values, making typos in YAML
+configuration easier to catch while typing.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+Not verified: validation results unavailable. No CI check results were available for this pull
+request, and the diff adds no automated tests. The implementation docs describe a manual testing
+procedure (dev server, autocomplete and validation scenarios), but there is no evidence in the
+available sources that these checks were executed.

@@ -1,0 +1,32 @@
+title: Fix entity editor system_id/public_id handling
+description:
+## Summary
+
+Two changes are bundled in this PR:
+
+ - Entity editor fixed-values grid: For entities of type fixed, EntityFormDialog.vue now always
+places system_id first in the grid columns and includes the entity's public_id column (when defined)
+before the regular keys and columns. In FixedValuesGrid.vue, the system_id column is made read-only
+and auto-populated with sequential 1-based numbers (including for newly added rows), while
+system_id and public_id columns are visually distinguished via dedicated cell/header styles
+(read-only italic styling for system_id, highlighted styling for the editable public_id column). The
+grid gains an optional publicId prop to identify the public-id column.
+ - Deployment helper script: A new executable docker/rsync-to-sead-tools script rsyncs a whitelist
+of build-related files (Dockerfile, Makefile, build.sh, BUILD_SCRIPT_GUIDE.md, README.md,
+.dockerignore) from the docker directory to /home/sead/sead-tools/sead_shape_shifter, with
+docker-compose.yml excluded for manual copying.
+
+## User-facing release note
+
+When editing fixed entities, the values grid now shows the system ID as an auto-numbered, read-only
+column and highlights the public ID column, making these identifier fields easier to work with.
+
+## Upgrade notes
+
+None - no user action required. The new docker/rsync-to-sead-tools script is an optional helper for
+copying build files to a sead-tools checkout and does not affect normal deployment.
+
+## Validation
+
+Not verified: validation results unavailable. No CI check results were reported for this pull
+request and no test or build evidence was included in the provided materials.

@@ -1,0 +1,70 @@
+title: Add tiny DSL formula support to extra_columns
+description:
+## Summary
+
+Adds a small, safe formula DSL for extra_columns values, plus supporting loader and extraction
+changes.
+
+ - New module src/transforms/dsl.py: hand-written tokenizer and recursive-descent parser (no
+external parser dependency, no eval), a validator enforcing a function whitelist, column existence,
+arity, and complexity limits (max depth 20, max 500 nodes, max string literal length), and a pandas
+backend with concat, upper, lower, trim, substr, and coalesce. FormulaEngine exposes
+parse/validate/evaluate/apply_extra_columns, and extract_column_references derives dependencies from
+the AST.
+ - src/transforms/extra_columns.py: ExtraColumnEvaluator now detects formulas starting with =,
+evaluates them via the DSL, and defers formulas whose referenced columns are not yet available (same
+deferred model as interpolated strings). A doubled == prefix escapes a literal leading =. New
+collect_source_dependencies gathers source columns needed by constants, copies, interpolations, and
+formulas.
+ - src/extract.py: SubsetService.get_subset uses collect_source_dependencies so helper source
+columns required by interpolations and DSL formulas are read from the source and dropped after
+evaluation.
+ - src/loaders/sql_loaders.py: adds a normalize_query_metadata hook before column validation. The
+UCanAccess loader now prefers JDBC column labels over cursor.description (fixing aliased and
+duplicate ArchDat-style columns), converts Java strings per positional column instead of by name
+(duplicate-safe), and canonicalizes Access alias casing to the configured casing without reordering
+columns.
+ - Arbodat test project (tests/test_data/projects/arbodat/shapeshifter.yml): relative dating is
+restructured as fact rows under a shared analysis_entity parent (new
+_analysis_entity_relative_dating staging entity appended with distinct mode; relative_dating now
+references analysis_entity and relative_ages).
+ - Documentation: extra_columns DSL syntax documented in docs/CONFIGURATION_GUIDE.md; new proposals
+(INTRODUCE_TINY_DSL_IN_EXTRA_COLUMNS.md, TINY_DSL_EXTRA_COLUMNS_IMPLEMENTATION_SKETCH.md,
+COMPLEX_ENTITY_MODELING_ERGONOMICS.md, DSL_EXTENSIBILITY_GUIDE.md), an archived parser-comparison
+doc, and a DSL test README. The corresponding #108 TODO entries were removed from TODO.md.
+
+## User-facing release note
+
+You can now derive new columns in extra_columns with simple formula expressions such as
+=concat(first_name, ' ', last_name) or =coalesce(preferred_name, full_name), which work for any
+entity type and are evaluated once the referenced columns exist. Strings that must literally start
+with = can be written with a doubled == prefix.
+
+## Upgrade notes
+
+ - Behavior change for existing configurations: extra_columns string values that start with a single
+= are now parsed as DSL formulas instead of being stored as string constants. If you have such
+literal values, escape them by doubling the leading = (e.g. ==concat(a, b) is stored as =concat(a,
+b)).
+ - UCanAccess/MS Access SQL entities: result column names now come from JDBC column labels when
+available, and alias casing is normalized to the configured casing when auto-detecting columns.
+Queries whose aliases previously surfaced under different names may now match the configured names;
+no configuration change is required, but verify column names in affected SQL entities.
+ - No migrations or other actions are required.
+
+## Validation
+
+ - No CI check results are available in the provided evidence (statusCheckRollup is empty), so no
+checks can be reported as passed or failed. The PR was merged (merge commit 99355ab).
+ - The PR adds substantial test coverage in the diff: tests/transforms/test_dsl.py (tokenizer,
+parser, validator, backend, engine, edge cases),
+tests/transforms/test_extra_columns_dsl_integration.py, DSL/escaping detection tests in
+tests/transforms/test_extra_columns.py, dependency-collection and subset tests in
+tests/process/test_subset_service.py, deferred-formula normalization tests in
+tests/process/test_shapeshifter.py, and Access loader tests (duplicate columns, JDBC labels, alias
+casing, duplicate rejection) in tests/loaders/. Execution of these tests was not observed; results
+are unknown.
+ - Added documentation claims 73 DSL tests with 91.39% coverage; this figure comes from the docs in
+the diff and was not independently verified here.
+ - One added Access test (test_debug_relative_dating_query_against_real_arbodat_data) is marked
+manual/debug and skips when the real Arbodat .mdb file is absent.

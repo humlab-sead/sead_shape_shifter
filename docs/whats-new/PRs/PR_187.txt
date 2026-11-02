@@ -1,0 +1,35 @@
+title: Add rsync-to-sead-tools script and improve entity editor ID columns
+description:
+## Summary
+
+Two changes are included:
+
+ 1. New docker/rsync-to-sead-tools script: a small bash helper that syncs the Docker build files
+(Dockerfile, Makefile, BUILD_SCRIPT_GUIDE.md, build.sh, README.md, .dockerignore) from the docker/
+directory to /home/sead/sead-tools/sead_shape_shifter via rsync with --checksum and
+--chown=sead:www-data. docker-compose.yml is intentionally excluded and must be copied manually if
+needed.
+ 2. Entity editor improvements for fixed entities:
+  - EntityFormDialog.vue now always places system_id first in the fixed-values grid column list,
+followed by the entity's public_id column (when defined), then keys and columns. The configured
+public_id name is passed to the grid as a new prop.
+  - FixedValuesGrid.vue makes the system_id column read-only and auto-numbers it sequentially
+(1-based) for existing rows and newly added rows. Both system_id and public_id columns are visually
+distinguished via dedicated cell/header styles: system_id is rendered read-only and greyed/italic,
+while public_id is editable and highlighted.
+
+## User-facing release note
+
+When editing fixed entities, the values grid now automatically numbers the read-only system_id
+column and highlights the public_id column, making identifier columns easier to recognize and less
+error-prone to edit.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+Not verified: validation results unavailable. No CI status checks are reported for this pull
+request, and no test or build results were included in the available evidence. No tests accompany
+the diff.

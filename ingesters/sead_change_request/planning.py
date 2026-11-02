@@ -7,6 +7,7 @@ from pandas import Series
 
 from ingesters.sead_change_request.contracts import PlannedRowAction, PlannedTable, SourceTableBundle
 from ingesters.sead_change_request.preparation import PlannedBundle
+from src.reconciliation.mapping_model import encode_local_key
 from src.target_model.effective_identity import EffectiveIdentity, resolve_effective_identity
 from src.target_model.models import EntitySpec
 
@@ -32,7 +33,7 @@ def _missing_action_for(effective: EffectiveIdentity) -> PlannedRowAction:
     if effective.identity_tracking == "tracked":
         return PlannedRowAction.ALLOCATE
     if effective.identity_tracking == "reconciled":
-        return PlannedRowAction.RECONCILE
+        return PlannedRowAction.BLOCK_RECONCILIATION
     if effective.identity_tracking == "child":
         return PlannedRowAction.INHERIT_AGGREGATE
     raise ValueError(f"Effective identity_tracking '{effective.identity_tracking}' cannot plan a missing-public-ID action")
@@ -45,6 +46,8 @@ def plan_table(
     *,
     mutable_fields: list[str] | None = None,
     existing_row_update_entities: set[str] | None = None,
+    local_key_columns: tuple[str, ...] | None = None,
+    approved_local_only_keys: set[str] | None = None,
     staging: bool = False,
 ) -> PlannedTable:
     """Plan row actions for one entity table in a deterministic way.
@@ -84,6 +87,29 @@ def plan_table(
     existing_mask = frame[public_id].map(_has_public_id_value)
     planned_actions = pd.Series(missing_action, index=frame.index, name="_planned_action")
     planned_actions.loc[existing_mask] = PlannedRowAction.REFERENCE_EXISTING
+    blocked_row_reasons: dict[object, str] = {}
+
+    if effective.identity_tracking == "reconciled" and entity_spec.public_id_generation != "database_sequence":
+        approved_keys = approved_local_only_keys or set()
+        key_columns = tuple(local_key_columns or ())
+        allocation_allowed = effective.reconciliation in {"reconcile-exact", "reconcile-fuzzy"}
+
+        for row_index in frame.index[~existing_mask]:
+            encoded_key = None
+            if key_columns and all(column in frame.columns for column in key_columns):
+                encoded_key = encode_local_key(
+                    list(key_columns),
+                    [frame.at[row_index, column] for column in key_columns],
+                )
+            if allocation_allowed and encoded_key in approved_keys:
+                planned_actions.at[row_index] = PlannedRowAction.ALLOCATE
+                continue
+
+            planned_actions.at[row_index] = PlannedRowAction.BLOCK_RECONCILIATION
+            if encoded_key in approved_keys and not allocation_allowed:
+                blocked_row_reasons[row_index] = f"Local-only approval cannot allocate in reconciliation mode '{effective.reconciliation}'"
+            else:
+                blocked_row_reasons[row_index] = "No exported local-only approval authorizes allocation for this business key"
 
     if mutable_fields is not None and bool(existing_mask.any()):
         missing_requirements = _missing_mutable_field_requirements(frame, mutable_fields)
@@ -100,6 +126,7 @@ def plan_table(
                 planned_actions=planned_actions,
                 mutable_fields=mutable_fields,
                 diagnostics=diagnostics,
+                blocked_row_reasons=blocked_row_reasons,
             )
 
         baseline_pairs = [(field_name, f"{field_name}__existing") for field_name in mutable_fields if field_name]
@@ -134,6 +161,7 @@ def plan_table(
         planned_actions=planned_actions,
         mutable_fields=mutable_fields,
         diagnostics=diagnostics,
+        blocked_row_reasons=blocked_row_reasons,
     )
 
 
@@ -143,6 +171,8 @@ def plan_bundle(
     *,
     mutable_fields_by_entity: dict[str, list[str]] | None = None,
     existing_row_update_entities: set[str] | None = None,
+    local_key_columns_by_entity: dict[str, tuple[str, ...]] | None = None,
+    approved_local_only_keys_by_entity: dict[str, set[str]] | None = None,
     staging: bool = False,
 ) -> PlannedBundle:
     """Plan all source tables against the target model and collect diagnostics."""
@@ -164,6 +194,8 @@ def plan_bundle(
                 entity_spec,
                 mutable_fields=(mutable_fields_by_entity or {}).get(entity_name),
                 existing_row_update_entities=existing_row_update_entities,
+                local_key_columns=(local_key_columns_by_entity or {}).get(entity_name),
+                approved_local_only_keys=(approved_local_only_keys_by_entity or {}).get(entity_name),
                 staging=staging,
             )
         except ValueError as exc:

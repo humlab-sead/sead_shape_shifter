@@ -273,3 +273,13 @@ class TableSourceIngester(Protocol):
             IngestionResult with success status and details.
         """
         ...
+
+
+@runtime_checkable
+class ConfiguredTableIngester(Ingester, TableSourceIngester, Protocol):
+    """An ingester built from an :class:`IngesterConfig` that accepts normalized tables.
+
+    Combines the :class:`Ingester` constructor and lifecycle with the
+    :class:`TableSourceIngester` table methods for callers that construct
+    table ingesters from backend settings.
+    """

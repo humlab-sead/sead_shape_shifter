@@ -1,0 +1,53 @@
+title: Add sead change request workflow UX and target-model schema reference
+description:
+## Summary
+
+ - Adds a dedicated sead_change_request workflow branch to the ingester form (IngesterForm.vue):
+explicit workflow copy, operator inputs for submission name, project name, dispatch timestamp,
+approved datatype, submission identifier, description, issue number, and author, plus a
+deploy-strategy selector (inline_insert / copy_csv) with strategy guidance. Project-derived defaults
+(project name, submission name, identifier, description) prefill until overridden, and frontend
+validation rules mirror backend constraints (identifier charset/length, ISO-8601 timestamp,
+single-line description).
+ - Surfaces pending_confirmation_report states during validation and ingestion (Binding Set
+UUID/state, blocked entities/rows, operator action, rerun instruction) and, on success, a
+deploy-artifact summary (strategy, binding set, change request name, bundle name/files, revert
+support) with handoff guidance.
+ - Extends the backend ValidateRequest and IngestRequest models with optional submission_context and
+deploy_strategy, and passes them through IngesterService into the ingester config extras.
+ - Adds a generated target-model schema reference: src/target_model/schema_reference.py renders
+Markdown from the Pydantic models, scripts/generate_target_model_schema_reference.py generates or
+--checks the committed docs/TARGET_MODEL_SCHEMA_REFERENCE.md, make lint now includes a sync check,
+and a new schema-reference document format is downloadable via the target-model-docs endpoint and
+the project detail UI menu. Guide links were updated in CONFIGURATION_GUIDE.md and
+TARGET_MODEL_GUIDE.md.
+ - Adds focused tests: frontend IngesterForm.test.ts (workflow rendering, pending-confirmation and
+deploy-artifact states, prefilled defaults and rules), backend pass-through tests in
+test_ingesters.py, a schema-reference download test in test_raw_yaml_sync.py, and
+tests/target_model/test_schema_reference.py plus schema-reference generator coverage.
+ - Updates documentation/proposals: FRONTEND_UX_INTEGRATION_CR.md and
+FRONTEND_UX_INTEGRATION_ISSUES.md mark the delivered scope as implemented and defer persisting
+submission defaults in project metadata to a future issue; adds the BUGSCEP_PILOT_PROJECT.md pilot
+proposal and expands the mirrored BugsCEP test-data project YAML.
+
+## User-facing release note
+
+Operators can now run the SEAD change request workflow from the ingester form with guided operator
+inputs, clear Binding Set confirmation guidance when a run is blocked, and a deploy-package summary
+with handoff instructions after a successful run. Project workspaces also offer a new "Schema
+Reference (Markdown)" target-model documentation download generated from the schema.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+ - The PR author listed these commands in the pull request description; their outcomes were not
+reported in the available evidence, so results are unknown:
+  - pnpm vitest run src/components/ingester/__tests__/IngesterForm.test.ts
+  - PYTHONPATH=.:backend uv run pytest backend/tests/api/test_ingesters.py -v
+  - uv run pytest tests/target_model/test_schema_reference.py -v
+  - make check-target-model-schema-reference
+ - CI status checks: no status check rollup data was available for this pull request, so CI
+execution and results are unknown.

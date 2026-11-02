@@ -1,0 +1,85 @@
+title: Add authentication, authorization, and Podman deployment to dev
+description:
+## Summary
+
+Consolidates the security-hardening branch into dev (fast-forward from c3705b4c; 99 commits, 1430
+files). The diff adds an application-side security boundary addressing the review in
+docs/proposals/MITIGATE_SECURITY_ISSUES/, which found the API accepted unauthenticated requests and
+allowed client-controlled paths, connection details, and SQL.
+
+Main changes visible in the diff:
+
+ - Trusted-proxy authentication — new ProxyAuthenticationMiddleware
+(backend/app/middleware/proxy_auth.py) requires a non-empty X-Authenticated-User header (only
+/api/v1/health is exempt) when TRUSTED_PROXY_AUTH_ENABLED is set; a settings validator refuses
+production startup without it and without a bootstrap administrator. Editing sessions are bound to
+the authenticated principal.
+ - Resource authorization — new backend/app/authorization/ package (SQLite-backed repository,
+policy, service, FastAPI dependencies, operations, membership) plus a sead-authorization CLI.
+Endpoints now resolve projects, data sources, sessions, and operations through
+require_project/authorized-resource dependencies; operations record an owner principal and project
+resource; unreadable resources are concealed as 404.
+ - SQL and DuckDB boundaries — new shared read-only policy src/sql_policy.py (single statement,
+SELECT-only, forbidden-keyword list) enforced in the SQL loaders and DuckDbWorkspace; dialect-aware
+identifier quoting with escaping; parameterized schema-introspection queries; a 10 000-row result
+cap and query memory/response-size limits; documented in docs/SQL_SAFETY_POLICY.md.
+ - Filesystem containment — resolve_contained_path in src/path_resolution.py rejects absolute paths,
+traversal, and symlink escapes; applied to execution targets, backups, managed file paths, and
+@include/@load directives via allowed_roots; project-name validation rejects parent segments.
+ - Server-managed data sources — data_source_policy.py rejects client-supplied connection strings
+and unapproved environment variables (prefix allowlist).
+ - Error and secret handling — safe_logging.sanitize_log_value and public_errors.public_error_detail
+replace raw exception text in responses and logs; correlation IDs added; queries removed from error
+context.
+ - Podman deployment — new container/ tree: Containerfile (non-root runtime, single worker),
+podman-compose.yml publishing 127.0.0.1:HOST_PORT:8012 only, Makefile targets, lifecycle/deploy
+scripts, systemd user unit, and an nginx vhost template forwarding X-Authenticated-User (plus TLS
+vhost and HTTP-only bootstrap for the test site).
+ - Supporting changes — PostgreSQL read-only role creation/verification scripts; CORS devtunnel
+wildcard regex removed (origins must be explicitly configured); sqlparse promoted to a core
+dependency; new authorization/security/regression tests and an authorized_client async fixture;
+documentation (docs/AUTHORIZATION.md, route inventory, proposals, task plans).
+
+Note: ~1228 of the changed files are generated graphify-out/ knowledge-graph output, omitted from
+the supplied diff.
+
+## User-facing release note
+
+Shape Shifter now requires users to sign in through the reverse proxy: unauthenticated requests to
+the API are rejected, and each user only sees and edits the projects and data sources they have been
+granted access to. Database queries run read-only with enforced result limits, so accidental data
+modification through the editor is no longer possible.
+
+## Upgrade notes
+
+ - Production startup now fails unless SHAPE_SHIFTER_TRUSTED_PROXY_AUTH_ENABLED=true and
+SHAPE_SHIFTER_AUTHORIZATION_BOOTSTRAP_ADMIN_PRINCIPALS lists at least one administrator; a reverse
+proxy (nginx template provided) must forward the authenticated identity in X-Authenticated-User,
+otherwise the API returns 401.
+ - A new SQLite authorization database (AUTHORIZATION_DATABASE_PATH, default
+state/authorization.sqlite3) must be created and persisted across rebuilds; the sead-authorization
+CLI manages it. Existing projects have no grants until resources are registered and access is
+assigned.
+ - CORS no longer allows devtunnel/GitHub-preview wildcard origins; remote frontends must be listed
+explicitly in ALLOWED_ORIGINS.
+ - Data source configurations with custom connection strings or environment variables outside the
+approved prefixes (SEAD_, SHAPE_SHIFTER_) are now rejected.
+ - Database access is read-only: create a restricted PostgreSQL role with the new
+scripts/postgres/create-readonly-role.sh and point data sources at it.
+ - Deployers must rebuild the container image from this branch to activate the loopback-only
+published port and trusted-proxy authentication; the previously built image still publishes the
+backend on all interfaces with no identity enforcement.
+ - sqlparse is now a core (non-API) dependency; reinstall dependencies after pulling.
+
+## Validation
+
+ - No CI results are available for this pull request: the status-check rollup is empty, so no checks
+are confirmed as passed or failed by CI.
+ - The PR author states the Python test suite was not run when the pull request was opened; the
+branch adds extensive authorization, security, and regression tests, but their execution results are
+unknown.
+ - The author reports (unverified here) that both nginx vhosts were validated with nginx -t and
+exercised in a throwaway nginx instance (HTTP→HTTPS redirect, ACME challenge 200, unauthenticated
+401, upstream receipt of X-Authenticated-User), and that a Let's Encrypt certificate was issued for
+test-shape-shifter.sead.se with webroot authentication and renewal configured.
+ - No tests were executed as part of generating this description.

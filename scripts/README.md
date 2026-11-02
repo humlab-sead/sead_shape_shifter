@@ -41,8 +41,60 @@ python scripts/print_target_model_entity.py \
 ## Release Notes Drafting
 
 The `prepare_copilot_release_notes.py` script prepares a user-facing release-notes draft for refinement with Copilot CLI.
-The underlying `generate_user_release_notes.py` script also supports local `.env` loading for AI-related variables when they are not already exported.
-Release-note bodies, Copilot prompts, and AI prompts are rendered from Jinja2 templates under `scripts/templates/`.
+The `generate_whats_new.py` script builds the release-note file from the authored user-facing and upgrade-note sections of merged pull requests. It selects pull requests by commit ancestry: a pull request ships in release `Rn` when its merge commit is reachable from the release ref (`vRn` when the tag exists, otherwise `HEAD`) and not from the previous release ref. It reads pull requests whose base branch is `dev`, `staging`, or `main`, so feature pull requests are included even though they never target `main`. `CHANGELOG.md` supplies only the version date and previous version. If an AI API key is configured, it consolidates overlapping notes; otherwise it preserves the authored notes. The older `generate_user_release_notes.py` script remains available for changelog-derived drafts.
+
+Promotion pull requests carry the `<!-- promotion-pr -->` marker and contribute no notes of their own, so promoted changes are never reported twice. For the latest version in `CHANGELOG.md`, the generator also adds a `Pending Release` snapshot of merged pull requests that have not reached `main`, including their authored notes and the pull requests each promotion carries. It uses `gh pr list` and `git rev-list`, so `gh` must be authenticated and full history and tags must be available. See [the What's New workflow](../docs/whats-new/README.md).
+
+## `update_pr_descriptions.py`
+
+### Usage
+
+```bash
+# Draft into docs/whats-new/PRs/PR_<number>.txt
+python3 scripts/update_pr_descriptions.py 620-634 --draft
+
+# Override the detected included pull requests for a promotion
+python3 scripts/update_pr_descriptions.py 627 --draft --included-prs 621,626
+
+# Record commits that reached the base branch without a pull request
+python3 scripts/update_pr_descriptions.py 620-634 --draft --include-orphaned
+
+# Remove terminal escape sequences from existing drafts, without publishing
+python3 scripts/update_pr_descriptions.py 620-634 --clean-drafts
+
+# List every detected commit instead of filtering housekeeping
+python3 scripts/update_pr_descriptions.py 620-634 --draft --include-orphaned --show-all-orphaned
+
+# Publish the reviewed files
+python3 scripts/update_pr_descriptions.py 620-634 --publish
+```
+
+Promotion pull requests (`dev` into `staging`, or `staging` into `main`) are drafted from branch history without a model, listing the pull requests merged into the source branch and absent from the target branch.
+
+`--include-orphaned` appends a `Detected orphaned commits` section covering the commits pushed to the base branch between the previous merged pull request and this one. Generated output, release bookkeeping, documentation-only commits, and contributor configuration are filtered out of that section by default, and the filtered counts stay visible in the section and on standard error. See [the What's New workflow](../docs/whats-new/README.md#recording-commits-without-a-pull-request).
+
+## `draft_all_pr_descriptions.py`
+
+### Usage
+
+```bash
+# Show the plan without writing anything
+python3 scripts/draft_all_pr_descriptions.py --dry-run
+
+# Draft every merged pull request that has no draft file yet
+python3 scripts/draft_all_pr_descriptions.py
+
+# Redraft everything, newest first, in batches of 10
+python3 scripts/draft_all_pr_descriptions.py --force --newest-first --batch-size 10
+
+# Retry a malformed model response up to three times per pull request
+python3 scripts/draft_all_pr_descriptions.py --attempts 3
+
+# Include closed and open pull requests, newest first
+python3 scripts/draft_all_pr_descriptions.py --state all --newest-first
+```
+
+Enumerates pull requests with `gh pr list` and drives `update_pr_descriptions.py` with `--draft --include-orphaned`. Existing drafts are kept unless `--force` is given, so an interrupted run resumes and a later run retries only missing drafts. `--batch-size` controls how many pull requests each invocation receives. `--limit` caps the run size, `--fail-fast` stops after the first failing batch, and `--no-preflight` skips the Copilot configuration check for promotion-only sets. It never publishes. See [the What's New workflow](../docs/whats-new/README.md#drafting-every-pull-request).
 
 ## `prepare_copilot_release_notes.py`
 
@@ -55,28 +107,36 @@ python3 scripts/prepare_copilot_release_notes.py --version 1.24.0
 python3 scripts/prepare_copilot_release_notes.py --list-versions
 ```
 
-## `generate_user_release_notes.py`
+## `generate_whats_new.py`
+
+### Usage
+
+```bash
+# Generate notes from merged PR descriptions (heuristic fallback)
+make release-notes VERSION=2.5.0
+
+# Allow configured AI to consolidate overlapping notes
+make release-notes-ai VERSION=2.5.0
+
+# Direct usage
+python3 scripts/generate_whats_new.py --version 2.5.0
+```
+
+The script requires authenticated `gh` access to merged PRs. It replaces the output file on each run. See [the What's New workflow](../docs/whats-new/README.md) for the version-selection and pending-staging behavior.
+
+## `generate_user_release_notes.py` (legacy changelog-based generator)
+
+The legacy generator remains available for listing versions and producing drafts directly from changelog entries.
 
 ### Quick Start
 
 ```bash
 # Generate release notes for all missing versions since the last one
-make release-notes-missing           # Uses heuristic mode (fast)
-make release-notes-missing-ai        # Uses AI mode (requires API key)
+make release-notes-missing
+make release-notes-missing-ai
 
-# Generate release notes for a specific version
-make release-notes VERSION=1.26.0    # Uses heuristic mode
-make release-notes-ai VERSION=1.26.0 # Uses AI mode
-
-# List all available versions
-make release-notes-list
-```
-
-### Direct Usage
-
-```bash
 # List versions available in CHANGELOG.md
-python3 scripts/generate_user_release_notes.py --list-versions
+make release-notes-list
 
 # Generate release notes for all missing versions (heuristic mode)
 python3 scripts/generate_user_release_notes.py --generate-missing --force-heuristic
@@ -90,17 +150,20 @@ python3 scripts/generate_user_release_notes.py --version 1.26.0 --force-heuristi
 
 ### What It Does
 
-- Generates a heuristic draft release note file using `generate_user_release_notes.py --force-heuristic`
-- Writes the draft by default to `docs/whats-new/vX.Y.Z.md`
-- Writes a ready-to-paste Copilot CLI prompt by default to `tmp/copilot-release-notes-vX.Y.Z.prompt.md`
-- Uses a filtered user-visible summary as prompt context instead of the full raw changelog section
-- Prints that prompt to stdout so it can be pasted directly into Copilot CLI
+- Reads the selected release section from `CHANGELOG.md` and writes `docs/whats-new/vX.Y.Z.md` by default.
+- Drafts highlights, new features, improvements, and fixes using local heuristics or AI. Use `--force-heuristic` to skip AI.
+- Adds the `Pending Release` PR snapshot only when generating the latest changelog version. `--generate-missing` includes it only if that changelog version is among the versions being generated.
+- Replaces the output file on each run. Review the generated content and reapply any manual edits after regenerating.
+- Can update the matching GitHub Release body when run with `--update-github-release`.
 
 ### Optional Arguments
 
-- `--draft-output`: Custom path for the generated draft markdown file
-- `--prompt-output`: Custom path for the generated Copilot prompt file
-- `--list-versions`: Print release versions available in `CHANGELOG.md` and exit
+- `--version X.Y.Z`: Generate one release note file.
+- `--generate-missing`: Generate files for missing changelog versions.
+- `--list-versions`: Print release versions available in `CHANGELOG.md` and exit.
+- `--output PATH`: Write the generated note to a custom path.
+- `--force-heuristic`: Do not use AI drafting.
+- `--update-github-release`: Update the matching GitHub Release body via `gh`.
 
 ## Deployment Scripts
 

@@ -61,7 +61,8 @@ class EntitySpec(BaseModel):
     public_id_generation: Literal["database_sequence"] | None = Field(
         default=None,
         description=(
-            "Reserve the public ID from the target table's database sequence before artifact generation. "
+            "Reserve the public ID from the target table's database sequence before SIMS allocation and artifact generation. "
+            "Validation and ingestion can each consume a sequence value, so unused gaps are expected. "
             "Use only when identity_tracking is explicitly set to a non-tracked value."
         ),
     )

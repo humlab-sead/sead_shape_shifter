@@ -17,10 +17,10 @@ class ExecuteRequest(BaseModel):
 
     dispatcher_key: str = Field(..., description="Key of the dispatcher to use")
     target: str = Field(..., description="Target location (file path, folder path, or data source name)")
-    run_validation: bool = Field(True, description="Run validation before execution")
-    translate: bool = Field(False, description="Apply translations to output")
-    drop_foreign_keys: bool = Field(False, description="Drop foreign key columns from output")
-    default_entity: str | None = Field(None, description="Default entity to use if not specified")
+    run_validation: bool = Field(default=True, description="Run validation before execution")
+    translate: bool = Field(default=False, description="Apply translations to output")
+    drop_foreign_keys: bool = Field(default=False, description="Drop foreign key columns from output")
+    default_entity: str | None = Field(default=None, description="Default entity to use if not specified")
 
 
 class ExecuteResult(BaseModel):

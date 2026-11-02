@@ -1,0 +1,67 @@
+title: Fix data sources, session reuse, and add reconciliation YAML editing
+description:
+## Summary
+
+This pull request bundles several fixes and enhancements across the backend, frontend, and core
+pipeline:
+
+ - Reconciliation specification editing (dual mode): The reconciliation view gains a YAML tab backed
+by a new backend endpoint PUT /projects/{project_name}/reconciliation/raw, which parses, validates
+(against the ReconciliationConfig model), and saves raw YAML. The SpecificationEditor dialog also
+gains Form/YAML tabs with two-way syncing between the form state and the YAML editor.
+ - Specification validation status: SpecificationsList now shows a Status column (error / warning /
+valid icons with detailed tooltips). Validation checks entity existence, target field, and
+property-mapping columns against the entity preview available-fields API (covering keys, columns,
+extra columns, FK join columns, and unnest columns), with caching and revalidation on changes.
+ - Correct published-entity count and service metadata: A new GET /reconciliation/manifest endpoint
+exposes the reconciliation service manifest; the UI displays the number of available entity types
+from the manifest and shows the count of configured specifications instead of the previous entity
+count. Remote service types in the editor are now loaded from the manifest (defaultTypes) with a
+fallback list.
+ - Session reuse: The backend ApplicationState.create_session reuses an existing active session for
+the same user/project instead of creating a new one, and the frontend useSession composable reuses
+and refreshes an active session, preventing orphaned sessions on page refresh (#117).
+ - Data sources: DataSourceFormDialog maps saved option keys back to canonical schema field names
+via a new aliases field in the driver schema (addressing empty database/port fields, #114); integer 
+fields no longer force numeric binding, and some fields/hints were commented out. DataSourcesView
+wraps the initial fetch in error handling so failures surface in the UI instead of breaking the
+view.
+ - Entity Editor layout (#119): The dialog replaces the split-view toggle with a three-state view 
+mode (form / split / preview-only), relocates the "Check Functional Dependency" checkbox next to
+"Drop Empty Rows", and reduces preview column minimum widths. The unused AdvancedEntityConfig.vue
+component was deleted.
+ - Alternative search (#122): AlternativeSearchDialog now receives a targetField prop and calls the 
+suggest endpoint with the target field in the path, so the API call is made correctly.
+ - Dependency graph legend (#118): The legend card uses an elevated variant with explicit opaque 
+background colors, including a dark-theme override, to remove the transparent background.
+ - Core pipeline: SubsetService._split_extra_columns now matches extra-column sources
+case-insensitively against source columns, and ShapeShiftProject de-duplicates columns before
+reordering to avoid duplicate column names.
+ - Tooling & docs: The Makefile gains br+fr (backend serves a production-like frontend build),
+renames the Vite-cache target to frontend-clear (also clearing dist), and relocates build targets.
+Reconciliation docs describe the new validation indicators, validation checks, and troubleshooting
+steps. Sample ArboDat configuration files and TODO.md were updated.
+
+## User-facing release note
+
+Reconciliation specifications can now be edited either in a form or directly as YAML, and each
+specification shows a validation status with hover details so configuration errors are visible
+before running reconciliation. Opening a project reuses an existing editing session instead of
+creating a new one, data source forms show saved values (such as database and port) correctly, and
+the Entity Editor offers form, split, and preview-only layouts.
+
+## Upgrade notes
+
+Deployers gain a new backend endpoint for saving reconciliation configuration as raw YAML (PUT
+/projects/{project_name}/reconciliation/raw) and a service manifest endpoint (GET
+/reconciliation/manifest); no migrations or configuration changes are required. Developers using the
+Makefile should note that the frontend-clear-vite-cache target was replaced by frontend-clear
+(clears both the Vite cache and frontend/dist), and a new br+fr target serves the frontend through
+the backend for production-like testing.
+
+## Validation
+
+No validation evidence is available: the pull request metadata reports no CI status checks
+(statusCheckRollup is empty), and no test runs or commands are documented in the supplied diff. The
+pull request was merged into dev (merge commit 000d0d9), but no check results were reported. Not
+verified: validation results unavailable.

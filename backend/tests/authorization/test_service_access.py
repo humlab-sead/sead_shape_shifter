@@ -1,6 +1,7 @@
 """Tests for authorization enforcement at sensitive service boundaries."""
 
 from datetime import UTC, datetime
+from typing import cast
 from unittest.mock import MagicMock
 from uuid import uuid4
 
@@ -29,7 +30,7 @@ async def test_execute_service_rejects_missing_authorization_before_loading_proj
     service = ExecuteService(project_service=project_service)
 
     with pytest.raises(PermissionError, match="not authorized"):
-        await service.execute_workflow(None, _request())
+        await service.execute_workflow(cast(AuthorizedResource, None), _request())
 
     project_service.load_project.assert_not_called()
 

@@ -1,0 +1,52 @@
+title: Add project file sharing and reconciliation YAML support
+description:
+## Summary
+
+ - Adds project file management to the backend: an overwrite form flag on the upload endpoint (with
+atomic temp-file writes and rejection of symlink targets), a DELETE
+/projects/{name}/files/{filename} endpoint that returns a conflict when a local entity still
+references the file, a POST /projects/{name}/files/{filename}/share endpoint that copies a project
+file into the global shared-data directory and registers its shared-data-source resource (requires
+project:edit plus application:manage_shared_sources), and a GET /projects/{name}/files/capabilities
+endpoint reporting whether the user can share files. Project file listings now include global files
+the principal may access.
+ - Updates the Files tab UI accordingly: a replace confirmation when uploading a same-named file,
+delete buttons for local files, a share action shown only to users with the shared-source
+permission, and shared files displayed as read-only references.
+ - Reworks Monaco YAML intelligence to register one schema per editor mode matched by in-memory
+model paths, adds a generated reconciliationSchema.json (a oneOf of EntityResolutionSet and
+EntityResolutionCatalog), extends scripts/generate_schemas.py with combined multi-model schema
+generation, and wires the reconciliation catalog and specification editors to the new reconciliation
+mode.
+ - Model fixes: TableConfig.get_columns now includes the generated system_id, foreign keys may join
+on a remote entity's generated system_id without declaring it in columns (the old explanatory hint
+was removed), and conformance reports name the local key columns that fail to survive unnest via a
+new get_missing_unnest_foreign_key_local_keys helper.
+ - Documentation: authorization route inventory gains the three new project-file routes, the user
+guide describes replace/delete/share behavior, and new What's New pages for v2.0.0–v2.3.0 were
+added.
+
+## User-facing release note
+
+In the project Files tab you can now replace an existing file when uploading a same-named one,
+delete files that no entity uses, and — if you have shared-source permission — share a copy of a
+project file with all projects; accessible shared files also appear in the list as read-only. YAML
+editors for reconciliation specifications and catalogs now offer autocomplete and validation from a
+generated schema.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+ - The pull request body lists these commands as run by the author, but their outcomes are not
+recorded in the available evidence: uv run pytest
+backend/tests/authorization/test_route_authentication.py -q, uv run pytest
+tests/scripts/test_generate_schemas.py -q, make check-schemas, and focused frontend tests plus a
+production build.
+ - CI shows only the Container Release workflow checks validate and publish, both with conclusion
+SKIPPED for this pull request; no other CI results are available.
+ - The diff adds or updates backend API/service tests, file-manager tests, frontend
+API/component/composable tests, schema-shape tests, and model/conformance tests, but their execution
+results are not recorded in the available evidence and cannot be reported as passed.

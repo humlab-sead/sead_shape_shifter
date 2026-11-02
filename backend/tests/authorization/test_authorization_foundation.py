@@ -42,7 +42,7 @@ def test_resource_role_policy_covers_every_action_and_resource_type() -> None:
 
 def test_deployment_role_policy_covers_every_action() -> None:
     policy = AuthorizationPolicy()
-    expected_permissions = {
+    expected_permissions: dict[ApplicationRole | str, set[Action]] = {
         ApplicationRole.PROJECT_CREATOR: {Action.CREATE_PROJECT},
         ApplicationRole.OPERATOR: {Action.READ_ALL_SHARED_SOURCES, Action.MANAGE_SHARED_SOURCES, Action.RUN_INGESTERS},
         ApplicationRole.PROJECT_MAINTAINER: {Action.READ, Action.EDIT, Action.EXECUTE},

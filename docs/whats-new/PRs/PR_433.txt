@@ -1,0 +1,67 @@
+title: Coerce and validate fixed-entity column types for safer FK linking
+description:
+## Summary
+
+Fixed-entity values are now typed consistently across load, editing, validation, materialization,
+and persistence, so PK/FK integer linking no longer breaks when YAML contains values such as "53" in
+_id columns.
+
+ - Adds src/types/fixed_entity_types.py with a FixedEntityTypeCoercer implementing a strict coercion
+policy: _id columns default to int, empty strings and pandas nulls normalize to null, coercible
+integer strings normalize to ints, and non-coercible values ("abc", "53.0", floats, booleans in _id
+columns) raise typed validation errors instead of being silently nulled. Row shape validation runs
+first as a hard gate.
+ - Adds an optional column_types entity setting (int, string, float, bool, date) for fixed entities.
+Declared types override the _id-suffix inference and are enforced at load, validation, and save;
+undeclared non-_id columns preserve their incoming scalar values.
+ - Backend enforcement points: a new FixedEntityConfigMapper coerces fixed values during API→core
+mapping; FixedLoader coerces inline and @load:-sourced rows before DataFrame construction;
+FixedEntityFieldsSpecification validates types; FixedEntityPersistenceStrategy rejects mistyped
+values before YAML save; the materialization service infers and stores column_types and serializes
+materialized dataframes to fixed-safe Python values; EntityValuesService writes sidecar parquet/CSV
+files with stable nullable dtypes.
+ - Successful load-time normalizations are non-fatal: they are logged, returned as load_warnings on
+the project response, and shown in the UI as a "Load-Time Normalizations Detected" banner. Files are
+not mutated on load; normalized values are written back only on explicit save.
+ - Frontend: FixedValuesGrid now coerces cell edits, pastes, and externally loaded rows for integer
+columns (replacing the previous system_id-only coercion), reports row/column validation errors, and
+ProjectDetailView renders the load-warning banner. JSON schemas and TypeScript types were updated
+for column_types and load_warnings.
+ - Documentation updated (CONFIGURATION_GUIDE.md, OPERATIONS.md, USER_GUIDE.md), and three design
+proposals added under docs/proposals/ (configurable type conventions, column-types UX follow-up, and
+the overall type-handling proposal); these proposals describe future work and are not implemented
+here.
+ - Test data cleanup: the duplicated backend/tests/test_data/projects/arbodat project was deleted
+and backend tests now use tests/test_data/projects/arbodat, whose fixed-entity values were retyped
+(quoted vs unquoted ids) to exercise the new rules.
+
+## User-facing release note
+
+Fixed lookup-table values are now handled with consistent types: integer IDs are recognized and
+normalized automatically, pasted or typed values in _id columns are validated in the grid, and
+projects that needed load-time cleanups show a "Load-Time Normalizations Detected" banner so you can
+review and save them deliberately. Projects can also declare explicit column types (column_types)
+for fixed columns that should be treated as int, float, bool, or date.
+
+## Upgrade notes
+
+ - No migration is required; column_types is optional and existing projects load unchanged.
+ - Behavior change to be aware of: coercible values in _id columns (e.g. "53") are normalized in
+memory on load and only written back to YAML on explicit save; invalid non-empty _id values (e.g.
+"abc", "53.0", booleans) are now rejected by validation and save paths instead of being coerced to
+null. Fix such values in project YAML if saves fail.
+ - After deployment, operators should open a representative project with fixed entities and check
+for the load-time normalization banner, per the added guidance in docs/OPERATIONS.md.
+
+## Validation
+
+ - The PR adds extensive tests visible in the diff: backend unit tests (mappers, entity values
+service, materialization service, project service/persistence), core unit tests
+(tests/types/test_fixed_entity_types.py, tests/loaders/test_fixed_loader.py,
+tests/specifications/test_entity.py), a new FK-merge regression integration test
+(tests/integration/test_fixed_entity_fk_merge_regression.py), and frontend tests
+(FixedValuesGrid.test.ts, clipboard and ProjectDetailView tests). Their execution results are not
+included in the available evidence and are reported here as unknown.
+ - No CI check results were available for this pull request (the status check rollup is empty), so
+no checks are reported as passed or failed.
+ - The pull request was merged into dev (merge commit d0d69cecda56c4cfa6a2288e47b37733828d4a61).

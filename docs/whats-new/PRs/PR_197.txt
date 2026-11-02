@@ -1,0 +1,48 @@
+title: Fix breadcrumb routing; add log viewer and editor improvements
+description:
+## Summary
+
+ - Breadcrumbs in App.vue now use router to targets instead of plain href links, so navigation
+between Home, Projects, and project detail happens via client-side routing rather than full page/API
+requests.
+ - Adds a backend logs API (backend/app/api/v1/endpoints/logs.py) exposing GET /logs/{log_type}
+(tail with optional level filter, 1–10000 lines) and GET /logs/{log_type}/download for app and error
+log files, plus a LOG_DIR settings alias for backward compatibility.
+ - Adds a matching frontend API client (frontend/src/api/logs.ts) and a new tabbed Settings view
+with a Logs tab: log type/level/line-count selectors, refresh, download, and optional 30-second
+auto-refresh.
+ - Entity editor overlay can now open directly on the YAML tab: the entity store tracks
+overlayInitialTab, EntityFormDialog accepts an initialTab prop, and Ctrl/Cmd+double-click on a
+dependency-graph node opens the YAML tab (plain double-click still opens the form).
+ - EntityFormDialog now hydrates column options from the source for entity-type entities after
+loading form data, with a debug log.
+ - Monaco editor workers are configured at app startup via a new frontend/src/monaco.ts (editor and
+YAML workers).
+ - PreviewMatchedDataDialog now shows only the source columns from property_mappings instead of keys
+plus mapped columns.
+ - docker/Makefile: update-deploy-scripts now runs ./rsync-to-sead-tools, docker-restart uses the
+deploy directory, docker-clean/docker-ps use pushd/popd, and a new setup-permissions target sets
+group/setfacl permissions on the deploy directory.
+ - TODO.md housekeeping: removed stale bug notes and the identity/public_id design proposal; added a
+TODO for an entity-type picklist (#195).
+
+## User-facing release note
+
+Breadcrumb navigation now stays within the app instead of triggering full page loads. The Settings
+page gains a Logs tab where users can view, filter by level, refresh (optionally every 30 seconds),
+and download application and error logs, and double-clicking a node in the dependency graph with
+Ctrl/Cmd opens the entity editor directly on its YAML tab.
+
+## Upgrade notes
+
+ - Deployers: make update-deploy-scripts in docker/Makefile now invokes ./rsync-to-sead-tools in the
+docker directory instead of deploy-to-sead-tools in the deploy source directory; ensure that script
+is present. A new setup-permissions target applies setgid/setfacl permissions to the deploy
+directory.
+ - The backend adds a LOG_DIR setting that defaults to the existing LOGS_DIR value; no configuration
+change is required.
+
+## Validation
+
+Not verified: validation results unavailable. No CI check results were reported for this pull
+request, and no test or lint outcomes are available in the provided evidence.

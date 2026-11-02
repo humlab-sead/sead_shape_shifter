@@ -1,0 +1,33 @@
+title: Add extra columns field to FK editor
+description:
+## Summary
+
+The foreign key editor (ForeignKeyEditor.vue) now exposes an "Extra Columns" accordion for each
+configured foreign key, letting users map additional remote columns to be pulled from the joined
+entity beyond the join keys themselves. Each entry pairs a local name with a remote column chosen
+from a combobox populated via the existing column-introspection composable, with add, edit, and
+delete actions backed by new helpers (getExtraColumnsCount, getExtraColumnsArray, addExtraColumn,
+updateExtraColumn, removeExtraColumn). The helpers normalize extra_columns whether it is stored as
+an array of strings or as a local→remote object, and clear the property when the last entry is
+removed. A chip on the panel header shows the number of configured extra columns. The change also
+adds defensive guards for missing FK entries and column-item arrays in the validation and
+column-loading functions, and replaces the FormattedError type import in ErrorAlert.vue with a local
+interface to avoid an import issue.
+
+The PR body states it fixes #201 and #202, but the linked issue details were not available for this 
+description.
+
+## User-facing release note
+
+When editing a foreign key, users can now add "extra columns" — additional columns pulled from the
+related entity during a join — by mapping a local name to a remote column in a new expandable
+section, with the count of mapped columns shown in the section header.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+Not verified: validation results unavailable. The diff contains no test changes, and no CI check
+results were available for this pull request.

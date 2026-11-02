@@ -1,0 +1,40 @@
+title: Add async SIMS client for sead_authority_service identity endpoints
+description:
+## Summary
+
+Adds a backend client for the SIMS (SEAD Identity Management System) API exposed by
+sead_authority_service:
+
+ - New backend/app/clients/sims_client.py: SimsClient, an async httpx client wrapping the six
+/identity endpoints — resolve, get_binding_set, confirm_binding_set, associate_change_request,
+detect_change, and list_scopes. It follows the same lazy-singleton httpx.AsyncClient pattern as
+ReconciliationClient, raises httpx.HTTPStatusError on 4xx/5xx responses, and exposes close() for
+teardown.
+ - New backend/app/models/sims.py: client-side Pydantic DTOs (enums such as IdentityType,
+BindingSetState, BindingMethod, ChangeOutcome, plus request/response models) mirroring the authority
+service contracts.
+ - New SIMS_SERVICE_URL setting in backend/app/core/config.py, configurable via the
+SHAPE_SHIFTER_SIMS_SERVICE_URL env var (default http://localhost:8000).
+ - SimsClient is exported from backend/app/clients/__init__.py.
+ - AGENTS.md and .github/copilot-instructions.md document the new client, its configuration, and its
+methods.
+ - Unrelated one-line frontend change: the entity form dialog in ProjectDetailView.vue no longer
+requires overlayEntity to be truthful for its v-if, so the overlay renders based only on
+entityStore.overlayEntityName.
+
+The client is added as infrastructure; the diff does not show it wired into any route or service
+yet.
+
+## User-facing release note
+
+User-visible impact not verified.
+
+## Upgrade notes
+
+None - no user action required. The new SHAPE_SHIFTER_SIMS_SERVICE_URL environment variable is
+optional and defaults to http://localhost:8000.
+
+## Validation
+
+Not verified: validation results unavailable. No CI check results were available for this pull
+request, and the diff contains no automated tests for the new client.

@@ -1,0 +1,73 @@
+title: Add target-model conformance validation and SEAD v2 spec
+description:
+## Summary
+
+This PR introduces target model conformance validation: projects can now declare an optional
+metadata.target_model reference (an inline mapping or an @include: path to a YAML spec), and Shape
+Shifter checks the project's entities against the requirements declared in that spec.
+
+Main changes:
+
+ - Core conformance engine (src/target_model/): Pydantic domain types (TargetModel, EntitySpec,
+ColumnSpec, ForeignKeySpec, naming/constraint blocks), a registry of five conformance validators
+(required_entity, public_id, foreign_key, required_columns, naming_convention) that emit
+ConformanceIssue objects with codes such as MISSING_REQUIRED_ENTITY, MISSING_PUBLIC_ID,
+UNEXPECTED_PUBLIC_ID, MISSING_REQUIRED_FOREIGN_KEY_TARGET, MISSING_REQUIRED_COLUMN, and
+PUBLIC_ID_NAMING_VIOLATION, plus a TargetModelSpecValidator for spec self-consistency checks and a
+template_generator CLI that renders starter project YAML from a spec (with domain/entity filtering
+and required-FK closure).
+ - Core model support (src/model.py): new TableConfig.get_target_facing_columns() and
+get_target_facing_foreign_key_targets() abstractions define the column contract a entity presents to
+a target model, accounting for keys, explicit columns, extra_columns, public_id, FK-generated
+columns, and unnest survivors (with unnest-aware FK pruning); system_id is excluded unless surfaced
+through another mechanism. A target_model property was added to the metadata accessor, and a
+safe_keys helper normalizes scalar keys values.
+ - Backend wiring: metadata.target_model added to the API project model and mappers; the metadata
+update endpoint accepts target_model (with explicit-provided semantics so an empty string or null
+clears the field); new endpoint POST /api/v1/projects/{name}/validate/target-model backed by
+ValidationService.validate_target_model() and a thin TargetModelValidator adapter; new
+ValidationCategory.CONFORMANCE and a mapper from ConformanceIssue to API ValidationError (severity
+error, high priority).
+ - Frontend: a Target Model combobox (listing uploaded YAML files as @include: references) in the
+Metadata editor, a "Check Conformance" button and dedicated Conformance expansion panel in the
+validation panel, a useConformanceValidation composable, and validation-result merging extended to
+combine structural, data, and conformance results.
+ - Bundled SEAD spec and fixtures: target_models/specs/sead_v2.yml (35 entities across
+core/spatial/analysis/dating/taxa/method/contact/excavation domains, public_id_suffix: "_id"),
+example project fixtures (canonical minimal, Arbodat-derived core, and an intentionally
+non-conforming fixture), a generated Arbodat starter scaffold with a make generate-arbodat-yaml
+target, a JSON schema, and a standalone workspace README.
+ - Tests: new suites for the backend adapter, the core conformance engine (including unnest,
+materialized-entity, and real-Arbodat-project corpus cases), target model parsing, spec validation,
+spec files, example projects, and the template generator. target_models/tests was added to pytest
+testpaths and target_models* to the setuptools package list.
+ - Documentation: new docs/TARGET_MODEL_GUIDE.md (format reference, issue codes, validators, CLI
+usage, scaffold generation), updated USER_GUIDE.md and CONFIGURATION_GUIDE.md, and proposal
+housekeeping: five source proposals were archived under docs/proposals/done/ and their
+deferred/future work consolidated into docs/proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md. The
+docs/sead/ SQL reference files were trimmed to the tables relevant to the current spec scope.
+
+The change is additive: projects without a target_model reference behave as before, and the
+conformance endpoint returns an empty valid result when no target model is set.
+
+## User-facing release note
+
+Projects can now reference a target model specification (for example the bundled SEAD Clearinghouse
+spec) in their metadata, and a new "Check Conformance" action in the Validate tab reports whether
+the project's entities meet that spec's required entities, columns, foreign keys, and public_id
+naming rules, shown in a dedicated Conformance panel. A starter project YAML can also be generated
+from a target model spec to scaffold new projects.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+Not verified: validation results unavailable.
+
+No CI check results were available for this pull request (the status check rollup is empty), so no
+checks can be reported as passed or failed. The diff adds unit tests across
+backend/tests/validators/, tests/model/, tests/target_model/, and target_models/tests/, but their
+execution and outcomes are not evidenced in the available data. The pull request is recorded as
+merged into dev.

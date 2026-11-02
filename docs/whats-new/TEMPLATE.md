@@ -24,6 +24,10 @@ Date: YYYY-MM-DD
 
 - Mention anything users need to change, verify, or watch for after upgrading.
 
+## Pending Release
+
+<!-- Generated snapshot of pull requests merged into staging after the latest pull request merged into main. Review for duplicate staging promotions. -->
+
 ## Learn More
 
 - Technical changelog: `CHANGELOG.md`
