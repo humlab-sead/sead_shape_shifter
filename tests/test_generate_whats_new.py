@@ -148,7 +148,7 @@ def test_promotion_pending_entry_lists_the_pull_requests_it_carries():
         generator,
         40,
         "2026-10-28T19:35:16Z",
-        "<!-- promotion-pr -->\n## Included PRs\n\n- #41\n- #42\n\n## User-facing release note\n\n" "None - no user-visible change.\n",
+        "<!-- promotion-pr -->\n## Included PRs\n\n- #41\n- #42\n\n## User-facing release note\n\nNone - no user-visible change.\n",
         base_ref_name="staging",
         head_ref_name="dev",
     )
@@ -243,7 +243,7 @@ def test_pending_release_keeps_titles_dates_and_authored_notes():
         generator,
         42,
         "2026-10-28T19:35:16Z",
-        "## User-facing release note\n\nUsers can preview cached columns.\n\n" "## Upgrade notes\n\nNone - no user action required.\n",
+        "## User-facing release note\n\nUsers can preview cached columns.\n\n## Upgrade notes\n\nNone - no user action required.\n",
     )
     context = generator.ReleaseContext("2.5.0", dt.date(2026, 10, 27), "2.4.0")
 
@@ -353,8 +353,7 @@ def test_ai_notes_use_shared_openai_compatible_provider_settings(monkeypatch: py
                         {
                             "message": {
                                 "content": (
-                                    "# What's New in v2.5.0\n\n## Changes\n\n- Updated behavior.\n\n"
-                                    "## Upgrade Notes\n\n- None.\n"
+                                    "# What's New in v2.5.0\n\n## Changes\n\n- Updated behavior.\n\n" "## Upgrade Notes\n\n- None.\n"
                                 )
                             }
                         }
