@@ -2,6 +2,31 @@
 
 This directory contains CLI scripts for Shape Shifter workflows.
 
+## Profiling Project Normalization
+
+`profile_normalization.py` profiles normalization for `data/projects/copy_strucke_MS`
+by default. It reports elapsed time and output size for each entity, then shows the
+most expensive functions by cumulative and self time. The script reads source data
+and does not write normalized output files.
+
+Because normalization is asynchronous, use the per-entity wall times for end-to-end
+comparisons. `cProfile` cumulative times can include time spent awaiting async work.
+
+```bash
+# Profile the default project
+uv run python scripts/profile_normalization.py
+
+# Save a profile for interactive inspection
+uv run python scripts/profile_normalization.py --out tmp/copy_strucke_MS.prof
+uv run snakeviz tmp/copy_strucke_MS.prof
+
+# Profile another project configuration
+uv run python scripts/profile_normalization.py --project data/projects/example/shapeshifter.yml
+```
+
+The script loads `data/test.env` and `data/.env` using the same precedence as
+`profile_validation.py`.
+
 ## Normalizing Entity Key Order
 
 `sort_project_yaml.py` re-orders each entity's keys in a project file the way a full
