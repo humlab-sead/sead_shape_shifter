@@ -654,10 +654,15 @@ class PandasStringBackend:
             raise DSLEvaluationError("concat expects at least one argument")
 
         series_args: list[pd.Series] = [self._to_nullable_string_series(arg) for arg in args]
-        result: pd.Series = series_args[0]
-        for s in series_args[1:]:
-            result = result.str.cat(s, na_rep="")
-        return result
+        if len(series_args) == 1:
+            return series_args[0]
+        others: pd.DataFrame = pd.concat(
+            series_args[1:],
+            axis=1,
+            keys=range(len(series_args) - 1),
+            copy=False,
+        )
+        return series_args[0].str.cat(others, na_rep="")
 
     def _fn_upper(self, value: Any) -> pd.Series:
         return self._to_nullable_string_series(value).str.upper()
