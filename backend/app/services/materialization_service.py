@@ -413,6 +413,12 @@ class MaterializationService:
             core_project: ShapeShiftProject = ProjectMapper.to_core(api_project)
             table_cfg: TableConfig = core_project.get_table(entity_name)
 
+            # Snapshot the API-form entity (relative filename + location, list-form foreign_keys)
+            # before materialization overwrites it. source_state must be API form so unmaterialize
+            # restores a config that round-trips through to_core_dict and never freezes an
+            # environment-absolute path (for example /app/projects/...) into the project YAML.
+            source_entity_cfg: dict[str, Any] | None = api_project.entities.get(entity_name)
+
             specification: CanMaterializeSpecification = CanMaterializeSpecification(core_project)
             if not specification.is_satisfied_by(entity=table_cfg):
                 return MaterializationResult(success=False, errors=[str(issue) for issue in specification.errors], entity_name=entity_name)
@@ -450,7 +456,7 @@ class MaterializationService:
                 values_inline = f"@load:{data_file}"
 
                 # Update entity config with @load: directive first
-                api_project.entities[entity_name] = self._create_materialized_entity(table_cfg, df, values_inline, column_types)
+                api_project.entities[entity_name] = self._create_materialized_entity(table_cfg, df, values_inline, column_types, source_entity_cfg)
                 self._store_project(api_project)
 
                 # Now write the actual data file using EntityValuesService
@@ -463,7 +469,7 @@ class MaterializationService:
                     column_types=storage_column_types,
                 )
 
-            api_project.entities[entity_name] = self._create_materialized_entity(table_cfg, df, values_inline, column_types)
+            api_project.entities[entity_name] = self._create_materialized_entity(table_cfg, df, values_inline, column_types, source_entity_cfg)
 
             # Save project config (only if not already saved above for external storage)
             if storage_format == "inline" or len(df) < store_inline_threshold:
@@ -493,12 +499,21 @@ class MaterializationService:
         df: pd.DataFrame,
         values_inline: list[list[Any]] | str,
         column_types: dict[str, str] | None = None,
+        source_entity_cfg: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        """Create the new entity config dict for the materialized entity, including saved state for unmaterialization."""
+        """Create the new entity config dict for the materialized entity, including saved state for unmaterialization.
+
+        ``source_entity_cfg`` is the API-form entity config captured before materialization. It is
+        preferred for ``source_state`` because it stores file references as relative ``filename`` +
+        ``location`` and ``foreign_keys`` as a list, which round-trips back to YAML unchanged. The
+        resolved Core config (``table.entity_cfg``) is only a fallback: it holds environment-absolute
+        paths and dict-form ``foreign_keys`` that would be frozen into the project file.
+        """
         df = self._normalize_materialized_dataframe(table, self._sanitize_materialized_dataframe(df))
 
+        snapshot_source: dict[str, Any] = source_entity_cfg if source_entity_cfg is not None else table.entity_cfg
         saved_state: dict[str, Any] = {}
-        for k, v in table.entity_cfg.items():
+        for k, v in snapshot_source.items():
             if k not in ["materialized", "values"]:
                 # Skip empty/null values
                 if v is None or v == "" or (isinstance(v, str) and not v.strip()):

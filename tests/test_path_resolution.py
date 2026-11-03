@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pytest
+from loguru import logger
 
 from src.path_resolution import resolve_managed_file_path
 
@@ -42,6 +43,61 @@ def test_resolve_managed_file_path_rejects_symlink_escape(tmp_path: Path) -> Non
 
     with pytest.raises(ValueError, match="outside the managed root"):
         resolve_managed_file_path("linked/data.csv", location="global", global_root=root)
+
+
+def test_resolve_managed_file_path_warns_on_escaping_symlink(tmp_path: Path) -> None:
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "data.csv").write_text("value")
+    root = tmp_path / "shared"
+    root.mkdir()
+    link = root / "linked"
+    link.symlink_to(outside, target_is_directory=True)
+
+    messages: list[str] = []
+    sink_id = logger.add(lambda message: messages.append(str(message)), level="WARNING")
+    try:
+        with pytest.raises(ValueError, match="outside the managed root"):
+            resolve_managed_file_path("linked/data.csv", location="global", global_root=root)
+    finally:
+        logger.remove(sink_id)
+
+    assert any("resolves through symlink" in message and str(link) in message for message in messages)
+
+
+def test_resolve_managed_file_path_warns_on_contained_symlink(tmp_path: Path) -> None:
+    root = tmp_path / "shared"
+    root.mkdir()
+    real = root / "real"
+    real.mkdir()
+    (real / "data.csv").write_text("value")
+    link = root / "linked"
+    link.symlink_to(real, target_is_directory=True)
+
+    messages: list[str] = []
+    sink_id = logger.add(lambda message: messages.append(str(message)), level="WARNING")
+    try:
+        resolved = resolve_managed_file_path("linked/data.csv", location="global", global_root=root)
+    finally:
+        logger.remove(sink_id)
+
+    assert resolved == real / "data.csv"
+    assert any("resolves through symlink" in message and str(link) in message for message in messages)
+
+
+def test_resolve_managed_file_path_no_warning_without_symlink(tmp_path: Path) -> None:
+    root = tmp_path / "shared"
+    root.mkdir()
+    (root / "data.csv").write_text("value")
+
+    messages: list[str] = []
+    sink_id = logger.add(lambda message: messages.append(str(message)), level="WARNING")
+    try:
+        resolve_managed_file_path("data.csv", location="global", global_root=root)
+    finally:
+        logger.remove(sink_id)
+
+    assert not any("resolves through symlink" in message for message in messages)
 
 
 def test_resolve_managed_file_path_allows_missing_parent_directories(tmp_path: Path) -> None:

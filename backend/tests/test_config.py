@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
@@ -36,6 +37,24 @@ def test_shared_target_model_directory_defaults_under_application_root(tmp_path)
 
     assert settings.GLOBAL_TARGET_MODEL_DIR == tmp_path / "shared/target-models"
     assert settings.GLOBAL_TARGET_MODEL_DIR.is_dir()
+
+
+def test_resolver_directory_vars_exported_to_environment(tmp_path, monkeypatch) -> None:
+    """Constructing Settings publishes the approved directory variables to os.environ.
+
+    The Core directive resolver expands ${GLOBAL_DATA_SOURCE_DIR} and friends from
+    os.environ, which pydantic-settings does not populate from .env. Without the
+    export step, a directory configured only in .env expands to an empty string.
+    """
+    for name in ("APPLICATION_ROOT", "GLOBAL_DATA_DIR", "GLOBAL_DATA_SOURCE_DIR", "GLOBAL_TARGET_MODEL_DIR"):
+        monkeypatch.delenv(name, raising=False)
+
+    settings = Settings(APPLICATION_ROOT=tmp_path)
+
+    assert os.environ["APPLICATION_ROOT"] == str(settings.APPLICATION_ROOT)
+    assert os.environ["GLOBAL_DATA_DIR"] == str(settings.GLOBAL_DATA_DIR)
+    assert os.environ["GLOBAL_DATA_SOURCE_DIR"] == str(settings.GLOBAL_DATA_SOURCE_DIR)
+    assert os.environ["GLOBAL_TARGET_MODEL_DIR"] == str(settings.GLOBAL_TARGET_MODEL_DIR)
 
 
 def test_global_data_provider_directory_defaults_under_application_root(tmp_path) -> None:
