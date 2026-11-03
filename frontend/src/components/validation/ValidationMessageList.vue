@@ -136,6 +136,17 @@
             >
               <span class="text-body-2"><strong>Suggestion:</strong> {{ item.suggestion }}</span>
             </v-alert>
+
+            <v-btn
+              v-if="isLinkTroubleshootCandidate(item)"
+              class="link-troubleshooter-action mt-3"
+              size="small"
+              variant="outlined"
+              prepend-icon="mdi-link-variant"
+              @click.stop="handleTroubleshoot(item)"
+            >
+              Troubleshoot link
+            </v-btn>
           </div>
         </td>
       </tr>
@@ -146,6 +157,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import type { ValidationError, ValidationSeverity } from '@/types'
+import { isLinkTroubleshootCandidate } from '@/utils/linkTroubleshooter'
 
 interface Props {
   messages: ValidationError[]
@@ -158,6 +170,7 @@ interface ValidationTableMessage extends ValidationError {
 
 interface Emits {
   (e: 'open-entity', entityName: string): void
+  (e: 'troubleshoot', message: ValidationError): void
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -208,6 +221,13 @@ function handleOpenEntity(entityName: string | null | undefined) {
   }
 
   emit('open-entity', entityName)
+}
+
+function handleTroubleshoot(item: ValidationTableMessage) {
+  const message = props.messages[Number(item.rowKey)]
+  if (message) {
+    emit('troubleshoot', message)
+  }
 }
 
 function formatBranchLabel(branchName: string | null | undefined, branchSource: string | null | undefined): string {

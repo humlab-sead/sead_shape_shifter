@@ -2,9 +2,10 @@
 
 ## Status
 
-- Proposed feature — draft for review
+- Approved feature
 - Scope: first edition of a read-only troubleshooter for one configured foreign-key link
 - Goal: identify which rows and keys cause a linking warning, and test alternative join keys without changing the project
+- Delivery: [Phase plan](FOREIGN_KEY_LINK_TROUBLESHOOTER_PHASE_PLAN.md)
 
 ## Summary
 
@@ -78,7 +79,8 @@ Compare baseline counts and link-specific findings with a real linking run using
 - Preserve the production FK merge semantics and use pre-link A and processed B from the same run; do not build diagnostics from post-link previews.
 - Limit the action and A-row diagnostics to inner and left joins; right, outer, and cross joins are deferred. Keep A/B, join type, and constraints fixed, with no writes or promotion in this edition. Apply project read authorization and cap response size.
 - Use the resolved production null policy for match status and counts, including partially null compound keys. Validate count parity with actual execution, visibility of cancelling loss and expansion, and the absence of project/cache mutations.
-- Before implementing the entry point, decide how a warning identifies a specific FK when the same pair has multiple links. Before implementing the preview, decide how to obtain or recompute the exact link-stage inputs and handle a baseline that no longer reproduces the warning.
+- A warning identifies its saved FK by the FK's index in the entity's `foreign_keys` list, checked against a signature of the entity pair, key pairs, join type, deferral, and resolved constraints. The full contract is in [Phase 1 of the phase plan](FOREIGN_KEY_LINK_TROUBLESHOOTER_PHASE_PLAN.md).
+- Obtain the selected link's A and B inputs by replaying the production pipeline on a temporary entity config, and report when the warning no longer reproduces. See [Phase 2 of the phase plan](FOREIGN_KEY_LINK_TROUBLESHOOTER_PHASE_PLAN.md#phase-2-reproduce-the-selected-link).
 
 ## Final Recommendation
 

@@ -118,6 +118,34 @@ describe('ValidationMessageList', () => {
     expect(expandButtonAt(wrapper, 0).attributes('aria-expanded')).toBe('false')
   })
 
+  it('shows the troubleshooter only for candidates and keeps a candidate row expanded', async () => {
+    const candidate: ValidationError = {
+      severity: 'warning',
+      entity: 'orders',
+      message: 'Link changed the row count.',
+      code: 'ROW_COUNT_MISMATCH',
+      metadata: {
+        fk_index: 0,
+        fk_signature: 'saved-signature',
+        link_pass: 'initial',
+        join_type: 'inner',
+      },
+    }
+    const wrapper = mountList([candidate])
+
+    await itemAt(wrapper, 0).trigger('click')
+    const action = wrapper.find('.link-troubleshooter-action')
+    expect(action.text()).toContain('Troubleshoot link')
+    await action.trigger('click')
+
+    expect(wrapper.emitted('troubleshoot')?.[0]).toEqual([candidate])
+    expect(expandButtonAt(wrapper, 0).attributes('aria-expanded')).toBe('true')
+
+    const nonCandidate = mountList([messages[0]!])
+    await itemAt(nonCandidate, 0).trigger('click')
+    expect(nonCandidate.find('.link-troubleshooter-action').exists()).toBe(false)
+  })
+
   it('collapses expanded rows when the message list changes', async () => {
     const wrapper = mountList()
 

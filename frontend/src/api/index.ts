@@ -6,6 +6,7 @@ export * from './client'
 export * from './projects'
 export * from './entities'
 export * from './validation'
+export * from './linkTroubleshooter'
 export * from './data-sources'
 export * from './data-providers'
 export * from './data-source-files'
@@ -20,6 +21,7 @@ export * from './health'
 import { projectsApi } from './projects'
 import { entitiesApi } from './entities'
 import { validationApi } from './validation'
+import { linkTroubleshooterApi } from './linkTroubleshooter'
 import { dataSourcesApi } from './data-sources'
 import { dataProvidersApi } from './data-providers'
 import { dataSourceFilesApi } from './data-source-files'
@@ -34,6 +36,7 @@ export const api = {
   projects: projectsApi,
   entities: entitiesApi,
   validation: validationApi,
+  linkTroubleshooter: linkTroubleshooterApi,
   dataSources: dataSourcesApi,
   dataProviders: dataProvidersApi,
   dataSourceFiles: dataSourceFilesApi,
