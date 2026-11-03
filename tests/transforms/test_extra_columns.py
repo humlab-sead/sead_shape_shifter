@@ -195,6 +195,23 @@ class TestInterpolationEvaluation:
         result = ExtraColumnEvaluator.evaluate_interpolation(df, "{val} + {val}", "test")
         assert result.iloc[0] == "5 + 5"
 
+    def test_interpolation_preserves_mixed_values_and_template_escaping(self):
+        """Interpolation preserves null, numeric, repeated-column, escaped-brace, and index behavior."""
+        df = pd.DataFrame({"value": [1, 1.0, 2.5, None, float("nan"), pd.NA], "suffix": list("abcdef")})
+        df.index = [3, 3, 2, 2, 1, 1]
+
+        result = ExtraColumnEvaluator.evaluate_interpolation(df, "{{value}}[{value}]/[{value}]-{suffix}", "test")
+
+        assert result.tolist() == [
+            "{value}[1]/[1]-a",
+            "{value}[1]/[1]-b",
+            "{value}[2.5]/[2.5]-c",
+            "{value}[]/[]-d",
+            "{value}[]/[]-e",
+            "{value}[]/[]-f",
+        ]
+        assert result.index.equals(df.index)
+
     def test_interpolates_unicode_column_name(self):
         """A column whose name starts with a non-ASCII letter interpolates."""
         df = pd.DataFrame({"Ökogruppe": ["12", "34"]})

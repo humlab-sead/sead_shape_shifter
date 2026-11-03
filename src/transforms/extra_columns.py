@@ -415,10 +415,9 @@ class ExtraColumnEvaluator:
         The evaluation process:
         1. Extract column dependencies from pattern
         2. Verify all columns exist in DataFrame
-        3. For each row, substitute {column} with value
-        4. Handle nulls (convert to empty strings)
-        5. Coerce all values to strings
-        6. Unescape any {{}} to {}
+        3. Convert referenced values to strings and nulls to empty strings
+        4. Concatenate literal text and column values in template order
+        5. Unescape any {{}} to {}
 
         Args:
             df: DataFrame with columns to interpolate
@@ -445,23 +444,33 @@ class ExtraColumnEvaluator:
             entity_suffix: str = f" for entity '{entity_name}'" if entity_name else ""
             raise ValueError(f"Cannot interpolate '{pattern}'{entity_suffix}: " f"columns not found: {sorted(missing)}")
 
-        # Create a row-wise function that handles nulls and types
-        def interpolate_row(row: pd.Series) -> str:
-            """Interpolate a single row, substituting {column} with values."""
-            values: dict[str, str] = {col: "" if pd.isna(row[col]) else to_str(row[col]) for col in columns}
+        if len(df) == 0:
+            return pd.Series(index=df.index, dtype="float64")
 
-            # First unescape {{}} to a temporary placeholder to protect them
-            # Use a placeholder that won't appear in normal text
-            temp: str = pattern.replace("{{", "\x00LEFTBRACE\x00").replace("}}", "\x00RIGHTBRACE\x00")
+        left_brace: str = "\x00LEFTBRACE\x00"
+        right_brace: str = "\x00RIGHTBRACE\x00"
+        template: str = pattern.replace("{{", left_brace).replace("}}", right_brace)
+        values: dict[str, pd.Series] = {
+            column: df[column].map(lambda value: "" if pd.isna(value) else to_str(value)).rename(None) for column in columns
+        }
 
-            # Replace each {column} with its value
-            for col in columns:
-                temp = temp.replace(f"{{{col}}}", values[col])
+        parts: list[pd.Series] = []
+        offset: int = 0
+        for match in ExtraColumnEvaluator.INTERPOLATION_PATTERN.finditer(template):
+            if match.start() > offset:
+                parts.append(pd.Series(template[offset : match.start()], index=df.index, dtype=object))
+            parts.append(values[match.group(1)])
+            offset = match.end()
 
-            # Now restore the escaped braces as literal braces
-            return temp.replace("\x00LEFTBRACE\x00", "{").replace("\x00RIGHTBRACE\x00", "}")
+        if offset < len(template):
+            parts.append(pd.Series(template[offset:], index=df.index, dtype=object))
+        if not parts:
+            parts.append(pd.Series("", index=df.index, dtype=object))
 
-        return df[columns].apply(interpolate_row, axis=1)
+        result: pd.Series = parts[0]
+        for part in parts[1:]:
+            result = result.str.cat(part, sep="")
+        return result.str.replace(left_brace, "{", regex=False).str.replace(right_brace, "}", regex=False).rename(None)
 
     def evaluate_extra_columns(
         self,
