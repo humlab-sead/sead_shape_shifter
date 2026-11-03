@@ -454,22 +454,19 @@ class ExtraColumnEvaluator:
             column: df[column].map(lambda value: "" if pd.isna(value) else to_str(value)).rename(None) for column in columns
         }
 
-        parts: list[pd.Series] = []
+        result: pd.Series | str = ""
         offset: int = 0
         for match in ExtraColumnEvaluator.INTERPOLATION_PATTERN.finditer(template):
             if match.start() > offset:
-                parts.append(pd.Series(template[offset : match.start()], index=df.index, dtype=object))
-            parts.append(values[match.group(1)])
+                result = result + template[offset : match.start()]
+            result = result + values[match.group(1)]
             offset = match.end()
 
         if offset < len(template):
-            parts.append(pd.Series(template[offset:], index=df.index, dtype=object))
-        if not parts:
-            parts.append(pd.Series("", index=df.index, dtype=object))
+            result = result + template[offset:]
+        if isinstance(result, str):
+            result = pd.Series(result, index=df.index, dtype=object)
 
-        result: pd.Series = parts[0]
-        for part in parts[1:]:
-            result = result.str.cat(part, sep="")
         return result.str.replace(left_brace, "{", regex=False).str.replace(right_brace, "}", regex=False).rename(None)
 
     def evaluate_extra_columns(

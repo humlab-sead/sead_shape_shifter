@@ -171,6 +171,15 @@ class TestInterpolationEvaluation:
         result = ExtraColumnEvaluator.evaluate_interpolation(df, "{{name}}: {name}", "test")
         assert result.iloc[0] == "{name}: John"
 
+    def test_interpolation_without_placeholders_returns_series(self):
+        """Literal templates still return one value per input row."""
+        df = pd.DataFrame({"name": ["John", "Jane"]}, index=[2, 2])
+
+        result = ExtraColumnEvaluator.evaluate_interpolation(df, "{{literal}}", "test")
+
+        assert result.tolist() == ["{literal}", "{literal}"]
+        assert result.index.equals(df.index)
+
     def test_raises_on_missing_column(self):
         """ValueError raised if required column missing."""
         df = pd.DataFrame({"a": [1]})
