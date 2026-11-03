@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-BACKEND_PORT ?= 8013
+BACKEND_PORT ?= 8025
 FRONTEND_PORT ?= 5173
 
 .PHONY: install
