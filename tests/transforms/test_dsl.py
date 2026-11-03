@@ -946,6 +946,19 @@ class TestEdgeCases:
         expected = pd.Series(["hello"], dtype="string")
         pd.testing.assert_series_equal(result, expected, check_names=False)
 
+    def test_concat_many_arguments_preserves_nulls_and_duplicate_index(self):
+        """Multi-argument concat preserves row order and replaces nulls with empty strings."""
+        df = pd.DataFrame(
+            {"first": ["a", "b"], "second": [None, "x"], "third": ["y", None]},
+            index=[4, 4],
+        )
+        engine = FormulaEngine()
+
+        result = engine.evaluate_formula("=concat(first, '-', second, third)", df)
+        expected = pd.Series(["a-y", "b-x"], index=df.index, dtype="string")
+
+        pd.testing.assert_series_equal(result, expected, check_names=False)
+
     def test_coalesce_single_argument(self):
         """Test coalesce with single argument."""
         df = pd.DataFrame({"col": [None, "x"]})
