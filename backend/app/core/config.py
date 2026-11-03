@@ -179,6 +179,31 @@ class Settings(BaseSettings):
 
         return self
 
+    @model_validator(mode="after")
+    def export_resolver_directory_vars(self) -> "Settings":
+        """Publish resolver-approved directory settings to the process environment.
+
+        The Core directive resolver expands ``${GLOBAL_DATA_SOURCE_DIR}`` and similar
+        variables from ``os.environ``, while pydantic-settings reads ``.env`` without
+        exporting it. Without this step a directory configured only in ``.env`` or left
+        at its default expands to an empty string, turning directives such as
+        ``@include: ${GLOBAL_DATA_SOURCE_DIR}/sead-options.yml`` into a root-absolute
+        path that fails containment with a confusing error. Exporting the effective
+        values keeps both readers in agreement and stops startup when an approved
+        directory variable would expand to an empty value.
+        """
+        exports = {
+            "APPLICATION_ROOT": self.APPLICATION_ROOT,
+            "GLOBAL_DATA_DIR": self.GLOBAL_DATA_DIR,
+            "GLOBAL_DATA_SOURCE_DIR": self.GLOBAL_DATA_SOURCE_DIR,
+            "GLOBAL_TARGET_MODEL_DIR": self.GLOBAL_TARGET_MODEL_DIR,
+        }
+        for name, value in exports.items():
+            if not str(value).strip():
+                raise ValueError(f"{name} must not be empty; project directives expand it as ${{{name}}}")
+            os.environ[name] = str(value)
+        return self
+
     def _resolve_under_root(self, value: Path) -> Path:
         """Resolve a path against the repository root when it is relative."""
         path = Path(value)

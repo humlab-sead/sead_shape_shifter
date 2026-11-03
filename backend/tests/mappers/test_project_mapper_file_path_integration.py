@@ -19,6 +19,7 @@ class TestProjectMapperFilePathIntegration:
     def mock_settings(self, tmp_path: Path) -> Settings:
         """Create mock Settings with temporary directories."""
         settings = MagicMock(spec=Settings)
+        settings.APPLICATION_ROOT = tmp_path
         settings.GLOBAL_DATA_DIR = tmp_path / "shared" / "shared-data"
         settings.global_data_dir = settings.GLOBAL_DATA_DIR  # For property access
         settings.PROJECTS_DIR = tmp_path / "projects"
@@ -29,7 +30,7 @@ class TestProjectMapperFilePathIntegration:
         settings.resolver_allowed_env_vars = frozenset({"GLOBAL_TARGET_MODEL_DIR"})
         settings.projects_root = settings.PROJECTS_DIR  # For property access
         settings.env_prefix = "SHAPE_SHIFTER_"
-        settings.env_file = ".env"
+        settings.env_file = str(tmp_path / ".env")  # Missing file: keeps tests isolated from the repo .env
 
         # Create directories
         settings.global_data_dir.mkdir(parents=True, exist_ok=True)

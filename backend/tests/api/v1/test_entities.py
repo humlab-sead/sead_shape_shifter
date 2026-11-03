@@ -306,6 +306,9 @@ class TestEntitiesCreate:
         (shared_data_source_dir / "sead-options.yml").write_text(yaml.safe_dump(source_config), encoding="utf-8")
         monkeypatch.setattr(settings, "GLOBAL_DATA_SOURCE_DIR", shared_data_source_dir)
         monkeypatch.setenv("SHAPE_SHIFTER_GLOBAL_DATA_SOURCE_DIR", str(shared_data_source_dir))
+        # The resolver expands ${GLOBAL_DATA_SOURCE_DIR} from os.environ, where Settings
+        # publishes the effective value at startup. Keep the unprefixed variable in sync.
+        monkeypatch.setenv("GLOBAL_DATA_SOURCE_DIR", str(shared_data_source_dir))
 
         create_response = await authorized_client.post(
             "/api/v1/projects",
