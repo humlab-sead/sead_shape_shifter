@@ -1,0 +1,67 @@
+title: Container setup simplification: Phase 3 and deployment/ restructure
+description:
+## Summary
+
+Completes the CONTAINER_SETUP_SIMPLIFICATION proposal (phases 1–3) and moves the container release
+tree and the host-side tooling under deployment/.
+
+ - Single lifecycle entry point: a new deployment/container/scripts/container.sh consolidates up,
+down, restart, logs, status and a service <action> dispatcher that runs systemctl --user commands
+(install, enable, disable, start, stop, restart, status, logs). The previous container.sh and
+service.sh are removed; make service-* targets now dispatch through container.sh service.
+ - Project commands merged: adopt-project.sh and move-project.sh are replaced by one project.sh with
+adopt and move actions, keeping the manifest import, verification, dry-run, confirmation and
+rollback-on-failure safeguards.
+ - Sourced helpers renamed with a _ prefix (_load-env.sh, _env-config.sh). _load-env.sh now falls
+back to the bundled .env.example template when deployment.env does not set a value (precedence:
+environment > deployment.env > template), and the Makefile -includes .env.example instead of
+duplicating defaults, so Make targets and direct script runs resolve the same values.
+ - Directory restructure: container/ → deployment/container/ (the release bundle) and host tooling →
+deployment/container-host/ (deploy/ scripts, tests/, verify/). deploy_single_environment.sh is
+renamed deploy_environment.sh, and get-install.sh moves into the host tree. The release archive root
+inside the tarball stays container/ (git archive --prefix=container/ HEAD:deployment/container), so
+the host-side install contract into ~/container is unchanged.
+ - Release manager hardening: manage_container_release.sh now validates downloaded archives against
+its own trusted g_required_files list (checksum, path safety, expected root/version, required files)
+instead of executing the bundle's bundled verifier; no file from a candidate archive is executed.
+ - Verification suite trimmed: the ad-hoc container/scripts/verify/ scripts and
+test_verify_inventory.sh are removed; the release-contract verifier moves to
+deployment/container-host/verify/verify_container_release.sh, which the Container Release workflow
+now calls.
+ - Tests: new regression suites test_project_commands.sh, test_release_bundle_contents.sh and
+test_required_files_contract.sh; test_lifecycle.sh, test_path_resolution.sh and
+test_release_manager.sh are extended for the service dispatcher, template fallback and required-file
+contract.
+ - Workflows, .gitignore, README, docs, instructions and the proposal tree (phase plans for phases
+1–3 added) are repointed to the deployment/ layout.
+
+## User-facing release note
+
+Container lifecycle and service control now run through one entry point, scripts/container.sh
+(including container.sh service <action> for the systemd user service), and project adoption/moves
+use a single scripts/project.sh adopt|move command. Deployment defaults now come from one shared
+template, so a fresh checkout and an initialized deployment resolve the same values.
+
+## Upgrade notes
+
+ - In a repository checkout, deployment files now live under deployment/container/ (run make targets
+there) and host tools under deployment/container-host/deploy/; update any scripts, cron jobs or
+runbooks that reference the old container/... paths.
+ - bootstrap-authentication-and-authorization.sh no longer derives CONFIG_DIR from the checkout
+location: it must be set explicitly (e.g. CONFIG_DIR=$HOME/config).
+ - Replace calls to scripts/service.sh <action> with scripts/container.sh service <action>, and
+adopt-project.sh/move-project.sh with project.sh adopt/project.sh move.
+ - Installed releases are unaffected: the release archive root remains container/ and installs to
+the deployment user's ~/container as before; no migration of ~/config or ~/container-data is
+required.
+
+## Validation
+
+ - CI (this PR, from the check rollup): the Container Release workflow ran; both its validate and
+publish jobs completed with conclusion SKIPPED. No other checks are reported in the available CI
+evidence.
+ - The shell regression suites added or updated in this diff (test_path_resolution.sh,
+test_lifecycle.sh, test_project_commands.sh, test_release_bundle_contents.sh,
+test_required_files_contract.sh, test_release_manager.sh) are included in the branch, but their
+execution results are not shown in the available CI evidence.
+ - The PR was merged into dev as commit 121c274 on 2026-10-11.

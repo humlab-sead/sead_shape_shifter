@@ -182,8 +182,14 @@ class MappingManager:
         updated_at = datetime.now(timezone.utc)
         catalog_to_save = catalog.model_copy(deep=True)
         catalog_to_save.metadata.updated_at = updated_at
+        serialized_catalog = catalog_to_save.model_dump(mode="json", exclude_none=True)
+        for entity_name, entity_mapping in catalog_to_save.entities.items():
+            for local_key_value, link in entity_mapping.links.items():
+                if link.owner is not None:
+                    serialized_catalog["entities"][entity_name]["links"][local_key_value].setdefault("verified_at", None)
+
         content = yaml.dump(
-            catalog_to_save.model_dump(mode="json", exclude_none=True),
+            serialized_catalog,
             default_flow_style=False,
             sort_keys=False,
             allow_unicode=True,

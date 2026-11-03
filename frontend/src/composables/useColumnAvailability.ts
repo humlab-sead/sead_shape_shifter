@@ -2,13 +2,15 @@ import { onScopeDispose, ref } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
 import { entitiesApi } from '@/api/entities'
 import type { ColumnAvailabilityRequest, ColumnAvailabilityResponse } from '@/api/entities'
+import { formatErrorMessage } from '@/utils/errors'
+import type { FormattedError } from '@/types'
 
 const REQUEST_DEBOUNCE_MS = 300
 
 export function useColumnAvailability() {
   const availability = ref<ColumnAvailabilityResponse | null>(null)
   const loading = ref(false)
-  const error = ref<string | null>(null)
+  const error = ref<FormattedError | null>(null)
   let requestVersion = 0
 
   const fetchAvailability = async (
@@ -26,7 +28,7 @@ export function useColumnAvailability() {
       }
     } catch (caughtError) {
       if (version === requestVersion) {
-        error.value = caughtError instanceof Error ? caughtError.message : 'Failed to fetch column availability'
+        error.value = formatErrorMessage(caughtError)
       }
     } finally {
       if (version === requestVersion) {

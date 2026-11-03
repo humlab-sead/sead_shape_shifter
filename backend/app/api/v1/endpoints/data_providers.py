@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from loguru import logger
 
 from backend.app.api.dependencies import get_data_provider_service
-from backend.app.authorization.dependencies import get_principal
+from backend.app.authorization.dependencies import declare_authenticated_route, get_principal
 from backend.app.authorization.models import Principal
 from backend.app.models.data_provider import DataProvider
 from backend.app.services.data_provider_service import DataProviderRegistryError, DataProviderService
@@ -20,6 +20,7 @@ data_provider_principal_dependency = get_principal()
 
 
 @router.get("", response_model=list[DataProvider], summary="List curated data providers")
+@declare_authenticated_route
 async def list_data_providers(
     service: Annotated[DataProviderService, Depends(get_data_provider_service)],
     _principal: Annotated[Principal, Depends(data_provider_principal_dependency)],

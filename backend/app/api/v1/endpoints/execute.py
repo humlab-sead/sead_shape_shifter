@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
 from loguru import logger
 
-from backend.app.authorization.dependencies import require_project
+from backend.app.authorization.dependencies import declare_authenticated_route, require_project
 from backend.app.authorization.models import Action, AuthorizedResource
 from backend.app.models.execute import DispatcherMetadata, ExecuteRequest, ExecuteResult
 from backend.app.services.execute_service import ExecuteService, get_execute_service
@@ -17,6 +17,7 @@ router = APIRouter()
 
 
 @router.get("/dispatchers", response_model=list[DispatcherMetadata])
+@declare_authenticated_route
 @handle_endpoint_errors
 async def get_dispatchers() -> list[DispatcherMetadata]:
     """

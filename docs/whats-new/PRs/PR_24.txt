@@ -1,0 +1,43 @@
+title: Fix data preview by normalizing target entity and dependencies #23
+description:
+## Summary
+
+Fixes the failing data preview (resolves #23) by reworking how the normalizer selects work.
+ProcessState no longer carries a single default_entity as a global dependency; it now tracks a set
+of target_entities (defaulting to all configured tables) and a new get_required_entities() walks the
+depends_on graph to compute the full dependency closure for a target. ArbodatSurveyNormalizer
+accepts a target_entities argument and pre-computes the required entities, and PreviewService now
+builds the normalizer with target_entities={entity_name} and the entity's source entity as
+default_entity, so previewing one entity processes only that entity and what it depends on.
+
+The PR also switches the backend port from 8000 to 8012 (Makefile with new BACKEND_PORT/FRONEND_PORT
+variables and a backend-kill target, docker-compose, nginx, Vite proxy, API client defaults, and
+documentation), adds an SCSS deprecation-silencing option to the Vite config, updates frontend
+dependencies (Vuetify 3.11.4, vite-plugin-vuetify, plus lockfile additions for Monaco editor and
+js-yaml), and adds AGENTS.md and .vscode/extensions.json. The remaining backend/test changes are
+Black/isort formatting cleanups (quote style, import ordering, line reflow) with no logic changes,
+plus updated ProcessState call sites in tests/test_append_integration.py.
+
+## User-facing release note
+
+Previewing an entity's data now works: the system runs just the selected entity and the entities it
+depends on, instead of failing with a strange error. Note that the backend now listens on port 8012
+instead of 8000.
+
+## Upgrade notes
+
+ - The backend development server, docker-compose mapping, and default API base URL have changed
+from port 8000 to
+  8012. Update any bookmarks, scripts, reverse proxies, or VITE_API_BASE_URL overrides that still
+point to port 8000.
+ - Run pnpm install in frontend/ to pick up the updated Vuetify and other dependency changes.
+ - Code that constructs ProcessState must replace the removed default_entity argument with
+target_entities (pass None to process all configured tables).
+
+## Validation
+
+No validation evidence is available: the pull request metadata carries no CI check results
+(statusCheckRollup is empty), and no test-run outcomes were provided. Test files were updated to
+match the new ProcessState API, but their execution and results are unknown.
+
+Not verified: validation results unavailable.

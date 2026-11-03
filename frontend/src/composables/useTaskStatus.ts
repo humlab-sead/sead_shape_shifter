@@ -9,6 +9,7 @@
 import { ref, computed } from 'vue'
 import type { Ref } from 'vue'
 import { apiClient } from '@/api/client'
+import { getErrorMessage } from '@/utils/errors'
 
 /**
  * Task status enum matching backend TaskStatus
@@ -105,8 +106,9 @@ export function useTaskStatus(projectName?: Ref<string> | string) {
     try {
       const response = await apiClient.get<ProjectTaskStatus>(`/projects/${project.value}/tasks`)
       taskStatus.value = response.data
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || err.message || 'Failed to fetch task status'
+    } catch (err: unknown) {
+      taskStatus.value = null
+      error.value = getErrorMessage(err)
       console.error('Failed to fetch task status:', err)
     } finally {
       loading.value = false
@@ -139,8 +141,8 @@ export function useTaskStatus(projectName?: Ref<string> | string) {
       await fetchTaskStatus()
 
       return response.data.success
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || err.message || 'Failed to mark complete'
+    } catch (err: unknown) {
+      error.value = getErrorMessage(err)
       console.error('Failed to mark complete:', err)
       return false
     } finally {
@@ -174,8 +176,8 @@ export function useTaskStatus(projectName?: Ref<string> | string) {
       await fetchTaskStatus()
 
       return response.data.success
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || err.message || 'Failed to mark ignored'
+    } catch (err: unknown) {
+      error.value = getErrorMessage(err)
       console.error('Failed to mark ignored:', err)
       return false
     } finally {
@@ -209,8 +211,8 @@ export function useTaskStatus(projectName?: Ref<string> | string) {
       await fetchTaskStatus()
 
       return response.data.success
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || err.message || 'Failed to mark ongoing'
+    } catch (err: unknown) {
+      error.value = getErrorMessage(err)
       console.error('Failed to mark ongoing:', err)
       return false
     } finally {
@@ -244,8 +246,8 @@ export function useTaskStatus(projectName?: Ref<string> | string) {
       await fetchTaskStatus()
 
       return response.data.success
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || err.message || 'Failed to mark as todo'
+    } catch (err: unknown) {
+      error.value = getErrorMessage(err)
       console.error('Failed to mark as todo:', err)
       return false
     } finally {
@@ -277,8 +279,8 @@ export function useTaskStatus(projectName?: Ref<string> | string) {
       await fetchTaskStatus()
 
       return response.data.success
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || err.message || 'Failed to reset status'
+    } catch (err: unknown) {
+      error.value = getErrorMessage(err)
       console.error('Failed to reset status:', err)
       return false
     } finally {
@@ -315,8 +317,8 @@ export function useTaskStatus(projectName?: Ref<string> | string) {
       await fetchTaskStatus()
 
       return response.data.success
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || err.message || 'Failed to toggle flag'
+    } catch (err: unknown) {
+      error.value = getErrorMessage(err)
       console.error('Failed to toggle flag:', err)
       return false
     } finally {

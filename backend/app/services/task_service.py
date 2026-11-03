@@ -7,7 +7,7 @@ from typing import Any
 import pandas as pd
 from loguru import logger
 
-from backend.app.exceptions import ResourceNotFoundError
+from backend.app.exceptions import ConfigurationError, ResourceNotFoundError
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.mappers.project_name_mapper import ProjectNameMapper
 from backend.app.models.project import Project
@@ -102,8 +102,29 @@ class TaskService:
         # Load project (API layer)
         api_project: Project = self.project_service.load_project(project_name)
 
+        if api_project.load_errors:
+            issues = api_project.load_errors
+            messages = "; ".join(issue.message for issue in issues)
+            tips = list(dict.fromkeys(issue.suggestion for issue in issues if issue.suggestion))
+            raise ConfigurationError(
+                message=f"Cannot compute task status because project loading found configuration errors: {messages}",
+                specification="ProjectLoad",
+                error_code="PROJECT_LOAD_FAILED",
+                tips=tips or ["Correct the project load errors and retry task status."],
+                context={"entities": sorted({issue.entity for issue in issues if issue.entity})},
+            )
+
         # Convert to core layer for task_list access
-        project: ShapeShiftProject = ProjectMapper.to_core(api_project)
+        try:
+            project: ShapeShiftProject = ProjectMapper.to_core(api_project)
+        except (FileNotFoundError, ValueError) as error:
+            raise ConfigurationError(
+                message=f"Could not prepare project '{project_name}' for task status: {error}",
+                specification="ProjectPreparation",
+                error_code="PROJECT_PREPARATION_FAILED",
+                tips=["Check project configuration values and referenced files, then retry task status."],
+                context={"project": project_name},
+            ) from error
         self._refresh_project_task_list(project_name, project)
 
         note_entities: set[str] = set()

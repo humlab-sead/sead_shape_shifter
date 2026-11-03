@@ -1311,6 +1311,154 @@ class TestForeignKeySpecification:
 
         assert result is False
 
+    @pytest.mark.parametrize(
+        ("fk", "expected_field"),
+        [
+            (
+                {"entity": "target", "local_keys": ["id"], "remote_keys": ["ref_id"], "contraints": {}},
+                "foreign_keys[0].contraints",
+            ),
+            (
+                {"entity": "target", "local_keys": ["id"], "remote_keys": ["ref_id"], "constraints": []},
+                "foreign_keys[0].constraints",
+            ),
+            (
+                {
+                    "entity": "target",
+                    "local_keys": ["id"],
+                    "remote_keys": ["ref_id"],
+                    "constraints": {"cardinality": "many-to-one"},
+                },
+                "foreign_keys[0].constraints.cardinality",
+            ),
+            (
+                {
+                    "entity": "target",
+                    "local_keys": ["id"],
+                    "remote_keys": ["ref_id"],
+                    "constraints": {"allow_null_keys": "false"},
+                },
+                "foreign_keys[0].constraints.allow_null_keys",
+            ),
+            (
+                {
+                    "entity": "target",
+                    "local_keys": ["id"],
+                    "remote_keys": ["ref_id"],
+                    "constraints": {"allow_unmatched_left": 1},
+                },
+                "foreign_keys[0].constraints.allow_unmatched_left",
+            ),
+            (
+                {
+                    "entity": "target",
+                    "local_keys": ["id"],
+                    "remote_keys": ["ref_id"],
+                    "constraints": {"allow_unmatched_right": "true"},
+                },
+                "foreign_keys[0].constraints.allow_unmatched_right",
+            ),
+            (
+                {
+                    "entity": "target",
+                    "local_keys": ["id"],
+                    "remote_keys": ["ref_id"],
+                    "constraints": {"allow_row_decrease": "false"},
+                },
+                "foreign_keys[0].constraints.allow_row_decrease",
+            ),
+            (
+                {
+                    "entity": "target",
+                    "local_keys": ["id"],
+                    "remote_keys": ["ref_id"],
+                    "constraints": {"require_unique_left": "true"},
+                },
+                "foreign_keys[0].constraints.require_unique_left",
+            ),
+            (
+                {
+                    "entity": "target",
+                    "local_keys": ["id"],
+                    "remote_keys": ["ref_id"],
+                    "constraints": {"require_unique_right": "true"},
+                },
+                "foreign_keys[0].constraints.require_unique_right",
+            ),
+            (
+                {
+                    "entity": "target",
+                    "local_keys": ["id"],
+                    "remote_keys": ["ref_id"],
+                    "constraints": {"null_keys_equal": "true"},
+                },
+                "foreign_keys[0].constraints.null_keys_equal",
+            ),
+            (
+                {
+                    "entity": "target",
+                    "local_keys": ["id"],
+                    "remote_keys": ["ref_id"],
+                    "constraints": {"cardinality": "many_to_one", "allow_unmatched_lef": False},
+                },
+                "foreign_keys[0].constraints.allow_unmatched_lef",
+            ),
+        ],
+    )
+    def test_invalid_fk_fields_report_entity_and_index(self, fk, expected_field):
+        project_cfg = {"entities": {"orders": {"foreign_keys": [fk]}}}
+        spec = ForeignKeySpecification(project_cfg)
+
+        assert spec.is_satisfied_by(entity_name="orders") is False
+        issue = next(issue for issue in spec.errors if issue.field == expected_field)
+        assert issue.entity == "orders"
+        assert "foreign key #1" in issue.message
+
+    @pytest.mark.parametrize("cardinality", ["one_to_one", "many_to_one", "one_to_many", "many_to_many"])
+    def test_valid_constraints_are_accepted(self, cardinality):
+        project_cfg = {
+            "entities": {
+                "orders": {
+                    "foreign_keys": [
+                        {
+                            "entity": "customers",
+                            "local_keys": ["customer_id"],
+                            "remote_keys": ["id"],
+                            "constraints": {
+                                "cardinality": cardinality,
+                                "allow_unmatched_left": False,
+                                "allow_unmatched_right": True,
+                                "allow_row_decrease": False,
+                                "require_unique_left": True,
+                                "require_unique_right": False,
+                                "allow_null_keys": True,
+                                "null_keys_equal": False,
+                            },
+                        }
+                    ]
+                }
+            }
+        }
+        spec = ForeignKeySpecification(project_cfg)
+
+        assert spec.is_satisfied_by(entity_name="orders") is True
+        assert not spec.errors
+
+    def test_materialized_source_state_is_checked_only_after_restoration(self):
+        saved_foreign_keys = [{"entity": "target", "local_keys": ["id"], "remote_keys": ["ref_id"], "contraints": {}}]
+        project_cfg = {"entities": {"orders": {"materialized": {"source_state": {"foreign_keys": saved_foreign_keys}}}}}
+        expected_saved_foreign_keys = [{"entity": "target", "local_keys": ["id"], "remote_keys": ["ref_id"], "contraints": {}}]
+        spec = ForeignKeySpecification(project_cfg)
+
+        assert spec.is_satisfied_by(entity_name="orders") is True
+        assert not spec.errors
+        assert project_cfg["entities"]["orders"]["materialized"]["source_state"]["foreign_keys"] == expected_saved_foreign_keys
+
+        restored_cfg = {"entities": {"orders": {"foreign_keys": saved_foreign_keys}}}
+        restored_spec = ForeignKeySpecification(restored_cfg)
+        assert restored_spec.is_satisfied_by(entity_name="orders") is False
+        assert any(issue.field == "foreign_keys[0].contraints" for issue in restored_spec.errors)
+
 
 class TestPublicIdSpecification:
     """Tests for PublicIdSpecification."""

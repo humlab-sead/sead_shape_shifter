@@ -1,0 +1,83 @@
+title: Add UI workflow execution, raw YAML editing, and graph edge labels
+description:
+## Summary
+
+This PR adds end-to-end workflow execution from the editor and several related backend/frontend
+capabilities, and completes the "Configuration" → "Project" terminology migration.
+
+ - Full workflow execution: New backend endpoints GET /dispatchers and POST /projects/{name}/execute
+(new ExecuteService, execute models) run the complete normalization pipeline for a project —
+optional validation, load/normalize all entities, optional translate and FK-column dropping, then
+dispatch to a target. The frontend gains an ExecuteDialog (dispatcher selection,
+file/folder/database targets, validation/translate/drop-FK options) with a Pinia store and API
+client.
+ - Core workflow extraction and dispatcher metadata: The shared workflow() function moves from
+src/survey2excel.py into a new src/workflow.py; the CLI option --config-file/-c becomes --project/-p
+and the dispatch parameter is renamed mode → target_type. Dispatchers now carry registry metadata
+(target_type, description); CSVDispatcher is renamed CsvDispatcher and a new zipcsv dispatcher (CSV
+files in a ZIP archive) is added. src/loaders/__init__.py now calls DataLoaders.scan() to
+auto-register all loaders. ShapeShifter.config is renamed ShapeShifter.project (tests updated
+accordingly).
+ - Raw YAML editing: New GET/PUT /projects/{name}/raw-yaml endpoints validate YAML syntax and
+structure, create a backup, and save. A YAML tab in the project detail view lets users edit the
+whole project file with reload/save and automatic re-validation. Selecting a project now activates
+it in the backend ApplicationState.
+ - Entity editor rework: The "Advanced" tab is replaced by dedicated editors for Filters, Unnest,
+Append, and Extra Columns (new Vue components). The data source field becomes a dropdown populated
+from the project's configured data sources. The separate preview tab is removed in favor of the
+split-pane preview, which gains a row-count selector (10–1000 or all rows); the backend preview
+limit is now optional (None = all rows, default 50).
+ - Dependency graph: Edges now carry foreign-key information (local_keys, remote_keys, display
+label) instead of bare node pairs; node and edge label visibility can be toggled separately, with
+updated Cytoscape styling (larger node labels, autorotated edge labels, dark-theme support). Editing
+an entity from the graph now opens the entity editor (also via an ?entity= deep link).
+ - Foreign key testing fix: ValidateForeignKeyService falls back to ProjectService.load_project
+(mapped through ProjectMapper) instead of ShapeShiftProject.from_source, with the service test
+updated accordingly. The FK editor is reworked into a compact accordion and no longer overwrites
+in-progress edits on prop sync. Data-type FK validation handles non-Series columns and missing keys
+without failing.
+ - Reconciliation configuration: A RECONCILIATION_SERVICE_URL setting is added to backend settings,
+and the sample arbodat-reconciliation.yml is restructured to a new schema (service_url, per-entity
+source, keys, property_mappings, auto_accept_threshold/review_threshold).
+ - Terminology and housekeeping: Backend strings, docstrings, and the backend README are updated
+from "Configuration" to "Project"; planning docs are moved to docs/archive/; the large sample
+input/ArboDat Database Configuration.yml is removed and a minimal input/test_config_manua.yml test
+config is added. The Makefile splits backend-run (no reload) from a new backend-run-with-hmr target;
+VSCode analysis/search/watcher excludes are expanded; the Settings view drops the custom color
+picker and theme preview; TODO items are checked off against issues #81–#85, #87, #57, #59, #72,
+#74, #75, #77, and #80.
+
+## User-facing release note
+
+Users can now run the full normalization from the editor and save the output to a folder of CSVs, a
+ZIP archive, an Excel file, or a database, edit the entire project YAML directly in a new YAML tab,
+choose how many rows to preview (up to all rows), and edit filters, unnest, append, and extra-column
+settings for entities in dedicated editor tabs. The dependency graph now labels foreign-key joins
+and lets node and edge labels be toggled separately.
+
+## Upgrade notes
+
+ - The survey2excel CLI option --config-file/-c is renamed --project/-p, and the workflow's dispatch
+parameter is renamed mode → target_type; update scripts that invoke the CLI.
+ - Code importing workflow or validate_entity_shapes from src.survey2excel must import them from
+src.workflow. workflow() now takes project (a path or ShapeShiftProject) instead of config, and
+requires an env_file when given a project path string.
+ - Programmatic users of ShapeShifter must use the renamed .project attribute (was .config), and
+import CsvDispatcher instead of CSVDispatcher. The csv dispatcher key now expects a folder target;
+use the new zipcsv key for a single file target.
+ - Reconciliation YAML files must migrate to the new schema: top-level service.url becomes
+service_url, and per-entity thresholds (auto_accept/review) become
+auto_accept_threshold/review_threshold. The backend service URL can also be configured via the new
+RECONCILIATION_SERVICE_URL setting.
+ - The sample file input/ArboDat Database Configuration.yml has been removed; remove references to
+it if any.
+
+## Validation
+
+ - No CI results or test-run outcomes were available for this pull request (statusCheckRollup is
+empty), and no linked issues were provided.
+ - The diff updates test files to match the renamed APIs (tests/test_dispatch.py,
+tests/process/test_shapeshifter.py, tests/process/test_workflow.py,
+tests/integration/test_append_*.py, backend/tests/services/test_validate_fk_service.py) and adds
+dispatcher metadata tests, but their execution and results are unknown.
+ - Not verified: validation results unavailable.

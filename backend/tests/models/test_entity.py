@@ -144,7 +144,8 @@ class TestEntity:
             "sample_type": "system_id"
         }
         with pytest.raises(ValidationError):
-            Entity(name="location", foreign_key_value_sources={"location_type": "external_id"})
+            # Deliberately invalid mode to verify runtime validation rejects it.
+            Entity(name="location", foreign_key_value_sources={"location_type": "external_id"})  # pyright: ignore[reportArgumentType]
 
     def test_with_foreign_keys(self):
         """Test entity with foreign keys."""

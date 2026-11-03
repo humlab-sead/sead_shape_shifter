@@ -1,0 +1,42 @@
+title: Add configurable UID/GID to Docker setup and consolidate on Makefile
+description:
+## Summary
+
+Adds USER_UID/USER_GID build arguments (default 1000:1000) to the Dockerfile so the non-root
+shapeshifter user, its group, and the source-context ownership can be set at build time to match the
+host user. The Makefile gains setup, setup-volumes, setup-env, docker-validate, and docker-test
+targets, auto-detects UID/GID (defaulting to the sead user), and passes the build args to all build
+targets. docker-compose.yml now runs the container as the configured USER_UID:USER_GID, points the
+health check at /api/v1/health (with a longer start period), mounts .pgpass at /app/.pgpass instead
+of /root/.pgpass, adds a bridge network and log rotation options. The standalone shell scripts
+(build.sh, setup.sh, test.sh, test-build.sh) and nginx.conf.example are removed in favor of the
+Makefile workflow; the GitHub Actions example moves to docker/examples/ and documents the new build
+args plus a health-check-based deploy verification. The README documents the new setup flow, all
+Make targets, and permission troubleshooting.
+
+## User-facing release note
+
+Docker deployment is now driven entirely by simple make commands (make setup, make docker-build,
+make docker-up), and the container can run with your own user ID so mounted data directories no
+longer hit permission problems.
+
+## Upgrade notes
+
+ - The removed scripts (docker/build.sh, docker/setup.sh, docker/test.sh, docker/test-build.sh) are
+replaced by Makefile targets: use make setup, make docker-build, and make docker-test instead.
+docker/nginx.conf.example was also deleted.
+ - If your host UID/GID is not 1000:1000, rebuild and run with matching values, e.g. USER_UID=$(id
+-u) USER_GID=$(id -g) make docker-build && USER_UID=$(id -u) USER_GID=$(id -g) make docker-up, and
+re-run make setup-volumes to fix data directory ownership.
+ - The container now runs as the non-root user and reads .pgpass from /app/.pgpass (previously
+/root/.pgpass); custom deployments that relied on the old mount location need updating.
+ - Container health is now reported via /api/v1/health; external monitors or scripts probing /
+should be repointed.
+
+## Validation
+
+ - No CI check results are available for this pull request (the status check rollup is empty), and
+no test output was included in the available evidence; execution of the new make docker-validate /
+make docker-test targets is unknown.
+ - The pull request was merged into main (merge commit 7d7dee9, 2026-01-14), but no passing checks
+are documented in the available evidence.

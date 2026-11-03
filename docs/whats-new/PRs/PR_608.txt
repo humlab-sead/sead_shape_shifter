@@ -1,0 +1,27 @@
+title: chore: promote staging into main
+description:
+<!-- promotion-pr -->
+## Summary
+
+Promotes `staging` into `main`.
+
+This pull request introduces no change of its own. It carries the pull requests listed below and adds no separate release note.
+
+## Included PRs
+
+- [#575](https://github.com/humlab-sead/sead_shape_shifter/pull/575) Merge dev into staging: ingester handoff, upload management, validation fixes, faster tests
+- [#581](https://github.com/humlab-sead/sead_shape_shifter/pull/581) Enhance authorization state management and fix metadata handling
+- [#591](https://github.com/humlab-sead/sead_shape_shifter/pull/591) Remove deprecated SEAD ingester, enhance validation, and fix various issues
+- [#607](https://github.com/humlab-sead/sead_shape_shifter/pull/607) Fix multiple issues related to validation, materialization, and foreign key handling
+
+## User-facing release note
+
+None - no user-visible change.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+Not verified: validation results are recorded on the included pull requests.

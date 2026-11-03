@@ -11,6 +11,7 @@ export * from './data-source'
 export * from './session'
 export * from './reconciliation'
 export * from './excel'
+export * from './linkTroubleshooter'
 
 // Common utility types
 export interface ApiResponse<T = any> {
@@ -31,6 +32,7 @@ export interface ApiError {
  */
 export interface StructuredError {
   error_type: string
+  error_code?: string
   message: string
   tips?: string[]
   context?: Record<string, any>

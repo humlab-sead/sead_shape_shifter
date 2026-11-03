@@ -2,7 +2,7 @@
 
 from copy import deepcopy
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -288,6 +288,31 @@ options:
 
         assert config.load_warnings == ["Entity 'method', row 1, column 'method_id': normalized '53' to 53 (int)"]
 
+    def test_load_configuration_keeps_invalid_fixed_entity_values_editable(
+        self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict
+    ):
+        """Loading invalid fixed-entity values should preserve them for editing."""
+        test_dir = temp_config_dir / "test"
+        test_dir.mkdir()
+
+        fixed_project = deepcopy(sample_yaml_dict)
+        fixed_project["entities"] = {
+            "method": {
+                "type": "fixed",
+                "columns": ["method_id"],
+                "values": [["not-an-int"]],
+            }
+        }
+        (test_dir / "shapeshifter.yml").write_text(yaml.dump(fixed_project))
+
+        with patch.object(service, "state") as mock_state:
+            mock_state.get.return_value = None
+
+            config = service.load_project("test")
+
+        assert config.entities["method"]["values"] == [["not-an-int"]]
+        assert config.load_warnings == []
+
     def test_load_configuration_multiple_entities(self, simple_service: ProjectService, sample_config_file):
         """Test loading valid configuration with multiple entities."""
         config = simple_service.load_project("test_project")
@@ -423,7 +448,7 @@ options:
         assert not (service.projects_dir / "unbound-copy").exists()
 
     def test_save_allows_first_assignment_to_legacy_project(self, service: ProjectService):
-        service.state.get.return_value = None
+        cast(MagicMock, service.state).get.return_value = None
         project_dir = service.projects_dir / "legacy"
         project_dir.mkdir()
         (project_dir / "shapeshifter.yml").write_text(
@@ -455,7 +480,7 @@ options:
         assert not (project_path.parent / "backups").exists()
 
     def test_save_rejects_stale_unbound_snapshot_after_first_assignment(self, service: ProjectService):
-        service.state.get.return_value = None
+        cast(MagicMock, service.state).get.return_value = None
         project_dir = service.projects_dir / "legacy"
         project_dir.mkdir()
         project_path = project_dir / "shapeshifter.yml"
@@ -1248,8 +1273,7 @@ options: {}
         # Create nested source
         nested_dir = service.projects_dir / "category" / "source_project"
         nested_dir.mkdir(parents=True)
-        (nested_dir / "shapeshifter.yml").write_text(
-            """
+        (nested_dir / "shapeshifter.yml").write_text("""
 metadata:
   type: shapeshifter-project
   name: category/source_project
@@ -1258,8 +1282,7 @@ metadata:
   provider_schema: schema-one
 entities: {}
 options: {}
-"""
-        )
+""")
 
         result = service.copy_project("category/source_project", "category/target_project")
 

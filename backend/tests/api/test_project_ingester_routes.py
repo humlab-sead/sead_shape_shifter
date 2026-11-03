@@ -205,6 +205,8 @@ async def test_project_routes_forward_authorized_resource_request_and_response(
         {"data_provider_code": "caller"},
         {"run_validation": True},
         {"validate_first": False},
+        {"trusted_project_context": {"local_only_approvals": {"site": {"encoded-key": {"committed_at": "2026-10-19T12:00:00Z"}}}}},
+        {"local_only_approvals": {"site": {"encoded-key": {"committed_at": "2026-10-19T12:00:00Z"}}}},
         {"submission_context": {**PROJECT_REQUEST["submission_context"], "project_name": "project-a"}},
         {"submission_context": {**PROJECT_REQUEST["submission_context"], "data_provider_code": "caller"}},
         {"foreign_key_value_sources": {"location": {"location_type": "public_id"}}},

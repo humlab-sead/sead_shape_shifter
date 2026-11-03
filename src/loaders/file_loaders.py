@@ -1,3 +1,4 @@
+import abc
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar
@@ -33,6 +34,13 @@ class FileLoader(DataLoader):
 
     async def load_file(self, opts: dict[str, str]) -> pd.DataFrame:  # type: ignore[unused-argument]
         raise TypeError("Subclasses must implement load_file method")
+
+    @abc.abstractmethod
+    async def test_connection(self) -> ConnectTestResult:
+        """Returns the result of checking that the source file can be read.
+
+        Implemented by concrete file loaders such as CSV and Excel readers.
+        """
 
     def get_loader_opts(self, table_cfg: "TableConfig") -> dict[str, str]:
         """Get loader options from the TableConfig source."""

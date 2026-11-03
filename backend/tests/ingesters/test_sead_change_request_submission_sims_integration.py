@@ -26,13 +26,6 @@ async def _ingest(ingester: SeadChangeRequestIngester) -> Any:
     return await ingester.ingest_tables(extras["tables"])
 
 
-class DisposableProviderResolver:
-    """Resolve the test data provider to a row seeded only during artifact execution."""
-
-    async def reconcile_entity(self, entity_name: str, row: dict[str, Any]) -> int | None:  # pylint: disable=unused-argument
-        return 1
-
-
 class DisposableManagedIdentityAllocator:
     """Return previously SIMS-allocated IDs for the artifact check."""
 
@@ -303,7 +296,6 @@ async def test_both_artifacts_use_sims_submission_id_and_rollback(tmp_path: Path
                         "data_provider_code": context.data_provider_code,
                     },
                     "deploy_strategy": strategy,
-                    "reconciliation_client": DisposableProviderResolver(),
                     "sims_client": DisposableManagedIdentityAllocator(),
                     "collision_checker": target_database,
                 },

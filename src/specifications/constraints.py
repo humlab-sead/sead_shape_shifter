@@ -53,16 +53,16 @@ class ForeignKeyRuntimeOptions:
     """Resolved runtime behavior for foreign-key null handling."""
 
     enforce_strict_null_keys: bool = True
-    use_null_safe_merge: bool = False
+    prevent_null_key_matches: bool = False
 
     @classmethod
     def from_constraints(cls, constraints: ForeignKeyConstraints) -> "ForeignKeyRuntimeOptions":
         if constraints.null_keys_equal:
-            return cls(enforce_strict_null_keys=False, use_null_safe_merge=False)
+            return cls(enforce_strict_null_keys=False, prevent_null_key_matches=False)
 
         return cls(
             enforce_strict_null_keys=not constraints.allow_null_keys,
-            use_null_safe_merge=constraints.allow_null_keys,
+            prevent_null_key_matches=constraints.allow_null_keys,
         )
 
 
@@ -362,6 +362,7 @@ class ForeignKeyConstraintValidator:
         self.size_after_merge: tuple[int, int] = (0, 0)
         self.issues: list[ValidationIssue] = []
         self.raise_on_violation: bool = raise_on_violation
+        self.link_pass: str = "initial"
 
     def validate_before_merge(self, local_df: pd.DataFrame, remote_df: pd.DataFrame) -> Self:
         """Validate constraints before performing the merge."""
@@ -447,7 +448,10 @@ class ForeignKeyConstraintValidator:
                         metadata={
                             "row_count_before": self.size_before_merge[0],
                             "row_count_after": self.size_after_merge[0],
-                            "join_type": self.fk.how,
+                            "join_type": self.fk.how or "inner",
+                            "fk_index": self.fk.fk_index,
+                            "fk_signature": self.fk.identity_signature,
+                            "link_pass": self.link_pass,
                         },
                     )
                 )

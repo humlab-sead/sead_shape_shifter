@@ -2,6 +2,9 @@
 
 from unittest.mock import Mock
 
+import pytest
+
+from backend.app.exceptions import ValidationError
 from backend.app.models.column_availability import ColumnAvailabilityResponse
 from backend.app.models.project import Project, ProjectMetadata
 from backend.app.services.project_service import ProjectService
@@ -93,3 +96,22 @@ def test_does_not_suggest_a_key_without_a_producer() -> None:
 
     assert result.columns == ["draft_value"]
     assert "unproduced_key" not in result.business_keys
+
+
+def test_invalid_fixed_entity_shape_is_reported_when_resolving_draft_columns() -> None:
+    project = _project()
+    project.entities["data_provider"] = {
+        "type": "fixed",
+        "public_id": "data_provider_id",
+        "columns": ["data_provider_code", "data_provider_name", "contact_id"],
+        "values": [["arbodat-pilot", "Arbodat Pilot", None, "extra"]],
+    }
+    project_service = Mock(spec=ProjectService)
+    project_service.load_project.return_value = project
+    service = StageAwareColumnService(project_service)
+
+    with pytest.raises(ValidationError) as exc_info:
+        service.get_column_availability("test_project", "child", {"type": "entity", "columns": ["child_key"]})
+
+    assert exc_info.value.code == "FIXED_ENTITY_SHAPE_INVALID"
+    assert exc_info.value.context["entity"] == "data_provider"

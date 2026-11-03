@@ -1,0 +1,53 @@
+title: Rename input directory to projects and add data entity validation
+description:
+## Summary
+
+This PR consolidates the repository's input/ directory into the existing projects/ directory and
+tightens project-configuration validation.
+
+ - Directory consolidation: All sample project configurations, data-source option files,
+reconciliation configs, and test fixtures previously under input/ (and
+backend/tests/test_data/configurations/) are renamed to projects/ (and
+backend/tests/test_data/projects/). The backend no longer keeps a separate DATA_SOURCE_FILES_DIR
+setting: global data source YAML files are now listed, uploaded, and read from PROJECTS_DIR.
+Makefile targets, .gitignore, docs, docker documentation, and the frontend data-source dialog label
+were updated to reference projects/.
+ - Configuration cleanup: Removed the unused MAX_ENTITIES_PER_CONFIG and MAX_PROJECT_FILE_SIZE_MB
+settings from backend/app/core/config.py (and their documented environment variables), and deleted
+the redundant root-level docker-compose.yml in favor of docker/docker-compose.yml.
+ - Validation enhancements: Added a new is_absent field validator (FieldIsAbsentValidator in
+src/specifications/fields.py) and a DataEntityFieldsSpecification that rejects data_source/query
+fields on non-SQL data entities; EntityFieldsSpecification now dispatches data-type entities to it.
+The arbodat-test.yml sample was updated to use type: sql for an entity that references a data
+source.
+ - Excel loader refactor: Renamed src/loaders/exel_loaders.py to excel_loaders.py and introduced an
+ExcelLoader base class with a shared get_loader_opts helper that both PandasLoader and
+OpenPyxlLoader now extend.
+ - Docker build script: docker/build.sh now prints colorized build-summary output, and the
+docker-build-github Make target no longer depends on deploy-shell.
+
+## User-facing release note
+
+Project and data-source configuration files now live in a single projects/ directory instead of a
+separate input/ folder, so all sample and uploaded configuration files are managed in one place.
+Project validation now also flags data entities that incorrectly define data_source or query fields.
+
+## Upgrade notes
+
+ - Move the contents of your local input/ directory into projects/ and update any file paths in
+configurations (e.g. ./input/... → ./projects/...) and scripts that reference the old location.
+ - Remove the now-unused SHAPE_SHIFTER_MAX_ENTITIES_PER_CONFIG and
+SHAPE_SHIFTER_MAX_CONFIG_FILE_SIZE_MB environment variables from deployments; they are no longer
+read by the backend.
+ - Docker deployments should use docker/docker-compose.yml; the root-level docker-compose.yml was
+deleted, and the read-only ./input volume mount is no longer documented or required.
+ - Existing project YAMLs with data-type entities that define data_source or query will now fail
+validation; switch such entities to type: sql or remove those fields.
+
+## Validation
+
+ - No CI check results were available for this pull request (statusCheckRollup was empty), so test
+execution and outcomes are unknown; no checks are reported as passed.
+ - The pull request was merged into main (merge commit f64b425b86bd181cfedd7e18f73ccf750e4e1d2a on
+2026-01-20), but the available evidence does not indicate which checks, if any, ran before the
+merge.

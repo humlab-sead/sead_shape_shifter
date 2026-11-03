@@ -1,0 +1,55 @@
+title: Retire release manager; manual deployment files, NGINX bootstrap
+description:
+## Summary
+
+The shape-shifter-container-release host manager and its container-vX.Y.Z archive flow are retired.
+Environments now keep a manual copy of the deployment/container/ tree in ~/container, placed by
+copying or refreshed with sync-to-deploy, until images are published to GHCR.
+manage_container_release.sh stays in the tree only as a reference for its archive-verification
+logic.
+
+ - deploy_environment.sh and install_systemd_service.sh no longer require a manager-managed
+~/container symlink; they accept a real directory (or symlink) that contains a Makefile and VERSION.
+get-install.sh next-step hints now point at sync-to-deploy.
+ - install_nginx_reverse_proxy.sh gains a --bootstrap mode that installs an HTTP-only vhost so
+certbot can obtain a certificate via webroot before the HTTPS vhost is enabled; it refuses to enable
+the HTTPS vhost while the certificate is missing, removes the enable symlink when nginx -t fails,
+validates DOMAIN and UPSTREAM_PORT against injection, installs shared maps once to
+/etc/nginx/conf.d/shape-shifter-maps.conf, and derives a host-unique upstream name so a second Shape
+Shifter site does not cause duplicate map/upstream errors. The vhost template enables auth_basic,
+keeps the ACME challenge path open for renewals, and modernizes TLS/HTTP2 directives.
+ - New docs/proposals/GHCR_IMAGE_RELEASE.md proposes CI-built images published to GHCR and pulled by
+digest as the eventual replacement; docs/TEST_DEPLOYMENT_REFRESH.md documents refreshing the test
+deployment onto the dev tree via sync-to-deploy. DEPLOYMENT.md, the container and container-host
+READMEs, docs/OPERATIONS.md, and scripts/README.md are updated to the manual-copy workflow.
+
+## User-facing release note
+
+Deploying an environment no longer requires the release manager: operators place or refresh the
+deployment files in ~/container with a copy or sync-to-deploy, and the NGINX installer can now set
+up an HTTP-only bootstrap site so a TLS certificate can be obtained before the HTTPS site is
+enabled.
+
+## Upgrade notes
+
+ - Hosts that installed /usr/local/sbin/shape-shifter-container-release no longer need it; the host
+tools now accept a real ~/container directory holding the deployment/container/ tree (with Makefile
+and VERSION). Environments whose ~/container is still a symlink into /opt/shape-shifter/ must have
+that symlink reviewed and removed before placing a real directory.
+ - Refresh deployment files with deployment/container-host/deploy/sync-to-deploy --deploy-user USER,
+then reinstall and restart the systemd unit (make service-install / systemctl --user -M USER@
+restart shape-shifter). The manual layout keeps no previous version on the host: roll back by
+syncing a checkout at an earlier commit.
+ - install_nginx_reverse_proxy.sh now requires an existing certificate for the HTTPS vhost. On hosts
+without one, run it with --bootstrap first, obtain the certificate with certbot certonly --webroot
+-w /var/www/html -d <DOMAIN>, then re-run without --bootstrap. It also rejects DOMAIN/UPSTREAM_PORT
+values that are not a plain hostname and numeric port.
+ - The container-release workflow still publishes container-vX.Y.Z tags, but no environment consumes
+them.
+
+## Validation
+
+ - The Container Release workflow checks validate and publish completed with conclusion SKIPPED on
+this pull request (both jobs did not execute).
+ - No other CI results, test-suite runs, or execution outcomes are available in the provided
+evidence; the shell script and NGINX changes were not observed being run.

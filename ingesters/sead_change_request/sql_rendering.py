@@ -9,7 +9,7 @@ definition of each quoting rule.
 from __future__ import annotations
 
 import gzip
-from collections.abc import Container, Mapping
+from collections.abc import Iterable, Mapping
 from datetime import datetime
 from numbers import Integral, Real
 from typing import Any, cast
@@ -59,7 +59,7 @@ def timezone_aware_target_message(column_type: str | None) -> str:
 
 def validate_target_temporal_types(
     entity_name: str,
-    column_names: Container[str],
+    column_names: Iterable[str],
     column_types: Mapping[str, str | None],
 ) -> None:
     """Reject explicitly timezone-aware target columns before artifact rendering."""

@@ -239,8 +239,30 @@ A hand-added grant needs `subject_type`, `subject_id`, `resource_id`, `role`, `c
 
 The `owner` role is rejected on a `group` or `everyone` subject, so every project keeps a named principal owner. Granting access to a project that is not yet in the snapshot requires adding its resource first, with a new UUID and `lifecycle_state: active`; see [Moving A Resource Locator](#moving-a-resource-locator) for the case where a project moved rather than was created.
 
+## Resource Lifecycle And Background Operations
+
+Authorization checks reject a resource whose lifecycle state is not `active`. A resource in `deleting` or `deleted` fails every check until it returns to `active`.
+
+The table below records resource lifecycle changes and background tasks that use authorization. See the [route inventory](AUTHORIZATION_ROUTE_INVENTORY.md) for the requirement declared by each HTTP route.
+
+| Entry point | Authorization | Lifecycle or operation call | Implementation reference |
+|-------------|---------------|-----------------------------|--------------------------|
+| `POST /api/v1/projects` | `application:create_project` through `require_application_action` | `ProjectService.assign_project_owner` calls `AuthorizationService.register_project`, which creates the project resource and grants the creating principal the `owner` role | `backend/app/api/v1/endpoints/projects.py::create_project`, `backend/app/services/project_service.py::assign_project_owner` |
+| `POST /api/v1/projects/{name}/copy` | `project:read` on the source project plus `application:create_project` | `assign_project_owner` calls `register_project` for the copied project | `backend/app/api/v1/endpoints/projects.py::copy_project` |
+| `DELETE /api/v1/projects/{name}` | `project:delete` through `require_project` | `transition_resource` moves the resource to `deleting`, returns it to `active` when the delete fails, and moves it to `deleted` when the delete succeeds | `backend/app/api/v1/endpoints/projects.py::delete_project` |
+| `POST /api/v1/data-sources` | `application:manage_shared_sources` through `require_application_action` | `AuthorizationService.register_shared_data_source` creates the shared-source resource and grants the creating principal the `reader` role; the created file is deleted again when registration fails | `backend/app/api/v1/endpoints/data_sources.py::create_data_source` |
+| `DELETE /api/v1/data-sources/{filename}` | `application:manage_shared_sources` through `require_application_action` | `transition_resource` moves the resource through `deleting` to `deleted`, and back to `active` when the delete fails | `backend/app/api/v1/endpoints/data_sources.py::delete_data_source` |
+| Auto-reconcile background task | `project:edit` on the route that starts it; `require_operation(Action.READ)` for progress and stream, `require_operation(Action.EDIT)` for cancel | `operation_manager.create_operation` records `owner_principal_id` and `project_resource_id`, and `asyncio.create_task` runs the reconciliation under that operation identifier | `backend/app/api/v1/endpoints/reconciliation.py::auto_reconcile_entity`, `backend/app/core/operation_manager.py::create_operation` |
+| Session cleanup task | None: the task runs outside a request and holds no principal | Releases sessions left inactive for 30 minutes; sessions and the project names they reference are application state, not authorization resources | `backend/app/core/state_manager.py::_cleanup_stale_sessions` |
+
+**Project rename:** no project rename entry point exists. `ProjectService.update_metadata` ignores its `new_name` argument because the project file name is the authoritative source for the project name, so no rename path needs a lifecycle check. The two `update_metadata` docstrings and the `MetadataUpdateRequest.name` description state this instead of pointing at a `rename_project()` method that does not exist.
+
+**Background entry-point search:** the backend has two background task starts and one operation creator: the auto-reconcile task and the session cleanup task above, with `reconciliation.py::auto_reconcile_entity` as the only `create_operation` caller. No `BackgroundTasks`, `run_in_executor`, or other task start reaches protected work.
+
 ## Current Coverage
 
 Implemented controls cover project resources and project children, shared data-source access, project references to shared sources, and authenticated access to the global application and error logs. The policy is intentionally deny-by-default.
 
-Ingester authorization for the generic file routes enforces `application:run_ingesters`, and the saved-project Change Request routes enforce `project:execute` without a deployment role. Source and output path containment and destination database selection for generic ingester operations remain tracked in [Security Hardening Follow-up](proposals/SECURITY_HARDENING_FOLLOWUP/SECURITY_HARDENING_FOLLOWUP.md); data registration requires separate authorization decisions. Every route records a requirement and no row reads `UNDECLARED`. [AUTHORIZATION_ROUTE_INVENTORY.md](AUTHORIZATION_ROUTE_INVENTORY.md) holds the classification together with its dated review, which Phase 1 of the [cutover plan](proposals/done/CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md) produced.
+Ingester authorization for the generic file routes enforces `application:run_ingesters`, with an additional `project:execute` check for the retired `sead_change_request` key. The saved-project Change Request routes enforce `project:execute` without a deployment role. Source and output path containment and destination database selection for generic ingester operations remain tracked in [Security Hardening Follow-up](proposals/SECURITY_HARDENING_FOLLOWUP/SECURITY_HARDENING_FOLLOWUP.md); data registration requires separate authorization decisions.
+
+The [route inventory](AUTHORIZATION_ROUTE_INVENTORY.md) records each route requirement. Backend tests compare API route rows with route and dependency metadata, and compare the documented direct and mounted paths with the assembled application. Phase 1 of the [cutover plan](proposals/done/CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md) produced the inventory.

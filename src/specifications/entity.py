@@ -1,7 +1,7 @@
 """Specifications for validating entity configurations."""
 
 import re
-from typing import Any
+from typing import Any, ClassVar
 
 import pandas as pd
 
@@ -692,7 +692,37 @@ class DropDuplicatesSpecification(ProjectSpecification):
 
 @ENTITY_SPECIFICATION.register(key="foreign_keys")
 class ForeignKeySpecification(ProjectSpecification):
-    """Validates foreign key setups."""
+    """Validates active foreign key setups and their constraints.
+
+    Saved foreign keys in ``materialized.source_state`` are not active configuration.
+    They are validated after restoration moves them back to ``entity.foreign_keys``.
+    """
+
+    _foreign_key_fields: ClassVar[frozenset[str]] = frozenset(
+        {
+            "entity",
+            "local_keys",
+            "remote_keys",
+            "how",
+            "extra_columns",
+            "drop_remote_id",
+            "defer_dependency",
+            "constraints",
+        }
+    )
+    _cardinalities: ClassVar[tuple[str, ...]] = ("one_to_one", "many_to_one", "one_to_many", "many_to_many")
+    _boolean_constraint_fields: ClassVar[frozenset[str]] = frozenset(
+        {
+            "allow_unmatched_left",
+            "allow_unmatched_right",
+            "allow_row_decrease",
+            "require_unique_left",
+            "require_unique_right",
+            "allow_null_keys",
+            "null_keys_equal",
+        }
+    )
+    _constraint_fields: ClassVar[frozenset[str]] = _boolean_constraint_fields | {"cardinality"}
 
     def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
         """Check that foreign key configurations are valid."""
@@ -704,6 +734,17 @@ class ForeignKeySpecification(ProjectSpecification):
 
         for idx, fk in enumerate(fk_cfgs):
             fk_id: str = f"Entity '{entity_name}', foreign key #{idx + 1}"
+
+            if not isinstance(fk, dict):
+                self.add_error(
+                    f"{fk_id}: configuration must be a mapping",
+                    entity=entity_name,
+                    field=f"foreign_keys[{idx}]",
+                    foreign_key=fk_id,
+                )
+                continue
+
+            self._validate_fk_fields(entity_name=entity_name, fk_index=idx, fk=fk, fk_id=fk_id)
 
             self.check_fields(entity_name, ["entity", "local_keys", "remote_keys"], "exists/E", target_cfg=fk, message=fk_id)
             self.check_fields(entity_name, ["local_keys", "remote_keys"], "is_string_list/E", target_cfg=fk, message=fk_id)
@@ -735,6 +776,58 @@ class ForeignKeySpecification(ProjectSpecification):
                 )
 
         return not self.has_errors()
+
+    def _validate_fk_fields(self, *, entity_name: str, fk_index: int, fk: dict[str, Any], fk_id: str) -> None:
+        """Report unknown FK fields and malformed constraint settings."""
+        for key in sorted((key for key in fk if key not in self._foreign_key_fields), key=str):
+            self.add_error(
+                f"{fk_id}: unknown foreign key key {key!r}",
+                entity=entity_name,
+                field=f"foreign_keys[{fk_index}].{key}",
+                foreign_key=fk_id,
+            )
+
+        if "constraints" not in fk:
+            return
+
+        constraints: Any = fk["constraints"]
+        constraints_field: str = f"foreign_keys[{fk_index}].constraints"
+        if not isinstance(constraints, dict):
+            self.add_error(
+                f"{fk_id}: 'constraints' must be a mapping, got {type(constraints).__name__}",
+                entity=entity_name,
+                field=constraints_field,
+                foreign_key=fk_id,
+            )
+            return
+
+        for key in sorted((key for key in constraints if key not in self._constraint_fields), key=str):
+            self.add_error(
+                f"{fk_id}: unknown constraint key {key!r}",
+                entity=entity_name,
+                field=f"{constraints_field}.{key}",
+                foreign_key=fk_id,
+            )
+
+        if "cardinality" in constraints:
+            cardinality: Any = constraints["cardinality"]
+            if not isinstance(cardinality, str) or cardinality not in self._cardinalities:
+                supported: str = ", ".join(self._cardinalities)
+                self.add_error(
+                    f"{fk_id}: 'constraints.cardinality' must be one of {supported}, got {cardinality!r}",
+                    entity=entity_name,
+                    field=f"{constraints_field}.cardinality",
+                    foreign_key=fk_id,
+                )
+
+        for key in sorted(self._boolean_constraint_fields):
+            if key in constraints and not isinstance(constraints[key], bool):
+                self.add_error(
+                    f"{fk_id}: 'constraints.{key}' must be a boolean, got {type(constraints[key]).__name__}",
+                    entity=entity_name,
+                    field=f"{constraints_field}.{key}",
+                    foreign_key=fk_id,
+                )
 
     def same_number_of_join_keys(self, entity_name: str, fk: dict[str, Any], fk_id: str):
         """Check that local_keys and remote_keys have the same length."""

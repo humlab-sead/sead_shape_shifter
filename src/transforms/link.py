@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 import pandas as pd
 from loguru import logger
@@ -8,7 +8,10 @@ from src.process_state import DeferredLinkingTracker
 from src.specifications import ForeignKeyDataSpecification
 from src.specifications.constraints import ForeignKeyConstraintValidator, ForeignKeyRuntimeOptions
 from src.table_store import TableStore
-from src.transforms.utility import merge_with_null_safety
+from src.transforms.utility import merge_with_nonmatching_null_keys
+
+LinkPass = Literal["initial", "after_unnest", "deferred_retry"]
+"""Which linking pass raised a validation issue."""
 
 
 def _is_lookup_fk_enrichment(fk: ForeignKeyConfig, remote_cfg: TableConfig) -> bool:
@@ -30,7 +33,7 @@ def _resolve_fk_runtime_options(fk: ForeignKeyConfig, remote_cfg: TableConfig) -
         return ForeignKeyRuntimeOptions.from_constraints(fk.constraints)
 
     if _is_lookup_fk_enrichment(fk, remote_cfg):
-        return ForeignKeyRuntimeOptions(enforce_strict_null_keys=False, use_null_safe_merge=True)
+        return ForeignKeyRuntimeOptions(enforce_strict_null_keys=False, prevent_null_key_matches=True)
 
     return ForeignKeyRuntimeOptions.from_constraints(fk.constraints)
 
@@ -65,6 +68,7 @@ class ForeignKeyLinker:
         self.table_store: TableStore = table_store
         self.validators: list[ForeignKeyConstraintValidator] = []
         self.deferred_tracker: DeferredLinkingTracker = DeferredLinkingTracker()
+        self.link_pass: LinkPass = "initial"
 
     def link_foreign_key(
         self,
@@ -95,7 +99,9 @@ class ForeignKeyLinker:
             fk=fk,
             remote_entity=remote_entity,
             runtime_options=runtime_options,
-        ).validate_before_merge(local_df, remote_df)
+        )
+        validator.link_pass = self.link_pass
+        validator.validate_before_merge(local_df, remote_df)
 
         # Store validator to collect issues later
         self.validators.append(validator)
@@ -115,11 +121,11 @@ class ForeignKeyLinker:
             opts["right_on"] = [link_setup.rename_map.get(key, key) for key in opts["right_on"]]
 
         try:
-            linked_df: pd.DataFrame = merge_with_null_safety(
+            linked_df: pd.DataFrame = merge_with_nonmatching_null_keys(
                 local_df=local_df,
                 remote_df=remote_df,
                 allow_null_keys=fk.constraints.allow_null_keys,
-                use_null_safe_merge=runtime_options.use_null_safe_merge,
+                prevent_null_key_matches=runtime_options.prevent_null_key_matches,
                 **opts,
             )
         except Exception as e:

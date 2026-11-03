@@ -95,17 +95,17 @@ def handle_endpoint_errors(func: Callable[..., T]) -> Callable[..., T]:
 
         # Handle custom API exceptions with status codes (legacy)
         except BaseAPIException as e:
-            logger.error(f"API error in {func.__name__} [{e.__class__.__name__}]")
+            logger.exception(f"API error in {func.__name__} [{e.__class__.__name__}]")
             raise HTTPException(status_code=e.status_code, detail=public_error_detail("Request failed")) from e
 
         # Handle service-level errors (legacy - generic 500)
         except (ProjectServiceError, YamlServiceError) as e:
-            logger.error(f"Service error in {func.__name__} [{e.__class__.__name__}]")
+            logger.exception(f"Service error in {func.__name__} [{e.__class__.__name__}]")
             raise HTTPException(status_code=500, detail=public_error_detail("Request failed")) from e
 
         # Handle unexpected errors (structured response)
         except Exception as e:
-            logger.error(f"Unexpected error in {func.__name__} [{e.__class__.__name__}]")
+            logger.exception(f"Unexpected error in {func.__name__} [{e.__class__.__name__}]")
             raise HTTPException(
                 status_code=500,
                 detail={

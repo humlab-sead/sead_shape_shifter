@@ -102,7 +102,39 @@ describe('useColumnAvailability', () => {
     composable.refresh('project', 'entity', { entity_draft: {} })
     await vi.advanceTimersByTimeAsync(300)
     await vi.runAllTicks()
-    expect(composable.error.value).toBe('request failed')
+    expect(composable.error.value?.message).toBe('request failed')
+    expect(composable.loading.value).toBe(false)
+    scope.stop()
+  })
+
+  it('preserves structured validation details from FastAPI error responses', async () => {
+    mockGetColumnAvailability.mockRejectedValue({
+      isAxiosError: true,
+      response: {
+        data: {
+          detail: {
+            error_type: 'ValidationError',
+            error_code: 'FIXED_ENTITY_SHAPE_INVALID',
+            message: "Entity 'data_provider' row 0 has an invalid number of values.",
+            tips: ['Check the fixed entity columns and values.'],
+            context: { entity: 'data_provider' },
+            recoverable: true,
+          },
+        },
+      },
+    })
+    const scope = effectScope()
+    let composable!: ReturnType<typeof useColumnAvailability>
+    scope.run(() => {
+      composable = useColumnAvailability()
+    })
+
+    composable.refresh('project', 'entity', { entity_draft: {} })
+    await vi.advanceTimersByTimeAsync(300)
+    await vi.runAllTicks()
+
+    expect(composable.error.value?.message).toBe("Entity 'data_provider' row 0 has an invalid number of values.")
+    expect(composable.error.value?.tips).toEqual(['Check the fixed entity columns and values.'])
     expect(composable.loading.value).toBe(false)
     scope.stop()
   })

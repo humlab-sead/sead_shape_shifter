@@ -1,0 +1,60 @@
+title: Fix entity state syncing and remove server-side YAML project caching
+description:
+## Summary
+
+Fixes the stale-state bug where entity edits were not reflected when the entity editor was reopened
+(#188), and removes the server-side caching of parsed YAML projects (#189).
+
+ - Frontend (EntityFormDialog.vue, FixedValuesGrid.vue): On dialog open in edit mode, the form now
+always fetches fresh entity data from the API (the YAML file being the source of truth), falling
+back to the passed-in entity prop if the fetch fails. The previous props.entity watcher was removed
+in favor of a single modelValue (open/close) watcher. The fixed-values grid now treats system_id and
+public_id as regular columns, parses system_id values as integers, and auto-populates missing
+system_id values with sequential numbers. The System ID field is styled as read-only instead of
+disabled.
+ - Backend (project_service.py, state_manager.py): ProjectService.load_project no longer returns a
+cached active project from ApplicationState; it always reads from disk. ApplicationStateManager no
+longer stores project objects and instead only maintains per-project version counters
+(increment_version / update_version) for cache invalidation.
+ - Identity naming (src/model.py and related code): The legacy surrogate_id backward-compatibility
+fallback was removed from TableConfig.system_id and TableConfig.public_id; public_id is now the sole
+configuration key. Column reordering in ShapeShiftProject now also moves a table's own public_id
+column forward alongside system_id and FK columns.
+ - Project/test data and tests: surrogate_id keys were renamed to public_id throughout
+projects/arbodat-test.yml, projects/strucke_test.yml, the backend test project fixture, and all
+affected unit/integration tests. Fixed entities in the sample projects now list system_id and
+public_id explicitly in columns and carry explicit values.
+ - Documentation: Added docs/STATE_SYNC_ANALYSIS.md (root-cause analysis of the sync bug and
+rationale for the fresh-fetch approach); updated docs/CONFIGURATION_GUIDE.md,
+docs/RECONCILIATION_SETUP_GUIDE.md, AGENTS.md, and .github/copilot-instructions.md to document the
+three-tier identity system (system_id / keys / public_id).
+ - Tooling/ops: Docker Makefile gained a guard-docker-files-exists target, dropped
+docker-build-local, uses pushd/popd for compose commands, and rsync-to-sead-tools now syncs
+docker-compose.yml (whose build context changed accordingly). Version bumped to 1.15.0
+(pyproject.toml, uv.lock, backend __init__.py, CHANGELOG).
+
+## User-facing release note
+
+Reopening an entity in the editor now always shows the latest saved state, since the editor
+refetches the entity from the project file each time it opens and the server no longer serves cached
+project data. Project configurations must use public_id instead of the old surrogate_id key, which
+is no longer recognized.
+
+## Upgrade notes
+
+ - Breaking: The legacy surrogate_id key is no longer supported in project YAML. Rename all
+surrogate_id entries to public_id in your project files (see the updated projects/arbodat-test.yml
+and projects/strucke_test.yml for reference).
+ - Fixed-value entities should list system_id and the public_id column explicitly in columns and
+include their values in each row, as demonstrated in the updated sample project files.
+ - Docker users: the compose build context now resolves relative to the docker/ directory, and the
+docker-build-local and docker-rebuild Make targets were removed; use
+docker-build/docker-build-github and compose commands instead.
+
+## Validation
+
+Not verified: validation results unavailable. No CI check results were included with this pull
+request (the status check rollup is empty), and no test run outputs were provided. The diff updates
+numerous test files (renaming surrogate_id to public_id and adjusting assertions), but their
+execution results are unknown. The pull request was merged on 2026-01-29; no information about
+pre-merge checks was available.

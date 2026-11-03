@@ -52,9 +52,9 @@ class FunctionalDependencySpecification(Specification):
         distinct: pd.DataFrame = df[cols].drop_duplicates()
 
         grouped: DataFrameGroupBy = distinct.groupby(determinant_columns, sort=False, dropna=False)
-        counts: pd.Series = grouped.size()
+        counts: pd.Series | pd.Series = grouped.size()
 
-        bad: pd.Series = counts[counts > 1]
+        bad: pd.DataFrame | pd.Series = counts[counts > 1]
         if bad.empty:
             return True
 
@@ -97,7 +97,7 @@ class FunctionalDependencySpecification(Specification):
 
         for key in bad_keys[:max_bad_keys]:
             key_tuple = key if isinstance(key, tuple) else (key,)
-            group: pd.DataFrame = grouped.get_group(key_tuple)
+            group: pd.DataFrame | pd.Series = grouped.get_group(key_tuple)
             violating_columns: list[str] = [col for col in dependent_columns if group[col].nunique(dropna=False) > 1]
             example_columns: list[str] = determinant_columns + violating_columns
             examples: pd.DataFrame = group[example_columns].head(max_example_rows)

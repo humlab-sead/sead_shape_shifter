@@ -28,6 +28,16 @@ def _attach_authorization_requirement(
     return dependency
 
 
+def declare_authenticated_route(endpoint: DependencyCallable) -> DependencyCallable:
+    """Mark a route as requiring authentication without adding a runtime check."""
+    return _attach_authorization_requirement(endpoint, {"requirement": "authenticated"})
+
+
+def declare_public_route(endpoint: DependencyCallable) -> DependencyCallable:
+    """Mark a route as public without adding a runtime check."""
+    return _attach_authorization_requirement(endpoint, {"requirement": "public"})
+
+
 def get_authorization_repository() -> Generator[AuthorizationRepository, None, None]:
     """Open the configured authorization repository for one request."""
     repository = SQLiteAuthorizationRepository(settings.AUTHORIZATION_DATABASE_PATH)
@@ -256,7 +266,7 @@ def require_ingester_project(action: Action) -> Callable:
 
     return _attach_authorization_requirement(
         dependency,
-        {"resource_type": ResourceType.PROJECT.value, "action": action.value},
+        {"resource_type": ResourceType.PROJECT.value, "action": action.value, "condition": "key=sead_change_request"},
     )
 
 

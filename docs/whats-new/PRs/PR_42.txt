@@ -1,0 +1,61 @@
+title: Grid editing for fixed entities with Ag-Grid, plus form
+description:
+## Summary
+
+Adds an editable grid for the values of fixed type entities in the frontend entity form. The new
+FixedValuesGrid.vue component is built on Ag-Grid Community Edition (ag-grid-community /
+ag-grid-vue3 ^32.3.3, MIT licensed) and is lazily loaded from EntityFormDialog.vue, so the grid
+bundle is only fetched when a fixed entity is edited. Grid columns are generated from the entity's
+combined Keys + Columns fields, and the component supports inline cell editing, checkbox row
+selection, Add Row, Delete Selected, sorting, filtering and resizable columns. Edits are emitted
+back as the 2D values array, which is now round-tripped through form state, YAML export/import
+(formDataToYaml / yamlToFormData) and the create/update payload in handleSubmit.
+
+The same PR extends the entity form and advanced config editor with several other entity settings:
+
+ - Extra Columns editing in AdvancedEntityConfig.vue, which converts the extra_columns mapping to
+and from an editable list of column/source pairs.
+ - Basic-tab controls for depends_on, drop_duplicates (with optional deduplication columns),
+drop_empty_rows (with optional columns to check) and check_functional_dependency, each serialized to
+the corresponding YAML keys and parsed back from them.
+ - A reworked, compact Basic tab layout (row-based field grouping, smaller font/padding styles) and
+theme-aware colors in EntityDataPreview.vue (bg-grey-lighten-* utilities replaced by Vuetify theme
+variables).
+
+Supporting changes: frontend/GRID_INSTALLATION.md documents the grid installation, features and
+usage; components.d.ts registers FixedValuesGrid; TODO.md records the remaining grid-editor work as
+TODO #41; input/arbodat-test.yml is reformatted to the compact YAML style used by the editor output
+(single-line sequences/queries, source: instead of source: null, drop_duplicates: true), and its
+trailing mappings, finally, replacements sections and commented-out blocks are removed in favour of
+a test_entity stub.
+
+The Makefile was reorganized around new dev shortcuts: kill (backend + frontend), br (restart
+backend), fr (restart frontend) and fr2 (kill, fast build, run). Port-based backend-kill /
+frontend-kill targets replace the previous sudo pkill command, FRONEND_PORT was corrected to
+FRONTEND_PORT, and the frontend-build target now clears the Vite cache and runs the dev server
+instead of pnpm build.
+
+## User-facing release note
+
+Fixed entity values can now be edited in a spreadsheet-like grid inside the entity form's Basic tab,
+with row add/delete, sorting and filtering, instead of hand-editing YAML. The entity form also
+exposes extra columns, dependencies, duplicate/empty-row dropping and functional-dependency checks,
+and the form is more compact.
+
+## Upgrade notes
+
+Run pnpm install in frontend/ before building or running the frontend: the new ag-grid-community and
+ag-grid-vue3 dependencies are required by the grid component.
+
+Makefile usage changes if you rely on its targets: FRONEND_PORT is now spelled FRONTEND_PORT, make
+frontend-build no longer runs pnpm build (it clears node_modules/.vite and dist and starts the dev
+server; use frontend-build-fast for a type-check-skipping build), and server shutdown now uses
+port-based backend-kill / frontend-kill (via lsof) rather than sudo pkill. New shortcuts are kill,
+br, fr and fr2.
+
+## Validation
+
+No validation results were available for this pull request: the status check rollup is empty and the
+diff contains no tests, so no checks can be reported as passed or failed. The PR was merged into
+dev (merge commit c4541dc7d2902ef95d0e1989a5c06f589af2104a), which is the only outcome evidence
+present.

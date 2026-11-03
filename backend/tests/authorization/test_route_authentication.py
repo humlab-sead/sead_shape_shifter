@@ -22,46 +22,9 @@ ROUTE_INVENTORY = PROJECT_ROOT / "docs" / "AUTHORIZATION_ROUTE_INVENTORY.md"
 API_PREFIX = "/api/v1"
 PUBLIC_HEALTH_PATH = f"{API_PREFIX}/health"
 
-# The only API path the trusted-proxy middleware serves without an identity.
-PUBLIC_API_PATHS: frozenset[str] = frozenset({"/health"})
-
-# API routes that carry no dependency authorization_requirement because the request is not
-# addressed to one stored resource. Each path is classified authenticated in
-# AUTHORIZATION_ROUTE_INVENTORY.md; keep this set in sync with that document.
-AUTHENTICATED_ONLY_API_PATHS: frozenset[str] = frozenset(
-    {
-        "/docs",  # FastAPI-generated Swagger UI
-        "/data-providers",  # curated provider-schema registry; read-only
-        "/data-sources",  # response narrowed to shared sources the principal can read
-        "/data-sources/drivers",  # non-sensitive driver metadata
-        "/data-sources/entity-types",  # non-sensitive entity-type metadata
-        "/data-sources/excel/metadata",  # handler narrows global and project-local reads
-        "/data-sources/files",  # handler narrows global and project-local reads
-        "/data-sources/tables",  # client-supplied configuration introspection
-        "/data-sources/tables/schema",  # client-supplied configuration introspection
-        "/dispatchers",  # registered output-dispatcher metadata
-        "/filters/types",  # filter configuration schemas
-        "/help-docs/{doc_path:path}",  # repository documentation, contained under docs/
-        "/ingesters",  # registered ingester metadata
-        "/logs/{log_type}",  # application and error logs are global
-        "/logs/{log_type}/download",  # application and error logs are global
-        "/openapi.json",  # FastAPI-generated OpenAPI schema
-        "/projects",  # response narrowed to projects the principal can read
-        "/reconciliation/health",  # reconciliation service status and configured URL
-        "/reconciliation/manifest",  # reconciliation service manifest
-        "/redoc",  # FastAPI-generated ReDoc UI
-        "/suggestions/analyze",  # client-supplied entity configuration
-        "/suggestions/entity",  # client-supplied entity configuration
-        "/whats-new",  # release notes published under docs/whats-new/
-        "/whats-new/{version}/content",  # release notes published under docs/whats-new/
-    }
-)
-
 # Documented non-API and mounted paths that depend on the frontend build state. An API-only
 # runtime does not serve them, so the parity check does not require them to exist.
 CONDITIONAL_DOCUMENTED_PATHS: frozenset[str] = frozenset({"/", "/assets/*", "/{full_path:path}"})
-
-CLASSIFIED_API_PATHS: frozenset[str] = PUBLIC_API_PATHS | AUTHENTICATED_ONLY_API_PATHS
 
 
 def _concrete_path(path: str) -> str:
@@ -92,26 +55,26 @@ def _protected_route_paths() -> list[str]:
     return sorted(paths)
 
 
-def _inventory_route_rows() -> list[tuple[str, str]]:
-    """Read the method and path cell of every route row in the maintained inventory."""
-    rows: list[tuple[str, str]] = []
+def _inventory_route_rows() -> list[tuple[str, str, str]]:
+    """Read the method, path, and requirement cells of every route row in the inventory."""
+    rows: list[tuple[str, str, str]] = []
     for line in ROUTE_INVENTORY.read_text(encoding="utf-8").splitlines():
         if not line.startswith("|"):
             continue
         cells = [cell.strip() for cell in line.strip("|").split("|")]
         if len(cells) < 3:
             continue
-        methods, path = cells[0].strip("`"), cells[1].strip("`")
+        methods, path, requirement = cells[0].strip("`"), cells[1].strip("`"), cells[2]
         if not path.startswith("/") or methods.startswith("-"):
             continue
-        rows.append((methods, path))
+        rows.append((methods, path, requirement))
     return rows
 
 
 def _documented_api_routes() -> set[tuple[str, str]]:
     """Read method/path entries from the maintained authorization route inventory."""
     routes: set[tuple[str, str]] = set()
-    for methods, path in _inventory_route_rows():
+    for methods, path, _ in _inventory_route_rows():
         if not path.startswith(f"{API_PREFIX}/"):
             continue
         for method in methods.split(","):
@@ -119,9 +82,26 @@ def _documented_api_routes() -> set[tuple[str, str]]:
     return routes
 
 
+def _requirement_labels(value: str) -> set[str]:
+    """Split the inventory requirement cell into normalized labels."""
+    return {requirement.strip().strip("`").casefold() for requirement in value.split(";") if requirement.strip()}
+
+
+def _documented_api_route_requirements() -> dict[tuple[str, str], set[str]]:
+    """Read each API route's requirement labels from the maintained inventory."""
+    requirements: dict[tuple[str, str], set[str]] = {}
+    for methods, path, requirement in _inventory_route_rows():
+        if not path.startswith(f"{API_PREFIX}/"):
+            continue
+        labels = _requirement_labels(requirement)
+        for method in methods.split(","):
+            requirements[(method.strip(), path)] = labels
+    return requirements
+
+
 def _documented_non_api_paths() -> set[str]:
     """Read documented paths outside the API prefix, such as generated and mounted routes."""
-    return {path for _, path in _inventory_route_rows() if not path.startswith(f"{API_PREFIX}/")}
+    return {path for _, path, _ in _inventory_route_rows() if not path.startswith(f"{API_PREFIX}/")}
 
 
 def _runtime_api_routes() -> set[tuple[str, str]]:
@@ -144,22 +124,62 @@ def _runtime_non_api_paths() -> set[str]:
 
 
 def _authorization_requirement(dependency: object) -> dict[str, str] | None:
-    """Return authorization metadata attached to a dependency factory."""
+    """Return authorization metadata attached to an endpoint or dependency."""
     requirement = getattr(dependency, "authorization_requirement", None)
     return requirement if isinstance(requirement, dict) else None
 
 
+def _authorization_requirement_label(requirement: dict[str, str]) -> str:
+    """Convert route metadata to the requirement label used in the inventory."""
+    declared_requirement = requirement.get("requirement")
+    if declared_requirement is not None:
+        return declared_requirement.casefold()
+
+    resource_type = requirement.get("resource_type")
+    action = requirement.get("action")
+    if resource_type == "project_or_shared_data_source" and action == "read":
+        label = "project or shared-source read"
+    else:
+        label = f"{resource_type}:{action}"
+    condition = requirement.get("condition")
+    return f"{label} when {condition}" if condition is not None else label
+
+
+def _route_authorization_requirements(route: BaseRoute) -> set[str]:
+    """Return all authorization requirement labels declared on a route or its dependencies."""
+    requirements: set[str] = set()
+    endpoint_requirement = _authorization_requirement(getattr(route, "endpoint", None))
+    if endpoint_requirement is not None:
+        requirements.add(_authorization_requirement_label(endpoint_requirement))
+
+    dependant = getattr(route, "dependant", None)
+    dependencies = getattr(dependant, "dependencies", ()) if dependant is not None else ()
+    for dependency in dependencies:
+        requirement = _authorization_requirement(dependency.call)
+        if requirement is not None:
+            requirements.add(_authorization_requirement_label(requirement))
+    return requirements
+
+
+def _runtime_api_route_requirements() -> dict[tuple[str, str], set[str]]:
+    """Read requirement labels from the assembled API route metadata."""
+    requirements: dict[tuple[str, str], set[str]] = {}
+    for route, path, methods in _assembled_routes():
+        if path is None or not methods or not path.startswith(f"{API_PREFIX}/"):
+            continue
+        labels = _route_authorization_requirements(route)
+        for method in methods:
+            requirements[(method, path)] = labels
+    return requirements
+
+
 def _unclassified_api_routes(routes: list[tuple[BaseRoute, str | None, set[str] | None]] | None = None) -> list[str]:
-    """Return API routes with neither declared authorization metadata nor a documented classification."""
+    """Return API routes without declared authorization metadata."""
     unclassified: list[str] = []
     for route, path, methods in _assembled_routes() if routes is None else routes:
         if path is None or not methods or not path.startswith(f"{API_PREFIX}/"):
             continue
-        if path.removeprefix(API_PREFIX) in CLASSIFIED_API_PATHS:
-            continue
-        dependant = getattr(route, "dependant", None)
-        dependencies = getattr(dependant, "dependencies", ()) if dependant is not None else ()
-        if any(_authorization_requirement(dependency.call) is not None for dependency in dependencies):
+        if _route_authorization_requirements(route):
             continue
         unclassified.append(f"{','.join(sorted(methods))} {path}")
     return sorted(unclassified)
@@ -228,6 +248,22 @@ def test_route_inventory_matches_assembled_api_routes() -> None:
 
     assert runtime <= documented, f"Runtime API routes missing from inventory: {sorted(runtime - documented)}"
     assert documented <= runtime, f"Inventory contains unregistered API routes: {sorted(documented - runtime)}"
+
+
+def test_route_inventory_matches_authorization_metadata() -> None:
+    """Keep each documented API requirement aligned with route and dependency metadata."""
+    documented = _documented_api_route_requirements()
+    runtime = _runtime_api_route_requirements()
+    mismatches = {
+        route: {
+            "documented": sorted(documented.get(route, set())),
+            "runtime": sorted(runtime.get(route, set())),
+        }
+        for route in sorted(documented.keys() | runtime.keys())
+        if documented.get(route, set()) != runtime.get(route, set())
+    }
+
+    assert not mismatches, f"API route authorization requirements differ from metadata: {mismatches}"
 
 
 def test_route_inventory_matches_direct_and_mounted_routes() -> None:

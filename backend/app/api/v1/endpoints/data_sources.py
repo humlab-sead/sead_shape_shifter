@@ -13,6 +13,7 @@ from loguru import logger
 
 from backend.app.api.dependencies import get_data_source_service
 from backend.app.authorization.dependencies import (
+    declare_authenticated_route,
     get_authorization_service,
     get_principal,
     require_application_action,
@@ -53,6 +54,7 @@ ENTITY_TYPES: list[EntityTypeInfo] = [
 
 
 @router.get("/drivers", response_model=dict[str, DriverSchemaResponse], summary="Get available data source drivers")
+@declare_authenticated_route
 async def list_drivers() -> dict[str, DriverSchemaResponse]:
     """
     Get metadata for all available data source drivers.
@@ -133,12 +135,14 @@ async def list_drivers() -> dict[str, DriverSchemaResponse]:
 
 
 @router.get("/entity-types", response_model=list[EntityTypeInfo], summary="Get supported entity types")
+@declare_authenticated_route
 async def list_entity_types() -> list[EntityTypeInfo]:
     """Return the supported entity types for the entity type selector."""
     return ENTITY_TYPES
 
 
 @router.get("", response_model=list[DataSourceConfig], summary="List all global data sources")
+@declare_authenticated_route
 async def list_data_sources(
     principal: Annotated[Principal, Depends(data_source_principal_dependency)],
     authorization_service: Annotated[AuthorizationService, Depends(get_authorization_service)],
@@ -171,6 +175,7 @@ async def list_data_sources(
 
 
 @router.get("/files", response_model=list[ProjectFileInfo], summary="List available data source files")
+@declare_authenticated_route
 @handle_endpoint_errors
 async def list_data_source_files(
     principal: Annotated[Principal, Depends(data_source_principal_dependency)],
@@ -194,6 +199,7 @@ async def list_data_source_files(
 
 
 @router.get("/excel/metadata", response_model=ExcelMetadataResponse, summary="Get Excel sheets and columns")
+@declare_authenticated_route
 @handle_endpoint_errors
 async def get_excel_metadata(
     principal: Annotated[Principal, Depends(data_source_principal_dependency)],

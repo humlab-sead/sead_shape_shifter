@@ -557,6 +557,8 @@ class TestDataValidation:
         mock_api_project.model_dump.return_value = {}
         mock_api_project.filename = None
         mock_api_project.entities = {}
+        mock_api_project.load_warnings = ["Entity 'method' was normalized while loading"]
+        mock_api_project.load_errors = []
         mock_core_project = Mock()
         mock_core_project.cfg = {"entities": {}}
 
@@ -582,7 +584,8 @@ class TestDataValidation:
 
         assert result.is_valid is False
         assert result.error_count == 1
-        assert result.warning_count == 2
+        assert result.warning_count == 3
+        assert result.warnings[0].code == "FIXED_ENTITY_VALUE_NORMALIZED"
         assert len(result.info) == 1
         assert result.status == DataValidationStatus.COMPLETED
         assert result.entity_statuses["entity1"].status == EntityDataValidationStatus.COMPLETED
@@ -675,8 +678,8 @@ class TestValidateTargetModel:
         assert result.is_valid is True
         assert result.errors == []
 
-    def test_missing_target_model_file_is_silently_ignored(self, validation_service: ValidationService):
-        """FileNotFoundError from @load resolution must be silently ignored (valid=True, no errors)."""
+    def test_missing_target_model_file_returns_a_validation_error(self, validation_service: ValidationService):
+        """A missing configured reference must not produce an empty successful conformance result."""
         mock_api_project = Mock(spec=Project)
 
         with patch("backend.app.services.validation_service.get_project_service") as mock_get_service:
@@ -690,8 +693,9 @@ class TestValidateTargetModel:
             ):
                 result = validation_service.validate_target_model("test-project")
 
-        assert result.is_valid is True
-        assert result.errors == []
+        assert result.is_valid is False
+        assert result.errors[0].code == "TARGET_MODEL_LOAD_FAILED"
+        assert result.errors[0].suggestion
 
     @pytest.mark.parametrize("include_static_error", [False, True])
     def test_conditional_foreign_key_is_returned_as_info(self, validation_service: ValidationService, include_static_error: bool):

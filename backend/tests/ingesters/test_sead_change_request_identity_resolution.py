@@ -191,7 +191,7 @@ class TestResolveStagedChildren:
                 "foreign_keys": [{"entity": "site", "required": True}],
             },
         )
-        site = _planned("site", pd.DataFrame({"system_id": [1], "site_id": [None]}), PlannedRowAction.RECONCILE)
+        site = _planned("site", pd.DataFrame({"system_id": [1], "site_id": [None]}), PlannedRowAction.BLOCK_RECONCILIATION)
         prop = _planned(
             "site_property",
             pd.DataFrame({"system_id": [10], "site_property_id": [None], "site_id": [1]}),
@@ -215,7 +215,11 @@ class TestResolveStagedChildren:
                 "foreign_keys": [{"entity": "value_type", "required": True}],
             },
         )
-        value_type = _planned("value_type", pd.DataFrame({"system_id": [1], "value_type_id": [None]}), PlannedRowAction.RECONCILE)
+        value_type = _planned(
+            "value_type",
+            pd.DataFrame({"system_id": [1], "value_type_id": [None]}),
+            PlannedRowAction.BLOCK_RECONCILIATION,
+        )
         item = _planned(
             "value_type_item",
             pd.DataFrame({"system_id": [10], "value_type_item_id": [None], "value_type_id": [1]}),
@@ -264,15 +268,41 @@ class TestResolvePlannedTables:
         assert resolved.resolved_target_ids.tolist() == [101]
         assert result.blocked_rows == 0
 
+    def test_verified_existing_links_require_and_use_the_sims_binding(self):
+        frame = pd.DataFrame({"site_id": [501], "site_name": ["Accepted Site"]})
+        planned_table = _planned("site", frame, PlannedRowAction.REFERENCE_EXISTING)
+        target_model = minimal_target_model(site={"role": "lookup", "public_id": "site_id"})
+        approved_targets: dict[str, dict[object, int]] = {"site": {0: 501}}
+
+        unbound = resolve_planned_tables([planned_table], target_model, approved_existing_target_ids=approved_targets)
+
+        assert unbound.tables["site"].row_states.tolist() == [ChangeRowState.BLOCKED_UNRESOLVED]
+        assert unbound.tables["site"].resolved_target_ids.isna().tolist() == [True]
+        assert "was not bound by SIMS" in unbound.diagnostics[0]
+
+        bound = resolve_planned_tables(
+            [planned_table],
+            target_model,
+            assignments={"site": {0: IdentityAssignment(state=ChangeRowState.RECONCILED_CLASSIFIER, target_id=501)}},
+            approved_existing_target_ids=approved_targets,
+        )
+
+        assert bound.tables["site"].row_states.tolist() == [ChangeRowState.EXISTING_ENTITY]
+        assert bound.tables["site"].resolved_target_ids.tolist() == [501]
+
     def test_assigned_rows_resolve_to_delivery1_states(self):
-        """Allocated, reconciled, and bridge rows should take their states from injected assignments."""
+        """Allocated, blocked, and bridge rows should take their states from injected assignments."""
         classifier_frame = pd.DataFrame({"class_id": [None], "name": ["A"]})
         bridge_frame = pd.DataFrame({"sample_id": [1], "taxon_id": [2]})
         planned_tables = [
             PlannedTable(
                 entity_name="abundance_class",
                 frame=classifier_frame,
-                planned_actions=pd.Series([PlannedRowAction.RECONCILE], index=classifier_frame.index, name="_planned_action"),
+                planned_actions=pd.Series(
+                    [PlannedRowAction.BLOCK_RECONCILIATION],
+                    index=classifier_frame.index,
+                    name="_planned_action",
+                ),
             ),
             PlannedTable(
                 entity_name="sample_taxon",
@@ -289,16 +319,16 @@ class TestResolvePlannedTables:
             planned_tables,
             target_model,
             assignments={
-                "abundance_class": {0: IdentityAssignment(state=ChangeRowState.RECONCILED_CLASSIFIER, target_id=77)},
+                "abundance_class": {0: IdentityAssignment(state=ChangeRowState.BLOCKED_UNRESOLVED, note="No exported local-only approval")},
                 "sample_taxon": {0: IdentityAssignment(state=ChangeRowState.DERIVED_BRIDGE_ROW, target_id=5001)},
             },
         )
 
-        assert result.tables["abundance_class"].row_states.tolist() == [ChangeRowState.RECONCILED_CLASSIFIER]
-        assert result.tables["abundance_class"].resolved_target_ids.tolist() == [77]
+        assert result.tables["abundance_class"].row_states.tolist() == [ChangeRowState.BLOCKED_UNRESOLVED]
+        assert pd.isna(result.tables["abundance_class"].resolved_target_ids.iloc[0])
         assert result.tables["sample_taxon"].row_states.tolist() == [ChangeRowState.DERIVED_BRIDGE_ROW]
         assert result.tables["sample_taxon"].resolved_target_ids.tolist() == [5001]
-        assert result.blocked_rows == 0
+        assert result.blocked_rows == 1
 
     def test_missing_assignments_block_rows(self):
         """Rows without assignments should become blocked_unresolved until orchestration fills them in."""

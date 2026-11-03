@@ -1,161 +1,127 @@
 <template>
   <div class="reconciliation-grid">
-    <!-- Filters and Search Toolbar -->
     <v-toolbar density="comfortable" color="transparent" flat class="mb-2">
       <v-chip-group v-model="statusFilter" mandatory>
-        <v-chip value="all" variant="outlined">
-          <v-icon start size="small">mdi-filter-variant</v-icon>
-          All ({{ props.previewData.length }})
-        </v-chip>
-        <v-chip value="auto-accepted" color="success" variant="outlined">
-          <v-icon start size="small">mdi-check-circle</v-icon>
-          Auto-Accepted ({{ stats.autoMatched }})
-        </v-chip>
-        <v-chip value="needs-review" color="warning" variant="outlined">
-          <v-icon start size="small">mdi-help-circle</v-icon>
-          Needs Review ({{ stats.needsReview }})
-        </v-chip>
-        <v-chip value="unmatched" color="error" variant="outlined">
-          <v-icon start size="small">mdi-close-circle</v-icon>
-          Unmatched ({{ stats.unmatched }})
-        </v-chip>
+        <v-chip value="all" variant="outlined">All ({{ previewData.length }})</v-chip>
+        <v-chip value="proposed" color="warning" variant="outlined">Proposed ({{ stats.proposed }})</v-chip>
+        <v-chip value="accepted" color="success" variant="outlined">Accepted ({{ stats.accepted }})</v-chip>
+        <v-chip value="rejected" color="error" variant="outlined">Rejected ({{ stats.rejected }})</v-chip>
+        <v-chip value="local-only" color="grey" variant="outlined">Local-only ({{ stats.localOnly }})</v-chip>
+        <v-chip value="unresolved" color="warning" variant="outlined">Unresolved ({{ stats.unresolved }})</v-chip>
+        <v-chip value="errors" color="error" variant="outlined">Errors ({{ stats.errors }})</v-chip>
       </v-chip-group>
 
       <v-spacer />
 
       <v-text-field
         v-model="searchQuery"
+        data-testid="reconciliation-search"
         prepend-inner-icon="mdi-magnify"
-        placeholder="Search queries..."
+        placeholder="Search rows..."
         density="compact"
         variant="outlined"
         clearable
         hide-details
-        style="max-width: 300px"
-        class="mr-2"
+        style="max-width: 260px"
       />
 
-      <!-- Bulk Action Buttons -->
       <v-btn
-        v-if="selectedRows.length > 0"
+        data-testid="preview-reconciliation"
         variant="tonal"
-        color="success"
-        prepend-icon="mdi-check-all"
-        @click="openBulkAcceptDialog"
-        class="mr-2"
+        color="info"
+        prepend-icon="mdi-table-eye"
+        @click="previewDialog = true"
       >
-        Accept ({{ selectedRows.length }})
-      </v-btn>
-
-      <v-btn
-        v-if="selectedRows.length > 0"
-        variant="tonal"
-        color="error"
-        prepend-icon="mdi-close-circle"
-        @click="openBulkRejectDialog"
-        class="mr-2"
-      >
-        Reject ({{ selectedRows.length }})
-      </v-btn>
-
-      <v-btn
-        v-if="hasChanges"
-        variant="tonal"
-        color="primary"
-        prepend-icon="mdi-content-save"
-        @click="saveChanges"
-        :loading="saving"
-      >
-        Save Changes
-      </v-btn>
-
-      <v-btn variant="tonal" color="info" prepend-icon="mdi-table-eye" @click="previewDialog = true" class="ml-2">
         Preview
       </v-btn>
     </v-toolbar>
 
-    <!-- Statistics Chips -->
     <v-toolbar density="compact" color="transparent" flat class="mb-2">
-      <v-chip size="small" variant="text">
-        Showing {{ filteredRowData.length }} of {{ props.previewData.length }} items
-      </v-chip>
-      <v-chip v-if="selectedRows.length > 0" size="small" variant="tonal" color="primary">
-        {{ selectedRows.length }} selected
-      </v-chip>
+      <v-chip size="small" variant="text">Showing {{ filteredRowData.length }} of {{ previewData.length }} rows</v-chip>
       <v-spacer />
-      <v-chip v-if="searchQuery" size="small" variant="tonal" closable @click:close="searchQuery = ''">
-        Search: "{{ searchQuery }}"
-      </v-chip>
+      <v-chip size="small" variant="text"
+        >Review threshold: {{ thresholdPercent(entitySpec?.review_threshold) }}%</v-chip
+      >
+      <v-chip size="small" variant="text"
+        >High score: {{ thresholdPercent(entitySpec?.auto_accept_threshold) }}%</v-chip
+      >
     </v-toolbar>
 
-    <!-- AG Grid -->
+    <v-alert
+      v-if="actionError"
+      data-testid="decision-error"
+      type="error"
+      variant="tonal"
+      closable
+      @click:close="actionError = null"
+    >
+      {{ actionError }}
+    </v-alert>
+
     <div @click="handleGridClick">
       <ag-grid-vue
-        ref="gridRef"
         class="ag-theme-material reconciliation-ag-grid"
         :columnDefs="columnDefs"
         :rowData="filteredRowData"
         :defaultColDef="defaultColDef"
         :getRowStyle="getRowStyle"
-        :rowSelection="'multiple'"
         :suppressRowClickSelection="true"
         @grid-ready="onGridReady"
-        @cell-value-changed="onCellValueChanged"
-        @selection-changed="onSelectionChanged"
         :domLayout="'autoHeight'"
       />
     </div>
 
-    <!-- Candidate Review Dialog -->
     <v-dialog v-model="candidateDialog" max-width="700">
       <v-card>
-        <v-card-title class="d-flex align-center">
-          <v-icon class="mr-2">mdi-magnify</v-icon>
-          Review Candidates
-        </v-card-title>
+        <v-card-title class="d-flex align-center">Review candidates</v-card-title>
         <v-card-subtitle v-if="selectedRow">
-          {{ getRowDisplayText(selectedRow) }}
+          {{ getRowDisplayText(selectedRow) }} · Key: {{ selectedRow.local_key_value || 'Unavailable' }}
         </v-card-subtitle>
-
         <v-card-text>
-          <v-list v-if="selectedRow?.candidates && selectedRow.candidates.length > 0">
+          <v-list v-if="selectedRow?.candidates?.length">
             <v-list-item
-              v-for="(candidate, idx) in selectedRow.candidates"
-              :key="idx"
+              v-for="candidate in selectedRow.candidates"
+              :key="candidate.id"
+              data-testid="candidate-option"
               @click="selectCandidate(candidate)"
-              :class="{ 'bg-blue-lighten-5': selectedCandidate === candidate }"
+              :class="{ 'bg-blue-lighten-5': selectedCandidate?.id === candidate.id }"
             >
-              <template v-slot:prepend>
-                <v-avatar :color="getConfidenceColor((candidate.score ?? 0) * 100)" size="32">
-                  {{ Math.round((candidate.score ?? 0) * 100) }}
+              <template #prepend>
+                <v-avatar :color="candidate.score == null ? 'grey' : getConfidenceColor(candidate.score)" size="36">
+                  {{ candidate.score == null ? '—' : `${Math.round(candidate.score)}%` }}
                 </v-avatar>
               </template>
-              <v-list-item-title>
-                {{ candidate.name }}
-              </v-list-item-title>
-              <v-list-item-subtitle v-if="candidate.description">
-                {{ candidate.description }}
-              </v-list-item-subtitle>
-              <template v-slot:append>
-                <v-chip size="small" variant="outlined"> ID: {{ extractIdFromUri(candidate.id) }} </v-chip>
+              <v-list-item-title>{{ candidate.name }}</v-list-item-title>
+              <v-list-item-subtitle v-if="candidate.description">{{ candidate.description }}</v-list-item-subtitle>
+              <template #append>
+                <v-chip size="small" variant="outlined"
+                  >ID: {{ extractIdFromUri(candidate.id) ?? 'Unavailable' }}</v-chip
+                >
               </template>
             </v-list-item>
           </v-list>
-          <div v-else class="text-center text-grey py-8">No candidates available</div>
+          <div v-else class="text-center text-grey py-8">
+            No candidates available. Search for a candidate or add a manual link.
+          </div>
         </v-card-text>
-
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="candidateDialog = false"> Cancel </v-btn>
-          <v-btn variant="tonal" color="primary" @click="acceptCandidate" :disabled="!selectedCandidate">
-            Accept
+          <v-btn variant="text" @click="candidateDialog = false">Cancel</v-btn>
+          <v-btn
+            data-testid="accept-candidate"
+            variant="tonal"
+            color="primary"
+            :loading="selectedRow ? isBusy(selectedRow.local_key_value) : false"
+            :disabled="!selectedCandidate || !selectedRow?.local_key_value"
+            @click="acceptCandidate"
+          >
+            Accept selected candidate
           </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
 
-    <!-- Alternative Search Dialog -->
-    <alternative-search-dialog
+    <AlternativeSearchDialog
       v-model="alternativeSearchDialog"
       :project-name="projectName"
       :entity-name="entityName"
@@ -164,187 +130,84 @@
       @accept="handleAlternativeAccept"
     />
 
-    <!-- Mark Unmatched Dialog -->
-    <v-dialog v-model="unmatchedDialog" max-width="600">
+    <v-dialog v-model="localOnlyDialog" max-width="600">
       <v-card>
-        <v-card-title class="d-flex align-center">
-          <v-icon class="mr-2" color="warning">mdi-alert-circle</v-icon>
-          Mark as Local-Only (Will Not Match)
-        </v-card-title>
+        <v-card-title>Mark row as local-only</v-card-title>
         <v-card-subtitle v-if="selectedRow">
-          {{ getRowDisplayText(selectedRow) }}
+          {{ getRowDisplayText(selectedRow) }} · Key: {{ selectedRow.local_key_value }}
         </v-card-subtitle>
-
         <v-card-text>
-          <p class="mb-4">
-            This will mark the item as a <strong>local-only identifier</strong> that will not be matched to SEAD.
-          </p>
-          <v-textarea
-            v-model="unmatchedNotes"
-            label="Reason (optional)"
-            placeholder="Why won't this match? (e.g., 'Local code only', 'Not in SEAD database')"
-            rows="3"
-            variant="outlined"
-            hint="Document why this item is local-only"
-          />
+          <p class="mb-4">This records that the row should not be linked to a target entity.</p>
+          <v-textarea v-model="localOnlyNotes" label="Reason (optional)" rows="3" variant="outlined" />
         </v-card-text>
-
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="unmatchedDialog = false"> Cancel </v-btn>
-          <v-btn variant="tonal" color="warning" @click="confirmMarkUnmatched" :loading="markingUnmatched">
-            Mark as Local-Only
+          <v-btn variant="text" @click="localOnlyDialog = false">Cancel</v-btn>
+          <v-btn
+            data-testid="confirm-local-only"
+            variant="tonal"
+            color="warning"
+            :loading="selectedRow ? isBusy(selectedRow.local_key_value) : false"
+            :disabled="!selectedRow?.local_key_value"
+            @click="confirmLocalOnly"
+          >
+            Mark local-only
           </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
 
-    <!-- Bulk Accept Confirmation Dialog -->
-    <v-dialog v-model="bulkAcceptDialog" max-width="600">
-      <v-card>
-        <v-card-title class="d-flex align-center">
-          <v-icon class="mr-2" color="success">mdi-check-all</v-icon>
-          Bulk Accept Matches
-        </v-card-title>
-
-        <v-card-text>
-          <p class="mb-4">
-            Accept top candidates for <strong>{{ selectedRows.length }} selected items</strong>?
-          </p>
-          <v-alert type="info" variant="tonal" class="mb-4">
-            This will accept the highest-confidence candidate for each selected row.
-          </v-alert>
-          <v-list density="compact" class="bg-grey-lighten-4" max-height="200" style="overflow-y: auto">
-            <v-list-item v-for="(row, idx) in selectedRows.slice(0, 10)" :key="idx">
-              <v-list-item-title>{{ getRowDisplayText(row) }}</v-list-item-title>
-              <template v-slot:append>
-                <v-chip size="small" :color="row.candidates?.[0] ? 'success' : 'warning'">
-                  {{ row.candidates?.[0] ? Math.round((row.candidates[0].score ?? 0) * 100) + '%' : 'No candidates' }}
-                </v-chip>
-              </template>
-            </v-list-item>
-            <v-list-item v-if="selectedRows.length > 10">
-              <v-list-item-title class="text-grey">... and {{ selectedRows.length - 10 }} more</v-list-item-title>
-            </v-list-item>
-          </v-list>
-        </v-card-text>
-
-        <v-card-actions>
-          <v-spacer />
-          <v-btn variant="text" @click="bulkAcceptDialog = false"> Cancel </v-btn>
-          <v-btn variant="tonal" color="success" @click="confirmBulkAccept" :loading="bulkProcessing">
-            Accept {{ selectedRows.length }} Items
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <!-- Bulk Reject Confirmation Dialog -->
-    <v-dialog v-model="bulkRejectDialog" max-width="600">
-      <v-card>
-        <v-card-title class="d-flex align-center">
-          <v-icon class="mr-2" color="error">mdi-close-circle</v-icon>
-          Bulk Reject Matches
-        </v-card-title>
-
-        <v-card-text>
-          <p class="mb-4">
-            Clear matches for <strong>{{ selectedRows.length }} selected items</strong>?
-          </p>
-          <v-alert type="warning" variant="tonal" class="mb-4">
-            This will remove all candidates and SEAD IDs from selected rows.
-          </v-alert>
-          <v-list density="compact" class="bg-grey-lighten-4" max-height="200" style="overflow-y: auto">
-            <v-list-item v-for="(row, idx) in selectedRows.slice(0, 10)" :key="idx">
-              <v-list-item-title>{{ getRowDisplayText(row) }}</v-list-item-title>
-            </v-list-item>
-            <v-list-item v-if="selectedRows.length > 10">
-              <v-list-item-title class="text-grey">... and {{ selectedRows.length - 10 }} more</v-list-item-title>
-            </v-list-item>
-          </v-list>
-        </v-card-text>
-
-        <v-card-actions>
-          <v-spacer />
-          <v-btn variant="text" @click="bulkRejectDialog = false"> Cancel </v-btn>
-          <v-btn variant="tonal" color="error" @click="confirmBulkReject" :loading="bulkProcessing">
-            Reject {{ selectedRows.length }} Items
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <!-- Preview Matched Data Dialog -->
-    <preview-matched-data-dialog
-      v-model="previewDialog"
-      :preview-data="enrichedPreviewData"
-      :entity-spec="entitySpec"
-    />
+    <preview-matched-data-dialog v-model="previewDialog" :preview-data="previewData" :entity-spec="entitySpec" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { AgGridVue } from 'ag-grid-vue3'
-import type { GridApi, ColDef, CellValueChangedEvent } from 'ag-grid-community'
-import type { EntityResolutionSet, ReconciliationPreviewRow, ReconciliationCandidate } from '@/types'
+import type { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-community'
+import type {
+  DecisionUpdateRequest,
+  EntityResolutionSet,
+  MappingEntityResponse,
+  ReconciliationCandidate,
+  ReconciliationPreviewRow,
+} from '@/types'
+import AlternativeSearchDialog from './AlternativeSearchDialog.vue'
 import PreviewMatchedDataDialog from './PreviewMatchedDataDialog.vue'
 
-// AG Grid Community styles
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-material.css'
 
 interface Props {
   entitySpec: EntityResolutionSet | null
   previewData: ReconciliationPreviewRow[]
+  mappingData: MappingEntityResponse | null
   loading?: boolean
   projectName: string
   entityName: string
-  targetField: string // Target field being reconciled
+  targetField: string
+  submitDecision: (request: DecisionUpdateRequest) => Promise<void>
 }
 
-const props = withDefaults(defineProps<Props>(), {
-  loading: false,
-})
+const props = withDefaults(defineProps<Props>(), { loading: false })
 
 const emit = defineEmits<{
-  'update:mapping': [row: ReconciliationPreviewRow, targetId: number | null, notes?: string]
-  save: []
+  'manual-link': [row: ReconciliationPreviewRow]
 }>()
 
-// Grid reference
-const gridApi = ref<GridApi>()
-const hasChanges = ref(false)
-const saving = ref(false)
-
-// Filter and search state
-const statusFilter = ref<'all' | 'auto-accepted' | 'needs-review' | 'unmatched'>('all')
+const gridApi = ref<GridApi | null>(null)
+const statusFilter = ref<'all' | 'proposed' | 'accepted' | 'rejected' | 'local-only' | 'unresolved' | 'errors'>('all')
 const searchQuery = ref('')
-
-// Candidate dialog
-const candidateDialog = ref(false)
-const alternativeSearchDialog = ref(false)
-const unmatchedDialog = ref(false)
-const unmatchedNotes = ref('')
-const markingUnmatched = ref(false)
+const actionError = ref<string | null>(null)
+const busyKeys = ref(new Set<string>())
 const selectedRow = ref<ReconciliationPreviewRow | null>(null)
 const selectedCandidate = ref<ReconciliationCandidate | null>(null)
-
-// Debug: Watch alternativeSearchDialog changes
-watch(alternativeSearchDialog, (newValue, oldValue) => {
-  console.log('[ReconciliationGrid] alternativeSearchDialog changed from', oldValue, 'to', newValue)
-})
-
-// Bulk actions
-const selectedRows = ref<ReconciliationPreviewRow[]>([])
-const bulkAcceptDialog = ref(false)
-const bulkRejectDialog = ref(false)
-const bulkProcessing = ref(false)
-
-// Preview dialog
+const candidateDialog = ref(false)
+const alternativeSearchDialog = ref(false)
+const localOnlyDialog = ref(false)
+const localOnlyNotes = ref('')
 const previewDialog = ref(false)
 
-// Default column definition
 const defaultColDef: ColDef = {
   resizable: true,
   sortable: true,
@@ -352,499 +215,302 @@ const defaultColDef: ColDef = {
   editable: false,
 }
 
-// Column definitions
+const gridRows = computed(() =>
+  props.previewData.map((row) => {
+    const sidecarLink = row.local_key_value ? props.mappingData?.links[row.local_key_value] : undefined
+    const committedLink = sidecarLink?.committed_at ? sidecarLink : undefined
+    const savedRowId = props.mappingData ? row[props.mappingData.public_id] : null
+    return {
+      ...row,
+      saved_row_id: savedRowId,
+      status_display: formatStatus(row),
+      effective_id: props.mappingData ? (committedLink?.target_id ?? savedRowId) : null,
+      effective_id_status: committedLink
+        ? committedLink.source === 'manual'
+          ? 'Trusted manual · not checked'
+          : committedLink.source === 'reconciliation'
+            ? committedLink.verified_at
+              ? `reconciliation · verified ${committedLink.verified_at}`
+              : 'reconciliation · unverified'
+            : `${committedLink.source} · not checked`
+        : props.mappingData
+          ? 'Saved row ID'
+          : 'Sidecar unavailable',
+      confidence_percent: row.confidence == null ? null : row.confidence * 100,
+      errors_display: row.errors?.join('; ') ?? '',
+    }
+  })
+)
+
 const columnDefs = computed<ColDef[]>(() => {
   if (!props.entitySpec) return []
 
-  const cols: ColDef[] = []
+  const columns: ColDef[] = [
+    {
+      field: props.targetField,
+      headerName: `${props.targetField.replace(/_/g, ' ')} (Search label)`,
+      pinned: 'left',
+      width: 200,
+    },
+    { field: 'local_key_value', headerName: 'Business key', pinned: 'left', width: 170 },
+  ]
 
-  // Checkbox column for row selection
-  cols.push({
-    headerName: '',
-    field: '__selected',
-    width: 50,
-    pinned: 'left',
-    checkboxSelection: true,
-    headerCheckboxSelection: true,
-    headerCheckboxSelectionFilteredOnly: true,
-    suppressMenu: true,
-    sortable: false,
-    filter: false,
-  })
+  for (const column of new Set(Object.values(props.entitySpec.property_mappings))) {
+    if (column !== props.targetField) columns.push({ field: column, headerName: column.replace(/_/g, ' '), width: 150 })
+  }
 
-  // Target field column (pinned left)
-  cols.push({
-    field: props.targetField,
-    headerName: `${props.targetField.replace(/_/g, ' ').toUpperCase()} (Target)`,
-    pinned: 'left',
-    width: 200,
-    cellClass: 'font-weight-bold',
-  })
-
-  // Property-mapped columns (read-only)
-  // Get unique source columns from property_mappings
-  const propertyColumns = new Set(Object.values(props.entitySpec.property_mappings))
-  propertyColumns.forEach((col) => {
-    cols.push({
-      field: col,
-      headerName: col.replace(/_/g, ' ').toUpperCase(),
+  columns.push(
+    { field: 'saved_row_id', headerName: 'Saved row ID', width: 120 },
+    { field: 'target_id', headerName: 'Decision ID', width: 120 },
+    {
+      field: 'confidence_percent',
+      headerName: 'Decision confidence',
       width: 150,
-    })
-  })
-
-  // SEAD ID column (editable with autocomplete)
-  cols.push({
-    field: 'target_id',
-    headerName: 'Target ID',
-    width: 120,
-    editable: true,
-    cellRenderer: (params: any) => {
-      if (params.value) {
-        return `<span class="font-weight-bold">${params.value}</span>`
-      }
-      return '<span class="text-grey">—</span>'
+      valueFormatter: (params) => (params.value == null ? 'Unknown' : `${Math.round(params.value)}%`),
     },
-  })
+    { field: 'status_display', headerName: 'Decision status', width: 140 },
+    { field: 'effective_id', headerName: 'Effective ID', width: 120 },
+    { field: 'effective_id_status', headerName: 'Effective ID source', width: 190 },
+    { field: 'errors_display', headerName: 'Row errors', width: 240 },
+    {
+      field: 'candidates',
+      headerName: 'Actions',
+      width: 470,
+      pinned: 'right',
+      sortable: false,
+      filter: false,
+      cellRenderer: (params: ICellRendererParams) => {
+        const row = params.data as ReconciliationPreviewRow | undefined
+        if (!row) return ''
+        const key = row.local_key_value
+        const encodedKey = key ? encodeURIComponent(key) : ''
+        const disabled = !key || props.loading || isBusy(key)
+        const buttons = []
+        if (row.candidates?.length) {
+          buttons.push(
+            `<button class="candidate-btn" data-local-key="${encodedKey}" data-action="review" ${disabled ? 'disabled' : ''}>Review (${row.candidates.length})</button>`
+          )
+        }
+        buttons.push(
+          `<button class="search-btn" data-local-key="${encodedKey}" data-action="search" ${disabled ? 'disabled' : ''}>Search</button>`
+        )
+        buttons.push(
+          `<button class="reject-btn" data-local-key="${encodedKey}" data-action="reject" ${disabled ? 'disabled' : ''}>Reject</button>`
+        )
+        buttons.push(
+          `<button class="local-only-btn" data-local-key="${encodedKey}" data-action="local-only" ${disabled ? 'disabled' : ''}>Local-only</button>`
+        )
+        buttons.push(
+          `<button class="manual-link-btn" data-local-key="${encodedKey}" data-action="manual-link" ${!key ? 'disabled' : ''}>Manual link</button>`
+        )
+        return buttons.join(' ')
+      },
+    }
+  )
 
-  // Confidence column
-  cols.push({
-    field: 'confidence',
-    headerName: 'Confidence',
-    width: 120,
-    cellRenderer: (params: any) => {
-      const confidence = params.value
-      if (confidence == null) return '—'
-
-      const color = getConfidenceColorHex(confidence)
-      return `<span style="color: ${color}; font-weight: 600;">${Math.round(confidence)}%</span>`
-    },
-  })
-
-  // Notes column (editable)
-  cols.push({
-    field: 'notes',
-    headerName: 'Notes',
-    width: 200,
-    editable: true,
-    cellEditor: 'agTextCellEditor',
-  })
-
-  // Candidates action column
-  cols.push({
-    field: 'candidates',
-    headerName: 'Actions',
-    width: 200,
-    pinned: 'right',
-    cellRenderer: (params: any) => {
-      const candidatesCount = params.value?.length || 0
-      const buttons = []
-
-      if (candidatesCount > 0) {
-        buttons.push(`<button class="candidate-btn" data-row-index="${params.node.rowIndex}" data-action="review">
-          <span class="mdi mdi-magnify"></span> Review (${candidatesCount})
-        </button>`)
-      }
-
-      buttons.push(`<button class="search-btn" data-row-index="${params.node.rowIndex}" data-action="search">
-        <span class="mdi mdi-search-web"></span> Search
-      </button>`)
-
-      buttons.push(`<button class="unmatched-btn" data-row-index="${params.node.rowIndex}" data-action="unmatched">
-        <span class="mdi mdi-cancel"></span> Won't Match
-      </button>`)
-
-      return buttons.join(' ')
-    },
-  })
-
-  return cols
+  return columns
 })
 
-// Filtered row data based on status and search
 const filteredRowData = computed(() => {
-  let filtered = props.previewData
+  let rows = gridRows.value
+  if (statusFilter.value === 'errors') rows = rows.filter((row) => Boolean(row.errors?.length))
+  else if (statusFilter.value === 'unresolved') {
+    rows = rows.filter(
+      (row) => !row.local_key_value || row.status == null || (row.status === 'proposed' && !row.candidates?.length)
+    )
+  } else if (statusFilter.value !== 'all') rows = rows.filter((row) => row.status === statusFilter.value)
 
-  const autoAcceptThreshold = props.entitySpec?.auto_accept_threshold || 95
-  const reviewThreshold = props.entitySpec?.review_threshold || 70
-
-  // Apply status filter
-  if (statusFilter.value !== 'all') {
-    filtered = filtered.filter((row) => {
-      const confidence = row.confidence ?? 0
-
-      if (statusFilter.value === 'auto-accepted') {
-        return confidence >= autoAcceptThreshold
-      } else if (statusFilter.value === 'needs-review') {
-        return confidence >= reviewThreshold && confidence < autoAcceptThreshold
-      } else if (statusFilter.value === 'unmatched') {
-        return confidence < reviewThreshold
-      }
-
-      return true
-    })
-  }
-
-  // Apply search filter
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter((row) => {
-      const rowText = getRowDisplayText(row).toLowerCase()
-      return rowText.includes(query)
-    })
-  }
-
-  return filtered
+  const query = searchQuery.value.trim().toLowerCase()
+  if (!query) return rows
+  return rows.filter((row) =>
+    Object.values(row).some((value) =>
+      String(value ?? '')
+        .toLowerCase()
+        .includes(query)
+    )
+  )
 })
 
-// Statistics
-const stats = computed(() => {
-  const autoMatched = props.previewData.filter(
-    (row) => row.confidence != null && row.confidence >= (props.entitySpec?.auto_accept_threshold || 95)
-  ).length
+const stats = computed(() => ({
+  proposed: props.previewData.filter((row) => row.status === 'proposed').length,
+  accepted: props.previewData.filter((row) => row.status === 'accepted').length,
+  rejected: props.previewData.filter((row) => row.status === 'rejected').length,
+  localOnly: props.previewData.filter((row) => row.status === 'local-only').length,
+  unresolved: props.previewData.filter(
+    (row) => !row.local_key_value || row.status == null || (row.status === 'proposed' && !row.candidates?.length)
+  ).length,
+  errors: props.previewData.filter((row) => Boolean(row.errors?.length)).length,
+}))
 
-  const needsReview = props.previewData.filter(
-    (row) =>
-      row.confidence != null &&
-      row.confidence < (props.entitySpec?.auto_accept_threshold || 95) &&
-      row.confidence >= (props.entitySpec?.review_threshold || 70)
-  ).length
-
-  const unmatched = props.previewData.filter(
-    (row) => row.confidence == null || row.confidence < (props.entitySpec?.review_threshold || 70)
-  ).length
-
-  return { autoMatched, needsReview, unmatched }
-})
-
-// Enriched preview data with matched names from candidates
-const enrichedPreviewData = computed(() => {
-  return props.previewData.map((row) => {
-    // Find matched name from candidates if we have a SEAD ID
-    let matched_name: string | undefined
-
-    if (row.target_id && row.candidates) {
-      const matchedCandidate = row.candidates.find((c) => {
-        const candidateId = extractIdFromUri(c.id)
-        return candidateId === row.target_id
-      })
-
-      if (matchedCandidate) {
-        matched_name = matchedCandidate.name
-      }
-    }
-
-    return {
-      ...row,
-      matched_name,
-    }
-  })
-})
-
-// Grid ready event
-function onGridReady(params: any) {
-  gridApi.value = params.api
+function onGridReady(event: GridReadyEvent) {
+  gridApi.value = event.api
 }
 
-// Row styling based on confidence and will_not_match flag
-function getRowStyle(params: any) {
-  const row = params.data as ReconciliationPreviewRow
-
-  // Gray out items marked as "will not match"
-  if (row.will_not_match) {
-    return {
-      background: '#f5f5f5',
-      color: '#999',
-      textDecoration: 'line-through',
-      opacity: 0.7,
-    }
-  }
-
-  if (!row.confidence) {
-    return { background: '#ffebee' } // Light red for unmatched
-  }
-
-  const autoAcceptThreshold = props.entitySpec?.auto_accept_threshold || 95
-  const reviewThreshold = props.entitySpec?.review_threshold || 70
-
-  if (row.confidence >= autoAcceptThreshold) {
-    return { background: '#e8f5e9' } // Light green for auto-matched
-  } else if (row.confidence >= reviewThreshold) {
-    return { background: '#fff3e0' } // Light orange for needs review
-  }
-
-  return { background: '#ffebee' } // Light red for low confidence
+function thresholdPercent(value: number | undefined): number {
+  return Math.round((value ?? 0) * 100)
 }
 
-// Confidence color helpers
-function getConfidenceColor(confidence: number): string {
-  if (confidence >= 95) return 'success'
-  if (confidence >= 70) return 'warning'
+function getConfidenceColor(score: number): string {
+  const high = (props.entitySpec?.auto_accept_threshold ?? 0.95) * 100
+  const review = (props.entitySpec?.review_threshold ?? 0.7) * 100
+  if (score >= high) return 'success'
+  if (score >= review) return 'warning'
   return 'error'
 }
 
-function getConfidenceColorHex(confidence: number): string {
-  if (confidence >= 95) return '#4caf50'
-  if (confidence >= 70) return '#ff9800'
-  return '#f44336'
+function formatStatus(row: ReconciliationPreviewRow | undefined): string {
+  if (!row?.local_key_value) return 'Unreviewable'
+  if (row.errors?.length) return 'Needs attention'
+  if (row.status == null || (row.status === 'proposed' && !row.candidates?.length)) return 'Unresolved'
+  if (row.status === 'local-only') return 'Local-only'
+  if (row.status === 'accepted' && !row.candidate_id) return 'Accepted · re-accept candidate'
+  if (row.status === 'accepted' || row.status === 'rejected' || row.status === 'proposed') {
+    return row.status.charAt(0).toUpperCase() + row.status.slice(1)
+  }
+  return 'Unreviewable'
 }
 
-// Cell value changed
-function onCellValueChanged(event: CellValueChangedEvent) {
-  const row = event.data as ReconciliationPreviewRow
-  const field = event.colDef.field
+function getRowStyle(params: { data?: ReconciliationPreviewRow }) {
+  const row = params.data
+  if (!row) return undefined
+  if (row.errors?.length) return { background: '#fff3e0' }
+  if (row.status === 'accepted') return { background: '#e8f5e9' }
+  if (row.status === 'rejected') return { background: '#ffebee' }
+  if (row.status === 'local-only') return { background: '#f5f5f5' }
+  if (row.status === 'proposed') return { background: '#fff8e1' }
+  return { background: '#fafafa' }
+}
 
-  if (field === 'target_id') {
-    const targetId = event.newValue ? parseInt(event.newValue) : null
-    emit('update:mapping', row, targetId, row.notes)
-    hasChanges.value = true
-  } else if (field === 'notes') {
-    emit('update:mapping', row, row.target_id ?? null, event.newValue)
-    hasChanges.value = true
+function extractIdFromUri(uri: string): number | null {
+  const match = uri.match(/\/(\d+)\/?$/)
+  return match?.[1] ? Number(match[1]) : null
+}
+
+function getRowDisplayText(row: ReconciliationPreviewRow): string {
+  return String(row[props.targetField] ?? '')
+}
+
+function isBusy(localKeyValue: string | null | undefined): boolean {
+  return Boolean(localKeyValue && busyKeys.value.has(localKeyValue))
+}
+
+function setBusy(localKeyValue: string, busy: boolean) {
+  const next = new Set(busyKeys.value)
+  if (busy) next.add(localKeyValue)
+  else next.delete(localKeyValue)
+  busyKeys.value = next
+  gridApi.value?.refreshCells()
+}
+
+async function persistDecision(
+  row: ReconciliationPreviewRow,
+  status: DecisionUpdateRequest['status'],
+  targetId?: number,
+  candidateId?: string,
+  notes?: string
+): Promise<boolean> {
+  const key = row.local_key_value
+  if (!key) {
+    actionError.value = 'This row has no valid business key and cannot receive a decision.'
+    return false
+  }
+
+  setBusy(key, true)
+  actionError.value = null
+  try {
+    const request: DecisionUpdateRequest = {
+      local_key_value: key,
+      status,
+      ...(targetId === undefined ? {} : { target_id: targetId }),
+      ...(candidateId === undefined ? {} : { candidate_id: candidateId }),
+      ...(notes === undefined ? {} : { notes }),
+    }
+    await props.submitDecision(request)
+    return true
+  } catch (error) {
+    actionError.value = error instanceof Error ? error.message : 'The decision could not be saved.'
+    return false
+  } finally {
+    setBusy(key, false)
   }
 }
 
-// Show candidate dialog
 function showCandidates(row: ReconciliationPreviewRow) {
   selectedRow.value = row
   selectedCandidate.value = null
   candidateDialog.value = true
 }
 
-// Select a candidate
 function selectCandidate(candidate: ReconciliationCandidate) {
   selectedCandidate.value = candidate
 }
 
-// Accept selected candidate
-function acceptCandidate() {
-  if (!selectedCandidate.value || !selectedRow.value) return
-
-  const targetId = extractIdFromUri(selectedCandidate.value.id)
-  if (targetId) {
-    selectedRow.value.target_id = targetId
-    selectedRow.value.confidence = (selectedCandidate.value.score ?? 0) * 100
-
-    emit('update:mapping', selectedRow.value, targetId, selectedRow.value.notes)
-    hasChanges.value = true
-
-    // Refresh grid
-    gridApi.value?.refreshCells()
-  }
-
-  candidateDialog.value = false
-}
-
-// Extract ID from URI
-function extractIdFromUri(uri: string): number | null {
-  const match = uri.match(/\/(\d+)$/)
-  return match?.[1] ? parseInt(match[1]) : null
-}
-
-// Get row display text
-function getRowDisplayText(row: ReconciliationPreviewRow): string {
-  if (!props.entitySpec) return ''
-
-  // Use the target field value as the display text
-  const targetValue = row[props.targetField]
-  return targetValue != null ? String(targetValue) : ''
-}
-
-// Handle clicks on action buttons in the grid
-function handleGridClick(event: MouseEvent) {
-  const target = event.target as HTMLElement
-
-  // Find the button that was clicked
-  const button = target.closest('button[data-action]') as HTMLButtonElement
-  if (!button) return
-
-  const action = button.getAttribute('data-action')
-  const rowIndex = button.getAttribute('data-row-index')
-
-  console.log('[ReconciliationGrid] Button clicked - action:', action, 'rowIndex:', rowIndex)
-
-  if (rowIndex === null) return
-
-  const row = filteredRowData.value[parseInt(rowIndex)]
-  if (!row) {
-    console.warn('[ReconciliationGrid] No row found at index:', rowIndex)
+async function acceptCandidate() {
+  const row = selectedRow.value
+  const candidate = selectedCandidate.value
+  if (!row || !candidate) return
+  const targetId = extractIdFromUri(candidate.id)
+  if (targetId === null) {
+    actionError.value = `Candidate ID is not a numeric target ID: ${candidate.id}`
     return
   }
+  if (await persistDecision(row, 'accepted', targetId, candidate.id)) candidateDialog.value = false
+}
 
-  console.log('[ReconciliationGrid] Row data:', row)
+function handleGridClick(event: MouseEvent) {
+  const target = event.target as HTMLElement
+  const button = target.closest('button[data-action]') as HTMLButtonElement | null
+  if (!button || button.disabled) return
+  const encodedKey = button.getAttribute('data-local-key')
+  if (!encodedKey) return
+  const key = decodeURIComponent(encodedKey)
+  const row = filteredRowData.value.find((item) => item.local_key_value === key)
+  if (!row) return
 
-  if (action === 'review' && row.candidates && row.candidates.length > 0) {
-    showCandidates(row)
-  } else if (action === 'search') {
-    openAlternativeSearch(row)
-  } else if (action === 'unmatched') {
-    openUnmatchedDialog(row)
+  switch (button.getAttribute('data-action')) {
+    case 'review':
+      showCandidates(row)
+      break
+    case 'search':
+      selectedRow.value = row
+      alternativeSearchDialog.value = true
+      break
+    case 'reject':
+      void persistDecision(row, 'rejected')
+      break
+    case 'local-only':
+      selectedRow.value = row
+      localOnlyNotes.value = ''
+      localOnlyDialog.value = true
+      break
+    case 'manual-link':
+      emit('manual-link', row)
+      break
   }
 }
 
-// Open alternative search dialog
-function openAlternativeSearch(row: ReconciliationPreviewRow) {
-  console.log('[ReconciliationGrid] Opening alternative search for row:', row)
-  selectedRow.value = row
-  alternativeSearchDialog.value = true
-  console.log('[ReconciliationGrid] Dialog state:', alternativeSearchDialog.value)
-}
-
-// Handle alternative match acceptance
-function handleAlternativeAccept(candidate: ReconciliationCandidate) {
-  if (!selectedRow.value) return
-
+async function handleAlternativeAccept(candidate: ReconciliationCandidate) {
+  const row = selectedRow.value
+  if (!row) return
   const targetId = extractIdFromUri(candidate.id)
-  if (targetId) {
-    selectedRow.value.target_id = targetId
-    selectedRow.value.confidence = (candidate.score ?? 0) * 100
-
-    emit('update:mapping', selectedRow.value, targetId, selectedRow.value.notes)
-    hasChanges.value = true
-
-    // Refresh grid
-    gridApi.value?.refreshCells()
+  if (targetId === null) {
+    actionError.value = `Candidate ID is not a numeric target ID: ${candidate.id}`
+    return
   }
+  await persistDecision(row, 'accepted', targetId, candidate.id)
 }
 
-// Open unmatched dialog
-function openUnmatchedDialog(row: ReconciliationPreviewRow) {
-  selectedRow.value = row
-  unmatchedNotes.value = ''
-  unmatchedDialog.value = true
-}
-
-// Confirm mark as unmatched
-async function confirmMarkUnmatched() {
+async function confirmLocalOnly() {
   if (!selectedRow.value) return
-
-  markingUnmatched.value = true
-
-  try {
-    // Build source_value from target field
-    const sourceValue = selectedRow.value![props.targetField]
-
-    // Call API to mark as unmatched
-    const response = await fetch(
-      `/api/v1/projects/${props.projectName}/reconciliation/${props.entityName}/${props.targetField}/mark-unmatched`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          source_value: sourceValue,
-          notes: unmatchedNotes.value || 'Marked as local-only (will not match)',
-        }),
-      }
-    )
-
-    if (!response.ok) {
-      throw new Error('Failed to mark as unmatched')
-    }
-
-    // Update local row data
-    selectedRow.value.target_id = null as any
-    selectedRow.value.confidence = null as any
-    selectedRow.value.will_not_match = true
-    selectedRow.value.notes = unmatchedNotes.value || 'Marked as local-only (will not match)'
-
-    // Refresh grid to apply styling
-    gridApi.value?.refreshCells()
-    hasChanges.value = true
-
-    unmatchedDialog.value = false
-  } catch (error) {
-    console.error('Failed to mark as unmatched:', error)
-    alert('Failed to mark as unmatched. Please try again.')
-  } finally {
-    markingUnmatched.value = false
-  }
+  const saved = await persistDecision(
+    selectedRow.value,
+    'local-only',
+    undefined,
+    undefined,
+    localOnlyNotes.value.trim() || undefined
+  )
+  if (saved) localOnlyDialog.value = false
 }
-
-// Handle row selection change
-function onSelectionChanged() {
-  const selected = gridApi.value?.getSelectedRows() || []
-  selectedRows.value = selected
-}
-
-// Open bulk accept dialog
-function openBulkAcceptDialog() {
-  if (selectedRows.value.length === 0) return
-  bulkAcceptDialog.value = true
-}
-
-// Open bulk reject dialog
-function openBulkRejectDialog() {
-  if (selectedRows.value.length === 0) return
-  bulkRejectDialog.value = true
-}
-
-// Confirm bulk accept
-function confirmBulkAccept() {
-  bulkProcessing.value = true
-
-  // Accept top candidate for each selected row
-  selectedRows.value.forEach((row) => {
-    if (row.candidates && row.candidates.length > 0) {
-      const topCandidate = row.candidates[0]
-      if (topCandidate) {
-        const targetId = extractIdFromUri(topCandidate.id)
-        if (targetId) {
-          row.target_id = targetId
-          row.confidence = (topCandidate.score ?? 0) * 100
-          emit('update:mapping', row, targetId, row.notes)
-        }
-      }
-    }
-  })
-
-  // Refresh grid and reset selection
-  gridApi.value?.refreshCells()
-  gridApi.value?.deselectAll()
-  hasChanges.value = true
-  bulkProcessing.value = false
-  bulkAcceptDialog.value = false
-}
-
-// Confirm bulk reject
-function confirmBulkReject() {
-  bulkProcessing.value = true
-
-  // Clear matches for each selected row
-  selectedRows.value.forEach((row) => {
-    row.target_id = undefined
-    row.confidence = undefined
-    row.candidates = []
-    emit('update:mapping', row, null)
-  })
-
-  // Refresh grid and reset selection
-  gridApi.value?.refreshCells()
-  gridApi.value?.deselectAll()
-  hasChanges.value = true
-  bulkProcessing.value = false
-  bulkRejectDialog.value = false
-}
-
-// Save changes
-function saveChanges() {
-  saving.value = true
-  emit('save')
-
-  // Simulate save delay
-  setTimeout(() => {
-    saving.value = false
-    hasChanges.value = false
-  }, 500)
-}
-
-// Watch for data changes
-watch(
-  () => props.previewData,
-  () => {
-    hasChanges.value = false
-  }
-)
 </script>
 
 <style scoped>
@@ -858,65 +524,42 @@ watch(
   min-height: 400px;
 }
 
+:deep(.candidate-btn),
+:deep(.search-btn),
+:deep(.reject-btn),
+:deep(.local-only-btn),
+:deep(.manual-link-btn) {
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  margin: 2px;
+  padding: 5px 8px;
+}
+
 :deep(.candidate-btn) {
-  background: #2196f3;
-  color: white;
-  border: none;
-  padding: 4px 8px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 12px;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+  background: #e3f2fd;
+  color: #1565c0;
 }
 
-:deep(.candidate-btn:hover) {
-  background: #1976d2;
+:deep(.search-btn),
+:deep(.manual-link-btn) {
+  background: #eeeeee;
+  color: #333333;
 }
 
-:deep(.search-btn) {
-  background: #9c27b0;
-  color: white;
-  border: none;
-  padding: 4px 8px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 12px;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: 4px;
+:deep(.reject-btn) {
+  background: #ffebee;
+  color: #b71c1c;
 }
 
-:deep(.search-btn:hover) {
-  background: #7b1fa2;
+:deep(.local-only-btn) {
+  background: #fff3e0;
+  color: #8d5b00;
 }
 
-:deep(.unmatched-btn) {
-  background: #ff9800;
-  color: white;
-  border: none;
-  padding: 4px 8px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 12px;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: 4px;
-}
-
-:deep(.unmatched-btn:hover) {
-  background: #f57c00;
-}
-
-:deep(.ag-cell) {
-  display: flex;
-  align-items: center;
-}
-
-:deep(.ag-header-cell-text) {
-  font-weight: 600;
+:deep(button:disabled) {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 </style>

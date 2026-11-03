@@ -4,7 +4,7 @@ import copy
 import dataclasses
 import re
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 
 import yaml
 from dotenv import load_dotenv
@@ -163,7 +163,8 @@ def resolve_directives(
     data = _resolve_node(data, context=ctx, resolvers=resolvers)
 
     # Post-processing: @value cross-references
-    data = ReferenceResolver().resolve_all(data)
+    # resolve_all preserves the root type; the root here is always a mapping.
+    data = cast(dict[str, Any], ReferenceResolver().resolve_all(data))
 
     if strict:
         _raise_on_unresolved_directives(data)
@@ -533,7 +534,6 @@ class EnvironmentVariableResolver(DirectiveResolver):
         return ResolvedDirective(value=result, should_resolve_recursively=False)
 
 
-@ResolverRegistry.register(key="@value")
 class ReferenceResolver(DirectiveResolver):
     """Resolve @value: cross-references within the resolved configuration.
 
@@ -547,6 +547,8 @@ class ReferenceResolver(DirectiveResolver):
       - List concatenation: ``"@value: base + ['b', 'c']"``
       - YAML-list flattening: ``["@value: path1", "@value: path2", "col_a"]``
     """
+
+    key: str = "@value"
 
     @property
     def resolve_key(self) -> str:

@@ -1,0 +1,75 @@
+title: Overhaul configuration module and ingester registry access
+description:
+## Summary
+
+Refactors the src/configuration package and the backend ingester/service plumbing to remove
+class-based static APIs in favour of module-level functions and accessor factories.
+
+Configuration package changes:
+
+ - ConfigFactory is replaced by a module-level load_config() function in
+src/configuration/config.py; the ConfigFactoryLike protocol and src/configuration/interface.py are
+deleted, with the ConfigLike protocol moved into config.py.
+ - The directive resolvers (BaseResolver, SubConfigResolver, LoadResolver) and the former
+Config.resolve_references / Config.find_unresolved_directives static methods become module functions
+resolve_references() and find_unresolved_directives() in src/configuration/resolve.py.
+ - ConfigValue, inject_config, and Configurable move from resolve.py into a new
+src/configuration/config_value.py; is_config_path and is_path_to_existing_file move to
+src/configuration/utility.py.
+ - src/configuration/setup.py (setup_config_store, get_connection, connection_factory) is deleted
+along with its tests, and src/configuration/__init__.py re-exports the new public API.
+ - In BaseResolver._resolve_path, a path changed by environment-variable expansion is now resolved
+relative to the parent directory of the env file when it is not already absolute, instead of being
+made absolute against the current working directory.
+
+Backend changes:
+
+ - The global Ingesters registry instance is replaced by get_ingester_registry(); ingester classes
+now register via @get_ingester_registry().register(...).
+ - IngesterService static methods become instance methods obtained through a new
+get_ingester_service() singleton factory, used by the API endpoints and the ingest CLI. CLI ingester
+discovery moved into a discover_ingesters() helper invoked from the CLI group callback.
+ - ProjectService.load_project now merges the sidecar task_list from shapeshifter.yml into cached
+projects so cached reads reflect task state written independently by mark/complete/reset operations.
+
+Also included: rewritten unit tests for the ingest CLI (several command-level tests are marked skip
+pending investigation of shared-state failures), updated registry/service/configuration tests, a fix
+making the Copilot rtk hook locate rtk via an explicit PATH in non-interactive shells, and TODO
+notes about shell PATH setup.
+
+## User-facing release note
+
+Project task progress now stays up to date when projects are served from the application cache, so
+task states such as completed or ignored steps are reflected immediately after they change.
+
+## Upgrade notes
+
+Code that imports the configuration package must be updated; the old names were removed in this PR:
+
+ - ConfigFactory().load(...) → load_config(...) (from src.configuration or
+src.configuration.config).
+ - Config.resolve_references(...) / Config.find_unresolved_directives(...) → module functions
+resolve_references(...) / find_unresolved_directives(...) from src.configuration or
+src.configuration.resolve.
+ - ConfigValue / inject_config / Configurable now live in src.configuration.config_value (still
+re-exported from src.configuration).
+ - src.configuration.interface is deleted; import ConfigLike from src.configuration.config (or
+src.configuration). ConfigFactoryLike no longer exists.
+ - src.configuration.setup (setup_config_store, get_connection) is deleted; callers must set up
+configuration and connections by other means.
+ - Backend: replace the Ingesters global with get_ingester_registry(), and call IngesterService
+through get_ingester_service() instead of its former static methods.
+ - Behaviour change to be aware of: @include: / @load: paths whose environment variables expand to a
+relative path are now resolved relative to the env file's directory rather than the process working
+directory.
+
+## Validation
+
+ - No CI results were available for this pull request (statusCheckRollup was empty), and no test-run
+output was provided, so test execution and outcomes are unknown. Not verified: validation results
+unavailable.
+ - The pull request was merged into dev (merge commit cc1dda26fc52dda14d6f0b897760ddd78bd3952d);
+this is recorded merge metadata, not evidence that checks passed.
+ - Within the diff itself, several rewritten ingest CLI command tests are explicitly marked
+@pytest.mark.skip ("fails when not run in isolation, likely due to shared state"), and the deleted
+tests/configuration/test_setup.py covered the removed setup helpers.

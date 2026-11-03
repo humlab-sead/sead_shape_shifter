@@ -152,8 +152,8 @@ def test_link_foreign_key_left_join_keeps_null_local_keys_unmatched():
     assert all(column not in linked_df.columns for column in ["_merge_left_key_0", "_merge_right_key_0"])
 
 
-def test_link_foreign_key_uses_merge_with_null_safety(monkeypatch: pytest.MonkeyPatch):
-    """Lookup-style left joins should enable null-safe merge semantics by default."""
+def test_link_foreign_key_prevents_null_key_matches_by_default(monkeypatch: pytest.MonkeyPatch):
+    """Lookup-style left joins should prevent null-key matches by default."""
     project = ShapeShiftProject(
         cfg={
             "entities": {
@@ -177,14 +177,14 @@ def test_link_foreign_key_uses_merge_with_null_safety(monkeypatch: pytest.Monkey
     remote_df = pd.DataFrame({"system_id": [7], "remote_code": ["A"], "name": ["alpha"]})
     captured: dict[str, object] = {}
 
-    def fake_merge_with_null_safety(*, local_df, remote_df, allow_null_keys, **opts):
+    def fake_merge_with_nonmatching_null_keys(*, local_df, remote_df, allow_null_keys, **opts):
         captured["local_df"] = local_df.copy()
         captured["remote_df"] = remote_df.copy()
         captured["allow_null_keys"] = allow_null_keys
         captured["opts"] = opts
         return pd.DataFrame({"system_id": [100], "remote_code": ["A"], "value": ["matched"], "remote_id": [7]})
 
-    monkeypatch.setattr("src.transforms.link.merge_with_null_safety", fake_merge_with_null_safety)
+    monkeypatch.setattr("src.transforms.link.merge_with_nonmatching_null_keys", fake_merge_with_nonmatching_null_keys)
 
     linker = ForeignKeyLinker(project=project, table_store=TableStore({"local": local_df, "remote": remote_df}))
     linked_df = linker.link_foreign_key(local_df, fk_cfg, remote_df)
@@ -195,7 +195,7 @@ def test_link_foreign_key_uses_merge_with_null_safety(monkeypatch: pytest.Monkey
         "suffixes": ("", "_remote"),
         "left_on": ["remote_code"],
         "right_on": ["remote_code"],
-        "use_null_safe_merge": True,
+        "prevent_null_key_matches": True,
     }
     assert linked_df["remote_id"].tolist() == [7]
 
@@ -231,19 +231,19 @@ def test_link_foreign_key_passes_strict_null_policy_to_merge_helper(monkeypatch:
     remote_df = pd.DataFrame({"system_id": [7], "remote_code": ["A"], "name": ["alpha"]})
     captured: dict[str, object] = {}
 
-    def fake_merge_with_null_safety(*, local_df, remote_df, allow_null_keys, **opts):
+    def fake_merge_with_nonmatching_null_keys(*, local_df, remote_df, allow_null_keys, **opts):
         captured["allow_null_keys"] = allow_null_keys
         captured["opts"] = opts
         return pd.DataFrame({"system_id": [100], "remote_code": ["A"], "value": ["matched"], "remote_id": [7]})
 
-    monkeypatch.setattr("src.transforms.link.merge_with_null_safety", fake_merge_with_null_safety)
+    monkeypatch.setattr("src.transforms.link.merge_with_nonmatching_null_keys", fake_merge_with_nonmatching_null_keys)
 
     linker = ForeignKeyLinker(project=project, table_store=TableStore({"local": local_df, "remote": remote_df}))
     linker.link_foreign_key(local_df, fk_cfg, remote_df)
 
     assert captured["allow_null_keys"] is False
     assert isinstance(captured["opts"], dict)
-    assert captured["opts"]["use_null_safe_merge"] is False
+    assert captured["opts"]["prevent_null_key_matches"] is False
 
 
 @pytest.mark.parametrize(
@@ -301,7 +301,7 @@ def test_null_key_components_match_only_when_null_keys_equal_is_enabled(constrai
     assert linked_df["site_id"].tolist() == expected_site_ids
 
 
-def test_link_foreign_key_non_lookup_join_does_not_enable_null_safe_merge_by_default(monkeypatch: pytest.MonkeyPatch):
+def test_link_foreign_key_non_lookup_join_does_not_prevent_null_key_matches_by_default(monkeypatch: pytest.MonkeyPatch):
     """Identity-style joins should stay on the strict merge path when null policy is omitted."""
     project = ShapeShiftProject(
         cfg={
@@ -326,19 +326,19 @@ def test_link_foreign_key_non_lookup_join_does_not_enable_null_safe_merge_by_def
     remote_df = pd.DataFrame({"system_id": [7], "remote_id": [1], "name": ["alpha"]})
     captured: dict[str, object] = {}
 
-    def fake_merge_with_null_safety(*, local_df, remote_df, allow_null_keys, **opts):
+    def fake_merge_with_nonmatching_null_keys(*, local_df, remote_df, allow_null_keys, **opts):
         captured["allow_null_keys"] = allow_null_keys
         captured["opts"] = opts
         return pd.DataFrame({"system_id": [100], "remote_id": [1], "value": ["matched"]})
 
-    monkeypatch.setattr("src.transforms.link.merge_with_null_safety", fake_merge_with_null_safety)
+    monkeypatch.setattr("src.transforms.link.merge_with_nonmatching_null_keys", fake_merge_with_nonmatching_null_keys)
 
     linker = ForeignKeyLinker(project=project, table_store=TableStore({"local": local_df, "remote": remote_df}))
     linker.link_foreign_key(local_df, fk_cfg, remote_df)
 
     assert captured["allow_null_keys"] is False
     assert isinstance(captured["opts"], dict)
-    assert captured["opts"]["use_null_safe_merge"] is False
+    assert captured["opts"]["prevent_null_key_matches"] is False
 
 
 def test_lookup_left_join_null_local_key_does_not_match_null_remote_key():
@@ -388,6 +388,11 @@ def test_lookup_left_join_null_local_key_does_not_match_null_remote_key():
 
     assert linked_df["remote_id"].tolist()[0] == 7
     assert pd.isna(linked_df["remote_id"].tolist()[1])
+    assert "remote_code_remote" not in linked_df.columns
+
+    output_df = project.get_table("local").drop_fk_columns(linked_df)
+    assert "remote_code" in output_df.columns
+    assert "remote_code_remote" not in output_df.columns
 
 
 def test_lookup_inner_join_retains_strict_null_key_validation():
@@ -901,3 +906,101 @@ def test_link_foreign_key_avoids_duplicate_columns_when_public_id_in_remote_data
         assert len([c for c in linked_df.columns if c == "master_dataset_id"]) == 1
         # Verify the FK values are correct (should be the remote system_id values)
         assert linked_df["master_dataset_id"].tolist() == [1, 1]
+
+
+def build_same_pair_linker() -> tuple[ForeignKeyLinker, ShapeShiftProject]:
+    """Build a linker whose local entity has two foreign keys to the same remote entity."""
+    project = ShapeShiftProject(
+        cfg={
+            "entities": {
+                "local": {
+                    "columns": ["remote_code", "other_code"],
+                    "keys": ["remote_code"],
+                    "foreign_keys": [
+                        {
+                            "entity": "remote",
+                            "local_keys": ["remote_code"],
+                            "remote_keys": ["remote_code"],
+                            "how": "inner",
+                            "constraints": {"allow_row_decrease": True},
+                        },
+                        {
+                            "entity": "remote",
+                            "local_keys": ["other_code"],
+                            "remote_keys": ["remote_code"],
+                            "how": "inner",
+                            "constraints": {"allow_row_decrease": True},
+                        },
+                    ],
+                },
+                "remote": {
+                    "columns": ["remote_code"],
+                    "keys": ["remote_code"],
+                    "public_id": "remote_id",
+                },
+            }
+        }
+    )
+    local_df = pd.DataFrame({"system_id": [100, 101], "remote_code": ["A", "A"], "other_code": ["A", "missing"]})
+    remote_df = pd.DataFrame({"system_id": [7], "remote_code": ["A"]})
+    linker = ForeignKeyLinker(project=project, table_store=TableStore({"local": local_df, "remote": remote_df}))
+    return linker, project
+
+
+def test_link_foreign_key_records_fk_index_and_signature():
+    """A row-count warning names the saved foreign key that raised it."""
+    linker, project = build_same_pair_linker()
+    fk_cfg: ForeignKeyConfig = project.get_table("local").foreign_keys[1]
+    local_df = pd.DataFrame({"system_id": [100, 101], "remote_code": ["A", "A"], "other_code": ["A", "missing"]})
+    remote_df = pd.DataFrame({"system_id": [7], "remote_code": ["A"]})
+
+    linker.link_foreign_key(local_df, fk_cfg, remote_df)
+
+    issue = linker.validators[-1].issues[0]
+    assert issue.issue_type == "row_count_mismatch"
+    assert issue.metadata["fk_index"] == 1
+    assert issue.metadata["fk_signature"] == fk_cfg.identity_signature
+    assert issue.metadata["link_pass"] == "initial"
+
+
+def test_link_foreign_key_records_current_link_pass():
+    """The validator carries the linking pass set on the linker."""
+    linker, project = build_same_pair_linker()
+    fk_cfg: ForeignKeyConfig = project.get_table("local").foreign_keys[1]
+    local_df = pd.DataFrame({"system_id": [100, 101], "remote_code": ["A", "A"], "other_code": ["A", "missing"]})
+    remote_df = pd.DataFrame({"system_id": [7], "remote_code": ["A"]})
+
+    linker.link_pass = "after_unnest"
+    linker.link_foreign_key(local_df, fk_cfg, remote_df)
+
+    assert linker.validators[-1].issues[0].metadata["link_pass"] == "after_unnest"
+
+
+def test_link_foreign_key_without_constraints_records_no_issue():
+    """A foreign key without a constraints block adds no row-count warning."""
+    project = ShapeShiftProject(
+        cfg={
+            "entities": {
+                "local": {
+                    "columns": ["remote_code"],
+                    "keys": ["remote_code"],
+                    "foreign_keys": [
+                        {"entity": "remote", "local_keys": ["remote_code"], "remote_keys": ["remote_code"], "how": "inner"},
+                    ],
+                },
+                "remote": {
+                    "columns": ["remote_code"],
+                    "keys": ["remote_code"],
+                    "public_id": "remote_id",
+                },
+            }
+        }
+    )
+    fk_cfg: ForeignKeyConfig = project.get_table("local").foreign_keys[0]
+    local_df = pd.DataFrame({"system_id": [100, 101], "remote_code": ["A", "missing"]})
+    remote_df = pd.DataFrame({"system_id": [7], "remote_code": ["A"]})
+    linker = ForeignKeyLinker(project=project, table_store=TableStore({"local": local_df, "remote": remote_df}))
+
+    linker.link_foreign_key(local_df, fk_cfg, remote_df)
+
+    assert not linker.validators[-1].issues

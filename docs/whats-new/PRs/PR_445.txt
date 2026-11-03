@@ -1,0 +1,69 @@
+title: feat(ingesters): add deploy strategies and align follow-up docs
+description:
+## Summary
+
+This PR adds a deploy-artifact strategy boundary to the sead_change_request ingester and refactors
+the ingester flow around it.
+
+ - Deploy strategies (sql_builder.py): build_deploy_artifact() now delegates to a
+DeployArtifactStrategy protocol. Two named strategies ship: inline_insert (default, inline INSERT
+statements) and copy_csv (gzip-compressed, tab-delimited CSV sidecar files plus psql \copy ... FROM
+program 'zcat -qac ...' statements). Strategies are selected via
+IngesterConfig.extra["deploy_strategy"] (name or injected instance); unknown names fail with a
+structured "Invalid deploy strategy" result.
+ - Bundle layout and naming: artifacts are emitted under a canonical bundle name
+(YYYYMMDD_DML_<datatype>_<IDENTIFIER>) with deploy/, revert/, verify/ subfolders, named SQL files,
+and a manifest.json carrying contract metadata (version 1), payload rules, table order, row counts,
+and sha256 checksums. Existing bundle directories are removed before deterministic re-emission (gzip
+mtime=0). SQL files get SEAD change-control-style headers (author, date, description, issue link).
+ - Submission context hardening: SubmissionContext gains datatype, identifier, description,
+issue_number, and author, validated at the input boundary (approved datatype set, A-Z0-9_ identifier
+under 40 chars, single-line description under 80 chars). copy_csv rejects table names unsafe for
+bundle paths, distinguishes null from empty string, and renders reals without scientific notation.
+NumPy-backed missing public_id values are now planned as missing.
+ - Refactor: ingester.py shrinks to a protocol adapter; input/config resolution moves to
+input_resolution.py (typed InputResolutionError hierarchy), the shared workflow to preparation.py
+(prepare_change_request()), result shaping to result_builders.py, and file emission to
+artifact_writer.py. IngestionResult gains create_success_result/create_failed_result helpers;
+PendingConfirmationReport.create() replaces confirmation.py. "Materialization" terminology is
+renamed to target projection (project_target_ids, TargetProjectionResult, ProjectedTable,
+check_projected_collisions).
+ - Docs and tooling: new ingester README.md and DIAGRAMS.md; new follow-up proposal docs (follow-up
+CR, follow-up issues, hardening, readability refactor plan) plus a historical artifact example;
+updates to the main proposal and SEAD v2 target-model completeness review.
+scripts/validate_project.py extracts a load_project() helper, with its tests replaced by
+tests/test_validate_project_script.py.
+
+## User-facing release note
+
+Change-request artifact bundles can now be generated either as inline INSERT SQL or as a CSV-based
+bundle with gzip payloads and \copy deploy statements, selected via a deploy_strategy setting.
+Bundles use a standard YYYYMMDD_DML_<datatype>_<IDENTIFIER> layout with deploy/revert/verify folders
+and a manifest, and submission metadata (datatype, identifier, description, author, issue) is
+validated and embedded in the generated SQL headers.
+
+## Upgrade notes
+
+ - The emitted bundle layout changed: deploy.sql/revert.sql/verify.sql/metadata.json in a sanitized
+folder are replaced by deploy/<bundle>.sql, revert/<bundle>.sql, verify/<bundle>.sql, and
+manifest.json under the canonical bundle name. Downstream consumers of the old layout must be
+updated.
+ - submission_context now requires datatype (from the approved set) and identifier; multiline or
+≥80-character descriptions are rejected.
+ - Renamed public APIs: materialize_resolved_tables → project_target_ids,
+check_materialized_collisions → check_projected_collisions, MaterializationResult/MaterializedTable
+→ TargetProjectionResult/ProjectedTable, and DeployArtifact fields
+revert_placeholder_sql/verify_placeholder_sql → revert_sql/verify_sql.
+
+## Validation
+
+ - Reported by the PR author as run: ./.venv/bin/pytest
+backend/tests/ingesters/test_sead_change_request_sql_builder.py
+backend/tests/ingesters/test_sead_change_request_ingester.py -q; pass/fail outcome not recorded in
+the available evidence.
+ - Reported by the PR author as run: markdown diagnostics on the six changed proposal documents
+(DELIVERY_1_FOLLOWUP_CR.md, DELIVERY_1_FOLLOWUP_ISSUES.md, INGESTER_READABILITY_REFACTOR_PLAN.md,
+SEAD_V2_TARGET_MODEL_COMPLETENESS.md, SEAD_CHANGE_REQUEST_INGESTER.md); outcomes not recorded.
+ - No CI status checks are reported for this pull request (empty status rollup); the PR was merged
+on 2026-05-26. Execution of other test suites (e.g. the renamed target-projection, contracts,
+planning, and validate-project tests) is unknown from the available evidence.

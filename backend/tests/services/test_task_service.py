@@ -76,6 +76,7 @@ def mock_core_project():
 def mock_api_project():
     """Create mock API Project."""
     project = MagicMock(spec=Project)
+    project.load_errors = []
     # Add task_list attribute that is accessed in task_service methods (using new format)
     project.task_list = {
         "todo": ["site", "sample"],

@@ -4,6 +4,7 @@ from typing import Any, cast
 
 import pytest
 from fastapi import HTTPException
+from loguru import logger
 
 from backend.app.exceptions import (
     CircularDependencyError,
@@ -130,13 +131,18 @@ class TestErrorHandlerDecorator:
     @pytest.mark.asyncio
     async def test_generic_exception_returns_500(self):
         """Test generic Exception is converted to 500 with structured response."""
+        logged_messages: list[str] = []
+        sink_id = logger.add(lambda message: logged_messages.append(str(message)), level="ERROR")
 
         @handle_endpoint_errors
         async def error_endpoint():
             raise ValueError("Unexpected error")
 
-        with pytest.raises(HTTPException) as exc_info:
-            await error_endpoint()
+        try:
+            with pytest.raises(HTTPException) as exc_info:
+                await error_endpoint()
+        finally:
+            logger.remove(sink_id)
 
         assert exc_info.value.status_code == 500
         # New behavior: structured response for unexpected errors
@@ -145,6 +151,9 @@ class TestErrorHandlerDecorator:
         assert detail["error_type"] == "InternalServerError"
         assert detail["message"] == "An unexpected error occurred. Correlation ID: no-corr"
         assert "Unexpected error" not in detail["message"]
+        assert logged_messages
+        assert "ValueError: Unexpected error" in logged_messages[0]
+        assert "Traceback" in logged_messages[0]
 
     @pytest.mark.asyncio
     async def test_preserves_function_metadata(self):

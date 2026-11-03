@@ -104,46 +104,12 @@
 
       <!-- Validation Results -->
       <div v-else>
-        <v-card v-if="hasDataValidationExecution" variant="outlined" class="mb-4">
-          <v-card-title>Data Validation Execution</v-card-title>
-          <v-card-text>
-            <div class="d-flex align-center flex-wrap ga-2">
-              <span v-if="validationResult?.validation_mode">
-                Mode: <strong>{{ dataValidationModeLabel }}</strong>
-              </span>
-              <v-chip v-if="validationResult?.status" :color="dataValidationStatusColor" size="small">
-                Run status: {{ validationResult.status }}
-              </v-chip>
-            </div>
-
-            <p v-if="validationResult?.status_reason" class="mt-3 mb-0">
-              {{ validationResult.status_reason }}
-            </p>
-
-            <div v-if="entityStatuses.length > 0" class="mt-3">
-              <p class="text-subtitle-2 mb-2">Entity execution</p>
-              <div v-for="[entityName, entityStatus] in entityStatuses" :key="entityName" class="mb-2">
-                <div class="d-flex align-center flex-wrap ga-2">
-                  <span class="font-weight-medium">{{ entityName }}</span>
-                  <v-chip :color="entityStatusColor(entityStatus.status)" size="x-small">
-                    {{ entityStatus.status }}
-                  </v-chip>
-                </div>
-                <p v-if="entityStatus.reason" class="text-body-2 text-medium-emphasis mb-0">
-                  {{ entityStatus.reason }}
-                </p>
-              </div>
-            </div>
-          </v-card-text>
-        </v-card>
-
         <!-- Summary Card -->
         <v-card variant="tonal" :color="summaryColor" class="mb-4">
           <v-card-text>
             <div class="d-flex align-center">
               <v-icon :icon="summaryIcon" size="48" class="mr-4" />
               <div>
-                <p class="text-subtitle-2 mb-1">Validation Findings</p>
                 <p class="text-h6 mb-1">{{ summaryTitle }}</p>
                 <p class="text-body-2">
                   {{ errorCount }} {{ errorCount === 1 ? 'error' : 'errors' }}, {{ warningCount }}
@@ -179,35 +145,63 @@
             By Entity
             <v-badge v-if="entityScopedIssues.length > 0" :content="entityScopedIssues.length" inline class="ml-2" />
           </v-tab>
+          <v-tab v-if="hasDataValidationExecution" value="execution">Execution</v-tab>
         </v-tabs>
 
         <!-- Messages List -->
         <v-window v-model="activeTab">
+          <v-window-item v-if="hasDataValidationExecution" value="execution">
+            <v-card variant="outlined" class="mb-4">
+              <v-card-title>Data Validation Execution</v-card-title>
+              <v-card-text>
+                <div class="d-flex align-center flex-wrap ga-2">
+                  <span v-if="validationResult?.validation_mode">
+                    Mode: <strong>{{ dataValidationModeLabel }}</strong>
+                  </span>
+                  <v-chip v-if="validationResult?.status" :color="dataValidationStatusColor" size="small">
+                    Run status: {{ validationResult.status }}
+                  </v-chip>
+                </div>
+
+                <p v-if="validationResult?.status_reason" class="mt-3 mb-0">
+                  {{ validationResult.status_reason }}
+                </p>
+
+                <div v-if="entityStatuses.length > 0" class="mt-3">
+                  <p class="text-subtitle-2 mb-2">Entity execution</p>
+                  <div v-for="[entityName, entityStatus] in entityStatuses" :key="entityName" class="mb-2">
+                    <div class="d-flex align-center flex-wrap ga-2">
+                      <span class="font-weight-medium">{{ entityName }}</span>
+                      <v-chip :color="entityStatusColor(entityStatus.status)" size="x-small">
+                        {{ entityStatus.status }}
+                      </v-chip>
+                    </div>
+                    <p v-if="entityStatus.reason" class="text-body-2 text-medium-emphasis mb-0">
+                      {{ entityStatus.reason }}
+                    </p>
+                  </div>
+                </div>
+              </v-card-text>
+            </v-card>
+          </v-window-item>
+
           <!-- All Issues -->
           <v-window-item value="all">
             <validation-message-list
               :messages="allMessages"
               :empty-message="'No validation issues found. Project looks good!'"
-              @open-entity="handleOpenEntity"
+              v-on="listEvents"
             />
           </v-window-item>
 
           <!-- Errors Only -->
           <v-window-item value="errors">
-            <validation-message-list
-              :messages="errors"
-              :empty-message="'No errors found'"
-              @open-entity="handleOpenEntity"
-            />
+            <validation-message-list :messages="errors" :empty-message="'No errors found'" v-on="listEvents" />
           </v-window-item>
 
           <!-- Warnings Only -->
           <v-window-item value="warnings">
-            <validation-message-list
-              :messages="warnings"
-              :empty-message="'No warnings found'"
-              @open-entity="handleOpenEntity"
-            />
+            <validation-message-list :messages="warnings" :empty-message="'No warnings found'" v-on="listEvents" />
           </v-window-item>
 
           <!-- By Category -->
@@ -228,7 +222,7 @@
                   </div>
                 </v-expansion-panel-title>
                 <v-expansion-panel-text>
-                  <validation-message-list :messages="structuralIssues" @open-entity="handleOpenEntity" />
+                  <validation-message-list :messages="structuralIssues" v-on="listEvents" />
                 </v-expansion-panel-text>
               </v-expansion-panel>
 
@@ -247,7 +241,7 @@
                   </div>
                 </v-expansion-panel-title>
                 <v-expansion-panel-text>
-                  <validation-message-list :messages="dataIssues" @open-entity="handleOpenEntity" />
+                  <validation-message-list :messages="dataIssues" v-on="listEvents" />
                 </v-expansion-panel-text>
               </v-expansion-panel>
 
@@ -266,7 +260,7 @@
                   </div>
                 </v-expansion-panel-title>
                 <v-expansion-panel-text>
-                  <validation-message-list :messages="performanceIssues" @open-entity="handleOpenEntity" />
+                  <validation-message-list :messages="performanceIssues" v-on="listEvents" />
                 </v-expansion-panel-text>
               </v-expansion-panel>
 
@@ -285,7 +279,7 @@
                   </div>
                 </v-expansion-panel-title>
                 <v-expansion-panel-text>
-                  <validation-message-list :messages="conformanceIssues" @open-entity="handleOpenEntity" />
+                  <validation-message-list :messages="conformanceIssues" v-on="listEvents" />
                 </v-expansion-panel-text>
               </v-expansion-panel>
             </v-expansion-panels>
@@ -315,7 +309,7 @@
                     v-if="group.entityMessages.length > 0"
                     :messages="group.entityMessages"
                     :empty-message="'No entity-level issues found'"
-                    @open-entity="handleOpenEntity"
+                    v-on="listEvents"
                   />
 
                   <v-expansion-panels v-if="group.branchGroups.length > 0" variant="accordion" class="mt-3">
@@ -334,7 +328,7 @@
                         </div>
                       </v-expansion-panel-title>
                       <v-expansion-panel-text>
-                        <validation-message-list :messages="branchGroup.messages" @open-entity="handleOpenEntity" />
+                        <validation-message-list :messages="branchGroup.messages" v-on="listEvents" />
                       </v-expansion-panel-text>
                     </v-expansion-panel>
                   </v-expansion-panels>
@@ -349,9 +343,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useNotification } from '@/composables/useNotification'
-import { groupByEntityScope, type EntityDataValidationStatus, type ValidationResult } from '@/types'
+import {
+  groupByEntityScope,
+  type EntityDataValidationStatus,
+  type ValidationError,
+  type ValidationResult,
+} from '@/types'
 import ValidationMessageList from './ValidationMessageList.vue'
 import DataValidationConfig from './DataValidationConfig.vue'
 
@@ -375,12 +374,17 @@ interface Emits {
   (e: 'validate-data', config?: ValidationConfig): void
   (e: 'validate-target-model'): void
   (e: 'open-entity', entityName: string): void
+  (e: 'troubleshoot', message: ValidationError): void
 }
 
 const props = withDefaults(defineProps<Props>(), {
   availableEntities: () => [],
 })
 const emit = defineEmits<Emits>()
+const listEvents = {
+  'open-entity': handleOpenEntity,
+  troubleshoot: (message: ValidationError) => emit('troubleshoot', message),
+}
 
 const activeTab = ref('all')
 const showDataConfig = ref(false)
@@ -402,6 +406,11 @@ const hasDataValidationExecution = computed(
     props.validationResult?.status != null ||
     entityStatuses.value.length > 0
 )
+watch(hasDataValidationExecution, (hasExecution) => {
+  if (!hasExecution && activeTab.value === 'execution') {
+    activeTab.value = 'all'
+  }
+})
 const dataValidationModeLabel = computed(() =>
   props.validationResult?.validation_mode === 'sample' ? 'Sample' : 'Complete'
 )

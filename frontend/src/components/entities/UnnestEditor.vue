@@ -14,7 +14,17 @@
         variant="outlined"
         density="compact"
         class="mb-4"
-      />
+      >
+        <template #chip="{ item, props: chipProps }">
+          <ValueReferenceChip
+            v-if="typeof item.raw === 'string' && item.raw.trim().startsWith('@value:')"
+            :value="item.raw"
+            :chip-props="chipProps"
+            :entities="referenceEntities ?? null"
+          />
+          <v-chip v-else v-bind="chipProps">{{ item.title }}</v-chip>
+        </template>
+      </v-combobox>
 
       <v-combobox
         v-model="unnest.value_vars"
@@ -27,7 +37,17 @@
         variant="outlined"
         density="compact"
         class="mb-4"
-      />
+      >
+        <template #chip="{ item, props: chipProps }">
+          <ValueReferenceChip
+            v-if="typeof item.raw === 'string' && item.raw.trim().startsWith('@value:')"
+            :value="item.raw"
+            :chip-props="chipProps"
+            :entities="referenceEntities ?? null"
+          />
+          <v-chip v-else v-bind="chipProps">{{ item.title }}</v-chip>
+        </template>
+      </v-combobox>
 
       <v-text-field
         v-model="unnest.var_name"
@@ -63,6 +83,8 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import type { EntityResponse } from '@/api/entities'
+import ValueReferenceChip from './ValueReferenceChip.vue'
 
 interface UnnestConfig {
   id_vars: string[]
@@ -75,6 +97,8 @@ interface Props {
   modelValue?: UnnestConfig | null
   idVarColumns?: string[]
   valueVarColumns?: string[]
+  referenceEntities?: EntityResponse[] | null
+  referenceSuggestions?: string[]
 }
 
 const props = defineProps<Props>()
@@ -94,8 +118,12 @@ const unnest = ref<UnnestConfig>(
 
 const unnestEnabled = ref(!!props.modelValue)
 
-const idVarColumns = computed(() => props.idVarColumns ?? [])
-const valueVarColumns = computed(() => props.valueVarColumns ?? [])
+const idVarColumns = computed(() => [
+  ...new Set([...(props.idVarColumns ?? []), ...(props.referenceSuggestions ?? [])]),
+])
+const valueVarColumns = computed(() => [
+  ...new Set([...(props.valueVarColumns ?? []), ...(props.referenceSuggestions ?? [])]),
+])
 
 watch(
   [unnestEnabled, unnest],

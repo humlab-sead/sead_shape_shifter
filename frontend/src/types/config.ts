@@ -3,6 +3,7 @@
  */
 
 import type { Entity } from './entity'
+import type { ValidationError } from './validation'
 
 export interface ProjectMetadata {
   name: string
@@ -40,6 +41,7 @@ export interface Project {
   options?: Record<string, any>
   metadata?: ProjectMetadata | null
   load_warnings?: string[]
+  load_errors?: ValidationError[]
 }
 
 export interface ProjectFileInfo {

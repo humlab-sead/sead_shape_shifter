@@ -40,6 +40,34 @@ function mountValidationPanel(validationResult: ValidationResult | null) {
 }
 
 describe('ValidationPanel', () => {
+  it('forwards troubleshooter actions from validation messages', async () => {
+    const warning = {
+      severity: 'warning' as const,
+      entity: 'orders',
+      message: 'Link changed the row count.',
+      code: 'ROW_COUNT_MISMATCH',
+      metadata: {
+        fk_index: 0,
+        fk_signature: 'saved-signature',
+        link_pass: 'initial',
+        join_type: 'inner',
+      },
+    }
+    const wrapper = mountValidationPanel({
+      is_valid: true,
+      errors: [],
+      warnings: [warning],
+      info: [],
+      error_count: 0,
+      warning_count: 1,
+    })
+
+    await wrapper.find('tbody > tr.v-data-table__tr').trigger('click')
+    await wrapper.find('.link-troubleshooter-action').trigger('click')
+
+    expect(wrapper.emitted('troubleshoot')?.[0]).toEqual([warning])
+  })
+
   it('renders merged-entity issues grouped by entity and branch', async () => {
     const validationResult: ValidationResult = {
       is_valid: false,
@@ -89,6 +117,7 @@ describe('ValidationPanel', () => {
     expect(wrapper.text()).toContain('1 informational message')
     expect(wrapper.text()).toContain('All Issues 3')
     expect(wrapper.text()).toContain('Validation Failed')
+    expect(wrapper.find('button[value="execution"]').exists()).toBe(false)
   })
 
   it('shows an informational conditional result without calling it passed', () => {
@@ -136,9 +165,15 @@ describe('ValidationPanel', () => {
       },
     })
 
+    const executionTab = wrapper.find('button[value="execution"]')
+    const executionPanel = wrapper.find('div[value="execution"]')
+
+    expect(executionTab.exists()).toBe(true)
+    expect(executionPanel.text()).toContain('Data Validation Execution')
+    expect(executionPanel.text()).toContain('Mode: Sample')
     expect(wrapper.text()).toContain('Mode: Sample')
     expect(wrapper.text()).toContain('Run status: completed')
-    expect(wrapper.text()).toContain('Validation Findings')
+    expect(wrapper.text()).not.toContain('Validation Findings')
     expect(wrapper.text()).toContain('Validation Failed')
   })
 

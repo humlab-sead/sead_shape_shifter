@@ -1,3 +1,4 @@
+import abc
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar
@@ -38,6 +39,13 @@ class ExcelLoader(FileLoader):
             opts.setdefault("sheet_name", table_cfg.source)
 
         return opts
+
+    @abc.abstractmethod
+    async def test_connection(self) -> ConnectTestResult:
+        """Returns the result of checking that the Excel file can be read.
+
+        Implemented by concrete Excel loaders such as the pandas and openpyxl readers.
+        """
 
 
 @DataLoaders.register(key=["xlsx", "xls"])

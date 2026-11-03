@@ -1,0 +1,59 @@
+title: Add Excel/CSV upload and file picker for data source configuration
+description:
+## Summary
+
+Adds the ability to upload Excel/CSV files for use in data source configurations (issue #174).
+
+ - Backend: New endpoints GET /api/v1/data-sources/files (list, with optional ext filter) and POST
+/api/v1/data-sources/files (multipart upload) backed by new ProjectService methods. Uploads are
+stored in a new global data source files directory (DATA_SOURCE_FILES_DIR, default ./input,
+auto-created on startup). Saves enforce allowed extensions (.xlsx, .xls, .csv), a 50 MB size cap,
+filename sanitization, and automatic renaming on filename collision. A new ProjectFileInfo model
+reports name, server-relative path, size, and last-modified time (ISO 8601). The service also gains
+per-project uploads/ directory helpers (list_project_files, save_project_file).
+ - Frontend: New dataSourceFilesApi (data-source-files.ts) and project file list/upload client
+methods. DataSourceFormDialog now renders file_path driver fields with a Select/Upload toggle: users
+can pick an existing file from the data source files directory or upload a new one, with per-driver
+extension filtering (csv/tsv, mdb/accdb, xlsx/xls). The driver select deduplicates alias drivers
+(e.g. csv/tsv, xlsx/openpyxl) by display name, with a new getCanonicalDriver helper used when
+editing existing sources.
+ - Supporting changes: Settings.VERSION now reads __version__ from backend/app/__init__.py, and
+semantic-release updates/bumps that file on release. backend/app/scripts/config.yml gains
+table_name_overrides and table_name_ignores entries. The docker Makefile replaces sudo invocations
+with guard-user/guard-cwd checks requiring the sead user (or root) and the deploy directory.
+docs/images/README.md documents Mermaid diagram extraction/SVG generation targets. Minor UI tweaks:
+closable SessionIndicator alert and simplified layout in ProjectDetailView.
+
+## User-facing release note
+
+Users can now upload Excel (.xlsx/.xls) or CSV files directly from the data source form, or select a
+previously uploaded file from a dropdown, so data source paths no longer have to be typed or placed
+on the server by hand. The data source type dropdown also no longer shows duplicate driver entries.
+
+## Upgrade notes
+
+ - A new DATA_SOURCE_FILES_DIR setting (env SHAPE_SHIFTER_DATA_SOURCE_FILES_DIR, default ./input)
+controls where uploaded data source files are stored; deployers should point it at a persistent,
+writable location. The directory is created automatically on startup.
+ - Release automation now also writes the version into backend/app/__init__.py (in addition to
+pyproject.toml); the app's reported version comes from that file. No manual migration is otherwise
+required.
+
+## Validation
+
+Not verified: validation results unavailable. No CI status checks were reported for this pull
+request, and while the diff includes formatting-only updates to
+backend/tests/services/test_project_service.py and
+backend/tests/services/test_task_service_initialize.py, there is no evidence of any test or lint run
+results. No new automated tests for the upload/list endpoints or service methods appear in the
+diff.
+
+## Detected orphaned commits
+
+Commits pushed directly to the base branch after the previous merged pull request. Each
+commit below reached the base branch without a pull request of its own.
+
+- `028d509` fix: update SEAD logo source to use variable (2026-01-19)
+- `da61f07` feat: add docker-patch-frontend and presentation export commands (2026-01-19)
+
+Filtered 3 housekeeping commit(s): docs-only 1, release-version-bump 2.

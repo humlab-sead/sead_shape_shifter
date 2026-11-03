@@ -1,0 +1,34 @@
+title: Archive the Phase 3 task plan and update master plan status
+description:
+## Summary
+
+Documentation-only change that files the completed Phase 3 task plan with the other completed phase
+plans and brings the master cutover plan's status in line with reality.
+
+ - CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_3_TASK_PLAN.md is renamed into
+docs/proposals/CENTRALIZED_AUTHORIZATION_CUTOVER/done/, alongside the Phase 1, Phase 2, and
+configuration-layout plans. Its relative links were rewritten for the new directory depth (source
+proposal, phase plan, prerequisite plans, handoff, manifest, and resource inventory).
+ - The master plan status now reads "Phases 1, 2, 2A, and 3 complete; Phase 4 ready for its task
+plan; Phase 5 not started", and the current-position note records that the reviewed projects and
+shared data sources are provisioned on the target rather than an outstanding operational follow-up.
+ - The test-environment handoff's Source plans line now points at the archived path ./done/…,
+matching how the other completed plans are listed.
+
+No code, configuration, or script changes.
+
+## User-facing release note
+
+None - no user-visible change.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+ - No CI status checks are recorded for this pull request (statusCheckRollup is empty), so automated
+check results are unknown.
+ - The pull request author reports that scripts/check_doc_links.sh passes (covering the rewritten
+relative links) and that git diff --check passes; these are author-reported and not independently
+confirmed by available CI evidence.

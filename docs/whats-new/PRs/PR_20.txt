@@ -1,0 +1,46 @@
+title: feat: add dual-mode Form/YAML entity editor with Monaco integration
+description:
+## Summary
+
+Adds a YAML editing mode to the entity configuration dialog so users can edit an entity either
+through the existing visual form or directly as YAML, similar to VS Code's settings editor.
+
+ - New reusable YamlEditor.vue component (frontend/src/components/common/YamlEditor.vue) wraps
+Monaco Editor (via @guolao/vue-monaco-editor) with YAML syntax highlighting, configurable
+height/read-only mode, and real-time syntax validation using js-yaml. Parse errors are shown in an
+inline error alert and emitted to the parent.
+ - EntityFormDialog.vue gains a YAML tab (edit mode only; disabled when creating an entity).
+Switching to the YAML tab regenerates YAML from the current form data; switching back to the form
+applies the YAML to the form fields only when it parses successfully. While typing, valid YAML is
+auto-synced into the form; invalid YAML sets an error and leaves the form untouched. In edit mode,
+YAML content is initialized from the entity when the dialog opens.
+ - New frontend dependencies: monaco-editor, @guolao/vue-monaco-editor, js-yaml, and @types/js-yaml.
+ - Documentation: adds docs/YAML_EDITOR_FEATURE.md (feature guide, workflows, and a manual testing
+checklist) and docs/ENTITY_STATE_MANAGEMENT.md (three-layer state architecture), and updates
+README.md, docs/README.md, docs/UI_ARCHITECTURE.md, and docs/USER_GUIDE.md to describe the dual-mode
+editor. Note that some documentation claims (e.g. blocking tab switches or disabling Save on
+invalid YAML) are not enforced by the code in this diff, which only skips syncing invalid YAML.
+
+The original PR body references fixing issue #18, but no linked issue details were available for
+this description.
+
+## User-facing release note
+
+When editing an entity, you can now switch to a YAML tab to edit its configuration as raw YAML with
+VS Code-style editing and real-time syntax error feedback, or keep using the visual form; the two
+views stay in sync as you switch between them. This makes it easy to copy/paste or bulk-edit entity
+definitions without leaving the dialog.
+
+## Upgrade notes
+
+Frontend consumers must install the new dependencies before building: run npm install in frontend/
+to pick up monaco-editor, @guolao/vue-monaco-editor, js-yaml, and @types/js-yaml added to
+frontend/package.json. No backend, database, or configuration migrations are included in this
+change.
+
+## Validation
+
+Not verified: validation results unavailable. No CI check results were supplied for this pull
+request, and the diff contains no automated tests (the testing sections in
+docs/YAML_EDITOR_FEATURE.md are documentation templates, not executed checks). The pull request was
+merged into dev, but no evidence of specific checks being run or their outcomes was available.

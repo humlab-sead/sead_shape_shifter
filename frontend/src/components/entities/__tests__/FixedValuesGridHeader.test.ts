@@ -46,7 +46,9 @@ describe('FixedValuesGridHeader', () => {
       },
     })
 
-    expect(wrapper.html()).toContain('Auto (int)')
+    const options = wrapper.findAll('option')
+    expect(options.map((option) => option.text())).toEqual(['Auto (int)', 'Integer'])
+    expect(options.every((option) => option.classes().includes('column-type-header__option'))).toBe(true)
     expect(wrapper.get('select').attributes('title')).toBe('Inferred: int')
   })
 
