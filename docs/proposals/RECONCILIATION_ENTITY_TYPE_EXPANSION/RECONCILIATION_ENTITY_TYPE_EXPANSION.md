@@ -14,7 +14,7 @@ After that validation passes, this proposal recommends extending the same workfl
 
 ## Problem
 
-The MVP is explicitly limited to `site`. Developers have no reconciliation-specific guide for deciding whether another local entity is suitable, configuring its match fields, or verifying that exported links apply to the intended normalized rows. The general [Extending the System](../DEVELOPMENT.md#extending-the-system) section does not cover this workflow.
+The MVP is explicitly limited to `site`. Developers have no reconciliation-specific guide for deciding whether another local entity is suitable, configuring its match fields, or verifying that exported links apply to the intended normalized rows. The general [Extending the System](../../DEVELOPMENT.md#extending-the-system) section does not cover this workflow.
 
 The specification distinguishes a local `entity_name` from the remote matching `service_type`. The editor loads remote types from the matching service manifest. Treating those remote types as proof that a local entity is ready for reconciliation could expose a type whose source rows, business keys, or end-to-end matching behavior have not been verified.
 
@@ -34,7 +34,7 @@ The specification distinguishes a local `entity_name` from the remote matching `
 
 ## Current Behavior
 
-- The [MVP proposal](./RECONCILIATION_MVP/RECONCILIATION_MVP.md) limits the first workflow to `site` and defines the key, review, export, normalization, and validation contracts to preserve.
+- The [MVP proposal](../RECONCILIATION_MVP/RECONCILIATION_MVP.md) limits the first workflow to `site` and defines the key, review, export, normalization, and validation contracts to preserve.
 - The project owner reports that implementation is complete apart from manual end-to-end validation. That validation has not yet cleared the MVP gate.
 - The reconciliation editor obtains remote matching types from the service manifest, while the local entity is selected separately. Remote type availability does not establish complete support for a local entity.
 

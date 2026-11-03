@@ -10,6 +10,7 @@ This index covers proposals and initiative records that need attention or provid
 | [Branch-Scoped Consumers For Mixed-Branch Parents](BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md) | Proposed follow-up | Let downstream entities select which branch of a mixed parent they consume. |
 | [Output Dataset Expectations](OUTPUT_DATASET_EXPECTATIONS/OUTPUT_DATASET_EXPECTATIONS.md) | Approved change request | Check row counts, distinct business keys, and expected group counts on complete transformed output. |
 | [Foreign-Key Link Troubleshooter](FOREIGN_KEY_LINK_TROUBLESHOOTER/FOREIGN_KEY_LINK_TROUBLESHOOTER.md) | Approved feature | Diagnose a supported foreign-key warning with a read-only baseline and key-pair trials. |
+| [Foreign-Key Link Troubleshooter Experiments](FOREIGN_KEY_LINK_TROUBLESHOOTER_EXPERIMENTS/FOREIGN_KEY_LINK_TROUBLESHOOTER_EXPERIMENTS.md) | Proposed follow-up change request | Compare trial keys, inner/left joins, and null-key settings against a fixed baseline, with exception-focused rows and reset. |
 | [Report Target Model Coverage Against SEAD](SEAD_TARGET_MODEL_COVERAGE_BOUNDARY.md) | Proposed change request | Let each target model declare its SEAD coverage source and measure coverage with a CLI against the pinned snapshot or live SEAD; no separate manifest. |
 | [Publish Container Images From CI To GHCR And Deploy By Pull](GHCR_IMAGE_RELEASE.md) | Proposed change request | Build images in GitHub Actions, publish to GHCR, and deploy by digest-pinned pull instead of host-side builds and release archives. |
 | [Move Existing Projects To Provider-Schema Scopes](CHANGE_REQUEST_INGESTER/CUTOVER_AND_DEPLOYMENT/PROJECT_PROVIDER_SCOPE_CUTOVER.md) | Proposed cutover | Inventory old project scopes, decide migrate or abandon, assign one approved pair per project, and enable projects one at a time as operational work. |
@@ -18,7 +19,7 @@ This index covers proposals and initiative records that need attention or provid
 | [Make `@value` References Usable in Column Pickers](VALUE_REFERENCE_COLUMN_PICKERS/VALUE_REFERENCE_COLUMN_PICKERS.md) | Proposed feature | Add guided reference entry, resolved-column previews, and explicit replacement without restoring long dropdown lists. |
 | [Security Hardening Follow-up](SECURITY_HARDENING_FOLLOWUP/SECURITY_HARDENING_FOLLOWUP.md) | Proposed change request | Remediate unresolved application, authorization, deployment, and verification issues, including safeguards for future generic ingester routes. |
 | [AI Project Advisor](SHAPESHIFTER_PROJECT_AI_ADVISOR/SHAPESHIFTER_PROJECT_AI_ADVISOR.md) | Feature proposal | Provide project-scoped advice grounded in project state, SEAD knowledge, and source-level investigation. |
-| [Reconciliation Entity-Type Expansion](RECONCILIATION_ENTITY_TYPE_EXPANSION.md) | Proposed feature — draft for review | Extend the `site` pilot to two additional local target entities and add verified developer guidance for supporting more types. |
+| [Reconciliation Entity-Type Expansion](RECONCILIATION_ENTITY_TYPE_EXPANSION/RECONCILIATION_ENTITY_TYPE_EXPANSION.md) | Proposed feature — draft for review | Extend the `site` pilot to two additional local target entities and add verified developer guidance for supporting more types. |
 
 ## Current Initiatives
 
