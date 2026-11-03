@@ -29,7 +29,6 @@
           />
           <span class="text-body-2">{{ formatSeverityLabel(item.severity) }}</span>
         </div>
-        <span v-if="item.priority" class="text-caption text-medium-emphasis ml-6"> Priority: {{ item.priority }} </span>
       </div>
     </template>
 
@@ -251,8 +250,8 @@ function formatBranchLabel(branchName: string | null | undefined, branchSource: 
 
 .validation-message-summary {
   display: block;
+  flex: 1 1 auto;
   min-width: 0;
-  max-width: min(38rem, 100%);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
