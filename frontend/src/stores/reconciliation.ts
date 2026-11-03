@@ -6,6 +6,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type {
   EntityResolutionCatalog,
+  DeleteSpecificationResult,
   ReconciliationCandidate,
   AutoReconcileResult,
   ExportToMappingResult,
@@ -13,15 +14,37 @@ import type {
   EntityResolutionListItem,
   EntityResolutionCatalogCreateRequest,
   EntityResolutionCatalogUpdateRequest,
+  DecisionUpdateRequest,
+  MappingEntityResponse,
 } from '@/types/reconciliation'
 import { apiClient } from '@/api/client'
 import { reconciliationSpecApi, reconciliationServiceApi } from '@/api/reconciliation'
 // import { load } from 'js-yaml'
 
+type PreviewDataByProject = Record<string, Record<string, Record<string, ReconciliationPreviewRow[]>>>
+type PreviewErrorsByProject = Record<string, Record<string, Record<string, string>>>
+type MappingDataByProject = Record<string, Record<string, MappingEntityResponse>>
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message) return error.message
+  if (typeof error === 'object' && error !== null && 'response' in error) {
+    const response = (error as { response?: { data?: { detail?: unknown } } }).response
+    const detail = response?.data?.detail
+    if (typeof detail === 'string') return detail
+  }
+  return fallback
+}
+
 export const useReconciliationStore = defineStore('reconciliation', () => {
   // State
   const reconciliationConfig = ref<EntityResolutionCatalog | null>(null)
-  const previewData = ref<Record<string, ReconciliationPreviewRow[]>>({})
+  const previewData = ref<PreviewDataByProject>({})
+  const previewErrors = ref<PreviewErrorsByProject>({})
+  const mappingData = ref<MappingDataByProject>({})
+  const mappingErrors = ref<Record<string, Record<string, string>>>({})
+  const mappingLoading = ref<Record<string, Record<string, boolean>>>({})
+  const previewRequestVersions = new Map<string, number>()
+  const mappingRequestVersions = new Map<string, number>()
   const loading = ref(false)
   const error = ref<string | null>(null)
   const selectedTarget = ref<string | null>(null) // Currently selected target field
@@ -121,16 +144,18 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await apiClient.post(
-        `/projects/${projectName}/reconciliation/${entityName}/${targetField}/auto-reconcile-sync`,
-        null,
-        { params: { threshold, review_threshold: reviewThreshold } }
+      const result = await reconciliationServiceApi.autoReconcile(
+        projectName,
+        entityName,
+        targetField,
+        threshold,
+        reviewThreshold
       )
 
       // Reload config to get updated mappings
       await loadEntityResolutionCatalog(projectName)
 
-      return response.data
+      return result
     } catch (e: any) {
       error.value = e.response?.data?.detail || 'Auto-reconciliation failed'
       console.error('Auto-reconciliation failed:', e)
@@ -170,24 +195,25 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     projectName: string,
     entityName: string,
     targetField: string,
-    sourceValue: any,
-    targetId: number | null,
+    request: DecisionUpdateRequest,
     notes?: string
   ) {
     loading.value = true
     error.value = null
     try {
-      const response = await apiClient.post(
-        `/projects/${projectName}/reconciliation/${entityName}/${targetField}/mapping`,
-        {
-          source_value: sourceValue,
-          target_id: targetId,
-          notes,
-        }
+      const decision = notes === undefined ? request : { ...request, notes }
+      reconciliationConfig.value = await reconciliationServiceApi.updateDecision(
+        projectName,
+        entityName,
+        targetField,
+        decision
       )
-      reconciliationConfig.value = response.data
+      await Promise.all([
+        loadEntityResolutionCatalog(projectName),
+        loadPreviewData(projectName, entityName, targetField),
+      ])
     } catch (e: any) {
-      error.value = e.response?.data?.detail || 'Failed to update mapping'
+      error.value = getErrorMessage(e, 'Failed to update mapping')
       console.error('Failed to update mapping:', e)
       throw e
     } finally {
@@ -195,19 +221,22 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     }
   }
 
-  async function deleteMapping(projectName: string, entityName: string, targetField: string, sourceValue: any) {
+  async function deleteMapping(projectName: string, entityName: string, targetField: string, localKeyValue: string) {
     loading.value = true
     error.value = null
     try {
-      const response = await apiClient.delete(
-        `/projects/${projectName}/reconciliation/${entityName}/${targetField}/mapping`,
-        {
-          params: { source_value: JSON.stringify(sourceValue) },
-        }
+      reconciliationConfig.value = await reconciliationServiceApi.deleteDecision(
+        projectName,
+        entityName,
+        targetField,
+        localKeyValue
       )
-      reconciliationConfig.value = response.data
+      await Promise.all([
+        loadEntityResolutionCatalog(projectName),
+        loadPreviewData(projectName, entityName, targetField),
+      ])
     } catch (e: any) {
-      error.value = e.response?.data?.detail || 'Failed to delete mapping'
+      error.value = getErrorMessage(e, 'Failed to delete mapping')
       console.error('Failed to delete mapping:', e)
       throw e
     } finally {
@@ -226,34 +255,123 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     }
 
     try {
-      const response = await apiClient.get(
-        `/projects/${projectName}/reconciliation/${entityName}/${targetField}/suggest`,
-        {
-          params: { query },
-        }
-      )
-      return response.data
+      return await reconciliationServiceApi.suggestEntities(projectName, entityName, targetField, query)
     } catch (e: any) {
-      error.value = e.response?.data?.detail || 'Failed to get suggestions'
+      error.value = getErrorMessage(e, 'Failed to get suggestions')
       console.error('Failed to get entity suggestions:', e)
-      return []
+      throw e
     }
   }
 
-  async function loadPreviewData(projectName: string, entityName: string, targetField: string) {
-    try {
-      console.log(`[Reconciliation Store] Loading preview data for ${entityName}.${targetField}`)
-      const response = await apiClient.get(
-        `/projects/${projectName}/reconciliation/${entityName}/${targetField}/preview`
-      )
+  function setPreviewError(projectName: string, entityName: string, targetField: string, message: string | null) {
+    const projectErrors = previewErrors.value[projectName] ?? {}
+    const entityErrors = { ...(projectErrors[entityName] ?? {}) }
+    if (message === null) {
+      delete entityErrors[targetField]
+    } else {
+      entityErrors[targetField] = message
+    }
+    previewErrors.value = {
+      ...previewErrors.value,
+      [projectName]: { ...projectErrors, [entityName]: entityErrors },
+    }
+  }
 
-      // Response is already enriched with reconciliation data
-      previewData.value[entityName] = response.data
-      console.log(`[Reconciliation Store] Loaded ${response.data.length} preview rows for ${entityName}.${targetField}`)
+  async function loadPreviewData(
+    projectName: string,
+    entityName: string,
+    targetField: string
+  ): Promise<ReconciliationPreviewRow[]> {
+    const requestKey = JSON.stringify([projectName, entityName, targetField])
+    const requestVersion = (previewRequestVersions.get(requestKey) ?? 0) + 1
+    previewRequestVersions.set(requestKey, requestVersion)
+    setPreviewError(projectName, entityName, targetField, null)
+    try {
+      const rows = await reconciliationServiceApi.getPreview(projectName, entityName, targetField)
+      if (previewRequestVersions.get(requestKey) === requestVersion) {
+        const projectData = previewData.value[projectName] ?? {}
+        const entityData = projectData[entityName] ?? {}
+        previewData.value = {
+          ...previewData.value,
+          [projectName]: { ...projectData, [entityName]: { ...entityData, [targetField]: rows } },
+        }
+      }
+      return rows
     } catch (e: any) {
+      const message = getErrorMessage(e, 'Failed to load reconciliation preview')
+      if (previewRequestVersions.get(requestKey) === requestVersion) {
+        setPreviewError(projectName, entityName, targetField, message)
+      }
       console.error('[Reconciliation Store] Failed to load preview data:', e)
-      previewData.value[entityName] = []
-      // Don't throw - allow UI to show empty state
+      throw e
+    }
+  }
+
+  async function loadMappingData(projectName: string, entityName: string): Promise<MappingEntityResponse> {
+    const requestKey = JSON.stringify([projectName, entityName])
+    const requestVersion = (mappingRequestVersions.get(requestKey) ?? 0) + 1
+    mappingRequestVersions.set(requestKey, requestVersion)
+    const projectLoading = mappingLoading.value[projectName] ?? {}
+    mappingLoading.value = { ...mappingLoading.value, [projectName]: { ...projectLoading, [entityName]: true } }
+    const projectErrors = { ...(mappingErrors.value[projectName] ?? {}) }
+    delete projectErrors[entityName]
+    mappingErrors.value = { ...mappingErrors.value, [projectName]: projectErrors }
+
+    try {
+      const result = await reconciliationServiceApi.getEntityMapping(projectName, entityName)
+      if (mappingRequestVersions.get(requestKey) === requestVersion) {
+        const projectMappings = mappingData.value[projectName] ?? {}
+        mappingData.value = { ...mappingData.value, [projectName]: { ...projectMappings, [entityName]: result } }
+      }
+      return result
+    } catch (e: any) {
+      const message = getErrorMessage(e, 'Failed to load mapping sidecar')
+      if (mappingRequestVersions.get(requestKey) === requestVersion) {
+        mappingErrors.value = {
+          ...mappingErrors.value,
+          [projectName]: { ...(mappingErrors.value[projectName] ?? {}), [entityName]: message },
+        }
+      }
+      console.error('Failed to load mapping sidecar:', e)
+      throw e
+    } finally {
+      if (mappingRequestVersions.get(requestKey) === requestVersion) {
+        mappingLoading.value = {
+          ...mappingLoading.value,
+          [projectName]: { ...(mappingLoading.value[projectName] ?? {}), [entityName]: false },
+        }
+      }
+    }
+  }
+
+  async function putManualMapping(
+    projectName: string,
+    entityName: string,
+    localKeyValue: string,
+    targetId: number,
+    notes?: string
+  ) {
+    try {
+      const result = await reconciliationServiceApi.putManualMapping(projectName, entityName, localKeyValue, {
+        target_id: targetId,
+        notes,
+      })
+      try {
+        await loadMappingData(projectName, entityName)
+      } catch (e: unknown) {
+        throw new Error(
+          `Manual link was saved, but its sidecar could not be reloaded: ${getErrorMessage(e, 'request failed')}`
+        )
+      }
+      return result
+    } catch (e: any) {
+      const message = getErrorMessage(e, 'Failed to save manual mapping link')
+      mappingErrors.value = {
+        ...mappingErrors.value,
+        [projectName]: { ...(mappingErrors.value[projectName] ?? {}), [entityName]: message },
+      }
+      console.error('Failed to save manual mapping link:', e)
+      throw e
     }
   }
 
@@ -287,7 +405,13 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     loading.value = true
     error.value = null
     try {
-      return await reconciliationServiceApi.exportToMapping(projectName, entityName, targetField)
+      const result = await reconciliationServiceApi.exportToMapping(projectName, entityName, targetField)
+      const requestKey = JSON.stringify([projectName, entityName])
+      mappingRequestVersions.set(requestKey, (mappingRequestVersions.get(requestKey) ?? 0) + 1)
+      const projectMappings = { ...(mappingData.value[projectName] ?? {}) }
+      delete projectMappings[entityName]
+      mappingData.value = { ...mappingData.value, [projectName]: projectMappings }
+      return result
     } catch (e: any) {
       error.value = e.response?.data?.detail || 'Failed to export reconciliation links to mapping'
       console.error('Failed to export reconciliation links to mapping:', e)
@@ -300,6 +424,12 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
   function $reset() {
     reconciliationConfig.value = null
     previewData.value = {}
+    previewErrors.value = {}
+    mappingData.value = {}
+    mappingErrors.value = {}
+    mappingLoading.value = {}
+    previewRequestVersions.clear()
+    mappingRequestVersions.clear()
     loading.value = false
     error.value = null
     selectedTarget.value = null
@@ -374,11 +504,21 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     entityName: string,
     targetField: string,
     force: boolean = false
-  ) {
+  ): Promise<{ removedOwnedLinks: number; removedOwnedApprovals: number }> {
     loadingSpecs.value = true
     specsError.value = null
     try {
-      const updatedConfig = await reconciliationSpecApi.deleteSpecification(projectName, entityName, targetField, force)
+      const result: DeleteSpecificationResult = await reconciliationSpecApi.deleteSpecification(
+        projectName,
+        entityName,
+        targetField,
+        force
+      )
+      const {
+        removed_owned_links: removedOwnedLinks,
+        removed_owned_approvals: removedOwnedApprovals,
+        ...updatedConfig
+      } = result
       reconciliationConfig.value = updatedConfig
       // Reload specifications list
       await loadSpecifications(projectName)
@@ -386,6 +526,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
       if (selectedSpec.value?.entity_name === entityName && selectedSpec.value?.target_field === targetField) {
         selectedSpec.value = null
       }
+      return { removedOwnedLinks, removedOwnedApprovals }
     } catch (e: any) {
       specsError.value = e.response?.data?.detail || 'Failed to delete specification'
       console.error('Failed to delete specification:', e)
@@ -417,6 +558,10 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     // State
     reconciliationConfig,
     previewData,
+    previewErrors,
+    mappingData,
+    mappingErrors,
+    mappingLoading,
     loading,
     error,
     selectedTarget,
@@ -440,6 +585,8 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     deleteMapping,
     suggestEntities,
     loadPreviewData,
+    loadMappingData,
+    putManualMapping,
     checkServiceHealth,
     getServiceManifest,
     exportToMapping,

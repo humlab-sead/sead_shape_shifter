@@ -1,0 +1,39 @@
+title: feat(scripts): commit description draft to PR branch
+description:
+## Summary
+
+scripts/create_change_pr.py now commits the Copilot-generated description draft (the tracked file
+under docs/whats-new/PRs/) to the pull request branch as a second commit, docs(whats-new): record
+the description for pull request #<n>, right after drafting and publishing the description. This is
+the default when --generate-description is used; the new --no-commit-description-draft flag leaves
+the file untracked instead. The commit is skipped when the draft file is missing, outside the
+repository, or unchanged (e.g. from an earlier run).
+
+The script also repairs over-long generated commit subjects instead of aborting: the subject prompt
+now asks for a target of 60 characters within the hard limit, and a new shorten_subject helper trims
+the description at a clause or word boundary (preserving the type(scope):  prefix, trimming
+dangling filler words) and reports the repair on stderr. scripts/README.md and the create-change-pr
+skill documentation were updated to match. New unit tests cover the commit, skip, and shortening
+paths.
+
+## User-facing release note
+
+When the change-PR workflow generates a description with Copilot, the draft file is now
+automatically committed and pushed to the pull request branch, so each pull request carries its own
+record; pass --no-commit-description-draft to keep the previous manual behavior.
+
+## Upgrade notes
+
+No action is required. The new --commit-description-draft option defaults to on; users who prefer
+the old behavior (leaving the draft file for manual commit or discard) should pass
+--no-commit-description-draft.
+
+## Validation
+
+ - Recorded in the pull request metadata: uv run pylint -j 0 src tests backend ingesters exited 0,
+and pytest passed all tests (the diff adds tests for commit_description_draft and shorten_subject in
+scripts/tests/test_create_change_pr.py).
+ - No CI status checks are reported on the pull request (status check rollup is empty), so CI
+results are unknown.
+ - The script's own git/gh commands (commit, push, PR creation) were not verified as executed; the
+tests exercise them through a recording runner.

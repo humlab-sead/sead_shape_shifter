@@ -5,12 +5,15 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import PlainTextResponse
 
+from backend.app.authorization.dependencies import declare_authenticated_route
+
 router = APIRouter()
 
 DOCS_DIR = Path(__file__).resolve().parents[5] / "docs"
 
 
 @router.get("/help-docs/{doc_path:path}", response_class=PlainTextResponse)
+@declare_authenticated_route
 async def get_help_doc(doc_path: str) -> PlainTextResponse:
     """Return a markdown document used by the Help view."""
     if not doc_path:

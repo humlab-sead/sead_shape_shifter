@@ -1,0 +1,39 @@
+title: Add log viewer overlay with keyboard shortcuts, FAB and command palette
+description:
+## Summary
+
+Adds a global log viewer overlay to the frontend so application and error logs can be inspected from
+any page without leaving the current view:
+
+ - New LogViewerOverlay.vue component: a dialog showing application or error logs with filters for
+log type, level (DEBUG–CRITICAL), and line count (100–2500), plus manual refresh, download as a text
+file, and an optional 30-second auto-refresh. It supports minimize, maximize/restore, and close
+controls, and clears its auto-refresh interval on unmount.
+ - App.vue wires the overlay to three entry points: a floating action button (bottom-right, hidden
+on the Settings page where logs are already available), the Ctrl/Cmd+Shift+L keyboard shortcut, and
+a new "Open Log Viewer" command in the Ctrl+K command palette. Esc closes the overlay via the
+existing Escape handler.
+ - Documentation updates: functional test procedures for the overlay in docs/TESTING_GUIDE.md and
+new shortcut entries (Ctrl/Cmd+Shift+L, Ctrl/Cmd+H, Ctrl/Cmd+Shift+C, Esc) in
+docs/testing/APPENDIX.md.
+ - Generated components.d.ts updated for the new component registration.
+
+The log data is fetched through the existing api.logs client (getLogs, downloadLogs); no backend
+changes are included in this PR.
+
+## User-facing release note
+
+You can now open an application log viewer from any page using the new console button in the
+bottom-right corner, the Ctrl/Cmd+Shift+L shortcut, or the "Open Log Viewer" command in the command
+palette. Logs can be filtered by type, level, and line count, refreshed automatically, and
+downloaded as a text file.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+Not verified: validation results unavailable. No CI check results were reported for this pull
+request, and the diff contains no automated tests; the new testing-guide procedures are manual
+checklists whose execution is unknown.

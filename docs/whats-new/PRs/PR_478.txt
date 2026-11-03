@@ -1,0 +1,59 @@
+title: feat(authorization): implement centralized authorization system
+description:
+## Summary
+
+Adds a centralized, deny-by-default authorization layer to the backend so access to projects, their
+child resources, shared data sources, queries, and application logs is enforced by a server-side
+policy independent of the nginx authentication provider.
+
+Key implementation points visible in the diff:
+
+ - New backend/app/authorization/ package: role-to-action policy, typed principals and authorized
+resources, a SQLite-backed repository (resources, grants, application roles, audit events) stored
+outside user-editable project data, a membership resolver, and FastAPI dependencies
+(require_project, require_shared_data_source, require_application_action) that endpoints now resolve
+through server-owned resource locators instead of raw client-supplied names.
+ - Route enforcement across projects, entities, mapping, materialization, preview, validation,
+tasks, sessions, uploads/backups, execute, data sources, query, schema, reconciliation, and logs;
+project listings and shared-data-source listings are filtered by readable grants; operator-role
+checks guard shared-source administration and global file browsing.
+ - Server-managed targets replace client-supplied paths in user-facing flows: execution downloads
+resolve a managed output name, backups expose only a file name and restore takes a server-issued
+backup_name, and the frontend execute dialog now asks for managed output names.
+ - New sead-authorization administration CLI (migrate/manifest apply, integrity check, backup,
+restore, reconcile, grants, roles, effective-access review) registered in pyproject.toml; the
+proxy-auth middleware optionally reads a trusted groups header, with group and
+authenticated-everyone matching disabled by default.
+ - Documentation: AUTHORIZATION.md, a route inventory, operations/developer guidance, a cutover
+plan, and a deferred SERVER_OWNED_RESOURCE_IDENTIFIERS.md proposal; existing API tests were
+converted to an authorized_client fixture and new authorization-focused tests were added.
+
+## User-facing release note
+
+Access to projects, shared data sources, queries, and logs is now permission-controlled: users only
+see and can work with the resources they have been granted, and admins manage access with a new
+sead-authorization command-line tool. Execution outputs and project backups are now managed
+server-side, so downloads and restores use server-issued names instead of file paths.
+
+## Upgrade notes
+
+ - Initialize the new authorization SQLite database before or at deploy time (e.g.
+sead-authorization migrate) and bootstrap initial administrators/grants; production startup guards
+apply.
+ - Keep the trusted proxy authentication header configured in nginx; group-based access requires
+explicitly enabling the trusted groups source, and authenticated-everyone access requires explicit
+configuration (both are disabled by default). Anonymous requests are denied.
+ - API consumers note breaking changes: the backup list no longer returns a full file_path and
+restore now takes a server-issued backup_name; the execute download target is a server-managed
+output name/relative path rather than an absolute filesystem path.
+ - Enforcement cutover, deployment inventory, and initial grants are tracked as follow-up work in
+CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md; server-owned identifiers for outputs, backups,
+uploads, and operations are deferred to SERVER_OWNED_RESOURCE_IDENTIFIERS.md.
+
+## Validation
+
+ - No CI check results are recorded for this pull request (the status check rollup is empty), so no
+checks can be reported as passed or failed from CI evidence.
+ - The pull request description states that focused policy, route, service, cross-resource,
+lifecycle, and SQLite concurrency tests, plus an automated route-inventory check, pass; execution
+and outcomes of these tests cannot be confirmed from the available evidence and are unknown.

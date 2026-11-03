@@ -1,0 +1,65 @@
+title: Add DuckDB loader and TableStore hooks for SQL-derived entities
+description:
+## Summary
+
+This PR introduces a DuckDB-backed loader that lets an entity be defined by a SQL query over
+entities that Shape Shifter has already processed, without any external database connection.
+
+ - DuckDbLoader (type: duckdb): registered under the keys duckdb, internal, and shape_store. It
+executes the entity's query against a persistent in-memory DuckDB workspace in which processed
+entities are available as views (zero-copy DataFrame registration, deferred registration queue, and
+an object-id cache to skip redundant re-registration). It reuses SqlLoader's column
+detection/validation and injects system_id when configured. Such entities require query and
+depends_on and no data_source.
+ - TableStore: a new dict[str, pd.DataFrame] subclass with on-set/on-delete hooks (with optional
+replay), a batch_update context manager that defers and coalesces hook emission, and type validation
+of stored values. ShapeShifter registers the workspace's register/unregister functions as hooks so
+DuckDB views stay in sync automatically. TableStore replaces plain dict[str, pd.DataFrame] type
+usage across the normalizer, ProcessState, dispatchers, transforms, specifications, backend
+services/caches/validators, and the SEAD ingester.
+ - Loader construction and lifecycle: DataLoader gains a create(data_source,
+  **context) factory classmethod so loaders that need runtime context (workspace, table store)
+receive it without loader-specific branching in ShapeShifter.resolve_loader(), and a no-op close()
+hook. ShapeShifter now caches loader instances per run and closes them after normalize(). The
+UcanAccess loader keeps one persistent JDBC connection per instance instead of reconnecting per
+query.
+ - API/UI: new GET /data-sources/entity-types endpoint returns entity type metadata (including the
+new duckdb type); the driver list endpoint now filters out drivers in the new internal category
+added to DriverSchema/DriverSchemaResponse. The frontend entity type selector is populated from this
+endpoint instead of a hard-coded list.
+ - Dependencies: duckdb>=1.5.2 is added as a required project dependency; pytest-xdist moves into
+the dev extra.
+ - Supporting changes: proposal document docs/proposals/DUCKDB_INTERNAL_SQL_LOADER.md, configuration
+guide section for the DuckDB internal workspace, and a docs/whats-new/v1.27.0.md entry. Also
+included: a bug fix so merged-branch FK placeholder columns get one pd.NA per row, a UcanAccess
+string-conversion change, updated arbodat test project queries (e.g. coalesce([EVNr], '') and key
+changes), a workflow profiling script, and lint/format cleanups.
+
+## User-facing release note
+
+Projects can now define an entity with type: duckdb and a plain SQL query to join, aggregate, or
+filter data from entities that were already processed, without configuring an external database. The
+processed entities appear automatically as SQL views, so cross-entity derivations no longer need
+workarounds in expressions or downstream tools.
+
+## Upgrade notes
+
+ - The duckdb Python package (>=1.5.2) is now a required dependency; reinstall dependencies (e.g. uv
+sync) after upgrading.
+ - No configuration changes are required for existing projects; the new type: duckdb is opt-in. Note
+that GET /data-sources/drivers no longer returns internal-category drivers, and a new GET
+/data-sources/entity-types endpoint is available for UI type selectors.
+
+## Validation
+
+ - New unit tests are included in tests/loaders/test_duckdb_loader.py covering DuckDbWorkspace
+registration/re-registration/unregistration and queries, TableStore hook synchronization with the
+workspace, DuckDbLoader.create() wiring and registry keys, the load() path (query execution,
+missing-query error, system_id injection, cross-entity join), and get_tables()/get_table_schema().
+The loader registry test was updated to expect duckdb under LoaderType.SQL.
+ - Existing tests across tests/ and backend/tests/ were updated to construct TableStore instances
+instead of plain dicts.
+ - No CI check results are available for this pull request (no status checks reported), and the
+supplied evidence does not include test execution output, so the outcome of these or the existing
+test suites is unknown.
+ - Not verified: validation results unavailable.

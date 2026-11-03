@@ -1,16 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
-import { nextTick } from 'vue'
+import { nextTick, type Component } from 'vue'
 import { createVuetify } from 'vuetify'
+import { load as loadYaml } from 'js-yaml'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 
 import type { ColumnAvailabilityResponse, EntityResponse } from '@/api/entities'
+import type { TargetModelEntityOption } from '@/api/projects'
 import EntityFormDialog from '../EntityFormDialog.vue'
 import { getExtraColumnDiagnostics } from '../extraColumnsEditorUtils'
 
 const mockState = vi.hoisted(() => ({
   entities: [] as EntityResponse[],
+  referenceEntities: null as EntityResponse[] | null,
+  currentProjectName: 'arbodat',
+  getCompletedEntitiesFor: vi.fn(),
   previewData: null as any,
   previewLoading: false,
   previewError: null as any,
@@ -24,6 +29,8 @@ const mockState = vi.hoisted(() => ({
   refreshColumnAvailability: vi.fn(),
   showError: vi.fn(),
   showWarning: vi.fn(),
+  getTargetModelEntityOptions: vi.fn(),
+  getEntityTypes: vi.fn(),
   getValidDirectives: vi.fn(async () => []),
   getEntity: vi.fn(),
   getValues: vi.fn(),
@@ -78,11 +85,12 @@ vi.mock('@/composables/useNotification', () => ({
 vi.mock('@/stores', () => ({
   useProjectStore: () => ({
     selectedProject: { options: { data_sources: {} } },
-    currentProjectName: 'arbodat',
+    currentProjectName: mockState.currentProjectName,
   }),
   useEntityStore: () => ({
     overlayInitialTab: 'form',
     syncCachedEntity: mockState.syncCachedEntity,
+    getCompletedEntitiesFor: mockState.getCompletedEntitiesFor,
     setMappingSyncPending: mockState.setMappingSyncPending,
     mappingSyncPending: null,
   }),
@@ -96,8 +104,11 @@ vi.mock('@/api', () => ({
       updateValues: mockState.updateValues,
       retryFixedEntityMapping: mockState.retryFixedEntityMapping,
     },
+    projects: {
+      getTargetModelEntityOptions: mockState.getTargetModelEntityOptions,
+    },
     dataSources: {
-      getEntityTypes: vi.fn(async () => []),
+      getEntityTypes: mockState.getEntityTypes,
     },
     excelMetadata: {
       fetch: vi.fn(async () => ({ sheets: [], columns: [] })),
@@ -116,8 +127,9 @@ const vuetify = createVuetify({ components, directives })
 const childStubs = {
   teleport: true,
   VDialog: {
-    props: ['modelValue'],
-    template: '<div class="v-dialog-stub"><slot /></div>',
+    props: ['modelValue', 'location', 'offset', 'height'],
+    template:
+      '<div class="v-dialog-stub" :data-location="location" :data-offset="offset" :data-height="height"><slot /></div>',
   },
   VTabs: {
     template: '<div class="v-tabs-stub"><slot /></div>',
@@ -151,13 +163,27 @@ const childStubs = {
   },
   VAutocomplete: {
     name: 'VAutocomplete',
-    props: ['modelValue', 'label', 'items', 'disabled'],
+    props: ['modelValue', 'label', 'items', 'disabled', 'clearable', 'loading', 'itemTitle', 'itemValue'],
     template: '<div class="v-autocomplete-stub" :data-label="label" :data-disabled="String(disabled)"><slot /></div>',
   },
   VCombobox: {
     name: 'VCombobox',
     props: ['modelValue', 'label', 'items', 'disabled'],
-    template: '<div class="v-combobox-stub" :data-label="label" :data-disabled="String(disabled)"><slot /></div>',
+    template:
+      '<div class="v-combobox-stub" :data-label="label" :data-disabled="String(disabled)"><slot v-for="(item, index) in modelValue" name="chip" :item="{ raw: item, title: item }" :props="{ closable: true }" :key="index" /><slot /></div>',
+  },
+  ValueReferenceChip: {
+    name: 'ValueReferenceChip',
+    props: ['value', 'chipProps', 'entities'],
+    template: '<span data-testid="value-reference-chip">{{ value }}</span>',
+  },
+  VMenu: {
+    props: ['modelValue'],
+    emits: ['update:modelValue'],
+    template: `<div>
+      <slot name="activator" :props="{ onClick: () => $emit('update:modelValue', true) }" />
+      <div v-if="modelValue"><slot /></div>
+    </div>`,
   },
   YamlEditor: {
     name: 'YamlEditor',
@@ -167,13 +193,13 @@ const childStubs = {
   SqlEditor: { template: '<div data-testid="sql-editor" />' },
   ForeignKeyEditor: {
     name: 'ForeignKeyEditor',
-    props: ['modelValue', 'columnCandidates'],
+    props: ['modelValue', 'columnCandidates', 'referenceEntities', 'referenceSuggestions'],
     template: '<div data-testid="foreign-key-editor" />',
   },
   FiltersEditor: { template: '<div data-testid="filters-editor" />' },
   UnnestEditor: {
     name: 'UnnestEditor',
-    props: ['idVarColumns', 'valueVarColumns'],
+    props: ['modelValue', 'idVarColumns', 'valueVarColumns', 'referenceEntities', 'referenceSuggestions'],
     template: '<div data-testid="unnest-editor" />',
   },
   AppendEditor: { template: '<div data-testid="append-editor" />' },
@@ -329,7 +355,10 @@ const sourceEntities = [
   mergedEntity,
 ]
 
-function mountEntityFormDialog(props: Partial<InstanceType<typeof EntityFormDialog>['$props']> = {}) {
+function mountEntityFormDialog(
+  props: Partial<InstanceType<typeof EntityFormDialog>['$props']> = {},
+  stubs: Record<string, boolean | Component> = childStubs
+) {
   return mount(EntityFormDialog, {
     props: {
       modelValue: true,
@@ -339,7 +368,7 @@ function mountEntityFormDialog(props: Partial<InstanceType<typeof EntityFormDial
     },
     global: {
       plugins: [vuetify],
-      stubs: childStubs,
+      stubs,
     },
   })
 }
@@ -352,10 +381,56 @@ function findTabByValue(wrapper: ReturnType<typeof mountEntityFormDialog>, value
   return wrapper.findAllComponents({ name: 'VTab' }).find((component) => component.props('value') === value)
 }
 
+function findAutocompleteByLabel(wrapper: ReturnType<typeof mountEntityFormDialog>, label: string) {
+  return wrapper.findAllComponents({ name: 'VAutocomplete' }).find((component) => component.props('label') === label)
+}
+
+function findComboboxItemsByLabel(wrapper: ReturnType<typeof mountEntityFormDialog>, label: string) {
+  return wrapper
+    .findAllComponents({ name: 'VCombobox' })
+    .find((component) => component.props('label') === label)
+    ?.props('items')
+}
+
+function findTextFieldByLabel(wrapper: ReturnType<typeof mountEntityFormDialog>, label: string) {
+  return wrapper.findAllComponents({ name: 'VTextField' }).find((component) => component.props('label') === label)
+}
+
+function createTargetModelEntityOption(overrides: Partial<TargetModelEntityOption> = {}): TargetModelEntityOption {
+  return {
+    name: 'target_fact',
+    role: 'fact',
+    required: true,
+    description: 'Target fact',
+    target_table: 'tbl_target_fact',
+    public_id: 'target_fact_id',
+    required_columns: [],
+    required_links: [],
+    ...overrides,
+  }
+}
+
+async function setTextFieldValue(wrapper: ReturnType<typeof mountEntityFormDialog>, label: string, value: string) {
+  const field = findTextFieldByLabel(wrapper, label)
+  if (!field) throw new Error(`Missing text field: ${label}`)
+
+  field.vm.$emit('update:modelValue', value)
+  await flushPromises()
+  await nextTick()
+}
+
 describe('EntityFormDialog', () => {
   beforeEach(() => {
     mockState.entities = [...sourceEntities]
+    mockState.referenceEntities = null
+    mockState.currentProjectName = 'arbodat'
+    mockState.getCompletedEntitiesFor.mockReset()
+    mockState.getCompletedEntitiesFor.mockImplementation((projectName: string) =>
+      mockState.currentProjectName === projectName ? mockState.referenceEntities : null
+    )
+    mockState.create.mockReset()
     mockState.create.mockResolvedValue(undefined)
+    mockState.update.mockReset()
     mockState.update.mockResolvedValue(undefined)
     mockState.previewData = {
       entity_name: 'analysis_entity',
@@ -404,6 +479,15 @@ describe('EntityFormDialog', () => {
     }
     mockState.previewLoading = false
     mockState.previewError = null
+    mockState.getTargetModelEntityOptions.mockReset()
+    mockState.getTargetModelEntityOptions.mockResolvedValue({ configured: false, entities: [] })
+    mockState.getEntityTypes.mockReset()
+    mockState.getEntityTypes.mockResolvedValue([
+      { value: 'entity', title: 'Entity', subtitle: 'Derived from another entity' },
+      { value: 'fixed', title: 'Fixed values', subtitle: 'Static values' },
+      { value: 'sql', title: 'SQL', subtitle: 'Query a data source' },
+      { value: 'csv', title: 'CSV', subtitle: 'Read a CSV file' },
+    ])
     mockState.previewEntity.mockClear()
     mockState.debouncedPreviewEntity.mockClear()
     mockState.getSuggestionsForEntity.mockReset()
@@ -417,6 +501,411 @@ describe('EntityFormDialog', () => {
     mockState.retryFixedEntityMapping.mockReset()
     mockState.setMappingSyncPending.mockReset()
     mockState.syncCachedEntity.mockReset()
+  })
+
+  it('loads target options when create mode opens but not in edit mode', async () => {
+    mockState.getTargetModelEntityOptions.mockResolvedValue({
+      configured: true,
+      entities: [createTargetModelEntityOption()],
+    })
+
+    const createWrapper = mountEntityFormDialog({ modelValue: false })
+    await flushPromises()
+    expect(mockState.getTargetModelEntityOptions).not.toHaveBeenCalled()
+
+    await createWrapper.setProps({ modelValue: true })
+    await flushPromises()
+
+    expect(mockState.getTargetModelEntityOptions).toHaveBeenCalledTimes(1)
+    expect(mockState.getTargetModelEntityOptions).toHaveBeenCalledWith('arbodat')
+    expect(findAutocompleteByLabel(createWrapper, 'Start from target model')).toBeTruthy()
+    createWrapper.unmount()
+
+    const editWrapper = mountEntityFormDialog({ mode: 'edit', entity: sourceEntities[0] })
+    await flushPromises()
+    expect(mockState.getTargetModelEntityOptions).toHaveBeenCalledTimes(1)
+    expect(findAutocompleteByLabel(editWrapper, 'Start from target model')).toBeUndefined()
+  })
+
+  it('hides the target picker when the model is unconfigured or has no missing entities', async () => {
+    const unconfiguredWrapper = mountEntityFormDialog()
+    await flushPromises()
+    expect(findAutocompleteByLabel(unconfiguredWrapper, 'Start from target model')).toBeUndefined()
+    unconfiguredWrapper.unmount()
+
+    mockState.getTargetModelEntityOptions.mockResolvedValue({ configured: true, entities: [] })
+    const emptyWrapper = mountEntityFormDialog()
+    await flushPromises()
+    expect(findAutocompleteByLabel(emptyWrapper, 'Start from target model')).toBeUndefined()
+  })
+
+  it('keeps manual creation usable when no target model is configured', async () => {
+    const wrapper = mountEntityFormDialog()
+    await flushPromises()
+
+    expect(findAutocompleteByLabel(wrapper, 'Start from target model')).toBeUndefined()
+    await setTextFieldValue(wrapper, 'Entity Name *', 'manual_entity')
+    await setTextFieldValue(wrapper, 'Public ID *', 'manual_entity_id')
+
+    const saveButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Save')
+    expect(saveButton).toBeTruthy()
+    expect(saveButton!.element.disabled).toBe(false)
+    await saveButton!.trigger('click')
+    await flushPromises()
+
+    expect(mockState.create).toHaveBeenCalledTimes(1)
+    expect(mockState.create).toHaveBeenCalledWith({
+      name: 'manual_entity',
+      entity_data: expect.objectContaining({
+        type: 'entity',
+        public_id: 'manual_entity_id',
+      }),
+    })
+  })
+
+  it('shows a safe picker error and keeps manual creation usable when options fail to load', async () => {
+    mockState.getTargetModelEntityOptions.mockRejectedValue(new Error('Parser details must not be shown'))
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const wrapper = mountEntityFormDialog()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Target-model entities could not be loaded.')
+    expect(wrapper.text()).toContain('You can still create an entity manually.')
+    expect(wrapper.text()).not.toContain('Parser details must not be shown')
+    expect(findAutocompleteByLabel(wrapper, 'Start from target model')).toBeUndefined()
+
+    await setTextFieldValue(wrapper, 'Entity Name *', 'manual_entity')
+    await setTextFieldValue(wrapper, 'Public ID *', 'manual_entity_id')
+    const saveButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Save')
+    expect(saveButton?.element.disabled).toBe(false)
+    await saveButton!.trigger('click')
+    await flushPromises()
+
+    expect(mockState.create).toHaveBeenCalledTimes(1)
+    expect(mockState.create).toHaveBeenCalledWith({
+      name: 'manual_entity',
+      entity_data: expect.objectContaining({
+        type: 'entity',
+        public_id: 'manual_entity_id',
+      }),
+    })
+    consoleError.mockRestore()
+  })
+
+  it('prefills target identity, locks the name, and preserves values when the picker is cleared', async () => {
+    mockState.getTargetModelEntityOptions.mockResolvedValue({
+      configured: true,
+      entities: [createTargetModelEntityOption()],
+    })
+    const wrapper = mountEntityFormDialog()
+    await flushPromises()
+
+    const picker = findAutocompleteByLabel(wrapper, 'Start from target model')
+    expect(picker).toBeTruthy()
+    expect(picker?.props('clearable')).toBe('')
+    picker!.vm.$emit('update:modelValue', 'target_fact')
+    await flushPromises()
+
+    const nameField = findTextFieldByLabel(wrapper, 'Entity Name *')
+    const publicIdField = findTextFieldByLabel(wrapper, 'Public ID *')
+    expect(nameField?.props('modelValue')).toBe('target_fact')
+    expect(nameField?.props('readonly')).toBe(true)
+    expect(publicIdField?.props('modelValue')).toBe('target_fact_id')
+    expect(mockState.create).not.toHaveBeenCalled()
+    expect(mockState.update).not.toHaveBeenCalled()
+
+    picker!.vm.$emit('update:modelValue', null)
+    await flushPromises()
+
+    expect(picker?.props('modelValue')).toBeNull()
+    expect(nameField?.props('readonly')).toBe(false)
+    expect(nameField?.props('modelValue')).toBe('target_fact')
+    expect(publicIdField?.props('modelValue')).toBe('target_fact_id')
+  })
+
+  it('leaves a missing target public ID for the user to enter', async () => {
+    mockState.getTargetModelEntityOptions.mockResolvedValue({
+      configured: true,
+      entities: [createTargetModelEntityOption({ name: 'unidentified_target', public_id: null })],
+    })
+    const wrapper = mountEntityFormDialog()
+    await flushPromises()
+
+    const picker = findAutocompleteByLabel(wrapper, 'Start from target model')
+    picker!.vm.$emit('update:modelValue', 'unidentified_target')
+    await flushPromises()
+
+    const nameField = findTextFieldByLabel(wrapper, 'Entity Name *')
+    const publicIdField = findTextFieldByLabel(wrapper, 'Public ID *')
+    expect(nameField?.props('modelValue')).toBe('unidentified_target')
+    expect(nameField?.props('readonly')).toBe(true)
+    expect(publicIdField?.props('modelValue')).toBe('')
+
+    await setTextFieldValue(wrapper, 'Public ID *', 'unidentified_target_id')
+    picker!.vm.$emit('update:modelValue', null)
+    await flushPromises()
+
+    expect(nameField?.props('readonly')).toBe(false)
+    expect(publicIdField?.props('modelValue')).toBe('unidentified_target_id')
+  })
+
+  it('confirms replacement of edited identity and preserves the current selection on cancellation', async () => {
+    mockState.getTargetModelEntityOptions.mockResolvedValue({
+      configured: true,
+      entities: [
+        createTargetModelEntityOption(),
+        createTargetModelEntityOption({
+          name: 'second_target',
+          public_id: 'second_target_id',
+        }),
+      ],
+    })
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    const wrapper = mountEntityFormDialog()
+    await flushPromises()
+
+    const picker = findAutocompleteByLabel(wrapper, 'Start from target model')
+    picker!.vm.$emit('update:modelValue', 'target_fact')
+    await flushPromises()
+    await setTextFieldValue(wrapper, 'Entity Name *', 'edited_name')
+    await setTextFieldValue(wrapper, 'Public ID *', 'edited_public_id')
+
+    picker!.vm.$emit('update:modelValue', 'second_target')
+    await flushPromises()
+
+    expect(confirmSpy).toHaveBeenCalledTimes(1)
+    expect(picker?.props('modelValue')).toBe('target_fact')
+    expect(findTextFieldByLabel(wrapper, 'Entity Name *')?.props('modelValue')).toBe('edited_name')
+    expect(findTextFieldByLabel(wrapper, 'Public ID *')?.props('modelValue')).toBe('edited_public_id')
+
+    confirmSpy.mockReturnValue(true)
+    picker!.vm.$emit('update:modelValue', 'second_target')
+    await flushPromises()
+
+    expect(picker?.props('modelValue')).toBe('second_target')
+    expect(findTextFieldByLabel(wrapper, 'Entity Name *')?.props('modelValue')).toBe('second_target')
+    expect(findTextFieldByLabel(wrapper, 'Public ID *')?.props('modelValue')).toBe('second_target_id')
+    expect(mockState.create).not.toHaveBeenCalled()
+    expect(mockState.update).not.toHaveBeenCalled()
+    confirmSpy.mockRestore()
+  })
+
+  it('requires an explicit source type for selected targets and saves through the create action', async () => {
+    mockState.getTargetModelEntityOptions.mockResolvedValue({
+      configured: true,
+      entities: [createTargetModelEntityOption()],
+    })
+    const wrapper = mountEntityFormDialog()
+    await flushPromises()
+
+    const picker = findAutocompleteByLabel(wrapper, 'Start from target model')
+    picker!.vm.$emit('update:modelValue', 'target_fact')
+    await flushPromises()
+
+    const typeSelect = findSelectByLabel(wrapper, 'Type *')
+    const saveButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Save')
+    expect(typeSelect?.props('modelValue')).toBeNull()
+    expect(wrapper.text()).toContain('The default entity value does not count as a selection.')
+    expect(saveButton?.element.disabled).toBe(true)
+    expect(mockState.create).not.toHaveBeenCalled()
+
+    typeSelect!.vm.$emit('update:modelValue', 'entity')
+    await flushPromises()
+    expect(typeSelect?.props('modelValue')).toBe('entity')
+    expect(saveButton?.element.disabled).toBe(false)
+
+    await saveButton!.trigger('click')
+    await flushPromises()
+
+    expect(mockState.create).toHaveBeenCalledTimes(1)
+    expect(mockState.create).toHaveBeenCalledWith({
+      name: 'target_fact',
+      entity_data: expect.objectContaining({
+        type: 'entity',
+        public_id: 'target_fact_id',
+      }),
+    })
+    expect(mockState.update).not.toHaveBeenCalled()
+  })
+
+  it('shows target requirements as reference data without adding them to the create payload', async () => {
+    mockState.getTargetModelEntityOptions.mockResolvedValue({
+      configured: true,
+      entities: [
+        createTargetModelEntityOption({
+          description: 'Target fact description',
+          target_table: 'tbl_target_fact',
+          required_columns: ['target_name'],
+          required_links: [
+            { path: ['parent'], missing_entities: ['parent'], required_when_has_new_rows: null },
+            { path: ['bridge', 'destination'], missing_entities: ['bridge'], required_when_has_new_rows: null },
+            {
+              path: ['conditional_target'],
+              missing_entities: ['conditional_target'],
+              required_when_has_new_rows: 'source_entity',
+            },
+          ],
+        }),
+      ],
+    })
+    const wrapper = mountEntityFormDialog()
+    await flushPromises()
+
+    const picker = findAutocompleteByLabel(wrapper, 'Start from target model')
+    picker!.vm.$emit('update:modelValue', 'target_fact')
+    await flushPromises()
+
+    const requirements = wrapper.find('[data-testid="target-model-requirements"]')
+    const requirementText = requirements.text().replace(/\s+/g, ' ')
+    expect(requirementText).toContain('Role: fact')
+    expect(requirementText).toContain('Target fact description')
+    expect(requirementText).toContain('tbl_target_fact')
+    expect(requirementText).toContain('Required columns')
+    expect(requirementText).toContain('target_name')
+    expect(requirementText).toContain('Required links')
+    expect(requirementText).toContain('Target: parent (not in project)')
+    expect(requirementText).toContain('Path: bridge (not in project) → destination')
+    expect(requirementText).toContain('Conditional')
+    expect(requirementText).toContain('source_entity')
+    expect(requirementText).toContain('one or more rows from source_entity for insertion')
+    expect(mockState.create).not.toHaveBeenCalled()
+    expect(mockState.update).not.toHaveBeenCalled()
+
+    const columnsCombobox = wrapper
+      .findAllComponents({ name: 'VCombobox' })
+      .find((component) => component.props('label') === 'Columns')
+    const keysCombobox = wrapper
+      .findAllComponents({ name: 'VCombobox' })
+      .find((component) => component.props('label') === 'Business Keys *')
+    columnsCombobox!.vm.$emit('update:modelValue', ['source_name', 'source_key'])
+    keysCombobox!.vm.$emit('update:modelValue', ['source_key'])
+    findSelectByLabel(wrapper, 'Type *')!.vm.$emit('update:modelValue', 'entity')
+    await flushPromises()
+
+    const saveButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Save')
+    expect(saveButton?.element.disabled).toBe(false)
+    await saveButton!.trigger('click')
+    await flushPromises()
+
+    expect(mockState.create).toHaveBeenCalledWith({
+      name: 'target_fact',
+      entity_data: expect.objectContaining({
+        type: 'entity',
+        columns: ['source_name', 'source_key'],
+        keys: ['source_key'],
+      }),
+    })
+    expect(mockState.create.mock.calls[0]?.[0].entity_data).not.toHaveProperty('foreign_keys')
+    expect(mockState.update).not.toHaveBeenCalled()
+  })
+
+  it('refreshes target options when create mode reopens after a save', async () => {
+    mockState.getTargetModelEntityOptions
+      .mockResolvedValueOnce({
+        configured: true,
+        entities: [createTargetModelEntityOption()],
+      })
+      .mockResolvedValueOnce({
+        configured: true,
+        entities: [createTargetModelEntityOption({ name: 'remaining_target' })],
+      })
+    const wrapper = mountEntityFormDialog()
+    await flushPromises()
+
+    findAutocompleteByLabel(wrapper, 'Start from target model')!.vm.$emit('update:modelValue', 'target_fact')
+    await flushPromises()
+    findSelectByLabel(wrapper, 'Type *')!.vm.$emit('update:modelValue', 'entity')
+    await flushPromises()
+
+    const saveButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Save')
+    expect(saveButton?.element.disabled).toBe(false)
+    await saveButton!.trigger('click')
+    await flushPromises()
+    expect(mockState.getTargetModelEntityOptions).toHaveBeenCalledTimes(1)
+    expect(wrapper.emitted('saved')?.at(-1)).toEqual(['target_fact'])
+
+    const savedEntity = createEntity('target_fact', {
+      type: 'entity',
+      public_id: 'target_fact_id',
+      keys: ['source_key'],
+      columns: ['source_key'],
+    })
+    await wrapper.setProps({ modelValue: false, mode: 'edit', entity: savedEntity })
+    await flushPromises()
+    await wrapper.setProps({ modelValue: true, mode: 'create', entity: undefined })
+    await flushPromises()
+
+    expect(mockState.getTargetModelEntityOptions).toHaveBeenCalledTimes(2)
+    expect(findAutocompleteByLabel(wrapper, 'Start from target model')?.props('items')).toEqual([
+      createTargetModelEntityOption({ name: 'remaining_target' }),
+    ])
+    expect(wrapper.text()).not.toContain('target_fact')
+  })
+
+  it('limits selected classifiers to explicit fixed or sql types', async () => {
+    mockState.getTargetModelEntityOptions.mockResolvedValue({
+      configured: true,
+      entities: [createTargetModelEntityOption({ name: 'target_classifier', role: 'classifier' })],
+    })
+    const wrapper = mountEntityFormDialog()
+    await flushPromises()
+
+    const picker = findAutocompleteByLabel(wrapper, 'Start from target model')
+    picker!.vm.$emit('update:modelValue', 'target_classifier')
+    await flushPromises()
+
+    const typeSelect = findSelectByLabel(wrapper, 'Type *')
+    const availableTypes = (typeSelect?.props('items') as Array<{ value: string }>).map(({ value }) => value)
+    expect(availableTypes).toEqual(['fixed', 'sql'])
+    expect(wrapper.text()).toContain('Classifiers must use fixed values or an sql query.')
+
+    typeSelect!.vm.$emit('update:modelValue', 'entity')
+    await flushPromises()
+    expect(typeSelect?.props('modelValue')).toBeNull()
+    expect(wrapper.findAll('button').find((button) => button.text().trim() === 'Save')?.element.disabled).toBe(true)
+
+    typeSelect!.vm.$emit('update:modelValue', 'sql')
+    await flushPromises()
+    expect(typeSelect?.props('modelValue')).toBe('sql')
+
+    typeSelect!.vm.$emit('update:modelValue', 'fixed')
+    await flushPromises()
+    expect(typeSelect?.props('modelValue')).toBe('fixed')
+    const saveButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Save')
+    expect(saveButton?.element.disabled).toBe(false)
+    await saveButton!.trigger('click')
+    await flushPromises()
+
+    expect(mockState.create).toHaveBeenCalledWith({
+      name: 'target_classifier',
+      entity_data: expect.objectContaining({
+        type: 'fixed',
+        public_id: 'target_fact_id',
+      }),
+    })
+    expect(mockState.update).not.toHaveBeenCalled()
+  })
+
+  it('keeps the editor below the app bar and within a short viewport', async () => {
+    const originalWidth = window.innerWidth
+    const originalHeight = window.innerHeight
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1440 })
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 650 })
+
+    const wrapper = mountEntityFormDialog()
+
+    try {
+      await nextTick()
+
+      const dialog = wrapper.find('.v-dialog-stub')
+      expect(dialog.attributes('data-location')).toBe('top')
+      expect(dialog.attributes('data-offset')).toBe('56')
+      expect(dialog.attributes('data-height')).toBe('578px')
+    } finally {
+      wrapper.unmount()
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth })
+      Object.defineProperty(window, 'innerHeight', { configurable: true, value: originalHeight })
+    }
   })
 
   it('loads persisted replacements into the ReplacementsEditor when the edit dialog opens', async () => {
@@ -630,6 +1119,289 @@ describe('EntityFormDialog', () => {
       'analysis_entity',
       expect.objectContaining({
         entity_data: expect.objectContaining({ columns: ['unlisted_column'] }),
+      })
+    )
+  })
+
+  it('adds active completed-cache references after field-specific candidates and excludes fixed columns', async () => {
+    const references = ['@value: entities.site.keys', '@value: entities.site.columns']
+    mockState.referenceEntities = [
+      createEntity('site', { keys: ['site_id'], columns: ['site_id', 'site_name'] }),
+      createEntity('broken', { keys: ['broken_id', ['nested']] }),
+    ]
+    mockState.columnAvailability = {
+      columns: ['ordinary_column'],
+      business_keys: ['ordinary_key'],
+      replacements: [],
+      drop_duplicates: ['ordinary_deduplication'],
+      drop_empty_rows: ['ordinary_empty_check'],
+      extra_columns: { sources: [] },
+      filters: { extract: [] },
+      foreign_keys: [],
+      unnest: { id_vars: ['ordinary_id'], value_vars: ['ordinary_value'] },
+    }
+
+    const entity = createEntity('sample', {
+      type: 'entity',
+      public_id: 'sample_id',
+      keys: ['@value: entities.site.keys'],
+      columns: ['@value: entities.site.columns'],
+      foreign_keys: [{ entity: 'site', local_keys: [], remote_keys: [], how: 'left' }],
+      unnest: { id_vars: [], value_vars: [], var_name: 'variable', value_name: 'value' },
+      drop_duplicates: ['@value: entities.site.keys'],
+      drop_empty_rows: ['@value: entities.site.columns'],
+    })
+    const wrapper = mountEntityFormDialog({ mode: 'edit', entity })
+    await flushPromises()
+
+    const comboboxItems = (label: string) =>
+      wrapper
+        .findAllComponents({ name: 'VCombobox' })
+        .find((component) => component.props('label') === label)
+        ?.props('items')
+    expect(comboboxItems('Business Keys *')).toEqual(['ordinary_key', ...references])
+    expect(comboboxItems('Columns')).toEqual(['ordinary_column', ...references])
+    expect(comboboxItems('Deduplication Columns')).toEqual(['ordinary_deduplication', ...references])
+    expect(comboboxItems('Columns to Check for Empty Values')).toEqual(['ordinary_empty_check', ...references])
+
+    const foreignKeyEditor = wrapper.findComponent({ name: 'ForeignKeyEditor' })
+    expect(foreignKeyEditor.props('referenceSuggestions')).toEqual(references)
+    expect(foreignKeyEditor.props('referenceEntities')).toBe(mockState.referenceEntities)
+    const unnestEditor = wrapper.findComponent({ name: 'UnnestEditor' })
+    expect(unnestEditor.props('idVarColumns')).toEqual(['ordinary_id'])
+    expect(unnestEditor.props('valueVarColumns')).toEqual(['ordinary_value'])
+    expect(unnestEditor.props('referenceSuggestions')).toEqual(references)
+    expect(unnestEditor.props('referenceEntities')).toBe(mockState.referenceEntities)
+    expect(wrapper.findAllComponents({ name: 'ValueReferenceChip' })).toHaveLength(4)
+    wrapper.unmount()
+
+    mockState.referenceEntities = null
+    const pendingWrapper = mountEntityFormDialog({ mode: 'edit', entity })
+    await flushPromises()
+    expect(findComboboxItemsByLabel(pendingWrapper, 'Business Keys *')).toEqual(['ordinary_key'])
+    expect(pendingWrapper.findComponent({ name: 'ForeignKeyEditor' }).props('referenceSuggestions')).toEqual([])
+    pendingWrapper.unmount()
+
+    mockState.referenceEntities = [
+      createEntity('site', { keys: ['site_id'], columns: ['site_id', 'site_name'] }),
+      createEntity('broken', { keys: ['broken_id', ['nested']] }),
+    ]
+    mockState.currentProjectName = 'another-project'
+    const mismatchedWrapper = mountEntityFormDialog({ mode: 'edit', entity })
+    await flushPromises()
+    expect(findComboboxItemsByLabel(mismatchedWrapper, 'Business Keys *')).toEqual(['ordinary_key'])
+    expect(mismatchedWrapper.findComponent({ name: 'ForeignKeyEditor' }).props('referenceSuggestions')).toEqual([])
+    mismatchedWrapper.unmount()
+
+    mockState.currentProjectName = 'arbodat'
+    mockState.referenceEntities = []
+    const emptyWrapper = mountEntityFormDialog({ mode: 'edit', entity })
+    await flushPromises()
+    expect(findComboboxItemsByLabel(emptyWrapper, 'Business Keys *')).toEqual(['ordinary_key'])
+    emptyWrapper.unmount()
+
+    mockState.referenceEntities = [createEntity('site', { keys: ['site_id'], columns: ['site_name'] })]
+    const fixedWrapper = mountEntityFormDialog({ mode: 'edit', entity: fixedEntity })
+    await flushPromises()
+    expect(findComboboxItemsByLabel(fixedWrapper, 'Columns')).toEqual(['ordinary_column'])
+    expect(fixedWrapper.findAllComponents({ name: 'ValueReferenceChip' })).toHaveLength(0)
+    fixedWrapper.unmount()
+  })
+
+  it('keeps an unavailable preview read-only and allows unrelated edits to save', async () => {
+    mockState.update.mockResolvedValue({ warnings: [] })
+    mockState.referenceEntities = [createEntity('site', { keys: ['site_id'] })]
+    const entity = createEntity('preview_entity', {
+      type: 'entity',
+      public_id: 'preview_entity_id',
+      keys: '@value: entities.missing.keys',
+      columns: ['preview_entity_id'],
+    })
+    const previewChipStubs = {
+      ...childStubs,
+      ValueReferenceChip: false,
+    }
+    const wrapper = mountEntityFormDialog({ mode: 'edit', entity }, previewChipStubs)
+    await flushPromises()
+    await nextTick()
+
+    await wrapper.get('button[aria-label="Preview value reference"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('Preview unavailable')
+    expect(wrapper.text()).toContain('@value: entities.missing.keys')
+
+    const columnsCombobox = wrapper
+      .findAllComponents({ name: 'VCombobox' })
+      .find((component) => component.props('label') === 'Columns')!
+    columnsCombobox.vm.$emit('update:modelValue', ['preview_entity_id', 'unrelated_column'])
+    await flushPromises()
+    await nextTick()
+
+    const yamlEditor = wrapper.findComponent({ name: 'YamlEditor' })
+    expect((loadYaml(yamlEditor.props('modelValue') as string) as Record<string, any>).keys).toBe(
+      '@value: entities.missing.keys'
+    )
+    expect(wrapper.findAll('button').find((button) => button.text().trim() === 'Save')?.element.disabled).toBe(false)
+    expect(mockState.showError).not.toHaveBeenCalled()
+
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text().trim() === 'Save')!
+      .trigger('click')
+    await flushPromises()
+
+    expect(mockState.update).toHaveBeenCalledWith(
+      'preview_entity',
+      expect.objectContaining({
+        entity_data: expect.objectContaining({
+          keys: '@value: entities.missing.keys',
+          columns: ['preview_entity_id', 'unrelated_column'],
+        }),
+      })
+    )
+  })
+
+  it('preserves unchanged reference field shapes through form edits and invalid YAML', async () => {
+    mockState.update.mockResolvedValue({ warnings: [] })
+    const rawDropEmptyRows = ['@value: entities.site.columns', "@value: entities.site.keys + ['other']"]
+    const rawUnnest = {
+      id_vars: '@value: entities.site.keys',
+      value_vars: ['sample_id', '@value: entities.site.columns'],
+      var_name: 'variable',
+      value_name: 'value',
+    }
+    const entity = createEntity('round_trip_entity', {
+      type: 'entity',
+      public_id: 'round_trip_id',
+      keys: '@value: entities.site.keys',
+      columns: ['@value: entities.site.columns'],
+      foreign_keys: [
+        {
+          entity: 'site',
+          local_keys: '@value: entities.site.keys',
+          remote_keys: ['@value: entities.site.keys'],
+          how: 'left',
+        },
+        {
+          entity: 'other',
+          local_keys: ['local_id'],
+          remote_keys: "@value: entities.other.keys + ['other_id']",
+          how: 'inner',
+        },
+      ],
+      unnest: rawUnnest,
+      drop_duplicates: '@value: entities.site.keys',
+      drop_empty_rows: rawDropEmptyRows,
+    })
+    const wrapper = mountEntityFormDialog({ mode: 'edit', entity })
+
+    await flushPromises()
+    await nextTick()
+
+    const initialYaml = loadYaml(wrapper.findComponent({ name: 'YamlEditor' }).props('modelValue') as string) as Record<
+      string,
+      any
+    >
+    expect(initialYaml.keys).toBe('@value: entities.site.keys')
+    expect(initialYaml.columns).toEqual(['@value: entities.site.columns'])
+    expect(initialYaml.foreign_keys[0].local_keys).toBe('@value: entities.site.keys')
+    expect(initialYaml.foreign_keys[1].remote_keys).toBe("@value: entities.other.keys + ['other_id']")
+    expect(initialYaml.unnest).toEqual(rawUnnest)
+    expect(initialYaml.drop_duplicates).toBe('@value: entities.site.keys')
+    expect(initialYaml.drop_empty_rows).toEqual(rawDropEmptyRows)
+
+    const foreignKeyEditor = wrapper.findComponent({ name: 'ForeignKeyEditor' })
+    const foreignKeys = foreignKeyEditor.props('modelValue') as Array<Record<string, unknown>>
+    expect(foreignKeys[0]?.local_keys).toEqual(['@value: entities.site.keys'])
+    expect(foreignKeys[0]?.remote_keys).toEqual(['@value: entities.site.keys'])
+    expect(foreignKeys[1]?.local_keys).toEqual(['local_id'])
+    expect(foreignKeys[1]?.remote_keys).toEqual(["@value: entities.other.keys + ['other_id']"])
+
+    const unnestEditor = wrapper.findComponent({ name: 'UnnestEditor' })
+    expect(unnestEditor.props('modelValue')).toEqual({
+      ...rawUnnest,
+      id_vars: ['@value: entities.site.keys'],
+    })
+    foreignKeyEditor.vm.$emit('update:modelValue', foreignKeys)
+    unnestEditor.vm.$emit('update:modelValue', unnestEditor.props('modelValue'))
+
+    const yamlEditor = wrapper.findComponent({ name: 'YamlEditor' })
+    yamlEditor.vm.$emit('update:modelValue', 'name: [broken')
+    yamlEditor.vm.$emit('change', 'name: [broken')
+    yamlEditor.vm.$emit('validate', false, 'Invalid YAML')
+    await flushPromises()
+
+    await setTextFieldValue(wrapper, 'Public ID *', 'round_trip_public_id')
+    const saveButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Save')
+    expect(saveButton?.element.disabled).toBe(false)
+    await saveButton!.trigger('click')
+    await flushPromises()
+
+    expect(mockState.update).toHaveBeenCalledWith(
+      'round_trip_entity',
+      expect.objectContaining({
+        entity_data: expect.objectContaining({
+          public_id: 'round_trip_public_id',
+          keys: '@value: entities.site.keys',
+          columns: ['@value: entities.site.columns'],
+          foreign_keys: [
+            expect.objectContaining({
+              local_keys: '@value: entities.site.keys',
+              remote_keys: ['@value: entities.site.keys'],
+            }),
+            expect.objectContaining({
+              local_keys: ['local_id'],
+              remote_keys: "@value: entities.other.keys + ['other_id']",
+            }),
+          ],
+          unnest: rawUnnest,
+          drop_duplicates: '@value: entities.site.keys',
+          drop_empty_rows: rawDropEmptyRows,
+        }),
+      })
+    )
+  })
+
+  it('uses the shape of a valid YAML edit for subsequent saves', async () => {
+    mockState.update.mockResolvedValue({ warnings: [] })
+    const entity = createEntity('yaml_shape_entity', {
+      type: 'entity',
+      public_id: 'yaml_shape_id',
+      keys: ['@value: entities.site.keys'],
+      columns: ['sample_id'],
+    })
+    const wrapper = mountEntityFormDialog({ mode: 'edit', entity, initialTab: 'yaml' })
+
+    await flushPromises()
+    await nextTick()
+
+    const yamlEditor = wrapper.findComponent({ name: 'YamlEditor' })
+    const editedYaml = [
+      'name: yaml_shape_entity',
+      'type: entity',
+      'system_id: system_id',
+      'public_id: yaml_shape_id',
+      'keys: "@value: entities.site.keys"',
+      'columns:',
+      '  - sample_id',
+    ].join('\n')
+    yamlEditor.vm.$emit('update:modelValue', editedYaml)
+    yamlEditor.vm.$emit('change', editedYaml)
+    yamlEditor.vm.$emit('validate', true)
+    await flushPromises()
+
+    const saveButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Save')
+    expect(saveButton?.element.disabled).toBe(false)
+    await saveButton!.trigger('click')
+    await flushPromises()
+
+    expect(mockState.update).toHaveBeenCalledWith(
+      'yaml_shape_entity',
+      expect.objectContaining({
+        entity_data: expect.objectContaining({
+          keys: '@value: entities.site.keys',
+          columns: ['sample_id'],
+        }),
       })
     )
   })
@@ -1172,7 +1944,7 @@ describe('EntityFormDialog', () => {
     await flushPromises()
 
     expect(mockState.getEntity).toHaveBeenCalledWith('arbodat', 'abundance_source')
-    expect(mockState.syncCachedEntity).toHaveBeenCalledWith(freshEntity)
+    expect(mockState.syncCachedEntity).toHaveBeenCalledWith(freshEntity, 'arbodat')
   })
 
   it('syncs the entity store cache after unmaterialization reload', async () => {
@@ -1206,7 +1978,7 @@ describe('EntityFormDialog', () => {
     await flushPromises()
 
     expect(mockState.getEntity).toHaveBeenCalledWith('arbodat', 'abundance_source')
-    expect(mockState.syncCachedEntity).toHaveBeenCalledWith(freshEntity)
+    expect(mockState.syncCachedEntity).toHaveBeenCalledWith(freshEntity, 'arbodat')
   })
 
   it('reports a partial save and offers retry when the inline save returns pending mapping', async () => {

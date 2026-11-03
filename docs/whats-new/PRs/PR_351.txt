@@ -1,0 +1,68 @@
+title: Serve help docs from canonical docs directory and improve FK handling
+description:
+## Summary
+
+This PR (dev → main) delivers several fixes and features across the stack:
+
+ - Help served from canonical docs (#334): the backend now mounts /docs as static files from the 
+repository docs/ directory, the Vite dev server proxies /docs, the Dockerfile copies docs/ into the
+runtime image (with docker/.dockerignore allowing it), and the duplicated frontend/docs and
+frontend/public/docs user guides were removed so docs/ is the single source of truth.
+ - SQL column introspection: new POST /data-sources/{name}/query/columns endpoint executes a query
+with LIMIT 0 (security-validated, 10s timeout, project-scoped data source resolution) and returns
+column names. The entity editor's SQL form now shows a read-only "Detected Columns" field,
+auto-populates columns on query changes (debounced), and gains a "Depends On" combobox layout.
+ - Foreign key null-key handling: the allow_null_keys default changed from true to false in the core
+model, backend model, and generated entity schema. A new typed ForeignKeyNullConstraintViolation is
+raised with entity/key context, propagated through the preview service, and mapped by
+preview/sample/join-test endpoints into structured ConstraintViolationError responses with
+actionable tips. The FK tester UI renders these as recoverable "Validation Failed" alerts with tips.
+ - FK editor improvements: full constraint checkboxes (allow unmatched left/right, require unique
+right, allow row decrease), an explanatory help alert, deduplicating key normalization extracted
+into a tested foreignKeyEditorUtils module, and new foreignKeyPreviewUtils helpers for numbered
+key-pair summaries and mismatch/reorder detection.
+ - Graph tab: display-option toggles for FK-link and provides edges, adjustable node-label font size
+(persisted per project in localStorage), a materialized-node badge, a dialog for creating todo
+entities (validated snake_case name plus optional task note) replacing the previous placeholder,
+removal of the "Mark as Todo" context-menu action, and a reworked stats/legend overlay.
+ - Dependency graph: task_list todo entries now appear as placeholder nodes in the dependency
+analysis.
+ - Docker build optimization: the source resolver stage is split into separate frontend/backend
+stages, dependency manifests are copied before sources so code edits no longer invalidate install
+layers, Python dependencies are installed with uv sync --frozen into a dedicated /opt/venv, and
+image ownership changes are limited to writable runtime directories.
+ - Other fixes: UCanAccess inject_limit strips a trailing semicolon before adding TOP; fixed-entity
+dict-row detection handles empty value lists; ConstraintViolationError import and error-mapping
+cleanup in the preview endpoint.
+ - Documentation: README rewritten, PRESENTATION.md refreshed, new PRESENTATION_ARCHAEOLOGISTS.md,
+updated SYSTEM_DIAGRAMS.md and USER_GUIDE.md, new proposals (AI project advisor, FK null-key default
+behavior), archived-document cleanup, and version bump to 1.23.0.
+
+## User-facing release note
+
+The in-app Help page now always shows the latest documentation, the entity editor can auto-detect
+columns from SQL queries, and the dependency graph gains edge-visibility toggles, adjustable label
+sizes, and a dialog for planning new "todo" entities. Foreign key relationships now default to
+rejecting null keys, and constraint failures show clearer, actionable validation messages.
+
+## Upgrade notes
+
+ - Breaking default change: allow_null_keys for foreign key constraints now defaults to false
+(previously true) in the core, backend, and frontend schema. Existing projects whose FK joins rely
+on null key values without explicitly setting allow_null_keys: true may now fail linking/validation;
+review and set the flag explicitly where the relationship is intentionally optional.
+ - Docker deployments: no operator action required, but the runtime image now uses a dedicated
+/opt/venv virtual environment; custom images derived from the previous layout (site-packages copies)
+need updating.
+
+## Validation
+
+ - No CI check results are available for this pull request (statusCheckRollup is empty), so no
+checks can be reported as passed or failed.
+ - The diff adds or updates tests — backend: test_preview_error_mapping.py, TestColumnIntrospection
+in test_query_service.py, FK-violation propagation in test_shapeshift_service.py, todo-placeholder
+graph test in test_dependency_service_validation.py, updated test_entity.py; core: updated
+test_model.py and test_link.py; frontend: new foreignKeyEditorUtils/foreignKeyPreviewUtils vitest
+suites and updated errors/graphAdapter tests — but their execution results are not recorded in the
+available evidence.
+ - Not verified: validation results unavailable.

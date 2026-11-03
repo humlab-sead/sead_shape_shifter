@@ -1,0 +1,72 @@
+title: Add session-based state management for multi-user config editing
+description:
+## Summary
+
+This PR introduces server-side and frontend session management for configuration editing, addressing
+TODO #34 (server-side state management: what belongs to the app lifespan vs. per request).
+
+Backend:
+
+ - New ApplicationState/ConfigSession manager (backend/app/core/state_manager.py) initialized in the
+FastAPI lifespan. It tracks editing sessions per configuration file, unloads a config from memory
+when its last session closes, and runs a background task that cleans up sessions inactive for 30
+minutes.
+ - New /api/v1/sessions endpoints (create, get current, close, list active sessions for a config),
+plus session dependencies that read the session ID from a header or cookie
+(backend/app/api/dependencies.py). Session creation validates the config file exists and sets an
+HttpOnly session cookie.
+ - ConfigStore (src/configuration/provider.py) now supports instance-based usage with a
+config_directory and adds load_config, get_config, is_loaded, unload_config, and reload_config for
+on-demand, cached loading. The app lifespan no longer loads a default configuration from the
+CONFIG_FILE environment variable; configurations are loaded lazily via sessions.
+ - ConfigurationService.save_with_version_check adds optimistic concurrency control, raising a new
+ConfigConflictError on version mismatch. PreviewService loads configs through the application state,
+falling back to ShapeShiftConfig.resolve when the state is not initialized.
+ - CORS configuration adds DevTunnels origins and a broader origin regex; uvicorn moved from the dev
+dependency group to main project dependencies.
+
+Frontend:
+
+ - New session types, API client, Pinia store, and useSession composable, with 30-second
+auto-refresh of active sessions and version-conflict (409) handling.
+ - New SessionIndicator and SessionManager components; ConfigurationDetailView starts a session on
+mount and saves via saveWithVersionCheck, reporting conflicts.
+ - The configuration store gains a session-aware saveConfiguration that attaches the session version
+and marks the session modified; the axios client enables withCredentials and raises its timeout to
+120 s.
+ - Assorted small fixes: typed driver cast in DataSourceFormDialog, schema field in
+TableDetailsPanel, entity name binding in EntityFormDialog, optional-chaining and null checks in
+useDriverSchema, avoided duplicate data-source fetch, unused-import cleanups, and a @use import in
+main.scss.
+
+Documentation: new docs/STATE_MANAGEMENT_IMPLEMENTATION.md, docs/FRONTEND_SESSION_MANAGEMENT.md,
+frontend/FRONTEND_SESSION_QUICKSTART.md, and a DevTunnels CORS troubleshooting note. No tests were
+added in this diff.
+
+## User-facing release note
+
+Configuration editing now runs in an editing session: the editor shows a session indicator with the
+current version and warns when other users are editing the same configuration, and saving detects
+concurrent modifications so an overwrite is reported as a conflict instead of happening silently.
+
+## Upgrade notes
+
+ - The backend no longer loads a default configuration at startup from the CONFIG_FILE environment
+variable; configurations are loaded on demand from CONFIGURATIONS_DIR when a session is created.
+Deployers relying on CONFIG_FILE startup loading must adjust accordingly.
+ - uvicorn is now a main project dependency (removed from the dev dependency group); re-sync the
+environment after pulling.
+ - Session state is process-local: with multiple workers, each worker keeps separate sessions, so
+session/conflict features assume a single process (shared state via Redis or similar is listed as
+future work, not implemented here).
+ - No database migrations or new environment variables are required.
+
+## Validation
+
+ - No CI results are available for this pull request (statusCheckRollup is empty), so no checks can
+be reported as passed or failed from CI.
+ - The diff adds no automated tests; the new docs list testing recommendations only, not executed
+tests.
+ - frontend/FRONTEND_SESSION_QUICKSTART.md states TypeScript types were checked with no compilation
+errors, but this is an author claim in the diff; execution of any type check, lint, or test run
+could not be verified from the available evidence.

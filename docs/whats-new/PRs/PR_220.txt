@@ -1,0 +1,67 @@
+title: Refactor reconciliation into domain models and entity resolution terms
+description:
+## Summary
+
+Restructures the reconciliation feature around a framework-independent domain layer and renames its
+core terminology to "entity resolution" concepts.
+
+ - New domain layer (src/reconciliation/): dataclass-based domain models (EntityResolutionCatalog,
+EntityResolutionSet with EntityResolutionMetadata and ResolvedEntityPair links, ResolutionSource,
+ResolutionTarget) with business methods (get/add/remove/exists/count, update_thresholds), plus
+source_strategy.py, which moves source-selection business logic (target entity vs. another entity
+vs. custom SQL query) out of the service into a pure domain strategy (SourceStrategyType,
+ReconciliationSourceStrategy).
+ - New ReconciliationMapper (backend/app/mappers/reconciliation_mapper.py): bidirectional DTO ↔
+domain conversion following the existing ProjectMapper pattern, applied at the API and YAML
+persistence boundaries so Pydantic remains the validation boundary while services work with domain
+models.
+ - Service split: the 964-line backend/app/services/reconciliation_service.py is replaced by a
+backend/app/services/reconciliation/ package containing service.py (ReconciliationService,
+ReconciliationQueryService), mapping_manager.py (EntityMappingManager for catalog CRUD and YAML
+load/save), and resolvers.py (resolver classes now selected via the domain strategy).
+ - Terminology renames across backend and frontend: ReconciliationConfig → EntityResolutionCatalog,
+EntityReconciliationSpec → EntityResolutionSet, ReconciliationMapping → ResolvedEntityPair,
+SpecificationListItem/SpecificationCreate(Update)Request →
+EntityResolutionListItem/EntityResolutionCatalogCreate(Update)Request, and the mapping field sead_id
+→ target_id. REST paths move from /reconciliation/specifications... to
+/reconciliation/mapping-registry...; frontend API client, store, types, and reconciliation
+components were updated to match.
+ - Supporting changes: docker/docker-compose.yml adds host.docker.internal:host-gateway to
+extra_hosts so the container can reach a host-published reconciliation service; ERROR_HANDLING.md
+moved to docs/; two implementation-notes documents (STEP1_DOMAIN_MODELS_IMPLEMENTATION.md,
+STEP2_SERVICE_LAYER_IMPLEMENTATION.md) were added at the repo root; bundled project YAMLs
+(arbodat-test-reconciliation.yml, example-reconciliation-v2.yml) were updated to the target_id key.
+ - Tests: new backend/tests/mappers/test_reconciliation_mapper.py covers DTO ↔ domain roundtrips;
+test_reconciliation_service.py was rewritten around domain models and the new source strategy; API
+tests were updated for the new endpoint paths and error messages.
+
+## User-facing release note
+
+Reconciliation now presents matched identifiers as "Target ID" instead of "SEAD ID" and manages
+reconciliation specifications as an entity resolution catalog, making the workflow read the same way
+whether you reconcile against SEAD or another target system. Reconciliation behavior (auto-match,
+review thresholds, mark-as-unmatched, progress tracking) is otherwise unchanged.
+
+## Upgrade notes
+
+ - Project files: mapping entries in project
+  *-reconciliation.yml files must rename the sead_id key to target_id; the bundled example and test
+project files were migrated in this PR, but externally stored project files are not updated
+automatically.
+ - API consumers: specification endpoints moved from
+/api/v1/projects/{project}/reconciliation/specifications[...] to
+/api/v1/projects/{project}/reconciliation/mapping-registry[...], and payloads use the renamed models
+with target_id instead of sead_id. Update any direct API integrations accordingly.
+ - Docker deployments: the compose file now maps host.docker.internal to the host gateway (Docker
+20.10+ on Linux) so the backend can reach a reconciliation service published on the host; no other
+operator action is documented in this PR.
+
+## Validation
+
+ - Tests included in the diff (new mapper roundtrip tests, rewritten service/strategy tests, updated
+API endpoint tests) are part of the change, but no CI status checks are reported for this pull
+request, so their execution and results are unknown from the available evidence.
+ - The added implementation-notes documents state that the full backend suite passed (831/831, 4
+skipped) at the time of authoring; these are author-reported figures and could not be verified
+against CI results here.
+ - No validation results were available from linked issues (none are linked) or CI run data.

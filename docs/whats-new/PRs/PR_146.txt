@@ -1,0 +1,42 @@
+title: fix(docker): additional fixes related to docker (#143)
+description:
+## Summary
+
+Follow-up fixes for the Docker setup (issue #143):
+
+ - docker/docker-compose.yml: removed the obsolete top-level version key and deleted the inline
+environment: block that duplicated application and database variables. Runtime configuration now
+comes solely from the ./data/backend.env env_file, so compose no longer applies its own inline
+defaults.
+ - Makefile: all docker targets (docker-up, docker-down, docker-logs, docker-restart,
+docker-rebuild, docker-shell, docker-clean, docker-ps) now run docker compose from inside the
+docker/ directory instead of passing -f docker/docker-compose.yml, so the compose file's relative
+paths and env file resolve correctly. Startup messages now report the port via ${BACKEND_PORT}
+instead of the hard-coded 8012, and docker-restart now performs an explicit down/up cycle.
+ - pyproject.toml: promoted httpx from the dev optional-dependency group to the main project
+dependencies.
+
+The diff also includes code hygiene changes: removal of unused imports (tkinter import in
+backend/app/models/__init__.py, networkx import in backend/app/services/ingester_service.py, unused
+Type import in the ingester registry), inlining of the Ingesters import in backend/app/main.py,
+import and formatting cleanups in ingest.py, the ingester service, and tests, plus IDE workspace
+settings (new sead_shape_shifter.code-workspace and updated .vscode/settings.json colors).
+
+## User-facing release note
+
+Docker startup, restart, and logs now work from the repository root via the Makefile targets, and
+the container's configuration comes entirely from docker/data/backend.env, so what you see in that
+file is what the application actually uses.
+
+## Upgrade notes
+
+Deployers must ensure all runtime variables (application settings and SEAD database connection
+details) are defined in docker/data/backend.env: the compose file no longer injects inline defaults
+such as SHAPE_SHIFTER_ENVIRONMENT=production or the various SHAPE_SHIFTER_* defaults, so anything
+previously covered by those inline values must now be provided in the env file. The Makefile's
+docker start messages display ${BACKEND_PORT}; set that variable if you rely on the displayed URL
+(the compose host port itself still falls back to HOST_PORT:-8012).
+
+## Validation
+
+Not verified: validation results unavailable.

@@ -1,0 +1,77 @@
+title: Release dev to main: SIMS identity allocation and sequence public IDs
+description:
+## Summary
+
+This release merges dev into main, delivering SIMS identity allocation (phases 1–3) for the SEAD
+change request ingester and database-sequence public ID generation in the target model. It includes
+the changes from PR #509.
+
+Change request ingester (ingesters/sead_change_request/)
+
+ - New fail-closed SIMS capability preflight (capability_preflight.py): before orchestration, each
+planned entity's required SIMS operations (allocate_new, bind_existing, derived from its effective
+identity mode) are checked against the SIMS capability response; missing capabilities or
+unconfigured entity types become blocking diagnostics.
+ - Identity work is now resolved in one ordered batch: allocation and reconciliation rows are
+collected as SimsResolveItems and submitted via a single resolve_batch call; approved reconciliation
+matches are bound to their SIMS aggregate ID, and rows are blocked when the batch errors, no
+aggregate ID is returned, or the binding does not match the approved ID.
+ - The ingester no longer auto-confirms proposed binding sets (confirm_binding_set removed from the
+SIMS client port); unconfirmed sets block assigned rows, so confirmation stays manual.
+ - New planned row actions RESERVE_DATABASE_ID and INHERIT_AGGREGATE; a run_id idempotency key is
+minted or reused from persisted submission context; an optional target_id_allocator client
+(defaulting to collision_checker) reserves database-sequence public IDs.
+
+Target model
+
+ - New shared effective-identity resolver (src/target_model/effective_identity.py) applies
+role-based identity defaults in one place; validation, documentation generation, planning, collision
+checks, and preflight now use it instead of role-based branching (e.g., bridge handling keys off
+derived identity tracking).
+ - New public_id_generation: database_sequence option: entities declaring it reserve their public ID
+from the target table's database sequence before artifact generation, and must explicitly declare a
+non-tracked identity_tracking (tracked identities remain SIMS-allocated).
+ - surrogate_name removed from the entity schema; data_provider_code added to the project schema.
+
+Backend, tooling, and documentation
+
+ - Development authorization bootstrap for local resources (sead-authorization dev-bootstrap, make
+development-authorization), environment-variable allowlisting for config resolution, and an env-var
+allowlist test.
+ - New scripts/export_target_tables.py Excel export of target-model tables (make
+export-target-tables) and a reviewer-approved site no-match recorder script with dry-run/apply
+safeguards.
+ - .env.example template, pnpm workspace config, disposable PostgreSQL podman helper script, and
+expanded documentation: SIMS Identity Allocation contract, phase plan and phase 1–3 task plans,
+cutover/deployment planning, trust contract adoption proposal, glossary, and a user introduction
+presentation.
+
+## User-facing release note
+
+The SEAD change request ingester now allocates SIMS identities for new records and binds approved
+matches to existing SEAD aggregates in a single batched step, blocking any operation SIMS does not
+support before data is written; binding sets still require manual confirmation. Configured entities
+can also have their public IDs reserved automatically from the target database sequence.
+
+## Upgrade notes
+
+ - Entities that should get public IDs from the database must declare public_id_generation:
+database_sequence with target_table and public_id set, and an explicit non-tracked
+identity_tracking; tracked entities must continue to be allocated by SIMS.
+ - The ingester now requires a SIMS capability response and batch resolve support before
+orchestrating identity work; plan runs against a SIMS service without these will be blocked by the
+preflight.
+ - Binding set confirmation is no longer automatic: runs whose binding sets are not confirmed will
+report blocked rows until a reviewer confirms them.
+ - surrogate_name is no longer part of the entity schema; entity definitions should not rely on it.
+ - For local development, copy .env.example to .env and run make development-authorization to
+bootstrap the development authorization database.
+
+## Validation
+
+Not verified: validation results unavailable. No CI run results were included in the available
+evidence for this pull request. The diff itself adds or expands backend tests (e.g.,
+test_sead_change_request_preflight.py, test_sead_change_request_submission_sims_integration.py,
+test_sead_change_request_orchestration.py, test_sead_change_request_runtime.py,
+test_env_var_allowlist.py, test_spa_catchall_containment.py) and updates frontend tests, but their
+execution and outcomes are not reported here and are not claimed as passing.

@@ -1,0 +1,59 @@
+title: Add first-class merged parent entities with branch support
+description:
+## Summary
+
+Introduces a first-class type: merged entity mode so shared-parent, multi-branch models (e.g. an
+analysis_entity assembled from abundance and relative-dating sources) no longer need the manual
+append + extra_columns + synthetic pipe-joined key workaround.
+
+ - Core (src/): TableConfig recognizes merged and its branches (name/source/keys), treats branch
+sources as dependencies, and yields one sub-table config per branch. The normalizer concatenates
+branch DataFrames in declaration order, injects a {entity}_branch discriminator column, and
+propagates one sparse nullable Int64 lineage FK column per branch (named from the source's
+public_id, falling back to {source}_id, holding the source row's system_id). Identity columns and
+column reordering are now applied per entity during normalization so downstream merged entities see
+complete source tables. A new MergedEntityFieldsSpecification validates required public_id,
+non-empty branches, branch name/source presence and uniqueness, source existence, and warns on
+incompatible source/data_source/query fields.
+ - Backend: BranchConfig Pydantic model and merged type added to entity models; branch sources
+included in dependency analysis with branch-labeled graph edges; validation errors now carry
+branch_name/branch_source metadata; OpenAPI examples document the merged entity_data payload.
+ - Frontend: new BranchEditor component and a Branches tab (primary surface for merged entities,
+with Append and source-loading controls hidden); preview can toggle between the merged result and
+individual branch sources, with discriminator/FK column highlighting, per-column branch provenance
+tooltips, and a branch filter; validation panel gains a "By Entity" view grouping entity-level vs
+branch-scoped issues, and branch metadata is included in copied results; the dependency graph
+renders merged nodes and dashed branch edges distinctly. Fixed-value grids gain spreadsheet paste
+(rows auto-extend, system_id preserved/auto-assigned) and column-name-based row remapping on schema
+changes.
+ - Documentation: configuration, user, developer, architecture, and testing guides updated; the
+merged-parent proposal archived as done with follow-ups split into PENDING_IMPROVEMENTS.md; two
+manual test checklists added.
+
+The PR body states it fixes #406–#410; those issues were not available for inspection here.
+
+## User-facing release note
+
+You can now build a shared parent entity from multiple source entities using type: merged with an
+explicit branches: list: Shape Shifter assembles the rows, adds a branch discriminator column and
+sparse lineage foreign keys back to each branch source, and the editor provides a Branches tab,
+merged/branch-source preview, branch-grouped validation, and branch-aware dependency-graph edges.
+You can also paste tabular data from a spreadsheet directly into a fixed-values grid.
+
+## Upgrade notes
+
+None - no user action required. Existing entity configurations are unaffected; the merged behavior
+is opt-in via the new type: merged with branches. Note that merged entities require a public_id and
+each branch source must define one for FK column naming.
+
+## Validation
+
+Not verified: validation results unavailable. No CI check results were available for this pull
+request (empty status rollup), and the linked issue details could not be retrieved. The diff itself
+adds test coverage — core tests (tests/test_merged_entity_config.py,
+tests/test_merged_entity_integration.py, tests/specifications/test_merged_entity.py), backend tests
+(backend/tests/api/test_merged_entity_api.py plus validation/dependency service test updates), and
+frontend tests (BranchEditor, EntityFormDialog, validation grouping, graph adapter,
+ProjectDetailView, fixed-values clipboard) — but their execution and outcomes are unknown from the
+available evidence. Test-pass counts cited in the proposal document are author-reported and were not
+independently verified.

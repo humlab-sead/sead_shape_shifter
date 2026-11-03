@@ -1,0 +1,50 @@
+title: Fix foreign key constraints
+description:
+## Summary
+
+Streamlines foreign key constraint validation by removing redundant constraint options and fixing
+validator registration collisions (the PR body states it fixes #4, #5 and #6; no linked issues were
+established in the metadata).
+
+ - Removed the require_all_left_matched, require_all_right_matched, min_match_rate,
+max_row_increase_pct, and max_row_increase_abs constraint options, their ForeignKeyConstraints
+properties, and their validator classes. The existing allow_unmatched_left / allow_unmatched_right
+flags now cover unmatched-key enforcement, and has_match_constraints() was reduced accordingly.
+ - ValidatorRegistry now registers each validator under its class name instead of the shared
+constraint key, so the three cardinality validators (one_to_one, many_to_one, one_to_many) no longer
+overwrite each other. A secondary sub_key index plus a new get_validator_by_constraint(key, value)
+lookup maps a constraint key/value to its validator.
+ - The base Registry.register in src/utility.py now raises KeyError when a key is already
+registered, instead of silently overriding (flagged as FIXME #6 in the code).
+ - Fixed the import in src/link.py to use src.constraints instead of the top-level constraints
+module.
+ - Corrected the input/arbodat-database.yml foreign key definition that nested constraint flags
+under cardinality:; they now sit under constraints: with allow_unmatched_left: false and
+allow_null_keys: false (the line carried a TODO referencing #4).
+ - Documentation (CONFIGURATION_REFERENCE.md, FOREIGN_KEY_CONSTRAINTS.md, constraint_examples.py)
+was updated to the reduced constraint set, replacing require_all_left_matched: true usages with
+allow_unmatched_left: false.
+ - Tests: removed tests for the deleted constraint properties, rewrote a combined constraint test to
+use allow_unmatched_left, relaxed a key-ordering assertion in test_config_model.py to a set
+comparison, and removed test_fixed_data_with_empty_sql from test_config_specifications.py.
+
+## User-facing release note
+
+Foreign key constraints are now configured with a smaller, clearer set of options: unmatched rows on
+either side are controlled with allow_unmatched_left / allow_unmatched_right, and cardinality
+checks now work reliably instead of only the last-registered cardinality rule applying.
+
+## Upgrade notes
+
+Breaking configuration change: the options require_all_left_matched, require_all_right_matched,
+min_match_rate, max_row_increase_pct, and max_row_increase_abs are no longer recognized. Replace
+require_all_left_matched: true with allow_unmatched_left: false and require_all_right_matched: true
+with allow_unmatched_right: false; there is no replacement for min_match_rate or the row-increase
+limits. Also verify that constraint flags are placed under constraints: (not nested under
+cardinality:), as in the corrected input/arbodat-database.yml.
+
+## Validation
+
+Not verified: validation results unavailable. No CI status checks are reported for this pull
+request. The diff updates unit tests (tests/test_config_model.py,
+tests/test_config_specifications.py), but no evidence of their execution or results is available.

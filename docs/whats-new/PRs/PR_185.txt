@@ -1,0 +1,76 @@
+title: Introduce three-tier identity system replacing surrogate_id
+description:
+## Summary
+
+Replaces the ambiguous surrogate_id field with an explicit three-tier identity model across the core
+pipeline, backend API, and frontend editor:
+
+ - system_id – standardized, auto-managed local identity column (always named system_id,
+auto-numbered 1, 2, 3…).
+ - keys – existing field clarified as source business keys used for duplicate detection and
+reconciliation.
+ - public_id – target-system PK name that also defines the FK column name pulled into child entities
+when foreign keys are linked (FK values come from the parent's system_id).
+
+surrogate_id is deprecated but kept for backward compatibility: legacy configs fall back to
+public_id (backend model migrates it automatically; TableConfig properties accept both). The entity
+type data is renamed to entity, and csv/xlsx/openpyxl types are now accepted throughout backend
+models, dependency analysis, frontend types, JSON schema, and docs.
+
+Supporting changes in this branch:
+
+ - Core refactor: transforms moved into src/transforms/ (link, drop, filter, translate, unnest,
+utility), ProcessState extracted to src/process_state.py with a new DeferredLinkingTracker that
+retries only deferred FK links, and constraints.py moved under src/specifications/ with a new
+ValidationIssue record. A FunctionalDependencySpecification (src/specifications/fd.py) replaces the
+old check_functional_dependency helper, and drop_duplicates gains a dict format with
+check_functional_dependency / strict_functional_dependency options.
+ - Fixes #179: when all sub-tables are empty, normalization now returns a frame carrying the 
+configured columns instead of an empty frame with no columns.
+ - Backend: FK linking issues are collected and returned as validation_issues in entity previews;
+new batch preview path with a warm table store; new DuplicateKeysValidator and
+ForeignKeyIntegrityValidator; dependency graph analysis refactored into reusable
+backend/app/utils/graph.py and sql.py (sqlparse-based table extraction) with unit tests; new GET
+/data-sources/excel/metadata endpoint exposing Excel sheets/columns; strict config resolution that
+reports unresolved @value:/@include:/@load: directives; JVM for UCanAccess initialized once at
+backend startup with Java-string conversion fixes for JPype 1.6.
+ - Frontend: entity editor shows three identity sections (read-only System ID, Business Keys
+multi-select, required Public ID validated to end with _id), Excel sheet/column pickers driven by
+the new metadata endpoint, dependency graph legend and cytoscape styles for the new entity types,
+and entity store sync with the selected project.
+ - Adds projects/strucke_test.yml, updates projects/arbodat-test.yml, adds Makefile profiling and
+logging targets, and adds/updates identity-system documentation (IDENTITY_SYSTEM_SUMMARY.md,
+implementation plan and future-enhancements docs, configuration/user/developer guides).
+
+## User-facing release note
+
+Entities now use a clear three-part identity: an automatic local system_id, business keys from the
+source data, and a required public_id that names the foreign key columns child entities receive, so
+target-system IDs can be assigned directly in the entity editor. Legacy surrogate_id configurations
+are still read and migrated automatically, and the entity editor now offers sheet and column pickers
+for Excel-based entities.
+
+## Upgrade notes
+
+ - Rename entity type: data to type: entity in project YAML files: data is no longer an accepted
+entity type in the backend model, schema, or frontend types (csv, xlsx, and openpyxl are now valid
+types as well).
+ - surrogate_id is deprecated: it is still accepted and automatically mapped to public_id, but new
+configurations should set public_id (must end with _id; required for fixed-value entities). The
+local identity column is standardized to system_id.
+ - Per the implementation plan docs, no data migrations are required because the system is
+pre-deployment and existing projects are test projects; projects/arbodat-test.yml in this branch
+shows the updated conventions.
+
+## Validation
+
+ - No CI check results are available for this pull request (the status check rollup is empty), so
+test execution and outcomes cannot be confirmed: Not verified: validation results unavailable.
+ - The diff itself adds or updates extensive tests (e.g. backend/tests/utils/test_graph.py,
+backend/tests/utils/test_sql.py, tests/process/test_deferred_linking_tracker.py,
+tests/process/test_subset_service*.py, tests/transforms/test_link.py, tests/transforms/test_drop.py,
+updated identity/type tests), but no evidence of their execution is included here.
+ - The documented test command is make test (uv run pytest tests backend/tests -v); it was not
+observed being run in the available evidence.
+ - The pull request was merged into main on 2026-01-29; merging is not treated as evidence that
+checks passed.

@@ -41,8 +41,140 @@ python scripts/print_target_model_entity.py \
 ## Release Notes Drafting
 
 The `prepare_copilot_release_notes.py` script prepares a user-facing release-notes draft for refinement with Copilot CLI.
-The underlying `generate_user_release_notes.py` script also supports local `.env` loading for AI-related variables when they are not already exported.
-Release-note bodies, Copilot prompts, and AI prompts are rendered from Jinja2 templates under `scripts/templates/`.
+The `generate_whats_new.py` script builds the release-note file from the authored user-facing and upgrade-note sections of merged pull requests. It selects pull requests by commit ancestry: a pull request ships in release `Rn` when its merge commit is reachable from the release ref (`vRn` when the tag exists, otherwise `HEAD`) and not from the previous release ref. It reads pull requests whose base branch is `dev`, `staging`, or `main`, so feature pull requests are included even though they never target `main`. `CHANGELOG.md` supplies only the version date and previous version. If an AI API key is configured, it consolidates overlapping notes; otherwise it preserves the authored notes. The older `generate_user_release_notes.py` script remains available for changelog-derived drafts.
+
+Promotion pull requests carry the `<!-- promotion-pr -->` marker and contribute no notes of their own, so promoted changes are never reported twice. For the latest version in `CHANGELOG.md`, the generator also adds a `Pending Release` snapshot of merged pull requests that have not reached `main`, including their authored notes and the pull requests each promotion carries. It uses `gh pr list` and `git rev-list`, so `gh` must be authenticated and full history and tags must be available. See [the What's New workflow](../docs/whats-new/README.md).
+
+## `update_pr_descriptions.py`
+
+### Usage
+
+```bash
+# Draft into docs/whats-new/PRs/PR_<number>.txt
+python3 scripts/update_pr_descriptions.py 620-634 --draft
+
+# Override the detected included pull requests for a promotion
+python3 scripts/update_pr_descriptions.py 627 --draft --included-prs 621,626
+
+# Record commits that reached the base branch without a pull request
+python3 scripts/update_pr_descriptions.py 620-634 --draft --include-orphaned
+
+# Remove terminal escape sequences from existing drafts, without publishing
+python3 scripts/update_pr_descriptions.py 620-634 --clean-drafts
+
+# List every detected commit instead of filtering housekeeping
+python3 scripts/update_pr_descriptions.py 620-634 --draft --include-orphaned --show-all-orphaned
+
+# Publish the reviewed files
+python3 scripts/update_pr_descriptions.py 620-634 --publish
+```
+
+Promotion pull requests (`dev` into `staging`, or `staging` into `main`) are drafted from branch history without a model, listing the pull requests merged into the source branch and absent from the target branch.
+
+`--include-orphaned` appends a `Detected orphaned commits` section covering the commits pushed to the base branch between the previous merged pull request and this one. Generated output, release bookkeeping, documentation-only commits, and contributor configuration are filtered out of that section by default, and the filtered counts stay visible in the section and on standard error. See [the What's New workflow](../docs/whats-new/README.md#recording-commits-without-a-pull-request).
+
+## `create_change_pr.py`
+
+`create_change_pr.py` moves uncommitted work onto a branch and merges it into
+`dev` through a pull request. Run it whenever a change touches `scripts/`,
+`src/`, `backend/`, `frontend/`, `ingesters/`, `tests/`, or
+`.github/workflows/`, because those paths need pull request provenance before
+`dev` can be promoted. See the
+[promotion guard workflow](../.github/workflows/promotion-guard.yml).
+
+```bash
+# Show the branch, commit message, file list, and pull request body first
+uv run python scripts/create_change_pr.py \
+  --type chore --scope deps \
+  --subject "upgrade dev tooling and adapt code to new checks" \
+  --path uv.lock --path src/loaders --path src/specifications \
+  --validation "uv run pylint -j 0 src tests backend ingesters: exit 0" \
+  --dry-run
+
+# Create the branch, commit, push, open the pull request, and merge it
+uv run python scripts/create_change_pr.py \
+  --type chore --scope deps \
+  --subject "upgrade dev tooling and adapt code to new checks" \
+  --path uv.lock --path src/loaders --path src/specifications
+
+# Open the pull request and stop before merging
+uv run python scripts/create_change_pr.py \
+  --type fix --subject "reject blank entity keys" \
+  --path src/validators --no-merge
+
+# Stage the whole working tree when every pending change is one logical commit
+uv run python scripts/create_change_pr.py \
+  --type feat --scope workflow \
+  --subject "add script and skill for change pull requests" \
+  --all --generate-description
+
+# Report the default pylint and pytest lines instead of typing them
+uv run python scripts/create_change_pr.py \
+  --type fix --subject "reject blank entity keys" \
+  --path src/validators --default-validation
+
+# Let Copilot draft the commit subject from the pending diff
+uv run python scripts/create_change_pr.py \
+  --generate-subject --all --default-validation --dry-run
+```
+
+The script stages only the paths given with `--path`, so unrelated work stays
+uncommitted. `--all` stages every pending change instead, for the case where the
+whole working tree is one logical commit; it is mutually exclusive with `--path`.
+Both modes refuse the literal blanket values such as `.`, reject a dirty index,
+and refuse `staging` and `main` as targets because those are promotion branches.
+The pull request body uses the four sections required by
+[.github/pull_request_template.md](../.github/pull_request_template.md);
+`--release-note`, `--upgrade-notes`, and `--validation` supply the content that
+the author knows, and the template fallback text is used otherwise.
+
+`--generate-description` runs `update_pr_descriptions.py` for the new pull
+request once it exists, so the Copilot-written description replaces the scaffold
+body. That step needs the Copilot provider settings described above. The draft
+file it writes under `docs/whats-new/PRs/` is committed and pushed to the pull
+request branch by default, as a second commit named
+`docs(whats-new): record the description for pull request #<n>`, because the
+repository tracks those files. Pass `--no-commit-description-draft` to leave the
+file untracked instead.
+
+`--default-validation` adds the two repository default lines,
+`uv run pylint -j 0 src tests backend ingesters: exit 0` and
+`pytest: all passed`, before any `--validation` lines you pass. The script never
+runs those checks, so it records text you are responsible for having verified.
+Run both commands yourself first, and pass `--validation` for narrower or
+different evidence.
+
+`--generate-subject` drafts the commit subject from the pending changes with
+Copilot CLI, so `--type`, `--scope`, and `--subject` can be omitted. It sends the
+status list, the tracked diff, and a short preview of each new untracked file,
+because a plain `git diff` omits new files. The result still passes the same
+checks as a hand-written subject, and `--subject` and `--generate-subject` are
+mutually exclusive. The call happens before the commit, so `--dry-run` shows the
+subject it would use. A generation failure stops the run and asks for
+`--subject`.
+
+## `draft_all_pr_descriptions.py`
+
+### Usage
+
+```bash
+# Show the plan without writing anything
+python3 scripts/draft_all_pr_descriptions.py --dry-run
+
+# Draft every merged pull request that has no draft file yet
+python3 scripts/draft_all_pr_descriptions.py
+
+# Redraft everything, newest first, in batches of 10
+python3 scripts/draft_all_pr_descriptions.py --force --newest-first --batch-size 10
+
+# Retry a malformed model response up to three times per pull request
+python3 scripts/draft_all_pr_descriptions.py --attempts 3
+
+# Include closed and open pull requests, newest first
+python3 scripts/draft_all_pr_descriptions.py --state all --newest-first
+```
+
+Enumerates pull requests with `gh pr list` and drives `update_pr_descriptions.py` with `--draft --include-orphaned`. Existing drafts are kept unless `--force` is given, so an interrupted run resumes and a later run retries only missing drafts. `--batch-size` controls how many pull requests each invocation receives. `--limit` caps the run size, `--fail-fast` stops after the first failing batch, and `--no-preflight` skips the Copilot configuration check for promotion-only sets. It never publishes. See [the What's New workflow](../docs/whats-new/README.md#drafting-every-pull-request).
 
 ## `prepare_copilot_release_notes.py`
 
@@ -55,28 +187,36 @@ python3 scripts/prepare_copilot_release_notes.py --version 1.24.0
 python3 scripts/prepare_copilot_release_notes.py --list-versions
 ```
 
-## `generate_user_release_notes.py`
+## `generate_whats_new.py`
+
+### Usage
+
+```bash
+# Generate notes from merged PR descriptions (heuristic fallback)
+make release-notes VERSION=2.5.0
+
+# Allow configured AI to consolidate overlapping notes
+make release-notes-ai VERSION=2.5.0
+
+# Direct usage
+python3 scripts/generate_whats_new.py --version 2.5.0
+```
+
+The script requires authenticated `gh` access to merged PRs. It replaces the output file on each run. See [the What's New workflow](../docs/whats-new/README.md) for the version-selection and pending-staging behavior.
+
+## `generate_user_release_notes.py` (legacy changelog-based generator)
+
+The legacy generator remains available for listing versions and producing drafts directly from changelog entries.
 
 ### Quick Start
 
 ```bash
 # Generate release notes for all missing versions since the last one
-make release-notes-missing           # Uses heuristic mode (fast)
-make release-notes-missing-ai        # Uses AI mode (requires API key)
+make release-notes-missing
+make release-notes-missing-ai
 
-# Generate release notes for a specific version
-make release-notes VERSION=1.26.0    # Uses heuristic mode
-make release-notes-ai VERSION=1.26.0 # Uses AI mode
-
-# List all available versions
-make release-notes-list
-```
-
-### Direct Usage
-
-```bash
 # List versions available in CHANGELOG.md
-python3 scripts/generate_user_release_notes.py --list-versions
+make release-notes-list
 
 # Generate release notes for all missing versions (heuristic mode)
 python3 scripts/generate_user_release_notes.py --generate-missing --force-heuristic
@@ -90,17 +230,62 @@ python3 scripts/generate_user_release_notes.py --version 1.26.0 --force-heuristi
 
 ### What It Does
 
-- Generates a heuristic draft release note file using `generate_user_release_notes.py --force-heuristic`
-- Writes the draft by default to `docs/whats-new/vX.Y.Z.md`
-- Writes a ready-to-paste Copilot CLI prompt by default to `tmp/copilot-release-notes-vX.Y.Z.prompt.md`
-- Uses a filtered user-visible summary as prompt context instead of the full raw changelog section
-- Prints that prompt to stdout so it can be pasted directly into Copilot CLI
+- Reads the selected release section from `CHANGELOG.md` and writes `docs/whats-new/vX.Y.Z.md` by default.
+- Drafts highlights, new features, improvements, and fixes using local heuristics or AI. Use `--force-heuristic` to skip AI.
+- Adds the `Pending Release` PR snapshot only when generating the latest changelog version. `--generate-missing` includes it only if that changelog version is among the versions being generated.
+- Replaces the output file on each run. Review the generated content and reapply any manual edits after regenerating.
+- Can update the matching GitHub Release body when run with `--update-github-release`.
 
 ### Optional Arguments
 
-- `--draft-output`: Custom path for the generated draft markdown file
-- `--prompt-output`: Custom path for the generated Copilot prompt file
-- `--list-versions`: Print release versions available in `CHANGELOG.md` and exit
+- `--version X.Y.Z`: Generate one release note file.
+- `--generate-missing`: Generate files for missing changelog versions.
+- `--list-versions`: Print release versions available in `CHANGELOG.md` and exit.
+- `--output PATH`: Write the generated note to a custom path.
+- `--force-heuristic`: Do not use AI drafting.
+- `--update-github-release`: Update the matching GitHub Release body via `gh`.
+
+## `verify_promotion_provenance.sh`
+
+Fails a promotion when code changes were pushed straight to the source branch instead of arriving through a pull request. Direct pushes have no review record and cannot appear in generated release notes, because the generator reads merged pull requests only.
+
+### Quick Start
+
+```bash
+# Check a dev into staging promotion before opening the pull request
+GH_TOKEN=$(gh auth token) scripts/verify_promotion_provenance.sh \
+  --base origin/staging --head origin/dev
+
+# Check one explicit range
+scripts/verify_promotion_provenance.sh --base 7a90e566 --head f4c8a177
+```
+
+### What It Does
+
+- Walks the first-parent chain from `--head` back to `--base`. That chain is the source branch's own history.
+- Passes merge commits whose subject is `Merge pull request #<n>`, and does not inspect the commits they merge.
+- Treats every other commit on the chain as a squash merge, rebase merge, or direct push. It passes when GitHub associates the commit with a pull request whose base branch is not `staging` or `main`. Promotion pull requests are ignored, because merging a promotion associates it with every commit it carries.
+- Reports each failing commit, its subject, and the protected paths it changes. Writes a Markdown summary to `GITHUB_STEP_SUMMARY` when that variable is set.
+
+### Protected Paths
+
+`scripts/`, `src/`, `backend/`, `frontend/`, `ingesters/`, `tests/`, and `.github/workflows/`. Override with the colon-separated `PROTECTED_PATHS` environment variable, for example `PROTECTED_PATHS="src/:backend/"` to check only backend code.
+
+### Exit Codes
+
+- `0`: every commit touching a protected path carries pull request provenance.
+- `1`: at least one such commit has none.
+- `2`: usage error, unknown ref, or failed GitHub API request.
+
+### Automation
+
+`.github/workflows/promotion-guard.yml` runs the script on pull requests into `staging` and `main`. The workflow is advisory until it is added as a required status check on the repository ruleset. Commits already on the target branch are outside the range, so the check reports only what a promotion adds.
+
+### Known Limitation
+
+Squash and rebase merges pass only if GitHub still associates the resulting commit with its pull request. Merge commits are recognised from their subject and do not depend on that association, which is how this repository currently merges pull requests.
+
+A pull request cannot repair an earlier direct push. Opening a pull request from a branch that contains the pushed commit associates that commit with the pull request while the branch exists, but the association disappears once the branch is merged and deleted. Fix a reported commit by reverting it through a pull request and re-applying the change on its own branch, or promote it with an explicit override.
 
 ## Deployment Scripts
 

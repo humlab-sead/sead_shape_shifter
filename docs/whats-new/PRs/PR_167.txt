@@ -1,0 +1,45 @@
+title: feat: enhance YAML editor with entity and project validation (#166)
+description:
+## Summary
+
+Adds YAML "intelligence" to the Monaco-based YAML editor so project and entity YAML files get
+schema-based validation, hover documentation, and context-aware autocompletion.
+
+ - New setupYamlIntelligence composable (useMonacoYamlIntelligence.ts) configures monaco-yaml (new
+dependency) with one of two new JSON Schemas — projectSchema.json for full project configurations
+(metadata, entities, options, task_list) and entitySchema.json for single-entity definitions —
+selected by an editor mode (project or entity).
+ - New projectYamlValidator.ts adds custom domain validation on top of schema checks, emitting
+Monaco markers for unknown entity references in depends_on, foreign_keys, filters.exists_in, and
+append, unknown entities in task_list lists (project mode only, as warnings), and unknown entity
+references in @value expressions. A ValidationContext interface lets validation work on an isolated
+entity YAML by supplying entity and data-source names from outside the document.
+ - New projectYamlCompletions.ts registers a completion provider suggesting entity names,
+data-source names, join types (how), cardinality values, and entity types, using either an injected
+context or names parsed from the current document.
+ - YamlEditor.vue gains mode and validationContext props, initializes YAML intelligence on mount,
+and re-runs custom validation on change and on context change. EntityFormDialog.vue now edits entity
+YAML in entity mode and computes a validation context from the current project (excluding the
+entity itself to prevent self-references).
+ - Two documentation files were added (docs/YAML_INTELLIGENCE.md,
+frontend/YAML_INTELLIGENCE_IMPLEMENTATION.md), a TODO entry for #166 was added, and 
+input/arbodat-test.yml was changed to use type: data instead of type: sql for the abundance entity,
+aligning it with the project schema's accepted entity types.
+
+## User-facing release note
+
+When editing project or entity YAML in the editor, users now get autocompletion for entity names,
+data sources, and enum values, plus immediate in-editor errors and warnings for structural problems
+and references to unknown entities.
+
+## Upgrade notes
+
+Frontend dependencies changed (monaco-yaml and yaml were added); run pnpm install in frontend/
+before building. Existing project YAML files may now surface new validation markers (for example,
+entity type values outside the schema enums), so review any new editor warnings after upgrading;
+input/arbodat-test.yml was updated accordingly in this PR.
+
+## Validation
+
+Not verified: validation results unavailable. No CI check results were recorded for this pull
+request, and the diff adds no automated tests. The pull request was merged into dev.

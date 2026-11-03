@@ -43,6 +43,30 @@ export interface TargetModelFileOption {
   location: 'project' | 'shared'
 }
 
+export type TargetModelEntityRole = 'fact' | 'lookup' | 'classifier' | 'bridge'
+
+export interface TargetModelRequiredLink {
+  path: string[]
+  missing_entities: string[]
+  required_when_has_new_rows: string | null
+}
+
+export interface TargetModelEntityOption {
+  name: string
+  role: TargetModelEntityRole | null
+  required: boolean
+  description: string | null
+  target_table: string | null
+  public_id: string | null
+  required_columns: string[]
+  required_links: TargetModelRequiredLink[]
+}
+
+export interface TargetModelEntityOptionsResponse {
+  configured: boolean
+  entities: TargetModelEntityOption[]
+}
+
 /**
  * Project API service
  */
@@ -278,6 +302,16 @@ export const projectsApi = {
     return apiRequest<TargetModelFileOption[]>({
       method: 'GET',
       url: `/projects/${name}/target-models`,
+    })
+  },
+
+  /**
+   * Get missing entity choices from the project's associated target model
+   */
+  getTargetModelEntityOptions: async (name: string): Promise<TargetModelEntityOptionsResponse> => {
+    return apiRequest<TargetModelEntityOptionsResponse>({
+      method: 'GET',
+      url: `/projects/${name}/target-model-entities`,
     })
   },
 

@@ -56,7 +56,8 @@ def test_ingester_output_directory_resolves_under_application_root(tmp_path) -> 
 
 def test_blank_ingester_output_directory_is_unconfigured(tmp_path) -> None:
     """A blank project-ingester output directory must not become the current directory."""
-    settings = Settings(APPLICATION_ROOT=tmp_path, INGEST_OUTPUT_DIR=" ")
+    # The blank-string before-validator accepts raw strings, which the declared Path type rejects.
+    settings = Settings(APPLICATION_ROOT=tmp_path, INGEST_OUTPUT_DIR=" ")  # pyright: ignore[reportArgumentType]
 
     assert settings.INGEST_OUTPUT_DIR is None
 
@@ -66,3 +67,25 @@ def test_ingester_target_port_is_validated() -> None:
 
     with pytest.raises(ValidationError):
         Settings(INGEST_TARGET_PORT=0)
+
+
+def test_link_trial_output_row_limit_defaults_to_one_million(tmp_path) -> None:
+    """The link-trial output-row limit defaults to one million."""
+    settings = Settings(_env_file=None, APPLICATION_ROOT=tmp_path)  # pyright: ignore[reportCallIssue]
+
+    assert settings.LINK_TRIAL_MAX_OUTPUT_ROWS == 1_000_000
+
+
+def test_link_trial_output_row_limit_reads_environment_override(monkeypatch, tmp_path) -> None:
+    """The link-trial output-row limit can be overridden with its prefixed environment variable."""
+    monkeypatch.setenv("SHAPE_SHIFTER_LINK_TRIAL_MAX_OUTPUT_ROWS", "250")
+    settings = Settings(_env_file=None, APPLICATION_ROOT=tmp_path)  # pyright: ignore[reportCallIssue]
+
+    assert settings.LINK_TRIAL_MAX_OUTPUT_ROWS == 250
+
+
+@pytest.mark.parametrize("limit", [0, -1])
+def test_link_trial_output_row_limit_must_be_positive(limit: int, tmp_path) -> None:
+    """The link-trial output-row limit must be greater than zero."""
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, APPLICATION_ROOT=tmp_path, LINK_TRIAL_MAX_OUTPUT_ROWS=limit)  # pyright: ignore[reportCallIssue]

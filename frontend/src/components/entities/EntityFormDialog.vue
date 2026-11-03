@@ -1,6 +1,8 @@
 <template>
   <v-dialog
     v-model="dialogModel"
+    location="top"
+    :offset="DIALOG_TOP_OFFSET"
     :width="dialogContainerWidth"
     :max-width="dialogContainerWidth"
     :height="dialogContainerHeight"
@@ -89,6 +91,35 @@
                   }"
                 >
                   <v-form ref="formRef" v-model="formValid" class="compact-form">
+                    <div
+                      v-if="
+                        mode === 'create' &&
+                        (targetModelEntitiesLoading ||
+                          targetModelEntityOptionsError ||
+                          targetModelEntityOptions.length > 0)
+                      "
+                      class="form-row"
+                    >
+                      <v-autocomplete
+                        v-if="targetModelEntityOptions.length > 0"
+                        :model-value="selectedTargetEntityName"
+                        :items="targetModelEntityOptions"
+                        item-title="name"
+                        item-value="name"
+                        label="Start from target model"
+                        variant="outlined"
+                        clearable
+                        :loading="targetModelEntitiesLoading"
+                        @update:model-value="handleTargetEntitySelection"
+                      />
+                      <div v-else-if="targetModelEntitiesLoading" class="text-caption">
+                        Loading target-model entities...
+                      </div>
+                      <v-alert v-if="targetModelEntityOptionsError" type="warning" variant="tonal" density="compact">
+                        {{ targetModelEntityOptionsError }}
+                      </v-alert>
+                    </div>
+
                     <!-- Entity Name, Type, and Source/Data Source on same row -->
                     <div class="form-row">
                       <v-row no-gutters>
@@ -98,11 +129,18 @@
                             v-model="formData.name"
                             label="Entity Name *"
                             :rules="nameRules"
+                            :readonly="Boolean(selectedTargetEntity)"
                             variant="outlined"
                             required
                           >
                             <template #message>
-                              <span class="text-caption">Unique identifier for this entity</span>
+                              <span class="text-caption">
+                                {{
+                                  selectedTargetEntity
+                                    ? 'Target entity name is fixed until you clear the selection'
+                                    : 'Unique identifier for this entity'
+                                }}
+                              </span>
                             </template>
                           </v-text-field>
                         </v-col>
@@ -110,13 +148,14 @@
                         <v-col cols="4" class="px-1">
                           <!-- Entity Type -->
                           <v-select
-                            v-model="formData.type"
-                            :items="entityTypeOptions"
+                            :model-value="entityTypeValue"
+                            :items="entityTypeOptionsForSelection"
                             label="Type *"
-                            :rules="requiredRule"
+                            :rules="entityTypeRules"
                             variant="outlined"
                             required
                             hide-details="auto"
+                            @update:model-value="handleEntityTypeSelection"
                           >
                             <template #append-inner>
                               <v-tooltip location="top" text="How this entity gets its data">
@@ -173,6 +212,80 @@
                         </v-col>
                       </v-row>
                     </div>
+
+                    <v-alert
+                      v-if="
+                        selectedTargetEntity &&
+                        (!sourceTypeExplicitlySelected || selectedTargetEntity.role === 'classifier')
+                      "
+                      type="info"
+                      variant="tonal"
+                      density="compact"
+                      class="mb-4"
+                    >
+                      <div v-if="!sourceTypeExplicitlySelected">
+                        Select a Shape Shifter type before saving this target entity. The default
+                        <code>entity</code> value does not count as a selection.
+                      </div>
+                      <div v-if="selectedTargetEntity.role === 'classifier'">
+                        Classifiers must use <code>fixed</code> values or an <code>sql</code> query.
+                      </div>
+                    </v-alert>
+
+                    <v-card
+                      v-if="selectedTargetEntity"
+                      class="mb-4"
+                      variant="tonal"
+                      data-testid="target-model-requirements"
+                    >
+                      <v-card-title class="text-subtitle-1">Target model requirements</v-card-title>
+                      <v-card-text class="pt-0">
+                        <p v-if="selectedTargetEntity.role"><strong>Role:</strong> {{ selectedTargetEntity.role }}</p>
+                        <p v-if="selectedTargetEntity.description">
+                          <strong>Description:</strong> {{ selectedTargetEntity.description }}
+                        </p>
+                        <p v-if="selectedTargetEntity.target_table">
+                          <strong>Target table:</strong> <code>{{ selectedTargetEntity.target_table }}</code>
+                        </p>
+
+                        <div class="mt-2">
+                          <div class="font-weight-medium">Required columns</div>
+                          <ul v-if="selectedTargetEntity.required_columns.length" class="pl-4">
+                            <li v-for="column in selectedTargetEntity.required_columns" :key="column">
+                              <code>{{ column }}</code>
+                            </li>
+                          </ul>
+                          <p v-else class="mb-0">No required columns.</p>
+                        </div>
+
+                        <div class="mt-2">
+                          <div class="font-weight-medium">Required links</div>
+                          <ul v-if="selectedTargetEntity.required_links.length" class="pl-4">
+                            <li v-for="(link, linkIndex) in selectedTargetEntity.required_links" :key="linkIndex">
+                              <span>{{ link.path.length > 1 ? 'Path' : 'Target' }}: </span>
+                              <template
+                                v-for="(entityName, entityIndex) in link.path"
+                                :key="`${linkIndex}-${entityIndex}`"
+                              >
+                                <span v-if="entityIndex > 0" aria-hidden="true"> → </span>
+                                <span>
+                                  {{ entityName }}
+                                  <span v-if="link.missing_entities.includes(entityName)" class="text-medium-emphasis">
+                                    (not in project)
+                                  </span>
+                                </span>
+                              </template>
+                              <div v-if="link.required_when_has_new_rows" class="mt-1">
+                                <v-chip size="x-small" color="info" variant="tonal">Conditional</v-chip>
+                                Required only if final reconciliation selects one or more rows from
+                                <code>{{ link.required_when_has_new_rows }}</code> for insertion.
+                              </div>
+                            </li>
+                          </ul>
+                          <p v-else class="mb-0">No required links.</p>
+                        </div>
+                      </v-card-text>
+                    </v-card>
 
                     <!-- File Options Row (for CSV, Excel types) -->
                     <div class="form-row" v-if="isFileType">
@@ -248,6 +361,16 @@
                         </v-col>
                       </v-row>
                     </div>
+
+                    <v-alert v-if="columnAvailabilityError" type="error" variant="tonal" density="compact" class="mb-4">
+                      <div class="text-body-2">{{ columnAvailabilityError.message }}</div>
+                      <div v-if="columnAvailabilityError.tips?.length" class="mt-2">
+                        <div class="text-caption font-weight-bold">Suggestions:</div>
+                        <ul class="text-caption mt-1 pl-4">
+                          <li v-for="(tip, index) in columnAvailabilityError.tips" :key="index">{{ tip }}</li>
+                        </ul>
+                      </div>
+                    </v-alert>
 
                     <v-alert v-if="isMergedEntityType" type="info" variant="tonal" density="compact" class="mb-4">
                       <div class="text-caption">
@@ -343,7 +466,7 @@
                           <!-- Keys (business keys) -->
                           <v-combobox
                             v-model="formData.keys"
-                            :items="columnAvailability?.business_keys ?? []"
+                            :items="getReferenceAwareItems(columnAvailability?.business_keys ?? [])"
                             label="Business Keys *"
                             variant="outlined"
                             multiple
@@ -351,6 +474,15 @@
                             closable-chips
                             persistent-placeholder
                           >
+                            <template #chip="{ item, props: chipProps }">
+                              <ValueReferenceChip
+                                v-if="typeof item.raw === 'string' && item.raw.trim().startsWith('@value:')"
+                                :value="item.raw"
+                                :chip-props="chipProps"
+                                :entities="completedCacheEntities"
+                              />
+                              <v-chip v-else v-bind="chipProps">{{ item.title }}</v-chip>
+                            </template>
                             <template #message>
                               <span class="text-caption">Natural key columns that uniquely identify records</span>
                             </template>
@@ -368,7 +500,11 @@
                         <v-col cols="8" class="pr-2">
                           <v-combobox
                             v-model="formData.columns"
-                            :items="columnAvailability?.columns ?? []"
+                            :items="
+                              formData.type === 'fixed'
+                                ? (columnAvailability?.columns ?? [])
+                                : getReferenceAwareItems(columnAvailability?.columns ?? [])
+                            "
                             label="Columns"
                             variant="outlined"
                             multiple
@@ -377,6 +513,19 @@
                             persistent-placeholder
                             :rules="formData.type === 'fixed' ? columnsRules : []"
                           >
+                            <template #chip="{ item, props: chipProps }">
+                              <ValueReferenceChip
+                                v-if="
+                                  formData.type !== 'fixed' &&
+                                  typeof item.raw === 'string' &&
+                                  item.raw.trim().startsWith('@value:')
+                                "
+                                :value="item.raw"
+                                :chip-props="chipProps"
+                                :entities="completedCacheEntities"
+                              />
+                              <v-chip v-else v-bind="chipProps">{{ item.title }}</v-chip>
+                            </template>
                             <template #message>
                               <span class="text-caption" v-if="formData.type === 'fixed'">
                                 Fixed values grid fields. Business keys select produced fields but do not add grid
@@ -605,7 +754,7 @@
 
                           <v-combobox
                             v-model="formData.drop_duplicates.columns"
-                            :items="columnAvailability?.drop_duplicates ?? []"
+                            :items="getReferenceAwareItems(columnAvailability?.drop_duplicates ?? [])"
                             label="Deduplication Columns"
                             variant="outlined"
                             multiple
@@ -614,6 +763,15 @@
                             persistent-placeholder
                             :disabled="!formData.drop_duplicates.enabled"
                           >
+                            <template #chip="{ item, props: chipProps }">
+                              <ValueReferenceChip
+                                v-if="typeof item.raw === 'string' && item.raw.trim().startsWith('@value:')"
+                                :value="item.raw"
+                                :chip-props="chipProps"
+                                :entities="completedCacheEntities"
+                              />
+                              <v-chip v-else v-bind="chipProps">{{ item.title }}</v-chip>
+                            </template>
                             <template #message>
                               <span class="text-caption">Columns to use for deduplication (empty = all columns)</span>
                             </template>
@@ -633,7 +791,7 @@
                           </v-row>
                           <v-combobox
                             v-model="formData.drop_empty_rows.columns"
-                            :items="columnAvailability?.drop_empty_rows ?? []"
+                            :items="getReferenceAwareItems(columnAvailability?.drop_empty_rows ?? [])"
                             label="Columns to Check for Empty Values"
                             variant="outlined"
                             multiple
@@ -642,6 +800,15 @@
                             persistent-placeholder
                             :disabled="!formData.drop_empty_rows.enabled"
                           >
+                            <template #chip="{ item, props: chipProps }">
+                              <ValueReferenceChip
+                                v-if="typeof item.raw === 'string' && item.raw.trim().startsWith('@value:')"
+                                :value="item.raw"
+                                :chip-props="chipProps"
+                                :entities="completedCacheEntities"
+                              />
+                              <v-chip v-else v-bind="chipProps">{{ item.title }}</v-chip>
+                            </template>
                             <template #message>
                               <span class="text-caption">Columns to check for empty values (empty = all columns)</span>
                             </template>
@@ -694,8 +861,9 @@
                   :available-entities="availableSourceEntities"
                   :project-name="projectName"
                   :entity-name="formData.name"
-                  :entity-columns="effectiveEntityColumns"
                   :column-candidates="columnAvailability?.foreign_keys ?? []"
+                  :reference-entities="completedCacheEntities"
+                  :reference-suggestions="referenceSuggestions"
                   :is-entity-saved="mode === 'edit'"
                   :has-unsaved-changes="hasPendingChanges"
                   @update:model-value="handleForeignKeysUpdate"
@@ -711,6 +879,8 @@
                   v-model="formData.advanced.unnest"
                   :id-var-columns="columnAvailability?.unnest.id_vars ?? []"
                   :value-var-columns="columnAvailability?.unnest.value_vars ?? []"
+                  :reference-entities="completedCacheEntities"
+                  :reference-suggestions="referenceSuggestions"
                 />
               </v-window-item>
 
@@ -1066,6 +1236,7 @@ import type { ColDef } from 'ag-grid-community'
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
 import ForeignKeyEditor from './ForeignKeyEditor.vue'
+import ValueReferenceChip from './ValueReferenceChip.vue'
 import FiltersEditor from './FiltersEditor.vue'
 import UnnestEditor from './UnnestEditor.vue'
 import AppendEditor from './AppendEditor.vue'
@@ -1079,9 +1250,12 @@ import SqlEditor from '../common/SqlEditor.vue'
 import MaterializeDialog from './MaterializeDialog.vue'
 import UnmaterializeDialog from './UnmaterializeDialog.vue'
 import type { ValidationContext } from '@/utils/projectYamlValidator'
+import { normalizeForeignKeyKeys, type ForeignKeyKeyInput } from './foreignKeyEditorUtils'
 import { defineAsyncComponent, nextTick } from 'vue'
 import { api } from '@/api'
+import { getValueReferenceSuggestions } from '@/utils/valueReferenceColumns'
 import type { EntityTypeInfo } from '@/api/data-sources'
+import type { TargetModelEntityOption } from '@/api/projects'
 import { queryApi } from '@/api/query'
 import {
   buildFixedFullColumns,
@@ -1099,6 +1273,8 @@ const DEFAULT_DIALOG_WIDTH = 1100
 const DEFAULT_DIALOG_HEIGHT = 820
 const MIN_DIALOG_WIDTH = 900
 const MIN_DIALOG_HEIGHT = 640
+const DIALOG_TOP_OFFSET = 56
+const DIALOG_BOTTOM_GAP = 16
 const SHOULD_DEBUG_ENTITY_FORM_DIALOG = import.meta.env.DEV && import.meta.env.MODE !== 'test'
 
 function debugEntityForm(...args: unknown[]): void {
@@ -1151,7 +1327,11 @@ const { entities, create, update } = useEntities({
 })
 
 const { getSuggestionsForEntity, loading: suggestionsLoading } = useSuggestions()
-const { availability: columnAvailability, refresh: refreshColumnAvailability } = useColumnAvailability()
+const {
+  availability: columnAvailability,
+  error: columnAvailabilityError,
+  refresh: refreshColumnAvailability,
+} = useColumnAvailability()
 const appSettings = useSettings()
 const fkSuggestionsEnabled = computed(() => appSettings.enableFkSuggestions.value)
 
@@ -1196,6 +1376,13 @@ const entityNameField = ref()
 const formValid = ref(false)
 const loading = ref(false)
 const error = ref<string | null>(null)
+const targetModelEntityOptions = ref<TargetModelEntityOption[]>([])
+const targetModelEntitiesLoading = ref(false)
+const targetModelEntityOptionsError = ref<string | null>(null)
+const selectedTargetEntityName = ref<string | null>(null)
+const sourceTypeExplicitlySelected = ref(false)
+const targetEntityIdentityBaseline = ref<{ name: string; publicId: string | null } | null>(null)
+let targetModelEntityOptionsRequestId = 0
 const renameConflictDependents = ref<string[]>([])
 const showSaveSuccess = ref(false)
 let saveSuccessTimeout: ReturnType<typeof setTimeout> | null = null
@@ -1321,6 +1508,211 @@ function normalizeChipField(value: unknown): string[] {
   return []
 }
 
+type RawChipFieldValue = string | string[]
+
+interface RawChipFieldRepresentation {
+  value: RawChipFieldValue | undefined
+  normalized: string[]
+  present: boolean
+  restorable: boolean
+}
+
+interface RawDropFieldRepresentation {
+  value: RawChipFieldValue | boolean | undefined
+  enabled: boolean
+  columns: string[]
+  present: boolean
+  restorable: boolean
+}
+
+interface RawFieldRepresentations {
+  keys: RawChipFieldRepresentation
+  columns: RawChipFieldRepresentation
+  foreignKeys: Array<{
+    localKeys: RawChipFieldRepresentation
+    remoteKeys: RawChipFieldRepresentation
+  }>
+  unnest: {
+    idVars: RawChipFieldRepresentation
+    valueVars: RawChipFieldRepresentation
+  } | null
+  dropDuplicates: RawDropFieldRepresentation
+  dropEmptyRows: RawDropFieldRepresentation
+}
+
+function normalizeForeignKeyChipField(value: unknown): string[] {
+  if (typeof value === 'string') {
+    return normalizeForeignKeyKeys(value)
+  }
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  const keyInputs = value.map((item): ForeignKeyKeyInput => {
+    if (typeof item === 'string') {
+      return item
+    }
+    if (typeof item === 'object' && item !== null && 'value' in item) {
+      const chipValue = (item as { value?: unknown }).value
+      return typeof chipValue === 'string' || chipValue === null ? { value: chipValue } : null
+    }
+    return null
+  })
+
+  return normalizeForeignKeyKeys(keyInputs)
+}
+
+function copyRawChipFieldValue(value: unknown): RawChipFieldValue | undefined {
+  if (typeof value === 'string') {
+    return value
+  }
+  if (Array.isArray(value) && value.every((item) => typeof item === 'string')) {
+    return [...value]
+  }
+  return undefined
+}
+
+function captureRawChipField(
+  value: unknown,
+  present: boolean,
+  normalize: (value: unknown) => string[] = normalizeChipField
+): RawChipFieldRepresentation {
+  const rawValue = copyRawChipFieldValue(value)
+  return {
+    value: rawValue,
+    normalized: normalize(value),
+    present,
+    restorable: !present || rawValue !== undefined,
+  }
+}
+
+function captureRawDropField(data: Record<string, unknown>, fieldName: string): RawDropFieldRepresentation {
+  const present = Object.prototype.hasOwnProperty.call(data, fieldName)
+  const value = data[fieldName]
+  const rawChipValue = copyRawChipFieldValue(value)
+  const rawValue = typeof value === 'boolean' ? value : rawChipValue
+
+  return {
+    value: rawValue,
+    enabled: value !== undefined && value !== null,
+    columns: normalizeChipField(value),
+    present,
+    restorable: !present || rawValue !== undefined,
+  }
+}
+
+function captureRawFieldRepresentations(data: Record<string, unknown>): RawFieldRepresentations {
+  const foreignKeys = Array.isArray(data.foreign_keys) ? data.foreign_keys : []
+  const unnest =
+    typeof data.unnest === 'object' && data.unnest !== null && !Array.isArray(data.unnest)
+      ? (data.unnest as Record<string, unknown>)
+      : null
+
+  return {
+    keys: captureRawChipField(data.keys, Object.prototype.hasOwnProperty.call(data, 'keys')),
+    columns: captureRawChipField(data.columns, Object.prototype.hasOwnProperty.call(data, 'columns')),
+    foreignKeys: foreignKeys.map((foreignKey) => {
+      const foreignKeyData =
+        typeof foreignKey === 'object' && foreignKey !== null && !Array.isArray(foreignKey)
+          ? (foreignKey as Record<string, unknown>)
+          : {}
+
+      return {
+        localKeys: captureRawChipField(
+          foreignKeyData.local_keys,
+          Object.prototype.hasOwnProperty.call(foreignKeyData, 'local_keys'),
+          normalizeForeignKeyChipField
+        ),
+        remoteKeys: captureRawChipField(
+          foreignKeyData.remote_keys,
+          Object.prototype.hasOwnProperty.call(foreignKeyData, 'remote_keys'),
+          normalizeForeignKeyChipField
+        ),
+      }
+    }),
+    unnest: unnest
+      ? {
+          idVars: captureRawChipField(unnest.id_vars, Object.prototype.hasOwnProperty.call(unnest, 'id_vars')),
+          valueVars: captureRawChipField(unnest.value_vars, Object.prototype.hasOwnProperty.call(unnest, 'value_vars')),
+        }
+      : null,
+    dropDuplicates: captureRawDropField(data, 'drop_duplicates'),
+    dropEmptyRows: captureRawDropField(data, 'drop_empty_rows'),
+  }
+}
+
+function haveSameStrings(left: string[], right: string[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index])
+}
+
+function getUnchangedRawChipField(
+  value: unknown,
+  representation: RawChipFieldRepresentation | undefined,
+  normalize: (value: unknown) => string[] = normalizeChipField
+): { unchanged: boolean; present: boolean; value?: RawChipFieldValue } {
+  if (!representation || !representation.restorable || !haveSameStrings(normalize(value), representation.normalized)) {
+    return { unchanged: false, present: false }
+  }
+
+  return {
+    unchanged: true,
+    present: representation.present,
+    value: Array.isArray(representation.value) ? [...representation.value] : representation.value,
+  }
+}
+
+function getUnchangedRawDropField(
+  field: FormData['drop_duplicates'],
+  representation: RawDropFieldRepresentation | undefined
+): { unchanged: boolean; present: boolean; value?: RawDropFieldRepresentation['value'] } {
+  if (
+    !representation ||
+    !representation.restorable ||
+    field.enabled !== representation.enabled ||
+    !haveSameStrings(normalizeChipField(field.columns), representation.columns)
+  ) {
+    return { unchanged: false, present: false }
+  }
+
+  return {
+    unchanged: true,
+    present: representation.present,
+    value: Array.isArray(representation.value) ? [...representation.value] : representation.value,
+  }
+}
+
+function normalizeForeignKeysForForm(value: unknown): any[] {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return value.map((foreignKey) => {
+    if (typeof foreignKey !== 'object' || foreignKey === null || Array.isArray(foreignKey)) {
+      return foreignKey
+    }
+
+    const foreignKeyData = foreignKey as Record<string, unknown>
+    return {
+      ...foreignKeyData,
+      local_keys: normalizeForeignKeyChipField(foreignKeyData.local_keys),
+      remote_keys: normalizeForeignKeyChipField(foreignKeyData.remote_keys),
+    }
+  })
+}
+
+function normalizeUnnestForForm(value: unknown): unknown | null {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return value || null
+  }
+
+  const unnest = value as Record<string, unknown>
+  return {
+    ...unnest,
+    id_vars: normalizeChipField(unnest.id_vars),
+    value_vars: normalizeChipField(unnest.value_vars),
+  }
+}
+
 const formData = ref<FormData>({
   name: '',
   type: 'entity',
@@ -1362,6 +1754,7 @@ const formData = ref<FormData>({
     replacements: undefined,
   },
 })
+const rawFieldRepresentations = ref<RawFieldRepresentations | null>(null)
 
 const activeTab = ref('basic')
 
@@ -1374,12 +1767,25 @@ const dialogContainerWidth = computed(() => {
 })
 
 const dialogContainerHeight = computed(() => {
-  if (isCompactScreen.value) return '94vh'
+  if (isCompactScreen.value) return `calc(100vh - ${DIALOG_TOP_OFFSET + DIALOG_BOTTOM_GAP}px)`
   return `${dialogSize.value.height}px`
 })
 
 // Watch for initial tab from entity store overlay
 const entityStore = useEntityStore()
+const completedCacheEntities = computed<EntityResponse[] | null>(() => {
+  if (projectStore.currentProjectName !== props.projectName) {
+    return null
+  }
+
+  return entityStore.getCompletedEntitiesFor(props.projectName)
+})
+const referenceSuggestions = computed(() => getValueReferenceSuggestions(completedCacheEntities.value))
+
+function getReferenceAwareItems(ordinaryItems: string[]): string[] {
+  return [...new Set([...ordinaryItems, ...referenceSuggestions.value])]
+}
+
 watch(
   () => entityStore.overlayInitialTab,
   (tab) => {
@@ -1729,16 +2135,17 @@ function toggleSplitView() {
 
 function getDialogSizeBounds() {
   const maxWidth = Math.max(MIN_DIALOG_WIDTH, Math.floor(window.innerWidth * 0.98))
-  const maxHeight = Math.max(MIN_DIALOG_HEIGHT, Math.floor(window.innerHeight * 0.96))
+  const maxHeight = Math.max(1, Math.floor(window.innerHeight - DIALOG_TOP_OFFSET - DIALOG_BOTTOM_GAP))
   return { maxWidth, maxHeight }
 }
 
 function clampDialogSize(width: number, height: number) {
   const { maxWidth, maxHeight } = getDialogSizeBounds()
+  const minHeight = Math.min(MIN_DIALOG_HEIGHT, maxHeight)
 
   return {
     width: Math.min(Math.max(Math.round(width), MIN_DIALOG_WIDTH), maxWidth),
-    height: Math.min(Math.max(Math.round(height), MIN_DIALOG_HEIGHT), maxHeight),
+    height: Math.min(Math.max(Math.round(height), minHeight), maxHeight),
   }
 }
 
@@ -1849,16 +2256,24 @@ function buildEntityConfigFromFormData(options: BuildEntityConfigOptions = {}): 
 
   const effectiveColumns =
     formData.value.type === 'sql' ? getSqlColumnsForPersistence(includeDerivedSqlColumns) : formData.value.columns
+  const rawRepresentations = rawFieldRepresentations.value
+  const unchangedKeys = getUnchangedRawChipField(formData.value.keys, rawRepresentations?.keys)
+  const unchangedColumns = getUnchangedRawChipField(effectiveColumns, rawRepresentations?.columns)
 
   const entityData: Record<string, unknown> = {
     type: formData.value.type,
-    keys: serializeKeysField(formData.value.keys),
+    keys:
+      unchangedKeys.unchanged && unchangedKeys.present && unchangedKeys.value !== undefined
+        ? unchangedKeys.value
+        : serializeKeysField(formData.value.keys),
     // For fixed entities, persist the produced data columns (managed identity
     // fields stay implicit). The positional grid/values order adds identity back.
     columns:
       formData.value.type === 'fixed'
         ? normalizeEditableFixedColumns(fixedValuesColumns.value, formData.value.public_id)
-        : serializeKeysField(effectiveColumns),
+        : unchangedColumns.unchanged && unchangedColumns.present && unchangedColumns.value !== undefined
+          ? unchangedColumns.value
+          : serializeKeysField(effectiveColumns),
   }
 
   // Always include public_id (even if null) to prevent field from being omitted
@@ -1928,7 +2343,7 @@ function buildEntityConfigFromFormData(options: BuildEntityConfigOptions = {}): 
   // Include foreign keys if any
   if (formData.value.foreign_keys.length > 0) {
     // Transform foreign keys: extract column values and preserve all FK settings.
-    entityData.foreign_keys = formData.value.foreign_keys.map((fk: any) => {
+    entityData.foreign_keys = formData.value.foreign_keys.map((fk: any, index: number) => {
       // Normalize FK keys arrays, then apply the same scalar-directive rule as serializeKeysField
       const normalizeFkKeys = (keys: any): string | string[] => {
         if (typeof keys === 'string' && keys.trim().startsWith('@value:')) {
@@ -1946,10 +2361,27 @@ function buildEntityConfigFromFormData(options: BuildEntityConfigOptions = {}): 
         return arr
       }
 
+      const originalFields = rawRepresentations?.foreignKeys[index]
+      const unchangedLocalKeys = getUnchangedRawChipField(
+        fk.local_keys,
+        originalFields?.localKeys,
+        normalizeForeignKeyChipField
+      )
+      const unchangedRemoteKeys = getUnchangedRawChipField(
+        fk.remote_keys,
+        originalFields?.remoteKeys,
+        normalizeForeignKeyChipField
+      )
       const transformedFk: Record<string, unknown> = {
         entity: fk.entity,
-        local_keys: normalizeFkKeys(fk.local_keys),
-        remote_keys: normalizeFkKeys(fk.remote_keys),
+        local_keys:
+          unchangedLocalKeys.unchanged && unchangedLocalKeys.present && unchangedLocalKeys.value !== undefined
+            ? unchangedLocalKeys.value
+            : normalizeFkKeys(fk.local_keys),
+        remote_keys:
+          unchangedRemoteKeys.unchanged && unchangedRemoteKeys.present && unchangedRemoteKeys.value !== undefined
+            ? unchangedRemoteKeys.value
+            : normalizeFkKeys(fk.remote_keys),
       }
 
       if (fk.how) {
@@ -1977,21 +2409,36 @@ function buildEntityConfigFromFormData(options: BuildEntityConfigOptions = {}): 
     entityData.depends_on = formData.value.depends_on
   }
 
-  // Include drop_duplicates if enabled
-  if (formData.value.drop_duplicates.enabled) {
+  const unchangedDropDuplicates = getUnchangedRawDropField(
+    formData.value.drop_duplicates,
+    rawRepresentations?.dropDuplicates
+  )
+  if (unchangedDropDuplicates.unchanged) {
+    if (unchangedDropDuplicates.present) {
+      entityData.drop_duplicates = unchangedDropDuplicates.value
+    }
+  } else if (formData.value.drop_duplicates.enabled) {
     if (formData.value.drop_duplicates.columns.length > 0) {
       entityData.drop_duplicates = formData.value.drop_duplicates.columns
     } else {
       entityData.drop_duplicates = true
     }
-
+  }
+  if (formData.value.drop_duplicates.enabled) {
     // Backend defaults missing check_functional_dependency to true.
     // Persist explicit value so unchecked state is respected.
     entityData.check_functional_dependency = formData.value.check_functional_dependency
   }
 
-  // Include drop_empty_rows if enabled
-  if (formData.value.drop_empty_rows.enabled) {
+  const unchangedDropEmptyRows = getUnchangedRawDropField(
+    formData.value.drop_empty_rows,
+    rawRepresentations?.dropEmptyRows
+  )
+  if (unchangedDropEmptyRows.unchanged) {
+    if (unchangedDropEmptyRows.present) {
+      entityData.drop_empty_rows = unchangedDropEmptyRows.value
+    }
+  } else if (formData.value.drop_empty_rows.enabled) {
     if (formData.value.drop_empty_rows.columns.length > 0) {
       entityData.drop_empty_rows = formData.value.drop_empty_rows.columns
     } else {
@@ -2004,7 +2451,32 @@ function buildEntityConfigFromFormData(options: BuildEntityConfigOptions = {}): 
     entityData.filters = formData.value.advanced.filters
   }
   if (formData.value.advanced.unnest) {
-    entityData.unnest = formData.value.advanced.unnest
+    const unnest = { ...formData.value.advanced.unnest }
+    const originalUnnest = rawRepresentations?.unnest
+    const unchangedIdVars = getUnchangedRawChipField(unnest.id_vars, originalUnnest?.idVars)
+    const unchangedValueVars = getUnchangedRawChipField(unnest.value_vars, originalUnnest?.valueVars)
+
+    if (unchangedIdVars.unchanged) {
+      if (!unchangedIdVars.present) {
+        delete unnest.id_vars
+      } else if (unchangedIdVars.value !== undefined) {
+        unnest.id_vars = unchangedIdVars.value
+      }
+    } else {
+      unnest.id_vars = normalizeChipField(unnest.id_vars)
+    }
+
+    if (unchangedValueVars.unchanged) {
+      if (!unchangedValueVars.present) {
+        delete unnest.value_vars
+      } else if (unchangedValueVars.value !== undefined) {
+        unnest.value_vars = unchangedValueVars.value
+      }
+    } else {
+      unnest.value_vars = normalizeChipField(unnest.value_vars)
+    }
+
+    entityData.unnest = unnest
   }
   if (formData.value.type !== 'merged' && formData.value.advanced.append?.length) {
     entityData.append = formData.value.advanced.append
@@ -2542,6 +3014,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  targetModelEntityOptionsRequestId += 1
   window.removeEventListener('keydown', handleKeyPress)
   window.removeEventListener('resize', updateResponsiveDialogMode)
   document.body.classList.remove('entity-dialog-resizing')
@@ -2567,6 +3040,16 @@ const dialogModel = computed({
 })
 
 const entityTypeOptions = ref<EntityTypeInfo[]>([])
+const selectedTargetEntity = computed(
+  () => targetModelEntityOptions.value.find((option) => option.name === selectedTargetEntityName.value) ?? null
+)
+const entityTypeOptionsForSelection = computed(() => {
+  if (selectedTargetEntity.value?.role !== 'classifier') return entityTypeOptions.value
+  return entityTypeOptions.value.filter((option) => option.value === 'fixed' || option.value === 'sql')
+})
+const entityTypeValue = computed(() =>
+  selectedTargetEntity.value && !sourceTypeExplicitlySelected.value ? null : formData.value.type
+)
 
 const availableSourceEntities = computed(() => {
   return entities.value.filter((e) => e.name !== formData.value.name).map((e) => e.name)
@@ -2708,6 +3191,21 @@ const requiredRule = [
   },
 ]
 
+const entityTypeRules = computed(() => {
+  if (!selectedTargetEntity.value) return requiredRule
+
+  return [
+    (value: unknown) => {
+      if (!value) return 'Choose a Shape Shifter type for this target entity'
+      if (!sourceTypeExplicitlySelected.value) return 'Select a type before saving this target entity'
+      if (selectedTargetEntity.value?.role === 'classifier' && value !== 'fixed' && value !== 'sql') {
+        return 'Classifier entities must use fixed or sql'
+      }
+      return true
+    },
+  ]
+})
+
 const nameRules = [
   (v: string) => !!v || 'Entity name is required',
   (v: string) => v.length >= 2 || 'Name must be at least 2 characters',
@@ -2780,6 +3278,7 @@ function formDataToYaml(): string {
 function yamlToFormData(yamlString: string): boolean {
   try {
     const data = yaml.load(yamlString) as Record<string, any>
+    const rawRepresentations = captureRawFieldRepresentations(data)
     const normalizedKeys = normalizeChipField(data.keys)
     const publicId = data.public_id || data.surrogate_id || ''
     const normalizedColumns = normalizeChipField(data.columns)
@@ -2803,13 +3302,13 @@ function yamlToFormData(yamlString: string): boolean {
     const dropDuplicates = data.drop_duplicates
     const dropDuplicatesData = {
       enabled: dropDuplicates !== undefined && dropDuplicates !== null,
-      columns: Array.isArray(dropDuplicates) ? dropDuplicates : [],
+      columns: normalizeChipField(dropDuplicates),
     }
 
     const dropEmptyRows = data.drop_empty_rows
     const dropEmptyRowsData = {
       enabled: dropEmptyRows !== undefined && dropEmptyRows !== null,
-      columns: Array.isArray(dropEmptyRows) ? dropEmptyRows : [],
+      columns: normalizeChipField(dropEmptyRows),
     }
 
     const nestedCheckFunctionalDependency =
@@ -2846,14 +3345,14 @@ function yamlToFormData(yamlString: string): boolean {
           range: data.options?.range || '',
           location: data.options?.location || 'global',
         },
-        foreign_keys: Array.isArray(data.foreign_keys) ? data.foreign_keys : [],
+        foreign_keys: normalizeForeignKeysForForm(data.foreign_keys),
         depends_on: normalizeChipField(data.depends_on),
         drop_duplicates: dropDuplicatesData,
         drop_empty_rows: dropEmptyRowsData,
         check_functional_dependency: effectiveCheckFunctionalDependency,
         advanced: {
           filters: Array.isArray(data.filters) ? data.filters : [],
-          unnest: data.unnest || null,
+          unnest: normalizeUnnestForForm(data.unnest),
           append: Array.isArray(data.append) ? data.append : [],
           extra_columns: data.extra_columns || undefined,
           replacements: data.replacements || undefined,
@@ -2863,6 +3362,7 @@ function yamlToFormData(yamlString: string): boolean {
       suppressFixedSchemaRemap.value = false
     }
 
+    rawFieldRepresentations.value = rawRepresentations
     yamlError.value = null
     return true
   } catch (err) {
@@ -3004,6 +3504,16 @@ async function handleRetryMappingSync() {
 
 const isSaveDisabled = computed(() => {
   if (!formValid.value) return true
+  if (
+    props.mode === 'create' &&
+    selectedTargetEntity.value &&
+    (!sourceTypeExplicitlySelected.value ||
+      (selectedTargetEntity.value.role === 'classifier' &&
+        formData.value.type !== 'fixed' &&
+        formData.value.type !== 'sql'))
+  ) {
+    return true
+  }
   if (props.mode === 'edit') {
     // Never submit a positional save while external values cannot be mapped.
     if (fixedValuesLayoutError.value) return true
@@ -3018,6 +3528,16 @@ async function handleSubmit() {
 
   const { valid } = await formRef.value.validate()
   if (!valid) return
+  if (
+    props.mode === 'create' &&
+    selectedTargetEntity.value &&
+    (!sourceTypeExplicitlySelected.value ||
+      (selectedTargetEntity.value.role === 'classifier' &&
+        formData.value.type !== 'fixed' &&
+        formData.value.type !== 'sql'))
+  ) {
+    return
+  }
 
   loading.value = true
   error.value = null
@@ -3244,7 +3764,7 @@ function handleMaterialized() {
     api.entities
       .get(props.projectName, props.entity.name)
       .then(async (freshEntity) => {
-        entityStore.syncCachedEntity(freshEntity)
+        entityStore.syncCachedEntity(freshEntity, props.projectName)
         currentEntity.value = freshEntity
         formData.value = buildFormDataFromEntity(freshEntity)
         await loadExternalValuesIfNeeded(freshEntity)
@@ -3276,7 +3796,7 @@ function handleUnmaterialized(unmaterializedEntities: string[]) {
     api.entities
       .get(props.projectName, props.entity.name)
       .then(async (freshEntity) => {
-        entityStore.syncCachedEntity(freshEntity)
+        entityStore.syncCachedEntity(freshEntity, props.projectName)
         currentEntity.value = freshEntity
         formData.value = buildFormDataFromEntity(freshEntity)
         await loadExternalValuesIfNeeded(freshEntity)
@@ -3305,6 +3825,7 @@ function handleUnmaterialized(unmaterializedEntities: string[]) {
 
 function buildFormDataFromEntity(entity: EntityResponse): FormData {
   fixedValuesLayoutError.value = null
+  const rawRepresentations = captureRawFieldRepresentations(entity.entity_data)
   const dropDuplicates = entity.entity_data.drop_duplicates
   const dropEmptyRows = entity.entity_data.drop_empty_rows
   const nestedCheckFunctionalDependency =
@@ -3359,7 +3880,7 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
     externalValuesEtag.value = null
   }
 
-  return {
+  const formDataFromEntity: FormData = {
     name: entity.name,
     type: (entity.entity_data.type as string) || 'entity',
     system_id: 'system_id', // Always standardized
@@ -3380,26 +3901,29 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
       range: (entity.entity_data.options as any)?.range || '',
       location: (entity.entity_data.options as any)?.location || 'global',
     },
-    foreign_keys: (entity.entity_data.foreign_keys as any[]) || [],
+    foreign_keys: normalizeForeignKeysForForm(entity.entity_data.foreign_keys),
     depends_on: normalizeChipField(entity.entity_data.depends_on),
     drop_duplicates: {
       enabled: dropDuplicates !== undefined && dropDuplicates !== null,
-      columns: Array.isArray(dropDuplicates) ? dropDuplicates : [],
+      columns: normalizeChipField(dropDuplicates),
     },
     drop_empty_rows: {
       enabled: dropEmptyRows !== undefined && dropEmptyRows !== null,
-      columns: Array.isArray(dropEmptyRows) ? dropEmptyRows : [],
+      columns: normalizeChipField(dropEmptyRows),
     },
     check_functional_dependency: effectiveCheckFunctionalDependency,
     advanced: {
       filters: (entity.entity_data.filters as any[]) || [],
-      unnest: entity.entity_data.unnest || null,
+      unnest: normalizeUnnestForForm(entity.entity_data.unnest),
       append: (entity.entity_data.append as any[]) || [],
       branches: (entity.entity_data.branches as any[]) || [],
       extra_columns: (entity.entity_data.extra_columns as Record<string, ExtraColumnValue>) || undefined,
       replacements: (entity.entity_data.replacements as Record<string, any>) || undefined,
     },
   }
+
+  rawFieldRepresentations.value = rawRepresentations
+  return formDataFromEntity
 }
 
 /**
@@ -3519,6 +4043,92 @@ function buildDefaultFormData(): FormData {
   }
 }
 
+function resetTargetModelEntityState(): void {
+  targetModelEntityOptionsRequestId += 1
+  targetModelEntityOptions.value = []
+  targetModelEntitiesLoading.value = false
+  targetModelEntityOptionsError.value = null
+  selectedTargetEntityName.value = null
+  sourceTypeExplicitlySelected.value = false
+  targetEntityIdentityBaseline.value = null
+}
+
+async function loadTargetModelEntityOptions(): Promise<void> {
+  const requestId = ++targetModelEntityOptionsRequestId
+  targetModelEntitiesLoading.value = true
+  targetModelEntityOptionsError.value = null
+
+  try {
+    const response = await api.projects.getTargetModelEntityOptions(props.projectName)
+    if (requestId !== targetModelEntityOptionsRequestId || !props.modelValue || props.mode !== 'create') return
+
+    targetModelEntityOptions.value = response.configured ? response.entities : []
+  } catch (err) {
+    if (requestId !== targetModelEntityOptionsRequestId || !props.modelValue || props.mode !== 'create') return
+
+    console.error('Failed to load target-model entity options:', err)
+    targetModelEntityOptionsError.value =
+      'Target-model entities could not be loaded. You can still create an entity manually.'
+  } finally {
+    if (requestId === targetModelEntityOptionsRequestId) {
+      targetModelEntitiesLoading.value = false
+    }
+  }
+}
+
+function handleTargetEntitySelection(value: unknown): void {
+  if (value === null || value === '') {
+    selectedTargetEntityName.value = null
+    sourceTypeExplicitlySelected.value = false
+    targetEntityIdentityBaseline.value = null
+    return
+  }
+  if (typeof value !== 'string') return
+
+  const option = targetModelEntityOptions.value.find((entityOption) => entityOption.name === value)
+  if (!option || option.name === selectedTargetEntityName.value) return
+
+  const baseline = targetEntityIdentityBaseline.value
+  const currentName = formData.value.name
+  const currentPublicId = formData.value.public_id
+  const nameWasEdited = baseline ? currentName !== baseline.name : currentName.trim().length > 0
+  const publicIdWillBeReplaced = option.public_id !== null
+  const publicIdWasEdited =
+    publicIdWillBeReplaced &&
+    (baseline ? currentPublicId !== (baseline.publicId ?? '') : currentPublicId.length > 0) &&
+    currentPublicId !== option.public_id
+
+  if (
+    ((nameWasEdited && currentName !== option.name) || publicIdWasEdited) &&
+    !window.confirm('Replace the edited entity name or public ID with the selected target-model values?')
+  ) {
+    return
+  }
+
+  formData.value.name = option.name
+  if (option.public_id !== null) {
+    formData.value.public_id = option.public_id
+  } else if (baseline?.publicId !== null && baseline?.publicId !== undefined && currentPublicId === baseline.publicId) {
+    formData.value.public_id = ''
+  }
+
+  selectedTargetEntityName.value = option.name
+  sourceTypeExplicitlySelected.value = false
+  targetEntityIdentityBaseline.value = { name: option.name, publicId: option.public_id }
+}
+
+function handleEntityTypeSelection(value: unknown): void {
+  if (typeof value !== 'string') return
+  if (selectedTargetEntity.value?.role === 'classifier' && value !== 'fixed' && value !== 'sql') {
+    return
+  }
+
+  formData.value.type = value
+  if (selectedTargetEntity.value) {
+    sourceTypeExplicitlySelected.value = true
+  }
+}
+
 // Note: Entity loading now handled in modelValue watcher below
 // This ensures we always fetch fresh data from the API when opening the dialog
 
@@ -3526,6 +4136,10 @@ function buildDefaultFormData(): FormData {
 watch(
   [() => props.modelValue, () => props.entity?.name, () => props.mode],
   async ([isOpen, entityName, mode]) => {
+    if (!isOpen || mode !== 'create') {
+      resetTargetModelEntityState()
+    }
+
     // Trigger reset when dialog opens in either mode:
     // - Create mode: always reset (no entity name required)
     // - Edit mode: reset when entity name is available
@@ -3611,7 +4225,9 @@ watch(
         }
       } else if (mode === 'create') {
         // Create mode: use default form data
+        resetTargetModelEntityState()
         currentEntity.value = null
+        rawFieldRepresentations.value = null
         formData.value = buildDefaultFormData()
         yamlContent.value = ''
         await refreshFormValidity()
@@ -3621,6 +4237,7 @@ watch(
         // Place the cursor in the Entity Name field so the user can start typing immediately.
         await nextTick()
         entityNameField.value?.focus()
+        void loadTargetModelEntityOptions()
       }
     }
   },
@@ -3781,6 +4398,9 @@ watch(
 
 .entity-dialog-card {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .dialog-resize-handle {
@@ -3818,24 +4438,29 @@ watch(
 
 /* Dialog content height management */
 .dialog-content {
-  min-height: 600px;
-  max-height: calc(90vh - 120px);
-  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  overflow: hidden;
 }
 
 .form-content {
-  min-height: 600px;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 /* Split-pane layout */
 .split-container {
-  height: calc(100vh - 180px);
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
 }
 
 .split-layout {
   display: flex;
   height: 100%;
+  min-height: 0;
   overflow: hidden;
 }
 

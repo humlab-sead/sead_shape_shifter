@@ -6,6 +6,7 @@ from unittest.mock import Mock
 import pytest
 
 from backend.app.core.config import Settings
+from backend.app.exceptions import ValidationError as DomainValidationError
 from backend.app.mappers.entity_config_mapper import (
     DefaultEntityConfigMapper,
     EntityConfigMapperFactory,
@@ -17,6 +18,7 @@ from backend.app.utils.exceptions import BadRequestError
 from src.types.fixed_entity_types import (
     FixedEntityColumnTypeDeclarationError,
     FixedEntityShapeValidationError,
+    FixedEntityTypeConventionDeclarationError,
     FixedEntityTypeValidationError,
 )
 
@@ -97,7 +99,7 @@ class TestDefaultEntityConfigMapper:
     def test_to_core_returns_unchanged_config(self, mapper: DefaultEntityConfigMapper) -> None:
         """Test that to_core returns config unchanged."""
         config = {"name": "test", "data_source": {"driver": "fixed"}}
-        result = mapper.to_core(config, EntityMapperContext(project_name="project"))
+        result = mapper.to_core(config, EntityMapperContext(project_name="project"), entity_name="test")
         assert result is config  # Same object
         assert result == {"name": "test", "data_source": {"driver": "fixed"}}
 
@@ -129,7 +131,7 @@ class TestFileBasedEntityConfigMapper:
         config = {"options": {"filename": "data.csv", "location": "global"}}
         mapper = factory.get_mapper("csv")
 
-        result = mapper.to_core(config, EntityMapperContext(project_name="test_project"))
+        result = mapper.to_core(config, EntityMapperContext(project_name="test_project"), entity_name="test_entity")
 
         expected_path = str(mock_settings.global_data_dir / "data.csv")
         assert result["options"]["filename"] == expected_path
@@ -140,7 +142,7 @@ class TestFileBasedEntityConfigMapper:
         config = {"options": {"filename": "data.csv", "location": "local"}}
         mapper = factory.get_mapper("csv")
 
-        result = mapper.to_core(config, EntityMapperContext(project_name="test_project"))
+        result = mapper.to_core(config, EntityMapperContext(project_name="test_project"), entity_name="test_entity")
 
         expected_path = str(mock_settings.projects_root / "test_project" / "data.csv")
         assert result["options"]["filename"] == expected_path
@@ -173,7 +175,7 @@ class TestFileBasedEntityConfigMapper:
         config = {"options": {"filename": "${GLOBAL_DATA_DIR}/data.csv"}}
         mapper = factory.get_mapper("csv")
 
-        result = mapper.to_core(config, EntityMapperContext(project_name="test_project"))
+        result = mapper.to_core(config, EntityMapperContext(project_name="test_project"), entity_name="test_entity")
 
         expected_path = str(mock_settings.global_data_dir / "data.csv")
         assert result["options"]["filename"] == expected_path
@@ -184,7 +186,7 @@ class TestFileBasedEntityConfigMapper:
         config = {"options": {"other_field": "value"}}
         mapper = factory.get_mapper("csv")
 
-        result = mapper.to_core(config, EntityMapperContext(project_name="test_project"))
+        result = mapper.to_core(config, EntityMapperContext(project_name="test_project"), entity_name="test_entity")
 
         assert result == config
 
@@ -219,12 +221,31 @@ class TestFixedEntityConfigMapper:
             ],
         }
 
-        result = mapper.to_core(config, EntityMapperContext(project_name="arbodat"))
+        result = mapper.to_core(config, EntityMapperContext(project_name="arbodat"), entity_name="method")
 
         assert result["values"] == [
             [9, 105, "Sampling", 17],
             [10, 76, "Collecting", None],
         ]
+
+    def test_to_core_accepts_full_identity_rows_for_declared_data_columns(self, mapper: FixedEntityConfigMapper) -> None:
+        """Rows may include system_id and public_id before the declared data columns."""
+        config = {
+            "name": "data_provider",
+            "type": "fixed",
+            "public_id": "data_provider_id",
+            "columns": ["data_provider_code", "data_provider_name", "contact_id"],
+            "column_types": {
+                "data_provider_code": "string",
+                "data_provider_name": "string",
+                "contact_id": "int",
+            },
+            "values": [[1, 1, "arbodat-pilot", "Arbodat Pilot", None]],
+        }
+
+        result = mapper.to_core(config, EntityMapperContext(project_name="arbodat"), entity_name="data_provider")
+
+        assert result["values"] == [[1, 1, "arbodat-pilot", "Arbodat Pilot", None]]
 
     def test_to_core_normalizes_legacy_single_column_scalar_values(self, mapper: FixedEntityConfigMapper) -> None:
         """Single-column fixed entities may still arrive as a flat scalar list from legacy YAML."""
@@ -235,7 +256,7 @@ class TestFixedEntityConfigMapper:
             "values": ["gebäud", "okBefu", "okErh"],
         }
 
-        result = mapper.to_core(config, EntityMapperContext(project_name="arbodat"))
+        result = mapper.to_core(config, EntityMapperContext(project_name="arbodat"), entity_name="feature_property_type")
 
         assert result["values"] == [["gebäud"], ["okBefu"], ["okErh"]]
 
@@ -248,11 +269,13 @@ class TestFixedEntityConfigMapper:
             "values": [[1, "abc", "Sampling"]],
         }
 
-        with pytest.raises(FixedEntityTypeValidationError) as exc:
-            mapper.to_core(config, EntityMapperContext(project_name="arbodat"))
+        with pytest.raises(DomainValidationError) as exc:
+            mapper.to_core(config, EntityMapperContext(project_name="arbodat"), entity_name="method")
 
-        assert exc.value.entity_name == "method"
-        assert exc.value.issues[0].column_name == "method_id"
+        assert exc.value.code == "FIXED_ENTITY_VALUE_INVALID"
+        assert exc.value.context["entity"] == "method"
+        assert isinstance(exc.value.__cause__, FixedEntityTypeValidationError)
+        assert "method_id" in exc.value.message
 
     def test_to_core_uses_declared_column_types_for_non_id_columns(self, mapper: FixedEntityConfigMapper) -> None:
         """Declared column_types should override naming inference during mapping."""
@@ -264,7 +287,7 @@ class TestFixedEntityConfigMapper:
             "values": [[1, "7", "Sampling"]],
         }
 
-        result = mapper.to_core(config, EntityMapperContext(project_name="arbodat"))
+        result = mapper.to_core(config, EntityMapperContext(project_name="arbodat"), entity_name="method")
 
         assert result["values"] == [[1, 7, "Sampling"]]
 
@@ -283,6 +306,7 @@ class TestFixedEntityConfigMapper:
                 project_name="arbodat",
                 project_options={"fixed_entity_types": {"conventions": [{"pattern": "abundance", "type": "int"}]}},
             ),
+            entity_name="abundance_source",
         )
 
         assert result["values"] == [[1, "Oak", 12]]
@@ -297,8 +321,13 @@ class TestFixedEntityConfigMapper:
             "values": [[1, "7", "Sampling"]],
         }
 
-        with pytest.raises(FixedEntityColumnTypeDeclarationError):
-            mapper.to_core(config, EntityMapperContext(project_name="arbodat"))
+        with pytest.raises(DomainValidationError) as exc:
+            mapper.to_core(config, EntityMapperContext(project_name="arbodat"), entity_name="method")
+
+        assert exc.value.code == "FIXED_ENTITY_COLUMN_TYPE_INVALID"
+        assert exc.value.context["entity"] == "method"
+        assert exc.value.context["column"] == "rank"
+        assert isinstance(exc.value.__cause__, FixedEntityColumnTypeDeclarationError)
 
     def test_to_core_rejects_duplicate_columns_before_row_width_validation(self, mapper: FixedEntityConfigMapper) -> None:
         """Duplicate fixed columns should produce a direct config error during mapping."""
@@ -309,5 +338,29 @@ class TestFixedEntityConfigMapper:
             "values": [[1, None, "A"]],
         }
 
-        with pytest.raises(FixedEntityShapeValidationError, match="declares duplicate columns: FuTypGrup"):
-            mapper.to_core(config, EntityMapperContext(project_name="arbodat"))
+        with pytest.raises(DomainValidationError, match="declares duplicate columns: FuTypGrup") as exc:
+            mapper.to_core(config, EntityMapperContext(project_name="arbodat"), entity_name="site_type_group")
+
+        assert exc.value.code == "FIXED_ENTITY_SHAPE_INVALID"
+        assert exc.value.context["entity"] == "site_type_group"
+        assert isinstance(exc.value.__cause__, FixedEntityShapeValidationError)
+
+    def test_to_core_maps_invalid_project_type_conventions(self, mapper: FixedEntityConfigMapper) -> None:
+        """Invalid fixed-entity type conventions should raise actionable domain errors."""
+        config = {
+            "name": "method",
+            "type": "fixed",
+            "columns": ["name"],
+            "values": [["Sampling"]],
+        }
+        context = EntityMapperContext(
+            project_name="arbodat",
+            project_options={"fixed_entity_types": {"conventions": [{"pattern": "name"}]}},
+        )
+
+        with pytest.raises(DomainValidationError) as exc:
+            mapper.to_core(config, context, entity_name="method")
+
+        assert exc.value.code == "FIXED_ENTITY_TYPE_CONVENTION_INVALID"
+        assert exc.value.context["entity"] == "method"
+        assert isinstance(exc.value.__cause__, FixedEntityTypeConventionDeclarationError)

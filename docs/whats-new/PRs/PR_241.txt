@@ -1,0 +1,45 @@
+title: Add advanced replacement rules and Replacements editor in entity form
+description:
+## Summary
+
+Replaces the inline replacement logic in SubsetService.get_subset with a new rule engine
+(src/transforms/replace.py) and exposes it in the entity editor. The replacements option now
+supports three per-column forms: the existing mapping form, the legacy scalar/list blank-out +
+forward-fill form, and a new advanced ordered rule list. Rules support match operators (equals,
+contains, startswith, endswith, in, regex, regex_sub, plus not_* negations), optional normalization
+(strip, lower, upper, collapse_ws), ignorecase flags, type coercion (string/int/float), blank-out
+with fill policies (forward/backward/none/constant), rule-local mappings, and diagnostics toggles
+(report_replaced, report_unmatched, report_top).
+
+On the frontend, a new Replacements tab (ReplacementsEditor.vue) lets users build per-column ordered
+rule lists, with round-tripping through the YAML editor and live preview; legacy formats are
+preserved until edited, at which point the column is converted to the rule-list form. The entity
+JSON schema was expanded to accept all three forms. Additionally, Excel (PandasLoader,
+OpenPyxlLoader) and CSV loaders gained an optional sanitize_header field (default true) to control
+header sanitization, and the OpenPyxl loader's explicit-list-header handling was reworked
+accordingly. docs/CONFIGURATION_GUIDE.md documents the new forms and operators.
+
+## User-facing release note
+
+You can now define richer value replacements per column in the entity editor's new Replacements tab
+— for example regex matches, contains/starts-with/ends-with, set membership, mappings, and blank-out
+with fill options — instead of only simple old-to-new mappings. You can also turn off automatic
+header cleanup when loading Excel or CSV files via the new sanitize_header option.
+
+## Upgrade notes
+
+None - no user action required. Existing replacements configurations in the mapping and legacy
+blank-out forms keep working, and sanitize_header defaults to true, preserving previous header
+behavior.
+
+## Validation
+
+ - New pytest cases were added in tests/process/test_subset_service.py (advanced rules: regex,
+not_regex, map with normalize/coerce, blank-out fill policies, contains/startswith/endswith and
+negated variants, in/not_in, equals with coercion, regex_sub including null-to-NA) and
+tests/loaders/test_excel_loaders.py (sanitize_header behavior). Their execution results are not
+available in the provided evidence, so they are not reported as passed.
+ - No CI check results are available for this pull request (the status check rollup is empty).
+ - The added RESUME_REPLACEMENTS_UI.md notes state that the frontend full build (with vue-tsc
+typecheck) currently fails due to unrelated TypeScript issues and suggests pnpm -C frontend
+build:skip-check as a workaround; no run results for these commands are available.

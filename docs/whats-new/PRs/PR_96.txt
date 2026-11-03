@@ -1,0 +1,65 @@
+title: Expand reconciliation: health check, progress tracking, review UI, CLI
+description:
+## Summary
+
+This PR expands the entity reconciliation feature across backend, frontend, and tooling:
+
+ - Service health check (GET /api/v1/reconciliation/health): ReconciliationClient.check_health()
+reports the OpenRefine-based service as online/offline with error details. The reconciliation view
+shows a status chip, and the CLI checks health before reconciling. The default reconciliation
+service_url now comes from a new settings.reconciliation_service_url property instead of a hardcoded
+localhost URL.
+ - Async auto-reconciliation with progress tracking: a new OperationManager (singleton,
+backend/app/core/operation_manager.py) tracks long-running operations. POST .../auto-reconcile now
+returns an operation_id and runs in the background; progress is exposed via GET
+/operations/{id}/progress and an SSE stream (/operations/{id}/stream), with cancellation via POST
+/operations/{id}/cancel. The previous blocking behavior is kept as .../auto-reconcile-sync.
+Reconciliation queries are processed in batches of 50 with cancellation checks.
+ - Review workflow: new endpoints and UI for previewing matched data (GET .../preview), marking rows
+as local-only "will not match" (POST .../mark-unmatched, new will_not_match/last_modified mapping
+fields, nullable sead_id and remote spec fields), alternative candidate search, bulk accept/reject,
+status filtering and search in the grid, a review-threshold parameter persisted alongside the
+auto-accept threshold, quality statistics, and a tabbed Setup/Reconcile/Review layout with threshold
+sliders.
+ - Dependency graph lineage: the backend extracts source nodes (data sources, database tables parsed
+from SQL via regex) and source edges; the frontend can toggle them, colors entity nodes by type
+(data/sql/fixed), and adds a legend.
+ - CLI: new scripts/auto_reconcile.py (with make reconcile target) runs reconciliation from the
+command line with threshold, candidate, service-URL, and verbosity options.
+ - Logging/diagnostics: [RECON]-prefixed trace logging throughout the reconciliation client, plus a
+rotating logs/endpoint_errors.log file handler for endpoint errors.
+ - Core fixes: registry scan()/import_sub_modules() now take an explicit module name and folder
+path, and SubsetService handles non-mapping replace arguments without relying on the deprecated
+pandas pad behavior.
+
+The PR also adds documentation (reconciliation workflow guide, implementation plan, trace-logging
+and integration-test guides, git guide) and a sample input/arbodat-test-reconciliation.yml.
+
+## User-facing release note
+
+The reconciliation screen now shows whether the reconciliation service is online, lets you set
+auto-accept and review thresholds with sliders, filter and search results, bulk accept or reject
+matches, search for alternative matches, mark rows as local-only, and preview the final matched data
+before export. Data sources and tables now appear in the dependency graph, and reconciliation can
+also be run from the command line with make reconcile.
+
+## Upgrade notes
+
+ - The default reconciliation service URL is now read from the RECONCILIATION_SERVICE_URL setting
+(settings.reconciliation_service_url) instead of a hardcoded http://localhost:8000. Deployers should
+ensure this setting points at the running reconciliation service.
+ - make backend-run now starts Uvicorn via uv run uvicorn, so uv must be available.
+ - Reconciliation config schema is relaxed (nullable sead_id and remote fields, new
+will_not_match/last_modified fields); existing configs load unchanged. Clients of the old
+synchronous behavior should call the new POST .../auto-reconcile-sync endpoint, since POST
+.../auto-reconcile now returns an operation_id and runs asynchronously.
+
+## Validation
+
+ - New and updated unit tests are included in the diff:
+backend/tests/services/test_reconciliation_service.py (mark-as-unmatched behavior) and
+backend/tests/test_reconciliation_client.py (health/connection tests plus live-service tests marked
+@pytest.mark.integration, which are skipped by default and require a running service on port 8000).
+ - No CI check results are available in the provided evidence (statusCheckRollup is empty), and no
+test-run output was supplied, so execution and pass/fail status of these tests is unknown.
+ - The pull request was merged into dev on 2026-01-04.

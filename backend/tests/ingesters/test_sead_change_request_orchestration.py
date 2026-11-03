@@ -4,21 +4,17 @@ import pandas as pd
 import pytest
 
 from ingesters.sead_change_request import ChangeRowState, SubmissionContext, orchestrate_identity_assignments, plan_table
-from ingesters.sead_change_request.contracts import PlannedRowAction, PlannedTable, SimsResolveItem
+from ingesters.sead_change_request.contracts import (
+    DatabaseSequenceReservationError,
+    PlannedRowAction,
+    PlannedTable,
+    SimsResolveItem,
+)
 from ingesters.sead_change_request.orchestration import SIMS_AGGREGATE_ID_CAPABILITY_NOTE
+from src.reconciliation.mapping_model import encode_local_key
 from src.target_model.models import EntitySpec
 
 # pylint: disable=unused-argument
-
-
-class FakeReconciliationClient:
-    """Simple fake reconciliation client for ingester tests."""
-
-    def __init__(self, target_id: int | None) -> None:
-        self.target_id = target_id
-
-    async def reconcile_entity(self, entity_name: str, row: dict) -> int | None:
-        return self.target_id
 
 
 class FakeSimsClient:
@@ -40,6 +36,7 @@ class FakeSimsClient:
         self.allocated_entities: list[str] = []
         self.batch_calls: list[list[SimsResolveItem]] = []
         self.confirm_calls: list[str] = []
+        self.events: list[str] = []
 
     async def allocate_entity(self, entity_name: str, row: dict, submission_context: SubmissionContext) -> dict:
         self.allocated_entities.append(entity_name)
@@ -78,6 +75,7 @@ class FakeSimsClient:
         return self.binding_set_state
 
     async def resolve_batch(self, items: list[SimsResolveItem], submission_context: SubmissionContext) -> dict:
+        self.events.append("sims")
         self.batch_calls.append(list(items))
         outcomes = []
         for item in items:
@@ -102,6 +100,29 @@ class FakeSimsClient:
         return None
 
 
+class FakeDatabaseSequenceReserver:
+    """Reserve fake target IDs and record reservation order."""
+
+    def __init__(
+        self,
+        events: list[str],
+        *,
+        target_id: int = 9001,
+        error: DatabaseSequenceReservationError | None = None,
+    ) -> None:
+        self.events = events
+        self.target_id = target_id
+        self.error = error
+        self.calls: list[tuple[str, str]] = []
+
+    async def reserve_database_id(self, table_name: str, public_id_column: str) -> int:
+        self.events.append("sequence")
+        self.calls.append((table_name, public_id_column))
+        if self.error is not None:
+            raise self.error
+        return self.target_id
+
+
 def minimal_submission_context() -> SubmissionContext:
     return SubmissionContext(
         submission_name="test-submission",
@@ -114,27 +135,37 @@ class TestOrchestrateIdentityAssignments:
     """Tests for the thin client orchestration layer."""
 
     @pytest.mark.asyncio
-    async def test_reconciliation_match_creates_reconciled_assignment(self):
+    async def test_unapproved_reconciled_row_blocks_without_sims_work(self):
         frame = pd.DataFrame({"class_id": [None], "name": ["A"]})
         planned_table = plan_table("abundance_class", frame, EntitySpec(role="classifier", public_id="class_id"))
+        sims_client = FakeSimsClient()
 
         result = await orchestrate_identity_assignments(
             [planned_table],
             minimal_submission_context(),
-            reconciliation_client=FakeReconciliationClient(target_id=77),
+            sims_client=sims_client,  # type: ignore
         )
 
         assignment = result.assignments["abundance_class"][0]
-        assert assignment.state == ChangeRowState.RECONCILED_CLASSIFIER
-        assert assignment.target_id == 77
+        assert assignment.state == ChangeRowState.BLOCKED_UNRESOLVED
+        assert "No exported local-only approval" in (assignment.note or "")
+        assert not sims_client.batch_calls
 
     @pytest.mark.asyncio
-    async def test_reconciliation_match_binds_approved_aggregate_id_with_sims(self):
-        frame = pd.DataFrame({"site_name": ["A"]})
-        planned_table = PlannedTable(
-            entity_name="site",
-            frame=frame,
-            planned_actions=pd.Series([PlannedRowAction.RECONCILE], index=frame.index, name="_planned_action"),
+    async def test_approved_reconciled_row_uses_new_allocation_without_candidate_binding(self):
+        frame = pd.DataFrame({"site_id": [None], "site_name": ["A"]})
+        entity_spec = EntitySpec(
+            role="lookup",
+            public_id="site_id",
+            identity_tracking="reconciled",
+            reconciliation="reconcile-exact",
+        )
+        planned_table = plan_table(
+            "site",
+            frame,
+            entity_spec,
+            local_key_columns=("site_name",),
+            approved_local_only_keys={encode_local_key("site_name", "A")},
         )
         sims_client = FakeSimsClient()
 
@@ -142,15 +173,41 @@ class TestOrchestrateIdentityAssignments:
             [planned_table],
             minimal_submission_context(),
             sims_client=sims_client,  # type: ignore
-            reconciliation_client=FakeReconciliationClient(target_id=77),
         )
 
         assignment = result.assignments["site"][0]
-        assert sims_client.approved_aggregate_ids == [77]
-        assert assignment.state == ChangeRowState.RECONCILED_CLASSIFIER
-        assert assignment.target_id == 77
+        assert not sims_client.approved_aggregate_ids
+        assert assignment.state == ChangeRowState.NEWLY_ALLOCATED_ENTITY
+        assert assignment.target_id == 501
+        assert sims_client.allocated_entities == ["site"]
         assert result.binding_set_uuid == "binding-123"
         assert result.binding_set_state == "confirmed"
+
+    @pytest.mark.asyncio
+    async def test_verified_existing_reconciliation_link_is_bound_to_approved_id(self):
+        frame = pd.DataFrame({"site_id": [501], "national_site_identifier": ["accepted"]})
+        entity_spec = EntitySpec(
+            role="lookup",
+            public_id="site_id",
+            identity_tracking="reconciled",
+            reconciliation="reconcile-exact",
+        )
+        planned_table = plan_table("site", frame, entity_spec)
+        sims_client = FakeSimsClient(target_id=999)
+
+        result = await orchestrate_identity_assignments(
+            [planned_table],
+            minimal_submission_context(),
+            sims_client=sims_client,  # type: ignore
+            target_model_entities={"site": entity_spec},
+            approved_existing_target_ids={"site": {0: 501}},
+        )
+
+        assignment = result.assignments["site"][0]
+        assert sims_client.approved_aggregate_ids == [501]
+        assert sims_client.batch_calls[0][0].approved_aggregate_id == 501
+        assert assignment.state == ChangeRowState.RECONCILED_CLASSIFIER
+        assert assignment.target_id == 501
 
     @pytest.mark.asyncio
     async def test_sims_allocation_creates_allocated_assignment(self):
@@ -216,7 +273,7 @@ class TestOrchestrateIdentityAssignments:
 
         assignment = result.assignments["submission"][0]
         assert assignment.state == ChangeRowState.BLOCKED_UNRESOLVED
-        assert "pre-resolve it before Change Request validation or bundle generation" in (assignment.note or "")
+        assert "database sequence reservation is unavailable" in (assignment.note or "")
         assert not sims_client.allocated_entities
 
     @pytest.mark.asyncio
@@ -240,7 +297,92 @@ class TestOrchestrateIdentityAssignments:
 
         assignment = result.assignments["submission"][0]
         assert assignment.state == ChangeRowState.BLOCKED_UNRESOLVED
-        assert "pre-resolve it before Change Request validation or bundle generation" in (assignment.note or "")
+        assert "database sequence reservation is unavailable" in (assignment.note or "")
+
+    @pytest.mark.asyncio
+    async def test_database_sequence_ids_are_reserved_before_sims_allocation(self):
+        site_frame = pd.DataFrame({"site_id": [None], "national_site_identifier": ["new-site"]})
+        sequence_frame = pd.DataFrame({"submission_id": [None], "submission_name": ["Submission A"]})
+        site_spec = EntitySpec(
+            role="lookup",
+            public_id="site_id",
+            identity_tracking="tracked",
+            reconciliation="allocate",
+        )
+        sequence_spec = EntitySpec(
+            role="fact",
+            public_id="submission_id",
+            public_id_generation="database_sequence",
+            target_table="tbl_submissions",
+            identity_tracking="derived",
+            reconciliation="derive",
+        )
+        planned_tables = [
+            plan_table("site", site_frame, site_spec),
+            plan_table("submission", sequence_frame, sequence_spec),
+        ]
+        sims_client = FakeSimsClient(target_id=703)
+        sequence_reserver = FakeDatabaseSequenceReserver(sims_client.events, target_id=902)
+
+        result = await orchestrate_identity_assignments(
+            planned_tables,
+            minimal_submission_context(),
+            sims_client=sims_client,  # type: ignore
+            database_sequence_reserver=sequence_reserver,
+            target_model_entities={"site": site_spec, "submission": sequence_spec},
+        )
+
+        assert sims_client.events == ["sequence", "sims"]
+        assert sequence_reserver.calls == [("tbl_submissions", "submission_id")]
+        assert result.assignments["submission"][0].state == ChangeRowState.NEWLY_ALLOCATED_ENTITY
+        assert result.assignments["submission"][0].target_id == 902
+        assert result.assignments["site"][0].state == ChangeRowState.NEWLY_ALLOCATED_ENTITY
+        assert result.assignments["site"][0].target_id == 703
+
+    @pytest.mark.asyncio
+    async def test_failed_database_sequence_reservation_stops_sims_allocations(self):
+        site_frame = pd.DataFrame({"site_id": [None], "national_site_identifier": ["new-site"]})
+        sequence_frame = pd.DataFrame({"submission_id": [None], "submission_name": ["Submission A"]})
+        site_spec = EntitySpec(
+            role="lookup",
+            public_id="site_id",
+            identity_tracking="tracked",
+            reconciliation="allocate",
+        )
+        sequence_spec = EntitySpec(
+            role="fact",
+            public_id="submission_id",
+            public_id_generation="database_sequence",
+            target_table="tbl_submissions",
+            identity_tracking="derived",
+            reconciliation="derive",
+        )
+        planned_tables = [
+            plan_table("site", site_frame, site_spec),
+            plan_table("submission", sequence_frame, sequence_spec),
+        ]
+        sims_client = FakeSimsClient()
+        sequence_reserver = FakeDatabaseSequenceReserver(
+            sims_client.events,
+            error=DatabaseSequenceReservationError("sequence unavailable"),
+        )
+
+        result = await orchestrate_identity_assignments(
+            planned_tables,
+            minimal_submission_context(),
+            sims_client=sims_client,  # type: ignore
+            database_sequence_reserver=sequence_reserver,
+            target_model_entities={"site": site_spec, "submission": sequence_spec},
+        )
+
+        sequence_assignment = result.assignments["submission"][0]
+        site_assignment = result.assignments["site"][0]
+        assert sequence_assignment.state == ChangeRowState.BLOCKED_UNRESOLVED
+        assert "sequence unavailable" in (sequence_assignment.note or "")
+        assert site_assignment.state == ChangeRowState.BLOCKED_UNRESOLVED
+        assert "SIMS allocation was skipped" in (site_assignment.note or "")
+        assert sims_client.events == ["sequence"]
+        assert not sims_client.allocated_entities
 
     @pytest.mark.asyncio
     async def test_proposed_binding_set_blocks_sims_rows(self):
@@ -397,8 +539,8 @@ class TestOrchestrateIdentityAssignments:
         assert result.assignments["sample"][1].target_id == 1002
 
     @pytest.mark.asyncio
-    async def test_lookup_only_miss_does_not_allocate(self):
-        """A lookup-only reconciliation miss must block instead of allocating."""
+    async def test_lookup_only_approval_does_not_allocate(self):
+        """A local-only approval cannot allocate in lookup-only mode."""
         frame = pd.DataFrame({"taxa_tree_master_id": [None], "taxon_name": ["Taxon A"]})
         entity_spec = EntitySpec(
             role="classifier",
@@ -406,35 +548,45 @@ class TestOrchestrateIdentityAssignments:
             identity_tracking="reconciled",
             reconciliation="lookup-only",
         )
-        planned_table = plan_table("taxa_tree_master", frame, entity_spec)
+        planned_table = plan_table(
+            "taxa_tree_master",
+            frame,
+            entity_spec,
+            local_key_columns=("taxon_name",),
+            approved_local_only_keys={encode_local_key("taxon_name", "Taxon A")},
+        )
         sims_client = FakeSimsClient(binding_set_state="confirmed", target_id=501)
 
         result = await orchestrate_identity_assignments(
             [planned_table],
             minimal_submission_context(),
             sims_client=sims_client,  # type: ignore
-            reconciliation_client=FakeReconciliationClient(target_id=None),
             target_model_entities={"taxa_tree_master": entity_spec},
         )
 
         assignment = result.assignments["taxa_tree_master"][0]
         assert assignment.state == ChangeRowState.BLOCKED_UNRESOLVED
-        assert "does not permit SIMS allocation" in (assignment.note or "")
+        assert "cannot allocate in reconciliation mode" in (assignment.note or "")
         assert not sims_client.batch_calls
 
     @pytest.mark.asyncio
-    async def test_reconcile_exact_miss_allocates_after_approval(self):
-        """A reconcile-exact reconciliation miss may request allocation after approval."""
+    async def test_reconcile_exact_approval_allocates(self):
+        """A reconcile-exact row with an exported approval may request allocation."""
         frame = pd.DataFrame({"site_id": [None], "site_name": ["Nordic Site"]})
         entity_spec = EntitySpec(role="lookup", public_id="site_id")
-        planned_table = plan_table("site", frame, entity_spec)
+        planned_table = plan_table(
+            "site",
+            frame,
+            entity_spec,
+            local_key_columns=("site_name",),
+            approved_local_only_keys={encode_local_key("site_name", "Nordic Site")},
+        )
         sims_client = FakeSimsClient(binding_set_state="confirmed", target_id=501)
 
         result = await orchestrate_identity_assignments(
             [planned_table],
             minimal_submission_context(),
             sims_client=sims_client,  # type: ignore
-            reconciliation_client=FakeReconciliationClient(target_id=None),
             target_model_entities={"site": entity_spec},
         )
 

@@ -1,0 +1,47 @@
+name: Promotion Guard
+
+# Promotions into `staging` and `main` must not carry code changes that were
+# pushed straight to `dev` without a pull request. Direct pushes have no review
+# record and no authored release note, because the release-note generator reads
+# merged pull requests only. `dev` stays open for maintenance commits, so this
+# guard runs at the promotion gate, which the repository ruleset protects.
+
+on:
+  pull_request:
+    branches:
+      - staging
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: promotion-guard-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  provenance:
+    name: Code changes carry pull request provenance
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out pull request head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Verify promotion provenance
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          bash scripts/verify_promotion_provenance.sh \
+            --base "${{ github.event.pull_request.base.sha }}" \
+            --head "${{ github.event.pull_request.head.sha }}"

@@ -49,6 +49,7 @@ async def test_authenticated_principal_cannot_cross_user_resource_boundaries(tmp
     cases = (
         ("GET", "/api/v1/projects/alice-project", None, 404),
         ("GET", "/api/v1/projects/alice-project/tasks", None, 404),
+        ("GET", "/api/v1/projects/alice-project/target-model-entities", None, 404),
         ("GET", "/api/v1/projects/active/name", None, 404),
         ("GET", "/api/v1/data-sources/alice-source.yml", None, 404),
         ("GET", "/api/v1/data-sources/alice-source/tables/sites/schema", None, 404),

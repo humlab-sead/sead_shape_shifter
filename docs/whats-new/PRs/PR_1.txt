@@ -1,0 +1,55 @@
+title: Add initial README, enhance data transformations, and optimize SQL
+description:
+## Summary
+
+This PR adds project documentation and extends the transformation pipeline configuration and code:
+
+ - New README.md: project overview, developer installation (Python 3.13+, uv, UCanAccess for MS
+Access support), quick start, configuration overview, project structure, testing, and contribution
+guidance.
+ - drop_empty_rows (src/extract.py): the subset argument now also accepts a dict mapping column
+names to lists of values that should be treated as empty for that column; those values are replaced
+with pd.NA before rows are dropped.
+ - New finalize method (src/normalizer.py): intended to run final transformations (drop foreign key
+columns, add system id columns, move keys to front). The diff shows the method reading a drop
+configuration from an empty options key and does not show a call site, so its wiring appears
+incomplete.
+ - New src/transform.py: skeleton for a registry-based Transformer abstraction with a
+NoOpTransformer and a geo_split-registered TransformSplitLatLong whose apply currently returns the
+data unchanged.
+ - input/arbodat-database.yml: the site entity SQL was rewritten from a comma cross-join of Projekte
+and Befunde to an explicit INNER JOIN against a distinct subquery on Befunde; a new finally section
+was added that drops the _pcodes and _project_contact tables and per-entity surrogate_id columns;
+stale commented-out entity entries were removed.
+ - input/mappings.yml: added an abundance_element mapping (RTyp → abundance_element_id) with an
+empty mapping table.
+ - TODO.md: moved from src/TODO.md to the repository root and expanded with enhancement suggestions;
+some items are marked FIXED (custom empty values for row deletion) or STARTED (value
+transformations).
+ - .vscode/settings.json: Peacock and workbench color customizations changed from a red to a teal
+palette.
+
+## User-facing release note
+
+The project now has a README with installation and quick-start instructions, and data pipelines can
+treat custom per-column values (such as "N/A" or "unknown") as empty when dropping empty rows. A
+final cleanup step is being introduced to remove helper tables and temporary columns from generated
+output.
+
+## Upgrade notes
+
+ - The example input/arbodat-database.yml now includes a finally section that drops the _pcodes and
+_project_contact tables and per-entity surrogate_id columns; consumers of the generated output
+should no longer expect these. Note that the finalize method added in this PR reads its drop
+configuration from an empty options key and no call site is shown in the diff, so whether the
+finally section takes effect is not verified.
+ - The site entity SQL now uses an explicit inner join with a distinct subquery on Befunde; output
+rows for site may differ from the previous cross-join formulation, but the behavioral difference was
+not verified.
+ - No migrations or configuration changes are required for other users.
+
+## Validation
+
+Not verified: validation results unavailable. The pull request metadata contains no CI check results
+(empty status rollup) and no linked issues, and the diff includes no test changes, so no checks can
+be reported as passed or failed.

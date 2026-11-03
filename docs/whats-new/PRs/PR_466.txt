@@ -1,0 +1,76 @@
+title: Consolidate ID mapping persistence into a mapping sidecar file
+description:
+## Summary
+
+Reconciled and manually assigned record-to-target (SEAD) ID links were previously stored in three
+disconnected places — public_id values on materialized entities, the legacy options.mapping section
+in shapeshifter.yml, and <project>-reconciliation.yml — with no synchronization, and manual links
+were lost when an entity was unmaterialized. This PR consolidates link persistence into a single
+sidecar file, <project>-mapping.yml, and makes it the source applied during normalization.
+
+Key changes:
+
+ - Sidecar schema and I/O (src/reconciliation/mapping_model.py, mapping_manager.py): Pydantic v2
+models (MappingCatalog, EntityMapping, Link with provenance fields
+source/committed_at/created_by/reviewed_by), compound local-key encoding with pipe separator and
+escaping, atomic save with an in-memory cache, and replace_entity_manual_links for replace-on-save
+semantics.
+ - Validation (mapping_validator.py, MappingSidecarSpecification): sidecar entries are checked
+against entity config at project load — public_id must match the entity's configured public_id, and
+local_key must not be system_id, the public_id column, or a derived column (warning if not in
+entity.keys).
+ - Normalization (src/normalizer.py): committed sidecar links are applied to the entity's public_id
+column with precedence manual > reconciliation > import; draft links (committed_at: null) are
+skipped. The legacy options.mapping path is deprecated: map_to_remote() is now a no-op that logs a
+warning, and LinkToRemoteService usage was removed from the workflow.
+ - Backend API: new mapping CRUD endpoints (GET/PUT/DELETE /projects/{project}/mapping/...), PATCH
+.../mapping/from-materialized/{entity} to rebuild manual links from saved materialized rows, and
+POST .../reconciliation/{entity}/{field}/export-to-mapping to copy accepted reconciliation links
+into the sidecar without overwriting existing manual links. Saving materialized entity values now
+syncs manual links to the sidecar.
+ - Frontend: an "Export to Mapping" button in the reconciliation view with result counts, disabled
+state while exporting, and error feedback.
+ - Docs: USER_GUIDE.md, DESIGN.md, CONFIGURATION_GUIDE.md, and the reconciliation setup guide
+updated to describe the sidecar; the consolidation proposal and task plans added under
+docs/proposals/done/, with deferred lifecycle work tracked in RECONCILIATION_FUTURE_IMPROVEMENTS.md.
+
+The PR also carries auxiliary changes not part of the feature: conversion of backend tests to a
+client pytest fixture, pre-commit/pytest/Makefile tweaks, and AI-assistant tooling files (graphify
+skill, rtk configuration).
+
+Resolves #465.
+
+## User-facing release note
+
+Confirmed reconciliation links can now be saved to a single mapping file (<project>-mapping.yml)
+with the new "Export to Mapping" button, and IDs assigned on materialized entities are automatically
+kept there, so they survive unmaterializing and rematerializing an entity. During normalization
+these saved links populate the target ID columns, with manual assignments taking priority over
+reconciliation matches.
+
+## Upgrade notes
+
+ - The options.mapping section in shapeshifter.yml is deprecated and ignored during normalization (a
+warning is logged). Existing entries must be moved to <project>-mapping.yml or recreated via the
+new mapping endpoints; no automated migration is included in this PR.
+ - Note the replace-on-save behavior: saving a materialized entity replaces all source: "manual"
+sidecar links for that entity with the links extracted from the currently saved rows (reconciliation
+and import links are preserved). Manual links intentionally absent from the saved rows will be
+removed.
+
+## Validation
+
+Not verified: validation results unavailable. No CI check results were provided for this pull
+request (the status rollup is empty), and no test-run output was supplied, so no check can be
+reported as passed or failed.
+
+What is known from the available evidence:
+
+ - The diff adds and updates tests covering the new behavior: mapping CRUD API tests
+(backend/tests/api/v1/test_mapping.py), reconciliation export tests (test_reconciliation_export.py),
+materialized mapping sync service tests, sidecar schema/manager/validator tests
+(tests/reconciliation/test_mapping_sidecar.py), normalization precedence and draft-skip tests, a
+workflow test asserting legacy options.mappings is not used, and frontend Vitest tests for the
+export button. Their execution results are unknown.
+ - The pull request metadata shows it was merged into dev on 2026-06-17; merging is not evidence
+that any specific check passed.

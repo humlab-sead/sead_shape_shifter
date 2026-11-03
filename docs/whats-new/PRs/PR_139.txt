@@ -1,0 +1,48 @@
+title: Fix #137: rename "ingest" to "dispatch" and move into project editor
+description:
+## Summary
+
+Renames the user-facing "ingest"/"Data Ingestion" terminology to "dispatch" and relocates the
+functionality from a standalone route into the project editor:
+
+ - The standalone Data Ingestion sidebar entry and /ingesters route were removed (App.vue,
+router/index.ts); the IngesterForm is now embedded as a new Dispatch tab in ProjectDetailView.vue,
+so dispatching is configured and run in the context of the current project.
+ - IngesterForm.vue was updated for the new wording ("Dispatcher Configuration", "Select
+Dispatcher", "Dispatch" action with a send icon) and gained a dispatcher selector backed by the
+ingester store, with auto-selection when only one dispatcher is configured.
+ - api/client.ts now uses ?? instead of || for VITE_API_BASE_URL, so an empty value from
+.env.production is preserved and the frontend calls the backend on the same origin when served by it
+(the Makefile comments/echo for the br+fr production target were clarified accordingly).
+ - Documentation was revised to match the current system: UI_REQUIREMENTS.md was rewritten from a
+requirements spec into a capabilities document, a new docs/SYSTEM_DIAGRAMS.md was added, the SEAD
+workshop presentation gained Data Dispatch sections, and six stale planning docs were moved to
+docs/archive/. A manual testing guide (input/20260113_MANUAL_TESTING.md) and TODO.md updates were
+also added.
+
+Note: the PR description text mentions VSCode activity/status bar color changes, but no such changes
+appear in the diff against dev.
+
+## User-facing release note
+
+Dispatching processed data to a target system now lives inside each project as a "Dispatch" tab
+instead of a separate "Data Ingestion" page, and the interface uses "dispatch" wording throughout,
+making the delivery step part of the project workflow. When the frontend is served by the backend,
+API calls now correctly go to the same origin.
+
+## Upgrade notes
+
+ - When deploying the frontend served by the backend, build it with the production environment
+(VITE_API_BASE_URL="", e.g. via make br+fr or pnpm build:skip-check in frontend/) so same-origin API
+calls work; a related open issue (#138, "Wrong VITE_API_BASE_URL when front end served via 
+backend") is tracked in TODO.md.
+ - The standalone /ingesters route and its sidebar link were removed; users should use the Dispatch
+tab in the project editor instead.
+
+## Validation
+
+Not verified: validation results unavailable. No CI status checks were reported for this pull
+request (the status check rollup is empty), and no test or build results are included in the
+available evidence. The added input/20260113_MANUAL_TESTING.md is a manual testing procedure
+document, not evidence that tests were executed. The pull request was merged into dev, but no check
+outcomes are known.

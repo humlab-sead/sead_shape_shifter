@@ -1,0 +1,73 @@
+title: Fix entity name validation, guarded renames, and foreign key handling
+description:
+## Summary
+
+This PR enforces entity name rules, adds a guarded entity rename flow, and tightens foreign key and
+backup handling.
+
+ - Entity name validation: A new backend/app/utils/entity_name.py defines the pattern
+^[a-z][a-z0-9_]*$ with a minimum length of
+  2. It is enforced at the API layer (EntityCreateRequest/EntityUpdateRequest.new_name, returning
+422) and in EntityOperations.add_entity/add_entity_by_name and rename targets (raising
+ConfigurationError).
+ - Guarded rename: update_entity_by_name accepts an optional new_name. Renames are rejected with a
+409 (entity_has_dependents, listing sorted dependent entity names) when another entity refers to the
+renamed entity via source, depends_on, foreign keys (including deferred ones), append/branch
+sources, filter entity/other_entity fields, @value: entities.<name> directives, or internal SQL
+table references. A successful rename updates the entity key and metadata.default_entity, and
+best-effort moves the entity note in the task sidecar; a note collision or sidecar failure does not
+undo the save — the API returns a warning instead (EntityResponse.warnings). TableConfig gains a
+referenced_entities property that dependent_entities() now reuses.
+ - Frontend: The entity name field is editable in edit mode and submits new_name; rename conflicts
+show the dependent entities and manual next steps; warnings from the response are surfaced. The
+foreign key tester is disabled while the entity has unsaved changes, with an explanatory hint.
+ - Backups: The backups list and restore endpoints now only consider shapeshifter.yml configuration
+backups (task sidecar backups are excluded and restore of them returns 404). The restore request
+field changed from backup_path to backup_name, and BackupInfo no longer exposes file_path.
+ - Normalizer: Deferred extra_columns are now tracked explicitly across evaluation passes instead of
+re-passing the full configuration, and extra columns consumed as unnest value_vars are excluded
+from unresolved-column verification so unnest no longer has them restored.
+ - SQL utility: extract_tables now recognizes table names that sqlparse classifies as keyword tokens
+(e.g. FROM sample).
+ - Supporting changes: New container/scripts/adopt-project.sh to register a copied project folder
+with the authorization system; new documentation (ENTITY_RENAME_POLICY.md for the completed rename
+policy, ENTITY_COLUMN_AVAILABILITY.md as an investigation note for issue #511 that does not describe
+implemented behavior); a TODO entry for issue #523; and minor fixes (Makefile echo typo, CLI help 
+width).
+
+The PR body states it fixes #421, #526, and #524; the linked issue details were not available for 
+verification.
+
+## User-facing release note
+
+You can now rename an entity directly in the entity editor: the rename is blocked with a clear list
+of the entities that reference it if any dependencies exist, and otherwise updates the project
+(including its default entity) and moves the entity's note automatically. New entity names must be
+at least two characters and use lowercase letters, digits, and underscores starting with a letter,
+and foreign key testing now waits until unsaved entity changes are saved.
+
+## Upgrade notes
+
+ - API consumers of the project restore endpoint must send {"backup_name": ...} instead of
+{"backup_path": ...}; BackupInfo responses no longer include file_path, and the backups list only
+contains shapeshifter.yml configuration backups.
+ - New entity names and rename targets must match ^[a-z][a-z0-9_]*$ with at least two characters;
+existing entities with non-conforming names are not renamed automatically.
+ - Renames made by editing project YAML directly still require manually updating references and any
+task sidecar keys; note migration through the API is best-effort and a warning identifies when
+manual note recovery is needed.
+
+## Validation
+
+No CI results were available for this pull request (the status check rollup is empty), so no check
+can be reported as passed or failed.
+
+ - New and updated backend tests are included in the diff (entity API rename/validation, project
+backup filtering, entity operations rename guards, project service rename persistence, sidecar note
+rename, SQL table extraction, model reference inventory, and normalizer unnest/deferred extra-column
+behavior); their execution results are unknown.
+ - New and updated frontend tests are included in the diff (EntityFormDialog rename submission and
+conflict display, new ForeignKeyEditor disabled-tester test, and store/API test updates for the
+backup field rename); their execution results are unknown.
+
+Not verified: validation results unavailable.

@@ -93,6 +93,24 @@
           </ul>
         </v-alert>
 
+        <v-alert v-if="loadErrors.length > 0" type="error" variant="tonal" class="mb-4">
+          <v-alert-title>Project Load Errors</v-alert-title>
+          <div class="text-body-2 mb-2">
+            Correct these configuration errors before validating or processing this project.
+          </div>
+          <ul class="pl-4 mb-0">
+            <li v-for="(loadError, index) in loadErrors" :key="`${loadError.code ?? loadError.message}-${index}`">
+              {{ loadError.message }}
+              <span v-if="loadError.suggestion"> {{ loadError.suggestion }}</span>
+            </li>
+          </ul>
+        </v-alert>
+
+        <v-alert v-if="taskStatusError" type="error" variant="tonal" class="mb-4">
+          <v-alert-title>Task Status Unavailable</v-alert-title>
+          {{ taskStatusError }}
+        </v-alert>
+
         <v-tabs v-model="activeTab" bg-color="transparent">
           <v-tab value="entities">
             <v-icon icon="mdi-cube-outline" class="mr-2" />
@@ -609,6 +627,7 @@
               @validate-data="handleDataValidate"
               @validate-target-model="handleConformanceValidate"
               @open-entity="handleOpenValidationEntity"
+              @troubleshoot="handleTroubleshoot"
               @apply-fix="handleApplyFix"
               @apply-all-fixes="handleApplyAllFixes"
             />
@@ -915,6 +934,13 @@
       </v-card>
     </v-dialog>
 
+    <link-troubleshooter-dialog
+      v-if="troubleshootMessage"
+      v-model="showLinkTroubleshooter"
+      :project-name="projectName"
+      :message="troubleshootMessage"
+    />
+
     <!-- Execute Dialog -->
     <execute-dialog v-model="showExecuteDialog" :project-name="projectName" @executed="handleExecuted" />
 
@@ -941,6 +967,12 @@
         </v-snackbar>
       </template>
     </v-scale-transition>
+    <v-snackbar v-model="showErrorSnackbar" color="error" timeout="6000">
+      {{ errorMessage }}
+      <template #actions>
+        <v-btn variant="text" @click="showErrorSnackbar = false">Close</v-btn>
+      </template>
+    </v-snackbar>
   </v-container>
 </template>
 
@@ -957,12 +989,14 @@ import { useSession } from '@/composables/useSession'
 import { getTaskStatusNodeClasses, shouldShowNodeForTaskFilter } from '@/utils/taskGraph'
 import { useEntityStore } from '@/stores/entity'
 import { useTaskStatusStore } from '@/stores/taskStatus'
-import type { CustomGraphLayout } from '@/types'
+import { getErrorMessage } from '@/utils/errors'
+import type { CustomGraphLayout, ValidationError, ValidationResult } from '@/types'
 import type { GraphColorByMode } from '@/utils/taskGraph'
 import type { TaskFilter } from '@/components/dependencies/TaskFilterDropdown.vue'
 import EntityListCard from '@/components/entities/EntityListCard.vue'
 import EntityFormDialog from '@/components/entities/EntityFormDialog.vue'
 import ValidationPanel from '@/components/validation/ValidationPanel.vue'
+import LinkTroubleshooterDialog from '@/components/validation/LinkTroubleshooterDialog.vue'
 import PreviewFixesModal from '@/components/validation/PreviewFixesModal.vue'
 import ProjectDataSources from '@/components/ProjectDataSources.vue'
 import SessionIndicator from '@/components/SessionIndicator.vue'
@@ -1069,8 +1103,12 @@ const activeTab = ref('entities')
 const activeYamlSubTab = ref('project-yaml')
 const showBackupsDialog = ref(false)
 const showExecuteDialog = ref(false)
+const showLinkTroubleshooter = ref(false)
+const troubleshootMessage = ref<ValidationError | null>(null)
 const showSuccessSnackbar = ref(false)
 const successMessage = ref('')
+const showErrorSnackbar = ref(false)
+const errorMessage = ref('')
 const showPreviewModal = ref(false)
 const showCreateTodoDialog = ref(false)
 const fixPreview = ref<any>(null)
@@ -1081,6 +1119,12 @@ const createTodoEntityName = ref('')
 const createTodoNote = ref('')
 const createTodoSaving = ref(false)
 const createTodoError = ref<string | null>(null)
+
+watch(showLinkTroubleshooter, (isOpen) => {
+  if (!isOpen) {
+    troubleshootMessage.value = null
+  }
+})
 
 // Graph state
 const graphContainer = ref<HTMLElement | null>(null)
@@ -1247,6 +1291,7 @@ const validationChipText = computed(() => {
 })
 
 const loadWarnings = computed(() => selectedProject.value?.load_warnings ?? [])
+const loadErrors = computed(() => selectedProject.value?.load_errors ?? [])
 
 const isDark = computed(() => theme.global.current.value.dark)
 
@@ -1266,6 +1311,7 @@ const activeDrawerError = computed(() =>
 // Cytoscape integration
 const entityStore = useEntityStore()
 const taskStatusStore = useTaskStatusStore()
+const taskStatusError = computed(() => taskStatusStore.error)
 
 const normalizedCreateTodoName = computed(() => createTodoEntityName.value.trim())
 
@@ -1459,15 +1505,31 @@ async function handleClearCustomLayout() {
 }
 
 // Methods
+function showValidationOutcome(result: ValidationResult, successText: string): void {
+  if (!result.is_valid) {
+    const firstError = result.errors[0]
+    errorMessage.value = firstError
+      ? `${firstError.message}${firstError.suggestion ? ` — ${firstError.suggestion}` : ''}`
+      : result.status_reason || 'Validation did not complete successfully.'
+    showErrorSnackbar.value = true
+    return
+  }
+
+  successMessage.value =
+    result.warning_count > 0 ? `${successText} with ${result.warning_count} warning(s)` : successText
+  showSuccessSnackbar.value = true
+}
+
 async function handleValidate() {
   try {
-    await validate(projectName.value)
+    const result = await validate(projectName.value)
     // Refresh task status after validation since status depends on validation results
     await taskStatusStore.refresh()
-    successMessage.value = 'Project validated successfully'
-    showSuccessSnackbar.value = true
+    showValidationOutcome(result, 'Project validation passed')
   } catch (err) {
     console.error('Validation failed:', err)
+    errorMessage.value = getErrorMessage(err)
+    showErrorSnackbar.value = true
   }
 }
 
@@ -1475,24 +1537,26 @@ async function handleDataValidate(config?: any) {
   try {
     const entityNames = config?.entities
     const validationMode = config?.validationMode || 'sample'
-    await validateData(projectName.value, entityNames, validationMode)
+    const result = await validateData(projectName.value, entityNames, validationMode)
     // Refresh task status after validation
     await taskStatusStore.refresh()
-    successMessage.value = 'Data validation completed'
-    showSuccessSnackbar.value = true
+    showValidationOutcome(result, 'Data validation passed')
   } catch (err) {
     console.error('Data validation failed:', err)
+    errorMessage.value = getErrorMessage(err)
+    showErrorSnackbar.value = true
   }
 }
 
 async function handleConformanceValidate() {
   try {
-    await validateConformance(projectName.value)
+    const result = await validateConformance(projectName.value)
     await taskStatusStore.refresh()
-    successMessage.value = 'Conformance check completed'
-    showSuccessSnackbar.value = true
+    showValidationOutcome(result, 'Conformance check passed')
   } catch (err) {
     console.error('Conformance validation failed:', err)
+    errorMessage.value = getErrorMessage(err)
+    showErrorSnackbar.value = true
   }
 }
 
@@ -1635,6 +1699,11 @@ function handleEditEntity(entityName: string) {
 
 function handleOpenValidationEntity(entityName: string) {
   handleEditEntity(entityName)
+}
+
+function handleTroubleshoot(message: ValidationError) {
+  troubleshootMessage.value = message
+  showLinkTroubleshooter.value = true
 }
 
 function handleEntityEditRequestConsumed(entityName: string) {

@@ -38,6 +38,7 @@ declare module 'vue' {
     GraphNodeContextMenu: typeof import('./components/dependencies/GraphNodeContextMenu.vue')['default']
     IngesterForm: typeof import('./components/ingester/IngesterForm.vue')['default']
     IngesterList: typeof import('./components/ingester/IngesterList.vue')['default']
+    LinkTroubleshooterDialog: typeof import('./components/validation/LinkTroubleshooterDialog.vue')['default']
     LoadingSkeleton: typeof import('./components/common/LoadingSkeleton.vue')['default']
     LogViewerOverlay: typeof import('./components/LogViewerOverlay.vue')['default']
     MaterializeDialog: typeof import('./components/entities/MaterializeDialog.vue')['default']
@@ -76,6 +77,7 @@ declare module 'vue' {
     ValidationMessageList: typeof import('./components/validation/ValidationMessageList.vue')['default']
     ValidationPanel: typeof import('./components/validation/ValidationPanel.vue')['default']
     ValidationSuggestion: typeof import('./components/validation/ValidationSuggestion.vue')['default']
+    ValueReferenceChip: typeof import('./components/entities/ValueReferenceChip.vue')['default']
     YamlEditor: typeof import('./components/common/YamlEditor.vue')['default']
   }
 }

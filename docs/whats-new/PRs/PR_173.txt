@@ -1,0 +1,56 @@
+title: Fix project name truncation; add Playwright E2E, Docker build script
+description:
+## Summary
+
+ - Backend: ProjectService now derives project filenames with str.removesuffix('.yml') instead of
+str.rstrip('.yml') in both load_project and save_project. The previous rstrip stripped any trailing
+characters in the set {'.', 'y', 'm', 'l'}, silently truncating project names such as
+test_config_manual. A regression test (test_create_configuration_name_ending_in_yml_chars) covers
+names ending in those characters, and older duplicated project-service tests
+(test_config_service.py) were removed while their surviving cases were merged into the renamed
+backend/tests/services/test_project_service.py.
+ - Docker: Added docker/build.sh, a unified build script supporting local-context and GitHub-ref
+builds, commit-SHA cache busting for branches, semver-tag detection, and automatic extra tagging
+when main and the latest tag match. docker/Makefile build targets now delegate to build.sh (e.g.
+docker-build calls docker-build-github; docker-build-local added), the Dockerfile's group/user
+creation was made tolerant of pre-existing UID/GID entries, and deploy-to-sead-tools now ships
+build.sh and BUILD_SCRIPT_GUIDE.md to the deployment directory.
+ - Frontend: Initialized Playwright E2E testing (playwright.config.ts, @playwright/test dev
+dependency, test:e2e* npm scripts) with four suites covering smoke, project management, validation
+workflow, and entity management, plus fixtures and setup/quickstart documentation. Added SVG favicon
+and SEAD logo assets, updated index.html (title, favicon links, theme color), and reworked
+HomeView.vue layout with a subtle footer logo.
+ - Documentation: Expanded the manual testing guides (docs/FRONTEND_MANUAL_TESTING_GUIDE.md,
+input/20260113_MANUAL_TESTING.md) with graph, ingestion, and error-handling coverage and consistent
+"project" terminology; reorganized TODO.md.
+
+The PR body states it fixes #143, #169, #170 and #171; only #143 (Update Docker configuration and 
+related documentation) is present in the linked-issue data supplied here.
+
+## User-facing release note
+
+Project names ending in letters such as "l", "m" or "y" are no longer truncated when saving or
+loading, so projects created with those names can now be reopened correctly. The app also shows an
+updated SEAD icon and browser tab title.
+
+## Upgrade notes
+
+ - Docker builds now route through docker/build.sh: make docker-build builds from GitHub main (with
+cache busting); use make docker-build-local to build from the local working tree. Deployment
+directories must receive the new build.sh (and BUILD_SCRIPT_GUIDE.md), which the updated
+deploy-to-sead-tools script now copies.
+ - The default container group GID in docker/Makefile changed from the sead user's group to the
+www-data group; override USER_UID/USER_GID if your host differs.
+ - To run the new E2E tests, install frontend dependencies (pnpm install) and Playwright browsers;
+tests start the Vite dev server automatically via the Playwright webServer config.
+
+## Validation
+
+ - No CI check results were available for this pull request (the status check rollup is empty), so
+no checks can be reported as passed or failed.
+ - New backend unit tests (name-truncation regression, multi-entity load, roundtrip) and the
+Playwright E2E suites are included in the diff, but the supplied evidence does not show them being
+executed.
+ - The updated manual testing guide marks some checklist items as completed (e.g., save/backup
+behaviors), but the underlying manual test executions are not verifiable from the available
+evidence.

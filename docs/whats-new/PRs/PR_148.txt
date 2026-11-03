@@ -1,0 +1,46 @@
+title: Add GitHub build mode and non-root runtime user to Docker build
+description:
+## Summary
+
+The Docker setup gains an explicit source-selection mechanism and hardened runtime defaults:
+
+ - New source-resolver stage in docker/Dockerfile: a SOURCE build argument (workdir by default, or
+github) decides whether the build uses the local Docker context or a shallow git clone of
+GIT_REPO/GIT_REF. A CACHE_BUST argument lets branch-based builds invalidate the clone cache when the
+remote branch moves; tags need none. Docker comments state auto-detection was removed in favor of
+explicit mode selection.
+ - Parameterized base images: PYTHON_VERSION, NODE_VERSION, and ALPINE_VERSION build arguments
+replace hard-coded tags, including the site-packages copy path in the runtime stage.
+ - Non-root runtime: the production stage creates a shapeshifter user (uid/gid 1000), chowns /app,
+and switches to that user before starting uvicorn.
+ - Makefile split: all docker-* recipes move from the root Makefile into a new docker/Makefile,
+which the root Makefile includes (so make docker-build etc. still work from the root). Two new
+targets appear: docker-build-github (builds from main with cache bust from git ls-remote) and
+docker-build-tag TAG=... (builds from a specific tag/branch).
+ - docker/README.md updated to document the Make workflow, the two build modes, cache-invalidation
+guidance, version selection via build args, and modern docker compose syntax.
+
+## User-facing release note
+
+You can now build the Shape Shifter Docker image directly from the GitHub repository (a branch, tag,
+or fork) instead of only from your local checkout — for example make docker-build-github or make
+docker-build-tag TAG=v1.2.0 — and the application container now runs as a non-root user for improved
+security.
+
+## Upgrade notes
+
+ - The container now runs as the non-root user shapeshifter (uid/gid 1000). Host directories mounted
+into the container (projects, logs, output, backups, tmp) must be readable and writable by uid/gid
+1000, or the application may fail to start or write data.
+ - Docker recipes moved to docker/Makefile; root-level make docker-* commands keep working via an
+include, and the targets also work from the docker/ directory (make -f Makefile docker-build).
+ - The updated README quick start uses data/ subdirectories (e.g. data/projects, data/logs) for
+local mounts; existing deployments using the previous flat layout should verify their compose volume
+configuration still matches.
+
+## Validation
+
+No validation evidence is available for this pull request: the CI check rollup is empty and the diff
+contains no tests. Build and runtime behavior of the new Docker modes was not verified here.
+
+Not verified: validation results unavailable.

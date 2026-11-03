@@ -1,0 +1,65 @@
+title: Re-scope Phase 4 to a UAT-ready deployment and correct the access probe
+description:
+## Summary
+
+Re-scopes Phase 4 of the centralized authorization cutover from a production enforcement cutover to
+delivering and recording a deployment that user acceptance testing can be run against, and adds a
+successor proposal for the production flip. The production move — repointing DNS and the reverse
+proxy and migrating users — is recorded as out of scope and handed to the new proposal.
+
+Contents:
+
+ - CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md — goal and scope retargeted; Phase 4 retitled
+Deliver And Record The UAT-Ready Deployment with PH4-AC-1–PH4-AC-5 preserved; the production flip,
+UAT authorship, and the production Podman service model moved to Non-Goals; Phase 4 marked complete
+2026-09-22 with a dated scope-change note.
+ - CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_4_TASK_PLAN.md (new) — task plan for the narrowed
+scope; all tasks recorded as done with validation results.
+ - UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md (new) — deployment record: release/manifest/backup
+identifiers, resource and grant review, audit-trail coverage, access-check results, a passing
+rollback exercise, what is not verified, and how a tester exercises the deployment.
+ - docs/proposals/future/PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md (new) — successor proposal covering
+acceptance intake, per-user provisioning, the service-model decision, the DNS/proxy repoint, the
+fallback window, and the production security record.
+ - container/scripts/verify/verify_authenticated_access.sh — the probe now reads each principal's
+deployment roles from the deployed policy, prints a principal-scope block, expects 200 and labels an
+expected privileged read when a principal holds a read-granting role, and reports how many of the
+two isolation directions were actually verified. When roles cannot be read it says so and keeps the
+404 expectation, so a privileged principal still fails rather than passing silently. This fixes the
+script misreporting a project_maintainer read as an isolation failure.
+
+## User-facing release note
+
+The authenticated access check now reports each tested principal's deployment roles and marks a
+privileged read as expected instead of reporting a false isolation failure, and the record states
+how many isolation directions were actually verified. A UAT-ready deployment record documents how to
+exercise the authorization-enabled test deployment.
+
+## Upgrade notes
+
+No configuration or migration changes ship with this PR. The corrected probe script reaches the
+deployment host only after this lands on dev and the synced ~/container tree is refreshed via
+container/scripts/deploy/sync-to-deploy; the record notes the target still runs the old script until
+then.
+
+## Validation
+
+No CI status checks are attached to this pull request (statusCheckRollup is empty).
+
+Recorded in the task plan and deployment handoff (run 2026-09-22 on the deployment host, not re-run
+by this PR's author here):
+
+ - .venv/bin/pytest backend/tests/authorization -q — 192 passed, 1 skipped.
+ - .venv/bin/pytest backend/tests -q — 1853 passed, 15 skipped, 1 warning (unrelated JPype
+deprecation).
+ - verify_authenticated_access.sh run through the proxy: unauthenticated 401, owner 200, concealed
+denied 404, administrator 200; the symmetric-isolation probe reported one expected privileged read.
+ - Rollback exercise (rollback_exercise.sh) — passed: integrity check, reconciliation Missing: 0
+resources, 0 administrators, 0 grants, recorded image restarted, health 200.
+
+For the probe-script correction itself, the record states it passed bash -n, shellcheck -S warning,
+a three-case local harness, and the extracted role-lookup snippet against a real authorization
+store; the in-container podman exec invocation has not yet run on the deployment host.
+
+scripts/check_doc_links.sh and git diff --check are listed as passing in the task plan's Definition
+Of Done; their execution was not independently confirmed here.

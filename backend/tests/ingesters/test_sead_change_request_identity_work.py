@@ -17,7 +17,7 @@ class TestBuildIdentityWorkPlan:
             name="_planned_action",
         )
         classifier_frame = pd.DataFrame({"class_id": [None], "name": ["class-a"]})
-        classifier_actions = pd.Series([PlannedRowAction.RECONCILE], index=classifier_frame.index, name="_planned_action")
+        classifier_actions = pd.Series([PlannedRowAction.BLOCK_RECONCILIATION], index=classifier_frame.index, name="_planned_action")
         bridge_frame = pd.DataFrame({"sample_id": [1], "taxon_id": [2]})
         bridge_actions = pd.Series([PlannedRowAction.EVALUATE_BRIDGE], index=bridge_frame.index, name="_planned_action")
 
@@ -31,11 +31,11 @@ class TestBuildIdentityWorkPlan:
 
         assert work_plan.total_existing_rows == 1
         assert work_plan.total_allocation_rows == 1
-        assert work_plan.total_reconciliation_rows == 1
+        assert work_plan.total_blocked_reconciliation_rows == 1
         assert work_plan.total_bridge_rows == 1
         assert work_plan.existing_rows["sample"]["sample_name"].tolist() == ["A"]
         assert work_plan.allocation_rows["sample"]["sample_name"].tolist() == ["B"]
-        assert work_plan.reconciliation_rows["abundance_class"]["name"].tolist() == ["class-a"]
+        assert work_plan.blocked_reconciliation_rows["abundance_class"]["name"].tolist() == ["class-a"]
         assert work_plan.bridge_rows["sample_taxon"]["taxon_id"].tolist() == [2]
 
     def test_partitions_phase3_existing_row_update_queues(self):

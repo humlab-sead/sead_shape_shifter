@@ -1,0 +1,88 @@
+title: Add entity reconciliation with OpenRefine service and error handling
+description:
+## Summary
+
+Adds an entity reconciliation feature that matches local entity rows against SEAD entities through
+an OpenRefine-compatible reconciliation service, plus supporting backend and frontend work.
+
+Backend:
+
+ - New /api/v1 reconciliation endpoints (backend/app/api/v1/endpoints/reconciliation.py): get/update
+a reconciliation config, run auto-reconcile for an entity with a threshold, fetch /suggest
+candidates, and update or delete a single mapping entry.
+ - New ReconciliationService with three source resolvers — the target entity's own preview data,
+another entity's preview data, or a custom SQL query via a configured data source — plus a query
+builder that maps property_mappings onto OpenRefine query properties. Matches above
+auto_accept_threshold are auto-accepted (SEAD id parsed from the candidate URI), those above
+review_threshold are flagged for review, and results are persisted to <config>-reconciliation.yml.
+ - New ReconciliationClient (httpx) for /reconcile, /suggest/entity, /flyout/entity and the service
+manifest; new Pydantic models in backend/app/models/reconciliation.py.
+ - Reconciliation is blocked when the active configuration has unsaved changes
+(ApplicationState.is_dirty).
+ - Centralized error handling: @handle_endpoint_errors decorator plus
+BaseAPIException/NotFoundError/BadRequestError/ConflictError replace ~50 duplicated try/except
+blocks across the configurations, entities, preview, schema, sessions and validation endpoints.
+Duplicate configuration/entity creation now surfaces as 409 instead of 400.
+ - Server state: ApplicationState now holds API Configuration objects with version and dirty
+tracking (replacing ConfigStore usage), exposed through a new ApplicationStateManager; ConfigMapper
+bridges core ShapeShiftConfig dicts and API models using the Pydantic schemas instead of hardcoded
+field lists. preview_service.py was replaced by shapeshift_service.py with version-based
+ShapeShiftConfig caching, and FK join testing moved to ValidateForeignKeyService.
+ - Core refactor: TableConfig, ForeignKeyConfig, UnnestConfig and the new Metadata class became
+read-only property/cached-property wrappers over the raw config dict (_data → data,
+remote_extra_columns → resolved_extra_columns()); ConfigFactory.load gained skip_resolve; the unused
+FixedLoader2 and the DataSourceType enum were removed (driver is now a plain string).
+
+Frontend: a Reconciliation tab in the configuration detail view with ReconciliationView.vue, an AG
+Grid based ReconciliationGrid.vue (auto-matched / needs-review / unmatched status, candidate review
+dialog, manual mapping save) and a Pinia reconciliation store with matching TypeScript types.
+
+Also included: Entity.values for fixed entities, friendly_dtype column typing, a data-source path
+traversal guard, Makefile targets/reload-excludes, new and updated tests, and docs
+(RECONCILIATION_SETUP_GUIDE.md, RECONCILIATION_SOURCE_FEATURE.md, METADATA_GUIDE.md,
+SERVER_STATE_REFACTORING.md, OpenAPI/JSON samples).
+
+## User-facing release note
+
+A new Reconciliation tab lets you match an entity's rows to SEAD entities using an OpenRefine
+reconciliation service: run an automatic pass with a confidence threshold, review the suggested
+candidates in a grid, and save or remove individual mappings, which are stored in a separate
+reconciliation YAML file.
+
+## Upgrade notes
+
+ - Reconciliation requires a running OpenRefine-compatible reconciliation service. Its base URL
+comes from RECONCILITION/RECONCILIATION_SERVICE_URL in backend settings (falls back to
+http://localhost:8000), and per-configuration specs are read from/written to 
+<CONFIGURATIONS_DIR>/<config-name>-reconciliation.yml (see input/example-reconciliation.yml and
+input/arbodat-reconciliation.yml). Entities with no remote.service_type are skipped.
+ - Configurations are now expected to carry a metadata section (name, description, version);
+ConfigMetadata gained description and version, and input/arbodat-database.yml was updated
+accordingly. Optimistic-lock saves (save_with_version_check) now compare the string metadata.version
+from the active state instead of taking separate int versions.
+ - Breaking API/model changes for consumers: duplicate configuration or entity creation returns 409
+Conflict instead of 400; DataSourceType was removed so driver is a free-form string with no alias
+normalization (get_loader_driver() is gone); PreviewResult no longer returns
+transformations_applied.
+ - Import paths changed: backend.app.services.preview_service →
+backend.app.services.shapeshift_service, and backend.app.models.preview →
+backend.app.models.shapeshift.
+ - Core config classes are read-only wrappers: TableConfig._data is now .data, and
+ForeignKeyConfig.remote_extra_columns was replaced by extra_columns plus resolved_extra_columns().
+Anything reading those attributes directly must be updated.
+ - make lint no longer runs the check-imports target.
+
+## Validation
+
+ - No CI results are available for this pull request: the status check rollup in the supplied
+metadata is empty, so no check can be reported as passed or failed. The PR was merged on 2025-12-26.
+ - The diff adds or updates tests (for example backend/tests/test_reconciliation_service.py,
+test_reconciliation_client.py, test_config_mapper.py, test_config_service.py, test_state_manager.py,
+test_error_handlers.py, test_shapeshift_service.py, test_query_service.py, tests/test_link.py,
+tests/test_utility_extended.py), and updates existing expectations for the 409 responses and the
+renamed core attributes. Their execution results are not available in the supplied evidence.
+ - Test results recorded inside files added by this PR (e.g. VALUES_PROPERTY_VERIFICATION.md claims
+37 backend tests passed) are author-reported notes in the diff, not independently verified CI
+output.
+ - No test suite, linter or build was run while preparing this description, so the current state of
+the checks is unknown.

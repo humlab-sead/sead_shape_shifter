@@ -1,0 +1,47 @@
+title: Add data validation mode option for sample and complete validation
+description:
+## Summary
+
+Adds a user-selectable data validation mode so data validation can run either against fast preview
+samples or against the complete normalized dataset.
+
+ - New DataValidationMode enum (sample / complete) in backend/app/models/validation.py;
+ValidationResult now reports the validation_mode that was used.
+ - The POST /projects/{name}/validate/data endpoint accepts a new validation_mode query parameter
+(default sample) and passes it through to the validation service; the log line now includes the
+mode.
+ - ValidationService.validate_project_data replaces its use_full_data: bool flag with
+validation_mode: DataValidationMode; COMPLETE mode maps to the previous full-dataset path, so
+default behavior (preview samples) is unchanged.
+ - Frontend: DataValidationConfig.vue gains a Validation Mode radio group (Sample Data (Fast) vs
+Complete Data (Comprehensive)), useDataValidation.ts sends validation_mode as a request parameter
+and includes it in the result cache key, and the DataValidationMode type plus an optional
+validation_mode field are added to the frontend validation types. ProjectDetailView.vue forwards the
+selected mode from the config to validateData.
+ - src/validators/data_validators.py and tests/validators/test_data_validators.py contain
+whitespace-only changes.
+
+The PR body references Fixes #226, but no linked issue details were available for inspection.
+
+## User-facing release note
+
+Users can now choose how data validation runs: a fast "Sample Data" mode that checks preview samples
+(up to 1000 rows per entity), or a slower but comprehensive "Complete Data" mode that validates the
+full normalized dataset. The selected mode is shown as part of the validation result.
+
+## Upgrade notes
+
+ - End users: no action required; the default mode remains sample, matching the previous
+preview-based behavior.
+ - API consumers: the POST /projects/{name}/validate/data endpoint gains an optional validation_mode
+query parameter (sample | complete, default sample), and ValidationResult responses now include an
+optional validation_mode field. Callers of ValidationService.validate_project_data directly must
+replace the removed use_full_data boolean with the new validation_mode argument.
+
+## Validation
+
+ - No CI results were available for this pull request (status check rollup was empty), so no checks
+can be reported as passed or failed.
+ - The diff includes changes to tests/validators/test_data_validators.py, but they are
+whitespace-only; execution of the test suite is unknown.
+ - Not verified: validation results unavailable.

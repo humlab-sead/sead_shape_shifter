@@ -15,7 +15,6 @@ from backend.app.ingesters.registry import get_ingester_registry
 from backend.app.main import app
 from backend.app.models.ingester import IngestRequest, ValidateRequest
 from backend.app.services.ingester_runtime import (
-    SeadChangeRequestReconciliationAdapter,
     SeadChangeRequestSimsAdapter,
     SeadChangeRequestTargetCollisionChecker,
 )
@@ -221,30 +220,27 @@ class TestIngesterServiceIntegration:
         assert config.extra["ignore_columns"] == ["col1", "col2"]
         assert config.extra["custom_param"] == "value"
 
-    def test_service_create_config_injects_sead_change_request_runtime_clients(self):
-        """SEAD change request runtime clients should be injected at the backend service boundary."""
+    def test_service_create_config_injects_sims_client_without_candidate_resolver(self):
+        """SEAD change request config should inject SIMS but no candidate resolver."""
         config: IngesterConfig = get_ingester_service()._create_config({"custom_param": "value"}, key="sead_change_request")
 
         assert config.extra is not None
         assert isinstance(config.extra["sims_client"], SeadChangeRequestSimsAdapter)
-        assert isinstance(config.extra["reconciliation_client"], SeadChangeRequestReconciliationAdapter)
+        assert "reconciliation_client" not in config.extra
 
     def test_service_create_config_preserves_explicit_runtime_clients(self):
         """Explicitly supplied runtime clients should not be overwritten by backend injection."""
         explicit_sims_client = object()
-        explicit_reconciliation_client = object()
 
         config: IngesterConfig = get_ingester_service()._create_config(
             {
                 "sims_client": explicit_sims_client,
-                "reconciliation_client": explicit_reconciliation_client,
             },
             key="sead_change_request",
         )
 
         assert config.extra is not None
         assert config.extra["sims_client"] is explicit_sims_client
-        assert config.extra["reconciliation_client"] is explicit_reconciliation_client
 
     def test_service_create_config_injects_collision_checker_when_database_config_present(self):
         """SEAD change request config should inject a DB-backed collision checker when DB config is available."""

@@ -1,0 +1,60 @@
+title: Refactor loaders into a registry
+description:
+## Summary
+
+This PR restructures the data-loading layer and tightens configuration validation.
+
+ - Loader architecture: Introduces src/loaders/base_loader.py with an abstract DataLoader (now
+constructed with a DataSourceConfig) plus a DataLoaders registry. Loaders self-register via
+@DataLoaders.register(...) (postgres, ucanaccess, csv, fixed, fixed2). The deprecated
+src/loaders/interface.py, src/loaders/loader.py, and SqlLoaderFactory are removed, and
+TablesConfig.resolve_loader() now selects a loader from the entity's data_source driver or its type.
+ArbodatSurveyNormalizer.resolve_source() uses this single path instead of hard-coded loader
+selection.
+ - SQL configuration: SQL entities now use a dedicated query field instead of embedding SQL in
+values: "sql: ...". TableConfig.query still falls back to the old values form (marked for
+deprecation). The is_fixed_data/is_sql_data flags are replaced by a type attribute, and
+get_configured_tables() is renamed get_sub_table_configs().
+ - Validation: Adds SqlDataSpecification (SQL entities require non-empty data_source and query) and
+DataSourceExistsSpecification (referenced data sources must exist in options.data_sources), and
+enhances FixedDataSpecification (requires values and columns, checks row/column counts) and
+AppendConfigurationSpecification (validates append_mode, type-specific fields, and source
+references). The composite validator runs them in a defined order. New
+docs/VALIDATION_IMPROVEMENTS.md documents the rules; docs/CONFIGURATION_REFERENCE.md is updated
+accordingly.
+ - CLI and normalizer: survey2excel.py drops the input_csv argument and --sep option; the input CSV
+is now loaded through a type: csv entity configured in YAML. Adds --default-entity (fallback source
+entity) and --validate-then-exit (validate configuration and exit without normalizing).
+ArbodatSurveyNormalizer now takes default_entity, table_store, and config; ProcessState derives
+processed entities from the table store.
+ - Sample configuration: input/arbodat-database.yml is migrated to the query: form, gains a survey
+CSV entity, and adds dimension and coordinate_method_dimension fixed entities for sample
+coordinates.
+ - Tests are updated for the new loader/normalizer interfaces, and tests/test_config_model.py gains
+extensive new coverage (foreign-key constraints, table config properties, data-source config, loader
+resolution).
+
+## User-facing release note
+
+SQL data sources are now configured with a clear query field instead of SQL embedded in values, and
+configuration errors (missing queries, unknown data sources, malformed fixed/append data) are
+reported early with actionable messages. A new --validate-then-exit option checks a configuration
+without running the full normalization workflow.
+
+## Upgrade notes
+
+ - The survey2excel CLI no longer accepts the input_csv positional argument or --sep; the input CSV
+must be defined as an entity with type: csv and pandas read_csv options in the configuration file.
+Use --default-entity to set the fallback source entity.
+ - Migrate SQL entities from values: "sql: ..." to the dedicated query field. The old values form
+still works but is deprecated and may be removed later.
+ - Stricter validation may reject previously accepted configurations: SQL entities now require
+data_source and a non-empty query, fixed entities require values and columns, and all referenced
+data sources must be defined in options.data_sources.
+
+## Validation
+
+Not verified: validation results unavailable. No CI check results were reported for this pull
+request, and no test-run outcomes are available in the provided evidence. Extensive test changes are
+included in the diff (updated loader/normalizer tests and new config-model tests), but their
+execution and results are unknown.

@@ -64,6 +64,12 @@ def _build_listing_yaml_loader() -> type | None:
     if _YamlCSafeLoader is None:
         return None
 
+    # The imports succeed or fail together, so the constructor error is available
+    # whenever the C loader is. Bind it locally so the nested class sees a
+    # non-None type instead of the optional module-level name.
+    constructor_error = _YamlConstructorError
+    assert constructor_error is not None  # nosec B101
+
     class _ListingYamlLoader(_YamlCSafeLoader):  # type: ignore[misc, valid-type]
         """C-based YAML loader that rejects duplicate mapping keys."""
 
@@ -75,7 +81,7 @@ def _build_listing_yaml_loader() -> type | None:
                 key: Any = self.construct_object(key_node, deep=deep)
                 if isinstance(key, Hashable):
                     if key in seen:
-                        raise _YamlConstructorError(
+                        raise constructor_error(
                             "while constructing a mapping",
                             node.start_mark,
                             f"found duplicate key {key!r}",
@@ -191,6 +197,9 @@ class YamlService:
 
         if _LISTING_YAML_LOADER is None:
             return self.load(filename)
+
+        # The loader is only built when the pyyaml import succeeded.
+        assert _pyyaml is not None  # nosec B101
 
         path = Path(filename)
 

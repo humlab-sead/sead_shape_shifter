@@ -14,6 +14,7 @@ from loguru import logger
 from starlette.formparsers import MultiPartParser
 
 from backend.app.api.v1.api import api_router
+from backend.app.authorization.dependencies import declare_authenticated_route
 from backend.app.authorization.operations import development_bootstrap_required
 from backend.app.core.config import settings
 from backend.app.core.logging_config import configure_logging
@@ -133,6 +134,12 @@ app = FastAPI(
     redoc_url=f"{settings.API_V1_PREFIX}/redoc",
     lifespan=lifespan,
 )
+
+documentation_paths = {path for path in (app.openapi_url, app.docs_url, app.redoc_url) if path is not None}
+for route in app.routes:
+    endpoint = getattr(route, "endpoint", None)
+    if getattr(route, "path", None) in documentation_paths and callable(endpoint):
+        declare_authenticated_route(endpoint)
 
 # Increase multipart form data size limit for file uploads (default is 1MB)
 # Set to 100MB to match our application's file upload limits

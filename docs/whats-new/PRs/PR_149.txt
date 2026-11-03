@@ -1,0 +1,45 @@
+title: Support GitHub and local build modes in Dockerfile, run as non-root
+description:
+## Summary
+
+Refactors the Docker setup so the image can be built either from the local build context (default,
+SOURCE=workdir) or by cloning the GitHub repository at a chosen ref (SOURCE=github, with GIT_REPO,
+GIT_REF, and an optional CACHE_BUST to invalidate the clone cache when a branch moves). A new
+"source-resolver" stage (stage 0) resolves the codebase once and the frontend, Python-dependency,
+and runtime stages copy from it, replacing the previous per-stage COPY of source files. Python,
+Node, and Alpine base-image versions are now parameterized via PYTHON_VERSION, NODE_VERSION, and
+ALPINE_VERSION build args.
+
+The runtime stage now creates a dedicated non-root shapeshifter user (uid/gid 1000), owns /app with
+it, and switches to it via USER before starting uvicorn.
+
+The Docker make targets were moved out of the root Makefile into a new docker/Makefile, which the
+root Makefile includes (so make docker-* still works from the repository root and also from
+docker/). Two new targets were added: docker-build-github (builds from GitHub main with cache bust
+from the remote commit SHA) and docker-build-tag TAG=... (builds from a specific tag/branch).
+docker/README.md was updated with Make-based quick start, the two build source modes,
+cache-invalidation guidance, and version-selection examples.
+
+## User-facing release note
+
+You can now build the Shape Shifter Docker image directly from GitHub (a branch or a specific tag)
+in addition to building from your local checkout, and the application container runs as a non-root
+user for improved security.
+
+## Upgrade notes
+
+ - The container now runs as a non-root user with uid/gid
+  1000. If you bind-mount host directories (projects, logs, output, backups, tmp), make sure they
+are writable by uid/gid 1000, otherwise the application may fail to write data.
+ - Existing make docker-* commands from the repository root keep working; they are now provided by
+the included docker/Makefile. New optional targets are make docker-build-github and make
+docker-build-tag TAG=v1.2.0.
+ - The updated docker/README.md quick start creates data directories under data/ (e.g.
+data/projects, data/logs) instead of top-level directories; follow the current README for the
+expected layout.
+
+## Validation
+
+Not verified: validation results unavailable. No CI check results were reported for this pull
+request (the status check rollup is empty), and no test or build outcomes are included in the
+available evidence. The pull request was merged into main (merge commit 05689b4).

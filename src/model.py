@@ -1,4 +1,6 @@
 import copy
+import hashlib
+import json
 from dataclasses import dataclass
 from functools import cached_property
 from pathlib import Path
@@ -114,15 +116,18 @@ class ForeignKeyMergeSetup:
 class ForeignKeyConfig:
     """Configuration for a foreign key. Read-Only. Wraps foreign key setting from table config."""
 
-    def __init__(self, *, local_entity: str, fk_cfg: dict[str, Any]) -> None:
+    def __init__(self, *, local_entity: str, fk_cfg: dict[str, Any], fk_index: int | None = None) -> None:
         """Initialize ForeignKeyConfig with configuration data.
         Args:
             local_entity (str): Name of the local entity/table.
             fk_cfg (dict): Foreign key configuration data.
+            fk_index (int | None): Position of this entry in the owning entity's saved
+                ``foreign_keys`` list, or None when the entry was not built from a saved list.
         Raises:
             ValueError: If required fields are missing or invalid."""
         self.fk_cfg: dict[str, Any] = fk_cfg
         self.local_entity: str = local_entity
+        self.fk_index: int | None = fk_index
 
     @property
     def local_keys(self) -> list[str]:
@@ -198,6 +203,29 @@ class ForeignKeyConfig:
     @property
     def has_constraints(self) -> bool:
         return self.constraints and self.constraints.has_constraints
+
+    @property
+    def identity_signature(self) -> str:
+        """Return a SHA-256 digest of the settings that change how this link merges.
+
+        The digest covers the remote entity, both key lists, the join type, the
+        dependency flag, and the full resolved constraints block. It leaves out
+        ``extra_columns``, ``drop_remote_id``, and the list index, which do not
+        change which rows survive the link.
+
+        Returns:
+            str: Hex digest of the canonical JSON form of those settings.
+        """
+        payload: dict[str, Any] = {
+            "remote_entity": self.remote_entity,
+            "local_keys": self.local_keys,
+            "remote_keys": self.remote_keys,
+            "how": self.how or "inner",
+            "defer_dependency": self.defer_dependency,
+            "constraints": self.constraints.data,
+        }
+        canonical: str = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
+        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
     def get_valid_remote_columns(self, candidate_columns: list[str]) -> list[str]:
         """Get list of valid remote columns to select from the remote dataframe based on the
@@ -512,7 +540,8 @@ class TableConfig:
     @cached_property
     def foreign_keys(self) -> list[ForeignKeyConfig]:
         return [
-            ForeignKeyConfig(local_entity=self.entity_name, fk_cfg=fk_data) for fk_data in self.entity_cfg.get("foreign_keys", []) or []
+            ForeignKeyConfig(local_entity=self.entity_name, fk_cfg=fk_data, fk_index=index)
+            for index, fk_data in enumerate(self.entity_cfg.get("foreign_keys", []) or [])
         ]
 
     @property

@@ -57,6 +57,11 @@ ERROR_TIPS: dict[str, list[str]] = {
         "Check data types and formats",
         "Ensure required fields are present",
     ],
+    "FIXED_ENTITY_SHAPE_INVALID": [
+        "Check the fixed entity's columns and values entries.",
+        "Make each values row match the declared data columns, or use the full positional form with managed identity fields first.",
+        "Ensure every values row has the same number of entries.",
+    ],
     "FOREIGN_KEY_INVALID": [
         "Verify referenced entity exists",
         "Check foreign key column names match",

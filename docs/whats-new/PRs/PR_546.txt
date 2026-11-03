@@ -1,0 +1,46 @@
+title: refactor(ingester): rename delivery terminology to MVP
+description:
+## Summary
+
+ - Renames the "Delivery 1" terminology to "MVP Delivery" / "MVP" across the sead_change_request
+ingester. The closed baseline proposal folder done/CHANGE_REQUEST_INGESTER_DELIVERY_1 becomes
+done/CHANGE_REQUEST_INGESTER_MVP, and its documents are renamed accordingly
+(MVP_IMPLEMENTATION_PLAN.md, MVP_HARDENING.md, MVP_FOLLOWUP_CR.md, MVP_FOLLOWUP_ISSUES.md), with
+cross-references and relative links updated throughout the proposal portfolio.
+ - Rewrites docs/proposals/CHANGE_REQUEST_INGESTER/README.md as a consolidated portfolio overview
+and status tracker (workstream table, next priority, active/completed document lists), and archives
+the September 2026 status assessment as a superseded historical snapshot.
+ - Updates ingester code strings to the new terminology: the bridge-uniqueness diagnostic in
+planning.py, the fail-loud revert/verify placeholder messages in sql_builder.py, and the emitted
+package metadata artifact_type from delivery_1_change_package to mvp_delivery_change_package
+(contract_version remains 1).
+ - Frontend: the SEAD change request workflow alert in IngesterForm.vue now reads "emit an MVP
+change package"; the frontend test fixture description is updated to match. Backend and frontend
+tests are updated to assert the renamed diagnostics and artifact type.
+
+Closes #545. Note: the branch also carries the earlier MVP alert-wording commit 757b809a, which was 
+present on local dev but not yet on origin/dev when the PR was opened.
+
+## User-facing release note
+
+The SEAD Change Request Ingester now describes its output as an "MVP Delivery" change package
+instead of "Delivery 1" in operator-facing messages, the frontend workflow alert, and generated
+package metadata (artifact_type is now mvp_delivery_change_package).
+
+## Upgrade notes
+
+Consumers or tooling that read generated package metadata and match on artifact_type must look for
+mvp_delivery_change_package instead of delivery_1_change_package. The metadata contract_version is
+unchanged (1), and no migrations or configuration changes are otherwise required.
+
+## Validation
+
+ - Reported by the PR author: pnpm exec vitest run
+src/components/ingester/__tests__/IngesterForm.test.ts — passed (3 tests).
+ - Reported by the PR author as run: .venv/bin/pytest
+backend/tests/ingesters/test_sead_change_request_*.py -q and git diff --check; explicit pass/fail
+outcomes for these two were not stated in the available evidence.
+ - GitHub CI on the merge: the Container Release workflow checks validate and publish completed with
+conclusion SKIPPED (workflow not applicable to this merge); no other required checks are recorded.
+ - Linked issue details for #545 were not available in the provided context, so issue acceptance 
+criteria were not verified.

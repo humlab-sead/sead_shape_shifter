@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Callable
 from loguru import logger
 
 from backend.app.core.config import get_settings
+from backend.app.exceptions import DomainException
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.mappers.validation_mapper import ValidationMapper
 from backend.app.models.project import Project
@@ -13,6 +14,7 @@ from backend.app.models.validation import (
     DataValidationStatus,
     EntityDataValidationResult,
     EntityDataValidationStatus,
+    ValidationCategory,
     ValidationError,
     ValidationResult,
 )
@@ -58,8 +60,80 @@ def _direct_fk_target_model_error(project: Project, reason: str) -> ValidationRe
             f"Project entity declaration(s) {entity_list} use foreign_key_value_sources, " f"but the target model is unavailable: {reason}"
         ),
         code="DIRECT_FK_TARGET_MODEL_UNAVAILABLE",
+        suggestion="Configure a readable target model in metadata.target_model and verify its referenced file exists.",
+        category=ValidationCategory.CONFORMANCE,
     )
     return ValidationResult(is_valid=False, errors=[error])
+
+
+def _project_load_warnings(project: Project) -> list[ValidationError]:
+    """Convert load-time normalization messages to validation warnings."""
+    return [
+        ValidationError(
+            severity="warning",
+            message=warning,
+            code="FIXED_ENTITY_VALUE_NORMALIZED",
+            suggestion="Save the project to persist the normalized fixed-entity values.",
+            category=ValidationCategory.STRUCTURAL,
+        )
+        for warning in getattr(project, "load_warnings", [])
+    ]
+
+
+def _project_preparation_issue(error: Exception, category: ValidationCategory) -> ValidationError:
+    """Convert a project preparation exception to an actionable validation issue."""
+    if isinstance(error, FileNotFoundError):
+        error_code = "PROJECT_REFERENCE_NOT_FOUND"
+        suggestion = "Check that every referenced include and target-model file exists and is readable."
+    elif isinstance(error, DomainException):
+        error_code = error.code
+        suggestion = "; ".join(error.tips) or "Correct the project configuration and retry validation."
+    else:
+        error_code = "PROJECT_PREPARATION_FAILED"
+        suggestion = "Review the project configuration and its referenced files, then retry validation."
+
+    context = getattr(error, "context", {})
+    if not isinstance(context, dict):
+        context = {}
+
+    return ValidationError(
+        severity="error",
+        entity=context.get("entity") or getattr(error, "entity_name", None),
+        message=getattr(error, "message", str(error)),
+        code=error_code,
+        suggestion=suggestion,
+        category=category,
+        metadata={"exception_type": type(error).__name__, **context},
+    )
+
+
+def _preparation_failure_result(
+    error: Exception,
+    *,
+    category: ValidationCategory,
+    project: Project,
+    validation_mode: DataValidationMode | None = None,
+    entity_names: list[str] | None = None,
+    warnings: list[ValidationError] | None = None,
+) -> ValidationResult:
+    """Return a failed validation result when project preparation cannot complete."""
+    issue = _project_preparation_issue(error, category)
+    entity_statuses: dict[str, EntityDataValidationResult] = {}
+    if validation_mode is not None:
+        names = entity_names if entity_names is not None else list(getattr(project, "entities", {}))
+        entity_statuses = {
+            name: EntityDataValidationResult(status=EntityDataValidationStatus.FAILED, reason=issue.message) for name in names
+        }
+
+    return ValidationResult(
+        is_valid=False,
+        errors=[issue],
+        warnings=warnings or [],
+        validation_mode=validation_mode,
+        status=DataValidationStatus.FAILED if validation_mode is not None else None,
+        status_reason=issue.message if validation_mode is not None else None,
+        entity_statuses=entity_statuses,
+    )
 
 
 class ValidationService:
@@ -109,25 +183,45 @@ class ValidationService:
         api_project: Project = project_service.load_project(project_name)
 
         structural_result = self.validate_project(api_project.model_dump(mode="python"), source_path=api_project.filename)
-        if structural_result.errors:
-            status_reason = f"Structural errors prevent data validation for this project: {structural_result.errors[0].message}"
+        load_warnings = _project_load_warnings(api_project)
+        load_errors: list[ValidationError] = list(getattr(api_project, "load_errors", []))
+        if structural_result.errors or load_errors:
+            errors = load_errors + structural_result.errors
+            status = DataValidationStatus.FAILED if load_errors else DataValidationStatus.SKIPPED
+            status_reason = (
+                f"Project preparation failed: {load_errors[0].message}"
+                if load_errors
+                else f"Structural errors prevent data validation for this project: {structural_result.errors[0].message}"
+            )
             logger.warning(f"Data validation skipped for '{project_name}': {status_reason}")
+            entity_status = EntityDataValidationStatus.FAILED if load_errors else EntityDataValidationStatus.SKIPPED
             entity_statuses = {
-                name: EntityDataValidationResult(status=EntityDataValidationStatus.SKIPPED, reason=status_reason)
-                for name in (entity_names or list(api_project.entities))
+                name: EntityDataValidationResult(status=entity_status, reason=status_reason)
+                for name in (entity_names if entity_names is not None else list(api_project.entities))
             }
             return ValidationResult(
                 is_valid=False,
-                errors=structural_result.errors,
-                warnings=structural_result.warnings,
+                errors=errors,
+                warnings=load_warnings + structural_result.warnings,
                 info=structural_result.info,
                 validation_mode=validation_mode,
-                status=DataValidationStatus.SKIPPED,
+                status=status,
                 status_reason=status_reason,
                 entity_statuses=entity_statuses,
             )
 
-        core_project: ShapeShiftProject = ProjectMapper.to_core(api_project)
+        try:
+            core_project: ShapeShiftProject = ProjectMapper.to_core(api_project)
+        except (DomainException, FileNotFoundError, ValueError) as error:
+            logger.exception("Could not prepare project '{}' for data validation", project_name)
+            return _preparation_failure_result(
+                error,
+                category=ValidationCategory.STRUCTURAL,
+                project=api_project,
+                validation_mode=validation_mode,
+                entity_names=entity_names,
+                warnings=load_warnings,
+            )
 
         # Use injected factory or default factory
         if self._data_orchestrator_factory:
@@ -165,7 +259,7 @@ class ValidationService:
         errors_list: list[ValidationError] = [ValidationMapper.to_api_error(issue) for issue in issues_list]
 
         errors: list[ValidationError] = [e for e in errors_list if e.severity == "error"]
-        warnings: list[ValidationError] = structural_result.warnings + [e for e in errors_list if e.severity == "warning"]
+        warnings: list[ValidationError] = load_warnings + structural_result.warnings + [e for e in errors_list if e.severity == "warning"]
         info: list[ValidationError] = structural_result.info + [e for e in errors_list if e.severity == "info"]
 
         result = ValidationResult(
@@ -313,13 +407,30 @@ class ValidationService:
             ValidationResult with errors and warnings for this entity
         """
 
-        core_project: ShapeShiftProject = ProjectMapper.to_core(project)
+        load_warnings = _project_load_warnings(project)
+        load_errors: list[ValidationError] = list(getattr(project, "load_errors", []))
+        if load_errors:
+            issues = [error for error in load_errors if error.entity == entity_name or error.entity is None]
+            if not issues:
+                issues = load_errors
+            return ValidationResult(is_valid=False, errors=issues, warnings=load_warnings)
+
+        try:
+            core_project: ShapeShiftProject = ProjectMapper.to_core(project)
+        except (DomainException, FileNotFoundError, ValueError) as error:
+            logger.exception("Could not prepare project '{}' for entity validation", project.metadata.name if project.metadata else "")
+            return _preparation_failure_result(
+                error,
+                category=ValidationCategory.STRUCTURAL,
+                project=project,
+                warnings=load_warnings,
+            )
 
         result: ValidationResult = self.validate_project(core_project.cfg, source_path=project.filename)
 
         # Filter to only errors/warnings for this entity
         entity_errors: list[ValidationError] = [e for e in result.errors if e.entity == entity_name or e.entity is None]
-        entity_warnings: list[ValidationError] = [w for w in result.warnings if w.entity == entity_name or w.entity is None]
+        entity_warnings: list[ValidationError] = load_warnings + [w for w in result.warnings if w.entity == entity_name or w.entity is None]
 
         return ValidationResult(is_valid=len(entity_errors) == 0, errors=entity_errors, warnings=entity_warnings)
 
@@ -344,21 +455,66 @@ class ValidationService:
 
         project_service: ProjectService = get_project_service()
         api_project: Project = project_service.load_project(project_name)
+        load_warnings = _project_load_warnings(api_project)
+        load_errors: list[ValidationError] = list(getattr(api_project, "load_errors", []))
+        if load_errors:
+            return ValidationResult(is_valid=False, errors=load_errors, warnings=load_warnings)
 
         try:
             core_project: ShapeShiftProject = ProjectMapper.to_core(api_project)
-        except FileNotFoundError as e:
-            # @load: in metadata.target_model points to a missing file.
-            logger.debug(f"Target model file not found for project '{project_name}', skipping conformance: {e}")
-            direct_fk_error = _direct_fk_target_model_error(api_project, "the configured target-model file could not be loaded")
-            return direct_fk_error or ValidationResult(is_valid=True)
+        except (DomainException, FileNotFoundError, ValueError) as error:
+            logger.exception("Could not prepare project '{}' for target-model validation", project_name)
+            direct_fk_result = _direct_fk_target_model_error(api_project, "the configured target model could not be loaded")
+            if direct_fk_result is not None:
+                direct_fk_result.warnings = load_warnings
+                return direct_fk_result
+            if isinstance(error, FileNotFoundError):
+                issue = ValidationError(
+                    severity="error",
+                    field="metadata.target_model",
+                    message=f"Target-model validation could not load a configured project reference: {error}",
+                    code="TARGET_MODEL_LOAD_FAILED",
+                    suggestion="Check that the configured @load: file exists and is readable from the project directory.",
+                    category=ValidationCategory.CONFORMANCE,
+                )
+                return ValidationResult(is_valid=False, errors=[issue], warnings=load_warnings)
+            return _preparation_failure_result(
+                error,
+                category=ValidationCategory.CONFORMANCE,
+                project=api_project,
+                warnings=load_warnings,
+            )
 
         target_model_data: dict | None = core_project.metadata.target_model
 
         if not target_model_data or not isinstance(target_model_data, dict):
             logger.debug(f"Project '{project_name}' has no resolved target_model — skipping conformance")
-            direct_fk_error = _direct_fk_target_model_error(api_project, "metadata.target_model is missing or unresolved")
-            return direct_fk_error or ValidationResult(is_valid=True)
+            direct_fk_result = _direct_fk_target_model_error(api_project, "metadata.target_model is missing or unresolved")
+            if direct_fk_result is not None:
+                direct_fk_result.warnings = load_warnings
+                return direct_fk_result
+            project_metadata = getattr(api_project, "metadata", None)
+            configured_target_model = getattr(project_metadata, "target_model", None)
+            if configured_target_model is None:
+                return ValidationResult(is_valid=True, warnings=load_warnings)
+            is_load_reference = isinstance(configured_target_model, str) and configured_target_model.lstrip().startswith("@load:")
+            issue = ValidationError(
+                severity="error",
+                field="metadata.target_model",
+                message=(
+                    "The configured target-model reference could not be loaded."
+                    if is_load_reference
+                    else "The configured target model is missing or could not be resolved."
+                ),
+                code="TARGET_MODEL_LOAD_FAILED" if is_load_reference else "TARGET_MODEL_UNAVAILABLE",
+                suggestion=(
+                    "Check that the configured @load: file exists and is readable from the project directory."
+                    if is_load_reference
+                    else "Set metadata.target_model to a valid inline model or a readable @load: file."
+                ),
+                category=ValidationCategory.CONFORMANCE,
+            )
+            return ValidationResult(is_valid=False, errors=[issue], warnings=load_warnings)
 
         logger.debug(f"Running target-model conformance for project: {project_name}")
         issues: list[ValidationError] = TargetModelValidator().validate(target_model_data, core_project)
@@ -367,7 +523,12 @@ class ValidationService:
         warnings: list[ValidationError] = [issue for issue in issues if issue.severity == "warning"]
         info: list[ValidationError] = [issue for issue in issues if issue.severity == "info"]
 
-        return ValidationResult(is_valid=len(errors) == 0, errors=errors, warnings=warnings, info=info)
+        return ValidationResult(
+            is_valid=len(errors) == 0,
+            errors=errors,
+            warnings=load_warnings + warnings,
+            info=info,
+        )
 
 
 # Singleton instance

@@ -7,6 +7,7 @@ from typing import Any, Literal, Type
 from pydantic import BaseModel, Field, field_serializer
 from pydantic.json_schema import GenerateJsonSchema
 
+from backend.app.models.validation import ValidationError
 from src.configuration import find_unresolved_directives
 
 
@@ -41,6 +42,37 @@ class TargetModelFileOption(BaseModel):
     label: str = Field(..., description="Picker label that identifies the target model location")
     value: str = Field(..., description="Target model @load: reference to save in project metadata")
     location: Literal["project", "shared"] = Field(..., description="Whether the model is project-local or shared")
+
+
+class TargetModelRequiredLink(BaseModel):
+    """A required target-model link shown as reference information."""
+
+    path: list[str] = Field(..., description="Target entity names after the selected entity")
+    missing_entities: list[str] = Field(..., description="Path entities that are not configured in the project")
+    required_when_has_new_rows: str | None = Field(
+        ...,
+        description="Source entity that makes the link required after reconciliation, or null for an unconditional link",
+    )
+
+
+class TargetModelEntityOption(BaseModel):
+    """A target-model entity that is not configured in the project."""
+
+    name: str = Field(..., description="Target-model entity name")
+    role: Literal["fact", "lookup", "classifier", "bridge"] | None = Field(..., description="Target-model entity role")
+    required: bool = Field(..., description="Whether the target model requires this entity")
+    description: str | None = Field(..., description="Target-model entity description")
+    target_table: str | None = Field(..., description="Target database table")
+    public_id: str | None = Field(..., description="Target identity column name")
+    required_columns: list[str] = Field(..., description="Required non-generated target columns")
+    required_links: list[TargetModelRequiredLink] = Field(..., description="Required target-model links")
+
+
+class TargetModelEntityOptionsResponse(BaseModel):
+    """Missing target-model entity options for a project."""
+
+    configured: bool = Field(..., description="Whether the project has a valid target model configured")
+    entities: list[TargetModelEntityOption] = Field(..., description="Target-model entities absent from the project")
 
 
 class ProjectMetadata(BaseModel):
@@ -114,6 +146,7 @@ class Project(BaseModel):
     task_list: dict[str, Any] | None = Field(default=None, description="Task list for entity progress tracking")
     metadata: ProjectMetadata | None = Field(default=None, description="Project metadata")
     load_warnings: list[str] = Field(default_factory=list, description="Non-fatal normalization warnings detected while loading")
+    load_errors: list[ValidationError] = Field(default_factory=list, description="Configuration errors detected while loading")
 
     @property
     def ingesters(self) -> dict[str, Any]:

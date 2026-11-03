@@ -1,0 +1,43 @@
+title: Share target models across projects
+description:
+## Summary
+
+Adds a shared target model directory so projects can reference one managed target model YAML file
+instead of copying it into each project.
+
+ - New GLOBAL_TARGET_MODEL_DIR setting (default shared/target-models, resolved under the application
+root, auto-created, and protected from the authorization database path). It is also added to the
+resolver's allowed environment variables.
+ - New endpoint GET /projects/{name}/target-models returns TargetModelFileOption entries listing
+project-local and shared .yml/.yaml files, each with a picker label and a location-specific @load:
+value (shared choices save as @load: ${GLOBAL_TARGET_MODEL_DIR}/<file>).
+ - ProjectMapper.to_core resolves the ${GLOBAL_TARGET_MODEL_DIR} variable and includes the shared
+directory among the approved @load: roots; references outside approved roots are still rejected.
+ - Shared target model references are read-only: the project target-model YAML read/update endpoints
+return 403 for paths containing ${GLOBAL_TARGET_MODEL_DIR}.
+ - The frontend MetadataEditor now uses the new endpoint and binds the combobox to labeled options,
+so same-named local and shared files remain distinguishable.
+ - Adds the design proposal docs/proposals/SHARED_TARGET_MODELS.md and backend/frontend tests
+covering picker listing, shared-reference resolution, read-only enforcement, path restrictions, and
+configuration defaults.
+
+## User-facing release note
+
+The project metadata target model picker now lists shared YAML target models alongside project-local
+files, so teams can maintain one shared model that multiple projects use without copying it. Shared
+models are read-only in the project editor; project-local models remain editable.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+ - New tests are included in the diff (backend: backend/tests/api/v1/test_projects.py,
+backend/tests/mappers/test_project_mapper_file_path_integration.py,
+backend/tests/test_authorization_config.py, backend/tests/test_config.py; frontend:
+frontend/src/api/__tests__/projects.test.ts), but no execution results for them are available in the
+provided evidence.
+ - CI checks on the pull request: the Container Release workflow jobs validate and publish both
+concluded SKIPPED. No other CI results were available, so no test suite run is confirmed as passed
+or failed.

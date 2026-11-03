@@ -1,0 +1,72 @@
+title: Add Excel/CSV file upload to data source directory
+description:
+## Summary
+
+This PR implements issue #174: uploading Excel/CSV files so they can be referenced in data source 
+configurations.
+
+Backend
+
+ - New endpoints on the data-sources router: GET /data-sources/files (list available files, with
+optional ext filter) and POST /data-sources/files (multipart upload, returns 201). Uploads are
+restricted to .xlsx, .xls, and .csv with a 50 MB size limit; filenames are sanitized, duplicate
+names get a numeric suffix, and partially written files are removed on failure.
+ - New ProjectFileInfo model (name, server-relative path, size, last-modified as ISO 8601).
+ - ProjectService gains list_data_source_files / save_data_source_file for the new global
+DATA_SOURCE_FILES_DIR setting (default ./input, auto-created at startup), plus project-scoped
+list_project_files / save_project_file helpers writing under projects/<name>/uploads/.
+ - Application VERSION now comes from backend/app/__init__.py (__version__), and semantic-release
+was extended to bump and commit that file alongside pyproject.toml.
+
+Frontend
+
+ - New dataSourceFilesApi (list/upload) and matching listFiles/uploadFile methods on projectsApi,
+plus a ProjectFileInfo type.
+ - DataSourceFormDialog.vue renders file_path driver fields as a dedicated picker with "Select
+existing" / "Upload" modes, per-driver file-type accept lists (csv/tsv, mdb/accdb, xlsx/xls), a
+refresh action, and error display; uploading fills the field with the returned server path.
+ - useDriverSchema now deduplicates driver aliases by display name (e.g. csv/tsv, xlsx/openpyxl) and
+exposes getCanonicalDriver, used when loading an existing data source.
+
+Ancillary changes in the same diff
+
+ - docker/Makefile: deployment targets gain guard-user (must run as sead or root) and guard-cwd
+(must run from the deploy dir) checks, and sudo was removed from build/deploy commands.
+ - backend/app/scripts/config.yml: added table_name_overrides and table_name_ignores mappings for
+SEAD tables.
+ - UI/docs housekeeping: session indicator is now closable and repositioned in ProjectDetailView,
+docs/images/README.md documents generated SVG diagrams, and TODO.md records the #174 task.
+
+## User-facing release note
+
+When configuring a data source that reads a file, you can now upload an Excel or CSV file directly
+from the form or pick one you uploaded earlier, instead of typing a server path by hand. Uploaded
+files are kept in the workspace input folder and are available to all data source configurations.
+
+## Upgrade notes
+
+ - A new DATA_SOURCE_FILES_DIR setting (default ./input, created automatically on startup) holds
+uploaded data source files; deployers may point it elsewhere via configuration.
+ - Uploads are limited to .xlsx, .xls, and .csv files up to 50 MB; other types are rejected.
+ - Docker deployment targets (docker-build, docker-build-local, docker-build-tag,
+update-deploy-scripts, etc.) must now be run as user sead (or root) from the deploy directory, and
+no longer invoke sudo.
+
+## Validation
+
+ - No CI check results are available for this pull request (the status check rollup is empty), so
+test or build outcomes are unknown.
+ - The diff updates two existing backend test files (test_project_service.py,
+test_task_service_initialize.py) with formatting-only changes; it does not add tests for the new
+upload endpoints or file-management methods.
+ - Not verified: validation results unavailable.
+
+## Detected orphaned commits
+
+Commits pushed directly to the base branch after the previous merged pull request. Each
+commit below reached the base branch without a pull request of its own.
+
+- `028d509` fix: update SEAD logo source to use variable (2026-01-19)
+- `da61f07` feat: add docker-patch-frontend and presentation export commands (2026-01-19)
+
+Filtered 3 housekeeping commit(s): docs-only 1, release-version-bump 2.
