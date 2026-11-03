@@ -77,16 +77,34 @@ pylint:
 # Lint only Python files changed against HEAD, including untracked files.
 .PHONY: pylint-changed
 pylint-changed:
-	@files="$$( { git diff --name-only --diff-filter=d HEAD -- '*.py'; \
-		git ls-files --others --exclude-standard -- '*.py'; } \
-		| grep -vE '^(\.venv|frontend|node_modules|docs|graphify-out)/' | sort -u)"; \
-	if [ -z "$$files" ]; then \
-		echo "pylint-changed: no changed Python files"; \
-	else \
-		echo "pylint-changed: checking $$(echo "$$files" | wc -l) file(s)"; \
-		echo "$$files" | xargs uv run pylint -j 0; \
-	fi
+	@{ git diff --name-only -z --diff-filter=d HEAD -- '*.py'; \
+		git ls-files --others --exclude-standard -z -- '*.py'; } \
+		| grep -zvE '^(\.venv|frontend|node_modules|docs|graphify-out)/' \
+		| sort -zu \
+		| xargs -0 -r uv run pylint -j 0
 
+.PHONY: lint-changed
+lint-changed: SHELL := /bin/bash
+lint-changed:
+	@mapfile -d '' candidates < <( \
+		{ \
+			git diff --name-only -z -- '*.py'; \
+			git diff --cached --name-only -z -- '*.py'; \
+			git ls-files --others --exclude-standard -z -- '*.py'; \
+		} | sort -zu \
+	); \
+	files=(); \
+	for file in "$${candidates[@]}"; do \
+		[[ ! -f "$$file" ]] || files+=("./$$file"); \
+	done; \
+	if (( $${#files[@]} == 0 )); then \
+		echo "No changed Python files."; \
+		exit 0; \
+	fi; \
+	uv run isort --profile black "$${files[@]}" && \
+	uv run black "$${files[@]}" && \
+	uv run pylint "$${files[@]}"
+	
 .PHONY: pyright
 pyright:
 	@uv run pyright --threads 2 src backend ingesters

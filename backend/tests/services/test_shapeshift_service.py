@@ -254,6 +254,57 @@ class TestShapeShiftService:
         assert "=concat(first_name, ' ', missing_last_name)" in issues[0]["message"]
         assert issues[0]["metadata"]["field"] == "extra_columns.display_name"
 
+    def test_collect_validation_issues_preserves_fk_identity_metadata(self, shapeshift_service: ShapeShiftService):
+        """Linker issue metadata reaches the preview payload without changes."""
+        linker_issue = LinkerValidationIssue(
+            issue_type="row_count_mismatch",
+            severity="warning",
+            local_entity="users",
+            remote_entity="accounts",
+            message="users -> accounts: join changed the row count",
+            metadata={
+                "row_count_before": 3,
+                "row_count_after": 2,
+                "join_type": "inner",
+                "fk_index": 1,
+                "fk_signature": "abc123",
+                "link_pass": "deferred_retry",
+            },
+        )
+        mock_linker = MagicMock()
+        mock_linker.validators = [MagicMock(issues=[linker_issue])]
+        mock_shape_shifter = MagicMock()
+        mock_shape_shifter.linker = mock_linker
+        mock_shape_shifter.table_store = TableStore()
+        mock_shape_shifter.unresolved_extra_columns = {}
+
+        issues = shapeshift_service._collect_validation_issues(mock_shape_shifter)
+
+        assert len(issues) == 1
+        assert issues[0]["metadata"]["fk_index"] == 1
+        assert issues[0]["metadata"]["fk_signature"] == "abc123"
+        assert issues[0]["metadata"]["link_pass"] == "deferred_retry"
+        assert issues[0]["metadata"]["row_count_before"] == 3
+
+    def test_deduplicate_validation_issues_keeps_issues_of_different_saved_links(self):
+        """Two identical warnings for different saved links stay as separate issues."""
+        shared: dict = {
+            "type": "row_count_mismatch",
+            "severity": "warning",
+            "local_entity": "users",
+            "remote_entity": "accounts",
+            "message": "users -> accounts: join changed the row count",
+        }
+        issues: list[dict] = [
+            {**shared, "metadata": {"fk_index": 0, "fk_signature": "same", "row_count_before": 3, "row_count_after": 2}},
+            {**shared, "metadata": {"fk_index": 1, "fk_signature": "same", "row_count_before": 3, "row_count_after": 2}},
+        ]
+
+        unique_issues = ShapeShiftService._deduplicate_validation_issues(issues)
+
+        assert len(unique_issues) == 2
+        assert [issue["metadata"]["fk_index"] for issue in unique_issues] == [0, 1]
+
     @pytest.mark.asyncio
     async def test_preview_entity_entity_not_found(self, shapeshift_service: ShapeShiftService, project_service: MagicMock):
         """Test preview with non-existent entity raises error."""
