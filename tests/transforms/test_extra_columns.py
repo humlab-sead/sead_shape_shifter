@@ -180,6 +180,28 @@ class TestInterpolationEvaluation:
         assert result.tolist() == ["{literal}", "{literal}"]
         assert result.index.equals(df.index)
 
+    def test_interpolation_handles_categorical_and_all_null_values(self):
+        """Null handling works for categorical and nullable columns."""
+        df = pd.DataFrame(
+            {
+                "category": pd.Series(pd.Categorical(["x", None])),
+                "all_null": pd.Series([pd.NA, pd.NA], dtype="Int64"),
+            }
+        )
+
+        result = ExtraColumnEvaluator.evaluate_interpolation(df, "{category}|{all_null}", "test")
+
+        assert result.tolist() == ["x|", "|"]
+
+    def test_interpolation_does_not_unescape_brace_markers_in_values(self):
+        """Escaped template braces do not change matching text in source values."""
+        marker = "\x00LEFTBRACE\x00"
+        df = pd.DataFrame({"value": [marker]})
+
+        result = ExtraColumnEvaluator.evaluate_interpolation(df, "{{literal}}:{value}", "test")
+
+        assert result.tolist() == ["{literal}:" + marker]
+
     def test_raises_on_missing_column(self):
         """ValueError raised if required column missing."""
         df = pd.DataFrame({"a": [1]})
