@@ -411,9 +411,16 @@ watch(hasDataValidationExecution, (hasExecution) => {
     activeTab.value = 'all'
   }
 })
-const dataValidationModeLabel = computed(() =>
-  props.validationResult?.validation_mode === 'sample' ? 'Sample' : 'Complete'
-)
+const dataValidationModeLabel = computed(() => {
+  switch (props.validationResult?.validation_mode) {
+    case 'sample':
+      return 'Sample'
+    case 'single_pass':
+      return 'Single pass'
+    default:
+      return 'Complete'
+  }
+})
 const dataValidationStatusColor = computed(() => {
   switch (props.validationResult?.status) {
     case 'completed':

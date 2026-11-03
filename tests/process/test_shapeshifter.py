@@ -710,6 +710,32 @@ class TestShapeShifter:
         with pytest.raises(ValueError, match="Invalid columns configuration"):
             await normalizer.normalize()
 
+    @pytest.mark.asyncio
+    async def test_normalize_continue_on_error_skips_failed_entity_and_dependents(self):
+        """continue_on_error records failures without aborting the whole run."""
+        survey_df = pd.DataFrame({"id": [1, 2], "name": ["a", "b"]})
+        project = ShapeShiftProject(
+            cfg={
+                "entities": {
+                    "survey": {"columns": ["id", "name"]},
+                    "broken": {"depends_on": [], "columns": ["valid", 1], "keys": []},
+                    "dependent": {"source": "broken", "columns": ["valid"]},
+                    "independent": {"source": "survey", "columns": ["id"]},
+                }
+            }
+        )
+
+        normalizer = ShapeShifter(project=project, default_entity="survey", table_store=TableStore({"survey": survey_df}))
+
+        await normalizer.normalize(continue_on_error=True)
+
+        assert "broken" in normalizer.incomplete_entities
+        assert "Invalid columns configuration" in normalizer.incomplete_entities["broken"]
+        assert "broken" not in normalizer.table_store
+        assert "dependent" not in normalizer.table_store
+        assert "broken" in normalizer.incomplete_entities["dependent"]
+        assert "independent" in normalizer.table_store
+
     def test_retry_linking_calls_link_entity(self):
         """Test that retry_linking() calls link_entity for all processed entities."""
         survey_df = pd.DataFrame({"col1": [1, 2]})
