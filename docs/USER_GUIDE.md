@@ -146,7 +146,7 @@ Projects already checked into the repository may remain unbound until the planne
 
 1. Open the **Validate** tab.
 2. Run **YAML Validation**.
-3. Run **Sample Data Validation**.
+3. Run **Sample Data Validation** (choose **Sample** for a quick check or **Complete** for full data).
 4. Review warnings and errors.
 
 ---
