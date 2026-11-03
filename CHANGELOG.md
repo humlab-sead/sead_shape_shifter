@@ -1,3 +1,10 @@
+# [2.6.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v2.5.0...v2.6.0) (2026-10-27)
+
+
+### Features
+
+* **release:** add v2.5.0 release notes and update dependencies ([22a1c2c](https://github.com/humlab-sead/sead_shape_shifter/commit/22a1c2c4e9b16337ad2a78ff03abe9f3cbb3893a))
+
 # [2.5.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v2.4.0...v2.5.0) (2026-10-27)
 
 
