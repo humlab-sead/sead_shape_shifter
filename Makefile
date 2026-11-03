@@ -518,7 +518,14 @@ release-notes-ai:
 .PHONY: push-chore-pr
 push-chore-pr:
 	@echo "Creating a chore pull request from every pending change..."
-	@uv run python scripts/create_change_pr.py \
+	@uv run python scripts/create_change_pr.py --type chore \
+		--generate-subject --all --generate-description --default-validation
+	@echo "✓ Change pull request merged into dev"
+
+.PHONY: push-fix-pr
+push-fix-pr:
+	@echo "Creating a fix pull request from every pending change..."
+	@uv run python scripts/create_change_pr.py --type fix \
 		--generate-subject --all --generate-description --default-validation
 	@echo "✓ Change pull request merged into dev"
 
@@ -527,6 +534,8 @@ push-chore-pr:
 push-chore-pr-dry:
 	@uv run python scripts/create_change_pr.py \
 		--generate-subject --all --generate-description --default-validation --dry-run
+
+
 
 ################################################################################
 # Presentation
