@@ -88,6 +88,7 @@ class Settings(BaseSettings):
     # Services
     RECONCILIATION_SERVICE_URL: str = "http://localhost:8000"
     SIMS_SERVICE_URL: str = "http://localhost:8000"  # sead_authority_service base URL for /identity endpoints
+    LINK_TRIAL_MAX_OUTPUT_ROWS: int = Field(default=1_000_000, ge=1)
 
     # Data source policy
     DATA_SOURCE_ALLOWED_ENV_VAR_PREFIXES: str = Field(default="SEAD_,SHAPE_SHIFTER_")

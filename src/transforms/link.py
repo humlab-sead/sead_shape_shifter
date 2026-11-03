@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 import pandas as pd
 from loguru import logger
@@ -9,6 +9,9 @@ from src.specifications import ForeignKeyDataSpecification
 from src.specifications.constraints import ForeignKeyConstraintValidator, ForeignKeyRuntimeOptions
 from src.table_store import TableStore
 from src.transforms.utility import merge_with_nonmatching_null_keys
+
+LinkPass = Literal["initial", "after_unnest", "deferred_retry"]
+"""Which linking pass raised a validation issue."""
 
 
 def _is_lookup_fk_enrichment(fk: ForeignKeyConfig, remote_cfg: TableConfig) -> bool:
@@ -65,6 +68,7 @@ class ForeignKeyLinker:
         self.table_store: TableStore = table_store
         self.validators: list[ForeignKeyConstraintValidator] = []
         self.deferred_tracker: DeferredLinkingTracker = DeferredLinkingTracker()
+        self.link_pass: LinkPass = "initial"
 
     def link_foreign_key(
         self,
@@ -95,7 +99,9 @@ class ForeignKeyLinker:
             fk=fk,
             remote_entity=remote_entity,
             runtime_options=runtime_options,
-        ).validate_before_merge(local_df, remote_df)
+        )
+        validator.link_pass = self.link_pass
+        validator.validate_before_merge(local_df, remote_df)
 
         # Store validator to collect issues later
         self.validators.append(validator)

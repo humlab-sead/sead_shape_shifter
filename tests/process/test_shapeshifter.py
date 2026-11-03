@@ -1,5 +1,6 @@
 """Unit tests for arbodat normalizer classes."""
 
+import ast
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -8,6 +9,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pandas as pd
 import pytest
 
+import src.normalizer as src_normalizer
 from src.extract import SubsetService
 from src.loaders.base_loader import DataLoader
 from src.model import ShapeShiftProject, TableConfig
@@ -735,6 +737,95 @@ class TestShapeShifter:
             call_args_list = [call.kwargs for call in mock_link.call_args_list]
             entity_names = [args["entity_name"] for args in call_args_list]
             assert set(entity_names) == {"survey", "site", "sample"}
+
+    def test_retry_linking_marks_deferred_retry_pass(self):
+        """Every retry call runs with the deferred retry pass and leaves the linker on the initial pass."""
+        config = ShapeShiftProject(
+            cfg={
+                "entities": {
+                    "survey": {"depends_on": []},
+                    "site": {"depends_on": []},
+                }
+            }
+        )
+        normalizer = ShapeShifter(project=config, default_entity="survey")
+        observed: list[str] = []
+        linker = Mock(deferred_tracker=Mock(deferred={"survey", "site"}))
+        linker.link_entity.side_effect = lambda entity_name: observed.append(linker.link_pass)
+        normalizer.linker = linker
+
+        normalizer.retry_linking()
+
+        assert observed == ["deferred_retry", "deferred_retry"]
+        assert linker.link_pass == "initial"
+
+    def test_retry_linking_restores_initial_pass_when_linking_raises(self):
+        """A failing retry still returns the linker to the initial pass."""
+        config = ShapeShiftProject(cfg={"entities": {"survey": {"depends_on": []}}})
+        normalizer = ShapeShifter(project=config, default_entity="survey")
+        linker = Mock(deferred_tracker=Mock(deferred={"survey"}))
+        linker.link_entity.side_effect = RuntimeError("link failed")
+        normalizer.linker = linker
+
+        with pytest.raises(RuntimeError, match="link failed"):
+            normalizer.retry_linking()
+
+        assert linker.link_pass == "initial"
+
+    @pytest.mark.asyncio
+    async def test_process_entity_marks_after_unnest_pass(self, monkeypatch: pytest.MonkeyPatch):
+        """The second linking call of an unnesting entity runs with the after-unnest pass."""
+        project = ShapeShiftProject(
+            cfg={
+                "entities": {
+                    "site": {
+                        "type": "fixed",
+                        "public_id": "site_id",
+                        "keys": ["site_code"],
+                        "columns": ["site_code", "site_name"],
+                    },
+                    "measurement": {
+                        "type": "entity",
+                        "keys": ["site_code"],
+                        "columns": ["site_code", "measure_a", "measure_b"],
+                        "foreign_keys": [{"entity": "site", "local_keys": ["site_code"], "remote_keys": ["site_code"], "how": "left"}],
+                        "unnest": {
+                            "id_vars": ["site_code"],
+                            "value_vars": ["measure_a", "measure_b"],
+                            "var_name": "variable",
+                            "value_name": "value",
+                        },
+                        "check_functional_dependency": False,
+                    },
+                }
+            }
+        )
+        source = pd.DataFrame({"site_code": ["a", "b"], "measure_a": [1, 1], "measure_b": [2, 2]})
+        parent = pd.DataFrame({"system_id": [1, 2], "site_code": ["a", "b"], "site_name": ["North", "South"]})
+        normalizer = ShapeShifter(project=project, table_store=TableStore({"site": parent}))
+        observed: list[str] = []
+
+        async def get_source_subset(*_args: Any, **_kwargs: Any) -> pd.DataFrame:
+            return source.copy()
+
+        original_link = normalizer.linker.link_entity
+
+        def record_link(entity_name: str) -> bool:
+            if entity_name == "measurement":
+                observed.append(normalizer.linker.link_pass)
+            return original_link(entity_name)
+
+        monkeypatch.setattr(normalizer, "get_subset", get_source_subset)
+        monkeypatch.setattr(normalizer.linker, "link_entity", record_link)
+
+        try:
+            await normalizer._process_entity("measurement", SubsetService())
+        finally:
+            normalizer.duckdb_workspace.close()
+            normalizer.loaders.close_all()
+
+        assert observed == ["initial", "after_unnest"]
+        assert normalizer.linker.link_pass == "initial"
 
     @pytest.mark.asyncio
     async def test_normalize_with_circular_dependency(self, survey_only_config: ShapeShiftProject):
@@ -1468,3 +1559,106 @@ entities:
 
         # Should return None or log warning
         assert loader is None
+
+
+def _normalizer_call_label(call: ast.Call) -> str:
+    """Return a dotted name for one call expression."""
+    func = call.func
+    if isinstance(func, ast.Name):
+        return func.id
+    if isinstance(func, ast.Attribute):
+        parts: list[str] = [func.attr]
+        value = func.value
+        while isinstance(value, ast.Attribute):
+            parts.append(value.attr)
+            value = value.value
+        if isinstance(value, ast.Name):
+            parts.append(value.id)
+        return ".".join(reversed(parts))
+    return ast.dump(func)
+
+
+def _ordered_calls(node: ast.AST) -> list[ast.Call]:
+    """Return the calls inside a node in source order."""
+    calls = [child for child in ast.walk(node) if isinstance(child, ast.Call)]
+    return sorted(calls, key=lambda call: (call.lineno, call.col_offset))
+
+
+def _process_entity_function() -> ast.FunctionDef | ast.AsyncFunctionDef:
+    """Return the parsed body of ``ShapeShifter._process_entity``."""
+    source_path = Path(src_normalizer.__file__)
+    tree = ast.parse(source_path.read_text(encoding="utf-8"))
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ClassDef) and node.name == "ShapeShifter":
+            for child in node.body:
+                if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)) and child.name == "_process_entity":
+                    return child
+    raise AssertionError("ShapeShifter._process_entity was not found")
+
+
+def test_process_entity_post_link_stages_match_the_baseline_projection_contract() -> None:
+    """Every pipeline stage after the last link is covered by the baseline projection rules.
+
+    The foreign-key baseline truncates the saved entity config so that it reaches
+    one linking pass. That is only correct while the stages that run after the
+    last ``_link_entity`` call are the ones the projection already handles:
+
+    - stage filters (after_link, after_unnest)
+    - unnest-dependent deduplication
+    - duplicate-key checks and empty-row drops
+    - identity columns and mapping-sidecar links
+    - deferred retry
+    - extra-column verification and column reordering
+
+    A new stage call in this region fails the test until the projection rules and
+    this list are updated together.
+    """
+    process_entity = _process_entity_function()
+
+    link_calls: list[ast.Call] = [
+        call
+        for statement in process_entity.body
+        for call in _ordered_calls(statement)
+        if _normalizer_call_label(call) == "self._link_entity"
+    ]
+    assert link_calls, "_process_entity no longer links entities"
+
+    link_passes: list[str] = [
+        keyword.value.value for call in link_calls for keyword in call.keywords if keyword.arg == "link_pass"  # type: ignore[attr-defined]
+    ]
+    assert link_passes == ["initial", "after_unnest"]
+
+    last_link = link_calls[-1]
+    last_statement_index: int = max(index for index, statement in enumerate(process_entity.body) if last_link in _ordered_calls(statement))
+
+    post_link_calls: list[str] = []
+    for index, statement in enumerate(process_entity.body):
+        if index < last_statement_index:
+            continue
+        for call in _ordered_calls(statement):
+            if index == last_statement_index and call.lineno <= last_link.lineno:
+                continue
+            post_link_calls.append(_normalizer_call_label(call))
+
+    # Plain collection helpers inside the same statements are not pipeline stages.
+    ignored_helpers: set[str] = {"set", "table_cfg.extra_columns.items", "self.unresolved_extra_columns.pop"}
+    stages: list[str] = [call for call in post_link_calls if call not in ignored_helpers]
+
+    assert stages == [
+        "self._evaluate_deferred_extra_columns",
+        "apply_filters",
+        "self.drop_duplicates",
+        "self._check_duplicate_keys",
+        "drop_empty_rows",
+        "add_system_id",
+        "table_cfg.add_public_id_column",
+        "self._apply_mapping_sidecar_links",
+        "self.retry_linking",
+        "self.extra_col_evaluator.get_unresolved_extra_columns",
+        "self.extra_col_evaluator.verify_extra_columns",
+        "self.project.reorder_columns",
+    ], (
+        "The pipeline stages after the last link changed. Update "
+        "backend/app/services/link_baseline_service.py so the temporary config still "
+        "reproduces a link input, then update this contract."
+    )
