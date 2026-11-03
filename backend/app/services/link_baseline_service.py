@@ -96,8 +96,8 @@ def build_replay_project(saved_project: ShapeShiftProject, resolution: LinkIssue
     """Return a copy of the saved project configured for one linking pass.
 
     The local entity keeps only the foreign keys saved before the selected one,
-    loses its business keys, and keeps the pipeline stages that run before the
-    recorded linking pass.
+    preserves the selected link's local keys in its columns, loses its business
+    keys, and keeps the pipeline stages that run before the recorded linking pass.
 
     Args:
         saved_project: Resolved project that raised the warning.
@@ -119,6 +119,11 @@ def build_replay_project(saved_project: ShapeShiftProject, resolution: LinkIssue
     replay: ShapeShiftProject = saved_project.clone()
     entity_cfg: dict[str, Any] = replay.entities[fk.local_entity]
 
+    columns: list[str] = list(entity_cfg.get("columns") or [])
+    required_columns: list[str] = [
+        key for key in fk.local_keys if key not in columns and key not in saved_cfg.unnest_columns
+    ]
+    entity_cfg["columns"] = columns + required_columns
     entity_cfg["foreign_keys"] = list(entity_cfg.get("foreign_keys") or [])[: resolution.fk_index]
     entity_cfg["keys"] = []
 

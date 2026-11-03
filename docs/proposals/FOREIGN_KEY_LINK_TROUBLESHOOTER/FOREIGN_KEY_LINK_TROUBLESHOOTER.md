@@ -80,7 +80,7 @@ Compare baseline counts and link-specific findings with a real linking run using
 - Limit the action and A-row diagnostics to inner and left joins; right, outer, and cross joins are deferred. Keep A/B, join type, and constraints fixed, with no writes or promotion in this edition. Apply project read authorization and cap response size.
 - Use the resolved production null policy for match status and counts, including partially null compound keys. Validate count parity with actual execution, visibility of cancelling loss and expansion, and the absence of project/cache mutations.
 - A warning identifies its saved FK by the FK's index in the entity's `foreign_keys` list, checked against a signature of the entity pair, key pairs, join type, deferral, and resolved constraints. The full contract is in [Phase 1 of the phase plan](FOREIGN_KEY_LINK_TROUBLESHOOTER_PHASE_PLAN.md).
-- Before implementing the preview, decide how to obtain or recompute the exact link-stage inputs and handle a baseline that no longer reproduces the warning.
+- Obtain the selected link's A and B inputs by replaying the production pipeline on a temporary entity config, and report when the warning no longer reproduces. See [Phase 2 of the phase plan](FOREIGN_KEY_LINK_TROUBLESHOOTER_PHASE_PLAN.md#phase-2-reproduce-the-selected-link).
 
 ## Final Recommendation
 

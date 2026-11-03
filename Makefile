@@ -76,7 +76,6 @@ pylint:
 
 # Lint only Python files changed against HEAD, including untracked files.
 .PHONY: pylint-changed
-.PHONY: pylint-changed
 pylint-changed:
 	@{ git diff --name-only -z --diff-filter=d HEAD -- '*.py'; \
 		git ls-files --others --exclude-standard -z -- '*.py'; } \

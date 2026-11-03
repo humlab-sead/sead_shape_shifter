@@ -422,6 +422,103 @@ async def test_inner_join_baseline_matches_the_production_link() -> None:
 
 
 @pytest.mark.asyncio
+async def test_baseline_keeps_selected_local_key_that_only_exists_in_source() -> None:
+    """The replay extracts selected FK keys that are not declared as entity columns."""
+    cfg: dict[str, Any] = {
+        "entities": {
+            "orders": {
+                "type": "entity",
+                "source": "raw_orders",
+                "public_id": "order_id",
+                "keys": ["order_code"],
+                "columns": ["order_code"],
+                "foreign_keys": [
+                    {
+                        "entity": "customers",
+                        "local_keys": ["customer_code"],
+                        "remote_keys": ["code"],
+                        "constraints": {"allow_row_decrease": True},
+                    }
+                ],
+            },
+            "raw_orders": {
+                "type": "fixed",
+                "public_id": "raw_order_id",
+                "keys": ["order_code"],
+                "columns": ["order_code", "customer_code"],
+                "values": [["O1", "C1"], ["O2", "C2"], ["O3", "missing"]],
+            },
+            "customers": {
+                "type": "fixed",
+                "public_id": "customer_id",
+                "keys": ["code"],
+                "columns": ["code", "name"],
+                "values": [["C1", "Alpha"], ["C2", "Beta"], ["C3", "Gamma"]],
+            },
+        }
+    }
+
+    result, _ = await assert_parity(cfg, local_entity="orders", index=0)
+
+    assert (result.row_count_before, result.row_count_after) == (3, 2)
+
+
+@pytest.mark.asyncio
+async def test_baseline_keeps_selected_local_key_produced_by_an_earlier_fk() -> None:
+    """The replay retains a local key produced by an earlier FK's extra_columns."""
+    cfg: dict[str, Any] = {
+        "entities": {
+            "orders": {
+                "type": "entity",
+                "source": "raw_orders",
+                "public_id": "order_id",
+                "keys": ["order_code"],
+                "columns": ["order_code", "customer_code"],
+                "foreign_keys": [
+                    {
+                        "entity": "customers",
+                        "local_keys": ["customer_code"],
+                        "remote_keys": ["code"],
+                        "extra_columns": {"customer_name": "name"},
+                    },
+                    {
+                        "entity": "customer_names",
+                        "local_keys": ["customer_name"],
+                        "remote_keys": ["name"],
+                        "constraints": {"allow_row_decrease": True},
+                    },
+                ],
+            },
+            "raw_orders": {
+                "type": "fixed",
+                "public_id": "raw_order_id",
+                "keys": ["order_code"],
+                "columns": ["order_code", "customer_code"],
+                "values": [["O1", "C1"], ["O2", "C2"], ["O3", "C3"]],
+            },
+            "customers": {
+                "type": "fixed",
+                "public_id": "customer_id",
+                "keys": ["code"],
+                "columns": ["code", "name"],
+                "values": [["C1", "Alpha"], ["C2", "Beta"], ["C3", "Gamma"]],
+            },
+            "customer_names": {
+                "type": "fixed",
+                "public_id": "customer_name_id",
+                "keys": ["name"],
+                "columns": ["name"],
+                "values": [["Alpha"], ["Beta"]],
+            },
+        }
+    }
+
+    result, _ = await assert_parity(cfg, local_entity="orders", index=1)
+
+    assert (result.row_count_before, result.row_count_after) == (3, 2)
+
+
+@pytest.mark.asyncio
 async def test_left_join_baseline_matches_the_production_link() -> None:
     """A left link keeps unmatched rows and matches the production finding."""
     cfg = copy.deepcopy(INNER_JOIN_CFG)
