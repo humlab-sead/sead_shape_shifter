@@ -312,6 +312,34 @@ Squash and rebase merges pass only if GitHub still associates the resulting comm
 
 A pull request cannot repair an earlier direct push. Opening a pull request from a branch that contains the pushed commit associates that commit with the pull request while the branch exists, but the association disappears once the branch is merged and deleted. Fix a reported commit by reverting it through a pull request and re-applying the change on its own branch, or promote it with an explicit override.
 
+## Promoting `dev` to `staging`
+
+Use `promote_dev_to_staging.sh` to verify commit provenance, create a draft
+promotion pull request, and prepare its description from branch history:
+
+```bash
+# Create the draft PR and generate its local description
+scripts/promote_dev_to_staging.sh prepare
+
+# Review or edit docs/whats-new/PRs/PR_<number>.txt, then publish it
+scripts/promote_dev_to_staging.sh publish <pull-request-number>
+```
+
+The script requires authenticated `gh` access, the repository `.venv`, and an
+`origin` remote pointing to `humlab-sead/sead_shape_shifter`. It does not merge
+the pull request. After required reviews and checks pass, merge it with:
+
+```bash
+gh pr merge <pull-request-number> --merge
+```
+
+If `dev` changes after the description draft is generated, regenerate and review
+the draft before publishing it:
+
+```bash
+.venv/bin/python scripts/update_pr_descriptions.py <pull-request-number> --draft --force
+```
+
 ## Deployment Scripts
 
 These scripts package the deployment steps from the container deployment guide into reusable command-line helpers. They are host tools: run them from a repository checkout. They live in `deployment/container-host/`, outside the `deployment/container/` release bundle, so they are never shipped in a release archive.
