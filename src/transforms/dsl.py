@@ -654,10 +654,15 @@ class PandasStringBackend:
             raise DSLEvaluationError("concat expects at least one argument")
 
         series_args: list[pd.Series] = [self._to_nullable_string_series(arg) for arg in args]
-        result: pd.Series = series_args[0]
-        for s in series_args[1:]:
-            result = result.str.cat(s, na_rep="")
-        return result
+        if len(series_args) == 1:
+            return series_args[0]
+        others: pd.DataFrame = pd.concat(
+            series_args[1:],
+            axis=1,
+            keys=range(len(series_args) - 1),
+            copy=False,
+        )
+        return series_args[0].str.cat(others, na_rep="")
 
     def _fn_upper(self, value: Any) -> pd.Series:
         return self._to_nullable_string_series(value).str.upper()
@@ -765,32 +770,27 @@ class PandasStringBackend:
         return self._to_nullable_string_series(value).str.replace(old_s, new_s, regex=False)
 
     def _fn_regex_extract(self, value: Any, pattern: Any, group: Any = 0) -> pd.Series:
-        """Extract the first match of *pattern* (a regex literal) from each element.
-
-        *group* selects the capture group (default 0 = full match).
-        Returns None for elements that do not match.
-        """
+        """Extract the first regex match, or the selected capture group."""
         if isinstance(pattern, pd.Series):
             raise DSLEvaluationError("Function 'regex_extract' requires a string literal for pattern")
-        group_i: int = self._require_scalar_int(group, "regex_extract")
+
+        group_i = self._require_scalar_int(group, "regex_extract")
+
         try:
             compiled = re.compile(str(pattern))
         except re.error as exc:
             raise DSLEvaluationError(f"regex_extract: invalid pattern {pattern!r}: {exc}") from exc
 
-        def _extract(v: Any) -> str | None:
-            if v is None:
-                return None
-            m = compiled.search(str(v))
-            if m is None:
-                return None
-            try:
-                return m.group(group_i)
-            except IndexError as exc:
-                raise DSLEvaluationError(f"regex_extract: pattern has no group {group_i}") from exc
+        if not 0 <= group_i <= compiled.groups:
+            raise DSLEvaluationError(f"regex_extract: pattern has no group {group_i}")
 
-        s = self._ensure_series(value)
-        return s.map(_extract, na_action="ignore")
+        search = compiled.search
+
+        def _extract(v: Any) -> str | None:
+            match = search(str(v))
+            return None if match is None else match[group_i]
+
+        return self._ensure_series(value).map(_extract, na_action="ignore")
 
 
 # ============================================================================
