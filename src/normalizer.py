@@ -181,8 +181,15 @@ class ShapeShifter:
 
         return data
 
-    async def normalize(self) -> Self:
-        """Extract all configured entities and store them."""
+    async def normalize(self, continue_on_error: bool = False) -> Self:
+        """Extract all configured entities and store them.
+
+        Args:
+            continue_on_error: When True, an entity that fails to process is recorded in
+                ``incomplete_entities`` and skipped instead of aborting the whole run.
+                Dependent entities are marked incomplete by the dependency check below.
+                When False (default), the first entity failure stops normalization.
+        """
         subset_service: SubsetService = SubsetService()
         self.mapping_catalog = self.mapping_manager.load(self.project.filename)
 
@@ -210,9 +217,12 @@ class ShapeShifter:
 
                 try:
                     await self._process_entity(entity, subset_service)
-                except Exception as e:
+                except Exception as e:  # pylint: disable=broad-exception-caught
                     self.incomplete_entities[entity] = str(e)
-                    raise
+                    if not continue_on_error:
+                        raise
+                    logger.error(f"Entity '{entity}' failed and was skipped: {e}")
+                    self.state.mark_incomplete(entity)
 
             self._link_deferred_foreign_keys()
         finally:

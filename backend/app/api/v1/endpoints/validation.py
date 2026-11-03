@@ -42,6 +42,8 @@ async def validate_project_data(
         validation_mode: Validation mode:
             - SAMPLE: Fast validation using preview samples (up to 1000 rows per entity)
             - COMPLETE: Full validation using complete normalized dataset (slower but comprehensive)
+            - SINGLE_PASS: Full validation from one project-wide normalization pass; entities that
+              cannot be produced are reported individually and only their dependents are skipped
 
     Returns:
         Validation result with data-specific errors and warnings

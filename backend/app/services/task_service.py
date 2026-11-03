@@ -12,7 +12,7 @@ from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.mappers.project_name_mapper import ProjectNameMapper
 from backend.app.models.project import Project
 from backend.app.models.task import EntityTaskStatus, ProjectTaskStatus, TaskPriority, TaskStatus
-from backend.app.models.validation import ValidationError, ValidationResult
+from backend.app.models.validation import DataValidationMode, ValidationError, ValidationResult
 from backend.app.services.dependency_service import get_dependency_service
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.services.shapeshift_service import ShapeShiftService, get_shapeshift_service
@@ -134,8 +134,11 @@ class TaskService:
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(f"Skipping task note sidecar refresh for '{project_name}': {exc}")
 
-        # Get validation results for all entities
-        validation_result: ValidationResult = await self.validation_service.validate_project_data(project_name)
+        # Get validation results for all entities. Task status runs one project-wide
+        # normalization pass instead of a per-entity preview burst; see DataValidationMode.
+        validation_result: ValidationResult = await self.validation_service.validate_project_data(
+            project_name, validation_mode=DataValidationMode.SINGLE_PASS
+        )
 
         # Build status for all entities (existing + required but missing)
         entity_statuses: dict[str, EntityTaskStatus] = {}
