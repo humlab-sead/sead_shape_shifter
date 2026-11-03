@@ -261,6 +261,7 @@ class ProjectMapper:
                 filename=api_config.filename,
                 env_prefix=settings.env_prefix,
                 env_filename=settings.env_file,
+                runtime_root=str(settings.APPLICATION_ROOT),
                 allowed_roots=(
                     project_root,
                     settings.GLOBAL_DATA_DIR,
