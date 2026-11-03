@@ -244,8 +244,14 @@ function formatBranchLabel(branchName: string | null | undefined, branchSource: 
 </script>
 
 <style scoped>
+.validation-message-table :deep(.v-table__wrapper > table) {
+  width: 100%;
+  table-layout: fixed;
+}
+
 .validation-message-summary {
   display: block;
+  min-width: 0;
   max-width: min(38rem, 100%);
   overflow: hidden;
   text-overflow: ellipsis;
