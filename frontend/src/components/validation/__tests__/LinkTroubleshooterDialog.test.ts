@@ -151,6 +151,7 @@ function candidateMessage(overrides: Partial<ValidationError> = {}): ValidationE
       fk_signature: 'saved-signature',
       link_pass: 'initial',
       join_type: 'inner',
+      remote_entity: 'customers',
     },
     ...overrides,
   }
@@ -259,6 +260,14 @@ describe('LinkTroubleshooterDialog', () => {
     expect(wrapper.find('select[aria-label="A key"]').attributes('data-selected')).toBe('saved_code')
     expect(wrapper.find('select[aria-label="B key"]').attributes('data-selected')).toBe('saved_value')
     expect(wrapper.findAll('button').some((button) => button.text().trim() === 'Save')).toBe(false)
+  })
+
+  it('shows the entity pair from the warning metadata while the first request loads', async () => {
+    mockOpen.mockImplementationOnce(() => new Promise<LinkTroubleshootResponse | null>(() => undefined))
+    const wrapper = mountDialog()
+
+    expect(wrapper.text()).toContain('orders → customers')
+    expect(wrapper.text()).not.toContain('Unknown entity')
   })
 
   it('keeps a configured system_id key selected for the initial trial', async () => {
