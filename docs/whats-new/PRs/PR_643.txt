@@ -1,0 +1,41 @@
+title: feat(workflow): add script and skill for change pull requests
+description:
+## Summary
+
+Adds scripts/create_change_pr.py, a scripted path from uncommitted work to a merged change pull
+request into dev: it creates a branch, stages only the --path values given (or everything with
+--all, refusing blanket paths like .), commits with a validated Conventional Commit subject, pushes,
+opens the pull request with a body following .github/pull_request_template.md, and optionally
+merges it. Promotion targets (staging, main) are refused. Optional flags draft the commit subject
+and the pull request description via Copilot CLI (--generate-subject, --generate-description,
+reusing update_pr_descriptions.py), and --default-validation records the repository's standard
+pylint/pytest lines without executing them. A safety check re-verifies the pending file set before
+committing so the body cannot go stale.
+
+Supporting changes: a create-change-pr agent skill (.agents/skills/create-change-pr/SKILL.md)
+covering the decisions the script cannot make, make push-chore-pr / make push-chore-pr-dry
+fast-track targets, a scripts/README.md section documenting usage, and a pointer line in
+.github/instructions/github-workflow.instructions.md. Unit tests in
+scripts/tests/test_create_change_pr.py cover subject validation and parsing, branch naming, body
+rendering with required headings and fallbacks, path resolution, validation-line composition, and
+merge follow-up messages.
+
+## User-facing release note
+
+Repository maintainers can now move uncommitted work into dev through a scripted pull request
+workflow: run scripts/create_change_pr.py (or make push-chore-pr for the fast-track path) to branch,
+commit, open, and merge a change pull request with a template-conformant body, keeping promotion
+provenance checks happy.
+
+## Upgrade notes
+
+None - no user action required. The new script requires git and an authenticated gh on a checkout of
+the base branch, and the optional --generate-subject / --generate-description flags need the
+existing Copilot provider settings; none of this changes existing workflows.
+
+## Validation
+
+ - Author-reported in the pull request body (not independently verified here): uv run pylint -j 0
+src tests backend ingesters: exit 0 and pytest: all passed.
+ - No CI status checks are recorded for this pull request (statusCheckRollup is empty), so CI
+execution and results are unknown.

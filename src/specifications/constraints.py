@@ -362,6 +362,7 @@ class ForeignKeyConstraintValidator:
         self.size_after_merge: tuple[int, int] = (0, 0)
         self.issues: list[ValidationIssue] = []
         self.raise_on_violation: bool = raise_on_violation
+        self.link_pass: str = "initial"
 
     def validate_before_merge(self, local_df: pd.DataFrame, remote_df: pd.DataFrame) -> Self:
         """Validate constraints before performing the merge."""
@@ -447,7 +448,10 @@ class ForeignKeyConstraintValidator:
                         metadata={
                             "row_count_before": self.size_before_merge[0],
                             "row_count_after": self.size_after_merge[0],
-                            "join_type": self.fk.how,
+                            "join_type": self.fk.how or "inner",
+                            "fk_index": self.fk.fk_index,
+                            "fk_signature": self.fk.identity_signature,
+                            "link_pass": self.link_pass,
                         },
                     )
                 )

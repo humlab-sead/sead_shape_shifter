@@ -26,7 +26,7 @@ from src.transforms.branch import process_merged_branch
 from src.transforms.drop import drop_duplicate_rows, drop_empty_rows
 from src.transforms.extra_columns import ExtraColumnEvaluator
 from src.transforms.filter import apply_filters
-from src.transforms.link import ForeignKeyLinker
+from src.transforms.link import ForeignKeyLinker, LinkPass
 from src.transforms.translate import translate
 from src.transforms.unnest import UnnestSkippedError, unnest
 from src.transforms.utility import add_system_id
@@ -256,7 +256,7 @@ class ShapeShifter:
 
         self.table_store[entity] = data
 
-        self.linker.link_entity(entity_name=entity)
+        self._link_entity(entity_name=entity, link_pass="initial")
 
         # Re-evaluate deferred extra_columns after FK linking (in case they reference FK-added columns)
         deferred_extra_columns = self._evaluate_deferred_extra_columns(entity, deferred_extra_columns)
@@ -279,7 +279,7 @@ class ShapeShifter:
                 self.state.mark_incomplete(entity)
                 return
             drop_empty_rows_applied = self._drop_empty_rows_if_ready(entity, table_cfg)
-            self.linker.link_entity(entity_name=entity)
+            self._link_entity(entity_name=entity, link_pass="after_unnest")
             # Re-evaluate deferred extra_columns after unnesting (in case unnest added new columns)
             deferred_extra_columns = self._evaluate_deferred_extra_columns(entity, deferred_extra_columns)
 
@@ -455,7 +455,23 @@ class ShapeShifter:
     def retry_linking(self) -> None:
         """Retry linking only for entities currently in deferred set."""
         for entity_name in list(self.linker.deferred_tracker.deferred):  # Create copy to avoid mutation during iteration
+            self._link_entity(entity_name=entity_name, link_pass="deferred_retry")
+
+    def _link_entity(self, entity_name: str, link_pass: LinkPass) -> None:
+        """Run one linking pass for an entity and record which pass raised any issue.
+
+        The linker carries the pass name while it links the entity and returns to
+        the initial pass afterwards, even when linking raises.
+
+        Args:
+            entity_name: Name of the entity whose foreign keys are linked.
+            link_pass: Name of the linking pass now running.
+        """
+        self.linker.link_pass = link_pass
+        try:
             self.linker.link_entity(entity_name=entity_name)
+        finally:
+            self.linker.link_pass = "initial"
 
     def store(self, target: str, mode: str) -> Self:
         """Write to specified target based on the specified mode."""

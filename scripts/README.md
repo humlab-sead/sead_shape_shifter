@@ -73,6 +73,86 @@ Promotion pull requests (`dev` into `staging`, or `staging` into `main`) are dra
 
 `--include-orphaned` appends a `Detected orphaned commits` section covering the commits pushed to the base branch between the previous merged pull request and this one. Generated output, release bookkeeping, documentation-only commits, and contributor configuration are filtered out of that section by default, and the filtered counts stay visible in the section and on standard error. See [the What's New workflow](../docs/whats-new/README.md#recording-commits-without-a-pull-request).
 
+## `create_change_pr.py`
+
+`create_change_pr.py` moves uncommitted work onto a branch and merges it into
+`dev` through a pull request. Run it whenever a change touches `scripts/`,
+`src/`, `backend/`, `frontend/`, `ingesters/`, `tests/`, or
+`.github/workflows/`, because those paths need pull request provenance before
+`dev` can be promoted. See the
+[promotion guard workflow](../.github/workflows/promotion-guard.yml).
+
+```bash
+# Show the branch, commit message, file list, and pull request body first
+uv run python scripts/create_change_pr.py \
+  --type chore --scope deps \
+  --subject "upgrade dev tooling and adapt code to new checks" \
+  --path uv.lock --path src/loaders --path src/specifications \
+  --validation "uv run pylint -j 0 src tests backend ingesters: exit 0" \
+  --dry-run
+
+# Create the branch, commit, push, open the pull request, and merge it
+uv run python scripts/create_change_pr.py \
+  --type chore --scope deps \
+  --subject "upgrade dev tooling and adapt code to new checks" \
+  --path uv.lock --path src/loaders --path src/specifications
+
+# Open the pull request and stop before merging
+uv run python scripts/create_change_pr.py \
+  --type fix --subject "reject blank entity keys" \
+  --path src/validators --no-merge
+
+# Stage the whole working tree when every pending change is one logical commit
+uv run python scripts/create_change_pr.py \
+  --type feat --scope workflow \
+  --subject "add script and skill for change pull requests" \
+  --all --generate-description
+
+# Report the default pylint and pytest lines instead of typing them
+uv run python scripts/create_change_pr.py \
+  --type fix --subject "reject blank entity keys" \
+  --path src/validators --default-validation
+
+# Let Copilot draft the commit subject from the pending diff
+uv run python scripts/create_change_pr.py \
+  --generate-subject --all --default-validation --dry-run
+```
+
+The script stages only the paths given with `--path`, so unrelated work stays
+uncommitted. `--all` stages every pending change instead, for the case where the
+whole working tree is one logical commit; it is mutually exclusive with `--path`.
+Both modes refuse the literal blanket values such as `.`, reject a dirty index,
+and refuse `staging` and `main` as targets because those are promotion branches.
+The pull request body uses the four sections required by
+[.github/pull_request_template.md](../.github/pull_request_template.md);
+`--release-note`, `--upgrade-notes`, and `--validation` supply the content that
+the author knows, and the template fallback text is used otherwise.
+
+`--generate-description` runs `update_pr_descriptions.py` for the new pull
+request once it exists, so the Copilot-written description replaces the scaffold
+body. That step needs the Copilot provider settings described above. The draft
+file it writes under `docs/whats-new/PRs/` is committed and pushed to the pull
+request branch by default, as a second commit named
+`docs(whats-new): record the description for pull request #<n>`, because the
+repository tracks those files. Pass `--no-commit-description-draft` to leave the
+file untracked instead.
+
+`--default-validation` adds the two repository default lines,
+`uv run pylint -j 0 src tests backend ingesters: exit 0` and
+`pytest: all passed`, before any `--validation` lines you pass. The script never
+runs those checks, so it records text you are responsible for having verified.
+Run both commands yourself first, and pass `--validation` for narrower or
+different evidence.
+
+`--generate-subject` drafts the commit subject from the pending changes with
+Copilot CLI, so `--type`, `--scope`, and `--subject` can be omitted. It sends the
+status list, the tracked diff, and a short preview of each new untracked file,
+because a plain `git diff` omits new files. The result still passes the same
+checks as a hand-written subject, and `--subject` and `--generate-subject` are
+mutually exclusive. The call happens before the commit, so `--dry-run` shows the
+subject it would use. A generation failure stops the run and asks for
+`--subject`.
+
 ## `draft_all_pr_descriptions.py`
 
 ### Usage
@@ -164,6 +244,48 @@ python3 scripts/generate_user_release_notes.py --version 1.26.0 --force-heuristi
 - `--output PATH`: Write the generated note to a custom path.
 - `--force-heuristic`: Do not use AI drafting.
 - `--update-github-release`: Update the matching GitHub Release body via `gh`.
+
+## `verify_promotion_provenance.sh`
+
+Fails a promotion when code changes were pushed straight to the source branch instead of arriving through a pull request. Direct pushes have no review record and cannot appear in generated release notes, because the generator reads merged pull requests only.
+
+### Quick Start
+
+```bash
+# Check a dev into staging promotion before opening the pull request
+GH_TOKEN=$(gh auth token) scripts/verify_promotion_provenance.sh \
+  --base origin/staging --head origin/dev
+
+# Check one explicit range
+scripts/verify_promotion_provenance.sh --base 7a90e566 --head f4c8a177
+```
+
+### What It Does
+
+- Walks the first-parent chain from `--head` back to `--base`. That chain is the source branch's own history.
+- Passes merge commits whose subject is `Merge pull request #<n>`, and does not inspect the commits they merge.
+- Treats every other commit on the chain as a squash merge, rebase merge, or direct push. It passes when GitHub associates the commit with a pull request whose base branch is not `staging` or `main`. Promotion pull requests are ignored, because merging a promotion associates it with every commit it carries.
+- Reports each failing commit, its subject, and the protected paths it changes. Writes a Markdown summary to `GITHUB_STEP_SUMMARY` when that variable is set.
+
+### Protected Paths
+
+`scripts/`, `src/`, `backend/`, `frontend/`, `ingesters/`, `tests/`, and `.github/workflows/`. Override with the colon-separated `PROTECTED_PATHS` environment variable, for example `PROTECTED_PATHS="src/:backend/"` to check only backend code.
+
+### Exit Codes
+
+- `0`: every commit touching a protected path carries pull request provenance.
+- `1`: at least one such commit has none.
+- `2`: usage error, unknown ref, or failed GitHub API request.
+
+### Automation
+
+`.github/workflows/promotion-guard.yml` runs the script on pull requests into `staging` and `main`. The workflow is advisory until it is added as a required status check on the repository ruleset. Commits already on the target branch are outside the range, so the check reports only what a promotion adds.
+
+### Known Limitation
+
+Squash and rebase merges pass only if GitHub still associates the resulting commit with its pull request. Merge commits are recognised from their subject and do not depend on that association, which is how this repository currently merges pull requests.
+
+A pull request cannot repair an earlier direct push. Opening a pull request from a branch that contains the pushed commit associates that commit with the pull request while the branch exists, but the association disappears once the branch is merged and deleted. Fix a reported commit by reverting it through a pull request and re-applying the change on its own branch, or promote it with an explicit override.
 
 ## Deployment Scripts
 

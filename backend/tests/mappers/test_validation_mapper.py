@@ -1,5 +1,6 @@
 from backend.app.mappers.validation_mapper import ValidationMapper
 from backend.app.models.validation import ValidationCategory, ValidationPriority
+from src.specifications.constraints import ValidationIssue as LinkerValidationIssue
 from src.target_model.conformance import ConformanceIssue
 from src.validators.data_validators import ValidationIssue
 
@@ -56,3 +57,30 @@ def test_from_core_issue_uses_column_as_field_fallback() -> None:
     )
 
     assert result.field == "site_id"
+
+
+def test_from_linker_issue_preserves_fk_identity_metadata() -> None:
+    """Linker issue metadata keeps the foreign-key identity and the added context keys."""
+    issue = LinkerValidationIssue(
+        issue_type="row_count_mismatch",
+        severity="warning",
+        local_entity="users",
+        remote_entity="accounts",
+        message="users -> accounts: join changed the row count",
+        metadata={
+            "row_count_before": 3,
+            "row_count_after": 2,
+            "join_type": "inner",
+            "fk_index": 2,
+            "fk_signature": "abc123",
+            "link_pass": "after_unnest",
+        },
+    )
+
+    result = ValidationMapper.from_linker_issue(issue)
+
+    assert result.metadata["fk_index"] == 2
+    assert result.metadata["fk_signature"] == "abc123"
+    assert result.metadata["link_pass"] == "after_unnest"
+    assert result.metadata["issue_type"] == "row_count_mismatch"
+    assert result.metadata["remote_entity"] == "accounts"
