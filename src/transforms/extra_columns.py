@@ -450,24 +450,30 @@ class ExtraColumnEvaluator:
         left_brace: str = "\x00LEFTBRACE\x00"
         right_brace: str = "\x00RIGHTBRACE\x00"
         template: str = pattern.replace("{{", left_brace).replace("}}", right_brace)
-        values: dict[str, pd.Series] = {
-            column: df[column].map(lambda value: "" if pd.isna(value) else to_str(value)).rename(None) for column in columns
-        }
+        values: dict[str, pd.Series] = {}
+        for column in columns:
+            converted: pd.Series = df[column].map(to_str, na_action="ignore")
+            if converted.dtype != object:
+                converted = converted.astype(object)
+            values[column] = converted.fillna("").rename(None)
+
+        def unescape_literal(text: str) -> str:
+            return text.replace(left_brace, "{").replace(right_brace, "}")
 
         result: pd.Series | str = ""
         offset: int = 0
         for match in ExtraColumnEvaluator.INTERPOLATION_PATTERN.finditer(template):
             if match.start() > offset:
-                result = result + template[offset : match.start()]
+                result = result + unescape_literal(template[offset : match.start()])
             result = result + values[match.group(1)]
             offset = match.end()
 
         if offset < len(template):
-            result = result + template[offset:]
+            result = result + unescape_literal(template[offset:])
         if isinstance(result, str):
             result = pd.Series(result, index=df.index, dtype=object)
 
-        return result.str.replace(left_brace, "{", regex=False).str.replace(right_brace, "}", regex=False).rename(None)
+        return result.rename(None)
 
     def evaluate_extra_columns(
         self,
