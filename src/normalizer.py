@@ -219,6 +219,7 @@ class ShapeShifter:
                     await self._process_entity(entity, subset_service)
                 except Exception as e:  # pylint: disable=broad-exception-caught
                     self.incomplete_entities[entity] = str(e)
+                    self.table_store.pop(entity, None)
                     if not continue_on_error:
                         raise
                     logger.error(f"Entity '{entity}' failed and was skipped: {e}")

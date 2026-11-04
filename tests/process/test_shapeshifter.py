@@ -962,6 +962,38 @@ class TestShapeShifter:
         assert "broken" in normalizer.incomplete_entities["dependent"]
 
     @pytest.mark.asyncio
+    async def test_normalize_removes_partially_produced_entity_and_skips_dependents(self, monkeypatch):
+        """A failure after storing an entity must not leave it available to caches or dependents."""
+        project = ShapeShiftProject(
+            cfg={
+                "entities": {
+                    "broken": {"columns": ["id"]},
+                    "dependent": {"source": "broken", "columns": ["id"]},
+                }
+            }
+        )
+        normalizer = ShapeShifter(project=project)
+        processed_entities: list[str] = []
+
+        async def fail_after_store(entity: str, _subset_service: object) -> None:
+            processed_entities.append(entity)
+            normalizer.table_store[entity] = pd.DataFrame({"id": [1]})
+            if entity == "broken":
+                raise ValueError("late normalization failure")
+
+        monkeypatch.setattr(normalizer, "_process_entity", fail_after_store)
+
+        await normalizer.normalize(continue_on_error=True)
+
+        assert processed_entities == ["broken"]
+        assert "broken" not in normalizer.table_store
+        assert "dependent" not in normalizer.table_store
+        assert normalizer.incomplete_entities == {
+            "broken": "late normalization failure",
+            "dependent": "Skipped because prerequisite entity 'broken' is incomplete: late normalization failure",
+        }
+
+    @pytest.mark.asyncio
     async def test_normalize_applies_after_unnest_filters(self):
         """Filters staged after unnest should see generated var/value columns."""
         survey_df = pd.DataFrame(
