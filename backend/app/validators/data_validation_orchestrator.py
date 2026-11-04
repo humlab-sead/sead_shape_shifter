@@ -21,7 +21,7 @@ from backend.app.models.validation import (
     EntityDataValidationStatus,
 )
 from backend.app.services.project_service import ProjectService
-from backend.app.services.shapeshift_service import ShapeShiftService
+from backend.app.services.shapeshift_service import ProjectNormalizationResult, ShapeShiftService
 from src.model import ShapeShiftProject
 from src.normalizer import ShapeShifter
 from src.specifications.constraints import ValidationIssue as LinkerValidationIssue
@@ -171,6 +171,43 @@ class FullDataFetchStrategy(DataFetchStrategy):
             return []
 
         return _get_normalizer_additional_issues(normalizer, entity_name)
+
+
+class SinglePassDataFetchStrategy(DataFetchStrategy):
+    """Normalizes the whole project once and serves every entity from that result.
+
+    One project-wide pass replaces the per-entity preview fetches used by
+    ``PreviewDataFetchStrategy``. Entities that fail to normalize are reported with their
+    failure reason, and entities that depend on them are skipped by the orchestrator, so one
+    broken entity does not hide results for the rest of the project.
+    """
+
+    def __init__(self, preview_service: ShapeShiftService) -> None:
+        self.preview_service: ShapeShiftService = preview_service
+        self._results: dict[str, ProjectNormalizationResult] = {}
+
+    async def prepare(self, project_name: str) -> None:
+        """Normalize every configured entity in one pass."""
+        self._results[project_name] = await self.preview_service.normalize_project(project_name)
+
+    async def fetch(self, project_name: str, entity_name: str) -> pd.DataFrame:
+        """Return the normalized data for one entity."""
+        result: ProjectNormalizationResult | None = self._results.get(project_name)
+        if result is None:
+            raise RuntimeError(f"Project '{project_name}' was not normalized before data validation")
+        if entity_name in result.incomplete_entities:
+            raise RuntimeError(f"Entity '{entity_name}' could not be normalized: {result.incomplete_entities[entity_name]}")
+        if entity_name not in result.table_store:
+            raise RuntimeError(f"Entity '{entity_name}' was not produced by project normalization")
+        return result.table_store[entity_name]
+
+    async def get_additional_issues(self, project_name: str, entity_name: str) -> list[ValidationIssue]:
+        """Return issues recorded while normalizing the entity."""
+        result: ProjectNormalizationResult | None = self._results.get(project_name)
+        if result is None:
+            return []
+
+        return _get_normalizer_additional_issues(result.normalizer, entity_name)
 
 
 class TableStoreDataFetchStrategy(DataFetchStrategy):

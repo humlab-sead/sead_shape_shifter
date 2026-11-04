@@ -150,8 +150,12 @@ Backend: POST /api/v1/validate → ValidationService
   ├─ Constraint validation
   │   ├─ FK definitions and cardinality
   │   └─ Functional dependencies
-  └─ Data validation (optional, sample rows)
-      └─ Column existence, FK values
+  └─ Data validation (optional)
+      ├─ sample: preview fetch per entity (up to 1000 rows)
+      ├─ complete: one full normalization, aborts when any entity cannot be produced
+      └─ single_pass: one full normalization, reports each entity that cannot be
+          produced and skips only its dependents
+          └─ used by task status (GET /projects/{name}/tasks)
   ↓
 Frontend: ValidationResult grouped by severity (error / warning / info)
 ```

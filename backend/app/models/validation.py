@@ -20,6 +20,7 @@ class DataValidationMode(str, Enum):
 
     SAMPLE = "sample"  # Fast validation using preview samples (limit 1000 rows)
     COMPLETE = "complete"  # Full validation using complete normalized dataset
+    SINGLE_PASS = "single_pass"  # Full validation from one project-wide normalization pass
 
 
 class DataValidationStatus(str, Enum):

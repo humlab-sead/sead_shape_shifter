@@ -257,7 +257,11 @@ const { loading, error, result, localKeys, remoteKeys, page, pageSize, rowFilter
 
 const header = computed(() => {
   const localEntity = result.value?.relationship?.local_entity || props.message.entity || 'Unknown entity'
-  const remoteEntity = result.value?.relationship?.remote_entity || 'Unknown entity'
+  // The warning metadata carries the remote entity, so the header stays correct while the first request loads.
+  const metadataRemote = props.message.metadata?.remote_entity
+  const remoteEntity =
+    result.value?.relationship?.remote_entity ||
+    (typeof metadataRemote === 'string' && metadataRemote.trim().length > 0 ? metadataRemote : 'Unknown entity')
   return `${localEntity} → ${remoteEntity}`
 })
 const keyPairCount = computed(() => Math.max(localKeys.value.length, remoteKeys.value.length))
