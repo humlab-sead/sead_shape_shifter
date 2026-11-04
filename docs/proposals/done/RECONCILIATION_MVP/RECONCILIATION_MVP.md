@@ -2,9 +2,11 @@
 
 ## Status
 
-- Proposed change request — draft for review, revised after [RECONCILIATION_MVP_REVIEW.md](RECONCILIATION_MVP_REVIEW.md)
-- Scope: A human-reviewed workflow that links normalized rows to existing SEAD entities, with links that stay correct across reruns.
+- **Implemented** (branch `reconciliation-mvp`; not yet merged).
+- Scope: A human-reviewed workflow that links normalized rows to existing SEAD entities, with links that stay correct across reruns. Delivered for the entity type `site` only.
 - Goal: Make an exported reconciliation decision reliably set the intended row's `public_id`, and make every rerun of the workflow produce the same result.
+- Validation: Recorded in the [phase plan](RECONCILIATION_MVP_PHASE_PLAN.md) task plans. Phase 7 end-to-end validation passed on 2026-10-31 against a helper-owned disposable database and a live Authority Service: 5 tests passed with zero skips, binding adopted `site_id` 1, allocating local-only `site_id` 6504, generating `sample_group_id` 13962, and keeping the Core child FK on local `system_id` 10001. The Phase 7 manual UI review passed on 2026-11-04. Phase 4, the Authority Service candidate, readiness, and SIMS binding work, is tracked in the companion Authority Service proposal, not in this repository.
+- Remaining follow-up: Merging the implementation; extending the workflow beyond `site` is tracked by [RECONCILIATION_ENTITY_TYPE_EXPANSION](../../RECONCILIATION_ENTITY_TYPE_EXPANSION/RECONCILIATION_ENTITY_TYPE_EXPANSION.md).
 
 ## Summary
 
@@ -46,18 +48,18 @@ Shape Shifter can export a resolved ID and apply it during normalization when th
 - Live verification during normalization, or any change to normalization's offline behavior.
 - Migrating legacy reconciliation catalogs or links; no project uses them.
 - Checking SIMS lifecycle state from reconciliation, or adopting existing SEAD rows into SIMS. SIMS enforces its own rules when a change request binds an ID.
-- Audit history, multi-reviewer approval, or rollback; see [Reconciliation Future Improvements](../RECONCILIATION_FUTURE_IMPROVEMENTS.md).
+- Audit history, multi-reviewer approval, or rollback; see [Reconciliation Future Improvements](../../RECONCILIATION_FUTURE_IMPROVEMENTS.md).
 - Changing the three-tier identity model, Core foreign keys, or the Extract → Filter → Link → Unnest → Translate → Store order.
 - Replacing the fixed-entity mapping synchronization.
 
 ## Current Behavior
 
-- Results are saved in a reconciliation catalog; only exported links in the sidecar affect normalization. Export protects manual sidecar links, and normalization applies committed links to `public_id` using the order manual, reconciliation, import ([export](../../../backend/app/services/reconciliation/service.py#L217), [normalization](../../../src/normalizer.py#L536)).
-- `Link` has fields for source, target ID, confidence, timestamps, notes, and reviewers, but no owner. It does not set a Pydantic `extra` mode, so unknown fields are ignored by default; an optional new field is compatible with existing sidecars (verified in [sidecar model](../../../src/reconciliation/mapping_model.py#L143)).
-- The target-entity resolver reads the entity's output rows through the preview service with `limit=1000`. Export writes the raw reconciliation source value as the sidecar key instead of the `local_key` ([resolvers](../../../backend/app/services/reconciliation/resolvers.py#L72), [export](../../../backend/app/services/reconciliation/service.py#L237)).
-- UI and backend disagree on the manual-decision request format, and confidence is displayed inconsistently ([routes](../../../backend/app/api/v1/endpoints/reconciliation.py#L423), [view](../../../frontend/src/components/reconciliation/ReconciliationView.vue#L254), [grid](../../../frontend/src/components/reconciliation/ReconciliationGrid.vue#L400)). These were reported in the assessment and not re-verified for this revision.
-- The ingester adapter selects a top candidate without a threshold or `match=true` ([adapter](../../../backend/app/services/ingester_runtime.py#L320), [planning](../../../ingesters/sead_change_request/planning.py#L96)).
-- The ingester's normalized-table bundle has no operator-decision metadata, and a missing `public_id` is planned as reconciliation work ([bundle](../../../ingesters/sead_change_request/contracts.py#L84), [planning](../../../ingesters/sead_change_request/planning.py#L28)).
+- Results are saved in a reconciliation catalog; only exported links in the sidecar affect normalization. Export protects manual sidecar links, and normalization applies committed links to `public_id` using the order manual, reconciliation, import ([export](../../../../backend/app/services/reconciliation/service.py#L217), [normalization](../../../../src/normalizer.py#L536)).
+- `Link` has fields for source, target ID, confidence, timestamps, notes, and reviewers, but no owner. It does not set a Pydantic `extra` mode, so unknown fields are ignored by default; an optional new field is compatible with existing sidecars (verified in [sidecar model](../../../../src/reconciliation/mapping_model.py#L143)).
+- The target-entity resolver reads the entity's output rows through the preview service with `limit=1000`. Export writes the raw reconciliation source value as the sidecar key instead of the `local_key` ([resolvers](../../../../backend/app/services/reconciliation/resolvers.py#L72), [export](../../../../backend/app/services/reconciliation/service.py#L237)).
+- UI and backend disagree on the manual-decision request format, and confidence is displayed inconsistently ([routes](../../../../backend/app/api/v1/endpoints/reconciliation.py#L423), [view](../../../../frontend/src/components/reconciliation/ReconciliationView.vue#L254), [grid](../../../../frontend/src/components/reconciliation/ReconciliationGrid.vue#L400)). These were reported in the assessment and not re-verified for this revision.
+- The ingester adapter selects a top candidate without a threshold or `match=true` ([adapter](../../../../backend/app/services/ingester_runtime.py#L320), [planning](../../../../ingesters/sead_change_request/planning.py#L96)).
+- The ingester's normalized-table bundle has no operator-decision metadata, and a missing `public_id` is planned as reconciliation work ([bundle](../../../../ingesters/sead_change_request/contracts.py#L84), [planning](../../../../ingesters/sead_change_request/planning.py#L28)).
 - In the assessed local environment, a real `site` reconciliation request returned HTTP 500 because `authority.fuzzy_site` was missing. This is an environment-specific observation.
 - No `source: reconciliation` links were found under `data/projects`.
 
@@ -137,7 +139,7 @@ No change to ID assignment. Normalization applies committed ID links offline fro
 - **Stale links:** A SEAD row can disappear after export. Normalization does not detect this. SIMS binding catches untracked or invalid IDs, but SEAD row removal is detected only by a later re-export.
 - **Existing-data adoption:** Importing a reconciled existing `site` through SIMS requires its row to be tracked in SIMS. That adoption has no plan or owner (see Open Questions). Reconciliation links can be created without it, but the change-request step will fail on untracked IDs.
 - **Volume:** Processing all rows costs more than a 1,000-row preview. Use batching and progress reporting.
-- **Concurrency:** The project lock is process-local. The deployment runs one backend worker, which [OPERATIONS.md](../../OPERATIONS.md) already requires and the container `CMD` enforces with `--workers 1`. This proposal adds no cross-process locking and depends on that constraint; revisit only if multi-worker deployment is planned ([mapping sync status](../done/MATERIALIZED_ENTITY_MAPPING_SYNC/MATERIALIZED_ENTITY_MAPPING_SYNC.md)).
+- **Concurrency:** The project lock is process-local. The deployment runs one backend worker, which [OPERATIONS.md](../../../OPERATIONS.md) already requires and the container `CMD` enforces with `--workers 1`. This proposal adds no cross-process locking and depends on that constraint; revisit only if multi-worker deployment is planned ([mapping sync status](../../done/MATERIALIZED_ENTITY_MAPPING_SYNC/MATERIALIZED_ENTITY_MAPPING_SYNC.md)).
 - **Manual links:** They are trusted and not checked against SEAD, so a typo in a target ID is not detected. SIMS enforces tracked identity when the ID is bound.
 - **Allocation approvals:** Exported local-only approvals add a separate sidecar entry and trusted ingester input. Export must prevent conflicting ownership and links, and the ingester must reject missing or inconsistent approval metadata rather than treating an unreviewed row as an allocation miss.
 
@@ -179,7 +181,7 @@ Verify actual target IDs and downstream foreign-key values, not only HTTP respon
 - No legacy migration. Old-format catalogs are ignored. Links without an owner are treated like manual links.
 - Cleanup of a removed specification runs when the specification is deleted.
 - Manual links, including for fixed-valued entities, go through the existing mapping-link endpoint as `source: manual`, are not checked by the Authority Service, and do not edit fixed rows.
-- No cross-process sidecar locking. One backend worker per project data directory is a deployment constraint, already stated in [OPERATIONS.md](../../OPERATIONS.md).
+- No cross-process sidecar locking. One backend worker per project data directory is a deployment constraint, already stated in [OPERATIONS.md](../../../OPERATIONS.md).
 - Exported local-only approvals are distinct from ID links, keyed and owned by specification, and passed from the authorized sidecar as trusted ingester metadata. A missing `public_id` alone never permits allocation.
 - The change-request ingester does not read `verified_at` or pick candidates. It uses sidecar links for existing IDs, keeps the pre-linked-ID path, blocks rejected and undecided reconciled rows without IDs, and permits approved allocation only for `reconcile-exact` and `reconcile-fuzzy`. No current project relies on its own candidate picking.
 - The Authority Service proposal is the single normative contract; this proposal does not restate candidate URI rules.
