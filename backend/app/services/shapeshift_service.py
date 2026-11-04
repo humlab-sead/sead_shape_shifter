@@ -54,6 +54,7 @@ class ShapeShiftService:
         # Optional warm table_store populated by a project-wide run to short-circuit later preview calls
         self._warm_table_store: TableStore | None = None
         self._warm_validation_issues: dict[str, list[dict[str, Any]]] = {}
+        self._warm_project_name: str | None = None
         self._warm_project_version: int | None = None
         self._warm_timestamp: float = 0.0
         self._warm_incomplete_entities: dict[str, str] = {}
@@ -138,6 +139,7 @@ class ShapeShiftService:
             not using_override
             and self._warm_table_store
             and entity_name in self._warm_table_store
+            and self._warm_project_name == project_name
             and self._warm_project_version == project_version
             and time.time() - self._warm_timestamp < self.cache.ttl_seconds
         ):
@@ -310,7 +312,7 @@ class ShapeShiftService:
         if missing_entities:
             raise ValueError(f"Entities not found in project '{project_name}': {', '.join(missing_entities)}")
 
-        reusable: ProjectNormalizationResult | None = self._reusable_warm_result(project_version)
+        reusable: ProjectNormalizationResult | None = self._reusable_warm_result(project_name, project_version, set(names))
         if reusable is not None:
             logger.info(f"Reusing normalized data for {project_name} (version {project_version})")
             return reusable
@@ -346,6 +348,7 @@ class ShapeShiftService:
 
         self._warm_table_store = table_store
         self._warm_validation_issues = validation_issues_by_entity
+        self._warm_project_name = project_name
         self._warm_project_version = project_version
         self._warm_timestamp = time.time()
         self._warm_incomplete_entities = incomplete_entities
@@ -367,13 +370,19 @@ class ShapeShiftService:
             project_version=project_version,
         )
 
-    def _reusable_warm_result(self, project_version: int) -> ProjectNormalizationResult | None:
-        """Return the warm normalization result when it is complete, current, and fresh."""
+    def _reusable_warm_result(
+        self, project_name: str, project_version: int, requested_entity_names: set[str]
+    ) -> ProjectNormalizationResult | None:
+        """Return a fresh warm result when it covers the requested project entities."""
         if self._warm_table_store is None or self._warm_normalizer is None:
+            return None
+        if self._warm_project_name != project_name:
             return None
         if self._warm_incomplete_entities:
             return None
         if self._warm_project_version != project_version:
+            return None
+        if not requested_entity_names.issubset(self._warm_table_store.keys()):
             return None
         if time.time() - self._warm_timestamp >= self.cache.ttl_seconds:
             return None
@@ -590,6 +599,7 @@ class ShapeShiftService:
         # Preserve warm table_store for subsequent preview calls in this service instance
         self._warm_table_store = table_store
         self._warm_validation_issues = validation_issues_by_entity
+        self._warm_project_name = project_name
         self._warm_project_version = project_version
         self._warm_timestamp = time.time()
         self._warm_incomplete_entities = {}
@@ -619,6 +629,7 @@ class ShapeShiftService:
         self.cache.invalidate(project_name, entity_name)
         self._warm_table_store = None
         self._warm_validation_issues = {}
+        self._warm_project_name = None
         self._warm_project_version = None
         self._warm_timestamp = 0.0
         self._warm_incomplete_entities = {}
