@@ -388,7 +388,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     }
   }
 
-  async function getServiceManifest() {
+  async function getServiceManifest(): Promise<unknown> {
     try {
       return await reconciliationServiceApi.getManifest()
     } catch (e: any) {

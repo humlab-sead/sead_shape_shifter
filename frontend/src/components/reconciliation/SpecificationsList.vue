@@ -95,7 +95,7 @@
               :color="isRemoteTypeValid(item) ? 'success' : 'warning'"
               variant="tonal"
             >
-              {{ item.remote.service_type }}
+              {{ item.remote.service_type }} ({{ getCompatibility(item).status }})
             </v-chip>
             <v-chip v-else size="small" color="grey" variant="tonal">
               <v-icon start size="x-small">mdi-minus-circle</v-icon>
@@ -122,16 +122,20 @@
           <!-- Actions Column -->
           <template #item.actions="{ item }">
             <div class="d-flex gap-1">
-              <v-tooltip text="Reconcile this entity" location="top">
+              <v-tooltip
+                :text="getCompatibility(item).message ?? 'Find candidates for this specification'"
+                location="top"
+              >
                 <template #activator="{ props }">
-                  <v-btn
-                    icon="mdi-auto-fix"
-                    size="small"
-                    variant="text"
-                    color="primary"
-                    v-bind="props"
-                    @click.stop="reconcileSpec(item)"
-                  />
+                  <span v-bind="props">
+                    <v-btn
+                      icon="mdi-auto-fix"
+                      size="small"
+                      variant="text"
+                      color="primary"
+                      @click.stop="reconcileSpec(item)"
+                    />
+                  </span>
                 </template>
               </v-tooltip>
 
@@ -224,10 +228,13 @@ import { storeToRefs } from 'pinia'
 import { useReconciliationStore } from '@/stores/reconciliation'
 import { useNotification } from '@/composables/useNotification'
 import type { EntityResolutionListItem } from '@/types/reconciliation'
+import type { ReconciliationManifestResult } from '@/types/reconciliation'
+import { getReconciliationCompatibility } from '@/utils/reconciliationManifest'
 import SpecificationEditor from './SpecificationEditor.vue'
 
 interface Props {
   projectName: string
+  manifestResult?: ReconciliationManifestResult | null
 }
 
 const props = defineProps<Props>()
@@ -265,8 +272,11 @@ const headers = [
 
 // Methods
 function isRemoteTypeValid(item: EntityResolutionListItem): boolean {
-  // TODO: Validate against available remote types from service
-  return item.remote.service_type != null
+  return getCompatibility(item).status === 'supported'
+}
+
+function getCompatibility(item: EntityResolutionListItem) {
+  return getReconciliationCompatibility(props.manifestResult, item.remote?.service_type, item.property_mappings ?? {})
 }
 
 function openAddDialog() {
@@ -371,36 +381,35 @@ async function validateSpecification(spec: EntityResolutionListItem): Promise<Va
 
   // Get actual available fields from API (includes all column types)
   const entityColumns = await getEntityFields(entityForValidation)
-
   if (entityColumns.length === 0) {
     status.hasErrors = true
     status.errors.push(`Entity '${entityForValidation}' not found or has no columns`)
-    return status
-  }
-
-  // Check if target field exists
-  if (!entityColumns.includes(spec.target_field)) {
-    status.hasErrors = true
-    status.errors.push(`Target field '${spec.target_field}' not found in entity '${entityForValidation}'`)
-  }
-
-  // Check if property mapping source columns exist
-  const missingColumns: string[] = []
-  Object.entries(spec.property_mappings || {}).forEach(([prop, sourceCol]) => {
-    if (sourceCol && !entityColumns.includes(sourceCol)) {
-      missingColumns.push(`${prop} → ${sourceCol}`)
+  } else {
+    if (!entityColumns.includes(spec.target_field)) {
+      status.hasErrors = true
+      status.errors.push(`Target field '${spec.target_field}' not found in entity '${entityForValidation}'`)
     }
-  })
 
-  if (missingColumns.length > 0) {
-    status.hasErrors = true
-    status.errors.push(`Missing columns in mappings: ${missingColumns.join(', ')}`)
+    const missingColumns: string[] = []
+    Object.entries(spec.property_mappings || {}).forEach(([prop, sourceCol]) => {
+      if (sourceCol && !entityColumns.includes(sourceCol)) {
+        missingColumns.push(`${prop} → ${sourceCol}`)
+      }
+    })
+
+    if (missingColumns.length > 0) {
+      status.hasErrors = true
+      status.errors.push(`Missing columns in mappings: ${missingColumns.join(', ')}`)
+    }
   }
 
-  // Check if remote type is configured
-  if (!spec.remote?.service_type) {
+  const compatibility = getCompatibility(spec)
+  if (compatibility.status === 'unsupported' || compatibility.status === 'unknown') {
+    status.hasErrors = true
+    status.errors.push(compatibility.message ?? 'Reconciliation compatibility could not be verified.')
+  } else if (compatibility.status === 'disabled') {
     status.hasWarnings = true
-    status.warnings.push('No remote service type configured')
+    status.warnings.push(compatibility.message ?? 'No remote service type configured')
   }
 
   return status
@@ -417,9 +426,13 @@ function getValidationStatus(spec: EntityResolutionListItem): ValidationStatus {
   // Return pending status if not yet validated
   return {
     hasErrors: false,
-    hasWarnings: false,
+    hasWarnings: true,
     errors: [],
-    warnings: [],
+    warnings: [
+      validationLoading.value
+        ? 'Checking specification compatibility.'
+        : 'Specification compatibility has not been checked.',
+    ],
   }
 }
 
@@ -439,6 +452,15 @@ async function validateAllSpecifications() {
     )
   } catch (error) {
     console.error('Failed to validate specifications:', error)
+    const message = error instanceof Error ? error.message : 'Specification compatibility could not be checked.'
+    for (const spec of specifications.value) {
+      validationCache.value[`${spec.entity_name}.${spec.target_field}`] = {
+        hasErrors: true,
+        hasWarnings: false,
+        errors: [message],
+        warnings: [],
+      }
+    }
   } finally {
     validationLoading.value = false
   }
@@ -460,6 +482,14 @@ watch(
     await validateAllSpecifications()
   },
   { deep: true }
+)
+
+watch(
+  () => props.manifestResult,
+  async () => {
+    validationCache.value = {}
+    await validateAllSpecifications()
+  }
 )
 </script>
 
