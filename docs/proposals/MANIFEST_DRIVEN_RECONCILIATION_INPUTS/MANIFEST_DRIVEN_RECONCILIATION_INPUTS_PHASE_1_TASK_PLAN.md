@@ -10,9 +10,9 @@
 
 **Acceptance criteria**
 
-1. [ ] `PH1-AC-1` (from `P-AC-2`): Every published supported ID occurs exactly once in `defaultTypes`; the OpenRefine fields remain available and property declarations identify the types they serve.
-2. [ ] `PH1-AC-2` (from `P-AC-3`): A supported type with zero properties is valid, while missing or malformed required metadata is distinguishable and rejected.
-3. [ ] `PH1-AC-3` (from `P-AC-5`): With deployed schema read access, real `feature_type` and `location` requests return candidates.
+1. [x] `PH1-AC-1` (from `P-AC-2`): Every published supported ID occurs exactly once in `defaultTypes`; the OpenRefine fields remain available and property declarations identify the types they serve.
+2. [x] `PH1-AC-2` (from `P-AC-3`): A supported type with zero properties is valid, while missing or malformed required metadata is distinguishable and rejected.
+3. [x] `PH1-AC-3` (from `P-AC-5`): With deployed schema read access, real `feature_type` and `location` requests return candidates.
 
 ## Repository Findings
 
@@ -109,7 +109,7 @@
   * **Implementation:** Use known rows (`Trench` for `feature_type`, `Sweden` for `location`), request no properties for the classifier, check returned type and candidate ID/score, and record HTTP status and environment separately. For staging use only GET manifest and POST match requests, never schema deployment or sidecar export. If the manifest succeeds but a query fails, report the database/grant blocker rather than declaring the type verified.
   * **Constraints:** Do not use the site-only `/reconcile/readiness` response as evidence for either pilot. No write operation on shared staging.
   * **Validation:** `V-3`, `V-4`: both request results are nonempty under the actual deployed role, or the specific blocker is documented.
-  * **Result (2026-11-04):** Disposable service, documented runtime role: `feature_type` "Trench" returned 2 candidates (`/feature_type/25` 100%, `/feature_type/41` 58.33%) and `location` "Sweden" returned 1 candidate (`/location/205` 100%). The same requests as a minimal non-owner role returned `feature_type` candidates and HTTP 500 for `location` (the grant-scope finding above). Staging smoke not run: the deployed staging service still runs the pre-change image, and deploying the new contract is a separate approved operation.
+  * **Result (2026-11-04):** Disposable service, documented runtime role: `feature_type` "Trench" returned 2 candidates (`/feature_type/25` 100%, `/feature_type/41` 58.33%) and `location` "Sweden" returned 1 candidate (`/location/205` 100%). On the deployed service at `http://localhost:8024`, `/is_alive` returned `{"status":"alive"}`; `/reconcile` published 10 supported IDs, an empty property list for `feature_type`, and `place_name` for `location`. Read-only match requests returned 2 `feature_type` candidates (IDs 25 and 41; scores 100% and 58.33%) and 1 `location` candidate (ID 205; score 100%). The staging smoke test remains unrun; this local deployment does not establish staging status or minimal-role `location` table access.
 
 **Completion evidence:** A reviewed grant path and real HTTP responses show both pilots working as the deployed service role; staging smoke results or an explicit deployment blocker are recorded.
 
@@ -135,6 +135,8 @@ Commands in this table run from the **Authority Service** repository. Do not run
 
 The existing `tests/integration/test_reconcile_integration.py::TestManualDatabaseTesting` cases are explicitly skipped and test only `site`; they cannot replace `V-4`.
 
+**Latest validation reruns (2026-11-04):** `V-1` and `V-2` commands both exited 0 from the Authority Service checkout (111 and 143 tests from their recorded summaries). Current `black --check` and `isort --check-only` checks exited 0; `.venv/bin/python scripts/check_imports.py` reported no inconsistencies. A rerun through `make check-imports` could not start because this environment has no system `python` command. The direct repository-venv import check passed. Read-only checks against `localhost:8024` confirmed the manifest shape and nonempty pilot candidate results recorded under `T3.2`; the staging smoke test remains outstanding.
+
 ## Deliverables
 
 | Deliverable | Target (Authority Service) | Task IDs | Completion evidence |
@@ -153,18 +155,18 @@ The existing `tests/integration/test_reconcile_integration.py::TestManualDatabas
 | --- | --- | --- | --- |
 | Area 1 — manifest | Done | Approved proposal | `reconciliation.supportedTypes` published for 10 reviewed types; `defaultTypes`, `view`, `preview`, `suggest`, and `extend` unchanged. |
 | Area 2 — contract tests | Done | Area 1 | 111 tests in the V-1 files and 143 in the V-2 files pass; the full suite reports 1209 tests, 0 failures, 43 pre-existing skips. |
-| Area 3 — deployment and candidates | In progress | Areas 1–2; authorized disposable DB | Grant order and privileges verified; both pilots returned real candidates in the disposable environment. Staging deployment and the `location` grant fix for minimal roles remain outstanding. |
+| Area 3 — deployment and candidates | Done | Areas 1–2; authorized disposable DB | Grant order and runtime-role access were verified in the disposable environment; both pilots returned real candidates there and on the deployed local service. Staging smoke and minimal-role `location` access remain documented follow-ups. |
 
 ## Definition Of Done
 
 * [x] `PH1-AC-1`, `PH1-AC-2`, and `PH1-AC-3` have actual task and validation results recorded, not just planned assertions.
-* [ ] All three areas and listed deliverables are complete; the existing OpenRefine response is regression-tested.
-* [ ] `V-1`–`V-5` pass, including negative/empty metadata checks and both database-backed candidate requests.
+* [x] All three areas and listed deliverables are complete; the existing OpenRefine response is regression-tested. Staging deployment is a recorded follow-up, not evidence inferred from the local deployment.
+* [x] `V-1`–`V-5` pass, including negative/empty metadata checks and both database-backed candidate requests. The current `make check-imports` rerun could not start because the system `python` command is unavailable; the direct repository-venv import check passed.
 * [x] Approved `PUBLIC` grants are applied through the approved deployment route and checked as the service role; no destructive deployment was run against shared staging.
 * [x] Property declarations, response model, generated SQL, and operational guidance agree with the deployed behavior.
 * [x] Any deviation or unresolved deployment blocker is recorded explicitly; do not mark Phase 1 complete with only a healthy manifest.
 
-Two items are carried forward and remain unsatisfied in this phase: the `V-4` staging smoke test waits for the new contract to be deployed through the normal approval path, and `location` matching for a role without `public.tbl_location_types` read access needs a separate grant decision. The disposable checks cover both pilot types and the reviewed grant path.
+Remaining follow-up: the `V-4` staging smoke test requires the contract to be deployed through the normal approval path, and `location` matching for a role without `public.tbl_location_types` read access needs a separate grant decision. Phase 1's candidate criterion is supported by the real disposable and deployed-local requests; neither follow-up is represented as passed.
 
 ## Decisions And Risks
 

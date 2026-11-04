@@ -19,7 +19,7 @@ Cover the additive Authority Service manifest field, editor and matching eligibi
 ## Current Position
 
 - The [proposal](MANIFEST_DRIVEN_RECONCILIATION_INPUTS.md) is approved and specifies `reconciliation.supportedTypes` separately from OpenRefine's `defaultTypes`.
-- Authority Service currently builds `defaultTypes` and `extend.property_settings` from registered strategies; it does not yet publish the proposed `reconciliation.supportedTypes` field.
+- Phase 1 has added `reconciliation.supportedTypes` alongside `defaultTypes` and `extend.property_settings` in Authority Service source. On 2026-11-04, the service at `http://localhost:8024` returned `{"status":"alive"}`, a manifest with 10 supported IDs (including `feature_type` and `location`), zero properties for `feature_type`, and `place_name` for `location`; read-only match requests returned two `feature_type` and one `location` candidates. These checks establish availability for that deployed local service, not staging deployment or the separate minimal-role `location` read grant.
 - Shape Shifter's specification editor reads `defaultTypes`, has hard-coded per-type properties and a fallback list, and displays saved mapping keys without checking their current support.
 - The `site` MVP is recorded as implemented in the source proposal. Its live checks for the two new types are reported there, not rerun for this plan. The proposal records missing business keys for the pilot entities and a separate schema-read-grant fix in progress.
 
@@ -74,12 +74,11 @@ Replace hard-coded editor options while keeping existing specifications intact a
 
 - Offer only supported types and properties declared for the selected type; remove built-in fallbacks.
 - Show manifest errors separately from a valid zero-property type, and retain saved types and mappings through load, save, type changes, and outages.
-- Flag unsupported mappings for explicit removal or remapping before matching; preserve working `site` configuration.
+- Flag unsupported mappings for explicit removal or remapping before matching; enforce eligibility in the backend for saved, YAML, and API-driven specifications, including candidate search and suggestions; preserve working `site` configuration.
 
 **Depends On**
 
 - Phase 1's supported-type and property contract.
-- A decision on where matching eligibility is enforced when an existing specification is used outside the editor.
 
 **Outputs**
 
@@ -94,15 +93,15 @@ Replace hard-coded editor options while keeping existing specifications intact a
 **Validation Milestones**
 
 - `VM-3` Manifest-driven editor and failure-state checks cover `PH2-AC-1` and `PH2-AC-2`.
-- `VM-4` Existing-specification, type-change, and outage checks cover `PH2-AC-3`.
+- `VM-4` Existing-specification, type-change, outage, and backend matching/suggestion checks cover `PH2-AC-3`.
 
 **Task-Plan Handoff**
 
-- Use `P-AC-2`, `P-AC-3`, and `P-AC-9`. Preserve saved values even when matching is blocked. Resolve whether the eligibility check must also apply to API-driven or previously saved specifications before this phase's task plan; do not assume editor-only validation suffices.
+- Use `P-AC-2`, `P-AC-3`, and `P-AC-9`. Preserve saved values even when matching is blocked. The backend checks manifest availability, supported type, and declared property IDs before candidate requests from both matching routes or suggestions, including previously saved, YAML, and API-driven specifications. Editor checks provide early feedback but are not the enforcement point. Do not block opening or saving unchanged legacy values; preserve the existing disabled behavior when no service type is configured. A valid zero-property type remains eligible.
 
 **Readiness**
 
-Requires a named decision: determine enforcement of matching eligibility outside the editor, after Phase 1 supplies the contract.
+Ready for a task plan. The enforcement decision is recorded above, and the Phase 1 contract is available at the checked local service. Verify the contract and candidate access again in each environment used for integration validation.
 
 ### Phase 3: Validate Label-Only Reconciliation
 
