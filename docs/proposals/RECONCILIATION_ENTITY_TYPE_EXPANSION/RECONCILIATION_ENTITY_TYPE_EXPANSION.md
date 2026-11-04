@@ -34,7 +34,7 @@ The specification distinguishes a local `entity_name` from the remote matching `
 
 ## Current Behavior
 
-- The [MVP proposal](../RECONCILIATION_MVP/RECONCILIATION_MVP.md) limits the first workflow to `site` and defines the key, review, export, normalization, and validation contracts to preserve.
+- The [MVP proposal](../done/RECONCILIATION_MVP/RECONCILIATION_MVP.md) limits the first workflow to `site` and defines the key, review, export, normalization, and validation contracts to preserve.
 - The project owner reports that implementation is complete apart from manual end-to-end validation. That validation has not yet cleared the MVP gate.
 - The reconciliation editor obtains remote matching types from the service manifest, while the local entity is selected separately. Remote type availability does not establish complete support for a local entity.
 
