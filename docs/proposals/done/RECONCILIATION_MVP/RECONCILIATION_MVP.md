@@ -6,7 +6,7 @@
 - Scope: A human-reviewed workflow that links normalized rows to existing SEAD entities, with links that stay correct across reruns. Delivered for the entity type `site` only.
 - Goal: Make an exported reconciliation decision reliably set the intended row's `public_id`, and make every rerun of the workflow produce the same result.
 - Validation: Recorded in the [phase plan](RECONCILIATION_MVP_PHASE_PLAN.md) task plans. Phase 7 end-to-end validation passed on 2026-10-31 against a helper-owned disposable database and a live Authority Service: 5 tests passed with zero skips, binding adopted `site_id` 1, allocating local-only `site_id` 6504, generating `sample_group_id` 13962, and keeping the Core child FK on local `system_id` 10001. The Phase 7 manual UI review passed on 2026-11-04. Phase 4, the Authority Service candidate, readiness, and SIMS binding work, is tracked in the companion Authority Service proposal, not in this repository.
-- Remaining follow-up: Merging the implementation; extending the workflow beyond `site` is tracked by [RECONCILIATION_ENTITY_TYPE_EXPANSION](../../RECONCILIATION_ENTITY_TYPE_EXPANSION/RECONCILIATION_ENTITY_TYPE_EXPANSION.md).
+- Remaining follow-up: Merging the implementation; extending reconciliation to more entity types by consuming the OpenRefine manifest is tracked by [Manifest-Driven Reconciliation Inputs](../../MANIFEST_DRIVEN_RECONCILIATION_INPUTS/MANIFEST_DRIVEN_RECONCILIATION_INPUTS.md).
 
 ## Summary
 
