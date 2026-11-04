@@ -5,7 +5,7 @@
 - Proposed follow-up change request; not implemented
 - Scope: fixed-input experiments with trial keys, inner/left joins, limited constraints, and reset
 - Goal: let users understand how link settings affect rows and validation without changing the saved project
-- Extends: [Foreign-Key Link Troubleshooter](../FOREIGN_KEY_LINK_TROUBLESHOOTER/FOREIGN_KEY_LINK_TROUBLESHOOTER.md). Its original acceptance criteria remain unchanged.
+- Extends: [Foreign-Key Link Troubleshooter](../done/FOREIGN_KEY_LINK_TROUBLESHOOTER/FOREIGN_KEY_LINK_TROUBLESHOOTER.md). Its original acceptance criteria remain unchanged.
 
 ## Summary
 

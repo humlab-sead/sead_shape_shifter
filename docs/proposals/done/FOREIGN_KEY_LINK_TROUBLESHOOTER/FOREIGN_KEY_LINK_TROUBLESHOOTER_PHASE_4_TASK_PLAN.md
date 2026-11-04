@@ -259,7 +259,7 @@ Source: [Foreign-Key Link Troubleshooter](FOREIGN_KEY_LINK_TROUBLESHOOTER.md), [
 
 **Tasks:**
 
-* [ ] `T4.1` **Change:** Add the dialog.
+* [x] `T4.1` **Change:** Add the dialog.
   * **Target:** `frontend/src/components/validation/LinkTroubleshooterDialog.vue` (`NEW`).
   * **Current → required:** No view → add a `v-dialog` with `modelValue`, `projectName`, and `message` props.
   * **Implementation:**
@@ -285,7 +285,7 @@ Source: [Foreign-Key Link Troubleshooter](FOREIGN_KEY_LINK_TROUBLESHOOTER.md), [
   * **Constraints:** No action for non-candidates. Existing severity, expansion, and `open-entity` behavior stays unchanged.
   * **Validation:** `V-8`.
 
-* [ ] `T4.3` **Change:** Wire the dialog into the project view.
+* [x] `T4.3` **Change:** Wire the dialog into the project view.
   * **Target:** `frontend/src/views/ProjectDetailView.vue`.
   * **Current → required:** No troubleshooter state → add `troubleshootMessage: Ref<ValidationError | null>` and `showLinkTroubleshooter: Ref<boolean>`. Add `handleTroubleshoot(message)` that sets the message and opens the dialog. Bind `@troubleshoot="handleTroubleshoot"` on `validation-panel`. Render `<link-troubleshooter-dialog v-if="troubleshootMessage" v-model="showLinkTroubleshooter" :project-name="projectName" :message="troubleshootMessage" />` and clear the message when the dialog closes.
   * **Implementation:** Import the dialog explicitly, matching the existing `ValidationPanel` import style.
@@ -342,10 +342,10 @@ Run from the worktree root with the repository `.venv`. Pytest's configured `-qq
 | `V-5` | Read-only and cache checks within the new service and route tests | Included in `V-2` and `V-3`; patch `ShapeShiftCache.set_dataframe`, `set_table_store`, `fetch_cached_entity_data`, and `ShapeShiftProjectCache.get_project` to raise, and snapshot the saved API/Core project | `PH4-AC-3` | No cache method is called; the saved project is unchanged; frames are not serialized | Not run: new tests | Pass in the combined backend run (131 tests total, exit 0). |
 | `V-6` | Python formatting and type checks on changed/new files | Run the exact commands in the block below from the worktree root | Code quality | Exit 0; record any existing diagnostics separately | Not run: Phase 4 changes are not implemented | Black, isort, and Pyright pass. Pylint exits 8 on the pre-existing `R0916` in `LinkTrialService._validate_key_selection` (6 boolean expressions); that method was not changed. |
 | `V-7` | Frontend helper, API, and composable tests | `pnpm --dir frontend test:run src/utils/__tests__/linkTroubleshooter.test.ts src/api/__tests__/linkTroubleshooter.test.ts src/composables/__tests__/useLinkTroubleshooter.test.ts` | `PH4-AC-1`–`PH4-AC-3` | Candidate rules, request URL/body, state transitions, error handling, and reset pass | Not run: `frontend/node_modules` is absent | Pass: 11 tests across 3 files. |
-| `V-8` | Frontend dialog, message-list, and panel tests | `pnpm --dir frontend test:run src/components/validation/__tests__/LinkTroubleshooterDialog.test.ts src/components/validation/__tests__/ValidationMessageList.test.ts src/components/validation/__tests__/ValidationPanel.test.ts` | `PH4-AC-1`–`PH4-AC-3` | Locked relationship, key editing, totals, server paging/filtering, statuses, action visibility, and reset pass | Not run: `frontend/node_modules` is absent | Pass: 27 tests across 3 files. |
-| `V-9` | Frontend type check and build, including generated component typing | `pnpm --dir frontend build` | `PH4-AC-1`–`PH4-AC-3` | `vue-tsc` and the Vite build pass; `components.d.ts` is regenerated without hand edits | Not run: `frontend/node_modules` is absent | Pass: `vue-tsc` and Vite build; generated `components.d.ts` includes `LinkTroubleshooterDialog`. Existing Rollup and chunk-size warnings remain. |
+| `V-8` | Frontend dialog, message-list, and panel tests | `pnpm --dir frontend test:run src/components/validation/__tests__/LinkTroubleshooterDialog.test.ts src/components/validation/__tests__/ValidationMessageList.test.ts src/components/validation/__tests__/ValidationPanel.test.ts` | `PH4-AC-1`–`PH4-AC-3` | Locked relationship, key editing, totals, server paging/filtering, statuses, action visibility, and reset pass | Not run: `frontend/node_modules` is absent | Pass: 27 tests across 3 files at first implementation. Re-verified 2026-11-04 after the header fix: 28 tests across 3 files (12 dialog, 9 message list, 7 panel). |
+| `V-9` | Frontend type check and build, including generated component typing | `pnpm --dir frontend build` | `PH4-AC-1`–`PH4-AC-3` | `vue-tsc` and the Vite build pass; `components.d.ts` is regenerated without hand edits | Not run: `frontend/node_modules` is absent | Pass: `vue-tsc` and Vite build; generated `components.d.ts` includes `LinkTroubleshooterDialog`. Existing Rollup and chunk-size warnings remain. Re-verified 2026-11-04: `npx vue-tsc --noEmit` exits 0 and the generated entry is present. |
 | `V-10` | Frontend lint | `pnpm --dir frontend exec eslint src` (no `--fix`) | Code quality | Exit 0 or only pre-existing findings outside changed files | Not run: `frontend/node_modules` is absent | Pass: exit 0, 0 errors; 12 pre-existing formatting warnings remain in unchanged files. |
-| `V-11` | Manual user flow | Run the backend and frontend; open a project with an inner-join `ROW_COUNT_MISMATCH`; open Validation; click "Troubleshoot link"; verify locked A/B/join/constraints, configured keys, baseline totals, key change, trial totals, unmatched/multiple filters, page navigation, stale/ineligible/incomplete states, no save action, and a fresh view after close/reopen | `PH4-AC-1`–`PH4-AC-3` | The flow matches the dialog contract; totals stay fixed across pages; closing discards the trial | Not run: manual | Not run: no live interactive project flow was exercised; automated V-7/V-8 checks passed. |
+| `V-11` | Manual user flow | Run the backend and frontend; open a project with an inner-join `ROW_COUNT_MISMATCH`; open Validation; click "Troubleshoot link"; verify locked A/B/join/constraints, configured keys, baseline totals, key change, trial totals, unmatched/multiple filters, page navigation, stale/ineligible/incomplete states, no save action, and a fresh view after close/reopen | `PH4-AC-1`–`PH4-AC-3` | The flow matches the dialog contract; totals stay fixed across pages; closing discards the trial | Not run: manual | **Pass (2026-11-04, staging container on `http://localhost:8013`).** Operator checklist, all OK: opened Validation; clicked "Troubleshoot link"; verified locked A/B/join/constraints and the configured keys; verified baseline totals; changed a key; verified trial totals; exercised the unmatched and multiply-matched filters; navigated pages; observed the stale, ineligible, and incomplete states; confirmed no save action exists; reopened after close and got a fresh view with no retained trial. |
 | `V-12` | Documentation links | `scripts/check_doc_links.sh` | Documentation | "Documentation links are valid." | Pass (2026-11-02) | Pass: "Documentation links are valid." |
 
 V-6 commands (run after the listed files exist):
@@ -419,12 +419,12 @@ After code changes, refresh the repository knowledge graph with `GRAPHIFY_VIZ_NO
 | Area 1: Backend response contract and mapper | Done | Phase 2/3 result types | `V-1` passed; mapper contract and bounded JSON-safe response verified. |
 | Area 2: Backend orchestration and route | Done | Area 1; Phase 2/3 services | `V-2`–`V-5` passed; `V-6` records one pre-existing Pylint diagnostic. |
 | Area 3: Frontend types, API, helper, composable | Done | Area 2 contract | `V-7` and frontend type/build checks passed. |
-| Area 4: Frontend dialog and validation wiring | In progress | Area 3; validation panel/view | `V-8`/`V-9` passed; `V-11` and task evidence for `T4.1`/`T4.3` remain outstanding. |
+| Area 4: Frontend dialog and validation wiring | Done | Area 3; validation panel/view | `T4.1`–`T4.5` complete and committed in `65209594` with the header fix in `40f6b08d`. `V-8` re-verified 2026-11-04: 28 tests passed across 3 files. `V-9` re-verified: `vue-tsc --noEmit` exits 0 and `components.d.ts` registers `LinkTroubleshooterDialog`. `V-11` passed on 2026-11-04 in the staging container. |
 
 ## Definition Of Done
 
-* [x] `PH4-AC-1`, `PH4-AC-2`, and `PH4-AC-3` each have implementation and passing automated validation evidence (`V-1`–`V-9`); the manual `V-11` flow remains unrun.
-* [ ] All four work areas and the deliverables table are complete; the progress table shows Done.
+* [x] `PH4-AC-1`, `PH4-AC-2`, and `PH4-AC-3` each have implementation and passing automated validation evidence (`V-1`–`V-9`) plus the manual `V-11` flow, which passed on 2026-11-04 in the staging container.
+* [x] All four work areas and the deliverables table are complete; the progress table shows Done. `T4.1` and `T4.3` were verified implemented and committed before their checkboxes were updated.
 * [x] The route requires project read authorization, uses the authorized locator, and returns 404 for denied or missing projects.
 * [x] The response page is capped at 500 rows; complete totals come from the full trial, not the page.
 * [x] Stale, ineligible, failed, and incomplete states are explicit; no stale warning is presented as a current trial result.
@@ -432,7 +432,7 @@ After code changes, refresh the repository knowledge graph with `GRAPHIFY_VIZ_NO
 * [x] A/B, join type, and constraints are read-only; no save, apply, or promote action exists.
 * [x] Backend and frontend tests pass; the pre-existing Pylint diagnostic is recorded separately.
 * [x] `components.d.ts` is regenerated through the build, not hand-edited.
-* [x] No unresolved design question affects implementation or correctness; the unrun manual check is recorded in `V-11`.
+* [x] No unresolved design question affects implementation or correctness; the manual check is recorded in `V-11` as passed on 2026-11-04.
 
 ## Risks And Open Questions
 
@@ -442,7 +442,7 @@ After code changes, refresh the repository knowledge graph with `GRAPHIFY_VIZ_NO
 - **The page cap bounds row count, not bytes.** Individual key values follow the source data. Do not describe the 500-row page cap as a memory limit.
 - **Trial execution is synchronous pandas work in an async route.** The computation cap bounds the work; the existing quick Test Join has the same pattern. If large trials delay other requests, move `run_trial` to a thread pool in a follow-up, not by changing the trial algorithm here.
 - **The baseline context extension must remain display-only.** `_saved_project` and `_foreign_key` may be retained for stale results, but `local_rows`/`remote_rows` must stay `None` and `LinkTrialService` must continue to refuse non-reproduced baselines.
-- **Manual UI flow remains unverified.** `V-11` was not run; automated helper, component, and build checks passed, but the live project flow still needs manual verification.
+- **Manual UI flow verified only on staging.** `V-11` passed on 2026-11-04 against the staging container on `http://localhost:8013`, using a project whose warning includes an inner-join `ROW_COUNT_MISMATCH`. That covers the supported join types the dialog offers; right, outer, and cross joins remain unsupported by design and untested here.
 - **Implementation handoff:** If verified repository state conflicts with this plan, stop and report the evidence. Do not invent a replacement design or broaden the phase to a saved trial, right/outer/cross joins, or a session store.
 
 **Open questions:** None that change the Phase 4 design.
