@@ -29,7 +29,7 @@ from src.validation_messages import format_validation_message_with_context
 from src.validators.data_validators import ValidationIssue
 
 if TYPE_CHECKING:
-    from backend.app.validators.data_validation_orchestrator import DataValidationOrchestrator
+    from backend.app.validators.data_validation_orchestrator import DataFetchStrategy, DataValidationOrchestrator
 
 # pylint: disable=unused-argument
 
@@ -170,12 +170,17 @@ class ValidationService:
         Args:
             project_name: Project name
             entity_names: Optional list of entity names to validate (None = all)
-            validation_mode: Validation mode (SAMPLE for preview data, COMPLETE for full normalization)
+            validation_mode: Validation mode:
+                - SAMPLE: preview data, one preview fetch per entity
+                - COMPLETE: full normalization, aborts when any entity cannot be produced
+                - SINGLE_PASS: full normalization from one project-wide pass, reporting each
+                  entity that cannot be produced and skipping only its dependents
 
         Returns:
             ValidationResult with data validation errors and warnings
         """
         use_full_data = validation_mode == DataValidationMode.COMPLETE
+        use_single_pass = validation_mode == DataValidationMode.SINGLE_PASS
         logger.debug(f"Running data validation for project: {project_name} (mode={validation_mode.value})")
 
         # Load and resolve project (convert directives to concrete values)
@@ -235,14 +240,18 @@ class ValidationService:
                 DataValidationOrchestrator,
                 FullDataFetchStrategy,
                 PreviewDataFetchStrategy,
+                SinglePassDataFetchStrategy,
             )
 
             # Use shared singleton cache (not a new instance)
             shapeshift_service: ShapeShiftService = get_shapeshift_service()
 
-            # Create appropriate strategy based on use_full_data flag
+            # Create appropriate strategy based on the requested validation mode
+            fetch_strategy: DataFetchStrategy
             if use_full_data:
                 fetch_strategy = FullDataFetchStrategy(project_service)
+            elif use_single_pass:
+                fetch_strategy = SinglePassDataFetchStrategy(shapeshift_service)
             else:
                 fetch_strategy = PreviewDataFetchStrategy(shapeshift_service)
 

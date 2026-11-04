@@ -6,11 +6,12 @@ import pandas as pd
 import pytest
 
 from backend.app.models.validation import DataValidationStatus, EntityDataValidationStatus
-from backend.app.services.shapeshift_service import ShapeShiftService
+from backend.app.services.shapeshift_service import ProjectNormalizationResult, ShapeShiftService
 from backend.app.validators.data_validation_orchestrator import (
     DataValidationOrchestrator,
     FullDataFetchStrategy,
     PreviewDataFetchStrategy,
+    SinglePassDataFetchStrategy,
     TableStoreDataFetchStrategy,
 )
 from src.exceptions import MissingBusinessKeyError
@@ -45,6 +46,108 @@ async def test_table_store_strategy_returns_existing_data():
 
     with pytest.raises(KeyError, match="not available"):
         await strategy.fetch("any_project", "missing")
+
+
+class _SinglePassServiceStub:
+    """Minimal ShapeShiftService stand-in that returns a prepared normalization result."""
+
+    def __init__(self, result: ProjectNormalizationResult) -> None:
+        self.result: ProjectNormalizationResult = result
+        self.calls: list[str] = []
+
+    async def normalize_project(self, project_name: str) -> ProjectNormalizationResult:
+        """Record the call and return the prepared result."""
+        self.calls.append(project_name)
+        return self.result
+
+
+def _result_stub(
+    table_store: TableStore,
+    incomplete_entities: dict[str, str] | None = None,
+) -> ProjectNormalizationResult:
+    """Build a ProjectNormalizationResult with a normalizer stub."""
+    normalizer = Mock()
+    normalizer.unresolved_extra_columns = {}
+    normalizer.linker.validators = []
+    return ProjectNormalizationResult(
+        table_store=table_store,
+        validation_issues_by_entity={},
+        incomplete_entities=incomplete_entities or {},
+        normalizer=normalizer,
+        project_version=1,
+    )
+
+
+@pytest.mark.asyncio
+async def test_single_pass_strategy_normalizes_once_and_serves_entities():
+    """The strategy normalizes the project once and returns each produced entity."""
+    table_store = TableStore(
+        {
+            "site": pd.DataFrame({"site_id": [1, 2]}),
+            "sample": pd.DataFrame({"sample_id": [10]}),
+        }
+    )
+    service = _SinglePassServiceStub(_result_stub(table_store))
+    strategy = SinglePassDataFetchStrategy(service)  # type: ignore[arg-type]
+
+    await strategy.prepare("test_project")
+    site_df = await strategy.fetch("test_project", "site")
+    sample_df = await strategy.fetch("test_project", "sample")
+
+    assert service.calls == ["test_project"]
+    assert list(site_df["site_id"]) == [1, 2]
+    assert list(sample_df["sample_id"]) == [10]
+
+
+@pytest.mark.asyncio
+async def test_single_pass_strategy_reports_incomplete_entity_reason():
+    """An entity that could not be normalized raises with its failure reason."""
+    service = _SinglePassServiceStub(_result_stub(TableStore({}), {"sample": "missing value column"}))
+    strategy = SinglePassDataFetchStrategy(service)  # type: ignore[arg-type]
+
+    await strategy.prepare("test_project")
+
+    with pytest.raises(RuntimeError, match="missing value column"):
+        await strategy.fetch("test_project", "sample")
+
+
+@pytest.mark.asyncio
+async def test_single_pass_strategy_requires_prepare():
+    """Fetching before preparation is a programming error, not a data error."""
+    strategy = SinglePassDataFetchStrategy(_SinglePassServiceStub(_result_stub(TableStore({}))))  # type: ignore[arg-type]
+
+    with pytest.raises(RuntimeError, match="was not normalized"):
+        await strategy.fetch("test_project", "site")
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_single_pass_marks_only_failed_entity():
+    """One failing entity must not hide validation results for the rest of the project."""
+    table_store = TableStore({"site": pd.DataFrame({"site_id": [1, 2]})})
+    service = _SinglePassServiceStub(_result_stub(table_store, {"sample": "missing value column"}))
+    strategy = SinglePassDataFetchStrategy(service)  # type: ignore[arg-type]
+    orchestrator = DataValidationOrchestrator(fetch_strategy=strategy)
+
+    core_project = ShapeShiftProject(
+        cfg={
+            "entities": {
+                "site": {"columns": ["site_id"]},
+                "sample": {"columns": ["sample_id"]},
+            }
+        }
+    )
+
+    issues = await orchestrator.validate_all_entities(
+        core_project=core_project,
+        project_name="test_project",
+        entity_names=["site", "sample"],
+    )
+
+    assert isinstance(issues, list)
+    assert orchestrator.entity_statuses["site"].status == EntityDataValidationStatus.COMPLETED
+    assert orchestrator.entity_statuses["sample"].status == EntityDataValidationStatus.FAILED
+    assert "missing value column" in (orchestrator.entity_statuses["sample"].reason or "")
+    assert orchestrator.status == DataValidationStatus.PARTIAL
 
 
 @pytest.mark.asyncio

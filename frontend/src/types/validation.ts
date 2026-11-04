@@ -5,7 +5,7 @@
 export type ValidationSeverity = 'error' | 'warning' | 'info'
 export type ValidationCategory = 'structural' | 'data' | 'performance' | 'conformance'
 export type ValidationPriority = 'low' | 'medium' | 'high' | 'critical'
-export type DataValidationMode = 'sample' | 'complete'
+export type DataValidationMode = 'sample' | 'complete' | 'single_pass'
 export type DataValidationStatus = 'completed' | 'partial' | 'failed' | 'skipped'
 export type EntityDataValidationStatus = 'completed' | 'failed' | 'skipped'
 export type ValidationMetadataValue = string | number | boolean | null | string[]
