@@ -25,7 +25,7 @@ Source rows            Reconciliation service      Mapping sidecar        Export
 "Sweden"        →      candidate, score 1.00  →    "Sweden" → 205    →    205
 ```
 
-The `public_id` column is the only column reconciliation writes. A specification's target field selects what is searched; it is not where the result is stored. An entity without `public_id` cannot receive links at all, and a sidecar entry that names a different column is rejected.
+The `public_id` column is the only column reconciliation writes. A specification's search field selects what is searched; it is not where the result is stored. An entity without `public_id` cannot receive links at all, and a sidecar entry that names a different column is rejected.
 
 ## Prerequisites
 
@@ -34,7 +34,7 @@ The `public_id` column is the only column reconciliation writes. A specification
 3. **Entity identity** — the entity declares `public_id`, which is the column that receives the matched ID, and declares `keys`, which identify each row.
 4. **Backend** — Shape Shifter backend running (default `http://localhost:8012`).
 5. **Reconciliation service** — running and reachable from the backend (default `http://localhost:8000`).
-6. **Specification** — a specification exists for the entity and target field you want to fill.
+6. **Specification** — a specification exists for the entity and search field you want to reconcile against.
 
 ## Workflow Overview
 
@@ -78,16 +78,16 @@ data/projects/<project>/<project>-reconciliation.yml
 
 There is no `@include` entry and no `reconciliation:` block in `shapeshifter.yml`. When the file is missing, Shape Shifter starts with an empty catalog.
 
-Open the project's **Reconciliation** tab, then **Configuration**, and select **Add Specification**. Choose the entity and the target field, or edit the raw YAML in the **YAML** tab.
+Open the project's **Reconciliation** tab, then **Configuration**, and select **Add Specification**. Choose the entity and the search field, or edit the raw YAML in the **YAML** tab.
 
-A specification is keyed by entity name, then by target field:
+A specification is keyed by entity name, then by search field:
 
 ```yaml
 service_url: "http://localhost:8000"   # base URL of the reconciliation service
 
 entities:
   site:
-    site_name:                          # target field
+    site_name:                          # search field (stored as the target_field key)
       source: null                      # null = the entity's own rows
       property_mappings:
         latitude: lat
@@ -100,7 +100,7 @@ entities:
       mapping: []
 ```
 
-You can create several specifications for one entity, one per target field, and specifications for as many entities as the project has. [Catalog Reference](#catalog-reference) shows a complete example.
+You can create several specifications for one entity, one per search field, and specifications for as many entities as the project has. [Catalog Reference](#catalog-reference) shows a complete example.
 
 ### 1.3 Choose the Source
 
@@ -153,9 +153,9 @@ The **Configuration** tab shows a status icon on each specification row. Hover t
 |------|---------|
 | Green check | Valid configuration |
 | Yellow warning | Warning, such as a missing remote type |
-| Red alert | Error that blocks matching, such as a missing target field or an unsupported remote type |
+| Red alert | Error that blocks matching, such as a missing search field or an unsupported remote type |
 
-The checks confirm that the entity still exists, that the target field exists after all transformations, that every mapped source column exists in the output, and that the remote type and its properties are still served.
+The checks confirm that the entity still exists, that the search field exists after all transformations, that every mapped source column exists in the output, and that the remote type and its properties are still served.
 
 Column checks read `GET /api/v1/reconciliation/available-fields/{entity_name}`, so they include keys, regular columns, extra columns, foreign-key join columns, and unnest columns. Results are rechecked when a specification changes or the view refreshes.
 
@@ -336,7 +336,7 @@ site_name,site_id,latitude,longitude
 
 1. Confirm the specification status is not a red alert.
 2. Confirm `remote.service_type` appears in the service manifest.
-3. Confirm the selected source has rows and the target field is populated in them.
+3. Confirm the selected source has rows and the search field is populated in them.
 4. Confirm the backend can reach the service (`GET /api/v1/reconciliation/health`).
 5. Confirm the mapped property names appear in `extend.property_settings` for the selected type.
 
@@ -387,7 +387,7 @@ A type or property was removed from the service, or the specification still name
 
 ## Catalog Reference
 
-Each specification is stored under `entities.<entity_name>.<target_field>`. The entity name and target field are the key; the remaining fields configure matching.
+Each specification is stored under `entities.<entity_name>.<target_field>`. The entity name and search field are the key; the remaining fields configure matching.
 
 | Field | Required | Description | Example |
 |-------|----------|-------------|---------|
@@ -401,7 +401,7 @@ Each specification is stored under `entities.<entity_name>.<target_field>`. The 
 
 `service_url` is required at the top of the catalog. Each catalog holds one value, so a project matches against one service; use a separate project to match against a different service.
 
-There is no `keys` field in a specification. The search value comes from the target field, and the row is identified by its encoded business key, built from the entity's configured `keys`.
+There is no `keys` field in a specification. The search value comes from the search field, and the row is identified by its encoded business key, built from the entity's configured `keys`.
 
 ### Decision Records
 
@@ -431,7 +431,7 @@ An accepted decision requires `target_id`, and only an accepted decision may car
 
 ### Example Catalog
 
-One catalog can hold several entity and target field pairs, using all three source options.
+One catalog can hold several entity and search field pairs, using all three source options.
 
 ```yaml
 service_url: "http://localhost:8000"
@@ -479,7 +479,7 @@ When `source` names another entity, that entity must exist in the project file. 
 
 ## API Routes
 
-All routes are under the `/api/v1` prefix. `{field}` is the target field name.
+All routes are under the `/api/v1` prefix. `{field}` is the search field name, stored as the `target_field` key in the catalog.
 
 | Method | Route | Purpose |
 |--------|-------|---------|
@@ -504,7 +504,7 @@ Neither candidate-search route accepts a candidate.
 
 ## Workflow Checklist
 
-- [ ] Specification created for the entity and target field
+- [ ] Specification created for the entity and search field
 - [ ] Entity declares `public_id`, and the sidecar entry names the same column
 - [ ] Specification status is not a red alert
 - [ ] Service shown as online

@@ -60,7 +60,7 @@
         <v-window v-model="activeTab">
           <v-window-item value="form">
             <v-form ref="form" v-model="valid">
-              <!-- Entity and Target Field Selection (only for new) -->
+              <!-- Entity and Search Field Selection (only for new) -->
               <template v-if="isNew">
                 <v-row class="mt-2">
                   <v-col cols="6">
@@ -86,13 +86,13 @@
                     <v-autocomplete
                       v-model="formData.target_field"
                       :items="availableFields"
-                      label="Target Field *"
+                      label="Search Field *"
                       variant="outlined"
                       density="comfortable"
                       :rules="[required, uniqueTargetField]"
                       :loading="loadingFields"
                       :disabled="!formData.entity_name"
-                      prepend-inner-icon="mdi-target"
+                      prepend-inner-icon="mdi-magnify"
                     >
                       <template #no-data>
                         <v-list-item>
@@ -110,7 +110,7 @@
               <v-text-field
                 v-else
                 :model-value="`${specification?.entity_name} → ${specification?.target_field}`"
-                label="Entity → Target Field"
+                label="Entity → Search Field"
                 variant="outlined"
                 density="comfortable"
                 readonly
@@ -521,7 +521,7 @@ const uniqueTargetField = (v: string) => {
   const existing = reconciliationStore.specifications.find(
     (s) => s.entity_name === formData.value.entity_name && s.target_field === v
   )
-  return !existing || 'This entity + target field combination already exists'
+  return !existing || 'This entity and search field combination already exists'
 }
 
 // Validation methods
@@ -567,10 +567,10 @@ async function validateSpecification() {
     return
   }
 
-  // Check if target field exists
+  // Check if the search field exists
   if (!entityColumns.includes(formData.value.target_field)) {
     validationErrors.value.push(
-      `Target field '${formData.value.target_field}' not found in entity '${entityForValidation}'`
+      `Search field '${formData.value.target_field}' not found in entity '${entityForValidation}'`
     )
   }
 
