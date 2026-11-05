@@ -60,4 +60,4 @@ When adding a new backend feature, update all four layers:
 - `@pytest.mark.asyncio` for all async service and orchestrator tests.
 - Test each fetch strategy independently (mock the underlying service).
 - Test `CanMaterializeSpecification` preconditions: fixed entity (fail), already-materialized (fail), non-materialized dep (fail).
-- SIMS client: `backend/app/clients/sims_client.py` — env var `SHAPE_SHIFTER_SIMS_SERVICE_URL`.
+- SIMS client: `backend/app/clients/sims_client.py` — env var `SHAPE_SHIFTER_SIMS_SERVICE_URL`; provider-scope contract registration uses `SHAPE_SHIFTER_SIMS_CONTRACT_CALLER` and `SHAPE_SHIFTER_SIMS_CONTRACT_REGISTRATION_TOKEN`.

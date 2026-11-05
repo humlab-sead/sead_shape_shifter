@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -187,3 +188,65 @@ class CapabilitiesResponse(BaseModel):
 
     version: str
     entities: list[EntityCapabilityResponse]
+
+
+# ---------------------------------------------------------------------------
+# Provider-scope business-key contract models
+# (POST /identity/scope-contracts)
+# ---------------------------------------------------------------------------
+
+
+class EntityContractDeclaration(BaseModel):
+    """One entity business-key list submitted for provider-scope registration.
+
+    The order of ``business_keys`` is part of the contract because it defines
+    the layout of the business identity value sent to SIMS.
+    """
+
+    entity_type: str = Field(description="SEAD entity type, e.g. 'site' or 'sample_group'.")
+    business_keys: list[str] = Field(
+        min_length=1,
+        description="Ordered business key names, e.g. ['site_name', 'country'].",
+    )
+
+
+class RegisterScopeContractsRequest(BaseModel):
+    """Request body for POST /identity/scope-contracts."""
+
+    scope_name: str = Field(description="Provider scope name, e.g. 'provider://gbif/occurrence'.")
+    entities: list[EntityContractDeclaration] = Field(
+        min_length=1,
+        description="One declaration per entity type used by the scope.",
+    )
+    created_by: str | None = Field(default=None, description="Agent or user identifier for the audit trail.")
+
+
+class EntityContractState(BaseModel):
+    """Registration result for one entity contract."""
+
+    entity_type: str
+    business_keys: list[str]
+    state: Literal["created", "existing"] = Field(description="'created' for a new contract, 'existing' for an exact match.")
+
+
+class ScopeContractRegistration(BaseModel):
+    """Response body for POST /identity/scope-contracts."""
+
+    scope_name: str
+    scope_uuid: UUID
+    entities: list[EntityContractState]
+
+
+class EntityContractConflict(BaseModel):
+    """One entity type whose submitted keys differ from the registered keys."""
+
+    entity_type: str
+    registered: list[str] = Field(description="Already registered ordered key list.")
+    submitted: list[str] = Field(description="Ordered key list submitted by the caller.")
+
+
+class ScopeContractConflictDetail(BaseModel):
+    """HTTP 409 detail returned when a submitted key list differs from the registered list."""
+
+    message: str
+    conflicts: list[EntityContractConflict] = Field(default_factory=list)
