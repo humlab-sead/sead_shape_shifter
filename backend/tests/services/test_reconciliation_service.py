@@ -2,11 +2,12 @@
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 import yaml
 
 from backend.app import models as dto
-from backend.app.exceptions import ResourceConflictError, ResourceNotFoundError, ValidationError
+from backend.app.exceptions import DependencyError, ResourceConflictError, ResourceNotFoundError, ValidationError
 from backend.app.mappers.reconciliation_mapper import ReconciliationMapper
 from backend.app.models.shapeshift import PreviewResult
 from backend.app.services.reconciliation import ReconciliationQueryService, ReconciliationService
@@ -73,6 +74,16 @@ def mock_recon_client() -> AsyncMock:
     """Mock reconciliation client."""
     client = AsyncMock()
     client.reconcile_batch.return_value = {}
+    client.get_service_manifest.return_value = {
+        "defaultTypes": [{"id": "site", "name": "Site"}, {"id": "feature_type", "name": "Feature type"}],
+        "reconciliation": {"supportedTypes": ["site", "feature_type"]},
+        "extend": {
+            "property_settings": [
+                {"name": "latitude", "entity_types": ["site"]},
+                {"name": "longitude", "entity_types": ["site"]},
+            ]
+        },
+    }
     return client
 
 
@@ -1123,6 +1134,97 @@ class TestReconciliationService:
             "reviewed",
             "old",
         )
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("manifest", "service_type", "property_mappings", "error_type"),
+        [
+            (
+                {
+                    "defaultTypes": [{"id": "site"}],
+                    "reconciliation": {"supportedTypes": []},
+                    "extend": {"property_settings": []},
+                },
+                "site",
+                {},
+                ValidationError,
+            ),
+            (
+                {
+                    "defaultTypes": [{"id": "site"}],
+                    "reconciliation": {"supportedTypes": ["site"]},
+                    "extend": {"property_settings": [{"name": "place_name", "entity_types": ["site"]}]},
+                },
+                "site",
+                {"old_property": "site_name"},
+                ValidationError,
+            ),
+            ({"defaultTypes": [{"id": "site"}]}, "site", {}, DependencyError),
+        ],
+    )
+    async def test_auto_reconcile_entity_blocks_unverified_specifications(
+        self,
+        reconciliation_service: ReconciliationService,
+        sample_entity_spec: core.EntityResolutionSet,
+        mock_recon_client: AsyncMock,
+        manifest: dict,
+        service_type: str,
+        property_mappings: dict[str, str],
+        error_type: type[Exception],
+    ):
+        sample_entity_spec.metadata.remote.service_type = service_type
+        sample_entity_spec.metadata.property_mappings = property_mappings
+        mock_recon_client.get_service_manifest.return_value = manifest
+
+        with (
+            patch.object(reconciliation_service, "get_resolved_source_data", new=AsyncMock()) as get_source_data,
+            patch.object(reconciliation_service.catalog_manager, "save_catalog") as save_catalog,
+            pytest.raises(error_type),
+        ):
+            await reconciliation_service.auto_reconcile_entity("test", "site", "site_code", sample_entity_spec)
+
+        get_source_data.assert_not_awaited()
+        mock_recon_client.reconcile_batch.assert_not_awaited()
+        save_catalog.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_auto_reconcile_entity_blocks_when_manifest_request_fails(
+        self,
+        reconciliation_service: ReconciliationService,
+        sample_entity_spec: core.EntityResolutionSet,
+        mock_recon_client: AsyncMock,
+    ):
+        mock_recon_client.get_service_manifest.side_effect = httpx.ConnectError("service offline")
+
+        with (
+            patch.object(reconciliation_service.catalog_manager, "save_catalog") as save_catalog,
+            pytest.raises(DependencyError, match="manifest is unavailable"),
+        ):
+            await reconciliation_service.auto_reconcile_entity("test", "site", "site_code", sample_entity_spec)
+
+        mock_recon_client.reconcile_batch.assert_not_awaited()
+        save_catalog.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_auto_reconcile_entity_accepts_supported_type_with_no_properties(
+        self,
+        reconciliation_service: ReconciliationService,
+        sample_entity_spec: core.EntityResolutionSet,
+        mock_recon_client: AsyncMock,
+    ):
+        sample_entity_spec.metadata.remote.service_type = "feature_type"
+        sample_entity_spec.metadata.property_mappings = {}
+        mock_recon_client.reconcile_batch.return_value = {"q0": [dto.ReconciliationCandidate(id="feature/25", name="Trench", score=100)]}
+        source_data = ResolvedSourceRows(rows=[{"site_code": "FT-1"}], local_key="site_code")
+
+        with patch.object(reconciliation_service, "get_resolved_source_data", new=AsyncMock(return_value=source_data)):
+            result = await reconciliation_service.auto_reconcile_entity("test", "site", "site_code", sample_entity_spec)
+
+        query = mock_recon_client.reconcile_batch.await_args.args[0]["q0"]
+        assert query.type == "feature_type"
+        assert query.properties == []
+        assert "properties" not in query.to_dict()
+        assert result.proposed == 1
 
     @pytest.mark.asyncio
     async def test_ambiguous_search_source_is_rejected(self, reconciliation_service, sample_entity_spec, mock_core_project):

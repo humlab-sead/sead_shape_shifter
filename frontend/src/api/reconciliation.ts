@@ -215,8 +215,8 @@ export const reconciliationServiceApi = {
    * Get reconciliation service manifest
    * Returns the service metadata including available entity types
    */
-  getManifest: async (): Promise<any> => {
-    return apiRequest<any>({
+  getManifest: async (): Promise<unknown> => {
+    return apiRequest<unknown>({
       method: 'GET',
       url: '/reconciliation/manifest',
     })
