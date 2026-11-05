@@ -3,8 +3,8 @@
 ## Status
 
 - Approved feature
-- Scope: Make Shape Shifter derive implemented reconciliation types and their service properties from the OpenRefine manifest, so supporting a new entity type is configuration and verification rather than a Shape Shifter code change. Validate the mechanism on `feature_type` and `location`.
-- Goal: Offer only types and properties declared by the reconciliation contract. Verify actual service and database availability with a real match request.
+- Scope: Make Shape Shifter derive implemented reconciliation types and their service properties from the OpenRefine manifest, so supporting a new entity type is configuration and verification rather than a Shape Shifter code change. Validate the client workflow on `feature_type` and `location` with mocked service responses; verify service availability separately.
+- Goal: Offer only types and properties declared by the reconciliation contract. Keep deterministic client workflow tests separate from real service and database checks.
 
 ## Summary
 
@@ -46,8 +46,8 @@ The effect is that "add an entity type" is a Shape Shifter code project rather t
 - Add and consume `reconciliation.supportedTypes` separately from OpenRefine's `defaultTypes`; derive service properties from a validated `extend.property_settings` array and replace the hard-coded per-type property map.
 - Remove the stale type fallback; make an unavailable or incompatible manifest an explicit, visible state rather than a silent guess.
 - Preserve saved specifications when metadata changes or is unavailable. Show unsupported saved types and property mappings, require explicit removal or remapping before matching, and never silently discard saved values.
-- Validate the mechanism end to end on the local entities `feature_type` and `location`: candidate review, operator decision, export to the mapping sidecar, normalization, and an unchanged rerun.
-- Declare the local business keys the pilot needs; the current local `feature_type` and `location` entries declare `keys: []`, and mapping operations reject an entity without keys ([mapping_service.py](../../../backend/app/services/mapping_service.py)).
+- Validate the Shape Shifter workflow for `feature_type` and `location` with synthetic provider-shaped rows and mocked Authority Service responses: candidate review, operator decision, sidecar export, normalization, and an unchanged rerun.
+- Give each fixture a provider-style local key that is distinct from its search label. This tests key-based decisions and sidecar links; it does not select a business key for a real provider.
 - Change SEAD Authority Service where the manifest is insufficient for these needs, preferring manifest or service changes over client special cases.
 - Rewrite the developer guidance from "how to add an entity type" to "how to consume the manifest when creating a reconciliation specification".
 
@@ -57,6 +57,7 @@ The effect is that "add an entity type" is a Shape Shifter code project rather t
 - Any entity-specific matching logic in Shape Shifter, or a new plugin/strategy framework there.
 - Changing the MVP's decision states, sidecar ownership and precedence, or offline normalization.
 - Auto-accepting candidates or changing Authority Service or SIMS identity policy.
+- Implementing or evaluating multilingual or provider-specific matching strategies. Those strategies remain in Authority Service and require separate service-side tests.
 - Claiming support for a type whose manifest entry has not been verified by a real match request.
 - OpenRefine-first ergonomics beyond keeping the OpenRefine-style contract intact.
 - SIMS change-request import, adoption, or materialization. Acceptance ends at normalization.
@@ -114,7 +115,7 @@ The manifest does **not** define which local entity maps to which remote type, w
 - `feature_type` — a classifier with no properties. Confirms the label-only path and that a type serving no properties is usable rather than looking broken.
 - `location` — one property, `place_name`. Confirms that a served property can be mapped to a local column and that offering only served properties is sufficient.
 
-For both, verify the full path: a real database-backed match request, an operator decision keyed by the declared local business key, export to the sidecar, and normalization that writes the intended target ID to the parent's `public_id` while child Core foreign keys retain that parent's local `system_id`. An unchanged rerun must produce identical results.
+For Shape Shifter workflow tests, use synthetic provider-shaped rows and deterministic mocked Authority Service responses. Keep the provider-local key separate from the search label. Verify candidate review, operator decision, sidecar export, normalization that writes the intended target ID to the parent's `public_id`, child Core foreign keys that retain the parent's local `system_id`, and an unchanged rerun. These tests do not establish a real provider's business key or matching quality. Verify real Authority Service candidate availability separately under `P-AC-5`.
 
 ### Change Authority Service where the manifest is insufficient
 
@@ -125,6 +126,7 @@ Because Shape Shifter is the only consumer, the service can be adjusted instead 
 - Keep the required manifest fields and shapes explicit. A valid empty property list differs from absent or malformed `extend.property_settings`.
 - Make schema read access part of deployment, so a deployed schema is usable by the service role without a manual grant.
 - Keep types that lack implemented matching out of `reconciliation.supportedTypes`, even if they remain in `defaultTypes`. Do not paper over them in Shape Shifter.
+- Keep multilingual and provider-specific matching strategies in Authority Service. Shape Shifter consumes the advertised type and properties; this proposal does not add matching logic there.
 
 Manifest changes should stay additive so the OpenRefine-style contract keeps working for any other client.
 
@@ -144,7 +146,7 @@ Distinguish local entity names from remote types explicitly. Use a confirmed wor
 
 ### Build and test environment
 
-Use the disposable Podman setup from the MVP with real database-backed rows for `site`, `feature_type`, and `location`, so tests repeat without touching shared staging data. Do not require SIMS identity state or change-request import. After the disposable tests pass, use staging for a read-only smoke test of the deployed manifest and real candidate requests, without writing to shared project sidecars.
+Use synthetic provider-shaped rows and mocked Authority Service responses for deterministic Shape Shifter workflow and regression tests. Keep disposable database-backed requests as separate Authority Service availability checks; Phase 1 records real `feature_type` and `location` results. A read-only staging smoke test is optional deployment verification, not a prerequisite for mocked workflow tests. Do not write to shared project sidecars or require SIMS identity state or change-request import.
 
 ## Alternatives Considered
 
@@ -175,12 +177,12 @@ Use the disposable Podman setup from the MVP with real database-backed rows for 
 - Editor: with the manifest unavailable or invalid, saved types and mappings remain unchanged, compatibility is shown as unknown, and matching is blocked.
 - Editor: a type declaring no properties, such as `feature_type`, still allows a specification and a match request.
 - Editor: opening and saving an existing specification preserves all mapping keys and values; changing its type marks unsupported keys and requires explicit removal or remapping before matching.
-- Live: real match requests for `feature_type` and `location` return candidates; a manifest entry alone is not accepted as evidence.
-- End to end: for both entities, review → decision → export → normalization sets the intended target ID on the parent's `public_id`, keeps each child Core foreign key equal to the parent's local `system_id`, and an unchanged rerun produces identical results.
+- Live service check: real database-backed requests for `feature_type` and `location` return candidates. This verifies Authority Service availability, not Shape Shifter's workflow or matching quality.
+- End to end: for both entities, synthetic provider-shaped rows and deterministic mocked responses exercise review → decision → export → normalization. The target ID must reach the parent's `public_id`, child Core foreign keys must retain the parent's local `system_id`, and an unchanged rerun must produce identical results.
 - Regression: the `site` workflow, manual-link precedence, sidecar key behavior, and offline normalization are unchanged.
 - Regression: no property is offered that the live manifest does not serve for that type.
 - Guide check: a developer follows the new configuration procedure for one type and the steps match the implemented workflow.
-- Staging: read-only manifest and candidate smoke test, with no exports to shared project sidecars.
+- Optional deployment check: a read-only staging manifest and candidate smoke test, with no exports to shared project sidecars.
 
 ## Acceptance Criteria
 
@@ -189,7 +191,7 @@ Use the disposable Podman setup from the MVP with real database-backed rows for 
 - `P-AC-3` An unavailable manifest or missing or malformed `defaultTypes`, `reconciliation.supportedTypes`, or `extend.property_settings` produces a visible error and no fallback. A valid type with no matching property entries remains usable with zero properties.
 - `P-AC-4` For `feature_type` and `location`, normalization writes the intended target ID to the parent row's `public_id`, child Core foreign keys contain that parent's local `system_id`, and an unchanged rerun produces identical results.
 - `P-AC-5` Both entities return valid candidates from real database-backed requests, including one classifier type that declares no properties.
-- `P-AC-6` After the generic manifest support is implemented, configuring `location` as an additional type beyond the `site` MVP requires no type-specific Shape Shifter code change; its properties come from the manifest and its support is verified with a real match request.
+- `P-AC-6` After the generic manifest support is implemented, configuring `location` as an additional type beyond the `site` MVP requires no type-specific Shape Shifter code change; its `place_name` mapping works in a mocked-service workflow. Real service availability is verified separately under `P-AC-5`.
 - `P-AC-7` The developer guide documents the configuration procedure, uses a working local-entity/remote-type pair, and states what a manifest entry does and does not prove.
 - `P-AC-8` Regression tests confirm the MVP's operator-review requirement, sidecar key behavior, manual-link precedence, and offline normalization are unchanged.
 - `P-AC-9` Opening and saving an existing specification preserves every saved mapping key and value. Changing its type marks unsupported mappings and requires explicit removal or remapping before matching; a missing or invalid manifest does not erase saved values and prevents matching.
@@ -203,6 +205,8 @@ Use the disposable Podman setup from the MVP with real database-backed rows for 
 - Supporting a new entity type is configuration plus verification, not a Shape Shifter code change.
 - The second and third pilots are `feature_type` and `location`. Keep `taxon` out of `reconciliation.supportedTypes` until its implementation is confirmed; the reported empty result alone does not establish support.
 - Matching and type-specific search stay in Authority Service; Shape Shifter consumes advertised types and properties.
+- Shape Shifter workflow tests use synthetic provider-shaped rows and mocked service responses. These tests verify client behavior, not a real provider's key or Authority Service matching quality.
+- Real database-backed requests verify Authority Service availability separately; they are not required for every client workflow test.
 - Shape Shifter is the primary consumer, so Authority Service and the manifest may be changed to fit its needs. Manifest changes stay additive.
 - With no valid manifest, new configuration shows an explicit error and no fallback list; saved values remain visible but unverified.
 - Existing mappings are preserved across load, save, type changes, and manifest outages; unsupported mappings must be explicitly removed or remapped before matching.
@@ -221,12 +225,12 @@ Use the disposable Podman setup from the MVP with real database-backed rows for 
 - Confirm the supported-type list and served properties from the live manifest, and audit property declarations once at the service where they look incomplete.
 - Test missing and malformed manifest fields separately from a valid type with no properties.
 - Test that existing specifications retain mappings when opened, saved, changed to another type, or loaded during a manifest outage.
-- Prove each type with a real database-backed match request; the manifest alone is not evidence.
-- Confirm the business key declared for `feature_type` and `location` supports export and an unchanged rerun.
+- Prove Authority Service support with real database-backed match requests; the manifest alone is not evidence.
+- Confirm fixture-local keys for `feature_type` and `location` support sidecar export and an unchanged rerun. Do not present a synthetic fixture key as a real provider's business key.
 - Keep `site` as the property-mapping regression reference, because `feature_type` declares no properties.
 
 Do not include change-request import or SIMS adoption in this proposal's acceptance results.
 
 ## Final Recommendation
 
-Approve the reframe: Authority Service should publish implemented reconciliation types separately from OpenRefine's `defaultTypes`, and Shape Shifter should use that list plus validated property metadata. Preserve saved mappings and require explicit cleanup before matching when the manifest no longer supports them. Validate the flow on `feature_type`, a working classifier with no properties, and `location`, which serves `place_name`; a real request, not the manifest alone, confirms runtime availability. Keep target IDs on parent `public_id` columns and Core child foreign keys on local `system_id` values. Keep manifest changes additive so the OpenRefine contract continues to serve other clients.
+Approve the reframe: Authority Service should publish implemented reconciliation types separately from OpenRefine's `defaultTypes`, and Shape Shifter should use that list plus validated property metadata. Preserve saved mappings and require explicit cleanup before matching when the manifest no longer supports them. Test the Shape Shifter workflow for `feature_type`, a zero-property classifier, and `location`, which serves `place_name`, with synthetic provider-shaped rows and mocked service responses. Keep real service availability checks separate from those workflow tests. Keep multilingual and provider-specific matching strategies in Authority Service. Keep target IDs on parent `public_id` columns and Core child foreign keys on local `system_id` values. Keep manifest changes additive so the OpenRefine contract continues to serve other clients.
