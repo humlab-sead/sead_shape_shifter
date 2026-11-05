@@ -720,6 +720,62 @@ Examples:
 
 ---
 
+## Create a Reconciliation Specification
+
+A reconciliation specification tells Shape Shifter which entity column to match, which remote type and properties to use, and where the rows being matched come from. Create one specification for each entity and target field pair you want to reconcile.
+
+You need:
+
+- a saved project that contains the entities you want to reconcile
+- a reconciliation service the project can reach — the Reconciliation tab shows **Online** with the number of supported types when the service answers
+
+### Steps
+
+1. Open the project and select the **Reconciliation** tab.
+2. On the **Configuration** tab, select **Add Specification**.
+3. Choose the **Entity** whose rows contain the values to match.
+4. Choose the **Target Field** — the entity column that holds the values sent to the reconciliation service, for example a site name or taxon name column. The same field is the source key used when accepted decisions are exported to the mapping sidecar.
+5. Select the **Source Type**:
+
+   | Source Type | Rows used |
+   |-------------|-----------|
+   | Entity Preview | The entity's own preview rows. This is the default. |
+   | Other Entity | Rows from another entity in the same project, for example a prepared variant of the entity. |
+   | SQL Query | Rows from a custom SQL query. Column checks are skipped because the columns are defined inside the query. |
+
+6. Select a **Remote Type**. The list is read from the reconciliation service. A type the service no longer offers is listed with an `(unsupported)` or `(cannot be verified)` suffix and cannot be used for matching.
+7. Fill in **Property Mappings**. Each row names a property the remote type serves; choose the source column that supplies its value. A property the service does not declare is flagged **Unsupported** or **Cannot verify**.
+8. Adjust **Match Thresholds** if needed. The **Review Threshold** marks rows that need attention. The **Auto-accept Threshold** is kept for compatibility and does not accept candidates on its own.
+9. Select **Save**.
+
+The specification is saved in `<project>/<project>-reconciliation.yml`, next to the project file.
+
+To enter the same content as raw YAML, use the **YAML** tab inside the specification dialog, or the project's **Reconciliation → YAML** tab.
+
+### Edit or Remove a Specification
+
+- **Entity** and **Target Field** are read-only after creation (lock icon). To change either value, delete the specification and create a new one.
+- A specification is identified by its entity and target field together, so one entity can have several specifications, one per target field.
+- Deleting a specification also removes the mapping links and local-only approvals it owns. Manual links and links owned by other specifications are kept.
+
+### Check the Specification Status
+
+The **Configuration** tab lists each specification with a status icon. Hover the icon to read the details.
+
+| Icon | Meaning |
+|------|---------|
+| Green check | No problems detected |
+| Yellow warning | Configuration warnings, such as a missing remote type |
+| Red alert | Configuration errors that must be fixed before matching |
+
+The checks confirm that the entity still exists, that the target field and mapped columns exist in the entity's output columns, and that the remote type and its properties are still served.
+
+### Next Step
+
+Select **Find Candidates** on the specification row to search the normalized rows. See [Reconciliation Workflow](#reconciliation-workflow) for the review, export, and approval steps.
+
+---
+
 ## How Mappings Are Stored
 
 Applied ID links and manual overrides are persisted in a **mapping sidecar file** (`<project>-mapping.yml`) stored alongside `shapeshifter.yml`. This file is the source of truth for links applied during normalization. Reconciliation candidates and review decisions are held separately in `<project>-reconciliation.yml` and do not become applied links merely by being accepted there.
@@ -748,7 +804,7 @@ During normalization, mappings are applied in this order (first match wins):
 
 ## Reconciliation Workflow
 
-1. Configure a reconciliation specification for an entity and search field.
+1. Configure a reconciliation specification for an entity and target field, as described in [Create a Reconciliation Specification](#create-a-reconciliation-specification).
 2. Select **Find Candidates** to search the normalized rows. Each result is addressed by its encoded business key, not its search label. Missing or duplicate keys, missing labels, and row errors are reported. Candidate scores and thresholds are informational; matching never accepts a candidate for you.
 3. Review each row in the grid. Select a candidate before accepting it, or reject the row or mark it local-only. These decisions are saved by business key, and rerunning candidate search preserves them. Rows without decisions or candidates are unresolved; rows without a business key are unreviewable. Preview and matching failures are shown separately from an empty result.
 4. To apply a target ID, select **Add Manual Link** and enter the encoded business key and an integer target ID. This saves a trusted `source: manual` link in the mapping sidecar without checking the ID against SEAD. The committed sidecar ID is effective during the next normalization and takes precedence over the fixed row's saved `public_id`.
