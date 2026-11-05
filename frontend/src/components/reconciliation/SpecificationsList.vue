@@ -379,7 +379,7 @@ async function validateSpecification(spec: EntityResolutionListItem): Promise<Va
   // Determine which entity to validate against
   let entityForValidation = spec.entity_name
 
-  // Check if using "Other Entity" as source
+  // Check if using "Another Entity" as source
   if (spec.source && typeof spec.source === 'string') {
     entityForValidation = spec.source
   }
