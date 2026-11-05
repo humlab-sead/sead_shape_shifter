@@ -748,7 +748,7 @@ You need:
 8. Adjust **Match Thresholds** if needed. The **Review Threshold** marks rows that need attention. The **Auto-accept Threshold** is kept for compatibility and does not accept candidates on its own.
 9. Select **Save**.
 
-The specification is saved in `<project>/<project>-reconciliation.yml`, next to the project file.
+The specification is saved in the project folder as `<project>-reconciliation.yml`, alongside `shapeshifter.yml`.
 
 To enter the same content as raw YAML, use the **YAML** tab inside the specification dialog, or the project's **Reconciliation → YAML** tab.
 
@@ -1247,18 +1247,19 @@ They are managed outside the project and connected through **Data Sources**.
 
 ## User-Oriented References
 
-- USER_GUIDE_APPENDIX.md
-- RECONCILIATION_WORKFLOW.md
-- TARGET_MODEL_GUIDE.md
+- [USER_GUIDE_APPENDIX.md](other/USER_GUIDE_APPENDIX.md)
+- [RECONCILIATION_WORKFLOW.md](other/RECONCILIATION_WORKFLOW.md)
+- [RECONCILIATION_SETUP_GUIDE.md](other/RECONCILIATION_SETUP_GUIDE.md)
+- [TARGET_MODEL_GUIDE.md](TARGET_MODEL_GUIDE.md)
 
 ---
 
 ## Technical References
 
-- CONFIGURATION_GUIDE.md
-- DESIGN.md
-- DEVELOPMENT.md
-- CHANGELOG.md
+- [CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md)
+- [DESIGN.md](DESIGN.md)
+- [DEVELOPMENT.md](DEVELOPMENT.md)
+- [CHANGELOG.md](../CHANGELOG.md)
 
 ---
 
