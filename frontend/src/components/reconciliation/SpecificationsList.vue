@@ -114,8 +114,8 @@
           <!-- Thresholds Column -->
           <template #item.thresholds="{ item }">
             <div class="text-caption">
-              <div>Auto: {{ (item.auto_accept_threshold * 100).toFixed(0) }}%</div>
-              <div>Review: {{ (item.review_threshold * 100).toFixed(0) }}%</div>
+              <span>Auto: {{ (item.auto_accept_threshold * 100).toFixed(0) }}%</span>
+              <span class="ml-1">Review: {{ (item.review_threshold * 100).toFixed(0) }}%</span>
             </div>
           </template>
 
