@@ -722,7 +722,7 @@ Examples:
 
 ## Create a Reconciliation Specification
 
-A reconciliation specification tells Shape Shifter which entity column to match, which remote type and properties to use, and where the rows being matched come from. Create one specification for each entity and target field pair you want to reconcile.
+A reconciliation specification tells Shape Shifter which entity column to match, which remote type and properties to use, and where the rows being matched come from. Create one specification for each entity and search field pair you want to reconcile.
 
 You need:
 
@@ -734,7 +734,7 @@ You need:
 1. Open the project and select the **Reconciliation** tab.
 2. On the **Configuration** tab, select **Add Specification**.
 3. Choose the **Entity** whose rows contain the values to match.
-4. Choose the **Target Field** — the entity column that holds the values sent to the reconciliation service, for example a site name or taxon name column. The same field is the source key used when accepted decisions are exported to the mapping sidecar.
+4. Choose the **Search Field** — the entity column that holds the values sent to the reconciliation service, for example a site name or taxon name column. The matched ID is written to the entity's `public_id` column, and the search field is also the source key used when accepted decisions are exported to the mapping sidecar.
 5. Select the **Source Type**:
 
    | Source Type | Rows used |
@@ -754,8 +754,8 @@ To enter the same content as raw YAML, use the **YAML** tab inside the specifica
 
 ### Edit or Remove a Specification
 
-- **Entity** and **Target Field** are read-only after creation (lock icon). To change either value, delete the specification and create a new one.
-- A specification is identified by its entity and target field together, so one entity can have several specifications, one per target field.
+- **Entity** and **Search Field** are read-only after creation (lock icon). To change either value, delete the specification and create a new one.
+- A specification is identified by its entity and search field together, so one entity can have several specifications, one per search field.
 - Deleting a specification also removes the mapping links and local-only approvals it owns. Manual links and links owned by other specifications are kept.
 
 ### Check the Specification Status
@@ -768,7 +768,7 @@ The **Configuration** tab lists each specification with a status icon. Hover the
 | Yellow warning | Configuration warnings, such as a missing remote type |
 | Red alert | Configuration errors that must be fixed before matching |
 
-The checks confirm that the entity still exists, that the target field and mapped columns exist in the entity's output columns, and that the remote type and its properties are still served.
+The checks confirm that the entity still exists, that the search field and mapped columns exist in the entity's output columns, and that the remote type and its properties are still served.
 
 ### Next Step
 
@@ -804,7 +804,7 @@ During normalization, mappings are applied in this order (first match wins):
 
 ## Reconciliation Workflow
 
-1. Configure a reconciliation specification for an entity and target field, as described in [Create a Reconciliation Specification](#create-a-reconciliation-specification).
+1. Configure a reconciliation specification for an entity and search field, as described in [Create a Reconciliation Specification](#create-a-reconciliation-specification).
 2. Select **Find Candidates** to search the normalized rows. Each result is addressed by its encoded business key, not its search label. Missing or duplicate keys, missing labels, and row errors are reported. Candidate scores and thresholds are informational; matching never accepts a candidate for you.
 3. Review each row in the grid. Select a candidate before accepting it, or reject the row or mark it local-only. These decisions are saved by business key, and rerunning candidate search preserves them. Rows without decisions or candidates are unresolved; rows without a business key are unreviewable. Preview and matching failures are shown separately from an empty result.
 4. To apply a target ID, select **Add Manual Link** and enter the encoded business key and an integer target ID. This saves a trusted `source: manual` link in the mapping sidecar without checking the ID against SEAD. The committed sidecar ID is effective during the next normalization and takes precedence over the fixed row's saved `public_id`.
