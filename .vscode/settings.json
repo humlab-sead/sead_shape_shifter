@@ -33,6 +33,16 @@
     "editor.hover.delay": 1400,
     "editor.minimap.enabled": false,
     "files.autoSave": "afterDelay",
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/.jj": true,
+        "**/.DS_Store": true,
+        "**/Thumbs.db": true,
+        "lib": true,
+        "**/**.egg-info": true
+    },
     "files.watcherExclude": {
         "**/.git/**": true,
         "**/.venv/**": true,
