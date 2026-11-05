@@ -61,6 +61,8 @@ Backend settings use the `SHAPE_SHIFTER_` prefix and are loaded from
 | `SHAPE_SHIFTER_ALLOWED_ORIGIN_REGEX` | `null` | Optional controlled CORS pattern. |
 | `SHAPE_SHIFTER_RECONCILIATION_SERVICE_URL` | `http://localhost:8000` | Reconciliation service base URL. |
 | `SHAPE_SHIFTER_SIMS_SERVICE_URL` | `http://localhost:8000` | SEAD authority/SIMS service base URL. |
+| `SHAPE_SHIFTER_SIMS_CONTRACT_CALLER` | `shape-shifter` | Caller name sent as `X-SIMS-Caller` when registering provider-scope business-key contracts. |
+| `SHAPE_SHIFTER_SIMS_CONTRACT_REGISTRATION_TOKEN` | `null` | Shared secret sent as `X-SIMS-Caller-Token`. It must match the SIMS caller entry. An unset value keeps contract registration closed, so Change Request runs stop before any identity work. |
 | `SHAPE_SHIFTER_INGEST_TARGET_HOST` | `null` | Backend-selected PostgreSQL host for project-based Change Request generation; required when that helper is used. |
 | `SHAPE_SHIFTER_INGEST_TARGET_PORT` | `5432` | Backend-selected PostgreSQL port for project-based Change Request generation. |
 | `SHAPE_SHIFTER_INGEST_TARGET_DBNAME` | `null` | Backend-selected PostgreSQL database name; required when that helper is used. |

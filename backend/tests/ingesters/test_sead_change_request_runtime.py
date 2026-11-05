@@ -16,7 +16,7 @@ from psycopg.rows import TupleRow
 
 from backend.app.clients.sims_client import SimsClient
 from backend.app.ingesters.protocol import IngesterConfig
-from backend.app.models.sims import ResolveRequest, ResolveResponse
+from backend.app.models.sims import RegisterScopeContractsRequest, ResolveRequest, ResolveResponse
 from backend.app.services.ingester_runtime import (
     SeadChangeRequestSimsAdapter,
     SeadChangeRequestTargetCollisionChecker,
@@ -65,15 +65,27 @@ class FakeBackendSimsClient:
         *,
         target_id: int | None = None,
         resolve_error: httpx.HTTPStatusError | None = None,
+        contract_error: httpx.HTTPStatusError | None = None,
     ) -> None:
         self.binding_set_uuid = binding_set_uuid
         self.lifecycle_state = lifecycle_state
         self.target_id = target_id
         self.resolve_error = resolve_error
+        self.contract_error = contract_error
         self.resolve_requests: list[ResolveRequest] = []
+        self.contract_requests: list[RegisterScopeContractsRequest] = []
+        self.call_order: list[str] = []
         self.associated_change_requests: list[tuple[UUID, str]] = []
 
+    async def register_scope_contracts(self, request: RegisterScopeContractsRequest) -> SimpleNamespace:
+        self.call_order.append("register")
+        self.contract_requests.append(request)
+        if self.contract_error is not None:
+            raise self.contract_error
+        return SimpleNamespace(scope_name=request.scope_name, entities=[SimpleNamespace(state="existing")])
+
     async def resolve(self, request: ResolveRequest) -> FakeResolveResponse:
+        self.call_order.append("resolve")
         self.resolve_requests.append(request)
         if self.resolve_error is not None:
             raise self.resolve_error
@@ -545,6 +557,66 @@ class TestTrustedScopeAndBusinessKeys:
         assert len(sims_client.resolve_requests) > 0
         identity_value = sims_client.resolve_requests[0].requests[0].primary_signal.identity_value  # type: ignore
         assert identity_value == '[1,[["site_name","string","A"],["site_code","number","7"]]]'
+
+    @pytest.mark.asyncio
+    async def test_adapter_registers_the_ordered_contract_before_resolve(self):
+        sims_client = FakeBackendSimsClient(lifecycle_state="confirmed", target_id=501)
+        adapter = SeadChangeRequestSimsAdapter(
+            cast(Any, sims_client),
+            business_keys={"site": ("site_name", "site_code"), "bridge": ()},
+        )
+
+        await adapter.allocate_entity("site", {"site_name": "A", "site_code": 7}, minimal_submission_context())
+
+        assert sims_client.call_order == ["register", "resolve"]
+        registration = sims_client.contract_requests[0]
+        assert registration.scope_name == TEST_SCOPE_NAME
+        assert [(declaration.entity_type, declaration.business_keys) for declaration in registration.entities] == [
+            ("site", ["site_name", "site_code"])
+        ]
+
+    @pytest.mark.asyncio
+    async def test_rejected_scope_contract_stops_the_batch_before_resolve(self):
+        request = httpx.Request("POST", "http://sims.test/identity/scope-contracts")
+        response = httpx.Response(
+            409,
+            request=request,
+            json={
+                "detail": {
+                    "message": "Business-key contract conflict for scope 'provider://mal/test-pilot'",
+                    "conflicts": [
+                        {
+                            "entity_type": "site",
+                            "registered": ["site_name", "country"],
+                            "submitted": ["site_name"],
+                        }
+                    ],
+                }
+            },
+        )
+        contract_conflict = httpx.HTTPStatusError("409 Conflict", request=request, response=response)
+        sims_client = FakeBackendSimsClient(contract_error=contract_conflict)
+        adapter = SeadChangeRequestSimsAdapter(cast(Any, sims_client), business_keys={"site": ("site_name",)})
+        frame = pd.DataFrame({"site_id": [None], "site_name": ["A"]})
+        planned_table = PlannedTable(
+            entity_name="site",
+            frame=frame,
+            planned_actions=pd.Series([PlannedRowAction.ALLOCATE], index=frame.index, name="_planned_action"),
+        )
+
+        result = await orchestrate_identity_assignments(
+            [planned_table],
+            minimal_submission_context(),
+            sims_client=adapter,
+        )
+
+        assignment = result.assignments["site"][0]
+        assert assignment.state == ChangeRowState.BLOCKED_UNRESOLVED
+        note = assignment.note or ""
+        assert "HTTP 409" in note
+        assert "registered ['site_name', 'country'], submitted ['site_name']" in note
+        assert not sims_client.resolve_requests
+        assert sims_client.call_order == ["register"]
 
     @pytest.mark.asyncio
     async def test_declared_business_key_reuses_target_identity_across_runs(self):
