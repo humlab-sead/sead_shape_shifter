@@ -120,9 +120,7 @@ def build_replay_project(saved_project: ShapeShiftProject, resolution: LinkIssue
     entity_cfg: dict[str, Any] = replay.entities[fk.local_entity]
 
     columns: list[str] = list(entity_cfg.get("columns") or [])
-    required_columns: list[str] = [
-        key for key in fk.local_keys if key not in columns and key not in saved_cfg.unnest_columns
-    ]
+    required_columns: list[str] = [key for key in fk.local_keys if key not in columns and key not in saved_cfg.unnest_columns]
     entity_cfg["columns"] = columns + required_columns
     entity_cfg["foreign_keys"] = list(entity_cfg.get("foreign_keys") or [])[: resolution.fk_index]
     entity_cfg["keys"] = []
