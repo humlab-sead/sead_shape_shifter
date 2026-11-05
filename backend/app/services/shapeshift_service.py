@@ -136,7 +136,7 @@ class ShapeShiftService:
         # Fast path: reuse the warm table_store from a project-wide run, but only while it
         # matches the current project version and has not outlived the cache TTL.
         if (
-            not using_override
+            not using_override  # pylint: disable=too-many-boolean-expressions
             and self._warm_table_store
             and entity_name in self._warm_table_store
             and self._warm_project_name == project_name
