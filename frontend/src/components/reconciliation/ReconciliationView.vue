@@ -13,7 +13,9 @@
               variant="flat"
               :prepend-icon="serviceStatus.status === 'online' ? 'mdi-check-circle' : 'mdi-alert-circle'"
             >
-              {{ serviceStatus.status === 'online' ? `Online (${availableEntityTypes} entities)` : 'Offline' }}
+              {{
+                serviceStatus.status === 'online' ? `Online (${availableEntityTypes} reconciliation types)` : 'Offline'
+              }}
             </v-chip>
 
             <!-- Configured Specifications Count -->
@@ -56,7 +58,11 @@
                 Configure reconciliation specifications for your entities. Click the reconcile button on any
                 specification to start.
               </p>
-              <specifications-list :project-name="projectName" @reconcile="handleReconcileSpec" />
+              <specifications-list
+                :project-name="projectName"
+                :manifest-result="manifestResult"
+                @reconcile="handleReconcileSpec"
+              />
             </div>
           </v-window-item>
 
@@ -129,6 +135,7 @@
                   color="primary"
                   prepend-icon="mdi-auto-fix"
                   :loading="loading"
+                  :disabled="!matchEligibility.canMatch"
                   @click="handleAutoReconcile"
                 >
                   Find Candidates
@@ -159,6 +166,16 @@
                   Export to Mapping
                 </v-btn>
               </div>
+
+              <v-alert
+                v-if="selectedEntity && entitySpec && !matchEligibility.canMatch"
+                data-testid="matching-blocked"
+                type="warning"
+                variant="tonal"
+                class="mb-4"
+              >
+                Candidate search is blocked: {{ matchEligibility.message }}
+              </v-alert>
 
               <v-alert type="info" variant="tonal" class="mb-4">
                 Export checks accepted candidates against SEAD and records local-only approvals separately. Missing or
@@ -294,8 +311,10 @@ import type {
   AutoReconcileResult,
   DecisionUpdateRequest,
   MappingEntityResponse,
+  ReconciliationManifestResult,
   ReconciliationPreviewRow,
 } from '@/types/reconciliation'
+import { getReconciliationCompatibility, parseReconciliationManifest } from '@/utils/reconciliationManifest'
 import yaml from 'js-yaml'
 
 interface Props {
@@ -328,7 +347,7 @@ const showResultSnackbar = ref(false)
 const resultMessage = ref('')
 const resultColor = ref('success')
 const serviceStatus = ref<{ status: string; service_name?: string; error?: string } | null>(null)
-const serviceManifest = ref<any>(null)
+const manifestResult = ref<ReconciliationManifestResult | null>(null)
 const availableEntityTypes = ref<number>(0)
 const autoReconcileResult = ref<AutoReconcileResult | null>(null)
 const autoReconcileError = ref<string | null>(null)
@@ -356,6 +375,21 @@ const entitySpec = computed(() => {
   const entityConfigs = reconciliationConfig.value.entities[selectedEntity.value]
   if (!entityConfigs) return null
   return entityConfigs[selectedTarget.value] || null
+})
+
+const matchEligibility = computed(() =>
+  getReconciliationCompatibility(
+    manifestResult.value,
+    entitySpec.value?.remote?.service_type,
+    entitySpec.value?.property_mappings ?? {}
+  )
+)
+
+watch(matchEligibility, (eligibility) => {
+  if (!eligibility.canMatch) {
+    autoReconcileError.value = null
+    autoReconcileResult.value = null
+  }
 })
 
 const entityPreviewData = computed(() => {
@@ -408,6 +442,11 @@ async function handleAutoReconcile() {
 
   autoReconcileError.value = null
   autoReconcileResult.value = null
+  if (!matchEligibility.value.canMatch) {
+    autoReconcileError.value = matchEligibility.value.message ?? 'Reconciliation compatibility could not be verified.'
+    return
+  }
+
   try {
     const thresholdDecimal = autoAcceptThreshold.value / 100
     autoReconcileResult.value = await reconciliationStore.autoReconcile(
@@ -432,7 +471,7 @@ async function handleAutoReconcile() {
       activeTab.value = 'reconcile'
     }
   } catch (e: any) {
-    autoReconcileError.value = e.response?.data?.detail || e.message || 'The matching request could not be completed.'
+    autoReconcileError.value = getApiErrorMessage(e, 'The matching request could not be completed.')
     resultMessage.value = `Candidate search failed: ${autoReconcileError.value}`
     resultColor.value = 'error'
     showResultSnackbar.value = true
@@ -543,21 +582,25 @@ async function saveManualLink() {
 
 async function checkServiceHealth() {
   try {
-    const response = await reconciliationStore.checkServiceHealth()
-    serviceStatus.value = response
+    serviceStatus.value = await reconciliationStore.checkServiceHealth()
+  } catch (error: unknown) {
+    console.error('Failed to check reconciliation service health:', error)
+    serviceStatus.value = { status: 'offline', error: getApiErrorMessage(error, 'Health check failed.') }
+  }
 
-    // Also fetch the manifest to get available entity types
-    const manifest = await reconciliationStore.getServiceManifest()
-    serviceManifest.value = manifest
-
-    // Extract entity types count from manifest
-    if (manifest.defaultTypes && Array.isArray(manifest.defaultTypes)) {
-      availableEntityTypes.value = manifest.defaultTypes.length
-      console.log(`[ReconciliationView] Service has ${availableEntityTypes.value} entity types available`)
+  try {
+    manifestResult.value = parseReconciliationManifest(await reconciliationStore.getServiceManifest())
+    availableEntityTypes.value =
+      manifestResult.value.status === 'valid' ? manifestResult.value.manifest.supportedTypes.length : 0
+    if (manifestResult.value.status === 'error') {
+      console.error('Failed to validate reconciliation service manifest:', manifestResult.value.error)
     }
-  } catch (e: any) {
-    console.error('Failed to check service health:', e)
-    serviceStatus.value = { status: 'offline', error: e.message }
+  } catch (error: unknown) {
+    console.error('Failed to load reconciliation service manifest:', error)
+    manifestResult.value = {
+      status: 'error',
+      error: getApiErrorMessage(error, 'The service manifest could not be loaded.'),
+    }
     availableEntityTypes.value = 0
   }
 }

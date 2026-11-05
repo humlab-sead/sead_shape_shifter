@@ -18,11 +18,11 @@ def _first_symlink_between(path: Path, stop: Path) -> Path | None:
     Walks from ``path`` toward its parents and stops once ``stop`` or the filesystem
     root is reached, so symlinks outside the managed root are not reported.
     """
-    current = path
+    current: Path = path
     while True:
         if current.is_symlink():
             return current
-        if current == stop or current.parent == current:
+        if current in (stop, current.parent):
             return None
         current = current.parent
 

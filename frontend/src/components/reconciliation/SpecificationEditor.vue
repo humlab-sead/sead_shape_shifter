@@ -46,6 +46,17 @@
           </ul>
         </v-alert>
 
+        <v-alert
+          v-if="manifestResult?.status === 'error'"
+          data-testid="manifest-error"
+          type="error"
+          variant="tonal"
+          class="mb-4"
+        >
+          Reconciliation types and properties cannot be verified: {{ manifestResult.error }}
+          Saved values are preserved, but candidate matching is blocked until the manifest can be checked.
+        </v-alert>
+
         <v-window v-model="activeTab">
           <v-window-item value="form">
             <v-form ref="form" v-model="valid">
@@ -152,7 +163,9 @@
 
               <v-autocomplete
                 v-model="formData.spec.remote.service_type"
-                :items="availableRemoteTypes"
+                :items="remoteTypeOptions"
+                item-title="name"
+                item-value="id"
                 label="Remote Type *"
                 variant="outlined"
                 density="comfortable"
@@ -169,6 +182,17 @@
                 </template>
               </v-autocomplete>
 
+              <v-alert
+                v-if="getTypeCompatibility().status === 'unsupported'"
+                data-testid="unsupported-remote-type"
+                type="warning"
+                variant="tonal"
+                density="compact"
+                class="mb-4"
+              >
+                {{ getTypeCompatibility().message }}
+              </v-alert>
+
               <!-- Property Mappings -->
               <h4 class="text-subtitle-1 mb-4">
                 <v-icon start size="small">mdi-link-variant</v-icon>
@@ -179,11 +203,32 @@
               <v-card variant="flat" class="mb-4">
                 <v-card-text v-if="availableProperties.length > 0">
                   <v-row v-for="prop in availableProperties" :key="prop" dense>
-                    <v-col cols="12">
+                    <v-col cols="10">
+                      <div class="d-flex align-center mb-1">
+                        <span class="text-body-2">{{ prop }}</span>
+                        <v-chip
+                          v-if="propertyCompatibility(prop) === 'unsupported'"
+                          size="x-small"
+                          color="error"
+                          variant="tonal"
+                          class="ml-2"
+                        >
+                          Unsupported
+                        </v-chip>
+                        <v-chip
+                          v-else-if="propertyCompatibility(prop) === 'unknown'"
+                          size="x-small"
+                          color="warning"
+                          variant="tonal"
+                          class="ml-2"
+                        >
+                          Cannot verify
+                        </v-chip>
+                      </div>
                       <v-autocomplete
                         :model-value="formData.spec.property_mappings[prop]"
                         :items="availableFields"
-                        :label="prop"
+                        :label="`Source column for ${prop}`"
                         variant="outlined"
                         density="compact"
                         clearable
@@ -217,10 +262,27 @@
                         </template>
                       </v-autocomplete>
                     </v-col>
+                    <v-col cols="2" class="d-flex align-center">
+                      <v-btn
+                        v-if="prop in formData.spec.property_mappings"
+                        :data-testid="`remove-property-mapping-${prop}`"
+                        :aria-label="`Remove mapping for ${prop}`"
+                        icon="mdi-close"
+                        size="small"
+                        variant="text"
+                        @click="removePropertyMapping(prop)"
+                      />
+                    </v-col>
                   </v-row>
                 </v-card-text>
                 <v-card-text v-else class="text-center text-grey">
-                  <p>Select a remote type to see available properties</p>
+                  <p v-if="manifestResult?.status === 'error'">
+                    Service properties cannot be checked. Existing mappings remain available for review.
+                  </p>
+                  <p v-else-if="manifestResult?.status === 'valid' && formData.spec.remote.service_type">
+                    No properties are declared for this remote type.
+                  </p>
+                  <p v-else>Select a supported remote type to see available properties.</p>
                 </v-card-text>
               </v-card>
 
@@ -314,11 +376,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { computed, ref, watch, onMounted } from 'vue'
 import { useReconciliationStore } from '@/stores/reconciliation'
 import { useProjectStore } from '@/stores/project'
 import { useNotification } from '@/composables/useNotification'
-import type { EntityResolutionListItem, EntityResolutionSet, ReconciliationSource } from '@/types/reconciliation'
+import type {
+  EntityResolutionListItem,
+  EntityResolutionSet,
+  ReconciliationManifestResult,
+  ReconciliationSource,
+  ReconciliationTypeOption,
+} from '@/types/reconciliation'
+import { getReconciliationCompatibility, parseReconciliationManifest } from '@/utils/reconciliationManifest'
 import * as yaml from 'js-yaml'
 import YamlEditor from '../common/YamlEditor.vue'
 
@@ -350,8 +419,7 @@ const loadingFields = ref(false)
 const loadingRemoteTypes = ref(false)
 const availableEntities = ref<string[]>([])
 const availableFields = ref<string[]>([])
-const availableRemoteTypes = ref<string[]>([])
-const availableProperties = ref<string[]>([])
+const manifestResult = ref<ReconciliationManifestResult | null>(null)
 const isDirty = ref(false)
 const validationErrors = ref<string[]>([])
 const validationWarnings = ref<string[]>([])
@@ -386,8 +454,67 @@ const formData = ref<{
   },
 })
 
+const availableRemoteTypes = computed<ReconciliationTypeOption[]>(() =>
+  manifestResult.value?.status === 'valid' ? manifestResult.value.manifest.supportedTypes : []
+)
+
+const remoteTypeOptions = computed<ReconciliationTypeOption[]>(() => {
+  const options = availableRemoteTypes.value
+  const serviceType = formData.value.spec.remote.service_type
+  if (!serviceType || options.some((option) => option.id === serviceType)) return options
+
+  const status = manifestResult.value?.status === 'valid' ? 'unsupported' : 'cannot be verified'
+  return [...options, { id: serviceType, name: `${serviceType} (${status})`, disabled: true }]
+})
+
+const availableProperties = computed<string[]>(() => {
+  const serviceType = formData.value.spec.remote.service_type
+  const servedProperties =
+    serviceType && manifestResult.value?.status === 'valid'
+      ? (manifestResult.value.manifest.propertiesByType[serviceType] ?? [])
+      : []
+  return [...new Set([...servedProperties, ...Object.keys(formData.value.spec.property_mappings)])]
+})
+
 // Validation rules
 const required = (v: any) => !!v || 'Required'
+
+function getTypeCompatibility() {
+  return getReconciliationCompatibility(manifestResult.value, formData.value.spec.remote.service_type, {})
+}
+
+function propertyCompatibility(property: string): 'supported' | 'unsupported' | 'unknown' {
+  const compatibility = getTypeCompatibility()
+  if (compatibility.status === 'unsupported') return 'unsupported'
+  if (compatibility.status !== 'supported') return 'unknown'
+
+  const serviceType = formData.value.spec.remote.service_type
+  if (!serviceType || manifestResult.value?.status !== 'valid') return 'unknown'
+  return manifestResult.value.manifest.propertiesByType[serviceType]?.includes(property) ? 'supported' : 'unsupported'
+}
+
+function manifestErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) return error.message
+  if (typeof error === 'object' && error !== null && 'response' in error) {
+    const response = error.response
+    if (typeof response === 'object' && response !== null && 'data' in response) {
+      const data = response.data
+      if (typeof data === 'object' && data !== null && 'detail' in data) {
+        const detail = data.detail
+        if (typeof detail === 'string') return detail
+        if (
+          typeof detail === 'object' &&
+          detail !== null &&
+          'message' in detail &&
+          typeof detail.message === 'string'
+        ) {
+          return detail.message
+        }
+      }
+    }
+  }
+  return 'The reconciliation service manifest could not be loaded.'
+}
 
 const uniqueTargetField = (v: string) => {
   if (!props.isNew) return true
@@ -404,12 +531,19 @@ async function validateSpecification() {
 
   if (props.isNew) return
 
+  const compatibility = getReconciliationCompatibility(
+    manifestResult.value,
+    formData.value.spec.remote?.service_type,
+    formData.value.spec.property_mappings
+  )
+  if (compatibility.status === 'unknown' || compatibility.status === 'unsupported') {
+    validationErrors.value.push(compatibility.message ?? 'Reconciliation compatibility could not be verified.')
+  } else if (compatibility.status === 'disabled') {
+    validationWarnings.value.push(compatibility.message ?? 'No remote service type configured')
+  }
+
   // If source is a SQL query, we can't validate columns (they're defined in the query)
   if (formData.value.spec.source && typeof formData.value.spec.source === 'object') {
-    // SQL query source - skip column validation
-    if (!formData.value.spec.remote?.service_type) {
-      validationWarnings.value.push('No remote service type configured')
-    }
     return
   }
 
@@ -468,11 +602,19 @@ function isMissingColumn(columnName: string | undefined): boolean {
 
 // Methods
 function updatePropertyMapping(property: string, value: string | null) {
-  // Ensure reactive update by creating a new object
-  formData.value.spec.property_mappings = {
-    ...formData.value.spec.property_mappings,
-    [property]: value || '',
+  const mappings = { ...formData.value.spec.property_mappings }
+  if (!value) {
+    delete mappings[property]
+  } else {
+    mappings[property] = value
   }
+  formData.value.spec.property_mappings = mappings
+}
+
+function removePropertyMapping(property: string) {
+  const mappings = { ...formData.value.spec.property_mappings }
+  delete mappings[property]
+  formData.value.spec.property_mappings = mappings
 }
 
 async function onEntityChange(entityName: string) {
@@ -492,28 +634,7 @@ async function onEntityChange(entityName: string) {
   }
 }
 
-async function onRemoteTypeChange(remoteType: string | null) {
-  if (!remoteType) {
-    availableProperties.value = []
-    return
-  }
-
-  // If we have existing property_mappings (editing mode), use those keys
-  const existingProps = Object.keys(formData.value.spec.property_mappings)
-  if (existingProps.length > 0) {
-    availableProperties.value = existingProps
-  } else {
-    // TODO: Fetch available properties from reconciliation service manifest
-    // For now, use type-specific defaults
-    const propertyDefaults: Record<string, string[]> = {
-      site: ['latitude', 'longitude', 'description', 'country', 'region'],
-      taxon: ['rank', 'kingdom', 'family'],
-      location: ['latitude', 'longitude', 'country'],
-      abundance: ['value', 'unit'],
-    }
-    availableProperties.value = propertyDefaults[remoteType.toLowerCase()] || []
-  }
-
+function onRemoteTypeChange() {
   isDirty.value = true
 }
 
@@ -609,30 +730,16 @@ async function loadAvailableEntities() {
   }
 }
 
-// Load available remote types (TODO: from reconciliation service manifest)
+// Load and validate supported remote types and their properties.
 async function loadRemoteTypes() {
   loadingRemoteTypes.value = true
+  manifestResult.value = null
   try {
-    // Fetch from reconciliation service /reconcile endpoint
-    const manifest = await reconciliationStore.getServiceManifest()
-
-    // Extract entity types from manifest
-    // OpenRefine manifest has defaultTypes array with {id, name} objects
-    if (manifest.defaultTypes && Array.isArray(manifest.defaultTypes)) {
-      availableRemoteTypes.value = manifest.defaultTypes.map((type: any) => type.id)
-      console.log(
-        `[SpecificationEditor] Loaded ${availableRemoteTypes.value.length} entity types from service:`,
-        availableRemoteTypes.value
-      )
-    } else {
-      console.warn('[SpecificationEditor] No defaultTypes found in manifest, using fallback')
-      // Fallback to common types if manifest doesn't have them
-      availableRemoteTypes.value = ['site', 'taxon', 'location', 'abundance']
-    }
-  } catch (error) {
-    console.error('Failed to load remote types:', error)
-    // Fallback to common types on error
-    availableRemoteTypes.value = ['site', 'taxon', 'location', 'abundance']
+    manifestResult.value = parseReconciliationManifest(await reconciliationStore.getServiceManifest())
+  } catch (error: unknown) {
+    const message = manifestErrorMessage(error)
+    console.error('Failed to load reconciliation manifest:', error)
+    manifestResult.value = { status: 'error', error: message }
   } finally {
     loadingRemoteTypes.value = false
   }
@@ -681,7 +788,7 @@ watch(
 
       // Load properties for remote type
       if (spec.remote.service_type) {
-        onRemoteTypeChange(spec.remote.service_type)
+        onRemoteTypeChange()
       }
 
       // Validate the loaded specification
@@ -690,6 +797,10 @@ watch(
   },
   { immediate: true }
 )
+
+watch(manifestResult, async () => {
+  if (props.specification && !props.isNew) await validateSpecification()
+})
 
 // Watch for dialog open
 watch(
@@ -788,16 +899,7 @@ function formDataToYaml(): string {
   }
   // Entity Preview = null (default)
 
-  // Add property mappings (only non-empty ones)
-  const mappings: Record<string, string> = {}
-  for (const [key, value] of Object.entries(formData.value.spec.property_mappings)) {
-    if (value) {
-      mappings[key] = value
-    }
-  }
-  if (Object.keys(mappings).length > 0) {
-    specData.property_mappings = mappings
-  }
+  specData.property_mappings = { ...formData.value.spec.property_mappings }
 
   // Add remote configuration
   specData.remote = {
@@ -831,16 +933,29 @@ function yamlToFormData(yamlString: string): boolean {
       sqlQuery.value = parsed.source.query
     }
 
-    // Update property mappings
-    if (parsed.property_mappings && typeof parsed.property_mappings === 'object') {
+    // Replace the mappings so removing a YAML entry also removes its saved form value.
+    if ('property_mappings' in parsed) {
+      if (
+        typeof parsed.property_mappings !== 'object' ||
+        parsed.property_mappings === null ||
+        Array.isArray(parsed.property_mappings) ||
+        !Object.entries(parsed.property_mappings).every(
+          ([property, sourceColumn]) => property.trim().length > 0 && typeof sourceColumn === 'string'
+        )
+      ) {
+        yamlError.value = 'Invalid YAML: property_mappings must map property IDs to source-column strings'
+        return false
+      }
       formData.value.spec.property_mappings = { ...parsed.property_mappings }
+    } else {
+      formData.value.spec.property_mappings = {}
     }
 
     // Update remote configuration
     if (parsed.remote && typeof parsed.remote === 'object') {
       formData.value.spec.remote = { ...parsed.remote }
       if (parsed.remote.service_type) {
-        onRemoteTypeChange(parsed.remote.service_type)
+        onRemoteTypeChange()
       }
     }
 

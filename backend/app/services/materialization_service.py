@@ -456,7 +456,9 @@ class MaterializationService:
                 values_inline = f"@load:{data_file}"
 
                 # Update entity config with @load: directive first
-                api_project.entities[entity_name] = self._create_materialized_entity(table_cfg, df, values_inline, column_types, source_entity_cfg)
+                api_project.entities[entity_name] = self._create_materialized_entity(
+                    table_cfg, df, values_inline, column_types, source_entity_cfg
+                )
                 self._store_project(api_project)
 
                 # Now write the actual data file using EntityValuesService
@@ -469,7 +471,9 @@ class MaterializationService:
                     column_types=storage_column_types,
                 )
 
-            api_project.entities[entity_name] = self._create_materialized_entity(table_cfg, df, values_inline, column_types, source_entity_cfg)
+            api_project.entities[entity_name] = self._create_materialized_entity(
+                table_cfg, df, values_inline, column_types, source_entity_cfg
+            )
 
             # Save project config (only if not already saved above for external storage)
             if storage_format == "inline" or len(df) < store_inline_threshold:

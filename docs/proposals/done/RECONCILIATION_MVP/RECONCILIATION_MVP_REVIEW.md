@@ -11,10 +11,10 @@ Reviewed proposals:
 
 The diagnosis is sound. The main current-behavior claims were checked against code:
 
-- A sidecar `Link` has no owner field ([mapping_model.py](../../../src/reconciliation/mapping_model.py)).
-- Export keys links by `resolved_pair.source_value` and never removes stale links ([service.py](../../../backend/app/services/reconciliation/service.py)).
-- Entity resolvers are capped at `limit=1000` ([resolvers.py](../../../backend/app/services/reconciliation/resolvers.py)).
-- `_pick_best_candidate` falls back to the top score without requiring `match` ([ingester_runtime.py](../../../backend/app/services/ingester_runtime.py)).
+- A sidecar `Link` has no owner field ([mapping_model.py](../../../../src/reconciliation/mapping_model.py)).
+- Export keys links by `resolved_pair.source_value` and never removes stale links ([service.py](../../../../backend/app/services/reconciliation/service.py)).
+- Entity resolvers are capped at `limit=1000` ([resolvers.py](../../../../backend/app/services/reconciliation/resolvers.py)).
+- `_pick_best_candidate` falls back to the top score without requiring `match` ([ingester_runtime.py](../../../../backend/app/services/ingester_runtime.py)).
 - The ID is extracted with a bare `/(\d+)/?$` regex.
 - SIMS `resolve_identity` looks up an approved aggregate ID without checking lifecycle state (Authority Service `src/identity/service.py`).
 - `default_query_limit` overrides the per-query limit (Authority Service `src/reconcile.py`).
@@ -42,7 +42,7 @@ Not verified: the UI/backend contract mismatch, the HTTP 500 on `authority.fuzzy
 **2. Fail-closed live verification at normalization is a major unexamined tradeoff.**
 
 - **Where:** MVP "Eligibility at each use", P-AC-7.
-- **Issue:** Normalization currently applies committed links from the sidecar deterministically ([normalizer.py](../../../src/normalizer.py)). The proposal makes it depend on live Authority Service and SIMS availability, aborts the entity if the service is down, and aborts if no verifier is configured. Consequences:
+- **Issue:** Normalization currently applies committed links from the sidecar deterministically ([normalizer.py](../../../../src/normalizer.py)). The proposal makes it depend on live Authority Service and SIMS availability, aborts the entity if the service is down, and aborts if no verifier is configured. Consequences:
   - Every existing project with exported reconciliation links stops normalizing until a verifier is configured.
   - Runs are no longer reproducible offline or in CI.
   - An abort "for the affected entity" can leave dependent entities and foreign keys undefined; the pipeline behavior is not stated.

@@ -6,6 +6,7 @@ import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import { reactive, toRefs } from 'vue'
 
+import type { ReconciliationManifestResult } from '@/types/reconciliation'
 import SpecificationsList from '../SpecificationsList.vue'
 
 vi.mock('pinia', async () => {
@@ -37,6 +38,17 @@ const specification = {
   review_threshold: 0.7,
   mapping_count: 2,
   property_mapping_count: 0,
+}
+
+const validManifestResult = {
+  status: 'valid' as const,
+  manifest: {
+    supportedTypes: [
+      { id: 'site', name: 'Site' },
+      { id: 'feature_type', name: 'Feature type' },
+    ],
+    propertiesByType: { site: ['place_name'], feature_type: [] },
+  },
 }
 
 const reconciliationStore = reactive({
@@ -77,7 +89,7 @@ class ResizeObserverMock {
 
 vi.stubGlobal('ResizeObserver', ResizeObserverMock)
 
-async function mountList() {
+async function mountList(manifestResult: ReconciliationManifestResult | null = validManifestResult) {
   const wrapper = mount(SpecificationsList, {
     global: {
       plugins: [vuetify],
@@ -86,14 +98,15 @@ async function mountList() {
         VDataTable: {
           props: ['items'],
           template:
-            '<div><div v-for="(item, index) in items" :key="index"><slot name="item.actions" :item="item" /></div></div>',
+            '<div><div v-for="(item, index) in items" :key="index"><slot name="item.status" :item="item" />' +
+            '<slot name="item.remote" :item="item" /><slot name="item.actions" :item="item" /></div></div>',
         },
         VDialog: {
           props: ['modelValue'],
           template: '<div v-if="modelValue" data-testid="delete-dialog"><slot /></div>',
         },
         VTooltip: {
-          template: '<div><slot name="activator" :props="{}" /></div>',
+          template: '<div><slot name="activator" :props="{}" /><slot /></div>',
         },
         VBtn: {
           emits: ['click'],
@@ -101,7 +114,7 @@ async function mountList() {
         },
       },
     },
-    props: { projectName: 'test_project' },
+    props: { projectName: 'test_project', manifestResult },
   })
 
   await flushPromises()
@@ -153,13 +166,66 @@ describe('SpecificationsList', () => {
     )
     expect(wrapper.find('[data-testid="delete-dialog"]').exists()).toBe(true)
   })
+
+  it('shows unsupported saved types and property IDs instead of marking them valid', async () => {
+    reconciliationStore.specifications = [
+      {
+        ...specification,
+        remote: { service_type: 'taxon', columns: [] },
+        property_mappings: { old_property: 'site_code' },
+      },
+    ]
+
+    const wrapper = await mountList()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('taxon (unsupported)')
+    expect(wrapper.text()).toContain("Remote type 'taxon' is not supported for reconciliation.")
+    expect(wrapper.text()).not.toContain('Valid Configuration')
+  })
+
+  it('marks mappings for undeclared properties as unsupported', async () => {
+    reconciliationStore.specifications = [
+      {
+        ...specification,
+        property_mappings: { old_property: 'site_code' },
+      },
+    ]
+
+    const wrapper = await mountList()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('site (unsupported)')
+    expect(wrapper.text()).toContain("Property mapping 'old_property' not declared for remote type 'site'.")
+  })
+
+  it('shows an unknown status when the manifest cannot be checked', async () => {
+    const wrapper = await mountList(null)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('site (unknown)')
+    expect(wrapper.text()).toContain('Reconciliation service metadata has not been checked.')
+    expect(wrapper.text()).not.toContain('Valid Configuration')
+  })
+
+  it.each([
+    ['unsupported', validManifestResult, { ...specification, remote: { service_type: 'taxon', columns: [] } }],
+    ['unknown', null, specification],
+  ])('disables candidate search for %s specifications', async (_status, manifestResult, item) => {
+    reconciliationStore.specifications = [item]
+    const wrapper = await mountList(manifestResult)
+    const reconcileButton = wrapper.get('[data-testid="reconcile-specification-button"]')
+
+    expect(reconcileButton.attributes('disabled')).toBeDefined()
+    await reconcileButton.trigger('click')
+    expect(wrapper.emitted('reconcile')).toBeUndefined()
+  })
 })
 
 describe('reconciliation store deletion result', () => {
   it('returns owned-entry counts and stores the catalog-shaped response', async () => {
-    const { useReconciliationStore } = await vi.importActual<typeof import('@/stores/reconciliation')>(
-      '@/stores/reconciliation'
-    )
+    const { useReconciliationStore } =
+      await vi.importActual<typeof import('@/stores/reconciliation')>('@/stores/reconciliation')
     setActivePinia(createPinia())
     const store = useReconciliationStore()
     const updatedCatalog = {

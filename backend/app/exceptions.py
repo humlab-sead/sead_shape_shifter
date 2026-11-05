@@ -244,6 +244,12 @@ class DependencyError(DomainException):
     error_code = "DEPENDENCY_ERROR"
 
 
+class ReconciliationManifestError(DependencyError):
+    """Reconciliation service metadata is unavailable or invalid."""
+
+    error_code = "RECONCILIATION_MANIFEST_ERROR"
+
+
 class CircularDependencyError(DependencyError):
     """
     Circular dependency detected in entity relationships.
