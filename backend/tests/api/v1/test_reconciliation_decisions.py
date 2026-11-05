@@ -3,6 +3,7 @@
 import asyncio
 from unittest.mock import AsyncMock, patch
 
+import httpx
 import pytest
 import yaml
 
@@ -418,4 +419,30 @@ class TestReconciliationDecisionRoutes:
 
         assert response.status_code == 400
         assert "old_property" in response.json()["detail"]["message"]
+        suggest_entities.assert_not_awaited()
+
+    async def test_matching_routes_return_503_when_manifest_is_unavailable_or_invalid(
+        self, authorized_client, tmp_path, monkeypatch
+    ) -> None:
+        await _create_project(authorized_client, tmp_path, monkeypatch)
+        _write_catalog(tmp_path)
+        path = "/api/v1/projects/review/reconciliation/site/site_name"
+
+        with (
+            patch.object(
+                ReconciliationClient,
+                "get_service_manifest",
+                new=AsyncMock(side_effect=[httpx.ConnectError("service offline"), {}]),
+            ),
+            patch.object(ReconciliationClient, "reconcile_batch", new=AsyncMock()) as reconcile_batch,
+            patch.object(ReconciliationClient, "suggest_entities", new=AsyncMock()) as suggest_entities,
+        ):
+            suggestion_response = await authorized_client.get(f"{path}/suggest?query=Sa")
+            sync_response = await authorized_client.post(f"{path}/auto-reconcile-sync?threshold=0.8")
+
+        assert suggestion_response.status_code == 503
+        assert "manifest is unavailable" in suggestion_response.json()["detail"]["message"]
+        assert sync_response.status_code == 503
+        assert "manifest" in sync_response.json()["detail"]["message"]
+        reconcile_batch.assert_not_awaited()
         suggest_entities.assert_not_awaited()
