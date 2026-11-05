@@ -21,6 +21,7 @@ from backend.app.exceptions import (
     ConfigurationError,
     DependencyError,
     DomainException,
+    ReconciliationManifestError,
     ResourceConflictError,
     ResourceNotFoundError,
     ValidationError,
@@ -223,16 +224,18 @@ class ReconciliationService:
         try:
             manifest = await self.reconciliation_client.get_service_manifest()
         except (httpx.HTTPError, ValueError) as exc:
-            raise DependencyError(
+            raise ReconciliationManifestError(
                 "The reconciliation service manifest is unavailable or invalid; candidate matching was not started."
             ) from exc
 
         if not isinstance(manifest, dict):
-            raise DependencyError("The reconciliation service returned a malformed manifest; candidate matching was not started.")
+            raise ReconciliationManifestError(
+                "The reconciliation service returned a malformed manifest; candidate matching was not started."
+            )
 
         default_types = manifest.get("defaultTypes")
         if not isinstance(default_types, list):
-            raise DependencyError("The reconciliation service manifest is missing a valid defaultTypes list.")
+            raise ReconciliationManifestError("The reconciliation service manifest is missing a valid defaultTypes list.")
 
         default_type_ids: set[str] = set()
         for item in default_types:
@@ -243,24 +246,24 @@ class ReconciliationService:
                 or ("name" in item and not isinstance(item["name"], str))
                 or item["id"] in default_type_ids
             ):
-                raise DependencyError("The reconciliation service manifest contains an invalid or duplicate default type.")
+                raise ReconciliationManifestError("The reconciliation service manifest contains an invalid or duplicate default type.")
             default_type_ids.add(item["id"])
 
         reconciliation = manifest.get("reconciliation")
         supported_types = reconciliation.get("supportedTypes") if isinstance(reconciliation, dict) else None
         if not isinstance(supported_types, list):
-            raise DependencyError("The reconciliation service manifest is missing a valid reconciliation.supportedTypes list.")
+            raise ReconciliationManifestError("The reconciliation service manifest is missing a valid reconciliation.supportedTypes list.")
 
         supported_type_ids: set[str] = set()
         for item in supported_types:
             if not isinstance(item, str) or not item.strip() or item in supported_type_ids or item not in default_type_ids:
-                raise DependencyError("The reconciliation service manifest contains an invalid or unresolved supported type.")
+                raise ReconciliationManifestError("The reconciliation service manifest contains an invalid or unresolved supported type.")
             supported_type_ids.add(item)
 
         extend = manifest.get("extend")
         property_settings = extend.get("property_settings") if isinstance(extend, dict) else None
         if not isinstance(property_settings, list):
-            raise DependencyError("The reconciliation service manifest is missing a valid extend.property_settings list.")
+            raise ReconciliationManifestError("The reconciliation service manifest is missing a valid extend.property_settings list.")
 
         served_properties: set[str] = set()
         for item in property_settings:
@@ -271,7 +274,7 @@ class ReconciliationService:
                 or not isinstance(item.get("entity_types"), list)
                 or any(not isinstance(entity_type, str) or not entity_type.strip() for entity_type in item["entity_types"])
             ):
-                raise DependencyError("The reconciliation service manifest contains an invalid property setting.")
+                raise ReconciliationManifestError("The reconciliation service manifest contains an invalid property setting.")
             if service_type in item["entity_types"]:
                 served_properties.add(item["name"])
 

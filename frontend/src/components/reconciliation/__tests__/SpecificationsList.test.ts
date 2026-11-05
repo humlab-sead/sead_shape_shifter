@@ -98,8 +98,8 @@ async function mountList(manifestResult: ReconciliationManifestResult | null = v
         VDataTable: {
           props: ['items'],
           template:
-            '<div><div v-for="(item, index) in items" :key="index"><slot name="item.status" :item="item" />'
-            + '<slot name="item.remote" :item="item" /><slot name="item.actions" :item="item" /></div></div>',
+            '<div><div v-for="(item, index) in items" :key="index"><slot name="item.status" :item="item" />' +
+            '<slot name="item.remote" :item="item" /><slot name="item.actions" :item="item" /></div></div>',
         },
         VDialog: {
           props: ['modelValue'],
@@ -207,13 +207,25 @@ describe('SpecificationsList', () => {
     expect(wrapper.text()).toContain('Reconciliation service metadata has not been checked.')
     expect(wrapper.text()).not.toContain('Valid Configuration')
   })
+
+  it.each([
+    ['unsupported', validManifestResult, { ...specification, remote: { service_type: 'taxon', columns: [] } }],
+    ['unknown', null, specification],
+  ])('disables candidate search for %s specifications', async (_status, manifestResult, item) => {
+    reconciliationStore.specifications = [item]
+    const wrapper = await mountList(manifestResult)
+    const reconcileButton = wrapper.get('[data-testid="reconcile-specification-button"]')
+
+    expect(reconcileButton.attributes('disabled')).toBeDefined()
+    await reconcileButton.trigger('click')
+    expect(wrapper.emitted('reconcile')).toBeUndefined()
+  })
 })
 
 describe('reconciliation store deletion result', () => {
   it('returns owned-entry counts and stores the catalog-shaped response', async () => {
-    const { useReconciliationStore } = await vi.importActual<typeof import('@/stores/reconciliation')>(
-      '@/stores/reconciliation'
-    )
+    const { useReconciliationStore } =
+      await vi.importActual<typeof import('@/stores/reconciliation')>('@/stores/reconciliation')
     setActivePinia(createPinia())
     const store = useReconciliationStore()
     const updatedCatalog = {

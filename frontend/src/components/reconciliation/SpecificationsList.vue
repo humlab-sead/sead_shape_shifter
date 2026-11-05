@@ -129,10 +129,12 @@
                 <template #activator="{ props }">
                   <span v-bind="props">
                     <v-btn
+                      data-testid="reconcile-specification-button"
                       icon="mdi-auto-fix"
                       size="small"
                       variant="text"
                       color="primary"
+                      :disabled="!getCompatibility(item).canMatch"
                       @click.stop="reconcileSpec(item)"
                     />
                   </span>
@@ -198,7 +200,10 @@
             <div class="font-weight-bold">
               Warning: This specification has {{ specToDelete.mapping_count }} existing mappings
             </div>
-            <div class="text-caption mt-1">            Reconciliation decisions and links owned by this specification will be removed. Manual and unowned links are kept.</div>
+            <div class="text-caption mt-1">
+              Reconciliation decisions and links owned by this specification will be removed. Manual and unowned links
+              are kept.
+            </div>
           </v-alert>
 
           <p v-else class="text-caption text-grey mt-4">This action cannot be undone.</p>
@@ -314,8 +319,8 @@ async function performDelete() {
     deleteDialog.value = false
     specToDelete.value = null
     success(
-      `Specification deleted. ${removedEntries.removedOwnedLinks} owned mapping link(s) and `
-      + `${removedEntries.removedOwnedApprovals} local-only approval(s) removed.`
+      `Specification deleted. ${removedEntries.removedOwnedLinks} owned mapping link(s) and ` +
+        `${removedEntries.removedOwnedApprovals} local-only approval(s) removed.`
     )
   } catch (err: any) {
     console.error('Failed to delete specification:', err)
