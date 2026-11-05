@@ -11,12 +11,13 @@ const manifest = {
   defaultTypes: [
     { id: 'site', name: 'Site' },
     { id: 'feature_type', name: 'Feature type' },
+    { id: 'location', name: 'Location' },
     { id: 'taxon', name: 'Taxon' },
   ],
-  reconciliation: { supportedTypes: ['site', 'feature_type'] },
+  reconciliation: { supportedTypes: ['site', 'feature_type', 'location'] },
   extend: {
     property_settings: [
-      { name: 'place_name', entity_types: ['site'] },
+      { name: 'place_name', entity_types: ['site', 'location'] },
       { name: 'latitude', entity_types: ['site_archive'] },
     ],
   },
@@ -24,13 +25,16 @@ const manifest = {
 
 const reconciliationStore = reactive({
   specifications: [],
-  getAvailableFields: vi.fn(async () => ['site_code', 'site_name']),
+  getAvailableFields: vi.fn<(projectName: string, entityName: string) => Promise<string[]>>(async () => [
+    'site_code',
+    'site_name',
+  ]),
   getServiceManifest: vi.fn(async () => manifest),
   createSpecification: vi.fn(async () => {}),
   updateSpecification: vi.fn(async () => {}),
 })
 
-const projectStore = reactive({
+const projectStore = reactive<{ selectedProject: { entities: Record<string, object> } }>({
   selectedProject: { entities: { site: {} } },
 })
 
@@ -141,10 +145,15 @@ class ResizeObserverMock {
 
 vi.stubGlobal('ResizeObserver', ResizeObserverMock)
 
-function createSpecification(serviceType: string, propertyMappings: Record<string, string>) {
+function createSpecification(
+  serviceType: string,
+  propertyMappings: Record<string, string>,
+  entityName = 'site',
+  targetField = 'site_code'
+) {
   return {
-    entity_name: 'site',
-    target_field: 'site_code',
+    entity_name: entityName,
+    target_field: targetField,
     source: null,
     property_mappings: propertyMappings,
     remote: { service_type: serviceType, columns: [] },
@@ -180,11 +189,15 @@ async function mountEditor(specification = createSpecification('site', {})) {
 
 describe('SpecificationEditor', () => {
   beforeEach(() => {
-    reconciliationStore.getAvailableFields = vi.fn(async () => ['site_code', 'site_name'])
+    reconciliationStore.getAvailableFields = vi.fn(async (_projectName: string, entityName: string) =>
+      entityName === 'location'
+        ? ['fixture_location_code', 'location_name', 'fixture_place_name']
+        : ['site_code', 'site_name']
+    )
     reconciliationStore.getServiceManifest = vi.fn(async () => manifest)
     reconciliationStore.updateSpecification = vi.fn(async () => {})
     reconciliationStore.createSpecification = vi.fn(async () => {})
-    projectStore.selectedProject = { entities: { site: {} } }
+    projectStore.selectedProject = { entities: { site: {}, location: {} } }
     notificationMocks.success.mockReset()
     notificationMocks.error.mockReset()
   })
@@ -229,6 +242,36 @@ describe('SpecificationEditor', () => {
     expect(wrapper.text()).toContain('Cannot verify')
     expect((wrapper.get('[data-label="Source column for family"] input').element as HTMLInputElement).value).toBe(
       'site_name'
+    )
+  })
+
+  it('offers a manifest-declared location property and saves its source column', async () => {
+    const wrapper = await mountEditor(createSpecification('feature_type', {}, 'location', 'location_name'))
+    await flushPromises()
+
+    const remoteType = wrapper.get('[data-label="Remote Type *"]')
+    expect(remoteType.text()).toContain('Location')
+
+    await remoteType.get('[data-option-value="location"]').trigger('click')
+    await flushPromises()
+
+    const placeName = wrapper.get('[data-label="Source column for place_name"]')
+    expect(wrapper.find('[data-label="Source column for latitude"]').exists()).toBe(false)
+    expect(placeName.text()).toContain('fixture_place_name')
+
+    await placeName.get('[data-option-value="fixture_place_name"]').trigger('click')
+    await flushPromises()
+
+    const saveButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Save')
+    expect(saveButton).toBeDefined()
+    await saveButton!.trigger('click')
+    await flushPromises()
+
+    expect(reconciliationStore.updateSpecification).toHaveBeenCalledWith(
+      'test_project',
+      'location',
+      'location_name',
+      expect.objectContaining({ property_mappings: { place_name: 'fixture_place_name' } })
     )
   })
 
