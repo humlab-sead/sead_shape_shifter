@@ -1,5 +1,10 @@
 # Manifest-Driven Reconciliation Inputs — Phase 5 Task Plan
 
+> **Later change:** after this phase completed, the two guides referenced below
+> (`docs/other/RECONCILIATION_SETUP_GUIDE.md` and `docs/other/RECONCILIATION_WORKFLOW.md`)
+> were merged into `docs/other/RECONCILIATION_GUIDE.md`. The statements in this
+> record describe the documents as they were during Phase 5.
+
 ## Phase Summary
 
 **Phase:** 5 — Validate Grouped Parity and Document Configuration. **Readiness:** Validated for implementation. [Phase 5 of the phase plan](MANIFEST_DRIVEN_RECONCILIATION_INPUTS_PHASE_PLAN.md#phase-5-validate-grouped-parity-and-document-configuration) requires Phases 3 and 4 to complete, and both are complete.

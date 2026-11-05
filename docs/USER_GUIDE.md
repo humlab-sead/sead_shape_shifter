@@ -847,6 +847,8 @@ The sidecar file supports full CRUD via API endpoints:
 | YAML               | Edit raw reconciliation config |
 | Reconcile & Review | Interactive review grid        |
 
+For the full procedure, including catalog fields, validation, and troubleshooting, see [RECONCILIATION_GUIDE.md](other/RECONCILIATION_GUIDE.md).
+
 ---
 
 # 9. Execute and Export
@@ -1248,8 +1250,7 @@ They are managed outside the project and connected through **Data Sources**.
 ## User-Oriented References
 
 - [USER_GUIDE_APPENDIX.md](other/USER_GUIDE_APPENDIX.md)
-- [RECONCILIATION_WORKFLOW.md](other/RECONCILIATION_WORKFLOW.md)
-- [RECONCILIATION_SETUP_GUIDE.md](other/RECONCILIATION_SETUP_GUIDE.md)
+- [RECONCILIATION_GUIDE.md](other/RECONCILIATION_GUIDE.md)
 - [TARGET_MODEL_GUIDE.md](TARGET_MODEL_GUIDE.md)
 
 ---

@@ -295,7 +295,7 @@ Reconciliation options come from the `GET /reconcile` manifest; there is no buil
 
 Arbodat test project example: local entity `site`, search field `site_name`, remote type `site`, business key `[Fustel, EVNr]`, property `place_name` ← `site_name`, and property `national_id` ← `national_site_identifier`.
 
-Mocked workflow tests prove client behavior only; real service availability checks are separate and read-only. See [RECONCILIATION_SETUP_GUIDE.md](other/RECONCILIATION_SETUP_GUIDE.md) and [USER_GUIDE.md](USER_GUIDE.md#8-reconciliation-and-mapping).
+Mocked workflow tests prove client behavior only; real service availability checks are separate and read-only. See [RECONCILIATION_GUIDE.md](other/RECONCILIATION_GUIDE.md) and [USER_GUIDE.md](USER_GUIDE.md#8-reconciliation-and-mapping).
 
 ---
 
