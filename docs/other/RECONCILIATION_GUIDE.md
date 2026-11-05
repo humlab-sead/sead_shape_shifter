@@ -25,13 +25,16 @@ Source rows            Reconciliation service      Mapping sidecar        Export
 "Sweden"        →      candidate, score 1.00  →    "Sweden" → 205    →    205
 ```
 
+The `public_id` column is the only column reconciliation writes. A specification's target field selects what is searched; it is not where the result is stored. An entity without `public_id` cannot receive links at all, and a sidecar entry that names a different column is rejected.
+
 ## Prerequisites
 
 1. **Project** — a saved project that contains the entity you want to reconcile.
 2. **Entity rows** — the entity, or the source named in the specification, must produce rows.
-3. **Backend** — Shape Shifter backend running (default `http://localhost:8012`).
-4. **Reconciliation service** — running and reachable from the backend (default `http://localhost:8000`).
-5. **Specification** — a specification exists for the entity and target field you want to fill.
+3. **Entity identity** — the entity declares `public_id`, which is the column that receives the matched ID, and declares `keys`, which identify each row.
+4. **Backend** — Shape Shifter backend running (default `http://localhost:8012`).
+5. **Reconciliation service** — running and reachable from the backend (default `http://localhost:8000`).
+6. **Specification** — a specification exists for the entity and target field you want to fill.
 
 ## Workflow Overview
 
@@ -291,6 +294,17 @@ Normalization applies committed sidecar links in this order, first match wins:
 
 Normalization reads the sidecar offline and does not check IDs against SEAD. Run **Execute**, or the project's dispatch flow, to produce output that carries the applied IDs.
 
+Applied links always replace the value in the entity's `public_id` column. Four conditions stop the application:
+
+| Condition | Effect |
+|-----------|--------|
+| The entity has no `public_id` configured | Nothing is applied. This is silent, so check the entity configuration first when exported IDs stay empty. |
+| The sidecar has no entry for the entity | Nothing is applied |
+| A `local_key` column is missing from the table | A warning is logged and the entity is skipped |
+| The link is not committed (`committed_at` is empty) | The row keeps its existing value |
+
+Rows without a matching committed link keep their current `public_id` value, so a fixed row's saved ID, an imported ID, or an ID from an earlier run is not cleared.
+
 ```csv
 site_name,site_id,latitude,longitude
 "Ageröd",1234,56.1234,13.5678
@@ -346,6 +360,10 @@ The grid reports missing or duplicate business keys. Check that the entity's con
 ### Accepted Decisions Do Not Change the Output
 
 Accepted catalog decisions must be exported first. Run **Export to Mapping**, then normalize again.
+
+### Exported Links Do Not Reach the Output
+
+The entity has no `public_id` configured, so normalization skips link application without an error. Confirm the entity declares `public_id`, and confirm the sidecar entry names that same column. A sidecar entry naming a different column is rejected during validation.
 
 ### Export Reports a Key as Absent
 
@@ -487,6 +505,7 @@ Neither candidate-search route accepts a candidate.
 ## Workflow Checklist
 
 - [ ] Specification created for the entity and target field
+- [ ] Entity declares `public_id`, and the sidecar entry names the same column
 - [ ] Specification status is not a red alert
 - [ ] Service shown as online
 - [ ] Candidate search completed
