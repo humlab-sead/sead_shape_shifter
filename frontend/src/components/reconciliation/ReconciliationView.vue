@@ -459,6 +459,7 @@ async function handleAutoReconcile() {
 
     try {
       await reconciliationStore.loadPreviewData(props.projectName, selectedEntity.value, selectedTarget.value)
+      previewLoadedKey = currentPreviewKey()
     } catch (previewLoadError) {
       console.error('[ReconciliationView] Candidate search succeeded but preview reload failed:', previewLoadError)
     }
@@ -485,16 +486,18 @@ async function handleExportToMapping() {
     const entityName = selectedEntity.value
     const targetField = selectedTarget.value
     const result = await reconciliationStore.exportToMapping(props.projectName, entityName, targetField)
-    const summary = `${result.exported} link(s) exported; ${result.removed} stale link(s) removed; `
-      + `${result.exported_local_only_approvals} local-only approval(s) exported; `
-      + `${result.removed_local_only_approvals} stale local-only approval(s) removed; `
-      + `${result.skipped_manual} protected link(s) skipped.`
+    const summary =
+      `${result.exported} link(s) exported; ${result.removed} stale link(s) removed; ` +
+      `${result.exported_local_only_approvals} local-only approval(s) exported; ` +
+      `${result.removed_local_only_approvals} stale local-only approval(s) removed; ` +
+      `${result.skipped_manual} protected link(s) skipped.`
 
     try {
       await reconciliationStore.loadMappingData(props.projectName, entityName)
     } catch (refreshError) {
-      resultMessage.value = `${summary} Export succeeded, but mapping status could not be refreshed: `
-        + getApiErrorMessage(refreshError, 'The mapping sidecar could not be reloaded.')
+      resultMessage.value =
+        `${summary} Export succeeded, but mapping status could not be refreshed: ` +
+        getApiErrorMessage(refreshError, 'The mapping sidecar could not be reloaded.')
       resultColor.value = 'error'
       showResultSnackbar.value = true
       return
@@ -730,30 +733,69 @@ watch(
   { immediate: true }
 )
 
-// Watch for target changes and load preview data
+// Load preview data only while the review tab is open. Loading it on mount runs a
+// full entity normalization for a result the operator may never look at.
+let previewLoadedKey = ''
+let previewInFlightKey: string | null = null
+
+function currentPreviewKey(): string {
+  return JSON.stringify([props.projectName, selectedEntity.value, selectedTarget.value])
+}
+
+function reportPreviewFailure(e: any) {
+  console.error('[ReconciliationView] Failed to load preview data:', e)
+  resultMessage.value = `Failed to load preview data: ${e.message}`
+  resultColor.value = 'error'
+  showResultSnackbar.value = true
+}
+
+/** Request the preview once per selection, and only for the review tab. */
+async function ensurePreviewLoaded() {
+  if (activeTab.value !== 'reconcile') return
+  if (!selectedEntity.value || !selectedTarget.value || !entitySpec.value) return
+
+  const key = currentPreviewKey()
+  if (key === previewLoadedKey || key === previewInFlightKey) return
+
+  previewInFlightKey = key
+  try {
+    await reconciliationStore.loadPreviewData(props.projectName, selectedEntity.value, selectedTarget.value)
+    previewLoadedKey = key
+  } catch (e: any) {
+    reportPreviewFailure(e)
+  } finally {
+    previewInFlightKey = null
+  }
+}
+
 watch(
   [selectedEntity, selectedTarget],
-  async ([newEntity, newTarget]) => {
+  ([newEntity, newTarget]) => {
     autoReconcileResult.value = null
     autoReconcileError.value = null
-    if (newEntity && newTarget && entitySpec.value) {
-      // Sync slider with entity spec threshold when target changes (convert decimal to percentage)
-      if (entitySpec.value.auto_accept_threshold) {
-        autoAcceptThreshold.value = Math.round(entitySpec.value.auto_accept_threshold * 100)
-      }
 
-      // Load preview data for the selected entity and target
-      try {
-        await reconciliationStore.loadPreviewData(props.projectName, newEntity, newTarget)
-      } catch (e: any) {
-        console.error('[ReconciliationView] Failed to load preview data:', e)
-        resultMessage.value = `Failed to load preview data: ${e.message}`
-        resultColor.value = 'error'
-        showResultSnackbar.value = true
-      }
+    // Sync slider with entity spec threshold when target changes (convert decimal to percentage)
+    if (newEntity && newTarget && entitySpec.value?.auto_accept_threshold) {
+      autoAcceptThreshold.value = Math.round(entitySpec.value.auto_accept_threshold * 100)
     }
+
+    void ensurePreviewLoaded()
   },
   { immediate: true }
+)
+
+// Load the preview the first time the review tab is opened.
+watch(activeTab, () => {
+  void ensurePreviewLoaded()
+})
+
+// A project change invalidates the loaded preview.
+watch(
+  () => props.projectName,
+  () => {
+    previewLoadedKey = ''
+    previewInFlightKey = null
+  }
 )
 </script>
 
