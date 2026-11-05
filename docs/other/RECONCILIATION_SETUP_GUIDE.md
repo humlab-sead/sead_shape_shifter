@@ -71,7 +71,7 @@ entities:
       national_id: site_id  # Service property 'national_id' -> source column 'site_id'
     
     remote:
-      service_type: "site"  # Must match service defaultTypes ID (e.g., 'site', 'taxon')
+      service_type: "site"  # Must appear in reconciliation.supportedTypes from GET /reconcile
                             # If null/empty, reconciliation is disabled for this entity
     
     auto_accept_threshold: 0.95   # Auto-accept matches with ≥95% confidence
@@ -168,7 +168,7 @@ service_url: "http://localhost:8000"  # Required: Reconciliation service base UR
 | `source` | ❌ | Data source for reconciliation (see Source Options below) | `null`, `"taxon_enriched"`, or `{data_source: "...", type: "sql", query: "..."}` |
 | `keys` | ✅ | Primary key field(s) used to build query string | `["site_name"]` or `["species"]` |
 | `property_mappings` | ❌ | Map service property IDs to source columns | `{"latitude": "lat", "genus": "genus_name"}` |
-| `remote.service_type` | ❌ | Service entity type ID (from service defaultTypes) | `"site"`, `"taxon"` |
+| `remote.service_type` | ❌ | Service entity type ID; must appear in `reconciliation.supportedTypes` | `"site"`, `"feature_type"`, `"location"` |
 | `auto_accept_threshold` | ❌ | Auto-accept threshold (0.0-1.0, default: 0.95) | `0.95` |
 | `review_threshold` | ❌ | Review threshold (0.0-1.0, default: 0.70) | `0.70` |
 | `mapping` | ✅ | List of mappings (auto-populated) | `[]` |
@@ -205,53 +205,23 @@ Executes a custom query to get reconciliation data with specific fields not in t
 
 #### Available Service Types
 
-Based on the SEAD reconciliation service manifest:
-- `bibliographic_reference` - Bibliographic References
-- `country` - Countries
-- `data_type` - Data Types  
-- `dimension` - Dimensions
-- `feature_type` - Feature Types
-- `geonames` - GeoNames Places
-- `location` - Locations & Places
-- `method` - Methods
-- `modification_type` - Modification Types
-- `sampling_context` - Sampling Contexts
-- `site` - Sites
-- `administrative_region` - Sub-country administrative regions
-- `taxon` - Taxa
+`remote.service_type` must appear in the service manifest's `reconciliation.supportedTypes` list. That list is the authoritative set of implemented reconciliation types; `defaultTypes` only supplies OpenRefine display names and may include types without matching support.
+
+```bash
+curl http://localhost:8000/reconcile | jq '.reconciliation.supportedTypes'
+```
+
+The current service contract implements, for example, `site`, `feature_type`, and `location`. Do not copy a type from `defaultTypes`; check the manifest at the time you configure the specification.
 
 #### Available Properties (by Entity Type)
 
-**Site Properties:**
-- `latitude` - Geographic latitude (WGS84)
-- `longitude` - Geographic longitude (WGS84)
-- `country` - Country name
-- `national_id` - National site identifier
-- `place_name` - Geographic place/locality name
+The manifest's `extend.property_settings` entries declare properties. A property applies to a service type when that type appears in the entry's `entity_types` list; the entry `name` is the ID used as a `property_mappings` key.
 
-**Taxon Properties:**
-- `scientific_name` - Full taxonomic name
-- `genus` - Genus name
-- `species` - Species name
-- `family` - Family name
+```bash
+curl http://localhost:8000/reconcile | jq '.extend.property_settings'
+```
 
-**Bibliographic Reference Properties:**
-- `doi` - Digital Object Identifier
-- `isbn` - International Standard Book Number
-- `title` - Title of work
-- `year` - Publication year
-- `authors` - Authors
-- `full_reference` - Full citation
-- `bugs_reference` - BugsCEP reference
-
-**Method Properties:**
-- `method_abbreviation` - Method abbreviation
-
-**Dimension Properties:**
-- `dimension_abbreviation` - Dimension abbreviation
-
-**Modification Type Properties:**
-- `description` - Description
+A supported type with no property entries is valid: it reconciles on the search label alone. Do not select properties from a fixed per-type list; older documentation that listed them by type is replaced by this manifest rule.
 
 #### Mapping Structure (Auto-generated)
 
@@ -470,7 +440,7 @@ For items with no candidates or very low confidence:
 
 1. **Check source data quality**: Verify spelling, formatting
 2. **Add more properties**: Include additional property_mappings for better context
-3. **Verify service type**: Ensure `service_type` matches available types
+3. **Verify service type**: Ensure `service_type` appears in `reconciliation.supportedTypes` from `GET /reconcile`
 4. **Manual research**: Look up correct SEAD ID in database
 5. **Create new entities**: If entity doesn't exist in SEAD, coordinate with admins
 
@@ -636,11 +606,11 @@ entities:
 
 **Solutions**:
 - **Check validation first**: Ensure specification shows green checkmark (no validation errors)
-- Verify `remote.service_type` matches available service types (see list above)
+- Verify `remote.service_type` appears in `reconciliation.supportedTypes` from `GET /reconcile`
 - Check entity has preview data available
 - Inspect reconciliation service logs for errors
 - Test service directly with sample query
-- Verify property IDs in `property_mappings` match service properties
+- Verify property IDs in `property_mappings` appear in `extend.property_settings` for the selected type
 
 ### Low Confidence Scores
 

@@ -1,6 +1,8 @@
 """HTTP client for OpenRefine reconciliation service API."""
 
 import json
+import time
+from copy import deepcopy
 from typing import Any
 
 import httpx
@@ -15,6 +17,8 @@ from backend.app.models.reconciliation import (
 )
 
 _CANDIDATE_VERIFICATION_BATCH_SIZE = 100
+_SERVICE_MANIFEST_CACHE_TTL_SECONDS = 30
+_SERVICE_MANIFEST_CACHE: dict[str, tuple[float, dict[str, Any]]] = {}
 
 
 class CandidateVerificationUnavailableError(Exception):
@@ -307,10 +311,22 @@ class ReconciliationClient:
         Returns:
             Service manifest with supported types and configuration
         """
+        now = time.monotonic()
+        cached_manifest = _SERVICE_MANIFEST_CACHE.get(self.base_url)
+        if cached_manifest and now < cached_manifest[0]:
+            logger.debug(f"[RECON] Returning cached service manifest for {self.base_url}")
+            return deepcopy(cached_manifest[1])
+
         logger.debug("[RECON] Fetching service manifest")
         client: httpx.AsyncClient = await self._get_client()
         response: httpx.Response = await client.get(f"{self.base_url}/reconcile")
         logger.debug(f"[RECON] Manifest response: status={response.status_code}")
         logger.debug(f"[RECON] Manifest response body: {response.text}")
         response.raise_for_status()
-        return response.json()
+        manifest = response.json()
+        if isinstance(manifest, dict):
+            _SERVICE_MANIFEST_CACHE[self.base_url] = (
+                time.monotonic() + _SERVICE_MANIFEST_CACHE_TTL_SECONDS,
+                deepcopy(manifest),
+            )
+        return manifest

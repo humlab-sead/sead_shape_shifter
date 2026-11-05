@@ -3,6 +3,7 @@
 import asyncio
 from unittest.mock import AsyncMock, patch
 
+import httpx
 import pytest
 import yaml
 
@@ -360,3 +361,88 @@ class TestReconciliationDecisionRoutes:
         assert progress is not None
         assert progress.status == OperationStatus.CANCELLED
         operation_manager.cleanup_operation(operation_id)
+
+    async def test_matching_routes_fail_when_manifest_does_not_support_saved_type(self, authorized_client, tmp_path, monkeypatch) -> None:
+        await _create_project(authorized_client, tmp_path, monkeypatch)
+        _write_catalog(tmp_path)
+        catalog_path = tmp_path / "review" / "review-reconciliation.yml"
+        original_catalog = catalog_path.read_bytes()
+        unsupported_manifest = {
+            "defaultTypes": [{"id": "site", "name": "Site"}],
+            "reconciliation": {"supportedTypes": []},
+            "extend": {"property_settings": []},
+        }
+        path = "/api/v1/projects/review/reconciliation/site/site_name"
+
+        with (
+            patch.object(ReconciliationClient, "get_service_manifest", new=AsyncMock(return_value=unsupported_manifest)),
+            patch.object(ReconciliationClient, "reconcile_batch", new=AsyncMock()) as reconcile_batch,
+        ):
+            sync_response = await authorized_client.post(f"{path}/auto-reconcile-sync?threshold=0.8")
+            async_response = await authorized_client.post(f"{path}/auto-reconcile?threshold=0.8")
+            operation_id = async_response.json()["operation_id"]
+            for _ in range(10):
+                progress = operation_manager.get_progress(operation_id)
+                if progress and progress.status == OperationStatus.FAILED:
+                    break
+                await asyncio.sleep(0)
+
+        assert sync_response.status_code == 400
+        assert "not supported for reconciliation" in sync_response.json()["detail"]["message"]
+        assert async_response.status_code == 200
+        assert progress is not None
+        assert progress.status == OperationStatus.FAILED
+        assert "not supported for reconciliation" in (progress.error or "")
+        assert reconcile_batch.await_count == 0
+        assert catalog_path.read_bytes() == original_catalog
+        operation_manager.cleanup_operation(operation_id)
+
+    async def test_suggestions_block_saved_properties_not_declared_for_type(self, authorized_client, tmp_path, monkeypatch) -> None:
+        await _create_project(authorized_client, tmp_path, monkeypatch)
+        _write_catalog(tmp_path)
+        catalog_path = tmp_path / "review" / "review-reconciliation.yml"
+        catalog = yaml.safe_load(catalog_path.read_text(encoding="utf-8"))
+        catalog["entities"]["site"]["site_name"]["property_mappings"] = {"old_property": "site_name"}
+        catalog_path.write_text(yaml.safe_dump(catalog), encoding="utf-8")
+        manifest = {
+            "defaultTypes": [{"id": "site", "name": "Site"}],
+            "reconciliation": {"supportedTypes": ["site"]},
+            "extend": {"property_settings": [{"name": "place_name", "entity_types": ["site"]}]},
+        }
+        path = "/api/v1/projects/review/reconciliation/site/site_name/suggest?query=Sa"
+
+        with (
+            patch.object(ReconciliationClient, "get_service_manifest", new=AsyncMock(return_value=manifest)),
+            patch.object(ReconciliationClient, "suggest_entities", new=AsyncMock()) as suggest_entities,
+        ):
+            response = await authorized_client.get(path)
+
+        assert response.status_code == 400
+        assert "old_property" in response.json()["detail"]["message"]
+        suggest_entities.assert_not_awaited()
+
+    async def test_matching_routes_return_503_when_manifest_is_unavailable_or_invalid(
+        self, authorized_client, tmp_path, monkeypatch
+    ) -> None:
+        await _create_project(authorized_client, tmp_path, monkeypatch)
+        _write_catalog(tmp_path)
+        path = "/api/v1/projects/review/reconciliation/site/site_name"
+
+        with (
+            patch.object(
+                ReconciliationClient,
+                "get_service_manifest",
+                new=AsyncMock(side_effect=[httpx.ConnectError("service offline"), {}]),
+            ),
+            patch.object(ReconciliationClient, "reconcile_batch", new=AsyncMock()) as reconcile_batch,
+            patch.object(ReconciliationClient, "suggest_entities", new=AsyncMock()) as suggest_entities,
+        ):
+            suggestion_response = await authorized_client.get(f"{path}/suggest?query=Sa")
+            sync_response = await authorized_client.post(f"{path}/auto-reconcile-sync?threshold=0.8")
+
+        assert suggestion_response.status_code == 503
+        assert "manifest is unavailable" in suggestion_response.json()["detail"]["message"]
+        assert sync_response.status_code == 503
+        assert "manifest" in sync_response.json()["detail"]["message"]
+        reconcile_batch.assert_not_awaited()
+        suggest_entities.assert_not_awaited()
