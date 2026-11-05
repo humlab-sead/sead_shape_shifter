@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import httpx
 from loguru import logger
 from pydantic import ValidationError as PydanticValidationError
 
@@ -20,6 +21,7 @@ from backend.app.exceptions import (
     ConfigurationError,
     DependencyError,
     DomainException,
+    ReconciliationManifestError,
     ResourceConflictError,
     ResourceNotFoundError,
     ValidationError,
@@ -214,9 +216,78 @@ class ReconciliationService:
         self.mapping_service: MappingService = MappingService(self.project_service)
         self.query_builder: ReconciliationQueryService = ReconciliationQueryService()
         self.shapeshift_service: ShapeShiftService | None = None
-
         # Lazy-load mapping manager to avoid circular imports
         self._mapping_manager: "EntityMappingManager | None" = None
+
+    async def ensure_reconciliation_eligibility(self, service_type: str, property_mappings: dict[str, str]) -> None:
+        """Check that the service manifest supports a type and all saved property IDs."""
+        try:
+            manifest = await self.reconciliation_client.get_service_manifest()
+        except (httpx.HTTPError, ValueError) as exc:
+            raise ReconciliationManifestError(
+                "The reconciliation service manifest is unavailable or invalid; candidate matching was not started."
+            ) from exc
+
+        if not isinstance(manifest, dict):
+            raise ReconciliationManifestError(
+                "The reconciliation service returned a malformed manifest; candidate matching was not started."
+            )
+
+        default_types = manifest.get("defaultTypes")
+        if not isinstance(default_types, list):
+            raise ReconciliationManifestError("The reconciliation service manifest is missing a valid defaultTypes list.")
+
+        default_type_ids: set[str] = set()
+        for item in default_types:
+            if (
+                not isinstance(item, dict)  # pylint: disable=too-many-boolean-expressions
+                or not isinstance(item.get("id"), str)
+                or not item["id"].strip()
+                or ("name" in item and not isinstance(item["name"], str))
+                or item["id"] in default_type_ids
+            ):
+                raise ReconciliationManifestError("The reconciliation service manifest contains an invalid or duplicate default type.")
+            default_type_ids.add(item["id"])
+
+        reconciliation = manifest.get("reconciliation")
+        supported_types = reconciliation.get("supportedTypes") if isinstance(reconciliation, dict) else None
+        if not isinstance(supported_types, list):
+            raise ReconciliationManifestError("The reconciliation service manifest is missing a valid reconciliation.supportedTypes list.")
+
+        supported_type_ids: set[str] = set()
+        for item in supported_types:
+            if not isinstance(item, str) or not item.strip() or item in supported_type_ids or item not in default_type_ids:
+                raise ReconciliationManifestError("The reconciliation service manifest contains an invalid or unresolved supported type.")
+            supported_type_ids.add(item)
+
+        extend = manifest.get("extend")
+        property_settings = extend.get("property_settings") if isinstance(extend, dict) else None
+        if not isinstance(property_settings, list):
+            raise ReconciliationManifestError("The reconciliation service manifest is missing a valid extend.property_settings list.")
+
+        served_properties: set[str] = set()
+        for item in property_settings:
+            if (
+                not isinstance(item, dict)
+                or not isinstance(item.get("name"), str)
+                or not item["name"].strip()
+                or not isinstance(item.get("entity_types"), list)
+                or any(not isinstance(entity_type, str) or not entity_type.strip() for entity_type in item["entity_types"])
+            ):
+                raise ReconciliationManifestError("The reconciliation service manifest contains an invalid property setting.")
+            if service_type in item["entity_types"]:
+                served_properties.add(item["name"])
+
+        if service_type not in supported_type_ids:
+            raise ValidationError(f"Remote type '{service_type}' is not supported for reconciliation.")
+
+        if not isinstance(property_mappings, dict) or any(not isinstance(property_id, str) for property_id in property_mappings):
+            raise ValidationError("Saved reconciliation property mappings must use property IDs as string keys.")
+
+        unsupported_properties = sorted(set(property_mappings) - served_properties)
+        if unsupported_properties:
+            names = ", ".join(f"'{property_id}'" for property_id in unsupported_properties)
+            raise ValidationError(f"Property mapping(s) {names} are not declared for remote type '{service_type}'.")
 
     @property
     def catalog_manager(self) -> "EntityMappingManager":
@@ -848,13 +919,16 @@ class ReconciliationService:
         Raises:
             ValueError: If project has unsaved changes
         """
-        # Load existing config and ensure thresholds from caller are honored.
+        # Check the saved type and properties before changing or saving the catalog.
         registry: core.EntityResolutionCatalog = self.catalog_manager.load_catalog(project_name)
+        existing_mapping: core.EntityResolutionSet | None = registry.get(entity_name, target_field)
+        mapping_to_check = existing_mapping or entity_mapping
+        service_type: str | None = mapping_to_check.metadata.remote.service_type
+        if service_type:
+            await self.ensure_reconciliation_eligibility(service_type, mapping_to_check.metadata.property_mappings)
 
         thresholds_updated: bool = False
 
-        # Get existing mapping using domain model method
-        existing_mapping: core.EntityResolutionSet | None = registry.get(entity_name, target_field)
         if existing_mapping is None:
             # Add new mapping using domain model method
             registry.add(entity_name, target_field, entity_mapping)
@@ -866,7 +940,6 @@ class ReconciliationService:
             )
             entity_mapping = existing_mapping
 
-        service_type: str | None = entity_mapping.metadata.remote.service_type
         if not service_type:
             if thresholds_updated:
                 self.catalog_manager.save_catalog(project_name, registry)

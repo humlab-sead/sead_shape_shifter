@@ -16,6 +16,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
+from backend.app.clients import reconciliation_client as reconciliation_client_module
 from backend.app.clients.reconciliation_client import (
     CandidateVerificationProtocolError,
     CandidateVerificationUnavailableError,
@@ -666,6 +667,10 @@ class TestReconciliationClientPortConfiguration:
 class TestReconciliationClientServiceManifest:
     """Tests for ReconciliationClient.get_service_manifest method."""
 
+    @pytest.fixture(autouse=True)
+    def clear_service_manifest_cache(self, monkeypatch):
+        monkeypatch.setattr(reconciliation_client_module, "_SERVICE_MANIFEST_CACHE", {})
+
     @pytest.mark.asyncio
     async def test_get_service_manifest_basic(self):
         """Test getting service manifest."""
@@ -736,3 +741,47 @@ class TestReconciliationClientServiceManifest:
                 await client.get_service_manifest()
 
         await client.close()
+
+    @pytest.mark.asyncio
+    async def test_get_service_manifest_cache_is_per_service_and_expires(self, monkeypatch):
+        """Cache manifests across client instances for one service until the TTL expires."""
+        monotonic = MagicMock(side_effect=[100, 101, 110, 111, 112, 131, 132])
+        monkeypatch.setattr(reconciliation_client_module, "time", MagicMock(monotonic=monotonic))
+
+        first_manifest = {"name": "First service"}
+        other_manifest = {"name": "Other service"}
+        refreshed_manifest = {"name": "Refreshed first service"}
+
+        def make_response(manifest):
+            response = MagicMock()
+            response.json.return_value = manifest
+            response.raise_for_status.return_value = None
+            return response
+
+        first_http_client = AsyncMock()
+        first_http_client.get.return_value = make_response(first_manifest)
+        other_http_client = AsyncMock()
+        other_http_client.get.return_value = make_response(other_manifest)
+        refreshed_http_client = AsyncMock()
+        refreshed_http_client.get.return_value = make_response(refreshed_manifest)
+
+        first_client = ReconciliationClient(base_url="http://first-service")
+        cached_client = ReconciliationClient(base_url="http://first-service")
+        other_client = ReconciliationClient(base_url="http://other-service")
+        expired_client = ReconciliationClient(base_url="http://first-service")
+
+        with (
+            patch.object(first_client, "_get_client", new=AsyncMock(return_value=first_http_client)),
+            patch.object(cached_client, "_get_client", new=AsyncMock()) as cached_get_client,
+            patch.object(other_client, "_get_client", new=AsyncMock(return_value=other_http_client)),
+            patch.object(expired_client, "_get_client", new=AsyncMock(return_value=refreshed_http_client)),
+        ):
+            assert await first_client.get_service_manifest() == first_manifest
+            assert await cached_client.get_service_manifest() == first_manifest
+            assert await other_client.get_service_manifest() == other_manifest
+            assert await expired_client.get_service_manifest() == refreshed_manifest
+
+        first_http_client.get.assert_awaited_once_with("http://first-service/reconcile")
+        cached_get_client.assert_not_awaited()
+        other_http_client.get.assert_awaited_once_with("http://other-service/reconcile")
+        refreshed_http_client.get.assert_awaited_once_with("http://first-service/reconcile")

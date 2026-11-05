@@ -198,9 +198,6 @@ async def auto_reconcile_entity(
 
     entity_mapping.metadata.update_thresholds(threshold=threshold, review_threshold=review_threshold)
 
-    # Persist updated thresholds even if reconciliation is blocked/fails.
-    service.catalog_manager.save_catalog(project_name, catalog)
-
     if get_app_state_manager().is_dirty(project_name):
         raise BadRequestError(f"Project '{project_name}' has unsaved changes. Save or discard changes before starting reconciliation.")
 
@@ -366,9 +363,6 @@ async def auto_reconcile_entity_sync(
 
     resolution_set.metadata.update_thresholds(threshold=threshold, review_threshold=review_threshold)
 
-    # Persist updated thresholds even if reconciliation is blocked/fails.
-    service.catalog_manager.save_catalog(authorized_project.resource.locator, catalog)
-
     if get_app_state_manager().is_dirty(authorized_project.resource.locator):
         raise BadRequestError(f"Project '{project_name}' has unsaved changes. Save or discard changes before starting reconciliation.")
 
@@ -417,6 +411,11 @@ async def suggest_entities(
     # Get service type from entity spec
     if not resolution_set.metadata.remote.service_type:
         raise BadRequestError(f"Entity '{entity_name}' has no service_type configured")
+
+    await service.ensure_reconciliation_eligibility(
+        resolution_set.metadata.remote.service_type,
+        resolution_set.metadata.property_mappings,
+    )
 
     candidates: list[api.ReconciliationCandidate] = await service.reconciliation_client.suggest_entities(
         prefix=query, entity_type=resolution_set.metadata.remote.service_type.lower(), limit=10

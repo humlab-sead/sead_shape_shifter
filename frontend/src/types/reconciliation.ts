@@ -8,8 +8,29 @@ export interface ReconciliationSource {
   query: string
 }
 
+export interface ReconciliationTypeOption {
+  id: string
+  name: string
+  disabled?: boolean
+}
+
+export interface ReconciliationManifest {
+  supportedTypes: ReconciliationTypeOption[]
+  propertiesByType: Record<string, string[]>
+}
+
+export type ReconciliationManifestResult =
+  | { status: 'valid'; manifest: ReconciliationManifest }
+  | { status: 'error'; error: string }
+
+export interface ReconciliationCompatibility {
+  status: 'supported' | 'unsupported' | 'unknown' | 'disabled'
+  canMatch: boolean
+  message: string | null
+}
+
 export interface ReconciliationRemote {
-  service_type?: string | null // e.g., 'site', 'taxon' - must match service defaultTypes
+  service_type?: string | null // Must match reconciliation.supportedTypes
   columns?: string[] // Additional columns for display/matching
 }
 

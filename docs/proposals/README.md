@@ -19,7 +19,7 @@ This index covers proposals and initiative records that need attention or provid
 | [Make `@value` References Usable in Column Pickers](VALUE_REFERENCE_COLUMN_PICKERS/VALUE_REFERENCE_COLUMN_PICKERS.md) | Proposed feature | Add guided reference entry, resolved-column previews, and explicit replacement without restoring long dropdown lists. |
 | [Security Hardening Follow-up](SECURITY_HARDENING_FOLLOWUP/SECURITY_HARDENING_FOLLOWUP.md) | Proposed change request | Remediate unresolved application, authorization, deployment, and verification issues, including safeguards for future generic ingester routes. |
 | [AI Project Advisor](SHAPESHIFTER_PROJECT_AI_ADVISOR/SHAPESHIFTER_PROJECT_AI_ADVISOR.md) | Feature proposal | Provide project-scoped advice grounded in project state, SEAD knowledge, and source-level investigation. |
-| [Reconciliation Entity-Type Expansion](RECONCILIATION_ENTITY_TYPE_EXPANSION/RECONCILIATION_ENTITY_TYPE_EXPANSION.md) | Proposed feature — draft for review | Extend the `site` pilot to two additional local target entities and add verified developer guidance for supporting more types. |
+| [Manifest-Driven Reconciliation Inputs](MANIFEST_DRIVEN_RECONCILIATION_INPUTS/MANIFEST_DRIVEN_RECONCILIATION_INPUTS.md) | Approved feature | Derive reconciliation types and their properties from the OpenRefine manifest, so a new entity type is configuration plus verification rather than a Shape Shifter change. |
 
 ## Current Initiatives
 
