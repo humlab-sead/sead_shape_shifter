@@ -104,13 +104,13 @@ You can create several specifications for one entity, one per search field, and 
 
 ### 1.3 Choose the Source
 
-`source` selects the rows sent to the service:
+Under **Local Entity Configuration**, the **Source Type** control selects the rows sent to the service. It is separate from the project's Data Sources, which are database connections.
 
-| Option | Value | Behaviour |
-|--------|-------|-----------|
-| Entity preview | `null` or omitted | Uses the entity's own rows. This is the default. |
-| Another entity | `"taxon_enriched"` | Uses rows from another entity in the same project. Column checks run against that entity. |
-| Custom query | `{data_source, type: sql, query}` | Uses the rows returned by the query. Column checks are skipped because the query defines its own columns. |
+| Source Type | Stored `source` value | Behaviour |
+|-------------|-----------------------|-----------|
+| Entity | `null` or omitted | Uses the entity's own rows. This is the default. |
+| Another Entity | `"taxon_enriched"` | Uses rows from another entity in the same project. Column checks run against that entity. |
+| SQL Query | `{data_source, type: sql, query}` | Uses the rows returned by the query. Column checks are skipped because the query defines its own columns. |
 
 Use another entity when a helper entity carries fields the reconciled entity lacks. Use a custom query when you need columns that no entity produces.
 

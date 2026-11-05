@@ -735,12 +735,12 @@ You need:
 2. On the **Configuration** tab, select **Add Specification**.
 3. Choose the **Entity** whose rows contain the values to match.
 4. Choose the **Search Field** — the entity column that holds the values sent to the reconciliation service, for example a site name or taxon name column. The matched ID is written to the entity's `public_id` column, and the search field is also the source key used when accepted decisions are exported to the mapping sidecar.
-5. Select the **Source Type**:
+5. Select the **Source Type** under **Local Entity Configuration**:
 
    | Source Type | Rows used |
    |-------------|-----------|
-   | Entity Preview | The entity's own preview rows. This is the default. |
-   | Other Entity | Rows from another entity in the same project, for example a prepared variant of the entity. |
+   | Entity | The entity's own rows. This is the default. |
+   | Another Entity | Rows from another entity in the same project, for example a prepared variant of the entity. |
    | SQL Query | Rows from a custom SQL query. Column checks are skipped because the columns are defined inside the query. |
 
 6. Select a **Remote Type**. The list is read from the reconciliation service. A type the service no longer offers is listed with an `(unsupported)` or `(cannot be verified)` suffix and cannot be used for matching.

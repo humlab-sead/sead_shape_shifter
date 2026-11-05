@@ -60,6 +60,12 @@
         <v-window v-model="activeTab">
           <v-window-item value="form">
             <v-form ref="form" v-model="valid">
+              <!-- Local Entity Configuration -->
+              <h4 class="text-subtitle-1 mb-4">
+                <v-icon start size="small">mdi-table</v-icon>
+                Local Entity Configuration
+              </h4>
+
               <!-- Entity and Search Field Selection (only for new) -->
               <template v-if="isNew">
                 <v-row class="mt-2">
@@ -117,12 +123,7 @@
                 prepend-inner-icon="mdi-lock"
               />
 
-              <!-- Data Source Configuration -->
-              <h4 class="text-subtitle-1 mb-4">
-                <v-icon start size="small">mdi-database</v-icon>
-                Data Source
-              </h4>
-
+              <!-- Source rows used for matching -->
               <v-row>
                 <v-col cols="6">
                   <v-select
@@ -135,7 +136,7 @@
                 </v-col>
                 <v-col cols="6">
                   <v-autocomplete
-                    v-if="sourceType === 'Other Entity'"
+                    v-if="sourceType === 'Another Entity'"
                     v-model="otherEntityName"
                     :items="availableEntities.filter((e) => e !== formData.entity_name)"
                     label="Source Entity"
@@ -429,8 +430,8 @@ const yamlError = ref<string | null>(null)
 const yamlValid = ref(true)
 
 // Source type selection
-const sourceTypes = ['Entity Preview', 'Other Entity', 'SQL Query']
-const sourceType = ref('Entity Preview')
+const sourceTypes = ['Entity', 'Another Entity', 'SQL Query']
+const sourceType = ref('Entity')
 const otherEntityName = ref<string>('')
 const sqlQuery = ref('')
 
@@ -652,7 +653,7 @@ async function save() {
   try {
     // Prepare source based on source type
     let source: string | ReconciliationSource | null = null
-    if (sourceType.value === 'Other Entity') {
+    if (sourceType.value === 'Another Entity') {
       source = otherEntityName.value
     } else if (sourceType.value === 'SQL Query') {
       source = {
@@ -711,7 +712,7 @@ function resetForm() {
       mapping: [],
     },
   }
-  sourceType.value = 'Entity Preview'
+  sourceType.value = 'Entity'
   otherEntityName.value = ''
   sqlQuery.value = ''
   isDirty.value = false
@@ -765,9 +766,9 @@ watch(
 
       // Set source type
       if (!spec.source) {
-        sourceType.value = 'Entity Preview'
+        sourceType.value = 'Entity'
       } else if (typeof spec.source === 'string') {
-        sourceType.value = 'Other Entity'
+        sourceType.value = 'Another Entity'
         otherEntityName.value = spec.source
       } else {
         sourceType.value = 'SQL Query'
@@ -839,11 +840,11 @@ watch([sourceType, otherEntityName], async ([newSourceType, newOtherEntity]) => 
   let entityForFields = formData.value.entity_name
 
   // Determine which entity's fields to load
-  if (newSourceType === 'Other Entity' && newOtherEntity) {
+  if (newSourceType === 'Another Entity' && newOtherEntity) {
     entityForFields = newOtherEntity
   }
   // For 'SQL Query' we can't pre-load fields (custom query)
-  // For 'Entity Preview' use the main entity
+  // For 'Entity' use the main entity
 
   if (newSourceType !== 'SQL Query') {
     try {
@@ -892,12 +893,12 @@ function formDataToYaml(): string {
   const specData: Record<string, any> = {}
 
   // Build source
-  if (sourceType.value === 'Other Entity') {
+  if (sourceType.value === 'Another Entity') {
     specData.source = otherEntityName.value
   } else if (sourceType.value === 'SQL Query') {
     specData.source = { query: sqlQuery.value }
   }
-  // Entity Preview = null (default)
+  // Entity = null (default)
 
   specData.property_mappings = { ...formData.value.spec.property_mappings }
 
@@ -924,9 +925,9 @@ function yamlToFormData(yamlString: string): boolean {
 
     // Update source type and value
     if (!parsed.source) {
-      sourceType.value = 'Entity Preview'
+      sourceType.value = 'Entity'
     } else if (typeof parsed.source === 'string') {
-      sourceType.value = 'Other Entity'
+      sourceType.value = 'Another Entity'
       otherEntityName.value = parsed.source
     } else if (parsed.source && typeof parsed.source === 'object' && parsed.source.query) {
       sourceType.value = 'SQL Query'
