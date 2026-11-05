@@ -1,225 +1,163 @@
 # Reconciliation Workflow - User Guide
 
-This guide walks you through the complete process of reconciling your data against the SEAD authority database.
+This guide walks you through reconciling project data against the SEAD reconciliation service: finding candidates, reviewing decisions, and exporting accepted results into the mapping sidecar.
+
+For the steps that create a specification, see [Create a Reconciliation Specification](../USER_GUIDE.md#create-a-reconciliation-specification). This guide covers everything after that point.
 
 ## What is Reconciliation?
 
-Reconciliation matches your local data (e.g., site names, taxon names) against authoritative records in the SEAD database to ensure consistency and enable proper linking. For example, you might have a site called "Ageröd" in your data that needs to be matched to the official SEAD site record.
+Reconciliation matches local source values (site names, taxon names, method names) to records in SEAD, then stores the selected target IDs in the mapping sidecar. Normalization applies those stored links, so exported data carries the SEAD ID instead of the local text.
+
+Reconciliation does not change `system_id` values. Foreign keys always link on local `system_id` values; reconciliation fills the entity's `public_id` column.
 
 ## Prerequisites
 
 Before starting reconciliation:
 
-1. **Project Configuration**: Have a valid Shape Shifter project configuration (YAML file)
-2. **Entity Configuration**: Entity must be configured with data source and columns
-3. **Reconciliation Service**: SEAD reconciliation service must be running and accessible
-4. **Reconciliation Spec**: Entity must have a reconciliation specification configured
+1. **Project Configuration**: A saved project that contains the entity you want to reconcile
+2. **Entity Configuration**: The entity has a data source and the columns needed for matching
+3. **Reconciliation Service**: The service is reachable from the backend; the Reconciliation tab shows **Online** with a supported-type count when it answers
+4. **Reconciliation Spec**: A specification exists for the entity and target field you want to fill
 
 ## Workflow Overview
 
-```
-1. Configure Reconciliation → 2. Run Auto-Reconcile → 3. Review Results → 4. Manual Review → 5. Save & Export
+```text
+Configure Specification
+   ↓
+Find Candidates
+   ↓
+Review Decisions
+   ↓
+Export to Mapping
+   ↓
+Execute / Dispatch
 ```
 
 ---
 
 ## Step 1: Configure Reconciliation Specification
 
-### 1.1 Define Reconciliation Settings
+### 1.1 Create the Specification
 
-Create or edit the reconciliation configuration for your entity in the project YAML file:
+Use **Add Specification** in the project's **Reconciliation → Configuration** tab, or edit the raw YAML. The field-by-field reference is in [RECONCILIATION_SETUP_GUIDE.md](RECONCILIATION_SETUP_GUIDE.md).
+
+A specification is keyed by entity name and target field. The saved catalog looks like this:
 
 ```yaml
-reconciliation:
-  entities:
-    site:
-      # Remote service configuration
+version: '3.0'
+service_url: http://127.0.0.1:8000
+entities:
+  site:
+    site_name:                    # target field
+      property_mappings: {}
       remote:
-        service_type: "site"           # SEAD entity type (site, taxon, location, etc.)
-        auto_accept_threshold: 0.95    # Auto-accept matches with ≥95% confidence
-      
-      # Field mappings
-      mapping:
-        query_name: "site_name"        # Your column with the name to match
-        query_id: "site_id"            # Your column for storing matched IDs (optional)
-        
-      # Optional: Use different data source for reconciliation
-      source: "site"                   # Entity name to use (defaults to entity itself)
+        service_type: site
+        columns: []
+      auto_accept_threshold: 0.95
+      review_threshold: 0.7
+      mapping: []
 ```
 
-### 1.2 Key Configuration Fields
+The catalog is stored in the project folder as `<project>-reconciliation.yml`. For the default layout that path is `data/projects/<project>/<project>-reconciliation.yml`. Older formats used a `keys` list and an `@include` in the project file; neither is used now.
 
-- **`service_type`**: The SEAD authority type to match against
-  - `site`: Archaeological sites
-  - `taxon`: Species/taxa
-  - `location`: Geographic locations
-  - `method`: Analysis methods
-  - `sample_type`: Sample types
+### 1.2 Fields That Control Matching
 
-- **`auto_accept_threshold`**: Confidence score (0.0-1.0) above which matches are automatically accepted
-  - `0.95` (95%): Very strict - only exact/near-exact matches
-  - `0.85` (85%): Moderate - good matches with minor variations
-  - `0.75` (75%): Permissive - accepts fuzzy matches
+- **`remote.service_type`**: The type matched against, for example `site`, `taxon`, or `location`. The usable values come from the service manifest. When it is empty, matching is disabled for that specification.
+- **`property_mappings`**: Maps a property the service serves to a local column, which adds context to each query.
+- **`review_threshold`**: Marks low-scoring rows for attention in the review grid.
+- **`auto_accept_threshold`**: Kept for format compatibility. The grid displays it, and it never accepts a candidate on its own.
 
-- **`query_name`**: Column containing the text to match (e.g., site names)
-- **`query_id`**: Column where matched SEAD IDs will be stored
+### 1.3 Check the Specification Status
 
-### 1.3 Verify Configuration
+The specification row shows a status icon. A red alert means matching cannot run until the problem is fixed.
 
-**Via UI:**
-1. Open the project in Shape Shifter editor
-2. Navigate to the Reconciliation view
-3. Review the **Specifications List** table
-4. Check the **Status** column (first column):
-   - ✅ **Green check**: Valid configuration - no issues detected
-   - ⚠️ **Yellow warning**: Configuration warnings (e.g., missing remote service type)
-   - 🔴 **Red alert**: Configuration errors - must be fixed before reconciliation
-5. Hover over the status icon to see detailed validation messages
+| Icon | Meaning |
+|------|---------|
+| Green check | No problems detected |
+| Yellow warning | Configuration warning, such as a missing remote type |
+| Red alert | Configuration error, such as a missing target field or an unsupported remote type |
 
-**Validation Checks:**
-The system automatically validates each specification against the actual entity structure, including:
-- **Entity existence**: Verifies the entity exists in the project
-- **Target field availability**: Checks that the target field exists in the entity's output columns
-- **Column availability**: Validates all column types are considered:
-  1. **Keys** - Entity primary key columns
-  2. **Columns** - Regular data columns (excluding value_vars if unnest configured)
-  3. **Extra columns** - Dynamically added columns
-  4. **FK join columns** - Columns added through foreign key relationships
-  5. **Unnest columns** - `var_name` and `value_name` from unnest operations
-- **Property mappings**: Ensures mapped source columns exist in entity output
-- **Remote service type**: Warns if no service type is configured
+Hover the icon to read the details. The checks cover entity existence, target field availability, mapped column availability, and current remote type and property support. See [Specification Validation](RECONCILIATION_SETUP_GUIDE.md#specification-validation) for the full list.
 
-**Common Configuration Errors:**
-- **Entity not found**: The specified entity has been removed or renamed
-- **Target field not found**: The column doesn't exist in the entity's final output
-- **Missing columns in mappings**: Property mappings reference non-existent columns
-- Check the tooltip on error icons for specific details
-
-**Via CLI:**
+The catalog file can be inspected directly:
 
 ```bash
-# View reconciliation configuration
-cat projects/my_project.yml | grep -A 20 "reconciliation:"
+cat data/projects/my_project/my_project-reconciliation.yml
 ```
+
+## Step 2: Find Candidates
+
+### 2.1 Run the Search
+
+1. Open the project's **Reconciliation** tab and confirm the service chip shows **Online**.
+2. Select **Find Candidates** on the specification row.
+3. Wait for the progress dialog to finish, then open **Reconcile & Review**.
+
+The search reads the source selected in the specification: the entity's own rows, another entity's rows, or a custom SQL query.
+
+### 2.2 What the Search Reports
+
+| Result | Meaning |
+|--------|---------|
+| Candidate rows | The row has an encoded business key and candidates to review |
+| Missing key | The row has no business key value and cannot be reviewed |
+| Duplicate key | Two rows share an encoded business key; the run reports them |
+| Missing label | The row has a key but no search label |
+| Row error | The row could not be prepared for matching |
+
+Preview failures and matching failures are reported separately from an empty result, so an empty grid does not always mean the service returned nothing.
+
+### 2.3 About Scores and Thresholds
+
+Candidate scores and the thresholds are shown for guidance only. **Matching never accepts a candidate.** Every accepted row requires a reviewer decision, and the threshold values do not change that.
 
 ---
 
-## Step 2: Run Auto-Reconciliation
+## Step 3: Review Decisions
 
-Auto-reconciliation queries the SEAD service for all unique values in your data and automatically categorizes matches.
+### 3.1 Row Statuses
 
-### 2.1 Check Service Health
+| Status | Meaning |
+|--------|---------|
+| Proposed | Candidates exist and nothing is decided yet |
+| Accepted | A reviewer selected a candidate; the target ID and candidate URI are recorded |
+| Rejected | A reviewer rejected the row |
+| Local-only | A reviewer marked the row as intentionally local, with no SEAD ID |
 
-**Via CLI:**
+Rows without a decision or candidates are unresolved. Rows without a business key cannot be reviewed.
 
-```bash
-# Check if reconciliation service is online
-curl http://localhost:8000/reconcile
-```
+### 3.2 Decide a Row
 
-**Via UI:**
-1. Navigate to Settings → Reconciliation
-2. Check service status indicator (should show green/online)
+1. Filter the grid by status to work through one group at a time.
+2. Open the candidate list for a row and check the returned records.
+3. Select a candidate, then select **Accept selected candidate**. Use **Reject** or **Local-only** when no candidate applies.
+4. Add notes when the decision needs explanation.
 
-### 2.2 Run Auto-Reconciliation
+Decisions are saved by encoded business key, and running **Find Candidates** again preserves them.
 
-**Option A: Using the CLI (Recommended for large datasets)**
+### 3.3 Re-accept Older Decisions
 
-```bash
-# Basic usage - use configured threshold
-python scripts/auto_reconcile.py my_project site
+An accepted row that has only a numeric target ID and no candidate URI shows `Accepted · re-accept candidate`. Select the candidate URI again before exporting, because export needs the URI to check the record against SEAD.
 
-# Custom threshold for stricter matching
-python scripts/auto_reconcile.py my_project site --threshold 0.98
+### 3.4 Add a Manual Link
 
-# More candidates per query for better options
-python scripts/auto_reconcile.py my_project site --max-candidates 10
+Use **Add Manual Link** when you already know the target ID.
 
-# Verbose output for debugging
-python scripts/auto_reconcile.py my_project site --verbose
+1. Enter the encoded business key and an integer target ID.
+2. Optionally add notes.
 
-# Using Make shortcut
-make reconcile ARGS="my_project site --verbose"
-```
-
-**Option B: Using the Web UI**
-
-1. Open your project in the editor
-2. Navigate to the entity (e.g., "site")
-3. Click the **Reconciliation** tab
-4. Click **Auto-Reconcile** button
-5. Adjust threshold if needed (default: 0.95)
-6. Click **Run Reconciliation**
-7. Wait for results (progress indicator will show)
-
-### 2.3 Understanding Auto-Reconcile Results
-
-The system categorizes each match into three groups:
-
-| Category | Description | User Action Required |
-|----------|-------------|---------------------|
-| **Auto-Accepted** ✓ | Score ≥ threshold (e.g., ≥95%) | None - already matched |
-| **Needs Review** ⚠️ | Score 80-95% (likely matches) | Manual review recommended |
-| **Unmatched** ✗ | No candidates or score <80% | Manual search or create new |
-
-**Example Output:**
-```
-=== Reconciliation Results ===
-  Total queries:      150
-  Auto-accepted:      95   (63%)
-  Needs review:       42   (28%)
-  Unmatched:          13   (9%)
-```
+This writes a committed `source: manual` link to the mapping sidecar and does not check the ID against SEAD. During the next normalization that link takes precedence over the fixed row's saved `public_id`, reconciliation links, and imported links.
 
 ---
 
-## Step 3: Review Auto-Accepted Matches
+## Step 4: Work Through Candidate Rows
 
-Even auto-accepted matches should be spot-checked for accuracy.
-
-### 3.1 View Auto-Accepted Matches
-
-**Via UI:**
-1. In the Reconciliation tab, filter by **Status: Accepted**
-2. Review the matches in the grid
-3. Each row shows:
-   - Your original value
-   - Matched SEAD record name
-   - Confidence score
-   - SEAD ID
-
-### 3.2 Verify Sample Matches
-
-Check a random sample of auto-accepted matches:
-
-```bash
-# View sample in verbose CLI output
-python scripts/auto_reconcile.py my_project site -v | head -n 50
-```
-
-**Red Flags to Look For:**
-- Match name doesn't semantically match your data (wrong entity entirely)
-- Score is exactly at threshold (95%) - borderline case
-- Multiple similar SEAD records exist (check if correct one was chosen)
-
-### 3.3 Reject Incorrect Auto-Accepts
-
-**Via UI:**
-1. Click the row in the reconciliation grid
-2. Click **Reject Match** button
-3. The entry moves to "Needs Review" status
-4. Manually select correct match or mark as unmatched
-
----
-
-## Step 4: Manual Review of "Needs Review" Items
-
-Items with scores between 80-95% require human judgment.
+Most rows reach this step with candidates but no decision. Work through them in the grid.
 
 ### 4.1 Review Each Candidate
 
 **Via UI:**
-1. Filter by **Status: Needs Review**
+1. Filter by **Status: Proposed**
 2. For each row:
    - Review your original value in left column
    - Review candidate matches in right panel
@@ -233,20 +171,20 @@ Items with scores between 80-95% require human judgment.
 For each item, decide:
 
 **Accept a Candidate:**
-- Click the candidate row
-- Click **Accept** button
-- The match is confirmed and ID is recorded
+- Select the candidate row
+- Click **Accept selected candidate**
+- The decision is recorded with its target ID and candidate URI
 
-**Reject and Search:**
-- Click **Search Alternatives** button
-- Enter different search terms
-- Review new candidates
-- Accept if found
+**Reject and Search Again:**
+- Open the alternative search for the row
+- Enter different search terms and run the search
+- Review the new candidates
+- Accept a candidate if one is correct
 
-**Mark as Unmatched:**
-- If no suitable match exists
-- Click **Mark Unmatched** button
-- Optionally add notes explaining why
+**Mark Local-only:**
+- Use this when the value must not match a SEAD record
+- Click **Local-only**
+- Optionally add a reason explaining why
 
 ### 4.3 Common Review Scenarios
 
@@ -276,7 +214,7 @@ Action:       Check your data for context clues (coordinates, etc.)
 ```
 Your data:    "My Local Site XYZ-2024"
 Candidates:   None above 0.50
-Action:       MARK UNMATCHED - new site not yet in SEAD
+Action:       LOCAL-ONLY - new site not yet in SEAD
 ```
 
 ---
@@ -297,18 +235,22 @@ Items with no candidates or very low scores need special attention.
 
 **Option A: Fix Your Data**
 If the problem is a typo or data quality issue:
-1. Go back to Entity Data tab
-2. Edit the problematic value
-3. Re-run reconciliation for that entity
+1. Open the entity and correct the source value
+2. Save the project
+3. Run **Find Candidates** again; existing decisions are preserved
 
-**Option B: Manual Search with Broader Terms**
-```yaml
-# Your data has: "Ageröd I:H Site Complex, Trench 3, Layer 2a"
-# Search with: "Ageröd"
+**Option B: Search With Broader Terms**
+
+The stored value may carry more detail than the SEAD record:
+
+```text
+Your data has: "Ageröd I:H Site Complex, Trench 3, Layer 2a"
+Search with:   "Ageröd"
 ```
-1. Use the manual search feature
+
+1. Open the alternative search for the row
 2. Try broader or simplified search terms
-3. Check parent/child relationships
+3. Check parent/child relationships between records
 
 **Option C: Create New SEAD Record**
 For genuinely new entities:
@@ -317,48 +259,52 @@ For genuinely new entities:
 3. Submit new record request
 4. Re-reconcile after record is added
 
-**Option D: Accept as Unmatched**
-For local-only identifiers that shouldn't be in SEAD:
-1. Mark as "Will Not Match"
-2. Add notes for documentation
-3. These will be excluded from SEAD linking
+**Option D: Mark Local-only**
+For local-only identifiers that should not be in SEAD:
+1. Select the row and click **Local-only**
+2. Add a reason for documentation
+3. The decision is exported as a committed approval and does not set `public_id`
 
 ---
 
-## Step 6: Save Reconciliation Results
+## Step 6: Export to Mapping
 
-### 6.1 Save Configuration
+Select **Export to Mapping** to copy accepted decisions into the mapping sidecar.
 
-**Via UI:**
-1. Click **Save** button in reconciliation tab
-2. Reconciliation state is saved to project file
-3. Matched IDs are stored in your entity data
+What the export does:
 
-**Via CLI:**
-The auto-reconcile script automatically saves:
-- Updated reconciliation configuration
-- Match decisions (accepted/rejected)
-- Matched SEAD IDs in designated column
+- Checks each accepted candidate URI against SEAD.
+- Copies valid decisions into `<project>-mapping.yml` with `source: reconciliation`, `committed_at`, and an owner recorded.
+- Does not export a candidate reported as absent or invalid, and removes any older link owned by that specification for the same key. The result lists the key and the reason.
+- Exports the link with an empty `verified_at` when the Authority Service is unavailable, and shows it as unverified. Export again after recovery to retry the check.
+- Updates only links owned by that specification and removes its stale owned links. Manual links and unowned links are protected.
+- Stops without changing the sidecar when a key has a conflicting owner, or when the sidecar metadata does not match.
+- Exports local-only decisions as committed, owner-tagged approvals. It does not set `public_id`.
 
-### 6.2 Verify Saved Results
+An accepted decision in the catalog does not change normalized IDs until it is exported.
 
-Check that reconciliation data is persisted:
+### 6.1 Read the Export Result
 
-```bash
-# View reconciliation state in project file
-cat projects/my_project.yml | grep -A 50 "reconciliation:"
+| Value | Meaning |
+|-------|---------|
+| `exported` | Links written to the sidecar |
+| `removed` | Stale owned links removed |
+| `exported_local_only_approvals` | Local-only approvals written |
+| `skipped_manual` | Links skipped because a manual link already exists |
+| `outcomes` | Per-key result, with the reason for any key that was not exported |
 
-# Check that IDs are populated
-python scripts/auto_reconcile.py my_project site --verbose
-```
+---
 
-### 6.3 Export Final Data
+## Step 7: Apply the Links
 
-**Export with Matched IDs:**
-1. Navigate to Execute tab
-2. Select output format (CSV, Excel, Database)
-3. Click **Execute Workflow**
-4. Your data now includes SEAD IDs in the designated column
+Normalization applies committed sidecar links in this order, first match wins:
+
+1. Manual links (`source: manual`)
+2. Reconciliation links (`source: reconciliation`)
+3. Imported links (`source: import`)
+4. Draft links with an empty `committed_at` are skipped
+
+Normalization reads the sidecar offline and does not check IDs against SEAD. Run **Execute** or the project's dispatch flow to produce output that carries the applied IDs.
 
 **Example Output:**
 ```csv
@@ -369,67 +315,57 @@ site_name,site_id,latitude,longitude
 
 ---
 
-## Step 7: Quality Assurance
+## Step 8: Quality Checks
 
-### 7.1 Review Statistics
+### 8.1 Check the Decisions
 
-**Via CLI:**
-```bash
-python scripts/auto_reconcile.py my_project site --verbose
-```
+1. Re-run **Find Candidates** and confirm previously reviewed rows still show their decisions.
+2. Confirm no rows remain `Proposed` unless you intend to leave them unresolved.
+3. Confirm rows you marked local-only show no unexpected `public_id` value.
 
-**Acceptable Benchmarks:**
-- **Auto-accept rate**: 60-80% (good data quality)
-- **Needs review**: 15-30% (normal variation)
-- **Unmatched**: <10% (mostly new records)
+### 8.2 Check the Export Result
 
-**Red Flags:**
-- Auto-accept rate <40%: Check threshold, data quality, or service_type
-- Unmatched >30%: Wrong service_type or serious data quality issues
+1. Read the export result for keys reported absent or invalid.
+2. Confirm `skipped_manual` is expected for the entity.
+3. Export again after the Authority Service recovers if any link is shown as unverified.
 
-### 7.2 Spot Check Final Data
+### 8.3 Spot Check the Output
 
-Sample 5-10 random records and manually verify:
-```bash
-# Export sample and check
-python -c "import pandas as pd; df = pd.read_csv('output/site.csv').sample(10); print(df)"
-```
+Check a sample of exported rows in the entity preview or the produced output:
 
-Verify:
-- IDs are populated for matched records
-- IDs correspond to correct SEAD records
-- Unmatched records have NULL/empty IDs (as expected)
+- Applied IDs belong to the record you reviewed.
+- Rejected and unresolved rows have no applied ID.
+- Local-only rows have no applied ID.
 
 ---
 
 ## Reconciliation Best Practices
 
 ### DO:
-✅ **Start with high threshold (0.95)** - Be conservative initially
-✅ **Review a sample of auto-accepts** - Catch systematic errors early
-✅ **Document unmatched items** - Keep notes on why no match
-✅ **Re-run after data corrections** - Iterate to improve match rate
-✅ **Save frequently** - Don't lose manual review work
+- ✅ **Decide every row yourself** - matching never accepts a candidate
+- ✅ **Check accepted rows carry a candidate URI** - a numeric ID alone cannot be verified on export
+- ✅ **Export to Mapping before expecting output to change** - accepted catalog decisions are not applied links
+- ✅ **Record why a row is local-only** - the reason documents the decision
+- ✅ **Re-run Find Candidates after changing source data** - existing decisions are preserved
 
 ### DON'T:
-❌ **Set threshold too low (<0.85)** - Increases false positives
-❌ **Blindly accept all suggestions** - Always validate samples
-❌ **Skip unmatched review** - May hide data quality issues
-❌ **Modify SEAD IDs manually** - Let reconciliation manage IDs
+- ❌ **Treat a high score as a decision** - scores and thresholds are guidance only
+- ❌ **Assume an accepted decision is already applied** - only an export writes a committed link
+- ❌ **Add a manual link for an ID you have not checked** - manual links are trusted and never verified against SEAD
+- ❌ **Expect a local-only decision to set `public_id`** - it records an approval instead
 
 ---
 
 ## Troubleshooting
 
-### Problem: Low Auto-Accept Rate
-
-**Symptoms:** <40% auto-accepted
+### Problem: No Candidates Returned
 
 **Solutions:**
-1. Check `service_type` matches your data type
-2. Review data quality - fix obvious typos
-3. Temporarily lower threshold to see if good matches exist at 0.90
-4. Check if using correct source entity
+1. Confirm the specification status is not a red alert
+2. Confirm `remote.service_type` appears in the service manifest
+3. Confirm the source entity has preview rows
+4. Confirm the search label column is populated
+5. Confirm the backend can reach the service (`GET /api/v1/reconciliation/health`)
 
 ### Problem: Service Offline
 
@@ -437,120 +373,106 @@ Verify:
 
 **Solutions:**
 ```bash
-# Check service is running
+# Check the service answers directly
 curl http://localhost:8000/reconcile
 
-# Check service URL in configuration
-cat projects/my_project.yml | grep service_url
+# Check the backend view of the service
+curl http://localhost:8012/api/v1/reconciliation/health
 
-# Verify network connectivity
-ping reconciliation-service-host
-
-# Check logs
-tail -f logs/endpoint_errors.log | grep '\[RECON\]'
+# Check the configured service URL
+cat data/projects/my_project/my_project-reconciliation.yml | grep service_url
 ```
 
-### Problem: All Items Unmatched
+### Problem: Every Row Is Unreviewable
 
-**Symptoms:** 100% unmatched, even for known good data
+The grid reports missing or duplicate business keys. Check that the entity's configured keys exist, are not blank, and are unique per delivery.
+
+### Problem: Accepted Decisions Do Not Change the Output
+
+Accepted catalog decisions must be exported first. Run **Export to Mapping**, then normalize again.
+
+### Problem: Export Reports a Key as Absent
+
+The candidate URI was not found in SEAD. Re-run **Find Candidates** for that row and select a current candidate.
+
+### Problem: Export Stops on a Conflict
+
+A key is already owned by another specification, or the sidecar metadata does not match. Review the reported key and its current link, then export again.
+
+### Problem: Decisions Do Not Persist
 
 **Solutions:**
-1. Wrong `service_type` - verify entity type exists in SEAD
-2. Wrong `query_name` column - check column name spelling
-3. Empty data - verify source entity has data
-4. Service error - check service logs
-
-### Problem: Manual Reviews Not Saving
-
-**Symptoms:** Decisions lost after page refresh
-
-**Solutions:**
-1. Click **Save** button after each batch of reviews
-2. Check browser console for errors
-3. Verify project file permissions (should be writable)
-4. Check for backend API errors in Network tab
+1. Check the browser console and the network tab for failed requests
+2. Confirm the catalog file at `data/projects/<project>/<project>-reconciliation.yml` is writable
+3. Reload the project and check that the decisions are listed again
 
 ---
 
 ## Advanced Workflows
 
-### Multi-Entity Reconciliation
+### Match Several Entities
 
-Reconcile multiple entities in sequence:
+Each specification is matched separately. Run **Find Candidates** on one specification row at a time, and review it in **Reconcile & Review** before moving to the next.
 
-```bash
-# Reconcile all entities in a project
-for entity in site taxon location; do
-  echo "Reconciling $entity..."
-  python scripts/auto_reconcile.py my_project $entity --threshold 0.95
-done
-```
+### Reconciliation API Routes
 
-### Batch Processing
+All routes are under the `/api/v1` prefix.
 
-Process multiple projects:
+| Method | Route | Purpose |
+|--------|-------|---------|
+| `GET` | `/reconciliation/health` | Service status |
+| `GET` | `/reconciliation/manifest` | Supported types and properties |
+| `GET` | `/projects/{project}/reconciliation` | Read the catalog |
+| `PUT` | `/projects/{project}/reconciliation/raw` | Replace the catalog as raw YAML |
+| `GET` | `/projects/{project}/reconciliation/available-fields/{entity}` | Columns available for mappings |
+| `GET` | `/projects/{project}/reconciliation/{entity}/{field}/preview` | Rows with decisions applied |
+| `POST` | `/projects/{project}/reconciliation/{entity}/{field}/auto-reconcile` | Start candidate search |
+| `POST` | `/projects/{project}/reconciliation/{entity}/{field}/auto-reconcile-sync` | Run candidate search and wait |
+| `GET` | `/operations/{operation_id}/progress` | Progress for a running search |
+| `POST` | `/projects/{project}/reconciliation/{entity}/{field}/mapping` | Record a decision |
+| `DELETE` | `/projects/{project}/reconciliation/{entity}/{field}/mapping` | Delete a decision |
+| `PUT` | `/projects/{project}/reconciliation/mapping-registry/{entity}/{field}` | Update a specification |
 
-```bash
-# Reconcile same entity across projects
-for project in project1 project2 project3; do
-  python scripts/auto_reconcile.py $project site
-done
-```
+### Command-Line Matching Currently Fails
 
-### Custom Thresholds by Entity Type
-
-Different entity types may need different thresholds:
-
-```bash
-# Sites - high precision required
-python scripts/auto_reconcile.py arbodat site --threshold 0.98
-
-# Taxa - allow more variation (spelling/synonyms)
-python scripts/auto_reconcile.py arbodat taxon --threshold 0.90
-
-# Methods - stricter matching
-python scripts/auto_reconcile.py arbodat method --threshold 0.95
-```
+`scripts/auto_reconcile.py` and the `make reconcile` target fail on import because the script uses model names that no longer exist (`EntityMapping`, `EntityMappingRegistry`). Use the web interface or the API routes above until the script is repaired.
 
 ---
 
 ## Workflow Checklist
 
-Use this checklist to ensure complete reconciliation:
-
-- [ ] Reconciliation spec configured in project YAML
-- [ ] Service health verified (online)
-- [ ] Auto-reconciliation executed successfully
-- [ ] Auto-accepted matches spot-checked (sample of 10-20)
-- [ ] All "needs review" items manually reviewed
-- [ ] Unmatched items investigated and documented
-- [ ] Reconciliation results saved
-- [ ] Final data exported with SEAD IDs
-- [ ] Quality assurance checks completed
+- [ ] Specification created for the entity and target field
+- [ ] Specification status is not a red alert
+- [ ] Service shown as online
+- [ ] Candidate search completed
+- [ ] Every needed row has a decision
+- [ ] Accepted rows carry a candidate URI, not only a numeric ID
+- [ ] Export to Mapping completed
+- [ ] Export result reviewed for skipped or invalid keys
+- [ ] Local-only decisions confirmed
+- [ ] Output produced and spot-checked
 - [ ] Project backed up
 
 ---
 
 ## Related Documentation
 
-- TRACE_LOGGING_GUIDE.md - Debugging reconciliation issues
+- [RECONCILIATION_SETUP_GUIDE.md](RECONCILIATION_SETUP_GUIDE.md) - Catalog format, fields, and validation reference
+- [Create a Reconciliation Specification](../USER_GUIDE.md#create-a-reconciliation-specification) - First-time setup steps
 - [CONFIGURATION_GUIDE.md](../CONFIGURATION_GUIDE.md) - Full YAML configuration reference
-- [scripts/README.md](../../scripts/README.md) - CLI script usage details
-- BACKEND_API.md - Reconciliation API endpoints
+- [DEVELOPMENT.md](../DEVELOPMENT.md) - Backend development and API details
 
 ---
 
 ## Getting Help
 
-If you encounter issues:
-
-1. **Check logs**: `tail -f logs/endpoint_errors.log | grep '\[RECON\]'`
-2. **Verbose output**: Run CLI with `--verbose` flag
-3. **Network tab**: Check browser DevTools for API errors
-4. **Service status**: Verify reconciliation service health endpoint
-5. **GitHub Issues**: Report bugs with full error logs
+1. **Service status**: Check the Reconciliation tab chip and `GET /api/v1/reconciliation/health`
+2. **Specification status**: Hover the status icon on the specification row
+3. **Network tab**: Check browser DevTools for failed requests
+4. **Logs**: Check the backend log for reconciliation errors
+5. **GitHub Issues**: Report bugs with the specification, the row key, and the full error text
 
 ---
 
-**Last Updated:** January 3, 2026  
-**Version:** 1.0
+**Last Updated:** November 5, 2026  
+**Version:** 2.0

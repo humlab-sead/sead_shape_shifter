@@ -4,7 +4,9 @@ This guide explains how to set up and use the entity reconciliation feature in S
 
 ## Overview
 
-The reconciliation feature helps you map source entity values (e.g., "Oak", "Birch") to corresponding SEAD database entity IDs using an OpenRefine-compatible reconciliation service. It supports both automated matching (based on confidence thresholds) and manual review of uncertain matches.
+The reconciliation feature maps local source values (for example "Oak" or "Birch") to records in SEAD through an OpenRefine-compatible reconciliation service. The service proposes candidates; a reviewer accepts, rejects, or marks each row local-only. Accepted decisions are exported into the mapping sidecar, and normalization applies them.
+
+Candidate scores and thresholds help a reviewer prioritize rows. They never accept a candidate.
 
 ## How Reconciliation Works with Identity System
 
@@ -28,26 +30,38 @@ location_name   →    Match to SEAD entities  →    local → remote    →   
 
 ## Prerequisites
 
-1. **OpenRefine Reconciliation Service** - You must have a reconciliation service running (default: `http://localhost:8000`)
-2. **Project File** - A Shape Shifter configuration file must exist
-3. **Entity Preview Data** - The entity you want to reconcile must have preview data available
+1. **OpenRefine Reconciliation Service** - A reconciliation service must be running and reachable from the backend (default: `http://localhost:8000`)
+2. **Project File** - A saved Shape Shifter project must exist
+3. **Entity Rows** - The entity or source selected in the specification must produce rows
+4. **Backend** - The Shape Shifter backend must be running (default: `http://localhost:8012`)
 
 ## Setup Steps
 
-### 1. Start the Reconciliation Service
+### 1. Confirm the Reconciliation Service
 
-Ensure your OpenRefine reconciliation service is running:
+Check the service directly, then check the backend's view of it:
 
 ```bash
-# Example: Start your reconciliation service
-# The service should be accessible at http://localhost:8000 (or configure a different URL)
+# The service answers with its OpenRefine manifest
+curl http://localhost:8000/reconcile
+
+# The backend reports whether it can reach the service
+curl http://localhost:8012/api/v1/reconciliation/health
 ```
 
-### 2. Create Reconciliation Project
+The Reconciliation tab shows **Online** with a supported-type count when the backend can reach the service.
 
-Create a YAML file named `{configuration-name}-reconciliation.yml` in the `projects/` directory alongside your main configuration file.
+### 2. Create or Open the Reconciliation Catalog
 
-**Example: `arbodat-reconciliation.yml`**
+The reconciliation catalog is a separate file, not part of `shapeshifter.yml`. It lives in the project folder as `<project>-reconciliation.yml`, which for the default layout is:
+
+```text
+data/projects/<project>/<project>-reconciliation.yml
+```
+
+The **Reconciliation → Configuration** tab creates and edits this file for you. Add one specification per entity and target field, either through **Add Specification** or in the **YAML** tab.
+
+The catalog is keyed by entity name, then by target field:
 
 ```yaml
 # Reconciliation service configuration
@@ -55,103 +69,77 @@ service_url: "http://localhost:8000"  # OpenRefine reconciliation service URL
 
 # Entity-specific reconciliation specifications
 entities:
-  
   # Example 1: Site reconciliation using entity preview (default)
   site:
-    source: null  # Use site entity's own preview data
-    
-    keys:
-      - site_name      # Primary key field(s) used to build query string
-    
-    property_mappings:
-      # Map reconciliation service property IDs to source column names
-      latitude: lat         # Service property 'latitude' -> source column 'lat'
-      longitude: lon        # Service property 'longitude' -> source column 'lon'
-      country: country_name # Service property 'country' -> source column 'country_name'
-      national_id: site_id  # Service property 'national_id' -> source column 'site_id'
-    
-    remote:
-      service_type: "site"  # Must appear in reconciliation.supportedTypes from GET /reconcile
-                            # If null/empty, reconciliation is disabled for this entity
-    
-    auto_accept_threshold: 0.95   # Auto-accept matches with ≥95% confidence
-    review_threshold: 0.70        # Flag matches 70-95% for manual review
-    
-    mapping: []  # Initial mappings (populated by auto-reconcile)
+    site_name:              # target field
+      source: null          # null = use the entity's own preview rows
+      property_mappings:
+        # Map reconciliation service property IDs to source column names
+        latitude: lat
+        longitude: lon
+        country: country_name
+        national_id: site_id
+      remote:
+        service_type: "site"  # Must appear in supportedTypes from GET /reconcile
+        columns: []
+      auto_accept_threshold: 0.95
+      review_threshold: 0.70
+      mapping: []
 
   # Example 2: Taxon reconciliation using another entity's data
   taxon:
-    source: "taxon_with_hierarchy"  # Use data from taxon_with_hierarchy entity
-    
-    keys:
-      - species      # Primary matching field
-    
-    property_mappings:
-      genus: genus_name      # Service 'genus' -> source 'genus_name'
-      family: family_name    # Service 'family' -> source 'family_name'
-      scientific_name: full_name  # Service 'scientific_name' -> source 'full_name'
-    
-    remote:
-      service_type: "taxon"  # Service entity type
-    
-    auto_accept_threshold: 0.90
-    review_threshold: 0.65
-    
-    mapping: []
+    species:                              # target field
+      source: "taxon_with_hierarchy"      # use rows from another entity
+      property_mappings:
+        genus: genus_name
+        family: family_name
+        scientific_name: full_name
+      remote:
+        service_type: "taxon"
+        columns: []
+      auto_accept_threshold: 0.90
+      review_threshold: 0.65
+      mapping: []
 
-  # Example 3: Site reconciliation using custom SQL query
+  # Example 3: Site reconciliation using a custom SQL query
   site_with_coords:
-    source:
-      data_source: "arbodat_data"  # Data source from main config
-      type: sql
-      query: |
-        SELECT 
-          Fustel AS site_name,
-          EVNr AS national_site_id,
-          rWert AS latitude,
-          hWert AS longitude,
-          Ort AS locality
-        FROM Projekte
-        WHERE rWert IS NOT NULL
-    
-    keys:
-      - site_name
-    
-    property_mappings:
-      latitude: latitude
-      longitude: longitude
-      national_id: national_site_id
-      place_name: locality
-    
-    remote:
-      service_type: "site"
-    
-    auto_accept_threshold: 0.95
-    review_threshold: 0.70
-    
-    mapping: []
+    site_name:                            # target field
+      source:
+        data_source: "arbodat_data"       # Data source from main config
+        type: sql
+        query: |
+          SELECT
+            Fustel AS site_name,
+            EVNr AS national_site_id,
+            rWert AS latitude,
+            hWert AS longitude,
+            Ort AS locality
+          FROM Projekte
+          WHERE rWert IS NOT NULL
+      property_mappings:
+        latitude: latitude
+        longitude: longitude
+        national_id: national_site_id
+        place_name: locality
+      remote:
+        service_type: "site"
+        columns: []
+      auto_accept_threshold: 0.95
+      review_threshold: 0.70
+      mapping: []
 ```
 
-### 3. Include Reconciliation in Main Project
+### 3. How the Catalog Is Found
 
-Add an `@include` directive to your main configuration file to reference the reconciliation configuration:
+The project does not reference the catalog from `shapeshifter.yml`. Shape Shifter looks for `<project>-reconciliation.yml` inside the project folder:
 
-**Example: `arbodat.yml`**
-
-```yaml
-# ... existing configuration ...
-
-entities:
-  taxon:
-    # ... entity definition ...
-  
-  sample_type:
-    # ... entity definition ...
-
-# Include reconciliation configuration
-reconciliation:
-  @include: "arbodat-reconciliation.yml"
+```text
+data/projects/<project>/<project>-reconciliation.yml
 ```
+
+There is no `@include` entry and no `reconciliation:` block in the project file. Saving through the Reconciliation tab writes the catalog to that path.
+
+When the file is missing, Shape Shifter starts with an empty catalog for the project.
 
 ### 4. Project Reference
 
@@ -163,33 +151,37 @@ service_url: "http://localhost:8000"  # Required: Reconciliation service base UR
 
 #### Entity Specification Fields
 
+Each specification is stored under `entities.<entity_name>.<target_field>`. The entity name and target field are the key; the remaining fields configure matching.
+
 | Field | Required | Description | Example |
 |-------|----------|-------------|---------|
-| `source` | ❌ | Data source for reconciliation (see Source Options below) | `null`, `"taxon_enriched"`, or `{data_source: "...", type: "sql", query: "..."}` |
-| `keys` | ✅ | Primary key field(s) used to build query string | `["site_name"]` or `["species"]` |
-| `property_mappings` | ❌ | Map service property IDs to source columns | `{"latitude": "lat", "genus": "genus_name"}` |
-| `remote.service_type` | ❌ | Service entity type ID; must appear in `reconciliation.supportedTypes` | `"site"`, `"feature_type"`, `"location"` |
-| `auto_accept_threshold` | ❌ | Auto-accept threshold (0.0-1.0, default: 0.95) | `0.95` |
-| `review_threshold` | ❌ | Review threshold (0.0-1.0, default: 0.70) | `0.70` |
-| `mapping` | ✅ | List of mappings (auto-populated) | `[]` |
+| `source` | ❌ | Rows used for matching (see Source Options below) | `null`, `"taxon_enriched"`, or `{data_source: "...", type: "sql", query: "..."}` |
+| `property_mappings` | ❌ | Maps a service property to a source column | `{"latitude": "lat", "genus": "genus_name"}` |
+| `remote.service_type` | ❌ | Service entity type; must appear in the manifest's `supportedTypes` | `"site"`, `"feature_type"`, `"location"` |
+| `remote.columns` | ❌ | Additional columns requested from the service | `[]` |
+| `auto_accept_threshold` | ❌ | Retained for compatibility; displayed but never accepts a candidate | `0.95` |
+| `review_threshold` | ❌ | Flags low-scoring rows for attention | `0.70` |
+| `mapping` | ❌ | Review decisions for this specification | `[]` |
+
+There is no `keys` field. The search value comes from the target field, and the row is identified by its encoded business key from the entity's configured keys.
 
 **Important**: If `remote.service_type` is `null` or empty, reconciliation is disabled for that entity.
 
 #### Source Options
 
-The `source` field determines where reconciliation data comes from:
+The `source` field determines where reconciliation rows come from:
 
 **Option 1: Use Entity Preview (Default)**
 ```yaml
-source: null  # or empty, or same as entity name
+source: null  # or omit the field
 ```
-Uses the entity's own preview data.
+Uses the entity's own preview rows.
 
 **Option 2: Use Another Entity**
 ```yaml
 source: "taxon_enriched"  # Entity name
 ```
-Uses preview data from another entity. Useful when you have a helper entity with additional fields needed for reconciliation.
+Uses preview rows from another entity. Useful when you have a helper entity with additional fields needed for reconciliation. Column checks run against that entity instead of the reconciled entity.
 
 **Option 3: Custom SQL Query**
 ```yaml
@@ -201,7 +193,7 @@ source:
     FROM sites
     WHERE latitude IS NOT NULL
 ```
-Executes a custom query to get reconciliation data with specific fields not in the transformed entity.
+Executes a custom query to get reconciliation rows with specific fields. Column checks are skipped for this option, because the columns are defined inside the query.
 
 #### Available Service Types
 
@@ -223,24 +215,31 @@ curl http://localhost:8000/reconcile | jq '.extend.property_settings'
 
 A supported type with no property entries is valid: it reconciles on the search label alone. Do not select properties from a fixed per-type list; older documentation that listed them by type is replaced by this manifest rule.
 
-#### Mapping Structure (Auto-generated)
+#### Decision Record Shape
+
+Each entry in `mapping` records one review decision. The catalog stores decisions; the exported links are written to a separate mapping sidecar.
 
 ```yaml
 mapping:
-  - source_values:
-      - "Quercus robur"  # Matches key order (species)
-    sead_id: 12345
-    confidence: 0.985  # 98.5%
-    notes: "Auto-matched: European Oak"
-    created_by: "system"
-    
-  - source_values:
-      - "Unknown oak sp."
-    sead_id: 12300
-    confidence: 0.72  # 72%
-    notes: "Manually verified - generic oak"
-    created_by: "user"
+  - local_key_value: undecided        # encoded ordered business key
+    source_value: "Slöinge Raä 114"   # search label, not row identity
+    status: proposed                  # proposed | accepted | rejected | local-only
+    candidates:
+      - id: https://w3id.org/sead/id/site/1
+        name: Slöinge Raä 114
+        score: 100.0
+        match: true
+
+  - local_key_value: undecided
+    source_value: "Slöinge Raä 114"
+    status: accepted
+    target_id: 1
+    candidate_id: https://w3id.org/sead/id/site/1
+    confidence: 1.0
+    notes: "Confirmed against the excavation report"
 ```
+
+A decision with `status: accepted` must carry both `target_id` and `candidate_id`. Only an accepted decision may carry them. The mapping sidecar, not this catalog, holds the links that normalization applies; see [Reconciliation Workflow](RECONCILIATION_WORKFLOW.md).
 
 ## Specification Validation
 
@@ -307,56 +306,42 @@ The validation results are cached and automatically revalidated when:
 
 ## Using the Reconciliation UI
 
-### 1. Navigate to Reconciliation Tab
+### 1. Open the Reconciliation Tab
 
-1. Open your configuration in the Shape Shifter web UI
-2. Click the **Reconciliation** tab (between Dependencies and Data Sources)
-3. Review the specifications list - check status column for any validation errors
+1. Open your project in the Shape Shifter web UI
+2. Select the **Reconciliation** tab
+3. On the **Configuration** tab, review the specifications list and the status column
 
-### 2. Select Entity
+### 2. Inspect a Specification
 
-1. Choose an entity from the dropdown (only entities with reconciliation specs appear)
-2. Review the reconciliation specification details:
-   - **Keys**: Primary matching columns (used in query string)
-   - **Properties**: Property mappings (property_id→source_column)
-   - **Service Type**: Reconciliation entity type from service
-   - **Existing Mappings**: Number of previously saved mappings
+Each row shows:
 
-### 3. Run Auto-Reconciliation
+- **Entity** and **Target Field**: the specification key
+- **Remote Type**: the matched type, with its compatibility status
+- **Mappings**: the number of recorded decisions
+- **Thresholds**: the review and auto-accept values
 
-1. Click the **Auto-Reconcile** button
-2. The system will:
-   - Fetch entity preview data
-   - Query the reconciliation service for each unique key combination
-   - Auto-accept matches with confidence ≥ auto_accept threshold
-   - Flag matches for review between review and auto_accept thresholds
-   - Mark low-confidence matches as needing manual mapping
+### 3. Find Candidates
 
-3. Review the results:
-   - **Green rows**: Auto-matched (high confidence)
-   - **Yellow rows**: Need review (medium confidence)
-   - **Red rows**: Unmatched or low confidence
+1. Select **Find Candidates** on the specification row.
+2. The system fetches the configured source rows and queries the service for each encoded business key.
+3. Progress is shown in a dialog. Rows with missing or duplicate keys, missing labels, or preparation errors are reported separately.
+4. Matching proposes candidates only. It never accepts one.
 
-### 4. Review and Edit Mappings
+### 4. Review Decisions
 
-#### Inline Editing
+1. Open **Reconcile & Review**.
+2. Filter rows by status.
+3. Select a candidate, then select **Accept selected candidate**. Use **Reject** or **Local-only** when no candidate applies.
+4. Use **Add Manual Link** when you already know the target ID.
 
-- Click on a **SEAD ID** cell to edit the ID directly
-- Click on a **Notes** cell to add notes or context
-- Changes are tracked; click **Save Changes** when ready
+### 5. Export to Mapping
 
-#### Review Candidates
+1. Select **Export to Mapping**.
+2. Accepted candidate URIs are checked against SEAD and copied into the mapping sidecar.
+3. Review the reported per-key outcomes before continuing.
 
-1. Click the **magnifying glass icon** in the Actions column (shows candidate count)
-2. Review candidate matches with confidence scores
-3. Select the correct candidate
-4. Click **Accept** to apply the mapping
-
-### 5. Save Changes
-
-1. Click **Save Changes** in the toolbar
-2. Mappings are persisted to the `{config}-reconciliation.yml` file
-3. Mappings are preserved across sessions
+Decisions are stored in `<project>-reconciliation.yml`; applied links are stored in `<project>-mapping.yml`. Both files are preserved across sessions.
 
 ## Workflow Best Practices
 
@@ -401,40 +386,37 @@ location:
 
 See Entity Materialization Guide for full details.
 
-### 2. Iterative Reconciliation
+### 2. Work Through Decisions
 
-- Start with auto-reconcile to handle high-confidence matches
-- Review yellow-flagged items (medium confidence)
-- Manually map red items (low confidence or no match)
-- Save incrementally to avoid losing work
+- Matching proposes candidates; a reviewer decides every row
+- Review proposed rows and accept, reject, or mark them local-only
+- Export to Mapping before expecting output to change
+- Re-run candidate search after changing source data; decisions keyed by business key are preserved
 
-### 2. Using Notes
+### 3. Using Notes
 
 Add notes to mappings for:
 - **Manual decisions**: "Generic species, mapped to genus-level ID"
 - **Uncertainty**: "Tentative match - verify with domain expert"
 - **Data issues**: "Typo in source data: 'Qurcus' → Quercus"
 
-### 3. Property Mapping Strategy
+### 4. Property Mapping Strategy
 
-Choose properties based on available data and entity type:
+Map the properties the selected remote type actually serves. The manifest defines them; a type may serve none, in which case matching uses the search label alone.
 
-**For Sites:**
-- Always include geographic coordinates if available (`latitude`, `longitude`)
-- Add `country` or `place_name` for location context
-- Include `national_id` for official identifiers
+Common patterns:
 
-**For Taxa:**
-- Use hierarchical properties (`genus`, `family`) to improve matching
-- Include `scientific_name` for full taxonomic name
-- Species-only names may need genus context
+- **Sites**: coordinates (`latitude`, `longitude`), `country` or `place_name`, and `national_id` when available
+- **Taxa**: `genus`, `family`, and `scientific_name` give the service more to compare
+- **References**: structured identifiers (`doi`, `isbn`) discriminate best, with `year` and `authors` as support
 
-**For References:**
-- Structured identifiers (`doi`, `isbn`) give best matches
-- Include `year` and `authors` for disambiguation
-- `full_reference` for complete citation matching
+Confirm the property names against the manifest before mapping them:
 
-### 4. Handling Unmatched Items
+```bash
+curl http://localhost:8000/reconcile | jq '.extend.property_settings'
+```
+
+### 5. Handling Unmatched Items
 
 For items with no candidates or very low confidence:
 
@@ -444,45 +426,47 @@ For items with no candidates or very low confidence:
 4. **Manual research**: Look up correct SEAD ID in database
 5. **Create new entities**: If entity doesn't exist in SEAD, coordinate with admins
 
-## Project Examples
+## Catalog Examples
 
-### Simple Reconciliation (Using Entity Preview)
+### Simple Specification (Using Entity Preview)
 
 ```yaml
 entities:
   country:
-    source: null  # Use country entity preview
-    keys:
-      - country_name
-    remote:
-      service_type: "country"
-    mapping: []
+    country_name:            # target field
+      source: null           # use the entity's own rows
+      remote:
+        service_type: "country"
+      mapping: []
 ```
 
 ### Using Another Entity's Data
 
+The helper entity belongs to the project file. The catalog only references its name.
+
 ```yaml
-# Main config has a helper entity with extra fields
+# In the project file: a helper entity with extra fields
 entities:
-  # Helper entity with enriched taxon data
   taxon_enriched:
     source: taxa_lookup
     keys: ["species"]
     columns: ["species", "genus", "family", "author"]
-    # ... other config
-  
-  # Reconciliation entity uses helper's richer data
+```
+
+```yaml
+# In <project>-reconciliation.yml: match using the helper's rows
+entities:
   taxon:
-    source: "taxon_enriched"  # Use enriched entity
-    keys:
-      - species
-    property_mappings:
-      genus: genus
-      family: family
-      scientific_name: species
-    remote:
-      service_type: "taxon"
-    mapping: []
+    species:                     # target field
+      source: "taxon_enriched"   # read rows from the helper entity
+      property_mappings:
+        genus: genus
+        family: family
+        scientific_name: species
+      remote:
+        service_type: "taxon"
+        columns: []
+      mapping: []
 ```
 
 ### Custom SQL Query Source
@@ -490,88 +474,87 @@ entities:
 ```yaml
 entities:
   site:
-    source:
-      data_source: "arbodat_data"
-      type: sql
-      query: |
-        SELECT 
-          s.Fustel AS site_name,
-          s.EVNr AS national_id,
-          s.rWert AS latitude,
-          s.hWert AS longitude,
-          l.Ort AS locality,
-          l.Land AS country
-        FROM Projekte s
-        LEFT JOIN Locations l ON s.location_id = l.id
-        WHERE s.rWert IS NOT NULL
-    
-    keys:
-      - site_name
-    
-    property_mappings:
-      latitude: latitude
-      longitude: longitude
-      country: country
-      national_id: national_id
-      place_name: locality
-    
-    remote:
-      service_type: "site"
-    
-    auto_accept_threshold: 0.95
-    review_threshold: 0.70
-    
-    mapping: []
+    site_name:                    # target field
+      source:
+        data_source: "arbodat_data"
+        type: sql
+        query: |
+          SELECT
+            s.Fustel AS site_name,
+            s.EVNr AS national_id,
+            s.rWert AS latitude,
+            s.hWert AS longitude,
+            l.Ort AS locality,
+            l.Land AS country
+          FROM Projekte s
+          LEFT JOIN Locations l ON s.location_id = l.id
+          WHERE s.rWert IS NOT NULL
+      property_mappings:
+        latitude: latitude
+        longitude: longitude
+        country: country
+        national_id: national_id
+        place_name: locality
+      remote:
+        service_type: "site"
+        columns: []
+      auto_accept_threshold: 0.95
+      review_threshold: 0.70
+      mapping: []
 ```
 
-### Complex Multi-Source Example
+### Multi-Specification Example
+
+A catalog can hold several entity and target field pairs, including several for one entity.
 
 ```yaml
 entities:
-  # Simple entity uses own data
+  # Uses the entity's own rows
   country:
-    source: null
-    keys: [country_name]
-    remote:
-      service_type: "country"
-    mapping: []
-  
-  # Entity references another entity
+    country_name:
+      source: null
+      remote:
+        service_type: "country"
+        columns: []
+      mapping: []
+
+  # Reads rows from another entity
   taxon:
-    source: "taxon_with_authors"
-    keys: [species]
-    property_mappings:
-      genus: genus_col
-      family: family_col
-    remote:
-      service_type: "taxon"
-    mapping: []
-  
-  # Entity uses custom query for maximum control
+    species:
+      source: "taxon_with_authors"
+      property_mappings:
+        genus: genus_col
+        family: family_col
+      remote:
+        service_type: "taxon"
+        columns: []
+      mapping: []
+
+  # Uses a custom query for full control over the input columns
   bibliographic_reference:
-    source:
-      data_source: "bibliography_db"
-      type: sql
-      query: |
-        SELECT DISTINCT
-          citation,
-          doi,
-          title,
-          YEAR(pub_date) as year,
-          authors
-        FROM references
-        WHERE doi IS NOT NULL OR isbn IS NOT NULL
-    
-    keys: [citation]
-    property_mappings:
-      doi: doi
-      title: title
-      year: year
-      authors: authors
-    remote:
-      service_type: "bibliographic_reference"
-    auto_accept_threshold: 0.98
-    mapping: []
+    citation:
+      source:
+        data_source: "bibliography_db"
+        type: sql
+        query: |
+          SELECT DISTINCT
+            citation,
+            doi,
+            title,
+            YEAR(pub_date) as year,
+            authors
+          FROM references
+          WHERE doi IS NOT NULL OR isbn IS NOT NULL
+      property_mappings:
+        doi: doi
+        title: title
+        year: year
+        authors: authors
+      remote:
+        service_type: "bibliographic_reference"
+        columns: []
+      auto_accept_threshold: 0.98
+      mapping: []
 ```
 
 ## Troubleshooting
@@ -595,43 +578,43 @@ entities:
 **Problem**: Cannot connect to reconciliation service
 
 **Solutions**:
-- Verify service is running: `curl http://localhost:8000`
-- Check `service.url` in reconciliation config
-- Ensure no firewall blocking localhost:8000
-- Check service status in reconciliation UI (displays entity type count when connected)
+- Verify the service answers: `curl http://localhost:8000/reconcile`
+- Check `service_url` in the reconciliation catalog
+- Confirm the backend can reach the service: `GET /api/v1/reconciliation/health`
+- Ensure no firewall blocks the service port
+- Check the service status chip in the Reconciliation tab; it shows the supported-type count when connected
 
 ### No Candidates Returned
 
-**Problem**: Auto-reconcile returns no candidates
+**Problem**: Find Candidates returns no candidates
 
 **Solutions**:
-- **Check validation first**: Ensure specification shows green checkmark (no validation errors)
+- **Check validation first**: a red alert blocks matching
 - Verify `remote.service_type` appears in `reconciliation.supportedTypes` from `GET /reconcile`
-- Check entity has preview data available
-- Inspect reconciliation service logs for errors
-- Test service directly with sample query
-- Verify property IDs in `property_mappings` appear in `extend.property_settings` for the selected type
+- Confirm the selected source has rows
+- Confirm the target field is populated in those rows
+- Test the service directly with a sample query
+- Verify property names in `property_mappings` appear in `extend.property_settings` for the selected type
 
 ### Low Confidence Scores
 
 **Problem**: All matches have low confidence
 
 **Solutions**:
-- Add more property mappings to improve matching accuracy
+- Add more property mappings to give the service more to compare
 - Check for data quality issues (spelling, formatting, missing values)
-- Verify reconciliation service uses correct matching algorithm
-- Consider lowering review threshold temporarily
-- Use more specific key fields that uniquely identify entities
+- Use a target field whose values identify the record more precisely
+- Widen the search with the alternative search dialog
 
-### Mappings Not Persisting
+### Decisions Not Persisting
 
-**Problem**: Changes lost after refresh
+**Problem**: Decisions lost after refresh
 
 **Solutions**:
-- Ensure you clicked **Save Changes** button
-- Check file permissions on `projects/{config}-reconciliation.yml`
-- Verify backend API is running (port 8012)
-- Check browser console for API errors
+- Check the browser console and network tab for failed requests
+- Check write permission on `data/projects/<project>/<project>-reconciliation.yml`
+- Verify the backend is running (port 8012)
+- Reload the project and confirm the decisions are listed again
 
 ## Advanced Project
 
@@ -648,74 +631,81 @@ Example checking service manifest:
 curl http://localhost:8000/reconcile | jq '.extend.property_settings'
 ```
 
-### Multiple Reconciliation Services
+### One Service per Project
 
-Create separate reconciliation files for different data sources:
-
-```yaml
-# arbodat-reconciliation.yml
-service_url: "http://localhost:8000"
-entities:
-  taxon:
-    keys: [species]
-    property_mappings:
-      genus: genus_col
-      family: family_col
-    remote:
-      service_type: "taxon"
-    mapping: []
-
-# ceramics-reconciliation.yml  
-service_url: "http://ceramic-service:9000"
-entities:
-  ceramic_type:
-    keys: [type_name]
-    property_mappings:
-      description: type_desc
-    remote:
-      service_type: "artifact_type"
-    mapping: []
-```
-
-Include both in main config:
+Each catalog holds a single `service_url`, so a project matches against one reconciliation service. Specifications in the same catalog can still use different `remote.service_type` values when that service serves them.
 
 ```yaml
-reconciliation:
-  arbodat:
-    @include: "arbodat-reconciliation.yml"
-  ceramics:
-    @include: "ceramics-reconciliation.yml"
+service_url: "http://localhost:8000"   # one service for the whole catalog
 ```
+
+To match against a different service, use a different project. Do not add more `service_url` entries or `@include` directives to the same file.
 
 ## API Reference
 
-### Auto-Reconcile Endpoint
+All routes are under the `/api/v1` prefix. `{field}` is the target field name.
+
+### Check Service Health
 
 ```
-POST /api/v1/projects/{project_name}/reconciliation/{entity_name}/auto-reconcile
+GET /api/v1/reconciliation/health
 ```
 
-Fetches entity data, queries reconciliation service, and auto-accepts high-confidence matches.
-
-### Update Mapping Endpoint
+### Read the Service Manifest
 
 ```
-POST /api/v1/projects/{project_name}/reconciliation/{entity_name}/mapping
+GET /api/v1/reconciliation/manifest
 ```
 
-Manually create or update a mapping for specific source values.
+Returns the supported types and the properties each type serves.
 
-### Suggest Entities Endpoint
+### Read or Replace the Catalog
 
 ```
-GET /api/v1/projects/{project_name}/reconciliation/{entity_name}/suggest?prefix={prefix}
+GET /api/v1/projects/{project_name}/reconciliation
+PUT /api/v1/projects/{project_name}/reconciliation/raw
 ```
 
-Autocomplete suggestions for SEAD entity names.
+### List Columns Available for Mappings
+
+```
+GET /api/v1/projects/{project_name}/reconciliation/available-fields/{entity_name}
+```
+
+Includes keys, columns, extra columns, FK join columns, and unnest columns.
+
+### Read a Preview With Decisions Applied
+
+```
+GET /api/v1/projects/{project_name}/reconciliation/{entity_name}/{field}/preview
+```
+
+### Find Candidates
+
+```
+POST /api/v1/projects/{project_name}/reconciliation/{entity_name}/{field}/auto-reconcile
+POST /api/v1/projects/{project_name}/reconciliation/{entity_name}/{field}/auto-reconcile-sync
+```
+
+The first form returns an `operation_id`; poll `GET /api/v1/operations/{operation_id}/progress` or stream `/stream`. Neither form accepts candidates.
+
+### Record or Delete a Decision
+
+```
+POST   /api/v1/projects/{project_name}/reconciliation/{entity_name}/{field}/mapping
+DELETE /api/v1/projects/{project_name}/reconciliation/{entity_name}/{field}/mapping
+```
+
+### Update a Specification
+
+```
+PUT /api/v1/projects/{project_name}/reconciliation/mapping-registry/{entity_name}/{field}
+```
 
 ## See Also
 
+- [Reconciliation Workflow](RECONCILIATION_WORKFLOW.md) - Finding candidates, reviewing decisions, and exporting links
+- [Create a Reconciliation Specification](../USER_GUIDE.md#create-a-reconciliation-specification) - First-time setup steps
 - [OpenRefine Reconciliation API Specification](https://reconciliation-api.github.io/specs/latest/)
-- [Project Guide](../CONFIGURATION_GUIDE.md)
-- Backend API Documentation
-- [Development Guide](../DEVELOPMENT.md)
+- [CONFIGURATION_GUIDE.md](../CONFIGURATION_GUIDE.md) - Project and entity configuration reference
+- [DEVELOPMENT.md](../DEVELOPMENT.md) - Development guide
