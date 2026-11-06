@@ -1,5 +1,10 @@
 # Manifest-Driven Reconciliation Inputs — Phase 5 Task Plan
 
+> **Later change:** after this phase completed, the two guides referenced below
+> (`docs/other/RECONCILIATION_SETUP_GUIDE.md` and `docs/other/RECONCILIATION_WORKFLOW.md`)
+> were merged into `docs/other/RECONCILIATION_GUIDE.md`. The statements in this
+> record describe the documents as they were during Phase 5.
+
 ## Phase Summary
 
 **Phase:** 5 — Validate Grouped Parity and Document Configuration. **Readiness:** Validated for implementation. [Phase 5 of the phase plan](MANIFEST_DRIVEN_RECONCILIATION_INPUTS_PHASE_PLAN.md#phase-5-validate-grouped-parity-and-document-configuration) requires Phases 3 and 4 to complete, and both are complete.
@@ -88,7 +93,7 @@
     5. Verify one real match request, because a manifest entry proves implemented matching, not database access or match quality.
     6. Review and export, then normalize offline; the target ID goes to the parent's `public_id` and child Core foreign keys keep the parent's local `system_id`.
     7. Add a regression test for the new specification.
-  * **Implementation:** Use the confirmed `site` pair as the worked example: local entity `site` (for example the Arbodat test project) → remote type `site`, search field `site_name`, business key `[Fustel, EVNr]`, and property examples `place_name` ← `site_name` and `national_id` ← `national_site_identifier`. Label the example as test-project data. Link to [RECONCILIATION_SETUP_GUIDE.md](../../../other/RECONCILIATION_SETUP_GUIDE.md) for detailed field reference and to [USER_GUIDE.md](../../../USER_GUIDE.md#8-reconciliation-and-mapping) for the operator workflow. Name the mocked workflow tests (`backend/tests/integration/test_feature_type_reconciliation_workflow.py`, `test_location_reconciliation_workflow.py`, and the new grouped module) and state that Phase 1's real service checks are separate availability evidence.
+  * **Implementation:** Use the confirmed `site` pair as the worked example: local entity `site` (for example the Arbodat test project) → remote type `site`, search field `site_name`, business key `[Fustel, EVNr]`, and property examples `place_name` ← `site_name` and `national_id` ← `national_site_identifier`. Label the example as test-project data. Link to [RECONCILIATION_GUIDE.md](../../../other/RECONCILIATION_GUIDE.md) for detailed field reference and to [USER_GUIDE.md](../../../USER_GUIDE.md#8-reconciliation-and-mapping) for the operator workflow. Name the mocked workflow tests (`backend/tests/integration/test_feature_type_reconciliation_workflow.py`, `test_location_reconciliation_workflow.py`, and the new grouped module) and state that Phase 1's real service checks are separate availability evidence.
   * **Constraints:** Preserve the document's existing structure. The guide is currently 1800 words; keep the added text concise and the total under 2500 words. Do not describe planned behavior as shipped. Do not claim that `defaultTypes` membership means reconciliation support.
   * **Validation:** `V-3` (`VM-10`); the section names the working pair, covers supported types, properties, business keys, saved-mapping recovery, manifest failure, identity behavior, and the mocked-versus-real distinction.
 

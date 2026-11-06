@@ -79,7 +79,7 @@ metadata:                             # Metadata definitions (required)
 - **name**: A human-readable name for the project (if omitted, derived from filename)
 - **description**: Detailed description of what this configuration does (supports multi-line strings using `|`)
 - **version**: Semantic version string (e.g., "1.0.0", "2.1.3") for tracking configuration changes
-- **data_provider_code** and **provider_schema**: A complete pair from the reviewed local provider registry. New projects require both values, and project validation reports missing, partial, blank, or unregistered values on the metadata fields. Once assigned, application saves cannot change or remove either value. Existing checked-in projects may remain unbound until the Phase 4 migration; assigning one requires both registered values.
+- **data_provider_code** and **provider_schema**: A complete pair from the reviewed local provider registry. New projects require both values, and project validation reports missing, partial, blank, or unregistered values on the metadata fields. Once assigned, application saves cannot change or remove either value. Existing checked-in projects may remain unbound until the Phase 4 migration; assigning one requires both registered values. Business-key declarations (`entities.*.keys`) remain editable on a bound project; SIMS enforces the ordered key contract for the provider scope before identity work.
 - **default_entity**: Reference to an existing entity used as the default source for `data` type entities
 - **target_model**: Reference to a target model specification. Accepted as a `@load:` directive pointing to a YAML file (`"@load: resources/target_models/sead_standard_model.yml"`) or as an inline mapping. When present, the **Check Conformance** button in the editor validates the project entities against the spec. See [TARGET_MODEL_GUIDE.md](TARGET_MODEL_GUIDE.md) for the workflow and [TARGET_MODEL_SCHEMA_REFERENCE.md](TARGET_MODEL_SCHEMA_REFERENCE.md) for the generated field-level schema reference.
 
@@ -323,6 +323,7 @@ The declaration is not a shared target-model setting and does not waive a target
 - **Type**: `list[string]`
 - **Required**: Yes (field must exist, but can be empty list)
 - **Description**: Natural/business key columns that uniquely identify rows in the source data. Used for duplicate detection and foreign key relationships. These are the "real world" identifiers from your source system (e.g., sample codes, site names).
+- **Order matters for SIMS**: A SEAD Change Request run registers this ordered list as the provider-scope business-key contract before identity work. Two projects that share a provider scope must declare the same key names in the same order; SIMS rejects a different list or order and the run stops without sending identity work.
 - **Example**:
   ```yaml
   keys: ["ProjektNr", "Befu"]
