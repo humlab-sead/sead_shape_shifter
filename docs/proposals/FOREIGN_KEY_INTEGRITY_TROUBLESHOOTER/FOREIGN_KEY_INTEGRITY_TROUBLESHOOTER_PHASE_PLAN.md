@@ -67,12 +67,12 @@ Return an authorized, read-only integrity result that distinguishes a reproduced
 **Focus**
 
 - Add the separate integrity endpoint and response envelope, using saved-link resolution and current project read authorization on every call.
-- Recompute the distinct unmatched count through `ForeignKeyIntegrityValidator`; report `reproduced` only when it equals the warning's recorded `orphan_count`, otherwise give an honest `not_reproduced` or `ineligible` reason.
-- Return deterministically bounded distinct values with their local row counts and a bounded sample of rows for a selected value; state the source and columns used.
+- Inspect current full-normalization frames in a private, read-only run. Recompute the distinct unmatched count through `ForeignKeyIntegrityValidator`; report `reproduced` when that current full-data count equals the warning's recorded `orphan_count`, even if the warning came from sample validation. This does not claim to replay the original dataset or sample run.
+- Return distinct values in deterministic pages of 50 with their local row counts and at most 20 local rows for a selected value; state the source and returned columns.
 
 **Depends On**
 
-- Phase 1's issue metadata and saved-link resolution; the source and inspection-shape decisions below.
+- Phase 1's issue metadata and saved-link resolution; D1 and D2 are resolved.
 
 **Outputs**
 
@@ -87,15 +87,15 @@ Return an authorized, read-only integrity result that distinguishes a reproduced
 
 **Validation Milestones**
 
-- `VM-2` Compare recomputed counts with production validation on matching frames, changed inputs, unavailable remote data, and `null_keys_equal` cases (`PH2-AC-1`); verify complete counts, row counts, stable paging, selected-row bounds, source and columns (`PH2-AC-2`, `PH2-AC-3`); verify authorization, cross-project refusal, no writes, and row-count response compatibility (`PH2-AC-4`).
+- `VM-2` Compare recomputed counts with complete validation on matching full-normalization frames, sample-origin warnings, changed inputs, unavailable remote data, and `null_keys_equal` cases (`PH2-AC-1`); verify complete counts, row counts, deterministic paging for unchanged data, selected-row bounds, current-data selection refusal, source and columns (`PH2-AC-2`, `PH2-AC-3`); verify authorization, cross-project refusal, no writes, and row-count response compatibility (`PH2-AC-4`).
 
 **Task-Plan Handoff**
 
-- Source: `P-AC-2` through `P-AC-7`. Before task planning, decide which validation data source inspection can re-establish and how the response identifies it; if that source cannot be established, report `not_reproduced`. Decide the value-page cap, local context columns, one versus two responses for values and rows, and stable selected-value addressing across pages. Keep values current rather than treating equal counts as proof of an unchanged set.
+- Source: `P-AC-2` through `P-AC-7`. Inspection uses current full normalization, with frames at the same stage as complete validation, through a private run that does not write projects, source data, or shared caches. State `current full normalization` in the response. Count equality reproduces the warning's numeric claim on current full data, regardless of the warning's original validation mode; it does not prove the original rows or values are unchanged. If full frames are unavailable, report `not_reproduced` with a named reason. Use fixed pages of 50 distinct values and at most 20 rows for one selected value. Include saved local keys, business keys, then available target-facing columns, up to 20 returned columns in all; name the columns and any truncation. One endpoint returns a value page plus optional selected rows, using a type-preserving token for the ordered key tuple. Each call recomputes current data; no snapshot or fingerprint is kept. If the selected value is no longer unmatched, report that explicitly. Paging is deterministic for unchanged data but not guaranteed across source changes.
 
 **Readiness**
 
-Requires the data-source and inspection-shape decisions in the task-plan handoff.
+Ready for a task plan; D1 and D2 are resolved.
 
 ### Phase 3: Present integrity inspection in the shared dialog
 
