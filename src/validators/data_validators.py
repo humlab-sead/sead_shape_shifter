@@ -510,6 +510,7 @@ class ForeignKeyIntegrityValidator:
                 category="data",
                 priority="medium",
                 auto_fixable=False,
+                metadata={"orphan_count": orphan_count},
             )
         ]
 
