@@ -13,6 +13,7 @@ from backend.app.api.v1.endpoints import (
     health,
     help_docs,
     ingesters,
+    integrity_troubleshooter,
     link_troubleshooter,
     logs,
     mapping,
@@ -41,6 +42,7 @@ api_router.include_router(columns.router, tags=["columns"])
 api_router.include_router(directives.router, tags=["directives"])
 api_router.include_router(validation.router, tags=["validation"])
 api_router.include_router(link_troubleshooter.router, tags=["link-troubleshooter"])
+api_router.include_router(integrity_troubleshooter.router, tags=["integrity-troubleshooter"])
 api_router.include_router(tasks.router, tags=["tasks"])
 api_router.include_router(data_sources.router, tags=["data-sources"])
 api_router.include_router(data_providers.router, tags=["data-providers"])

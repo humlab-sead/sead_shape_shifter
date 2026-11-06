@@ -12,6 +12,7 @@ export * from './session'
 export * from './reconciliation'
 export * from './excel'
 export * from './linkTroubleshooter'
+export * from './integrityTroubleshooter'
 
 // Common utility types
 export interface ApiResponse<T = any> {

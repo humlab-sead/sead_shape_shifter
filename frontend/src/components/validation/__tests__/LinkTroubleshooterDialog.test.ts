@@ -6,8 +6,10 @@ import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import LinkTroubleshooterDialog from '../LinkTroubleshooterDialog.vue'
 import { useLinkTroubleshooter } from '@/composables/useLinkTroubleshooter'
+import { integrityTroubleshooterApi } from '@/api/integrityTroubleshooter'
 import type {
   FormattedError,
+  IntegrityTroubleshootResponse,
   LinkTroubleshootRequest,
   LinkTroubleshootResponse,
   LinkTroubleshootTrial,
@@ -16,6 +18,10 @@ import type {
 
 vi.mock('@/composables/useLinkTroubleshooter', () => ({
   useLinkTroubleshooter: vi.fn(),
+}))
+
+vi.mock('@/api/integrityTroubleshooter', () => ({
+  integrityTroubleshooterApi: { inspect: vi.fn() },
 }))
 
 const vuetify = createVuetify({ components, directives })
@@ -157,6 +163,46 @@ function candidateMessage(overrides: Partial<ValidationError> = {}): ValidationE
   }
 }
 
+function integrityMessage(overrides: Partial<ValidationError> = {}): ValidationError {
+  return {
+    severity: 'warning',
+    entity: 'orders',
+    message: "2 foreign key value(s) not found in 'customers'",
+    code: 'FK_DATA_INTEGRITY',
+    metadata: { fk_index: 0, fk_signature: 'saved-signature', orphan_count: 2 },
+    ...overrides,
+  }
+}
+
+function integrityResponse(overrides: Partial<IntegrityTroubleshootResponse> = {}): IntegrityTroubleshootResponse {
+  return {
+    status: 'reproduced',
+    reason: 'reproduced',
+    message: 'The current full-data unmatched count matches the warning.',
+    source: 'current full normalization',
+    relationship: {
+      local_entity: 'orders',
+      remote_entity: 'customers',
+      fk_index: 0,
+      join_type: 'inner',
+      constraints: {},
+    },
+    configured_keys: { local_keys: ['customer_code'], remote_keys: ['code'] },
+    recorded_orphan_count: 2,
+    current_orphan_count: 2,
+    values: {
+      page: 1,
+      page_size: 50,
+      distinct_value_count: 1,
+      returned_value_count: 1,
+      has_next: false,
+      values: [{ key_values: ['MISSING-A'], local_row_count: 1, token: 'token-a' }],
+    },
+    selected: null,
+    ...overrides,
+  }
+}
+
 function mountDialog(
   response: LinkTroubleshootResponse = makeResponse(),
   message: ValidationError = candidateMessage()
@@ -246,6 +292,8 @@ describe('LinkTroubleshooterDialog', () => {
       state.rowFilter.value = 'all'
     })
     vi.mocked(useLinkTroubleshooter).mockReturnValue(state)
+    vi.mocked(integrityTroubleshooterApi.inspect).mockReset()
+    vi.mocked(integrityTroubleshooterApi.inspect).mockResolvedValue(integrityResponse())
   })
 
   it('shows the saved relationship as read-only and initializes configured key pairs', async () => {
@@ -410,5 +458,45 @@ describe('LinkTroubleshooterDialog', () => {
 
     expect(wrapper.text()).toContain('This warning cannot be troubleshot.')
     expect(openRequests).toHaveLength(0)
+  })
+
+  it('opens the read-only integrity body without sending a row-count request', async () => {
+    const wrapper = mountDialog(makeResponse(), integrityMessage())
+    await flushPromises()
+
+    expect(openRequests).toHaveLength(0)
+    expect(mockOpen).not.toHaveBeenCalled()
+    expect(mockReset).toHaveBeenCalled()
+    expect(wrapper.text()).toContain('current full normalization')
+    expect(wrapper.text()).toContain('Complete distinct unmatched count: 1')
+    expect(wrapper.text()).toContain('orders → customers')
+    expect(wrapper.find('select[aria-label="A key"]').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('Run trial')
+    expect(wrapper.text()).not.toContain('Trial key pairs')
+  })
+
+  it('explains a malformed integrity warning without sending either request', async () => {
+    const wrapper = mountDialog(
+      makeResponse(),
+      integrityMessage({ metadata: { fk_signature: 'saved-signature', orphan_count: 2 } })
+    )
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('does not record which saved link')
+    expect(openRequests).toHaveLength(0)
+    expect(vi.mocked(integrityTroubleshooterApi.inspect)).not.toHaveBeenCalled()
+  })
+
+  it('clears row-count trial state when switching from a row-count warning to an integrity warning', async () => {
+    const wrapper = mountDialog()
+    await flushPromises()
+    expect(openRequests).toHaveLength(1)
+
+    await wrapper.setProps({ message: integrityMessage() })
+    await flushPromises()
+
+    expect(openRequests).toHaveLength(1)
+    expect(wrapper.text()).not.toContain('Trial key pairs')
+    expect(wrapper.text()).toContain('current full normalization')
   })
 })
