@@ -137,10 +137,10 @@
               Troubleshoot link
             </v-btn>
             <p
-              v-else-if="integrityRefusal(item)"
+              v-else-if="troubleshootRefusal(item)"
               class="integrity-troubleshoot-refusal text-body-2 text-medium-emphasis mt-3 mb-0"
             >
-              {{ integrityRefusal(item) }}
+              {{ troubleshootRefusal(item) }}
             </p>
           </div>
         </td>
@@ -151,17 +151,20 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import type { ValidationError, ValidationSeverity } from '@/types'
+import type { DataValidationMode, ValidationError, ValidationSeverity } from '@/types'
 import {
   integrityTroubleshootRefusal,
   isIntegrityTroubleshootCandidate,
   isLinkTroubleshootCandidate,
+  isSampleDataValidation,
+  sampleDataTroubleshootRefusal,
 } from '@/utils/linkTroubleshooter'
 import { distinctSuggestion } from '@/utils/validationSuggestion'
 
 interface Props {
   messages: ValidationError[]
   emptyMessage?: string
+  validationMode?: DataValidationMode | null
 }
 
 interface ValidationTableMessage extends ValidationError {
@@ -175,6 +178,7 @@ interface Emits {
 
 const props = withDefaults(defineProps<Props>(), {
   emptyMessage: 'No messages',
+  validationMode: null,
 })
 
 const emit = defineEmits<Emits>()
@@ -235,11 +239,15 @@ function handleTroubleshoot(item: ValidationTableMessage) {
 }
 
 function canTroubleshoot(item: ValidationTableMessage): boolean {
+  if (isSampleDataValidation(props.validationMode)) {
+    return false
+  }
+
   return isLinkTroubleshootCandidate(item) || isIntegrityTroubleshootCandidate(item)
 }
 
-function integrityRefusal(item: ValidationTableMessage): string | null {
-  return integrityTroubleshootRefusal(item)
+function troubleshootRefusal(item: ValidationTableMessage): string | null {
+  return sampleDataTroubleshootRefusal(item, props.validationMode) ?? integrityTroubleshootRefusal(item)
 }
 
 function formatBranchLabel(branchName: string | null | undefined, branchSource: string | null | undefined): string {

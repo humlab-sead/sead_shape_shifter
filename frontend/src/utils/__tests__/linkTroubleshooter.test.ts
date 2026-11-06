@@ -3,6 +3,9 @@ import {
   integrityTroubleshootRefusal,
   isIntegrityTroubleshootCandidate,
   isLinkTroubleshootCandidate,
+  isSampleDataValidation,
+  sampleDataTroubleshootRefusal,
+  SAMPLE_DATA_TROUBLESHOOT_REFUSAL,
   toIntegrityTroubleshootRequest,
   toLinkTroubleshootRequest,
 } from '../linkTroubleshooter'
@@ -64,6 +67,32 @@ describe('link troubleshooter warning helper', () => {
       metadata: message.metadata,
     })
     expect(message).toEqual(before)
+  })
+})
+
+describe('sample data gate', () => {
+  it.each(['sample'] as const)('treats %s results as sample data', (mode) => {
+    expect(isSampleDataValidation(mode)).toBe(true)
+  })
+
+  it.each(['complete', 'single_pass', null, undefined] as const)('leaves %s results alone', (mode) => {
+    expect(isSampleDataValidation(mode)).toBe(false)
+  })
+
+  it.each([
+    ['row count', () => warning()],
+    ['integrity', () => integrityWarning()],
+  ])('refuses the %s warning for sample results', (_label, makeWarning) => {
+    expect(sampleDataTroubleshootRefusal(makeWarning(), 'sample')).toBe(SAMPLE_DATA_TROUBLESHOOT_REFUSAL)
+  })
+
+  it.each(['complete', 'single_pass', null] as const)('allows the warning for %s results', (mode) => {
+    expect(sampleDataTroubleshootRefusal(warning(), mode)).toBeNull()
+    expect(sampleDataTroubleshootRefusal(integrityWarning(), mode)).toBeNull()
+  })
+
+  it('leaves an unrelated warning without a sample refusal', () => {
+    expect(sampleDataTroubleshootRefusal(warning({ code: 'OTHER_WARNING' }), 'sample')).toBeNull()
   })
 })
 

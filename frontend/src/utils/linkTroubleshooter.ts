@@ -1,9 +1,12 @@
-import type { IntegrityTroubleshootRequest, LinkTroubleshootRequest, ValidationError } from '@/types'
+import type { DataValidationMode, IntegrityTroubleshootRequest, LinkTroubleshootRequest, ValidationError } from '@/types'
 
 const supportedLinkPasses = ['initial', 'after_unnest', 'deferred_retry'] as const
 const supportedJoinTypes = ['inner', 'left'] as const
 
 export const INTEGRITY_ISSUE_CODE = 'FK_DATA_INTEGRITY'
+
+export const SAMPLE_DATA_TROUBLESHOOT_REFUSAL =
+  'Link troubleshooting is turned off for sample data validation results. The troubleshooter replays the saved link on complete data, so it cannot confirm a warning raised from a sample of at most 1000 rows per entity. Run complete data validation to troubleshoot this link.'
 
 export function isLinkTroubleshootCandidate(message: ValidationError): boolean {
   const metadata = message.metadata
@@ -73,6 +76,37 @@ export function toIntegrityTroubleshootRequest(message: ValidationError): Integr
     local_entity: message.entity,
     metadata: message.metadata ?? {},
   }
+}
+
+/**
+ * Check whether a validation result was produced from truncated sample data.
+ *
+ * Sample runs read at most 1000 rows per entity, so a missing parent value or a
+ * changed row count can come from the truncation rather than from the data.
+ */
+export function isSampleDataValidation(validationMode: DataValidationMode | null | undefined): boolean {
+  return validationMode === 'sample'
+}
+
+/**
+ * Explain why a sample-data result offers no troubleshooting action.
+ *
+ * Returns null for other validation modes and for warnings that could not be
+ * troubleshot on complete data either.
+ */
+export function sampleDataTroubleshootRefusal(
+  message: ValidationError,
+  validationMode: DataValidationMode | null | undefined
+): string | null {
+  if (!isSampleDataValidation(validationMode)) {
+    return null
+  }
+
+  if (!isLinkTroubleshootCandidate(message) && !isIntegrityTroubleshootCandidate(message)) {
+    return null
+  }
+
+  return SAMPLE_DATA_TROUBLESHOOT_REFUSAL
 }
 
 /**

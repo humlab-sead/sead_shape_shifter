@@ -162,7 +162,7 @@ class ValidationService:
         self,
         project_name: str,
         entity_names: list[str] | None = None,
-        validation_mode: DataValidationMode = DataValidationMode.SAMPLE,
+        validation_mode: DataValidationMode = DataValidationMode.COMPLETE,
     ) -> ValidationResult:
         """
         Run data-aware validation on project.
@@ -170,9 +170,10 @@ class ValidationService:
         Args:
             project_name: Project name
             entity_names: Optional list of entity names to validate (None = all)
-            validation_mode: Validation mode:
-                - SAMPLE: preview data, one preview fetch per entity
+            validation_mode: Validation mode (default: COMPLETE):
                 - COMPLETE: full normalization, aborts when any entity cannot be produced
+                - SAMPLE: preview data, one preview fetch per entity; foreign-key warnings from
+                  truncated samples can name values that exist outside the sample
                 - SINGLE_PASS: full normalization from one project-wide pass, reporting each
                   entity that cannot be produced and skipping only its dependents
 
