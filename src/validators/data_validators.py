@@ -4,13 +4,150 @@ These validators receive DataFrames and configurations as input and return valid
 They contain only business logic and can be used in Core, Backend, or CLI contexts.
 """
 
+import math
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Iterable, Literal
 
+import numpy as np
 import pandas as pd
 
 from src.issues import CoreIssue
 from src.validation_messages import format_validation_message_with_context
+
+ComparisonStatus = Literal["invalid_input", "remote_empty", "matched", "unmatched"]
+"""Outcome of comparing one foreign key's local and remote keys."""
+
+
+@dataclass(frozen=True)
+class ForeignKeyComparison:
+    """Result of comparing local and remote key values for one foreign key.
+
+    Attributes:
+        status: What the comparison found. ``invalid_input`` means the keys or
+            columns cannot be compared, ``remote_empty`` means the remote key has
+            no values to match against, ``matched`` means every local key has a
+            remote match, and ``unmatched`` means at least one local key has no
+            remote match.
+        unmatched_keys: Distinct unmatched local key tuples, normalized to Python
+            scalars. Order is unspecified; callers that page results sort them.
+        orphan_count: Number of distinct unmatched local key tuples.
+    """
+
+    status: ComparisonStatus
+    unmatched_keys: tuple[tuple[Any, ...], ...] = ()
+    orphan_count: int = 0
+
+
+def to_key_scalar(value: Any) -> Any:
+    """Return a JSON-friendly Python scalar for one DataFrame key value.
+
+    Null-like values become ``None`` and NumPy scalar types become their Python
+    equivalent. Other values are returned unchanged so callers keep the type they
+    need for matching.
+
+    Args:
+        value: One cell from a key column.
+
+    Returns:
+        A Python scalar or the original value when it cannot be normalized.
+    """
+    if value is None:
+        return None
+    if isinstance(value, np.bool_):
+        return bool(value)
+    if isinstance(value, np.integer):
+        return int(value)
+    if isinstance(value, np.floating):
+        return None if np.isnan(value) else float(value)
+    if isinstance(value, np.str_):
+        return str(value)
+    if isinstance(value, np.generic):
+        return value.item()
+    if isinstance(value, float) and math.isnan(value):
+        return None
+    try:
+        if pd.isna(value):
+            return None
+    except (TypeError, ValueError):
+        pass
+    return value
+
+
+def _to_key_tuple(values: Iterable[Any]) -> tuple[Any, ...]:
+    """Return a tuple of Python scalars for one local or remote key row."""
+    return tuple(to_key_scalar(value) for value in values)
+
+
+def compare_foreign_key_values(local_df: pd.DataFrame, remote_df: pd.DataFrame, fk_config: dict[str, Any]) -> ForeignKeyComparison:
+    """Compare distinct local foreign-key values with distinct remote key values.
+
+    This is the shared comparison used by the integrity warning and the inspection
+    service. It keeps the validator's null rules: null key parts are dropped unless
+    the link sets ``null_keys_equal``, and an empty or all-null remote key is
+    reported separately so callers can name the data problem.
+
+    Args:
+        local_df: Local DataFrame with foreign key columns.
+        remote_df: Remote DataFrame with referenced key columns.
+        fk_config: Foreign key configuration with ``local_keys``, ``remote_keys``,
+            ``entity``, and optional ``constraints``.
+
+    Returns:
+        ForeignKeyComparison describing whether the keys are comparable, whether the
+        remote side is empty, and the distinct unmatched local keys.
+    """
+    local_keys: list[str] = fk_config.get("local_keys", [])
+    remote_keys: list[str] = fk_config.get("remote_keys", [])
+    constraints: dict[str, Any] = fk_config.get("constraints") or {}
+    null_keys_equal: bool = constraints.get("null_keys_equal", False)
+
+    if not local_keys or not remote_keys:
+        return ForeignKeyComparison(status="invalid_input")
+    if null_keys_equal and len(local_keys) != len(remote_keys):
+        return ForeignKeyComparison(status="invalid_input")
+    if not all(key in local_df.columns for key in local_keys):
+        return ForeignKeyComparison(status="invalid_input")
+    if not all(key in remote_df.columns for key in remote_keys):
+        return ForeignKeyComparison(status="invalid_input")
+
+    local_fk_values: pd.DataFrame = local_df[local_keys].drop_duplicates()  # type: ignore
+    remote_key_values: pd.DataFrame = remote_df[remote_keys].drop_duplicates()  # type: ignore
+    if not null_keys_equal:
+        local_fk_values = local_fk_values.dropna()
+        remote_key_values = remote_key_values.dropna()
+
+    if local_fk_values.empty:
+        return ForeignKeyComparison(status="matched")
+
+    if remote_key_values.empty:
+        return ForeignKeyComparison(status="remote_empty")
+
+    if null_keys_equal:
+        comparison_columns = [f"__fk_key_{index}" for index in range(len(local_keys))]
+        local_comparable = local_fk_values.copy()
+        remote_comparable = remote_key_values.copy()
+        local_comparable.columns = comparison_columns
+        remote_comparable.columns = comparison_columns
+        comparison = pd.merge(
+            local_comparable,
+            remote_comparable,
+            how="left",
+            on=comparison_columns,
+            indicator=True,
+        )
+        orphaned_rows = comparison.loc[comparison["_merge"] == "left_only", comparison_columns]
+        unmatched_keys = tuple(_to_key_tuple(row) for row in orphaned_rows.itertuples(index=False, name=None))
+    else:
+        # Create composite keys for comparison.
+        local_composite: pd.Series = local_fk_values.apply(tuple, axis=1) if len(local_keys) > 1 else local_fk_values[local_keys[0]]
+        remote_composite: pd.Series = remote_key_values.apply(tuple, axis=1) if len(remote_keys) > 1 else remote_key_values[remote_keys[0]]
+        orphaned: set = set(local_composite.unique()) - set(remote_composite.unique())
+        unmatched_keys = tuple(_to_key_tuple(value if isinstance(value, tuple) else (value,)) for value in orphaned)
+
+    if not unmatched_keys:
+        return ForeignKeyComparison(status="matched")
+
+    return ForeignKeyComparison(status="unmatched", unmatched_keys=unmatched_keys, orphan_count=len(unmatched_keys))
 
 
 @dataclass(slots=True, kw_only=True)
@@ -401,31 +538,12 @@ class ForeignKeyIntegrityValidator:
         local_keys: list[str] = fk_config.get("local_keys", [])
         remote_keys: list[str] = fk_config.get("remote_keys", [])
         remote_entity: str = fk_config.get("entity", "unknown")
-        constraints: dict[str, Any] = fk_config.get("constraints") or {}
-        null_keys_equal: bool = constraints.get("null_keys_equal", False)
 
-        if not local_keys or not remote_keys:
-            return []
-        if null_keys_equal and len(local_keys) != len(remote_keys):
+        comparison: ForeignKeyComparison = compare_foreign_key_values(local_df, remote_df, fk_config)
+        if comparison.status in ("invalid_input", "matched"):
             return []
 
-        # Check columns exist
-        if not all(k in local_df.columns for k in local_keys):
-            return []  # FK column validator will catch this
-        if not all(k in remote_df.columns for k in remote_keys):
-            return []  # Remote column issue
-
-        # Null key parts are excluded unless the FK explicitly treats nulls as equal.
-        local_fk_values: pd.DataFrame = local_df[local_keys].drop_duplicates()  # type: ignore
-        remote_key_values: pd.DataFrame = remote_df[remote_keys].drop_duplicates()  # type: ignore
-        if not null_keys_equal:
-            local_fk_values = local_fk_values.dropna()
-            remote_key_values = remote_key_values.dropna()
-
-        if local_fk_values.empty:
-            return []
-
-        if remote_key_values.empty:
+        if comparison.status == "remote_empty":
             # An empty remote frame and a remote frame whose key columns are entirely
             # null both leave nothing to join on, but they need different corrections:
             # missing rows are a data problem, while all-null keys usually mean the
@@ -461,37 +579,8 @@ class ForeignKeyIntegrityValidator:
                 )
             ]
 
-        if null_keys_equal:
-            comparison_columns = [f"__fk_key_{index}" for index in range(len(local_keys))]
-            local_comparable = local_fk_values.copy()
-            remote_comparable = remote_key_values.copy()
-            local_comparable.columns = comparison_columns
-            remote_comparable.columns = comparison_columns
-            comparison = pd.merge(
-                local_comparable,
-                remote_comparable,
-                how="left",
-                on=comparison_columns,
-                indicator=True,
-            )
-            orphaned_rows = comparison.loc[comparison["_merge"] == "left_only", comparison_columns]
-            if orphaned_rows.empty:
-                return []
-            orphan_count = len(orphaned_rows)
-            sample_orphans = [tuple(row) if len(local_keys) > 1 else row[0] for row in orphaned_rows.itertuples(index=False, name=None)]
-        else:
-            # Create composite keys for comparison.
-            local_composite: pd.Series = local_fk_values.apply(tuple, axis=1) if len(local_keys) > 1 else local_fk_values[local_keys[0]]
-            remote_composite: pd.Series = (
-                remote_key_values.apply(tuple, axis=1) if len(remote_keys) > 1 else remote_key_values[remote_keys[0]]
-            )
-            orphaned: set = set(local_composite.unique()) - set(remote_composite.unique())
-
-            if not orphaned:
-                return []
-
-            orphan_count = len(orphaned)
-            sample_orphans = list(orphaned)[:10]
+        orphan_count: int = comparison.orphan_count
+        sample_orphans = [key[0] if len(local_keys) == 1 else key for key in comparison.unmatched_keys[:10]]
 
         sample_count: int = 10
         sample_orphans = sample_orphans[:sample_count]
@@ -510,6 +599,7 @@ class ForeignKeyIntegrityValidator:
                 category="data",
                 priority="medium",
                 auto_fixable=False,
+                metadata={"orphan_count": orphan_count},
             )
         ]
 

@@ -657,3 +657,76 @@ async def test_full_data_validation_with_unresolved_extra_columns():
     assert (
         "invalid_" in error_messages.lower() or "missing" in error_messages.lower()
     ), f"Expected errors to mention missing columns, got: {error_messages}"
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_attaches_saved_identity_to_each_integrity_issue():
+    """Two links to the same remote entity keep their own saved index and signature."""
+    core_project = ShapeShiftProject(
+        cfg={
+            "entities": {
+                "orders": {
+                    "columns": ["order_id", "customer_id", "customer_code"],
+                    "foreign_keys": [
+                        {"entity": "customers", "local_keys": ["customer_id"], "remote_keys": ["id"]},
+                        {"entity": "customers", "local_keys": ["customer_code"], "remote_keys": ["code"]},
+                    ],
+                },
+                "customers": {"columns": ["id", "code"], "public_id": "customer_public_id"},
+            }
+        }
+    )
+    table_store = TableStore(
+        {
+            "orders": pd.DataFrame({"order_id": [1, 2, 3], "customer_id": [1, 99, 98], "customer_code": ["A", "B", "Z"]}),
+            "customers": pd.DataFrame({"id": [1], "code": ["A"]}),
+        }
+    )
+    orchestrator = DataValidationOrchestrator(fetch_strategy=TableStoreDataFetchStrategy(table_store))
+
+    issues = await orchestrator.validate_all_entities(core_project, "test_project", entity_names=["orders"])
+
+    integrity_issues = [issue for issue in issues if issue.code == "FK_DATA_INTEGRITY"]
+    saved_foreign_keys = core_project.get_table("orders").foreign_keys
+    assert [issue.metadata["fk_index"] for issue in integrity_issues] == [0, 1]
+    assert [issue.metadata["fk_signature"] for issue in integrity_issues] == [
+        saved_foreign_keys[0].identity_signature,
+        saved_foreign_keys[1].identity_signature,
+    ]
+    assert [issue.metadata["orphan_count"] for issue in integrity_issues] == [2, 2]
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_keeps_saved_index_for_links_that_emit_no_integrity_issue():
+    """A clean earlier link does not shift the index of the link that warns."""
+    core_project = ShapeShiftProject(
+        cfg={
+            "entities": {
+                "orders": {
+                    "columns": ["order_id", "customer_id", "customer_code"],
+                    "foreign_keys": [
+                        {"entity": "customers", "local_keys": ["customer_id"], "remote_keys": ["id"]},
+                        {"entity": "customers", "local_keys": ["customer_code"], "remote_keys": ["code"]},
+                    ],
+                },
+                "customers": {"columns": ["id", "code"], "public_id": "customer_public_id"},
+            }
+        }
+    )
+    table_store = TableStore(
+        {
+            "orders": pd.DataFrame({"order_id": [1, 2, 3], "customer_id": [1, 1, 1], "customer_code": ["A", "B", "Z"]}),
+            "customers": pd.DataFrame({"id": [1], "code": ["A"]}),
+        }
+    )
+    orchestrator = DataValidationOrchestrator(fetch_strategy=TableStoreDataFetchStrategy(table_store))
+
+    issues = await orchestrator.validate_all_entities(core_project, "test_project", entity_names=["orders"])
+
+    integrity_issues = [issue for issue in issues if issue.code == "FK_DATA_INTEGRITY"]
+    assert len(integrity_issues) == 1
+    assert integrity_issues[0].metadata == {
+        "orphan_count": 2,
+        "fk_index": 1,
+        "fk_signature": core_project.get_table("orders").foreign_keys[1].identity_signature,
+    }
