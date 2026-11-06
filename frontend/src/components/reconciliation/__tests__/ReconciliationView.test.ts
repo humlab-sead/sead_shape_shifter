@@ -199,8 +199,8 @@ describe('ReconciliationView', () => {
     expect(reconciliationStore.exportToMapping).toHaveBeenCalledWith('test_project', 'site', 'site_code')
     expect(reconciliationStore.loadMappingData).toHaveBeenCalledWith('test_project', 'site')
     expect(wrapper.text()).toContain(
-      '2 link(s) exported; 1 stale link(s) removed; 1 local-only approval(s) exported; '
-      + '2 stale local-only approval(s) removed; 1 protected link(s) skipped.'
+      '2 link(s) exported; 1 stale link(s) removed; 1 local-only approval(s) exported; ' +
+        '2 stale local-only approval(s) removed; 1 protected link(s) skipped.'
     )
   })
 
@@ -376,5 +376,52 @@ describe('ReconciliationView', () => {
     await flushPromises()
 
     expect(reconciliationStore.autoReconcile).toHaveBeenCalledWith('test_project', 'site', 'site_code', 0.95, 0.7)
+  })
+
+  it('does not load the preview until the review tab is opened', async () => {
+    reconciliationStore.loadPreviewData = vi.fn(async () => {})
+    const wrapper = await mountView()
+
+    expect(reconciliationStore.loadPreviewData).not.toHaveBeenCalled()
+
+    await wrapper.get('[data-testid="open-reconcile"]').trigger('click')
+    await flushPromises()
+
+    expect(reconciliationStore.loadPreviewData).toHaveBeenCalledWith('test_project', 'site', 'site_code')
+  })
+
+  it('loads the preview once when the review tab is reopened', async () => {
+    reconciliationStore.loadPreviewData = vi.fn(async () => {})
+    const wrapper = await mountView()
+
+    await wrapper.get('[data-testid="open-reconcile"]').trigger('click')
+    await flushPromises()
+    await wrapper.get('[data-testid="open-reconcile"]').trigger('click')
+    await flushPromises()
+
+    expect(reconciliationStore.loadPreviewData).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows a loading state instead of the empty state while the preview request is in flight', async () => {
+    let resolvePreview: (() => void) | undefined
+    reconciliationStore.loadPreviewData = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolvePreview = resolve
+        })
+    )
+    const wrapper = await mountView()
+
+    await wrapper.get('[data-testid="open-reconcile"]').trigger('click')
+    await nextTick()
+
+    expect(wrapper.find('[data-testid="preview-loading"]').exists()).toBe(true)
+    expect(wrapper.text()).not.toContain('No Preview Rows')
+
+    resolvePreview?.()
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="preview-loading"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('No Preview Rows')
   })
 })

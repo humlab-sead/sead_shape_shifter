@@ -8,6 +8,8 @@ Wraps the six /identity endpoints exposed by sead_authority_service:
   POST   /identity/binding-sets/{uuid}/change-request              Associate a Sqitch CR name
   POST   /identity/detect-change                                   Content-hash change detection
   GET    /identity/scopes                                          List known source scopes
+  GET    /identity/capabilities                                    Read configured identity capabilities
+  POST   /identity/scope-contracts                                 Register provider-scope business-key contracts
 """
 
 from __future__ import annotations
@@ -22,8 +24,10 @@ from backend.app.models.sims import (
     CapabilitiesResponse,
     ChangeDetectionRequest,
     ChangeDetectionResult,
+    RegisterScopeContractsRequest,
     ResolveRequest,
     ResolveResponse,
+    ScopeContractRegistration,
     SourceScope,
 )
 
@@ -31,7 +35,14 @@ from backend.app.models.sims import (
 class SimsClient:
     """Async HTTP client for the SIMS identity service."""
 
-    def __init__(self, base_url: str, timeout: float = 30.0):
+    def __init__(
+        self,
+        base_url: str,
+        timeout: float = 30.0,
+        *,
+        contract_caller: str | None = None,
+        contract_registration_token: str | None = None,
+    ):
         """
         Initialise SIMS client.
 
@@ -39,9 +50,16 @@ class SimsClient:
             base_url: Base URL of sead_authority_service, e.g. 'http://localhost:8000'.
                       The client appends '/identity/...' paths automatically.
             timeout:  Request timeout in seconds.
+            contract_caller: Caller name sent as ``X-SIMS-Caller`` when registering
+                      provider-scope business-key contracts.
+            contract_registration_token: Shared secret sent as
+                      ``X-SIMS-Caller-Token``. SIMS rejects registration when the
+                      caller is not configured or the token does not match.
         """
         self.base_url: str = base_url.rstrip("/")
         self.timeout: float = timeout
+        self._contract_caller: str | None = contract_caller
+        self._contract_registration_token: str | None = contract_registration_token
         self._client: httpx.AsyncClient | None = None
 
     # ------------------------------------------------------------------
@@ -68,11 +86,11 @@ class SimsClient:
     def _url(self, path: str) -> str:
         return f"{self.base_url}/identity/{path.lstrip('/')}"
 
-    async def _post(self, path: str, body: dict) -> dict:
+    async def _post(self, path: str, body: dict, *, headers: dict[str, str] | None = None) -> dict:
         client = await self._get_client()
         url = self._url(path)
         logger.debug(f"[SIMS] POST {url}")
-        response = await client.post(url, json=body)
+        response = await client.post(url, json=body, headers=headers)
         response.raise_for_status()
         return response.json()
 
@@ -197,3 +215,34 @@ class SimsClient:
         """
         data = await self._get("capabilities")
         return CapabilitiesResponse.model_validate(data)
+
+    async def register_scope_contracts(self, request: RegisterScopeContractsRequest) -> ScopeContractRegistration:
+        """Register or verify a provider scope's ordered business-key contracts
+        (POST /identity/scope-contracts).
+
+        The operation is idempotent: an exact ordered match returns ``state``
+        ``existing`` without writing. A different key list or key order returns
+        HTTP 409 and writes nothing, so the caller must stop before sending
+        identity work.
+
+        Args:
+            request: The scope name and one ordered key declaration per entity type.
+
+        Returns:
+            ScopeContractRegistration with the per-entity ``created`` or ``existing`` state.
+
+        Raises:
+            httpx.HTTPStatusError: 403 when the caller is not authorized for the
+                scope, 409 on a key-list conflict, 422 for an invalid declaration.
+        """
+        headers: dict[str, str] = {}
+        if self._contract_caller:
+            headers["X-SIMS-Caller"] = self._contract_caller
+        if self._contract_registration_token:
+            headers["X-SIMS-Caller-Token"] = self._contract_registration_token
+        data = await self._post(
+            "scope-contracts",
+            request.model_dump(mode="json", exclude_none=True),
+            headers=headers,
+        )
+        return ScopeContractRegistration.model_validate(data)
