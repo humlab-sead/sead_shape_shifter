@@ -328,12 +328,17 @@ class TestSaveEntityRenameBoundary:
 
 
 # ---------------------------------------------------------------------------
-# Tracked business keys on a bound project
+# Business keys on a bound project
 # ---------------------------------------------------------------------------
 
 
 class TestBoundProjectBusinessKeys:
-    """A bound project keeps its declared tracked business keys."""
+    """A bound project may change its declared business keys on save.
+
+    SIMS enforces the ordered business-key contract for a provider scope before
+    any identity work, so project saves no longer lock the key declarations or
+    scan sibling projects on the same provider schema.
+    """
 
     @staticmethod
     def _bind(project_file: Path) -> None:
@@ -345,38 +350,23 @@ class TestBoundProjectBusinessKeys:
             encoding="utf-8",
         )
 
-    def test_rejects_a_key_change_before_writing(self, service: ProjectService, project_file: Path) -> None:
-        self._bind(project_file)
-        original = project_file.read_bytes()
-
-        with pytest.raises(ProjectProviderBindingError):
-            service.save_entity_boundary(
-                "test-project",
-                "sample",
-                {"type": "entity", "keys": ["name"], "columns": ["name", "value"]},
-            )
-
-        assert project_file.read_bytes() == original
-
-    def test_rejects_removing_a_key_on_a_bound_project(self, service: ProjectService, project_file: Path) -> None:
-        self._bind(project_file)
-        original = project_file.read_bytes()
-
-        with pytest.raises(ProjectProviderBindingError):
-            service.save_entity_boundary("test-project", "sample", {"type": "entity", "columns": ["name", "value"]})
-
-        assert project_file.read_bytes() == original
-
-    def test_allows_a_non_key_change_on_a_bound_project(self, service: ProjectService, project_file: Path) -> None:
+    def test_allows_a_key_change_on_a_bound_project(self, service: ProjectService, project_file: Path) -> None:
         self._bind(project_file)
 
         service.save_entity_boundary(
             "test-project",
             "sample",
-            {"type": "entity", "keys": ["sample_id"], "columns": ["name", "value", "extra"]},
+            {"type": "entity", "keys": ["name"], "columns": ["name", "value"]},
         )
 
-        assert YamlService().load(project_file)["entities"]["sample"]["columns"] == ["name", "value", "extra"]
+        assert YamlService().load(project_file)["entities"]["sample"]["keys"] == ["name"]
+
+    def test_allows_removing_a_key_on_a_bound_project(self, service: ProjectService, project_file: Path) -> None:
+        self._bind(project_file)
+
+        service.save_entity_boundary("test-project", "sample", {"type": "entity", "columns": ["name", "value"]})
+
+        assert "keys" not in YamlService().load(project_file)["entities"]["sample"]
 
     def test_allows_a_key_change_on_an_unbound_project(self, service: ProjectService, project_file: Path) -> None:
         service.save_entity_boundary(
@@ -386,3 +376,36 @@ class TestBoundProjectBusinessKeys:
         )
 
         assert YamlService().load(project_file)["entities"]["sample"]["keys"] == ["name"]
+
+    def test_allows_different_keys_for_projects_sharing_a_data_source(self, service: ProjectService, project_file: Path) -> None:
+        self._bind(project_file)
+        sibling_dir = service.projects_dir / "sibling-project"
+        sibling_dir.mkdir()
+        (sibling_dir / "shapeshifter.yml").write_text(
+            """\
+metadata:
+  type: shapeshifter-project
+  name: sibling-project
+  data_provider_code: test-provider
+  provider_schema: schema-one
+entities:
+  sample:
+    type: entity
+    keys: [external_id]
+  site:
+    type: entity
+    keys: [external_site_id]
+options: {}
+""",
+            encoding="utf-8",
+        )
+
+        service.save_entity_boundary(
+            "test-project",
+            "site",
+            {"type": "entity", "keys": ["site_id"], "columns": ["location", "extra"]},
+        )
+
+        saved = YamlService().load(project_file)
+        assert saved["entities"]["site"]["keys"] == ["site_id"]
+        assert saved["entities"]["site"]["columns"] == ["location", "extra"]

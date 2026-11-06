@@ -964,9 +964,20 @@ The project needs:
    one existing `tbl_data_providers` row.
 3. **Declared business keys.** Every tracked project entity declares its identity columns in
    `keys`. The run rejects a missing key column, a blank value, or a duplicate value in one
-   delivery before any SIMS request or bundle write.
+   delivery before any SIMS request or bundle write. Before identity work, the run registers
+   the project's ordered key lists with SIMS for its provider scope. SIMS accepts an exact
+   ordered match; a different key list or order stops the run with a conflict and no batch is
+   sent. Projects that share a provider scope must therefore declare the same keys in the same
+   order before either can send identity work.
 4. **A target database connection.** The provider row check reads SEAD, so a run without target
    database details stops before SIMS.
+
+Project saves no longer lock the `keys` declarations or compare them with other projects on
+disk. SIMS is the enforcement point for the provider-scope key contract, so a conflicting key
+edit is reported by the next Change Request run rather than at save time. When that happens,
+either restore the key list the registered contract holds or, when the new keys are the
+approved contract, move the project to a new provider schema. See
+[OPERATIONS.md](OPERATIONS.md#provider-scope-key-contract-conflicts).
 
 The response and the emitted `manifest.json` both show the effective `scope_name` and `run_id`.
 A `run_id` is meaningful only together with its scope, so compare the two values together.
