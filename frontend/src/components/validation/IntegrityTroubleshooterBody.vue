@@ -79,32 +79,30 @@
           {{ result.values.page_size }} values per page
         </div>
 
-        <v-table v-if="result.values.values.length > 0" density="compact">
-          <thead>
-            <tr>
-              <th>Unmatched key</th>
-              <th class="text-right">Local rows</th>
-              <th class="text-right">Rows</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(value, index) in result.values.values" :key="`${value.token}-${index}`">
-              <td>{{ formatKey(value.key_values) }}</td>
-              <td class="text-right">{{ value.local_row_count }}</td>
-              <td class="text-right">
-                <v-btn
-                  class="integrity-select-value"
-                  size="x-small"
-                  variant="text"
-                  :disabled="loading"
-                  @click="selectValue(value)"
-                >
-                  Show local rows
-                </v-btn>
-              </td>
-            </tr>
-          </tbody>
-        </v-table>
+        <v-data-table
+          v-if="result.values.values.length > 0"
+          class="integrity-values-table"
+          :headers="valueHeaders"
+          :items="valueRows"
+          item-value="rowKey"
+          :items-per-page="-1"
+          hide-default-footer
+          density="compact"
+        >
+          <template #item.actions="{ item }">
+            <div class="text-right">
+              <v-btn
+                class="integrity-select-value"
+                size="x-small"
+                variant="text"
+                :disabled="loading"
+                @click="selectValue(item.value)"
+              >
+                Show local rows
+              </v-btn>
+            </div>
+          </template>
+        </v-data-table>
         <p v-else class="text-body-2 text-medium-emphasis">No unmatched values on this page.</p>
 
         <div v-if="pageCount > 1" class="d-flex justify-end mt-2">
@@ -194,6 +192,30 @@ const pageCount = computed(() => {
 
   return Math.max(1, Math.ceil(values.distinct_value_count / values.page_size))
 })
+
+interface ValueTableRow {
+  rowKey: string
+  unmatchedKey: string
+  localRowCount: number
+  value: IntegrityTroubleshootValue
+}
+
+// Headers are not sortable: the backend pages the complete value set in a fixed
+// order, so sorting one page would only reorder the rows currently returned.
+const valueHeaders = [
+  { title: 'Unmatched key', key: 'unmatchedKey', sortable: false },
+  { title: 'Local rows', key: 'localRowCount', align: 'end' as const, sortable: false },
+  { title: 'Rows', key: 'actions', align: 'end' as const, sortable: false },
+]
+
+const valueRows = computed<ValueTableRow[]>(() =>
+  (result.value?.values?.values ?? []).map((value, index) => ({
+    rowKey: `${value.token}-${index}`,
+    unmatchedKey: formatKey(value.key_values),
+    localRowCount: value.local_row_count,
+    value,
+  }))
+)
 
 watch(
   () => [props.projectName, props.message] as const,
