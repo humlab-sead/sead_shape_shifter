@@ -25,7 +25,13 @@
           @remote-entity="integrityRemoteEntity = $event"
         />
 
-        <v-progress-linear v-if="!isIntegrityIssue && loading" indeterminate color="primary" class="mb-4" />
+        <div v-if="!isIntegrityIssue && loading" class="mb-4 troubleshooter-loading">
+          <v-progress-linear indeterminate color="primary" class="mb-1" />
+          <p class="text-caption text-medium-emphasis mb-0">
+            Reading the link from current data. The link is re-run and its row counts recomputed every time this dialog
+            opens or its page changes.
+          </p>
+        </div>
 
         <v-alert v-if="!isIntegrityIssue && error" type="error" variant="tonal" class="mb-4">
           <div>{{ error.message }}</div>
@@ -35,8 +41,11 @@
         </v-alert>
 
         <template v-if="!isIntegrityIssue && result">
+          <!-- A reproduced warning is the expected outcome, so only a failed
+          reproduction is reported. The trial tables below show the result. -->
           <v-alert
-            :type="result.status === 'reproduced' ? 'success' : 'warning'"
+            v-if="result.status !== 'reproduced'"
+            type="warning"
             variant="tonal"
             class="mb-4"
             :title="result.status"

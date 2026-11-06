@@ -105,7 +105,7 @@ describe('useLinkTroubleshooter', () => {
     expect(state.remoteKeys.value).toEqual([])
     expect(state.page.value).toBe(1)
     expect(state.pageSize.value).toBe(50)
-    expect(state.rowFilter.value).toBe('all')
+    expect(state.rowFilter.value).toBe('unmatched')
     expect(await state.run()).toBeNull()
     expect(linkTroubleshooterApi.run).toHaveBeenCalledTimes(1)
   })
