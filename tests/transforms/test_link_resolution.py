@@ -8,7 +8,7 @@ import pytest
 from src.model import ForeignKeyConfig, ShapeShiftProject
 from src.table_store import TableStore
 from src.transforms.link import ForeignKeyLinker
-from src.transforms.link_resolution import SUPPORTED_JOIN_TYPES, resolve_row_count_issue
+from src.transforms.link_resolution import SUPPORTED_JOIN_TYPES, resolve_integrity_issue, resolve_row_count_issue
 
 DEFAULT_FK: dict[str, Any] = {
     "entity": "customers",
@@ -280,3 +280,157 @@ def test_linker_warnings_resolve_to_the_foreign_key_that_raised_them():
         project.get_table("local").foreign_keys[0],
         project.get_table("local").foreign_keys[1],
     ]
+
+
+def integrity_metadata_for(project: ShapeShiftProject, index: int = 0) -> dict[str, Any]:
+    """Build integrity-warning metadata for the saved foreign key at the given index."""
+    fk: ForeignKeyConfig = saved_fk(project, index)
+    return {
+        "orphan_count": 2,
+        "fk_index": fk.fk_index,
+        "fk_signature": fk.identity_signature,
+    }
+
+
+def resolve_integrity(project: ShapeShiftProject, metadata: dict[str, Any], **kwargs: Any):
+    """Resolve an integrity warning for the orders entity."""
+    return resolve_integrity_issue(
+        project,
+        issue_type=kwargs.pop("issue_type", "FK_DATA_INTEGRITY"),
+        local_entity=kwargs.pop("local_entity", "orders"),
+        metadata=metadata,
+    )
+
+
+def test_integrity_issue_resolves_to_its_saved_foreign_key():
+    """An integrity warning resolves to the saved entry that produced it."""
+    project = build_project()
+
+    resolution = resolve_integrity(project, integrity_metadata_for(project))
+
+    assert resolution.status == "resolved"
+    assert resolution.is_eligible is True
+    assert resolution.fk_index == 0
+    assert resolution.fk is saved_fk(project, 0)
+
+
+@pytest.mark.parametrize("join_type", ["right", "outer", "cross"])
+def test_integrity_issues_resolve_with_any_join_type(join_type: str):
+    """Integrity warnings have no join-type restriction."""
+    project = build_project(foreign_keys=[{"entity": "customers", "local_keys": ["customer_id"], "remote_keys": ["id"], "how": join_type}])
+
+    resolution = resolve_integrity(project, integrity_metadata_for(project))
+
+    assert resolution.status == "resolved"
+    assert resolution.is_eligible is True
+    assert resolution.fk is saved_fk(project, 0)
+
+
+def test_integrity_issues_use_their_own_saved_entry_for_the_same_remote_entity():
+    """Two links to the same remote entity resolve by their own index."""
+    project = build_project(
+        foreign_keys=[
+            {"entity": "customers", "local_keys": ["customer_id"], "remote_keys": ["id"]},
+            {"entity": "customers", "local_keys": ["customer_code"], "remote_keys": ["code"]},
+        ]
+    )
+
+    first = resolve_integrity(project, integrity_metadata_for(project, 0))
+    second = resolve_integrity(project, integrity_metadata_for(project, 1))
+
+    assert [(first.status, first.fk_index), (second.status, second.fk_index)] == [("resolved", 0), ("resolved", 1)]
+    assert first.fk is saved_fk(project, 0)
+    assert second.fk is saved_fk(project, 1)
+
+
+def test_identical_integrity_entries_each_resolve_to_their_own_index():
+    """Identical saved entries stay distinguishable by index."""
+    duplicate: dict[str, Any] = {"entity": "customers", "local_keys": ["customer_id"], "remote_keys": ["id"]}
+    project = build_project(foreign_keys=[dict(duplicate), dict(duplicate)])
+
+    first = resolve_integrity(project, integrity_metadata_for(project, 0))
+    second = resolve_integrity(project, integrity_metadata_for(project, 1))
+
+    assert [(first.status, first.fk_index), (second.status, second.fk_index)] == [("resolved", 0), ("resolved", 1)]
+
+
+@pytest.mark.parametrize(
+    "metadata",
+    [
+        pytest.param({"fk_signature": "abc"}, id="missing-index"),
+        pytest.param({"fk_index": None, "fk_signature": "abc"}, id="none-index"),
+        pytest.param({"fk_index": True, "fk_signature": "abc"}, id="bool-index"),
+        pytest.param({"fk_index": "0", "fk_signature": "abc"}, id="string-index"),
+        pytest.param({"fk_index": 0}, id="missing-signature"),
+        pytest.param({}, id="no-identity"),
+    ],
+)
+def test_integrity_warnings_without_usable_identity_are_refused(metadata: dict[str, Any]):
+    """Older or malformed integrity warnings offer no action."""
+    project = build_project()
+
+    resolution = resolve_integrity(project, metadata)
+
+    assert resolution.status == "missing_metadata"
+    assert resolution.is_eligible is False
+    assert resolution.fk is None
+
+
+def test_integrity_warning_for_unknown_entity_is_refused():
+    """An entity missing from the project offers no action."""
+    project = build_project()
+
+    resolution = resolve_integrity(project, integrity_metadata_for(project), local_entity="missing_entity")
+
+    assert resolution.status == "entity_not_found"
+    assert resolution.entity_name == "missing_entity"
+
+
+def test_integrity_warning_with_out_of_range_index_is_refused():
+    """An index that names no saved entry offers no action."""
+    project = build_project()
+    metadata: dict[str, Any] = {"fk_index": 5, "fk_signature": saved_fk(project).identity_signature}
+
+    resolution = resolve_integrity(project, metadata)
+
+    assert resolution.status == "index_out_of_range"
+    assert resolution.fk_index == 5
+
+
+def test_integrity_warning_with_edited_entry_is_refused():
+    """A saved entry edited after the warning was recorded no longer matches."""
+    metadata: dict[str, Any] = integrity_metadata_for(build_project())
+    project = build_project(foreign_keys=[{**DEFAULT_FK, "how": "left"}])
+
+    resolution = resolve_integrity(project, metadata)
+
+    assert resolution.status == "signature_mismatch"
+    assert resolution.fk_index == 0
+
+
+def test_integrity_warning_with_shifted_index_is_refused():
+    """A new entry before the target shifts positions instead of matching the wrong link."""
+    target_fk: dict[str, Any] = {**DEFAULT_FK, "local_keys": ["customer_code"], "remote_keys": ["code"]}
+    metadata: dict[str, Any] = integrity_metadata_for(build_project(foreign_keys=[dict(DEFAULT_FK), target_fk]), 1)
+    project = build_project(
+        foreign_keys=[
+            {"entity": "customers", "local_keys": ["customer_id"], "remote_keys": ["code"]},
+            dict(DEFAULT_FK),
+            target_fk,
+        ]
+    )
+
+    resolution = resolve_integrity(project, metadata)
+
+    assert resolution.status == "signature_mismatch"
+    assert resolution.fk_index == 1
+
+
+def test_row_count_warnings_are_not_integrity_issues():
+    """Row-count warnings use their own resolver."""
+    project = build_project()
+
+    resolution = resolve_integrity(project, metadata_for(project), issue_type="row_count_mismatch")
+
+    assert resolution.status == "not_integrity_issue"
+    assert resolution.is_eligible is False

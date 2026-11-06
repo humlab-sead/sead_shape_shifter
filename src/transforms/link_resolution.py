@@ -17,6 +17,7 @@ SUPPORTED_JOIN_TYPES: tuple[str, ...] = ("inner", "left")
 ResolutionStatus = Literal[
     "resolved",
     "not_row_count_issue",
+    "not_integrity_issue",
     "entity_not_found",
     "missing_metadata",
     "index_out_of_range",
@@ -50,28 +51,18 @@ class LinkIssueResolution:
         return self.status == "resolved"
 
 
-def resolve_row_count_issue(
+def _resolve_saved_foreign_key(
     project: ShapeShiftProject,
     *,
-    issue_type: str,
     local_entity: str,
     metadata: Mapping[str, Any],
 ) -> LinkIssueResolution:
-    """Resolve a row-count warning to the saved foreign key that raised it.
+    """Resolve the warning metadata to one saved foreign key by entity, index, and signature.
 
-    Args:
-        project: Project that produced the warning.
-        issue_type: Type of the validation issue.
-        local_entity: Entity the foreign key belongs to.
-        metadata: Issue metadata, which carries the foreign key index and signature.
-
-    Returns:
-        LinkIssueResolution describing the saved foreign key or the reason no
-        action is offered.
+    This lookup is shared by each warning kind. It rejects unusable metadata and
+    removed or edited saved entries so a stale warning never resolves to the wrong
+    link.
     """
-    if issue_type != "row_count_mismatch":
-        return LinkIssueResolution(status="not_row_count_issue", entity_name=local_entity)
-
     if not project.has_table(local_entity):
         return LinkIssueResolution(status="entity_not_found", entity_name=local_entity)
 
@@ -94,9 +85,6 @@ def resolve_row_count_issue(
     if saved_fk.identity_signature != fk_signature:
         return LinkIssueResolution(status="signature_mismatch", entity_name=local_entity, fk_index=fk_index)
 
-    if (saved_fk.how or "inner") not in SUPPORTED_JOIN_TYPES:
-        return LinkIssueResolution(status="unsupported_join", entity_name=local_entity, fk_index=fk_index, fk=saved_fk)
-
     recorded_pass: Any = metadata.get("link_pass")
 
     return LinkIssueResolution(
@@ -106,3 +94,68 @@ def resolve_row_count_issue(
         fk=saved_fk,
         link_pass=recorded_pass if isinstance(recorded_pass, str) else None,
     )
+
+
+def resolve_row_count_issue(
+    project: ShapeShiftProject,
+    *,
+    issue_type: str,
+    local_entity: str,
+    metadata: Mapping[str, Any],
+) -> LinkIssueResolution:
+    """Resolve a row-count warning to the saved foreign key that raised it.
+
+    Args:
+        project: Project that produced the warning.
+        issue_type: Type of the validation issue.
+        local_entity: Entity the foreign key belongs to.
+        metadata: Issue metadata, which carries the foreign key index and signature.
+
+    Returns:
+        LinkIssueResolution describing the saved foreign key or the reason no
+        action is offered.
+    """
+    if issue_type != "row_count_mismatch":
+        return LinkIssueResolution(status="not_row_count_issue", entity_name=local_entity)
+
+    resolution: LinkIssueResolution = _resolve_saved_foreign_key(project, local_entity=local_entity, metadata=metadata)
+    if not resolution.is_eligible or resolution.fk is None:
+        return resolution
+
+    if (resolution.fk.how or "inner") not in SUPPORTED_JOIN_TYPES:
+        return LinkIssueResolution(
+            status="unsupported_join",
+            entity_name=local_entity,
+            fk_index=resolution.fk_index,
+            fk=resolution.fk,
+        )
+
+    return resolution
+
+
+def resolve_integrity_issue(
+    project: ShapeShiftProject,
+    *,
+    issue_type: str,
+    local_entity: str,
+    metadata: Mapping[str, Any],
+) -> LinkIssueResolution:
+    """Resolve an integrity warning to the saved foreign key that raised it.
+
+    Integrity warnings describe values that were not found. Any saved link can be
+    inspected, so the join-type restriction used for row counts does not apply.
+
+    Args:
+        project: Project that produced the warning.
+        issue_type: Type of the validation issue, expected to be ``FK_DATA_INTEGRITY``.
+        local_entity: Entity the foreign key belongs to.
+        metadata: Issue metadata, which carries the foreign key index and signature.
+
+    Returns:
+        LinkIssueResolution describing the saved foreign key or the reason no
+        action is offered.
+    """
+    if issue_type != "FK_DATA_INTEGRITY":
+        return LinkIssueResolution(status="not_integrity_issue", entity_name=local_entity)
+
+    return _resolve_saved_foreign_key(project, local_entity=local_entity, metadata=metadata)

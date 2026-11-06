@@ -84,3 +84,23 @@ def test_from_linker_issue_preserves_fk_identity_metadata() -> None:
     assert result.metadata["link_pass"] == "after_unnest"
     assert result.metadata["issue_type"] == "row_count_mismatch"
     assert result.metadata["remote_entity"] == "accounts"
+
+
+def test_to_api_error_preserves_integrity_identity_metadata() -> None:
+    """Integrity identity and count reach the API error unchanged."""
+    issue = ValidationIssue(
+        severity="warning",
+        entity="orders",
+        field="foreign_keys[].entity",
+        message="2 foreign key value(s) not found in 'customers'",
+        code="FK_DATA_INTEGRITY",
+        suggestion="Ensure all foreign key values exist in referenced entity.",
+        category="data",
+        priority="medium",
+        auto_fixable=False,
+        metadata={"orphan_count": 2, "fk_index": 1, "fk_signature": "abc123"},
+    )
+
+    result = ValidationMapper.to_api_error(issue)
+
+    assert result.metadata == {"orphan_count": 2, "fk_index": 1, "fk_signature": "abc123"}

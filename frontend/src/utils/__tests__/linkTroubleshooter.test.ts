@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { isLinkTroubleshootCandidate, toLinkTroubleshootRequest } from '../linkTroubleshooter'
+import {
+  integrityTroubleshootRefusal,
+  isIntegrityTroubleshootCandidate,
+  isLinkTroubleshootCandidate,
+  toIntegrityTroubleshootRequest,
+  toLinkTroubleshootRequest,
+} from '../linkTroubleshooter'
 import type { ValidationError } from '@/types'
 
 function warning(overrides: Partial<ValidationError> = {}): ValidationError {
@@ -58,5 +64,92 @@ describe('link troubleshooter warning helper', () => {
       metadata: message.metadata,
     })
     expect(message).toEqual(before)
+  })
+})
+
+function integrityWarning(overrides: Partial<ValidationError> = {}): ValidationError {
+  return {
+    severity: 'warning',
+    entity: 'orders',
+    message: "2 foreign key value(s) not found in 'customers'",
+    code: 'FK_DATA_INTEGRITY',
+    metadata: {
+      fk_index: 1,
+      fk_signature: 'saved-signature',
+      orphan_count: 2,
+    },
+    ...overrides,
+  }
+}
+
+describe('integrity troubleshooter warning helper', () => {
+  it.each(['inner', 'left', 'right', 'outer', null])('accepts a saved link with join type %s', (joinType) => {
+    const metadata = { ...(integrityWarning().metadata ?? {}), join_type: joinType, link_pass: 'initial' }
+    expect(isIntegrityTroubleshootCandidate(integrityWarning({ metadata }))).toBe(true)
+  })
+
+  it('accepts a duplicate remote entity because the index addresses the saved link', () => {
+    const first = integrityWarning({ metadata: { fk_index: 0, fk_signature: 'first', remote_entity: 'customers' } })
+    const second = integrityWarning({ metadata: { fk_index: 1, fk_signature: 'second', remote_entity: 'customers' } })
+
+    expect(isIntegrityTroubleshootCandidate(first)).toBe(true)
+    expect(isIntegrityTroubleshootCandidate(second)).toBe(true)
+  })
+
+  it.each(['0', 1.5, -1, null])('rejects a warning with fk_index %s', (fkIndex) => {
+    const metadata = { ...(integrityWarning().metadata ?? {}), fk_index: fkIndex }
+    expect(isIntegrityTroubleshootCandidate(integrityWarning({ metadata }))).toBe(false)
+  })
+
+  it('rejects a warning without a foreign-key index', () => {
+    const metadata = { ...(integrityWarning().metadata ?? {}) }
+    delete metadata.fk_index
+    expect(isIntegrityTroubleshootCandidate(integrityWarning({ metadata }))).toBe(false)
+  })
+
+  it.each([1, null])('rejects a warning with a non-string fk_signature %s', (signature) => {
+    const metadata = { ...(integrityWarning().metadata ?? {}), fk_signature: signature }
+    expect(isIntegrityTroubleshootCandidate(integrityWarning({ metadata }))).toBe(false)
+  })
+
+  it('rejects a warning without a foreign-key signature', () => {
+    const metadata = { ...(integrityWarning().metadata ?? {}) }
+    delete metadata.fk_signature
+    expect(isIntegrityTroubleshootCandidate(integrityWarning({ metadata }))).toBe(false)
+  })
+
+  it('rejects a warning without an entity', () => {
+    expect(isIntegrityTroubleshootCandidate(integrityWarning({ entity: null }))).toBe(false)
+    expect(isIntegrityTroubleshootCandidate(integrityWarning({ entity: '   ' }))).toBe(false)
+  })
+
+  it('rejects another warning code and does not make it a row-count candidate', () => {
+    expect(isIntegrityTroubleshootCandidate(integrityWarning({ code: 'ROW_COUNT_MISMATCH' }))).toBe(false)
+    expect(isIntegrityTroubleshootCandidate(integrityWarning({ code: 'OTHER_WARNING' }))).toBe(false)
+  })
+
+  it('builds a request without changing the warning metadata', () => {
+    const message = integrityWarning()
+    const before = structuredClone(message)
+
+    expect(toIntegrityTroubleshootRequest(message)).toEqual({
+      issue_type: 'FK_DATA_INTEGRITY',
+      local_entity: 'orders',
+      metadata: message.metadata,
+    })
+    expect(message).toEqual(before)
+    expect(toIntegrityTroubleshootRequest(integrityWarning({ entity: null }))).toBeNull()
+  })
+
+  it('explains a locally unusable integrity warning', () => {
+    const noEntity = integrityWarning({ entity: null })
+    const noIndex = integrityWarning({ metadata: { fk_signature: 'saved-signature' } })
+    const noSignature = integrityWarning({ metadata: { fk_index: 0 } })
+
+    expect(integrityTroubleshootRefusal(integrityWarning())).toBeNull()
+    expect(integrityTroubleshootRefusal(warning())).toBeNull()
+    expect(integrityTroubleshootRefusal(noEntity)).toContain('does not name the entity')
+    expect(integrityTroubleshootRefusal(noIndex)).toContain('does not record which saved link')
+    expect(integrityTroubleshootRefusal(noSignature)).toContain('does not record a saved-link signature')
   })
 })

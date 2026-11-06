@@ -1,5 +1,6 @@
 """Tests for pure domain data validators."""
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -13,6 +14,8 @@ from src.validators.data_validators import (
     NaturalKeyUniquenessValidator,
     NonEmptyResultValidator,
     ValidationIssue,
+    compare_foreign_key_values,
+    to_key_scalar,
 )
 
 
@@ -369,6 +372,19 @@ class TestForeignKeyIntegrityValidator:
         assert issues[0].code == "FK_DATA_INTEGRITY"
         assert issues[0].severity == "warning"
         assert "not found" in issues[0].message.lower()
+        assert issues[0].metadata == {"orphan_count": 1}
+
+    def test_orphan_count_counts_distinct_missing_values(self):
+        """Repeated local values count once per distinct missing key."""
+        local_df = pd.DataFrame({"fk": [99, 99, 98, 1]})
+        remote_df = pd.DataFrame({"pk": [1, 2]})
+        fk_config = {"local_keys": ["fk"], "remote_keys": ["pk"], "entity": "remote"}
+
+        issues = ForeignKeyIntegrityValidator.validate(local_df, remote_df, fk_config, "local")
+
+        assert len(issues) == 1
+        assert issues[0].metadata["orphan_count"] == 2
+        assert "2 foreign key value(s) not found" in issues[0].message
 
     def test_composite_foreign_keys(self):
         """Test composite FK validation."""
@@ -384,6 +400,7 @@ class TestForeignKeyIntegrityValidator:
 
         assert len(issues) == 1
         assert issues[0].code == "FK_DATA_INTEGRITY"
+        assert issues[0].metadata["orphan_count"] == 1
 
     def test_empty_remote_warning(self):
         """Test warning when remote entity is empty."""
@@ -398,6 +415,7 @@ class TestForeignKeyIntegrityValidator:
         assert "no rows" in issues[0].message
         assert "'pk'" in issues[0].message
         assert issues[0].field == "foreign_keys[].entity"
+        assert "orphan_count" not in issues[0].metadata
 
     def test_all_null_remote_key_names_the_column(self):
         """A remote key that is entirely null should not be reported as an empty entity."""
@@ -412,6 +430,7 @@ class TestForeignKeyIntegrityValidator:
         assert issue.code == "FK_REMOTE_EMPTY"
         assert issue.severity == "warning"
         assert issue.field == "foreign_keys[].remote_keys"
+        assert "orphan_count" not in issue.metadata
         # The remote entity has rows, so the message must not claim it is empty.
         assert "no rows" not in issue.message
         assert "'pk'" in issue.message
@@ -456,6 +475,110 @@ class TestForeignKeyIntegrityValidator:
         assert issues[0].code == "FK_DATA_INTEGRITY"
         assert "1 foreign key value(s) not found" in issues[0].message
         assert "Other site" in issues[0].message
+        assert issues[0].metadata["orphan_count"] == 1
+
+
+class TestForeignKeyComparison:
+    """Tests for the shared local-versus-remote key comparison."""
+
+    def test_agrees_with_the_validator_for_repeated_local_values(self):
+        """Repeated local values count once and match the validator's orphan count."""
+        local_df = pd.DataFrame({"fk": [99, 99, 98, 1]})
+        remote_df = pd.DataFrame({"pk": [1, 2]})
+        fk_config = {"local_keys": ["fk"], "remote_keys": ["pk"], "entity": "remote"}
+
+        comparison = compare_foreign_key_values(local_df, remote_df, fk_config)
+        issues = ForeignKeyIntegrityValidator.validate(local_df, remote_df, fk_config, "local")
+
+        assert comparison.status == "unmatched"
+        assert comparison.orphan_count == 2
+        assert set(comparison.unmatched_keys) == {(98,), (99,)}
+        assert issues[0].metadata["orphan_count"] == comparison.orphan_count
+
+    def test_clean_input_is_matched(self):
+        """A fully matched link reports matched with no unmatched keys."""
+        local_df = pd.DataFrame({"fk": [1, 2, 3]})
+        remote_df = pd.DataFrame({"pk": [1, 2, 3, 4]})
+        fk_config = {"local_keys": ["fk"], "remote_keys": ["pk"], "entity": "remote"}
+
+        comparison = compare_foreign_key_values(local_df, remote_df, fk_config)
+
+        assert comparison.status == "matched"
+        assert not comparison.unmatched_keys
+        assert comparison.orphan_count == 0
+
+    def test_missing_column_is_invalid_input(self):
+        """A configured key column missing from the data is not an empty result."""
+        local_df = pd.DataFrame({"fk": [1, 2]})
+        remote_df = pd.DataFrame({"pk": [1, 2]})
+
+        comparison = compare_foreign_key_values(local_df, remote_df, {"local_keys": ["missing"], "remote_keys": ["pk"]})
+
+        assert comparison.status == "invalid_input"
+        assert not comparison.unmatched_keys
+
+    def test_empty_remote_frame_is_remote_empty(self):
+        """An empty remote frame reports remote_empty rather than an empty unmatched set."""
+        local_df = pd.DataFrame({"fk": [1, 2]})
+        remote_df = pd.DataFrame({"pk": []})
+        fk_config = {"local_keys": ["fk"], "remote_keys": ["pk"], "entity": "remote"}
+
+        comparison = compare_foreign_key_values(local_df, remote_df, fk_config)
+
+        assert comparison.status == "remote_empty"
+
+    def test_all_null_remote_key_is_remote_empty(self):
+        """A remote key that is entirely null leaves nothing to match against."""
+        local_df = pd.DataFrame({"fk": [1, 2]})
+        remote_df = pd.DataFrame({"pk": [None, None], "other": ["a", "b"]})
+        fk_config = {"local_keys": ["fk"], "remote_keys": ["pk"], "entity": "remote"}
+
+        comparison = compare_foreign_key_values(local_df, remote_df, fk_config)
+
+        assert comparison.status == "remote_empty"
+
+    def test_null_components_are_dropped_unless_null_keys_equal(self):
+        """Without null equality, rows with a null key part are excluded from the comparison."""
+        local_df = pd.DataFrame({"site_name": ["Kville 1502", "Other site"], "event_number": [None, None]})
+        remote_df = pd.DataFrame({"site_name": ["Kville 1502"], "event_number": [None]})
+        fk_config = {"local_keys": ["site_name", "event_number"], "remote_keys": ["site_name", "event_number"]}
+
+        comparison = compare_foreign_key_values(local_df, remote_df, fk_config)
+
+        assert comparison.status == "matched"
+
+    def test_null_keys_equal_matches_the_validator_distinct_set(self):
+        """With null equality, null key tuples are compared and agree with the validator."""
+        local_df = pd.DataFrame({"site_name": ["Kville 1502", "Other site"], "event_number": [None, None]})
+        remote_df = pd.DataFrame({"site_name": ["Kville 1502"], "event_number": [None]})
+        fk_config = {
+            "local_keys": ["site_name", "event_number"],
+            "remote_keys": ["site_name", "event_number"],
+            "entity": "site",
+            "constraints": {"null_keys_equal": True},
+        }
+
+        comparison = compare_foreign_key_values(local_df, remote_df, fk_config)
+        issues = ForeignKeyIntegrityValidator.validate(local_df, remote_df, fk_config, "site_location")
+
+        assert comparison.status == "unmatched"
+        assert comparison.unmatched_keys == (("Other site", None),)
+        assert issues[0].metadata["orphan_count"] == comparison.orphan_count
+
+    @pytest.mark.parametrize(
+        "value, expected",
+        [
+            (np.int64(3), 3),
+            (np.float64(2.5), 2.5),
+            (np.bool_(True), True),
+            (np.str_("abc"), "abc"),
+            (float("nan"), None),
+            (None, None),
+        ],
+    )
+    def test_key_scalars_become_json_friendly(self, value, expected):
+        """NumPy scalars normalize to Python scalars and null-like values become None."""
+        assert to_key_scalar(value) == expected
 
 
 class TestDataTypeCompatibilityValidator:
