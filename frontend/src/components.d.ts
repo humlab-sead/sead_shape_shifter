@@ -38,6 +38,7 @@ declare module 'vue' {
     GraphNodeContextMenu: typeof import('./components/dependencies/GraphNodeContextMenu.vue')['default']
     IngesterForm: typeof import('./components/ingester/IngesterForm.vue')['default']
     IngesterList: typeof import('./components/ingester/IngesterList.vue')['default']
+    IntegrityTroubleshooterBody: typeof import('./components/validation/IntegrityTroubleshooterBody.vue')['default']
     LinkTroubleshooterDialog: typeof import('./components/validation/LinkTroubleshooterDialog.vue')['default']
     LoadingSkeleton: typeof import('./components/common/LoadingSkeleton.vue')['default']
     LogViewerOverlay: typeof import('./components/LogViewerOverlay.vue')['default']
