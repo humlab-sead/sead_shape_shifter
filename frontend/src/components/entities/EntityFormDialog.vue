@@ -841,7 +841,7 @@
                       />
                     </div>
 
-                    <v-alert v-if="error" type="error" variant="tonal" class="mt-4">
+                    <v-alert v-if="error" type="error" variant="tonal" class="mt-4 project-save-error">
                       {{ error }}
                       <template v-if="renameConflictDependents.length">
                         <div class="mt-2">Referenced by: {{ renameConflictDependents.join(', ') }}.</div>
@@ -4381,6 +4381,10 @@ watch(
 </script>
 
 <style scoped>
+.project-save-error {
+  white-space: pre-line;
+}
+
 /* System ID field - read-only with dimmed text and subtle background */
 .system-id-field :deep(input) {
   color: rgba(var(--v-theme-on-surface), 0.5) !important;

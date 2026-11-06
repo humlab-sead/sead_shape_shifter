@@ -132,12 +132,21 @@ class FakeBackendSimsClient:
         *,
         target_id: int | None = None,
         resolve_error: httpx.HTTPStatusError | None = None,
+        contract_error: httpx.HTTPStatusError | None = None,
     ) -> None:
         self.binding_set_uuid = binding_set_uuid
         self.lifecycle_state = lifecycle_state
         self.target_id = target_id
         self.resolve_error = resolve_error
+        self.contract_error = contract_error
+        self.contract_requests: list[Any] = []
         self.associated_change_requests: list[tuple[str, str]] = []
+
+    async def register_scope_contracts(self, request: Any) -> Any:
+        self.contract_requests.append(request)
+        if self.contract_error is not None:
+            raise self.contract_error
+        return type("ScopeContractRegistration", (), {"scope_name": request.scope_name, "entities": []})()
 
     async def resolve(self, request: ResolveRequest):
         if self.resolve_error is not None:

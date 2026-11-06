@@ -61,6 +61,8 @@ Backend settings use the `SHAPE_SHIFTER_` prefix and are loaded from
 | `SHAPE_SHIFTER_ALLOWED_ORIGIN_REGEX` | `null` | Optional controlled CORS pattern. |
 | `SHAPE_SHIFTER_RECONCILIATION_SERVICE_URL` | `http://localhost:8000` | Reconciliation service base URL. |
 | `SHAPE_SHIFTER_SIMS_SERVICE_URL` | `http://localhost:8000` | SEAD authority/SIMS service base URL. |
+| `SHAPE_SHIFTER_SIMS_CONTRACT_CALLER` | `shape-shifter` | Caller name sent as `X-SIMS-Caller` when registering provider-scope business-key contracts. |
+| `SHAPE_SHIFTER_SIMS_CONTRACT_REGISTRATION_TOKEN` | `null` | Shared secret sent as `X-SIMS-Caller-Token`. It must match the SIMS caller entry. An unset value keeps contract registration closed, so Change Request runs stop before any identity work. |
 | `SHAPE_SHIFTER_INGEST_TARGET_HOST` | `null` | Backend-selected PostgreSQL host for project-based Change Request generation; required when that helper is used. |
 | `SHAPE_SHIFTER_INGEST_TARGET_PORT` | `5432` | Backend-selected PostgreSQL port for project-based Change Request generation. |
 | `SHAPE_SHIFTER_INGEST_TARGET_DBNAME` | `null` | Backend-selected PostgreSQL database name; required when that helper is used. |
@@ -82,6 +84,38 @@ output directory from project YAML or request data. Configure `SHAPE_SHIFTER_ING
 to a writable location for the generated deploy bundles before enabling that workflow.
 `VITE_*` values are build-time settings in `~/config/deployment.env` and require
 a new image build.
+
+### Provider-Scope Key Contract Conflicts
+
+A SEAD Change Request run registers the saved project's ordered `entities.*.keys`
+lists with SIMS for the provider scope before any identity work, and it registers
+only the entity types in that run's resolve request. SIMS keeps one contract per
+scope and entity type. An exact ordered match continues the run; a different key
+list or order returns HTTP 409 and the run blocks every planned row before it
+sends identity work.
+
+The next run reports that conflict, not the project save, because saves no longer
+lock `keys` or compare them with other projects. To inspect what is registered:
+
+```bash
+curl -sS 'http://localhost:8000/identity/scope-contracts?scope_name=provider://mal/test-pilot'
+```
+
+Replace `mal/test-pilot` with the project's `metadata.data_provider_code` and
+`metadata.provider_schema` values. Then choose one remediation:
+
+- **Restore the registered keys.** Revert `entities.*.keys` to the key list and
+  order the contract holds, then save the project and rerun the Change Request.
+  Use this when the edit was accidental or when the registered contract is still
+  the approved one.
+- **Use a new scope.** When the new keys are the approved contract, request a new
+  `metadata.provider_schema` value in the reviewed provider registry, point the
+  project at that pair, and rerun. The new pair resolves to a new scope, which
+  takes its own contract, so the old scope keeps its registered keys.
+
+SIMS exposes no update or retire call for a registered contract, so a key change
+on a shared provider scope always uses one of these two paths. Publishing or
+rolling back a project file does not change the contract.
 
 ### NGINX Group Header
 

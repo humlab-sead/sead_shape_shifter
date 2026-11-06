@@ -720,6 +720,62 @@ Examples:
 
 ---
 
+## Create a Reconciliation Specification
+
+A reconciliation specification tells Shape Shifter which entity column to match, which remote type and properties to use, and where the rows being matched come from. Create one specification for each entity and search field pair you want to reconcile.
+
+You need:
+
+- a saved project that contains the entities you want to reconcile
+- a reconciliation service the project can reach — the Reconciliation tab shows **Online** with the number of supported types when the service answers
+
+### Steps
+
+1. Open the project and select the **Reconciliation** tab.
+2. On the **Configuration** tab, select **Add Specification**.
+3. Choose the **Entity** whose rows contain the values to match.
+4. Choose the **Search Field** — the entity column that holds the values sent to the reconciliation service, for example a site name or taxon name column. The matched ID is written to the entity's `public_id` column. The search field supplies the value sent to the service; exported links are keyed by the row's encoded business key, which is built from the entity's `keys`.
+5. Select the **Source Type** under **Local Entity Configuration**:
+
+   | Source Type | Rows used |
+   |-------------|-----------|
+   | Entity | The entity's own rows. This is the default. |
+   | Another Entity | Rows from another entity in the same project, for example a prepared variant of the entity. |
+   | SQL Query | Rows from a custom SQL query. Column checks are skipped because the columns are defined inside the query. |
+
+6. Select a **Remote Type**. The list is read from the reconciliation service. A type the service no longer offers is listed with an `(unsupported)` or `(cannot be verified)` suffix and cannot be used for matching.
+7. Fill in **Property Mappings**. Each row names a property the remote type serves; choose the source column that supplies its value. A property the service does not declare is flagged **Unsupported** or **Cannot verify**.
+8. Adjust **Match Thresholds** if needed. The **Review Threshold** marks rows that need attention. The **Auto-accept Threshold** is kept for compatibility and does not accept candidates on its own.
+9. Select **Save**.
+
+The specification is saved in the project folder as `<project>-reconciliation.yml`, alongside `shapeshifter.yml`.
+
+To enter the same content as raw YAML, use the **YAML** tab inside the specification dialog, or the project's **Reconciliation → YAML** tab.
+
+### Edit or Remove a Specification
+
+- **Entity** and **Search Field** are read-only after creation (lock icon). To change either value, delete the specification and create a new one.
+- A specification is identified by its entity and search field together, so one entity can have several specifications, one per search field.
+- Deleting a specification also removes the mapping links and local-only approvals it owns. Manual links and links owned by other specifications are kept.
+
+### Check the Specification Status
+
+The **Configuration** tab lists each specification with a status icon. Hover the icon to read the details.
+
+| Icon | Meaning |
+|------|---------|
+| Green check | No problems detected |
+| Yellow warning | Configuration warnings, such as a missing remote type |
+| Red alert | Configuration errors that must be fixed before matching |
+
+The checks confirm that the entity still exists, that the search field and mapped columns exist in the entity's output columns, and that the remote type and its properties are still served.
+
+### Next Step
+
+Select **Find Candidates** on the specification row to search the normalized rows. See [Reconciliation Workflow](#reconciliation-workflow) for the review, export, and approval steps.
+
+---
+
 ## How Mappings Are Stored
 
 Applied ID links and manual overrides are persisted in a **mapping sidecar file** (`<project>-mapping.yml`) stored alongside `shapeshifter.yml`. This file is the source of truth for links applied during normalization. Reconciliation candidates and review decisions are held separately in `<project>-reconciliation.yml` and do not become applied links merely by being accepted there.
@@ -748,7 +804,7 @@ During normalization, mappings are applied in this order (first match wins):
 
 ## Reconciliation Workflow
 
-1. Configure a reconciliation specification for an entity and search field.
+1. Configure a reconciliation specification for an entity and search field, as described in [Create a Reconciliation Specification](#create-a-reconciliation-specification).
 2. Select **Find Candidates** to search the normalized rows. Each result is addressed by its encoded business key, not its search label. Missing or duplicate keys, missing labels, and row errors are reported. Candidate scores and thresholds are informational; matching never accepts a candidate for you.
 3. Review each row in the grid. Select a candidate before accepting it, or reject the row or mark it local-only. These decisions are saved by business key, and rerunning candidate search preserves them. Rows without decisions or candidates are unresolved; rows without a business key are unreviewable. Preview and matching failures are shown separately from an empty result.
 4. To apply a target ID, select **Add Manual Link** and enter the encoded business key and an integer target ID. This saves a trusted `source: manual` link in the mapping sidecar without checking the ID against SEAD. The committed sidecar ID is effective during the next normalization and takes precedence over the fixed row's saved `public_id`.
@@ -790,6 +846,8 @@ The sidecar file supports full CRUD via API endpoints:
 | Configuration      | Define reconciliation specs    |
 | YAML               | Edit raw reconciliation config |
 | Reconcile & Review | Interactive review grid        |
+
+For the full procedure, including catalog fields, validation, and troubleshooting, see [RECONCILIATION_GUIDE.md](other/RECONCILIATION_GUIDE.md).
 
 ---
 
@@ -906,9 +964,20 @@ The project needs:
    one existing `tbl_data_providers` row.
 3. **Declared business keys.** Every tracked project entity declares its identity columns in
    `keys`. The run rejects a missing key column, a blank value, or a duplicate value in one
-   delivery before any SIMS request or bundle write.
+   delivery before any SIMS request or bundle write. Before identity work, the run registers
+   the project's ordered key lists with SIMS for its provider scope. SIMS accepts an exact
+   ordered match; a different key list or order stops the run with a conflict and no batch is
+   sent. Projects that share a provider scope must therefore declare the same keys in the same
+   order before either can send identity work.
 4. **A target database connection.** The provider row check reads SEAD, so a run without target
    database details stops before SIMS.
+
+Project saves no longer lock the `keys` declarations or compare them with other projects on
+disk. SIMS is the enforcement point for the provider-scope key contract, so a conflicting key
+edit is reported by the next Change Request run rather than at save time. When that happens,
+either restore the key list the registered contract holds or, when the new keys are the
+approved contract, move the project to a new provider schema. See
+[OPERATIONS.md](OPERATIONS.md#provider-scope-key-contract-conflicts).
 
 The response and the emitted `manifest.json` both show the effective `scope_name` and `run_id`.
 A `run_id` is meaningful only together with its scope, so compare the two values together.
@@ -1191,18 +1260,18 @@ They are managed outside the project and connected through **Data Sources**.
 
 ## User-Oriented References
 
-- USER_GUIDE_APPENDIX.md
-- RECONCILIATION_WORKFLOW.md
-- TARGET_MODEL_GUIDE.md
+- [USER_GUIDE_APPENDIX.md](other/USER_GUIDE_APPENDIX.md)
+- [RECONCILIATION_GUIDE.md](other/RECONCILIATION_GUIDE.md)
+- [TARGET_MODEL_GUIDE.md](TARGET_MODEL_GUIDE.md)
 
 ---
 
 ## Technical References
 
-- CONFIGURATION_GUIDE.md
-- DESIGN.md
-- DEVELOPMENT.md
-- CHANGELOG.md
+- [CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md)
+- [DESIGN.md](DESIGN.md)
+- [DEVELOPMENT.md](DEVELOPMENT.md)
+- [CHANGELOG.md](../CHANGELOG.md)
 
 ---
 

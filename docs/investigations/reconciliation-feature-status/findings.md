@@ -39,7 +39,7 @@ Results in the reconciliation catalog are not applied during normalization until
 | [Materialized Entity Mapping Sync](../../proposals/done/MATERIALIZED_ENTITY_MAPPING_SYNC/MATERIALIZED_ENTITY_MAPPING_SYNC.md) | Follow-up for fixed-row and materialized-entity changes that synchronize mapping sidecar links. | Says implemented, with phases 1–4 passed and merged in [PR #562](https://github.com/humlab-sead/sead_shape_shifter/pull/562). It identifies the process-local project lock as a remaining limitation for writes from independent processes. |
 | [Conditional Target Model Requirements](../../proposals/done/CONDITIONAL_TARGET_MODEL_REQUIREMENTS/CONDITIONAL_TARGET_MODEL_REQUIREMENTS.md) | Target-model requirements that depend on reconciliation selecting rows for insertion. | Adjacent to reconciliation execution; useful when assessing validation and change-request generation, rather than the reconciliation UI or match lifecycle. |
 | [Reconciliation Future Improvements](../../proposals/RECONCILIATION_FUTURE_IMPROVEMENTS.md) | Draft/committed states, reviewer decisions, audit history, rollback, and translating reconciliation values to sidecar local keys. | Explicitly a placeholder with no finalized scope. |
-| [Reconciliation Workflow guide](../../other/RECONCILIATION_WORKFLOW.md) and [Setup guide](../../other/RECONCILIATION_SETUP_GUIDE.md) | User workflow, configuration, review, and export context. | Supporting documentation; compare operational details with the newer proposals and code. |
+| [Reconciliation guide](../../other/RECONCILIATION_GUIDE.md) | User workflow, configuration, review, and export context. | Supporting documentation; compare operational details with the newer proposals and code. |
 
 ## GitHub Issues and Pull Request
 
