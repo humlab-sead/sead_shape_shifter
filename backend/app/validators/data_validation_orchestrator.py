@@ -22,7 +22,7 @@ from backend.app.models.validation import (
 )
 from backend.app.services.project_service import ProjectService
 from backend.app.services.shapeshift_service import ProjectNormalizationResult, ShapeShiftService
-from src.model import ShapeShiftProject
+from src.model import ForeignKeyConfig, ShapeShiftProject
 from src.normalizer import ShapeShifter
 from src.specifications.constraints import ValidationIssue as LinkerValidationIssue
 from src.table_store import TableStore
@@ -316,6 +316,7 @@ class DataValidationOrchestrator:
                 entity_issues: list[ValidationIssue] = []
                 try:
                     await self._validate_entity(
+                        core_project=core_project,
                         project_name=project_name,
                         entity_name=entity_name,
                         entity_cfg=entity_cfg,
@@ -337,6 +338,34 @@ class DataValidationOrchestrator:
         self._set_overall_status()
 
         return issues
+
+    @staticmethod
+    def _saved_foreign_keys(core_project: ShapeShiftProject, entity_name: str) -> list[ForeignKeyConfig]:
+        """Return the entity's saved foreign keys in list order, when the project has them."""
+        if not isinstance(core_project, ShapeShiftProject) or not core_project.has_table(entity_name):
+            return []
+        return core_project.get_table(entity_name).foreign_keys
+
+    @staticmethod
+    def _attach_saved_fk_identity(
+        integrity_issues: list[ValidationIssue],
+        saved_foreign_keys: list[ForeignKeyConfig],
+        fk_index: int,
+    ) -> None:
+        """Add the saved link position and signature to integrity issues for one entry.
+
+        Other issue codes are left unchanged, and an entry with no matching saved
+        foreign key stays without identity so it cannot be resolved later.
+        """
+        if not 0 <= fk_index < len(saved_foreign_keys):
+            return
+
+        saved_fk: ForeignKeyConfig = saved_foreign_keys[fk_index]
+        for issue in integrity_issues:
+            if issue.code != "FK_DATA_INTEGRITY":
+                continue
+            issue.metadata["fk_index"] = fk_index
+            issue.metadata["fk_signature"] = saved_fk.identity_signature
 
     def _dependencies(self, core_project: ShapeShiftProject, entity_name: str) -> set[str]:
         """Return the configured dependencies for an entity."""
@@ -403,6 +432,7 @@ class DataValidationOrchestrator:
 
     async def _validate_entity(
         self,
+        core_project: ShapeShiftProject,
         project_name: str,
         entity_name: str,
         entity_cfg: dict[str, Any],
@@ -413,6 +443,7 @@ class DataValidationOrchestrator:
         Validate a single entity.
 
         Args:
+            core_project: Resolved core project used to read saved foreign keys
             project_name: Project name
             entity_name: Entity name
             entity_cfg: Resolved entity configuration
@@ -440,13 +471,16 @@ class DataValidationOrchestrator:
             issues.extend(NaturalKeyUniquenessValidator.validate(df, keys, entity_name))
 
         fk_configs: list[dict[str, Any]] = entity_cfg.get("foreign_keys", [])
-        for fk_config in fk_configs:
+        saved_foreign_keys: list[ForeignKeyConfig] = self._saved_foreign_keys(core_project, entity_name)
+        for fk_index, fk_config in enumerate(fk_configs):
             issues.extend(ForeignKeyDataValidator.validate(df, fk_config, entity_name))
 
             remote_entity: str | None = fk_config.get("entity")
             if remote_entity:
                 remote_df: pd.DataFrame = await self.fetch_strategy.fetch(project_name, remote_entity)
-                issues.extend(ForeignKeyIntegrityValidator.validate(df, remote_df, fk_config, entity_name))
+                integrity_issues: list[ValidationIssue] = ForeignKeyIntegrityValidator.validate(df, remote_df, fk_config, entity_name)
+                self._attach_saved_fk_identity(integrity_issues, saved_foreign_keys, fk_index)
+                issues.extend(integrity_issues)
                 issues.extend(DataTypeCompatibilityValidator.validate(df, remote_df, fk_config, entity_name))
 
         if self.target_model is not None:
