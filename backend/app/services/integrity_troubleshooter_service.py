@@ -9,6 +9,7 @@ projects, source data, or saved results.
 
 from __future__ import annotations
 
+import math
 from typing import Any, Mapping, Sequence
 
 import numpy as np
@@ -306,30 +307,23 @@ class IntegrityTroubleshooterService:
     ) -> IntegrityTroubleshootRows:
         """Return bounded local rows for one token-selected unmatched value."""
         try:
-            decoded: tuple[Any, ...] = decode_key_token(token)
+            decode_key_token(token)
         except ValueError as exc:
             return IntegrityTroubleshootRows(status="unavailable", reason="invalid_token", message=str(exc))
 
-        key: tuple[Any, ...] = tuple(to_key_scalar(value) for value in decoded)
-        key_values: list[Any] = [_json_scalar(value) for value in key]
+        unmatched_keys_by_token: dict[str, tuple[Any, ...]] = {
+            encode_key_token(candidate): candidate for candidate in comparison.unmatched_keys
+        }
+        key: tuple[Any, ...] | None = unmatched_keys_by_token.get(token)
 
-        if key not in set(comparison.unmatched_keys):
+        if key is None:
             return IntegrityTroubleshootRows(
                 status="unavailable",
                 reason="value_no_longer_unmatched",
                 message="The selected value no longer appears as an unmatched value in the current data.",
-                key_values=key_values,
             )
 
-        mandatory_columns: list[str] = [column for column in fk.local_keys if column in local_df.columns]
-        if len(mandatory_columns) > COLUMN_LIMIT:
-            return IntegrityTroubleshootRows(
-                status="unavailable",
-                reason="too_many_key_columns",
-                message=f"The link has {len(mandatory_columns)} key columns, more than the {COLUMN_LIMIT}-column sample limit.",
-                key_values=key_values,
-            )
-
+        key_values: list[Any] = [_json_scalar(value) for value in key]
         columns, columns_truncated = self._row_columns(saved_project, fk, local_df)
         matching_rows: pd.DataFrame = _select_rows(local_df, fk, key)
         total_rows: int = len(matching_rows)
@@ -472,7 +466,9 @@ def _as_int(value: Any) -> int | None:
 
 def _json_scalar(value: Any) -> Any:
     """Return a JSON-serializable representation of one key scalar."""
-    if value is None or isinstance(value, (bool, int, float, str)):
+    if isinstance(value, float):
+        return value if math.isfinite(value) else str(value)
+    if value is None or isinstance(value, (bool, int, str)):
         return value
     return str(value)
 

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import copy
 from dataclasses import dataclass
+from datetime import date, datetime
+from decimal import Decimal
 from typing import Any
 from unittest.mock import patch
 
@@ -11,7 +13,7 @@ import pandas as pd
 import pytest
 
 from backend.app.mappers.project_mapper import ProjectMapper
-from backend.app.models.integrity_troubleshooter import encode_key_token
+from backend.app.models.integrity_troubleshooter import decode_key_token, encode_key_token
 from backend.app.models.project import Project
 from backend.app.services.integrity_troubleshooter_service import (
     COLUMN_LIMIT,
@@ -437,8 +439,8 @@ async def test_selected_rows_respect_the_column_cap_and_report_truncation(monkey
 
 
 @pytest.mark.asyncio
-async def test_excess_key_columns_refuse_the_row_sample(monkeypatch):
-    """A link whose keys alone exceed the column cap refuses the row sample by name."""
+async def test_excess_key_columns_are_truncated_in_the_row_sample(monkeypatch):
+    """A selected row keeps the first key columns and reports that columns were truncated."""
     key_columns = [f"k{index}" for index in range(COLUMN_LIMIT + 1)]
     remote_keys = [f"r{index}" for index in range(COLUMN_LIMIT + 1)]
 
@@ -477,9 +479,12 @@ async def test_excess_key_columns_refuse_the_row_sample(monkeypatch):
     )
 
     assert result.selected is not None
-    assert result.selected.status == "unavailable"
-    assert result.selected.reason == "too_many_key_columns"
-    assert result.selected.rows == []
+    assert result.selected.status == "selected"
+    assert result.selected.total_row_count == 1
+    assert result.selected.returned_row_count == 1
+    assert result.selected.columns == key_columns[:COLUMN_LIMIT]
+    assert result.selected.columns_truncated is True
+    assert set(result.selected.rows[0]) == set(key_columns[:COLUMN_LIMIT])
 
 
 @pytest.mark.asyncio
@@ -594,6 +599,79 @@ async def test_null_and_mixed_type_tokens_round_trip(monkeypatch):
         assert selected.selected is not None
         assert selected.selected.status == "selected"
         assert tuple(selected.selected.key_values or []) == key
+
+
+@pytest.mark.asyncio
+async def test_date_datetime_and_decimal_keys_remain_selectable(monkeypatch):
+    """Date, datetime, timestamp, and Decimal keys can select their current rows."""
+    keys = [
+        date(2024, 1, 1),
+        datetime(2024, 1, 2, 3, 4, 5, 123456),
+        pd.Timestamp("2024-01-03T03:04:05.123456789"),
+        Decimal("12.3400"),
+    ]
+    saved_project = build_saved_project(BASE_CFG)
+    service = service_for(build_api_project(BASE_CFG))
+    patch_frames(monkeypatch, service, FrameSource(local=local_frame(keys), remote=remote_frame(["C1"])))
+    metadata = metadata_for(saved_project, count=len(keys))
+
+    page = await service.inspect(
+        project_name=PROJECT_NAME,
+        issue_type="FK_DATA_INTEGRITY",
+        local_entity="orders",
+        metadata=metadata,
+    )
+
+    assert page.values is not None
+    assert page.values.returned_value_count == len(keys)
+    for value in page.values.values:
+        assert isinstance(decode_key_token(value.token)[0], (date, datetime, Decimal))
+        selected = await service.inspect(
+            project_name=PROJECT_NAME,
+            issue_type="FK_DATA_INTEGRITY",
+            local_entity="orders",
+            metadata=metadata,
+            selected_value_token=value.token,
+        )
+        assert selected.selected is not None
+        assert selected.selected.status == "selected"
+        assert selected.selected.total_row_count == 1
+        assert selected.selected.key_values == value.key_values
+
+
+@pytest.mark.asyncio
+async def test_infinite_float_keys_are_displayed_as_strings(monkeypatch):
+    """Infinite float keys remain visible in value and selected-row responses."""
+    saved_project = build_saved_project(BASE_CFG)
+    service = service_for(build_api_project(BASE_CFG))
+    patch_frames(monkeypatch, service, FrameSource(local=local_frame([float("inf")]), remote=remote_frame(["C1"])))
+    metadata = metadata_for(saved_project, count=1)
+
+    page = await service.inspect(
+        project_name=PROJECT_NAME,
+        issue_type="FK_DATA_INTEGRITY",
+        local_entity="orders",
+        metadata=metadata,
+    )
+
+    assert page.values is not None
+    value = page.values.values[0]
+    assert value.key_values == ["inf"]
+    assert '"key_values":["inf"]' in page.model_dump_json()
+
+    selected = await service.inspect(
+        project_name=PROJECT_NAME,
+        issue_type="FK_DATA_INTEGRITY",
+        local_entity="orders",
+        metadata=metadata,
+        selected_value_token=value.token,
+    )
+
+    assert selected.selected is not None
+    assert selected.selected.status == "selected"
+    assert selected.selected.key_values == ["inf"]
+    assert selected.selected.rows[0]["customer_code"] == "inf"
+    assert '"customer_code":"inf"' in selected.model_dump_json()
 
 
 @pytest.mark.asyncio

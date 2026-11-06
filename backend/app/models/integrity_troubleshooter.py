@@ -11,6 +11,8 @@ from __future__ import annotations
 import base64
 import binascii
 import json
+from datetime import date, datetime
+from decimal import Decimal, InvalidOperation
 from typing import Any, Literal, Sequence
 
 from pydantic import BaseModel, Field, field_validator
@@ -21,7 +23,7 @@ IntegrityStatus = Literal["reproduced", "not_reproduced", "ineligible"]
 IntegritySelectionStatus = Literal["selected", "unavailable"]
 """Whether the requested value still names a current unmatched key."""
 
-_TOKEN_TYPES: frozenset[str] = frozenset({"null", "bool", "int", "float", "str"})
+_TOKEN_TYPES: frozenset[str] = frozenset({"null", "bool", "int", "float", "str", "date", "datetime", "decimal"})
 """Scalar type tags a value token may carry."""
 
 FULL_NORMALIZATION_SOURCE = "current full normalization"
@@ -38,6 +40,12 @@ def _encode_scalar(value: Any) -> dict[str, Any]:
         return {"t": "int", "v": value}
     if isinstance(value, float):
         return {"t": "float", "v": value}
+    if isinstance(value, datetime):
+        return {"t": "datetime", "v": value.isoformat()}
+    if isinstance(value, date):
+        return {"t": "date", "v": value.isoformat()}
+    if isinstance(value, Decimal):
+        return {"t": "decimal", "v": str(value)}
     return {"t": "str", "v": str(value)}
 
 
@@ -66,6 +74,17 @@ def _decode_scalar(payload: Any) -> Any:
         if isinstance(value, bool) or not isinstance(value, (int, float)):
             raise ValueError("Token float value is not a number")
         return float(value)
+    if kind in {"datetime", "date", "decimal"}:
+        if not isinstance(value, str):
+            raise ValueError(f"Token {kind} value is not a string")
+        try:
+            if kind == "datetime":
+                return datetime.fromisoformat(value)
+            if kind == "date":
+                return date.fromisoformat(value)
+            return Decimal(value)
+        except (ValueError, InvalidOperation) as exc:
+            raise ValueError(f"Token {kind} value is invalid") from exc
     if not isinstance(value, str):
         raise ValueError("Token str value is not a string")
     return value
