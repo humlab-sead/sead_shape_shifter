@@ -973,7 +973,11 @@ The project needs:
    database details stops before SIMS.
 
 Project saves no longer lock the `keys` declarations or compare them with other projects on
-disk. SIMS is the enforcement point for the provider-scope key contract.
+disk. SIMS is the enforcement point for the provider-scope key contract, so a conflicting key
+edit is reported by the next Change Request run rather than at save time. When that happens,
+either restore the key list the registered contract holds or, when the new keys are the
+approved contract, move the project to a new provider schema. See
+[OPERATIONS.md](OPERATIONS.md#provider-scope-key-contract-conflicts).
 
 The response and the emitted `manifest.json` both show the effective `scope_name` and `run_id`.
 A `run_id` is meaningful only together with its scope, so compare the two values together.

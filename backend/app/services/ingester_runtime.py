@@ -120,8 +120,9 @@ class SeadChangeRequestSimsAdapter:
     ``business_id``; otherwise it keeps the earlier field-based identity value.
 
     Before any identity work, the adapter registers the trusted provider-scope contract
-    with SIMS. SIMS accepts an exact ordered match and rejects a different key list or
-    order, so a rejected contract stops the batch before any resolve request.
+    with SIMS for the entity types in the resolve request. SIMS accepts an exact ordered
+    match and rejects a different key list or order, so a rejected contract stops the
+    batch before any resolve request.
     """
 
     def __init__(
@@ -179,7 +180,7 @@ class SeadChangeRequestSimsAdapter:
                 )
             ],
         )
-        await self._ensure_scope_contract(request.scope_name)
+        await self._ensure_scope_contract(request.scope_name, [entity_name])
         try:
             response = await self._sims_client.resolve(request)
         except httpx.HTTPStatusError as exc:
@@ -254,7 +255,7 @@ class SeadChangeRequestSimsAdapter:
             ],
         )
         try:
-            await self._ensure_scope_contract(request.scope_name)
+            await self._ensure_scope_contract(request.scope_name, [item.entity_name for item in items])
         except SimsContractRegistrationError as exc:
             return {
                 "outcomes": [],
@@ -334,22 +335,26 @@ class SeadChangeRequestSimsAdapter:
         """Return the persisted run ID, minting a fallback when absent."""
         return submission_context.run_id or str(uuid4())
 
-    async def _ensure_scope_contract(self, scope_name: str) -> None:
+    async def _ensure_scope_contract(self, scope_name: str, entity_types: list[str]) -> None:
         """Register or verify the trusted provider-scope business-key contract.
 
-        The declaration is the saved project's ordered key list for every entity
-        that declares keys. SIMS creates missing contracts, accepts an exact
-        ordered match, and rejects a different key list or order with HTTP 409.
-        A rejected registration raises ``SimsContractRegistrationError`` so the
-        caller stops before any resolve request.
+        The declaration covers the entity types in the current resolve request,
+        because SIMS checks a contract only for the entity types a request names.
+        Each declaration is the saved project's ordered key list for that entity.
+        SIMS creates missing contracts, accepts an exact ordered match, and
+        rejects a different key list or order with HTTP 409. A rejected
+        registration raises ``SimsContractRegistrationError`` so the caller stops
+        before any resolve request.
 
-        When the project declares no business keys, there is no contract to
-        register and the earlier field-based identity path is unchanged.
+        Entities that declare no keys, and entities that this request does not
+        resolve, are left out. Leaving the others out keeps a key difference on a
+        never-resolved entity, such as the fixed ``data_provider`` row or a
+        derived child, from blocking identity work for the tracked entities.
         """
+        requested_entities = sorted({name for name in entity_types if self._business_keys.get(name)})
         declarations = [
-            EntityContractDeclaration(entity_type=entity_name, business_keys=list(keys))
-            for entity_name, keys in sorted(self._business_keys.items())
-            if keys
+            EntityContractDeclaration(entity_type=entity_name, business_keys=list(self._business_keys[entity_name]))
+            for entity_name in requested_entities
         ]
         if not declarations:
             return
