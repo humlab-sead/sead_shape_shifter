@@ -432,7 +432,17 @@ class ProjectService:
         file is written, so a rejected write has no effect.
 
         Business-key declarations are not locked on save. SIMS enforces the
-        ordered key contract for a provider scope before any identity work.
+        ordered key contract for a provider scope before any identity work, so a
+        key edit on a bound project saves without a warning and is confirmed only
+        by the next Change Request run.
+
+        When that run reports HTTP 409, the project's key list or key order
+        differs from the keys already registered for the provider scope, and no
+        identity work was sent. The operator can then either restore the previous
+        ``entities.*.keys`` or, when the new keys are the approved contract, ask
+        for a new ``metadata.provider_schema`` value in the reviewed provider
+        registry so the project uses a new scope. SIMS exposes no update or
+        retire call for a registered contract; see ``docs/OPERATIONS.md``.
         """
         current_config: dict[str, Any] | None = None
         current_metadata: dict[str, Any] | None = None

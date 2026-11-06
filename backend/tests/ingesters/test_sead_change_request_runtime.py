@@ -576,6 +576,29 @@ class TestTrustedScopeAndBusinessKeys:
         ]
 
     @pytest.mark.asyncio
+    async def test_scope_contract_covers_only_entities_in_the_resolve_request(self):
+        """An entity that declares keys but is not resolved is not registered."""
+        sims_client = FakeBackendSimsClient(lifecycle_state="confirmed", target_id=501)
+        adapter = SeadChangeRequestSimsAdapter(
+            cast(Any, sims_client),
+            business_keys={
+                "site": ("site_name", "site_code"),
+                "sample_group": ("sample_group_name",),
+                "data_provider": ("data_provider_code",),
+            },
+        )
+
+        await adapter.resolve_batch(
+            [SimsResolveItem(entity_name="site", row={"site_name": "A", "site_code": 7}, approved_aggregate_id=None)],
+            minimal_submission_context(),
+        )
+
+        registration = sims_client.contract_requests[0]
+        assert [(declaration.entity_type, declaration.business_keys) for declaration in registration.entities] == [
+            ("site", ["site_name", "site_code"])
+        ]
+
+    @pytest.mark.asyncio
     async def test_rejected_scope_contract_stops_the_batch_before_resolve(self):
         request = httpx.Request("POST", "http://sims.test/identity/scope-contracts")
         response = httpx.Response(
