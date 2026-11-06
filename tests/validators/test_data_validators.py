@@ -369,6 +369,19 @@ class TestForeignKeyIntegrityValidator:
         assert issues[0].code == "FK_DATA_INTEGRITY"
         assert issues[0].severity == "warning"
         assert "not found" in issues[0].message.lower()
+        assert issues[0].metadata == {"orphan_count": 1}
+
+    def test_orphan_count_counts_distinct_missing_values(self):
+        """Repeated local values count once per distinct missing key."""
+        local_df = pd.DataFrame({"fk": [99, 99, 98, 1]})
+        remote_df = pd.DataFrame({"pk": [1, 2]})
+        fk_config = {"local_keys": ["fk"], "remote_keys": ["pk"], "entity": "remote"}
+
+        issues = ForeignKeyIntegrityValidator.validate(local_df, remote_df, fk_config, "local")
+
+        assert len(issues) == 1
+        assert issues[0].metadata["orphan_count"] == 2
+        assert "2 foreign key value(s) not found" in issues[0].message
 
     def test_composite_foreign_keys(self):
         """Test composite FK validation."""
@@ -384,6 +397,7 @@ class TestForeignKeyIntegrityValidator:
 
         assert len(issues) == 1
         assert issues[0].code == "FK_DATA_INTEGRITY"
+        assert issues[0].metadata["orphan_count"] == 1
 
     def test_empty_remote_warning(self):
         """Test warning when remote entity is empty."""
@@ -398,6 +412,7 @@ class TestForeignKeyIntegrityValidator:
         assert "no rows" in issues[0].message
         assert "'pk'" in issues[0].message
         assert issues[0].field == "foreign_keys[].entity"
+        assert "orphan_count" not in issues[0].metadata
 
     def test_all_null_remote_key_names_the_column(self):
         """A remote key that is entirely null should not be reported as an empty entity."""
@@ -412,6 +427,7 @@ class TestForeignKeyIntegrityValidator:
         assert issue.code == "FK_REMOTE_EMPTY"
         assert issue.severity == "warning"
         assert issue.field == "foreign_keys[].remote_keys"
+        assert "orphan_count" not in issue.metadata
         # The remote entity has rows, so the message must not claim it is empty.
         assert "no rows" not in issue.message
         assert "'pk'" in issue.message
@@ -456,6 +472,7 @@ class TestForeignKeyIntegrityValidator:
         assert issues[0].code == "FK_DATA_INTEGRITY"
         assert "1 foreign key value(s) not found" in issues[0].message
         assert "Other site" in issues[0].message
+        assert issues[0].metadata["orphan_count"] == 1
 
 
 class TestDataTypeCompatibilityValidator:
