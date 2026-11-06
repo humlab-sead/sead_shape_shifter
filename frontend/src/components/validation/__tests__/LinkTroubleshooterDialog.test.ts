@@ -43,7 +43,7 @@ const state: ReturnType<typeof useLinkTroubleshooter> = {
   remoteKeys: ref<string[]>([]),
   page: ref(1),
   pageSize: ref(50),
-  rowFilter: ref<'all' | 'unmatched' | 'multiply_matched'>('all'),
+  rowFilter: ref<'all' | 'unmatched' | 'multiply_matched'>('unmatched'),
   open: mockOpen,
   run: mockRun,
   reset: mockReset,
@@ -278,7 +278,7 @@ describe('LinkTroubleshooterDialog', () => {
     state.remoteKeys.value = []
     state.page.value = 1
     state.pageSize.value = 50
-    state.rowFilter.value = 'all'
+    state.rowFilter.value = 'unmatched'
     mockOpen.mockReset()
     mockRun.mockReset()
     mockReset.mockReset()
@@ -289,7 +289,7 @@ describe('LinkTroubleshooterDialog', () => {
       state.remoteKeys.value = []
       state.page.value = 1
       state.pageSize.value = 50
-      state.rowFilter.value = 'all'
+      state.rowFilter.value = 'unmatched'
     })
     vi.mocked(useLinkTroubleshooter).mockReturnValue(state)
     vi.mocked(integrityTroubleshooterApi.inspect).mockReset()
@@ -339,7 +339,7 @@ describe('LinkTroubleshooterDialog', () => {
       remote: ['system_id'],
       page: 1,
       pageSize: 50,
-      rowFilter: 'all',
+      rowFilter: 'unmatched',
     })
   })
 
@@ -412,14 +412,14 @@ describe('LinkTroubleshooterDialog', () => {
 
     nextRunResponse = pageTwo
     const initialTotals = first.trial?.totals
-    await wrapper.find('select[aria-label="Filter rows"]').setValue('unmatched')
+    await wrapper.find('select[aria-label="Filter rows"]').setValue('multiply_matched')
     await flushPromises()
     expect(runCalls[0]).toEqual({
       local: ['saved_code'],
       remote: ['saved_value'],
       page: 1,
       pageSize: 50,
-      rowFilter: 'unmatched',
+      rowFilter: 'multiply_matched',
     })
     expect(wrapper.text()).toContain('Complete totals cover the full link input.')
     expect(wrapper.text()).toContain('Input A rows')
@@ -432,7 +432,7 @@ describe('LinkTroubleshooterDialog', () => {
       remote: ['saved_value'],
       page: 1,
       pageSize: 25,
-      rowFilter: 'unmatched',
+      rowFilter: 'multiply_matched',
     })
 
     await wrapper.find('button[aria-label="Next page"]').trigger('click')
@@ -443,7 +443,7 @@ describe('LinkTroubleshooterDialog', () => {
       remote: ['saved_value'],
       page: 2,
       pageSize: 25,
-      rowFilter: 'unmatched',
+      rowFilter: 'multiply_matched',
     })
     expect(state.result.value?.trial?.pagination?.page).toBe(2)
     expect(state.result.value?.trial?.totals).toEqual(initialTotals)
@@ -514,7 +514,6 @@ describe('LinkTroubleshooterDialog', () => {
     expect(openRequests).toHaveLength(0)
     expect(mockOpen).not.toHaveBeenCalled()
     expect(mockReset).toHaveBeenCalled()
-    expect(wrapper.text()).toContain('current full normalization')
     expect(wrapper.text()).toContain('Complete distinct unmatched count: 1')
     expect(wrapper.text()).toContain('orders → customers')
     expect(wrapper.find('select[aria-label="A key"]').exists()).toBe(false)
@@ -544,6 +543,6 @@ describe('LinkTroubleshooterDialog', () => {
 
     expect(openRequests).toHaveLength(1)
     expect(wrapper.text()).not.toContain('Trial key pairs')
-    expect(wrapper.text()).toContain('current full normalization')
+    expect(wrapper.text()).toContain('Complete distinct unmatched count: 1')
   })
 })

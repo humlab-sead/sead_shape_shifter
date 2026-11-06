@@ -697,6 +697,22 @@ Categories include:
 
 ---
 
+## Troubleshooting a Link
+
+A row-count or foreign-key warning can offer a **Troubleshoot link** action. The action opens
+a read-only dialog for the saved link that raised the warning.
+
+The dialog re-reads the link from current data every time it opens and every time you change
+its page, filter, or row size. It does not replay the saved validation run, so the dialog
+always shows what the project produces now. If the data changed since validation ran, the
+dialog reports that the warning could not be reproduced and names the reason.
+
+The action is not offered for sample data validation results, because a sample cannot settle
+whether a value exists in the full parent entity. Run complete data validation to troubleshoot
+a link.
+
+---
+
 ## Recommended Best Practice
 
 - validate after structural edits

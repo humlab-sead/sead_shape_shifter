@@ -1,6 +1,12 @@
 <template>
   <div class="integrity-troubleshooter-body">
-    <v-progress-linear v-if="loading" indeterminate color="primary" class="mb-4" />
+    <div v-if="loading" class="mb-4 integrity-loading">
+      <v-progress-linear indeterminate color="primary" class="mb-1" />
+      <p class="text-caption text-medium-emphasis mb-0">
+        Reading the link from current data. The link is re-run and its unmatched values recomputed every time this
+        dialog opens or its page changes.
+      </p>
+    </div>
 
     <v-alert v-if="error" type="error" variant="tonal" class="mb-4">
       <div>{{ error.message }}</div>
@@ -10,8 +16,11 @@
     </v-alert>
 
     <template v-if="result">
+      <!-- A reproduced warning is the expected outcome, so only a failed reproduction
+      is reported. The current values below already show what was found. -->
       <v-alert
-        :type="result.status === 'reproduced' ? 'success' : 'warning'"
+        v-if="result.status !== 'reproduced'"
+        type="warning"
         variant="tonal"
         class="mb-4 integrity-status"
         :title="result.status"
@@ -19,12 +28,6 @@
         <div class="text-caption mb-1">Reason: {{ result.reason }}</div>
         <div>{{ result.message }}</div>
       </v-alert>
-
-      <p class="text-body-2 mb-4 integrity-source">
-        <span class="text-medium-emphasis">Inspected data source:</span>
-        {{ result.source }}
-        <span class="text-medium-emphasis">(current data, not the saved warning)</span>
-      </p>
 
       <section v-if="result.relationship" class="mb-5" aria-label="Saved relationship">
         <h3 class="text-subtitle-1 mb-2">Saved relationship</h3>
