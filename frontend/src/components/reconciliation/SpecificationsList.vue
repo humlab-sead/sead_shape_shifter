@@ -79,10 +79,10 @@
             </div>
           </template>
 
-          <!-- Target Field Column -->
+          <!-- Search Field Column -->
           <template #item.target_field="{ item }">
             <v-chip size="small" variant="tonal" color="primary">
-              <v-icon start size="x-small">mdi-target</v-icon>
+              <v-icon start size="x-small">mdi-magnify</v-icon>
               {{ item.target_field }}
             </v-chip>
           </template>
@@ -114,8 +114,8 @@
           <!-- Thresholds Column -->
           <template #item.thresholds="{ item }">
             <div class="text-caption">
-              <div>Auto: {{ (item.auto_accept_threshold * 100).toFixed(0) }}%</div>
-              <div>Review: {{ (item.review_threshold * 100).toFixed(0) }}%</div>
+              <span>Auto: {{ (item.auto_accept_threshold * 100).toFixed(0) }}%</span>
+              <span class="ml-1">Review: {{ (item.review_threshold * 100).toFixed(0) }}%</span>
             </div>
           </template>
 
@@ -268,7 +268,7 @@ const validationLoading = ref(false)
 const headers = [
   { title: 'Status', key: 'status', sortable: false, width: '80' },
   { title: 'Entity', key: 'entity_name', sortable: true },
-  { title: 'Target Field', key: 'target_field', sortable: true },
+  { title: 'Search Field', key: 'target_field', sortable: true },
   { title: 'Remote Type', key: 'remote', sortable: false },
   { title: 'Mappings', key: 'mapping_count', sortable: true },
   { title: 'Thresholds', key: 'thresholds', sortable: false },
@@ -379,7 +379,7 @@ async function validateSpecification(spec: EntityResolutionListItem): Promise<Va
   // Determine which entity to validate against
   let entityForValidation = spec.entity_name
 
-  // Check if using "Other Entity" as source
+  // Check if using "Another Entity" as source
   if (spec.source && typeof spec.source === 'string') {
     entityForValidation = spec.source
   }
@@ -392,7 +392,7 @@ async function validateSpecification(spec: EntityResolutionListItem): Promise<Va
   } else {
     if (!entityColumns.includes(spec.target_field)) {
       status.hasErrors = true
-      status.errors.push(`Target field '${spec.target_field}' not found in entity '${entityForValidation}'`)
+      status.errors.push(`Search field '${spec.target_field}' not found in entity '${entityForValidation}'`)
     }
 
     const missingColumns: string[] = []

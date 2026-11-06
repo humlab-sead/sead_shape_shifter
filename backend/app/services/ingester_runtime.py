@@ -8,10 +8,20 @@ from uuid import UUID, uuid4
 import httpx
 import psycopg
 from psycopg import sql
+from pydantic import ValidationError
 
 from backend.app.clients.sims_client import SimsClient
 from backend.app.core.config import Settings
-from backend.app.models.sims import CapabilitiesResponse, IdentitySignal, IdentityType, ResolutionRequest, ResolveRequest
+from backend.app.models.sims import (
+    CapabilitiesResponse,
+    EntityContractDeclaration,
+    IdentitySignal,
+    IdentityType,
+    RegisterScopeContractsRequest,
+    ResolutionRequest,
+    ResolveRequest,
+    ScopeContractConflictDetail,
+)
 from ingesters.sead_change_request.contracts import (
     DatabaseSequenceReservationError,
     SimsResolveItem,
@@ -20,6 +30,38 @@ from ingesters.sead_change_request.contracts import (
 )
 from ingesters.sead_change_request.input_resolution import TRUSTED_PROJECT_CONTEXT_KEY
 from src.business_keys import BusinessKeyError, business_id_for_row
+
+
+class SimsContractRegistrationError(RuntimeError):
+    """Raised when SIMS rejects the trusted provider-scope business-key contract.
+
+    A rejected registration means the scope's ordered key lists differ from the
+    registered contract or the caller is not authorized. Identity work must stop
+    because the business identity values sent to SIMS would not match the
+    approved contract.
+    """
+
+
+def _contract_rejection_reason(response: httpx.Response) -> str:
+    """Return a readable reason from a rejected contract registration response."""
+    try:
+        payload = response.json()
+    except ValueError:
+        return response.text
+
+    detail = payload.get("detail") if isinstance(payload, dict) else None
+    if isinstance(detail, str):
+        return detail
+    if not isinstance(detail, dict):
+        return response.text
+
+    try:
+        conflict = ScopeContractConflictDetail.model_validate(detail)
+    except ValidationError:
+        return response.text
+
+    conflicts = "; ".join(f"{item.entity_type}: registered {item.registered}, submitted {item.submitted}" for item in conflict.conflicts)
+    return f"{conflict.message} ({conflicts})" if conflicts else conflict.message
 
 
 def inject_ingester_runtime_dependencies(ingester_key: str | None, extra: dict[str, Any], settings: Settings) -> dict[str, Any]:
@@ -32,7 +74,11 @@ def inject_ingester_runtime_dependencies(ingester_key: str | None, extra: dict[s
     resolved_extra.setdefault(
         "sims_client",
         SeadChangeRequestSimsAdapter(
-            SimsClient(base_url=settings.SIMS_SERVICE_URL),
+            SimsClient(
+                base_url=settings.SIMS_SERVICE_URL,
+                contract_caller=settings.SIMS_CONTRACT_CALLER,
+                contract_registration_token=settings.SIMS_CONTRACT_REGISTRATION_TOKEN,
+            ),
             created_by=resolved_extra.get("sims_created_by"),
             business_keys=trusted_project_context.business_keys if trusted_project_context is not None else None,
         ),
@@ -72,6 +118,11 @@ class SeadChangeRequestSimsAdapter:
     ``business_keys`` carries the saved project's ordered ``EntityConfig.keys`` per entity.
     When an entity declares keys, the adapter serializes them into one deterministic
     ``business_id``; otherwise it keeps the earlier field-based identity value.
+
+    Before any identity work, the adapter registers the trusted provider-scope contract
+    with SIMS for the entity types in the resolve request. SIMS accepts an exact ordered
+    match and rejects a different key list or order, so a rejected contract stops the
+    batch before any resolve request.
     """
 
     def __init__(
@@ -129,6 +180,7 @@ class SeadChangeRequestSimsAdapter:
                 )
             ],
         )
+        await self._ensure_scope_contract(request.scope_name, [entity_name])
         try:
             response = await self._sims_client.resolve(request)
         except httpx.HTTPStatusError as exc:
@@ -180,6 +232,10 @@ class SeadChangeRequestSimsAdapter:
         Builds one ResolveRequest carrying every item's request, using the
         persisted run ID as the idempotency key. Returns the ordered outcomes
         plus the batch Binding Set UUID and lifecycle state.
+
+        The trusted provider-scope contract is registered and checked before the
+        resolve request. A rejected registration returns an ``error`` entry so the
+        caller blocks every item in the batch.
         """
         request = ResolveRequest(
             scope_name=self._build_scope_name(submission_context),
@@ -198,6 +254,15 @@ class SeadChangeRequestSimsAdapter:
                 for item in items
             ],
         )
+        try:
+            await self._ensure_scope_contract(request.scope_name, [item.entity_name for item in items])
+        except SimsContractRegistrationError as exc:
+            return {
+                "outcomes": [],
+                "binding_set_uuid": None,
+                "binding_set_state": None,
+                "error": str(exc),
+            }
         try:
             response = await self._sims_client.resolve(request)
         except httpx.HTTPStatusError as exc:
@@ -269,6 +334,44 @@ class SeadChangeRequestSimsAdapter:
     def _run_id_for(self, submission_context: SubmissionContext) -> str:
         """Return the persisted run ID, minting a fallback when absent."""
         return submission_context.run_id or str(uuid4())
+
+    async def _ensure_scope_contract(self, scope_name: str, entity_types: list[str]) -> None:
+        """Register or verify the trusted provider-scope business-key contract.
+
+        The declaration covers the entity types in the current resolve request,
+        because SIMS checks a contract only for the entity types a request names.
+        Each declaration is the saved project's ordered key list for that entity.
+        SIMS creates missing contracts, accepts an exact ordered match, and
+        rejects a different key list or order with HTTP 409. A rejected
+        registration raises ``SimsContractRegistrationError`` so the caller stops
+        before any resolve request.
+
+        Entities that declare no keys, and entities that this request does not
+        resolve, are left out. Leaving the others out keeps a key difference on a
+        never-resolved entity, such as the fixed ``data_provider`` row or a
+        derived child, from blocking identity work for the tracked entities.
+        """
+        requested_entities = sorted({name for name in entity_types if self._business_keys.get(name)})
+        declarations = [
+            EntityContractDeclaration(entity_type=entity_name, business_keys=list(self._business_keys[entity_name]))
+            for entity_name in requested_entities
+        ]
+        if not declarations:
+            return
+
+        try:
+            await self._sims_client.register_scope_contracts(
+                RegisterScopeContractsRequest(
+                    scope_name=scope_name,
+                    entities=declarations,
+                    created_by=self._created_by,
+                )
+            )
+        except httpx.HTTPStatusError as exc:
+            raise SimsContractRegistrationError(
+                f"SIMS rejected the provider-scope business-key contract for '{scope_name}' "
+                f"(HTTP {exc.response.status_code}): {_contract_rejection_reason(exc.response)}"
+            ) from exc
 
     def _build_identity_value(self, entity_name: str, row: dict[str, Any]) -> str:
         """Return the SIMS business key for one row.

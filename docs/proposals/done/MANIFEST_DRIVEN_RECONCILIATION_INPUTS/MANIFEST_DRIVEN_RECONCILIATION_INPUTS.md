@@ -2,7 +2,7 @@
 
 ## Status
 
-- Approved feature
+- **Implemented** (branch `feature/manifest-driven-reconciliation-inputs`; merged in [PR #668](https://github.com/humlab-sead/sead_shape_shifter/pull/668)).
 - Scope: Make Shape Shifter derive implemented reconciliation types and their service properties from the OpenRefine manifest, so supporting a new entity type is configuration and verification rather than a Shape Shifter code change. Validate the client workflow on `feature_type` and `location` with mocked service responses; verify service availability separately.
 - Goal: Offer only types and properties declared by the reconciliation contract. Keep deterministic client workflow tests separate from real service and database checks.
 
@@ -25,7 +25,7 @@ The decision is to use an additive reconciliation-specific manifest field for im
 
 Reconciliation coverage cannot grow without client edits, and the client's built-in values are wrong.
 
-- **Types are manifest-driven; properties are not.** The editor loads remote types from the manifest but fills service-property rows from a hard-coded map ([SpecificationEditor.vue](../../../frontend/src/components/reconciliation/SpecificationEditor.vue)). A remote type outside that map yields no property rows at all.
+- **Types are manifest-driven; properties are not.** The editor loads remote types from the manifest but fills service-property rows from a hard-coded map ([SpecificationEditor.vue](../../../../frontend/src/components/reconciliation/SpecificationEditor.vue)). A remote type outside that map yields no property rows at all.
 - **The hard-coded map is wrong for every type it covers.** Checked against the live manifest on 2026-11-04:
 
   | Remote type | Editor offers | Service serves | Offered but not served |
@@ -64,8 +64,8 @@ The effect is that "add an entity type" is a Shape Shifter code project rather t
 
 ## Current Behavior
 
-- The [MVP proposal](../done/RECONCILIATION_MVP/RECONCILIATION_MVP.md) limits the workflow to `site` and defines the key, review, export, normalization, and validation contracts to preserve. It is implemented, and its Phase 7 validation including the manual UI review passed on 2026-11-04.
-- Property mappings are optional at match time. The query builder sends `properties` only when the mapping is non-empty and passes `None` otherwise ([service.py](../../../backend/app/services/reconciliation/service.py)), so a label-only classifier needs no properties at all.
+- The [MVP proposal](../RECONCILIATION_MVP/RECONCILIATION_MVP.md) limits the workflow to `site` and defines the key, review, export, normalization, and validation contracts to preserve. It is implemented, and its Phase 7 validation including the manual UI review passed on 2026-11-04.
+- Property mappings are optional at match time. The query builder sends `properties` only when the mapping is non-empty and passes `None` otherwise ([service.py](../../../../backend/app/services/reconciliation/service.py)), so a label-only classifier needs no properties at all.
 - In edit mode, `SpecificationEditor.vue` copies saved `property_mappings` and uses their keys as the displayed properties. It does not compare those keys with the current service metadata. On a type change or manifest outage, saved mappings can therefore be preserved without being shown as unsupported.
 - The editor currently loads types from `defaultTypes` and falls back to a built-in list if that field is missing or the request fails.
 - Live check on 2026-11-04 against the deployed `authority` schema and the service at `http://localhost:8024`:
