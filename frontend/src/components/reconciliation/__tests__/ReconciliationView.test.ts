@@ -401,4 +401,27 @@ describe('ReconciliationView', () => {
 
     expect(reconciliationStore.loadPreviewData).toHaveBeenCalledTimes(1)
   })
+
+  it('shows a loading state instead of the empty state while the preview request is in flight', async () => {
+    let resolvePreview: (() => void) | undefined
+    reconciliationStore.loadPreviewData = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolvePreview = resolve
+        })
+    )
+    const wrapper = await mountView()
+
+    await wrapper.get('[data-testid="open-reconcile"]').trigger('click')
+    await nextTick()
+
+    expect(wrapper.find('[data-testid="preview-loading"]').exists()).toBe(true)
+    expect(wrapper.text()).not.toContain('No Preview Rows')
+
+    resolvePreview?.()
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="preview-loading"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('No Preview Rows')
+  })
 })
