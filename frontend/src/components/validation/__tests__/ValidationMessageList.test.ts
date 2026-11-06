@@ -146,6 +146,52 @@ describe('ValidationMessageList', () => {
     expect(nonCandidate.find('.link-troubleshooter-action').exists()).toBe(false)
   })
 
+  it('offers the troubleshooter for an integrity candidate and emits the original message', async () => {
+    const candidate: ValidationError = {
+      severity: 'warning',
+      entity: 'orders',
+      message: "2 foreign key value(s) not found in 'customers'",
+      code: 'FK_DATA_INTEGRITY',
+      metadata: { fk_index: 0, fk_signature: 'saved-signature', orphan_count: 2 },
+    }
+    const wrapper = mountList([candidate])
+
+    await itemAt(wrapper, 0).trigger('click')
+    const action = wrapper.find('.link-troubleshooter-action')
+    expect(action.text()).toContain('Troubleshoot link')
+    await action.trigger('click')
+
+    expect(wrapper.emitted('troubleshoot')?.[0]).toEqual([candidate])
+    expect(expandButtonAt(wrapper, 0).attributes('aria-expanded')).toBe('true')
+    expect(wrapper.find('.integrity-troubleshoot-refusal').exists()).toBe(false)
+  })
+
+  it('explains a locally unusable integrity warning instead of offering the action', async () => {
+    const malformed: ValidationError = {
+      severity: 'warning',
+      entity: 'orders',
+      message: "2 foreign key value(s) not found in 'customers'",
+      code: 'FK_DATA_INTEGRITY',
+      metadata: { orphan_count: 2 },
+    }
+    const wrapper = mountList([malformed])
+
+    await itemAt(wrapper, 0).trigger('click')
+
+    expect(wrapper.find('.link-troubleshooter-action').exists()).toBe(false)
+    expect(wrapper.find('.integrity-troubleshoot-refusal').text()).toContain('does not record which saved link')
+    expect(wrapper.emitted('troubleshoot')).toBeUndefined()
+  })
+
+  it('does not show an integrity refusal for unrelated warnings', async () => {
+    const wrapper = mountList([messages[0]!])
+
+    await itemAt(wrapper, 0).trigger('click')
+
+    expect(wrapper.find('.link-troubleshooter-action').exists()).toBe(false)
+    expect(wrapper.find('.integrity-troubleshoot-refusal').exists()).toBe(false)
+  })
+
   it('collapses expanded rows when the message list changes', async () => {
     const wrapper = mountList()
 
@@ -156,5 +202,52 @@ describe('ValidationMessageList', () => {
 
     expect(expandButtonAt(wrapper, 0).attributes('aria-expanded')).toBe('false')
     expect(wrapper.find('.validation-message-details-row').exists()).toBe(false)
+  })
+
+  it('offers the troubleshooter action for an integrity candidate', async () => {
+    const candidate: ValidationError = {
+      severity: 'warning',
+      entity: 'orders',
+      message: "2 foreign key value(s) not found in 'customers'",
+      code: 'FK_DATA_INTEGRITY',
+      metadata: { fk_index: 1, fk_signature: 'saved-signature', orphan_count: 2, join_type: 'right' },
+    }
+    const wrapper = mountList([candidate])
+
+    await itemAt(wrapper, 0).trigger('click')
+    const action = wrapper.find('.link-troubleshooter-action')
+    expect(action.text()).toContain('Troubleshoot link')
+    await action.trigger('click')
+
+    expect(wrapper.emitted('troubleshoot')?.[0]).toEqual([candidate])
+    expect(wrapper.find('.integrity-troubleshoot-refusal').exists()).toBe(false)
+    expect(expandButtonAt(wrapper, 0).attributes('aria-expanded')).toBe('true')
+  })
+
+  it('explains an integrity warning that has no usable saved-link identity', async () => {
+    const malformed: ValidationError = {
+      severity: 'warning',
+      entity: 'orders',
+      message: "2 foreign key value(s) not found in 'customers'",
+      code: 'FK_DATA_INTEGRITY',
+      metadata: { orphan_count: 2 },
+    }
+    const wrapper = mountList([malformed])
+
+    await itemAt(wrapper, 0).trigger('click')
+
+    expect(wrapper.find('.link-troubleshooter-action').exists()).toBe(false)
+    const refusal = wrapper.find('.integrity-troubleshoot-refusal')
+    expect(refusal.exists()).toBe(true)
+    expect(refusal.text()).toContain('does not record which saved link')
+  })
+
+  it('leaves unrelated warnings without an action or a refusal', async () => {
+    const wrapper = mountList(messages)
+
+    await itemAt(wrapper, 0).trigger('click')
+
+    expect(wrapper.find('.link-troubleshooter-action').exists()).toBe(false)
+    expect(wrapper.find('.integrity-troubleshoot-refusal').exists()).toBe(false)
   })
 })

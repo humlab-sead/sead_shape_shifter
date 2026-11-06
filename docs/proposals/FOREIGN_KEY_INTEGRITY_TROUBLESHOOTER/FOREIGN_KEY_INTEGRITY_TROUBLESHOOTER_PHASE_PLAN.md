@@ -132,7 +132,7 @@ Offer one troubleshooter action for eligible integrity warnings and show their r
 
 **Readiness**
 
-Requires Phase 2's response and inspection-shape decisions before a task plan can fix the UI behavior.
+Ready for a task plan; Phase 2's response and inspection-shape decisions are resolved.
 
 ## Cross-Phase Rules
 

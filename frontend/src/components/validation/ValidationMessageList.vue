@@ -137,7 +137,7 @@
             </v-alert>
 
             <v-btn
-              v-if="isLinkTroubleshootCandidate(item)"
+              v-if="canTroubleshoot(item)"
               class="link-troubleshooter-action mt-3"
               size="small"
               variant="outlined"
@@ -146,6 +146,12 @@
             >
               Troubleshoot link
             </v-btn>
+            <p
+              v-else-if="integrityRefusal(item)"
+              class="integrity-troubleshoot-refusal text-body-2 text-medium-emphasis mt-3 mb-0"
+            >
+              {{ integrityRefusal(item) }}
+            </p>
           </div>
         </td>
       </tr>
@@ -156,7 +162,11 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import type { ValidationError, ValidationSeverity } from '@/types'
-import { isLinkTroubleshootCandidate } from '@/utils/linkTroubleshooter'
+import {
+  integrityTroubleshootRefusal,
+  isIntegrityTroubleshootCandidate,
+  isLinkTroubleshootCandidate,
+} from '@/utils/linkTroubleshooter'
 
 interface Props {
   messages: ValidationError[]
@@ -227,6 +237,14 @@ function handleTroubleshoot(item: ValidationTableMessage) {
   if (message) {
     emit('troubleshoot', message)
   }
+}
+
+function canTroubleshoot(item: ValidationTableMessage): boolean {
+  return isLinkTroubleshootCandidate(item) || isIntegrityTroubleshootCandidate(item)
+}
+
+function integrityRefusal(item: ValidationTableMessage): string | null {
+  return integrityTroubleshootRefusal(item)
 }
 
 function formatBranchLabel(branchName: string | null | undefined, branchSource: string | null | undefined): string {

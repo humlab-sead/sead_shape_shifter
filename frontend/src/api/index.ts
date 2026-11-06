@@ -7,6 +7,7 @@ export * from './projects'
 export * from './entities'
 export * from './validation'
 export * from './linkTroubleshooter'
+export * from './integrityTroubleshooter'
 export * from './data-sources'
 export * from './data-providers'
 export * from './data-source-files'
@@ -22,6 +23,7 @@ import { projectsApi } from './projects'
 import { entitiesApi } from './entities'
 import { validationApi } from './validation'
 import { linkTroubleshooterApi } from './linkTroubleshooter'
+import { integrityTroubleshooterApi } from './integrityTroubleshooter'
 import { dataSourcesApi } from './data-sources'
 import { dataProvidersApi } from './data-providers'
 import { dataSourceFilesApi } from './data-source-files'
@@ -37,6 +39,7 @@ export const api = {
   entities: entitiesApi,
   validation: validationApi,
   linkTroubleshooter: linkTroubleshooterApi,
+  integrityTroubleshooter: integrityTroubleshooterApi,
   dataSources: dataSourcesApi,
   dataProviders: dataProvidersApi,
   dataSourceFiles: dataSourceFilesApi,

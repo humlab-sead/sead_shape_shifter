@@ -14,20 +14,27 @@
       <v-divider />
 
       <v-card-text>
-        <v-progress-linear v-if="loading" indeterminate color="primary" class="mb-4" />
-
         <v-alert v-if="localMessage" type="info" variant="tonal" class="mb-4">
           {{ localMessage }}
         </v-alert>
 
-        <v-alert v-if="error" type="error" variant="tonal" class="mb-4">
+        <IntegrityTroubleshooterBody
+          v-if="modelValue && isIntegrityIssue && !localMessage"
+          :project-name="projectName"
+          :message="message"
+          @remote-entity="integrityRemoteEntity = $event"
+        />
+
+        <v-progress-linear v-if="!isIntegrityIssue && loading" indeterminate color="primary" class="mb-4" />
+
+        <v-alert v-if="!isIntegrityIssue && error" type="error" variant="tonal" class="mb-4">
           <div>{{ error.message }}</div>
           <ul v-if="error.tips?.length" class="mt-2">
             <li v-for="tip in error.tips" :key="tip">{{ tip }}</li>
           </ul>
         </v-alert>
 
-        <template v-if="result">
+        <template v-if="!isIntegrityIssue && result">
           <v-alert
             :type="result.status === 'reproduced' ? 'success' : 'warning'"
             variant="tonal"
@@ -230,7 +237,12 @@
 import { computed, ref, watch } from 'vue'
 import { useLinkTroubleshooter } from '@/composables/useLinkTroubleshooter'
 import type { LinkTroubleshootRowFilter, ValidationError } from '@/types'
-import { toLinkTroubleshootRequest } from '@/utils/linkTroubleshooter'
+import {
+  INTEGRITY_ISSUE_CODE,
+  integrityTroubleshootRefusal,
+  toLinkTroubleshootRequest,
+} from '@/utils/linkTroubleshooter'
+import IntegrityTroubleshooterBody from './IntegrityTroubleshooterBody.vue'
 
 interface Props {
   modelValue: boolean
@@ -251,9 +263,12 @@ const emit = defineEmits<{
   (event: 'update:modelValue', value: boolean): void
 }>()
 const localMessage = ref<string | null>(null)
+const integrityRemoteEntity = ref<string | null>(null)
 
 const { loading, error, result, localKeys, remoteKeys, page, pageSize, rowFilter, open, run, reset } =
   useLinkTroubleshooter(props.projectName)
+
+const isIntegrityIssue = computed(() => props.message.code === INTEGRITY_ISSUE_CODE)
 
 const header = computed(() => {
   const localEntity = result.value?.relationship?.local_entity || props.message.entity || 'Unknown entity'
@@ -261,6 +276,7 @@ const header = computed(() => {
   const metadataRemote = props.message.metadata?.remote_entity
   const remoteEntity =
     result.value?.relationship?.remote_entity ||
+    integrityRemoteEntity.value ||
     (typeof metadataRemote === 'string' && metadataRemote.trim().length > 0 ? metadataRemote : 'Unknown entity')
   return `${localEntity} → ${remoteEntity}`
 })
@@ -304,12 +320,22 @@ const pageSizeOptions = [25, 50, 100, 200]
 watch(
   () => [props.modelValue, props.message] as const,
   async ([isOpen, message]) => {
+    integrityRemoteEntity.value = null
     if (!isOpen) {
       localMessage.value = null
       reset()
       return
     }
 
+    if (message.code === INTEGRITY_ISSUE_CODE) {
+      // Integrity inspection has its own read-only body and endpoint, so the
+      // row-count request and trial state are cleared instead of opened.
+      reset()
+      localMessage.value = integrityTroubleshootRefusal(message)
+      return
+    }
+
+    localMessage.value = null
     const request = toLinkTroubleshootRequest(message)
     if (!request) {
       localMessage.value = 'This warning cannot be troubleshot.'
@@ -317,7 +343,6 @@ watch(
       return
     }
 
-    localMessage.value = null
     await open(request)
   },
   { immediate: true }
