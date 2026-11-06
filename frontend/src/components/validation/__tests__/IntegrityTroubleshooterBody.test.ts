@@ -219,6 +219,21 @@ describe('IntegrityTroubleshooterBody', () => {
     expect(wrapper.find('section[aria-label="Unmatched values"] tbody tr').text()).toContain('—, X-1')
   })
 
+  it('renders one unmatched-value row per value with its local row count', async () => {
+    const wrapper = mountBody()
+    await flushPromises()
+
+    const section = wrapper.find('section[aria-label="Unmatched values"]')
+    expect(section.find('thead').text()).toContain('Unmatched key')
+    expect(section.find('thead').text()).toContain('Local rows')
+
+    const rows = section.findAll('tbody tr')
+    expect(rows).toHaveLength(2)
+    expect(rows[0]?.findAll('td').map((cell) => cell.text())).toEqual(['MISSING-A', '1', 'Show local rows'])
+    expect(rows[1]?.findAll('td').map((cell) => cell.text())).toEqual(['MISSING-B', '3', 'Show local rows'])
+    expect(section.findAll('.integrity-select-value')).toHaveLength(2)
+  })
+
   it('pages with the current page number and clears the selection', async () => {
     inspect().mockReset()
     queueResponses(

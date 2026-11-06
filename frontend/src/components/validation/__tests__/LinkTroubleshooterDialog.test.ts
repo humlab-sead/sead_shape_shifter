@@ -354,6 +354,53 @@ describe('LinkTroubleshooterDialog', () => {
     expect(wrapper.find('table').exists()).toBe(false)
   })
 
+  it('renders the A-row diagnostics columns and key values', async () => {
+    const trial: LinkTroubleshootTrial = {
+      status: 'complete',
+      reason: 'complete',
+      message: 'Trial completed.',
+      local_keys: ['saved_code', 'saved_value'],
+      remote_keys: ['saved_value', 'system_id'],
+      totals: { input_a_rows: 2, output_rows: 1, unmatched_a_rows: 1, multiply_matched_a_rows: 0 },
+      issues: [],
+      rows: [
+        { input_position: 4, key_values: ['A-1', 7], matched: true, remote_match_count: 1, output_row_contribution: 1 },
+      ],
+      pagination: { page: 1, page_size: 50, filtered_row_count: 1, returned_row_count: 1, has_next: false },
+    }
+    const wrapper = mountDialog(makeResponse({ trial }))
+    await flushPromises()
+
+    const section = wrapper.find('section[aria-label="A-row diagnostics"]')
+    expect(section.find('thead').text()).toContain('A key: saved_code')
+    expect(section.find('thead').text()).toContain('A key: saved_value')
+    expect(section.find('thead').text()).toContain('Matched')
+
+    const cells = section
+      .findAll('tbody tr')[0]
+      ?.findAll('td')
+      .map((cell) => cell.text())
+    expect(cells).toEqual(['5', 'A-1', '7', 'Yes', '1', '1'])
+  })
+
+  it('shows the filter empty state when no A rows are returned', async () => {
+    const trial: LinkTroubleshootTrial = {
+      status: 'complete',
+      reason: 'complete',
+      message: 'Trial completed.',
+      local_keys: ['saved_code'],
+      remote_keys: ['saved_value'],
+      totals: { input_a_rows: 0, output_rows: 0, unmatched_a_rows: 0, multiply_matched_a_rows: 0 },
+      issues: [],
+      rows: [],
+      pagination: { page: 1, page_size: 50, filtered_row_count: 0, returned_row_count: 0, has_next: false },
+    }
+    const wrapper = mountDialog(makeResponse({ trial }))
+    await flushPromises()
+
+    expect(wrapper.find('section[aria-label="A-row diagnostics"]').text()).toContain('No rows match this filter.')
+  })
+
   it('shows full totals and sends the same keys when filters, page size, and pages change', async () => {
     const first = makeResponse()
     const pageTwo = makeResponse()
