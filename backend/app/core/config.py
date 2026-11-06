@@ -88,6 +88,8 @@ class Settings(BaseSettings):
     # Services
     RECONCILIATION_SERVICE_URL: str = "http://localhost:8000"
     SIMS_SERVICE_URL: str = "http://localhost:8000"  # sead_authority_service base URL for /identity endpoints
+    SIMS_CONTRACT_CALLER: str = "shape-shifter"  # X-SIMS-Caller for provider-scope contract registration
+    SIMS_CONTRACT_REGISTRATION_TOKEN: str | None = None  # X-SIMS-Caller-Token; unset keeps registration closed
     LINK_TRIAL_MAX_OUTPUT_ROWS: int = Field(default=1_000_000, ge=1)
 
     # Data source policy
