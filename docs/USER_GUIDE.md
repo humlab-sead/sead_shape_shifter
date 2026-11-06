@@ -734,7 +734,7 @@ You need:
 1. Open the project and select the **Reconciliation** tab.
 2. On the **Configuration** tab, select **Add Specification**.
 3. Choose the **Entity** whose rows contain the values to match.
-4. Choose the **Search Field** — the entity column that holds the values sent to the reconciliation service, for example a site name or taxon name column. The matched ID is written to the entity's `public_id` column, and the search field is also the source key used when accepted decisions are exported to the mapping sidecar.
+4. Choose the **Search Field** — the entity column that holds the values sent to the reconciliation service, for example a site name or taxon name column. The matched ID is written to the entity's `public_id` column. The search field supplies the value sent to the service; exported links are keyed by the row's encoded business key, which is built from the entity's `keys`.
 5. Select the **Source Type** under **Local Entity Configuration**:
 
    | Source Type | Rows used |

@@ -32,7 +32,7 @@ The `public_id` column is the only column reconciliation writes. A specification
 1. **Project** — a saved project that contains the entity you want to reconcile.
 2. **Entity rows** — the entity, or the source named in the specification, must produce rows.
 3. **Entity identity** — the entity declares `public_id`, which is the column that receives the matched ID, and declares `keys`, which identify each row.
-4. **Backend** — Shape Shifter backend running (default `http://localhost:8012`).
+4. **Backend** — Shape Shifter backend running (default `http://localhost:8025`, as set by `BACKEND_PORT` in the `Makefile`).
 5. **Reconciliation service** — running and reachable from the backend (default `http://localhost:8000`).
 6. **Specification** — a specification exists for the entity and search field you want to reconcile against.
 
@@ -63,7 +63,7 @@ Check the service directly, then check the backend's view of it:
 curl http://localhost:8000/reconcile
 
 # The backend reports whether it can reach the service
-curl http://localhost:8012/api/v1/reconciliation/health
+curl http://localhost:8025/api/v1/reconciliation/health
 ```
 
 The Reconciliation tab shows **Online** with a supported-type count when the backend can reach the service.
@@ -157,7 +157,8 @@ The **Configuration** tab shows a status icon on each specification row. Hover t
 
 The checks confirm that the entity still exists, that the search field exists after all transformations, that every mapped source column exists in the output, and that the remote type and its properties are still served.
 
-Column checks read `GET /api/v1/reconciliation/available-fields/{entity_name}`, so they include keys, regular columns, extra columns, foreign-key join columns, and unnest columns. Results are rechecked when a specification changes or the view refreshes.
+Column checks read
+`GET /api/v1/projects/{project_name}/reconciliation/available-fields/{entity_name}`, so they include keys, regular columns, extra columns, foreign-key join columns, and unnest columns. Results are rechecked when a specification changes or the view refreshes.
 
 A red alert names the affected entity, field, or column. Fix the specification, or add the missing column to the entity, then recheck.
 
@@ -347,7 +348,7 @@ site_name,site_id,latitude,longitude
 curl http://localhost:8000/reconcile
 
 # The backend view of the service
-curl http://localhost:8012/api/v1/reconciliation/health
+curl http://localhost:8025/api/v1/reconciliation/health
 
 # The configured service URL
 grep service_url data/projects/my_project/my_project-reconciliation.yml
