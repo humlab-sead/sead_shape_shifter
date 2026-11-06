@@ -421,8 +421,11 @@ class TaskService:
         if not project.has_table(entity_name):
             raise ValueError(f"Entity '{entity_name}' does not exist in project")
 
-        # Validate entity
-        validation_result: ValidationResult = await self.validation_service.validate_project_data(project_name, entity_names=[entity_name])
+        # Validate entity with a fast per-entity sample check. Complete validation runs the
+        # whole project, which is heavier than this task gate needs.
+        validation_result: ValidationResult = await self.validation_service.validate_project_data(
+            project_name, entity_names=[entity_name], validation_mode=DataValidationMode.SAMPLE
+        )
 
         if not validation_result.is_valid:
             error_messages: list[str] = [err.message for err in validation_result.errors]

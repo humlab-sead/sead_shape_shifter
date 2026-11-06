@@ -213,8 +213,8 @@ Recommended workflow:
 
 1. Preview entity output
 2. Run YAML validation
-3. Run sample validation
-4. Run complete validation before export
+3. Run complete validation (the default)
+4. Use sample validation only for a quick check while editing
 
 ---
 
@@ -700,8 +700,11 @@ Categories include:
 ## Recommended Best Practice
 
 - validate after structural edits
-- use sample validation during iteration
-- always run complete validation before execution
+- use complete validation; it is the default and reports foreign-key data honestly
+- use sample validation only as a fast smoke check, and re-run complete validation before
+execution
+- re-run complete validation before troubleshooting a link; troubleshooting is turned off for
+sample results, because a parent value outside the sample is reported as missing
 
 ---
 

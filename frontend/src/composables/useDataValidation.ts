@@ -68,7 +68,7 @@ export function useDataValidation() {
   async function validateData(
     projectName: string,
     entityNames?: string[],
-    validationMode: 'sample' | 'complete' = 'sample'
+    validationMode: 'sample' | 'complete' = 'complete'
   ): Promise<ValidationResult> {
     loading.value = true
     error.value = null
