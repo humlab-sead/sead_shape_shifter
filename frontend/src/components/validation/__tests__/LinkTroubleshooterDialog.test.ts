@@ -366,7 +366,10 @@ function mountDialog(
     global: {
       plugins: [vuetify],
       stubs: {
-        VDialog: { template: '<div data-testid="dialog"><slot /></div>' },
+        VDialog: {
+          props: ['maxWidth'],
+          template: '<div data-testid="dialog" :data-max-width="maxWidth"><slot /></div>',
+        },
         VSelect: {
           props: ['items', 'label', 'modelValue', 'ariaLabel'],
           emits: ['update:modelValue'],
@@ -479,6 +482,40 @@ describe('LinkTroubleshooterDialog', () => {
       affectedRowToolbar.text().indexOf('Unmatched')
     )
     expect(wrapper.findAll('button').some((button) => button.text().trim() === 'Save')).toBe(false)
+  })
+
+  it('resizes the dialog with pointer and keyboard controls', async () => {
+    const wrapper = mountDialog()
+    await flushPromises()
+
+    const card = wrapper.find('.link-troubleshooter-dialog-card')
+    vi.spyOn(card.element, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 800, 600))
+    const widthHandle = wrapper.find('button[aria-label="Resize troubleshooting dialog width"]')
+    const heightHandle = wrapper.find('button[aria-label="Resize troubleshooting dialog height"]')
+
+    widthHandle.element.dispatchEvent(
+      new MouseEvent('pointerdown', { bubbles: true, button: 0, clientX: 800, clientY: 100 })
+    )
+    window.dispatchEvent(new MouseEvent('pointermove', { clientX: 810, clientY: 100 }))
+    await nextTick()
+    window.dispatchEvent(new MouseEvent('pointerup'))
+
+    expect(card.attributes('style')).toContain('width: 820px')
+    expect(wrapper.find('[data-testid="dialog"]').attributes('data-max-width')).toBe('calc(100vw - 32px)')
+
+    heightHandle.element.dispatchEvent(
+      new MouseEvent('pointerdown', { bubbles: true, button: 0, clientX: 100, clientY: 600 })
+    )
+    window.dispatchEvent(new MouseEvent('pointermove', { clientX: 100, clientY: 610 }))
+    await nextTick()
+    window.dispatchEvent(new MouseEvent('pointerup'))
+
+    expect(card.attributes('style')).toContain('height: 620px')
+
+    await widthHandle.trigger('keydown', { key: 'ArrowRight' })
+    await nextTick()
+
+    expect(card.attributes('style')).toContain('width: 844px')
   })
 
   it('summarizes cardinality, linking pass, and only the flags that are set', async () => {
@@ -825,10 +862,11 @@ describe('LinkTroubleshooterDialog', () => {
     const wrapper = mountDialog(makeContext(), integrityMessage())
     await flushPromises()
 
+    expect(wrapper.find('button[aria-label="Resize troubleshooting dialog width"]').exists()).toBe(true)
     expect(openRequests).toHaveLength(0)
     expect(mockOpen).not.toHaveBeenCalled()
     expect(mockClose).toHaveBeenCalled()
-    expect(wrapper.text()).toContain('Complete distinct unmatched value count: 1')
+    expect(wrapper.text()).toContain('Showing 1 of 1 distinct values · Page 1')
     expect(wrapper.text()).toContain('orders → customers')
     expect(wrapper.find('select[aria-label="A key"]').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('Run trial')
@@ -858,7 +896,7 @@ describe('LinkTroubleshooterDialog', () => {
     expect(openRequests).toHaveLength(1)
     expect(mockClose).toHaveBeenCalled()
     expect(wrapper.text()).not.toContain('Trial key pairs')
-    expect(wrapper.text()).toContain('Complete distinct unmatched value count: 1')
+    expect(wrapper.text()).toContain('Showing 1 of 1 distinct values · Page 1')
   })
 
   it('clears state and releases the context when the dialog closes', async () => {
