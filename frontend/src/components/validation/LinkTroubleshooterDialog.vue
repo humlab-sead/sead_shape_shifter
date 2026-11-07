@@ -1,11 +1,15 @@
 <template>
   <v-dialog
     :model-value="modelValue"
-    max-width="1100"
+    :max-width="dialogMaxWidth"
     scrollable
     @update:model-value="emit('update:modelValue', $event)"
   >
-    <v-card>
+    <v-card
+      class="link-troubleshooter-dialog-card"
+      :class="{ 'link-troubleshooter-dialog-card--resizing': isResizingDialog }"
+      :style="dialogCardStyle"
+    >
       <v-card-title class="d-flex align-start justify-space-between ga-2">
         <div class="link-troubleshooter-heading">
           <div>{{ header }}</div>
@@ -437,12 +441,37 @@
       <v-card-actions class="justify-end">
         <v-btn variant="text" @click="close">Close</v-btn>
       </v-card-actions>
+
+      <button
+        type="button"
+        class="link-troubleshooter-resize-handle link-troubleshooter-resize-handle--right"
+        aria-label="Resize troubleshooting dialog width"
+        aria-keyshortcuts="ArrowLeft ArrowRight"
+        @pointerdown="startDialogResize($event, 'width')"
+        @keydown="resizeDialogWithKeyboard($event, 'width')"
+      />
+      <button
+        type="button"
+        class="link-troubleshooter-resize-handle link-troubleshooter-resize-handle--bottom"
+        aria-label="Resize troubleshooting dialog height"
+        aria-keyshortcuts="ArrowUp ArrowDown"
+        @pointerdown="startDialogResize($event, 'height')"
+        @keydown="resizeDialogWithKeyboard($event, 'height')"
+      />
+      <button
+        type="button"
+        class="link-troubleshooter-resize-handle link-troubleshooter-resize-handle--corner"
+        aria-label="Resize troubleshooting dialog width and height"
+        aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown"
+        @pointerdown="startDialogResize($event, 'both')"
+        @keydown="resizeDialogWithKeyboard($event, 'both')"
+      />
     </v-card>
   </v-dialog>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import {
   useLinkTroubleshooter,
   type LinkExceptionGroupName,
@@ -476,12 +505,39 @@ interface Finding {
   suggestion?: string | null
 }
 
+type DialogResizeDirection = 'width' | 'height' | 'both'
+
+interface DialogResizeStart {
+  direction: DialogResizeDirection
+  clientX: number
+  clientY: number
+  width: number
+  height: number
+}
+
 const props = defineProps<Props>()
 const emit = defineEmits<{
   (event: 'update:modelValue', value: boolean): void
 }>()
 const localMessage = ref<string | null>(null)
 const integrityRemoteEntity = ref<string | null>(null)
+const dialogSize = ref<{ width: number; height: number } | null>(null)
+const resizeStart = ref<DialogResizeStart | null>(null)
+
+const dialogMaxWidth = computed(() => (dialogSize.value ? 'calc(100vw - 32px)' : 1100))
+const dialogCardStyle = computed(() => {
+  if (!dialogSize.value) {
+    return undefined
+  }
+
+  return {
+    width: `${dialogSize.value.width}px`,
+    height: `${dialogSize.value.height}px`,
+    maxWidth: 'calc(100vw - 32px)',
+    maxHeight: 'calc(100vh - 32px)',
+  }
+})
+const isResizingDialog = computed(() => resizeStart.value !== null)
 
 const {
   loading,
@@ -674,6 +730,7 @@ watch(
   async ([isOpen, message]) => {
     integrityRemoteEntity.value = null
     if (!isOpen) {
+      stopDialogResize()
       localMessage.value = null
       await releaseContext()
       return
@@ -700,7 +757,102 @@ watch(
   { immediate: true }
 )
 
+onBeforeUnmount(stopDialogResize)
+
+function startDialogResize(event: PointerEvent, direction: DialogResizeDirection): void {
+  const card = getDialogCard(event.currentTarget)
+  if (event.button !== 0 || !card) {
+    return
+  }
+
+  const bounds = card.getBoundingClientRect()
+  const size = constrainDialogSize(dialogSize.value?.width ?? bounds.width, dialogSize.value?.height ?? bounds.height)
+  dialogSize.value = size
+  resizeStart.value = {
+    direction,
+    clientX: event.clientX,
+    clientY: event.clientY,
+    ...size,
+  }
+
+  window.addEventListener('pointermove', resizeDialog)
+  window.addEventListener('pointerup', stopDialogResize)
+  window.addEventListener('pointercancel', stopDialogResize)
+  event.preventDefault()
+  event.stopPropagation()
+}
+
+function resizeDialog(event: PointerEvent): void {
+  const start = resizeStart.value
+  if (!start) {
+    return
+  }
+
+  const widthDelta = event.clientX - start.clientX
+  const heightDelta = event.clientY - start.clientY
+  // The dialog stays centered, so double the pointer delta to keep the dragged edge under the pointer.
+  const width = start.width + (start.direction !== 'height' ? widthDelta * 2 : 0)
+  const height = start.height + (start.direction !== 'width' ? heightDelta * 2 : 0)
+  dialogSize.value = constrainDialogSize(width, height)
+}
+
+function resizeDialogWithKeyboard(event: KeyboardEvent, direction: DialogResizeDirection): void {
+  const bounds = getDialogCard(event.currentTarget)?.getBoundingClientRect()
+  const size =
+    dialogSize.value ??
+    (bounds
+      ? {
+          width: bounds.width,
+          height: bounds.height,
+        }
+      : null)
+  if (!size) {
+    return
+  }
+
+  const step = event.shiftKey ? 48 : 24
+  const widthDelta = event.key === 'ArrowRight' ? step : event.key === 'ArrowLeft' ? -step : 0
+  const heightDelta = event.key === 'ArrowDown' ? step : event.key === 'ArrowUp' ? -step : 0
+  const changeWidth = direction !== 'height' ? widthDelta : 0
+  const changeHeight = direction !== 'width' ? heightDelta : 0
+  if (changeWidth === 0 && changeHeight === 0) {
+    return
+  }
+
+  event.preventDefault()
+  dialogSize.value = constrainDialogSize(size.width + changeWidth, size.height + changeHeight)
+}
+
+function getDialogCard(target: EventTarget | null): HTMLElement | null {
+  if (!(target instanceof HTMLElement)) {
+    return null
+  }
+
+  const card = target.closest('.link-troubleshooter-dialog-card')
+  return card instanceof HTMLElement ? card : null
+}
+
+function constrainDialogSize(width: number, height: number): { width: number; height: number } {
+  const maxWidth = Math.max(280, window.innerWidth - 32)
+  const maxHeight = Math.max(240, window.innerHeight - 32)
+  const minWidth = Math.min(480, maxWidth)
+  const minHeight = Math.min(320, maxHeight)
+
+  return {
+    width: Math.round(Math.min(maxWidth, Math.max(minWidth, width))),
+    height: Math.round(Math.min(maxHeight, Math.max(minHeight, height))),
+  }
+}
+
+function stopDialogResize(): void {
+  window.removeEventListener('pointermove', resizeDialog)
+  window.removeEventListener('pointerup', stopDialogResize)
+  window.removeEventListener('pointercancel', stopDialogResize)
+  resizeStart.value = null
+}
+
 function close(): void {
+  stopDialogResize()
   emit('update:modelValue', false)
 }
 
@@ -771,6 +923,63 @@ function formatDelta(configured: number | null | undefined, trialValue: number |
 </script>
 
 <style scoped>
+.link-troubleshooter-dialog-card {
+  position: relative;
+}
+
+.link-troubleshooter-dialog-card--resizing {
+  user-select: none;
+}
+
+.link-troubleshooter-resize-handle {
+  position: absolute;
+  z-index: 5;
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.link-troubleshooter-resize-handle:focus-visible {
+  outline: 2px solid rgb(var(--v-theme-primary));
+  outline-offset: -2px;
+}
+
+.link-troubleshooter-resize-handle--right {
+  top: 0;
+  right: 0;
+  width: 10px;
+  height: 100%;
+  cursor: ew-resize;
+}
+
+.link-troubleshooter-resize-handle--bottom {
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 10px;
+  cursor: ns-resize;
+}
+
+.link-troubleshooter-resize-handle--corner {
+  right: 0;
+  bottom: 0;
+  width: 20px;
+  height: 20px;
+  cursor: nwse-resize;
+}
+
+.link-troubleshooter-resize-handle--corner::after {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 0 12px 12px;
+  border-color: transparent transparent rgba(var(--v-theme-on-surface), 0.3) transparent;
+  content: '';
+}
+
 .link-troubleshooter-workspace {
   display: grid;
   grid-template-columns: minmax(280px, 0.9fr) minmax(0, 1.4fr);
