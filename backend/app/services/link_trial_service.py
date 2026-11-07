@@ -13,7 +13,15 @@ from backend.app.core.config import Settings, get_settings
 from backend.app.services.link_baseline_service import LinkBaselineResult
 from backend.app.services.link_experiment_context_store import (
     BYTES_PER_MIB,
+    JoinTypeSetting,
     LinkMergeKeys,
+    RequestedSetting,
+    ResolvedNullPolicy,
+    SourceKind,
+    TrialExceptionGroup,
+    TrialExceptionGroups,
+    TrialExceptionRow,
+    TrialSettingsReport,
     ensure_projected_budget,
     ensure_retained_input_budget,
     estimate_output_rows,
@@ -29,6 +37,9 @@ from src.transforms.utility import merge_with_nonmatching_null_keys
 
 TrialStatus = Literal["complete", "failed", "incomplete"]
 """Outcome of one alternative-key trial."""
+
+SettingsSourceMode = Literal["saved", "request"]
+"""Whether a settings report describes the saved configuration or a request."""
 
 
 @dataclass(frozen=True)
@@ -55,6 +66,8 @@ class LinkTrialResult:
     multiply_matched_a_rows: int | None = None
     a_rows: tuple[ARowTrialDiagnostic, ...] | None = None
     issues: tuple[ValidationIssue, ...] = ()
+    exception_groups: TrialExceptionGroups | None = None
+    settings: TrialSettingsReport | None = None
 
 
 class LinkTrialService:
@@ -70,6 +83,10 @@ class LinkTrialService:
         *,
         local_keys: Sequence[str] | None,
         remote_keys: Sequence[str] | None,
+        how: Literal["inner", "left"] | None = None,
+        allow_null_keys: bool | None = None,
+        null_keys_equal: bool | None = None,
+        settings_source: SettingsSourceMode = "request",
     ) -> LinkTrialResult:
         """Run one read-only trial and return complete counts only when all checks finish."""
         saved_project: ShapeShiftProject | None = baseline._saved_project
@@ -95,6 +112,15 @@ class LinkTrialService:
         trial_fk_data: dict[str, Any] = deepcopy(saved_fk.fk_cfg)
         trial_fk_data["local_keys"] = selected_local_keys
         trial_fk_data["remote_keys"] = selected_remote_keys
+        if how is not None:
+            trial_fk_data["how"] = how
+        if allow_null_keys is not None or null_keys_equal is not None:
+            constraints: dict[str, Any] = dict(trial_fk_data.get("constraints") or {})
+            if allow_null_keys is not None:
+                constraints["allow_null_keys"] = allow_null_keys
+            if null_keys_equal is not None:
+                constraints["null_keys_equal"] = null_keys_equal
+            trial_fk_data["constraints"] = constraints
         trial_fk: ForeignKeyConfig = ForeignKeyConfig(
             local_entity=saved_fk.local_entity,
             fk_cfg=trial_fk_data,
@@ -118,6 +144,15 @@ class LinkTrialService:
         except (KeyError, TypeError, ValueError) as exc:
             return self._failed("invalid_keys", str(exc))
 
+        settings_report: TrialSettingsReport = self._build_settings_report(
+            saved_fk,
+            merge_keys,
+            how_override=how,
+            allow_null_keys_override=allow_null_keys,
+            null_keys_equal_override=null_keys_equal,
+            settings_source=settings_source,
+        )
+
         limit_bytes: int = self.settings.LINK_EXPERIMENT_MAX_MEMORY_MB * BYTES_PER_MIB
         input_bytes: int = retained_input_bytes(local_rows, remote_rows)
         ensure_retained_input_budget(input_bytes, limit_bytes, stage="link trial")
@@ -128,6 +163,7 @@ class LinkTrialService:
                 status="incomplete",
                 reason="row_limit_exceeded",
                 message=f"The estimated join output exceeds the configured limit of {output_limit} rows.",
+                settings=settings_report,
             )
 
         null_key_temporaries: bool = bool(merge_keys.runtime_options.prevent_null_key_matches)
@@ -170,15 +206,19 @@ class LinkTrialService:
         try:
             linked_rows: pd.DataFrame = linker.link_foreign_key(link_local_rows, trial_fk, link_remote_rows)
         except ForeignKeyConstraintViolation as exc:
-            return self._failed("constraint_violation", str(exc))
+            return self._failed("constraint_violation", str(exc), settings=settings_report)
         except (KeyError, TypeError, ValueError) as exc:
-            return self._failed("link_failed", str(exc))
+            return self._failed("link_failed", str(exc), settings=settings_report)
 
         if not linker.validators:
-            return self._failed("link_failed", "The production linker did not validate the selected link.")
+            return self._failed("link_failed", "The production linker did not validate the selected link.", settings=settings_report)
 
         if len(linked_rows) != estimated_link_rows:
-            return self._failed("preflight_mismatch", "The preflight row estimate did not match the production link.")
+            return self._failed(
+                "preflight_mismatch",
+                "The preflight row estimate did not match the production link.",
+                settings=settings_report,
+            )
 
         output_rows: int = len(linked_rows)
         issues: tuple[ValidationIssue, ...] = tuple(linker.validators[-1].issues)
@@ -195,24 +235,35 @@ class LinkTrialService:
                 merge_keys.runtime_options,
             )
         except (KeyError, TypeError, ValueError) as exc:
-            return self._failed("diagnostic_failed", str(exc))
+            return self._failed("diagnostic_failed", str(exc), settings=settings_report)
 
         if diagnostic_join_rows != estimated_diagnostic_rows:
-            return self._failed("preflight_mismatch", "The preflight row estimate did not match the diagnostic join.")
+            return self._failed(
+                "preflight_mismatch",
+                "The preflight row estimate did not match the diagnostic join.",
+                settings=settings_report,
+            )
 
         if sum(row.output_row_contribution for row in a_rows) != output_rows:
-            return self._failed("diagnostic_mismatch", "A-row contributions did not match the production link output.")
+            return self._failed(
+                "diagnostic_mismatch",
+                "A-row contributions did not match the production link output.",
+                settings=settings_report,
+            )
 
+        exception_groups: TrialExceptionGroups = self._exception_groups(a_rows)
         return LinkTrialResult(
             status="complete",
             reason="complete",
             message="The alternative-key trial completed.",
             input_a_rows=len(local_rows),
             output_rows=output_rows,
-            unmatched_a_rows=sum(not row.matched for row in a_rows),
-            multiply_matched_a_rows=sum(row.remote_match_count > 1 for row in a_rows),
+            unmatched_a_rows=exception_groups.unmatched.total_count,
+            multiply_matched_a_rows=exception_groups.multiply_matched.total_count,
             a_rows=a_rows,
             issues=issues,
+            exception_groups=exception_groups,
+            settings=settings_report,
         )
 
     @staticmethod
@@ -305,7 +356,72 @@ class LinkTrialService:
             name = f"{name}_"
         return name
 
+    def _exception_groups(self, a_rows: Sequence[ARowTrialDiagnostic]) -> TrialExceptionGroups:
+        """Select the capped exception rows for both groups in input order."""
+        group_cap: int = self.settings.LINK_EXPERIMENT_GROUP_ROW_CAP
+        unmatched: list[ARowTrialDiagnostic] = [row for row in a_rows if row.remote_match_count == 0]
+        multiply_matched: list[ARowTrialDiagnostic] = [row for row in a_rows if row.remote_match_count > 1]
+
+        def capped(rows: list[ARowTrialDiagnostic]) -> TrialExceptionGroup:
+            """Keep the lowest input positions up to the configured group cap."""
+            return TrialExceptionGroup(
+                total_count=len(rows),
+                rows=tuple(
+                    TrialExceptionRow(
+                        input_position=row.input_position,
+                        key_values=row.key_values,
+                        remote_match_count=row.remote_match_count,
+                        output_row_contribution=row.output_row_contribution,
+                    )
+                    for row in rows[:group_cap]
+                ),
+            )
+
+        return TrialExceptionGroups(unmatched=capped(unmatched), multiply_matched=capped(multiply_matched))
+
     @staticmethod
-    def _failed(reason: str, message: str) -> LinkTrialResult:
+    def _build_settings_report(
+        saved_fk: ForeignKeyConfig,
+        merge_keys: LinkMergeKeys,
+        *,
+        how_override: str | None,
+        allow_null_keys_override: bool | None,
+        null_keys_equal_override: bool | None,
+        settings_source: SettingsSourceMode,
+    ) -> TrialSettingsReport:
+        """Report requested and production-resolved settings for one side."""
+        saved_constraints = saved_fk.constraints
+        if settings_source == "saved":
+            saved_how_present: bool = "how" in saved_fk.fk_cfg
+            join_requested: str | None = str(saved_fk.fk_cfg["how"]) if saved_how_present else None
+            join_source: SourceKind = "explicit" if saved_how_present else "inherited"
+            allow_requested: bool | None = saved_constraints.allow_null_keys if saved_constraints.allow_null_keys_is_explicit else None
+            allow_source: SourceKind = "explicit" if saved_constraints.allow_null_keys_is_explicit else "inherited"
+            null_equal_requested: bool | None = saved_constraints.null_keys_equal if saved_constraints.null_keys_equal_is_explicit else None
+            null_equal_source: SourceKind = "explicit" if saved_constraints.null_keys_equal_is_explicit else "inherited"
+        else:
+            join_requested = how_override
+            join_source = "explicit" if how_override is not None else "inherited"
+            allow_requested = allow_null_keys_override
+            allow_source = "explicit" if allow_null_keys_override is not None else "inherited"
+            null_equal_requested = null_keys_equal_override
+            null_equal_source = "explicit" if null_keys_equal_override is not None else "inherited"
+
+        return TrialSettingsReport(
+            join_type=JoinTypeSetting(
+                requested=join_requested,
+                source=join_source,
+                effective=merge_keys.join_type,
+            ),
+            allow_null_keys=RequestedSetting(requested=allow_requested, source=allow_source),
+            null_keys_equal=RequestedSetting(requested=null_equal_requested, source=null_equal_source),
+            resolved_null_policy=ResolvedNullPolicy(
+                enforce_strict_null_keys=merge_keys.runtime_options.enforce_strict_null_keys,
+                prevent_null_key_matches=merge_keys.runtime_options.prevent_null_key_matches,
+            ),
+        )
+
+    @staticmethod
+    def _failed(reason: str, message: str, *, settings: TrialSettingsReport | None = None) -> LinkTrialResult:
         """Return a named failure without partial counts or rows."""
-        return LinkTrialResult(status="failed", reason=reason, message=message)
+        return LinkTrialResult(status="failed", reason=reason, message=message, settings=settings)

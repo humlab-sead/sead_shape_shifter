@@ -10,10 +10,10 @@
 
 **Phase acceptance criteria**
 
-1. [ ] `PH2-AC-1` (from `P-AC-2`): Accept ordered key pairs, inner/left join choice, and only `allow_null_keys` and `null_keys_equal`; preserve all other FK settings and production defaults when omitted.
-2. [ ] `PH2-AC-2` (from `P-AC-1`, `P-AC-3`): Re-link one snapshot's retained inputs, keep baseline and trial totals/findings consistent with production behavior, and never label incomplete work complete.
-3. [ ] `PH2-AC-3` (from `P-AC-4`): Return exact full-input totals and exception counts, deterministic separately bounded unmatched and multiply matched A-row groups, and explicit row/detail truncation without correct A rows.
-4. [ ] `PH2-AC-4` (from `P-AC-8`): Leave retained inputs, saved projects, databases, and production caches unchanged.
+1. [x] `PH2-AC-1` (from `P-AC-2`): Accept ordered key pairs, inner/left join choice, and only `allow_null_keys` and `null_keys_equal`; preserve all other FK settings and production defaults when omitted.
+2. [x] `PH2-AC-2` (from `P-AC-1`, `P-AC-3`): Re-link one snapshot's retained inputs, keep baseline and trial totals/findings consistent with production behavior, and never label incomplete work complete.
+3. [x] `PH2-AC-3` (from `P-AC-4`): Return exact full-input totals and exception counts, deterministic separately bounded unmatched and multiply matched A-row groups, and explicit row/detail truncation without correct A rows.
+4. [x] `PH2-AC-4` (from `P-AC-8`): Leave retained inputs, saved projects, databases, and production caches unchanged.
 
 ## Repository Findings
 
@@ -52,13 +52,13 @@ The decisions in [Recorded Decisions](#recorded-decisions) unblock all three are
 
 **Tasks:**
 
-* [ ] `T1.1` **Change:** Define a typed context trial request with ordered key pairs and optional `how`, `allow_null_keys`, and `null_keys_equal` overrides that distinguish inherited from explicit values.
+* [x] `T1.1` **Change:** Define a typed context trial request with ordered key pairs and optional `how`, `allow_null_keys`, and `null_keys_equal` overrides that distinguish inherited from explicit values.
   * **Target:** `backend/app/models/link_troubleshooter.py` (proposed context trial request model); `backend/app/services/link_trial_service.py::LinkTrialService.run_trial`.
   * **Current → required:** `run_trial` accepts only `local_keys` and `remote_keys`, and takes `how` and every constraint from the saved FK. It must accept the three `D10` controls and apply them with the `D11` copy rule.
   * **Implementation:** Declare the request model with `extra="forbid"` so unsupported fields fail validation. Treat a missing value as inherit, and an explicit `true`, `false`, or `inner`/`left` as an override. Start from `deepcopy(saved_fk.fk_cfg)`, assign only the overridden keys, and add a `constraints` mapping only when a null control is overridden. Leave inherited entries absent so production resolves them, and reject any join name other than `inner` or `left`.
   * **Constraints:** Preserve every other constraint, `extra_columns`, `drop_remote_id`, link pass, and identity. Never write `false` for an inherited control. No Core behavior change.
   * **Validation:** `V-1`; ordered compound keys, inner/left override, inherit versus explicit `false` and `true` for both controls on a left lookup enrichment, `null_keys_equal: true` combined with an `allow_null_keys` override, and an unsupported request field; compare matches and findings with production linking.
-* [ ] `T1.2` **Change:** Execute a requested trial against one owned snapshot without reopening it, and report the settings production resolved.
+* [x] `T1.2` **Change:** Execute a requested trial against one owned snapshot without reopening it, and report the settings production resolved.
   * **Target:** `backend/app/services/link_troubleshooter_service.py::LinkTroubleshooterService` (proposed context trial operation); `backend/app/services/link_trial_service.py::LinkTrialService.run_trial`, `LinkTrialResult`; `src/model.py::ForeignKeyConstraints`; `backend/app/mappers/link_troubleshooter_mapper.py::_map_context_baseline`.
   * **Current → required:** Only open/read/close use the retained context; the stateless `run` rebuilds the baseline on each request. A context trial must never run on a different snapshot, and no response reports whether a control was inherited or overridden.
   * **Implementation:** Look up the context with principal and project locator before computing; use its `LinkBaselineResult` to re-link independent frame copies. Preserve the configured baseline diagnostic, even if incomplete. Fill `D12`'s per-control `requested`, `source`, and effective values from `LinkMergeKeys.runtime_options` and `LinkMergeKeys.join_type`, which already hold the production-resolved pair, for both the baseline and the trial. Add a read-only `null_keys_equal_is_explicit` property beside `allow_null_keys_is_explicit` so the baseline can report `source`. Reject missing, expired, and cross-owner contexts, keep row, memory, constraint, and preflight checks, and send no complete metrics on a blocked, invalid, oversized, or failed result.
@@ -77,13 +77,13 @@ The decisions in [Recorded Decisions](#recorded-decisions) unblock all three are
 
 **Tasks:**
 
-* [ ] `T2.1` **Change:** Keep exact full-input totals and exception counts while selecting deterministic, capped A-row detail.
+* [x] `T2.1` **Change:** Keep exact full-input totals and exception counts while selecting deterministic, capped A-row detail.
   * **Target:** `backend/app/services/link_trial_service.py::LinkTrialService._diagnose_a_rows`, `LinkTrialResult`; `backend/app/services/link_experiment_context_store.py::LinkExperimentDiagnostics`.
   * **Current → required:** The diagnostic computes every A-row record and Phase 1 stores only baseline totals. Keep counts independent of output detail, and retain only capped baseline exception rows for later context reads.
   * **Implementation:** Normalize every A row's match count and output contribution, compute both full group counts from that pass, then select at most `LINK_EXPERIMENT_GROUP_ROW_CAP` rows per group in ascending `input_position` order (`D1`, `D3`). Report each group's `total_count`, `returned_count`, key values, remote match count, and output-row contribution. Inner-join unmatched rows contribute zero; left-join unmatched rows contribute one. Retain the same capped detail with the baseline diagnostics instead of a complete per-A listing, and preserve the findings from the production link.
   * **Constraints:** Rows with one match enter neither group. Multiple matches are not labeled violations. Derive counts from the existing key-only diagnostic join rather than a second joined output, and keep row and memory admission checks before merges.
   * **Validation:** `V-2`, `V-3`; cancelling loss and expansion, inner/left unmatched contributions, ascending position order with more rows than the cap, per-group caps applied independently, empty groups, and incomplete baseline with no totals or groups.
-* [ ] `T2.2` **Change:** Serialize exact metrics and bounded detail with explicit truncation labels.
+* [x] `T2.2` **Change:** Serialize exact metrics and bounded detail with explicit truncation labels.
   * **Target:** `backend/app/models/link_troubleshooter.py` (proposed group and detail models); `backend/app/mappers/link_troubleshooter_mapper.py::to_context_response`, `_map_context_baseline`, and the proposed trial-response mapper; `backend/app/core/config.py`.
   * **Current → required:** The stateless response pages A rows and sends unbounded key and finding text; context responses have no groups. Return both exception groups with `D9`'s truncation labels and no general A-row page.
   * **Implementation:** Add the `D1` setting and the `D5`–`D8` limits. Apply them per side over findings first, then the unmatched group, then the multiply-matched group. Convert values with the existing `_json_safe_scalar`, measure the UTF-8 bytes of that string form, cut at the last whole code point that fits `D6`, and leave a value that already fits unchanged. Report `row_cap_reached` and `budget_exhausted` separately, and keep totals, counts, and truncation metadata outside the budget. Use the existing `ValidationMapper` issue mapping. A non-complete trial or baseline must not acquire success-shaped totals or groups.
@@ -102,7 +102,7 @@ The decisions in [Recorded Decisions](#recorded-decisions) unblock all three are
 
 **Tasks:**
 
-* [ ] `T3.1` **Change:** Add a context-scoped trial operation to the existing registered link router.
+* [x] `T3.1` **Change:** Add a context-scoped trial operation to the existing registered link router.
   * **Target:** `backend/app/api/v1/endpoints/link_troubleshooter.py` (proposed POST trial route); `backend/app/models/link_troubleshooter.py` (proposed trial response); `backend/tests/api/v1/test_link_troubleshooter.py`; `backend/tests/authorization/test_route_authentication.py`.
   * **Current → required:** Open/read/delete are read-protected, but no context trial route exists. Accept the `D10` controls and return complete comparison results, or an explicit non-success status.
   * **Implementation:** Use `require_project(Action.READ)`, forward the authorized principal and locator to the owned-context lookup, and reuse read-context 410 expiry and concealed 404 semantics. Return the retained baseline and the one requested trial tied to that context, including `D12`'s settings report. Reject invalid request shapes and unsupported controls with a validation error before any computation. Add the route to authorization coverage when the route inventory requires it. Keep stateless POST and its response compatible until Phase 3.
@@ -134,6 +134,23 @@ The commands below are executable from the repository root. Baselines describe *
 | `V-6` | Setting defaults, bounds, environment override, and the Core explicitness accessor | `rtk .venv/bin/pytest backend/tests/test_config.py tests/model/test_model.py -q` | `PH2-AC-1`, `PH2-AC-3` | `LINK_EXPERIMENT_GROUP_ROW_CAP` defaults to 100, rejects `0` and `1001`, and accepts an environment override; `null_keys_equal_is_explicit` distinguishes omission from explicit `false`. | Not run in this planning pass; Phase 1 recorded passing settings cases in `backend/tests/test_config.py`, and `tests/model/test_model.py` covers the existing `allow_null_keys_is_explicit` cases. New cases not written. |
 | `V-7` | Formatting of changed backend and Core files | `rtk .venv/bin/black --check src/model.py backend/app/services/link_trial_service.py backend/app/services/link_troubleshooter_service.py backend/app/services/link_experiment_context_store.py backend/app/models/link_troubleshooter.py backend/app/core/config.py backend/app/mappers/link_troubleshooter_mapper.py backend/app/api/v1/endpoints/link_troubleshooter.py` and `rtk .venv/bin/isort --check-only src/model.py backend/app/services/link_trial_service.py backend/app/services/link_troubleshooter_service.py backend/app/services/link_experiment_context_store.py backend/app/models/link_troubleshooter.py backend/app/core/config.py backend/app/mappers/link_troubleshooter_mapper.py backend/app/api/v1/endpoints/link_troubleshooter.py` | Phase 2 quality | Both checks pass after implementation. | Not run: this phase has no code changes yet. |
 
+## Execution Evidence
+
+Implemented 2026-11-07 on `feature/foreign-key-link-troubleshooter-experiments` at `4cbb0fb4` with only the plan's named deliverables changed.
+
+| Check | Command | Result |
+|---|---|---|
+| `V-1` | `.venv/bin/pytest backend/tests/services/test_link_trial_service.py -q` | Pass (40 tests). |
+| `V-2` | `.venv/bin/pytest backend/tests/services/test_link_troubleshooter_service.py backend/tests/services/test_link_experiment_context_store.py -q` | Pass (54 tests). |
+| `V-3` | `.venv/bin/pytest backend/tests/mappers/test_link_troubleshooter_mapper.py backend/tests/services/test_link_troubleshooter_service.py backend/tests/services/test_link_trial_service.py -q` | Pass. |
+| `V-4` | `.venv/bin/pytest backend/tests/api/v1/test_link_troubleshooter.py backend/tests/authorization/test_route_authentication.py -q` | Pass for every API trial-route case. Two authorization inventory checks fail on a pre-existing gap: `POST /api/v1/projects/{project_name}/integrity-troubleshooter` is registered but absent from the inventory at `HEAD`, unrelated to this phase. |
+| `V-5` | `.venv/bin/pytest backend/tests/services/test_link_troubleshooter_service.py backend/tests/api/v1/test_link_troubleshooter.py -q` | Pass; stateless POST is unchanged and context trials leave frames and saved FK data unchanged. |
+| `V-6` | `.venv/bin/pytest backend/tests/test_config.py tests/model/test_model.py -q` | Pass; `LINK_EXPERIMENT_GROUP_ROW_CAP` default/bounds/environment and `null_keys_equal_is_explicit` covered. |
+| `V-7` | `.venv/bin/black --check` and `.venv/bin/isort --check-only` on the changed files | Pass. |
+| Type check | `uv run pyright` on the changed source files | Pass (0 errors, 0 warnings). |
+
+No follow-up work is required for this phase. The unrelated integrity-route inventory gap is reported rather than fixed because it is outside Phase 2 scope.
+
 ## Deliverables
 
 No new files are required by the verified current structure. The proposed endpoint and models are **NEW symbols in existing files**, not existing contracts.
@@ -152,20 +169,20 @@ No new files are required by the verified current structure. The proposed endpoi
 
 | Area | Status | Dependencies | Notes |
 |---|---|---|---|
-| Area 1: Controlled trials | Not started | Phase 1 context available; `D10`–`D13` recorded | No implementation started. |
-| Area 2: Bounded exception detail | Not started | Area 1; `D1`–`D9` recorded | No implementation started. |
-| Area 3: Context trial API | Not started | Areas 1–2; `D1`–`D13` recorded | No implementation started. |
+| Area 1: Controlled trials | Done | Phase 1 context available; `D10`–`D13` recorded | `T1.1`, `T1.2` implemented; `V-1`, `V-2`, `V-5`, `V-6` pass. |
+| Area 2: Bounded exception detail | Done | Area 1; `D1`–`D9` recorded | `T2.1`, `T2.2` implemented; `V-2`, `V-3`, `V-6` pass. |
+| Area 3: Context trial API | Done | Areas 1–2; `D1`–`D13` recorded | `T3.1` implemented; `V-4` route checks pass; pre-existing authorization inventory gap reported below. |
 
 ## Definition Of Done
 
 - [x] Record the three named decisions (`D1`–`D13`) and confirm Phase 2 readiness.
-- [ ] Every `PH2-AC-*` criterion has passing task and validation evidence (`V-1`–`V-6`).
-- [ ] All three areas and listed deliverables are complete; the existing stateless caller still works.
-- [ ] Production null handling, constraint checks, row and memory limits, the tri-state override path, and incomplete-baseline behavior have regression tests.
-- [ ] Counts are full-input exact even when rows, key values or findings are truncated; output includes no correct A rows and marked truncation names its cause (`row_cap_reached` versus `budget_exhausted`).
-- [ ] Trial and baseline inputs, saved projects, databases, and production caches remain unchanged.
-- [ ] API models, service, mapper, and auth are consistent; targeted tests and formatting pass.
-- [ ] Deviations and follow-up work are documented; no unresolved question affects correctness or validation.
+- [x] Every `PH2-AC-*` criterion has passing task and validation evidence (`V-1`–`V-6`).
+- [x] All three areas and listed deliverables are complete; the existing stateless caller still works.
+- [x] Production null handling, constraint checks, row and memory limits, the tri-state override path, and incomplete-baseline behavior have regression tests.
+- [x] Counts are full-input exact even when rows, key values or findings are truncated; output includes no correct A rows and marked truncation names its cause (`row_cap_reached` versus `budget_exhausted`).
+- [x] Trial and baseline inputs, saved projects, databases, and production caches remain unchanged.
+- [x] API models, service, mapper, and auth are consistent; targeted tests and formatting pass.
+- [x] Deviations and follow-up work are documented; no unresolved question affects correctness or validation.
 
 ## Recorded Decisions
 

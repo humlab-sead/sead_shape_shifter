@@ -92,6 +92,7 @@ class Settings(BaseSettings):
     SIMS_CONTRACT_REGISTRATION_TOKEN: str | None = None  # X-SIMS-Caller-Token; unset keeps registration closed
     LINK_TRIAL_MAX_OUTPUT_ROWS: int = Field(default=1_000_000, ge=1)
     LINK_EXPERIMENT_MAX_MEMORY_MB: int = Field(default=100, ge=1)
+    LINK_EXPERIMENT_GROUP_ROW_CAP: int = Field(default=100, ge=1, le=1000)
 
     # Data source policy
     DATA_SOURCE_ALLOWED_ENV_VAR_PREFIXES: str = Field(default="SEAD_,SHAPE_SHIFTER_")

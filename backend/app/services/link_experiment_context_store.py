@@ -53,13 +53,78 @@ ContextLookupState = Literal["found", "expired", "unavailable"]
 
 _NULL_KEY = object()
 
+SourceKind = Literal["inherited", "explicit"]
+"""Whether a request or saved configuration supplied a setting."""
+
+
+@dataclass(frozen=True)
+class TrialExceptionRow:
+    """One A-row exception retained for a bounded response."""
+
+    input_position: int
+    key_values: tuple[Any, ...]
+    remote_match_count: int
+    output_row_contribution: int
+
+
+@dataclass(frozen=True)
+class TrialExceptionGroup:
+    """One exception group with its full count and capped rows."""
+
+    total_count: int
+    rows: tuple[TrialExceptionRow, ...]
+
+
+@dataclass(frozen=True)
+class TrialExceptionGroups:
+    """The unmatched and multiply matched A-row groups for one side."""
+
+    unmatched: TrialExceptionGroup
+    multiply_matched: TrialExceptionGroup
+
+
+@dataclass(frozen=True)
+class RequestedSetting:
+    """One requested control and whether it was explicit or inherited."""
+
+    requested: bool | str | None
+    source: SourceKind
+
+
+@dataclass(frozen=True)
+class JoinTypeSetting:
+    """The requested, sourced, and effective join type."""
+
+    requested: str | None
+    source: SourceKind
+    effective: str
+
+
+@dataclass(frozen=True)
+class ResolvedNullPolicy:
+    """The production-resolved null-key pair for one link."""
+
+    enforce_strict_null_keys: bool
+    prevent_null_key_matches: bool
+
+
+@dataclass(frozen=True)
+class TrialSettingsReport:
+    """Requested and resolved settings for the baseline or one trial."""
+
+    join_type: JoinTypeSetting
+    allow_null_keys: RequestedSetting
+    null_keys_equal: RequestedSetting
+    resolved_null_policy: ResolvedNullPolicy
+
 
 @dataclass(frozen=True)
 class LinkExperimentDiagnostics:
     """Configured-key diagnostic status retained with a snapshot.
 
     The four row counts stay ``None`` unless the diagnostic completed, so an
-    incomplete baseline never presents complete totals.
+    incomplete baseline never presents complete totals. Only capped exception
+    rows are retained; the full per-A listing is not kept.
     """
 
     status: DiagnosticStatus
@@ -70,6 +135,8 @@ class LinkExperimentDiagnostics:
     unmatched_a_rows: int | None = None
     multiply_matched_a_rows: int | None = None
     issues: tuple[ValidationIssue, ...] = ()
+    exception_groups: TrialExceptionGroups | None = None
+    settings: TrialSettingsReport | None = None
 
     @classmethod
     def from_trial(cls, trial: LinkTrialResult) -> LinkExperimentDiagnostics:
@@ -80,6 +147,7 @@ class LinkExperimentDiagnostics:
                 reason=trial.reason,
                 message=trial.message,
                 issues=trial.issues,
+                settings=trial.settings,
             )
 
         return cls(
@@ -91,6 +159,8 @@ class LinkExperimentDiagnostics:
             unmatched_a_rows=trial.unmatched_a_rows,
             multiply_matched_a_rows=trial.multiply_matched_a_rows,
             issues=trial.issues,
+            exception_groups=trial.exception_groups,
+            settings=trial.settings,
         )
 
 

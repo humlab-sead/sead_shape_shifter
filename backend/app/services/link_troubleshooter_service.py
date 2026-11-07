@@ -4,14 +4,16 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
-from typing import Any
+from typing import Any, Literal, cast
 
 import pandas as pd
 
+from backend.app.core.config import Settings, get_settings
 from backend.app.exceptions import ProjectedBudgetExceeded
 from backend.app.mappers.link_troubleshooter_mapper import LinkTroubleshooterMapper
 from backend.app.models.link_troubleshooter import (
     LinkExperimentContextResponse,
+    LinkExperimentTrialResponse,
     LinkTroubleshootKeyOptions,
     LinkTroubleshootKeys,
     LinkTroubleshootRelationship,
@@ -43,6 +45,18 @@ class LinkExperimentContextResult:
     response: LinkExperimentContextResponse | None = None
 
 
+@dataclass(frozen=True)
+class LinkExperimentTrialResult:
+    """Outcome of one context trial.
+
+    ``unavailable`` covers an unknown identifier and an identifier owned by
+    another user or project, so the route cannot reveal either case.
+    """
+
+    state: ContextLookupState
+    response: LinkExperimentTrialResponse | None = None
+
+
 class LinkTroubleshooterService:
     """Build read-only diagnostics for a saved foreign-key link."""
 
@@ -51,11 +65,13 @@ class LinkTroubleshooterService:
         baseline_service: LinkBaselineService | None = None,
         trial_service: LinkTrialService | None = None,
         context_store: LinkExperimentContextStore | None = None,
+        settings: Settings | None = None,
     ) -> None:
         """Create the baseline and trial services used for each request."""
         self.baseline_service: LinkBaselineService = baseline_service or LinkBaselineService()
         self.trial_service: LinkTrialService = trial_service or LinkTrialService()
         self.context_store: LinkExperimentContextStore = context_store if context_store is not None else get_link_experiment_context_store()
+        self.settings: Settings = settings if settings is not None else get_settings()
 
     async def run(
         self,
@@ -145,6 +161,7 @@ class LinkTroubleshooterService:
                 unmatched_a_rows=None,
                 multiply_matched_a_rows=None,
                 a_rows=None,
+                exception_groups=None,
             )
 
         return LinkTroubleshooterMapper.to_response(
@@ -204,6 +221,7 @@ class LinkTroubleshooterService:
                 relationship=self._relationship(baseline, fk) if fk is not None else None,
                 key_options=None,
                 configured_keys=LinkTroubleshootKeys(local_keys=fk.local_keys, remote_keys=fk.remote_keys) if fk is not None else None,
+                row_cap=self.settings.LINK_EXPERIMENT_GROUP_ROW_CAP,
             )
 
         try:
@@ -239,6 +257,64 @@ class LinkTroubleshooterService:
             return LinkExperimentContextResult(state=lookup.state)
         return LinkExperimentContextResult(state="found", response=self._context_response(lookup.context))
 
+    async def run_context_trial(
+        self,
+        *,
+        context_id: str,
+        owner_principal_id: str,
+        project_locator: str,
+        local_keys: Sequence[str],
+        remote_keys: Sequence[str],
+        how: str | None = None,
+        allow_null_keys: bool | None = None,
+        null_keys_equal: bool | None = None,
+    ) -> LinkExperimentTrialResult:
+        """Run one trial against an owned snapshot without reopening it."""
+        lookup = await self.context_store.lookup_context(
+            context_id,
+            owner_principal_id=owner_principal_id,
+            project_locator=project_locator,
+        )
+        if lookup.state != "found" or lookup.context is None:
+            return LinkExperimentTrialResult(state=lookup.state)
+
+        context: LinkExperimentContext = lookup.context
+        baseline: LinkBaselineResult = context.snapshot.baseline
+        trial: LinkTrialResult = self.trial_service.run_trial(
+            baseline,
+            local_keys=local_keys,
+            remote_keys=remote_keys,
+            how=cast(Literal["inner", "left"] | None, how),
+            allow_null_keys=allow_null_keys,
+            null_keys_equal=null_keys_equal,
+        )
+
+        if trial.status == "complete" and trial.input_a_rows != baseline.row_count_before:
+            trial = replace(
+                trial,
+                status="failed",
+                reason="baseline_input_mismatch",
+                message="The requested-key trial input count did not match the retained baseline.",
+                input_a_rows=None,
+                output_rows=None,
+                unmatched_a_rows=None,
+                multiply_matched_a_rows=None,
+                a_rows=None,
+                exception_groups=None,
+            )
+
+        response: LinkExperimentTrialResponse = LinkTroubleshooterMapper.to_context_trial_response(
+            context_id=context.context_id,
+            expires_at=context.expires_at,
+            baseline=baseline,
+            diagnostics=context.snapshot.diagnostics,
+            trial=trial,
+            local_keys=local_keys,
+            remote_keys=remote_keys,
+            row_cap=self.settings.LINK_EXPERIMENT_GROUP_ROW_CAP,
+        )
+        return LinkExperimentTrialResult(state="found", response=response)
+
     async def close_context(
         self,
         *,
@@ -272,6 +348,7 @@ class LinkTroubleshooterService:
             relationship=self._relationship(baseline, fk) if fk is not None else None,
             key_options=key_options,
             configured_keys=LinkTroubleshootKeys(local_keys=fk.local_keys, remote_keys=fk.remote_keys) if fk is not None else None,
+            row_cap=self.settings.LINK_EXPERIMENT_GROUP_ROW_CAP,
         )
 
     def _configured_diagnostics(self, baseline: LinkBaselineResult, fk: ForeignKeyConfig) -> LinkTrialResult:
@@ -280,6 +357,7 @@ class LinkTroubleshooterService:
             baseline,
             local_keys=fk.local_keys,
             remote_keys=fk.remote_keys,
+            settings_source="saved",
         )
         if trial.status == "complete" and (
             trial.input_a_rows != baseline.row_count_before or trial.output_rows != baseline.row_count_after
@@ -294,6 +372,7 @@ class LinkTroubleshooterService:
                 unmatched_a_rows=None,
                 multiply_matched_a_rows=None,
                 a_rows=None,
+                exception_groups=None,
             )
         return trial
 
