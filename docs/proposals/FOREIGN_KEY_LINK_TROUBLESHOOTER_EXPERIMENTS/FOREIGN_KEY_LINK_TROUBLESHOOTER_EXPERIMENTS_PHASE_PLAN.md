@@ -77,12 +77,12 @@ Compare original and trial link behavior on the same snapshot inputs without rer
 
 - Apply ordered key pairs, inner/left join choice, and only `allow_null_keys` and `null_keys_equal` to independent partial configuration copies. Preserve inherited versus explicit values and production default resolution.
 - Return complete totals and link findings only for completed trials. Report blocked, invalid, or oversized trials without success-shaped partial totals; do not mutate retained inputs or saved state.
-- Replace server paging with deterministic, separately bounded unmatched and multiply matched A-row groups, complete counts, and explicit truncation of rows, key values, and findings under an aggregate detail budget.
+- Replace server paging with deterministic, separately bounded unmatched and multiply matched A-row groups, complete counts, and explicit truncation of rows, key values, and findings under a per-side aggregate detail budget.
 
 **Depends On**
 
 - Phase 1 fixed snapshot inputs, baseline status, authorization, and projected-memory check.
-- Decisions on each group's display cap, key-value and findings budget, and inherited-versus-explicit null-setting representation.
+- Recorded decisions: 100 rows per exception group, 256 bytes per key value, 50 findings and 512 bytes per message, a 256 KiB detail budget per side, and optional controls that inherit or override the saved join type and null settings.
 
 **Outputs**
 
@@ -102,11 +102,11 @@ Compare original and trial link behavior on the same snapshot inputs without rer
 
 **Task-Plan Handoff**
 
-- Source: `P-AC-1`–`P-AC-4`, `P-AC-8`. Keep the original link as the comparison baseline; do not bypass production constraints or treat fewer findings as better matching. Set caps, aggregate budget, and null-setting representation before task planning.
+- Source: `P-AC-1`–`P-AC-4`, `P-AC-8`. Keep the original link as the comparison baseline; do not bypass production constraints or treat fewer findings as better matching. Caps, detail budget, and the null-setting representation are recorded in the [Phase 2 task plan](./FOREIGN_KEY_LINK_TROUBLESHOOTER_EXPERIMENTS_PHASE_2_TASK_PLAN.md#recorded-decisions); change them only by updating that plan.
 
 **Readiness**
 
-Requires decisions on group caps, payload budget, and inherited-versus-explicit null-setting representation, plus Phase 1's context contract.
+Ready for a task plan. The group caps, detail budget, and null-setting representation are recorded, and Phase 1's context contract is in place.
 
 ### Phase 3: Dialog Controls and Contract Cutover
 
