@@ -173,7 +173,6 @@ Every row above except the health check requires an authenticated principal thro
 | `POST`   | `/api/v1/projects/{project_name}/entities/{entity_name}/sample`                                              | `project:read` |
 | `DELETE` | `/api/v1/projects/{project_name}/preview-cache`                                                              | `project:edit` |
 | `POST`   | `/api/v1/projects/{project_name}/entities/{entity_name}/foreign-keys/{fk_index}/test`                        | `project:read` |
-| `POST`   | `/api/v1/projects/{project_name}/link-troubleshooter`                                                       | `project:read` |
 | `POST`   | `/api/v1/projects/{project_name}/link-experiment-contexts`                                                  | `project:read` |
 | `GET`    | `/api/v1/projects/{project_name}/link-experiment-contexts/{context_id}`                                     | `project:read` |
 | `POST`   | `/api/v1/projects/{project_name}/link-experiment-contexts/{context_id}/trials`                              | `project:read` |

@@ -7,21 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from backend.app.models.validation import ValidationError
 
-LinkTroubleshootRowFilter = Literal["all", "unmatched", "multiply_matched"]
 SettingSource = Literal["inherited", "explicit"]
-
-
-class LinkTroubleshootRequest(BaseModel):
-    """Request a baseline comparison or a trial with selected key pairs."""
-
-    issue_type: str
-    local_entity: str
-    metadata: dict[str, Any]
-    local_keys: list[str] | None = None
-    remote_keys: list[str] | None = None
-    page: int = Field(default=1, ge=1)
-    page_size: int = Field(default=50, ge=1, le=500)
-    row_filter: LinkTroubleshootRowFilter = "all"
 
 
 class LinkTroubleshootKeys(BaseModel):
@@ -150,55 +136,15 @@ class LinkTroubleshootBaseline(BaseModel):
     detail: LinkTroubleshootDetail | None = None
 
 
-class LinkTroubleshootRow(BaseModel):
-    """One bounded A-row diagnostic."""
-
-    input_position: int
-    key_values: list[Any]
-    matched: bool
-    remote_match_count: int
-    output_row_contribution: int
-
-
-class LinkTroubleshootPagination(BaseModel):
-    """Counts for the filtered page of A-row diagnostics."""
-
-    page: int
-    page_size: int
-    filtered_row_count: int
-    returned_row_count: int
-    has_next: bool
-
-
-class LinkTroubleshootTrial(BaseModel):
-    """Requested trial status, totals, findings, and bounded rows."""
-
-    status: Literal["complete", "failed", "incomplete"]
-    reason: str
-    message: str
-    local_keys: list[str]
-    remote_keys: list[str]
-    totals: LinkTroubleshootTotals | None = None
-    issues: list[ValidationError] = Field(default_factory=list)
-    rows: list[LinkTroubleshootRow] = Field(default_factory=list)
-    pagination: LinkTroubleshootPagination | None = None
-
-
-class LinkTroubleshootResponse(BaseModel):
-    """Baseline and requested-trial results for one saved foreign key."""
-
-    status: Literal["reproduced", "not_reproduced", "ineligible"]
-    reason: str
-    message: str
-    relationship: LinkTroubleshootRelationship | None = None
-    key_options: LinkTroubleshootKeyOptions | None = None
-    configured_keys: LinkTroubleshootKeys | None = None
-    baseline: LinkTroubleshootBaseline | None = None
-    trial: LinkTroubleshootTrial | None = None
-
-
 class LinkExperimentContextRequest(BaseModel):
-    """Retain the inputs behind one reproduced linking warning."""
+    """Retain the inputs behind one reproduced linking warning.
+
+    Unknown fields are rejected so a caller that still sends stateless paging
+    fields learns that the request shape changed instead of silently ignoring
+    them.
+    """
+
+    model_config = ConfigDict(extra="forbid")
 
     issue_type: str
     local_entity: str
