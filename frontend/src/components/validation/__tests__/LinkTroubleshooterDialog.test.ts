@@ -507,6 +507,30 @@ describe('LinkTroubleshooterDialog', () => {
     expect(outputRow?.findAll('td')[2]?.text()).toBe('3')
   })
 
+  it('keeps the previous comparison visible when trial settings change', async () => {
+    const wrapper = mountDialog()
+    await flushPromises()
+
+    await buttonByText(wrapper, 'Run trial')!.trigger('click')
+    await flushPromises()
+    await selectOption(wrapper, 'Join type', 'left')
+    state.trialStale.value = true
+    await nextTick()
+
+    expect(wrapper.find('select[aria-label="Join type"]').attributes('data-selected')).toBe(JSON.stringify('left'))
+    expect(wrapper.text()).toContain('Settings changed — rerun the trial.')
+
+    const comparison = wrapper.find('section[aria-label="Baseline and trial comparison"]')
+    expect(comparison.exists()).toBe(true)
+    expect(comparison.findAll('thead th').map((header) => header.text())).toEqual([
+      'Measure',
+      'Saved link',
+      'Last trial',
+      'Change',
+    ])
+    expect(comparison.findAll('tbody tr').length).toBeGreaterThan(0)
+  })
+
   it('makes no request when the result source, group, page size, or page changes', async () => {
     const makeRows = (prefix: string) =>
       Array.from({ length: 51 }, (_, index) => makeRow(index, [`${prefix}-${index}`]))
@@ -595,6 +619,57 @@ describe('LinkTroubleshooterDialog', () => {
     await selectOption(wrapper, 'Result source', 'baseline')
     await wrapper.find('button[data-group="multiply_matched"]').trigger('click')
     expect(wrapper.find('section[aria-label="Exception rows"]').text()).toContain('MULTI')
+  })
+
+  it('uses the saved result and resets pagination from finding-summary buttons', async () => {
+    const makeRows = (prefix: string) =>
+      Array.from({ length: 51 }, (_, index) => makeRow(index, [`${prefix}-${index + 1}`]))
+    const wrapper = mountDialog(
+      makeContext({
+        detail: makeDetail({
+          unmatched: makeGroup({ total_count: 51, returned_count: 51, rows: makeRows('BASE-UNMATCHED') }),
+          multiply_matched: makeGroup({ total_count: 51, returned_count: 51, rows: makeRows('BASE-MULTI') }),
+        }),
+      })
+    )
+    await flushPromises()
+
+    nextTrial = makeComparison({
+      detail: makeDetail({
+        unmatched: makeGroup({ total_count: 51, returned_count: 51, rows: makeRows('TRIAL-UNMATCHED') }),
+        multiply_matched: makeGroup({ total_count: 51, returned_count: 51, rows: makeRows('TRIAL-MULTI') }),
+      }),
+    })
+    await buttonByText(wrapper, 'Run trial')!.trigger('click')
+    await flushPromises()
+    await selectOption(wrapper, 'Rows per page', 25)
+    await selectOption(wrapper, 'Result source', 'trial')
+    await wrapper.find('button[data-group="multiply_matched"]').trigger('click')
+    await wrapper.find('button[aria-label="Next page"]').trigger('click')
+    expect(state.page.value).toBe(2)
+    expect(wrapper.find('section[aria-label="Exception rows"]').text()).toContain('TRIAL-MULTI-26')
+
+    const inspectUnmatched = wrapper.findAll('button').find((button) => button.text().startsWith('Inspect unmatched'))
+    await inspectUnmatched!.trigger('click')
+    expect(state.side.value).toBe('baseline')
+    expect(state.group.value).toBe('unmatched')
+    expect(state.page.value).toBe(1)
+    expect(wrapper.find('section[aria-label="Exception rows"]').text()).toContain('BASE-UNMATCHED-1')
+
+    await selectOption(wrapper, 'Result source', 'trial')
+    await wrapper.find('button[data-group="unmatched"]').trigger('click')
+    await wrapper.find('button[aria-label="Next page"]').trigger('click')
+    expect(state.page.value).toBe(2)
+    expect(wrapper.find('section[aria-label="Exception rows"]').text()).toContain('TRIAL-UNMATCHED-26')
+
+    const inspectMultipleMatches = wrapper
+      .findAll('button')
+      .find((button) => button.text().startsWith('Inspect multiple matches'))
+    await inspectMultipleMatches!.trigger('click')
+    expect(state.side.value).toBe('baseline')
+    expect(state.group.value).toBe('multiply_matched')
+    expect(state.page.value).toBe(1)
+    expect(wrapper.find('section[aria-label="Exception rows"]').text()).toContain('BASE-MULTI-1')
   })
 
   it('resets exception pagination when filters or trial rows change', async () => {
