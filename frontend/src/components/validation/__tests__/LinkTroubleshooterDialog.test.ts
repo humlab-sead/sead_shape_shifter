@@ -368,13 +368,13 @@ function mountDialog(
       stubs: {
         VDialog: { template: '<div data-testid="dialog"><slot /></div>' },
         VSelect: {
-          props: ['items', 'label', 'modelValue'],
+          props: ['items', 'label', 'modelValue', 'ariaLabel'],
           emits: ['update:modelValue'],
           template: `
             <label>
               <span>{{ label }}</span>
               <select
-                :aria-label="label"
+                :aria-label="ariaLabel ?? label"
                 :data-selected="JSON.stringify(modelValue)"
                 :value="JSON.stringify(modelValue)"
                 @change="$emit('update:modelValue', JSON.parse($event.target.value))"
@@ -436,8 +436,10 @@ describe('LinkTroubleshooterDialog', () => {
     expect(wrapper.text()).toContain('Link pass: initial')
     expect(wrapper.text()).toContain('allow_row_decrease: true')
     expect(wrapper.find('[aria-label="Saved relationship"] input').exists()).toBe(false)
-    expect(wrapper.find('select[aria-label="orders"]').attributes('data-selected')).toBe(JSON.stringify('saved_code'))
-    expect(wrapper.find('select[aria-label="customers"]').attributes('data-selected')).toBe(
+    expect(wrapper.find('select[aria-label="Key pair 1 local key (orders)"]').attributes('data-selected')).toBe(
+      JSON.stringify('saved_code')
+    )
+    expect(wrapper.find('select[aria-label="Key pair 1 remote key (customers)"]').attributes('data-selected')).toBe(
       JSON.stringify('saved_value')
     )
     expect(wrapper.find('select[aria-label="Join type"]').attributes('data-selected')).toBe(JSON.stringify('inner'))
@@ -485,7 +487,9 @@ describe('LinkTroubleshooterDialog', () => {
       local_entity: 'orders',
       metadata: candidateMessage().metadata,
     })
-    expect(wrapper.find('select[aria-label="customers"]').attributes('data-selected')).toBe(JSON.stringify('system_id'))
+    expect(wrapper.find('select[aria-label="Key pair 1 remote key (customers)"]').attributes('data-selected')).toBe(
+      JSON.stringify('system_id')
+    )
     expect(wrapper.text()).toContain('Run a trial to compare')
 
     await selectOption(wrapper, 'Join type', 'left')
@@ -745,7 +749,9 @@ describe('LinkTroubleshooterDialog', () => {
 
     expect(mockReset).toHaveBeenCalledTimes(1)
     expect(mockRun).not.toHaveBeenCalled()
-    expect(wrapper.find('select[aria-label="orders"]').attributes('data-selected')).toBe(JSON.stringify('saved_code'))
+    expect(wrapper.find('select[aria-label="Key pair 1 local key (orders)"]').attributes('data-selected')).toBe(
+      JSON.stringify('saved_code')
+    )
     expect(state.context.value?.context_id).toBe('context-1')
   })
 

@@ -137,14 +137,14 @@
                     <v-select
                       v-model="localKeys[index]"
                       :items="result.key_options.local"
-                      :label="localEntityName"
+                      :aria-label="`Key pair ${index + 1} local key (${localEntityName})`"
                       density="compact"
                       hide-details
                     />
                     <v-select
                       v-model="remoteKeys[index]"
                       :items="result.key_options.remote"
-                      :label="remoteEntityName"
+                      :aria-label="`Key pair ${index + 1} remote key (${remoteEntityName})`"
                       density="compact"
                       hide-details
                     />
