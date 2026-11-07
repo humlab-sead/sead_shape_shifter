@@ -14,10 +14,17 @@ from backend.app.services.link_baseline_service import LinkBaselineResult
 from backend.app.services.link_experiment_context_store import (
     LINK_EXPERIMENT_CONTEXT_TTL,
     MIN_PROJECTED_COLUMN_BYTES,
+    JoinTypeSetting,
     LinkExperimentContext,
     LinkExperimentContextStore,
     LinkExperimentDiagnostics,
     LinkExperimentSnapshot,
+    RequestedSetting,
+    ResolvedNullPolicy,
+    TrialExceptionGroup,
+    TrialExceptionGroups,
+    TrialExceptionRow,
+    TrialSettingsReport,
     ensure_projected_budget,
     ensure_retained_input_budget,
     estimate_output_rows,
@@ -26,6 +33,7 @@ from backend.app.services.link_experiment_context_store import (
     projected_merge_bytes,
     retained_input_bytes,
 )
+from backend.app.services.link_trial_service import LinkTrialResult
 from src.model import ForeignKeyConfig, ShapeShiftProject
 from src.specifications.constraints import ForeignKeyRuntimeOptions
 
@@ -468,3 +476,80 @@ def test_prepare_link_merge_keys_rejects_a_missing_remote_system_id() -> None:
 
     with pytest.raises(KeyError):
         prepare_link_merge_keys(project, fk, local_rows, remote_rows.drop(columns=["system_id"]))
+
+
+def sample_settings() -> TrialSettingsReport:
+    """Build one resolved settings report."""
+    return TrialSettingsReport(
+        join_type=JoinTypeSetting(requested=None, source="inherited", effective="inner"),
+        allow_null_keys=RequestedSetting(requested=None, source="inherited"),
+        null_keys_equal=RequestedSetting(requested=None, source="inherited"),
+        resolved_null_policy=ResolvedNullPolicy(enforce_strict_null_keys=True, prevent_null_key_matches=False),
+    )
+
+
+def sample_groups(cap: int = 2) -> TrialExceptionGroups:
+    """Build groups whose retained rows are already capped."""
+    unmatched = tuple(TrialExceptionRow(position, ("missing",), 0, 0) for position in range(cap))
+    multiply = tuple(TrialExceptionRow(position, ("duplicate",), 2, 2) for position in range(cap))
+    return TrialExceptionGroups(
+        unmatched=TrialExceptionGroup(total_count=5, rows=unmatched),
+        multiply_matched=TrialExceptionGroup(total_count=4, rows=multiply),
+    )
+
+
+def test_diagnostics_from_a_complete_trial_retain_capped_groups_and_settings() -> None:
+    groups = sample_groups()
+    settings = sample_settings()
+
+    diagnostics = LinkExperimentDiagnostics.from_trial(
+        LinkTrialResult(
+            status="complete",
+            reason="complete",
+            message="The trial completed.",
+            input_a_rows=9,
+            output_rows=4,
+            unmatched_a_rows=5,
+            multiply_matched_a_rows=4,
+            a_rows=(),
+            exception_groups=groups,
+            settings=settings,
+        )
+    )
+
+    assert diagnostics.status == "complete"
+    assert diagnostics.input_a_rows == 9
+    assert diagnostics.output_rows == 4
+    assert diagnostics.unmatched_a_rows == 5
+    assert diagnostics.multiply_matched_a_rows == 4
+    assert diagnostics.exception_groups == groups
+    assert diagnostics.exception_groups.unmatched.total_count == 5
+    assert len(diagnostics.exception_groups.unmatched.rows) == 2
+    assert diagnostics.settings == settings
+
+
+@pytest.mark.parametrize("status", ["failed", "incomplete"])
+def test_diagnostics_from_a_non_complete_trial_drop_counts_and_groups(status: str) -> None:
+    settings = sample_settings()
+
+    diagnostics = LinkExperimentDiagnostics.from_trial(
+        LinkTrialResult(
+            status=status,  # type: ignore[arg-type]
+            reason="invalid_keys" if status == "failed" else "row_limit_exceeded",
+            message="The trial is unavailable.",
+            input_a_rows=9,
+            output_rows=4,
+            unmatched_a_rows=5,
+            multiply_matched_a_rows=4,
+            exception_groups=sample_groups(),
+            settings=settings,
+        )
+    )
+
+    assert diagnostics.status == status
+    assert diagnostics.input_a_rows is None
+    assert diagnostics.output_rows is None
+    assert diagnostics.unmatched_a_rows is None
+    assert diagnostics.multiply_matched_a_rows is None
+    assert diagnostics.exception_groups is None
+    assert diagnostics.settings == settings

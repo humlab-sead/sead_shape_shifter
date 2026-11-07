@@ -14,12 +14,15 @@ from backend.app.core.config import settings
 from backend.app.main import app
 from backend.app.models.link_troubleshooter import (
     LinkExperimentContextResponse,
+    LinkExperimentTrialResponse,
     LinkTroubleshootBaseline,
+    LinkTroubleshootComparison,
     LinkTroubleshootResponse,
+    LinkTroubleshootTotals,
     LinkTroubleshootTrial,
 )
 from backend.app.services import project_service
-from backend.app.services.link_troubleshooter_service import LinkExperimentContextResult
+from backend.app.services.link_troubleshooter_service import LinkExperimentContextResult, LinkExperimentTrialResult
 
 REQUEST = {
     "issue_type": "row_count_mismatch",
@@ -215,6 +218,14 @@ async def test_missing_project_returns_404_without_running_service(authorized_cl
 
 CONTEXT_PATH = "/api/v1/projects/test_project/link-experiment-contexts"
 CONTEXT_ITEM_PATH = f"{CONTEXT_PATH}/context-1"
+TRIAL_PATH = f"{CONTEXT_ITEM_PATH}/trials"
+TRIAL_REQUEST = {
+    "local_keys": ["trial_code"],
+    "remote_keys": ["trial_value"],
+    "how": "left",
+    "allow_null_keys": True,
+    "null_keys_equal": False,
+}
 CONTEXT_REQUEST = {
     "issue_type": "row_count_mismatch",
     "local_entity": "orders",
@@ -234,12 +245,40 @@ def context_response(*, context_id: str | None = "context-1", status: str = "rep
     )
 
 
+def trial_response(*, status: str = "complete") -> LinkExperimentTrialResponse:
+    """Build one context trial response for route tests."""
+    trial = LinkTroubleshootComparison(
+        status=status,  # type: ignore[arg-type]
+        reason="complete" if status == "complete" else "invalid_keys",
+        message="The trial finished.",
+        totals=(
+            LinkTroubleshootTotals(input_a_rows=3, output_rows=2, unmatched_a_rows=1, multiply_matched_a_rows=0)
+            if status == "complete"
+            else None
+        ),
+    )
+    return LinkExperimentTrialResponse(
+        context_id="context-1",
+        expires_at=datetime(2026, 1, 1, 12, 15, tzinfo=timezone.utc),
+        local_keys=["trial_code"],
+        remote_keys=["trial_value"],
+        baseline=LinkTroubleshootBaseline(diagnostic_status="complete"),
+        trial=trial,
+    )
+
+
 def install_context_service(monkeypatch, **overrides) -> Mock:
     """Install a context-aware service mock as the endpoint dependency."""
     service = Mock()
     service.open_context = AsyncMock(return_value=overrides.get("open_response", context_response()))
     service.read_context = AsyncMock(
         return_value=overrides.get("read_result", LinkExperimentContextResult(state="found", response=context_response()))
+    )
+    service.run_context_trial = AsyncMock(
+        return_value=overrides.get(
+            "trial_result",
+            LinkExperimentTrialResult(state="found", response=trial_response()),
+        )
     )
     service.close_context = AsyncMock(return_value=overrides.get("closed", True))
     monkeypatch.setitem(app.dependency_overrides, get_link_troubleshooter_service, lambda: service)
@@ -350,14 +389,16 @@ async def test_context_routes_require_project_read_access(
     async with client_for_principal("unrelated-user") as client:
         opened = await client.post(CONTEXT_PATH, json=CONTEXT_REQUEST)
         read = await client.get(CONTEXT_ITEM_PATH)
+        tried = await client.post(TRIAL_PATH, json=TRIAL_REQUEST)
         closed = await client.delete(CONTEXT_ITEM_PATH)
 
-    for response in (opened, read, closed):
+    for response in (opened, read, tried, closed):
         assert response.status_code == 404
         assert response.json()["detail"] == "Resource not found"
 
     service.open_context.assert_not_awaited()
     service.read_context.assert_not_awaited()
+    service.run_context_trial.assert_not_awaited()
     service.close_context.assert_not_awaited()
 
 
@@ -377,3 +418,99 @@ async def test_invalid_context_request_returns_422_without_running_service(proje
 
     assert response.status_code == 422
     service.open_context.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_context_trial_forwards_controls_and_the_authorized_owner(project_client, monkeypatch) -> None:
+    expected = trial_response()
+    service = install_context_service(monkeypatch, trial_result=LinkExperimentTrialResult(state="found", response=expected))
+
+    response = await project_client.post(TRIAL_PATH, json=TRIAL_REQUEST)
+
+    assert response.status_code == 200, response.text
+    assert response.json() == expected.model_dump(mode="json")
+    service.run_context_trial.assert_awaited_once_with(
+        context_id="context-1",
+        owner_principal_id="test-user",
+        project_locator="test_project",
+        local_keys=["trial_code"],
+        remote_keys=["trial_value"],
+        how="left",
+        allow_null_keys=True,
+        null_keys_equal=False,
+    )
+
+
+@pytest.mark.asyncio
+async def test_context_trial_omitted_controls_are_forwarded_as_inherited(project_client, monkeypatch) -> None:
+    service = install_context_service(monkeypatch)
+
+    response = await project_client.post(TRIAL_PATH, json={"local_keys": ["trial_code"], "remote_keys": ["trial_value"]})
+
+    assert response.status_code == 200, response.text
+    service.run_context_trial.assert_awaited_once_with(
+        context_id="context-1",
+        owner_principal_id="test-user",
+        project_locator="test_project",
+        local_keys=["trial_code"],
+        remote_keys=["trial_value"],
+        how=None,
+        allow_null_keys=None,
+        null_keys_equal=None,
+    )
+
+
+@pytest.mark.asyncio
+async def test_context_trial_reports_expiry_explicitly(project_client, monkeypatch) -> None:
+    install_context_service(monkeypatch, trial_result=LinkExperimentTrialResult(state="expired"))
+
+    response = await project_client.post(TRIAL_PATH, json=TRIAL_REQUEST)
+
+    assert response.status_code == 410
+    assert response.json()["detail"]["reason"] == "context_expired"
+
+
+@pytest.mark.asyncio
+async def test_context_trial_conceals_an_unavailable_identifier(project_client, monkeypatch) -> None:
+    service = install_context_service(monkeypatch, trial_result=LinkExperimentTrialResult(state="unavailable"))
+
+    response = await project_client.post(TRIAL_PATH, json=TRIAL_REQUEST)
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Resource not found"
+    service.run_context_trial.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_context_trial_returns_a_failed_payload_without_totals(project_client, monkeypatch) -> None:
+    failed = trial_response(status="failed")
+    install_context_service(monkeypatch, trial_result=LinkExperimentTrialResult(state="found", response=failed))
+
+    response = await project_client.post(TRIAL_PATH, json=TRIAL_REQUEST)
+
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["trial"]["status"] == "failed"
+    assert payload["trial"]["reason"] == "invalid_keys"
+    assert payload["trial"]["totals"] is None
+    assert payload["trial"]["detail"] is None
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"local_keys": ["trial_code"]},
+        {"remote_keys": ["trial_value"]},
+        {"local_keys": ["trial_code"], "remote_keys": ["trial_value"], "how": "outer"},
+        {"local_keys": ["trial_code"], "remote_keys": ["trial_value"], "page": 2},
+        {"local_keys": ["trial_code"], "remote_keys": ["trial_value"], "unknown": True},
+    ],
+)
+@pytest.mark.asyncio
+async def test_invalid_context_trial_request_returns_422_without_running_a_trial(project_client, monkeypatch, body: dict) -> None:
+    service = install_context_service(monkeypatch)
+
+    response = await project_client.post(TRIAL_PATH, json=body)
+
+    assert response.status_code == 422
+    service.run_context_trial.assert_not_awaited()

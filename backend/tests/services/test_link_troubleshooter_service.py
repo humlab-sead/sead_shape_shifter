@@ -40,6 +40,7 @@ class StubTrialService:
     def __init__(self, results: Sequence[LinkTrialResult]) -> None:
         self.results = list(results)
         self.calls: list[tuple[list[str] | None, list[str] | None]] = []
+        self.option_calls: list[dict[str, Any]] = []
 
     def run_trial(
         self,
@@ -47,8 +48,10 @@ class StubTrialService:
         *,
         local_keys: Sequence[str] | None,
         remote_keys: Sequence[str] | None,
+        **options: Any,
     ) -> LinkTrialResult:
         self.calls.append((list(local_keys) if local_keys is not None else None, list(remote_keys) if remote_keys is not None else None))
+        self.option_calls.append(options)
         return self.results.pop(0)
 
 
@@ -695,8 +698,13 @@ class RaisingTrialService:
     """Reject every trial with the projected-budget failure."""
 
     def run_trial(
-        self, baseline: LinkBaselineResult, *, local_keys: Sequence[str] | None, remote_keys: Sequence[str] | None
-    ):  # pylint: disable=unused-argument
+        self,
+        baseline: LinkBaselineResult,  # pylint: disable=unused-argument
+        *,
+        local_keys: Sequence[str] | None,  # pylint: disable=unused-argument
+        remote_keys: Sequence[str] | None,  # pylint: disable=unused-argument
+        **options: Any,  # pylint: disable=unused-argument
+    ):
         raise ProjectedBudgetExceeded(
             "The projected memory for link trial is 200.0 MiB, above the configured limit of 100.0 MiB.",
             context={"stage": "link trial", "limit_bytes": 100, "projected_bytes": 200},
@@ -885,3 +893,142 @@ async def test_close_context_releases_the_snapshot() -> None:
 
     after_close = await service.read_context(context_id=opened.context_id or "", owner_principal_id="alice", project_locator="project-a")
     assert after_close.state == "unavailable"
+
+
+# ---------------------------------------------------------------------------
+# Context trials
+# ---------------------------------------------------------------------------
+
+
+async def run_context_trial(
+    service: LinkTroubleshooterService,
+    context_id: str,
+    *,
+    local_keys: list[str] | None = None,
+    remote_keys: list[str] | None = None,
+    owner: str = "alice",
+    project_locator: str = "project-a",
+    **options: Any,
+):
+    """Run one context trial for the default test owner and project."""
+    return await service.run_context_trial(
+        context_id=context_id,
+        owner_principal_id=owner,
+        project_locator=project_locator,
+        local_keys=local_keys or ["trial_code"],
+        remote_keys=remote_keys or ["trial_value"],
+        **options,
+    )
+
+
+@pytest.mark.asyncio
+async def test_context_trial_reuses_the_snapshot_without_replaying() -> None:
+    service, baseline_service, trial_service, _, _ = context_service(
+        baseline=make_baseline(),
+        trials=[trial_result(), trial_result(), trial_result()],
+    )
+    opened = await open_default_context(service)
+
+    first = await run_context_trial(service, opened.context_id or "")
+    second = await run_context_trial(service, opened.context_id or "", local_keys=["saved_code"], remote_keys=["saved_value"])
+
+    assert first.state == "found" and first.response is not None
+    assert second.state == "found" and second.response is not None
+    assert first.response.context_id == opened.context_id
+    assert first.response.expires_at == opened.expires_at
+    assert second.response.expires_at == opened.expires_at
+    assert len(baseline_service.calls) == 1
+    assert len(trial_service.calls) == 3
+
+
+@pytest.mark.asyncio
+async def test_context_trial_forwards_only_the_requested_controls() -> None:
+    service, _, trial_service, _, _ = context_service(baseline=make_baseline(), trials=[trial_result(), trial_result()])
+    opened = await open_default_context(service)
+
+    await run_context_trial(
+        service,
+        opened.context_id or "",
+        how="left",
+        allow_null_keys=True,
+        null_keys_equal=False,
+    )
+
+    assert trial_service.option_calls[-1] == {
+        "how": "left",
+        "allow_null_keys": True,
+        "null_keys_equal": False,
+    }
+
+
+@pytest.mark.asyncio
+async def test_context_trial_rejects_expired_and_foreign_contexts() -> None:
+    service, baseline_service, trial_service, store, clock = context_service(
+        baseline=make_baseline(),
+        trials=[trial_result(), trial_result()],
+    )
+    opened = await open_default_context(service)
+
+    other_user = await run_context_trial(service, opened.context_id or "", owner="mallory")
+    other_project = await run_context_trial(service, opened.context_id or "", project_locator="project-b")
+
+    assert other_user.state == "unavailable"
+    assert other_project.state == "unavailable"
+    assert len(trial_service.calls) == 1
+
+    clock.advance(LINK_EXPERIMENT_CONTEXT_TTL)
+    expired = await run_context_trial(service, opened.context_id or "")
+
+    assert expired.state == "expired"
+    assert expired.response is None
+    assert len(store) == 0
+    assert len(baseline_service.calls) == 1
+    assert len(trial_service.calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_context_trial_keeps_an_incomplete_baseline_without_totals() -> None:
+    incomplete = trial_result(
+        status="incomplete",
+        input_rows=None,
+        output_rows=None,
+        unmatched_rows=None,
+        multiply_matched_rows=None,
+        reason="row_limit_exceeded",
+    )
+    service, _, _, _, _ = context_service(baseline=make_baseline(), trials=[incomplete, trial_result()])
+    opened = await open_default_context(service)
+
+    result = await run_context_trial(service, opened.context_id or "")
+
+    assert result.state == "found" and result.response is not None
+    assert result.response.baseline is not None
+    assert result.response.baseline.diagnostic_status == "incomplete"
+    assert result.response.baseline.output_rows is None
+    assert result.response.trial.totals is not None
+    assert result.response.trial.detail is not None
+
+
+@pytest.mark.asyncio
+async def test_context_trial_does_not_mutate_frames_or_saved_project(tmp_path) -> None:
+    baseline = make_baseline()
+    local_before = baseline.local_rows.copy(deep=True)
+    remote_before = baseline.remote_rows.copy(deep=True)
+    saved_fk = baseline._foreign_key
+    assert saved_fk is not None
+    saved_fk_data = deepcopy(saved_fk.fk_cfg)
+
+    service, _, trial_service, _, _ = context_service(baseline=baseline)
+    service.trial_service = LinkTrialService(
+        settings=Settings(_env_file=None, APPLICATION_ROOT=tmp_path)  # pyright: ignore[reportCallIssue]
+    )
+    opened = await open_default_context(service)
+
+    result = await run_context_trial(service, opened.context_id or "", local_keys=["trial_code"], remote_keys=["trial_value"])
+
+    assert result.state == "found" and result.response is not None
+    assert result.response.trial.status == "complete"
+    pd.testing.assert_frame_equal(baseline.local_rows, local_before)
+    pd.testing.assert_frame_equal(baseline.remote_rows, remote_before)
+    assert saved_fk.fk_cfg == saved_fk_data
+    assert trial_service is not service.trial_service
