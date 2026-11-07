@@ -29,130 +29,176 @@
         <div>{{ result.message }}</div>
       </v-alert>
 
-      <section v-if="result.relationship" class="mb-5" aria-label="Saved relationship">
-        <h3 class="text-subtitle-1 mb-2">Saved relationship</h3>
-        <div class="d-flex flex-wrap ga-2 mb-2">
-          <v-chip>A: {{ result.relationship.local_entity }}</v-chip>
-          <v-chip>B: {{ result.relationship.remote_entity || '—' }}</v-chip>
-          <v-chip>Link index: {{ formatCount(result.relationship.fk_index) }}</v-chip>
-          <v-chip>Join: {{ result.relationship.join_type || '—' }}</v-chip>
-        </div>
-        <div class="text-body-2 font-weight-medium mb-1">Constraints</div>
-        <div v-if="Object.keys(result.relationship.constraints).length" class="d-flex flex-wrap ga-2">
-          <v-chip v-for="(value, key) in result.relationship.constraints" :key="key" size="small" variant="outlined">
-            {{ key }}: {{ formatValue(value) }}
-          </v-chip>
-        </div>
-        <span v-else class="text-body-2 text-medium-emphasis">None configured</span>
-      </section>
-
-      <section v-if="result.configured_keys" class="mb-5" aria-label="Configured keys">
-        <h3 class="text-subtitle-1 mb-2">Configured keys</h3>
-        <div class="d-flex flex-wrap ga-2">
-          <v-chip v-for="key in result.configured_keys.local_keys" :key="`local-${key}`" size="small">
-            A: {{ key }}
-          </v-chip>
-          <v-chip v-for="key in result.configured_keys.remote_keys" :key="`remote-${key}`" size="small">
-            B: {{ key }}
-          </v-chip>
-        </div>
-      </section>
-
-      <section class="mb-5" aria-label="Unmatched value counts">
-        <h3 class="text-subtitle-1 mb-2">Unmatched value counts</h3>
-        <v-table density="compact">
-          <tbody>
-            <tr>
-              <td>Recorded by the warning</td>
-              <td>{{ formatCount(result.recorded_orphan_count) }}</td>
-            </tr>
-            <tr>
-              <td>Current full-data count</td>
-              <td>{{ formatCount(result.current_orphan_count) }}</td>
-            </tr>
-          </tbody>
-        </v-table>
-      </section>
-
-      <section v-if="result.values" class="mb-5" aria-label="Unmatched values">
-        <h3 class="text-subtitle-1 mb-2">Current unmatched values</h3>
-        <div class="text-body-2">Complete distinct unmatched count: {{ result.values.distinct_value_count }}</div>
-        <div class="text-caption text-medium-emphasis mb-3">
-          Returned on this page: {{ result.values.returned_value_count }} · Page {{ result.values.page }} ·
-          {{ result.values.page_size }} values per page
-        </div>
-
-        <v-data-table
-          v-if="result.values.values.length > 0"
-          class="integrity-values-table"
-          :headers="valueHeaders"
-          :items="valueRows"
-          item-value="rowKey"
-          :items-per-page="-1"
-          hide-default-footer
-          density="compact"
-        >
-          <template #item.actions="{ item }">
-            <div class="text-right">
-              <v-btn
-                class="integrity-select-value"
-                size="x-small"
-                variant="text"
-                :disabled="loading"
-                @click="selectValue(item.value)"
-              >
-                Show local rows
-              </v-btn>
-            </div>
-          </template>
-        </v-data-table>
-        <p v-else class="text-body-2 text-medium-emphasis">No unmatched values on this page.</p>
-
-        <div v-if="pageCount > 1" class="d-flex justify-end mt-2">
-          <v-pagination
-            :model-value="result.values.page"
-            :length="pageCount"
-            density="comfortable"
-            @update:model-value="changePage"
-          />
-        </div>
-      </section>
-
-      <section v-if="result.selected" class="mb-2" aria-label="Selected value rows">
-        <template v-if="result.selected.status === 'selected'">
-          <h3 class="text-subtitle-1 mb-1">Local rows for the selected value</h3>
-          <div class="text-body-2">Selected key: {{ formatKey(result.selected.key_values ?? []) }}</div>
-          <div class="text-body-2 mb-2">
-            Complete matching local rows: {{ formatCount(result.selected.total_row_count) }} · Returned rows:
-            {{ formatCount(result.selected.returned_row_count) }}
-          </div>
-          <v-alert v-if="result.selected.columns_truncated" type="info" variant="tonal" density="compact" class="mb-2">
-            Only the first {{ result.selected.columns.length }} columns are shown.
-          </v-alert>
+      <section class="integrity-finding-summary mb-4" aria-label="Integrity finding summary">
+        <h2 class="text-subtitle-1 mb-2">Current finding</h2>
+        <p v-if="result.current_orphan_count === 0" class="mb-2">
+          No unmatched key values are present in the current data.
+        </p>
+        <p v-else-if="result.current_orphan_count !== null" class="mb-2">
+          {{ formatCount(result.current_orphan_count) }} distinct unmatched key values are present in the current data
+          for {{ result.relationship?.remote_entity || 'the remote entity' }}.
+        </p>
+        <p v-else class="mb-2">The current unmatched key-value count is unavailable.</p>
+        <v-btn v-if="result.values" size="small" variant="outlined" @click="focusUnmatchedValues">
+          Inspect unmatched values
+        </v-btn>
+        <section class="mt-3" aria-label="Unmatched value counts">
           <v-table density="compact">
-            <thead>
-              <tr>
-                <th v-for="column in result.selected.columns" :key="column">{{ column }}</th>
-              </tr>
-            </thead>
             <tbody>
-              <tr v-for="(row, index) in result.selected.rows" :key="index">
-                <td v-for="column in result.selected.columns" :key="column">{{ formatValue(row[column]) }}</td>
+              <tr>
+                <td>Recorded unmatched key values</td>
+                <td>{{ formatCount(result.recorded_orphan_count) }}</td>
               </tr>
-              <tr v-if="result.selected.rows.length === 0">
-                <td :colspan="Math.max(result.selected.columns.length, 1)" class="text-center text-medium-emphasis">
-                  No local rows.
-                </td>
+              <tr>
+                <td>Current unmatched key values</td>
+                <td>{{ formatCount(result.current_orphan_count) }}</td>
               </tr>
             </tbody>
           </v-table>
-        </template>
-
-        <v-alert v-else type="warning" variant="tonal" density="compact" class="integrity-selection-unavailable">
-          <div v-if="result.selected.reason" class="text-caption mb-1">Reason: {{ result.selected.reason }}</div>
-          <div>{{ result.selected.message }}</div>
-        </v-alert>
+        </section>
       </section>
+
+      <div class="integrity-troubleshooter-workspace">
+        <aside class="integrity-link-details" aria-label="Saved link details">
+          <section v-if="result.relationship" class="mb-5" aria-label="Saved relationship">
+            <h3 class="text-subtitle-1 mb-2">Saved relationship</h3>
+            <div class="d-flex flex-wrap ga-2 mb-2">
+              <v-chip>A: {{ result.relationship.local_entity }}</v-chip>
+              <v-chip>B: {{ result.relationship.remote_entity || '—' }}</v-chip>
+              <v-chip>Link index: {{ formatCount(result.relationship.fk_index) }}</v-chip>
+              <v-chip>Join: {{ result.relationship.join_type || '—' }}</v-chip>
+            </div>
+            <details class="integrity-details">
+              <summary>Saved link rules</summary>
+              <div v-if="Object.keys(result.relationship.constraints).length" class="d-flex flex-wrap ga-2 mt-2">
+                <v-chip
+                  v-for="(value, key) in result.relationship.constraints"
+                  :key="key"
+                  size="small"
+                  variant="outlined"
+                >
+                  {{ key }}: {{ formatValue(value) }}
+                </v-chip>
+              </div>
+              <span v-else class="text-body-2 text-medium-emphasis">None configured</span>
+            </details>
+          </section>
+
+          <section v-if="result.configured_keys" class="mb-5" aria-label="Configured keys">
+            <h3 class="text-subtitle-1 mb-2">Configured key pairs</h3>
+            <div class="integrity-key-headings" aria-hidden="true">
+              <span>{{ result.relationship?.local_entity || 'Local entity' }}</span>
+              <span>{{ result.relationship?.remote_entity || 'Remote entity' }}</span>
+            </div>
+            <v-table density="compact">
+              <tbody>
+                <tr v-for="(pair, index) in configuredKeyPairs" :key="`key-pair-${index}`">
+                  <td>{{ pair.local }}</td>
+                  <td>{{ pair.remote }}</td>
+                </tr>
+              </tbody>
+            </v-table>
+          </section>
+        </aside>
+
+        <main class="integrity-results">
+          <section v-if="result.values" class="mb-5" aria-label="Unmatched values">
+            <h3 ref="unmatchedValuesRef" class="text-subtitle-1 mb-2">Unmatched values</h3>
+            <div class="text-body-2">
+              Complete distinct unmatched value count: {{ result.values.distinct_value_count }}
+            </div>
+            <div class="text-caption text-medium-emphasis mb-3">
+              Showing {{ result.values.returned_value_count }} of {{ result.values.distinct_value_count }} values · Page
+              {{ result.values.page }}
+            </div>
+
+            <v-data-table
+              v-if="result.values.values.length > 0"
+              class="integrity-values-table"
+              :headers="valueHeaders"
+              :items="valueRows"
+              item-value="rowKey"
+              :items-per-page="-1"
+              hide-default-footer
+              density="compact"
+            >
+              <template #item.actions="{ item }">
+                <div class="text-right">
+                  <v-btn
+                    class="integrity-select-value"
+                    size="x-small"
+                    variant="text"
+                    :disabled="loading"
+                    @click="selectValue(item.value)"
+                  >
+                    Show local rows
+                  </v-btn>
+                </div>
+              </template>
+            </v-data-table>
+            <p v-else class="text-body-2 text-medium-emphasis">No unmatched values on this page.</p>
+
+            <div v-if="pageCount > 1" class="d-flex justify-end mt-2">
+              <v-pagination
+                :model-value="result.values.page"
+                :length="pageCount"
+                density="comfortable"
+                @update:model-value="changePage"
+              />
+            </div>
+          </section>
+
+          <section v-if="result.selected" class="mb-2" aria-label="Selected value rows">
+            <template v-if="result.selected.status === 'selected'">
+              <h3 class="text-subtitle-1 mb-1">Affected local rows</h3>
+              <div class="text-body-2">Selected key: {{ formatKey(result.selected.key_values ?? []) }}</div>
+              <div class="text-body-2 mb-2">
+                Local rows for this value: {{ formatCount(result.selected.total_row_count) }} · Returned rows:
+                {{ formatCount(result.selected.returned_row_count) }}
+              </div>
+              <v-alert
+                v-if="result.selected.columns_truncated"
+                type="info"
+                variant="tonal"
+                density="compact"
+                class="mb-2"
+              >
+                Only the first {{ result.selected.columns.length }} columns are shown.
+              </v-alert>
+              <v-table density="compact">
+                <thead>
+                  <tr>
+                    <th v-for="column in result.selected.columns" :key="column">{{ column }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(row, index) in result.selected.rows" :key="index">
+                    <td v-for="column in result.selected.columns" :key="column">{{ formatValue(row[column]) }}</td>
+                  </tr>
+                  <tr v-if="result.selected.rows.length === 0">
+                    <td :colspan="Math.max(result.selected.columns.length, 1)" class="text-center text-medium-emphasis">
+                      No local rows.
+                    </td>
+                  </tr>
+                </tbody>
+              </v-table>
+            </template>
+
+            <v-alert v-else type="warning" variant="tonal" density="compact" class="integrity-selection-unavailable">
+              <div v-if="result.selected.reason" class="text-caption mb-1">Reason: {{ result.selected.reason }}</div>
+              <div>{{ result.selected.message }}</div>
+            </v-alert>
+          </section>
+        </main>
+      </div>
+
+      <details class="integrity-details mt-4" aria-label="Technical details">
+        <summary>Technical details</summary>
+        <p class="text-body-2 mt-2">{{ message.message }}</p>
+        <p class="text-caption text-medium-emphasis mb-0">
+          {{ result.status }} · {{ result.reason }} · {{ result.source }}
+        </p>
+      </details>
     </template>
   </div>
 </template>
@@ -185,7 +231,19 @@ const error = ref<FormattedError | null>(null)
 const result = ref<IntegrityTroubleshootResponse | null>(null)
 const page = ref(1)
 const selectedToken = ref<string | null>(null)
+const unmatchedValuesRef = ref<HTMLElement | null>(null)
 let requestVersion = 0
+
+const configuredKeyPairs = computed(() => {
+  const localKeys = result.value?.configured_keys?.local_keys ?? []
+  const remoteKeys = result.value?.configured_keys?.remote_keys ?? []
+  const pairCount = Math.max(localKeys.length, remoteKeys.length)
+
+  return Array.from({ length: pairCount }, (_, index) => ({
+    local: localKeys[index] ?? '—',
+    remote: remoteKeys[index] ?? '—',
+  }))
+})
 
 const pageCount = computed(() => {
   const values = result.value?.values
@@ -244,6 +302,10 @@ function changePage(value: number): void {
   page.value = value
   selectedToken.value = null
   void sendRequest()
+}
+
+function focusUnmatchedValues(): void {
+  unmatchedValuesRef.value?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
 }
 
 async function sendRequest(): Promise<void> {
@@ -307,3 +369,50 @@ function formatCount(value: number | null | undefined): string {
   return value === null || value === undefined ? '—' : value.toLocaleString()
 }
 </script>
+
+<style scoped>
+.integrity-finding-summary {
+  padding: 1rem;
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-radius: 0.5rem;
+  background: rgba(var(--v-theme-primary), 0.04);
+}
+
+.integrity-troubleshooter-workspace {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.8fr) minmax(0, 1.6fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.integrity-link-details,
+.integrity-results {
+  min-width: 0;
+}
+
+.integrity-key-headings {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 0.25rem;
+  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity));
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.integrity-details {
+  border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  padding-top: 0.75rem;
+}
+
+.integrity-details > summary {
+  cursor: pointer;
+  font-weight: 500;
+}
+
+@media (max-width: 900px) {
+  .integrity-troubleshooter-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+</style>

@@ -199,9 +199,10 @@ describe('useLinkTroubleshooter', () => {
     })
     expect(result).toEqual(comparison())
     expect(state.trial.value).toEqual(comparison())
+    expect(state.trialStale.value).toBe(false)
   })
 
-  it('clears a displayed trial and ignores an in-flight trial when controls change', async () => {
+  it('marks a displayed trial stale and ignores an in-flight trial when controls change', async () => {
     vi.mocked(linkTroubleshooterApi.open).mockResolvedValue(contextResponse())
     vi.mocked(linkTroubleshooterApi.trial).mockResolvedValueOnce(trialResponse())
     const state = useLinkTroubleshooter('project-a')
@@ -213,12 +214,14 @@ describe('useLinkTroubleshooter', () => {
     vi.mocked(linkTroubleshooterApi.trial).mockReturnValueOnce(pending.promise)
     const running = state.run()
     state.localKeys.value = ['trial_code']
-    expect(state.trial.value).toBeNull()
+    expect(state.trial.value).toEqual(comparison())
+    expect(state.trialStale.value).toBe(true)
 
     pending.resolve(trialResponse())
     await running
 
-    expect(state.trial.value).toBeNull()
+    expect(state.trial.value).toEqual(comparison())
+    expect(state.trialStale.value).toBe(true)
     expect(state.loading.value).toBe(false)
   })
 
