@@ -119,9 +119,6 @@ describe('IntegrityTroubleshooterBody', () => {
       metadata: { fk_index: 0, fk_signature: 'saved-signature', orphan_count: 2 },
       page: 1,
     })
-    expect(wrapper.text()).toContain('reproduced')
-    expect(wrapper.text()).toContain('current full normalization')
-    expect(wrapper.text()).toContain('current data, not the saved warning')
     expect(wrapper.text()).toContain('Complete distinct unmatched count: 2')
     expect(wrapper.text()).toContain('Returned on this page: 2')
     expect(wrapper.text()).toContain('A: orders')
@@ -130,6 +127,19 @@ describe('IntegrityTroubleshooterBody', () => {
     expect(wrapper.text()).toContain('B: code')
     expect(wrapper.text()).toContain('MISSING-A')
     expect(wrapper.text()).toContain('allow_row_decrease: true')
+    // A reproduced warning is the expected outcome, so it gets no status banner.
+    expect(wrapper.find('.integrity-status').exists()).toBe(false)
+  })
+
+  it('tells the user that the link is re-read from current data while it loads', async () => {
+    inspect().mockReset()
+    inspect().mockImplementationOnce(() => new Promise<IntegrityTroubleshootResponse>(() => undefined))
+
+    const wrapper = mountBody()
+    await flushPromises()
+
+    expect(wrapper.find('.integrity-loading').text()).toContain('current data')
+    expect(wrapper.text()).not.toContain('Inspected data source')
   })
 
   it('separates the recorded warning count from the current count', async () => {
@@ -192,6 +202,7 @@ describe('IntegrityTroubleshooterBody', () => {
     const wrapper = mountBody()
     await flushPromises()
 
+    expect(wrapper.find('.integrity-status').exists()).toBe(true)
     expect(wrapper.text()).toContain('not_reproduced')
     expect(wrapper.text()).toContain('normalization_failed')
     expect(wrapper.text()).toContain('Full normalization did not finish.')
@@ -217,6 +228,21 @@ describe('IntegrityTroubleshooterBody', () => {
     await flushPromises()
 
     expect(wrapper.find('section[aria-label="Unmatched values"] tbody tr').text()).toContain('—, X-1')
+  })
+
+  it('renders one unmatched-value row per value with its local row count', async () => {
+    const wrapper = mountBody()
+    await flushPromises()
+
+    const section = wrapper.find('section[aria-label="Unmatched values"]')
+    expect(section.find('thead').text()).toContain('Unmatched key')
+    expect(section.find('thead').text()).toContain('Local rows')
+
+    const rows = section.findAll('tbody tr')
+    expect(rows).toHaveLength(2)
+    expect(rows[0]?.findAll('td').map((cell) => cell.text())).toEqual(['MISSING-A', '1', 'Show local rows'])
+    expect(rows[1]?.findAll('td').map((cell) => cell.text())).toEqual(['MISSING-B', '3', 'Show local rows'])
+    expect(section.findAll('.integrity-select-value')).toHaveLength(2)
   })
 
   it('pages with the current page number and clears the selection', async () => {
@@ -400,14 +426,16 @@ describe('IntegrityTroubleshooterBody', () => {
       })
       .mockImplementationOnce(async (_projectName, request) => {
         requests.push(request)
-        return response({ message: 'Second warning inspected.' })
+        return response({ status: 'not_reproduced', reason: 'second_response', message: 'Second warning inspected.' })
       })
 
     const wrapper = mountBody()
     await wrapper.setProps({ message: warning({ message: 'Second integrity warning' }) })
     await flushPromises()
 
-    resolveFirst?.(response({ message: 'First warning inspected.' }))
+    resolveFirst?.(
+      response({ status: 'not_reproduced', reason: 'first_response', message: 'First warning inspected.' })
+    )
     await flushPromises()
 
     expect(wrapper.text()).toContain('Second warning inspected.')

@@ -4,7 +4,7 @@ import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import ValidationMessageList from '../ValidationMessageList.vue'
-import type { ValidationError } from '@/types'
+import type { DataValidationMode, ValidationError } from '@/types'
 
 const vuetify = createVuetify({ components, directives })
 
@@ -28,10 +28,10 @@ const messages: ValidationError[] = [
   },
 ]
 
-function mountList(msgs: ValidationError[] = messages) {
+function mountList(msgs: ValidationError[] = messages, validationMode: DataValidationMode | null = null) {
   return mount(ValidationMessageList, {
     global: { plugins: [vuetify] },
-    props: { messages: msgs },
+    props: { messages: msgs, validationMode },
   })
 }
 
@@ -240,6 +240,53 @@ describe('ValidationMessageList', () => {
     const refusal = wrapper.find('.integrity-troubleshoot-refusal')
     expect(refusal.exists()).toBe(true)
     expect(refusal.text()).toContain('does not record which saved link')
+  })
+
+  it.each([
+    [
+      'integrity',
+      {
+        severity: 'warning',
+        entity: 'orders',
+        message: "2 foreign key value(s) not found in 'customers'",
+        code: 'FK_DATA_INTEGRITY',
+        metadata: { fk_index: 0, fk_signature: 'saved-signature', orphan_count: 2 },
+      } as ValidationError,
+    ],
+    [
+      'row count',
+      {
+        severity: 'warning',
+        entity: 'orders',
+        message: 'Link changed the row count.',
+        code: 'ROW_COUNT_MISMATCH',
+        metadata: { fk_index: 0, fk_signature: 'saved-signature', link_pass: 'initial', join_type: 'inner' },
+      } as ValidationError,
+    ],
+  ])('turns off troubleshooting for a sample-data %s warning', async (_label, candidate) => {
+    const wrapper = mountList([candidate], 'sample')
+
+    await itemAt(wrapper, 0).trigger('click')
+
+    expect(wrapper.find('.link-troubleshooter-action').exists()).toBe(false)
+    expect(wrapper.find('.integrity-troubleshoot-refusal').text()).toContain('turned off for sample data')
+    expect(wrapper.emitted('troubleshoot')).toBeUndefined()
+  })
+
+  it.each(['complete', 'single_pass'] as const)('keeps troubleshooting for %s results', async (mode) => {
+    const candidate: ValidationError = {
+      severity: 'warning',
+      entity: 'orders',
+      message: "2 foreign key value(s) not found in 'customers'",
+      code: 'FK_DATA_INTEGRITY',
+      metadata: { fk_index: 0, fk_signature: 'saved-signature', orphan_count: 2 },
+    }
+    const wrapper = mountList([candidate], mode)
+
+    await itemAt(wrapper, 0).trigger('click')
+
+    expect(wrapper.find('.link-troubleshooter-action').exists()).toBe(true)
+    expect(wrapper.find('.integrity-troubleshoot-refusal').exists()).toBe(false)
   })
 
   it('leaves unrelated warnings without an action or a refusal', async () => {

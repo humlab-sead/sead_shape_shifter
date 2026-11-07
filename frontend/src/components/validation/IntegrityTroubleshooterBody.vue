@@ -1,6 +1,12 @@
 <template>
   <div class="integrity-troubleshooter-body">
-    <v-progress-linear v-if="loading" indeterminate color="primary" class="mb-4" />
+    <div v-if="loading" class="mb-4 integrity-loading">
+      <v-progress-linear indeterminate color="primary" class="mb-1" />
+      <p class="text-caption text-medium-emphasis mb-0">
+        Reading the link from current data. The link is re-run and its unmatched values recomputed every time this
+        dialog opens or its page changes.
+      </p>
+    </div>
 
     <v-alert v-if="error" type="error" variant="tonal" class="mb-4">
       <div>{{ error.message }}</div>
@@ -10,8 +16,11 @@
     </v-alert>
 
     <template v-if="result">
+      <!-- A reproduced warning is the expected outcome, so only a failed reproduction
+      is reported. The current values below already show what was found. -->
       <v-alert
-        :type="result.status === 'reproduced' ? 'success' : 'warning'"
+        v-if="result.status !== 'reproduced'"
+        type="warning"
         variant="tonal"
         class="mb-4 integrity-status"
         :title="result.status"
@@ -19,12 +28,6 @@
         <div class="text-caption mb-1">Reason: {{ result.reason }}</div>
         <div>{{ result.message }}</div>
       </v-alert>
-
-      <p class="text-body-2 mb-4 integrity-source">
-        <span class="text-medium-emphasis">Inspected data source:</span>
-        {{ result.source }}
-        <span class="text-medium-emphasis">(current data, not the saved warning)</span>
-      </p>
 
       <section v-if="result.relationship" class="mb-5" aria-label="Saved relationship">
         <h3 class="text-subtitle-1 mb-2">Saved relationship</h3>
@@ -79,32 +82,30 @@
           {{ result.values.page_size }} values per page
         </div>
 
-        <v-table v-if="result.values.values.length > 0" density="compact">
-          <thead>
-            <tr>
-              <th>Unmatched key</th>
-              <th class="text-right">Local rows</th>
-              <th class="text-right">Rows</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(value, index) in result.values.values" :key="`${value.token}-${index}`">
-              <td>{{ formatKey(value.key_values) }}</td>
-              <td class="text-right">{{ value.local_row_count }}</td>
-              <td class="text-right">
-                <v-btn
-                  class="integrity-select-value"
-                  size="x-small"
-                  variant="text"
-                  :disabled="loading"
-                  @click="selectValue(value)"
-                >
-                  Show local rows
-                </v-btn>
-              </td>
-            </tr>
-          </tbody>
-        </v-table>
+        <v-data-table
+          v-if="result.values.values.length > 0"
+          class="integrity-values-table"
+          :headers="valueHeaders"
+          :items="valueRows"
+          item-value="rowKey"
+          :items-per-page="-1"
+          hide-default-footer
+          density="compact"
+        >
+          <template #item.actions="{ item }">
+            <div class="text-right">
+              <v-btn
+                class="integrity-select-value"
+                size="x-small"
+                variant="text"
+                :disabled="loading"
+                @click="selectValue(item.value)"
+              >
+                Show local rows
+              </v-btn>
+            </div>
+          </template>
+        </v-data-table>
         <p v-else class="text-body-2 text-medium-emphasis">No unmatched values on this page.</p>
 
         <div v-if="pageCount > 1" class="d-flex justify-end mt-2">
@@ -194,6 +195,30 @@ const pageCount = computed(() => {
 
   return Math.max(1, Math.ceil(values.distinct_value_count / values.page_size))
 })
+
+interface ValueTableRow {
+  rowKey: string
+  unmatchedKey: string
+  localRowCount: number
+  value: IntegrityTroubleshootValue
+}
+
+// Headers are not sortable: the backend pages the complete value set in a fixed
+// order, so sorting one page would only reorder the rows currently returned.
+const valueHeaders = [
+  { title: 'Unmatched key', key: 'unmatchedKey', sortable: false },
+  { title: 'Local rows', key: 'localRowCount', align: 'end' as const, sortable: false },
+  { title: 'Rows', key: 'actions', align: 'end' as const, sortable: false },
+]
+
+const valueRows = computed<ValueTableRow[]>(() =>
+  (result.value?.values?.values ?? []).map((value, index) => ({
+    rowKey: `${value.token}-${index}`,
+    unmatchedKey: formatKey(value.key_values),
+    localRowCount: value.local_row_count,
+    value,
+  }))
+)
 
 watch(
   () => [props.projectName, props.message] as const,

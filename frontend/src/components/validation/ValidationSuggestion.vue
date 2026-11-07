@@ -32,9 +32,12 @@
             </v-chip>
           </v-list-item-subtitle>
 
-          <v-alert v-if="issue.suggestion" type="info" variant="tonal" density="compact" class="mt-2 mb-2">
-            <div class="d-flex align-center justify-space-between">
-              <div class="text-body-2"><strong>Suggestion:</strong> {{ issue.suggestion }}</div>
+          <v-alert v-if="visibleSuggestion(issue) || issue.auto_fixable" type="info" variant="tonal" density="compact" class="mt-2 mb-2">
+            <div class="d-flex align-center justify-space-between ga-4">
+              <div v-if="visibleSuggestion(issue)" class="text-body-2">
+                <strong>Suggestion:</strong> {{ visibleSuggestion(issue) }}
+              </div>
+              <v-spacer v-else />
               <v-tooltip text="Preview and apply automated fix with backup" location="bottom">
                 <template v-slot:activator="{ props }">
                   <v-btn
@@ -76,6 +79,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import type { ValidationError } from '@/types'
+import { distinctSuggestion } from '@/utils/validationSuggestion'
 
 interface Props {
   issues: ValidationError[]
@@ -103,6 +107,10 @@ const hasAutoFixableIssues = computed(() => {
 const autoFixableCount = computed(() => {
   return autoFixableIssues.value.length
 })
+
+function visibleSuggestion(issue: ValidationError): string | null {
+  return distinctSuggestion(issue.message, issue.suggestion)
+}
 
 async function handleApplySingle(issue: ValidationError, index: number) {
   emit('apply-fix', issue, index)

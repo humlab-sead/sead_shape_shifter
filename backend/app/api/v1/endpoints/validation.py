@@ -25,7 +25,7 @@ async def validate_project_data(
     name: str,
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
     entity_names: list[str] | None = None,
-    validation_mode: DataValidationMode = DataValidationMode.SAMPLE,
+    validation_mode: DataValidationMode = DataValidationMode.COMPLETE,
 ) -> ValidationResult:
     """
     Run data-aware validation on project.
@@ -39,9 +39,10 @@ async def validate_project_data(
     Args:
         name: Project name
         entity_names: Optional list of entity names to validate (None = all entities)
-        validation_mode: Validation mode:
-            - SAMPLE: Fast validation using preview samples (up to 1000 rows per entity)
+        validation_mode: Validation mode (default: COMPLETE):
             - COMPLETE: Full validation using complete normalized dataset (slower but comprehensive)
+            - SAMPLE: Fast validation using preview samples (up to 1000 rows per entity); foreign-key
+              warnings from sample data can name values that exist outside the sample
             - SINGLE_PASS: Full validation from one project-wide normalization pass; entities that
               cannot be produced are reported individually and only their dependents are skipped
 

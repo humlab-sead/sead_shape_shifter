@@ -68,6 +68,35 @@ describe('ValidationPanel', () => {
     expect(wrapper.emitted('troubleshoot')?.[0]).toEqual([warning])
   })
 
+  it('turns off link troubleshooting for sample data results', async () => {
+    const warning = {
+      severity: 'warning' as const,
+      entity: 'orders',
+      message: 'Link changed the row count.',
+      code: 'ROW_COUNT_MISMATCH',
+      metadata: {
+        fk_index: 0,
+        fk_signature: 'saved-signature',
+        link_pass: 'initial',
+        join_type: 'inner',
+      },
+    }
+    const wrapper = mountValidationPanel({
+      is_valid: true,
+      errors: [],
+      warnings: [warning],
+      info: [],
+      error_count: 0,
+      warning_count: 1,
+      validation_mode: 'sample',
+    })
+
+    await wrapper.find('tbody > tr.v-data-table__tr').trigger('click')
+
+    expect(wrapper.find('.link-troubleshooter-action').exists()).toBe(false)
+    expect(wrapper.find('.integrity-troubleshoot-refusal').text()).toContain('turned off for sample data')
+  })
+
   it('renders merged-entity issues grouped by entity and branch', async () => {
     const validationResult: ValidationResult = {
       is_valid: false,

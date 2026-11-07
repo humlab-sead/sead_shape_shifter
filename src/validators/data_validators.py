@@ -588,6 +588,9 @@ class ForeignKeyIntegrityValidator:
         if orphan_count > sample_count:
             sample_str += ", ..."
 
+        # The message already names the count and the unmatched values, so a
+        # suggestion would only repeat that text. The expanded warning offers the
+        # link inspection action for the local rows that carry these values.
         return [
             ValidationIssue(
                 severity="warning",
@@ -595,7 +598,6 @@ class ForeignKeyIntegrityValidator:
                 field="foreign_keys[].entity",
                 message=f"{orphan_count} foreign key value(s) not found in '{remote_entity}' ({sample_str})",
                 code="FK_DATA_INTEGRITY",
-                suggestion=f"Ensure all foreign key values exist in referenced entity. Sample missing: {sample_str}",
                 category="data",
                 priority="medium",
                 auto_fixable=False,
