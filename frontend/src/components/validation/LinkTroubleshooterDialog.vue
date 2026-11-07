@@ -66,28 +66,10 @@
             <p v-if="result.baseline.unmatched_a_rows !== null" class="mb-1">
               {{ formatCount(result.baseline.unmatched_a_rows) }} source rows have no match in {{ remoteEntityName }}.
             </p>
-            <p v-if="result.baseline.input_a_rows !== null && result.baseline.output_rows !== null" class="mb-2">
+            <p v-if="result.baseline.input_a_rows !== null && result.baseline.output_rows !== null" class="mb-0">
               Saved link: {{ formatCount(result.baseline.input_a_rows) }} input rows →
               {{ formatCount(result.baseline.output_rows) }} output rows.
             </p>
-            <div class="d-flex flex-wrap ga-2">
-              <v-btn
-                v-if="result.baseline.unmatched_a_rows !== null"
-                size="small"
-                variant="outlined"
-                @click="selectBaselineGroup('unmatched')"
-              >
-                Inspect unmatched · {{ formatCount(result.baseline.unmatched_a_rows) }}
-              </v-btn>
-              <v-btn
-                v-if="result.baseline.multiply_matched_a_rows !== null"
-                size="small"
-                variant="outlined"
-                @click="selectBaselineGroup('multiply_matched')"
-              >
-                Inspect multiple matches · {{ formatCount(result.baseline.multiply_matched_a_rows) }}
-              </v-btn>
-            </div>
           </section>
 
           <div
@@ -650,12 +632,6 @@ function removeKeyPair(index: number): void {
 
 function runTrial(): void {
   void run()
-}
-
-function selectBaselineGroup(value: LinkExceptionGroupName): void {
-  side.value = 'baseline'
-  group.value = value
-  page.value = 1
 }
 
 function selectGroup(value: LinkExceptionGroupName): void {

@@ -625,57 +625,6 @@ describe('LinkTroubleshooterDialog', () => {
     expect(wrapper.find('section[aria-label="Exception rows"]').text()).toContain('MULTI')
   })
 
-  it('uses the saved result and resets pagination from finding-summary buttons', async () => {
-    const makeRows = (prefix: string) =>
-      Array.from({ length: 51 }, (_, index) => makeRow(index, [`${prefix}-${index + 1}`]))
-    const wrapper = mountDialog(
-      makeContext({
-        detail: makeDetail({
-          unmatched: makeGroup({ total_count: 51, returned_count: 51, rows: makeRows('BASE-UNMATCHED') }),
-          multiply_matched: makeGroup({ total_count: 51, returned_count: 51, rows: makeRows('BASE-MULTI') }),
-        }),
-      })
-    )
-    await flushPromises()
-
-    nextTrial = makeComparison({
-      detail: makeDetail({
-        unmatched: makeGroup({ total_count: 51, returned_count: 51, rows: makeRows('TRIAL-UNMATCHED') }),
-        multiply_matched: makeGroup({ total_count: 51, returned_count: 51, rows: makeRows('TRIAL-MULTI') }),
-      }),
-    })
-    await buttonByText(wrapper, 'Run trial')!.trigger('click')
-    await flushPromises()
-    await selectOption(wrapper, 'Rows per page', 25)
-    await selectOption(wrapper, 'Result source', 'trial')
-    await wrapper.find('button[data-group="multiply_matched"]').trigger('click')
-    await wrapper.find('button[aria-label="Next page"]').trigger('click')
-    expect(state.page.value).toBe(2)
-    expect(wrapper.find('section[aria-label="Exception rows"]').text()).toContain('TRIAL-MULTI-26')
-
-    const inspectUnmatched = wrapper.findAll('button').find((button) => button.text().startsWith('Inspect unmatched'))
-    await inspectUnmatched!.trigger('click')
-    expect(state.side.value).toBe('baseline')
-    expect(state.group.value).toBe('unmatched')
-    expect(state.page.value).toBe(1)
-    expect(wrapper.find('section[aria-label="Exception rows"]').text()).toContain('BASE-UNMATCHED-1')
-
-    await selectOption(wrapper, 'Result source', 'trial')
-    await wrapper.find('button[data-group="unmatched"]').trigger('click')
-    await wrapper.find('button[aria-label="Next page"]').trigger('click')
-    expect(state.page.value).toBe(2)
-    expect(wrapper.find('section[aria-label="Exception rows"]').text()).toContain('TRIAL-UNMATCHED-26')
-
-    const inspectMultipleMatches = wrapper
-      .findAll('button')
-      .find((button) => button.text().startsWith('Inspect multiple matches'))
-    await inspectMultipleMatches!.trigger('click')
-    expect(state.side.value).toBe('baseline')
-    expect(state.group.value).toBe('multiply_matched')
-    expect(state.page.value).toBe(1)
-    expect(wrapper.find('section[aria-label="Exception rows"]').text()).toContain('BASE-MULTI-1')
-  })
-
   it('resets exception pagination when filters or trial rows change', async () => {
     const makeRows = (prefix: string, start: number, count: number) =>
       Array.from({ length: count }, (_, index) => makeRow(start + index, [`${prefix}-${index + 1}`]))
