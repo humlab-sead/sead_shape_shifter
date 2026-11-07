@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from copy import deepcopy
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from unittest.mock import patch
 
@@ -11,8 +12,10 @@ import pandas as pd
 import pytest
 
 from backend.app.core.config import Settings
+from backend.app.exceptions import ProjectedBudgetExceeded
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.services.link_baseline_service import LinkBaselineResult, LinkBaselineService
+from backend.app.services.link_experiment_context_store import LINK_EXPERIMENT_CONTEXT_TTL, LinkExperimentContextStore
 from backend.app.services.link_trial_service import ARowTrialDiagnostic, LinkTrialResult, LinkTrialService
 from backend.app.services.link_troubleshooter_service import LinkTroubleshooterService
 from backend.app.utils.caches import ShapeShiftCache, ShapeShiftProjectCache
@@ -667,3 +670,218 @@ async def test_real_troubleshooter_does_not_read_or_write_caches_or_mutate_saved
 
     assert response.status == "reproduced"
     assert api_project.model_dump() == before
+
+
+# ---------------------------------------------------------------------------
+# Retained experiment context
+# ---------------------------------------------------------------------------
+
+
+class StubClock:
+    """Controllable clock for context expiry tests."""
+
+    def __init__(self) -> None:
+        self.current: datetime = datetime(2026, 1, 1, 12, 0, tzinfo=timezone.utc)
+
+    def __call__(self) -> datetime:
+        return self.current
+
+    def advance(self, delta: timedelta) -> None:
+        """Move the clock forward."""
+        self.current += delta
+
+
+class RaisingTrialService:
+    """Reject every trial with the projected-budget failure."""
+
+    def run_trial(
+        self, baseline: LinkBaselineResult, *, local_keys: Sequence[str] | None, remote_keys: Sequence[str] | None
+    ):  # pylint: disable=unused-argument
+        raise ProjectedBudgetExceeded(
+            "The projected memory for link trial is 200.0 MiB, above the configured limit of 100.0 MiB.",
+            context={"stage": "link trial", "limit_bytes": 100, "projected_bytes": 200},
+        )
+
+
+def context_service(
+    *,
+    baseline: LinkBaselineResult,
+    trials: Sequence[LinkTrialResult] = (),
+    trial_service: Any | None = None,
+) -> tuple[LinkTroubleshooterService, StubBaselineService, Any, LinkExperimentContextStore, StubClock]:
+    """Build a service over a stub clock and a recording baseline service."""
+    clock = StubClock()
+    store = LinkExperimentContextStore(clock=clock)
+    baseline_service = StubBaselineService(baseline)
+    service = LinkTroubleshooterService(
+        baseline_service=baseline_service,  # type: ignore[arg-type]
+        trial_service=trial_service if trial_service is not None else StubTrialService(trials),  # type: ignore[arg-type]
+        context_store=store,
+    )
+    return service, baseline_service, service.trial_service, store, clock
+
+
+async def open_default_context(service: LinkTroubleshooterService):
+    """Open one context for the default test owner and project."""
+    return await service.open_context(
+        project_name="project-a",
+        issue_type="row_count_mismatch",
+        local_entity="orders",
+        metadata={},
+        owner_principal_id="alice",
+        project_locator="project-a",
+    )
+
+
+@pytest.mark.asyncio
+async def test_open_context_retains_a_usable_snapshot() -> None:
+    service, baseline_service, trial_service, store, _ = context_service(baseline=make_baseline(), trials=[trial_result()])
+
+    response = await open_default_context(service)
+
+    assert response.status == "reproduced"
+    assert response.context_id is not None
+    assert response.expires_at is not None
+    assert response.baseline is not None
+    assert response.baseline.diagnostic_status == "complete"
+    assert response.baseline.output_rows == 2
+    assert response.configured_keys is not None
+    assert response.key_options is not None
+    assert len(store) == 1
+    assert len(baseline_service.calls) == 1
+    assert trial_service.calls == [(["saved_code"], ["saved_value"])]
+
+
+@pytest.mark.asyncio
+async def test_open_context_reports_an_incomplete_diagnostic_without_totals() -> None:
+    incomplete = trial_result(
+        status="incomplete",
+        input_rows=None,
+        output_rows=None,
+        unmatched_rows=None,
+        multiply_matched_rows=None,
+        reason="row_limit_exceeded",
+    )
+    service, _, _, _, _ = context_service(baseline=make_baseline(), trials=[incomplete])
+
+    response = await open_default_context(service)
+
+    assert response.context_id is not None
+    assert response.baseline is not None
+    assert response.baseline.diagnostic_status == "incomplete"
+    assert response.baseline.diagnostic_reason == "row_limit_exceeded"
+    assert response.baseline.input_a_rows is None
+    assert response.baseline.output_rows is None
+    assert response.baseline.unmatched_a_rows is None
+    assert response.baseline.multiply_matched_a_rows is None
+
+
+@pytest.mark.asyncio
+async def test_open_context_keeps_failed_diagnostics_without_totals() -> None:
+    failed = trial_result(
+        status="failed",
+        input_rows=None,
+        output_rows=None,
+        unmatched_rows=None,
+        multiply_matched_rows=None,
+        reason="invalid_keys",
+    )
+    service, _, _, _, _ = context_service(baseline=make_baseline(), trials=[failed])
+
+    response = await open_default_context(service)
+
+    assert response.context_id is not None
+    assert response.baseline is not None
+    assert response.baseline.diagnostic_status == "failed"
+    assert response.baseline.input_a_rows is None
+
+
+@pytest.mark.asyncio
+async def test_open_context_treats_a_budget_rejection_as_an_incomplete_baseline() -> None:
+    service, _, _, store, _ = context_service(baseline=make_baseline(), trial_service=RaisingTrialService())
+
+    response = await open_default_context(service)
+
+    assert response.context_id is not None
+    assert response.baseline is not None
+    assert response.baseline.diagnostic_status == "incomplete"
+    assert response.baseline.diagnostic_reason == "projected_budget_exceeded"
+    assert "MiB" in (response.baseline.diagnostic_message or "")
+    assert response.baseline.output_rows is None
+    assert len(store) == 1
+
+
+@pytest.mark.asyncio
+async def test_open_context_without_reproduction_returns_no_identifier() -> None:
+    baseline = make_baseline(status="not_reproduced", include_context=False)
+    service, _, trial_service, store, _ = context_service(baseline=baseline)
+
+    response = await open_default_context(service)
+
+    assert response.context_id is None
+    assert response.expires_at is None
+    assert response.status == "not_reproduced"
+    assert response.baseline is None
+    assert response.configured_keys is not None
+    assert not trial_service.calls
+    assert len(store) == 0
+
+
+@pytest.mark.asyncio
+async def test_read_context_reuses_the_snapshot_without_replaying() -> None:
+    service, baseline_service, trial_service, _, clock = context_service(baseline=make_baseline(), trials=[trial_result()])
+    opened = await open_default_context(service)
+    clock.advance(timedelta(minutes=14))
+
+    result = await service.read_context(context_id=opened.context_id or "", owner_principal_id="alice", project_locator="project-a")
+
+    assert result.state == "found"
+    assert result.response is not None
+    assert result.response.context_id == opened.context_id
+    assert result.response.expires_at == opened.expires_at
+    assert result.response.baseline is not None
+    assert result.response.baseline.unmatched_a_rows == 1
+    assert len(baseline_service.calls) == 1
+    assert trial_service.calls == [(["saved_code"], ["saved_value"])]
+
+
+@pytest.mark.asyncio
+async def test_read_context_reports_expiry_without_running_another_trial() -> None:
+    service, baseline_service, trial_service, store, clock = context_service(baseline=make_baseline(), trials=[trial_result()])
+    opened = await open_default_context(service)
+    clock.advance(LINK_EXPERIMENT_CONTEXT_TTL)
+
+    result = await service.read_context(context_id=opened.context_id or "", owner_principal_id="alice", project_locator="project-a")
+
+    assert result.state == "expired"
+    assert result.response is None
+    assert len(store) == 0
+    assert len(baseline_service.calls) == 1
+    assert trial_service.calls == [(["saved_code"], ["saved_value"])]
+
+
+@pytest.mark.asyncio
+async def test_read_and_close_conceal_another_owners_context() -> None:
+    service, _, _, store, _ = context_service(baseline=make_baseline(), trials=[trial_result()])
+    opened = await open_default_context(service)
+
+    context_id = opened.context_id or ""
+    other_user = await service.read_context(context_id=context_id, owner_principal_id="mallory", project_locator="project-a")
+    other_project = await service.read_context(context_id=context_id, owner_principal_id="alice", project_locator="project-b")
+
+    assert other_user.state == "unavailable"
+    assert other_project.state == "unavailable"
+    assert await service.close_context(context_id=context_id, owner_principal_id="mallory", project_locator="project-a") is False
+    assert len(store) == 1
+
+
+@pytest.mark.asyncio
+async def test_close_context_releases_the_snapshot() -> None:
+    service, _, _, store, _ = context_service(baseline=make_baseline(), trials=[trial_result()])
+    opened = await open_default_context(service)
+
+    assert await service.close_context(context_id=opened.context_id or "", owner_principal_id="alice", project_locator="project-a") is True
+    assert len(store) == 0
+
+    after_close = await service.read_context(context_id=opened.context_id or "", owner_principal_id="alice", project_locator="project-a")
+    assert after_close.state == "unavailable"

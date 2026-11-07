@@ -23,6 +23,10 @@ from backend.app.ingesters.registry import IngesterRegistry, get_ingester_regist
 from backend.app.middleware.correlation import CorrelationMiddleware
 from backend.app.middleware.proxy_auth import ProxyAuthenticationMiddleware
 from backend.app.services.data_source_service import DataSourceService
+from backend.app.services.link_experiment_context_store import (
+    LinkExperimentContextStore,
+    init_link_experiment_context_store,
+)
 from backend.app.services.project_service import ProjectService
 from backend.app.utils.public_errors import public_error_detail
 from backend.app.utils.safe_logging import sanitize_log_value
@@ -103,6 +107,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:  # pylint: disable=unused-ar
     logger.info(f"Project directory: {settings.PROJECTS_DIR}")
     app_state: ApplicationState = init_app_state(settings.PROJECTS_DIR)
     await app_state.start()
+
+    # Link experiment contexts are in-process state, so they share the single-worker
+    # deployment requirement already recorded for ApplicationState.
+    experiment_context_store: LinkExperimentContextStore = init_link_experiment_context_store()
+    await experiment_context_store.start()
+
     _log_development_authorization_bootstrap_hint()
 
     # Initialize JVM for UCanAccess (MS Access database support)
@@ -121,6 +131,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:  # pylint: disable=unused-ar
     yield
 
     # Cleanup
+    await experiment_context_store.stop()
     await app_state.stop()
     logger.info("Shutting down Shape Shifter Project Editor API")
 

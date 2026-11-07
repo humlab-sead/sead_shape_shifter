@@ -73,6 +73,7 @@ Backend settings use the `SHAPE_SHIFTER_` prefix and are loaded from
 | `SHAPE_SHIFTER_ENABLED_INGESTERS` | `null` | Enabled ingester keys; null means all discovered ingesters. |
 | `SHAPE_SHIFTER_MATERIALIZATION_INLINE_THRESHOLD` | `20` | Row threshold for inline materialized data. |
 | `SHAPE_SHIFTER_LINK_TRIAL_MAX_OUTPUT_ROWS` | `1,000,000` | Maximum estimated output rows for a foreign-key trial merge. Estimates above this limit return an incomplete result without totals or row details. |
+| `SHAPE_SHIFTER_LINK_EXPERIMENT_MAX_MEMORY_MB` | `100` | Memory limit in MiB for one link experiment computation. Retained link inputs and the projected peak for input copies and materialized join output are compared against it before merging. Excess work fails with `ProjectedBudgetExceeded` and no totals or row details. The estimate is per computation, so it does not bound the memory of simultaneous requests. |
 
 Set `SEAD_HOST`, `SEAD_PORT`, `SEAD_DBNAME`, and `SEAD_USER` through the project
 data-source configuration when required. Keep PostgreSQL passwords in

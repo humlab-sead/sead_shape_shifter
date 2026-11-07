@@ -10,6 +10,7 @@ import pandas as pd
 
 from backend.app.mappers.validation_mapper import ValidationMapper
 from backend.app.models.link_troubleshooter import (
+    LinkExperimentContextResponse,
     LinkTroubleshootBaseline,
     LinkTroubleshootKeyOptions,
     LinkTroubleshootKeys,
@@ -23,7 +24,10 @@ from backend.app.models.link_troubleshooter import (
 from backend.app.models.validation import ValidationError
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
     from backend.app.services.link_baseline_service import LinkBaselineResult
+    from backend.app.services.link_experiment_context_store import LinkExperimentDiagnostics
     from backend.app.services.link_trial_service import LinkTrialResult
     from src.specifications.constraints import ValidationIssue as LinkerValidationIssue
 
@@ -71,6 +75,55 @@ class LinkTroubleshooterMapper:
             configured_keys=configured_keys,
             baseline=baseline_result,
             trial=trial_result,
+        )
+
+    @staticmethod
+    def to_context_response(
+        *,
+        context_id: str | None,
+        expires_at: datetime | None,
+        baseline: LinkBaselineResult,
+        diagnostics: LinkExperimentDiagnostics | None,
+        relationship: LinkTroubleshootRelationship | None,
+        key_options: LinkTroubleshootKeyOptions | None,
+        configured_keys: LinkTroubleshootKeys | None,
+    ) -> LinkExperimentContextResponse:
+        """Build the retained-context response for one snapshot.
+
+        A snapshot exists only after reproduction, so an unreproduced baseline
+        carries no baseline block and no complete counts.
+        """
+        return LinkExperimentContextResponse(
+            context_id=context_id,
+            status=baseline.status,
+            reason=baseline.reason,
+            message=baseline.message,
+            expires_at=expires_at,
+            relationship=relationship,
+            key_options=key_options,
+            configured_keys=configured_keys,
+            baseline=LinkTroubleshooterMapper._map_context_baseline(baseline, diagnostics) if context_id is not None else None,
+        )
+
+    @staticmethod
+    def _map_context_baseline(
+        baseline: LinkBaselineResult,
+        diagnostics: LinkExperimentDiagnostics | None,
+    ) -> LinkTroubleshootBaseline:
+        """Map a retained baseline, keeping totals only for complete diagnostics."""
+        is_complete: bool = diagnostics is not None and diagnostics.status == "complete"
+
+        return LinkTroubleshootBaseline(
+            input_a_rows=diagnostics.input_a_rows if is_complete and diagnostics is not None else None,
+            output_rows=diagnostics.output_rows if is_complete and diagnostics is not None else None,
+            unmatched_a_rows=diagnostics.unmatched_a_rows if is_complete and diagnostics is not None else None,
+            multiply_matched_a_rows=diagnostics.multiply_matched_a_rows if is_complete and diagnostics is not None else None,
+            diagnostic_status=diagnostics.status if diagnostics is not None else "not_run",
+            diagnostic_reason=diagnostics.reason if diagnostics is not None else None,
+            diagnostic_message=diagnostics.message if diagnostics is not None else None,
+            issues=LinkTroubleshooterMapper._map_issues(
+                diagnostics.issues if diagnostics is not None and diagnostics.issues else baseline.issues
+            ),
         )
 
     @staticmethod
