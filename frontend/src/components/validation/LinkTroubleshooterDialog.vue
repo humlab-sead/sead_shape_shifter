@@ -122,7 +122,7 @@
                     />
                   </div>
                   <p v-if="result.baseline.settings" class="text-caption text-medium-emphasis mb-3">
-                    Saved: {{ describeJoin(result.baseline.settings.join_type) }}
+                    Configured: {{ describeJoin(result.baseline.settings.join_type) }}
                   </p>
 
                   <details class="link-troubleshooter-details mb-3">
@@ -214,7 +214,7 @@
 
                   <div class="d-flex align-center ga-2">
                     <v-btn color="primary" :disabled="!canRunTrial || loading" @click="runTrial">Run trial</v-btn>
-                    <v-btn variant="text" :disabled="!result.baseline" @click="reset">Reset to saved</v-btn>
+                    <v-btn variant="text" :disabled="!result.baseline" @click="reset">Reset to configured link</v-btn>
                   </div>
                 </section>
               </template>
@@ -252,7 +252,7 @@
                     :aria-pressed="side === 'baseline'"
                     @click="selectSide('baseline')"
                   >
-                    Saved link
+                    Configured link
                   </v-btn>
                   <v-btn
                     v-if="trial"
@@ -298,7 +298,7 @@
                   <div class="link-result-stat-value">{{ formatCount(stat.value) }}</div>
                   <div class="text-body-2 text-medium-emphasis">{{ stat.label }}</div>
                   <div v-if="showDeltas" class="text-caption text-medium-emphasis" :data-delta="stat.key">
-                    {{ formatDelta(stat.saved, stat.value) }} vs saved
+                    {{ formatDelta(stat.configured, stat.value) }} vs configured
                   </div>
                 </div>
               </div>
@@ -535,7 +535,7 @@ function textifyFlag(name: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1)
 }
 
-// Saved link facts under the heading: cardinality, linking pass, then the
+// Configured link facts under the heading: cardinality, linking pass, then the
 // constraint flags that are set to true. Unset flags are left out.
 const relationshipSummary = computed<string>(() => {
   const relationship = result.value?.relationship
@@ -561,15 +561,25 @@ const relationshipSummary = computed<string>(() => {
 
 const keyPairCount = computed(() => Math.max(localKeys.value.length, remoteKeys.value.length))
 const resultStats = computed(() => {
-  const saved = result.value?.baseline
-  const active = side.value === 'trial' ? (trial.value?.totals ?? null) : saved
+  const configured = result.value?.baseline
+  const active = side.value === 'trial' ? (trial.value?.totals ?? null) : configured
   return [
-    { key: 'source_rows', label: 'Source rows', value: active?.input_a_rows, saved: saved?.input_a_rows },
-    { key: 'output_rows', label: 'Output rows', value: active?.output_rows, saved: saved?.output_rows },
+    {
+      key: 'source_rows',
+      label: 'Source rows',
+      value: active?.input_a_rows,
+      configured: configured?.input_a_rows,
+    },
+    {
+      key: 'output_rows',
+      label: 'Output rows',
+      value: active?.output_rows,
+      configured: configured?.output_rows,
+    },
   ]
 })
-// The delta is only meaningful against the saved link, so it is shown for the
-// trial result and omitted for the saved result itself.
+// The delta is only meaningful against the configured link, so it is shown for
+// the trial result and omitted for the configured result itself.
 const showDeltas = computed(() => side.value === 'trial' && trial.value?.status === 'complete')
 
 // Explain what the shown join does with source rows that find no match, so the
@@ -582,7 +592,7 @@ const joinNote = computed<string | null>(() => {
     return null
   }
   const effect = joinType === 'left' ? 'keeps' : 'removes'
-  return `The ${isTrial ? 'trial' : 'saved'} ${joinType} join ${effect} unmatched source rows.`
+  return `The ${isTrial ? 'trial' : 'configured'} ${joinType} join ${effect} unmatched source rows.`
 })
 
 const baselineFindings = computed(() => result.value?.baseline?.detail?.findings ?? null)
@@ -634,7 +644,7 @@ watch([side, group, pageSize, trial], () => {
   page.value = 1
 })
 // A result that just arrived is the one the operator asked for, so show it
-// without requiring a second switch. Clearing the trial returns to the saved link.
+// without requiring a second switch. Clearing the trial returns to the configured link.
 watch(trial, (value) => {
   side.value = value ? 'trial' : 'baseline'
 })
@@ -648,12 +658,12 @@ const exceptionHeaders = computed(() => [
 ])
 
 const joinTypeOptions = [
-  { title: 'Inherit saved', value: null },
+  { title: 'Inherit configured', value: null },
   { title: 'Inner', value: 'inner' },
   { title: 'Left', value: 'left' },
 ]
 const nullOptionItems = [
-  { title: 'Inherit saved', value: null },
+  { title: 'Inherit configured', value: null },
   { title: 'Yes', value: true },
   { title: 'No', value: false },
 ]
@@ -750,12 +760,12 @@ function formatCount(value: number | null | undefined): string {
   return value === null || value === undefined ? '—' : value.toLocaleString()
 }
 
-function formatDelta(saved: number | null | undefined, trialValue: number | null | undefined): string {
-  if (saved === null || saved === undefined || trialValue === null || trialValue === undefined) {
+function formatDelta(configured: number | null | undefined, trialValue: number | null | undefined): string {
+  if (configured === null || configured === undefined || trialValue === null || trialValue === undefined) {
     return '—'
   }
 
-  const delta = trialValue - saved
+  const delta = trialValue - configured
   return delta > 0 ? `+${delta.toLocaleString()}` : delta.toLocaleString()
 }
 </script>

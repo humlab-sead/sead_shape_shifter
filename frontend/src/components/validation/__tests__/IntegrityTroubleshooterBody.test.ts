@@ -158,13 +158,13 @@ describe('IntegrityTroubleshooterBody', () => {
     expect(wrapper.find('section[aria-label="Unmatched values"]').exists()).toBe(true)
   })
 
-  it('shows the backend refusal for a stale saved link without value controls', async () => {
+  it('shows the backend refusal for a stale configured link without value controls', async () => {
     inspect().mockReset()
     queueResponses(
       response({
         status: 'ineligible',
         reason: 'signature_mismatch',
-        message: 'The warning does not resolve to one saved link (signature_mismatch)',
+        message: 'The warning does not resolve to one configured link (signature_mismatch)',
         relationship: {
           local_entity: 'orders',
           remote_entity: null,

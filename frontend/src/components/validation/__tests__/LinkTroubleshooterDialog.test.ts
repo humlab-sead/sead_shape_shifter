@@ -441,13 +441,13 @@ describe('LinkTroubleshooterDialog', () => {
     vi.mocked(integrityTroubleshooterApi.inspect).mockResolvedValue(integrityResponse())
   })
 
-  it('shows the saved relationship as read-only and initializes controls from settings', async () => {
+  it('shows the configured relationship as read-only and initializes controls from settings', async () => {
     const wrapper = mountDialog()
     await flushPromises()
 
     expect(wrapper.text()).toContain('orders → customers')
     expect(wrapper.text()).toContain('Initial · Allow row decrease')
-    expect(wrapper.find('section[aria-label="Saved relationship"]').exists()).toBe(false)
+    expect(wrapper.find('section[aria-label="Configured relationship"]').exists()).toBe(false)
     expect(wrapper.find('select[aria-label="Key pair 1 local key (orders)"]').attributes('data-selected')).toBe(
       JSON.stringify('saved_code')
     )
@@ -457,7 +457,7 @@ describe('LinkTroubleshooterDialog', () => {
     expect(wrapper.find('select[aria-label="Join type"]').attributes('data-selected')).toBe(JSON.stringify('inner'))
     expect(wrapper.find('select[aria-label="Allow missing join keys"]').attributes('data-selected')).toBe('null')
     expect(wrapper.find('select[aria-label="Match null join-key parts"]').attributes('data-selected')).toBe('null')
-    expect(wrapper.text()).toContain('Saved: inherited; effective inner')
+    expect(wrapper.text()).toContain('Configured: inherited; effective inner')
     expect(wrapper.text()).toContain('Allow missing join keys: inherited')
     expect(wrapper.text()).toContain('Strict null checks are enforced')
     // Help text and result totals live in tooltips, not in the dialog body.
@@ -474,7 +474,7 @@ describe('LinkTroubleshooterDialog', () => {
     )
     const joinNote = wrapper.find('.join-note')
     const affectedRowToolbar = wrapper.find('.affected-row-toolbar')
-    expect(joinNote.text()).toBe('The saved inner join removes unmatched source rows.')
+    expect(joinNote.text()).toBe('The configured inner join removes unmatched source rows.')
     expect(affectedRowToolbar.text().indexOf(joinNote.text())).toBeLessThan(
       affectedRowToolbar.text().indexOf('Unmatched')
     )
@@ -500,7 +500,7 @@ describe('LinkTroubleshooterDialog', () => {
     expect(wrapper.text()).not.toContain('cardinality:')
   })
 
-  it('shows explicit saved settings on the controls', async () => {
+  it('shows explicit configured settings on the controls', async () => {
     const wrapper = mountDialog(
       makeContext({
         settings: makeSettings({
@@ -515,7 +515,7 @@ describe('LinkTroubleshooterDialog', () => {
     expect(wrapper.find('select[aria-label="Join type"]').attributes('data-selected')).toBe(JSON.stringify('left'))
     expect(wrapper.find('select[aria-label="Allow missing join keys"]').attributes('data-selected')).toBe('true')
     expect(wrapper.find('select[aria-label="Match null join-key parts"]').attributes('data-selected')).toBe('false')
-    expect(wrapper.text()).toContain('Saved: left (explicit); effective left')
+    expect(wrapper.text()).toContain('Configured: left (explicit); effective left')
     expect(wrapper.text()).toContain('Allow missing join keys: yes (explicit)')
   })
 
@@ -661,7 +661,7 @@ describe('LinkTroubleshooterDialog', () => {
     await buttonByText(wrapper, 'Run trial')!.trigger('click')
     await flushPromises()
 
-    // A completed trial is shown immediately, so its rows replace the saved rows.
+    // A completed trial is shown immediately, so its rows replace the configured rows.
     expect(wrapper.find('section[aria-label="Exception rows"]').text()).toContain('TRIAL')
     expect(wrapper.find('section[aria-label="Exception rows"] tbody tr').text()).toContain('5')
 
@@ -704,7 +704,7 @@ describe('LinkTroubleshooterDialog', () => {
     const firstRowText = () => wrapper.find('section[aria-label="Exception rows"] tbody tr').text()
     const nextPage = wrapper.find('button[aria-label="Next page"]')
 
-    // The completed trial is shown first; pagination checks start on the saved link.
+    // The completed trial is shown first; pagination checks start on the configured link.
     await selectSide(wrapper, 'baseline')
 
     await selectOption(wrapper, 'Rows per page', 25)
@@ -747,7 +747,7 @@ describe('LinkTroubleshooterDialog', () => {
     state.localKeys.value = ['system_id']
     await nextTick()
 
-    await buttonByText(wrapper, 'Reset to saved')!.trigger('click')
+    await buttonByText(wrapper, 'Reset to configured link')!.trigger('click')
     await flushPromises()
 
     expect(mockReset).toHaveBeenCalledTimes(1)
@@ -842,7 +842,7 @@ describe('LinkTroubleshooterDialog', () => {
     )
     await flushPromises()
 
-    expect(wrapper.text()).toContain('does not record which saved link')
+    expect(wrapper.text()).toContain('does not record which configured link')
     expect(openRequests).toHaveLength(0)
     expect(vi.mocked(integrityTroubleshooterApi.inspect)).not.toHaveBeenCalled()
   })

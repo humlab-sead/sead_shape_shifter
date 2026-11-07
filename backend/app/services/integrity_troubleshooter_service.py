@@ -1,4 +1,4 @@
-"""Read-only inspection of unmatched foreign-key values for one saved link.
+"""Read-only inspection of unmatched foreign-key values for one configured link.
 
 The service resolves an integrity warning to its saved foreign key, normalizes the
 current project in a private run that writes nothing to shared caches, recomputes
@@ -135,7 +135,7 @@ class IntegrityTroubleshooterService:
             return self._response(
                 status="ineligible",
                 reason=resolution.status,
-                message=f"The warning does not resolve to one saved link ({resolution.status})",
+                message=f"The warning does not resolve to one configured link ({resolution.status})",
                 relationship=relationship,
             )
 
@@ -183,7 +183,7 @@ class IntegrityTroubleshooterService:
             return self._response(
                 status="not_reproduced",
                 reason="invalid_input",
-                message="The saved link's keys or columns cannot be compared in the current data.",
+                message="The configured link's keys or columns cannot be compared in the current data.",
                 relationship=relationship,
                 configured_keys=configured_keys,
                 recorded_orphan_count=recorded_count,

@@ -239,7 +239,7 @@ async def test_boolean_orphan_count_is_not_treated_as_an_integer():
 
 @pytest.mark.asyncio
 async def test_missing_metadata_is_ineligible():
-    """A warning without saved-link identity cannot be inspected."""
+    """A warning without configured-link identity cannot be inspected."""
     service = service_for(build_api_project(BASE_CFG))
 
     result = await service.inspect(project_name=PROJECT_NAME, issue_type="FK_DATA_INTEGRITY", local_entity="orders", metadata={})
@@ -251,7 +251,7 @@ async def test_missing_metadata_is_ineligible():
 
 @pytest.mark.asyncio
 async def test_stale_signature_is_ineligible():
-    """A signature that no longer matches the saved entry is refused by name."""
+    """A signature that no longer matches the configured entry is refused by name."""
     saved_project = build_saved_project(BASE_CFG)
     service = service_for(build_api_project(BASE_CFG))
     metadata = metadata_for(saved_project, count=2)
@@ -261,6 +261,7 @@ async def test_stale_signature_is_ineligible():
 
     assert result.status == "ineligible"
     assert result.reason == "signature_mismatch"
+    assert result.message == "The warning does not resolve to one configured link (signature_mismatch)"
 
 
 @pytest.mark.asyncio
