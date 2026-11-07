@@ -159,51 +159,89 @@
 
                   <details class="link-troubleshooter-details mb-3">
                     <summary>Advanced trial settings</summary>
-                    <p class="text-caption text-medium-emphasis mt-2">
-                      These options apply to null values in configured key columns. Missing columns are reported
-                      separately.
-                    </p>
-                    <div class="d-flex flex-wrap align-center ga-3">
-                      <v-select
-                        v-model="allowNullKeys"
-                        :items="nullOptionItems"
-                        label="Allow missing join keys"
-                        density="compact"
-                        hide-details
-                        class="filter-select"
-                      />
-                      <v-select
-                        v-model="nullKeysEqual"
-                        :items="nullOptionItems"
-                        label="Match null join-key parts"
-                        density="compact"
-                        hide-details
-                        class="filter-select"
-                      />
+                    <div class="d-flex flex-wrap align-center ga-2 mt-3">
+                      <div class="d-flex align-center ga-1">
+                        <v-select
+                          v-model="allowNullKeys"
+                          :items="nullOptionItems"
+                          label="Allow missing join keys"
+                          density="compact"
+                          hide-details
+                          class="filter-select"
+                        />
+                        <v-tooltip location="top" max-width="360">
+                          <template #activator="{ props }">
+                            <v-btn
+                              v-bind="props"
+                              icon
+                              size="x-small"
+                              variant="text"
+                              class="text-medium-emphasis"
+                              aria-label="About allowing missing join keys"
+                            >
+                              <v-icon icon="mdi-help-circle-outline" size="small" />
+                            </v-btn>
+                          </template>
+                          <div class="text-body-2">
+                            <strong>Allow missing join keys</strong>
+                            <p class="mt-1 mb-1">
+                              Lets rows with a missing (null) key value still join. Missing key columns are reported as
+                              separate findings.
+                            </p>
+                            <p v-if="result.baseline.settings" class="mb-0">
+                              Allow missing join keys:
+                              {{ describeSetting(result.baseline.settings.allow_null_keys) }}. Strict null checks are
+                              {{
+                                result.baseline.settings.resolved_null_policy.enforce_strict_null_keys
+                                  ? 'enforced'
+                                  : 'relaxed'
+                              }}.
+                            </p>
+                            <p v-else class="mb-0">This diagnostic has no resolved settings report.</p>
+                          </div>
+                        </v-tooltip>
+                      </div>
+                      <div class="d-flex align-center ga-1">
+                        <v-select
+                          v-model="nullKeysEqual"
+                          :items="nullOptionItems"
+                          label="Match null join-key parts"
+                          density="compact"
+                          hide-details
+                          class="filter-select"
+                        />
+                        <v-tooltip location="top" max-width="360">
+                          <template #activator="{ props }">
+                            <v-btn
+                              v-bind="props"
+                              icon
+                              size="x-small"
+                              variant="text"
+                              class="text-medium-emphasis"
+                              aria-label="About matching null join-key parts"
+                            >
+                              <v-icon icon="mdi-help-circle-outline" size="small" />
+                            </v-btn>
+                          </template>
+                          <div class="text-body-2">
+                            <strong>Match null join-key parts</strong>
+                            <p class="mt-1 mb-1">
+                              Treats two missing (null) key values as equal, so rows can match on null.
+                            </p>
+                            <p v-if="result.baseline.settings" class="mb-0">
+                              Match null join-key parts:
+                              {{ describeSetting(result.baseline.settings.null_keys_equal) }}. Null key matches are
+                              {{
+                                result.baseline.settings.resolved_null_policy.prevent_null_key_matches
+                                  ? 'prevented'
+                                  : 'allowed'
+                              }}.
+                            </p>
+                            <p v-else class="mb-0">This diagnostic has no resolved settings report.</p>
+                          </div>
+                        </v-tooltip>
+                      </div>
                     </div>
-                    <div v-if="result.baseline.settings" class="mt-2">
-                      <p class="text-caption text-medium-emphasis mb-1">
-                        Allow missing join keys: {{ describeSetting(result.baseline.settings.allow_null_keys) }}. Strict
-                        null checks are
-                        {{
-                          result.baseline.settings.resolved_null_policy.enforce_strict_null_keys
-                            ? 'enforced'
-                            : 'relaxed'
-                        }}.
-                      </p>
-                      <p class="text-caption text-medium-emphasis mb-0">
-                        Match null join-key parts: {{ describeSetting(result.baseline.settings.null_keys_equal) }}. Null
-                        key matches are
-                        {{
-                          result.baseline.settings.resolved_null_policy.prevent_null_key_matches
-                            ? 'prevented'
-                            : 'allowed'
-                        }}.
-                      </p>
-                    </div>
-                    <p v-else class="text-caption text-medium-emphasis mt-2 mb-0">
-                      This diagnostic has no resolved settings report.
-                    </p>
                   </details>
 
                   <div class="d-flex align-center ga-2">

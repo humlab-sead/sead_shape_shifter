@@ -395,6 +395,9 @@ function mountDialog(
           emits: ['update:modelValue'],
           template: `<button type="button" aria-label="Next page" @click="$emit('update:modelValue', modelValue + 1)">Next page</button>`,
         },
+        // Tooltip text is rendered in an overlay in the browser, so the stub
+        // renders the help text inline to keep it assertable.
+        VTooltip: { template: '<div data-testid="tooltip"><slot /></div>' },
       },
     },
   })
@@ -448,6 +451,13 @@ describe('LinkTroubleshooterDialog', () => {
     expect(wrapper.text()).toContain('Saved: inherited; effective inner')
     expect(wrapper.text()).toContain('Allow missing join keys: inherited')
     expect(wrapper.text()).toContain('Strict null checks are enforced')
+    // The null-option help and saved policy live in tooltips, not in the dialog body.
+    const tooltipText = wrapper.findAll('[data-testid="tooltip"]').map((tooltip) => tooltip.text())
+    expect(tooltipText).toHaveLength(2)
+    expect(tooltipText.join(' ')).toContain('Lets rows with a missing (null) key value still join.')
+    expect(tooltipText.join(' ')).toContain('Treats two missing (null) key values as equal')
+    expect(tooltipText.join(' ')).toContain('Allow missing join keys: inherited')
+    expect(tooltipText.join(' ')).toContain('Strict null checks are enforced')
     expect(wrapper.findAll('button').some((button) => button.text().trim() === 'Save')).toBe(false)
   })
 
