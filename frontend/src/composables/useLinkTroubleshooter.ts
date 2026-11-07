@@ -99,11 +99,13 @@ export function useLinkTroubleshooter(projectName: string) {
   const error = ref<FormattedError | null>(null)
   /** The latest received retained baseline, including an incomplete one. */
   const context = ref<LinkExperimentContextResponse | null>(null)
-  /** The only accepted trial for the current context and controls. */
+  /** The latest accepted trial for this context, which may use older controls. */
   const trial = ref<LinkTroubleshootComparison | null>(null)
   /** Trial key names reported with the accepted trial response. */
   const trialLocalKeys = ref<string[]>([])
   const trialRemoteKeys = ref<string[]>([])
+  /** True when the displayed trial was run with different controls. */
+  const trialStale = ref(false)
   /** True when the original inputs were reopened after the context expired. */
   const refreshed = ref(false)
 
@@ -120,6 +122,7 @@ export function useLinkTroubleshooter(projectName: string) {
 
   let identity: LinkExperimentContextRequest | null = null
   let originalControls: TrialControls = emptyControls()
+  let acceptedTrialSignature: string | null = null
   let requestVersion = 0
   let applyingControls = false
 
@@ -142,15 +145,15 @@ export function useLinkTroubleshooter(projectName: string) {
       }
       return controlsSignature(controls)
     },
-    () => {
+    (signature) => {
       if (applyingControls) {
         return
       }
-      // Any control edit invalidates the displayed trial and any trial still in
-      // flight, so an older response cannot replace the newer controls.
+      // Edits invalidate in-flight responses but keep the last trial visible as
+      // a clearly marked comparison until a new trial succeeds.
       requestVersion += 1
       loading.value = false
-      trial.value = null
+      trialStale.value = trial.value !== null && acceptedTrialSignature !== signature
       error.value = null
     },
     { flush: 'sync' }
@@ -191,6 +194,8 @@ export function useLinkTroubleshooter(projectName: string) {
     trial.value = null
     trialLocalKeys.value = []
     trialRemoteKeys.value = []
+    trialStale.value = false
+    acceptedTrialSignature = null
     const controls = controlsFromContext(response)
     originalControls = cloneControls(controls)
     applyControls(controls)
@@ -221,6 +226,8 @@ export function useLinkTroubleshooter(projectName: string) {
     trial.value = null
     trialLocalKeys.value = []
     trialRemoteKeys.value = []
+    trialStale.value = false
+    acceptedTrialSignature = null
     refreshed.value = false
     originalControls = emptyControls()
     applyControls(emptyControls())
@@ -240,6 +247,8 @@ export function useLinkTroubleshooter(projectName: string) {
         trial.value = null
         trialLocalKeys.value = []
         trialRemoteKeys.value = []
+        trialStale.value = false
+        acceptedTrialSignature = null
         console.error('Link troubleshooter request failed:', caughtError)
       }
       return null
@@ -283,6 +292,8 @@ export function useLinkTroubleshooter(projectName: string) {
       trial.value = response.trial
       trialLocalKeys.value = [...response.local_keys]
       trialRemoteKeys.value = [...response.remote_keys]
+      acceptedTrialSignature = submittedSignature
+      trialStale.value = false
       return response.trial
     } catch (caughtError: unknown) {
       if (version !== requestVersion || context.value?.context_id !== contextId) {
@@ -293,7 +304,6 @@ export function useLinkTroubleshooter(projectName: string) {
         return null
       }
       error.value = formatErrorMessage(caughtError)
-      trial.value = null
       console.error('Link troubleshooter trial failed:', caughtError)
       return null
     } finally {
@@ -319,6 +329,8 @@ export function useLinkTroubleshooter(projectName: string) {
     trial.value = null
     trialLocalKeys.value = []
     trialRemoteKeys.value = []
+    trialStale.value = false
+    acceptedTrialSignature = null
     refreshed.value = false
 
     try {
@@ -336,6 +348,8 @@ export function useLinkTroubleshooter(projectName: string) {
       if (version === requestVersion) {
         context.value = null
         trial.value = null
+        trialStale.value = false
+        acceptedTrialSignature = null
         error.value = formatErrorMessage(caughtError)
         console.error('Link troubleshooter refresh failed:', caughtError)
       }
@@ -354,6 +368,8 @@ export function useLinkTroubleshooter(projectName: string) {
     trial.value = null
     trialLocalKeys.value = []
     trialRemoteKeys.value = []
+    trialStale.value = false
+    acceptedTrialSignature = null
     refreshed.value = false
     applyControls(cloneControls(originalControls))
     resetBrowsing()
@@ -369,6 +385,8 @@ export function useLinkTroubleshooter(projectName: string) {
     trial.value = null
     trialLocalKeys.value = []
     trialRemoteKeys.value = []
+    trialStale.value = false
+    acceptedTrialSignature = null
     refreshed.value = false
     identity = null
     originalControls = emptyControls()
@@ -396,6 +414,7 @@ export function useLinkTroubleshooter(projectName: string) {
     trial,
     trialLocalKeys,
     trialRemoteKeys,
+    trialStale,
     refreshed,
     localKeys,
     remoteKeys,

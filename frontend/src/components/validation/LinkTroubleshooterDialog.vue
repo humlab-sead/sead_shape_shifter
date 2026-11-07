@@ -46,8 +46,6 @@
         </v-alert>
 
         <template v-if="!isIntegrityIssue && result">
-          <!-- A reproduced warning is the expected outcome, so only a failed
-          reproduction is reported. The trial tables below show the result. -->
           <v-alert
             v-if="result.status !== 'reproduced'"
             type="warning"
@@ -59,251 +57,358 @@
             <div>{{ result.message }}</div>
           </v-alert>
 
-          <section v-if="result.relationship" class="mb-5" aria-label="Saved relationship">
-            <h3 class="text-subtitle-1 mb-2">Saved relationship</h3>
-            <div class="d-flex flex-wrap ga-2 mb-2">
-              <v-chip>A: {{ result.relationship.local_entity }}</v-chip>
-              <v-chip>B: {{ result.relationship.remote_entity || '—' }}</v-chip>
-              <v-chip>Join: {{ result.relationship.join_type || '—' }}</v-chip>
-              <v-chip>Link pass: {{ result.relationship.link_pass || '—' }}</v-chip>
-            </div>
-            <div class="text-body-2 font-weight-medium mb-1">Constraints</div>
-            <div v-if="Object.keys(result.relationship.constraints).length" class="d-flex flex-wrap ga-2">
-              <v-chip
-                v-for="(value, key) in result.relationship.constraints"
-                :key="key"
+          <section
+            v-if="result.status === 'reproduced' && result.baseline"
+            class="link-finding-summary mb-4"
+            aria-label="Link finding summary"
+          >
+            <h2 class="text-subtitle-1 mb-2">What the saved link does</h2>
+            <p v-if="result.baseline.unmatched_a_rows !== null" class="mb-1">
+              {{ formatCount(result.baseline.unmatched_a_rows) }} source rows have no match in {{ remoteEntityName }}.
+            </p>
+            <p v-if="result.baseline.input_a_rows !== null && result.baseline.output_rows !== null" class="mb-2">
+              Saved link: {{ formatCount(result.baseline.input_a_rows) }} input rows →
+              {{ formatCount(result.baseline.output_rows) }} output rows.
+            </p>
+            <div class="d-flex flex-wrap ga-2">
+              <v-btn
+                v-if="result.baseline.unmatched_a_rows !== null"
                 size="small"
                 variant="outlined"
+                @click="selectBaselineGroup('unmatched')"
               >
-                {{ key }}: {{ formatValue(value) }}
-              </v-chip>
+                Inspect unmatched · {{ formatCount(result.baseline.unmatched_a_rows) }}
+              </v-btn>
+              <v-btn
+                v-if="result.baseline.multiply_matched_a_rows !== null"
+                size="small"
+                variant="outlined"
+                @click="selectBaselineGroup('multiply_matched')"
+              >
+                Inspect multiple matches · {{ formatCount(result.baseline.multiply_matched_a_rows) }}
+              </v-btn>
             </div>
-            <span v-else class="text-body-2 text-medium-emphasis">None configured</span>
           </section>
 
-          <template v-if="result.status === 'reproduced' && result.baseline">
-            <section v-if="result.key_options" class="mb-5" aria-label="Trial keys">
-              <div class="d-flex align-center justify-space-between mb-2">
-                <h3 class="text-subtitle-1">Trial key pairs</h3>
-                <v-btn size="small" variant="outlined" prepend-icon="mdi-plus" @click="addKeyPair">Add pair</v-btn>
-              </div>
+          <div
+            class="link-troubleshooter-workspace"
+            :class="{ 'link-troubleshooter-workspace--single': result.status !== 'reproduced' || !result.baseline }"
+          >
+            <aside class="link-troubleshooter-settings" aria-label="Link settings">
+              <section v-if="result.relationship" class="mb-5" aria-label="Saved relationship">
+                <h3 class="text-subtitle-1 mb-2">Saved relationship</h3>
+                <div class="d-flex flex-wrap ga-2 mb-2">
+                  <v-chip>A: {{ result.relationship.local_entity }}</v-chip>
+                  <v-chip>B: {{ result.relationship.remote_entity || '—' }}</v-chip>
+                  <v-chip>Join: {{ result.relationship.join_type || '—' }}</v-chip>
+                  <v-chip>Link pass: {{ result.relationship.link_pass || '—' }}</v-chip>
+                </div>
+                <details class="link-troubleshooter-details">
+                  <summary>Saved link rules</summary>
+                  <div v-if="Object.keys(result.relationship.constraints).length" class="d-flex flex-wrap ga-2 mt-2">
+                    <v-chip
+                      v-for="(value, key) in result.relationship.constraints"
+                      :key="key"
+                      size="small"
+                      variant="outlined"
+                    >
+                      {{ key }}: {{ formatValue(value) }}
+                    </v-chip>
+                  </div>
+                  <span v-else class="text-body-2 text-medium-emphasis">None configured</span>
+                </details>
+              </section>
 
-              <div v-if="keyPairCount === 0" class="text-body-2 text-medium-emphasis mb-2">
-                Add at least one local and remote key pair.
-              </div>
-              <div v-for="(_, index) in keyPairCount" :key="index" class="d-flex align-center ga-2 mb-2">
-                <v-select
-                  v-model="localKeys[index]"
-                  :items="result.key_options.local"
-                  label="A key"
-                  density="compact"
-                  hide-details
-                />
-                <v-select
-                  v-model="remoteKeys[index]"
-                  :items="result.key_options.remote"
-                  label="B key"
-                  density="compact"
-                  hide-details
-                />
-                <v-btn
-                  icon="mdi-delete-outline"
-                  size="small"
-                  variant="text"
-                  :aria-label="`Remove key pair ${index + 1}`"
-                  @click="removeKeyPair(index)"
-                />
-              </div>
+              <template v-if="result.status === 'reproduced' && result.baseline">
+                <section v-if="result.key_options" class="mb-5" aria-label="Trial keys">
+                  <div class="d-flex align-center justify-space-between mb-2">
+                    <h3 class="text-subtitle-1">Try a different link</h3>
+                  </div>
 
-              <div class="d-flex flex-wrap align-center ga-3 mb-3">
-                <v-select
-                  v-model="how"
-                  :items="joinTypeOptions"
-                  label="Join type"
-                  density="compact"
-                  hide-details
-                  class="filter-select"
-                />
-                <v-select
-                  v-model="allowNullKeys"
-                  :items="nullOptionItems"
-                  label="Allow missing join keys"
-                  density="compact"
-                  hide-details
-                  class="filter-select"
-                />
-                <v-select
-                  v-model="nullKeysEqual"
-                  :items="nullOptionItems"
-                  label="Missing join keys equal"
-                  density="compact"
-                  hide-details
-                  class="filter-select"
-                />
-              </div>
+                  <div class="link-key-pair-headings" aria-hidden="true">
+                    <span>{{ localEntityName }}</span>
+                    <span>{{ remoteEntityName }}</span>
+                    <span />
+                  </div>
+                  <div v-if="keyPairCount === 0" class="text-body-2 text-medium-emphasis mb-2">
+                    Add at least one local and remote key pair.
+                  </div>
+                  <div v-for="(_, index) in keyPairCount" :key="index" class="d-flex align-center ga-2 mb-2">
+                    <v-select
+                      v-model="localKeys[index]"
+                      :items="result.key_options.local"
+                      :label="localEntityName"
+                      density="compact"
+                      hide-details
+                    />
+                    <v-select
+                      v-model="remoteKeys[index]"
+                      :items="result.key_options.remote"
+                      :label="remoteEntityName"
+                      density="compact"
+                      hide-details
+                    />
+                    <v-btn
+                      icon="mdi-delete-outline"
+                      size="small"
+                      variant="text"
+                      :aria-label="`Remove key pair ${index + 1}`"
+                      @click="removeKeyPair(index)"
+                    />
+                  </div>
 
-              <div class="d-flex align-center ga-2">
-                <v-btn color="primary" :disabled="!canRunTrial || loading" @click="runTrial">Run trial</v-btn>
-                <v-btn variant="text" :disabled="!result.baseline" @click="reset">Reset</v-btn>
-              </div>
-            </section>
+                  <div class="mb-3">
+                    <v-btn size="small" variant="outlined" prepend-icon="mdi-plus" @click="addKeyPair"
+                      >Add key pair</v-btn
+                    >
+                  </div>
 
-            <section class="mb-5" aria-label="Applied settings">
-              <h3 class="text-subtitle-1 mb-2">Applied settings</h3>
-              <div v-if="result.baseline.settings" class="d-flex flex-wrap ga-2">
-                <v-chip size="small" variant="outlined">
-                  Join: {{ describeJoin(result.baseline.settings.join_type) }}
-                </v-chip>
-                <v-chip size="small" variant="outlined">
-                  Allow missing join keys: {{ describeSetting(result.baseline.settings.allow_null_keys) }}
-                </v-chip>
-                <v-chip size="small" variant="outlined">
-                  Missing join keys equal: {{ describeSetting(result.baseline.settings.null_keys_equal) }}
-                </v-chip>
-                <v-chip size="small" variant="outlined">
-                  Strict missing keys:
-                  {{ result.baseline.settings.resolved_null_policy.enforce_strict_null_keys ? 'enforced' : 'relaxed' }}
-                </v-chip>
-                <v-chip size="small" variant="outlined">
-                  Prevent missing-key matches:
-                  {{ result.baseline.settings.resolved_null_policy.prevent_null_key_matches ? 'yes' : 'no' }}
-                </v-chip>
-              </div>
-              <p v-else class="text-body-2 text-medium-emphasis">This diagnostic has no resolved settings report.</p>
-            </section>
+                  <div class="d-flex flex-wrap align-center ga-3 mb-2">
+                    <v-select
+                      v-model="how"
+                      :items="joinTypeOptions"
+                      label="Join type"
+                      density="compact"
+                      hide-details
+                      class="filter-select"
+                    />
+                  </div>
+                  <p v-if="result.baseline.settings" class="text-caption text-medium-emphasis mb-3">
+                    Saved: {{ describeJoin(result.baseline.settings.join_type) }}
+                  </p>
 
-            <section class="mb-5" aria-label="Baseline and trial comparison">
-              <h3 class="text-subtitle-1 mb-1">Baseline and trial comparison</h3>
-              <p class="text-caption text-medium-emphasis">Complete totals cover the full link input.</p>
-              <v-alert
-                v-if="
-                  result.baseline.diagnostic_status === 'failed' || result.baseline.diagnostic_status === 'incomplete'
-                "
-                type="warning"
-                variant="tonal"
-                density="compact"
-                class="mb-3"
-              >
-                <strong>Configured-key diagnostics {{ result.baseline.diagnostic_status }}:</strong>
-                {{ result.baseline.diagnostic_reason }}. {{ result.baseline.diagnostic_message }}
-              </v-alert>
-              <v-table density="compact">
-                <thead>
-                  <tr>
-                    <th>Measure</th>
-                    <th>Baseline</th>
-                    <th>Trial</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="measure in measures" :key="measure.label">
-                    <td>{{ measure.label }}</td>
-                    <td>{{ formatCount(measure.baseline) }}</td>
-                    <td>{{ formatCount(measure.trial) }}</td>
-                  </tr>
-                </tbody>
-              </v-table>
-            </section>
+                  <details class="link-troubleshooter-details mb-3">
+                    <summary>Advanced trial settings</summary>
+                    <p class="text-caption text-medium-emphasis mt-2">
+                      These options apply to null values in configured key columns. Missing columns are reported
+                      separately.
+                    </p>
+                    <div class="d-flex flex-wrap align-center ga-3">
+                      <v-select
+                        v-model="allowNullKeys"
+                        :items="nullOptionItems"
+                        label="Allow missing join keys"
+                        density="compact"
+                        hide-details
+                        class="filter-select"
+                      />
+                      <v-select
+                        v-model="nullKeysEqual"
+                        :items="nullOptionItems"
+                        label="Match null join-key parts"
+                        density="compact"
+                        hide-details
+                        class="filter-select"
+                      />
+                    </div>
+                    <div v-if="result.baseline.settings" class="mt-2">
+                      <p class="text-caption text-medium-emphasis mb-1">
+                        Allow missing join keys: {{ describeSetting(result.baseline.settings.allow_null_keys) }}. Strict
+                        null checks are
+                        {{
+                          result.baseline.settings.resolved_null_policy.enforce_strict_null_keys
+                            ? 'enforced'
+                            : 'relaxed'
+                        }}.
+                      </p>
+                      <p class="text-caption text-medium-emphasis mb-0">
+                        Match null join-key parts: {{ describeSetting(result.baseline.settings.null_keys_equal) }}. Null
+                        key matches are
+                        {{
+                          result.baseline.settings.resolved_null_policy.prevent_null_key_matches
+                            ? 'prevented'
+                            : 'allowed'
+                        }}.
+                      </p>
+                    </div>
+                    <p v-else class="text-caption text-medium-emphasis mt-2 mb-0">
+                      This diagnostic has no resolved settings report.
+                    </p>
+                  </details>
 
-            <v-alert
-              v-if="trial && trial.status !== 'complete'"
-              :type="trial.status === 'failed' ? 'error' : 'warning'"
-              variant="tonal"
-              class="mb-4"
+                  <div class="d-flex align-center ga-2">
+                    <v-btn color="primary" :disabled="!canRunTrial || loading" @click="runTrial">Run trial</v-btn>
+                    <v-btn variant="text" :disabled="!result.baseline" @click="reset">Reset to saved</v-btn>
+                  </div>
+                </section>
+              </template>
+            </aside>
+
+            <section
+              v-if="result.status === 'reproduced' && result.baseline"
+              class="link-troubleshooter-results"
+              aria-label="Link results"
             >
-              <strong>Trial {{ trial.status }}:</strong> {{ trial.reason }}. {{ trial.message }}
-            </v-alert>
-
-            <p v-if="!trial" class="text-body-2 text-medium-emphasis mb-4">
-              Run a trial to compare the saved link with the selected keys and settings.
-            </p>
-
-            <section class="mb-5" aria-label="Exception rows">
-              <h3 class="text-subtitle-1 mb-2">Exception rows</h3>
-              <div class="d-flex flex-wrap align-center ga-3 mb-3">
-                <v-select
-                  v-model="side"
-                  :items="sideOptions"
-                  label="Snapshot"
-                  density="compact"
-                  hide-details
-                  class="filter-select"
-                />
-                <v-select
-                  v-model="group"
-                  :items="groupOptions"
-                  label="Exception group"
-                  density="compact"
-                  hide-details
-                  class="filter-select"
-                />
-                <v-select
-                  v-model="pageSize"
-                  :items="pageSizeOptions"
-                  label="Rows per page"
-                  density="compact"
-                  hide-details
-                  class="page-size-select"
-                />
-              </div>
-
-              <div v-if="!activeGroup" class="text-body-2 text-medium-emphasis">
-                No exception rows are available for this selection.
-              </div>
-              <template v-else>
-                <p class="text-body-2 mb-2">
-                  {{ activeGroup.total_count.toLocaleString() }} exception A row(s) in the full input;
-                  {{ activeGroup.returned_count.toLocaleString() }} returned in this response.
-                </p>
-                <v-alert v-if="activeGroup.row_cap_reached" type="info" variant="tonal" density="compact" class="mb-2">
-                  Only the first {{ activeGroup.row_cap.toLocaleString() }} exception rows are returned.
-                </v-alert>
-                <v-alert v-if="activeGroup.budget_exhausted" type="info" variant="tonal" density="compact" class="mb-2">
-                  The response size limit stopped further exception rows.
-                </v-alert>
+              <section class="mb-5" aria-label="Baseline and trial comparison">
+                <h2 class="text-subtitle-1 mb-1">Results</h2>
+                <p class="text-caption text-medium-emphasis">Totals cover the full link input.</p>
                 <v-alert
-                  v-if="activeDetail?.detail_truncated"
-                  type="info"
+                  v-if="
+                    result.baseline.diagnostic_status === 'failed' || result.baseline.diagnostic_status === 'incomplete'
+                  "
+                  type="warning"
                   variant="tonal"
                   density="compact"
-                  class="mb-2"
+                  class="mb-3"
                 >
-                  Some findings or key values in this response were shortened.
+                  <strong>Configured-key diagnostics {{ result.baseline.diagnostic_status }}:</strong>
+                  {{ result.baseline.diagnostic_reason }}. {{ result.baseline.diagnostic_message }}
                 </v-alert>
+                <v-table density="compact">
+                  <thead>
+                    <tr>
+                      <th>Measure</th>
+                      <th>Saved link</th>
+                      <th v-if="trial">Last trial</th>
+                      <th v-if="trial">Change</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="measure in measures" :key="measure.label">
+                      <td>{{ measure.label }}</td>
+                      <td>{{ formatCount(measure.baseline) }}</td>
+                      <td v-if="trial">{{ formatCount(measure.trial) }}</td>
+                      <td v-if="trial">{{ formatDelta(measure.baseline, measure.trial) }}</td>
+                    </tr>
+                  </tbody>
+                </v-table>
+              </section>
 
-                <v-data-table
-                  v-if="pagedRows.length"
-                  class="exception-rows-table"
-                  :headers="exceptionHeaders"
-                  :items="pagedRows"
-                  item-value="input_position"
-                  :items-per-page="-1"
-                  hide-default-footer
-                  density="compact"
-                >
-                  <template #item.input_position="{ item }">{{ item.input_position + 1 }}</template>
-                  <template
-                    v-for="(_, index) in activeKeyNames"
-                    :key="`key-${index}`"
-                    #[`item.key-${index}`]="{ item }"
-                  >
-                    <span>{{ formatKeyValue(item.key_values[index]) }}</span>
-                  </template>
-                </v-data-table>
-                <div v-else class="text-center text-medium-emphasis py-4">
-                  No returned exception rows are available for this page.
+              <v-alert v-if="trial && trialStale" type="warning" variant="tonal" class="mb-4">
+                Settings changed — rerun the trial. The comparison below is from the previous settings.
+              </v-alert>
+
+              <v-alert
+                v-if="trial && trial.status !== 'complete'"
+                :type="trial.status === 'failed' ? 'error' : 'warning'"
+                variant="tonal"
+                class="mb-4"
+              >
+                <strong>Trial {{ trial.status }}:</strong> {{ trial.reason }}. {{ trial.message }}
+              </v-alert>
+
+              <p v-if="!trial" class="text-body-2 text-medium-emphasis mb-4">
+                Run a trial to compare the saved link with the selected keys and settings.
+              </p>
+
+              <section class="mb-5" aria-label="Exception rows">
+                <h3 class="text-subtitle-1 mb-2">Inspect affected rows</h3>
+                <div class="d-flex flex-wrap align-center ga-3 mb-3">
+                  <v-select
+                    v-model="side"
+                    :items="sideOptions"
+                    label="Result source"
+                    density="compact"
+                    hide-details
+                    class="filter-select"
+                  />
+                  <div class="d-flex flex-wrap ga-2" role="group" aria-label="Affected row category">
+                    <v-btn
+                      data-group="unmatched"
+                      size="small"
+                      :variant="group === 'unmatched' ? 'flat' : 'outlined'"
+                      :aria-pressed="group === 'unmatched'"
+                      @click="selectGroup('unmatched')"
+                    >
+                      Unmatched · {{ formatCount(activeDetail?.unmatched?.total_count) }}
+                    </v-btn>
+                    <v-btn
+                      data-group="multiply_matched"
+                      size="small"
+                      :variant="group === 'multiply_matched' ? 'flat' : 'outlined'"
+                      :aria-pressed="group === 'multiply_matched'"
+                      @click="selectGroup('multiply_matched')"
+                    >
+                      Multiple matches · {{ formatCount(activeDetail?.multiply_matched?.total_count) }}
+                    </v-btn>
+                  </div>
                 </div>
-                <div class="d-flex justify-end mt-2">
-                  <v-pagination
-                    :model-value="page"
-                    :length="pageCount"
-                    density="comfortable"
-                    @update:model-value="page = $event"
+                <div v-if="activeRows.length > 25" class="mb-3">
+                  <v-select
+                    v-model="pageSize"
+                    :items="pageSizeOptions"
+                    label="Rows per page"
+                    density="compact"
+                    hide-details
+                    class="page-size-select"
                   />
                 </div>
-              </template>
-            </section>
 
+                <div v-if="!activeGroup" class="text-body-2 text-medium-emphasis">
+                  No exception rows are available for this selection.
+                </div>
+                <template v-else>
+                  <p class="text-body-2 mb-2">
+                    Showing {{ pagedRows.length.toLocaleString() }} of
+                    {{ activeGroup.returned_count.toLocaleString() }} returned rows;
+                    {{ activeGroup.total_count.toLocaleString() }} affected source rows in total.
+                  </p>
+                  <v-alert
+                    v-if="activeGroup.row_cap_reached"
+                    type="info"
+                    variant="tonal"
+                    density="compact"
+                    class="mb-2"
+                  >
+                    Only the first {{ activeGroup.row_cap.toLocaleString() }} exception rows are returned.
+                  </v-alert>
+                  <v-alert
+                    v-if="activeGroup.budget_exhausted"
+                    type="info"
+                    variant="tonal"
+                    density="compact"
+                    class="mb-2"
+                  >
+                    The response size limit stopped further exception rows.
+                  </v-alert>
+                  <v-alert
+                    v-if="activeDetail?.detail_truncated"
+                    type="info"
+                    variant="tonal"
+                    density="compact"
+                    class="mb-2"
+                  >
+                    Some findings or key values in this response were shortened.
+                  </v-alert>
+
+                  <v-data-table
+                    v-if="pagedRows.length"
+                    class="exception-rows-table"
+                    :headers="exceptionHeaders"
+                    :items="pagedRows"
+                    item-value="input_position"
+                    :items-per-page="-1"
+                    hide-default-footer
+                    density="compact"
+                  >
+                    <template #item.input_position="{ item }">{{ item.input_position + 1 }}</template>
+                    <template
+                      v-for="(_, index) in activeKeyNames"
+                      :key="`key-${index}`"
+                      #[`item.key-${index}`]="{ item }"
+                    >
+                      <span>{{ formatKeyValue(item.key_values[index]) }}</span>
+                    </template>
+                  </v-data-table>
+                  <div v-else class="text-center text-medium-emphasis py-4">
+                    No returned exception rows are available for this page.
+                  </div>
+                  <div class="d-flex justify-end mt-2">
+                    <v-pagination
+                      :model-value="page"
+                      :length="pageCount"
+                      density="comfortable"
+                      @update:model-value="page = $event"
+                    />
+                  </div>
+                </template>
+              </section>
+            </section>
+          </div>
+
+          <details class="link-troubleshooter-details mt-4" aria-label="Technical details">
+            <summary>Technical details</summary>
+            <p class="text-body-2 mt-2">{{ message.message }}</p>
             <section class="mb-2" aria-label="Validation findings">
               <h3 class="text-subtitle-1 mb-2">Findings</h3>
               <p v-if="findingsNotice" class="text-caption text-medium-emphasis">{{ findingsNotice }}</p>
@@ -320,7 +425,7 @@
                 </v-list-item>
               </v-list>
             </section>
-          </template>
+          </details>
         </template>
       </v-card-text>
 
@@ -334,7 +439,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { useLinkTroubleshooter } from '@/composables/useLinkTroubleshooter'
+import { useLinkTroubleshooter, type LinkExceptionGroupName } from '@/composables/useLinkTroubleshooter'
 import type {
   LinkTroubleshootExceptionRow,
   LinkTroubleshootJoinTypeSetting,
@@ -376,6 +481,7 @@ const {
   context,
   trial,
   trialLocalKeys,
+  trialStale,
   refreshed,
   localKeys,
   remoteKeys,
@@ -398,16 +504,16 @@ const result = context
 
 const isIntegrityIssue = computed(() => props.message.code === INTEGRITY_ISSUE_CODE)
 
-const header = computed(() => {
-  const localEntity = result.value?.relationship?.local_entity || props.message.entity || 'Unknown entity'
-  // The warning metadata carries the remote entity, so the header stays correct while the first request loads.
+const localEntityName = computed(() => result.value?.relationship?.local_entity || props.message.entity || 'A')
+const remoteEntityName = computed(() => {
   const metadataRemote = props.message.metadata?.remote_entity
-  const remoteEntity =
+  return (
     result.value?.relationship?.remote_entity ||
     integrityRemoteEntity.value ||
-    (typeof metadataRemote === 'string' && metadataRemote.trim().length > 0 ? metadataRemote : 'Unknown entity')
-  return `${localEntity} → ${remoteEntity}`
+    (typeof metadataRemote === 'string' && metadataRemote.trim().length > 0 ? metadataRemote : 'B')
+  )
 })
+const header = computed(() => `${localEntityName.value} → ${remoteEntityName.value}`)
 const keyPairCount = computed(() => Math.max(localKeys.value.length, remoteKeys.value.length))
 const measures = computed(() => {
   const baseline = result.value?.baseline
@@ -492,12 +598,8 @@ const nullOptionItems = [
   { title: 'No', value: false },
 ]
 const sideOptions = [
-  { title: 'Baseline', value: 'baseline' },
-  { title: 'Trial', value: 'trial' },
-]
-const groupOptions = [
-  { title: 'Unmatched', value: 'unmatched' },
-  { title: 'Multiply matched', value: 'multiply_matched' },
+  { title: 'Saved link', value: 'baseline' },
+  { title: 'Last trial', value: 'trial' },
 ]
 const pageSizeOptions = [25, 50, 100, 200]
 
@@ -550,6 +652,17 @@ function runTrial(): void {
   void run()
 }
 
+function selectBaselineGroup(value: LinkExceptionGroupName): void {
+  side.value = 'baseline'
+  group.value = value
+  page.value = 1
+}
+
+function selectGroup(value: LinkExceptionGroupName): void {
+  group.value = value
+  page.value = 1
+}
+
 function describeJoin(setting: LinkTroubleshootJoinTypeSetting): string {
   const requested = setting.requested === null ? 'inherited' : `${setting.requested} (explicit)`
   return `${requested}; effective ${setting.effective}`
@@ -581,14 +694,72 @@ function formatValue(value: unknown): string {
 function formatCount(value: number | null | undefined): string {
   return value === null || value === undefined ? '—' : value.toLocaleString()
 }
+
+function formatDelta(saved: number | null | undefined, trialValue: number | null | undefined): string {
+  if (saved === null || saved === undefined || trialValue === null || trialValue === undefined) {
+    return '—'
+  }
+
+  const delta = trialValue - saved
+  return delta > 0 ? `+${delta.toLocaleString()}` : delta.toLocaleString()
+}
 </script>
 
 <style scoped>
+.link-troubleshooter-workspace {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.9fr) minmax(0, 1.4fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.link-troubleshooter-workspace--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.link-troubleshooter-settings,
+.link-troubleshooter-results {
+  min-width: 0;
+}
+
+.link-finding-summary {
+  padding: 1rem;
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-radius: 0.5rem;
+  background: rgba(var(--v-theme-primary), 0.04);
+}
+
+.link-key-pair-headings {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 40px;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity));
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.link-troubleshooter-details {
+  border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  padding-top: 0.75rem;
+}
+
+.link-troubleshooter-details > summary {
+  cursor: pointer;
+  font-weight: 500;
+}
+
 .filter-select {
   max-width: 220px;
 }
 
 .page-size-select {
   max-width: 180px;
+}
+
+@media (max-width: 900px) {
+  .link-troubleshooter-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 </style>

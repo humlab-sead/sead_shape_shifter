@@ -64,6 +64,7 @@ const state: ReturnType<typeof useLinkTroubleshooter> = {
   trial: ref<LinkTroubleshootComparison | null>(null),
   trialLocalKeys: ref<string[]>([]),
   trialRemoteKeys: ref<string[]>([]),
+  trialStale: ref(false),
   refreshed: ref(false),
   localKeys: ref<string[]>([]),
   remoteKeys: ref<string[]>([]),
@@ -268,6 +269,7 @@ function applyContextToState(response: LinkExperimentContextResponse): void {
   state.trial.value = null
   state.trialLocalKeys.value = []
   state.trialRemoteKeys.value = []
+  state.trialStale.value = false
   state.refreshed.value = false
   state.error.value = null
   state.localKeys.value = [...(response.configured_keys?.local_keys ?? [])]
@@ -336,10 +338,12 @@ function mountDialog(
     state.trial.value = nextTrial
     state.trialLocalKeys.value = [...nextTrialKeys.local]
     state.trialRemoteKeys.value = [...nextTrialKeys.remote]
+    state.trialStale.value = false
     return nextTrial
   })
   mockReset.mockImplementation(() => {
     state.trial.value = null
+    state.trialStale.value = false
     state.error.value = null
     state.refreshed.value = false
     state.localKeys.value = [...originalControls.local]
@@ -432,14 +436,16 @@ describe('LinkTroubleshooterDialog', () => {
     expect(wrapper.text()).toContain('Link pass: initial')
     expect(wrapper.text()).toContain('allow_row_decrease: true')
     expect(wrapper.find('[aria-label="Saved relationship"] input').exists()).toBe(false)
-    expect(wrapper.find('select[aria-label="A key"]').attributes('data-selected')).toBe(JSON.stringify('saved_code'))
-    expect(wrapper.find('select[aria-label="B key"]').attributes('data-selected')).toBe(JSON.stringify('saved_value'))
+    expect(wrapper.find('select[aria-label="orders"]').attributes('data-selected')).toBe(JSON.stringify('saved_code'))
+    expect(wrapper.find('select[aria-label="customers"]').attributes('data-selected')).toBe(
+      JSON.stringify('saved_value')
+    )
     expect(wrapper.find('select[aria-label="Join type"]').attributes('data-selected')).toBe(JSON.stringify('inner'))
     expect(wrapper.find('select[aria-label="Allow missing join keys"]').attributes('data-selected')).toBe('null')
-    expect(wrapper.find('select[aria-label="Missing join keys equal"]').attributes('data-selected')).toBe('null')
-    expect(wrapper.text()).toContain('Join: inherited; effective inner')
+    expect(wrapper.find('select[aria-label="Match null join-key parts"]').attributes('data-selected')).toBe('null')
+    expect(wrapper.text()).toContain('Saved: inherited; effective inner')
     expect(wrapper.text()).toContain('Allow missing join keys: inherited')
-    expect(wrapper.text()).toContain('Strict missing keys: enforced')
+    expect(wrapper.text()).toContain('Strict null checks are enforced')
     expect(wrapper.findAll('button').some((button) => button.text().trim() === 'Save')).toBe(false)
   })
 
@@ -457,8 +463,8 @@ describe('LinkTroubleshooterDialog', () => {
 
     expect(wrapper.find('select[aria-label="Join type"]').attributes('data-selected')).toBe(JSON.stringify('left'))
     expect(wrapper.find('select[aria-label="Allow missing join keys"]').attributes('data-selected')).toBe('true')
-    expect(wrapper.find('select[aria-label="Missing join keys equal"]').attributes('data-selected')).toBe('false')
-    expect(wrapper.text()).toContain('Join: left (explicit); effective left')
+    expect(wrapper.find('select[aria-label="Match null join-key parts"]').attributes('data-selected')).toBe('false')
+    expect(wrapper.text()).toContain('Saved: left (explicit); effective left')
     expect(wrapper.text()).toContain('Allow missing join keys: yes (explicit)')
   })
 
@@ -479,12 +485,12 @@ describe('LinkTroubleshooterDialog', () => {
       local_entity: 'orders',
       metadata: candidateMessage().metadata,
     })
-    expect(wrapper.find('select[aria-label="B key"]').attributes('data-selected')).toBe(JSON.stringify('system_id'))
+    expect(wrapper.find('select[aria-label="customers"]').attributes('data-selected')).toBe(JSON.stringify('system_id'))
     expect(wrapper.text()).toContain('Run a trial to compare')
 
     await selectOption(wrapper, 'Join type', 'left')
     await selectOption(wrapper, 'Allow missing join keys', true)
-    await selectOption(wrapper, 'Missing join keys equal', false)
+    await selectOption(wrapper, 'Match null join-key parts', false)
     expect(runCalls).toHaveLength(0)
 
     await buttonByText(wrapper, 'Run trial')!.trigger('click')
@@ -501,15 +507,29 @@ describe('LinkTroubleshooterDialog', () => {
     expect(outputRow?.findAll('td')[2]?.text()).toBe('3')
   })
 
-  it('makes no request when the snapshot, group, page size, or page changes', async () => {
-    const wrapper = mountDialog()
+  it('makes no request when the result source, group, page size, or page changes', async () => {
+    const makeRows = (prefix: string) =>
+      Array.from({ length: 51 }, (_, index) => makeRow(index, [`${prefix}-${index}`]))
+    const wrapper = mountDialog(
+      makeContext({
+        detail: makeDetail({
+          unmatched: makeGroup({ total_count: 51, returned_count: 51, rows: makeRows('BASE') }),
+        }),
+      })
+    )
     await flushPromises()
+
+    nextTrial = makeComparison({
+      detail: makeDetail({
+        multiply_matched: makeGroup({ total_count: 51, returned_count: 51, rows: makeRows('TRIAL') }),
+      }),
+    })
     await buttonByText(wrapper, 'Run trial')!.trigger('click')
     await flushPromises()
     expect(runCalls).toHaveLength(1)
 
-    await selectOption(wrapper, 'Snapshot', 'trial')
-    await selectOption(wrapper, 'Exception group', 'multiply_matched')
+    await selectOption(wrapper, 'Result source', 'trial')
+    await wrapper.find('button[data-group="multiply_matched"]').trigger('click')
     await selectOption(wrapper, 'Rows per page', 25)
     await wrapper.find('button[aria-label="Next page"]').trigger('click')
     await flushPromises()
@@ -533,8 +553,7 @@ describe('LinkTroubleshooterDialog', () => {
     const wrapper = mountDialog(makeContext({ detail }))
     await flushPromises()
 
-    expect(wrapper.text()).toContain('150 exception A row(s) in the full input')
-    expect(wrapper.text()).toContain('2 returned in this response')
+    expect(wrapper.text()).toContain('Showing 2 of 2 returned rows; 150 affected source rows in total.')
     expect(wrapper.text()).toContain('Only the first 100 exception rows are returned.')
     expect(wrapper.text()).toContain('The response size limit stopped further exception rows.')
     expect(wrapper.text()).toContain('Some findings or key values in this response were shortened.')
@@ -569,12 +588,12 @@ describe('LinkTroubleshooterDialog', () => {
 
     expect(wrapper.find('section[aria-label="Exception rows"]').text()).toContain('BASE')
 
-    await selectOption(wrapper, 'Snapshot', 'trial')
+    await selectOption(wrapper, 'Result source', 'trial')
     expect(wrapper.find('section[aria-label="Exception rows"]').text()).toContain('TRIAL')
     expect(wrapper.find('section[aria-label="Exception rows"] tbody tr').text()).toContain('5')
 
-    await selectOption(wrapper, 'Snapshot', 'baseline')
-    await selectOption(wrapper, 'Exception group', 'multiply_matched')
+    await selectOption(wrapper, 'Result source', 'baseline')
+    await wrapper.find('button[data-group="multiply_matched"]').trigger('click')
     expect(wrapper.find('section[aria-label="Exception rows"]').text()).toContain('MULTI')
   })
 
@@ -617,14 +636,14 @@ describe('LinkTroubleshooterDialog', () => {
     await nextPage.trigger('click')
     expect(firstRowText()).toContain('BASE-26')
 
-    await selectOption(wrapper, 'Snapshot', 'trial')
+    await selectOption(wrapper, 'Result source', 'trial')
     expect(firstRowText()).toContain('TRIAL-1')
     await nextPage.trigger('click')
     expect(firstRowText()).toContain('TRIAL-26')
 
-    await selectOption(wrapper, 'Exception group', 'multiply_matched')
+    await wrapper.find('button[data-group="multiply_matched"]').trigger('click')
     expect(firstRowText()).toContain('TRIAL-MULTI')
-    await selectOption(wrapper, 'Exception group', 'unmatched')
+    await wrapper.find('button[data-group="unmatched"]').trigger('click')
     await nextPage.trigger('click')
     expect(firstRowText()).toContain('TRIAL-26')
 
@@ -646,12 +665,12 @@ describe('LinkTroubleshooterDialog', () => {
     state.localKeys.value = ['system_id']
     await nextTick()
 
-    await buttonByText(wrapper, 'Reset')!.trigger('click')
+    await buttonByText(wrapper, 'Reset to saved')!.trigger('click')
     await flushPromises()
 
     expect(mockReset).toHaveBeenCalledTimes(1)
     expect(mockRun).not.toHaveBeenCalled()
-    expect(wrapper.find('select[aria-label="A key"]').attributes('data-selected')).toBe(JSON.stringify('saved_code'))
+    expect(wrapper.find('select[aria-label="orders"]').attributes('data-selected')).toBe(JSON.stringify('saved_code'))
     expect(state.context.value?.context_id).toBe('context-1')
   })
 
@@ -723,7 +742,7 @@ describe('LinkTroubleshooterDialog', () => {
     expect(openRequests).toHaveLength(0)
     expect(mockOpen).not.toHaveBeenCalled()
     expect(mockClose).toHaveBeenCalled()
-    expect(wrapper.text()).toContain('Complete distinct unmatched count: 1')
+    expect(wrapper.text()).toContain('Complete distinct unmatched value count: 1')
     expect(wrapper.text()).toContain('orders → customers')
     expect(wrapper.find('select[aria-label="A key"]').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('Run trial')
@@ -753,7 +772,7 @@ describe('LinkTroubleshooterDialog', () => {
     expect(openRequests).toHaveLength(1)
     expect(mockClose).toHaveBeenCalled()
     expect(wrapper.text()).not.toContain('Trial key pairs')
-    expect(wrapper.text()).toContain('Complete distinct unmatched count: 1')
+    expect(wrapper.text()).toContain('Complete distinct unmatched value count: 1')
   })
 
   it('clears state and releases the context when the dialog closes', async () => {

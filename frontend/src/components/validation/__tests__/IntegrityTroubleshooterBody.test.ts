@@ -119,12 +119,13 @@ describe('IntegrityTroubleshooterBody', () => {
       metadata: { fk_index: 0, fk_signature: 'saved-signature', orphan_count: 2 },
       page: 1,
     })
-    expect(wrapper.text()).toContain('Complete distinct unmatched count: 2')
-    expect(wrapper.text()).toContain('Returned on this page: 2')
+    expect(wrapper.text()).toContain('Complete distinct unmatched value count: 2')
+    expect(wrapper.text()).toContain('Showing 2 of 2 values')
     expect(wrapper.text()).toContain('A: orders')
     expect(wrapper.text()).toContain('B: customers')
-    expect(wrapper.text()).toContain('A: customer_code')
-    expect(wrapper.text()).toContain('B: code')
+    const keyPairs = wrapper.find('section[aria-label="Configured keys"]')
+    expect(keyPairs.text()).toContain('customer_code')
+    expect(keyPairs.text()).toContain('code')
     expect(wrapper.text()).toContain('MISSING-A')
     expect(wrapper.text()).toContain('allow_row_decrease: true')
     // A reproduced warning is the expected outcome, so it gets no status banner.
@@ -366,7 +367,7 @@ describe('IntegrityTroubleshooterBody', () => {
     await flushPromises()
 
     const section = wrapper.find('section[aria-label="Selected value rows"]')
-    expect(section.text()).toContain('Complete matching local rows: 40')
+    expect(section.text()).toContain('Local rows for this value: 40')
     expect(section.text()).toContain('Returned rows: 20')
     expect(section.text()).toContain('Only the first 2 columns are shown.')
     expect(section.find('thead').text()).toContain('customer_code')
