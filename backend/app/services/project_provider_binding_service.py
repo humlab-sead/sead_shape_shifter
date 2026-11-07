@@ -27,7 +27,7 @@ class ProjectProviderBindingError(ConfigurationError):
         for (_, message), grouped in grouped_errors.items():
             fields = list(dict.fromkeys(error.field for error in grouped if error.field))
             if len(grouped) > 1:
-                details = f"\nAffected settings:\n" + "\n".join(f"- {field}" for field in fields)
+                details = "\nAffected settings:\n" + "\n".join(f"- {field}" for field in fields)
                 messages.append(f"{message}{details}")
                 continue
 
