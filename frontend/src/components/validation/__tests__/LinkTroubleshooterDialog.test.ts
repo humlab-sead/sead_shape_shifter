@@ -435,10 +435,8 @@ describe('LinkTroubleshooterDialog', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('orders → customers')
-    expect(wrapper.text()).toContain('Join: inner')
-    expect(wrapper.text()).toContain('Link pass: initial')
-    expect(wrapper.text()).toContain('allow_row_decrease: true')
-    expect(wrapper.find('[aria-label="Saved relationship"] input').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Initial · Allow row decrease')
+    expect(wrapper.find('section[aria-label="Saved relationship"]').exists()).toBe(false)
     expect(wrapper.find('select[aria-label="Key pair 1 local key (orders)"]').attributes('data-selected')).toBe(
       JSON.stringify('saved_code')
     )
@@ -459,6 +457,25 @@ describe('LinkTroubleshooterDialog', () => {
     expect(tooltipText.join(' ')).toContain('Allow missing join keys: inherited')
     expect(tooltipText.join(' ')).toContain('Strict null checks are enforced')
     expect(wrapper.findAll('button').some((button) => button.text().trim() === 'Save')).toBe(false)
+  })
+
+  it('summarizes cardinality, linking pass, and only the flags that are set', async () => {
+    const wrapper = mountDialog(
+      makeContext({
+        constraints: {
+          cardinality: 'many_to_one',
+          allow_row_decrease: false,
+          require_unique_right: true,
+        },
+      })
+    )
+    await flushPromises()
+
+    const heading = wrapper.find('.link-troubleshooter-heading')
+    expect(heading.text()).toContain('orders → customers')
+    expect(heading.text()).toContain('Many-to-one · Initial · Require unique right')
+    expect(heading.text()).not.toContain('Allow row decrease')
+    expect(wrapper.text()).not.toContain('cardinality:')
   })
 
   it('shows explicit saved settings on the controls', async () => {
