@@ -226,7 +226,24 @@
               aria-label="Link results"
             >
               <div class="d-flex flex-wrap align-center justify-space-between ga-2 mb-1">
-                <h2 class="text-subtitle-1 mb-0">Inspect results</h2>
+                <div class="d-flex align-center ga-1">
+                  <h2 class="text-subtitle-1 mb-0">Inspect results</h2>
+                  <v-tooltip location="top" max-width="320">
+                    <template #activator="{ props }">
+                      <v-btn
+                        v-bind="props"
+                        icon
+                        size="x-small"
+                        variant="text"
+                        class="text-medium-emphasis"
+                        aria-label="About result totals"
+                      >
+                        <v-icon icon="mdi-help-circle-outline" size="small" />
+                      </v-btn>
+                    </template>
+                    <div class="text-body-2">Totals cover the full link input.</div>
+                  </v-tooltip>
+                </div>
                 <div class="d-flex flex-wrap ga-2" role="group" aria-label="Result source">
                   <v-btn
                     data-side="baseline"
@@ -249,7 +266,6 @@
                   </v-btn>
                 </div>
               </div>
-              <p class="text-caption text-medium-emphasis mb-3">Totals cover the full link input.</p>
 
               <v-alert
                 v-if="
@@ -277,10 +293,6 @@
                 <strong>Trial {{ trial.status }}:</strong> {{ trial.reason }}. {{ trial.message }}
               </v-alert>
 
-              <p v-if="!trial" class="text-body-2 text-medium-emphasis mb-4">
-                Run a trial to compare the saved link with the selected keys and settings.
-              </p>
-
               <div class="link-result-stats mb-2">
                 <div v-for="stat in resultStats" :key="stat.key" class="link-result-stat" :data-stat="stat.key">
                   <div class="link-result-stat-value">{{ formatCount(stat.value) }}</div>
@@ -290,28 +302,30 @@
                   </div>
                 </div>
               </div>
-              <p v-if="joinNote" class="text-body-2 text-medium-emphasis mb-4">{{ joinNote }}</p>
 
               <section aria-label="Exception rows">
-                <div class="d-flex flex-wrap ga-2 mb-3" role="group" aria-label="Affected row category">
-                  <v-btn
-                    data-group="unmatched"
-                    size="small"
-                    :variant="group === 'unmatched' ? 'flat' : 'outlined'"
-                    :aria-pressed="group === 'unmatched'"
-                    @click="selectGroup('unmatched')"
-                  >
-                    Unmatched · {{ formatCount(activeDetail?.unmatched?.total_count) }}
-                  </v-btn>
-                  <v-btn
-                    data-group="multiply_matched"
-                    size="small"
-                    :variant="group === 'multiply_matched' ? 'flat' : 'outlined'"
-                    :aria-pressed="group === 'multiply_matched'"
-                    @click="selectGroup('multiply_matched')"
-                  >
-                    Multiple matches · {{ formatCount(activeDetail?.multiply_matched?.total_count) }}
-                  </v-btn>
+                <div class="affected-row-toolbar d-flex flex-wrap align-center ga-2 mb-3">
+                  <p v-if="joinNote" class="join-note text-body-2 text-medium-emphasis mb-0">{{ joinNote }}</p>
+                  <div class="d-flex flex-wrap ga-2" role="group" aria-label="Affected row category">
+                    <v-btn
+                      data-group="unmatched"
+                      size="small"
+                      :variant="group === 'unmatched' ? 'flat' : 'outlined'"
+                      :aria-pressed="group === 'unmatched'"
+                      @click="selectGroup('unmatched')"
+                    >
+                      Unmatched · {{ formatCount(activeDetail?.unmatched?.total_count) }}
+                    </v-btn>
+                    <v-btn
+                      data-group="multiply_matched"
+                      size="small"
+                      :variant="group === 'multiply_matched' ? 'flat' : 'outlined'"
+                      :aria-pressed="group === 'multiply_matched'"
+                      @click="selectGroup('multiply_matched')"
+                    >
+                      Multiple matches · {{ formatCount(activeDetail?.multiply_matched?.total_count) }}
+                    </v-btn>
+                  </div>
                 </div>
                 <div v-if="activeRows.length > 25" class="mb-3">
                   <v-select

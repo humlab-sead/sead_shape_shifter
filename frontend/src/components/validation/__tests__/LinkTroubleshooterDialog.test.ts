@@ -397,7 +397,9 @@ function mountDialog(
         },
         // Tooltip text is rendered in an overlay in the browser, so the stub
         // renders the help text inline to keep it assertable.
-        VTooltip: { template: '<div data-testid="tooltip"><slot /></div>' },
+        VTooltip: {
+          template: '<div data-testid="tooltip"><slot name="activator" :props="{}" /><slot /></div>',
+        },
       },
     },
   })
@@ -458,13 +460,24 @@ describe('LinkTroubleshooterDialog', () => {
     expect(wrapper.text()).toContain('Saved: inherited; effective inner')
     expect(wrapper.text()).toContain('Allow missing join keys: inherited')
     expect(wrapper.text()).toContain('Strict null checks are enforced')
-    // The null-option help and saved policy live in tooltips, not in the dialog body.
+    // Help text and result totals live in tooltips, not in the dialog body.
     const tooltipText = wrapper.findAll('[data-testid="tooltip"]').map((tooltip) => tooltip.text())
-    expect(tooltipText).toHaveLength(2)
+    expect(tooltipText).toHaveLength(3)
     expect(tooltipText.join(' ')).toContain('Lets rows with a missing (null) key value still join.')
     expect(tooltipText.join(' ')).toContain('Treats two missing (null) key values as equal')
     expect(tooltipText.join(' ')).toContain('Allow missing join keys: inherited')
     expect(tooltipText.join(' ')).toContain('Strict null checks are enforced')
+    expect(tooltipText.join(' ')).toContain('Totals cover the full link input.')
+    expect(wrapper.find('button[aria-label="About result totals"]').exists()).toBe(true)
+    expect(wrapper.findAll('p').some((paragraph) => paragraph.text() === 'Totals cover the full link input.')).toBe(
+      false
+    )
+    const joinNote = wrapper.find('.join-note')
+    const affectedRowToolbar = wrapper.find('.affected-row-toolbar')
+    expect(joinNote.text()).toBe('The saved inner join removes unmatched source rows.')
+    expect(affectedRowToolbar.text().indexOf(joinNote.text())).toBeLessThan(
+      affectedRowToolbar.text().indexOf('Unmatched')
+    )
     expect(wrapper.findAll('button').some((button) => button.text().trim() === 'Save')).toBe(false)
   })
 
@@ -526,7 +539,7 @@ describe('LinkTroubleshooterDialog', () => {
     expect(wrapper.find('select[aria-label="Key pair 1 remote key (customers)"]').attributes('data-selected')).toBe(
       JSON.stringify('system_id')
     )
-    expect(wrapper.text()).toContain('Run a trial to compare')
+    expect(wrapper.text()).not.toContain('Run a trial to compare')
 
     await selectOption(wrapper, 'Join type', 'left')
     await selectOption(wrapper, 'Allow missing join keys', true)
