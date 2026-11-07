@@ -62,19 +62,6 @@
             <div>{{ result.message }}</div>
           </v-alert>
 
-          <section
-            v-if="result.status === 'reproduced' && result.baseline"
-            class="link-finding-summary mb-4"
-            aria-label="Link finding summary"
-          >
-            <h2 v-if="unmatchedHeadline" class="text-subtitle-1 font-weight-bold mb-1">
-              {{ unmatchedHeadline }}
-            </h2>
-            <p v-if="savedJoinEffect" class="text-body-2 text-medium-emphasis mb-0">
-              {{ savedJoinEffect }}
-            </p>
-          </section>
-
           <div
             class="link-troubleshooter-workspace"
             :class="{ 'link-troubleshooter-workspace--single': result.status !== 'reproduced' || !result.baseline }"
@@ -238,43 +225,47 @@
               class="link-troubleshooter-results"
               aria-label="Link results"
             >
-              <section class="mb-5" aria-label="Baseline and trial comparison">
-                <h2 class="text-subtitle-1 mb-1">Results</h2>
-                <p class="text-caption text-medium-emphasis">Totals cover the full link input.</p>
-                <v-alert
-                  v-if="
-                    result.baseline.diagnostic_status === 'failed' || result.baseline.diagnostic_status === 'incomplete'
-                  "
-                  type="warning"
-                  variant="tonal"
-                  density="compact"
-                  class="mb-3"
-                >
-                  <strong>Configured-key diagnostics {{ result.baseline.diagnostic_status }}:</strong>
-                  {{ result.baseline.diagnostic_reason }}. {{ result.baseline.diagnostic_message }}
-                </v-alert>
-                <v-table density="compact">
-                  <thead>
-                    <tr>
-                      <th>Measure</th>
-                      <th>Saved link</th>
-                      <th v-if="trial">Last trial</th>
-                      <th v-if="trial">Change</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="measure in measures" :key="measure.label">
-                      <td>{{ measure.label }}</td>
-                      <td>{{ formatCount(measure.baseline) }}</td>
-                      <td v-if="trial">{{ formatCount(measure.trial) }}</td>
-                      <td v-if="trial">{{ formatDelta(measure.baseline, measure.trial) }}</td>
-                    </tr>
-                  </tbody>
-                </v-table>
-              </section>
+              <div class="d-flex flex-wrap align-center justify-space-between ga-2 mb-1">
+                <h2 class="text-subtitle-1 mb-0">Inspect results</h2>
+                <div class="d-flex flex-wrap ga-2" role="group" aria-label="Result source">
+                  <v-btn
+                    data-side="baseline"
+                    size="small"
+                    :variant="side === 'baseline' ? 'flat' : 'outlined'"
+                    :aria-pressed="side === 'baseline'"
+                    @click="selectSide('baseline')"
+                  >
+                    Saved link
+                  </v-btn>
+                  <v-btn
+                    v-if="trial"
+                    data-side="trial"
+                    size="small"
+                    :variant="side === 'trial' ? 'flat' : 'outlined'"
+                    :aria-pressed="side === 'trial'"
+                    @click="selectSide('trial')"
+                  >
+                    Last trial
+                  </v-btn>
+                </div>
+              </div>
+              <p class="text-caption text-medium-emphasis mb-3">Totals cover the full link input.</p>
+
+              <v-alert
+                v-if="
+                  result.baseline.diagnostic_status === 'failed' || result.baseline.diagnostic_status === 'incomplete'
+                "
+                type="warning"
+                variant="tonal"
+                density="compact"
+                class="mb-3"
+              >
+                <strong>Configured-key diagnostics {{ result.baseline.diagnostic_status }}:</strong>
+                {{ result.baseline.diagnostic_reason }}. {{ result.baseline.diagnostic_message }}
+              </v-alert>
 
               <v-alert v-if="trial && trialStale" type="warning" variant="tonal" class="mb-4">
-                Settings changed — rerun the trial. The comparison below is from the previous settings.
+                Settings changed — rerun the trial. The result below is from the previous settings.
               </v-alert>
 
               <v-alert
@@ -290,37 +281,37 @@
                 Run a trial to compare the saved link with the selected keys and settings.
               </p>
 
-              <section class="mb-5" aria-label="Exception rows">
-                <h3 class="text-subtitle-1 mb-2">Inspect affected rows</h3>
-                <div class="d-flex flex-wrap align-center ga-3 mb-3">
-                  <v-select
-                    v-model="side"
-                    :items="sideOptions"
-                    label="Result source"
-                    density="compact"
-                    hide-details
-                    class="filter-select"
-                  />
-                  <div class="d-flex flex-wrap ga-2" role="group" aria-label="Affected row category">
-                    <v-btn
-                      data-group="unmatched"
-                      size="small"
-                      :variant="group === 'unmatched' ? 'flat' : 'outlined'"
-                      :aria-pressed="group === 'unmatched'"
-                      @click="selectGroup('unmatched')"
-                    >
-                      Unmatched · {{ formatCount(activeDetail?.unmatched?.total_count) }}
-                    </v-btn>
-                    <v-btn
-                      data-group="multiply_matched"
-                      size="small"
-                      :variant="group === 'multiply_matched' ? 'flat' : 'outlined'"
-                      :aria-pressed="group === 'multiply_matched'"
-                      @click="selectGroup('multiply_matched')"
-                    >
-                      Multiple matches · {{ formatCount(activeDetail?.multiply_matched?.total_count) }}
-                    </v-btn>
+              <div class="link-result-stats mb-2">
+                <div v-for="stat in resultStats" :key="stat.key" class="link-result-stat" :data-stat="stat.key">
+                  <div class="link-result-stat-value">{{ formatCount(stat.value) }}</div>
+                  <div class="text-body-2 text-medium-emphasis">{{ stat.label }}</div>
+                  <div v-if="showDeltas" class="text-caption text-medium-emphasis" :data-delta="stat.key">
+                    {{ formatDelta(stat.saved, stat.value) }} vs saved
                   </div>
+                </div>
+              </div>
+              <p v-if="joinNote" class="text-body-2 text-medium-emphasis mb-4">{{ joinNote }}</p>
+
+              <section aria-label="Exception rows">
+                <div class="d-flex flex-wrap ga-2 mb-3" role="group" aria-label="Affected row category">
+                  <v-btn
+                    data-group="unmatched"
+                    size="small"
+                    :variant="group === 'unmatched' ? 'flat' : 'outlined'"
+                    :aria-pressed="group === 'unmatched'"
+                    @click="selectGroup('unmatched')"
+                  >
+                    Unmatched · {{ formatCount(activeDetail?.unmatched?.total_count) }}
+                  </v-btn>
+                  <v-btn
+                    data-group="multiply_matched"
+                    size="small"
+                    :variant="group === 'multiply_matched' ? 'flat' : 'outlined'"
+                    :aria-pressed="group === 'multiply_matched'"
+                    @click="selectGroup('multiply_matched')"
+                  >
+                    Multiple matches · {{ formatCount(activeDetail?.multiply_matched?.total_count) }}
+                  </v-btn>
                 </div>
                 <div v-if="activeRows.length > 25" class="mb-3">
                   <v-select
@@ -438,7 +429,11 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { useLinkTroubleshooter, type LinkExceptionGroupName } from '@/composables/useLinkTroubleshooter'
+import {
+  useLinkTroubleshooter,
+  type LinkExceptionGroupName,
+  type LinkExceptionSide,
+} from '@/composables/useLinkTroubleshooter'
 import type {
   LinkTroubleshootExceptionRow,
   LinkTroubleshootJoinTypeSetting,
@@ -551,48 +546,29 @@ const relationshipSummary = computed<string>(() => {
 })
 
 const keyPairCount = computed(() => Math.max(localKeys.value.length, remoteKeys.value.length))
-const measures = computed(() => {
-  const baseline = result.value?.baseline
-  const totals = trial.value?.status === 'complete' ? trial.value.totals : null
+const resultStats = computed(() => {
+  const saved = result.value?.baseline
+  const active = side.value === 'trial' ? (trial.value?.totals ?? null) : saved
   return [
-    { label: 'Input A rows', baseline: baseline?.input_a_rows, trial: totals?.input_a_rows },
-    { label: 'Output rows', baseline: baseline?.output_rows, trial: totals?.output_rows },
-    { label: 'Unmatched A rows', baseline: baseline?.unmatched_a_rows, trial: totals?.unmatched_a_rows },
-    {
-      label: 'Multiply matched A rows',
-      baseline: baseline?.multiply_matched_a_rows,
-      trial: totals?.multiply_matched_a_rows,
-    },
+    { key: 'source_rows', label: 'Source rows', value: active?.input_a_rows, saved: saved?.input_a_rows },
+    { key: 'output_rows', label: 'Output rows', value: active?.output_rows, saved: saved?.output_rows },
   ]
 })
+// The delta is only meaningful against the saved link, so it is shown for the
+// trial result and omitted for the saved result itself.
+const showDeltas = computed(() => side.value === 'trial' && trial.value?.status === 'complete')
 
-// First summary line: how many source rows find no match at all.
-const unmatchedHeadline = computed<string | null>(() => {
-  const count = result.value?.baseline?.unmatched_a_rows
-  if (count === null || count === undefined) {
-    return null
-  }
-  const target = remoteEntityName.value
-  return count === 1
-    ? `1 source row has no match in ${target}`
-    : `${formatCount(count)} source rows have no match in ${target}`
-})
-
-// Second summary line: what the saved join does with those rows.
-const savedJoinEffect = computed<string | null>(() => {
-  const baseline = result.value?.baseline
-  if (!baseline || baseline.input_a_rows === null || baseline.output_rows === null) {
-    return null
-  }
-  const counts = `${formatCount(baseline.input_a_rows)} input → ${formatCount(baseline.output_rows)} output`
-  const joinType = baseline.settings?.join_type.effective ?? null
+// Explain what the shown join does with source rows that find no match, so the
+// effect is clear without a second comparison table.
+const joinNote = computed<string | null>(() => {
+  const isTrial = side.value === 'trial'
+  const settings = isTrial ? trial.value?.settings : result.value?.baseline?.settings
+  const joinType = settings?.join_type.effective ?? null
   if (!joinType) {
-    return `Saved link: ${counts}.`
+    return null
   }
   const effect = joinType === 'left' ? 'keeps' : 'removes'
-  return baseline.unmatched_a_rows === null
-    ? `The saved ${joinType} join produces ${counts}.`
-    : `The saved ${joinType} join ${effect} these rows: ${counts}.`
+  return `The ${isTrial ? 'trial' : 'saved'} ${joinType} join ${effect} unmatched source rows.`
 })
 
 const baselineFindings = computed(() => result.value?.baseline?.detail?.findings ?? null)
@@ -643,6 +619,11 @@ const pagedRows = computed(() => {
 watch([side, group, pageSize, trial], () => {
   page.value = 1
 })
+// A result that just arrived is the one the operator asked for, so show it
+// without requiring a second switch. Clearing the trial returns to the saved link.
+watch(trial, (value) => {
+  side.value = value ? 'trial' : 'baseline'
+})
 // Headers are not sortable: the backend returns a fixed bounded order, so
 // sorting one page would only reorder the rows already returned.
 const exceptionHeaders = computed(() => [
@@ -661,10 +642,6 @@ const nullOptionItems = [
   { title: 'Inherit saved', value: null },
   { title: 'Yes', value: true },
   { title: 'No', value: false },
-]
-const sideOptions = [
-  { title: 'Saved link', value: 'baseline' },
-  { title: 'Last trial', value: 'trial' },
 ]
 const pageSizeOptions = [25, 50, 100, 200]
 
@@ -719,6 +696,11 @@ function runTrial(): void {
 
 function selectGroup(value: LinkExceptionGroupName): void {
   group.value = value
+  page.value = 1
+}
+
+function selectSide(value: LinkExceptionSide): void {
+  side.value = value
   page.value = 1
 }
 
@@ -785,11 +767,16 @@ function formatDelta(saved: number | null | undefined, trialValue: number | null
   min-width: 0;
 }
 
-.link-finding-summary {
-  padding: 1rem;
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  border-radius: 0.5rem;
-  background: rgba(var(--v-theme-primary), 0.04);
+.link-result-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+}
+
+.link-result-stat-value {
+  font-size: 1.75rem;
+  font-weight: 600;
+  line-height: 1.2;
 }
 
 .link-key-pair-headings {
