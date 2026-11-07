@@ -108,3 +108,47 @@ def test_link_trial_output_row_limit_must_be_positive(limit: int, tmp_path) -> N
     """The link-trial output-row limit must be greater than zero."""
     with pytest.raises(ValidationError):
         Settings(_env_file=None, APPLICATION_ROOT=tmp_path, LINK_TRIAL_MAX_OUTPUT_ROWS=limit)  # pyright: ignore[reportCallIssue]
+
+
+def test_link_experiment_memory_limit_defaults_to_one_hundred_mib(tmp_path) -> None:
+    """The link-experiment memory limit defaults to 100 MiB."""
+    settings = Settings(_env_file=None, APPLICATION_ROOT=tmp_path)  # pyright: ignore[reportCallIssue]
+
+    assert settings.LINK_EXPERIMENT_MAX_MEMORY_MB == 100
+
+
+def test_link_experiment_memory_limit_reads_environment_override(monkeypatch, tmp_path) -> None:
+    """The link-experiment memory limit can be overridden with its prefixed environment variable."""
+    monkeypatch.setenv("SHAPE_SHIFTER_LINK_EXPERIMENT_MAX_MEMORY_MB", "250")
+    settings = Settings(_env_file=None, APPLICATION_ROOT=tmp_path)  # pyright: ignore[reportCallIssue]
+
+    assert settings.LINK_EXPERIMENT_MAX_MEMORY_MB == 250
+
+
+@pytest.mark.parametrize("limit", [0, -1])
+def test_link_experiment_memory_limit_must_be_positive(limit: int, tmp_path) -> None:
+    """The link-experiment memory limit must be greater than zero."""
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, APPLICATION_ROOT=tmp_path, LINK_EXPERIMENT_MAX_MEMORY_MB=limit)  # pyright: ignore[reportCallIssue]
+
+
+def test_link_experiment_group_row_cap_defaults_to_one_hundred(tmp_path) -> None:
+    """The exception-group row cap defaults to 100 rows."""
+    settings = Settings(_env_file=None, APPLICATION_ROOT=tmp_path)  # pyright: ignore[reportCallIssue]
+
+    assert settings.LINK_EXPERIMENT_GROUP_ROW_CAP == 100
+
+
+def test_link_experiment_group_row_cap_reads_environment_override(monkeypatch, tmp_path) -> None:
+    """The exception-group row cap can be overridden with its prefixed environment variable."""
+    monkeypatch.setenv("SHAPE_SHIFTER_LINK_EXPERIMENT_GROUP_ROW_CAP", "250")
+    settings = Settings(_env_file=None, APPLICATION_ROOT=tmp_path)  # pyright: ignore[reportCallIssue]
+
+    assert settings.LINK_EXPERIMENT_GROUP_ROW_CAP == 250
+
+
+@pytest.mark.parametrize("limit", [0, 1001])
+def test_link_experiment_group_row_cap_stays_within_bounds(limit: int, tmp_path) -> None:
+    """The exception-group row cap must be between 1 and 1000 rows."""
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, APPLICATION_ROOT=tmp_path, LINK_EXPERIMENT_GROUP_ROW_CAP=limit)  # pyright: ignore[reportCallIssue]

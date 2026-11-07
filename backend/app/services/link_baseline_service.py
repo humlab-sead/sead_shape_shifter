@@ -14,9 +14,19 @@ from typing import Any, Literal, Mapping, cast
 import pandas as pd
 from loguru import logger
 
+from backend.app.core.config import Settings, get_settings
 from backend.app.exceptions import ConfigurationError, ResourceNotFoundError
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.project import Project
+from backend.app.services.link_experiment_context_store import (
+    BYTES_PER_MIB,
+    ensure_projected_budget,
+    ensure_retained_input_budget,
+    estimate_output_rows,
+    prepare_link_merge_keys,
+    projected_merge_bytes,
+    retained_input_bytes,
+)
 from backend.app.services.project_service import ProjectService
 from src.model import ForeignKeyConfig, ShapeShiftProject, TableConfig
 from src.normalizer import ShapeShifter
@@ -150,13 +160,15 @@ def build_replay_project(saved_project: ShapeShiftProject, resolution: LinkIssue
 class LinkBaselineService:
     """Build a read-only baseline for one saved foreign-key link."""
 
-    def __init__(self, project_service: ProjectService | None = None) -> None:
+    def __init__(self, project_service: ProjectService | None = None, settings: Settings | None = None) -> None:
         """Initialize the service.
 
         Args:
             project_service: Loads saved API projects. Defaults to a new service.
+            settings: Backend settings holding the experiment memory limit.
         """
         self.project_service: ProjectService = project_service or ProjectService()
+        self.settings: Settings = settings if settings is not None else get_settings()
 
     async def build_baseline(
         self,
@@ -331,8 +343,59 @@ class LinkBaselineService:
         if specification.is_already_linked(fk_cfg=fk):
             raise _BaselineStop("link_already_linked", f"'{fk.local_entity}' already contains the link for '{fk.remote_entity}'")
 
-        local_rows: pd.DataFrame = replay_store[fk.local_entity].copy()
-        remote_rows: pd.DataFrame = replay_store[fk.remote_entity].copy()
+        local_input: pd.DataFrame = replay_store[fk.local_entity]
+        remote_input: pd.DataFrame = replay_store[fk.remote_entity]
+        limit_bytes: int = self.settings.LINK_EXPERIMENT_MAX_MEMORY_MB * BYTES_PER_MIB
+        input_bytes: int = retained_input_bytes(local_input, remote_input)
+
+        ensure_retained_input_budget(input_bytes, limit_bytes, stage="link reproduction")
+
+        try:
+            merge_keys = prepare_link_merge_keys(saved_project, fk, local_input, remote_input)
+            estimated_link_rows, estimated_diagnostic_rows = estimate_output_rows(
+                merge_keys.local_key_frame,
+                merge_keys.remote_key_frame,
+                fk.local_keys,
+                merge_keys.mapped_remote_keys,
+                merge_keys.runtime_options,
+                merge_keys.join_type,
+            )
+        except (KeyError, TypeError, ValueError) as exc:
+            raise _BaselineStop("link_not_ready", str(exc)) from exc
+
+        null_key_temporaries: bool = bool(merge_keys.runtime_options.prevent_null_key_matches)
+        projected_bytes: int = max(
+            projected_merge_bytes(
+                retained_bytes=input_bytes,
+                input_bytes=input_bytes,
+                local_rows=local_input,
+                remote_rows=remote_input,
+                local_keys=fk.local_keys,
+                remote_output_columns=merge_keys.remote_output_columns,
+                remote_source_by_output=merge_keys.remote_source_by_output,
+                mapped_remote_keys=merge_keys.mapped_remote_keys,
+                estimated_output_rows=estimated_link_rows,
+                include_merge_indicator=True,
+                null_key_temporaries=null_key_temporaries,
+            ),
+            projected_merge_bytes(
+                retained_bytes=input_bytes,
+                input_bytes=input_bytes,
+                local_rows=merge_keys.local_key_frame,
+                remote_rows=merge_keys.remote_key_frame,
+                local_keys=fk.local_keys,
+                remote_output_columns=merge_keys.mapped_remote_keys,
+                remote_source_by_output={key: key for key in merge_keys.mapped_remote_keys},
+                mapped_remote_keys=merge_keys.mapped_remote_keys,
+                estimated_output_rows=estimated_diagnostic_rows,
+                position_columns=2,
+                null_key_temporaries=null_key_temporaries,
+            ),
+        )
+        ensure_projected_budget(projected_bytes, limit_bytes, stage="link reproduction")
+
+        local_rows: pd.DataFrame = local_input.copy()
+        remote_rows: pd.DataFrame = remote_input.copy()
 
         linker: ForeignKeyLinker = ForeignKeyLinker(
             project=saved_project,
