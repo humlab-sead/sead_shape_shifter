@@ -16,9 +16,9 @@ This plan covers warning identity, saved-link eligibility, count-based reproduct
 
 ## Current Position
 
-- [`ForeignKeyIntegrityValidator`](../../../src/validators/data_validators.py) emits `FK_DATA_INTEGRITY` without structured link identity or an `orphan_count` metadata value. The [data validation orchestrator](../../../backend/app/validators/data_validation_orchestrator.py) is its current production caller and iterates foreign keys without passing their index.
-- The [saved-link resolver](../../../src/transforms/link_resolution.py) handles row-count issues and checks supported join types; the [frontend candidate check](../../../frontend/src/utils/linkTroubleshooter.ts) likewise accepts only row-count warnings.
-- The [existing endpoint](../../../backend/app/api/v1/endpoints/link_troubleshooter.py) uses project read authorization. No integrity inspection endpoint or result is shipped.
+- [`ForeignKeyIntegrityValidator`](../../../../src/validators/data_validators.py) emits `FK_DATA_INTEGRITY` without structured link identity or an `orphan_count` metadata value. The [data validation orchestrator](../../../../backend/app/validators/data_validation_orchestrator.py) is its current production caller and iterates foreign keys without passing their index.
+- The [saved-link resolver](../../../../src/transforms/link_resolution.py) handles row-count issues and checks supported join types; the [frontend candidate check](../../../../frontend/src/utils/linkTroubleshooter.ts) likewise accepts only row-count warnings.
+- The [existing endpoint](../../../../backend/app/api/v1/endpoints/link_troubleshooter.py) uses project read authorization. No integrity inspection endpoint or result is shipped.
 
 ## Phase Plan
 
