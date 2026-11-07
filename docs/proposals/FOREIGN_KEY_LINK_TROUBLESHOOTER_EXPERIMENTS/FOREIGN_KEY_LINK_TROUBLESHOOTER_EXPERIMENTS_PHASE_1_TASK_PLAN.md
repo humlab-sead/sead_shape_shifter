@@ -4,7 +4,7 @@
 
 **Phase:** 1 — Fixed-Input Snapshot Context. Source: [approved proposal](./FOREIGN_KEY_LINK_TROUBLESHOOTER_EXPERIMENTS.md) and [phase plan, Phase 1](./FOREIGN_KEY_LINK_TROUBLESHOOTER_EXPERIMENTS_PHASE_PLAN.md#phase-1-fixed-input-snapshot-context).
 
-**Readiness: Validated.** The phase plan marks Phase 1 ready. The budget is configurable with a 100 MiB default, and the per-computation peak rule below is approved. The validation baseline could not run in the current environment; restore dependencies before implementation tests.
+**Status: Complete.** Implemented and validated on 2026-11-07; every `PH1-AC-*` criterion is covered by tasks `T1.1`–`T3.2` and passing validation `V-1`–`V-4`, recorded in [Implementation Evidence](#implementation-evidence). The budget is configurable with a 100 MiB default, and the per-computation peak rule below is approved.
 
 The phase retains one reproduced warning's A/B frames, resolved configuration, and baseline diagnostic state for a fixed 15 minutes. A separate concurrent-admission cap is deferred. The client-side automatic reopen and refreshed-baseline notice belong to Phase 3; this phase must return an explicit expired-context outcome and support a fresh open.
 
@@ -188,4 +188,4 @@ Recorded 2026-11-07 on `feature/foreign-key-link-troubleshooter-experiments` at 
 
 - **Estimate limitation:** The suggested merge formula estimates result bytes, not peak allocation, and assumes shared keys and nonempty inputs. The approved copy/output multipliers and empty-side width avoid those assumptions, but pandas memory usage and concurrent work can still exceed projections. Measure actual memory if worker limits change; do not present this as a strict peak guarantee.
 - **Known limitation:** Per-computation checks do not cap combined memory from simultaneous operations; concurrent admission was explicitly deferred by the approved proposal. Do not describe this phase as a process-wide memory guarantee.
-- **Validation environment:** `.venv/` now has `pytest` and `fastapi` after `uv sync --extra all`, so `V-1`–`V-4` ran. Two pre-existing gaps remain outside this phase: `authorization/test_route_authentication.py` fails because `POST /api/v1/projects/{project_name}/integrity-troubleshooter` is missing from the route inventory at `01095086`, and three `data_providers/arbodat` modules need test data that this environment does not include. Neither affects this phase's deliverables.
+- **Validation environment:** `.venv/` now has `pytest` and `fastapi` after `uv sync --extra all`, so `V-1`–`V-4` ran. One pre-existing gap remains outside this phase: three `data_providers/arbodat` modules need test data that this environment does not include. It does not affect this phase's deliverables. The other gap noted at implementation time, the missing `POST /api/v1/projects/{project_name}/integrity-troubleshooter` route-inventory row, was closed during Phase 2.

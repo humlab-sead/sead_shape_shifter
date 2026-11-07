@@ -18,9 +18,9 @@ It does not cover other join types or constraints, editing earlier pipeline stag
 
 ## Current Position
 
-- The source proposal is approved but not implemented.
-- The baseline service already produces the pre-link A and processed B frames; the trial service re-links copies through the production linker within one request.
-- The coordinating service rebuilds the baseline on each request. The API accepts `page`, `page_size`, and `row_filter` and returns a server-sliced page.
+- The source proposal is approved. Phase 1 and Phase 2 are complete; Phase 3 has not started. Task and validation evidence is recorded in the [Phase 1](./FOREIGN_KEY_LINK_TROUBLESHOOTER_EXPERIMENTS_PHASE_1_TASK_PLAN.md) and [Phase 2](./FOREIGN_KEY_LINK_TROUBLESHOOTER_EXPERIMENTS_PHASE_2_TASK_PLAN.md) task plans.
+- The baseline service produces the pre-link A and processed B frames, and context trials re-link copies through the production linker from one retained snapshot.
+- The stateless request path still rebuilds the baseline on each request. Until the Phase 3 cutover, the API still accepts `page`, `page_size`, and `row_filter` and returns a server-sliced page.
 - The client clears its result while requesting another response; its current `reset()` closes out dialog state rather than restoring the baseline. The backend's existing in-process state already requires one Uvicorn worker.
 
 ## Phase Plan
@@ -65,7 +65,7 @@ Keep the reproduced link inputs and original settings fixed, authorized, and res
 
 **Readiness**
 
-Ready for a task plan.
+Complete. Implemented and validated on 2026-11-07; every `PH1-AC-*` criterion is covered by tasks `T1.1`–`T3.2` and validation `V-1`–`V-4`.
 
 ### Phase 2: Production Trials and Bounded Comparison Contract
 
@@ -106,7 +106,7 @@ Compare original and trial link behavior on the same snapshot inputs without rer
 
 **Readiness**
 
-Ready for a task plan. The group caps, detail budget, and null-setting representation are recorded, and Phase 1's context contract is in place.
+Complete. Implemented and validated on 2026-11-07; every `PH2-AC-*` criterion is covered by tasks `T1.1`–`T3.1` and validation `V-1`–`V-7`.
 
 ### Phase 3: Dialog Controls and Contract Cutover
 
@@ -148,7 +148,7 @@ Make snapshot-based experiments usable in the dialog and move every caller to th
 
 **Readiness**
 
-Requires the completed Phase 1/2 contracts and their named decisions before task planning.
+Ready for a task plan. Phase 1 and Phase 2 are complete, including the recorded `D1`–`D13` decisions, and the focused context and trial contract tests pass (150 tests on 2026-11-07).
 
 ## Cross-Phase Rules
 
