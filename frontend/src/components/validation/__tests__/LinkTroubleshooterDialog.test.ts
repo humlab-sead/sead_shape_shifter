@@ -368,13 +368,13 @@ function mountDialog(
       stubs: {
         VDialog: { template: '<div data-testid="dialog"><slot /></div>' },
         VSelect: {
-          props: ['items', 'label', 'modelValue'],
+          props: ['items', 'label', 'modelValue', 'ariaLabel'],
           emits: ['update:modelValue'],
           template: `
             <label>
               <span>{{ label }}</span>
               <select
-                :aria-label="label"
+                :aria-label="ariaLabel ?? label"
                 :data-selected="JSON.stringify(modelValue)"
                 :value="JSON.stringify(modelValue)"
                 @change="$emit('update:modelValue', JSON.parse($event.target.value))"
@@ -395,6 +395,9 @@ function mountDialog(
           emits: ['update:modelValue'],
           template: `<button type="button" aria-label="Next page" @click="$emit('update:modelValue', modelValue + 1)">Next page</button>`,
         },
+        // Tooltip text is rendered in an overlay in the browser, so the stub
+        // renders the help text inline to keep it assertable.
+        VTooltip: { template: '<div data-testid="tooltip"><slot /></div>' },
       },
     },
   })
@@ -432,12 +435,12 @@ describe('LinkTroubleshooterDialog', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('orders → customers')
-    expect(wrapper.text()).toContain('Join: inner')
-    expect(wrapper.text()).toContain('Link pass: initial')
-    expect(wrapper.text()).toContain('allow_row_decrease: true')
-    expect(wrapper.find('[aria-label="Saved relationship"] input').exists()).toBe(false)
-    expect(wrapper.find('select[aria-label="orders"]').attributes('data-selected')).toBe(JSON.stringify('saved_code'))
-    expect(wrapper.find('select[aria-label="customers"]').attributes('data-selected')).toBe(
+    expect(wrapper.text()).toContain('Initial · Allow row decrease')
+    expect(wrapper.find('section[aria-label="Saved relationship"]').exists()).toBe(false)
+    expect(wrapper.find('select[aria-label="Key pair 1 local key (orders)"]').attributes('data-selected')).toBe(
+      JSON.stringify('saved_code')
+    )
+    expect(wrapper.find('select[aria-label="Key pair 1 remote key (customers)"]').attributes('data-selected')).toBe(
       JSON.stringify('saved_value')
     )
     expect(wrapper.find('select[aria-label="Join type"]').attributes('data-selected')).toBe(JSON.stringify('inner'))
@@ -446,7 +449,33 @@ describe('LinkTroubleshooterDialog', () => {
     expect(wrapper.text()).toContain('Saved: inherited; effective inner')
     expect(wrapper.text()).toContain('Allow missing join keys: inherited')
     expect(wrapper.text()).toContain('Strict null checks are enforced')
+    // The null-option help and saved policy live in tooltips, not in the dialog body.
+    const tooltipText = wrapper.findAll('[data-testid="tooltip"]').map((tooltip) => tooltip.text())
+    expect(tooltipText).toHaveLength(2)
+    expect(tooltipText.join(' ')).toContain('Lets rows with a missing (null) key value still join.')
+    expect(tooltipText.join(' ')).toContain('Treats two missing (null) key values as equal')
+    expect(tooltipText.join(' ')).toContain('Allow missing join keys: inherited')
+    expect(tooltipText.join(' ')).toContain('Strict null checks are enforced')
     expect(wrapper.findAll('button').some((button) => button.text().trim() === 'Save')).toBe(false)
+  })
+
+  it('summarizes cardinality, linking pass, and only the flags that are set', async () => {
+    const wrapper = mountDialog(
+      makeContext({
+        constraints: {
+          cardinality: 'many_to_one',
+          allow_row_decrease: false,
+          require_unique_right: true,
+        },
+      })
+    )
+    await flushPromises()
+
+    const heading = wrapper.find('.link-troubleshooter-heading')
+    expect(heading.text()).toContain('orders → customers')
+    expect(heading.text()).toContain('Many-to-one · Initial · Require unique right')
+    expect(heading.text()).not.toContain('Allow row decrease')
+    expect(wrapper.text()).not.toContain('cardinality:')
   })
 
   it('shows explicit saved settings on the controls', async () => {
@@ -485,7 +514,9 @@ describe('LinkTroubleshooterDialog', () => {
       local_entity: 'orders',
       metadata: candidateMessage().metadata,
     })
-    expect(wrapper.find('select[aria-label="customers"]').attributes('data-selected')).toBe(JSON.stringify('system_id'))
+    expect(wrapper.find('select[aria-label="Key pair 1 remote key (customers)"]').attributes('data-selected')).toBe(
+      JSON.stringify('system_id')
+    )
     expect(wrapper.text()).toContain('Run a trial to compare')
 
     await selectOption(wrapper, 'Join type', 'left')
@@ -621,57 +652,6 @@ describe('LinkTroubleshooterDialog', () => {
     expect(wrapper.find('section[aria-label="Exception rows"]').text()).toContain('MULTI')
   })
 
-  it('uses the saved result and resets pagination from finding-summary buttons', async () => {
-    const makeRows = (prefix: string) =>
-      Array.from({ length: 51 }, (_, index) => makeRow(index, [`${prefix}-${index + 1}`]))
-    const wrapper = mountDialog(
-      makeContext({
-        detail: makeDetail({
-          unmatched: makeGroup({ total_count: 51, returned_count: 51, rows: makeRows('BASE-UNMATCHED') }),
-          multiply_matched: makeGroup({ total_count: 51, returned_count: 51, rows: makeRows('BASE-MULTI') }),
-        }),
-      })
-    )
-    await flushPromises()
-
-    nextTrial = makeComparison({
-      detail: makeDetail({
-        unmatched: makeGroup({ total_count: 51, returned_count: 51, rows: makeRows('TRIAL-UNMATCHED') }),
-        multiply_matched: makeGroup({ total_count: 51, returned_count: 51, rows: makeRows('TRIAL-MULTI') }),
-      }),
-    })
-    await buttonByText(wrapper, 'Run trial')!.trigger('click')
-    await flushPromises()
-    await selectOption(wrapper, 'Rows per page', 25)
-    await selectOption(wrapper, 'Result source', 'trial')
-    await wrapper.find('button[data-group="multiply_matched"]').trigger('click')
-    await wrapper.find('button[aria-label="Next page"]').trigger('click')
-    expect(state.page.value).toBe(2)
-    expect(wrapper.find('section[aria-label="Exception rows"]').text()).toContain('TRIAL-MULTI-26')
-
-    const inspectUnmatched = wrapper.findAll('button').find((button) => button.text().startsWith('Inspect unmatched'))
-    await inspectUnmatched!.trigger('click')
-    expect(state.side.value).toBe('baseline')
-    expect(state.group.value).toBe('unmatched')
-    expect(state.page.value).toBe(1)
-    expect(wrapper.find('section[aria-label="Exception rows"]').text()).toContain('BASE-UNMATCHED-1')
-
-    await selectOption(wrapper, 'Result source', 'trial')
-    await wrapper.find('button[data-group="unmatched"]').trigger('click')
-    await wrapper.find('button[aria-label="Next page"]').trigger('click')
-    expect(state.page.value).toBe(2)
-    expect(wrapper.find('section[aria-label="Exception rows"]').text()).toContain('TRIAL-UNMATCHED-26')
-
-    const inspectMultipleMatches = wrapper
-      .findAll('button')
-      .find((button) => button.text().startsWith('Inspect multiple matches'))
-    await inspectMultipleMatches!.trigger('click')
-    expect(state.side.value).toBe('baseline')
-    expect(state.group.value).toBe('multiply_matched')
-    expect(state.page.value).toBe(1)
-    expect(wrapper.find('section[aria-label="Exception rows"]').text()).toContain('BASE-MULTI-1')
-  })
-
   it('resets exception pagination when filters or trial rows change', async () => {
     const makeRows = (prefix: string, start: number, count: number) =>
       Array.from({ length: count }, (_, index) => makeRow(start + index, [`${prefix}-${index + 1}`]))
@@ -745,7 +725,9 @@ describe('LinkTroubleshooterDialog', () => {
 
     expect(mockReset).toHaveBeenCalledTimes(1)
     expect(mockRun).not.toHaveBeenCalled()
-    expect(wrapper.find('select[aria-label="orders"]').attributes('data-selected')).toBe(JSON.stringify('saved_code'))
+    expect(wrapper.find('select[aria-label="Key pair 1 local key (orders)"]').attributes('data-selected')).toBe(
+      JSON.stringify('saved_code')
+    )
     expect(state.context.value?.context_id).toBe('context-1')
   })
 

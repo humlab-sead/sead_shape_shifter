@@ -6,8 +6,13 @@
     @update:model-value="emit('update:modelValue', $event)"
   >
     <v-card>
-      <v-card-title class="d-flex align-center justify-space-between">
-        <span>{{ header }}</span>
+      <v-card-title class="d-flex align-start justify-space-between ga-2">
+        <div class="link-troubleshooter-heading">
+          <div>{{ header }}</div>
+          <div v-if="relationshipSummary" class="text-body-2 text-medium-emphasis">
+            {{ relationshipSummary }}
+          </div>
+        </div>
         <v-btn icon="mdi-close" variant="text" aria-label="Close link troubleshooter" @click="close" />
       </v-card-title>
 
@@ -62,32 +67,12 @@
             class="link-finding-summary mb-4"
             aria-label="Link finding summary"
           >
-            <h2 class="text-subtitle-1 mb-2">What the saved link does</h2>
-            <p v-if="result.baseline.unmatched_a_rows !== null" class="mb-1">
-              {{ formatCount(result.baseline.unmatched_a_rows) }} source rows have no match in {{ remoteEntityName }}.
+            <h2 v-if="unmatchedHeadline" class="text-subtitle-1 font-weight-bold mb-1">
+              {{ unmatchedHeadline }}
+            </h2>
+            <p v-if="savedJoinEffect" class="text-body-2 text-medium-emphasis mb-0">
+              {{ savedJoinEffect }}
             </p>
-            <p v-if="result.baseline.input_a_rows !== null && result.baseline.output_rows !== null" class="mb-2">
-              Saved link: {{ formatCount(result.baseline.input_a_rows) }} input rows →
-              {{ formatCount(result.baseline.output_rows) }} output rows.
-            </p>
-            <div class="d-flex flex-wrap ga-2">
-              <v-btn
-                v-if="result.baseline.unmatched_a_rows !== null"
-                size="small"
-                variant="outlined"
-                @click="selectBaselineGroup('unmatched')"
-              >
-                Inspect unmatched · {{ formatCount(result.baseline.unmatched_a_rows) }}
-              </v-btn>
-              <v-btn
-                v-if="result.baseline.multiply_matched_a_rows !== null"
-                size="small"
-                variant="outlined"
-                @click="selectBaselineGroup('multiply_matched')"
-              >
-                Inspect multiple matches · {{ formatCount(result.baseline.multiply_matched_a_rows) }}
-              </v-btn>
-            </div>
           </section>
 
           <div
@@ -95,30 +80,6 @@
             :class="{ 'link-troubleshooter-workspace--single': result.status !== 'reproduced' || !result.baseline }"
           >
             <aside class="link-troubleshooter-settings" aria-label="Link settings">
-              <section v-if="result.relationship" class="mb-5" aria-label="Saved relationship">
-                <h3 class="text-subtitle-1 mb-2">Saved relationship</h3>
-                <div class="d-flex flex-wrap ga-2 mb-2">
-                  <v-chip>A: {{ result.relationship.local_entity }}</v-chip>
-                  <v-chip>B: {{ result.relationship.remote_entity || '—' }}</v-chip>
-                  <v-chip>Join: {{ result.relationship.join_type || '—' }}</v-chip>
-                  <v-chip>Link pass: {{ result.relationship.link_pass || '—' }}</v-chip>
-                </div>
-                <details class="link-troubleshooter-details">
-                  <summary>Saved link rules</summary>
-                  <div v-if="Object.keys(result.relationship.constraints).length" class="d-flex flex-wrap ga-2 mt-2">
-                    <v-chip
-                      v-for="(value, key) in result.relationship.constraints"
-                      :key="key"
-                      size="small"
-                      variant="outlined"
-                    >
-                      {{ key }}: {{ formatValue(value) }}
-                    </v-chip>
-                  </div>
-                  <span v-else class="text-body-2 text-medium-emphasis">None configured</span>
-                </details>
-              </section>
-
               <template v-if="result.status === 'reproduced' && result.baseline">
                 <section v-if="result.key_options" class="mb-5" aria-label="Trial keys">
                   <div class="d-flex align-center justify-space-between mb-2">
@@ -137,14 +98,14 @@
                     <v-select
                       v-model="localKeys[index]"
                       :items="result.key_options.local"
-                      :label="localEntityName"
+                      :aria-label="`Key pair ${index + 1} local key (${localEntityName})`"
                       density="compact"
                       hide-details
                     />
                     <v-select
                       v-model="remoteKeys[index]"
                       :items="result.key_options.remote"
-                      :label="remoteEntityName"
+                      :aria-label="`Key pair ${index + 1} remote key (${remoteEntityName})`"
                       density="compact"
                       hide-details
                     />
@@ -179,51 +140,89 @@
 
                   <details class="link-troubleshooter-details mb-3">
                     <summary>Advanced trial settings</summary>
-                    <p class="text-caption text-medium-emphasis mt-2">
-                      These options apply to null values in configured key columns. Missing columns are reported
-                      separately.
-                    </p>
-                    <div class="d-flex flex-wrap align-center ga-3">
-                      <v-select
-                        v-model="allowNullKeys"
-                        :items="nullOptionItems"
-                        label="Allow missing join keys"
-                        density="compact"
-                        hide-details
-                        class="filter-select"
-                      />
-                      <v-select
-                        v-model="nullKeysEqual"
-                        :items="nullOptionItems"
-                        label="Match null join-key parts"
-                        density="compact"
-                        hide-details
-                        class="filter-select"
-                      />
+                    <div class="d-flex flex-wrap align-center ga-2 mt-3">
+                      <div class="d-flex align-center ga-1">
+                        <v-select
+                          v-model="allowNullKeys"
+                          :items="nullOptionItems"
+                          label="Allow missing join keys"
+                          density="compact"
+                          hide-details
+                          class="filter-select"
+                        />
+                        <v-tooltip location="top" max-width="360">
+                          <template #activator="{ props }">
+                            <v-btn
+                              v-bind="props"
+                              icon
+                              size="x-small"
+                              variant="text"
+                              class="text-medium-emphasis"
+                              aria-label="About allowing missing join keys"
+                            >
+                              <v-icon icon="mdi-help-circle-outline" size="small" />
+                            </v-btn>
+                          </template>
+                          <div class="text-body-2">
+                            <strong>Allow missing join keys</strong>
+                            <p class="mt-1 mb-1">
+                              Lets rows with a missing (null) key value still join. Missing key columns are reported as
+                              separate findings.
+                            </p>
+                            <p v-if="result.baseline.settings" class="mb-0">
+                              Allow missing join keys:
+                              {{ describeSetting(result.baseline.settings.allow_null_keys) }}. Strict null checks are
+                              {{
+                                result.baseline.settings.resolved_null_policy.enforce_strict_null_keys
+                                  ? 'enforced'
+                                  : 'relaxed'
+                              }}.
+                            </p>
+                            <p v-else class="mb-0">This diagnostic has no resolved settings report.</p>
+                          </div>
+                        </v-tooltip>
+                      </div>
+                      <div class="d-flex align-center ga-1">
+                        <v-select
+                          v-model="nullKeysEqual"
+                          :items="nullOptionItems"
+                          label="Match null join-key parts"
+                          density="compact"
+                          hide-details
+                          class="filter-select"
+                        />
+                        <v-tooltip location="top" max-width="360">
+                          <template #activator="{ props }">
+                            <v-btn
+                              v-bind="props"
+                              icon
+                              size="x-small"
+                              variant="text"
+                              class="text-medium-emphasis"
+                              aria-label="About matching null join-key parts"
+                            >
+                              <v-icon icon="mdi-help-circle-outline" size="small" />
+                            </v-btn>
+                          </template>
+                          <div class="text-body-2">
+                            <strong>Match null join-key parts</strong>
+                            <p class="mt-1 mb-1">
+                              Treats two missing (null) key values as equal, so rows can match on null.
+                            </p>
+                            <p v-if="result.baseline.settings" class="mb-0">
+                              Match null join-key parts:
+                              {{ describeSetting(result.baseline.settings.null_keys_equal) }}. Null key matches are
+                              {{
+                                result.baseline.settings.resolved_null_policy.prevent_null_key_matches
+                                  ? 'prevented'
+                                  : 'allowed'
+                              }}.
+                            </p>
+                            <p v-else class="mb-0">This diagnostic has no resolved settings report.</p>
+                          </div>
+                        </v-tooltip>
+                      </div>
                     </div>
-                    <div v-if="result.baseline.settings" class="mt-2">
-                      <p class="text-caption text-medium-emphasis mb-1">
-                        Allow missing join keys: {{ describeSetting(result.baseline.settings.allow_null_keys) }}. Strict
-                        null checks are
-                        {{
-                          result.baseline.settings.resolved_null_policy.enforce_strict_null_keys
-                            ? 'enforced'
-                            : 'relaxed'
-                        }}.
-                      </p>
-                      <p class="text-caption text-medium-emphasis mb-0">
-                        Match null join-key parts: {{ describeSetting(result.baseline.settings.null_keys_equal) }}. Null
-                        key matches are
-                        {{
-                          result.baseline.settings.resolved_null_policy.prevent_null_key_matches
-                            ? 'prevented'
-                            : 'allowed'
-                        }}.
-                      </p>
-                    </div>
-                    <p v-else class="text-caption text-medium-emphasis mt-2 mb-0">
-                      This diagnostic has no resolved settings report.
-                    </p>
                   </details>
 
                   <div class="d-flex align-center ga-2">
@@ -514,6 +513,43 @@ const remoteEntityName = computed(() => {
   )
 })
 const header = computed(() => `${localEntityName.value} → ${remoteEntityName.value}`)
+
+// Format a snake_case value as a short statement, e.g. many_to_one reads as Many-to-one.
+function textifyValue(value: string): string {
+  const text = value.replace(/_/g, '-')
+  return text.charAt(0).toUpperCase() + text.slice(1)
+}
+
+// Format a snake_case flag name as a short label, e.g. after_unnest reads as After unnest.
+function textifyFlag(name: string): string {
+  const text = name.replace(/_/g, ' ')
+  return text.charAt(0).toUpperCase() + text.slice(1)
+}
+
+// Saved link facts under the heading: cardinality, linking pass, then the
+// constraint flags that are set to true. Unset flags are left out.
+const relationshipSummary = computed<string>(() => {
+  const relationship = result.value?.relationship
+  if (!relationship) {
+    return ''
+  }
+  const parts: string[] = []
+  const cardinality = relationship.constraints['cardinality']
+  if (typeof cardinality === 'string' && cardinality.trim().length > 0) {
+    parts.push(textifyValue(cardinality.trim()))
+  }
+  if (relationship.link_pass) {
+    parts.push(textifyFlag(relationship.link_pass))
+  }
+  for (const [key, value] of Object.entries(relationship.constraints)) {
+    if (key === 'cardinality' || value !== true) {
+      continue
+    }
+    parts.push(textifyFlag(key))
+  }
+  return parts.join(' · ')
+})
+
 const keyPairCount = computed(() => Math.max(localKeys.value.length, remoteKeys.value.length))
 const measures = computed(() => {
   const baseline = result.value?.baseline
@@ -528,6 +564,35 @@ const measures = computed(() => {
       trial: totals?.multiply_matched_a_rows,
     },
   ]
+})
+
+// First summary line: how many source rows find no match at all.
+const unmatchedHeadline = computed<string | null>(() => {
+  const count = result.value?.baseline?.unmatched_a_rows
+  if (count === null || count === undefined) {
+    return null
+  }
+  const target = remoteEntityName.value
+  return count === 1
+    ? `1 source row has no match in ${target}`
+    : `${formatCount(count)} source rows have no match in ${target}`
+})
+
+// Second summary line: what the saved join does with those rows.
+const savedJoinEffect = computed<string | null>(() => {
+  const baseline = result.value?.baseline
+  if (!baseline || baseline.input_a_rows === null || baseline.output_rows === null) {
+    return null
+  }
+  const counts = `${formatCount(baseline.input_a_rows)} input → ${formatCount(baseline.output_rows)} output`
+  const joinType = baseline.settings?.join_type.effective ?? null
+  if (!joinType) {
+    return `Saved link: ${counts}.`
+  }
+  const effect = joinType === 'left' ? 'keeps' : 'removes'
+  return baseline.unmatched_a_rows === null
+    ? `The saved ${joinType} join produces ${counts}.`
+    : `The saved ${joinType} join ${effect} these rows: ${counts}.`
 })
 
 const baselineFindings = computed(() => result.value?.baseline?.detail?.findings ?? null)
@@ -652,12 +717,6 @@ function runTrial(): void {
   void run()
 }
 
-function selectBaselineGroup(value: LinkExceptionGroupName): void {
-  side.value = 'baseline'
-  group.value = value
-  page.value = 1
-}
-
 function selectGroup(value: LinkExceptionGroupName): void {
   group.value = value
   page.value = 1
@@ -719,6 +778,10 @@ function formatDelta(saved: number | null | undefined, trialValue: number | null
 
 .link-troubleshooter-settings,
 .link-troubleshooter-results {
+  min-width: 0;
+}
+
+.link-troubleshooter-heading {
   min-width: 0;
 }
 
