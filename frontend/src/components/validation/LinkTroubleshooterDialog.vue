@@ -62,13 +62,11 @@
             class="link-finding-summary mb-4"
             aria-label="Link finding summary"
           >
-            <h2 class="text-subtitle-1 mb-2">What the saved link does</h2>
-            <p v-if="result.baseline.unmatched_a_rows !== null" class="mb-1">
-              {{ formatCount(result.baseline.unmatched_a_rows) }} source rows have no match in {{ remoteEntityName }}.
-            </p>
-            <p v-if="result.baseline.input_a_rows !== null && result.baseline.output_rows !== null" class="mb-0">
-              Saved link: {{ formatCount(result.baseline.input_a_rows) }} input rows →
-              {{ formatCount(result.baseline.output_rows) }} output rows.
+            <h2 v-if="unmatchedHeadline" class="text-subtitle-1 font-weight-bold mb-1">
+              {{ unmatchedHeadline }}
+            </h2>
+            <p v-if="savedJoinEffect" class="text-body-2 text-medium-emphasis mb-0">
+              {{ savedJoinEffect }}
             </p>
           </section>
 
@@ -510,6 +508,35 @@ const measures = computed(() => {
       trial: totals?.multiply_matched_a_rows,
     },
   ]
+})
+
+// First summary line: how many source rows find no match at all.
+const unmatchedHeadline = computed<string | null>(() => {
+  const count = result.value?.baseline?.unmatched_a_rows
+  if (count === null || count === undefined) {
+    return null
+  }
+  const target = remoteEntityName.value
+  return count === 1
+    ? `1 source row has no match in ${target}`
+    : `${formatCount(count)} source rows have no match in ${target}`
+})
+
+// Second summary line: what the saved join does with those rows.
+const savedJoinEffect = computed<string | null>(() => {
+  const baseline = result.value?.baseline
+  if (!baseline || baseline.input_a_rows === null || baseline.output_rows === null) {
+    return null
+  }
+  const counts = `${formatCount(baseline.input_a_rows)} input → ${formatCount(baseline.output_rows)} output`
+  const joinType = baseline.settings?.join_type.effective ?? null
+  if (!joinType) {
+    return `Saved link: ${counts}.`
+  }
+  const effect = joinType === 'left' ? 'keeps' : 'removes'
+  return baseline.unmatched_a_rows === null
+    ? `The saved ${joinType} join produces ${counts}.`
+    : `The saved ${joinType} join ${effect} these rows: ${counts}.`
 })
 
 const baselineFindings = computed(() => result.value?.baseline?.detail?.findings ?? null)
