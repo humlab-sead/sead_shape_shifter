@@ -101,7 +101,7 @@
           </section>
         </aside>
 
-        <main class="integrity-results">
+        <div class="integrity-results">
           <section v-if="result.values" class="mb-5" aria-label="Unmatched values">
             <h3 ref="unmatchedValuesRef" class="text-subtitle-1 mb-2">Unmatched values</h3>
             <div class="text-body-2">
@@ -189,7 +189,7 @@
               <div>{{ result.selected.message }}</div>
             </v-alert>
           </section>
-        </main>
+        </div>
       </div>
 
       <details class="integrity-details mt-4" aria-label="Technical details">
