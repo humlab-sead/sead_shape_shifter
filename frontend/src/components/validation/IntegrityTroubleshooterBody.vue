@@ -59,9 +59,9 @@
       </section>
 
       <div class="integrity-troubleshooter-workspace">
-        <aside class="integrity-link-details" aria-label="Saved link details">
-          <section v-if="result.relationship" class="mb-5" aria-label="Saved relationship">
-            <h3 class="text-subtitle-1 mb-2">Saved relationship</h3>
+        <aside class="integrity-link-details" aria-label="Configured link details">
+          <section v-if="result.relationship" class="mb-5" aria-label="Configured relationship">
+            <h3 class="text-subtitle-1 mb-2">Configured relationship</h3>
             <div class="d-flex flex-wrap ga-2 mb-2">
               <v-chip>A: {{ result.relationship.local_entity }}</v-chip>
               <v-chip>B: {{ result.relationship.remote_entity || '—' }}</v-chip>
@@ -69,7 +69,7 @@
               <v-chip>Join: {{ result.relationship.join_type || '—' }}</v-chip>
             </div>
             <details class="integrity-details">
-              <summary>Saved link rules</summary>
+              <summary>Configured link rules</summary>
               <div v-if="Object.keys(result.relationship.constraints).length" class="d-flex flex-wrap ga-2 mt-2">
                 <v-chip
                   v-for="(value, key) in result.relationship.constraints"

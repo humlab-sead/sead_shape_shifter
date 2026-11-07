@@ -62,12 +62,12 @@ function normalizeJoinType(value: string | null | undefined): LinkTroubleshootJo
 }
 
 /**
- * Build the controls that reproduce the retained snapshot's saved link.
+ * Build the controls that reproduce the retained snapshot's configured link.
  *
  * Complete baselines carry a resolved settings report. An incomplete baseline
- * can have no report, so the saved relationship and its explicit constraint
+ * can have no report, so the configured relationship and its explicit constraint
  * entries are used instead. An absent constraint entry means "inherit the
- * saved link" rather than an explicit false.
+ * configured link" rather than an explicit false.
  */
 function controlsFromContext(response: LinkExperimentContextResponse): TrialControls {
   const settings: LinkTroubleshootTrialSettings | null = response.baseline?.settings ?? null
