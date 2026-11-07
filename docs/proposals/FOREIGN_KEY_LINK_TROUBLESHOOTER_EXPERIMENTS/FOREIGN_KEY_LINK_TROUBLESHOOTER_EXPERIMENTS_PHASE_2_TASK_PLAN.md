@@ -143,13 +143,13 @@ Implemented 2026-11-07 on `feature/foreign-key-link-troubleshooter-experiments` 
 | `V-1` | `.venv/bin/pytest backend/tests/services/test_link_trial_service.py -q` | Pass (40 tests). |
 | `V-2` | `.venv/bin/pytest backend/tests/services/test_link_troubleshooter_service.py backend/tests/services/test_link_experiment_context_store.py -q` | Pass (54 tests). |
 | `V-3` | `.venv/bin/pytest backend/tests/mappers/test_link_troubleshooter_mapper.py backend/tests/services/test_link_troubleshooter_service.py backend/tests/services/test_link_trial_service.py -q` | Pass. |
-| `V-4` | `.venv/bin/pytest backend/tests/api/v1/test_link_troubleshooter.py backend/tests/authorization/test_route_authentication.py -q` | Pass for every API trial-route case. Two authorization inventory checks fail on a pre-existing gap: `POST /api/v1/projects/{project_name}/integrity-troubleshooter` is registered but absent from the inventory at `HEAD`, unrelated to this phase. |
+| `V-4` | `.venv/bin/pytest backend/tests/api/v1/test_link_troubleshooter.py backend/tests/authorization/test_route_authentication.py -q` | Pass (62 authorization tests). The unrelated `POST /api/v1/projects/{project_name}/integrity-troubleshooter` inventory gap was documented in the same change, so the route parity and metadata checks now pass. |
 | `V-5` | `.venv/bin/pytest backend/tests/services/test_link_troubleshooter_service.py backend/tests/api/v1/test_link_troubleshooter.py -q` | Pass; stateless POST is unchanged and context trials leave frames and saved FK data unchanged. |
 | `V-6` | `.venv/bin/pytest backend/tests/test_config.py tests/model/test_model.py -q` | Pass; `LINK_EXPERIMENT_GROUP_ROW_CAP` default/bounds/environment and `null_keys_equal_is_explicit` covered. |
 | `V-7` | `.venv/bin/black --check` and `.venv/bin/isort --check-only` on the changed files | Pass. |
 | Type check | `uv run pyright` on the changed source files | Pass (0 errors, 0 warnings). |
 
-No follow-up work is required for this phase. The unrelated integrity-route inventory gap is reported rather than fixed because it is outside Phase 2 scope.
+No follow-up work is required for this phase. The `POST /api/v1/projects/{project_name}/integrity-troubleshooter` row was added to the authorization route inventory so the route parity checks pass.
 
 ## Deliverables
 
@@ -171,7 +171,7 @@ No new files are required by the verified current structure. The proposed endpoi
 |---|---|---|---|
 | Area 1: Controlled trials | Done | Phase 1 context available; `D10`–`D13` recorded | `T1.1`, `T1.2` implemented; `V-1`, `V-2`, `V-5`, `V-6` pass. |
 | Area 2: Bounded exception detail | Done | Area 1; `D1`–`D9` recorded | `T2.1`, `T2.2` implemented; `V-2`, `V-3`, `V-6` pass. |
-| Area 3: Context trial API | Done | Areas 1–2; `D1`–`D13` recorded | `T3.1` implemented; `V-4` route checks pass; pre-existing authorization inventory gap reported below. |
+| Area 3: Context trial API | Done | Areas 1–2; `D1`–`D13` recorded | `T3.1` implemented; `V-4` route and authorization checks pass. |
 
 ## Definition Of Done
 
