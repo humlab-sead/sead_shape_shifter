@@ -23,39 +23,52 @@
         type="warning"
         variant="tonal"
         class="mb-4 integrity-status"
-        :title="result.status"
+        :title="formatCodeLabel(result.status)"
       >
-        <div class="text-caption mb-1">Reason: {{ result.reason }}</div>
+        <div class="text-caption mb-1">Reason: {{ formatCodeLabel(result.reason) }}</div>
         <div>{{ result.message }}</div>
       </v-alert>
 
       <section class="integrity-finding-summary mb-4" aria-label="Integrity finding summary">
-        <h2 class="text-subtitle-1 mb-2">Current finding</h2>
-        <p v-if="result.current_orphan_count === 0" class="mb-2">
-          No unmatched key values are present in the current data.
-        </p>
-        <p v-else-if="result.current_orphan_count !== null" class="mb-2">
-          {{ formatCount(result.current_orphan_count) }} distinct unmatched key values are present in the current data
-          for {{ result.relationship?.remote_entity || 'the remote entity' }}.
-        </p>
-        <p v-else class="mb-2">The current unmatched key-value count is unavailable.</p>
-        <v-btn v-if="result.values" size="small" variant="outlined" @click="focusUnmatchedValues">
-          Inspect unmatched values
-        </v-btn>
-        <section class="mt-3" aria-label="Unmatched value counts">
-          <v-table density="compact">
-            <tbody>
-              <tr>
-                <td>Recorded unmatched key values</td>
-                <td>{{ formatCount(result.recorded_orphan_count) }}</td>
-              </tr>
-              <tr>
-                <td>Current unmatched key values</td>
-                <td>{{ formatCount(result.current_orphan_count) }}</td>
-              </tr>
-            </tbody>
-          </v-table>
-        </section>
+        <div class="d-flex flex-wrap align-center justify-space-between ga-2 mb-3">
+          <div class="d-flex align-center ga-1">
+            <h2 class="text-subtitle-1 mb-0">Integrity results</h2>
+            <v-tooltip location="top" max-width="360">
+              <template #activator="{ props }">
+                <v-btn
+                  v-bind="props"
+                  icon
+                  size="x-small"
+                  variant="text"
+                  class="text-medium-emphasis"
+                  aria-label="About integrity counts"
+                >
+                  <v-icon icon="mdi-help-circle-outline" size="small" />
+                </v-btn>
+              </template>
+              <div class="text-body-2">
+                <p class="mb-1">The recorded count comes from the validation warning.</p>
+                <p class="mb-0">
+                  The current count is recalculated from current data. The list below shows the unmatched key values and
+                  how many local rows use each one.
+                </p>
+              </div>
+            </v-tooltip>
+          </div>
+          <v-btn v-if="result.values" size="small" variant="outlined" @click="focusUnmatchedValues">
+            Inspect unmatched values
+          </v-btn>
+        </div>
+        <div class="integrity-finding-stats">
+          <div class="integrity-finding-stat" data-stat="recorded">
+            <div class="integrity-finding-stat-value">{{ formatCount(result.recorded_orphan_count) }}</div>
+            <div class="text-body-2 text-medium-emphasis">Recorded unmatched values</div>
+          </div>
+          <div class="integrity-finding-stat" data-stat="current">
+            <div class="integrity-finding-stat-value">{{ formatCount(result.current_orphan_count) }}</div>
+            <div class="text-body-2 text-medium-emphasis">Current unmatched values</div>
+          </div>
+        </div>
       </section>
 
       <div class="integrity-troubleshooter-workspace">
@@ -104,12 +117,9 @@
         <div class="integrity-results">
           <section v-if="result.values" class="mb-5" aria-label="Unmatched values">
             <h3 ref="unmatchedValuesRef" class="text-subtitle-1 mb-2">Unmatched values</h3>
-            <div class="text-body-2">
-              Complete distinct unmatched value count: {{ result.values.distinct_value_count }}
-            </div>
             <div class="text-caption text-medium-emphasis mb-3">
-              Showing {{ result.values.returned_value_count }} of {{ result.values.distinct_value_count }} values · Page
-              {{ result.values.page }}
+              Showing {{ formatCount(result.values.returned_value_count) }} of
+              {{ formatCount(result.values.distinct_value_count) }} distinct values · Page {{ result.values.page }}
             </div>
 
             <v-data-table
@@ -151,10 +161,10 @@
           <section v-if="result.selected" class="mb-2" aria-label="Selected value rows">
             <template v-if="result.selected.status === 'selected'">
               <h3 class="text-subtitle-1 mb-1">Affected local rows</h3>
-              <div class="text-body-2">Selected key: {{ formatKey(result.selected.key_values ?? []) }}</div>
+              <div class="text-body-2">Unmatched key: {{ formatKey(result.selected.key_values ?? []) }}</div>
               <div class="text-body-2 mb-2">
-                Local rows for this value: {{ formatCount(result.selected.total_row_count) }} · Returned rows:
-                {{ formatCount(result.selected.returned_row_count) }}
+                Showing {{ formatCount(result.selected.returned_row_count) }} of
+                {{ formatCount(result.selected.total_row_count) }} local rows for this key.
               </div>
               <v-alert
                 v-if="result.selected.columns_truncated"
@@ -266,7 +276,7 @@ interface ValueTableRow {
 const valueHeaders = [
   { title: 'Unmatched key', key: 'unmatchedKey', sortable: false },
   { title: 'Local rows', key: 'localRowCount', align: 'end' as const, sortable: false },
-  { title: 'Rows', key: 'actions', align: 'end' as const, sortable: false },
+  { title: 'Action', key: 'actions', align: 'end' as const, sortable: false },
 ]
 
 const valueRows = computed<ValueTableRow[]>(() =>
@@ -368,6 +378,11 @@ function formatKey(values: unknown[]): string {
 function formatCount(value: number | null | undefined): string {
   return value === null || value === undefined ? '—' : value.toLocaleString()
 }
+
+function formatCodeLabel(value: string): string {
+  const label = value.replace(/_/g, ' ')
+  return label.charAt(0).toUpperCase() + label.slice(1)
+}
 </script>
 
 <style scoped>
@@ -376,6 +391,25 @@ function formatCount(value: number | null | undefined): string {
   border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   border-radius: 0.5rem;
   background: rgba(var(--v-theme-primary), 0.04);
+}
+
+.integrity-finding-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.integrity-finding-stat {
+  min-width: 0;
+  padding: 0.75rem;
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-radius: 0.5rem;
+}
+
+.integrity-finding-stat-value {
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.2;
 }
 
 .integrity-troubleshooter-workspace {
@@ -412,6 +446,12 @@ function formatCount(value: number | null | undefined): string {
 
 @media (max-width: 900px) {
   .integrity-troubleshooter-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .integrity-finding-stats {
     grid-template-columns: minmax(0, 1fr);
   }
 }
