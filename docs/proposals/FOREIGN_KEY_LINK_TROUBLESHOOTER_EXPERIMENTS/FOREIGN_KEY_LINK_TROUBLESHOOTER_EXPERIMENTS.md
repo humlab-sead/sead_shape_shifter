@@ -49,7 +49,9 @@ The [client composable](../../../frontend/src/composables/useLinkTroubleshooter.
 
 ### Fixed inputs and baseline
 
-After reproducing the selected warning, create a temporary server-side context addressed by an opaque identifier. Retain the pre-link A input, processed B input, the resolved configuration needed to execute the selected link, original FK settings, baseline totals and findings, and the bounded baseline exception groups. Do not retain full joined outputs.
+After reproducing the selected warning, create a temporary server-side context addressed by an opaque identifier. Retain the pre-link A input, processed B input, the resolved configuration needed to execute the selected link, original FK settings, and the baseline diagnostic result. Do not retain full joined outputs.
+
+Warning reproduction and the configured-key diagnostic trial are separate steps, and the diagnostic trial can fail, be blocked, or exceed its row limit. Reproduction alone is enough to create a context. An incomplete baseline is retained as explicitly incomplete, with no baseline totals or exception groups, instead of blocking the dialog; trials still run against the retained inputs.
 
 The frames this needs are already produced and already reused within one request; only their lifetime changes. A settings change re-links retained inputs instead of running normalization again.
 
@@ -73,7 +75,7 @@ Initialize trial controls from the original settings. Keep the existing key sele
 
 Use the production linker, key coercion, null handling, and constraint checks. A completed trial returns metrics and findings. A blocked or oversized trial shows its failure or incomplete status without presenting complete metrics. Do not bypass constraints to manufacture results or interpret fewer warnings as proof of better matching.
 
-Begin with explicit Run trial. Editing any setting invalidates the displayed trial until it is rerun; baseline results remain visible. Associate responses with the submitted settings so an older response cannot overwrite a newer trial or a reset. Automatic updates are deferred unless measured execution time supports them; they are not required for acceptance.
+Begin with explicit Run trial. Editing any setting invalidates the displayed trial until it is rerun; baseline results remain visible, or are reported as explicitly incomplete when none were retained. Associate responses with the submitted settings so an older response cannot overwrite a newer trial or a reset. Automatic updates are deferred unless measured execution time supports them; they are not required for acceptance.
 
 ### Comparison, exceptions, and transport
 
@@ -83,21 +85,25 @@ Return two bounded exception groups: unmatched A rows and multiply matched A row
 
 Send complete totals and both bounded groups in one response, and page them in the browser. Paging, group switching, and page-size changes send no request. Show each group's complete count and returned count with explicit truncation, and use deterministic input order. Keep only the baseline and current trial, not a history.
 
+Row caps alone do not bound the payload, because key values and findings vary in length. Also bound returned detail with a per-value and aggregate budget, mark shortened or omitted detail as truncated, and keep complete counts and totals exact. The budget must not depend on how many rows happen to be returned.
+
 ### Request contract
 
-Opening the dialog creates the context and returns its identifier, the baseline totals and groups, and the eligible controls. A trial submits that identifier with the trial settings and returns trial totals, groups, and findings. Closing releases the context.
+Opening the dialog creates the context and returns its identifier, the baseline diagnostic status, the available key options, and any baseline totals and groups the context retained. A trial submits that identifier with the trial settings and returns trial totals, groups, and findings. Closing releases the context.
 
 Neither request carries `page`, `page_size`, or `row_filter`. This is a breaking contract change and must be documented in the release notes and for existing stateless callers.
 
 ### Reset
 
-Reset to baseline restores the original keys, join type, constraint settings, metrics, findings, and bounded exception groups. It clears trial errors and returns the view to its initial diagnostic selection. Reset does not recompute the baseline and must invalidate pending trial responses.
+Reset to baseline restores the original keys, join type, constraint settings, findings, and the baseline the context retained, including an explicitly incomplete baseline with no totals or groups. It clears trial errors and returns the view to its initial diagnostic selection. Reset does not recompute the baseline and must invalidate pending trial responses.
 
 ### Context lifecycle and access
 
-The deployed service runs a single uvicorn worker because in-memory `ApplicationState` requires it. An in-process context store follows that existing constraint, so it needs no new dependency and no cross-worker routing. Record the same worker requirement wherever `ApplicationState` is documented, so a later worker increase cannot silently split dialog state.
+The deployed service runs a single uvicorn worker because in-memory `ApplicationState` requires it. An in-process context store follows that existing constraint, so it needs no new dependency and no cross-worker routing. `docs/DESIGN.md` already records the worker requirement; extend that note to name dialog contexts as well as `ApplicationState` and the preview cache, so a later worker increase cannot silently split dialog state.
 
-Scope contexts to the authorized user and project, and check project read access on every operation. An identifier alone grants no access. Apply bounded lifetime, per-context and aggregate resource limits, and best-effort cleanup on close; expiry must handle abandoned dialogs. Do not log retained row values.
+Scope contexts to the authorized user and project, and check project read access on every operation. An identifier alone grants no access. Do not log retained row values.
+
+Apply bounded lifetime and resource limits that cover temporary allocations as well as retained frames: each trial copies A and B and materializes a join, and the configured-key diagnostic runs alongside it. Keep the existing join-row limit and count active computations against admission, so concurrent trials cannot exceed the aggregate budget. Take best-effort cleanup on close; expiry must handle abandoned dialogs.
 
 An expired, evicted, or unavailable context requires reopening. Never silently replay data or replace the baseline. Worker restarts may end experiments; durable recovery is out of scope.
 
@@ -111,11 +117,13 @@ An expired, evicted, or unavailable context requires reopening. Never silently r
 
 ## Risks And Tradeoffs
 
-- Retained input frames introduce memory and sensitive-data lifetime concerns. Memory is set by A and B, not by the returned groups, so limits belong on concurrent contexts and lifetime rather than on row caps. Expiry and admission limits are required, not optional cleanup.
+- Retained input frames introduce memory and sensitive-data lifetime concerns. Limits belong on concurrent contexts and lifetime rather than on row caps, because memory is set by A and B, not by the returned groups.
+- Peak memory exceeds retained size. Every trial and diagnostic run copies the inputs and materializes a join, so admission must account for temporary allocations, not only for contexts held open. Expiry and admission limits are required, not optional cleanup.
 - In-process contexts depend on the single-worker deployment. Raising the worker count without shared state would split dialog state.
 - Removing server paging is a breaking contract change for existing callers. It must be documented rather than shipped silently.
 - Null settings have interacting defaults. Treating omission as `false` can change behavior even before the user runs a trial.
 - Bounded exception groups deliberately omit some row details. Complete counts and clear truncation preserve their meaning.
+- Bounded detail can weaken the evidence it carries. A truncated key value may be exactly the value the user needs, so truncation must be stated and must not silently shorten a short value.
 - Failed trials may have less diagnostic detail than successful ones because production checks can stop execution. This follow-up preserves that behavior.
 - The integrity inspector rebuilds its own baseline per request and is outside this proposal. Decide separately whether it shares this context mechanism.
 
@@ -127,17 +135,20 @@ Exercise reset during an in-flight request, out-of-order responses, settings edi
 
 Confirm that paging, group switching, and page-size changes issue no request and trigger no replay, and that the API no longer accepts paging fields.
 
+Open a link whose configured-key diagnostic trial fails or exceeds its row limit, and confirm the context opens with an explicitly incomplete baseline, that trials still run, and that Reset returns to that state without recomputation. Exercise the payload budget with long key values and many findings, confirming that truncation is stated and that counts and totals stay exact.
+
 ## Acceptance Criteria
 
 - `P-AC-1` An eligible warning opens a context only after baseline reproduction succeeds. Every trial uses that context's original A/B inputs without re-normalizing, and a settings change recomputes only the link.
 - `P-AC-2` Users can change ordered key pairs, inner/left join type, and the two supported null-key constraints. Omitted values retain production default resolution; other FK settings remain unchanged.
 - `P-AC-3` Baseline and current-trial totals and findings follow production behavior on the fixed inputs. Invalid, blocked, or oversized trials are explicit and never present incomplete calculations as complete metrics.
-- `P-AC-4` The response carries complete unmatched and multiply matched counts with separate bounded, deterministic A-row groups and explicit truncation. Inner-join losses remain inspectable, correct rows are not listed, and returned subsets do not change totals or rerun the join.
+- `P-AC-4` The response carries complete unmatched and multiply matched counts with separate bounded, deterministic A-row groups and explicit truncation. Inner-join losses remain inspectable, correct rows are not listed, returned subsets do not change totals or rerun the join, and returned key values and findings are bounded by a stated budget and marked as truncated when shortened.
 - `P-AC-5` Editing settings invalidates the displayed trial until Run trial completes. Late responses cannot replace a result for newer settings or undo Reset to baseline.
-- `P-AC-6` Reset restores original settings and baseline results immediately without recomputation, clears trial errors, and restores the initial diagnostic selection.
-- `P-AC-7` Context access requires current project read authorization and user/project ownership. Contexts have bounded lifetime and resource use; expiry or loss requires reopening without silent baseline replacement.
+- `P-AC-6` Reset restores original settings and the retained baseline immediately without recomputation, including an explicitly incomplete baseline, clears trial errors, and restores the initial diagnostic selection.
+- `P-AC-7` Context access requires current project read authorization and user/project ownership. Contexts have bounded lifetime and resource use, where resource use covers retained frames and the temporary copies and joins of active trials; expiry or loss requires reopening without silent baseline replacement.
 - `P-AC-8` Closing discards client trial state and requests context cleanup. Trials and reset do not mutate retained baseline inputs, saved projects, databases, or production caches.
 - `P-AC-9` Paging, group switching, and page-size changes are handled in the browser and send no request. The request contract carries no paging fields, and the change is documented for existing callers.
+- `P-AC-10` A context opens whenever warning reproduction succeeds, even when the configured-key diagnostic trial is failed, incomplete, or not run. Such a baseline is reported as explicitly incomplete with no totals or groups, trials remain available, and Reset restores that same state.
 
 ## Planning Handoff
 
@@ -145,11 +156,13 @@ Confirm that paging, group switching, and page-size changes issue no request and
 - Confirmed: A/B retention and per-trial re-linking already exist within one request. The phases add context lifetime, transport, and access, not a new computation path.
 - Resolved: storage is in-process, matching the single-worker deployment that in-memory `ApplicationState` already requires.
 - Resolved: paging is client-side over bounded groups. `page`, `page_size`, and `row_filter` leave the request contract, and the breaking change must be documented.
+- Resolved: an incomplete configured-key diagnostic does not block context creation. The context reports the baseline status, and Reset restores whatever baseline was retained.
+- Resolved: `docs/DESIGN.md` already records the single-worker requirement; extend that note to name dialog contexts as well as `ApplicationState` and the preview cache.
 - Preserve saved-FK identity, supported-warning eligibility, baseline reproduction, production merge/null behavior, read authorization, computation limits, and bounded responses.
-- Before the context-lifecycle phase is ready for task planning, decide expiry, memory accounting, admission limits, and cleanup behavior. Do not add a persistence dependency.
-- Before the controls/diagnostics phase is ready for task planning, decide the display cap per exception group and the representation of inherited versus explicit null settings. Validate that the selected controls reproduce production default resolution.
+- Before the context-lifecycle phase is ready for task planning, decide expiry, memory accounting, admission limits covering temporary allocations, and cleanup behavior. Do not add a persistence dependency.
+- Before the controls/diagnostics phase is ready for task planning, decide the display cap per exception group, the key-value and findings payload budget, and the representation of inherited versus explicit null settings. Validate that the selected controls reproduce production default resolution.
 - Update `docs/USER_GUIDE.md`: the dialog reads data once when it opens and then serves that snapshot, so page and group changes do not re-read. The current text says the dialog re-reads on every page change.
-- Validation must establish fixed-input parity, immediate reset, stale-response rejection, client-side paging without a server request, bounded exception groups, lifecycle/access limits, and absence of mutation. No phase or task plan is created by this proposal.
+- Validation must establish fixed-input parity, immediate reset, stale-response rejection, client-side paging without a server request, bounded exception groups and payload detail, incomplete-baseline opening, lifecycle/access limits, and absence of mutation. No phase or task plan is created by this proposal.
 
 ## Final Recommendation
 
