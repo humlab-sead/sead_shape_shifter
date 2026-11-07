@@ -151,8 +151,9 @@ Backend: POST /api/v1/validate → ValidationService
   │   ├─ FK definitions and cardinality
   │   └─ Functional dependencies
   └─ Data validation (optional)
-      ├─ sample: preview fetch per entity (up to 1000 rows)
-      ├─ complete: one full normalization, aborts when any entity cannot be produced
+      ├─ complete (default): one full normalization, aborts when any entity cannot be produced
+      ├─ sample: preview fetch per entity (up to 1000 rows); link troubleshooting is turned
+      │            off for these results because a truncated frame cannot confirm a match
       └─ single_pass: one full normalization, reports each entity that cannot be
           produced and skips only its dependents
           └─ used by task status (GET /projects/{name}/tasks)

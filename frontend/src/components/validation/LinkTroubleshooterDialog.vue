@@ -25,7 +25,13 @@
           @remote-entity="integrityRemoteEntity = $event"
         />
 
-        <v-progress-linear v-if="!isIntegrityIssue && loading" indeterminate color="primary" class="mb-4" />
+        <div v-if="!isIntegrityIssue && loading" class="mb-4 troubleshooter-loading">
+          <v-progress-linear indeterminate color="primary" class="mb-1" />
+          <p class="text-caption text-medium-emphasis mb-0">
+            Reading the link from current data. The link is re-run and its row counts recomputed every time this dialog
+            opens or its page changes.
+          </p>
+        </div>
 
         <v-alert v-if="!isIntegrityIssue && error" type="error" variant="tonal" class="mb-4">
           <div>{{ error.message }}</div>
@@ -35,8 +41,11 @@
         </v-alert>
 
         <template v-if="!isIntegrityIssue && result">
+          <!-- A reproduced warning is the expected outcome, so only a failed
+          reproduction is reported. The trial tables below show the result. -->
           <v-alert
-            :type="result.status === 'reproduced' ? 'success' : 'warning'"
+            v-if="result.status !== 'reproduced'"
+            type="warning"
             variant="tonal"
             class="mb-4"
             :title="result.status"
@@ -171,31 +180,22 @@
                   @update:model-value="changePageSize"
                 />
               </div>
-              <v-table density="compact">
-                <thead>
-                  <tr>
-                    <th>Input row</th>
-                    <th v-for="(key, index) in result.trial.local_keys" :key="`${index}-${key}`">A key: {{ key }}</th>
-                    <th>Matched</th>
-                    <th>Remote matches</th>
-                    <th>Output rows</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="row in result.trial.rows" :key="row.input_position">
-                    <td>{{ row.input_position + 1 }}</td>
-                    <td v-for="(value, index) in row.key_values" :key="index">{{ formatValue(value) }}</td>
-                    <td>{{ row.matched ? 'Yes' : 'No' }}</td>
-                    <td>{{ row.remote_match_count }}</td>
-                    <td>{{ row.output_row_contribution }}</td>
-                  </tr>
-                  <tr v-if="result.trial.rows.length === 0">
-                    <td :colspan="result.trial.local_keys.length + 4" class="text-center text-medium-emphasis">
-                      No rows match this filter.
-                    </td>
-                  </tr>
-                </tbody>
-              </v-table>
+              <v-data-table
+                class="trial-rows-table"
+                :headers="trialHeaders"
+                :items="trialRows"
+                item-value="rowKey"
+                :items-per-page="-1"
+                hide-default-footer
+                density="compact"
+              >
+                <template v-for="(_, index) in trialKeyNames" :key="`key-${index}`" #[`item.key-${index}`]="{ item }">
+                  <span>{{ formatValue(item.keyValues[index]) }}</span>
+                </template>
+                <template #no-data>
+                  <div class="text-center text-medium-emphasis py-4">No rows match this filter.</div>
+                </template>
+              </v-data-table>
               <div class="d-flex justify-end mt-2">
                 <v-pagination
                   :model-value="page"
@@ -309,6 +309,38 @@ const allIssues = computed<Finding[]>(() => [
   ...(result.value?.baseline?.issues ?? []).map((issue) => ({ ...issue, source: 'Baseline' as const })),
   ...(result.value?.trial?.issues ?? []).map((issue) => ({ ...issue, source: 'Trial' as const })),
 ])
+
+interface TrialTableRow {
+  rowKey: number
+  inputRow: number
+  keyValues: unknown[]
+  matched: string
+  remoteMatchCount: number
+  outputRowContribution: number
+}
+
+const trialKeyNames = computed<string[]>(() => result.value?.trial?.local_keys ?? [])
+
+// Headers are not sortable: the backend pages the filtered rows in a fixed order,
+// so sorting one page would only reorder the rows currently returned.
+const trialHeaders = computed(() => [
+  { title: 'Input row', key: 'inputRow', sortable: false },
+  ...trialKeyNames.value.map((key, index) => ({ title: `A key: ${key}`, key: `key-${index}`, sortable: false })),
+  { title: 'Matched', key: 'matched', sortable: false },
+  { title: 'Remote matches', key: 'remoteMatchCount', sortable: false },
+  { title: 'Output rows', key: 'outputRowContribution', sortable: false },
+])
+
+const trialRows = computed<TrialTableRow[]>(() =>
+  (result.value?.trial?.rows ?? []).map((row) => ({
+    rowKey: row.input_position,
+    inputRow: row.input_position + 1,
+    keyValues: row.key_values,
+    matched: row.matched ? 'Yes' : 'No',
+    remoteMatchCount: row.remote_match_count,
+    outputRowContribution: row.output_row_contribution,
+  }))
+)
 
 const rowFilterOptions = [
   { title: 'All rows', value: 'all' },

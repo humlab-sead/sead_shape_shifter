@@ -34,24 +34,14 @@
 
     <template #item.message="{ item }">
       <div class="d-flex align-center ga-2">
-        <v-tooltip location="top">
-          <template #activator="{ props: tooltipProps }">
-            <span v-bind="tooltipProps" class="validation-message-summary text-body-2">{{ item.message }}</span>
-          </template>
-          <span class="text-body-2">{{ item.message }}</span>
-        </v-tooltip>
-        <v-tooltip v-if="item.suggestion" location="top">
-          <template #activator="{ props: tooltipProps }">
-            <v-icon
-              v-bind="tooltipProps"
-              icon="mdi-lightbulb-outline"
-              color="info"
-              size="small"
-              aria-label="Suggestion available"
-            />
-          </template>
-          <span><strong>Suggestion:</strong> {{ item.suggestion }}</span>
-        </v-tooltip>
+        <span class="validation-message-summary text-body-2">{{ item.message }}</span>
+        <v-icon
+          v-if="suggestionFor(item)"
+          icon="mdi-lightbulb-outline"
+          color="info"
+          size="small"
+          aria-label="Suggestion available"
+        />
       </div>
     </template>
 
@@ -126,14 +116,14 @@
             </div>
 
             <v-alert
-              v-if="item.suggestion"
+              v-if="suggestionFor(item)"
               type="info"
               variant="tonal"
               density="compact"
               class="validation-message-suggestion"
               @click.stop
             >
-              <span class="text-body-2"><strong>Suggestion:</strong> {{ item.suggestion }}</span>
+              <span class="text-body-2"><strong>Suggestion:</strong> {{ suggestionFor(item) }}</span>
             </v-alert>
 
             <v-btn
@@ -147,10 +137,10 @@
               Troubleshoot link
             </v-btn>
             <p
-              v-else-if="integrityRefusal(item)"
+              v-else-if="troubleshootRefusal(item)"
               class="integrity-troubleshoot-refusal text-body-2 text-medium-emphasis mt-3 mb-0"
             >
-              {{ integrityRefusal(item) }}
+              {{ troubleshootRefusal(item) }}
             </p>
           </div>
         </td>
@@ -161,16 +151,20 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import type { ValidationError, ValidationSeverity } from '@/types'
+import type { DataValidationMode, ValidationError, ValidationSeverity } from '@/types'
 import {
   integrityTroubleshootRefusal,
   isIntegrityTroubleshootCandidate,
   isLinkTroubleshootCandidate,
+  isSampleDataValidation,
+  sampleDataTroubleshootRefusal,
 } from '@/utils/linkTroubleshooter'
+import { distinctSuggestion } from '@/utils/validationSuggestion'
 
 interface Props {
   messages: ValidationError[]
   emptyMessage?: string
+  validationMode?: DataValidationMode | null
 }
 
 interface ValidationTableMessage extends ValidationError {
@@ -184,6 +178,7 @@ interface Emits {
 
 const props = withDefaults(defineProps<Props>(), {
   emptyMessage: 'No messages',
+  validationMode: null,
 })
 
 const emit = defineEmits<Emits>()
@@ -224,6 +219,10 @@ function formatSeverityLabel(severity: ValidationSeverity): string {
   return `${severity.charAt(0).toUpperCase()}${severity.slice(1)}`
 }
 
+function suggestionFor(item: ValidationTableMessage): string | null {
+  return distinctSuggestion(item.message, item.suggestion)
+}
+
 function handleOpenEntity(entityName: string | null | undefined) {
   if (!entityName) {
     return
@@ -240,11 +239,15 @@ function handleTroubleshoot(item: ValidationTableMessage) {
 }
 
 function canTroubleshoot(item: ValidationTableMessage): boolean {
+  if (isSampleDataValidation(props.validationMode)) {
+    return false
+  }
+
   return isLinkTroubleshootCandidate(item) || isIntegrityTroubleshootCandidate(item)
 }
 
-function integrityRefusal(item: ValidationTableMessage): string | null {
-  return integrityTroubleshootRefusal(item)
+function troubleshootRefusal(item: ValidationTableMessage): string | null {
+  return sampleDataTroubleshootRefusal(item, props.validationMode) ?? integrityTroubleshootRefusal(item)
 }
 
 function formatBranchLabel(branchName: string | null | undefined, branchSource: string | null | undefined): string {

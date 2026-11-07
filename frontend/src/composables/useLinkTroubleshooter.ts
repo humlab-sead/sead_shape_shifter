@@ -18,7 +18,9 @@ export function useLinkTroubleshooter(projectName: string) {
   const remoteKeys = ref<string[]>([])
   const page = ref(1)
   const pageSize = ref(50)
-  const rowFilter = ref<LinkTroubleshootRowFilter>('all')
+  // The troubleshooter exists to show rows that the link got wrong, so the first
+  // trial opens on unmatched rows instead of the full input.
+  const rowFilter = ref<LinkTroubleshootRowFilter>('unmatched')
   let identity: LinkTroubleshootIdentity | null = null
   let requestVersion = 0
 
@@ -32,7 +34,7 @@ export function useLinkTroubleshooter(projectName: string) {
     remoteKeys.value = []
     page.value = 1
     pageSize.value = 50
-    rowFilter.value = 'all'
+    rowFilter.value = 'unmatched'
     return sendRequest(identity)
   }
 
@@ -60,7 +62,7 @@ export function useLinkTroubleshooter(projectName: string) {
     remoteKeys.value = []
     page.value = 1
     pageSize.value = 50
-    rowFilter.value = 'all'
+    rowFilter.value = 'unmatched'
     identity = null
   }
 

@@ -236,9 +236,12 @@ A: Typically 100-500ms. Data validation takes longer with large datasets.
 **Q: What's the difference between structural and data validation?**  
 A: Structural checks YAML syntax and references. Data checks against actual data sources.
 
-**Q: What's the difference between Sample and Complete data validation?**  
-A: **Sample (Fast)**: Validates using preview data (first 1000 rows) for quick feedback. **Complete (Comprehensive)**: Runs full normalization pipeline and validates all data - slower but thorough.
-
+**Q: What's the difference between Sample and Complete data validation?**
+A: **Complete (Comprehensive)** runs the full normalization pipeline and validates all data; this
+is the default. **Sample (Fast)** validates using preview data (first 1000 rows) for quick feedback.
+Sample runs truncate each entity, so a parent value that exists outside the sample is reported as
+missing. Link troubleshooting is therefore turned off for sample results; run complete data
+validation to investigate a link warning.
 **Q: Why validate if I'm not changing anything?**  
 A: Data sources may change, or new validation rules may be added.
 

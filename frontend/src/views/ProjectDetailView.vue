@@ -1536,7 +1536,7 @@ async function handleValidate() {
 async function handleDataValidate(config?: any) {
   try {
     const entityNames = config?.entities
-    const validationMode = config?.validationMode || 'sample'
+    const validationMode = config?.validationMode || 'complete'
     const result = await validateData(projectName.value, entityNames, validationMode)
     // Refresh task status after validation
     await taskStatusStore.refresh()
