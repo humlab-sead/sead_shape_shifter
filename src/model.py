@@ -88,6 +88,10 @@ class ForeignKeyConstraints:
         return "allow_null_keys" in self.data
 
     @property
+    def null_keys_equal_is_explicit(self) -> bool:
+        return "null_keys_equal" in self.data
+
+    @property
     def is_empty(self) -> bool:
         """Check if no constraints are set."""
         return bool(self.data) is False
