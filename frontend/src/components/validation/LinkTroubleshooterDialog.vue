@@ -6,8 +6,13 @@
     @update:model-value="emit('update:modelValue', $event)"
   >
     <v-card>
-      <v-card-title class="d-flex align-center justify-space-between">
-        <span>{{ header }}</span>
+      <v-card-title class="d-flex align-start justify-space-between ga-2">
+        <div class="link-troubleshooter-heading">
+          <div>{{ header }}</div>
+          <div v-if="relationshipSummary" class="text-body-2 text-medium-emphasis">
+            {{ relationshipSummary }}
+          </div>
+        </div>
         <v-btn icon="mdi-close" variant="text" aria-label="Close link troubleshooter" @click="close" />
       </v-card-title>
 
@@ -75,30 +80,6 @@
             :class="{ 'link-troubleshooter-workspace--single': result.status !== 'reproduced' || !result.baseline }"
           >
             <aside class="link-troubleshooter-settings" aria-label="Link settings">
-              <section v-if="result.relationship" class="mb-5" aria-label="Saved relationship">
-                <h3 class="text-subtitle-1 mb-2">Saved relationship</h3>
-                <div class="d-flex flex-wrap ga-2 mb-2">
-                  <v-chip>A: {{ result.relationship.local_entity }}</v-chip>
-                  <v-chip>B: {{ result.relationship.remote_entity || '—' }}</v-chip>
-                  <v-chip>Join: {{ result.relationship.join_type || '—' }}</v-chip>
-                  <v-chip>Link pass: {{ result.relationship.link_pass || '—' }}</v-chip>
-                </div>
-                <details class="link-troubleshooter-details">
-                  <summary>Saved link rules</summary>
-                  <div v-if="Object.keys(result.relationship.constraints).length" class="d-flex flex-wrap ga-2 mt-2">
-                    <v-chip
-                      v-for="(value, key) in result.relationship.constraints"
-                      :key="key"
-                      size="small"
-                      variant="outlined"
-                    >
-                      {{ key }}: {{ formatValue(value) }}
-                    </v-chip>
-                  </div>
-                  <span v-else class="text-body-2 text-medium-emphasis">None configured</span>
-                </details>
-              </section>
-
               <template v-if="result.status === 'reproduced' && result.baseline">
                 <section v-if="result.key_options" class="mb-5" aria-label="Trial keys">
                   <div class="d-flex align-center justify-space-between mb-2">
@@ -532,6 +513,43 @@ const remoteEntityName = computed(() => {
   )
 })
 const header = computed(() => `${localEntityName.value} → ${remoteEntityName.value}`)
+
+// Format a snake_case value as a short statement, e.g. many_to_one reads as Many-to-one.
+function textifyValue(value: string): string {
+  const text = value.replace(/_/g, '-')
+  return text.charAt(0).toUpperCase() + text.slice(1)
+}
+
+// Format a snake_case flag name as a short label, e.g. after_unnest reads as After unnest.
+function textifyFlag(name: string): string {
+  const text = name.replace(/_/g, ' ')
+  return text.charAt(0).toUpperCase() + text.slice(1)
+}
+
+// Saved link facts under the heading: cardinality, linking pass, then the
+// constraint flags that are set to true. Unset flags are left out.
+const relationshipSummary = computed<string>(() => {
+  const relationship = result.value?.relationship
+  if (!relationship) {
+    return ''
+  }
+  const parts: string[] = []
+  const cardinality = relationship.constraints['cardinality']
+  if (typeof cardinality === 'string' && cardinality.trim().length > 0) {
+    parts.push(textifyValue(cardinality.trim()))
+  }
+  if (relationship.link_pass) {
+    parts.push(textifyFlag(relationship.link_pass))
+  }
+  for (const [key, value] of Object.entries(relationship.constraints)) {
+    if (key === 'cardinality' || value !== true) {
+      continue
+    }
+    parts.push(textifyFlag(key))
+  }
+  return parts.join(' · ')
+})
+
 const keyPairCount = computed(() => Math.max(localKeys.value.length, remoteKeys.value.length))
 const measures = computed(() => {
   const baseline = result.value?.baseline
@@ -760,6 +778,10 @@ function formatDelta(saved: number | null | undefined, trialValue: number | null
 
 .link-troubleshooter-settings,
 .link-troubleshooter-results {
+  min-width: 0;
+}
+
+.link-troubleshooter-heading {
   min-width: 0;
 }
 
