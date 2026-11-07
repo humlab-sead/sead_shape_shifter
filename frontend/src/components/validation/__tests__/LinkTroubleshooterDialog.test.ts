@@ -578,6 +578,67 @@ describe('LinkTroubleshooterDialog', () => {
     expect(wrapper.find('section[aria-label="Exception rows"]').text()).toContain('MULTI')
   })
 
+  it('resets exception pagination when filters or trial rows change', async () => {
+    const makeRows = (prefix: string, start: number, count: number) =>
+      Array.from({ length: count }, (_, index) => makeRow(start + index, [`${prefix}-${index + 1}`]))
+    const wrapper = mountDialog(
+      makeContext({
+        detail: makeDetail({
+          unmatched: makeGroup({ total_count: 26, returned_count: 26, rows: makeRows('BASE', 0, 26) }),
+        }),
+      })
+    )
+    await flushPromises()
+
+    nextTrial = makeComparison({
+      detail: makeDetail({
+        unmatched: makeGroup({ total_count: 26, returned_count: 26, rows: makeRows('TRIAL', 50, 26) }),
+        multiply_matched: makeGroup({
+          total_count: 1,
+          returned_count: 1,
+          rows: [makeRow(80, ['TRIAL-MULTI'])],
+        }),
+      }),
+    })
+    await buttonByText(wrapper, 'Run trial')!.trigger('click')
+    await flushPromises()
+
+    const firstRowText = () => wrapper.find('section[aria-label="Exception rows"] tbody tr').text()
+    const nextPage = wrapper.find('button[aria-label="Next page"]')
+
+    await selectOption(wrapper, 'Rows per page', 25)
+    await nextPage.trigger('click')
+    expect(firstRowText()).toContain('BASE-26')
+
+    await selectOption(wrapper, 'Rows per page', 50)
+    expect(firstRowText()).toContain('BASE-1')
+
+    await selectOption(wrapper, 'Rows per page', 25)
+    await nextPage.trigger('click')
+    expect(firstRowText()).toContain('BASE-26')
+
+    await selectOption(wrapper, 'Snapshot', 'trial')
+    expect(firstRowText()).toContain('TRIAL-1')
+    await nextPage.trigger('click')
+    expect(firstRowText()).toContain('TRIAL-26')
+
+    await selectOption(wrapper, 'Exception group', 'multiply_matched')
+    expect(firstRowText()).toContain('TRIAL-MULTI')
+    await selectOption(wrapper, 'Exception group', 'unmatched')
+    await nextPage.trigger('click')
+    expect(firstRowText()).toContain('TRIAL-26')
+
+    nextTrial = makeComparison({
+      detail: makeDetail({
+        unmatched: makeGroup({ total_count: 1, returned_count: 1, rows: [makeRow(99, ['TRIAL-SHORT'])] }),
+      }),
+    })
+    await buttonByText(wrapper, 'Run trial')!.trigger('click')
+    await flushPromises()
+
+    expect(firstRowText()).toContain('TRIAL-SHORT')
+  })
+
   it('resets to the retained baseline and original controls without running a trial', async () => {
     const wrapper = mountDialog()
     await flushPromises()

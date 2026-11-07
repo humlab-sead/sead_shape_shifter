@@ -469,6 +469,9 @@ const pagedRows = computed(() => {
   const start = (page.value - 1) * pageSize.value
   return activeRows.value.slice(start, start + pageSize.value)
 })
+watch([side, group, pageSize, trial], () => {
+  page.value = 1
+})
 // Headers are not sortable: the backend returns a fixed bounded order, so
 // sorting one page would only reorder the rows already returned.
 const exceptionHeaders = computed(() => [
