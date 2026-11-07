@@ -320,7 +320,7 @@ Data loaders are async (database I/O). Backend services mix sync and async; chec
 
 ## Constraints and Assumptions
 
-- **Single Uvicorn worker**: mandatory while ApplicationState and the preview cache are in-process singletons. Multiple workers require shared external state (Redis or database) first.
+- **Single Uvicorn worker**: mandatory while ApplicationState, the preview cache, and link-experiment dialog contexts are in-process singletons. Multiple workers require shared external state (Redis or database) first.
 - **No built-in TLS**: TLS termination is expected upstream.
 - **No real-time collaboration**: projects are not locked on open; concurrent edits by multiple users on the same project will produce last-write-wins behavior.
 - **Memory-bound processing**: all entity DataFrames are loaded into memory. Very large source datasets may exhaust available RAM.

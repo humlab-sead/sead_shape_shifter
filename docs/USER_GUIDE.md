@@ -702,10 +702,19 @@ Categories include:
 A row-count or foreign-key warning can offer a **Troubleshoot link** action. The action opens
 a read-only dialog for the saved link that raised the warning.
 
-The dialog re-reads the link from current data every time it opens and every time you change
-its page, filter, or row size. It does not replay the saved validation run, so the dialog
-always shows what the project produces now. If the data changed since validation ran, the
-dialog reports that the warning could not be reproduced and names the reason.
+Opening the dialog reproduces the warning from current data and keeps that snapshot while the
+dialog stays open. The dialog re-reads the data when it opens and when the snapshot expires
+after 15 minutes. Changing the exception group, the baseline or trial view, the page, or the row
+size reads nothing new; those controls only browse rows the backend already returned.
+
+Use **Run trial** to compare the saved link with different key pairs, join type, or missing-key
+settings. A trial never changes the saved link and never becomes the baseline. **Reset** restores
+the latest baseline and its original settings without running anything. **Close** releases the
+snapshot.
+
+If the snapshot expires while the dialog is open, the next trial reopens the link from current
+data, announces the refresh, and requires a new trial. If the data changed since validation ran,
+the dialog reports that the warning could not be reproduced and names the reason.
 
 The action is not offered for sample data validation results, because a sample cannot settle
 whether a value exists in the full parent entity. Run complete data validation to troubleshoot

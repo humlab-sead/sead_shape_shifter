@@ -1,4 +1,4 @@
-import type { DataValidationMode, IntegrityTroubleshootRequest, LinkTroubleshootRequest, ValidationError } from '@/types'
+import type { DataValidationMode, IntegrityTroubleshootRequest, LinkExperimentContextRequest, ValidationError } from '@/types'
 
 const supportedLinkPasses = ['initial', 'after_unnest', 'deferred_retry'] as const
 const supportedJoinTypes = ['inner', 'left'] as const
@@ -27,7 +27,7 @@ export function isLinkTroubleshootCandidate(message: ValidationError): boolean {
   )
 }
 
-export function toLinkTroubleshootRequest(message: ValidationError): LinkTroubleshootRequest | null {
+export function toLinkTroubleshootRequest(message: ValidationError): LinkExperimentContextRequest | null {
   if (!isLinkTroubleshootCandidate(message) || !message.entity) {
     return null
   }
