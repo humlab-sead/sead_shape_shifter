@@ -97,6 +97,9 @@ function mountBody(message: ValidationError = warning()) {
           emits: ['update:modelValue'],
           template: `<button type="button" aria-label="Next page" @click="$emit('update:modelValue', modelValue + 1)">Next page</button>`,
         },
+        VTooltip: {
+          template: '<div data-testid="tooltip"><slot name="activator" :props="{}" /><slot /></div>',
+        },
       },
     },
   })
@@ -119,8 +122,11 @@ describe('IntegrityTroubleshooterBody', () => {
       metadata: { fk_index: 0, fk_signature: 'saved-signature', orphan_count: 2 },
       page: 1,
     })
-    expect(wrapper.text()).toContain('Complete distinct unmatched value count: 2')
-    expect(wrapper.text()).toContain('Showing 2 of 2 values')
+    expect(wrapper.text()).toContain('Showing 2 of 2 distinct values · Page 1')
+    expect(wrapper.find('[data-stat="recorded"] .integrity-finding-stat-value').text()).toBe('2')
+    expect(wrapper.find('[data-stat="current"] .integrity-finding-stat-value').text()).toBe('2')
+    expect(wrapper.find('button[aria-label="About integrity counts"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="tooltip"]').text()).toContain('recorded count comes from the validation warning')
     expect(wrapper.text()).toContain('A: orders')
     expect(wrapper.text()).toContain('B: customers')
     const keyPairs = wrapper.find('section[aria-label="Configured keys"]')
@@ -143,17 +149,18 @@ describe('IntegrityTroubleshooterBody', () => {
     expect(wrapper.text()).not.toContain('Inspected data source')
   })
 
-  it('separates the recorded warning count from the current count', async () => {
+  it('compares recorded and current unmatched counts in separate cards', async () => {
     inspect().mockReset()
     queueResponses(response({ status: 'not_reproduced', reason: 'count_changed', current_orphan_count: 5 }))
 
     const wrapper = mountBody()
     await flushPromises()
 
-    const rows = wrapper.findAll('section[aria-label="Unmatched value counts"] tbody tr')
-    expect(rows[0]?.findAll('td')[1]?.text()).toBe('2')
-    expect(rows[1]?.findAll('td')[1]?.text()).toBe('5')
+    expect(wrapper.find('[data-stat="recorded"] .integrity-finding-stat-value').text()).toBe('2')
+    expect(wrapper.find('[data-stat="current"] .integrity-finding-stat-value').text()).toBe('5')
+    expect(wrapper.find('section[aria-label="Unmatched value counts"]').exists()).toBe(false)
     expect(wrapper.text()).toContain('count_changed')
+    expect(wrapper.text()).toContain('Count changed')
     // Current values stay visible because the current data still has unmatched values.
     expect(wrapper.find('section[aria-label="Unmatched values"]').exists()).toBe(true)
   })
@@ -238,6 +245,7 @@ describe('IntegrityTroubleshooterBody', () => {
     const section = wrapper.find('section[aria-label="Unmatched values"]')
     expect(section.find('thead').text()).toContain('Unmatched key')
     expect(section.find('thead').text()).toContain('Local rows')
+    expect(section.find('thead').text()).toContain('Action')
 
     const rows = section.findAll('tbody tr')
     expect(rows).toHaveLength(2)
@@ -367,8 +375,8 @@ describe('IntegrityTroubleshooterBody', () => {
     await flushPromises()
 
     const section = wrapper.find('section[aria-label="Selected value rows"]')
-    expect(section.text()).toContain('Local rows for this value: 40')
-    expect(section.text()).toContain('Returned rows: 20')
+    expect(section.text()).toContain('Unmatched key: MISSING-A')
+    expect(section.text()).toContain('Showing 20 of 40 local rows for this key.')
     expect(section.text()).toContain('Only the first 2 columns are shown.')
     expect(section.find('thead').text()).toContain('customer_code')
     expect(section.findAll('tbody tr')).toHaveLength(20)
