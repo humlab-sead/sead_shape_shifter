@@ -10,6 +10,7 @@ import pandas as pd
 import pytest
 
 from backend.app.core.config import Settings
+from backend.app.exceptions import ProjectedBudgetExceeded
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.services.link_baseline_service import LinkBaselineResult
 from backend.app.services.link_trial_service import LinkTrialService
@@ -413,3 +414,99 @@ def test_baseline_context_fields_are_required_for_trials(tmp_path) -> None:
     assert result.status == "failed"
     assert result.reason == "baseline_not_reproduced"
     assert_no_trial_data(result)
+
+
+def minimal_baseline(
+    local_rows: pd.DataFrame,
+    remote_rows: pd.DataFrame,
+    *,
+    local_keys: list[str],
+    remote_keys: list[str],
+    how: str = "inner",
+) -> LinkBaselineResult:
+    """Build a baseline whose project holds metadata only, so frames can be large."""
+    local_columns: list[str] = [column for column in local_rows.columns if column != "system_id"]
+    remote_columns: list[str] = [column for column in remote_rows.columns if column != "system_id"]
+    config: dict[str, Any] = {
+        "entities": {
+            "orders": {
+                "type": "fixed",
+                "public_id": "order_id",
+                "columns": local_columns,
+                "values": [local_columns],
+                "foreign_keys": [{"entity": "customers", "local_keys": local_keys, "remote_keys": remote_keys, "how": how}],
+            },
+            "customers": {
+                "type": "fixed",
+                "public_id": "customer_id",
+                "columns": remote_columns,
+                "values": [remote_columns],
+            },
+        }
+    }
+    saved_project = ShapeShiftProject(cfg=config)
+    fk: ForeignKeyConfig = saved_project.get_table("orders").foreign_keys[0]
+    return LinkBaselineResult(
+        status="reproduced",
+        reason="reproduced",
+        message="The test baseline is reproduced.",
+        entity_name="orders",
+        remote_entity="customers",
+        fk_index=0,
+        link_pass="initial",
+        local_rows=local_rows.copy(deep=True),
+        remote_rows=remote_rows.copy(deep=True),
+        _saved_project=saved_project,
+        _foreign_key=fk,
+    )
+
+
+def service_with_memory_limit(limit_mb: int, tmp_path) -> LinkTrialService:
+    """Build a trial service with the configured memory limit in MiB."""
+    settings = Settings(
+        _env_file=None,
+        APPLICATION_ROOT=tmp_path,
+        LINK_EXPERIMENT_MAX_MEMORY_MB=limit_mb,
+    )  # pyright: ignore[reportCallIssue]
+    return LinkTrialService(settings=settings)
+
+
+def test_over_budget_retained_inputs_raise_before_any_merge(tmp_path) -> None:
+    """Retained inputs above the limit are rejected without running the join."""
+    rows = 20_000
+    local_rows = pd.DataFrame({"customer_code": ["x" * 40] * rows})
+    remote_rows = pd.DataFrame({"system_id": [1], "code": ["x" * 40]})
+    baseline = minimal_baseline(local_rows, remote_rows, local_keys=["customer_code"], remote_keys=["code"])
+
+    with patch.object(ForeignKeyLinker, "link_foreign_key") as link:
+        with pytest.raises(ProjectedBudgetExceeded) as raised:
+            service_with_memory_limit(1, tmp_path).run_trial(baseline, local_keys=["customer_code"], remote_keys=["code"])
+
+    assert raised.value.code == "PROJECTED_BUDGET_EXCEEDED"
+    assert raised.value.context["stage"] == "link trial"
+    link.assert_not_called()
+
+
+def test_over_budget_projected_merge_raises_before_the_join(tmp_path) -> None:
+    """A duplicate-key expansion above the limit is rejected before materializing it."""
+    local_rows = pd.DataFrame({"customer_code": ["same"] * 500})
+    remote_rows = pd.DataFrame({"system_id": range(500), "code": ["same"] * 500})
+    baseline = minimal_baseline(local_rows, remote_rows, local_keys=["customer_code"], remote_keys=["code"])
+
+    with patch.object(ForeignKeyLinker, "link_foreign_key") as link:
+        with pytest.raises(ProjectedBudgetExceeded):
+            service_with_memory_limit(1, tmp_path).run_trial(baseline, local_keys=["customer_code"], remote_keys=["code"])
+
+    link.assert_not_called()
+
+
+def test_trial_completes_when_the_projection_fits_the_limit(tmp_path) -> None:
+    """The same inputs complete under a limit that covers the projected peak."""
+    local_rows = pd.DataFrame({"customer_code": ["same"] * 50})
+    remote_rows = pd.DataFrame({"system_id": range(50), "code": ["same"] * 50})
+    baseline = minimal_baseline(local_rows, remote_rows, local_keys=["customer_code"], remote_keys=["code"])
+
+    result = service_with_memory_limit(100, tmp_path).run_trial(baseline, local_keys=["customer_code"], remote_keys=["code"])
+
+    assert result.status == "complete"
+    assert result.output_rows == 2500

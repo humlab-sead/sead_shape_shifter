@@ -57,6 +57,11 @@ ERROR_TIPS: dict[str, list[str]] = {
         "Check data types and formats",
         "Ensure required fields are present",
     ],
+    "PROJECTED_BUDGET_EXCEEDED": [
+        "Reduce the rows or columns in the two linked entities",
+        "Raise SHAPE_SHIFTER_LINK_EXPERIMENT_MAX_MEMORY_MB when the host has enough memory",
+        "Check the saved project's filters before retrying the link experiment",
+    ],
     "FIXED_ENTITY_SHAPE_INVALID": [
         "Check the fixed entity's columns and values entries.",
         "Make each values row match the declared data columns, or use the full positional form with managed identity fields first.",

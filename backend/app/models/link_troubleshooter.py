@@ -1,5 +1,6 @@
 """API models for the foreign-key link troubleshooter."""
 
+from datetime import datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
@@ -114,3 +115,29 @@ class LinkTroubleshootResponse(BaseModel):
     configured_keys: LinkTroubleshootKeys | None = None
     baseline: LinkTroubleshootBaseline | None = None
     trial: LinkTroubleshootTrial | None = None
+
+
+class LinkExperimentContextRequest(BaseModel):
+    """Retain the inputs behind one reproduced linking warning."""
+
+    issue_type: str
+    local_entity: str
+    metadata: dict[str, Any]
+
+
+class LinkExperimentContextResponse(BaseModel):
+    """Identity and baseline state of one retained snapshot.
+
+    ``context_id`` is ``None`` when the warning did not reproduce, so no snapshot
+    was retained. ``expires_at`` is the fixed end of the snapshot lifetime.
+    """
+
+    context_id: str | None = None
+    status: Literal["reproduced", "not_reproduced", "ineligible"]
+    reason: str
+    message: str
+    expires_at: datetime | None = None
+    relationship: LinkTroubleshootRelationship | None = None
+    key_options: LinkTroubleshootKeyOptions | None = None
+    configured_keys: LinkTroubleshootKeys | None = None
+    baseline: LinkTroubleshootBaseline | None = None

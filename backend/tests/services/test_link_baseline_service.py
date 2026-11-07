@@ -8,6 +8,8 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
+from backend.app.core.config import Settings
+from backend.app.exceptions import ProjectedBudgetExceeded
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.project import Project
 from backend.app.services.link_baseline_service import LinkBaselineResult, LinkBaselineService, build_replay_project
@@ -1131,3 +1133,103 @@ async def test_failed_replay_still_closes_its_workspace(monkeypatch: pytest.Monk
     # ``__del__`` may close the workspace again once the normalizer is collected.
     assert closed["workspace"] >= 1
     assert closed["loaders"] == 1
+
+
+# ---------------------------------------------------------------------------
+# Experiment memory budget
+# ---------------------------------------------------------------------------
+
+LARGE_INPUT_ROWS: int = 10_000
+
+
+def large_input_cfg() -> dict[str, Any]:
+    """Build a project whose replay inputs are larger than one MiB."""
+    codes: list[str] = [f"{index:05d}" + "x" * 55 for index in range(LARGE_INPUT_ROWS)]
+    return {
+        "entities": {
+            "orders": {
+                "type": "fixed",
+                "public_id": "order_id",
+                "keys": ["order_code"],
+                "columns": ["order_code", "customer_code"],
+                "values": [[f"O{index}", code] for index, code in enumerate(codes)],
+                "foreign_keys": [
+                    {
+                        "entity": "customers",
+                        "local_keys": ["customer_code"],
+                        "remote_keys": ["code"],
+                        "how": "inner",
+                        "constraints": {"allow_row_decrease": True},
+                    }
+                ],
+            },
+            "customers": {
+                "type": "fixed",
+                "public_id": "customer_id",
+                "keys": ["code"],
+                "columns": ["code"],
+                "values": [[codes[0]]],
+            },
+        }
+    }
+
+
+def large_input_metadata(saved_project: ShapeShiftProject) -> dict[str, Any]:
+    """Build metadata matching the warning raised by the large-input project."""
+    fk: ForeignKeyConfig = saved_project.get_table("orders").foreign_keys[0]
+    return {
+        "fk_index": fk.fk_index,
+        "fk_signature": fk.identity_signature,
+        "link_pass": "initial",
+        "join_type": "inner",
+        "row_count_before": LARGE_INPUT_ROWS,
+        "row_count_after": 1,
+    }
+
+
+@pytest.mark.asyncio
+async def test_reproduction_rejects_over_budget_inputs_before_the_merge(tmp_path) -> None:
+    """Retained inputs above the configured limit cannot open a baseline."""
+    api_project = build_api_project(large_input_cfg())
+    saved = ProjectMapper.to_core(api_project)
+    settings = Settings(
+        _env_file=None,
+        APPLICATION_ROOT=tmp_path,
+        LINK_EXPERIMENT_MAX_MEMORY_MB=1,
+    )  # pyright: ignore[reportCallIssue]
+    service = LinkBaselineService(project_service=StubProjectService(api_project), settings=settings)  # type: ignore[arg-type]
+
+    with patch.object(ForeignKeyLinker, "link_foreign_key") as link:
+        with pytest.raises(ProjectedBudgetExceeded) as raised:
+            await service.build_baseline(
+                project_name="baseline-probe",
+                issue_type="row_count_mismatch",
+                local_entity="orders",
+                metadata=large_input_metadata(saved),
+            )
+
+    assert raised.value.code == "PROJECTED_BUDGET_EXCEEDED"
+    assert raised.value.context["stage"] == "link reproduction"
+    link.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_reproduction_completes_within_the_default_memory_limit(tmp_path) -> None:
+    """The same inputs reproduce under the default 100 MiB limit."""
+    api_project = build_api_project(large_input_cfg())
+    saved = ProjectMapper.to_core(api_project)
+    service = LinkBaselineService(
+        project_service=StubProjectService(api_project),  # type: ignore[arg-type]
+        settings=Settings(_env_file=None, APPLICATION_ROOT=tmp_path),  # pyright: ignore[reportCallIssue]
+    )
+
+    result = await service.build_baseline(
+        project_name="baseline-probe",
+        issue_type="row_count_mismatch",
+        local_entity="orders",
+        metadata=large_input_metadata(saved),
+    )
+
+    assert result.status == "reproduced", result.message
+    assert result.local_rows is not None
+    assert len(result.local_rows) == LARGE_INPUT_ROWS

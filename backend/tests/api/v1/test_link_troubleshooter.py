@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -12,11 +13,13 @@ from backend.app.api.v1.endpoints.link_troubleshooter import get_link_troublesho
 from backend.app.core.config import settings
 from backend.app.main import app
 from backend.app.models.link_troubleshooter import (
+    LinkExperimentContextResponse,
     LinkTroubleshootBaseline,
     LinkTroubleshootResponse,
     LinkTroubleshootTrial,
 )
 from backend.app.services import project_service
+from backend.app.services.link_troubleshooter_service import LinkExperimentContextResult
 
 REQUEST = {
     "issue_type": "row_count_mismatch",
@@ -204,3 +207,173 @@ async def test_missing_project_returns_404_without_running_service(authorized_cl
     assert response.status_code == 404
     assert response.json()["detail"] == "Resource not found"
     service.run.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# Retained experiment context routes
+# ---------------------------------------------------------------------------
+
+CONTEXT_PATH = "/api/v1/projects/test_project/link-experiment-contexts"
+CONTEXT_ITEM_PATH = f"{CONTEXT_PATH}/context-1"
+CONTEXT_REQUEST = {
+    "issue_type": "row_count_mismatch",
+    "local_entity": "orders",
+    "metadata": {"fk_index": 0, "link_pass": "initial"},
+}
+
+
+def context_response(*, context_id: str | None = "context-1", status: str = "reproduced") -> LinkExperimentContextResponse:
+    """Build one retained-context response for route tests."""
+    return LinkExperimentContextResponse(
+        context_id=context_id,
+        status=status,  # type: ignore[arg-type]
+        reason="reproduced",
+        message="The retained link inputs are ready.",
+        expires_at=datetime(2026, 1, 1, 12, 15, tzinfo=timezone.utc),
+        baseline=LinkTroubleshootBaseline(diagnostic_status="incomplete", diagnostic_reason="row_limit_exceeded"),
+    )
+
+
+def install_context_service(monkeypatch, **overrides) -> Mock:
+    """Install a context-aware service mock as the endpoint dependency."""
+    service = Mock()
+    service.open_context = AsyncMock(return_value=overrides.get("open_response", context_response()))
+    service.read_context = AsyncMock(
+        return_value=overrides.get("read_result", LinkExperimentContextResult(state="found", response=context_response()))
+    )
+    service.close_context = AsyncMock(return_value=overrides.get("closed", True))
+    monkeypatch.setitem(app.dependency_overrides, get_link_troubleshooter_service, lambda: service)
+    return service
+
+
+@pytest.mark.asyncio
+async def test_open_context_forwards_the_authorized_owner_and_project(project_client, monkeypatch) -> None:
+    expected = context_response()
+    service = install_context_service(monkeypatch, open_response=expected)
+
+    response = await project_client.post(CONTEXT_PATH, json=CONTEXT_REQUEST)
+
+    assert response.status_code == 200, response.text
+    assert response.json() == expected.model_dump(mode="json")
+    service.open_context.assert_awaited_once_with(
+        project_name="test_project",
+        issue_type="row_count_mismatch",
+        local_entity="orders",
+        metadata=CONTEXT_REQUEST["metadata"],
+        owner_principal_id="test-user",
+        project_locator="test_project",
+    )
+
+
+@pytest.mark.asyncio
+async def test_open_context_without_reproduction_returns_no_identifier(project_client, monkeypatch) -> None:
+    expected = context_response(context_id=None, status="not_reproduced")
+    service = install_context_service(monkeypatch, open_response=expected)
+
+    response = await project_client.post(CONTEXT_PATH, json=CONTEXT_REQUEST)
+
+    assert response.status_code == 200, response.text
+    assert response.json()["context_id"] is None
+    assert response.json()["status"] == "not_reproduced"
+    service.open_context.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_read_context_returns_the_retained_baseline(project_client, monkeypatch) -> None:
+    expected = context_response()
+    service = install_context_service(monkeypatch, read_result=LinkExperimentContextResult(state="found", response=expected))
+
+    response = await project_client.get(CONTEXT_ITEM_PATH)
+
+    assert response.status_code == 200, response.text
+    assert response.json() == expected.model_dump(mode="json")
+    service.read_context.assert_awaited_once_with(
+        context_id="context-1",
+        owner_principal_id="test-user",
+        project_locator="test_project",
+    )
+
+
+@pytest.mark.asyncio
+async def test_read_context_reports_expiry_explicitly(project_client, monkeypatch) -> None:
+    install_context_service(monkeypatch, read_result=LinkExperimentContextResult(state="expired"))
+
+    response = await project_client.get(CONTEXT_ITEM_PATH)
+
+    assert response.status_code == 410
+    assert response.json()["detail"]["reason"] == "context_expired"
+
+
+@pytest.mark.asyncio
+async def test_read_context_conceals_an_unavailable_identifier(project_client, monkeypatch) -> None:
+    service = install_context_service(monkeypatch, read_result=LinkExperimentContextResult(state="unavailable"))
+
+    response = await project_client.get(CONTEXT_ITEM_PATH)
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Resource not found"
+    service.read_context.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_close_context_returns_no_content(project_client, monkeypatch) -> None:
+    service = install_context_service(monkeypatch)
+
+    response = await project_client.delete(CONTEXT_ITEM_PATH)
+
+    assert response.status_code == 204
+    service.close_context.assert_awaited_once_with(
+        context_id="context-1",
+        owner_principal_id="test-user",
+        project_locator="test_project",
+    )
+
+
+@pytest.mark.asyncio
+async def test_close_context_conceals_an_unknown_identifier(project_client, monkeypatch) -> None:
+    service = install_context_service(monkeypatch, closed=False)
+
+    response = await project_client.delete(CONTEXT_ITEM_PATH)
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Resource not found"
+    service.close_context.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_context_routes_require_project_read_access(
+    project_client,  # pylint: disable=unused-argument
+    monkeypatch,
+) -> None:
+    service = install_context_service(monkeypatch)
+
+    async with client_for_principal("unrelated-user") as client:
+        opened = await client.post(CONTEXT_PATH, json=CONTEXT_REQUEST)
+        read = await client.get(CONTEXT_ITEM_PATH)
+        closed = await client.delete(CONTEXT_ITEM_PATH)
+
+    for response in (opened, read, closed):
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Resource not found"
+
+    service.open_context.assert_not_awaited()
+    service.read_context.assert_not_awaited()
+    service.close_context.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {key: value for key, value in CONTEXT_REQUEST.items() if key != "issue_type"},
+        {key: value for key, value in CONTEXT_REQUEST.items() if key != "local_entity"},
+        {key: value for key, value in CONTEXT_REQUEST.items() if key != "metadata"},
+    ],
+)
+@pytest.mark.asyncio
+async def test_invalid_context_request_returns_422_without_running_service(project_client, monkeypatch, body: dict) -> None:
+    service = install_context_service(monkeypatch)
+
+    response = await project_client.post(CONTEXT_PATH, json=body)
+
+    assert response.status_code == 422
+    service.open_context.assert_not_awaited()

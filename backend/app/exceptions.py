@@ -397,6 +397,16 @@ class ConfigurationError(ValidationError):
 # ============================================================================
 
 
+class ProjectedBudgetExceeded(ValidationError):
+    """A link experiment input or projected merge exceeds the memory limit.
+
+    The message carries only sizes and the configured limit. It never includes
+    retained row values.
+    """
+
+    error_code = "PROJECTED_BUDGET_EXCEEDED"
+
+
 class ResourceError(DomainException):
     """Base class for resource access/availability errors."""
 

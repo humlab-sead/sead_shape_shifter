@@ -11,16 +11,24 @@ import pandas as pd
 
 from backend.app.core.config import Settings, get_settings
 from backend.app.services.link_baseline_service import LinkBaselineResult
+from backend.app.services.link_experiment_context_store import (
+    BYTES_PER_MIB,
+    LinkMergeKeys,
+    ensure_projected_budget,
+    ensure_retained_input_budget,
+    estimate_output_rows,
+    prepare_link_merge_keys,
+    projected_merge_bytes,
+    retained_input_bytes,
+)
 from src.model import ForeignKeyConfig, ShapeShiftProject
 from src.specifications.constraints import ForeignKeyConstraintViolation, ForeignKeyRuntimeOptions, ValidationIssue
 from src.table_store import TableStore
-from src.transforms.link import ForeignKeyLinker, LinkPass, _resolve_fk_runtime_options
-from src.transforms.utility import _NULL_SENTINEL_PREFIX, _coerce_compatible_merge_key_dtypes, merge_with_nonmatching_null_keys
+from src.transforms.link import ForeignKeyLinker, LinkPass
+from src.transforms.utility import merge_with_nonmatching_null_keys
 
 TrialStatus = Literal["complete", "failed", "incomplete"]
 """Outcome of one alternative-key trial."""
-
-_NULL_KEY = object()
 
 
 @dataclass(frozen=True)
@@ -98,24 +106,21 @@ class LinkTrialService:
             return self._failed("unsupported_join", f"Trials do not support the '{join_type}' join type.")
 
         try:
-            local_key_frame, remote_key_frame, mapped_remote_keys = self._prepare_key_frames(
-                saved_project,
-                trial_fk,
-                local_rows,
-                remote_rows,
-            )
-            remote_config = saved_project.get_table(trial_fk.remote_entity)
-            runtime_options: ForeignKeyRuntimeOptions = _resolve_fk_runtime_options(trial_fk, remote_config)
-            estimated_link_rows, estimated_diagnostic_rows = self._estimate_output_rows(
-                local_key_frame,
-                remote_key_frame,
+            merge_keys: LinkMergeKeys = prepare_link_merge_keys(saved_project, trial_fk, local_rows, remote_rows)
+            estimated_link_rows, estimated_diagnostic_rows = estimate_output_rows(
+                merge_keys.local_key_frame,
+                merge_keys.remote_key_frame,
                 trial_fk.local_keys,
-                mapped_remote_keys,
-                runtime_options,
+                merge_keys.mapped_remote_keys,
+                merge_keys.runtime_options,
                 join_type,
             )
         except (KeyError, TypeError, ValueError) as exc:
             return self._failed("invalid_keys", str(exc))
+
+        limit_bytes: int = self.settings.LINK_EXPERIMENT_MAX_MEMORY_MB * BYTES_PER_MIB
+        input_bytes: int = retained_input_bytes(local_rows, remote_rows)
+        ensure_retained_input_budget(input_bytes, limit_bytes, stage="link trial")
 
         output_limit: int = self.settings.LINK_TRIAL_MAX_OUTPUT_ROWS
         if max(estimated_link_rows, estimated_diagnostic_rows) > output_limit:
@@ -124,6 +129,35 @@ class LinkTrialService:
                 reason="row_limit_exceeded",
                 message=f"The estimated join output exceeds the configured limit of {output_limit} rows.",
             )
+
+        null_key_temporaries: bool = bool(merge_keys.runtime_options.prevent_null_key_matches)
+        link_projection: int = projected_merge_bytes(
+            retained_bytes=input_bytes,
+            input_bytes=input_bytes,
+            local_rows=local_rows,
+            remote_rows=remote_rows,
+            local_keys=trial_fk.local_keys,
+            remote_output_columns=merge_keys.remote_output_columns,
+            remote_source_by_output=merge_keys.remote_source_by_output,
+            mapped_remote_keys=merge_keys.mapped_remote_keys,
+            estimated_output_rows=estimated_link_rows,
+            include_merge_indicator=True,
+            null_key_temporaries=null_key_temporaries,
+        )
+        diagnostic_projection: int = projected_merge_bytes(
+            retained_bytes=input_bytes,
+            input_bytes=input_bytes,
+            local_rows=merge_keys.local_key_frame,
+            remote_rows=merge_keys.remote_key_frame,
+            local_keys=trial_fk.local_keys,
+            remote_output_columns=merge_keys.mapped_remote_keys,
+            remote_source_by_output={key: key for key in merge_keys.mapped_remote_keys},
+            mapped_remote_keys=merge_keys.mapped_remote_keys,
+            estimated_output_rows=estimated_diagnostic_rows,
+            position_columns=2,
+            null_key_temporaries=null_key_temporaries,
+        )
+        ensure_projected_budget(max(link_projection, diagnostic_projection), limit_bytes, stage="link trial")
 
         link_local_rows: pd.DataFrame = local_rows.copy(deep=True)
         link_remote_rows: pd.DataFrame = remote_rows.copy(deep=True)
@@ -150,13 +184,15 @@ class LinkTrialService:
         issues: tuple[ValidationIssue, ...] = tuple(linker.validators[-1].issues)
         del linked_rows
 
+        ensure_projected_budget(diagnostic_projection, limit_bytes, stage="link trial diagnostic join")
+
         try:
             a_rows, diagnostic_join_rows = self._diagnose_a_rows(
                 local_rows,
-                remote_key_frame,
+                merge_keys.remote_key_frame,
                 trial_fk,
-                mapped_remote_keys,
-                runtime_options,
+                merge_keys.mapped_remote_keys,
+                merge_keys.runtime_options,
             )
         except (KeyError, TypeError, ValueError) as exc:
             return self._failed("diagnostic_failed", str(exc))
@@ -215,106 +251,6 @@ class LinkTrialService:
                 if occurrences > 1:
                     return f"The selected {side} key '{key}' is ambiguous in the link input."
         return None
-
-    @staticmethod
-    def _prepare_key_frames(
-        project: ShapeShiftProject,
-        fk: ForeignKeyConfig,
-        local_rows: pd.DataFrame,
-        remote_rows: pd.DataFrame,
-    ) -> tuple[pd.DataFrame, pd.DataFrame, list[str]]:
-        """Return the actual local and renamed remote merge-key columns."""
-        if not local_rows.columns.is_unique or not remote_rows.columns.is_unique:
-            raise ValueError("Link inputs must not contain duplicate column names.")
-
-        remote_config = project.get_table(fk.remote_entity)
-        if list(remote_rows.columns).count(remote_config.system_id) != 1:
-            raise KeyError(f"The remote link input must contain one '{remote_config.system_id}' column.")
-        setup = fk.generate_link_setup(remote_rows.columns.tolist(), remote_config)
-        remote_columns_to_select: list[str] = [remote_config.system_id]
-        remote_columns_to_select.extend(column for column in setup.remote_columns if column != remote_config.system_id)
-        output_columns: list[str] = [setup.rename_map.get(column, column) for column in remote_columns_to_select]
-        if len(set(output_columns)) != len(output_columns):
-            raise ValueError("The remote key setup produces duplicate link columns.")
-
-        source_by_output: dict[str, str] = dict(zip(output_columns, remote_columns_to_select))
-        mapped_remote_keys: list[str] = [setup.rename_map.get(key, key) for key in fk.remote_keys]
-        if len(set(mapped_remote_keys)) != len(mapped_remote_keys):
-            raise ValueError("The selected remote keys resolve to duplicate link columns.")
-
-        missing_outputs: list[str] = [key for key in mapped_remote_keys if key not in source_by_output]
-        if missing_outputs:
-            raise KeyError(f"Remote link keys are unavailable after production column mapping: {missing_outputs}")
-
-        local_key_frame: pd.DataFrame = local_rows.loc[:, fk.local_keys].copy()
-        remote_sources: list[str] = [source_by_output[key] for key in mapped_remote_keys]
-        remote_key_frame: pd.DataFrame = remote_rows.loc[:, remote_sources].copy()
-        remote_key_frame.columns = mapped_remote_keys
-        return local_key_frame, remote_key_frame, mapped_remote_keys
-
-    @staticmethod
-    def _estimate_output_rows(
-        local_key_frame: pd.DataFrame,
-        remote_key_frame: pd.DataFrame,
-        local_keys: list[str],
-        remote_keys: list[str],
-        runtime_options: ForeignKeyRuntimeOptions,
-        how: str,
-    ) -> tuple[int, int]:
-        """Estimate production and diagnostic output sizes without expanding matches."""
-        estimate_local, estimate_remote = _coerce_compatible_merge_key_dtypes(
-            local_key_frame.copy(),
-            remote_key_frame.copy(),
-            local_keys,
-            remote_keys,
-        )
-        local_counts: dict[tuple[Any, ...], int] = LinkTrialService._key_frequencies(
-            estimate_local,
-            local_keys,
-            null_side="left",
-            prevent_null_key_matches=runtime_options.prevent_null_key_matches,
-        )
-        remote_counts: dict[tuple[Any, ...], int] = LinkTrialService._key_frequencies(
-            estimate_remote,
-            remote_keys,
-            null_side="right",
-            prevent_null_key_matches=runtime_options.prevent_null_key_matches,
-        )
-
-        link_rows: int = 0
-        diagnostic_rows: int = 0
-        for key, local_count in local_counts.items():
-            remote_count: int = remote_counts.get(key, 0)
-            diagnostic_rows += local_count * max(remote_count, 1)
-            if how == "inner":
-                link_rows += local_count * remote_count
-            else:
-                link_rows += local_count * max(remote_count, 1)
-        return link_rows, diagnostic_rows
-
-    @staticmethod
-    def _key_frequencies(
-        frame: pd.DataFrame,
-        keys: list[str],
-        *,
-        null_side: Literal["left", "right"],
-        prevent_null_key_matches: bool,
-    ) -> dict[tuple[Any, ...], int]:
-        """Count normalized key tuples without joining rows."""
-        counts: dict[tuple[Any, ...], int] = {}
-        for values in frame.loc[:, keys].itertuples(index=False, name=None):
-            normalized: list[Any] = []
-            for index, value in enumerate(values):
-                if bool(pd.isna(value)):
-                    if prevent_null_key_matches:
-                        normalized.append(f"{_NULL_SENTINEL_PREFIX}_{null_side}_{index}")
-                    else:
-                        normalized.append(_NULL_KEY)
-                else:
-                    normalized.append(value)
-            key: tuple[Any, ...] = tuple(normalized)
-            counts[key] = counts.get(key, 0) + 1
-        return counts
 
     @staticmethod
     def _diagnose_a_rows(
