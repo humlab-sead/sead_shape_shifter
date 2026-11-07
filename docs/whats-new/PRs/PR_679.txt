@@ -1,0 +1,24 @@
+title: test(api): expect 405 for removed link troubleshooter route
+description:
+## Summary
+
+Updates the backend API test test_stateless_link_troubleshooter_route_is_removed in
+backend/tests/api/v1/test_link_troubleshooter.py so that a POST to the removed stateless link
+troubleshooter route is asserted to return 405 with detail "Method Not Allowed" instead of the
+previous 404 / "Not Found". The change aligns the test's expected response with the status the API
+now reports for the removed route; no production code is modified.
+
+## User-facing release note
+
+None - no user-visible change.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+ - No CI check results are available for this pull request (status check rollup is empty).
+ - The previously submitted PR body reported the following author-run checks, which could not be
+independently verified from the available evidence: uv run pylint -j 0 src tests backend ingesters
+(exit 0) and pytest (all passed).
