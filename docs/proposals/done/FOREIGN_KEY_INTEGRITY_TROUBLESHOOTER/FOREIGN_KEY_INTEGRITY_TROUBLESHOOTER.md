@@ -2,11 +2,12 @@
 
 ## Status
 
-- Proposed follow-up change request; not implemented
+- **Implemented** (branch `feature/foreign-key-integrity-trouble-shooter`; merged in [PR #674](https://github.com/humlab-sead/sead_shape_shifter/pull/674)).
 - Scope: `FK_DATA_INTEGRITY` warnings for one saved foreign key, read-only inspection of the local values that have no match in the remote entity
 - Goal: let users see the values and local rows behind a "not found in" count, and know which saved link produced it
-- Extends: [Foreign-Key Link Troubleshooter](../done/FOREIGN_KEY_LINK_TROUBLESHOOTER/FOREIGN_KEY_LINK_TROUBLESHOOTER.md), which is approved and implemented for row-count warnings
-- Separate from: [Foreign-Key Link Troubleshooter Experiments](../FOREIGN_KEY_LINK_TROUBLESHOOTER_EXPERIMENTS/FOREIGN_KEY_LINK_TROUBLESHOOTER_EXPERIMENTS.md), which decides how trial settings are compared against a fixed baseline
+- Validation: delivered in the three planned phases. The validator records `orphan_count` and saved-link identity in issue metadata; `resolve_integrity_issue` refuses malformed or changed links; `IntegrityTroubleshooterService` recomputes distinct unmatched values and bounded local rows behind an authorized endpoint; the shared `LinkTroubleshooterDialog` shows a read-only integrity body. Tests cover the validator, resolver, orchestrator, mapper, service, endpoint, and frontend body.
+- Extends: [Foreign-Key Link Troubleshooter](../../done/FOREIGN_KEY_LINK_TROUBLESHOOTER/FOREIGN_KEY_LINK_TROUBLESHOOTER.md), which is approved and implemented for row-count warnings
+- Separate from: [Foreign-Key Link Troubleshooter Experiments](../../FOREIGN_KEY_LINK_TROUBLESHOOTER_EXPERIMENTS/FOREIGN_KEY_LINK_TROUBLESHOOTER_EXPERIMENTS.md), which decides how trial settings are compared against a fixed baseline
 
 ## Summary
 
@@ -16,7 +17,7 @@ Do not reuse the key-pair trial controls. Changing keys does not create a missin
 
 ## Problem
 
-Verified in [`src/validators/data_validators.py`](../../../src/validators/data_validators.py): `ForeignKeyIntegrityValidator` builds the issue with `code="FK_DATA_INTEGRITY"`, the fixed field `foreign_keys[].entity`, an empty metadata dict, and a message that embeds at most ten sample values with a trailing `, ...`. The count exists only as text.
+Verified in [`src/validators/data_validators.py`](../../../../src/validators/data_validators.py): `ForeignKeyIntegrityValidator` builds the issue with `code="FK_DATA_INTEGRITY"`, the fixed field `foreign_keys[].entity`, an empty metadata dict, and a message that embeds at most ten sample values with a trailing `, ...`. The count exists only as text.
 
 Two consequences follow.
 
@@ -24,7 +25,7 @@ An entity can hold several foreign keys, so the warning does not say which saved
 
 The count is `347` while the sample is truncated after ten values. Users can read the first few values but cannot reach the rest, cannot see how many local rows each value covers, and cannot see the surrounding row that would tell them whether the value is wrong or the link points at the wrong remote key. In the reported case — 347 values such as `spelt/emmer`, `träkol`, `al/hassel?` against `taxa_tree_master` — the values are free-text taxa names, so the surrounding sample, site, or context is what makes the value judgeable.
 
-The link troubleshooter already answers this question for row-count warnings, and it is offered only for `ROW_COUNT_MISMATCH`. Two gates hard-code that code: the frontend candidate check in [`frontend/src/utils/linkTroubleshooter.ts`](../../../frontend/src/utils/linkTroubleshooter.ts) and `resolve_row_count_issue` in [`src/transforms/link_resolution.py`](../../../src/transforms/link_resolution.py). The baseline service additionally requires recorded before and after row counts, which this warning does not have.
+The link troubleshooter already answers this question for row-count warnings, and it is offered only for `ROW_COUNT_MISMATCH`. Two gates hard-code that code: the frontend candidate check in [`frontend/src/utils/linkTroubleshooter.ts`](../../../../frontend/src/utils/linkTroubleshooter.ts) and `resolve_row_count_issue` in [`src/transforms/link_resolution.py`](../../../../src/transforms/link_resolution.py). The baseline service additionally requires recorded before and after row counts, which this warning does not have.
 
 ## Scope
 
@@ -40,7 +41,7 @@ The link troubleshooter already answers this question for row-count warnings, an
 - Changing key pairs, join type, or constraints for this warning.
 - Auto-fix behavior of any kind.
 - Extending the same treatment to `FK_REMOTE_EMPTY`, `FK_ALL_NULL`, or type-compatibility warnings.
-- Changing the reported `field` value on the existing issue. That correction is already recorded separately in [`docs/investigations/fk-data-integrity-field/findings.md`](../../investigations/fk-data-integrity-field/findings.md).
+- Changing the reported `field` value on the existing issue. That correction is already recorded separately in [`docs/investigations/fk-data-integrity-field/findings.md`](../../../investigations/fk-data-integrity-field/findings.md).
 - Changing the shipped row-count troubleshooter's request, response, or behavior.
 
 ## Current Behavior
