@@ -28,10 +28,15 @@
         <div v-if="!isIntegrityIssue && loading" class="mb-4 troubleshooter-loading">
           <v-progress-linear indeterminate color="primary" class="mb-1" />
           <p class="text-caption text-medium-emphasis mb-0">
-            Reading the link from current data. The link is re-run and its row counts recomputed every time this dialog
-            opens or its page changes.
+            Reading the link from current data. The link is re-run when this dialog opens and when the retained inputs
+            expire; changing pages or groups reads nothing new.
           </p>
         </div>
+
+        <v-alert v-if="!isIntegrityIssue && refreshed" type="info" variant="tonal" class="mb-4">
+          The retained inputs expired and were reproduced again from current data. Run a new trial to compare the
+          refreshed baseline.
+        </v-alert>
 
         <v-alert v-if="!isIntegrityIssue && error" type="error" variant="tonal" class="mb-4">
           <div>{{ error.message }}</div>
@@ -110,7 +115,61 @@
                 />
               </div>
 
-              <v-btn color="primary" :disabled="!canRunTrial || loading" @click="runTrial">Run trial</v-btn>
+              <div class="d-flex flex-wrap align-center ga-3 mb-3">
+                <v-select
+                  v-model="how"
+                  :items="joinTypeOptions"
+                  label="Join type"
+                  density="compact"
+                  hide-details
+                  class="filter-select"
+                />
+                <v-select
+                  v-model="allowNullKeys"
+                  :items="nullOptionItems"
+                  label="Allow missing join keys"
+                  density="compact"
+                  hide-details
+                  class="filter-select"
+                />
+                <v-select
+                  v-model="nullKeysEqual"
+                  :items="nullOptionItems"
+                  label="Missing join keys equal"
+                  density="compact"
+                  hide-details
+                  class="filter-select"
+                />
+              </div>
+
+              <div class="d-flex align-center ga-2">
+                <v-btn color="primary" :disabled="!canRunTrial || loading" @click="runTrial">Run trial</v-btn>
+                <v-btn variant="text" :disabled="!result.baseline" @click="reset">Reset</v-btn>
+              </div>
+            </section>
+
+            <section class="mb-5" aria-label="Applied settings">
+              <h3 class="text-subtitle-1 mb-2">Applied settings</h3>
+              <div v-if="result.baseline.settings" class="d-flex flex-wrap ga-2">
+                <v-chip size="small" variant="outlined">
+                  Join: {{ describeJoin(result.baseline.settings.join_type) }}
+                </v-chip>
+                <v-chip size="small" variant="outlined">
+                  Allow missing join keys: {{ describeSetting(result.baseline.settings.allow_null_keys) }}
+                </v-chip>
+                <v-chip size="small" variant="outlined">
+                  Missing join keys equal: {{ describeSetting(result.baseline.settings.null_keys_equal) }}
+                </v-chip>
+                <v-chip size="small" variant="outlined">
+                  Strict missing keys:
+                  {{ result.baseline.settings.resolved_null_policy.enforce_strict_null_keys ? 'enforced' : 'relaxed' }}
+                </v-chip>
+                <v-chip size="small" variant="outlined">
+                  Prevent missing-key matches:
+                  {{ result.baseline.settings.resolved_null_policy.prevent_null_key_matches ? 'yes' : 'no' }}
+                </v-chip>
+              </div>
+              <p v-else class="text-body-2 text-medium-emphasis">This diagnostic has no resolved settings report.</p>
             </section>
 
             <section class="mb-5" aria-label="Baseline and trial comparison">
@@ -147,28 +206,36 @@
             </section>
 
             <v-alert
-              v-if="result.trial && result.trial.status !== 'complete'"
-              :type="result.trial.status === 'failed' ? 'error' : 'warning'"
+              v-if="trial && trial.status !== 'complete'"
+              :type="trial.status === 'failed' ? 'error' : 'warning'"
               variant="tonal"
               class="mb-4"
             >
-              <strong>Trial {{ result.trial.status }}:</strong> {{ result.trial.reason }}. {{ result.trial.message }}
+              <strong>Trial {{ trial.status }}:</strong> {{ trial.reason }}. {{ trial.message }}
             </v-alert>
 
-            <section
-              v-if="result.trial?.status === 'complete' && result.trial.pagination"
-              class="mb-5"
-              aria-label="A-row diagnostics"
-            >
+            <p v-if="!trial" class="text-body-2 text-medium-emphasis mb-4">
+              Run a trial to compare the saved link with the selected keys and settings.
+            </p>
+
+            <section class="mb-5" aria-label="Exception rows">
+              <h3 class="text-subtitle-1 mb-2">Exception rows</h3>
               <div class="d-flex flex-wrap align-center ga-3 mb-3">
                 <v-select
-                  v-model="rowFilter"
-                  :items="rowFilterOptions"
-                  label="Filter rows"
+                  v-model="side"
+                  :items="sideOptions"
+                  label="Snapshot"
                   density="compact"
                   hide-details
                   class="filter-select"
-                  @update:model-value="changeFilter"
+                />
+                <v-select
+                  v-model="group"
+                  :items="groupOptions"
+                  label="Exception group"
+                  density="compact"
+                  hide-details
+                  class="filter-select"
                 />
                 <v-select
                   v-model="pageSize"
@@ -177,37 +244,69 @@
                   density="compact"
                   hide-details
                   class="page-size-select"
-                  @update:model-value="changePageSize"
                 />
               </div>
-              <v-data-table
-                class="trial-rows-table"
-                :headers="trialHeaders"
-                :items="trialRows"
-                item-value="rowKey"
-                :items-per-page="-1"
-                hide-default-footer
-                density="compact"
-              >
-                <template v-for="(_, index) in trialKeyNames" :key="`key-${index}`" #[`item.key-${index}`]="{ item }">
-                  <span>{{ formatValue(item.keyValues[index]) }}</span>
-                </template>
-                <template #no-data>
-                  <div class="text-center text-medium-emphasis py-4">No rows match this filter.</div>
-                </template>
-              </v-data-table>
-              <div class="d-flex justify-end mt-2">
-                <v-pagination
-                  :model-value="page"
-                  :length="pageCount"
-                  density="comfortable"
-                  @update:model-value="changePage"
-                />
+
+              <div v-if="!activeGroup" class="text-body-2 text-medium-emphasis">
+                No exception rows are available for this selection.
               </div>
+              <template v-else>
+                <p class="text-body-2 mb-2">
+                  {{ activeGroup.total_count.toLocaleString() }} exception A row(s) in the full input;
+                  {{ activeGroup.returned_count.toLocaleString() }} returned in this response.
+                </p>
+                <v-alert v-if="activeGroup.row_cap_reached" type="info" variant="tonal" density="compact" class="mb-2">
+                  Only the first {{ activeGroup.row_cap.toLocaleString() }} exception rows are returned.
+                </v-alert>
+                <v-alert v-if="activeGroup.budget_exhausted" type="info" variant="tonal" density="compact" class="mb-2">
+                  The response size limit stopped further exception rows.
+                </v-alert>
+                <v-alert
+                  v-if="activeDetail?.detail_truncated"
+                  type="info"
+                  variant="tonal"
+                  density="compact"
+                  class="mb-2"
+                >
+                  Some findings or key values in this response were shortened.
+                </v-alert>
+
+                <v-data-table
+                  v-if="pagedRows.length"
+                  class="exception-rows-table"
+                  :headers="exceptionHeaders"
+                  :items="pagedRows"
+                  item-value="input_position"
+                  :items-per-page="-1"
+                  hide-default-footer
+                  density="compact"
+                >
+                  <template #item.input_position="{ item }">{{ item.input_position + 1 }}</template>
+                  <template
+                    v-for="(_, index) in activeKeyNames"
+                    :key="`key-${index}`"
+                    #[`item.key-${index}`]="{ item }"
+                  >
+                    <span>{{ formatKeyValue(item.key_values[index]) }}</span>
+                  </template>
+                </v-data-table>
+                <div v-else class="text-center text-medium-emphasis py-4">
+                  No returned exception rows are available for this page.
+                </div>
+                <div class="d-flex justify-end mt-2">
+                  <v-pagination
+                    :model-value="page"
+                    :length="pageCount"
+                    density="comfortable"
+                    @update:model-value="page = $event"
+                  />
+                </div>
+              </template>
             </section>
 
             <section class="mb-2" aria-label="Validation findings">
               <h3 class="text-subtitle-1 mb-2">Findings</h3>
+              <p v-if="findingsNotice" class="text-caption text-medium-emphasis">{{ findingsNotice }}</p>
               <div v-if="allIssues.length === 0" class="text-body-2 text-medium-emphasis">No findings.</div>
               <v-list v-else density="compact">
                 <v-list-item v-for="(issue, index) in allIssues" :key="`${issue.code || issue.message}-${index}`">
@@ -236,7 +335,13 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useLinkTroubleshooter } from '@/composables/useLinkTroubleshooter'
-import type { LinkTroubleshootRowFilter, ValidationError } from '@/types'
+import type {
+  LinkTroubleshootExceptionRow,
+  LinkTroubleshootJoinTypeSetting,
+  LinkTroubleshootKeyValue,
+  LinkTroubleshootRequestedSetting,
+  ValidationError,
+} from '@/types'
 import {
   INTEGRITY_ISSUE_CODE,
   integrityTroubleshootRefusal,
@@ -265,8 +370,31 @@ const emit = defineEmits<{
 const localMessage = ref<string | null>(null)
 const integrityRemoteEntity = ref<string | null>(null)
 
-const { loading, error, result, localKeys, remoteKeys, page, pageSize, rowFilter, open, run, reset } =
-  useLinkTroubleshooter(props.projectName)
+const {
+  loading,
+  error,
+  context,
+  trial,
+  trialLocalKeys,
+  refreshed,
+  localKeys,
+  remoteKeys,
+  how,
+  allowNullKeys,
+  nullKeysEqual,
+  page,
+  pageSize,
+  group,
+  side,
+  canRunTrial,
+  open,
+  run,
+  reset,
+  close: releaseContext,
+} = useLinkTroubleshooter(props.projectName)
+
+// The retained context response holds the baseline and relationship details.
+const result = context
 
 const isIntegrityIssue = computed(() => props.message.code === INTEGRITY_ISSUE_CODE)
 
@@ -281,69 +409,90 @@ const header = computed(() => {
   return `${localEntity} → ${remoteEntity}`
 })
 const keyPairCount = computed(() => Math.max(localKeys.value.length, remoteKeys.value.length))
-const canRunTrial = computed(
-  () =>
-    localKeys.value.length > 0 &&
-    localKeys.value.length === remoteKeys.value.length &&
-    localKeys.value.every((key, index) => key.trim().length > 0 && (remoteKeys.value[index] ?? '').trim().length > 0)
-)
-const pageCount = computed(() => {
-  const filteredCount = result.value?.trial?.pagination?.filtered_row_count ?? 0
-  return Math.max(1, Math.ceil(filteredCount / pageSize.value))
-})
 const measures = computed(() => {
   const baseline = result.value?.baseline
-  const trial = result.value?.trial?.status === 'complete' ? result.value.trial.totals : null
+  const totals = trial.value?.status === 'complete' ? trial.value.totals : null
   return [
-    { label: 'Input A rows', baseline: baseline?.input_a_rows, trial: trial?.input_a_rows },
-    { label: 'Output rows', baseline: baseline?.output_rows, trial: trial?.output_rows },
-    { label: 'Unmatched A rows', baseline: baseline?.unmatched_a_rows, trial: trial?.unmatched_a_rows },
+    { label: 'Input A rows', baseline: baseline?.input_a_rows, trial: totals?.input_a_rows },
+    { label: 'Output rows', baseline: baseline?.output_rows, trial: totals?.output_rows },
+    { label: 'Unmatched A rows', baseline: baseline?.unmatched_a_rows, trial: totals?.unmatched_a_rows },
     {
       label: 'Multiply matched A rows',
       baseline: baseline?.multiply_matched_a_rows,
-      trial: trial?.multiply_matched_a_rows,
+      trial: totals?.multiply_matched_a_rows,
     },
   ]
 })
-const allIssues = computed<Finding[]>(() => [
-  ...(result.value?.baseline?.issues ?? []).map((issue) => ({ ...issue, source: 'Baseline' as const })),
-  ...(result.value?.trial?.issues ?? []).map((issue) => ({ ...issue, source: 'Trial' as const })),
-])
 
-interface TrialTableRow {
-  rowKey: number
-  inputRow: number
-  keyValues: unknown[]
-  matched: string
-  remoteMatchCount: number
-  outputRowContribution: number
-}
+const baselineFindings = computed(() => result.value?.baseline?.detail?.findings ?? null)
+const trialFindings = computed(() => trial.value?.detail?.findings ?? null)
+const allIssues = computed<Finding[]>(() => {
+  const issues: Finding[] = []
+  for (const issue of baselineFindings.value?.issues ?? []) {
+    issues.push({ ...issue, source: 'Baseline' })
+  }
+  for (const issue of trialFindings.value?.issues ?? []) {
+    issues.push({ ...issue, source: 'Trial' })
+  }
+  return issues
+})
+const findingsNotice = computed(() => {
+  const notices: string[] = []
+  const sides = [
+    ['Baseline', baselineFindings.value],
+    ['Trial', trialFindings.value],
+  ] as const
+  for (const [label, findings] of sides) {
+    if (findings && findings.returned_count < findings.total_count) {
+      notices.push(`${label}: showing ${findings.returned_count} of ${findings.total_count} findings.`)
+    }
+  }
+  return notices.join(' ')
+})
 
-const trialKeyNames = computed<string[]>(() => result.value?.trial?.local_keys ?? [])
-
-// Headers are not sortable: the backend pages the filtered rows in a fixed order,
-// so sorting one page would only reorder the rows currently returned.
-const trialHeaders = computed(() => [
-  { title: 'Input row', key: 'inputRow', sortable: false },
-  ...trialKeyNames.value.map((key, index) => ({ title: `A key: ${key}`, key: `key-${index}`, sortable: false })),
-  { title: 'Matched', key: 'matched', sortable: false },
-  { title: 'Remote matches', key: 'remoteMatchCount', sortable: false },
-  { title: 'Output rows', key: 'outputRowContribution', sortable: false },
-])
-
-const trialRows = computed<TrialTableRow[]>(() =>
-  (result.value?.trial?.rows ?? []).map((row) => ({
-    rowKey: row.input_position,
-    inputRow: row.input_position + 1,
-    keyValues: row.key_values,
-    matched: row.matched ? 'Yes' : 'No',
-    remoteMatchCount: row.remote_match_count,
-    outputRowContribution: row.output_row_contribution,
-  }))
+const baselineDetail = computed(() => result.value?.baseline?.detail ?? null)
+const trialDetail = computed(() => trial.value?.detail ?? null)
+const activeDetail = computed(() => (side.value === 'trial' ? trialDetail.value : baselineDetail.value))
+const activeGroup = computed(() => {
+  const detail = activeDetail.value
+  if (!detail) {
+    return null
+  }
+  return detail[group.value]
+})
+const activeKeyNames = computed<string[]>(() =>
+  side.value === 'trial' ? trialLocalKeys.value : (result.value?.configured_keys?.local_keys ?? [])
 )
+const activeRows = computed<LinkTroubleshootExceptionRow[]>(() => activeGroup.value?.rows ?? [])
+const pageCount = computed(() => Math.max(1, Math.ceil(activeRows.value.length / pageSize.value)))
+const pagedRows = computed(() => {
+  const start = (page.value - 1) * pageSize.value
+  return activeRows.value.slice(start, start + pageSize.value)
+})
+// Headers are not sortable: the backend returns a fixed bounded order, so
+// sorting one page would only reorder the rows already returned.
+const exceptionHeaders = computed(() => [
+  { title: 'Input row', key: 'input_position', sortable: false },
+  ...activeKeyNames.value.map((key, index) => ({ title: `A key: ${key}`, key: `key-${index}`, sortable: false })),
+  { title: 'Remote matches', key: 'remote_match_count', sortable: false },
+  { title: 'Output rows', key: 'output_row_contribution', sortable: false },
+])
 
-const rowFilterOptions = [
-  { title: 'All rows', value: 'all' },
+const joinTypeOptions = [
+  { title: 'Inherit saved', value: null },
+  { title: 'Inner', value: 'inner' },
+  { title: 'Left', value: 'left' },
+]
+const nullOptionItems = [
+  { title: 'Inherit saved', value: null },
+  { title: 'Yes', value: true },
+  { title: 'No', value: false },
+]
+const sideOptions = [
+  { title: 'Baseline', value: 'baseline' },
+  { title: 'Trial', value: 'trial' },
+]
+const groupOptions = [
   { title: 'Unmatched', value: 'unmatched' },
   { title: 'Multiply matched', value: 'multiply_matched' },
 ]
@@ -355,14 +504,14 @@ watch(
     integrityRemoteEntity.value = null
     if (!isOpen) {
       localMessage.value = null
-      reset()
+      await releaseContext()
       return
     }
 
     if (message.code === INTEGRITY_ISSUE_CODE) {
       // Integrity inspection has its own read-only body and endpoint, so the
-      // row-count request and trial state are cleared instead of opened.
-      reset()
+      // row-count context and trial state are cleared instead of opened.
+      await releaseContext()
       localMessage.value = integrityTroubleshootRefusal(message)
       return
     }
@@ -371,7 +520,7 @@ watch(
     const request = toLinkTroubleshootRequest(message)
     if (!request) {
       localMessage.value = 'This warning cannot be troubleshot.'
-      reset()
+      await releaseContext()
       return
     }
 
@@ -395,25 +544,24 @@ function removeKeyPair(index: number): void {
 }
 
 function runTrial(): void {
-  page.value = 1
   void run()
 }
 
-function changeFilter(value: LinkTroubleshootRowFilter): void {
-  rowFilter.value = value
-  page.value = 1
-  void run()
+function describeJoin(setting: LinkTroubleshootJoinTypeSetting): string {
+  const requested = setting.requested === null ? 'inherited' : `${setting.requested} (explicit)`
+  return `${requested}; effective ${setting.effective}`
 }
 
-function changePageSize(value: number): void {
-  pageSize.value = value
-  page.value = 1
-  void run()
+function describeSetting(setting: LinkTroubleshootRequestedSetting): string {
+  return setting.requested === null ? 'inherited' : `${setting.requested ? 'yes' : 'no'} (explicit)`
 }
 
-function changePage(value: number): void {
-  page.value = value
-  void run()
+function formatKeyValue(keyValue: LinkTroubleshootKeyValue | undefined): string {
+  if (!keyValue) {
+    return '—'
+  }
+  const text = formatValue(keyValue.value)
+  return keyValue.truncated ? `${text}…` : text
 }
 
 function formatValue(value: unknown): string {
