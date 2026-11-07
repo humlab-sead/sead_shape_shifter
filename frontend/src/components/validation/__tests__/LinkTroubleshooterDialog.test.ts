@@ -408,6 +408,15 @@ async function selectOption(wrapper: ReturnType<typeof mountDialog>, label: stri
   await flushPromises()
 }
 
+async function selectSide(wrapper: ReturnType<typeof mountDialog>, value: 'baseline' | 'trial'): Promise<void> {
+  await wrapper.find(`button[data-side="${value}"]`).trigger('click')
+  await flushPromises()
+}
+
+function statValue(wrapper: ReturnType<typeof mountDialog>, key: 'source_rows' | 'output_rows'): string {
+  return wrapper.find(`[data-stat="${key}"] .link-result-stat-value`).text()
+}
+
 function buttonByText(wrapper: ReturnType<typeof mountDialog>, text: string) {
   return wrapper.findAll('button').find((button) => button.text().trim() === text)
 }
@@ -534,11 +543,13 @@ describe('LinkTroubleshooterDialog', () => {
       allowNullKeys: true,
       nullKeysEqual: false,
     })
-    const outputRow = wrapper.findAll('section[aria-label="Baseline and trial comparison"] tbody tr')[1]
-    expect(outputRow?.findAll('td')[2]?.text()).toBe('3')
+    // The completed trial becomes the shown result without a second request.
+    expect(wrapper.find('button[data-side="trial"]').attributes('aria-pressed')).toBe('true')
+    expect(statValue(wrapper, 'source_rows')).toBe('3')
+    expect(statValue(wrapper, 'output_rows')).toBe('3')
   })
 
-  it('keeps the previous comparison visible when trial settings change', async () => {
+  it('keeps the previous trial result visible when trial settings change', async () => {
     const wrapper = mountDialog()
     await flushPromises()
 
@@ -551,15 +562,11 @@ describe('LinkTroubleshooterDialog', () => {
     expect(wrapper.find('select[aria-label="Join type"]').attributes('data-selected')).toBe(JSON.stringify('left'))
     expect(wrapper.text()).toContain('Settings changed — rerun the trial.')
 
-    const comparison = wrapper.find('section[aria-label="Baseline and trial comparison"]')
-    expect(comparison.exists()).toBe(true)
-    expect(comparison.findAll('thead th').map((header) => header.text())).toEqual([
-      'Measure',
-      'Saved link',
-      'Last trial',
-      'Change',
-    ])
-    expect(comparison.findAll('tbody tr').length).toBeGreaterThan(0)
+    // One result is shown at a time, so the stale trial stays on screen instead
+    // of a second comparison table.
+    expect(wrapper.find('section[aria-label="Baseline and trial comparison"]').exists()).toBe(false)
+    expect(wrapper.find('button[data-side="trial"]').attributes('aria-pressed')).toBe('true')
+    expect(statValue(wrapper, 'output_rows')).toBe('3')
   })
 
   it('makes no request when the result source, group, page size, or page changes', async () => {
@@ -583,7 +590,7 @@ describe('LinkTroubleshooterDialog', () => {
     await flushPromises()
     expect(runCalls).toHaveLength(1)
 
-    await selectOption(wrapper, 'Result source', 'trial')
+    await selectSide(wrapper, 'trial')
     await wrapper.find('button[data-group="multiply_matched"]').trigger('click')
     await selectOption(wrapper, 'Rows per page', 25)
     await wrapper.find('button[aria-label="Next page"]').trigger('click')
@@ -641,15 +648,19 @@ describe('LinkTroubleshooterDialog', () => {
     await buttonByText(wrapper, 'Run trial')!.trigger('click')
     await flushPromises()
 
-    expect(wrapper.find('section[aria-label="Exception rows"]').text()).toContain('BASE')
-
-    await selectOption(wrapper, 'Result source', 'trial')
+    // A completed trial is shown immediately, so its rows replace the saved rows.
     expect(wrapper.find('section[aria-label="Exception rows"]').text()).toContain('TRIAL')
     expect(wrapper.find('section[aria-label="Exception rows"] tbody tr').text()).toContain('5')
 
-    await selectOption(wrapper, 'Result source', 'baseline')
+    await selectSide(wrapper, 'baseline')
+    expect(wrapper.find('section[aria-label="Exception rows"]').text()).toContain('BASE')
+
     await wrapper.find('button[data-group="multiply_matched"]').trigger('click')
     expect(wrapper.find('section[aria-label="Exception rows"]').text()).toContain('MULTI')
+
+    await selectSide(wrapper, 'trial')
+    await wrapper.find('button[data-group="unmatched"]').trigger('click')
+    expect(wrapper.find('section[aria-label="Exception rows"]').text()).toContain('TRIAL')
   })
 
   it('resets exception pagination when filters or trial rows change', async () => {
@@ -680,6 +691,9 @@ describe('LinkTroubleshooterDialog', () => {
     const firstRowText = () => wrapper.find('section[aria-label="Exception rows"] tbody tr').text()
     const nextPage = wrapper.find('button[aria-label="Next page"]')
 
+    // The completed trial is shown first; pagination checks start on the saved link.
+    await selectSide(wrapper, 'baseline')
+
     await selectOption(wrapper, 'Rows per page', 25)
     await nextPage.trigger('click')
     expect(firstRowText()).toContain('BASE-26')
@@ -691,7 +705,7 @@ describe('LinkTroubleshooterDialog', () => {
     await nextPage.trigger('click')
     expect(firstRowText()).toContain('BASE-26')
 
-    await selectOption(wrapper, 'Result source', 'trial')
+    await selectSide(wrapper, 'trial')
     expect(firstRowText()).toContain('TRIAL-1')
     await nextPage.trigger('click')
     expect(firstRowText()).toContain('TRIAL-26')
@@ -749,8 +763,8 @@ describe('LinkTroubleshooterDialog', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('This diagnostic has no resolved settings report.')
-    const unmatchedRow = wrapper.findAll('section[aria-label="Baseline and trial comparison"] tbody tr')[2]
-    expect(unmatchedRow?.findAll('td')[1]?.text()).toBe('—')
+    expect(statValue(wrapper, 'source_rows')).toBe('—')
+    expect(statValue(wrapper, 'output_rows')).toBe('—')
     expect(wrapper.find('select[aria-label="Allow missing join keys"]').attributes('data-selected')).toBe('null')
   })
 
@@ -770,8 +784,10 @@ describe('LinkTroubleshooterDialog', () => {
 
     expect(wrapper.text()).toContain('Trial failed:')
     expect(wrapper.text()).toContain('invalid_keys')
-    const outputRow = wrapper.findAll('section[aria-label="Baseline and trial comparison"] tbody tr')[1]
-    expect(outputRow?.findAll('td')[2]?.text()).toBe('—')
+    // A failed trial has no totals, so the shown result reads as unavailable.
+    expect(wrapper.find('button[data-side="trial"]').attributes('aria-pressed')).toBe('true')
+    expect(statValue(wrapper, 'source_rows')).toBe('—')
+    expect(statValue(wrapper, 'output_rows')).toBe('—')
   })
 
   it.each(['not_reproduced', 'ineligible'] as const)('hides trial controls for a %s baseline', async (status) => {
