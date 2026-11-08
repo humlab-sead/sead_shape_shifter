@@ -3,7 +3,7 @@
 The inspection result is separate from the row-count troubleshooter: integrity
 warnings describe values that have no remote match, not a merge that changed the
 row count. The request carries an optional type-preserving token so a selected
-value can be addressed without depending on its position in a value page.
+value can be addressed without depending on its position in the value list.
 """
 
 from __future__ import annotations
@@ -29,12 +29,6 @@ _TOKEN_TYPES: frozenset[str] = frozenset({"null", "bool", "int", "float", "str",
 
 FULL_NORMALIZATION_SOURCE = "current full normalization"
 """Data source stated in every inspection response."""
-
-ROW_PAGE_SIZE = 100
-"""Rows returned for one selected unmatched value by default."""
-
-ROW_PAGE_LIMIT = 500
-"""Largest row page a caller may request for one selected unmatched value."""
 
 
 def _encode_scalar(value: Any) -> dict[str, Any]:
@@ -144,17 +138,14 @@ def decode_key_token(token: str) -> tuple[Any, ...]:
 
 
 class IntegrityTroubleshootPageRequest(BaseModel):
-    """Request one page from a retained inspection.
+    """Request a re-read from a retained inspection.
 
-    ``page`` selects a page of distinct unmatched values. ``row_offset`` and
-    ``row_limit`` select a bounded window of local rows for one selected value,
-    so a value with many local rows stays browsable without one large response.
+    ``selected_value_token`` names the value whose local rows are returned. The
+    response always carries every unmatched value and every local row of the
+    selected value, so there is no page or row window to request.
     """
 
-    page: int = Field(default=1, ge=1)
     selected_value_token: str | None = None
-    row_offset: int = Field(default=0, ge=0)
-    row_limit: int = Field(default=ROW_PAGE_SIZE, ge=1, le=ROW_PAGE_LIMIT)
 
     @field_validator("selected_value_token")
     @classmethod
@@ -200,22 +191,17 @@ class IntegrityTroubleshootValue(BaseModel):
 
 
 class IntegrityTroubleshootValuePage(BaseModel):
-    """One bounded page of distinct unmatched keys."""
+    """Every distinct unmatched key and the local row count that carries it."""
 
-    page: int
-    page_size: int
     distinct_value_count: int
-    returned_value_count: int
-    has_next: bool
     values: list[IntegrityTroubleshootValue] = Field(default_factory=list)
 
 
 class IntegrityTroubleshootRows(BaseModel):
-    """Bounded local rows for one selected unmatched value.
+    """Every local row for one selected unmatched value.
 
     ``total_row_count`` is the full row count for the value, kept separate from
-    the number of distinct unmatched values. ``browse_cap`` and
-    ``browse_cap_reached`` report the row browse limit for that value.
+    the number of distinct unmatched values.
     """
 
     status: IntegritySelectionStatus
@@ -223,11 +209,6 @@ class IntegrityTroubleshootRows(BaseModel):
     message: str | None = None
     key_values: list[Any] | None = None
     total_row_count: int | None = None
-    returned_row_count: int | None = None
-    offset: int = 0
-    limit: int = ROW_PAGE_SIZE
-    browse_cap: int = 0
-    browse_cap_reached: bool = False
     columns: list[str] = Field(default_factory=list)
     columns_truncated: bool = False
     rows: list[dict[str, Any]] = Field(default_factory=list)

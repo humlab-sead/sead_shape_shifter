@@ -288,11 +288,7 @@ function integrityResponse(overrides: Partial<IntegrityTroubleshootResponse> = {
     recorded_orphan_count: 2,
     current_orphan_count: 2,
     values: {
-      page: 1,
-      page_size: 50,
       distinct_value_count: 1,
-      returned_value_count: 1,
-      has_next: false,
       values: [{ key_values: ['MISSING-A'], local_row_count: 1, token: 'token-a' }],
     },
     selected: null,
@@ -861,7 +857,7 @@ describe('LinkTroubleshooterDialog', () => {
     expect(openRequests).toHaveLength(0)
     expect(mockOpen).not.toHaveBeenCalled()
     expect(mockClose).toHaveBeenCalled()
-    expect(wrapper.text()).toContain('Showing 1 of 1 distinct values · Page 1')
+    expect(wrapper.text()).toContain('1 unmatched value')
     expect(wrapper.text()).toContain('orders → customers')
     expect(wrapper.find('select[aria-label="A key"]').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('Run trial')
@@ -919,7 +915,7 @@ describe('LinkTroubleshooterDialog', () => {
     expect(openRequests).toHaveLength(1)
     expect(mockClose).toHaveBeenCalled()
     expect(wrapper.text()).not.toContain('Trial key pairs')
-    expect(wrapper.text()).toContain('Showing 1 of 1 distinct values · Page 1')
+    expect(wrapper.text()).toContain('1 unmatched value')
   })
 
   it('clears state and releases the context when the dialog closes', async () => {

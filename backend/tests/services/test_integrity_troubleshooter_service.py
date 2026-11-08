@@ -12,9 +12,8 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
-from backend.app.core.config import Settings
 from backend.app.mappers.project_mapper import ProjectMapper
-from backend.app.models.integrity_troubleshooter import ROW_PAGE_SIZE, decode_key_token, encode_key_token
+from backend.app.models.integrity_troubleshooter import decode_key_token, encode_key_token
 from backend.app.models.project import Project
 from backend.app.services.integrity_troubleshooter_context_store import (
     INTEGRITY_TROUBLESHOOTER_CONTEXT_TTL,
@@ -22,7 +21,6 @@ from backend.app.services.integrity_troubleshooter_context_store import (
 )
 from backend.app.services.integrity_troubleshooter_service import (
     COLUMN_LIMIT,
-    VALUE_PAGE_SIZE,
     IntegrityTroubleshooterService,
 )
 from src.model import ForeignKeyConfig, ShapeShiftProject
@@ -93,9 +91,9 @@ def build_saved_project(cfg: dict[str, Any]) -> ShapeShiftProject:
     return ProjectMapper.to_core(build_api_project(cfg))
 
 
-def service_for(api_project: Project, settings: Settings | None = None) -> IntegrityTroubleshooterService:
+def service_for(api_project: Project) -> IntegrityTroubleshooterService:
     """Build an integrity service over one in-memory API project."""
-    return IntegrityTroubleshooterService(project_service=StubProjectService(api_project), settings=settings)  # type: ignore[arg-type]
+    return IntegrityTroubleshooterService(project_service=StubProjectService(api_project))  # type: ignore[arg-type]
 
 
 def metadata_for(saved_project: ShapeShiftProject, *, local_entity: str = "orders", index: int = 0, count: int) -> dict[str, Any]:
@@ -329,39 +327,19 @@ async def test_clean_link_is_not_reproduced_with_zero_count(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_value_pages_are_deterministic_and_bounded(monkeypatch):
-    """Every distinct value is reachable by ordered pages of the fixed page size."""
+async def test_all_unmatched_values_are_returned_in_order(monkeypatch):
+    """Every distinct value is returned in one response, in a fixed order."""
     saved_project = build_saved_project(BASE_CFG)
-    codes = [f"V{index:03d}" for index in range(VALUE_PAGE_SIZE + 5)]
+    codes = [f"V{index:03d}" for index in range(120)]
     service = service_for(build_api_project(BASE_CFG))
     patch_frames(monkeypatch, service, FrameSource(local=local_frame(codes), remote=remote_frame(["C1"])))
     metadata = metadata_for(saved_project, count=len(codes))
 
-    first = await service.inspect(
-        project_name=PROJECT_NAME, issue_type="FK_DATA_INTEGRITY", local_entity="orders", metadata=metadata, page=1
-    )
-    second = await service.inspect(
-        project_name=PROJECT_NAME, issue_type="FK_DATA_INTEGRITY", local_entity="orders", metadata=metadata, page=2
-    )
-    beyond = await service.inspect(
-        project_name=PROJECT_NAME, issue_type="FK_DATA_INTEGRITY", local_entity="orders", metadata=metadata, page=3
-    )
+    result = await service.inspect(project_name=PROJECT_NAME, issue_type="FK_DATA_INTEGRITY", local_entity="orders", metadata=metadata)
 
-    assert first.values is not None
-    assert first.values.page_size == VALUE_PAGE_SIZE
-    assert first.values.distinct_value_count == len(codes)
-    assert first.values.returned_value_count == VALUE_PAGE_SIZE
-    assert first.values.has_next is True
-    assert [value.key_values for value in first.values.values] == [[f"V{index:03d}"] for index in range(VALUE_PAGE_SIZE)]
-
-    assert second.values is not None
-    assert second.values.returned_value_count == 5
-    assert second.values.has_next is False
-    assert [value.key_values for value in second.values.values] == [[f"V{index:03d}"] for index in range(VALUE_PAGE_SIZE, len(codes))]
-
-    assert beyond.values is not None
-    assert beyond.values.returned_value_count == 0
-    assert beyond.values.has_next is False
+    assert result.values is not None
+    assert result.values.distinct_value_count == len(codes)
+    assert [value.key_values for value in result.values.values] == [[code] for code in codes]
 
 
 @pytest.mark.asyncio
@@ -388,57 +366,12 @@ async def test_values_report_local_row_counts(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_selected_rows_are_paged_in_a_deterministic_order(monkeypatch):
-    """A selected value can be browsed by bounded row windows in a fixed order."""
+async def test_selected_rows_return_every_row_for_the_value(monkeypatch):
+    """A selected value returns all of its local rows in a fixed order."""
     saved_project = build_saved_project(BASE_CFG)
-    row_limit = 20
-    count = row_limit + 5
+    count = 500
     local = local_frame(["A"] * count)
     service = service_for(build_api_project(BASE_CFG))
-    patch_frames(monkeypatch, service, FrameSource(local=local, remote=remote_frame(["C1"])))
-
-    token = encode_key_token(("A",))
-    first = await service.inspect(
-        project_name=PROJECT_NAME,
-        issue_type="FK_DATA_INTEGRITY",
-        local_entity="orders",
-        metadata=metadata_for(saved_project, count=1),
-        selected_value_token=token,
-        row_offset=0,
-        row_limit=row_limit,
-    )
-    second = await service.inspect(
-        project_name=PROJECT_NAME,
-        issue_type="FK_DATA_INTEGRITY",
-        local_entity="orders",
-        metadata=metadata_for(saved_project, count=1),
-        selected_value_token=token,
-        row_offset=row_limit,
-        row_limit=row_limit,
-    )
-
-    assert first.selected is not None
-    assert first.selected.status == "selected"
-    assert first.selected.total_row_count == count
-    assert first.selected.returned_row_count == row_limit
-    assert first.selected.offset == 0
-    assert first.selected.limit == row_limit
-    assert first.selected.browse_cap == 10_000
-    assert first.selected.browse_cap_reached is False
-    assert first.selected.rows[0]["order_code"] == "O000"
-
-    assert second.selected is not None
-    assert second.selected.returned_row_count == 5
-    assert second.selected.rows[0]["order_code"] == f"O{row_limit:03d}"
-
-
-@pytest.mark.asyncio
-async def test_selected_rows_report_the_browse_cap(monkeypatch, tmp_path):
-    """The configured browse cap limits returned rows and is reported separately from the total."""
-    saved_project = build_saved_project(BASE_CFG)
-    settings = Settings(_env_file=None, APPLICATION_ROOT=tmp_path, LINK_TROUBLESHOOT_BROWSE_ROW_CAP=3)
-    local = local_frame(["A"] * 8)
-    service = service_for(build_api_project(BASE_CFG), settings=settings)
     patch_frames(monkeypatch, service, FrameSource(local=local, remote=remote_frame(["C1"])))
 
     result = await service.inspect(
@@ -447,15 +380,14 @@ async def test_selected_rows_report_the_browse_cap(monkeypatch, tmp_path):
         local_entity="orders",
         metadata=metadata_for(saved_project, count=1),
         selected_value_token=encode_key_token(("A",)),
-        row_offset=0,
-        row_limit=ROW_PAGE_SIZE,
     )
 
     assert result.selected is not None
-    assert result.selected.total_row_count == 8
-    assert result.selected.browse_cap == 3
-    assert result.selected.browse_cap_reached is True
-    assert result.selected.returned_row_count == 3
+    assert result.selected.status == "selected"
+    assert result.selected.total_row_count == count
+    assert len(result.selected.rows) == count
+    assert result.selected.rows[0]["order_code"] == "O000"
+    assert result.selected.rows[-1]["order_code"] == f"O{count - 1:03d}"
 
 
 @pytest.mark.asyncio
@@ -531,36 +463,33 @@ async def test_excess_key_columns_are_truncated_in_the_row_sample(monkeypatch):
     assert result.selected is not None
     assert result.selected.status == "selected"
     assert result.selected.total_row_count == 1
-    assert result.selected.returned_row_count == 1
     assert result.selected.columns == key_columns[:COLUMN_LIMIT]
     assert result.selected.columns_truncated is True
     assert set(result.selected.rows[0]) == set(key_columns[:COLUMN_LIMIT])
 
 
 @pytest.mark.asyncio
-async def test_selection_uses_the_token_not_a_page_position(monkeypatch):
-    """A token obtained from a later page still selects the same value's rows."""
+async def test_selection_uses_the_token_not_a_list_position(monkeypatch):
+    """A token from the value list selects the same value's rows without an index."""
     saved_project = build_saved_project(BASE_CFG)
-    codes = [f"V{index:03d}" for index in range(VALUE_PAGE_SIZE + 3)]
+    codes = [f"V{index:03d}" for index in range(120)]
     service = service_for(build_api_project(BASE_CFG))
     patch_frames(monkeypatch, service, FrameSource(local=local_frame(codes), remote=remote_frame(["C1"])))
 
-    page_two = await service.inspect(
+    listed = await service.inspect(
         project_name=PROJECT_NAME,
         issue_type="FK_DATA_INTEGRITY",
         local_entity="orders",
         metadata=metadata_for(saved_project, count=len(codes)),
-        page=2,
     )
 
-    assert page_two.values is not None and page_two.values.values
-    chosen = page_two.values.values[1]
+    assert listed.values is not None and listed.values.values
+    chosen = listed.values.values[1]
     selected = await service.inspect(
         project_name=PROJECT_NAME,
         issue_type="FK_DATA_INTEGRITY",
         local_entity="orders",
         metadata=metadata_for(saved_project, count=len(codes)),
-        page=2,
         selected_value_token=chosen.token,
     )
 
@@ -673,7 +602,7 @@ async def test_date_datetime_and_decimal_keys_remain_selectable(monkeypatch):
     )
 
     assert page.values is not None
-    assert page.values.returned_value_count == len(keys)
+    assert page.values.distinct_value_count == len(keys)
     for value in page.values.values:
         assert isinstance(decode_key_token(value.token)[0], (date, datetime, Decimal))
         selected = await service.inspect(
@@ -750,8 +679,8 @@ async def test_inspection_writes_nothing_to_shared_caches_or_the_project():
 
 
 @pytest.mark.asyncio
-async def test_context_pages_reuse_the_normalized_snapshot_and_expire(monkeypatch):
-    """Value and row pages use one owner-scoped snapshot until close or expiry."""
+async def test_context_reads_reuse_the_normalized_snapshot_and_expire(monkeypatch):
+    """Context reads use one owner-scoped snapshot until close or expiry."""
     api_project = build_api_project(BASE_CFG)
     saved_project = build_saved_project(BASE_CFG)
     clock_value = datetime(2026, 1, 1)
@@ -784,21 +713,11 @@ async def test_context_pages_reuse_the_normalized_snapshot_and_expire(monkeypatc
     assert opened.expires_at is not None
     assert opened.values is not None and opened.values.values[0].key_values == ["A"]
 
-    first_page = await service.read_context(
+    selected_read = await service.read_context(
         context_id=opened.context_id,
         owner_principal_id="alice",
         project_locator=PROJECT_NAME,
         selected_value_token=encode_key_token(("A",)),
-        row_offset=0,
-        row_limit=100,
-    )
-    second_page = await service.read_context(
-        context_id=opened.context_id,
-        owner_principal_id="alice",
-        project_locator=PROJECT_NAME,
-        selected_value_token=encode_key_token(("A",)),
-        row_offset=100,
-        row_limit=100,
     )
     foreign_lookup = await service.read_context(
         context_id=opened.context_id,
@@ -806,12 +725,12 @@ async def test_context_pages_reuse_the_normalized_snapshot_and_expire(monkeypatc
         project_locator=PROJECT_NAME,
     )
 
-    assert first_page.response is not None and second_page.response is not None
-    assert first_page.response.context_id == opened.context_id
-    assert first_page.response.selected is not None
-    assert first_page.response.selected.rows[0]["order_code"] == "O000"
-    assert second_page.response.selected is not None
-    assert second_page.response.selected.rows[0]["order_code"] == "O100"
+    assert selected_read.response is not None
+    assert selected_read.response.context_id == opened.context_id
+    assert selected_read.response.selected is not None
+    assert len(selected_read.response.selected.rows) == 250
+    assert selected_read.response.selected.rows[0]["order_code"] == "O000"
+    assert selected_read.response.selected.rows[-1]["order_code"] == "O249"
     assert foreign_lookup.state == "unavailable"
     assert normalize_calls == 1
 
@@ -849,13 +768,12 @@ async def test_context_pages_reuse_the_normalized_snapshot_and_expire(monkeypatc
 
 
 @pytest.mark.asyncio
-async def test_large_row_result_stays_browsable_and_read_only(monkeypatch):
-    """A large affected row set is browsed in bounded windows and writes nothing."""
+async def test_large_row_result_is_complete_and_read_only(monkeypatch):
+    """A large affected row set is returned in full and writes nothing."""
     api_project = build_api_project(BASE_CFG)
     api_snapshot = api_project.model_dump()
     saved_project = build_saved_project(BASE_CFG)
     total_rows = 12_000
-    row_limit = 500
     service = service_for(api_project)
     patch_frames(
         monkeypatch,
@@ -865,30 +783,17 @@ async def test_large_row_result_stays_browsable_and_read_only(monkeypatch):
     token = encode_key_token(("A",))
     metadata = metadata_for(saved_project, count=1)
 
-    async def page(offset: int):
-        return await service.inspect(
-            project_name=PROJECT_NAME,
-            issue_type="FK_DATA_INTEGRITY",
-            local_entity="orders",
-            metadata=metadata,
-            selected_value_token=token,
-            row_offset=offset,
-            row_limit=row_limit,
-        )
+    result = await service.inspect(
+        project_name=PROJECT_NAME,
+        issue_type="FK_DATA_INTEGRITY",
+        local_entity="orders",
+        metadata=metadata,
+        selected_value_token=token,
+    )
 
-    first = await page(0)
-    middle = await page(9_500)
-    beyond = await page(10_000)
-
-    assert first.selected is not None and middle.selected is not None and beyond.selected is not None
-    assert first.selected.total_row_count == total_rows
-    assert first.selected.returned_row_count == row_limit
-    assert first.selected.rows[0]["order_code"] == "O000"
-    assert first.selected.browse_cap == 10_000
-    assert first.selected.browse_cap_reached is True
-    assert middle.selected.returned_row_count == row_limit
-    assert middle.selected.offset == 9_500
-    assert middle.selected.rows[0]["order_code"] == "O9500"
-    assert beyond.selected.returned_row_count == 0
-    assert beyond.selected.offset == 10_000
+    assert result.selected is not None
+    assert result.selected.total_row_count == total_rows
+    assert len(result.selected.rows) == total_rows
+    assert result.selected.rows[0]["order_code"] == "O000"
+    assert result.selected.rows[-1]["order_code"] == f"O{total_rows - 1}"
     assert api_project.model_dump() == api_snapshot
