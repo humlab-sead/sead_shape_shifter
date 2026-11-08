@@ -233,8 +233,17 @@ describe('IntegrityTroubleshooterBody', () => {
     await wrapper.find('section[aria-label="Unmatched values"] .grid-row').trigger('click')
     await flushPromises()
 
-    expect(wrapper.find('.integrity-page-loading').exists()).toBe(true)
-    expect(wrapper.find('section[aria-label="Selected value rows"] .grid-row').text()).toContain('MISSING-0')
+    // Reading one value's rows keeps the panel in place: no full-width progress
+    // bar appears above the results, so the layout does not jump.
+    expect(wrapper.find('.integrity-page-loading').exists()).toBe(false)
+    // The values grid keeps its rows and its selected row instead of reloading.
+    const valueGrid = wrapper.find('section[aria-label="Unmatched values"]')
+    expect(valueGrid.findComponent(TroubleshooterDataGridStub).props('loading')).toBe(false)
+    expect(valueGrid.findAll('.grid-row')).toHaveLength(2)
+    // Only the selected-rows grid reports the read.
+    const selectedGrid = wrapper.find('section[aria-label="Selected value rows"]')
+    expect(selectedGrid.findComponent(TroubleshooterDataGridStub).props('loading')).toBe(true)
+    expect(selectedGrid.find('.grid-row').text()).toContain('MISSING-0')
     expect(inspect()).toHaveBeenCalledTimes(1)
     expect(pageRequests).toEqual([{ selected_value_token: 'token-a' }])
 
@@ -248,7 +257,7 @@ describe('IntegrityTroubleshooterBody', () => {
     )
     await flushPromises()
 
-    expect(wrapper.find('.integrity-page-loading').exists()).toBe(false)
+    expect(selectedGrid.findComponent(TroubleshooterDataGridStub).props('loading')).toBe(false)
     expect(wrapper.find('section[aria-label="Selected value rows"] .grid-row').text()).toContain('OTHER-0')
     expect(inspect()).toHaveBeenCalledTimes(1)
   })

@@ -7,7 +7,11 @@
         from the same inspection snapshot.
       </p>
     </div>
-    <div v-else-if="loading" class="mb-2 integrity-page-loading" aria-label="Loading inspection results">
+    <div
+      v-else-if="loading && !selectionLoading"
+      class="mb-2 integrity-page-loading"
+      aria-label="Loading inspection results"
+    >
       <v-progress-linear indeterminate color="primary" />
     </div>
 
@@ -110,7 +114,7 @@
                 <TroubleshooterDataGrid
                   :columns="valueColumns"
                   :rows="valueRows"
-                  :loading="loading"
+                  :loading="loading && !selectionLoading"
                   selectable
                   height="320px"
                   @row-click="selectValueRow"
@@ -134,7 +138,7 @@
                 <TroubleshooterDataGrid
                   :columns="selectedColumns"
                   :rows="result.selected.rows"
-                  :loading="loading"
+                  :loading="selectionLoading"
                   height="320px"
                 />
               </template>
@@ -186,6 +190,10 @@ const emit = defineEmits<{
 }>()
 
 const loading = ref(false)
+// Reading the rows of one selected value keeps the current result on screen, so
+// it is tracked apart from a whole-inspection read. Showing the top progress bar
+// for it only shifted the layout and made the panel flicker.
+const selectionLoading = ref(false)
 const error = ref<FormattedError | null>(null)
 const result = ref<IntegrityTroubleshootResponse | null>(null)
 const contextId = ref<string | null>(null)
@@ -210,8 +218,13 @@ const valueColumns = computed<TroubleshooterGridColumn[]>(() => [
   { field: 'localRowCount', header: 'Local rows', align: 'right' as const, width: 140 },
 ])
 
+// The value list comes from the retained snapshot, so a same-context read returns
+// the same values. Keeping the previous object means the values grid is not
+// rebuilt, which keeps the clicked row selected instead of redrawing the table.
+const valuesPage = computed(() => result.value?.values ?? null)
+
 const valueRows = computed<Record<string, unknown>[]>(() =>
-  (result.value?.values?.values ?? []).map((value) => ({
+  (valuesPage.value?.values ?? []).map((value) => ({
     token: value.token,
     unmatchedKey: formatKey(value.key_values),
     localRowCount: value.local_row_count,
@@ -312,6 +325,8 @@ async function sendRequest(): Promise<void> {
   const currentContextId: string | null = contextId.value
   const version = ++requestVersion
   loading.value = true
+  // A context read only fills in one value's rows; the shown result stays put.
+  selectionLoading.value = currentContextId !== null
   error.value = null
   if (currentContextId === null) {
     result.value = null
@@ -327,6 +342,10 @@ async function sendRequest(): Promise<void> {
         closeContext(response.context_id)
       }
       return
+    }
+
+    if (currentContextId !== null && currentContextId === response.context_id && result.value?.values) {
+      response.values = result.value.values
     }
 
     result.value = response
@@ -351,6 +370,7 @@ async function sendRequest(): Promise<void> {
   } finally {
     if (version === requestVersion) {
       loading.value = false
+      selectionLoading.value = false
     }
   }
 }
