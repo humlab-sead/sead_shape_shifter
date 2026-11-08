@@ -94,7 +94,7 @@
               <p class="text-body-2 mb-0 validation-message-full-text">{{ item.message }}</p>
             </div>
 
-            <div class="d-flex flex-wrap ga-x-6 ga-y-2 mb-3">
+            <div class="d-flex flex-wrap gc-6 gr-2 mb-3">
               <div v-if="item.priority">
                 <span class="text-caption text-medium-emphasis">Priority</span>
                 <div class="text-body-2">{{ item.priority }}</div>
