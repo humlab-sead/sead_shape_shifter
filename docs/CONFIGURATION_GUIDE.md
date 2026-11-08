@@ -832,7 +832,7 @@ This is the canonical mechanism for four common cases:
 - **Copy** when you just need another column name for an existing value
 - **Constant** when every row should receive the same value, `null`, number, or boolean
 - **Interpolation** when you are assembling a label, synthetic identifier, or display string from several columns
-- **Formula** when interpolation is not enough and you need a small expression such as `upper(...)`, `trim(...)`, `substr(...)`, `coalesce(...)`, `map_value(...)`, `replace(...)`, `regex_extract(...)`, or `to_decimal(...)`
+- **Formula** when interpolation is not enough and you need a small expression such as `upper(...)`, `trim(...)`, `substr(...)`, `coalesce(...)`, `map_value(...)`, `replace(...)`, `regex_replace(...)`, `regex_extract(...)`, `split_part(...)`, `concat_ws(...)`, or `to_decimal(...)`
 
 Quick examples:
 
@@ -986,6 +986,14 @@ When the result is used for a foreign-key link, the existing FK linker still cre
     site_code: "=regex_extract(site_id, '[0-9]+')"
     # Extract a named capture group to pull a prefix
     country_code: "=regex_extract(location_key, '^([A-Z]{2})', 1)"
+    # Extract a named capture group by name instead of index
+    site_code_named: "=regex_extract(site_id, 'SITE-(?P<num>[0-9]+)', 'num')"
+    # Read the 3rd comma-separated field, trimmed
+    field_3: "=trim(split_part(composite_key, ',', 3))"
+    # Join optional parts with a separator, skipping nulls
+    tag_list: "=concat_ws(',', tag_a, tag_b, tag_c)"
+    # Strip a case-insensitive word with one regex call
+    lab_id_clean: "=regex_replace(lab_id, '(?i)okänd', '')"
     # Convert a float measurement column to Decimal with 4 decimal places
     latitude_decimal: "=to_decimal(latitude, 4)"
     # Create constant null column
@@ -1004,7 +1012,10 @@ When the result is used for a foreign-key link, the existing FK linker still cre
     - `substr(str, start, length)` - Extract substring (0-indexed)
     - `coalesce(...)` - Return first non-null value
     - `replace(str, old, new)` - Replace all occurrences of substring `old` with `new` (literal, not regex)
-    - `regex_extract(str, pattern[, group])` - Extract first regex match; `group` selects capture group (default 0 = full match); returns null when no match
+    - `regex_replace(str, pattern, replacement)` - Replace all matches of regex `pattern` with `replacement`; a null `replacement` deletes the matches
+    - `regex_extract(str, pattern[, group])` - Extract first regex match; `group` selects capture group by integer index (default 0 = full match) or by name for `(?P<name>...)` groups; returns null when no match
+    - `split_part(str, separator, n)` - Return the 1-based `n`-th field of `str` split on the literal `separator`; out-of-range indexes return null; fields are not trimmed, so wrap in `trim()` when needed
+    - `concat_ws(separator, ...)` - Join non-null arguments with the literal `separator`; null arguments are skipped (unlike `concat`, which renders them as empty strings); returns null when all arguments are null
     - `to_decimal(value[, precision])` - Convert a numeric value (float, int, str, Decimal) or null to `Decimal` rounded to `precision` decimal places (default 10)
     - `to_int(value)` - Convert value to int; null/NaN pass through as null
     - `to_float(value)` - Convert value to float; null/NaN pass through as null

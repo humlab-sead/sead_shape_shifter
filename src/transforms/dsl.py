@@ -649,6 +649,9 @@ class PandasStringBackend:
             "to_date": self._fn_to_date,
             "replace": self._fn_replace,
             "regex_extract": self._fn_regex_extract,
+            "regex_replace": self._fn_regex_replace,
+            "split_part": self._fn_split_part,
+            "concat_ws": self._fn_concat_ws,
         }
 
     def get_column(self, name: str) -> pd.Series:
@@ -861,16 +864,33 @@ class PandasStringBackend:
         return self._to_nullable_string_series(value).str.replace(old_s, new_s, regex=False)
 
     def _fn_regex_extract(self, value: Any, pattern: Any, group: Any = 0) -> pd.Series:
-        """Extract the first regex match, or the selected capture group."""
+        """Extract the first regex match, or the selected capture group.
+
+        *group* is either a 0-based integer (0 = full match) or the name of a
+        ``(?P<name>...)`` capture group in the pattern.
+        """
         if isinstance(pattern, pd.Series):
             raise DSLEvaluationError("Function 'regex_extract' requires a string literal for pattern")
-
-        group_i = self._require_scalar_int(group, "regex_extract")
 
         try:
             compiled = re.compile(str(pattern))
         except re.error as exc:
             raise DSLEvaluationError(f"regex_extract: invalid pattern {pattern!r}: {exc}") from exc
+
+        if isinstance(group, str):
+            group_name = group
+            if group_name not in compiled.groupindex:
+                raise DSLEvaluationError(f"regex_extract: pattern has no group {group_name!r}")
+
+            search = compiled.search
+
+            def _extract_named(v: Any) -> str | None:
+                match = search(str(v))
+                return None if match is None else match[group_name]
+
+            return self._ensure_series(value).map(_extract_named, na_action="ignore")
+
+        group_i = self._require_scalar_int(group, "regex_extract")
 
         if not 0 <= group_i <= compiled.groups:
             raise DSLEvaluationError(f"regex_extract: pattern has no group {group_i}")
@@ -882,6 +902,59 @@ class PandasStringBackend:
             return None if match is None else match[group_i]
 
         return self._ensure_series(value).map(_extract, na_action="ignore")
+
+    def _fn_regex_replace(self, value: Any, pattern: Any, replacement: Any) -> pd.Series:
+        """Replace all regex matches of *pattern* with *replacement* in each element.
+
+        A null *replacement* is treated as an empty string, so matches are deleted.
+        """
+        if isinstance(pattern, pd.Series) or isinstance(replacement, pd.Series):
+            raise DSLEvaluationError("Function 'regex_replace' requires string literal arguments for pattern and replacement")
+        try:
+            compiled = re.compile(str(pattern))
+        except re.error as exc:
+            raise DSLEvaluationError(f"regex_replace: invalid pattern {pattern!r}: {exc}") from exc
+        repl: str = "" if replacement is None else str(replacement)
+        return self._to_nullable_string_series(value).str.replace(compiled, repl, regex=True)
+
+    def _fn_split_part(self, value: Any, separator: Any, part: Any) -> Any:
+        """Return the 1-based *part*-th field of *value* split on the literal *separator*.
+
+        Out-of-range indexes return null. Fields are not trimmed, so wrap in
+        ``trim()`` when the source pads fields with whitespace.
+        """
+        if isinstance(separator, pd.Series):
+            raise DSLEvaluationError("Function 'split_part' requires a string literal for separator")
+        part_i = self._require_scalar_int(part, "split_part")
+        if part_i < 1:
+            raise DSLEvaluationError("Function 'split_part' requires a 1-based part index of at least 1")
+        sep = str(separator)
+
+        def _split(v: Any) -> str | None:
+            fields = str(v).split(sep)
+            return fields[part_i - 1] if part_i <= len(fields) else None
+
+        return self._ensure_series(value).map(_split, na_action="ignore")
+
+    def _fn_concat_ws(self, separator: Any, *args: Any) -> pd.Series:
+        """Join the string form of each non-null argument with the literal *separator*.
+
+        Null arguments are skipped rather than rendered as empty strings. When
+        every argument is null for a row, the result is null.
+        """
+        if not args:
+            raise DSLEvaluationError("concat_ws expects at least one value argument after the separator")
+        if isinstance(separator, pd.Series):
+            raise DSLEvaluationError("Function 'concat_ws' requires a string literal for separator")
+        sep = str(separator)
+        parts: list[pd.Series] = [self._to_nullable_string_series(arg) for arg in args]
+        frame: pd.DataFrame = pd.concat(parts, axis=1, keys=range(len(parts)), copy=False)
+
+        def _join(row: Any) -> str | None:
+            values = [item for item in row.tolist() if not pd.isna(item)]
+            return None if not values else sep.join(values)
+
+        return frame.apply(_join, axis=1).astype("string")
 
 
 # ============================================================================
@@ -1008,7 +1081,25 @@ DEFAULT_FUNCTIONS: dict[str, FunctionSpec] = {
         impl_name="regex_extract",
         min_args=2,
         max_args=3,
-        description="Extract the first regex match (or capture group) from a string",
+        description="Extract the first regex match (or capture group, by index or name) from a string",
+    ),
+    "regex_replace": FunctionSpec(
+        name="regex_replace",
+        impl_name="regex_replace",
+        exact_args=3,
+        description="Replace all regex matches of a pattern with a replacement string",
+    ),
+    "split_part": FunctionSpec(
+        name="split_part",
+        impl_name="split_part",
+        exact_args=3,
+        description="Return the 1-based nth field of a string split on a literal separator (out-of-range returns null)",
+    ),
+    "concat_ws": FunctionSpec(
+        name="concat_ws",
+        impl_name="concat_ws",
+        min_args=2,
+        description="Join non-null arguments with a literal separator; skips nulls instead of rendering them empty",
     ),
 }
 
