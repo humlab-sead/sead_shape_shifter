@@ -474,6 +474,14 @@ def validate_arity(spec: FunctionSpec, argc: int, span: SourceSpan) -> None:
         )
 
 
+def _split_map_value_arguments(args: list[Any]) -> tuple[list[tuple[Any, Any]], Any, bool]:
+    has_fallback = len(args) % 2 == 0
+    mapping_end = len(args) - 1 if has_fallback else len(args)
+    pairs = [(args[index], args[index + 1]) for index in range(1, mapping_end, 2)]
+    fallback = args[-1] if has_fallback else None
+    return pairs, fallback, has_fallback
+
+
 @dataclass(frozen=True)
 class ValidationConfig:
     """Configuration for the validator."""
@@ -539,6 +547,8 @@ class Validator:
                     span=expr.span,
                 )
             validate_arity(spec, len(expr.args), expr.span)
+            if spec.impl_name == "map_value":
+                self._validate_map_value(expr)
             for arg in expr.args:
                 self._validate(arg, depth + 1)
             return
@@ -547,6 +557,44 @@ class Validator:
             f"Unsupported expression node type: {type(expr).__name__}",
             span=expr.span,
         )
+
+    def _validate_map_value(self, expr: Call) -> None:
+        pairs, fallback, has_fallback = _split_map_value_arguments(expr.args)
+        if not pairs:
+            raise DSLValidationError(
+                "Function 'map_value' requires at least one key/value pair",
+                span=expr.span,
+            )
+
+        seen_keys: list[Any] = []
+        for key_expr, mapped_expr in pairs:
+            if not isinstance(key_expr, Literal):
+                raise DSLValidationError(
+                    "Function 'map_value' mapping keys must be literal values",
+                    span=key_expr.span,
+                )
+            if key_expr.value is None:
+                raise DSLValidationError(
+                    "Function 'map_value' mapping keys cannot be null because null inputs pass through",
+                    span=key_expr.span,
+                )
+            if not isinstance(mapped_expr, Literal):
+                raise DSLValidationError(
+                    "Function 'map_value' mapped values must be literal values",
+                    span=mapped_expr.span,
+                )
+            if any(key_expr.value == seen_key for seen_key in seen_keys):
+                raise DSLValidationError(
+                    f"Function 'map_value' has duplicate mapping key {key_expr.value!r}",
+                    span=key_expr.span,
+                )
+            seen_keys.append(key_expr.value)
+
+        if has_fallback and not isinstance(fallback, Literal):
+            raise DSLValidationError(
+                "Function 'map_value' fallback must be a literal value",
+                span=fallback.span,
+            )
 
     def _count_nodes(self, expr: Expr) -> int:
         """Count the number of nodes in an expression."""
@@ -593,6 +641,7 @@ class PandasStringBackend:
             "trim": self._fn_trim,
             "substr": self._fn_substr,
             "coalesce": self._fn_coalesce,
+            "map_value": self._fn_map_value,
             "to_decimal": self._fn_to_decimal,
             "to_int": self._fn_to_int,
             "to_float": self._fn_to_float,
@@ -690,6 +739,48 @@ class PandasStringBackend:
             other: pd.Series = self._ensure_series(arg)
             result = result.where(result.notna(), other)
         return result
+
+    def _fn_map_value(self, value: Any, *mapping_args: Any) -> pd.Series:
+        args = [value, *mapping_args]
+        pairs, fallback, has_fallback = _split_map_value_arguments(args)
+        if not pairs:
+            raise DSLEvaluationError("map_value requires at least one key/value pair")
+
+        mapping: dict[Any, Any] = {}
+        for key, mapped_value in pairs:
+            if isinstance(key, pd.Series) or isinstance(mapped_value, pd.Series):
+                raise DSLEvaluationError("map_value requires literal mapping keys and values")
+            if self._is_null_scalar(key):
+                raise DSLEvaluationError("map_value mapping keys cannot be null because null inputs pass through")
+            try:
+                if key in mapping:
+                    raise DSLEvaluationError(f"map_value has duplicate mapping key {key!r}")
+                mapping[key] = mapped_value
+            except TypeError as exc:
+                raise DSLEvaluationError(f"map_value mapping key {key!r} is not a scalar literal") from exc
+
+        if has_fallback and isinstance(fallback, pd.Series):
+            raise DSLEvaluationError("map_value fallback must be a literal value")
+
+        input_series = self._ensure_series(value)
+        result: list[Any] = []
+        for item in input_series.tolist():
+            if self._is_null_scalar(item):
+                result.append(None)
+                continue
+            try:
+                mapped_value = mapping[item]
+            except (KeyError, TypeError):
+                if not has_fallback:
+                    raise DSLEvaluationError(f"map_value has no mapping for value {item!r}; provide a fallback as the final argument")
+                mapped_value = fallback
+            result.append(mapped_value)
+
+        return pd.Series(result, index=input_series.index, dtype=object, name=input_series.name)
+
+    @staticmethod
+    def _is_null_scalar(value: Any) -> bool:
+        return pd.api.types.is_scalar(value) and bool(pd.isna(value))
 
     def _fn_to_decimal(self, value: Any, precision: Any = 10) -> pd.Series:
         precision_i: int = self._require_scalar_int(precision, "to_decimal")
@@ -867,6 +958,12 @@ DEFAULT_FUNCTIONS: dict[str, FunctionSpec] = {
         impl_name="coalesce",
         min_args=1,
         description="Return first non-null value",
+    ),
+    "map_value": FunctionSpec(
+        name="map_value",
+        impl_name="map_value",
+        min_args=3,
+        description="Map exact input values to literal values with an optional fallback",
     ),
     "to_decimal": FunctionSpec(
         name="to_decimal",
