@@ -866,6 +866,34 @@ describe('LinkTroubleshooterDialog', () => {
     expect(wrapper.text()).not.toContain('Trial key pairs')
   })
 
+  it('summarizes the integrity relationship and enabled rules under the heading', async () => {
+    vi.mocked(integrityTroubleshooterApi.inspect).mockResolvedValue(
+      integrityResponse({
+        relationship: {
+          local_entity: 'orders',
+          remote_entity: 'customers',
+          fk_index: 0,
+          join_type: 'inner',
+          constraints: {
+            cardinality: 'many_to_one',
+            allow_row_decrease: false,
+            require_unique_right: true,
+          },
+        },
+      })
+    )
+    const wrapper = mountDialog(makeContext(), integrityMessage())
+    await flushPromises()
+
+    const heading = wrapper.find('.link-troubleshooter-heading')
+    expect(heading.text()).toContain('orders → customers')
+    expect(heading.text()).toContain('Many-to-one · Require unique right')
+    expect(heading.text()).not.toContain('Allow row decrease')
+    expect(wrapper.text()).not.toContain('Configured relationship')
+    expect(wrapper.text()).not.toContain('Configured link rules')
+    expect(wrapper.findAll('.v-chip')).toHaveLength(0)
+  })
+
   it('explains a malformed integrity warning without sending either request', async () => {
     const wrapper = mountDialog(
       makeContext(),
