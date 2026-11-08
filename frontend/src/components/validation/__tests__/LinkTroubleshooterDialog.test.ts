@@ -554,6 +554,25 @@ describe('LinkTroubleshooterDialog', () => {
     expect(state.pageSize.value).toBe(25_000)
   })
 
+  it('presents the affected-row categories as tabs with only the selection underlined', async () => {
+    const wrapper = mountDialog()
+    await flushPromises()
+
+    const unmatched = wrapper.find('button[data-group="unmatched"]')
+    const multiplyMatched = wrapper.find('button[data-group="multiply_matched"]')
+
+    // Both labels are plain tab-style buttons; neither gets an outline.
+    expect(unmatched.classes()).toContain('affected-row-tab')
+    expect(multiplyMatched.classes()).toContain('affected-row-tab')
+    expect(unmatched.attributes('variant')).toBeUndefined()
+
+    // Only the current category carries the active marker.
+    expect(unmatched.classes()).toContain('affected-row-tab--active')
+    expect(multiplyMatched.classes()).not.toContain('affected-row-tab--active')
+    expect(unmatched.attributes('aria-pressed')).toBe('true')
+    expect(multiplyMatched.attributes('aria-pressed')).toBe('false')
+  })
+
   it('resizes the dialog with pointer and keyboard controls', async () => {
     const wrapper = mountDialog()
     await flushPromises()
@@ -712,6 +731,9 @@ describe('LinkTroubleshooterDialog', () => {
 
     await selectSide(wrapper, 'trial')
     await wrapper.find('button[data-group="multiply_matched"]').trigger('click')
+    // Give the group more rows than one page so the pager is rendered.
+    setBrowseRows([], 51)
+    await nextTick()
     await selectOption(wrapper, 'Rows per page', 25)
     await wrapper.find('button[aria-label="Next page"]').trigger('click')
     await flushPromises()
@@ -727,7 +749,10 @@ describe('LinkTroubleshooterDialog', () => {
     setBrowseRows([makeRow(4, ['LONG']), makeRow(5, ['MISSING'])], 150)
     await nextTick()
 
-    expect(wrapper.text()).toContain('Showing 2 of 150 affected source rows · Page 1 of 2')
+    // The group tab already states the full count, so the toolbar carries no
+    // separate "showing N of M" line.
+    expect(wrapper.find('.affected-row-toolbar').text()).toContain('Unmatched · 150')
+    expect(wrapper.text()).not.toContain('affected source rows · Page')
 
     const section = wrapper.find('section[aria-label="Exception rows"]')
     expect(section.find('.grid-header').text()).toContain('Input row')
