@@ -4,9 +4,32 @@ import pytest
 import yaml
 
 from backend.app.core.config import settings
+from backend.app.models.validation import ValidationResult
 from backend.app.services import dependency_service, project_service, validation_service, yaml_service
 
 # pylint: disable=redefined-outer-name, unused-argument
+
+
+async def _create_data_validation_project(client) -> None:
+    """Create one fixed entity project the data-validation route can authorize against."""
+    response = await client.post(
+        "/api/v1/projects",
+        json={
+            "name": "test_project",
+            "data_provider_code": "test-provider",
+            "provider_schema": "schema-one",
+            "entities": {
+                "sample": {
+                    "type": "fixed",
+                    "public_id": "sample_id",
+                    "keys": ["sample_name"],
+                    "columns": ["sample_name"],
+                    "values": [["Sample"]],
+                }
+            },
+        },
+    )
+    assert response.status_code == 201, response.text
 
 
 @pytest.fixture
@@ -58,6 +81,71 @@ class TestEntityValidation:
         assert "is_valid" in data
         assert "errors" in data
         assert "warnings" in data
+
+    async def test_data_validation_forwards_the_selectable_checks(self, tmp_path, monkeypatch, reset_services, authorized_client):
+        """The requested selectable checks reach the validation service as a parsed list."""
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        captured: dict[str, object] = {}
+
+        async def fake_validate(_self, project_name, entity_names=None, validation_mode=None, validators=None):
+            captured["project_name"] = project_name
+            captured["validators"] = validators
+            return ValidationResult(is_valid=True)
+
+        await _create_data_validation_project(authorized_client)
+        monkeypatch.setattr(validation_service.ValidationService, "validate_project_data", fake_validate)
+
+        response = await authorized_client.post(
+            "/api/v1/projects/test_project/validate/data",
+            params={"validators": "non_empty_result,column_exists"},
+        )
+
+        assert response.status_code == 200, response.text
+        assert captured["project_name"] == "test_project"
+        assert captured["validators"] == ["column_exists", "non_empty_result"]
+
+    async def test_data_validation_treats_an_empty_check_list_as_none_selected(
+        self, tmp_path, monkeypatch, reset_services, authorized_client
+    ):
+        """An empty list is distinct from an omitted one, so every selectable check can be switched off."""
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        captured: dict[str, object] = {}
+
+        async def fake_validate(_self, project_name, entity_names=None, validation_mode=None, validators=None):
+            captured["project_name"] = project_name
+            captured["validators"] = validators
+            return ValidationResult(is_valid=True)
+
+        await _create_data_validation_project(authorized_client)
+        monkeypatch.setattr(validation_service.ValidationService, "validate_project_data", fake_validate)
+
+        response = await authorized_client.post(
+            "/api/v1/projects/test_project/validate/data",
+            params={"validators": ""},
+        )
+
+        assert response.status_code == 200, response.text
+        assert captured["validators"] == []
+
+    async def test_data_validation_rejects_an_unknown_check_name(self, tmp_path, monkeypatch, reset_services, authorized_client):
+        """A check name outside the selectable set is refused instead of silently ignored."""
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        calls: list[object] = []
+
+        async def fake_validate(*args, **kwargs):
+            calls.append(kwargs)
+
+        await _create_data_validation_project(authorized_client)
+        monkeypatch.setattr(validation_service.ValidationService, "validate_project_data", fake_validate)
+
+        response = await authorized_client.post(
+            "/api/v1/projects/test_project/validate/data",
+            params={"validators": "not_a_check"},
+        )
+
+        assert response.status_code == 422
+        assert "not_a_check" in response.json()["detail"]
+        assert calls == []
 
     async def test_data_validation_returns_fixed_entity_load_errors(
         self, tmp_path, monkeypatch, reset_services, sample_entity_data, authorized_client

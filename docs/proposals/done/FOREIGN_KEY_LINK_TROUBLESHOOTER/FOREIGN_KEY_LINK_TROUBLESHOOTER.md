@@ -6,7 +6,7 @@
 - Scope: first edition of a read-only troubleshooter for one configured foreign-key link
 - Goal: identify which rows and keys cause a linking warning, and test alternative join keys without changing the project
 - Validation: Recorded in the [phase plan](FOREIGN_KEY_LINK_TROUBLESHOOTER_PHASE_PLAN.md) task plans. Automated backend and frontend checks passed through Phase 4, and the end-to-end flow passed against the staging container on 2026-11-04 for a `ROW_COUNT_MISMATCH` link: the action opens the saved link with A, B, join type, and constraints read-only, shows the configured keys and baseline totals, runs a changed key pair with its own totals, filters and pages A rows without changing complete totals, reports stale, ineligible, and incomplete states, offers no save action, and starts a fresh view after close and reopen.
-- Remaining follow-up: The action covers inner and left joins only; right, outer, and cross joins remain unsupported. Extending the comparison to other join settings is tracked by [Foreign-Key Link Troubleshooter Experiments](../../FOREIGN_KEY_LINK_TROUBLESHOOTER_EXPERIMENTS/FOREIGN_KEY_LINK_TROUBLESHOOTER_EXPERIMENTS.md).
+- Remaining follow-up: The action covers inner and left joins only; right, outer, and cross joins remain unsupported. Extending the comparison to other join settings is tracked by [Foreign-Key Link Troubleshooter Experiments](../../done/FOREIGN_KEY_LINK_TROUBLESHOOTER_EXPERIMENTS/FOREIGN_KEY_LINK_TROUBLESHOOTER_EXPERIMENTS.md).
 
 ## Summary
 

@@ -1,6 +1,6 @@
 """Validation service for project validation."""
 
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any, Callable, Sequence
 
 from loguru import logger
 
@@ -12,6 +12,7 @@ from backend.app.models.project import Project
 from backend.app.models.validation import (
     DataValidationMode,
     DataValidationStatus,
+    DataValidatorKey,
     EntityDataValidationResult,
     EntityDataValidationStatus,
     ValidationCategory,
@@ -163,6 +164,7 @@ class ValidationService:
         project_name: str,
         entity_names: list[str] | None = None,
         validation_mode: DataValidationMode = DataValidationMode.COMPLETE,
+        validators: Sequence[DataValidatorKey] | None = None,
     ) -> ValidationResult:
         """
         Run data-aware validation on project.
@@ -176,6 +178,7 @@ class ValidationService:
                   truncated samples can name values that exist outside the sample
                 - SINGLE_PASS: full normalization from one project-wide pass, reporting each
                   entity that cannot be produced and skipping only its dependents
+            validators: Selectable data checks to run; None runs every selectable check.
 
         Returns:
             ValidationResult with data validation errors and warnings
@@ -264,6 +267,7 @@ class ValidationService:
             core_project=core_project,
             project_name=project_name,
             entity_names=entity_names,
+            validators=validators,
         )
 
         errors_list: list[ValidationError] = [ValidationMapper.to_api_error(issue) for issue in issues_list]

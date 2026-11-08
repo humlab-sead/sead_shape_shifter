@@ -15,10 +15,11 @@ export interface IntegrityTroubleshootRequest {
   issue_type: string
   local_entity: string
   metadata: Record<string, ValidationMetadataValue>
-  page?: number
   selected_value_token?: string | null
-  row_offset?: number
-  row_limit?: number
+}
+
+export interface IntegrityTroubleshootPageRequest {
+  selected_value_token?: string | null
 }
 
 export interface IntegrityTroubleshootKeys {
@@ -41,11 +42,7 @@ export interface IntegrityTroubleshootValue {
 }
 
 export interface IntegrityTroubleshootValuePage {
-  page: number
-  page_size: number
   distinct_value_count: number
-  returned_value_count: number
-  has_next: boolean
   values: IntegrityTroubleshootValue[]
 }
 
@@ -55,11 +52,6 @@ export interface IntegrityTroubleshootRows {
   message: string | null
   key_values: unknown[] | null
   total_row_count: number | null
-  returned_row_count: number | null
-  offset: number
-  limit: number
-  browse_cap: number
-  browse_cap_reached: boolean
   columns: string[]
   columns_truncated: boolean
   rows: Record<string, unknown>[]
@@ -70,6 +62,8 @@ export interface IntegrityTroubleshootResponse {
   reason: string
   message: string
   source: string
+  context_id: string | null
+  expires_at: string | null
   relationship: IntegrityTroubleshootRelationship | null
   configured_keys: IntegrityTroubleshootKeys | null
   recorded_orphan_count: number | null

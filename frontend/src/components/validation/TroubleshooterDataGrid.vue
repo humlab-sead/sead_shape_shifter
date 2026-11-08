@@ -88,10 +88,13 @@ function onRowClicked(event: RowClickedEvent): void {
 <style scoped>
 .troubleshooter-data-grid {
   width: 100%;
+  --ag-row-height: 26px;
+  --ag-header-height: 32px;
+  --ag-font-size: 12px;
 }
 
 .troubleshooter-data-grid :deep(.ag-cell) {
-  font-size: 0.8125rem;
-  line-height: 24px;
+  font-size: 0.75rem;
+  line-height: 26px;
 }
 </style>

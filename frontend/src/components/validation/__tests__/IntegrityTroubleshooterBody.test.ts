@@ -6,11 +6,24 @@ import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import IntegrityTroubleshooterBody from '../IntegrityTroubleshooterBody.vue'
 import { integrityTroubleshooterApi } from '@/api/integrityTroubleshooter'
-import type { IntegrityTroubleshootRequest, IntegrityTroubleshootResponse, ValidationError } from '@/types'
+import type {
+  IntegrityTroubleshootPageRequest,
+  IntegrityTroubleshootRequest,
+  IntegrityTroubleshootResponse,
+  ValidationError,
+} from '@/types'
+import { downloadCsv } from '@/utils/csv'
 
 vi.mock('@/api/integrityTroubleshooter', () => ({
-  integrityTroubleshooterApi: { inspect: vi.fn() },
+  integrityTroubleshooterApi: { inspect: vi.fn(), page: vi.fn(), close: vi.fn() },
 }))
+
+// Keep the real CSV building so the test asserts the exported text, and replace
+// only the browser download, which jsdom cannot observe.
+vi.mock('@/utils/csv', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/utils/csv')>()
+  return { ...actual, downloadCsv: vi.fn() }
+})
 
 const vuetify = createVuetify({ components, directives })
 
@@ -46,7 +59,10 @@ const TroubleshooterDataGridStub = defineComponent({
 })
 
 const requests: IntegrityTroubleshootRequest[] = []
+const pageRequests: IntegrityTroubleshootPageRequest[] = []
 const inspect = () => vi.mocked(integrityTroubleshooterApi.inspect)
+const readPage = () => vi.mocked(integrityTroubleshooterApi.page)
+const close = () => vi.mocked(integrityTroubleshooterApi.close)
 
 function warning(overrides: Partial<ValidationError> = {}): ValidationError {
   return {
@@ -65,6 +81,8 @@ function response(overrides: Partial<IntegrityTroubleshootResponse> = {}): Integ
     reason: 'reproduced',
     message: 'The current full-data unmatched count matches the warning.',
     source: 'current full normalization',
+    context_id: 'context-one',
+    expires_at: '2026-01-01T00:15:00Z',
     relationship: {
       local_entity: 'orders',
       remote_entity: 'customers',
@@ -76,11 +94,7 @@ function response(overrides: Partial<IntegrityTroubleshootResponse> = {}): Integ
     recorded_orphan_count: 2,
     current_orphan_count: 2,
     values: {
-      page: 1,
-      page_size: 50,
       distinct_value_count: 2,
-      returned_value_count: 2,
-      has_next: false,
       values: [
         { key_values: ['MISSING-A'], local_row_count: 1, token: 'token-a' },
         { key_values: ['MISSING-B'], local_row_count: 3, token: 'token-b' },
@@ -100,11 +114,6 @@ function selectedRows(overrides: Partial<SelectedRows> = {}): SelectedRows {
     message: null,
     key_values: ['MISSING-A'],
     total_row_count: 1,
-    returned_row_count: 1,
-    offset: 0,
-    limit: 100,
-    browse_cap: 10_000,
-    browse_cap_reached: false,
     columns: ['customer_code', 'name'],
     columns_truncated: false,
     rows: [{ customer_code: 'MISSING-A', name: 'Orphan order' }],
@@ -112,14 +121,24 @@ function selectedRows(overrides: Partial<SelectedRows> = {}): SelectedRows {
   }
 }
 
-/** Queue one recorded response per inspection request, in call order. */
+/** Queue one response per inspection or page request, in call order. */
 function queueResponses(...responses: IntegrityTroubleshootResponse[]): void {
-  for (const value of responses) {
-    inspect().mockImplementationOnce(async (_projectName, request) => {
-      requests.push(request)
-      return value
-    })
+  const queuedResponses = [...responses]
+  const takeResponse = (): IntegrityTroubleshootResponse => {
+    const value = queuedResponses.shift()
+    if (!value) {
+      throw new Error('No integrity troubleshooter response was queued')
+    }
+    return value
   }
+  inspect().mockImplementation(async (_projectName, request) => {
+    requests.push(request)
+    return takeResponse()
+  })
+  readPage().mockImplementation(async (_projectName, _contextId, request) => {
+    pageRequests.push(request)
+    return takeResponse()
+  })
 }
 
 function mountBody(message: ValidationError = warning()) {
@@ -129,11 +148,6 @@ function mountBody(message: ValidationError = warning()) {
       plugins: [vuetify],
       stubs: {
         TroubleshooterDataGrid: TroubleshooterDataGridStub,
-        VPagination: {
-          props: ['length', 'modelValue'],
-          emits: ['update:modelValue'],
-          template: `<button type="button" aria-label="Next page" @click="$emit('update:modelValue', modelValue + 1)">Next page</button>`,
-        },
         VTooltip: {
           template: '<div data-testid="tooltip"><slot name="activator" :props="{}" /><slot /></div>',
         },
@@ -145,11 +159,16 @@ function mountBody(message: ValidationError = warning()) {
 describe('IntegrityTroubleshooterBody', () => {
   beforeEach(() => {
     requests.length = 0
+    pageRequests.length = 0
     inspect().mockReset()
+    readPage().mockReset()
+    close().mockReset()
+    close().mockResolvedValue(undefined)
+    vi.mocked(downloadCsv).mockReset()
     queueResponses(response())
   })
 
-  it('opens page one with the unchanged warning identity and shows current inspected data', async () => {
+  it('opens the inspection with the unchanged warning identity and shows current inspected data', async () => {
     const wrapper = mountBody()
     await flushPromises()
 
@@ -157,22 +176,21 @@ describe('IntegrityTroubleshooterBody', () => {
       issue_type: 'FK_DATA_INTEGRITY',
       local_entity: 'orders',
       metadata: { fk_index: 0, fk_signature: 'saved-signature', orphan_count: 2 },
-      page: 1,
-      row_offset: 0,
-      row_limit: 100,
     })
-    expect(wrapper.text()).toContain('Showing 2 of 2 distinct values · Page 1')
     expect(wrapper.find('[data-stat="recorded"] .integrity-finding-stat-value').text()).toBe('2')
-    expect(wrapper.find('[data-stat="current"] .integrity-finding-stat-value').text()).toBe('2')
+    // The recalculated count is not shown; the unmatched value list carries it.
+    expect(wrapper.find('[data-stat="current"]').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('Current unmatched values')
     expect(wrapper.find('button[aria-label="About integrity counts"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="tooltip"]').text()).toContain('recorded count comes from the validation warning')
-    expect(wrapper.text()).toContain('A: orders')
-    expect(wrapper.text()).toContain('B: customers')
     const keyPairs = wrapper.find('section[aria-label="Configured keys"]')
     expect(keyPairs.text()).toContain('customer_code')
     expect(keyPairs.text()).toContain('code')
     expect(wrapper.text()).toContain('MISSING-A')
-    expect(wrapper.text()).toContain('allow_row_decrease: true')
+    expect(wrapper.find('section[aria-label="Configured relationship"]').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('Configured link rules')
+    expect(wrapper.text()).not.toContain('allow_row_decrease: true')
+    expect(wrapper.emitted('relationship')).toEqual([[response().relationship]])
     // A reproduced warning is the expected outcome, so it gets no status banner.
     expect(wrapper.find('.integrity-status').exists()).toBe(false)
   })
@@ -188,7 +206,65 @@ describe('IntegrityTroubleshooterBody', () => {
     expect(wrapper.text()).not.toContain('Inspected data source')
   })
 
-  it('compares recorded and current unmatched counts in separate cards', async () => {
+  it('keeps the existing rows visible while a selected value loads', async () => {
+    inspect().mockReset()
+    readPage().mockReset()
+    const firstRows = Array.from({ length: 100 }, (_, index) => ({
+      customer_code: `MISSING-${index}`,
+      name: `Row ${index}`,
+    }))
+    const nextRows = Array.from({ length: 100 }, (_, index) => ({
+      customer_code: `OTHER-${index}`,
+      name: `Row ${index + 100}`,
+    }))
+    let resolvePage: ((value: IntegrityTroubleshootResponse) => void) | undefined
+    inspect().mockResolvedValue(
+      response({
+        selected: selectedRows({ total_row_count: 250, rows: firstRows }),
+      })
+    )
+    readPage().mockImplementationOnce(async (_projectName, _contextId, request) => {
+      pageRequests.push(request)
+      return new Promise<IntegrityTroubleshootResponse>((resolve) => {
+        resolvePage = resolve
+      })
+    })
+
+    const wrapper = mountBody()
+    await flushPromises()
+    await wrapper.find('section[aria-label="Unmatched values"] .grid-row').trigger('click')
+    await flushPromises()
+
+    // Reading one value's rows keeps the panel in place: no full-width progress
+    // bar appears above the results, so the layout does not jump.
+    expect(wrapper.find('.integrity-page-loading').exists()).toBe(false)
+    // The values grid keeps its rows and its selected row instead of reloading.
+    const valueGrid = wrapper.find('section[aria-label="Unmatched values"]')
+    expect(valueGrid.findComponent(TroubleshooterDataGridStub).props('loading')).toBe(false)
+    expect(valueGrid.findAll('.grid-row')).toHaveLength(2)
+    // Only the selected-rows grid reports the read.
+    const selectedGrid = wrapper.find('section[aria-label="Selected value rows"]')
+    expect(selectedGrid.findComponent(TroubleshooterDataGridStub).props('loading')).toBe(true)
+    expect(selectedGrid.find('.grid-row').text()).toContain('MISSING-0')
+    expect(inspect()).toHaveBeenCalledTimes(1)
+    expect(pageRequests).toEqual([{ selected_value_token: 'token-a' }])
+
+    resolvePage?.(
+      response({
+        selected: selectedRows({
+          total_row_count: 250,
+          rows: nextRows,
+        }),
+      })
+    )
+    await flushPromises()
+
+    expect(selectedGrid.findComponent(TroubleshooterDataGridStub).props('loading')).toBe(false)
+    expect(wrapper.find('section[aria-label="Selected value rows"] .grid-row').text()).toContain('OTHER-0')
+    expect(inspect()).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps the recorded count and explains a changed count in the status banner', async () => {
     inspect().mockReset()
     queueResponses(response({ status: 'not_reproduced', reason: 'count_changed', current_orphan_count: 5 }))
 
@@ -196,7 +272,7 @@ describe('IntegrityTroubleshooterBody', () => {
     await flushPromises()
 
     expect(wrapper.find('[data-stat="recorded"] .integrity-finding-stat-value').text()).toBe('2')
-    expect(wrapper.find('[data-stat="current"] .integrity-finding-stat-value').text()).toBe('5')
+    expect(wrapper.find('[data-stat="current"]').exists()).toBe(false)
     expect(wrapper.find('section[aria-label="Unmatched value counts"]').exists()).toBe(false)
     expect(wrapper.text()).toContain('count_changed')
     expect(wrapper.text()).toContain('Count changed')
@@ -260,11 +336,7 @@ describe('IntegrityTroubleshooterBody', () => {
     queueResponses(
       response({
         values: {
-          page: 1,
-          page_size: 50,
           distinct_value_count: 1,
-          returned_value_count: 1,
-          has_next: false,
           values: [{ key_values: [null, 'X-1'], local_row_count: 2, token: 'token-composite' }],
         },
       })
@@ -290,110 +362,104 @@ describe('IntegrityTroubleshooterBody', () => {
     expect(rows[1]?.text()).toBe('MISSING-B3')
   })
 
-  it('pages with the current page number and clears the selection', async () => {
+  it('places both result grids side by side in one row', async () => {
     inspect().mockReset()
-    queueResponses(
-      response({
-        values: {
-          page: 1,
-          page_size: 50,
-          distinct_value_count: 120,
-          returned_value_count: 1,
-          has_next: true,
-          values: [{ key_values: ['MISSING-A'], local_row_count: 1, token: 'token-a' }],
-        },
-        selected: selectedRows(),
-      }),
-      response({
-        values: {
-          page: 2,
-          page_size: 50,
-          distinct_value_count: 120,
-          returned_value_count: 0,
-          has_next: true,
-          values: [],
-        },
-        selected: null,
-      })
-    )
+    queueResponses(response(), response({ selected: selectedRows() }))
 
     const wrapper = mountBody()
     await flushPromises()
-    expect(wrapper.find('section[aria-label="Selected value rows"]').exists()).toBe(true)
-
-    await wrapper.find('button[aria-label="Next page"]').trigger('click')
+    await wrapper.find('section[aria-label="Unmatched values"] .grid-row').trigger('click')
     await flushPromises()
 
-    expect(requests[1]).toEqual({
-      issue_type: 'FK_DATA_INTEGRITY',
-      local_entity: 'orders',
-      metadata: { fk_index: 0, fk_signature: 'saved-signature', orphan_count: 2 },
-      page: 2,
-      row_offset: 0,
-      row_limit: 100,
-    })
-    expect(wrapper.text()).toContain('No unmatched values on this page.')
-    expect(wrapper.find('section[aria-label="Selected value rows"]').exists()).toBe(false)
+    const panels = wrapper.find('.integrity-result-panels')
+    expect(panels.exists()).toBe(true)
+    const sections = panels.findAll(':scope > section')
+    expect(sections.map((section) => section.attributes('aria-label'))).toEqual([
+      'Unmatched values',
+      'Selected value rows',
+    ])
+    // Both grids use the same fixed height now that they share one row.
+    const grids = wrapper.findAllComponents(TroubleshooterDataGridStub)
+    expect(grids).toHaveLength(2)
+    for (const grid of grids) {
+      expect(grid.props('height')).toBe('320px')
+    }
   })
 
-  it('selects a value with its server token on the current page', async () => {
+  it('exports every unmatched key to CSV with configured key names as columns', async () => {
+    const wrapper = mountBody()
+    await flushPromises()
+
+    const exportButton = wrapper.findAll('button').find((button) => button.text().includes('Export unmatched keys'))
+    expect(exportButton).toBeDefined()
+
+    await exportButton!.trigger('click')
+
+    expect(downloadCsv).toHaveBeenCalledTimes(1)
+    const [filename, content] = vi.mocked(downloadCsv).mock.calls[0] ?? []
+    expect(filename).toMatch(/^orders_unmatched_keys_\d+\.csv$/)
+    expect(content).toBe('customer_code,Local rows\r\nMISSING-A,1\r\nMISSING-B,3')
+  })
+
+  it('splits a composite key into one CSV column per key part', async () => {
     inspect().mockReset()
     queueResponses(
       response({
+        configured_keys: { local_keys: ['site_code', 'sample_code'], remote_keys: ['code'] },
         values: {
-          page: 1,
-          page_size: 50,
-          distinct_value_count: 120,
-          returned_value_count: 1,
-          has_next: true,
-          values: [{ key_values: ['MISSING-A'], local_row_count: 1, token: 'token-a' }],
+          distinct_value_count: 1,
+          values: [{ key_values: ['S-1', null], local_row_count: 4, token: 'token-composite' }],
         },
-      }),
-      response({
-        values: {
-          page: 2,
-          page_size: 50,
-          distinct_value_count: 120,
-          returned_value_count: 1,
-          has_next: true,
-          values: [{ key_values: ['MISSING-Z'], local_row_count: 1, token: 'token-z' }],
-        },
-      }),
-      response({
-        values: {
-          page: 2,
-          page_size: 50,
-          distinct_value_count: 120,
-          returned_value_count: 1,
-          has_next: true,
-          values: [{ key_values: ['MISSING-Z'], local_row_count: 1, token: 'token-z' }],
-        },
-        selected: selectedRows({ key_values: ['MISSING-Z'], rows: [{ customer_code: 'MISSING-Z', name: 'Z' }] }),
       })
     )
 
     const wrapper = mountBody()
     await flushPromises()
 
-    await wrapper.find('button[aria-label="Next page"]').trigger('click')
+    const exportButton = wrapper.findAll('button').find((button) => button.text().includes('Export unmatched keys'))
+    await exportButton!.trigger('click')
+
+    const [, content] = vi.mocked(downloadCsv).mock.calls[0] ?? []
+    expect(content).toBe('site_code,sample_code,Local rows\r\nS-1,,4')
+  })
+
+  it('offers no export when the current data has no unmatched values', async () => {
+    inspect().mockReset()
+    queueResponses(response({ values: { distinct_value_count: 0, values: [] } }))
+
+    const wrapper = mountBody()
     await flushPromises()
-    expect(requests[1]?.page).toBe(2)
+
+    expect(wrapper.findAll('button').some((button) => button.text().includes('Export unmatched keys'))).toBe(false)
+  })
+
+  it('shows an explicit empty state when the current data has no unmatched values', async () => {
+    inspect().mockReset()
+    queueResponses(response({ values: { distinct_value_count: 0, values: [] } }))
+
+    const wrapper = mountBody()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('No unmatched values in the current data.')
+    expect(wrapper.find('section[aria-label="Unmatched values"] .grid-row').exists()).toBe(false)
+  })
+
+  it('selects a value with its server token and reads the retained context', async () => {
+    inspect().mockReset()
+    queueResponses(response(), response({ selected: selectedRows() }))
+
+    const wrapper = mountBody()
+    await flushPromises()
 
     await wrapper.find('section[aria-label="Unmatched values"] .grid-row').trigger('click')
     await flushPromises()
 
-    expect(requests[2]).toEqual({
-      issue_type: 'FK_DATA_INTEGRITY',
-      local_entity: 'orders',
-      metadata: { fk_index: 0, fk_signature: 'saved-signature', orphan_count: 2 },
-      page: 2,
-      row_offset: 0,
-      row_limit: 100,
-      selected_value_token: 'token-z',
-    })
+    expect(pageRequests).toEqual([{ selected_value_token: 'token-a' }])
+    expect(wrapper.find('section[aria-label="Selected value rows"]').exists()).toBe(true)
+    expect(requests).toHaveLength(1)
   })
 
-  it('shows bounded rows with named columns and the truncation notice', async () => {
+  it('shows every local row with named columns and the truncation notice', async () => {
     inspect().mockReset()
     const rows = Array.from({ length: 20 }, (_, index) => ({
       customer_code: `MISSING-${index}`,
@@ -403,7 +469,6 @@ describe('IntegrityTroubleshooterBody', () => {
       response({
         selected: selectedRows({
           total_row_count: 40,
-          returned_row_count: 20,
           columns: ['customer_code', 'name'],
           columns_truncated: true,
           rows,
@@ -415,13 +480,55 @@ describe('IntegrityTroubleshooterBody', () => {
     await flushPromises()
 
     const section = wrapper.find('section[aria-label="Selected value rows"]')
-    expect(section.text()).toContain('Unmatched key: MISSING-A')
-    expect(section.text()).toContain('Showing 20 of 40 local rows for this key.')
+    // The heading alone introduces the rows; the key and row count are not repeated.
+    expect(section.find('h3').text()).toBe('Affected local rows')
+    expect(section.text()).not.toContain('Unmatched key:')
+    expect(section.text()).not.toContain('local rows use this key')
     expect(section.text()).toContain('Only the first 2 columns are shown.')
     expect(section.find('.grid-header').text()).toContain('customer_code')
     expect(section.findAll('.grid-row')).toHaveLength(20)
     // Only response-provided columns are rendered.
     expect(section.find('.grid-header').text()).not.toContain('system_id')
+  })
+
+  it('lists every affected local row for a selected value without paging controls', async () => {
+    inspect().mockReset()
+    const rows = Array.from({ length: 2_000 }, (_, index) => ({
+      customer_code: `MISSING-${index}`,
+      name: `Row ${index}`,
+    }))
+    queueResponses(response(), response({ selected: selectedRows({ total_row_count: 10_000, rows }) }))
+
+    const wrapper = mountBody()
+    await flushPromises()
+    await wrapper.find('section[aria-label="Unmatched values"] .grid-row').trigger('click')
+    await flushPromises()
+
+    const section = wrapper.find('section[aria-label="Selected value rows"]')
+    expect(section.findAll('.grid-row')).toHaveLength(2_000)
+    expect(wrapper.find('button[aria-label="Next rows page"]').exists()).toBe(false)
+    expect(wrapper.find('button[aria-label="Previous rows page"]').exists()).toBe(false)
+  })
+
+  it('reopens the inspection once when its page context expires', async () => {
+    inspect().mockReset()
+    readPage().mockReset()
+    inspect()
+      .mockResolvedValueOnce(response())
+      .mockResolvedValueOnce(response({ selected: selectedRows() }))
+    readPage().mockRejectedValueOnce({
+      response: { status: 410, data: { detail: { reason: 'context_expired' } } },
+    })
+
+    const wrapper = mountBody()
+    await flushPromises()
+    await wrapper.find('section[aria-label="Unmatched values"] .grid-row').trigger('click')
+    await flushPromises()
+
+    expect(inspect()).toHaveBeenCalledTimes(2)
+    expect(readPage()).toHaveBeenCalledTimes(1)
+    expect(inspect().mock.calls[1]?.[1].selected_value_token).toBe('token-a')
+    expect(wrapper.find('section[aria-label="Selected value rows"]').exists()).toBe(true)
   })
 
   it('shows the refusal when the selected value is no longer unmatched', async () => {
@@ -433,7 +540,6 @@ describe('IntegrityTroubleshooterBody', () => {
           reason: 'value_no_longer_unmatched',
           message: 'The selected value no longer appears as an unmatched value in the current data.',
           total_row_count: null,
-          returned_row_count: null,
           columns: [],
           rows: [],
         }),

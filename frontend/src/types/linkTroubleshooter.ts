@@ -12,8 +12,8 @@ export type LinkExceptionGroupName = 'unmatched' | 'multiply_matched'
 export type LinkExceptionRowSide = 'baseline' | 'trial'
 /** Rows returned by one exception-row page request. */
 export const EXCEPTION_ROW_PAGE_SIZE = 100
-/** Largest page a caller may request for exception rows. */
-export const EXCEPTION_ROW_PAGE_LIMIT = 500
+/** Largest page a caller may request for exception rows; it matches the browse cap. */
+export const EXCEPTION_ROW_PAGE_LIMIT = 25_000
 
 export interface LinkExperimentContextRequest {
   issue_type: string

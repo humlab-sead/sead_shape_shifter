@@ -3,7 +3,7 @@
 The inspection result is separate from the row-count troubleshooter: integrity
 warnings describe values that have no remote match, not a merge that changed the
 row count. The request carries an optional type-preserving token so a selected
-value can be addressed without depending on its position in a value page.
+value can be addressed without depending on its position in the value list.
 """
 
 from __future__ import annotations
@@ -15,6 +15,7 @@ from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any, Literal, Sequence
 
+import pandas as pd
 from pydantic import BaseModel, Field, field_validator
 
 IntegrityStatus = Literal["reproduced", "not_reproduced", "ineligible"]
@@ -23,17 +24,11 @@ IntegrityStatus = Literal["reproduced", "not_reproduced", "ineligible"]
 IntegritySelectionStatus = Literal["selected", "unavailable"]
 """Whether the requested value still names a current unmatched key."""
 
-_TOKEN_TYPES: frozenset[str] = frozenset({"null", "bool", "int", "float", "str", "date", "datetime", "decimal"})
+_TOKEN_TYPES: frozenset[str] = frozenset({"null", "bool", "int", "float", "str", "date", "datetime", "timestamp", "decimal"})
 """Scalar type tags a value token may carry."""
 
 FULL_NORMALIZATION_SOURCE = "current full normalization"
 """Data source stated in every inspection response."""
-
-ROW_PAGE_SIZE = 100
-"""Rows returned for one selected unmatched value by default."""
-
-ROW_PAGE_LIMIT = 500
-"""Largest row page a caller may request for one selected unmatched value."""
 
 
 def _encode_scalar(value: Any) -> dict[str, Any]:
@@ -46,6 +41,8 @@ def _encode_scalar(value: Any) -> dict[str, Any]:
         return {"t": "int", "v": value}
     if isinstance(value, float):
         return {"t": "float", "v": value}
+    if isinstance(value, pd.Timestamp):
+        return {"t": "timestamp", "v": value.isoformat()}
     if isinstance(value, datetime):
         return {"t": "datetime", "v": value.isoformat()}
     if isinstance(value, date):
@@ -80,7 +77,7 @@ def _decode_scalar(payload: Any) -> Any:
         if isinstance(value, bool) or not isinstance(value, (int, float)):
             raise ValueError("Token float value is not a number")
         return float(value)
-    if kind in {"datetime", "date", "decimal"}:
+    if kind in {"datetime", "date", "timestamp", "decimal"}:
         if not isinstance(value, str):
             raise ValueError(f"Token {kind} value is not a string")
         try:
@@ -88,6 +85,8 @@ def _decode_scalar(payload: Any) -> Any:
                 return datetime.fromisoformat(value)
             if kind == "date":
                 return date.fromisoformat(value)
+            if kind == "timestamp":
+                return pd.Timestamp(value)
             return Decimal(value)
         except (ValueError, InvalidOperation) as exc:
             raise ValueError(f"Token {kind} value is invalid") from exc
@@ -138,21 +137,15 @@ def decode_key_token(token: str) -> tuple[Any, ...]:
     return tuple(_decode_scalar(item) for item in payload)
 
 
-class IntegrityTroubleshootRequest(BaseModel):
-    """Request one value page and optionally one selected value's local rows.
+class IntegrityTroubleshootPageRequest(BaseModel):
+    """Request a re-read from a retained inspection.
 
-    ``page`` selects a page of distinct unmatched values. ``row_offset`` and
-    ``row_limit`` select a bounded window of local rows for one selected value,
-    so a value with many local rows stays browsable without one large response.
+    ``selected_value_token`` names the value whose local rows are returned. The
+    response always carries every unmatched value and every local row of the
+    selected value, so there is no page or row window to request.
     """
 
-    issue_type: str
-    local_entity: str
-    metadata: dict[str, Any]
-    page: int = Field(default=1, ge=1)
     selected_value_token: str | None = None
-    row_offset: int = Field(default=0, ge=0)
-    row_limit: int = Field(default=ROW_PAGE_SIZE, ge=1, le=ROW_PAGE_LIMIT)
 
     @field_validator("selected_value_token")
     @classmethod
@@ -162,6 +155,14 @@ class IntegrityTroubleshootRequest(BaseModel):
             return None
         decode_key_token(value)
         return value
+
+
+class IntegrityTroubleshootRequest(IntegrityTroubleshootPageRequest):
+    """Open an integrity inspection and request its first bounded page."""
+
+    issue_type: str
+    local_entity: str
+    metadata: dict[str, Any]
 
 
 class IntegrityTroubleshootKeys(BaseModel):
@@ -190,22 +191,17 @@ class IntegrityTroubleshootValue(BaseModel):
 
 
 class IntegrityTroubleshootValuePage(BaseModel):
-    """One bounded page of distinct unmatched keys."""
+    """Every distinct unmatched key and the local row count that carries it."""
 
-    page: int
-    page_size: int
     distinct_value_count: int
-    returned_value_count: int
-    has_next: bool
     values: list[IntegrityTroubleshootValue] = Field(default_factory=list)
 
 
 class IntegrityTroubleshootRows(BaseModel):
-    """Bounded local rows for one selected unmatched value.
+    """Every local row for one selected unmatched value.
 
     ``total_row_count`` is the full row count for the value, kept separate from
-    the number of distinct unmatched values. ``browse_cap`` and
-    ``browse_cap_reached`` report the row browse limit for that value.
+    the number of distinct unmatched values.
     """
 
     status: IntegritySelectionStatus
@@ -213,11 +209,6 @@ class IntegrityTroubleshootRows(BaseModel):
     message: str | None = None
     key_values: list[Any] | None = None
     total_row_count: int | None = None
-    returned_row_count: int | None = None
-    offset: int = 0
-    limit: int = ROW_PAGE_SIZE
-    browse_cap: int = 0
-    browse_cap_reached: bool = False
     columns: list[str] = Field(default_factory=list)
     columns_truncated: bool = False
     rows: list[dict[str, Any]] = Field(default_factory=list)
@@ -230,6 +221,8 @@ class IntegrityTroubleshootResponse(BaseModel):
     reason: str
     message: str
     source: str = FULL_NORMALIZATION_SOURCE
+    context_id: str | None = None
+    expires_at: datetime | None = None
     relationship: IntegrityTroubleshootRelationship | None = None
     configured_keys: IntegrityTroubleshootKeys | None = None
     recorded_orphan_count: int | None = None

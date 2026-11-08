@@ -2,14 +2,20 @@
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from loguru import logger
 
 from backend.app.authorization.dependencies import require_project
 from backend.app.authorization.models import Action, AuthorizedResource
 from backend.app.models.fix import FixResult, FixSuggestion
 from backend.app.models.project import Project
-from backend.app.models.validation import DataValidationMode, ValidationError, ValidationResult
+from backend.app.models.validation import (
+    DATA_VALIDATOR_KEYS,
+    DataValidationMode,
+    DataValidatorKey,
+    ValidationError,
+    ValidationResult,
+)
 from backend.app.services.auto_fix_service import AutoFixService
 from backend.app.services.dependency_service import DependencyGraph, DependencyService, get_dependency_service
 from backend.app.services.project_service import ProjectService, get_project_service
@@ -19,6 +25,33 @@ from backend.app.utils.error_handlers import handle_endpoint_errors
 router = APIRouter()
 
 
+def _parse_validator_keys(value: str | None) -> list[DataValidatorKey] | None:
+    """Parse the optional comma-separated selectable-check list.
+
+    Args:
+        value: Raw query value. Omitted means every selectable check runs; an
+            empty string means none of them run.
+
+    Returns:
+        The requested checks, or ``None`` when the caller did not choose.
+
+    Raises:
+        HTTPException: 422 when a name is not a selectable check.
+    """
+    if value is None:
+        return None
+
+    requested: list[str] = [item.strip() for item in value.split(",") if item.strip()]
+    unknown: list[str] = [item for item in requested if item not in DATA_VALIDATOR_KEYS]
+    if unknown:
+        raise HTTPException(
+            status_code=422,
+            detail=(f"Unknown validator key(s): {', '.join(unknown)}. " f"Selectable checks are: {', '.join(DATA_VALIDATOR_KEYS)}."),
+        )
+
+    return [item for item in DATA_VALIDATOR_KEYS if item in requested]
+
+
 @router.post("/projects/{name}/validate/data", response_model=ValidationResult)
 @handle_endpoint_errors
 async def validate_project_data(
@@ -26,6 +59,7 @@ async def validate_project_data(
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
     entity_names: list[str] | None = None,
     validation_mode: DataValidationMode = DataValidationMode.COMPLETE,
+    validators: str | None = None,
 ) -> ValidationResult:
     """
     Run data-aware validation on project.
@@ -45,15 +79,21 @@ async def validate_project_data(
               warnings from sample data can name values that exist outside the sample
             - SINGLE_PASS: Full validation from one project-wide normalization pass; entities that
               cannot be produced are reported individually and only their dependents are skipped
+        validators: Optional comma-separated selectable checks to run. Omit to run every
+            selectable check. An empty string runs none of them. Foreign-key checks always run.
 
     Returns:
         Validation result with data-specific errors and warnings
+
+    Raises:
+        HTTPException: 422 when ``validators`` names a check that is not selectable.
     """
     validation_service: ValidationService = get_validation_service()
     result: ValidationResult = await validation_service.validate_project_data(
         authorized_project.resource.locator,
         entity_names,
         validation_mode=validation_mode,
+        validators=_parse_validator_keys(validators),
     )
 
     logger.info(
