@@ -658,11 +658,13 @@ Checks:
 
 Checks actual processed data.
 
-Available validators:
+Selectable checks:
 
 - Column Exists
 - Natural Key Uniqueness
-- Non-Empty Result
+- Warn on Empty Results — warns when an entity returns no data
+
+Clear a check to skip it for that run. Foreign-key checks always run.
 
 ---
 

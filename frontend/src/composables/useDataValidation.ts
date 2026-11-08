@@ -63,12 +63,16 @@ export function useDataValidation() {
   })
 
   /**
-   * Run data validation on project
+   * Run data validation on project.
+   *
+   * @param validators Selectable data checks to run. Omit to run every selectable
+   *   check; an empty array runs none of them. Foreign-key checks always run.
    */
   async function validateData(
     projectName: string,
     entityNames?: string[],
-    validationMode: 'sample' | 'complete' = 'complete'
+    validationMode: 'sample' | 'complete' = 'complete',
+    validators?: string[]
   ): Promise<ValidationResult> {
     loading.value = true
     error.value = null
@@ -78,6 +82,10 @@ export function useDataValidation() {
       const params: Record<string, string> = { validation_mode: validationMode }
       if (entityNames && entityNames.length > 0) {
         params.entity_names = entityNames.join(',')
+      }
+      if (validators !== undefined) {
+        // An empty value is meaningful: it means none of the selectable checks run.
+        params.validators = validators.join(',')
       }
 
       const response = await apiClient.post<ValidationResult>(`/projects/${projectName}/validate/data`, null, {
