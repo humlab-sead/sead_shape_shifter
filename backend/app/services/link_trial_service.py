@@ -358,7 +358,7 @@ class LinkTrialService:
 
     def _exception_groups(self, a_rows: Sequence[ARowTrialDiagnostic]) -> TrialExceptionGroups:
         """Select the capped exception rows for both groups in input order."""
-        group_cap: int = self.settings.LINK_EXPERIMENT_GROUP_ROW_CAP
+        group_cap: int = self.settings.LINK_TROUBLESHOOT_BROWSE_ROW_CAP
         unmatched: list[ARowTrialDiagnostic] = [row for row in a_rows if row.remote_match_count == 0]
         multiply_matched: list[ARowTrialDiagnostic] = [row for row in a_rows if row.remote_match_count > 1]
 

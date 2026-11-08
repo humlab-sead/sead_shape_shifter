@@ -1,20 +1,24 @@
 import { computed, ref, watch } from 'vue'
 import type {
   FormattedError,
+  LinkExceptionGroupName,
+  LinkExceptionRowSide,
   LinkExperimentContextRequest,
   LinkExperimentContextResponse,
   LinkExperimentTrialRequest,
   LinkTroubleshootComparison,
+  LinkTroubleshootExceptionRow,
   LinkTroubleshootJoinType,
   LinkTroubleshootTrialSettings,
 } from '@/types'
+import { EXCEPTION_ROW_PAGE_SIZE } from '@/types'
 import { linkTroubleshooterApi } from '@/api/linkTroubleshooter'
 import { formatErrorMessage } from '@/utils/errors'
 
 /** Which bounded exception group the dialog currently shows. */
-export type LinkExceptionGroupName = 'unmatched' | 'multiply_matched'
-/** Which snapshot the dialog currently shows exception groups from. */
-export type LinkExceptionSide = 'baseline' | 'trial'
+export type { LinkExceptionGroupName, LinkExceptionRowSide }
+
+export type LinkExceptionSide = LinkExceptionRowSide
 
 interface TrialControls {
   localKeys: string[]
@@ -24,7 +28,7 @@ interface TrialControls {
   nullKeysEqual: boolean | null
 }
 
-const DEFAULT_PAGE_SIZE = 50
+const DEFAULT_PAGE_SIZE = EXCEPTION_ROW_PAGE_SIZE
 const DEFAULT_GROUP: LinkExceptionGroupName = 'unmatched'
 const DEFAULT_SIDE: LinkExceptionSide = 'baseline'
 
@@ -62,12 +66,12 @@ function normalizeJoinType(value: string | null | undefined): LinkTroubleshootJo
 }
 
 /**
- * Build the controls that reproduce the retained snapshot's saved link.
+ * Build the controls that reproduce the retained snapshot's configured link.
  *
  * Complete baselines carry a resolved settings report. An incomplete baseline
- * can have no report, so the saved relationship and its explicit constraint
+ * can have no report, so the configured relationship and its explicit constraint
  * entries are used instead. An absent constraint entry means "inherit the
- * saved link" rather than an explicit false.
+ * configured link" rather than an explicit false.
  */
 function controlsFromContext(response: LinkExperimentContextResponse): TrialControls {
   const settings: LinkTroubleshootTrialSettings | null = response.baseline?.settings ?? null
@@ -120,11 +124,29 @@ export function useLinkTroubleshooter(projectName: string) {
   const group = ref<LinkExceptionGroupName>(DEFAULT_GROUP)
   const side = ref<LinkExceptionSide>(DEFAULT_SIDE)
 
+  /** Rows on the current browse page, loaded from the bounded row route. */
+  const rows = ref<LinkTroubleshootExceptionRow[]>([])
+  /** Full affected-row count for the selected group and side. */
+  const rowTotalCount = ref(0)
+  /** Affected-row browse cap reported by the backend. */
+  const rowBrowseCap = ref(0)
+  /** True when the full count exceeds the browse cap. */
+  const rowBrowseCapReached = ref(false)
+  /** Backend explanation when rows cannot be browsed for this selection. */
+  const rowStatusMessage = ref<string | null>(null)
+  const rowsLoading = ref(false)
+  const rowsError = ref<FormattedError | null>(null)
+
   let identity: LinkExperimentContextRequest | null = null
   let originalControls: TrialControls = emptyControls()
   let acceptedTrialSignature: string | null = null
+  /** Controls that produced the displayed trial, sent when browsing trial rows. */
+  let acceptedTrialRequest: LinkExperimentTrialRequest | null = null
   let requestVersion = 0
+  let rowsVersion = 0
   let applyingControls = false
+  /** Prevent a repeated expiry while reopening after a row-browse failure. */
+  let reopeningRows = false
 
   const canRunTrial = computed(
     () =>
@@ -189,6 +211,104 @@ export function useLinkTroubleshooter(projectName: string) {
     side.value = DEFAULT_SIDE
   }
 
+  /** Drop every loaded row page and ignore any in-flight row response. */
+  function clearRows(): void {
+    rowsVersion += 1
+    rows.value = []
+    rowTotalCount.value = 0
+    rowBrowseCap.value = 0
+    rowBrowseCapReached.value = false
+    rowStatusMessage.value = null
+    rowsLoading.value = false
+    rowsError.value = null
+  }
+
+  /** Read one bounded page of affected source rows for the current selection. */
+  async function loadExceptionRows(): Promise<void> {
+    const contextId = context.value?.context_id
+    const version = ++rowsVersion
+    rowsError.value = null
+
+    if (!contextId) {
+      rows.value = []
+      rowTotalCount.value = 0
+      rowBrowseCap.value = 0
+      rowBrowseCapReached.value = false
+      rowStatusMessage.value = null
+      rowsLoading.value = false
+      return
+    }
+
+    const trialRequest = side.value === 'trial' ? acceptedTrialRequest : null
+    if (side.value === 'trial' && trialRequest === null) {
+      rows.value = []
+      rowTotalCount.value = 0
+      rowBrowseCap.value = 0
+      rowBrowseCapReached.value = false
+      rowStatusMessage.value = 'Run a trial before browsing trial rows.'
+      rowsLoading.value = false
+      return
+    }
+
+    rowsLoading.value = true
+    try {
+      const response = await linkTroubleshooterApi.exceptionRows(projectName, contextId, {
+        side: side.value,
+        group: group.value,
+        offset: (page.value - 1) * pageSize.value,
+        limit: pageSize.value,
+        trial: trialRequest,
+      })
+      if (version !== rowsVersion) {
+        return
+      }
+      rows.value = response.rows
+      rowTotalCount.value = response.total_count
+      rowBrowseCap.value = response.browse_cap
+      rowBrowseCapReached.value = response.browse_cap_reached
+      rowStatusMessage.value = response.status === 'available' ? null : (response.message ?? response.reason)
+    } catch (caughtError: unknown) {
+      if (version !== rowsVersion) {
+        return
+      }
+      if (isContextExpired(caughtError)) {
+        // The retained inputs are gone, so reopen the original warning instead
+        // of showing a stale row error over an expired context. A repeated
+        // expiry inside the reopen keeps the error instead of looping.
+        if (!reopeningRows) {
+          reopeningRows = true
+          try {
+            await refreshOriginalInputs()
+          } finally {
+            reopeningRows = false
+          }
+          return
+        }
+        rowsVersion += 1
+        rowsError.value = {
+          message: 'The retained link inputs expired. Reopen the troubleshooter to try again.',
+        }
+        rowsLoading.value = false
+        return
+      }
+      rows.value = []
+      rowTotalCount.value = 0
+      rowBrowseCap.value = 0
+      rowBrowseCapReached.value = false
+      rowStatusMessage.value = null
+      rowsError.value = formatErrorMessage(caughtError)
+      console.error('Link troubleshooter exception-row request failed:', caughtError)
+    } finally {
+      if (version === rowsVersion) {
+        rowsLoading.value = false
+      }
+    }
+  }
+
+  watch([side, group, page, pageSize], () => {
+    void loadExceptionRows()
+  })
+
   function adoptContext(response: LinkExperimentContextResponse): void {
     context.value = response
     trial.value = null
@@ -196,10 +316,12 @@ export function useLinkTroubleshooter(projectName: string) {
     trialRemoteKeys.value = []
     trialStale.value = false
     acceptedTrialSignature = null
+    acceptedTrialRequest = null
     const controls = controlsFromContext(response)
     originalControls = cloneControls(controls)
     applyControls(controls)
     resetBrowsing()
+    void loadExceptionRows()
   }
 
   function closeSupersededContext(): void {
@@ -230,6 +352,8 @@ export function useLinkTroubleshooter(projectName: string) {
     acceptedTrialSignature = null
     refreshed.value = false
     originalControls = emptyControls()
+    acceptedTrialRequest = null
+    clearRows()
     applyControls(emptyControls())
     resetBrowsing()
 
@@ -293,7 +417,13 @@ export function useLinkTroubleshooter(projectName: string) {
       trialLocalKeys.value = [...response.local_keys]
       trialRemoteKeys.value = [...response.remote_keys]
       acceptedTrialSignature = submittedSignature
+      acceptedTrialRequest = toTrialRequest(submitted)
       trialStale.value = false
+      // A trial shown while the trial side is already selected needs a fresh
+      // page; otherwise the side change loads it once.
+      if (side.value === 'trial') {
+        void loadExceptionRows()
+      }
       return response.trial
     } catch (caughtError: unknown) {
       if (version !== requestVersion || context.value?.context_id !== contextId) {
@@ -370,9 +500,11 @@ export function useLinkTroubleshooter(projectName: string) {
     trialRemoteKeys.value = []
     trialStale.value = false
     acceptedTrialSignature = null
+    acceptedTrialRequest = null
     refreshed.value = false
     applyControls(cloneControls(originalControls))
     resetBrowsing()
+    void loadExceptionRows()
   }
 
   /** Clear the dialog and release its owned context with best-effort cleanup. */
@@ -390,6 +522,8 @@ export function useLinkTroubleshooter(projectName: string) {
     refreshed.value = false
     identity = null
     originalControls = emptyControls()
+    acceptedTrialRequest = null
+    clearRows()
     applyControls(emptyControls())
     resetBrowsing()
 
@@ -425,6 +559,13 @@ export function useLinkTroubleshooter(projectName: string) {
     pageSize,
     group,
     side,
+    rows,
+    rowTotalCount,
+    rowBrowseCap,
+    rowBrowseCapReached,
+    rowStatusMessage,
+    rowsLoading,
+    rowsError,
     canRunTrial,
     open,
     run,

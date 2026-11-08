@@ -127,13 +127,15 @@ async def test_authorized_request_forwards_locator_and_request_fields(project_cl
         metadata=REQUEST["metadata"],
         page=1,
         selected_value_token=None,
+        row_offset=0,
+        row_limit=100,
     )
 
 
 @pytest.mark.asyncio
 async def test_selected_value_request_forwards_the_token(project_client, monkeypatch) -> None:
     token = encode_key_token(("A",))
-    body = {**REQUEST, "page": 2, "selected_value_token": token}
+    body = {**REQUEST, "page": 2, "selected_value_token": token, "row_offset": 100, "row_limit": 50}
     service = install_service_override(monkeypatch, response_model())
 
     response = await project_client.post("/api/v1/projects/test_project/integrity-troubleshooter", json=body)
@@ -146,6 +148,8 @@ async def test_selected_value_request_forwards_the_token(project_client, monkeyp
         metadata=REQUEST["metadata"],
         page=2,
         selected_value_token=token,
+        row_offset=100,
+        row_limit=50,
     )
 
 
@@ -156,6 +160,9 @@ async def test_selected_value_request_forwards_the_token(project_client, monkeyp
         {key: value for key, value in REQUEST.items() if key != "metadata"},
         {key: value for key, value in REQUEST.items() if key != "local_entity"},
         {**REQUEST, "page": 0},
+        {**REQUEST, "row_offset": -1},
+        {**REQUEST, "row_limit": 0},
+        {**REQUEST, "row_limit": 501},
         {**REQUEST, "selected_value_token": "not-a-valid-token"},
     ],
 )
