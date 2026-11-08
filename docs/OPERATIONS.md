@@ -74,7 +74,7 @@ Backend settings use the `SHAPE_SHIFTER_` prefix and are loaded from
 | `SHAPE_SHIFTER_MATERIALIZATION_INLINE_THRESHOLD` | `20` | Row threshold for inline materialized data. |
 | `SHAPE_SHIFTER_LINK_TRIAL_MAX_OUTPUT_ROWS` | `1,000,000` | Maximum estimated output rows for a foreign-key trial merge. Estimates above this limit return an incomplete result without totals or row details. |
 | `SHAPE_SHIFTER_LINK_EXPERIMENT_MAX_MEMORY_MB` | `100` | Memory limit in MiB for one link experiment computation. Retained link inputs and the projected peak for input copies and materialized join output are compared against it before merging. Excess work fails with `ProjectedBudgetExceeded` and no totals or row details. The estimate is per computation, so it does not bound the memory of simultaneous requests. |
-| `SHAPE_SHIFTER_LINK_TROUBLESHOOT_BROWSE_ROW_CAP` | `10,000` | Maximum affected source rows browsable in one troubleshooter result set. The Link Troubleshooter and the integrity troubleshooter share this cap. Rows are loaded in bounded pages, and a result whose count exceeds the cap reports that only the first rows are browsable. |
+| `SHAPE_SHIFTER_LINK_TROUBLESHOOT_BROWSE_ROW_CAP` | `10,000` | Maximum affected source rows browsable in one Link Troubleshooter result set. Affected rows are loaded in bounded pages, and a result whose count exceeds the cap reports that only the first rows are browsable. The integrity troubleshooter does not use this cap; it returns every unmatched value and every local row of a selected value. |
 
 Set `SEAD_HOST`, `SEAD_PORT`, `SEAD_DBNAME`, and `SEAD_USER` through the project
 data-source configuration when required. Keep PostgreSQL passwords in

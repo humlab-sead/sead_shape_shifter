@@ -39,10 +39,7 @@ async def run_integrity_troubleshooter(
         issue_type=request.issue_type,
         local_entity=request.local_entity,
         metadata=request.metadata,
-        page=request.page,
         selected_value_token=request.selected_value_token,
-        row_offset=request.row_offset,
-        row_limit=request.row_limit,
         owner_principal_id=authorized_project.principal.principal_id,
         project_locator=authorized_project.resource.locator,
     )
@@ -60,15 +57,12 @@ async def read_integrity_troubleshooter_page(
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
     service: Annotated[IntegrityTroubleshooterService, Depends(get_integrity_troubleshooter_service)],
 ) -> IntegrityTroubleshootResponse:
-    """Read one bounded page from an owned integrity inspection."""
+    """Read the complete inspection from an owned integrity context."""
     result: IntegrityTroubleshooterContextResult = await service.read_context(
         context_id=context_id,
         owner_principal_id=authorized_project.principal.principal_id,
         project_locator=authorized_project.resource.locator,
-        page=request.page,
         selected_value_token=request.selected_value_token,
-        row_offset=request.row_offset,
-        row_limit=request.row_limit,
     )
     if result.state == "expired":
         _raise_context_expired()

@@ -1,4 +1,4 @@
-"""Retain read-only foreign-key inspection snapshots for bounded paging."""
+"""Retain read-only foreign-key inspection snapshots for later context reads."""
 
 from __future__ import annotations
 
@@ -32,7 +32,7 @@ ContextLookupState = Literal["found", "expired", "unavailable"]
 
 @dataclass(frozen=True)
 class IntegrityTroubleshooterSnapshot:
-    """Data needed to page one read-only integrity inspection."""
+    """Data needed to re-read one inspection without normalizing again."""
 
     status: IntegrityStatus
     reason: str

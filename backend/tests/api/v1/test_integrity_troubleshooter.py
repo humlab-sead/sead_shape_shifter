@@ -27,7 +27,6 @@ REQUEST = {
     "issue_type": "FK_DATA_INTEGRITY",
     "local_entity": "orders",
     "metadata": {"fk_index": 0, "fk_signature": "saved-signature", "orphan_count": 1},
-    "page": 1,
 }
 
 
@@ -81,18 +80,13 @@ def response_model() -> IntegrityTroubleshootResponse:
         recorded_orphan_count=1,
         current_orphan_count=1,
         values=IntegrityTroubleshootValuePage(
-            page=1,
-            page_size=50,
             distinct_value_count=1,
-            returned_value_count=1,
-            has_next=False,
             values=[IntegrityTroubleshootValue(key_values=["A"], local_row_count=1, token=encode_key_token(("A",)))],
         ),
         selected=IntegrityTroubleshootRows(
             status="selected",
             key_values=["A"],
             total_row_count=1,
-            returned_row_count=1,
             columns=["customer_code", "order_code"],
             rows=[{"customer_code": "A", "order_code": "O1"}],
         ),
@@ -130,10 +124,7 @@ async def test_authorized_request_forwards_locator_and_request_fields(project_cl
         issue_type="FK_DATA_INTEGRITY",
         local_entity="orders",
         metadata=REQUEST["metadata"],
-        page=1,
         selected_value_token=None,
-        row_offset=0,
-        row_limit=100,
         owner_principal_id="test-user",
         project_locator="test_project",
     )
@@ -142,7 +133,7 @@ async def test_authorized_request_forwards_locator_and_request_fields(project_cl
 @pytest.mark.asyncio
 async def test_selected_value_request_forwards_the_token(project_client, monkeypatch) -> None:
     token = encode_key_token(("A",))
-    body = {**REQUEST, "page": 2, "selected_value_token": token, "row_offset": 100, "row_limit": 50}
+    body = {**REQUEST, "selected_value_token": token}
     service = install_service_override(monkeypatch, response_model())
 
     response = await project_client.post("/api/v1/projects/test_project/integrity-troubleshooter", json=body)
@@ -153,10 +144,7 @@ async def test_selected_value_request_forwards_the_token(project_client, monkeyp
         issue_type="FK_DATA_INTEGRITY",
         local_entity="orders",
         metadata=REQUEST["metadata"],
-        page=2,
         selected_value_token=token,
-        row_offset=100,
-        row_limit=50,
         owner_principal_id="test-user",
         project_locator="test_project",
     )
@@ -171,7 +159,7 @@ async def test_page_request_reads_the_owned_context_without_reopening_it(project
 
     response = await project_client.post(
         "/api/v1/projects/test_project/integrity-troubleshooter/context-one/page",
-        json={"page": 2, "selected_value_token": token, "row_offset": 100, "row_limit": 50},
+        json={"selected_value_token": token},
     )
 
     assert response.status_code == 200, response.text
@@ -180,10 +168,7 @@ async def test_page_request_reads_the_owned_context_without_reopening_it(project
         context_id="context-one",
         owner_principal_id="test-user",
         project_locator="test_project",
-        page=2,
         selected_value_token=token,
-        row_offset=100,
-        row_limit=50,
     )
     service.inspect.assert_not_awaited()
 
@@ -195,7 +180,7 @@ async def test_expired_page_context_returns_recoverable_gone_response(project_cl
 
     response = await project_client.post(
         "/api/v1/projects/test_project/integrity-troubleshooter/context-one/page",
-        json={"page": 1},
+        json={},
     )
 
     assert response.status_code == 410
@@ -224,10 +209,6 @@ async def test_close_releases_the_owned_context(project_client, monkeypatch) -> 
         {key: value for key, value in REQUEST.items() if key != "issue_type"},
         {key: value for key, value in REQUEST.items() if key != "metadata"},
         {key: value for key, value in REQUEST.items() if key != "local_entity"},
-        {**REQUEST, "page": 0},
-        {**REQUEST, "row_offset": -1},
-        {**REQUEST, "row_limit": 0},
-        {**REQUEST, "row_limit": 501},
         {**REQUEST, "selected_value_token": "not-a-valid-token"},
     ],
 )
@@ -245,7 +226,7 @@ async def test_invalid_request_shapes_return_422_without_running_service(project
     "body",
     [
         REQUEST,
-        {**REQUEST, "page": 2, "selected_value_token": encode_key_token(("A",))},
+        {**REQUEST, "selected_value_token": encode_key_token(("A",))},
     ],
 )
 @pytest.mark.asyncio
@@ -267,7 +248,7 @@ async def test_principal_without_project_read_gets_concealed_404(
 @pytest.mark.parametrize(
     ("method", "path", "body"),
     [
-        ("post", "/api/v1/projects/test_project/integrity-troubleshooter/context-one/page", {"page": 1}),
+        ("post", "/api/v1/projects/test_project/integrity-troubleshooter/context-one/page", {}),
         ("delete", "/api/v1/projects/test_project/integrity-troubleshooter/context-one", None),
     ],
 )

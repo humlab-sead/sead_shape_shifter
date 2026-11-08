@@ -30,11 +30,7 @@ function response(): IntegrityTroubleshootResponse {
     recorded_orphan_count: 2,
     current_orphan_count: 2,
     values: {
-      page: 1,
-      page_size: 50,
       distinct_value_count: 2,
-      returned_value_count: 2,
-      has_next: false,
       values: [
         { key_values: ['MISSING-A'], local_row_count: 1, token: 'dG9rZW4tYQ==' },
         { key_values: ['MISSING-B'], local_row_count: 1, token: 'dG9rZW4tYg==' },
@@ -49,12 +45,11 @@ describe('integrityTroubleshooterApi', () => {
     vi.clearAllMocks()
   })
 
-  it('encodes the project name and forwards the first-page request body', async () => {
+  it('encodes the project name and forwards the inspection request body', async () => {
     const request: IntegrityTroubleshootRequest = {
       issue_type: 'FK_DATA_INTEGRITY',
       local_entity: 'orders',
       metadata: { fk_index: 1, fk_signature: 'signature', orphan_count: 2 },
-      page: 1,
     }
     const body = response()
     vi.mocked(apiRequest).mockResolvedValue(body)
@@ -68,30 +63,11 @@ describe('integrityTroubleshooterApi', () => {
     })
   })
 
-  it('forwards a later page unchanged', async () => {
-    const request: IntegrityTroubleshootRequest = {
-      issue_type: 'FK_DATA_INTEGRITY',
-      local_entity: 'orders',
-      metadata: { fk_index: 0, fk_signature: 'signature' },
-      page: 3,
-    }
-    vi.mocked(apiRequest).mockResolvedValue(response())
-
-    await integrityTroubleshooterApi.inspect('project-a', request)
-
-    expect(apiRequest).toHaveBeenCalledWith({
-      method: 'POST',
-      url: '/projects/project-a/integrity-troubleshooter',
-      data: request,
-    })
-  })
-
   it('forwards the server-issued value token without converting it', async () => {
     const request: IntegrityTroubleshootRequest = {
       issue_type: 'FK_DATA_INTEGRITY',
       local_entity: 'orders',
       metadata: { fk_index: 0, fk_signature: 'signature' },
-      page: 2,
       selected_value_token: 'dG9rZW4tYQ==',
     }
     vi.mocked(apiRequest).mockResolvedValue(response())
@@ -105,12 +81,9 @@ describe('integrityTroubleshooterApi', () => {
     })
   })
 
-  it('encodes the context identifier and forwards a page request', async () => {
+  it('encodes the context identifier and forwards a context read', async () => {
     const request: IntegrityTroubleshootPageRequest = {
-      page: 2,
       selected_value_token: 'dG9rZW4tYQ==',
-      row_offset: 100,
-      row_limit: 50,
     }
     vi.mocked(apiRequest).mockResolvedValue(response())
 

@@ -3,8 +3,8 @@
 The service resolves an integrity warning to its saved foreign key, normalizes the
 current project in a private run that writes nothing to shared caches, recomputes
 the distinct unmatched keys through the production validator comparison, and
-returns a bounded value page plus an optional bounded row sample. It never edits
-projects, source data, or saved results.
+returns every distinct unmatched key plus every local row of one selected key. It
+never edits projects, source data, or saved results.
 """
 
 from __future__ import annotations
@@ -18,12 +18,10 @@ import numpy as np
 import pandas as pd
 from loguru import logger
 
-from backend.app.core.config import Settings, get_settings
 from backend.app.exceptions import ConfigurationError, ResourceNotFoundError
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.integrity_troubleshooter import (
     FULL_NORMALIZATION_SOURCE,
-    ROW_PAGE_SIZE,
     IntegrityStatus,
     IntegrityTroubleshootKeys,
     IntegrityTroubleshootRelationship,
@@ -53,9 +51,6 @@ from src.validators.data_validators import (
     to_key_scalar,
 )
 
-VALUE_PAGE_SIZE = 50
-"""Maximum distinct unmatched values returned in one page."""
-
 COLUMN_LIMIT = 20
 """Maximum columns returned for one selected value's rows."""
 
@@ -83,18 +78,15 @@ class IntegrityTroubleshooterService:
     def __init__(
         self,
         project_service: ProjectService | None = None,
-        settings: Settings | None = None,
         context_store: IntegrityTroubleshooterContextStore | None = None,
     ) -> None:
         """Initialize the service.
 
         Args:
             project_service: Loads saved API projects. Defaults to a new service.
-            settings: Provides the affected-row browse cap. Defaults to app settings.
-            context_store: Retains normalized data for bounded paging.
+            context_store: Retains normalized data so a later read does not normalize again.
         """
         self.project_service: ProjectService = project_service or ProjectService()
-        self.settings: Settings = settings if settings is not None else get_settings()
         self.context_store: IntegrityTroubleshooterContextStore = (
             context_store if context_store is not None else get_integrity_troubleshooter_context_store()
         )
@@ -106,10 +98,7 @@ class IntegrityTroubleshooterService:
         issue_type: str,
         local_entity: str,
         metadata: Mapping[str, Any],
-        page: int = 1,
         selected_value_token: str | None = None,
-        row_offset: int = 0,
-        row_limit: int = ROW_PAGE_SIZE,
         owner_principal_id: str | None = None,
         project_locator: str | None = None,
     ) -> IntegrityTroubleshootResponse:
@@ -120,14 +109,11 @@ class IntegrityTroubleshooterService:
             issue_type: Type of the validation issue that offers the action.
             local_entity: Entity the warned foreign key belongs to.
             metadata: Issue metadata recorded by validation.
-            page: One-based page of distinct unmatched values.
-            selected_value_token: Optional token naming one value to sample.
-            row_offset: Zero-based offset into the selected value's local rows.
-            row_limit: Number of local rows to return for the selected value.
+            selected_value_token: Optional token naming one value whose local rows are returned.
 
         Returns:
-            IntegrityTroubleshootResponse describing the reproduced warning, its
-            current values, and any selected rows.
+            IntegrityTroubleshootResponse describing the reproduced warning, every
+            current unmatched value, and the rows of any selected value.
         """
         try:
             api_project: Project = self.project_service.load_project(project_name)
@@ -215,8 +201,6 @@ class IntegrityTroubleshooterService:
                 columns=columns,
                 columns_truncated=columns_truncated,
                 fk=fk,
-                offset=row_offset,
-                limit=row_limit,
             )
 
         if comparison.status == "invalid_input":
@@ -250,13 +234,7 @@ class IntegrityTroubleshooterService:
                 configured_keys=configured_keys,
                 recorded_orphan_count=recorded_count,
                 current_orphan_count=0,
-                values=IntegrityTroubleshootValuePage(
-                    page=page,
-                    page_size=VALUE_PAGE_SIZE,
-                    distinct_value_count=0,
-                    returned_value_count=0,
-                    has_next=False,
-                ),
+                values=IntegrityTroubleshootValuePage(distinct_value_count=0),
                 selected=selected,
             )
 
@@ -271,7 +249,7 @@ class IntegrityTroubleshooterService:
 
         sorted_keys: list[tuple[Any, ...]] = sorted(comparison.unmatched_keys, key=_sort_key)
         row_counts: dict[tuple[Any, ...], int] = self._local_row_counts(local_df, fk)
-        values_page: IntegrityTroubleshootValuePage = self._value_page(sorted_keys, row_counts, page)
+        values_page: IntegrityTroubleshootValuePage = self._values(sorted_keys, row_counts)
 
         response: IntegrityTroubleshootResponse = self._response(
             status=status,
@@ -320,12 +298,9 @@ class IntegrityTroubleshooterService:
         context_id: str,
         owner_principal_id: str,
         project_locator: str,
-        page: int = 1,
         selected_value_token: str | None = None,
-        row_offset: int = 0,
-        row_limit: int = ROW_PAGE_SIZE,
     ) -> IntegrityTroubleshooterContextResult:
-        """Return one bounded page from an owned snapshot without normalization."""
+        """Return the complete inspection from an owned snapshot without normalization."""
         lookup = await self.context_store.lookup_context(
             context_id,
             owner_principal_id=owner_principal_id,
@@ -345,8 +320,6 @@ class IntegrityTroubleshooterService:
                 columns=list(snapshot.columns),
                 columns_truncated=snapshot.columns_truncated,
                 fk=snapshot.foreign_key,
-                offset=row_offset,
-                limit=row_limit,
             )
 
         response: IntegrityTroubleshootResponse = self._response(
@@ -357,7 +330,7 @@ class IntegrityTroubleshooterService:
             configured_keys=snapshot.configured_keys,
             recorded_orphan_count=snapshot.recorded_orphan_count,
             current_orphan_count=snapshot.current_orphan_count,
-            values=self._value_page(snapshot.sorted_keys, snapshot.row_counts, page),
+            values=self._values(snapshot.sorted_keys, snapshot.row_counts),
             selected=selected,
             context_id=context.context_id,
             expires_at=context.expires_at,
@@ -438,10 +411,8 @@ class IntegrityTroubleshooterService:
         columns: list[str],
         columns_truncated: bool,
         fk: ForeignKeyConfig,
-        offset: int = 0,
-        limit: int = ROW_PAGE_SIZE,
     ) -> IntegrityTroubleshootRows:
-        """Return one bounded local-row window for one token-selected unmatched value."""
+        """Return every local row for one token-selected unmatched value."""
         try:
             key: tuple[Any, ...] = decode_key_token(token)
         except ValueError as exc:
@@ -454,25 +425,15 @@ class IntegrityTroubleshooterService:
                 message="The selected value no longer appears as an unmatched value in the current data.",
             )
         key_values: list[Any] = [_json_scalar(value) for value in key]
-        key_values: list[Any] = [_json_scalar(value) for value in key]
         matching_rows: pd.DataFrame = _select_rows(local_df, fk, key)
-        total_rows: int = len(matching_rows)
-        browse_cap: int = self.settings.LINK_TROUBLESHOOT_BROWSE_ROW_CAP
-        window_end: int = min(offset + limit, browse_cap)
-        sample: pd.DataFrame = matching_rows.iloc[offset:window_end]
         rows: list[dict[str, Any]] = [
-            {column: _json_scalar(to_key_scalar(row[column])) for column in columns} for _, row in sample.iterrows()
+            {column: _json_scalar(to_key_scalar(row[column])) for column in columns} for _, row in matching_rows.iterrows()
         ]
 
         return IntegrityTroubleshootRows(
             status="selected",
             key_values=key_values,
-            total_row_count=total_rows,
-            returned_row_count=len(rows),
-            offset=offset,
-            limit=limit,
-            browse_cap=browse_cap,
-            browse_cap_reached=total_rows > browse_cap,
+            total_row_count=len(matching_rows),
             columns=columns,
             columns_truncated=columns_truncated,
             rows=rows,
@@ -496,32 +457,22 @@ class IntegrityTroubleshooterService:
         return counts
 
     @staticmethod
-    def _value_page(
+    def _values(
         sorted_keys: Sequence[tuple[Any, ...]],
         row_counts: dict[tuple[Any, ...], int],
-        page: int,
     ) -> IntegrityTroubleshootValuePage:
-        """Slice the ordered distinct keys into one bounded page."""
-        total: int = len(sorted_keys)
-        start: int = (page - 1) * VALUE_PAGE_SIZE
-        end: int = start + VALUE_PAGE_SIZE
-        page_keys: list[tuple[Any, ...]] = sorted_keys[start:end]
-
+        """Return every ordered distinct key with its local row count."""
         values: list[IntegrityTroubleshootValue] = [
             IntegrityTroubleshootValue(
                 key_values=[_json_scalar(value) for value in key],
                 local_row_count=row_counts.get(key, 0),
                 token=encode_key_token(key),
             )
-            for key in page_keys
+            for key in sorted_keys
         ]
 
         return IntegrityTroubleshootValuePage(
-            page=page,
-            page_size=VALUE_PAGE_SIZE,
-            distinct_value_count=total,
-            returned_value_count=len(values),
-            has_next=end < total,
+            distinct_value_count=len(values),
             values=values,
         )
 

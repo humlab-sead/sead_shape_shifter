@@ -32,51 +32,9 @@
         <div>{{ result.message }}</div>
       </v-alert>
 
-      <section class="integrity-finding-summary mb-4" aria-label="Integrity finding summary">
-        <div class="d-flex flex-wrap align-center justify-space-between ga-2 mb-3">
-          <div class="d-flex align-center ga-1">
-            <h2 class="text-subtitle-1 mb-0">Integrity results</h2>
-            <v-tooltip location="top" max-width="360">
-              <template #activator="{ props }">
-                <v-btn
-                  v-bind="props"
-                  icon
-                  size="x-small"
-                  variant="text"
-                  class="text-medium-emphasis"
-                  aria-label="About integrity counts"
-                >
-                  <v-icon icon="mdi-help-circle-outline" size="small" />
-                </v-btn>
-              </template>
-              <div class="text-body-2">
-                <p class="mb-1">The recorded count comes from the validation warning.</p>
-                <p class="mb-0">
-                  The current count is recalculated from current data. The list below shows the unmatched key values and
-                  how many local rows use each one.
-                </p>
-              </div>
-            </v-tooltip>
-          </div>
-          <v-btn v-if="result.values" size="small" variant="outlined" @click="focusUnmatchedValues">
-            Inspect unmatched values
-          </v-btn>
-        </div>
-        <div class="integrity-finding-stats">
-          <div class="integrity-finding-stat" data-stat="recorded">
-            <div class="integrity-finding-stat-value">{{ formatCount(result.recorded_orphan_count) }}</div>
-            <div class="text-body-2 text-medium-emphasis">Recorded unmatched values</div>
-          </div>
-          <div class="integrity-finding-stat" data-stat="current">
-            <div class="integrity-finding-stat-value">{{ formatCount(result.current_orphan_count) }}</div>
-            <div class="text-body-2 text-medium-emphasis">Current unmatched values</div>
-          </div>
-        </div>
-      </section>
-
       <div class="integrity-troubleshooter-workspace">
         <aside class="integrity-link-details" aria-label="Configured link details">
-          <section v-if="result.configured_keys" class="mb-5" aria-label="Configured keys">
+          <section v-if="result.configured_keys" aria-label="Configured keys">
             <h3 class="text-subtitle-1 mb-2">Configured key pairs</h3>
             <div class="integrity-key-headings" aria-hidden="true">
               <span>{{ result.relationship?.local_entity || 'Local entity' }}</span>
@@ -94,11 +52,48 @@
         </aside>
 
         <div class="integrity-results">
+          <section class="integrity-finding-summary mb-4" aria-label="Integrity finding summary">
+            <div class="d-flex align-center ga-1 mb-3">
+              <h2 class="text-subtitle-1 mb-0">Integrity results</h2>
+              <v-tooltip location="top" max-width="360">
+                <template #activator="{ props }">
+                  <v-btn
+                    v-bind="props"
+                    icon
+                    size="x-small"
+                    variant="text"
+                    class="text-medium-emphasis"
+                    aria-label="About integrity counts"
+                  >
+                    <v-icon icon="mdi-help-circle-outline" size="small" />
+                  </v-btn>
+                </template>
+                <div class="text-body-2">
+                  <p class="mb-1">The recorded count comes from the validation warning.</p>
+                  <p class="mb-0">
+                    The current count is recalculated from current data. The list below shows every unmatched key value
+                    and how many local rows use each one.
+                  </p>
+                </div>
+              </v-tooltip>
+            </div>
+            <div class="integrity-finding-stats">
+              <div class="integrity-finding-stat" data-stat="recorded">
+                <div class="integrity-finding-stat-value">{{ formatCount(result.recorded_orphan_count) }}</div>
+                <div class="text-body-2 text-medium-emphasis">Recorded unmatched values</div>
+              </div>
+              <div class="integrity-finding-stat" data-stat="current">
+                <div class="integrity-finding-stat-value">{{ formatCount(result.current_orphan_count) }}</div>
+                <div class="text-body-2 text-medium-emphasis">Current unmatched values</div>
+              </div>
+            </div>
+          </section>
+
           <section v-if="result.values" class="mb-5" aria-label="Unmatched values">
-            <h3 ref="unmatchedValuesRef" class="text-subtitle-1 mb-2">Unmatched values</h3>
+            <h3 class="text-subtitle-1 mb-2">Unmatched values</h3>
             <div class="text-caption text-medium-emphasis mb-3">
-              Showing {{ formatCount(result.values.returned_value_count) }} of
-              {{ formatCount(result.values.distinct_value_count) }} distinct values · Page {{ result.values.page }}
+              {{ formatCount(result.values.values.length) }} unmatched
+              {{ result.values.values.length === 1 ? 'value' : 'values' }}
             </div>
 
             <template v-if="result.values.values.length > 0">
@@ -112,16 +107,7 @@
                 @row-click="selectValueRow"
               />
             </template>
-            <p v-else class="text-body-2 text-medium-emphasis">No unmatched values on this page.</p>
-
-            <div v-if="valuePageCount > 1" class="d-flex justify-end mt-2">
-              <v-pagination
-                :model-value="result.values.page"
-                :length="valuePageCount"
-                density="comfortable"
-                @update:model-value="changePage"
-              />
-            </div>
+            <p v-else class="text-body-2 text-medium-emphasis">No unmatched values in the current data.</p>
           </section>
 
           <section v-if="result.selected" class="mb-2" aria-label="Selected value rows">
@@ -129,18 +115,8 @@
               <h3 class="text-subtitle-1 mb-1">Affected local rows</h3>
               <div class="text-body-2">Unmatched key: {{ formatKey(result.selected.key_values ?? []) }}</div>
               <div class="text-body-2 mb-2">
-                Showing {{ formatCount(result.selected.returned_row_count) }} of
-                {{ formatCount(result.selected.total_row_count) }} local rows for this key.
+                {{ formatCount(result.selected.total_row_count) }} local rows use this key.
               </div>
-              <v-alert
-                v-if="result.selected.browse_cap_reached"
-                type="info"
-                variant="tonal"
-                density="compact"
-                class="mb-2"
-              >
-                Only the first {{ formatCount(result.selected.browse_cap) }} local rows for this key are browsable.
-              </v-alert>
               <v-alert
                 v-if="result.selected.columns_truncated"
                 type="info"
@@ -156,26 +132,6 @@
                 :loading="loading"
                 height="320px"
               />
-              <div v-if="selectedRowPageCount > 1" class="d-flex justify-end mt-2">
-                <v-btn
-                  size="small"
-                  variant="text"
-                  aria-label="Previous rows page"
-                  :disabled="rowOffset <= 0 || loading"
-                  @click="changeRowPage(-1)"
-                >
-                  Previous
-                </v-btn>
-                <v-btn
-                  size="small"
-                  variant="text"
-                  aria-label="Next rows page"
-                  :disabled="selectedRowPage >= selectedRowPageCount || loading"
-                  @click="changeRowPage(1)"
-                >
-                  Next
-                </v-btn>
-              </div>
             </template>
 
             <v-alert v-else type="warning" variant="tonal" density="compact" class="integrity-selection-unavailable">
@@ -202,6 +158,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { integrityTroubleshooterApi } from '@/api/integrityTroubleshooter'
 import type {
   FormattedError,
+  IntegrityTroubleshootPageRequest,
   IntegrityTroubleshootRequest,
   IntegrityTroubleshootRelationship,
   IntegrityTroubleshootResponse,
@@ -210,9 +167,6 @@ import type {
 import { formatErrorMessage } from '@/utils/errors'
 import { toIntegrityTroubleshootRequest } from '@/utils/linkTroubleshooter'
 import TroubleshooterDataGrid, { type TroubleshooterGridColumn } from './TroubleshooterDataGrid.vue'
-
-/** Default number of local rows requested for one selected unmatched value. */
-const ROW_PAGE_SIZE = 100
 
 interface Props {
   projectName: string
@@ -228,11 +182,7 @@ const loading = ref(false)
 const error = ref<FormattedError | null>(null)
 const result = ref<IntegrityTroubleshootResponse | null>(null)
 const contextId = ref<string | null>(null)
-const page = ref(1)
 const selectedToken = ref<string | null>(null)
-const rowOffset = ref(0)
-const rowLimit = ref(ROW_PAGE_SIZE)
-const unmatchedValuesRef = ref<HTMLElement | null>(null)
 let requestVersion = 0
 
 const configuredKeyPairs = computed(() => {
@@ -246,30 +196,8 @@ const configuredKeyPairs = computed(() => {
   }))
 })
 
-const valuePageCount = computed(() => {
-  const values = result.value?.values
-  if (!values || values.page_size <= 0) {
-    return 1
-  }
-
-  return Math.max(1, Math.ceil(values.distinct_value_count / values.page_size))
-})
-
-const selectedRowPage = computed(() => Math.floor(rowOffset.value / rowLimit.value) + 1)
-
-const selectedRowPageCount = computed(() => {
-  const selected = result.value?.selected
-  const totalRows = selected?.total_row_count ?? 0
-  const browseCap = selected?.browse_cap ?? totalRows
-  if (rowLimit.value <= 0) {
-    return 1
-  }
-
-  return Math.max(1, Math.ceil(Math.min(totalRows, browseCap) / rowLimit.value))
-})
-
-// Columns are read-only: the backend pages the complete value set in a fixed
-// order, so sorting or filtering one page would only reorder what is loaded.
+// Columns are read-only: the backend returns the complete value set in a fixed
+// order, so sorting or filtering would only reorder what is loaded.
 const valueColumns = computed<TroubleshooterGridColumn[]>(() => [
   { field: 'unmatchedKey', header: 'Unmatched key' },
   { field: 'localRowCount', header: 'Local rows', align: 'right' as const, width: 140 },
@@ -293,9 +221,7 @@ watch(
     closeContext(contextId.value)
     contextId.value = null
     result.value = null
-    page.value = 1
     selectedToken.value = null
-    rowOffset.value = 0
     void sendRequest()
   },
   { immediate: true }
@@ -309,35 +235,14 @@ onBeforeUnmount(() => {
 })
 
 // Grid rows carry the token, so selecting a value does not depend on its
-// position in the page.
+// position in the list.
 function selectValueRow(row: Record<string, unknown>): void {
   const token = typeof row.token === 'string' ? row.token : null
   if (token === null) {
     return
   }
   selectedToken.value = token
-  rowOffset.value = 0
   void sendRequest()
-}
-
-function changePage(value: number): void {
-  page.value = value
-  selectedToken.value = null
-  rowOffset.value = 0
-  void sendRequest()
-}
-
-function changeRowPage(direction: -1 | 1): void {
-  const nextOffset = rowOffset.value + direction * rowLimit.value
-  if (nextOffset < 0) {
-    return
-  }
-  rowOffset.value = nextOffset
-  void sendRequest()
-}
-
-function focusUnmatchedValues(): void {
-  unmatchedValuesRef.value?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
 }
 
 async function sendRequest(): Promise<void> {
@@ -353,16 +258,10 @@ async function sendRequest(): Promise<void> {
 
   const request: IntegrityTroubleshootRequest = {
     ...identity,
-    page: page.value,
-    row_offset: rowOffset.value,
-    row_limit: rowLimit.value,
     ...(selectedToken.value === null ? {} : { selected_value_token: selectedToken.value }),
   }
 
-  const pageRequest = {
-    page: page.value,
-    row_offset: rowOffset.value,
-    row_limit: rowLimit.value,
+  const pageRequest: IntegrityTroubleshootPageRequest = {
     ...(selectedToken.value === null ? {} : { selected_value_token: selectedToken.value }),
   }
   const currentContextId: string | null = contextId.value

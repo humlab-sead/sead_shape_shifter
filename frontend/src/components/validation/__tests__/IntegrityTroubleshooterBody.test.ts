@@ -86,11 +86,7 @@ function response(overrides: Partial<IntegrityTroubleshootResponse> = {}): Integ
     recorded_orphan_count: 2,
     current_orphan_count: 2,
     values: {
-      page: 1,
-      page_size: 50,
       distinct_value_count: 2,
-      returned_value_count: 2,
-      has_next: false,
       values: [
         { key_values: ['MISSING-A'], local_row_count: 1, token: 'token-a' },
         { key_values: ['MISSING-B'], local_row_count: 3, token: 'token-b' },
@@ -110,11 +106,6 @@ function selectedRows(overrides: Partial<SelectedRows> = {}): SelectedRows {
     message: null,
     key_values: ['MISSING-A'],
     total_row_count: 1,
-    returned_row_count: 1,
-    offset: 0,
-    limit: 100,
-    browse_cap: 10_000,
-    browse_cap_reached: false,
     columns: ['customer_code', 'name'],
     columns_truncated: false,
     rows: [{ customer_code: 'MISSING-A', name: 'Orphan order' }],
@@ -149,11 +140,6 @@ function mountBody(message: ValidationError = warning()) {
       plugins: [vuetify],
       stubs: {
         TroubleshooterDataGrid: TroubleshooterDataGridStub,
-        VPagination: {
-          props: ['length', 'modelValue'],
-          emits: ['update:modelValue'],
-          template: `<button type="button" aria-label="Next page" @click="$emit('update:modelValue', modelValue + 1)">Next page</button>`,
-        },
         VTooltip: {
           template: '<div data-testid="tooltip"><slot name="activator" :props="{}" /><slot /></div>',
         },
@@ -173,7 +159,7 @@ describe('IntegrityTroubleshooterBody', () => {
     queueResponses(response())
   })
 
-  it('opens page one with the unchanged warning identity and shows current inspected data', async () => {
+  it('opens the inspection with the unchanged warning identity and shows current inspected data', async () => {
     const wrapper = mountBody()
     await flushPromises()
 
@@ -181,11 +167,8 @@ describe('IntegrityTroubleshooterBody', () => {
       issue_type: 'FK_DATA_INTEGRITY',
       local_entity: 'orders',
       metadata: { fk_index: 0, fk_signature: 'saved-signature', orphan_count: 2 },
-      page: 1,
-      row_offset: 0,
-      row_limit: 100,
     })
-    expect(wrapper.text()).toContain('Showing 2 of 2 distinct values · Page 1')
+    expect(wrapper.text()).toContain('2 unmatched values')
     expect(wrapper.find('[data-stat="recorded"] .integrity-finding-stat-value').text()).toBe('2')
     expect(wrapper.find('[data-stat="current"] .integrity-finding-stat-value').text()).toBe('2')
     expect(wrapper.find('button[aria-label="About integrity counts"]').exists()).toBe(true)
@@ -213,7 +196,7 @@ describe('IntegrityTroubleshooterBody', () => {
     expect(wrapper.text()).not.toContain('Inspected data source')
   })
 
-  it('keeps the existing rows visible while a context page loads', async () => {
+  it('keeps the existing rows visible while a selected value loads', async () => {
     inspect().mockReset()
     readPage().mockReset()
     const firstRows = Array.from({ length: 100 }, (_, index) => ({
@@ -221,13 +204,13 @@ describe('IntegrityTroubleshooterBody', () => {
       name: `Row ${index}`,
     }))
     const nextRows = Array.from({ length: 100 }, (_, index) => ({
-      customer_code: `MISSING-${index + 100}`,
+      customer_code: `OTHER-${index}`,
       name: `Row ${index + 100}`,
     }))
     let resolvePage: ((value: IntegrityTroubleshootResponse) => void) | undefined
     inspect().mockResolvedValue(
       response({
-        selected: selectedRows({ total_row_count: 250, returned_row_count: 100, rows: firstRows }),
+        selected: selectedRows({ total_row_count: 250, rows: firstRows }),
       })
     )
     readPage().mockImplementationOnce(async (_projectName, _contextId, request) => {
@@ -239,20 +222,18 @@ describe('IntegrityTroubleshooterBody', () => {
 
     const wrapper = mountBody()
     await flushPromises()
-    await wrapper.find('button[aria-label="Next rows page"]').trigger('click')
+    await wrapper.find('section[aria-label="Unmatched values"] .grid-row').trigger('click')
     await flushPromises()
 
     expect(wrapper.find('.integrity-page-loading').exists()).toBe(true)
     expect(wrapper.find('section[aria-label="Selected value rows"] .grid-row').text()).toContain('MISSING-0')
     expect(inspect()).toHaveBeenCalledTimes(1)
-    expect(pageRequests).toEqual([{ page: 1, row_offset: 100, row_limit: 100 }])
+    expect(pageRequests).toEqual([{ selected_value_token: 'token-a' }])
 
     resolvePage?.(
       response({
         selected: selectedRows({
           total_row_count: 250,
-          returned_row_count: 100,
-          offset: 100,
           rows: nextRows,
         }),
       })
@@ -260,7 +241,7 @@ describe('IntegrityTroubleshooterBody', () => {
     await flushPromises()
 
     expect(wrapper.find('.integrity-page-loading').exists()).toBe(false)
-    expect(wrapper.find('section[aria-label="Selected value rows"] .grid-row').text()).toContain('MISSING-100')
+    expect(wrapper.find('section[aria-label="Selected value rows"] .grid-row').text()).toContain('OTHER-0')
     expect(inspect()).toHaveBeenCalledTimes(1)
   })
 
@@ -336,11 +317,7 @@ describe('IntegrityTroubleshooterBody', () => {
     queueResponses(
       response({
         values: {
-          page: 1,
-          page_size: 50,
           distinct_value_count: 1,
-          returned_value_count: 1,
-          has_next: false,
           values: [{ key_values: [null, 'X-1'], local_row_count: 2, token: 'token-composite' }],
         },
       })
@@ -366,104 +343,33 @@ describe('IntegrityTroubleshooterBody', () => {
     expect(rows[1]?.text()).toBe('MISSING-B3')
   })
 
-  it('pages with the current page number and clears the selection', async () => {
+  it('shows an explicit empty state when the current data has no unmatched values', async () => {
     inspect().mockReset()
-    queueResponses(
-      response({
-        values: {
-          page: 1,
-          page_size: 50,
-          distinct_value_count: 120,
-          returned_value_count: 1,
-          has_next: true,
-          values: [{ key_values: ['MISSING-A'], local_row_count: 1, token: 'token-a' }],
-        },
-        selected: selectedRows(),
-      }),
-      response({
-        values: {
-          page: 2,
-          page_size: 50,
-          distinct_value_count: 120,
-          returned_value_count: 0,
-          has_next: true,
-          values: [],
-        },
-        selected: null,
-      })
-    )
+    queueResponses(response({ values: { distinct_value_count: 0, values: [] } }))
 
     const wrapper = mountBody()
     await flushPromises()
-    expect(wrapper.find('section[aria-label="Selected value rows"]').exists()).toBe(true)
 
-    await wrapper.find('button[aria-label="Next page"]').trigger('click')
-    await flushPromises()
-
-    expect(pageRequests[0]).toEqual({
-      page: 2,
-      row_offset: 0,
-      row_limit: 100,
-    })
-    expect(wrapper.text()).toContain('No unmatched values on this page.')
-    expect(wrapper.find('section[aria-label="Selected value rows"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('No unmatched values in the current data.')
+    expect(wrapper.find('section[aria-label="Unmatched values"] .grid-row').exists()).toBe(false)
   })
 
-  it('selects a value with its server token on the current page', async () => {
+  it('selects a value with its server token and reads the retained context', async () => {
     inspect().mockReset()
-    queueResponses(
-      response({
-        values: {
-          page: 1,
-          page_size: 50,
-          distinct_value_count: 120,
-          returned_value_count: 1,
-          has_next: true,
-          values: [{ key_values: ['MISSING-A'], local_row_count: 1, token: 'token-a' }],
-        },
-      }),
-      response({
-        values: {
-          page: 2,
-          page_size: 50,
-          distinct_value_count: 120,
-          returned_value_count: 1,
-          has_next: true,
-          values: [{ key_values: ['MISSING-Z'], local_row_count: 1, token: 'token-z' }],
-        },
-      }),
-      response({
-        values: {
-          page: 2,
-          page_size: 50,
-          distinct_value_count: 120,
-          returned_value_count: 1,
-          has_next: true,
-          values: [{ key_values: ['MISSING-Z'], local_row_count: 1, token: 'token-z' }],
-        },
-        selected: selectedRows({ key_values: ['MISSING-Z'], rows: [{ customer_code: 'MISSING-Z', name: 'Z' }] }),
-      })
-    )
+    queueResponses(response(), response({ selected: selectedRows() }))
 
     const wrapper = mountBody()
     await flushPromises()
-
-    await wrapper.find('button[aria-label="Next page"]').trigger('click')
-    await flushPromises()
-    expect(pageRequests[0]?.page).toBe(2)
 
     await wrapper.find('section[aria-label="Unmatched values"] .grid-row').trigger('click')
     await flushPromises()
 
-    expect(pageRequests[1]).toEqual({
-      page: 2,
-      row_offset: 0,
-      row_limit: 100,
-      selected_value_token: 'token-z',
-    })
+    expect(pageRequests).toEqual([{ selected_value_token: 'token-a' }])
+    expect(wrapper.find('section[aria-label="Selected value rows"]').exists()).toBe(true)
+    expect(requests).toHaveLength(1)
   })
 
-  it('shows bounded rows with named columns and the truncation notice', async () => {
+  it('shows every local row with named columns and the truncation notice', async () => {
     inspect().mockReset()
     const rows = Array.from({ length: 20 }, (_, index) => ({
       customer_code: `MISSING-${index}`,
@@ -473,7 +379,6 @@ describe('IntegrityTroubleshooterBody', () => {
       response({
         selected: selectedRows({
           total_row_count: 40,
-          returned_row_count: 20,
           columns: ['customer_code', 'name'],
           columns_truncated: true,
           rows,
@@ -486,7 +391,7 @@ describe('IntegrityTroubleshooterBody', () => {
 
     const section = wrapper.find('section[aria-label="Selected value rows"]')
     expect(section.text()).toContain('Unmatched key: MISSING-A')
-    expect(section.text()).toContain('Showing 20 of 40 local rows for this key.')
+    expect(section.text()).toContain('40 local rows use this key.')
     expect(section.text()).toContain('Only the first 2 columns are shown.')
     expect(section.find('.grid-header').text()).toContain('customer_code')
     expect(section.findAll('.grid-row')).toHaveLength(20)
@@ -494,46 +399,13 @@ describe('IntegrityTroubleshooterBody', () => {
     expect(section.find('.grid-header').text()).not.toContain('system_id')
   })
 
-  it('pages selected rows through the shared browse cap', async () => {
+  it('lists every affected local row for a selected value without paging controls', async () => {
     inspect().mockReset()
-    const firstPageRows = Array.from({ length: 100 }, (_, index) => ({
+    const rows = Array.from({ length: 2_000 }, (_, index) => ({
       customer_code: `MISSING-${index}`,
       name: `Row ${index}`,
     }))
-    const secondPageRows = Array.from({ length: 100 }, (_, index) => ({
-      customer_code: `MISSING-${index + 100}`,
-      name: `Row ${index + 100}`,
-    }))
-    const values = {
-      page: 1,
-      page_size: 50,
-      distinct_value_count: 1,
-      returned_value_count: 1,
-      has_next: false,
-      values: [{ key_values: ['MISSING-A'], local_row_count: 12_000, token: 'token-a' }],
-    }
-    queueResponses(
-      response({ values }),
-      response({
-        values,
-        selected: selectedRows({
-          total_row_count: 12_000,
-          returned_row_count: 100,
-          browse_cap_reached: true,
-          rows: firstPageRows,
-        }),
-      }),
-      response({
-        values,
-        selected: selectedRows({
-          total_row_count: 12_000,
-          returned_row_count: 100,
-          offset: 100,
-          browse_cap_reached: true,
-          rows: secondPageRows,
-        }),
-      })
-    )
+    queueResponses(response(), response({ selected: selectedRows({ total_row_count: 10_000, rows }) }))
 
     const wrapper = mountBody()
     await flushPromises()
@@ -541,19 +413,10 @@ describe('IntegrityTroubleshooterBody', () => {
     await flushPromises()
 
     const section = wrapper.find('section[aria-label="Selected value rows"]')
-    expect(section.text()).toContain('Only the first 10,000 local rows for this key are browsable.')
-    await wrapper.find('button[aria-label="Next rows page"]').trigger('click')
-    await flushPromises()
-
-    expect(requests).toHaveLength(1)
-    expect(pageRequests[1]).toEqual({
-      page: 1,
-      row_offset: 100,
-      row_limit: 100,
-      selected_value_token: 'token-a',
-    })
-    expect(pageRequests).toHaveLength(2)
-    expect(wrapper.find('section[aria-label="Selected value rows"] .grid-row').text()).toContain('MISSING-100')
+    expect(section.findAll('.grid-row')).toHaveLength(2_000)
+    expect(section.text()).toContain('10,000 local rows use this key.')
+    expect(wrapper.find('button[aria-label="Next rows page"]').exists()).toBe(false)
+    expect(wrapper.find('button[aria-label="Previous rows page"]').exists()).toBe(false)
   })
 
   it('reopens the inspection once when its page context expires', async () => {
@@ -586,7 +449,6 @@ describe('IntegrityTroubleshooterBody', () => {
           reason: 'value_no_longer_unmatched',
           message: 'The selected value no longer appears as an unmatched value in the current data.',
           total_row_count: null,
-          returned_row_count: null,
           columns: [],
           rows: [],
         }),
