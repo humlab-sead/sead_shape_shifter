@@ -47,6 +47,17 @@ class TestDSLIntegration:
         assert list(result["initials"]) == ["JD", "JS", "BJ"]
         assert len(deferred) == 0
 
+    def test_map_value_produces_typed_key_column(self, evaluator):
+        """map_value adds typed key values through the extra_columns evaluator."""
+        df = pd.DataFrame({"code": ["A", "B", None]})
+        extra_cols = {"lookup_id": "=map_value(code, 'A', 1, 'B', 2)"}
+
+        result, deferred = evaluator.evaluate_extra_columns(df, extra_cols, "test")
+
+        assert result["lookup_id"].tolist() == [1, 2, None]
+        assert type(result["lookup_id"].iloc[0]) is int
+        assert deferred == {}
+
     def test_dsl_with_string_functions(self, evaluator, sample_df):
         """Test DSL with string manipulation functions."""
         extra_cols = {

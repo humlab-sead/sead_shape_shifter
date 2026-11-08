@@ -23,6 +23,7 @@ describe('extraColumnsEditorUtils', () => {
 
   it('extracts formula references without DSL function names', () => {
     expect(extractFormulaReferences('=concat(upper(code), trim(name))')).toEqual(['code', 'name'])
+    expect(extractFormulaReferences("=map_value(code, 'A', 1)")).toEqual(['code'])
   })
 
   it('classifies copy expressions using available columns', () => {
@@ -120,6 +121,9 @@ describe('extraColumnsEditorUtils', () => {
     expect(suggestions.some((suggestion) => suggestion.category === 'function' && suggestion.value === 'upper()')).toBe(
       true
     )
+    expect(
+      suggestions.some((suggestion) => suggestion.category === 'function' && suggestion.value === 'map_value()')
+    ).toBe(true)
     expect(suggestions.some((suggestion) => suggestion.category === 'column' && suggestion.value === 'name')).toBe(true)
   })
 
