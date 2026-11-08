@@ -43,7 +43,7 @@
         </div>
 
         <v-alert v-if="!isIntegrityIssue && refreshed" type="info" variant="tonal" class="mb-4">
-          The retained inputs expired and were reproduced again from current data. Run a new trial to compare the
+          The retained inputs were stale and were reproduced again from current data. Run a new trial to compare the
           refreshed baseline.
         </v-alert>
 
@@ -367,7 +367,7 @@
                   <TroubleshooterDataGrid
                     :columns="exceptionColumns"
                     :rows="gridRows"
-                    :loading="rowsLoading"
+                    :loading="gridLoading"
                     height="360px"
                   />
                   <!-- The pager is the only page indicator left, so it appears
@@ -670,12 +670,21 @@ const activeGroup = computed(() => {
 const activeKeyNames = computed<string[]>(() =>
   side.value === 'trial' ? trialLocalKeys.value : (result.value?.configured_keys?.local_keys ?? [])
 )
+// The group total is already known from the retained snapshot, so the pager takes
+// its length from the detail rather than waiting for the row response. Otherwise
+// the pager changes length mid-read and the footer jumps on every switch.
+const groupTotalCount = computed(() => activeGroup.value?.total_count ?? rowTotalCount.value)
 // Paging is bounded by the browsable rows, so a result larger than the browse
 // cap does not offer empty pages past the cap.
 const pageCount = computed(() => {
-  const browsableRows = rowBrowseCap.value > 0 ? Math.min(rowTotalCount.value, rowBrowseCap.value) : rowTotalCount.value
+  const browsableRows =
+    rowBrowseCap.value > 0 ? Math.min(groupTotalCount.value, rowBrowseCap.value) : groupTotalCount.value
   return Math.max(1, Math.ceil(browsableRows / pageSize.value))
 })
+// The row read answers from the retained snapshot, so it is short. Painting a
+// loading overlay over the grid on every group or page change only flickers; the
+// overlay is reserved for a selection that has nothing to show yet.
+const gridLoading = computed(() => rowsLoading.value && rows.value.length === 0)
 watch([side, group, pageSize, trial], () => {
   page.value = 1
 })

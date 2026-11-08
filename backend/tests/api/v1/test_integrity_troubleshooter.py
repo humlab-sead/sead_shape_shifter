@@ -188,6 +188,21 @@ async def test_expired_page_context_returns_recoverable_gone_response(project_cl
 
 
 @pytest.mark.asyncio
+async def test_unknown_page_context_returns_the_same_stale_response(project_client, monkeypatch) -> None:
+    service = install_service_override(monkeypatch, response_model())
+
+    response = await project_client.post(
+        "/api/v1/projects/test_project/integrity-troubleshooter/context-one/page",
+        json={},
+    )
+
+    assert response.status_code == 410
+    assert response.json()["detail"]["reason"] == "context_expired"
+    assert response.json()["detail"]["recoverable"] is True
+    service.read_context.assert_awaited_once()
+
+
+@pytest.mark.asyncio
 async def test_close_releases_the_owned_context(project_client, monkeypatch) -> None:
     service = install_service_override(monkeypatch, response_model())
 
