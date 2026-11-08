@@ -3,8 +3,8 @@
     <div v-if="loading && !result" class="mb-4 integrity-loading">
       <v-progress-linear indeterminate color="primary" class="mb-1" />
       <p class="text-caption text-medium-emphasis mb-0">
-        Reading the link from current data. The link is re-run when this dialog opens; later pages use the same
-        inspection snapshot.
+        Reading the link from current data. The link is re-run when this dialog opens; selecting a value reads its rows
+        from the same inspection snapshot.
       </p>
     </div>
     <div v-else-if="loading" class="mb-2 integrity-page-loading" aria-label="Loading inspection page">
