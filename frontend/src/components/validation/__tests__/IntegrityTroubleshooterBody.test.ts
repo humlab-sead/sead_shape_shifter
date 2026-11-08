@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
+import { defineComponent } from 'vue'
 import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
@@ -12,6 +13,37 @@ vi.mock('@/api/integrityTroubleshooter', () => ({
 }))
 
 const vuetify = createVuetify({ components, directives })
+
+// The real grid renders rows through AG Grid, which does not run in jsdom.
+// This stub keeps the same read-only contract: columns, rows, and row clicks.
+const TroubleshooterDataGridStub = defineComponent({
+  name: 'TroubleshooterDataGrid',
+  props: {
+    columns: { type: Array, required: true },
+    rows: { type: Array, required: true },
+    height: { type: String, default: '320px' },
+    loading: { type: Boolean, default: false },
+    selectable: { type: Boolean, default: false },
+  },
+  emits: ['row-click'],
+  template: `
+    <div data-testid="grid-stub">
+      <div class="grid-header">
+        <span v-for="column in columns" :key="column.field">{{ column.header }}</span>
+      </div>
+      <button
+        v-for="(row, index) in rows"
+        :key="index"
+        type="button"
+        class="grid-row"
+        :data-row="index"
+        @click="$emit('row-click', row)"
+      >
+        <span v-for="column in columns" :key="column.field">{{ row[column.field] }}</span>
+      </button>
+    </div>
+  `,
+})
 
 const requests: IntegrityTroubleshootRequest[] = []
 const inspect = () => vi.mocked(integrityTroubleshooterApi.inspect)
@@ -69,6 +101,10 @@ function selectedRows(overrides: Partial<SelectedRows> = {}): SelectedRows {
     key_values: ['MISSING-A'],
     total_row_count: 1,
     returned_row_count: 1,
+    offset: 0,
+    limit: 100,
+    browse_cap: 10_000,
+    browse_cap_reached: false,
     columns: ['customer_code', 'name'],
     columns_truncated: false,
     rows: [{ customer_code: 'MISSING-A', name: 'Orphan order' }],
@@ -92,10 +128,14 @@ function mountBody(message: ValidationError = warning()) {
     global: {
       plugins: [vuetify],
       stubs: {
+        TroubleshooterDataGrid: TroubleshooterDataGridStub,
         VPagination: {
           props: ['length', 'modelValue'],
           emits: ['update:modelValue'],
           template: `<button type="button" aria-label="Next page" @click="$emit('update:modelValue', modelValue + 1)">Next page</button>`,
+        },
+        VTooltip: {
+          template: '<div data-testid="tooltip"><slot name="activator" :props="{}" /><slot /></div>',
         },
       },
     },
@@ -118,9 +158,14 @@ describe('IntegrityTroubleshooterBody', () => {
       local_entity: 'orders',
       metadata: { fk_index: 0, fk_signature: 'saved-signature', orphan_count: 2 },
       page: 1,
+      row_offset: 0,
+      row_limit: 100,
     })
-    expect(wrapper.text()).toContain('Complete distinct unmatched value count: 2')
-    expect(wrapper.text()).toContain('Showing 2 of 2 values')
+    expect(wrapper.text()).toContain('Showing 2 of 2 distinct values · Page 1')
+    expect(wrapper.find('[data-stat="recorded"] .integrity-finding-stat-value').text()).toBe('2')
+    expect(wrapper.find('[data-stat="current"] .integrity-finding-stat-value').text()).toBe('2')
+    expect(wrapper.find('button[aria-label="About integrity counts"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="tooltip"]').text()).toContain('recorded count comes from the validation warning')
     expect(wrapper.text()).toContain('A: orders')
     expect(wrapper.text()).toContain('B: customers')
     const keyPairs = wrapper.find('section[aria-label="Configured keys"]')
@@ -143,28 +188,29 @@ describe('IntegrityTroubleshooterBody', () => {
     expect(wrapper.text()).not.toContain('Inspected data source')
   })
 
-  it('separates the recorded warning count from the current count', async () => {
+  it('compares recorded and current unmatched counts in separate cards', async () => {
     inspect().mockReset()
     queueResponses(response({ status: 'not_reproduced', reason: 'count_changed', current_orphan_count: 5 }))
 
     const wrapper = mountBody()
     await flushPromises()
 
-    const rows = wrapper.findAll('section[aria-label="Unmatched value counts"] tbody tr')
-    expect(rows[0]?.findAll('td')[1]?.text()).toBe('2')
-    expect(rows[1]?.findAll('td')[1]?.text()).toBe('5')
+    expect(wrapper.find('[data-stat="recorded"] .integrity-finding-stat-value').text()).toBe('2')
+    expect(wrapper.find('[data-stat="current"] .integrity-finding-stat-value').text()).toBe('5')
+    expect(wrapper.find('section[aria-label="Unmatched value counts"]').exists()).toBe(false)
     expect(wrapper.text()).toContain('count_changed')
+    expect(wrapper.text()).toContain('Count changed')
     // Current values stay visible because the current data still has unmatched values.
     expect(wrapper.find('section[aria-label="Unmatched values"]').exists()).toBe(true)
   })
 
-  it('shows the backend refusal for a stale saved link without value controls', async () => {
+  it('shows the backend refusal for a stale configured link without value controls', async () => {
     inspect().mockReset()
     queueResponses(
       response({
         status: 'ineligible',
         reason: 'signature_mismatch',
-        message: 'The warning does not resolve to one saved link (signature_mismatch)',
+        message: 'The warning does not resolve to one configured link (signature_mismatch)',
         relationship: {
           local_entity: 'orders',
           remote_entity: null,
@@ -185,7 +231,6 @@ describe('IntegrityTroubleshooterBody', () => {
     expect(wrapper.text()).toContain('ineligible')
     expect(wrapper.text()).toContain('signature_mismatch')
     expect(wrapper.find('section[aria-label="Unmatched values"]').exists()).toBe(false)
-    expect(wrapper.find('.integrity-select-value').exists()).toBe(false)
   })
 
   it('shows a named non-reproduction reason without fabricating values', async () => {
@@ -228,7 +273,7 @@ describe('IntegrityTroubleshooterBody', () => {
     const wrapper = mountBody()
     await flushPromises()
 
-    expect(wrapper.find('section[aria-label="Unmatched values"] tbody tr').text()).toContain('—, X-1')
+    expect(wrapper.find('section[aria-label="Unmatched values"] .grid-row').text()).toContain('—, X-1')
   })
 
   it('renders one unmatched-value row per value with its local row count', async () => {
@@ -236,14 +281,13 @@ describe('IntegrityTroubleshooterBody', () => {
     await flushPromises()
 
     const section = wrapper.find('section[aria-label="Unmatched values"]')
-    expect(section.find('thead').text()).toContain('Unmatched key')
-    expect(section.find('thead').text()).toContain('Local rows')
+    expect(section.find('.grid-header').text()).toContain('Unmatched key')
+    expect(section.find('.grid-header').text()).toContain('Local rows')
 
-    const rows = section.findAll('tbody tr')
+    const rows = section.findAll('.grid-row')
     expect(rows).toHaveLength(2)
-    expect(rows[0]?.findAll('td').map((cell) => cell.text())).toEqual(['MISSING-A', '1', 'Show local rows'])
-    expect(rows[1]?.findAll('td').map((cell) => cell.text())).toEqual(['MISSING-B', '3', 'Show local rows'])
-    expect(section.findAll('.integrity-select-value')).toHaveLength(2)
+    expect(rows[0]?.text()).toBe('MISSING-A1')
+    expect(rows[1]?.text()).toBe('MISSING-B3')
   })
 
   it('pages with the current page number and clears the selection', async () => {
@@ -285,6 +329,8 @@ describe('IntegrityTroubleshooterBody', () => {
       local_entity: 'orders',
       metadata: { fk_index: 0, fk_signature: 'saved-signature', orphan_count: 2 },
       page: 2,
+      row_offset: 0,
+      row_limit: 100,
     })
     expect(wrapper.text()).toContain('No unmatched values on this page.')
     expect(wrapper.find('section[aria-label="Selected value rows"]').exists()).toBe(false)
@@ -333,7 +379,7 @@ describe('IntegrityTroubleshooterBody', () => {
     await flushPromises()
     expect(requests[1]?.page).toBe(2)
 
-    await wrapper.find('.integrity-select-value').trigger('click')
+    await wrapper.find('section[aria-label="Unmatched values"] .grid-row').trigger('click')
     await flushPromises()
 
     expect(requests[2]).toEqual({
@@ -341,6 +387,8 @@ describe('IntegrityTroubleshooterBody', () => {
       local_entity: 'orders',
       metadata: { fk_index: 0, fk_signature: 'saved-signature', orphan_count: 2 },
       page: 2,
+      row_offset: 0,
+      row_limit: 100,
       selected_value_token: 'token-z',
     })
   })
@@ -367,13 +415,13 @@ describe('IntegrityTroubleshooterBody', () => {
     await flushPromises()
 
     const section = wrapper.find('section[aria-label="Selected value rows"]')
-    expect(section.text()).toContain('Local rows for this value: 40')
-    expect(section.text()).toContain('Returned rows: 20')
+    expect(section.text()).toContain('Unmatched key: MISSING-A')
+    expect(section.text()).toContain('Showing 20 of 40 local rows for this key.')
     expect(section.text()).toContain('Only the first 2 columns are shown.')
-    expect(section.find('thead').text()).toContain('customer_code')
-    expect(section.findAll('tbody tr')).toHaveLength(20)
+    expect(section.find('.grid-header').text()).toContain('customer_code')
+    expect(section.findAll('.grid-row')).toHaveLength(20)
     // Only response-provided columns are rendered.
-    expect(section.find('thead').text()).not.toContain('system_id')
+    expect(section.find('.grid-header').text()).not.toContain('system_id')
   })
 
   it('shows the refusal when the selected value is no longer unmatched', async () => {
@@ -397,7 +445,7 @@ describe('IntegrityTroubleshooterBody', () => {
 
     const section = wrapper.find('section[aria-label="Selected value rows"]')
     expect(section.find('.integrity-selection-unavailable').text()).toContain('value_no_longer_unmatched')
-    expect(section.find('table').exists()).toBe(false)
+    expect(section.find('.grid-row').exists()).toBe(false)
   })
 
   it('surfaces a request failure instead of stale results', async () => {

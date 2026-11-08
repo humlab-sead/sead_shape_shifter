@@ -1,11 +1,15 @@
 <template>
   <v-dialog
     :model-value="modelValue"
-    max-width="1100"
+    :max-width="dialogMaxWidth"
     scrollable
     @update:model-value="emit('update:modelValue', $event)"
   >
-    <v-card>
+    <v-card
+      class="link-troubleshooter-dialog-card"
+      :class="{ 'link-troubleshooter-dialog-card--resizing': isResizingDialog }"
+      :style="dialogCardStyle"
+    >
       <v-card-title class="d-flex align-start justify-space-between ga-2">
         <div class="link-troubleshooter-heading">
           <div>{{ header }}</div>
@@ -122,7 +126,7 @@
                     />
                   </div>
                   <p v-if="result.baseline.settings" class="text-caption text-medium-emphasis mb-3">
-                    Saved: {{ describeJoin(result.baseline.settings.join_type) }}
+                    Configured: {{ describeJoin(result.baseline.settings.join_type) }}
                   </p>
 
                   <details class="link-troubleshooter-details mb-3">
@@ -214,7 +218,7 @@
 
                   <div class="d-flex align-center ga-2">
                     <v-btn color="primary" :disabled="!canRunTrial || loading" @click="runTrial">Run trial</v-btn>
-                    <v-btn variant="text" :disabled="!result.baseline" @click="reset">Reset to saved</v-btn>
+                    <v-btn variant="text" :disabled="!result.baseline" @click="reset">Reset to configured link</v-btn>
                   </div>
                 </section>
               </template>
@@ -226,7 +230,24 @@
               aria-label="Link results"
             >
               <div class="d-flex flex-wrap align-center justify-space-between ga-2 mb-1">
-                <h2 class="text-subtitle-1 mb-0">Inspect results</h2>
+                <div class="d-flex align-center ga-1">
+                  <h2 class="text-subtitle-1 mb-0">Inspect results</h2>
+                  <v-tooltip location="top" max-width="320">
+                    <template #activator="{ props }">
+                      <v-btn
+                        v-bind="props"
+                        icon
+                        size="x-small"
+                        variant="text"
+                        class="text-medium-emphasis"
+                        aria-label="About result totals"
+                      >
+                        <v-icon icon="mdi-help-circle-outline" size="small" />
+                      </v-btn>
+                    </template>
+                    <div class="text-body-2">Totals cover the full link input.</div>
+                  </v-tooltip>
+                </div>
                 <div class="d-flex flex-wrap ga-2" role="group" aria-label="Result source">
                   <v-btn
                     data-side="baseline"
@@ -235,7 +256,7 @@
                     :aria-pressed="side === 'baseline'"
                     @click="selectSide('baseline')"
                   >
-                    Saved link
+                    Configured link
                   </v-btn>
                   <v-btn
                     v-if="trial"
@@ -249,7 +270,6 @@
                   </v-btn>
                 </div>
               </div>
-              <p class="text-caption text-medium-emphasis mb-3">Totals cover the full link input.</p>
 
               <v-alert
                 v-if="
@@ -277,43 +297,41 @@
                 <strong>Trial {{ trial.status }}:</strong> {{ trial.reason }}. {{ trial.message }}
               </v-alert>
 
-              <p v-if="!trial" class="text-body-2 text-medium-emphasis mb-4">
-                Run a trial to compare the saved link with the selected keys and settings.
-              </p>
-
               <div class="link-result-stats mb-2">
                 <div v-for="stat in resultStats" :key="stat.key" class="link-result-stat" :data-stat="stat.key">
                   <div class="link-result-stat-value">{{ formatCount(stat.value) }}</div>
                   <div class="text-body-2 text-medium-emphasis">{{ stat.label }}</div>
                   <div v-if="showDeltas" class="text-caption text-medium-emphasis" :data-delta="stat.key">
-                    {{ formatDelta(stat.saved, stat.value) }} vs saved
+                    {{ formatDelta(stat.configured, stat.value) }} vs configured
                   </div>
                 </div>
               </div>
-              <p v-if="joinNote" class="text-body-2 text-medium-emphasis mb-4">{{ joinNote }}</p>
 
               <section aria-label="Exception rows">
-                <div class="d-flex flex-wrap ga-2 mb-3" role="group" aria-label="Affected row category">
-                  <v-btn
-                    data-group="unmatched"
-                    size="small"
-                    :variant="group === 'unmatched' ? 'flat' : 'outlined'"
-                    :aria-pressed="group === 'unmatched'"
-                    @click="selectGroup('unmatched')"
-                  >
-                    Unmatched · {{ formatCount(activeDetail?.unmatched?.total_count) }}
-                  </v-btn>
-                  <v-btn
-                    data-group="multiply_matched"
-                    size="small"
-                    :variant="group === 'multiply_matched' ? 'flat' : 'outlined'"
-                    :aria-pressed="group === 'multiply_matched'"
-                    @click="selectGroup('multiply_matched')"
-                  >
-                    Multiple matches · {{ formatCount(activeDetail?.multiply_matched?.total_count) }}
-                  </v-btn>
+                <div class="affected-row-toolbar d-flex flex-wrap align-center ga-2 mb-3">
+                  <p v-if="joinNote" class="join-note text-body-2 text-medium-emphasis mb-0">{{ joinNote }}</p>
+                  <div class="d-flex flex-wrap ga-2" role="group" aria-label="Affected row category">
+                    <v-btn
+                      data-group="unmatched"
+                      size="small"
+                      :variant="group === 'unmatched' ? 'flat' : 'outlined'"
+                      :aria-pressed="group === 'unmatched'"
+                      @click="selectGroup('unmatched')"
+                    >
+                      Unmatched · {{ formatCount(activeDetail?.unmatched?.total_count) }}
+                    </v-btn>
+                    <v-btn
+                      data-group="multiply_matched"
+                      size="small"
+                      :variant="group === 'multiply_matched' ? 'flat' : 'outlined'"
+                      :aria-pressed="group === 'multiply_matched'"
+                      @click="selectGroup('multiply_matched')"
+                    >
+                      Multiple matches · {{ formatCount(activeDetail?.multiply_matched?.total_count) }}
+                    </v-btn>
+                  </div>
                 </div>
-                <div v-if="activeRows.length > 25" class="mb-3">
+                <div v-if="activeGroup" class="mb-3">
                   <v-select
                     v-model="pageSize"
                     :items="pageSizeOptions"
@@ -325,64 +343,29 @@
                 </div>
 
                 <div v-if="!activeGroup" class="text-body-2 text-medium-emphasis">
-                  No exception rows are available for this selection.
+                  No affected rows are available for this selection.
                 </div>
                 <template v-else>
                   <p class="text-body-2 mb-2">
-                    Showing {{ pagedRows.length.toLocaleString() }} of
-                    {{ activeGroup.returned_count.toLocaleString() }} returned rows;
-                    {{ activeGroup.total_count.toLocaleString() }} affected source rows in total.
+                    Showing {{ formatCount(gridRows.length) }} of {{ formatCount(rowTotalCount) }} affected source rows
+                    · Page {{ page }} of {{ pageCount }}
                   </p>
-                  <v-alert
-                    v-if="activeGroup.row_cap_reached"
-                    type="info"
-                    variant="tonal"
-                    density="compact"
-                    class="mb-2"
-                  >
-                    Only the first {{ activeGroup.row_cap.toLocaleString() }} exception rows are returned.
+                  <v-alert v-if="rowBrowseCapReached" type="info" variant="tonal" density="compact" class="mb-2">
+                    Only the first {{ formatCount(rowBrowseCap) }} affected source rows are browsable.
                   </v-alert>
-                  <v-alert
-                    v-if="activeGroup.budget_exhausted"
-                    type="info"
-                    variant="tonal"
-                    density="compact"
-                    class="mb-2"
-                  >
-                    The response size limit stopped further exception rows.
+                  <v-alert v-if="rowStatusMessage" type="info" variant="tonal" density="compact" class="mb-2">
+                    {{ rowStatusMessage }}
                   </v-alert>
-                  <v-alert
-                    v-if="activeDetail?.detail_truncated"
-                    type="info"
-                    variant="tonal"
-                    density="compact"
-                    class="mb-2"
-                  >
-                    Some findings or key values in this response were shortened.
+                  <v-alert v-if="rowsError" type="error" variant="tonal" density="compact" class="mb-2">
+                    {{ rowsError.message }}
                   </v-alert>
 
-                  <v-data-table
-                    v-if="pagedRows.length"
-                    class="exception-rows-table"
-                    :headers="exceptionHeaders"
-                    :items="pagedRows"
-                    item-value="input_position"
-                    :items-per-page="-1"
-                    hide-default-footer
-                    density="compact"
-                  >
-                    <template #item.input_position="{ item }">{{ item.input_position + 1 }}</template>
-                    <template
-                      v-for="(_, index) in activeKeyNames"
-                      :key="`key-${index}`"
-                      #[`item.key-${index}`]="{ item }"
-                    >
-                      <span>{{ formatKeyValue(item.key_values[index]) }}</span>
-                    </template>
-                  </v-data-table>
-                  <div v-else class="text-center text-medium-emphasis py-4">
-                    No returned exception rows are available for this page.
-                  </div>
+                  <TroubleshooterDataGrid
+                    :columns="exceptionColumns"
+                    :rows="gridRows"
+                    :loading="rowsLoading"
+                    height="360px"
+                  />
                   <div class="d-flex justify-end mt-2">
                     <v-pagination
                       :model-value="page"
@@ -423,19 +406,43 @@
       <v-card-actions class="justify-end">
         <v-btn variant="text" @click="close">Close</v-btn>
       </v-card-actions>
+
+      <button
+        type="button"
+        class="link-troubleshooter-resize-handle link-troubleshooter-resize-handle--right"
+        aria-label="Resize troubleshooting dialog width"
+        aria-keyshortcuts="ArrowLeft ArrowRight"
+        @pointerdown="startDialogResize($event, 'width')"
+        @keydown="resizeDialogWithKeyboard($event, 'width')"
+      />
+      <button
+        type="button"
+        class="link-troubleshooter-resize-handle link-troubleshooter-resize-handle--bottom"
+        aria-label="Resize troubleshooting dialog height"
+        aria-keyshortcuts="ArrowUp ArrowDown"
+        @pointerdown="startDialogResize($event, 'height')"
+        @keydown="resizeDialogWithKeyboard($event, 'height')"
+      />
+      <button
+        type="button"
+        class="link-troubleshooter-resize-handle link-troubleshooter-resize-handle--corner"
+        aria-label="Resize troubleshooting dialog width and height"
+        aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown"
+        @pointerdown="startDialogResize($event, 'both')"
+        @keydown="resizeDialogWithKeyboard($event, 'both')"
+      />
     </v-card>
   </v-dialog>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import {
   useLinkTroubleshooter,
   type LinkExceptionGroupName,
   type LinkExceptionSide,
 } from '@/composables/useLinkTroubleshooter'
 import type {
-  LinkTroubleshootExceptionRow,
   LinkTroubleshootJoinTypeSetting,
   LinkTroubleshootKeyValue,
   LinkTroubleshootRequestedSetting,
@@ -447,6 +454,7 @@ import {
   toLinkTroubleshootRequest,
 } from '@/utils/linkTroubleshooter'
 import IntegrityTroubleshooterBody from './IntegrityTroubleshooterBody.vue'
+import TroubleshooterDataGrid, { type TroubleshooterGridColumn } from './TroubleshooterDataGrid.vue'
 
 interface Props {
   modelValue: boolean
@@ -462,12 +470,39 @@ interface Finding {
   suggestion?: string | null
 }
 
+type DialogResizeDirection = 'width' | 'height' | 'both'
+
+interface DialogResizeStart {
+  direction: DialogResizeDirection
+  clientX: number
+  clientY: number
+  width: number
+  height: number
+}
+
 const props = defineProps<Props>()
 const emit = defineEmits<{
   (event: 'update:modelValue', value: boolean): void
 }>()
 const localMessage = ref<string | null>(null)
 const integrityRemoteEntity = ref<string | null>(null)
+const dialogSize = ref<{ width: number; height: number } | null>(null)
+const resizeStart = ref<DialogResizeStart | null>(null)
+
+const dialogMaxWidth = computed(() => (dialogSize.value ? 'calc(100vw - 32px)' : 1100))
+const dialogCardStyle = computed(() => {
+  if (!dialogSize.value) {
+    return undefined
+  }
+
+  return {
+    width: `${dialogSize.value.width}px`,
+    height: `${dialogSize.value.height}px`,
+    maxWidth: 'calc(100vw - 32px)',
+    maxHeight: 'calc(100vh - 32px)',
+  }
+})
+const isResizingDialog = computed(() => resizeStart.value !== null)
 
 const {
   loading,
@@ -486,6 +521,13 @@ const {
   pageSize,
   group,
   side,
+  rows,
+  rowTotalCount,
+  rowBrowseCap,
+  rowBrowseCapReached,
+  rowStatusMessage,
+  rowsLoading,
+  rowsError,
   canRunTrial,
   open,
   run,
@@ -521,7 +563,7 @@ function textifyFlag(name: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1)
 }
 
-// Saved link facts under the heading: cardinality, linking pass, then the
+// Configured link facts under the heading: cardinality, linking pass, then the
 // constraint flags that are set to true. Unset flags are left out.
 const relationshipSummary = computed<string>(() => {
   const relationship = result.value?.relationship
@@ -547,15 +589,25 @@ const relationshipSummary = computed<string>(() => {
 
 const keyPairCount = computed(() => Math.max(localKeys.value.length, remoteKeys.value.length))
 const resultStats = computed(() => {
-  const saved = result.value?.baseline
-  const active = side.value === 'trial' ? (trial.value?.totals ?? null) : saved
+  const configured = result.value?.baseline
+  const active = side.value === 'trial' ? (trial.value?.totals ?? null) : configured
   return [
-    { key: 'source_rows', label: 'Source rows', value: active?.input_a_rows, saved: saved?.input_a_rows },
-    { key: 'output_rows', label: 'Output rows', value: active?.output_rows, saved: saved?.output_rows },
+    {
+      key: 'source_rows',
+      label: 'Source rows',
+      value: active?.input_a_rows,
+      configured: configured?.input_a_rows,
+    },
+    {
+      key: 'output_rows',
+      label: 'Output rows',
+      value: active?.output_rows,
+      configured: configured?.output_rows,
+    },
   ]
 })
-// The delta is only meaningful against the saved link, so it is shown for the
-// trial result and omitted for the saved result itself.
+// The delta is only meaningful against the configured link, so it is shown for
+// the trial result and omitted for the configured result itself.
 const showDeltas = computed(() => side.value === 'trial' && trial.value?.status === 'complete')
 
 // Explain what the shown join does with source rows that find no match, so the
@@ -568,7 +620,7 @@ const joinNote = computed<string | null>(() => {
     return null
   }
   const effect = joinType === 'left' ? 'keeps' : 'removes'
-  return `The ${isTrial ? 'trial' : 'saved'} ${joinType} join ${effect} unmatched source rows.`
+  return `The ${isTrial ? 'trial' : 'configured'} ${joinType} join ${effect} unmatched source rows.`
 })
 
 const baselineFindings = computed(() => result.value?.baseline?.detail?.findings ?? null)
@@ -610,36 +662,47 @@ const activeGroup = computed(() => {
 const activeKeyNames = computed<string[]>(() =>
   side.value === 'trial' ? trialLocalKeys.value : (result.value?.configured_keys?.local_keys ?? [])
 )
-const activeRows = computed<LinkTroubleshootExceptionRow[]>(() => activeGroup.value?.rows ?? [])
-const pageCount = computed(() => Math.max(1, Math.ceil(activeRows.value.length / pageSize.value)))
-const pagedRows = computed(() => {
-  const start = (page.value - 1) * pageSize.value
-  return activeRows.value.slice(start, start + pageSize.value)
-})
+const pageCount = computed(() => Math.max(1, Math.ceil(rowTotalCount.value / pageSize.value)))
 watch([side, group, pageSize, trial], () => {
   page.value = 1
 })
 // A result that just arrived is the one the operator asked for, so show it
-// without requiring a second switch. Clearing the trial returns to the saved link.
+// without requiring a second switch. Clearing the trial returns to the configured link.
 watch(trial, (value) => {
   side.value = value ? 'trial' : 'baseline'
 })
-// Headers are not sortable: the backend returns a fixed bounded order, so
-// sorting one page would only reorder the rows already returned.
-const exceptionHeaders = computed(() => [
-  { title: 'Input row', key: 'input_position', sortable: false },
-  ...activeKeyNames.value.map((key, index) => ({ title: `A key: ${key}`, key: `key-${index}`, sortable: false })),
-  { title: 'Remote matches', key: 'remote_match_count', sortable: false },
-  { title: 'Output rows', key: 'output_row_contribution', sortable: false },
+// Headers are not sortable: the backend returns a fixed bounded order from its
+// row route, so sorting one page would only reorder the rows already returned.
+const exceptionColumns = computed<TroubleshooterGridColumn[]>(() => [
+  { field: 'input_position', header: 'Input row', width: 110 },
+  ...activeKeyNames.value.map((key, index) => ({ field: `key-${index}`, header: `A key: ${key}` })),
+  { field: 'remote_match_count', header: 'Remote matches', align: 'right' as const, width: 150 },
+  { field: 'output_row_contribution', header: 'Output rows', align: 'right' as const, width: 130 },
 ])
 
+// Grid rows are built from the loaded page; the row index is one-based so it
+// reads as an input row number rather than a zero-based position.
+const gridRows = computed<Record<string, unknown>[]>(() =>
+  rows.value.map((row) => {
+    const record: Record<string, unknown> = {
+      input_position: row.input_position + 1,
+      remote_match_count: row.remote_match_count,
+      output_row_contribution: row.output_row_contribution,
+    }
+    activeKeyNames.value.forEach((_, index) => {
+      record[`key-${index}`] = formatKeyValue(row.key_values[index])
+    })
+    return record
+  })
+)
+
 const joinTypeOptions = [
-  { title: 'Inherit saved', value: null },
+  { title: 'Inherit configured', value: null },
   { title: 'Inner', value: 'inner' },
   { title: 'Left', value: 'left' },
 ]
 const nullOptionItems = [
-  { title: 'Inherit saved', value: null },
+  { title: 'Inherit configured', value: null },
   { title: 'Yes', value: true },
   { title: 'No', value: false },
 ]
@@ -650,6 +713,7 @@ watch(
   async ([isOpen, message]) => {
     integrityRemoteEntity.value = null
     if (!isOpen) {
+      stopDialogResize()
       localMessage.value = null
       await releaseContext()
       return
@@ -676,7 +740,102 @@ watch(
   { immediate: true }
 )
 
+onBeforeUnmount(stopDialogResize)
+
+function startDialogResize(event: PointerEvent, direction: DialogResizeDirection): void {
+  const card = getDialogCard(event.currentTarget)
+  if (event.button !== 0 || !card) {
+    return
+  }
+
+  const bounds = card.getBoundingClientRect()
+  const size = constrainDialogSize(dialogSize.value?.width ?? bounds.width, dialogSize.value?.height ?? bounds.height)
+  dialogSize.value = size
+  resizeStart.value = {
+    direction,
+    clientX: event.clientX,
+    clientY: event.clientY,
+    ...size,
+  }
+
+  window.addEventListener('pointermove', resizeDialog)
+  window.addEventListener('pointerup', stopDialogResize)
+  window.addEventListener('pointercancel', stopDialogResize)
+  event.preventDefault()
+  event.stopPropagation()
+}
+
+function resizeDialog(event: PointerEvent): void {
+  const start = resizeStart.value
+  if (!start) {
+    return
+  }
+
+  const widthDelta = event.clientX - start.clientX
+  const heightDelta = event.clientY - start.clientY
+  // The dialog stays centered, so double the pointer delta to keep the dragged edge under the pointer.
+  const width = start.width + (start.direction !== 'height' ? widthDelta * 2 : 0)
+  const height = start.height + (start.direction !== 'width' ? heightDelta * 2 : 0)
+  dialogSize.value = constrainDialogSize(width, height)
+}
+
+function resizeDialogWithKeyboard(event: KeyboardEvent, direction: DialogResizeDirection): void {
+  const bounds = getDialogCard(event.currentTarget)?.getBoundingClientRect()
+  const size =
+    dialogSize.value ??
+    (bounds
+      ? {
+          width: bounds.width,
+          height: bounds.height,
+        }
+      : null)
+  if (!size) {
+    return
+  }
+
+  const step = event.shiftKey ? 48 : 24
+  const widthDelta = event.key === 'ArrowRight' ? step : event.key === 'ArrowLeft' ? -step : 0
+  const heightDelta = event.key === 'ArrowDown' ? step : event.key === 'ArrowUp' ? -step : 0
+  const changeWidth = direction !== 'height' ? widthDelta : 0
+  const changeHeight = direction !== 'width' ? heightDelta : 0
+  if (changeWidth === 0 && changeHeight === 0) {
+    return
+  }
+
+  event.preventDefault()
+  dialogSize.value = constrainDialogSize(size.width + changeWidth, size.height + changeHeight)
+}
+
+function getDialogCard(target: EventTarget | null): HTMLElement | null {
+  if (!(target instanceof HTMLElement)) {
+    return null
+  }
+
+  const card = target.closest('.link-troubleshooter-dialog-card')
+  return card instanceof HTMLElement ? card : null
+}
+
+function constrainDialogSize(width: number, height: number): { width: number; height: number } {
+  const maxWidth = Math.max(280, window.innerWidth - 32)
+  const maxHeight = Math.max(240, window.innerHeight - 32)
+  const minWidth = Math.min(480, maxWidth)
+  const minHeight = Math.min(320, maxHeight)
+
+  return {
+    width: Math.round(Math.min(maxWidth, Math.max(minWidth, width))),
+    height: Math.round(Math.min(maxHeight, Math.max(minHeight, height))),
+  }
+}
+
+function stopDialogResize(): void {
+  window.removeEventListener('pointermove', resizeDialog)
+  window.removeEventListener('pointerup', stopDialogResize)
+  window.removeEventListener('pointercancel', stopDialogResize)
+  resizeStart.value = null
+}
+
 function close(): void {
+  stopDialogResize()
   emit('update:modelValue', false)
 }
 
@@ -736,17 +895,74 @@ function formatCount(value: number | null | undefined): string {
   return value === null || value === undefined ? '—' : value.toLocaleString()
 }
 
-function formatDelta(saved: number | null | undefined, trialValue: number | null | undefined): string {
-  if (saved === null || saved === undefined || trialValue === null || trialValue === undefined) {
+function formatDelta(configured: number | null | undefined, trialValue: number | null | undefined): string {
+  if (configured === null || configured === undefined || trialValue === null || trialValue === undefined) {
     return '—'
   }
 
-  const delta = trialValue - saved
+  const delta = trialValue - configured
   return delta > 0 ? `+${delta.toLocaleString()}` : delta.toLocaleString()
 }
 </script>
 
 <style scoped>
+.link-troubleshooter-dialog-card {
+  position: relative;
+}
+
+.link-troubleshooter-dialog-card--resizing {
+  user-select: none;
+}
+
+.link-troubleshooter-resize-handle {
+  position: absolute;
+  z-index: 5;
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.link-troubleshooter-resize-handle:focus-visible {
+  outline: 2px solid rgb(var(--v-theme-primary));
+  outline-offset: -2px;
+}
+
+.link-troubleshooter-resize-handle--right {
+  top: 0;
+  right: 0;
+  width: 10px;
+  height: 100%;
+  cursor: ew-resize;
+}
+
+.link-troubleshooter-resize-handle--bottom {
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 10px;
+  cursor: ns-resize;
+}
+
+.link-troubleshooter-resize-handle--corner {
+  right: 0;
+  bottom: 0;
+  width: 20px;
+  height: 20px;
+  cursor: nwse-resize;
+}
+
+.link-troubleshooter-resize-handle--corner::after {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 0 12px 12px;
+  border-color: transparent transparent rgba(var(--v-theme-on-surface), 0.3) transparent;
+  content: '';
+}
+
 .link-troubleshooter-workspace {
   display: grid;
   grid-template-columns: minmax(280px, 0.9fr) minmax(0, 1.4fr);

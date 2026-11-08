@@ -12,12 +12,12 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
+from backend.app.core.config import Settings
 from backend.app.mappers.project_mapper import ProjectMapper
-from backend.app.models.integrity_troubleshooter import decode_key_token, encode_key_token
+from backend.app.models.integrity_troubleshooter import ROW_PAGE_SIZE, decode_key_token, encode_key_token
 from backend.app.models.project import Project
 from backend.app.services.integrity_troubleshooter_service import (
     COLUMN_LIMIT,
-    ROW_SAMPLE_LIMIT,
     VALUE_PAGE_SIZE,
     IntegrityTroubleshooterService,
 )
@@ -89,9 +89,9 @@ def build_saved_project(cfg: dict[str, Any]) -> ShapeShiftProject:
     return ProjectMapper.to_core(build_api_project(cfg))
 
 
-def service_for(api_project: Project) -> IntegrityTroubleshooterService:
+def service_for(api_project: Project, settings: Settings | None = None) -> IntegrityTroubleshooterService:
     """Build an integrity service over one in-memory API project."""
-    return IntegrityTroubleshooterService(project_service=StubProjectService(api_project))  # type: ignore[arg-type]
+    return IntegrityTroubleshooterService(project_service=StubProjectService(api_project), settings=settings)  # type: ignore[arg-type]
 
 
 def metadata_for(saved_project: ShapeShiftProject, *, local_entity: str = "orders", index: int = 0, count: int) -> dict[str, Any]:
@@ -239,7 +239,7 @@ async def test_boolean_orphan_count_is_not_treated_as_an_integer():
 
 @pytest.mark.asyncio
 async def test_missing_metadata_is_ineligible():
-    """A warning without saved-link identity cannot be inspected."""
+    """A warning without configured-link identity cannot be inspected."""
     service = service_for(build_api_project(BASE_CFG))
 
     result = await service.inspect(project_name=PROJECT_NAME, issue_type="FK_DATA_INTEGRITY", local_entity="orders", metadata={})
@@ -251,7 +251,7 @@ async def test_missing_metadata_is_ineligible():
 
 @pytest.mark.asyncio
 async def test_stale_signature_is_ineligible():
-    """A signature that no longer matches the saved entry is refused by name."""
+    """A signature that no longer matches the configured entry is refused by name."""
     saved_project = build_saved_project(BASE_CFG)
     service = service_for(build_api_project(BASE_CFG))
     metadata = metadata_for(saved_project, count=2)
@@ -261,6 +261,7 @@ async def test_stale_signature_is_ineligible():
 
     assert result.status == "ineligible"
     assert result.reason == "signature_mismatch"
+    assert result.message == "The warning does not resolve to one configured link (signature_mismatch)"
 
 
 @pytest.mark.asyncio
@@ -383,29 +384,74 @@ async def test_values_report_local_row_counts(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_selected_rows_are_bounded_and_ordered(monkeypatch):
-    """A selected value returns at most the row sample limit with deterministic rows."""
+async def test_selected_rows_are_paged_in_a_deterministic_order(monkeypatch):
+    """A selected value can be browsed by bounded row windows in a fixed order."""
     saved_project = build_saved_project(BASE_CFG)
-    count = ROW_SAMPLE_LIMIT + 5
+    row_limit = 20
+    count = row_limit + 5
     local = local_frame(["A"] * count)
     service = service_for(build_api_project(BASE_CFG))
     patch_frames(monkeypatch, service, FrameSource(local=local, remote=remote_frame(["C1"])))
 
     token = encode_key_token(("A",))
-    result = await service.inspect(
+    first = await service.inspect(
         project_name=PROJECT_NAME,
         issue_type="FK_DATA_INTEGRITY",
         local_entity="orders",
         metadata=metadata_for(saved_project, count=1),
         selected_value_token=token,
+        row_offset=0,
+        row_limit=row_limit,
+    )
+    second = await service.inspect(
+        project_name=PROJECT_NAME,
+        issue_type="FK_DATA_INTEGRITY",
+        local_entity="orders",
+        metadata=metadata_for(saved_project, count=1),
+        selected_value_token=token,
+        row_offset=row_limit,
+        row_limit=row_limit,
+    )
+
+    assert first.selected is not None
+    assert first.selected.status == "selected"
+    assert first.selected.total_row_count == count
+    assert first.selected.returned_row_count == row_limit
+    assert first.selected.offset == 0
+    assert first.selected.limit == row_limit
+    assert first.selected.browse_cap == 10_000
+    assert first.selected.browse_cap_reached is False
+    assert first.selected.rows[0]["order_code"] == "O000"
+
+    assert second.selected is not None
+    assert second.selected.returned_row_count == 5
+    assert second.selected.rows[0]["order_code"] == f"O{row_limit:03d}"
+
+
+@pytest.mark.asyncio
+async def test_selected_rows_report_the_browse_cap(monkeypatch, tmp_path):
+    """The configured browse cap limits returned rows and is reported separately from the total."""
+    saved_project = build_saved_project(BASE_CFG)
+    settings = Settings(_env_file=None, APPLICATION_ROOT=tmp_path, LINK_TROUBLESHOOT_BROWSE_ROW_CAP=3)
+    local = local_frame(["A"] * 8)
+    service = service_for(build_api_project(BASE_CFG), settings=settings)
+    patch_frames(monkeypatch, service, FrameSource(local=local, remote=remote_frame(["C1"])))
+
+    result = await service.inspect(
+        project_name=PROJECT_NAME,
+        issue_type="FK_DATA_INTEGRITY",
+        local_entity="orders",
+        metadata=metadata_for(saved_project, count=1),
+        selected_value_token=encode_key_token(("A",)),
+        row_offset=0,
+        row_limit=ROW_PAGE_SIZE,
     )
 
     assert result.selected is not None
-    assert result.selected.status == "selected"
-    assert result.selected.total_row_count == count
-    assert result.selected.returned_row_count == ROW_SAMPLE_LIMIT
-    assert len(result.selected.rows) == ROW_SAMPLE_LIMIT
-    assert result.selected.rows[0]["order_code"] == "O000"
+    assert result.selected.total_row_count == 8
+    assert result.selected.browse_cap == 3
+    assert result.selected.browse_cap_reached is True
+    assert result.selected.returned_row_count == 3
 
 
 @pytest.mark.asyncio
@@ -697,3 +743,46 @@ async def test_inspection_writes_nothing_to_shared_caches_or_the_project():
     # The saved project used for parsing is rebuilt from the API project, so the
     # stub project is the only shared object and must be untouched.
     assert build_saved_project(BASE_CFG).cfg == saved_project.cfg
+
+
+@pytest.mark.asyncio
+async def test_large_row_result_stays_browsable_and_read_only(monkeypatch):
+    """A large affected row set is browsed in bounded windows and writes nothing."""
+    api_project = build_api_project(BASE_CFG)
+    api_snapshot = api_project.model_dump()
+    saved_project = build_saved_project(BASE_CFG)
+    total_rows = 2_500
+    row_limit = 500
+    service = service_for(api_project)
+    patch_frames(
+        monkeypatch,
+        service,
+        FrameSource(local=local_frame(["A"] * total_rows), remote=remote_frame(["C1"])),
+    )
+    token = encode_key_token(("A",))
+    metadata = metadata_for(saved_project, count=1)
+
+    async def page(offset: int):
+        return await service.inspect(
+            project_name=PROJECT_NAME,
+            issue_type="FK_DATA_INTEGRITY",
+            local_entity="orders",
+            metadata=metadata,
+            selected_value_token=token,
+            row_offset=offset,
+            row_limit=row_limit,
+        )
+
+    first = await page(0)
+    middle = await page(2_000)
+    beyond = await page(2_500)
+
+    assert first.selected is not None and middle.selected is not None and beyond.selected is not None
+    assert first.selected.total_row_count == total_rows
+    assert first.selected.returned_row_count == row_limit
+    assert first.selected.rows[0]["order_code"] == "O000"
+    assert middle.selected.returned_row_count == row_limit
+    assert middle.selected.rows[0]["order_code"] == "O2000"
+    assert beyond.selected.returned_row_count == 0
+    assert first.selected.browse_cap_reached is False
+    assert api_project.model_dump() == api_snapshot

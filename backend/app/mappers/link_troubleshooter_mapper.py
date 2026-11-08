@@ -11,6 +11,10 @@ import pandas as pd
 
 from backend.app.mappers.validation_mapper import ValidationMapper
 from backend.app.models.link_troubleshooter import (
+    EXCEPTION_ROW_PAGE_SIZE,
+    ExceptionGroupName,
+    ExceptionRowSide,
+    LinkExceptionRowsPage,
     LinkExperimentContextResponse,
     LinkExperimentTrialResponse,
     LinkTroubleshootBaseline,
@@ -39,6 +43,7 @@ if TYPE_CHECKING:
         LinkExperimentDiagnostics,
         TrialExceptionGroup,
         TrialExceptionGroups,
+        TrialExceptionRow,
         TrialSettingsReport,
     )
     from backend.app.services.link_trial_service import LinkTrialResult
@@ -293,10 +298,15 @@ class LinkTroubleshooterMapper:
 
     @staticmethod
     def _build_group(group: TrialExceptionGroup, row_cap: int, budget: _DetailBudget) -> LinkTroubleshootExceptionGroup:
-        """Return one group with bounded key values within the remaining budget."""
+        """Return one group with its first browse page inside the remaining budget.
+
+        The response carries a first page, not the whole browse window. Rows past
+        that page are read through the exception-row route, so the baseline
+        response stays bounded even when the browse cap is 10,000 rows.
+        """
         rows: list[LinkTroubleshootExceptionRow] = []
         budget_exhausted: bool = False
-        for row in group.rows:
+        for row in group.rows[:EXCEPTION_ROW_PAGE_SIZE]:
             key_values: list[LinkTroubleshootKeyValue] = []
             row_bytes: int = 0
             for value in row.key_values:
@@ -322,6 +332,45 @@ class LinkTroubleshooterMapper:
             row_cap_reached=group.total_count > row_cap,
             budget_exhausted=budget_exhausted,
             rows=rows,
+        )
+
+    @staticmethod
+    def to_exception_rows_page(
+        *,
+        side: ExceptionRowSide,
+        group: ExceptionGroupName,
+        offset: int,
+        limit: int,
+        total_count: int,
+        browse_cap: int,
+        rows: Sequence[TrialExceptionRow],
+    ) -> LinkExceptionRowsPage:
+        """Map one already-sliced exception-row window to the browse response."""
+        mapped_rows: list[LinkTroubleshootExceptionRow] = []
+        for row in rows:
+            key_values: list[LinkTroubleshootKeyValue] = [
+                LinkTroubleshooterMapper._bounded_key_value(value)[0] for value in row.key_values
+            ]
+            mapped_rows.append(
+                LinkTroubleshootExceptionRow(
+                    input_position=row.input_position,
+                    key_values=key_values,
+                    remote_match_count=row.remote_match_count,
+                    output_row_contribution=row.output_row_contribution,
+                )
+            )
+
+        return LinkExceptionRowsPage(
+            status="available",
+            side=side,
+            group=group,
+            offset=offset,
+            limit=limit,
+            total_count=total_count,
+            browse_cap=browse_cap,
+            browse_cap_reached=total_count > browse_cap,
+            returned_count=len(mapped_rows),
+            rows=mapped_rows,
         )
 
     @staticmethod

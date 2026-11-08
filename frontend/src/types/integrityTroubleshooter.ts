@@ -17,6 +17,8 @@ export interface IntegrityTroubleshootRequest {
   metadata: Record<string, ValidationMetadataValue>
   page?: number
   selected_value_token?: string | null
+  row_offset?: number
+  row_limit?: number
 }
 
 export interface IntegrityTroubleshootKeys {
@@ -54,6 +56,10 @@ export interface IntegrityTroubleshootRows {
   key_values: unknown[] | null
   total_row_count: number | null
   returned_row_count: number | null
+  offset: number
+  limit: number
+  browse_cap: number
+  browse_cap_reached: boolean
   columns: string[]
   columns_truncated: boolean
   rows: Record<string, unknown>[]
