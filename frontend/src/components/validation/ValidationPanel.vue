@@ -402,7 +402,7 @@ const listEvents = {
   troubleshoot: (message: ValidationError) => emit('troubleshoot', message),
 }
 
-// Link troubleshooting replays a saved link on complete data, so it is offered only
+// Link troubleshooting replays a configured link on complete data, so it is offered only
 // for results that were not built from truncated sample data.
 const messageListProps = computed(() => ({ validationMode: props.validationResult?.validation_mode ?? null }))
 

@@ -179,7 +179,7 @@ describe('ValidationMessageList', () => {
     await itemAt(wrapper, 0).trigger('click')
 
     expect(wrapper.find('.link-troubleshooter-action').exists()).toBe(false)
-    expect(wrapper.find('.integrity-troubleshoot-refusal').text()).toContain('does not record which saved link')
+    expect(wrapper.find('.integrity-troubleshoot-refusal').text()).toContain('does not record which configured link')
     expect(wrapper.emitted('troubleshoot')).toBeUndefined()
   })
 
@@ -224,7 +224,7 @@ describe('ValidationMessageList', () => {
     expect(expandButtonAt(wrapper, 0).attributes('aria-expanded')).toBe('true')
   })
 
-  it('explains an integrity warning that has no usable saved-link identity', async () => {
+  it('explains an integrity warning that has no usable configured-link identity', async () => {
     const malformed: ValidationError = {
       severity: 'warning',
       entity: 'orders',
@@ -239,7 +239,7 @@ describe('ValidationMessageList', () => {
     expect(wrapper.find('.link-troubleshooter-action').exists()).toBe(false)
     const refusal = wrapper.find('.integrity-troubleshoot-refusal')
     expect(refusal.exists()).toBe(true)
-    expect(refusal.text()).toContain('does not record which saved link')
+    expect(refusal.text()).toContain('does not record which configured link')
   })
 
   it.each([

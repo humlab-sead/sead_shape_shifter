@@ -473,11 +473,11 @@ def service_with_memory_limit(limit_mb: int, tmp_path) -> LinkTrialService:
 
 
 def service_with_group_cap(cap: int, tmp_path) -> LinkTrialService:
-    """Build a trial service with the configured exception-group row cap."""
+    """Build a trial service with a small affected-row browse cap."""
     settings = Settings(
         _env_file=None,
         APPLICATION_ROOT=tmp_path,
-        LINK_EXPERIMENT_GROUP_ROW_CAP=cap,
+        LINK_TROUBLESHOOT_BROWSE_ROW_CAP=cap,
     )  # pyright: ignore[reportCallIssue]
     return LinkTrialService(settings=settings)
 

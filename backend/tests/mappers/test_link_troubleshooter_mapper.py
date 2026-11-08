@@ -8,6 +8,7 @@ import pandas as pd
 import pytest
 
 from backend.app.mappers.link_troubleshooter_mapper import LinkTroubleshooterMapper
+from backend.app.models.link_troubleshooter import EXCEPTION_ROW_PAGE_SIZE
 from backend.app.services.link_baseline_service import LinkBaselineResult
 from backend.app.services.link_experiment_context_store import (
     JoinTypeSetting,
@@ -387,3 +388,50 @@ def test_context_trial_response_keeps_incomplete_baseline_without_totals_or_grou
     assert response.baseline.detail.unmatched is None
     assert response.baseline.detail.multiply_matched is None
     assert response.trial.totals is not None
+
+
+def test_context_detail_carries_only_the_first_browse_page() -> None:
+    """A large affected-row window is paged, so the detail keeps one bounded page."""
+    unmatched_rows = tuple(exception_row(position) for position in range(250))
+    groups = exception_groups(unmatched_total=250, unmatched_rows=unmatched_rows)
+    diagnostics = context_diagnostics(groups=groups)
+
+    response = map_context_trial(
+        diagnostics=diagnostics,
+        trial=trial_result(unmatched_rows=250, groups=groups),
+        row_cap=10_000,
+    )
+
+    assert response.trial.detail is not None
+    assert response.trial.detail.unmatched is not None
+    assert response.trial.detail.unmatched.total_count == 250
+    assert response.trial.detail.unmatched.returned_count == EXCEPTION_ROW_PAGE_SIZE
+    assert response.trial.detail.unmatched.row_cap == 10_000
+    assert response.trial.detail.unmatched.row_cap_reached is False
+    assert [row.input_position for row in response.trial.detail.unmatched.rows] == list(range(EXCEPTION_ROW_PAGE_SIZE))
+
+
+def test_exception_rows_page_reports_full_count_and_browse_cap() -> None:
+    """A page slice keeps the full affected-row count and the browse cap state."""
+    rows = tuple(exception_row(position) for position in range(120))
+
+    page = LinkTroubleshooterMapper.to_exception_rows_page(
+        side="baseline",
+        group="unmatched",
+        offset=100,
+        limit=100,
+        total_count=250,
+        browse_cap=120,
+        rows=rows[100:120],
+    )
+
+    assert page.status == "available"
+    assert page.side == "baseline"
+    assert page.group == "unmatched"
+    assert page.offset == 100
+    assert page.limit == 100
+    assert page.total_count == 250
+    assert page.browse_cap == 120
+    assert page.browse_cap_reached is True
+    assert page.returned_count == 20
+    assert [row.input_position for row in page.rows] == list(range(100, 120))

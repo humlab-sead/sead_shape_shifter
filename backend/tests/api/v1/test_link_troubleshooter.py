@@ -13,14 +13,22 @@ from backend.app.api.v1.endpoints.link_troubleshooter import get_link_troublesho
 from backend.app.core.config import settings
 from backend.app.main import app
 from backend.app.models.link_troubleshooter import (
+    LinkExceptionRowsPage,
     LinkExperimentContextResponse,
+    LinkExperimentTrialRequest,
     LinkExperimentTrialResponse,
     LinkTroubleshootBaseline,
     LinkTroubleshootComparison,
+    LinkTroubleshootExceptionRow,
+    LinkTroubleshootKeyValue,
     LinkTroubleshootTotals,
 )
 from backend.app.services import project_service
-from backend.app.services.link_troubleshooter_service import LinkExperimentContextResult, LinkExperimentTrialResult
+from backend.app.services.link_troubleshooter_service import (
+    LinkExceptionRowsResult,
+    LinkExperimentContextResult,
+    LinkExperimentTrialResult,
+)
 
 
 @pytest.fixture(name="project_client")
@@ -80,6 +88,7 @@ async def test_stateless_link_troubleshooter_route_is_removed(project_client) ->
 CONTEXT_PATH = "/api/v1/projects/test_project/link-experiment-contexts"
 CONTEXT_ITEM_PATH = f"{CONTEXT_PATH}/context-1"
 TRIAL_PATH = f"{CONTEXT_ITEM_PATH}/trials"
+EXCEPTION_ROWS_PATH = f"{CONTEXT_ITEM_PATH}/exception-rows"
 TRIAL_REQUEST = {
     "local_keys": ["trial_code"],
     "remote_keys": ["trial_value"],
@@ -128,6 +137,29 @@ def trial_response(*, status: str = "complete") -> LinkExperimentTrialResponse:
     )
 
 
+def exception_rows_page() -> LinkExceptionRowsPage:
+    """Build one bounded exception-row page for route tests."""
+    return LinkExceptionRowsPage(
+        status="available",
+        side="baseline",
+        group="unmatched",
+        offset=100,
+        limit=100,
+        total_count=250,
+        browse_cap=10_000,
+        browse_cap_reached=False,
+        returned_count=1,
+        rows=[
+            LinkTroubleshootExceptionRow(
+                input_position=100,
+                key_values=[LinkTroubleshootKeyValue(value="missing")],
+                remote_match_count=0,
+                output_row_contribution=0,
+            )
+        ],
+    )
+
+
 def install_context_service(monkeypatch, **overrides) -> Mock:
     """Install a context-aware service mock as the endpoint dependency."""
     service = Mock()
@@ -140,6 +172,9 @@ def install_context_service(monkeypatch, **overrides) -> Mock:
             "trial_result",
             LinkExperimentTrialResult(state="found", response=trial_response()),
         )
+    )
+    service.read_exception_rows = AsyncMock(
+        return_value=overrides.get("rows_result", LinkExceptionRowsResult(state="found", page=exception_rows_page()))
     )
     service.close_context = AsyncMock(return_value=overrides.get("closed", True))
     monkeypatch.setitem(app.dependency_overrides, get_link_troubleshooter_service, lambda: service)
@@ -386,3 +421,74 @@ async def test_invalid_context_trial_request_returns_422_without_running_a_trial
 
     assert response.status_code == 422
     service.run_context_trial.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_exception_rows_route_forwards_the_bounded_page(project_client, monkeypatch) -> None:
+    expected = exception_rows_page()
+    service = install_context_service(monkeypatch, rows_result=LinkExceptionRowsResult(state="found", page=expected))
+
+    response = await project_client.post(
+        EXCEPTION_ROWS_PATH,
+        json={
+            "side": "baseline",
+            "group": "unmatched",
+            "offset": 100,
+            "limit": 100,
+            "trial": TRIAL_REQUEST,
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json() == expected.model_dump(mode="json")
+    service.read_exception_rows.assert_awaited_once_with(
+        context_id="context-1",
+        owner_principal_id="test-user",
+        project_locator="test_project",
+        side="baseline",
+        group="unmatched",
+        offset=100,
+        limit=100,
+        trial_request=LinkExperimentTrialRequest(**TRIAL_REQUEST),
+    )
+
+
+@pytest.mark.asyncio
+async def test_exception_rows_route_conceals_an_unknown_context(project_client, monkeypatch) -> None:
+    install_context_service(monkeypatch, rows_result=LinkExceptionRowsResult(state="unavailable"))
+
+    response = await project_client.post(EXCEPTION_ROWS_PATH, json={"side": "baseline", "group": "unmatched"})
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Resource not found"
+
+
+@pytest.mark.asyncio
+async def test_exception_rows_route_reports_expiry_explicitly(project_client, monkeypatch) -> None:
+    install_context_service(monkeypatch, rows_result=LinkExceptionRowsResult(state="expired"))
+
+    response = await project_client.post(EXCEPTION_ROWS_PATH, json={"side": "baseline", "group": "unmatched"})
+
+    assert response.status_code == 410
+    assert response.json()["detail"]["reason"] == "context_expired"
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"side": "other", "group": "unmatched"},
+        {"side": "baseline", "group": "other"},
+        {"side": "baseline", "group": "unmatched", "offset": -1},
+        {"side": "baseline", "group": "unmatched", "limit": 0},
+        {"side": "baseline", "group": "unmatched", "limit": 501},
+        {"side": "baseline", "group": "unmatched", "unknown": True},
+    ],
+)
+@pytest.mark.asyncio
+async def test_invalid_exception_rows_request_returns_422(project_client, monkeypatch, body: dict) -> None:
+    service = install_context_service(monkeypatch)
+
+    response = await project_client.post(EXCEPTION_ROWS_PATH, json=body)
+
+    assert response.status_code == 422
+    service.read_exception_rows.assert_not_awaited()

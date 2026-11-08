@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
-import { computed, nextTick, ref } from 'vue'
+import { computed, defineComponent, nextTick, ref } from 'vue'
 import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
@@ -30,6 +30,30 @@ vi.mock('@/api/integrityTroubleshooter', () => ({
 }))
 
 const vuetify = createVuetify({ components, directives })
+
+// The real grid renders rows through AG Grid, which does not run in jsdom.
+// This stub keeps the same read-only contract: columns and rows.
+const TroubleshooterDataGridStub = defineComponent({
+  name: 'TroubleshooterDataGrid',
+  props: {
+    columns: { type: Array, required: true },
+    rows: { type: Array, required: true },
+    height: { type: String, default: '320px' },
+    loading: { type: Boolean, default: false },
+    selectable: { type: Boolean, default: false },
+  },
+  emits: ['row-click'],
+  template: `
+    <div data-testid="grid-stub">
+      <div class="grid-header">
+        <span v-for="column in columns" :key="column.field">{{ column.header }}</span>
+      </div>
+      <div v-for="(row, index) in rows" :key="index" class="grid-row">
+        <span v-for="column in columns" :key="column.field">{{ row[column.field] }}</span>
+      </div>
+    </div>
+  `,
+})
 
 interface RunCall {
   local: string[]
@@ -72,9 +96,16 @@ const state: ReturnType<typeof useLinkTroubleshooter> = {
   allowNullKeys: ref<boolean | null>(null),
   nullKeysEqual: ref<boolean | null>(null),
   page: ref(1),
-  pageSize: ref(50),
+  pageSize: ref(100),
   group: ref<'unmatched' | 'multiply_matched'>('unmatched'),
   side: ref<'baseline' | 'trial'>('baseline'),
+  rows: ref<LinkTroubleshootExceptionRow[]>([]),
+  rowTotalCount: ref(0),
+  rowBrowseCap: ref(10_000),
+  rowBrowseCapReached: ref(false),
+  rowStatusMessage: ref<string | null>(null),
+  rowsLoading: ref(false),
+  rowsError: ref<FormattedError | null>(null),
   canRunTrial: computed(
     () =>
       Boolean(state.context.value?.context_id) &&
@@ -85,6 +116,11 @@ const state: ReturnType<typeof useLinkTroubleshooter> = {
   run: mockRun,
   reset: mockReset,
   close: mockClose,
+}
+
+function setBrowseRows(rows: LinkTroubleshootExceptionRow[], totalCount = rows.length): void {
+  state.rows.value = rows
+  state.rowTotalCount.value = totalCount
 }
 
 function makeSettings(overrides: Partial<LinkTroubleshootTrialSettings> = {}): LinkTroubleshootTrialSettings {
@@ -288,9 +324,18 @@ function applyContextToState(response: LinkExperimentContextResponse): void {
   state.allowNullKeys.value = settings ? settings.allow_null_keys.requested : explicit('allow_null_keys')
   state.nullKeysEqual.value = settings ? settings.null_keys_equal.requested : explicit('null_keys_equal')
   state.page.value = 1
-  state.pageSize.value = 50
+  state.pageSize.value = 100
   state.group.value = 'unmatched'
   state.side.value = 'baseline'
+  state.rowBrowseCap.value = 10_000
+  state.rowBrowseCapReached.value = false
+  state.rowStatusMessage.value = null
+  state.rowsLoading.value = false
+  state.rowsError.value = null
+  setBrowseRows(
+    response.baseline?.detail?.unmatched?.rows ?? [],
+    response.baseline?.detail?.unmatched?.total_count ?? 0
+  )
   originalControls = {
     local: [...state.localKeys.value],
     remote: [...state.remoteKeys.value],
@@ -313,9 +358,16 @@ function clearState(): void {
   state.allowNullKeys.value = null
   state.nullKeysEqual.value = null
   state.page.value = 1
-  state.pageSize.value = 50
+  state.pageSize.value = 100
   state.group.value = 'unmatched'
   state.side.value = 'baseline'
+  state.rows.value = []
+  state.rowTotalCount.value = 0
+  state.rowBrowseCap.value = 10_000
+  state.rowBrowseCapReached.value = false
+  state.rowStatusMessage.value = null
+  state.rowsLoading.value = false
+  state.rowsError.value = null
 }
 
 function mountDialog(
@@ -339,6 +391,7 @@ function mountDialog(
     state.trialLocalKeys.value = [...nextTrialKeys.local]
     state.trialRemoteKeys.value = [...nextTrialKeys.remote]
     state.trialStale.value = false
+    setBrowseRows(nextTrial.detail?.unmatched?.rows ?? [], nextTrial.detail?.unmatched?.total_count ?? 0)
     return nextTrial
   })
   mockReset.mockImplementation(() => {
@@ -352,9 +405,13 @@ function mountDialog(
     state.allowNullKeys.value = originalControls.allow
     state.nullKeysEqual.value = originalControls.equal
     state.page.value = 1
-    state.pageSize.value = 50
+    state.pageSize.value = 100
     state.group.value = 'unmatched'
     state.side.value = 'baseline'
+    setBrowseRows(
+      context.baseline?.detail?.unmatched?.rows ?? [],
+      context.baseline?.detail?.unmatched?.total_count ?? 0
+    )
   })
   mockClose.mockImplementation(async () => {
     closeCalls.push('closed')
@@ -366,7 +423,11 @@ function mountDialog(
     global: {
       plugins: [vuetify],
       stubs: {
-        VDialog: { template: '<div data-testid="dialog"><slot /></div>' },
+        TroubleshooterDataGrid: TroubleshooterDataGridStub,
+        VDialog: {
+          props: ['maxWidth'],
+          template: '<div data-testid="dialog" :data-max-width="maxWidth"><slot /></div>',
+        },
         VSelect: {
           props: ['items', 'label', 'modelValue', 'ariaLabel'],
           emits: ['update:modelValue'],
@@ -397,7 +458,9 @@ function mountDialog(
         },
         // Tooltip text is rendered in an overlay in the browser, so the stub
         // renders the help text inline to keep it assertable.
-        VTooltip: { template: '<div data-testid="tooltip"><slot /></div>' },
+        VTooltip: {
+          template: '<div data-testid="tooltip"><slot name="activator" :props="{}" /><slot /></div>',
+        },
       },
     },
   })
@@ -439,13 +502,13 @@ describe('LinkTroubleshooterDialog', () => {
     vi.mocked(integrityTroubleshooterApi.inspect).mockResolvedValue(integrityResponse())
   })
 
-  it('shows the saved relationship as read-only and initializes controls from settings', async () => {
+  it('shows the configured relationship as read-only and initializes controls from settings', async () => {
     const wrapper = mountDialog()
     await flushPromises()
 
     expect(wrapper.text()).toContain('orders → customers')
     expect(wrapper.text()).toContain('Initial · Allow row decrease')
-    expect(wrapper.find('section[aria-label="Saved relationship"]').exists()).toBe(false)
+    expect(wrapper.find('section[aria-label="Configured relationship"]').exists()).toBe(false)
     expect(wrapper.find('select[aria-label="Key pair 1 local key (orders)"]').attributes('data-selected')).toBe(
       JSON.stringify('saved_code')
     )
@@ -455,17 +518,62 @@ describe('LinkTroubleshooterDialog', () => {
     expect(wrapper.find('select[aria-label="Join type"]').attributes('data-selected')).toBe(JSON.stringify('inner'))
     expect(wrapper.find('select[aria-label="Allow missing join keys"]').attributes('data-selected')).toBe('null')
     expect(wrapper.find('select[aria-label="Match null join-key parts"]').attributes('data-selected')).toBe('null')
-    expect(wrapper.text()).toContain('Saved: inherited; effective inner')
+    expect(wrapper.text()).toContain('Configured: inherited; effective inner')
     expect(wrapper.text()).toContain('Allow missing join keys: inherited')
     expect(wrapper.text()).toContain('Strict null checks are enforced')
-    // The null-option help and saved policy live in tooltips, not in the dialog body.
+    // Help text and result totals live in tooltips, not in the dialog body.
     const tooltipText = wrapper.findAll('[data-testid="tooltip"]').map((tooltip) => tooltip.text())
-    expect(tooltipText).toHaveLength(2)
+    expect(tooltipText).toHaveLength(3)
     expect(tooltipText.join(' ')).toContain('Lets rows with a missing (null) key value still join.')
     expect(tooltipText.join(' ')).toContain('Treats two missing (null) key values as equal')
     expect(tooltipText.join(' ')).toContain('Allow missing join keys: inherited')
     expect(tooltipText.join(' ')).toContain('Strict null checks are enforced')
+    expect(tooltipText.join(' ')).toContain('Totals cover the full link input.')
+    expect(wrapper.find('button[aria-label="About result totals"]').exists()).toBe(true)
+    expect(wrapper.findAll('p').some((paragraph) => paragraph.text() === 'Totals cover the full link input.')).toBe(
+      false
+    )
+    const joinNote = wrapper.find('.join-note')
+    const affectedRowToolbar = wrapper.find('.affected-row-toolbar')
+    expect(joinNote.text()).toBe('The configured inner join removes unmatched source rows.')
+    expect(affectedRowToolbar.text().indexOf(joinNote.text())).toBeLessThan(
+      affectedRowToolbar.text().indexOf('Unmatched')
+    )
     expect(wrapper.findAll('button').some((button) => button.text().trim() === 'Save')).toBe(false)
+  })
+
+  it('resizes the dialog with pointer and keyboard controls', async () => {
+    const wrapper = mountDialog()
+    await flushPromises()
+
+    const card = wrapper.find('.link-troubleshooter-dialog-card')
+    vi.spyOn(card.element, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 800, 600))
+    const widthHandle = wrapper.find('button[aria-label="Resize troubleshooting dialog width"]')
+    const heightHandle = wrapper.find('button[aria-label="Resize troubleshooting dialog height"]')
+
+    widthHandle.element.dispatchEvent(
+      new MouseEvent('pointerdown', { bubbles: true, button: 0, clientX: 800, clientY: 100 })
+    )
+    window.dispatchEvent(new MouseEvent('pointermove', { clientX: 810, clientY: 100 }))
+    await nextTick()
+    window.dispatchEvent(new MouseEvent('pointerup'))
+
+    expect(card.attributes('style')).toContain('width: 820px')
+    expect(wrapper.find('[data-testid="dialog"]').attributes('data-max-width')).toBe('calc(100vw - 32px)')
+
+    heightHandle.element.dispatchEvent(
+      new MouseEvent('pointerdown', { bubbles: true, button: 0, clientX: 100, clientY: 600 })
+    )
+    window.dispatchEvent(new MouseEvent('pointermove', { clientX: 100, clientY: 610 }))
+    await nextTick()
+    window.dispatchEvent(new MouseEvent('pointerup'))
+
+    expect(card.attributes('style')).toContain('height: 620px')
+
+    await widthHandle.trigger('keydown', { key: 'ArrowRight' })
+    await nextTick()
+
+    expect(card.attributes('style')).toContain('width: 844px')
   })
 
   it('summarizes cardinality, linking pass, and only the flags that are set', async () => {
@@ -487,7 +595,7 @@ describe('LinkTroubleshooterDialog', () => {
     expect(wrapper.text()).not.toContain('cardinality:')
   })
 
-  it('shows explicit saved settings on the controls', async () => {
+  it('shows explicit configured settings on the controls', async () => {
     const wrapper = mountDialog(
       makeContext({
         settings: makeSettings({
@@ -502,7 +610,7 @@ describe('LinkTroubleshooterDialog', () => {
     expect(wrapper.find('select[aria-label="Join type"]').attributes('data-selected')).toBe(JSON.stringify('left'))
     expect(wrapper.find('select[aria-label="Allow missing join keys"]').attributes('data-selected')).toBe('true')
     expect(wrapper.find('select[aria-label="Match null join-key parts"]').attributes('data-selected')).toBe('false')
-    expect(wrapper.text()).toContain('Saved: left (explicit); effective left')
+    expect(wrapper.text()).toContain('Configured: left (explicit); effective left')
     expect(wrapper.text()).toContain('Allow missing join keys: yes (explicit)')
   })
 
@@ -526,7 +634,7 @@ describe('LinkTroubleshooterDialog', () => {
     expect(wrapper.find('select[aria-label="Key pair 1 remote key (customers)"]').attributes('data-selected')).toBe(
       JSON.stringify('system_id')
     )
-    expect(wrapper.text()).toContain('Run a trial to compare')
+    expect(wrapper.text()).not.toContain('Run a trial to compare')
 
     await selectOption(wrapper, 'Join type', 'left')
     await selectOption(wrapper, 'Allow missing join keys', true)
@@ -600,131 +708,66 @@ describe('LinkTroubleshooterDialog', () => {
     expect(openRequests).toHaveLength(1)
   })
 
-  it('renders bounded exception rows with full counts and truncation labels', async () => {
-    const detail = makeDetail({
-      detail_truncated: true,
-      unmatched: makeGroup({
-        total_count: 150,
-        returned_count: 2,
-        row_cap: 100,
-        row_cap_reached: true,
-        budget_exhausted: true,
-        rows: [makeRow(4, [{ value: 'LONG', truncated: true, original_length: 12 }]), makeRow(5, ['MISSING'])],
-      }),
-    })
-    const wrapper = mountDialog(makeContext({ detail }))
+  it('renders the browsable exception page with the full affected-row count', async () => {
+    const wrapper = mountDialog(makeContext({ detail: makeDetail({ unmatched: makeGroup({ total_count: 150 }) }) }))
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Showing 2 of 2 returned rows; 150 affected source rows in total.')
-    expect(wrapper.text()).toContain('Only the first 100 exception rows are returned.')
-    expect(wrapper.text()).toContain('The response size limit stopped further exception rows.')
-    expect(wrapper.text()).toContain('Some findings or key values in this response were shortened.')
+    setBrowseRows([makeRow(4, ['LONG']), makeRow(5, ['MISSING'])], 150)
+    await nextTick()
+
+    expect(wrapper.text()).toContain('Showing 2 of 150 affected source rows · Page 1 of 2')
 
     const section = wrapper.find('section[aria-label="Exception rows"]')
+    expect(section.find('.grid-header').text()).toContain('Input row')
+    expect(section.find('.grid-header').text()).toContain('A key: saved_code')
+    expect(section.find('.grid-header').text()).toContain('Remote matches')
     const cells = section
-      .findAll('tbody tr')[0]
-      ?.findAll('td')
+      .findAll('.grid-row')[0]
+      ?.findAll('span')
       .map((cell) => cell.text())
-    expect(cells).toEqual(['5', 'LONG…', '0', '0'])
+    expect(cells).toEqual(['5', 'LONG', '0', '0'])
   })
 
-  it('switches between baseline and trial exception groups locally', async () => {
-    const wrapper = mountDialog(
-      makeContext({
-        detail: makeDetail({
-          unmatched: makeGroup({ total_count: 2, returned_count: 2, rows: [makeRow(1, ['BASE'])] }),
-          multiply_matched: makeGroup({ total_count: 1, returned_count: 1, rows: [makeRow(2, ['MULTI'])] }),
-        }),
-      })
-    )
+  it('reports the browse cap and an unavailable row page', async () => {
+    const wrapper = mountDialog()
     await flushPromises()
 
-    nextTrialKeys = { local: ['saved_code'], remote: ['saved_value'] }
-    nextTrial = makeComparison({
-      detail: makeDetail({
-        unmatched: makeGroup({ total_count: 1, returned_count: 1, rows: [makeRow(4, ['TRIAL'])] }),
-      }),
-    })
-    await buttonByText(wrapper, 'Run trial')!.trigger('click')
-    await flushPromises()
+    state.rowBrowseCap.value = 100
+    state.rowBrowseCapReached.value = true
+    state.rowStatusMessage.value = 'The configured-key diagnostic did not complete.'
+    await nextTick()
 
-    // A completed trial is shown immediately, so its rows replace the saved rows.
-    expect(wrapper.find('section[aria-label="Exception rows"]').text()).toContain('TRIAL')
-    expect(wrapper.find('section[aria-label="Exception rows"] tbody tr').text()).toContain('5')
-
-    await selectSide(wrapper, 'baseline')
-    expect(wrapper.find('section[aria-label="Exception rows"]').text()).toContain('BASE')
-
-    await wrapper.find('button[data-group="multiply_matched"]').trigger('click')
-    expect(wrapper.find('section[aria-label="Exception rows"]').text()).toContain('MULTI')
-
-    await selectSide(wrapper, 'trial')
-    await wrapper.find('button[data-group="unmatched"]').trigger('click')
-    expect(wrapper.find('section[aria-label="Exception rows"]').text()).toContain('TRIAL')
+    const section = wrapper.find('section[aria-label="Exception rows"]')
+    expect(section.text()).toContain('Only the first 100 affected source rows are browsable.')
+    expect(section.text()).toContain('The configured-key diagnostic did not complete.')
+    expect(section.findAll('.grid-row')).toHaveLength(0)
   })
 
-  it('resets exception pagination when filters or trial rows change', async () => {
-    const makeRows = (prefix: string, start: number, count: number) =>
-      Array.from({ length: count }, (_, index) => makeRow(start + index, [`${prefix}-${index + 1}`]))
-    const wrapper = mountDialog(
-      makeContext({
-        detail: makeDetail({
-          unmatched: makeGroup({ total_count: 26, returned_count: 26, rows: makeRows('BASE', 0, 26) }),
-        }),
-      })
-    )
+  it('switches the result source and group locally and resets the page', async () => {
+    const wrapper = mountDialog()
     await flushPromises()
 
-    nextTrial = makeComparison({
-      detail: makeDetail({
-        unmatched: makeGroup({ total_count: 26, returned_count: 26, rows: makeRows('TRIAL', 50, 26) }),
-        multiply_matched: makeGroup({
-          total_count: 1,
-          returned_count: 1,
-          rows: [makeRow(80, ['TRIAL-MULTI'])],
-        }),
-      }),
-    })
+    nextTrial = makeComparison()
     await buttonByText(wrapper, 'Run trial')!.trigger('click')
     await flushPromises()
 
-    const firstRowText = () => wrapper.find('section[aria-label="Exception rows"] tbody tr').text()
-    const nextPage = wrapper.find('button[aria-label="Next page"]')
+    // A completed trial is shown immediately.
+    expect(state.side.value).toBe('trial')
 
-    // The completed trial is shown first; pagination checks start on the saved link.
     await selectSide(wrapper, 'baseline')
+    expect(state.side.value).toBe('baseline')
 
-    await selectOption(wrapper, 'Rows per page', 25)
-    await nextPage.trigger('click')
-    expect(firstRowText()).toContain('BASE-26')
-
-    await selectOption(wrapper, 'Rows per page', 50)
-    expect(firstRowText()).toContain('BASE-1')
-
-    await selectOption(wrapper, 'Rows per page', 25)
-    await nextPage.trigger('click')
-    expect(firstRowText()).toContain('BASE-26')
-
-    await selectSide(wrapper, 'trial')
-    expect(firstRowText()).toContain('TRIAL-1')
-    await nextPage.trigger('click')
-    expect(firstRowText()).toContain('TRIAL-26')
-
+    state.page.value = 3
     await wrapper.find('button[data-group="multiply_matched"]').trigger('click')
-    expect(firstRowText()).toContain('TRIAL-MULTI')
-    await wrapper.find('button[data-group="unmatched"]').trigger('click')
-    await nextPage.trigger('click')
-    expect(firstRowText()).toContain('TRIAL-26')
-
-    nextTrial = makeComparison({
-      detail: makeDetail({
-        unmatched: makeGroup({ total_count: 1, returned_count: 1, rows: [makeRow(99, ['TRIAL-SHORT'])] }),
-      }),
-    })
-    await buttonByText(wrapper, 'Run trial')!.trigger('click')
     await flushPromises()
 
-    expect(firstRowText()).toContain('TRIAL-SHORT')
+    expect(state.group.value).toBe('multiply_matched')
+    expect(state.page.value).toBe(1)
+
+    await wrapper.find('button[data-group="unmatched"]').trigger('click')
+    await flushPromises()
+    expect(state.group.value).toBe('unmatched')
+    expect(runCalls).toHaveLength(1)
   })
 
   it('resets to the retained baseline and original controls without running a trial', async () => {
@@ -734,7 +777,7 @@ describe('LinkTroubleshooterDialog', () => {
     state.localKeys.value = ['system_id']
     await nextTick()
 
-    await buttonByText(wrapper, 'Reset to saved')!.trigger('click')
+    await buttonByText(wrapper, 'Reset to configured link')!.trigger('click')
     await flushPromises()
 
     expect(mockReset).toHaveBeenCalledTimes(1)
@@ -812,10 +855,11 @@ describe('LinkTroubleshooterDialog', () => {
     const wrapper = mountDialog(makeContext(), integrityMessage())
     await flushPromises()
 
+    expect(wrapper.find('button[aria-label="Resize troubleshooting dialog width"]').exists()).toBe(true)
     expect(openRequests).toHaveLength(0)
     expect(mockOpen).not.toHaveBeenCalled()
     expect(mockClose).toHaveBeenCalled()
-    expect(wrapper.text()).toContain('Complete distinct unmatched value count: 1')
+    expect(wrapper.text()).toContain('Showing 1 of 1 distinct values · Page 1')
     expect(wrapper.text()).toContain('orders → customers')
     expect(wrapper.find('select[aria-label="A key"]').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('Run trial')
@@ -829,7 +873,7 @@ describe('LinkTroubleshooterDialog', () => {
     )
     await flushPromises()
 
-    expect(wrapper.text()).toContain('does not record which saved link')
+    expect(wrapper.text()).toContain('does not record which configured link')
     expect(openRequests).toHaveLength(0)
     expect(vi.mocked(integrityTroubleshooterApi.inspect)).not.toHaveBeenCalled()
   })
@@ -845,7 +889,7 @@ describe('LinkTroubleshooterDialog', () => {
     expect(openRequests).toHaveLength(1)
     expect(mockClose).toHaveBeenCalled()
     expect(wrapper.text()).not.toContain('Trial key pairs')
-    expect(wrapper.text()).toContain('Complete distinct unmatched value count: 1')
+    expect(wrapper.text()).toContain('Showing 1 of 1 distinct values · Page 1')
   })
 
   it('clears state and releases the context when the dialog closes', async () => {

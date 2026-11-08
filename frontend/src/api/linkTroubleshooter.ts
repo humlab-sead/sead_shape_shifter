@@ -1,4 +1,6 @@
 import type {
+  LinkExceptionRowsPage,
+  LinkExceptionRowsRequest,
   LinkExperimentContextRequest,
   LinkExperimentContextResponse,
   LinkExperimentTrialRequest,
@@ -27,6 +29,17 @@ export const linkTroubleshooterApi = {
     apiRequest<LinkExperimentTrialResponse>({
       method: 'POST',
       url: `${contextUrl(projectName, contextId)}/trials`,
+      data: request,
+    }),
+
+  exceptionRows: (
+    projectName: string,
+    contextId: string,
+    request: LinkExceptionRowsRequest
+  ): Promise<LinkExceptionRowsPage> =>
+    apiRequest<LinkExceptionRowsPage>({
+      method: 'POST',
+      url: `${contextUrl(projectName, contextId)}/exception-rows`,
       data: request,
     }),
 

@@ -9,6 +9,18 @@ from backend.app.models.validation import ValidationError
 
 SettingSource = Literal["inherited", "explicit"]
 
+ExceptionGroupName = Literal["unmatched", "multiply_matched"]
+"""The two affected-row categories the troubleshooter can browse."""
+
+ExceptionRowSide = Literal["baseline", "trial"]
+"""Which retained result set the browse request addresses."""
+
+EXCEPTION_ROW_PAGE_SIZE: int = 100
+"""Rows returned by one exception-row page request."""
+
+EXCEPTION_ROW_PAGE_LIMIT: int = 500
+"""Largest page a caller may request for exception rows."""
+
 
 class LinkTroubleshootKeys(BaseModel):
     """Ordered local and remote trial keys."""
@@ -93,7 +105,12 @@ class LinkTroubleshootExceptionRow(BaseModel):
 
 
 class LinkTroubleshootExceptionGroup(BaseModel):
-    """One exception group with its full count and bounded rows."""
+    """One exception group with its full count and the first browse page.
+
+    ``rows`` holds only the first page. ``total_count`` and ``row_cap`` keep
+    the full count and the browse cap, so a caller can page the remaining rows
+    through the exception-row route without losing the result size.
+    """
 
     total_count: int
     returned_count: int
@@ -205,3 +222,37 @@ class LinkExperimentTrialResponse(BaseModel):
     remote_keys: list[str]
     baseline: LinkTroubleshootBaseline | None = None
     trial: LinkTroubleshootComparison
+
+
+class LinkExceptionRowsRequest(BaseModel):
+    """Request one bounded page of affected source rows.
+
+    A ``trial`` request is required when ``side`` is ``trial`` because trial
+    rows are not retained; they are recomputed from the retained inputs with
+    the same controls as the accepted trial.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    side: ExceptionRowSide = "baseline"
+    group: ExceptionGroupName = "unmatched"
+    offset: int = Field(default=0, ge=0)
+    limit: int = Field(default=EXCEPTION_ROW_PAGE_SIZE, ge=1, le=EXCEPTION_ROW_PAGE_LIMIT)
+    trial: LinkExperimentTrialRequest | None = None
+
+
+class LinkExceptionRowsPage(BaseModel):
+    """One bounded page of affected source rows for one result set."""
+
+    status: Literal["available", "unavailable"]
+    reason: str | None = None
+    message: str | None = None
+    side: ExceptionRowSide
+    group: ExceptionGroupName
+    offset: int
+    limit: int
+    total_count: int = 0
+    browse_cap: int = 0
+    browse_cap_reached: bool = False
+    returned_count: int = 0
+    rows: list[LinkTroubleshootExceptionRow] = Field(default_factory=list)
