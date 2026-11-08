@@ -179,6 +179,8 @@ Every row above except the health check requires an authenticated principal thro
 | `POST`   | `/api/v1/projects/{project_name}/link-experiment-contexts/{context_id}/exception-rows`                      | `project:read` |
 | `DELETE` | `/api/v1/projects/{project_name}/link-experiment-contexts/{context_id}`                                     | `project:read` |
 | `POST`   | `/api/v1/projects/{project_name}/integrity-troubleshooter`                                                   | `project:read` |
+| `POST`   | `/api/v1/projects/{project_name}/integrity-troubleshooter/{context_id}/page`                                 | `project:read` |
+| `DELETE` | `/api/v1/projects/{project_name}/integrity-troubleshooter/{context_id}`                                      | `project:read` |
 | `GET`    | `/api/v1/reconciliation/health`                                                                              | `authenticated` |
 | `GET`    | `/api/v1/reconciliation/manifest`                                                                            | `authenticated` |
 | `GET`    | `/api/v1/projects/{project_name}/reconciliation`                                                             | `project:read` |

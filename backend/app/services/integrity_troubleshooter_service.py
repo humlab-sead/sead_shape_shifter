@@ -10,6 +10,8 @@ projects, source data, or saved results.
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, Mapping, Sequence
 
 import numpy as np
@@ -22,6 +24,7 @@ from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.integrity_troubleshooter import (
     FULL_NORMALIZATION_SOURCE,
     ROW_PAGE_SIZE,
+    IntegrityStatus,
     IntegrityTroubleshootKeys,
     IntegrityTroubleshootRelationship,
     IntegrityTroubleshootResponse,
@@ -32,6 +35,12 @@ from backend.app.models.integrity_troubleshooter import (
     encode_key_token,
 )
 from backend.app.models.project import Project
+from backend.app.services.integrity_troubleshooter_context_store import (
+    ContextLookupState,
+    IntegrityTroubleshooterContextStore,
+    IntegrityTroubleshooterSnapshot,
+    get_integrity_troubleshooter_context_store,
+)
 from backend.app.services.project_service import ProjectService
 from src.model import ForeignKeyConfig, ShapeShiftProject, TableConfig
 from src.normalizer import ShapeShifter
@@ -60,18 +69,35 @@ class _InspectionStop(Exception):
         self.message: str = message
 
 
+@dataclass(frozen=True)
+class IntegrityTroubleshooterContextResult:
+    """Outcome of reading one retained integrity inspection."""
+
+    state: ContextLookupState
+    response: IntegrityTroubleshootResponse | None = None
+
+
 class IntegrityTroubleshooterService:
     """Build a read-only inspection for one saved integrity warning."""
 
-    def __init__(self, project_service: ProjectService | None = None, settings: Settings | None = None) -> None:
+    def __init__(
+        self,
+        project_service: ProjectService | None = None,
+        settings: Settings | None = None,
+        context_store: IntegrityTroubleshooterContextStore | None = None,
+    ) -> None:
         """Initialize the service.
 
         Args:
             project_service: Loads saved API projects. Defaults to a new service.
             settings: Provides the affected-row browse cap. Defaults to app settings.
+            context_store: Retains normalized data for bounded paging.
         """
         self.project_service: ProjectService = project_service or ProjectService()
         self.settings: Settings = settings if settings is not None else get_settings()
+        self.context_store: IntegrityTroubleshooterContextStore = (
+            context_store if context_store is not None else get_integrity_troubleshooter_context_store()
+        )
 
     async def inspect(
         self,
@@ -84,6 +110,8 @@ class IntegrityTroubleshooterService:
         selected_value_token: str | None = None,
         row_offset: int = 0,
         row_limit: int = ROW_PAGE_SIZE,
+        owner_principal_id: str | None = None,
+        project_locator: str | None = None,
     ) -> IntegrityTroubleshootResponse:
         """Inspect the current unmatched values behind one integrity warning.
 
@@ -170,17 +198,22 @@ class IntegrityTroubleshooterService:
             )
 
         comparison: ForeignKeyComparison = compare_foreign_key_values(local_df, remote_df, fk.fk_cfg)
+        unmatched_keys: frozenset[tuple[Any, ...]] = frozenset(comparison.unmatched_keys)
 
         # A supplied token is always answered against the current data, even when the
         # link is clean or the frames are unusable, so a changed value is never shown
         # as a stale row sample.
         selected: IntegrityTroubleshootRows | None = None
+        columns: list[str] | None = None
+        columns_truncated: bool = False
         if selected_value_token is not None:
+            columns, columns_truncated = self._row_columns(saved_project, fk, local_df)
             selected = self._selected_rows(
                 token=selected_value_token,
-                comparison=comparison,
+                unmatched_keys=unmatched_keys,
                 local_df=local_df,
-                saved_project=saved_project,
+                columns=columns,
+                columns_truncated=columns_truncated,
                 fk=fk,
                 offset=row_offset,
                 limit=row_limit,
@@ -228,7 +261,7 @@ class IntegrityTroubleshooterService:
             )
 
         current_count: int = self._validator_count(local_df, remote_df, fk, comparison)
-        status = "reproduced" if current_count == recorded_count else "not_reproduced"
+        status: IntegrityStatus = "reproduced" if current_count == recorded_count else "not_reproduced"
         reason = "reproduced" if status == "reproduced" else "count_changed"
         message = (
             "The current full-data unmatched count matches the warning."
@@ -240,7 +273,7 @@ class IntegrityTroubleshooterService:
         row_counts: dict[tuple[Any, ...], int] = self._local_row_counts(local_df, fk)
         values_page: IntegrityTroubleshootValuePage = self._value_page(sorted_keys, row_counts, page)
 
-        return self._response(
+        response: IntegrityTroubleshootResponse = self._response(
             status=status,
             reason=reason,
             message=message,
@@ -250,6 +283,99 @@ class IntegrityTroubleshooterService:
             current_orphan_count=current_count,
             values=values_page,
             selected=selected,
+        )
+        if owner_principal_id is None or project_locator is None or relationship is None:
+            return response
+
+        if columns is None:
+            columns, columns_truncated = self._row_columns(saved_project, fk, local_df)
+        snapshot: IntegrityTroubleshooterSnapshot = IntegrityTroubleshooterSnapshot(
+            status=status,
+            reason=reason,
+            message=message,
+            relationship=relationship,
+            configured_keys=configured_keys,
+            recorded_orphan_count=recorded_count,
+            current_orphan_count=current_count,
+            local_rows=local_df.loc[:, columns].copy(),
+            foreign_key=fk,
+            unmatched_keys=unmatched_keys,
+            sorted_keys=tuple(sorted_keys),
+            row_counts=row_counts,
+            columns=tuple(columns),
+            columns_truncated=columns_truncated,
+        )
+        context = await self.context_store.open_context(
+            owner_principal_id=owner_principal_id,
+            project_locator=project_locator,
+            snapshot=snapshot,
+        )
+        response.context_id = context.context_id
+        response.expires_at = context.expires_at
+        return response
+
+    async def read_context(
+        self,
+        *,
+        context_id: str,
+        owner_principal_id: str,
+        project_locator: str,
+        page: int = 1,
+        selected_value_token: str | None = None,
+        row_offset: int = 0,
+        row_limit: int = ROW_PAGE_SIZE,
+    ) -> IntegrityTroubleshooterContextResult:
+        """Return one bounded page from an owned snapshot without normalization."""
+        lookup = await self.context_store.lookup_context(
+            context_id,
+            owner_principal_id=owner_principal_id,
+            project_locator=project_locator,
+        )
+        if lookup.state != "found" or lookup.context is None:
+            return IntegrityTroubleshooterContextResult(state=lookup.state)
+
+        context = lookup.context
+        snapshot: IntegrityTroubleshooterSnapshot = context.snapshot
+        selected: IntegrityTroubleshootRows | None = None
+        if selected_value_token is not None:
+            selected = self._selected_rows(
+                token=selected_value_token,
+                unmatched_keys=snapshot.unmatched_keys,
+                local_df=snapshot.local_rows,
+                columns=list(snapshot.columns),
+                columns_truncated=snapshot.columns_truncated,
+                fk=snapshot.foreign_key,
+                offset=row_offset,
+                limit=row_limit,
+            )
+
+        response: IntegrityTroubleshootResponse = self._response(
+            status=snapshot.status,
+            reason=snapshot.reason,
+            message=snapshot.message,
+            relationship=snapshot.relationship,
+            configured_keys=snapshot.configured_keys,
+            recorded_orphan_count=snapshot.recorded_orphan_count,
+            current_orphan_count=snapshot.current_orphan_count,
+            values=self._value_page(snapshot.sorted_keys, snapshot.row_counts, page),
+            selected=selected,
+            context_id=context.context_id,
+            expires_at=context.expires_at,
+        )
+        return IntegrityTroubleshooterContextResult(state="found", response=response)
+
+    async def close_context(
+        self,
+        *,
+        context_id: str,
+        owner_principal_id: str,
+        project_locator: str,
+    ) -> bool:
+        """Release one owned inspection snapshot."""
+        return await self.context_store.close_context(
+            context_id,
+            owner_principal_id=owner_principal_id,
+            project_locator=project_locator,
         )
 
     async def _normalize_frames(self, saved_project: ShapeShiftProject, fk: ForeignKeyConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -307,33 +433,28 @@ class IntegrityTroubleshooterService:
         self,
         *,
         token: str,
-        comparison: ForeignKeyComparison,
+        unmatched_keys: frozenset[tuple[Any, ...]],
         local_df: pd.DataFrame,
-        saved_project: ShapeShiftProject,
+        columns: list[str],
+        columns_truncated: bool,
         fk: ForeignKeyConfig,
         offset: int = 0,
         limit: int = ROW_PAGE_SIZE,
     ) -> IntegrityTroubleshootRows:
         """Return one bounded local-row window for one token-selected unmatched value."""
         try:
-            decode_key_token(token)
+            key: tuple[Any, ...] = decode_key_token(token)
         except ValueError as exc:
             return IntegrityTroubleshootRows(status="unavailable", reason="invalid_token", message=str(exc))
 
-        unmatched_keys_by_token: dict[str, tuple[Any, ...]] = {
-            encode_key_token(candidate): candidate for candidate in comparison.unmatched_keys
-        }
-        key: tuple[Any, ...] | None = unmatched_keys_by_token.get(token)
-
-        if key is None:
+        if key not in unmatched_keys:
             return IntegrityTroubleshootRows(
                 status="unavailable",
                 reason="value_no_longer_unmatched",
                 message="The selected value no longer appears as an unmatched value in the current data.",
             )
-
         key_values: list[Any] = [_json_scalar(value) for value in key]
-        columns, columns_truncated = self._row_columns(saved_project, fk, local_df)
+        key_values: list[Any] = [_json_scalar(value) for value in key]
         matching_rows: pd.DataFrame = _select_rows(local_df, fk, key)
         total_rows: int = len(matching_rows)
         browse_cap: int = self.settings.LINK_TROUBLESHOOT_BROWSE_ROW_CAP
@@ -376,7 +497,7 @@ class IntegrityTroubleshooterService:
 
     @staticmethod
     def _value_page(
-        sorted_keys: list[tuple[Any, ...]],
+        sorted_keys: Sequence[tuple[Any, ...]],
         row_counts: dict[tuple[Any, ...], int],
         page: int,
     ) -> IntegrityTroubleshootValuePage:
@@ -447,7 +568,7 @@ class IntegrityTroubleshooterService:
     @staticmethod
     def _response(
         *,
-        status: str,
+        status: IntegrityStatus,
         reason: str,
         message: str,
         relationship: IntegrityTroubleshootRelationship | None = None,
@@ -456,13 +577,17 @@ class IntegrityTroubleshooterService:
         current_orphan_count: int | None = None,
         values: IntegrityTroubleshootValuePage | None = None,
         selected: IntegrityTroubleshootRows | None = None,
+        context_id: str | None = None,
+        expires_at: datetime | None = None,
     ) -> IntegrityTroubleshootResponse:
         """Build one inspection response."""
         return IntegrityTroubleshootResponse(
-            status=status,  # type: ignore[arg-type]
+            status=status,
             reason=reason,
             message=message,
             source=FULL_NORMALIZATION_SOURCE,
+            context_id=context_id,
+            expires_at=expires_at,
             relationship=relationship,
             configured_keys=configured_keys,
             recorded_orphan_count=recorded_orphan_count,

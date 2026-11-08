@@ -21,6 +21,7 @@ from backend.app.models.integrity_troubleshooter import (
     encode_key_token,
 )
 from backend.app.services import project_service
+from backend.app.services.integrity_troubleshooter_service import IntegrityTroubleshooterContextResult
 
 REQUEST = {
     "issue_type": "FK_DATA_INTEGRITY",
@@ -58,6 +59,8 @@ def install_service_override(monkeypatch, response: IntegrityTroubleshootRespons
     """Return a service mock installed as the endpoint dependency."""
     service = Mock()
     service.inspect = AsyncMock(return_value=response)
+    service.read_context = AsyncMock(return_value=IntegrityTroubleshooterContextResult(state="unavailable"))
+    service.close_context = AsyncMock(return_value=True)
     monkeypatch.setitem(app.dependency_overrides, get_integrity_troubleshooter_service, lambda: service)
     return service
 
@@ -93,6 +96,8 @@ def response_model() -> IntegrityTroubleshootResponse:
             columns=["customer_code", "order_code"],
             rows=[{"customer_code": "A", "order_code": "O1"}],
         ),
+        context_id="context-one",
+        expires_at="2026-01-01T00:15:00Z",
     )
 
 
@@ -129,6 +134,8 @@ async def test_authorized_request_forwards_locator_and_request_fields(project_cl
         selected_value_token=None,
         row_offset=0,
         row_limit=100,
+        owner_principal_id="test-user",
+        project_locator="test_project",
     )
 
 
@@ -150,6 +157,64 @@ async def test_selected_value_request_forwards_the_token(project_client, monkeyp
         selected_value_token=token,
         row_offset=100,
         row_limit=50,
+        owner_principal_id="test-user",
+        project_locator="test_project",
+    )
+
+
+@pytest.mark.asyncio
+async def test_page_request_reads_the_owned_context_without_reopening_it(project_client, monkeypatch) -> None:
+    expected = response_model()
+    service = install_service_override(monkeypatch, expected)
+    service.read_context = AsyncMock(return_value=IntegrityTroubleshooterContextResult(state="found", response=expected))
+    token = encode_key_token(("A",))
+
+    response = await project_client.post(
+        "/api/v1/projects/test_project/integrity-troubleshooter/context-one/page",
+        json={"page": 2, "selected_value_token": token, "row_offset": 100, "row_limit": 50},
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json() == expected.model_dump(mode="json")
+    service.read_context.assert_awaited_once_with(
+        context_id="context-one",
+        owner_principal_id="test-user",
+        project_locator="test_project",
+        page=2,
+        selected_value_token=token,
+        row_offset=100,
+        row_limit=50,
+    )
+    service.inspect.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_expired_page_context_returns_recoverable_gone_response(project_client, monkeypatch) -> None:
+    service = install_service_override(monkeypatch, response_model())
+    service.read_context = AsyncMock(return_value=IntegrityTroubleshooterContextResult(state="expired"))
+
+    response = await project_client.post(
+        "/api/v1/projects/test_project/integrity-troubleshooter/context-one/page",
+        json={"page": 1},
+    )
+
+    assert response.status_code == 410
+    assert response.json()["detail"]["reason"] == "context_expired"
+
+
+@pytest.mark.asyncio
+async def test_close_releases_the_owned_context(project_client, monkeypatch) -> None:
+    service = install_service_override(monkeypatch, response_model())
+
+    response = await project_client.delete(
+        "/api/v1/projects/test_project/integrity-troubleshooter/context-one",
+    )
+
+    assert response.status_code == 204
+    service.close_context.assert_awaited_once_with(
+        context_id="context-one",
+        owner_principal_id="test-user",
+        project_locator="test_project",
     )
 
 
@@ -197,6 +262,33 @@ async def test_principal_without_project_read_gets_concealed_404(
     assert response.status_code == 404
     assert response.json()["detail"] == "Resource not found"
     service.inspect.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    ("method", "path", "body"),
+    [
+        ("post", "/api/v1/projects/test_project/integrity-troubleshooter/context-one/page", {"page": 1}),
+        ("delete", "/api/v1/projects/test_project/integrity-troubleshooter/context-one", None),
+    ],
+)
+@pytest.mark.asyncio
+async def test_context_routes_require_project_read(
+    project_client,  # pylint: disable=unused-argument
+    monkeypatch,
+    method: str,
+    path: str,
+    body: dict | None,
+) -> None:
+    service = install_service_override(monkeypatch, response_model())
+
+    async with client_for_principal("unrelated-user") as client:
+        response = await getattr(client, method)(path, json=body) if body is not None else await getattr(client, method)(path)
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Resource not found"
+    service.inspect.assert_not_awaited()
+    service.read_context.assert_not_awaited()
+    service.close_context.assert_not_awaited()
 
 
 @pytest.mark.asyncio
