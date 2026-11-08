@@ -12,10 +12,18 @@ import type {
   IntegrityTroubleshootResponse,
   ValidationError,
 } from '@/types'
+import { downloadCsv } from '@/utils/csv'
 
 vi.mock('@/api/integrityTroubleshooter', () => ({
   integrityTroubleshooterApi: { inspect: vi.fn(), page: vi.fn(), close: vi.fn() },
 }))
+
+// Keep the real CSV building so the test asserts the exported text, and replace
+// only the browser download, which jsdom cannot observe.
+vi.mock('@/utils/csv', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/utils/csv')>()
+  return { ...actual, downloadCsv: vi.fn() }
+})
 
 const vuetify = createVuetify({ components, directives })
 
@@ -156,6 +164,7 @@ describe('IntegrityTroubleshooterBody', () => {
     readPage().mockReset()
     close().mockReset()
     close().mockResolvedValue(undefined)
+    vi.mocked(downloadCsv).mockReset()
     queueResponses(response())
   })
 
@@ -341,6 +350,53 @@ describe('IntegrityTroubleshooterBody', () => {
     expect(rows).toHaveLength(2)
     expect(rows[0]?.text()).toBe('MISSING-A1')
     expect(rows[1]?.text()).toBe('MISSING-B3')
+  })
+
+  it('exports every unmatched key to CSV with configured key names as columns', async () => {
+    const wrapper = mountBody()
+    await flushPromises()
+
+    const exportButton = wrapper.findAll('button').find((button) => button.text().includes('Export unmatched keys'))
+    expect(exportButton).toBeDefined()
+
+    await exportButton!.trigger('click')
+
+    expect(downloadCsv).toHaveBeenCalledTimes(1)
+    const [filename, content] = vi.mocked(downloadCsv).mock.calls[0] ?? []
+    expect(filename).toMatch(/^orders_unmatched_keys_\d+\.csv$/)
+    expect(content).toBe('customer_code,Local rows\r\nMISSING-A,1\r\nMISSING-B,3')
+  })
+
+  it('splits a composite key into one CSV column per key part', async () => {
+    inspect().mockReset()
+    queueResponses(
+      response({
+        configured_keys: { local_keys: ['site_code', 'sample_code'], remote_keys: ['code'] },
+        values: {
+          distinct_value_count: 1,
+          values: [{ key_values: ['S-1', null], local_row_count: 4, token: 'token-composite' }],
+        },
+      })
+    )
+
+    const wrapper = mountBody()
+    await flushPromises()
+
+    const exportButton = wrapper.findAll('button').find((button) => button.text().includes('Export unmatched keys'))
+    await exportButton!.trigger('click')
+
+    const [, content] = vi.mocked(downloadCsv).mock.calls[0] ?? []
+    expect(content).toBe('site_code,sample_code,Local rows\r\nS-1,,4')
+  })
+
+  it('offers no export when the current data has no unmatched values', async () => {
+    inspect().mockReset()
+    queueResponses(response({ values: { distinct_value_count: 0, values: [] } }))
+
+    const wrapper = mountBody()
+    await flushPromises()
+
+    expect(wrapper.findAll('button').some((button) => button.text().includes('Export unmatched keys'))).toBe(false)
   })
 
   it('shows an explicit empty state when the current data has no unmatched values', async () => {
