@@ -12,8 +12,15 @@ import pytest
 
 from backend.app.core.config import Settings
 from backend.app.exceptions import ProjectedBudgetExceeded
+from backend.app.models.link_troubleshooter import LinkExperimentTrialRequest
 from backend.app.services.link_baseline_service import LinkBaselineResult
-from backend.app.services.link_experiment_context_store import LINK_EXPERIMENT_CONTEXT_TTL, LinkExperimentContextStore
+from backend.app.services.link_experiment_context_store import (
+    LINK_EXPERIMENT_CONTEXT_TTL,
+    LinkExperimentContextStore,
+    TrialExceptionGroup,
+    TrialExceptionGroups,
+    TrialExceptionRow,
+)
 from backend.app.services.link_trial_service import ARowTrialDiagnostic, LinkTrialResult, LinkTrialService
 from backend.app.services.link_troubleshooter_service import LinkTroubleshooterService
 from src.model import ForeignKeyConfig, ShapeShiftProject
@@ -507,3 +514,219 @@ async def test_context_trial_does_not_mutate_frames_or_saved_project(tmp_path) -
     pd.testing.assert_frame_equal(baseline.remote_rows, remote_before)
     assert saved_fk.fk_cfg == saved_fk_data
     assert trial_service is not service.trial_service
+
+
+# ---------------------------------------------------------------------------
+# Affected-row browsing
+# ---------------------------------------------------------------------------
+
+
+def retained_exception_groups(*, unmatched_total: int, retained_rows: int) -> TrialExceptionGroups:
+    """Build retained exception groups with a full count and up to the browse cap of rows."""
+    rows = tuple(
+        TrialExceptionRow(
+            input_position=index,
+            key_values=("missing",),
+            remote_match_count=0,
+            output_row_contribution=0,
+        )
+        for index in range(retained_rows)
+    )
+    return TrialExceptionGroups(
+        unmatched=TrialExceptionGroup(total_count=unmatched_total, rows=rows),
+        multiply_matched=TrialExceptionGroup(total_count=0, rows=()),
+    )
+
+
+def trial_with_groups(groups: TrialExceptionGroups | None) -> LinkTrialResult:
+    """Build one complete trial that carries the given exception groups."""
+    return LinkTrialResult(
+        status="complete",
+        reason="complete",
+        message="Trial result.",
+        input_a_rows=3,
+        output_rows=2,
+        unmatched_a_rows=groups.unmatched.total_count if groups is not None else None,
+        multiply_matched_a_rows=groups.multiply_matched.total_count if groups is not None else None,
+        exception_groups=groups,
+    )
+
+
+@pytest.mark.asyncio
+async def test_read_exception_rows_slices_the_retained_baseline_page() -> None:
+    """A baseline page is sliced from the retained rows and keeps the full count."""
+    groups = retained_exception_groups(unmatched_total=150, retained_rows=150)
+    service, _, _, _, _ = context_service(baseline=make_baseline(), trials=[trial_with_groups(groups)])
+    opened = await open_default_context(service)
+
+    result = await service.read_exception_rows(
+        context_id=opened.context_id or "",
+        owner_principal_id="alice",
+        project_locator="project-a",
+        side="baseline",
+        group="unmatched",
+        offset=100,
+        limit=100,
+    )
+
+    assert result.state == "found"
+    assert result.page is not None
+    assert result.page.status == "available"
+    assert result.page.total_count == 150
+    assert result.page.browse_cap == 10_000
+    assert result.page.browse_cap_reached is False
+    assert result.page.returned_count == 50
+    assert [row.input_position for row in result.page.rows] == list(range(100, 150))
+
+
+@pytest.mark.asyncio
+async def test_read_exception_rows_reports_when_the_browse_cap_is_reached() -> None:
+    """The browse cap is reported even though only the capped rows are retained."""
+    groups = retained_exception_groups(unmatched_total=20_000, retained_rows=5)
+    service, _, _, _, _ = context_service(baseline=make_baseline(), trials=[trial_with_groups(groups)])
+    opened = await open_default_context(service)
+
+    result = await service.read_exception_rows(
+        context_id=opened.context_id or "",
+        owner_principal_id="alice",
+        project_locator="project-a",
+        side="baseline",
+        group="unmatched",
+        offset=0,
+        limit=100,
+    )
+
+    assert result.page is not None
+    assert result.page.total_count == 20_000
+    assert result.page.browse_cap_reached is True
+    assert result.page.returned_count == 5
+
+
+@pytest.mark.asyncio
+async def test_read_exception_rows_requires_trial_controls_for_the_trial_side() -> None:
+    """Trial rows are recomputed, so browsing them requires the trial controls."""
+    groups = retained_exception_groups(unmatched_total=5, retained_rows=5)
+    service, _, _, _, _ = context_service(baseline=make_baseline(), trials=[trial_with_groups(groups)])
+    opened = await open_default_context(service)
+
+    result = await service.read_exception_rows(
+        context_id=opened.context_id or "",
+        owner_principal_id="alice",
+        project_locator="project-a",
+        side="trial",
+        group="unmatched",
+        offset=0,
+        limit=100,
+    )
+
+    assert result.state == "found"
+    assert result.page is not None
+    assert result.page.status == "unavailable"
+    assert result.page.reason == "trial_required"
+
+
+@pytest.mark.asyncio
+async def test_read_exception_rows_recomputes_the_trial_side() -> None:
+    """A trial page recomputes the trial from retained inputs and pages its rows."""
+    baseline_groups = retained_exception_groups(unmatched_total=3, retained_rows=3)
+    trial_groups = retained_exception_groups(unmatched_total=140, retained_rows=140)
+    service, _, trial_service, _, _ = context_service(
+        baseline=make_baseline(),
+        trials=[trial_with_groups(baseline_groups), trial_with_groups(trial_groups)],
+    )
+    opened = await open_default_context(service)
+
+    result = await service.read_exception_rows(
+        context_id=opened.context_id or "",
+        owner_principal_id="alice",
+        project_locator="project-a",
+        side="trial",
+        group="unmatched",
+        offset=0,
+        limit=100,
+        trial_request=LinkExperimentTrialRequest(local_keys=["trial_code"], remote_keys=["trial_value"]),
+    )
+
+    assert result.page is not None
+    assert result.page.status == "available"
+    assert result.page.total_count == 140
+    assert result.page.returned_count == 100
+    assert trial_service.calls[-1] == (["trial_code"], ["trial_value"])
+
+
+@pytest.mark.asyncio
+async def test_read_exception_rows_stops_at_the_default_browse_cap() -> None:
+    """A large affected set keeps its full count but only the browse cap is browsable."""
+    cap = 10_000
+    groups = retained_exception_groups(unmatched_total=12_000, retained_rows=cap)
+    service, _, _, _, _ = context_service(baseline=make_baseline(), trials=[trial_with_groups(groups)])
+    opened = await open_default_context(service)
+
+    result = await service.read_exception_rows(
+        context_id=opened.context_id or "",
+        owner_principal_id="alice",
+        project_locator="project-a",
+        side="baseline",
+        group="unmatched",
+        offset=9_800,
+        limit=500,
+    )
+
+    assert result.page is not None
+    assert result.page.total_count == 12_000
+    assert result.page.browse_cap == cap
+    assert result.page.browse_cap_reached is True
+    assert result.page.returned_count == 200
+    assert [row.input_position for row in result.page.rows] == list(range(9_800, cap))
+
+
+@pytest.mark.asyncio
+async def test_read_exception_rows_reports_an_incomplete_diagnostic() -> None:
+    """An incomplete configured-key diagnostic has no affected rows to browse."""
+    service, _, _, _, _ = context_service(
+        baseline=make_baseline(),
+        trials=[
+            trial_result(
+                status="incomplete",
+                input_rows=None,
+                output_rows=None,
+                unmatched_rows=None,
+                multiply_matched_rows=None,
+                reason="row_limit_exceeded",
+            )
+        ],
+    )
+    opened = await open_default_context(service)
+
+    result = await service.read_exception_rows(
+        context_id=opened.context_id or "",
+        owner_principal_id="alice",
+        project_locator="project-a",
+        side="baseline",
+        group="unmatched",
+        offset=0,
+        limit=100,
+    )
+
+    assert result.page is not None
+    assert result.page.status == "unavailable"
+    assert result.page.reason == "diagnostic_incomplete"
+
+
+@pytest.mark.asyncio
+async def test_read_exception_rows_conceals_an_unavailable_context() -> None:
+    """An unknown identifier returns the unavailable state without a page."""
+    service, _, _, _, _ = context_service(baseline=make_baseline(), trials=[trial_with_groups(None)])
+
+    result = await service.read_exception_rows(
+        context_id="unknown",
+        owner_principal_id="alice",
+        project_locator="project-a",
+        side="baseline",
+        group="unmatched",
+        offset=0,
+        limit=100,
+    )
+
+    assert result.state == "unavailable"
+    assert result.page is None

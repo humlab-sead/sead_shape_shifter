@@ -132,23 +132,23 @@ def test_link_experiment_memory_limit_must_be_positive(limit: int, tmp_path) -> 
         Settings(_env_file=None, APPLICATION_ROOT=tmp_path, LINK_EXPERIMENT_MAX_MEMORY_MB=limit)  # pyright: ignore[reportCallIssue]
 
 
-def test_link_experiment_group_row_cap_defaults_to_one_hundred(tmp_path) -> None:
-    """The exception-group row cap defaults to 100 rows."""
+def test_link_troubleshoot_browse_row_cap_defaults_to_ten_thousand(tmp_path) -> None:
+    """The affected-row browse cap defaults to 10,000 rows."""
     settings = Settings(_env_file=None, APPLICATION_ROOT=tmp_path)  # pyright: ignore[reportCallIssue]
 
-    assert settings.LINK_EXPERIMENT_GROUP_ROW_CAP == 100
+    assert settings.LINK_TROUBLESHOOT_BROWSE_ROW_CAP == 10_000
 
 
-def test_link_experiment_group_row_cap_reads_environment_override(monkeypatch, tmp_path) -> None:
-    """The exception-group row cap can be overridden with its prefixed environment variable."""
-    monkeypatch.setenv("SHAPE_SHIFTER_LINK_EXPERIMENT_GROUP_ROW_CAP", "250")
+def test_link_troubleshoot_browse_row_cap_reads_environment_override(monkeypatch, tmp_path) -> None:
+    """The affected-row browse cap can be overridden with its prefixed environment variable."""
+    monkeypatch.setenv("SHAPE_SHIFTER_LINK_TROUBLESHOOT_BROWSE_ROW_CAP", "250")
     settings = Settings(_env_file=None, APPLICATION_ROOT=tmp_path)  # pyright: ignore[reportCallIssue]
 
-    assert settings.LINK_EXPERIMENT_GROUP_ROW_CAP == 250
+    assert settings.LINK_TROUBLESHOOT_BROWSE_ROW_CAP == 250
 
 
-@pytest.mark.parametrize("limit", [0, 1001])
-def test_link_experiment_group_row_cap_stays_within_bounds(limit: int, tmp_path) -> None:
-    """The exception-group row cap must be between 1 and 1000 rows."""
+@pytest.mark.parametrize("limit", [0, 10_001])
+def test_link_troubleshoot_browse_row_cap_stays_within_bounds(limit: int, tmp_path) -> None:
+    """The affected-row browse cap must be between 1 and 10,000 rows."""
     with pytest.raises(ValidationError):
-        Settings(_env_file=None, APPLICATION_ROOT=tmp_path, LINK_EXPERIMENT_GROUP_ROW_CAP=limit)  # pyright: ignore[reportCallIssue]
+        Settings(_env_file=None, APPLICATION_ROOT=tmp_path, LINK_TROUBLESHOOT_BROWSE_ROW_CAP=limit)  # pyright: ignore[reportCallIssue]

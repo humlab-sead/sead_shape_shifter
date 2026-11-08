@@ -122,36 +122,23 @@
               {{ formatCount(result.values.distinct_value_count) }} distinct values · Page {{ result.values.page }}
             </div>
 
-            <v-data-table
-              v-if="result.values.values.length > 0"
-              class="integrity-values-table"
-              :headers="valueHeaders"
-              :items="valueRows"
-              item-value="rowKey"
-              :items-per-page="-1"
-              hide-default-footer
-              density="compact"
-            >
-              <template #item.actions="{ item }">
-                <div class="text-right">
-                  <v-btn
-                    class="integrity-select-value"
-                    size="x-small"
-                    variant="text"
-                    :disabled="loading"
-                    @click="selectValue(item.value)"
-                  >
-                    Show local rows
-                  </v-btn>
-                </div>
-              </template>
-            </v-data-table>
+            <template v-if="result.values.values.length > 0">
+              <p class="text-body-2 text-medium-emphasis mb-2">Select a value to list its affected local rows.</p>
+              <TroubleshooterDataGrid
+                :columns="valueColumns"
+                :rows="valueRows"
+                :loading="loading"
+                selectable
+                height="320px"
+                @row-click="selectValueRow"
+              />
+            </template>
             <p v-else class="text-body-2 text-medium-emphasis">No unmatched values on this page.</p>
 
-            <div v-if="pageCount > 1" class="d-flex justify-end mt-2">
+            <div v-if="valuePageCount > 1" class="d-flex justify-end mt-2">
               <v-pagination
                 :model-value="result.values.page"
-                :length="pageCount"
+                :length="valuePageCount"
                 density="comfortable"
                 @update:model-value="changePage"
               />
@@ -167,6 +154,15 @@
                 {{ formatCount(result.selected.total_row_count) }} local rows for this key.
               </div>
               <v-alert
+                v-if="result.selected.browse_cap_reached"
+                type="info"
+                variant="tonal"
+                density="compact"
+                class="mb-2"
+              >
+                Only the first {{ formatCount(result.selected.browse_cap) }} local rows for this key are browsable.
+              </v-alert>
+              <v-alert
                 v-if="result.selected.columns_truncated"
                 type="info"
                 variant="tonal"
@@ -175,23 +171,27 @@
               >
                 Only the first {{ result.selected.columns.length }} columns are shown.
               </v-alert>
-              <v-table density="compact">
-                <thead>
-                  <tr>
-                    <th v-for="column in result.selected.columns" :key="column">{{ column }}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="(row, index) in result.selected.rows" :key="index">
-                    <td v-for="column in result.selected.columns" :key="column">{{ formatValue(row[column]) }}</td>
-                  </tr>
-                  <tr v-if="result.selected.rows.length === 0">
-                    <td :colspan="Math.max(result.selected.columns.length, 1)" class="text-center text-medium-emphasis">
-                      No local rows.
-                    </td>
-                  </tr>
-                </tbody>
-              </v-table>
+              <TroubleshooterDataGrid :columns="selectedColumns" :rows="result.selected.rows" height="320px" />
+              <div v-if="selectedRowPageCount > 1" class="d-flex justify-end mt-2">
+                <v-btn
+                  size="small"
+                  variant="text"
+                  aria-label="Previous rows page"
+                  :disabled="rowOffset <= 0 || loading"
+                  @click="changeRowPage(-1)"
+                >
+                  Previous
+                </v-btn>
+                <v-btn
+                  size="small"
+                  variant="text"
+                  aria-label="Next rows page"
+                  :disabled="selectedRowPage >= selectedRowPageCount || loading"
+                  @click="changeRowPage(1)"
+                >
+                  Next
+                </v-btn>
+              </div>
             </template>
 
             <v-alert v-else type="warning" variant="tonal" density="compact" class="integrity-selection-unavailable">
@@ -220,11 +220,14 @@ import type {
   FormattedError,
   IntegrityTroubleshootRequest,
   IntegrityTroubleshootResponse,
-  IntegrityTroubleshootValue,
   ValidationError,
 } from '@/types'
 import { formatErrorMessage } from '@/utils/errors'
 import { toIntegrityTroubleshootRequest } from '@/utils/linkTroubleshooter'
+import TroubleshooterDataGrid, { type TroubleshooterGridColumn } from './TroubleshooterDataGrid.vue'
+
+/** Default number of local rows requested for one selected unmatched value. */
+const ROW_PAGE_SIZE = 100
 
 interface Props {
   projectName: string
@@ -241,6 +244,8 @@ const error = ref<FormattedError | null>(null)
 const result = ref<IntegrityTroubleshootResponse | null>(null)
 const page = ref(1)
 const selectedToken = ref<string | null>(null)
+const rowOffset = ref(0)
+const rowLimit = ref(ROW_PAGE_SIZE)
 const unmatchedValuesRef = ref<HTMLElement | null>(null)
 let requestVersion = 0
 
@@ -255,7 +260,7 @@ const configuredKeyPairs = computed(() => {
   }))
 })
 
-const pageCount = computed(() => {
+const valuePageCount = computed(() => {
   const values = result.value?.values
   if (!values || values.page_size <= 0) {
     return 1
@@ -264,28 +269,36 @@ const pageCount = computed(() => {
   return Math.max(1, Math.ceil(values.distinct_value_count / values.page_size))
 })
 
-interface ValueTableRow {
-  rowKey: string
-  unmatchedKey: string
-  localRowCount: number
-  value: IntegrityTroubleshootValue
-}
+const selectedRowPage = computed(() => Math.floor(rowOffset.value / rowLimit.value) + 1)
 
-// Headers are not sortable: the backend pages the complete value set in a fixed
-// order, so sorting one page would only reorder the rows currently returned.
-const valueHeaders = [
-  { title: 'Unmatched key', key: 'unmatchedKey', sortable: false },
-  { title: 'Local rows', key: 'localRowCount', align: 'end' as const, sortable: false },
-  { title: 'Action', key: 'actions', align: 'end' as const, sortable: false },
-]
+const selectedRowPageCount = computed(() => {
+  const selected = result.value?.selected
+  const totalRows = selected?.total_row_count ?? 0
+  const browseCap = selected?.browse_cap ?? totalRows
+  if (rowLimit.value <= 0) {
+    return 1
+  }
 
-const valueRows = computed<ValueTableRow[]>(() =>
-  (result.value?.values?.values ?? []).map((value, index) => ({
-    rowKey: `${value.token}-${index}`,
+  return Math.max(1, Math.ceil(Math.min(totalRows, browseCap) / rowLimit.value))
+})
+
+// Columns are read-only: the backend pages the complete value set in a fixed
+// order, so sorting or filtering one page would only reorder what is loaded.
+const valueColumns = computed<TroubleshooterGridColumn[]>(() => [
+  { field: 'unmatchedKey', header: 'Unmatched key' },
+  { field: 'localRowCount', header: 'Local rows', align: 'right' as const, width: 140 },
+])
+
+const valueRows = computed<Record<string, unknown>[]>(() =>
+  (result.value?.values?.values ?? []).map((value) => ({
+    token: value.token,
     unmatchedKey: formatKey(value.key_values),
     localRowCount: value.local_row_count,
-    value,
   }))
+)
+
+const selectedColumns = computed<TroubleshooterGridColumn[]>(() =>
+  (result.value?.selected?.columns ?? []).map((column) => ({ field: column, header: column }))
 )
 
 watch(
@@ -293,6 +306,7 @@ watch(
   () => {
     page.value = 1
     selectedToken.value = null
+    rowOffset.value = 0
     void sendRequest()
   },
   { immediate: true }
@@ -303,14 +317,31 @@ onBeforeUnmount(() => {
   requestVersion += 1
 })
 
-function selectValue(value: IntegrityTroubleshootValue): void {
-  selectedToken.value = value.token
+// Grid rows carry the token, so selecting a value does not depend on its
+// position in the page.
+function selectValueRow(row: Record<string, unknown>): void {
+  const token = typeof row.token === 'string' ? row.token : null
+  if (token === null) {
+    return
+  }
+  selectedToken.value = token
+  rowOffset.value = 0
   void sendRequest()
 }
 
 function changePage(value: number): void {
   page.value = value
   selectedToken.value = null
+  rowOffset.value = 0
+  void sendRequest()
+}
+
+function changeRowPage(direction: -1 | 1): void {
+  const nextOffset = rowOffset.value + direction * rowLimit.value
+  if (nextOffset < 0) {
+    return
+  }
+  rowOffset.value = nextOffset
   void sendRequest()
 }
 
@@ -329,6 +360,8 @@ async function sendRequest(): Promise<void> {
   const request: IntegrityTroubleshootRequest = {
     ...identity,
     page: page.value,
+    row_offset: rowOffset.value,
+    row_limit: rowLimit.value,
     ...(selectedToken.value === null ? {} : { selected_value_token: selectedToken.value }),
   }
 

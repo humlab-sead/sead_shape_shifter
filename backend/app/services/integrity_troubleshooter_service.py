@@ -16,10 +16,12 @@ import numpy as np
 import pandas as pd
 from loguru import logger
 
+from backend.app.core.config import Settings, get_settings
 from backend.app.exceptions import ConfigurationError, ResourceNotFoundError
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.integrity_troubleshooter import (
     FULL_NORMALIZATION_SOURCE,
+    ROW_PAGE_SIZE,
     IntegrityTroubleshootKeys,
     IntegrityTroubleshootRelationship,
     IntegrityTroubleshootResponse,
@@ -45,9 +47,6 @@ from src.validators.data_validators import (
 VALUE_PAGE_SIZE = 50
 """Maximum distinct unmatched values returned in one page."""
 
-ROW_SAMPLE_LIMIT = 20
-"""Maximum local rows returned for one selected value."""
-
 COLUMN_LIMIT = 20
 """Maximum columns returned for one selected value's rows."""
 
@@ -64,13 +63,15 @@ class _InspectionStop(Exception):
 class IntegrityTroubleshooterService:
     """Build a read-only inspection for one saved integrity warning."""
 
-    def __init__(self, project_service: ProjectService | None = None) -> None:
+    def __init__(self, project_service: ProjectService | None = None, settings: Settings | None = None) -> None:
         """Initialize the service.
 
         Args:
             project_service: Loads saved API projects. Defaults to a new service.
+            settings: Provides the affected-row browse cap. Defaults to app settings.
         """
         self.project_service: ProjectService = project_service or ProjectService()
+        self.settings: Settings = settings if settings is not None else get_settings()
 
     async def inspect(
         self,
@@ -81,6 +82,8 @@ class IntegrityTroubleshooterService:
         metadata: Mapping[str, Any],
         page: int = 1,
         selected_value_token: str | None = None,
+        row_offset: int = 0,
+        row_limit: int = ROW_PAGE_SIZE,
     ) -> IntegrityTroubleshootResponse:
         """Inspect the current unmatched values behind one integrity warning.
 
@@ -91,6 +94,8 @@ class IntegrityTroubleshooterService:
             metadata: Issue metadata recorded by validation.
             page: One-based page of distinct unmatched values.
             selected_value_token: Optional token naming one value to sample.
+            row_offset: Zero-based offset into the selected value's local rows.
+            row_limit: Number of local rows to return for the selected value.
 
         Returns:
             IntegrityTroubleshootResponse describing the reproduced warning, its
@@ -177,6 +182,8 @@ class IntegrityTroubleshooterService:
                 local_df=local_df,
                 saved_project=saved_project,
                 fk=fk,
+                offset=row_offset,
+                limit=row_limit,
             )
 
         if comparison.status == "invalid_input":
@@ -304,8 +311,10 @@ class IntegrityTroubleshooterService:
         local_df: pd.DataFrame,
         saved_project: ShapeShiftProject,
         fk: ForeignKeyConfig,
+        offset: int = 0,
+        limit: int = ROW_PAGE_SIZE,
     ) -> IntegrityTroubleshootRows:
-        """Return bounded local rows for one token-selected unmatched value."""
+        """Return one bounded local-row window for one token-selected unmatched value."""
         try:
             decode_key_token(token)
         except ValueError as exc:
@@ -327,7 +336,9 @@ class IntegrityTroubleshooterService:
         columns, columns_truncated = self._row_columns(saved_project, fk, local_df)
         matching_rows: pd.DataFrame = _select_rows(local_df, fk, key)
         total_rows: int = len(matching_rows)
-        sample: pd.DataFrame = matching_rows.head(ROW_SAMPLE_LIMIT)
+        browse_cap: int = self.settings.LINK_TROUBLESHOOT_BROWSE_ROW_CAP
+        window_end: int = min(offset + limit, browse_cap)
+        sample: pd.DataFrame = matching_rows.iloc[offset:window_end]
         rows: list[dict[str, Any]] = [
             {column: _json_scalar(to_key_scalar(row[column])) for column in columns} for _, row in sample.iterrows()
         ]
@@ -337,6 +348,10 @@ class IntegrityTroubleshooterService:
             key_values=key_values,
             total_row_count=total_rows,
             returned_row_count=len(rows),
+            offset=offset,
+            limit=limit,
+            browse_cap=browse_cap,
+            browse_cap_reached=total_rows > browse_cap,
             columns=columns,
             columns_truncated=columns_truncated,
             rows=rows,

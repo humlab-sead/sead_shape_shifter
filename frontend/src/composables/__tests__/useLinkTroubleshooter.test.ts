@@ -2,11 +2,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { linkTroubleshooterApi } from '@/api/linkTroubleshooter'
 import { useLinkTroubleshooter } from '../useLinkTroubleshooter'
 import type {
+  LinkExceptionRowsPage,
   LinkExperimentContextRequest,
   LinkExperimentContextResponse,
   LinkExperimentTrialResponse,
   LinkTroubleshootComparison,
   LinkTroubleshootDetail,
+  LinkTroubleshootExceptionRow,
   LinkTroubleshootTrialSettings,
 } from '@/types'
 
@@ -14,6 +16,7 @@ vi.mock('@/api/linkTroubleshooter', () => ({
   linkTroubleshooterApi: {
     open: vi.fn(),
     trial: vi.fn(),
+    exceptionRows: vi.fn(),
     close: vi.fn(),
   },
 }))
@@ -107,6 +110,33 @@ function trialResponse(overrides: Partial<LinkExperimentTrialResponse> = {}): Li
   }
 }
 
+function exceptionRow(position: number, value = 'missing'): LinkTroubleshootExceptionRow {
+  return {
+    input_position: position,
+    key_values: [{ value, truncated: false, original_length: null }],
+    remote_match_count: 0,
+    output_row_contribution: 0,
+  }
+}
+
+function rowsPage(overrides: Partial<LinkExceptionRowsPage> = {}): LinkExceptionRowsPage {
+  return {
+    status: 'available',
+    reason: null,
+    message: null,
+    side: 'baseline',
+    group: 'unmatched',
+    offset: 0,
+    limit: 100,
+    total_count: 0,
+    browse_cap: 10_000,
+    browse_cap_reached: false,
+    returned_count: 0,
+    rows: [],
+    ...overrides,
+  }
+}
+
 function contextExpiredError(): unknown {
   return {
     response: {
@@ -129,6 +159,8 @@ function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void; reje
 describe('useLinkTroubleshooter', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(linkTroubleshooterApi.exceptionRows).mockResolvedValue(rowsPage())
+    vi.mocked(linkTroubleshooterApi.close).mockResolvedValue(undefined)
   })
 
   it('opens a context and initializes controls from the retained settings', async () => {
@@ -145,7 +177,7 @@ describe('useLinkTroubleshooter', () => {
     expect(state.allowNullKeys.value).toBeNull()
     expect(state.nullKeysEqual.value).toBeNull()
     expect(state.page.value).toBe(1)
-    expect(state.pageSize.value).toBe(50)
+    expect(state.pageSize.value).toBe(100)
     expect(state.group.value).toBe('unmatched')
     expect(state.side.value).toBe('baseline')
   })
@@ -329,7 +361,7 @@ describe('useLinkTroubleshooter', () => {
     expect(state.allowNullKeys.value).toBeNull()
     expect(state.nullKeysEqual.value).toBeNull()
     expect(state.page.value).toBe(1)
-    expect(state.pageSize.value).toBe(50)
+    expect(state.pageSize.value).toBe(100)
     expect(state.group.value).toBe('unmatched')
     expect(state.side.value).toBe('baseline')
     expect(state.context.value?.context_id).toBe('context-1')
@@ -416,5 +448,143 @@ describe('useLinkTroubleshooter', () => {
 
     expect(await state.run()).toBeNull()
     expect(linkTroubleshooterApi.trial).not.toHaveBeenCalled()
+  })
+
+  it('loads one bounded baseline row page when a context opens', async () => {
+    vi.mocked(linkTroubleshooterApi.open).mockResolvedValue(contextResponse())
+    vi.mocked(linkTroubleshooterApi.exceptionRows).mockResolvedValue(
+      rowsPage({ total_count: 250, returned_count: 2, rows: [exceptionRow(0, 'A'), exceptionRow(1, 'B')] })
+    )
+    const state = useLinkTroubleshooter('project-a')
+
+    await state.open(request)
+    await Promise.resolve()
+
+    expect(linkTroubleshooterApi.exceptionRows).toHaveBeenCalledWith('project-a', 'context-1', {
+      side: 'baseline',
+      group: 'unmatched',
+      offset: 0,
+      limit: 100,
+      trial: null,
+    })
+    expect(state.rows.value.map((row) => row.input_position)).toEqual([0, 1])
+    expect(state.rowTotalCount.value).toBe(250)
+    expect(state.rowBrowseCap.value).toBe(10_000)
+    expect(state.rowBrowseCapReached.value).toBe(false)
+    expect(state.rowStatusMessage.value).toBeNull()
+  })
+
+  it('requests the next row page when the group or page changes', async () => {
+    vi.mocked(linkTroubleshooterApi.open).mockResolvedValue(contextResponse())
+    const state = useLinkTroubleshooter('project-a')
+    await state.open(request)
+    await Promise.resolve()
+    vi.mocked(linkTroubleshooterApi.exceptionRows).mockClear()
+
+    state.page.value = 3
+    await Promise.resolve()
+
+    expect(linkTroubleshooterApi.exceptionRows).toHaveBeenLastCalledWith('project-a', 'context-1', {
+      side: 'baseline',
+      group: 'unmatched',
+      offset: 200,
+      limit: 100,
+      trial: null,
+    })
+
+    state.group.value = 'multiply_matched'
+    await Promise.resolve()
+
+    expect(linkTroubleshooterApi.exceptionRows).toHaveBeenLastCalledWith('project-a', 'context-1', {
+      side: 'baseline',
+      group: 'multiply_matched',
+      offset: 200,
+      limit: 100,
+      trial: null,
+    })
+  })
+
+  it('browses trial rows with the controls that produced the accepted trial', async () => {
+    vi.mocked(linkTroubleshooterApi.open).mockResolvedValue(contextResponse())
+    vi.mocked(linkTroubleshooterApi.trial).mockResolvedValue(trialResponse())
+    const state = useLinkTroubleshooter('project-a')
+    await state.open(request)
+    await Promise.resolve()
+
+    state.how.value = 'left'
+    await state.run()
+    await Promise.resolve()
+    vi.mocked(linkTroubleshooterApi.exceptionRows).mockClear()
+
+    state.side.value = 'trial'
+    await Promise.resolve()
+
+    expect(linkTroubleshooterApi.exceptionRows).toHaveBeenLastCalledWith('project-a', 'context-1', {
+      side: 'trial',
+      group: 'unmatched',
+      offset: 0,
+      limit: 100,
+      trial: {
+        local_keys: ['saved_code'],
+        remote_keys: ['saved_value'],
+        how: 'left',
+        allow_null_keys: null,
+        null_keys_equal: null,
+      },
+    })
+  })
+
+  it('shows the backend refusal when affected rows cannot be browsed', async () => {
+    vi.mocked(linkTroubleshooterApi.open).mockResolvedValue(contextResponse())
+    vi.mocked(linkTroubleshooterApi.exceptionRows).mockResolvedValue(
+      rowsPage({
+        status: 'unavailable',
+        reason: 'diagnostic_incomplete',
+        message: 'The configured-key diagnostic did not complete, so affected rows are unavailable.',
+      })
+    )
+    const state = useLinkTroubleshooter('project-a')
+
+    await state.open(request)
+    await Promise.resolve()
+
+    expect(state.rows.value).toEqual([])
+    expect(state.rowStatusMessage.value).toBe(
+      'The configured-key diagnostic did not complete, so affected rows are unavailable.'
+    )
+  })
+
+  it('reopens the original warning when browsing rows hits an expired context', async () => {
+    vi.mocked(linkTroubleshooterApi.open).mockResolvedValue(contextResponse())
+    vi.mocked(linkTroubleshooterApi.exceptionRows)
+      .mockRejectedValueOnce(contextExpiredError())
+      .mockResolvedValue(rowsPage({ total_count: 1, returned_count: 1, rows: [exceptionRow(0)] }))
+    const state = useLinkTroubleshooter('project-a')
+
+    await state.open(request)
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(linkTroubleshooterApi.open).toHaveBeenCalledTimes(2)
+    expect(state.context.value?.context_id).toBe('context-1')
+    expect(state.refreshed.value).toBe(true)
+    expect(state.rows.value).toHaveLength(1)
+    expect(state.rowsError.value).toBeNull()
+  })
+
+  it('drops loaded rows when the context closes', async () => {    vi.mocked(linkTroubleshooterApi.open).mockResolvedValue(contextResponse())
+    vi.mocked(linkTroubleshooterApi.exceptionRows).mockResolvedValue(
+      rowsPage({ total_count: 1, returned_count: 1, rows: [exceptionRow(0)] })
+    )
+    const state = useLinkTroubleshooter('project-a')
+    await state.open(request)
+    await Promise.resolve()
+    expect(state.rows.value).toHaveLength(1)
+
+    await state.close()
+
+    expect(state.rows.value).toEqual([])
+    expect(state.rowTotalCount.value).toBe(0)
+    expect(state.rowBrowseCapReached.value).toBe(false)
   })
 })

@@ -34,4 +34,6 @@ async def run_integrity_troubleshooter(
         metadata=request.metadata,
         page=request.page,
         selected_value_token=request.selected_value_token,
+        row_offset=request.row_offset,
+        row_limit=request.row_limit,
     )
