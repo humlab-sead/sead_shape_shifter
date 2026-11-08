@@ -331,7 +331,7 @@
                     </v-btn>
                   </div>
                 </div>
-                <div v-if="activeRows.length > 25" class="mb-3">
+                <div v-if="activeGroup" class="mb-3">
                   <v-select
                     v-model="pageSize"
                     :items="pageSizeOptions"
@@ -343,64 +343,29 @@
                 </div>
 
                 <div v-if="!activeGroup" class="text-body-2 text-medium-emphasis">
-                  No exception rows are available for this selection.
+                  No affected rows are available for this selection.
                 </div>
                 <template v-else>
                   <p class="text-body-2 mb-2">
-                    Showing {{ pagedRows.length.toLocaleString() }} of
-                    {{ activeGroup.returned_count.toLocaleString() }} returned rows;
-                    {{ activeGroup.total_count.toLocaleString() }} affected source rows in total.
+                    Showing {{ formatCount(gridRows.length) }} of {{ formatCount(rowTotalCount) }} affected source rows
+                    · Page {{ page }} of {{ pageCount }}
                   </p>
-                  <v-alert
-                    v-if="activeGroup.row_cap_reached"
-                    type="info"
-                    variant="tonal"
-                    density="compact"
-                    class="mb-2"
-                  >
-                    Only the first {{ activeGroup.row_cap.toLocaleString() }} exception rows are returned.
+                  <v-alert v-if="rowBrowseCapReached" type="info" variant="tonal" density="compact" class="mb-2">
+                    Only the first {{ formatCount(rowBrowseCap) }} affected source rows are browsable.
                   </v-alert>
-                  <v-alert
-                    v-if="activeGroup.budget_exhausted"
-                    type="info"
-                    variant="tonal"
-                    density="compact"
-                    class="mb-2"
-                  >
-                    The response size limit stopped further exception rows.
+                  <v-alert v-if="rowStatusMessage" type="info" variant="tonal" density="compact" class="mb-2">
+                    {{ rowStatusMessage }}
                   </v-alert>
-                  <v-alert
-                    v-if="activeDetail?.detail_truncated"
-                    type="info"
-                    variant="tonal"
-                    density="compact"
-                    class="mb-2"
-                  >
-                    Some findings or key values in this response were shortened.
+                  <v-alert v-if="rowsError" type="error" variant="tonal" density="compact" class="mb-2">
+                    {{ rowsError.message }}
                   </v-alert>
 
-                  <v-data-table
-                    v-if="pagedRows.length"
-                    class="exception-rows-table"
-                    :headers="exceptionHeaders"
-                    :items="pagedRows"
-                    item-value="input_position"
-                    :items-per-page="-1"
-                    hide-default-footer
-                    density="compact"
-                  >
-                    <template #item.input_position="{ item }">{{ item.input_position + 1 }}</template>
-                    <template
-                      v-for="(_, index) in activeKeyNames"
-                      :key="`key-${index}`"
-                      #[`item.key-${index}`]="{ item }"
-                    >
-                      <span>{{ formatKeyValue(item.key_values[index]) }}</span>
-                    </template>
-                  </v-data-table>
-                  <div v-else class="text-center text-medium-emphasis py-4">
-                    No returned exception rows are available for this page.
-                  </div>
+                  <TroubleshooterDataGrid
+                    :columns="exceptionColumns"
+                    :rows="gridRows"
+                    :loading="rowsLoading"
+                    height="360px"
+                  />
                   <div class="d-flex justify-end mt-2">
                     <v-pagination
                       :model-value="page"
@@ -478,7 +443,6 @@ import {
   type LinkExceptionSide,
 } from '@/composables/useLinkTroubleshooter'
 import type {
-  LinkTroubleshootExceptionRow,
   LinkTroubleshootJoinTypeSetting,
   LinkTroubleshootKeyValue,
   LinkTroubleshootRequestedSetting,
@@ -490,6 +454,7 @@ import {
   toLinkTroubleshootRequest,
 } from '@/utils/linkTroubleshooter'
 import IntegrityTroubleshooterBody from './IntegrityTroubleshooterBody.vue'
+import TroubleshooterDataGrid, { type TroubleshooterGridColumn } from './TroubleshooterDataGrid.vue'
 
 interface Props {
   modelValue: boolean
@@ -556,6 +521,13 @@ const {
   pageSize,
   group,
   side,
+  rows,
+  rowTotalCount,
+  rowBrowseCap,
+  rowBrowseCapReached,
+  rowStatusMessage,
+  rowsLoading,
+  rowsError,
   canRunTrial,
   open,
   run,
@@ -690,12 +662,7 @@ const activeGroup = computed(() => {
 const activeKeyNames = computed<string[]>(() =>
   side.value === 'trial' ? trialLocalKeys.value : (result.value?.configured_keys?.local_keys ?? [])
 )
-const activeRows = computed<LinkTroubleshootExceptionRow[]>(() => activeGroup.value?.rows ?? [])
-const pageCount = computed(() => Math.max(1, Math.ceil(activeRows.value.length / pageSize.value)))
-const pagedRows = computed(() => {
-  const start = (page.value - 1) * pageSize.value
-  return activeRows.value.slice(start, start + pageSize.value)
-})
+const pageCount = computed(() => Math.max(1, Math.ceil(rowTotalCount.value / pageSize.value)))
 watch([side, group, pageSize, trial], () => {
   page.value = 1
 })
@@ -704,14 +671,30 @@ watch([side, group, pageSize, trial], () => {
 watch(trial, (value) => {
   side.value = value ? 'trial' : 'baseline'
 })
-// Headers are not sortable: the backend returns a fixed bounded order, so
-// sorting one page would only reorder the rows already returned.
-const exceptionHeaders = computed(() => [
-  { title: 'Input row', key: 'input_position', sortable: false },
-  ...activeKeyNames.value.map((key, index) => ({ title: `A key: ${key}`, key: `key-${index}`, sortable: false })),
-  { title: 'Remote matches', key: 'remote_match_count', sortable: false },
-  { title: 'Output rows', key: 'output_row_contribution', sortable: false },
+// Headers are not sortable: the backend returns a fixed bounded order from its
+// row route, so sorting one page would only reorder the rows already returned.
+const exceptionColumns = computed<TroubleshooterGridColumn[]>(() => [
+  { field: 'input_position', header: 'Input row', width: 110 },
+  ...activeKeyNames.value.map((key, index) => ({ field: `key-${index}`, header: `A key: ${key}` })),
+  { field: 'remote_match_count', header: 'Remote matches', align: 'right' as const, width: 150 },
+  { field: 'output_row_contribution', header: 'Output rows', align: 'right' as const, width: 130 },
 ])
+
+// Grid rows are built from the loaded page; the row index is one-based so it
+// reads as an input row number rather than a zero-based position.
+const gridRows = computed<Record<string, unknown>[]>(() =>
+  rows.value.map((row) => {
+    const record: Record<string, unknown> = {
+      input_position: row.input_position + 1,
+      remote_match_count: row.remote_match_count,
+      output_row_contribution: row.output_row_contribution,
+    }
+    activeKeyNames.value.forEach((_, index) => {
+      record[`key-${index}`] = formatKeyValue(row.key_values[index])
+    })
+    return record
+  })
+)
 
 const joinTypeOptions = [
   { title: 'Inherit configured', value: null },

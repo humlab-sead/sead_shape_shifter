@@ -6,6 +6,15 @@ export type LinkTroubleshootDiagnosticStatus = 'complete' | 'failed' | 'incomple
 export type LinkTroubleshootSettingSource = 'inherited' | 'explicit'
 export type LinkTroubleshootJoinType = 'inner' | 'left'
 
+/** The two affected-row categories the troubleshooter can browse. */
+export type LinkExceptionGroupName = 'unmatched' | 'multiply_matched'
+/** Which retained result set an exception-row page addresses. */
+export type LinkExceptionRowSide = 'baseline' | 'trial'
+/** Rows returned by one exception-row page request. */
+export const EXCEPTION_ROW_PAGE_SIZE = 100
+/** Largest page a caller may request for exception rows. */
+export const EXCEPTION_ROW_PAGE_LIMIT = 500
+
 export interface LinkExperimentContextRequest {
   issue_type: string
   local_entity: string
@@ -146,4 +155,27 @@ export interface LinkExperimentTrialResponse {
   remote_keys: string[]
   baseline: LinkTroubleshootBaseline | null
   trial: LinkTroubleshootComparison
+}
+
+export interface LinkExceptionRowsRequest {
+  side: LinkExceptionRowSide
+  group: LinkExceptionGroupName
+  offset: number
+  limit: number
+  trial?: LinkExperimentTrialRequest | null
+}
+
+export interface LinkExceptionRowsPage {
+  status: 'available' | 'unavailable'
+  reason: string | null
+  message: string | null
+  side: LinkExceptionRowSide
+  group: LinkExceptionGroupName
+  offset: number
+  limit: number
+  total_count: number
+  browse_cap: number
+  browse_cap_reached: boolean
+  returned_count: number
+  rows: LinkTroubleshootExceptionRow[]
 }

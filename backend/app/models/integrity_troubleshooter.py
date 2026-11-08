@@ -29,6 +29,12 @@ _TOKEN_TYPES: frozenset[str] = frozenset({"null", "bool", "int", "float", "str",
 FULL_NORMALIZATION_SOURCE = "current full normalization"
 """Data source stated in every inspection response."""
 
+ROW_PAGE_SIZE = 100
+"""Rows returned for one selected unmatched value by default."""
+
+ROW_PAGE_LIMIT = 500
+"""Largest row page a caller may request for one selected unmatched value."""
+
 
 def _encode_scalar(value: Any) -> dict[str, Any]:
     """Return a tagged JSON form for one key scalar."""
@@ -133,13 +139,20 @@ def decode_key_token(token: str) -> tuple[Any, ...]:
 
 
 class IntegrityTroubleshootRequest(BaseModel):
-    """Request one value page and optionally one selected value's local rows."""
+    """Request one value page and optionally one selected value's local rows.
+
+    ``page`` selects a page of distinct unmatched values. ``row_offset`` and
+    ``row_limit`` select a bounded window of local rows for one selected value,
+    so a value with many local rows stays browsable without one large response.
+    """
 
     issue_type: str
     local_entity: str
     metadata: dict[str, Any]
     page: int = Field(default=1, ge=1)
     selected_value_token: str | None = None
+    row_offset: int = Field(default=0, ge=0)
+    row_limit: int = Field(default=ROW_PAGE_SIZE, ge=1, le=ROW_PAGE_LIMIT)
 
     @field_validator("selected_value_token")
     @classmethod
@@ -188,7 +201,12 @@ class IntegrityTroubleshootValuePage(BaseModel):
 
 
 class IntegrityTroubleshootRows(BaseModel):
-    """Bounded local rows for one selected unmatched value."""
+    """Bounded local rows for one selected unmatched value.
+
+    ``total_row_count`` is the full row count for the value, kept separate from
+    the number of distinct unmatched values. ``browse_cap`` and
+    ``browse_cap_reached`` report the row browse limit for that value.
+    """
 
     status: IntegritySelectionStatus
     reason: str | None = None
@@ -196,6 +214,10 @@ class IntegrityTroubleshootRows(BaseModel):
     key_values: list[Any] | None = None
     total_row_count: int | None = None
     returned_row_count: int | None = None
+    offset: int = 0
+    limit: int = ROW_PAGE_SIZE
+    browse_cap: int = 0
+    browse_cap_reached: bool = False
     columns: list[str] = Field(default_factory=list)
     columns_truncated: bool = False
     rows: list[dict[str, Any]] = Field(default_factory=list)
