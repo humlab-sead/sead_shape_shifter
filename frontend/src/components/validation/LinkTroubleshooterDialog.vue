@@ -115,6 +115,8 @@
                     >
                   </div>
 
+                  <v-divider class="mb-3" />
+
                   <div class="d-flex flex-wrap align-center ga-3 mb-2">
                     <v-select
                       v-model="how"
