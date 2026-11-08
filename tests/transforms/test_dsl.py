@@ -226,6 +226,20 @@ class TestParser:
         assert len(expr.args) == 3
         assert all(isinstance(arg, ColumnRef) for arg in expr.args)
 
+    def test_parse_map_value_function_call(self):
+        """Parse map_value mapping pairs as ordinary DSL arguments."""
+        parser = FormulaParser()
+        expr = parser.parse("=map_value(value, 'source_a', 1, 'source_b', 2)")
+
+        assert isinstance(expr, Call)
+        assert expr.name == "map_value"
+        assert len(expr.args) == 5
+        assert isinstance(expr.args[0], ColumnRef)
+        assert cast(Literal, expr.args[1]).value == "source_a"
+        assert cast(Literal, expr.args[2]).value == 1
+        assert cast(Literal, expr.args[3]).value == "source_b"
+        assert cast(Literal, expr.args[4]).value == 2
+
     def test_parse_nested_function_calls(self):
         """Parse nested function calls."""
         parser = FormulaParser()
@@ -400,6 +414,32 @@ class TestValidator:
         )
         with pytest.raises(DSLValidationError, match="expects at most 10 arguments"):
             validator.validate(expr)
+
+    def test_validate_map_value_requires_complete_literal_pairs(self):
+        """map_value requires at least one complete pair of literal keys and values."""
+        engine = FormulaEngine()
+
+        with pytest.raises(DSLValidationError, match="expects at least 3 arguments"):
+            engine.compile("=map_value(value, 'source_a')", ["value"])
+
+        with pytest.raises(DSLValidationError, match="mapping keys must be literal"):
+            engine.compile("=map_value(value, source_a, 1)", ["value", "source_a"])
+
+        with pytest.raises(DSLValidationError, match="mapped values must be literal"):
+            engine.compile("=map_value(value, 'source_a', mapped)", ["value", "mapped"])
+
+        with pytest.raises(DSLValidationError, match="fallback must be a literal"):
+            engine.compile("=map_value(value, 'source_a', 1, fallback)", ["value", "fallback"])
+
+    def test_validate_map_value_rejects_null_and_duplicate_keys(self):
+        """map_value rejects unreachable null keys and duplicate mapping keys."""
+        engine = FormulaEngine()
+
+        with pytest.raises(DSLValidationError, match="mapping keys cannot be null"):
+            engine.compile("=map_value(value, null, 1)", ["value"])
+
+        with pytest.raises(DSLValidationError, match="duplicate mapping key 'source_a'"):
+            engine.compile("=map_value(value, 'source_a', 1, 'source_a', 2)", ["value"])
 
     def test_validate_max_depth(self):
         """Expression exceeding max depth should fail."""
@@ -967,6 +1007,27 @@ class TestEdgeCases:
         result = engine.evaluate_formula("=coalesce(col)", df)
         expected = pd.Series([None, "x"])
         pd.testing.assert_series_equal(result, expected, check_names=False)
+
+    def test_map_value_preserves_types_matches_exactly_and_passes_nulls(self):
+        """Map exact values, preserve mapped types, use the fallback, and pass nulls through."""
+        df = pd.DataFrame({"value": ["source_a", "prefix_source_a", "source_b", None]})
+        engine = FormulaEngine()
+
+        result = engine.evaluate_formula("=map_value(value, 'source_a', 1, 'source_b', 'two', 'other')", df)
+
+        assert result.tolist() == [1, "other", "two", None]
+        assert result.dtype == object
+        assert type(result.iloc[0]) is int
+        assert type(result.iloc[2]) is str
+        assert pd.isna(result.iloc[3])
+
+    def test_map_value_raises_for_unmapped_non_null_value_without_fallback(self):
+        """An unmapped non-null value raises an error when no fallback is supplied."""
+        df = pd.DataFrame({"value": ["source_a", "unknown"]})
+        engine = FormulaEngine()
+
+        with pytest.raises(DSLEvaluationError, match="no mapping for value 'unknown'"):
+            engine.evaluate_formula("=map_value(value, 'source_a', 1)", df)
 
     def test_all_nulls_propagation(self):
         """Test null propagation through functions."""

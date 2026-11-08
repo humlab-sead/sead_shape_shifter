@@ -35,7 +35,7 @@ class ExtraColumnEvaluator:
     4. Interpolated strings: String containing {column_name} patterns
 
     DSL formulas support:
-    - Safe function calls: concat, upper, lower, trim, substr, coalesce
+    - Safe function calls: concat, upper, lower, trim, substr, coalesce, map_value
     - Column references and literals (strings, numbers, null, true, false)
     - Nested function calls
     - Deferred evaluation (for columns not yet available)
