@@ -1,4 +1,9 @@
-import type { DataValidationMode, IntegrityTroubleshootRequest, LinkExperimentContextRequest, ValidationError } from '@/types'
+import type {
+  DataValidationMode,
+  IntegrityTroubleshootRequest,
+  LinkExperimentContextRequest,
+  ValidationError,
+} from '@/types'
 
 const supportedLinkPasses = ['initial', 'after_unnest', 'deferred_retry'] as const
 const supportedJoinTypes = ['inner', 'left'] as const
@@ -6,7 +11,7 @@ const supportedJoinTypes = ['inner', 'left'] as const
 export const INTEGRITY_ISSUE_CODE = 'FK_DATA_INTEGRITY'
 
 export const SAMPLE_DATA_TROUBLESHOOT_REFUSAL =
-  'Link troubleshooting is turned off for sample data validation results. The troubleshooter replays the saved link on complete data, so it cannot confirm a warning raised from a sample of at most 1000 rows per entity. Run complete data validation to troubleshoot this link.'
+  'Link troubleshooting is turned off for sample data validation results. The troubleshooter replays the configured link on complete data, so it cannot confirm a warning raised from a sample of at most 1000 rows per entity. Run complete data validation to troubleshoot this link.'
 
 export function isLinkTroubleshootCandidate(message: ValidationError): boolean {
   const metadata = message.metadata
@@ -41,9 +46,9 @@ export function toLinkTroubleshootRequest(message: ValidationError): LinkExperim
 
 /**
  * Check whether an integrity warning carries the local identity needed to
- * address one saved link.
+ * address one configured link.
  *
- * This is a structural check only. It does not decide whether the saved link
+ * This is a structural check only. It does not decide whether the configured link
  * still exists or still matches its recorded signature; only the backend can
  * establish that, so a candidate can still be refused as ineligible.
  */
@@ -64,7 +69,7 @@ export function isIntegrityTroubleshootCandidate(message: ValidationError): bool
  * Build the opening integrity inspection request for a candidate warning.
  *
  * The warning metadata is forwarded unchanged; no join pass or join type is
- * required because every saved link can be inspected for unmatched values.
+ * required because every configured link can be inspected for unmatched values.
  */
 export function toIntegrityTroubleshootRequest(message: ValidationError): IntegrityTroubleshootRequest | null {
   if (!isIntegrityTroubleshootCandidate(message) || !message.entity) {
@@ -120,17 +125,17 @@ export function integrityTroubleshootRefusal(message: ValidationError): string |
   }
 
   if (typeof message.entity !== 'string' || message.entity.trim().length === 0) {
-    return 'This warning does not name the entity that owns the saved link, so no saved link can be inspected.'
+    return 'This warning does not identify which entity owns the configured link, so no link can be inspected.'
   }
 
   const metadata = message.metadata
   const fkIndex = metadata?.fk_index
   if (typeof fkIndex !== 'number' || !Number.isInteger(fkIndex) || fkIndex < 0) {
-    return 'This warning does not record which saved link raised it, so there is no link to inspect.'
+    return 'This warning does not record which configured link raised it, so there is no link to inspect.'
   }
 
   if (typeof metadata?.fk_signature !== 'string') {
-    return 'This warning does not record a saved-link signature, so an edited or removed link cannot be ruled out.'
+    return 'This warning does not record a configured-link signature, so an edited or removed link cannot be ruled out.'
   }
 
   return 'This warning cannot be inspected.'

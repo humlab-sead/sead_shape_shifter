@@ -112,12 +112,12 @@ function integrityWarning(overrides: Partial<ValidationError> = {}): ValidationE
 }
 
 describe('integrity troubleshooter warning helper', () => {
-  it.each(['inner', 'left', 'right', 'outer', null])('accepts a saved link with join type %s', (joinType) => {
+  it.each(['inner', 'left', 'right', 'outer', null])('accepts a configured link with join type %s', (joinType) => {
     const metadata = { ...(integrityWarning().metadata ?? {}), join_type: joinType, link_pass: 'initial' }
     expect(isIntegrityTroubleshootCandidate(integrityWarning({ metadata }))).toBe(true)
   })
 
-  it('accepts a duplicate remote entity because the index addresses the saved link', () => {
+  it('accepts a duplicate remote entity because the index addresses the configured link', () => {
     const first = integrityWarning({ metadata: { fk_index: 0, fk_signature: 'first', remote_entity: 'customers' } })
     const second = integrityWarning({ metadata: { fk_index: 1, fk_signature: 'second', remote_entity: 'customers' } })
 
@@ -177,8 +177,8 @@ describe('integrity troubleshooter warning helper', () => {
 
     expect(integrityTroubleshootRefusal(integrityWarning())).toBeNull()
     expect(integrityTroubleshootRefusal(warning())).toBeNull()
-    expect(integrityTroubleshootRefusal(noEntity)).toContain('does not name the entity')
-    expect(integrityTroubleshootRefusal(noIndex)).toContain('does not record which saved link')
-    expect(integrityTroubleshootRefusal(noSignature)).toContain('does not record a saved-link signature')
+    expect(integrityTroubleshootRefusal(noEntity)).toContain('does not identify which entity')
+    expect(integrityTroubleshootRefusal(noIndex)).toContain('does not record which configured link')
+    expect(integrityTroubleshootRefusal(noSignature)).toContain('does not record a configured-link signature')
   })
 })

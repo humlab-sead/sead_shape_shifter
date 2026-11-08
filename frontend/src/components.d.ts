@@ -73,6 +73,7 @@ declare module 'vue' {
     TaskCompletionStats: typeof import('./components/dependencies/TaskCompletionStats.vue')['default']
     TaskFilterDropdown: typeof import('./components/dependencies/TaskFilterDropdown.vue')['default']
     ThemeColorPicker: typeof import('./components/ThemeColorPicker.vue')['default']
+    TroubleshooterDataGrid: typeof import('./components/validation/TroubleshooterDataGrid.vue')['default']
     UnmaterializeDialog: typeof import('./components/entities/UnmaterializeDialog.vue')['default']
     UnnestEditor: typeof import('./components/entities/UnnestEditor.vue')['default']
     ValidationMessageList: typeof import('./components/validation/ValidationMessageList.vue')['default']

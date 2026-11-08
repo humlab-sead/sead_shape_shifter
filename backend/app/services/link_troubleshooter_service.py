@@ -12,7 +12,11 @@ from backend.app.core.config import Settings, get_settings
 from backend.app.exceptions import ProjectedBudgetExceeded
 from backend.app.mappers.link_troubleshooter_mapper import LinkTroubleshooterMapper
 from backend.app.models.link_troubleshooter import (
+    ExceptionGroupName,
+    ExceptionRowSide,
+    LinkExceptionRowsPage,
     LinkExperimentContextResponse,
+    LinkExperimentTrialRequest,
     LinkExperimentTrialResponse,
     LinkTroubleshootKeyOptions,
     LinkTroubleshootKeys,
@@ -25,6 +29,8 @@ from backend.app.services.link_experiment_context_store import (
     LinkExperimentContextStore,
     LinkExperimentDiagnostics,
     LinkExperimentSnapshot,
+    TrialExceptionGroup,
+    TrialExceptionGroups,
     get_link_experiment_context_store,
 )
 from backend.app.services.link_trial_service import LinkTrialResult, LinkTrialService
@@ -53,6 +59,20 @@ class LinkExperimentTrialResult:
 
     state: ContextLookupState
     response: LinkExperimentTrialResponse | None = None
+
+
+@dataclass(frozen=True)
+class LinkExceptionRowsResult:
+    """Outcome of one exception-row browse request.
+
+    ``unavailable`` means the context is unknown, expired, or owned by another
+    user or project. A retained context whose diagnostic did not complete returns
+    an available page with an unavailable status instead, because the context
+    itself exists and its baseline state is already known.
+    """
+
+    state: ContextLookupState
+    page: LinkExceptionRowsPage | None = None
 
 
 class LinkTroubleshooterService:
@@ -114,7 +134,7 @@ class LinkTroubleshooterService:
                 relationship=self._relationship(baseline, fk) if fk is not None else None,
                 key_options=None,
                 configured_keys=LinkTroubleshootKeys(local_keys=fk.local_keys, remote_keys=fk.remote_keys) if fk is not None else None,
-                row_cap=self.settings.LINK_EXPERIMENT_GROUP_ROW_CAP,
+                row_cap=self.settings.LINK_TROUBLESHOOT_BROWSE_ROW_CAP,
             )
 
         try:
@@ -204,7 +224,7 @@ class LinkTroubleshooterService:
             trial=trial,
             local_keys=local_keys,
             remote_keys=remote_keys,
-            row_cap=self.settings.LINK_EXPERIMENT_GROUP_ROW_CAP,
+            row_cap=self.settings.LINK_TROUBLESHOOT_BROWSE_ROW_CAP,
         )
         return LinkExperimentTrialResult(state="found", response=response)
 
@@ -221,6 +241,101 @@ class LinkTroubleshooterService:
             owner_principal_id=owner_principal_id,
             project_locator=project_locator,
         )
+
+    async def read_exception_rows(
+        self,
+        *,
+        context_id: str,
+        owner_principal_id: str,
+        project_locator: str,
+        side: ExceptionRowSide,
+        group: ExceptionGroupName,
+        offset: int,
+        limit: int,
+        trial_request: LinkExperimentTrialRequest | None = None,
+    ) -> LinkExceptionRowsResult:
+        """Read one bounded page of affected source rows from an owned context.
+
+        Baseline rows come from the retained configured-key diagnostic. Trial
+        rows are not retained, so a trial page recomputes the trial from the
+        retained inputs with the submitted controls and then slices it.
+        """
+        lookup = await self.context_store.lookup_context(
+            context_id,
+            owner_principal_id=owner_principal_id,
+            project_locator=project_locator,
+        )
+        if lookup.state != "found" or lookup.context is None:
+            return LinkExceptionRowsResult(state=lookup.state)
+
+        context: LinkExperimentContext = lookup.context
+        groups: TrialExceptionGroups | None = context.snapshot.diagnostics.exception_groups
+
+        if side == "trial":
+            if trial_request is None:
+                return LinkExceptionRowsResult(
+                    state="found",
+                    page=LinkExceptionRowsPage(
+                        status="unavailable",
+                        reason="trial_required",
+                        message="Browsing trial rows requires the trial controls that produced the trial.",
+                        side=side,
+                        group=group,
+                        offset=offset,
+                        limit=limit,
+                        browse_cap=self.settings.LINK_TROUBLESHOOT_BROWSE_ROW_CAP,
+                    ),
+                )
+            trial: LinkTrialResult = self.trial_service.run_trial(
+                context.snapshot.baseline,
+                local_keys=trial_request.local_keys,
+                remote_keys=trial_request.remote_keys,
+                how=cast(Literal["inner", "left"] | None, trial_request.how),
+                allow_null_keys=trial_request.allow_null_keys,
+                null_keys_equal=trial_request.null_keys_equal,
+            )
+            if trial.status != "complete" or trial.exception_groups is None:
+                return LinkExceptionRowsResult(
+                    state="found",
+                    page=LinkExceptionRowsPage(
+                        status="unavailable",
+                        reason=trial.reason,
+                        message=trial.message,
+                        side=side,
+                        group=group,
+                        offset=offset,
+                        limit=limit,
+                        browse_cap=self.settings.LINK_TROUBLESHOOT_BROWSE_ROW_CAP,
+                    ),
+                )
+            groups = trial.exception_groups
+
+        if groups is None:
+            return LinkExceptionRowsResult(
+                state="found",
+                page=LinkExceptionRowsPage(
+                    status="unavailable",
+                    reason="diagnostic_incomplete",
+                    message="The configured-key diagnostic did not complete, so affected rows are unavailable.",
+                    side=side,
+                    group=group,
+                    offset=offset,
+                    limit=limit,
+                    browse_cap=self.settings.LINK_TROUBLESHOOT_BROWSE_ROW_CAP,
+                ),
+            )
+
+        selected_group: TrialExceptionGroup = groups.unmatched if group == "unmatched" else groups.multiply_matched
+        page = LinkTroubleshooterMapper.to_exception_rows_page(
+            side=side,
+            group=group,
+            offset=offset,
+            limit=limit,
+            total_count=selected_group.total_count,
+            browse_cap=self.settings.LINK_TROUBLESHOOT_BROWSE_ROW_CAP,
+            rows=selected_group.rows[offset : offset + limit],
+        )
+        return LinkExceptionRowsResult(state="found", page=page)
 
     def _context_response(self, context: LinkExperimentContext) -> LinkExperimentContextResponse:
         """Map one retained context to its baseline response."""
@@ -241,7 +356,7 @@ class LinkTroubleshooterService:
             relationship=self._relationship(baseline, fk) if fk is not None else None,
             key_options=key_options,
             configured_keys=LinkTroubleshootKeys(local_keys=fk.local_keys, remote_keys=fk.remote_keys) if fk is not None else None,
-            row_cap=self.settings.LINK_EXPERIMENT_GROUP_ROW_CAP,
+            row_cap=self.settings.LINK_TROUBLESHOOT_BROWSE_ROW_CAP,
         )
 
     def _configured_diagnostics(self, baseline: LinkBaselineResult, fk: ForeignKeyConfig) -> LinkTrialResult:
