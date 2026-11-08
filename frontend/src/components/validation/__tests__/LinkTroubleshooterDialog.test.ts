@@ -871,7 +871,8 @@ describe('LinkTroubleshooterDialog', () => {
     expect(openRequests).toHaveLength(0)
     expect(mockOpen).not.toHaveBeenCalled()
     expect(mockClose).toHaveBeenCalled()
-    expect(wrapper.text()).toContain('1 unmatched value')
+    expect(wrapper.text()).toContain('Unmatched values')
+    expect(wrapper.text()).toContain('MISSING-A')
     expect(wrapper.text()).toContain('orders → customers')
     expect(wrapper.find('select[aria-label="A key"]').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('Run trial')
@@ -929,7 +930,7 @@ describe('LinkTroubleshooterDialog', () => {
     expect(openRequests).toHaveLength(1)
     expect(mockClose).toHaveBeenCalled()
     expect(wrapper.text()).not.toContain('Trial key pairs')
-    expect(wrapper.text()).toContain('1 unmatched value')
+    expect(wrapper.text()).toContain('Unmatched values')
   })
 
   it('clears state and releases the context when the dialog closes', async () => {

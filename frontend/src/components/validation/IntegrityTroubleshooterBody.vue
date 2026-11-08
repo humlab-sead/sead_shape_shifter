@@ -7,7 +7,7 @@
         from the same inspection snapshot.
       </p>
     </div>
-    <div v-else-if="loading" class="mb-2 integrity-page-loading" aria-label="Loading inspection page">
+    <div v-else-if="loading" class="mb-2 integrity-page-loading" aria-label="Loading inspection results">
       <v-progress-linear indeterminate color="primary" />
     </div>
 
@@ -89,68 +89,62 @@
             </div>
           </section>
 
-          <section v-if="result.values" class="mb-5" aria-label="Unmatched values">
-            <div class="d-flex flex-wrap align-center justify-space-between ga-2 mb-2">
-              <h3 class="text-subtitle-1 mb-0">Unmatched values</h3>
-              <v-btn
-                v-if="result.values.values.length > 0"
-                size="small"
-                variant="text"
-                prepend-icon="mdi-download"
-                :disabled="loading"
-                @click="exportUnmatchedValues"
-              >
-                Export unmatched keys
-              </v-btn>
-            </div>
-            <div class="text-caption text-medium-emphasis mb-3">
-              {{ formatCount(result.values.values.length) }} unmatched
-              {{ result.values.values.length === 1 ? 'value' : 'values' }}
-            </div>
-
-            <template v-if="result.values.values.length > 0">
-              <p class="text-body-2 text-medium-emphasis mb-2">Select a value to list its affected local rows.</p>
-              <TroubleshooterDataGrid
-                :columns="valueColumns"
-                :rows="valueRows"
-                :loading="loading"
-                selectable
-                height="320px"
-                @row-click="selectValueRow"
-              />
-            </template>
-            <p v-else class="text-body-2 text-medium-emphasis">No unmatched values in the current data.</p>
-          </section>
-
-          <section v-if="result.selected" class="mb-2" aria-label="Selected value rows">
-            <template v-if="result.selected.status === 'selected'">
-              <h3 class="text-subtitle-1 mb-1">Affected local rows</h3>
-              <div class="text-body-2">Unmatched key: {{ formatKey(result.selected.key_values ?? []) }}</div>
-              <div class="text-body-2 mb-2">
-                {{ formatCount(result.selected.total_row_count) }} local rows use this key.
+          <div class="integrity-result-panels">
+            <section v-if="result.values" class="integrity-result-panel" aria-label="Unmatched values">
+              <div class="d-flex flex-wrap align-center justify-space-between ga-2 mb-2">
+                <h3 class="text-subtitle-1 mb-0">Unmatched values</h3>
+                <v-btn
+                  v-if="result.values.values.length > 0"
+                  size="small"
+                  variant="text"
+                  prepend-icon="mdi-download"
+                  :disabled="loading"
+                  @click="exportUnmatchedValues"
+                >
+                  Export unmatched keys
+                </v-btn>
               </div>
-              <v-alert
-                v-if="result.selected.columns_truncated"
-                type="info"
-                variant="tonal"
-                density="compact"
-                class="mb-2"
-              >
-                Only the first {{ result.selected.columns.length }} columns are shown.
-              </v-alert>
-              <TroubleshooterDataGrid
-                :columns="selectedColumns"
-                :rows="result.selected.rows"
-                :loading="loading"
-                height="320px"
-              />
-            </template>
 
-            <v-alert v-else type="warning" variant="tonal" density="compact" class="integrity-selection-unavailable">
-              <div v-if="result.selected.reason" class="text-caption mb-1">Reason: {{ result.selected.reason }}</div>
-              <div>{{ result.selected.message }}</div>
-            </v-alert>
-          </section>
+              <template v-if="result.values.values.length > 0">
+                <p class="text-body-2 text-medium-emphasis mb-2">Select a value to list its affected local rows.</p>
+                <TroubleshooterDataGrid
+                  :columns="valueColumns"
+                  :rows="valueRows"
+                  :loading="loading"
+                  selectable
+                  height="320px"
+                  @row-click="selectValueRow"
+                />
+              </template>
+              <p v-else class="text-body-2 text-medium-emphasis">No unmatched values in the current data.</p>
+            </section>
+
+            <section v-if="result.selected" class="integrity-result-panel" aria-label="Selected value rows">
+              <template v-if="result.selected.status === 'selected'">
+                <h3 class="text-subtitle-1 mb-2">Affected local rows</h3>
+                <v-alert
+                  v-if="result.selected.columns_truncated"
+                  type="info"
+                  variant="tonal"
+                  density="compact"
+                  class="mb-2"
+                >
+                  Only the first {{ result.selected.columns.length }} columns are shown.
+                </v-alert>
+                <TroubleshooterDataGrid
+                  :columns="selectedColumns"
+                  :rows="result.selected.rows"
+                  :loading="loading"
+                  height="320px"
+                />
+              </template>
+
+              <v-alert v-else type="warning" variant="tonal" density="compact" class="integrity-selection-unavailable">
+                <div v-if="result.selected.reason" class="text-caption mb-1">Reason: {{ result.selected.reason }}</div>
+                <div>{{ result.selected.message }}</div>
+              </v-alert>
+            </section>
+          </div>
         </div>
       </div>
 
@@ -445,6 +439,22 @@ function formatCodeLabel(value: string): string {
   min-width: 0;
 }
 
+/*
+ * The two result panels sit side by side and share the whole results width. When
+ * only one panel is present it takes the full width, so a lone value list is not
+ * squeezed into half the column.
+ */
+.integrity-result-panels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.integrity-result-panel {
+  min-width: 0;
+}
+
 .integrity-key-headings {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -466,7 +476,8 @@ function formatCodeLabel(value: string): string {
 }
 
 @media (max-width: 900px) {
-  .integrity-troubleshooter-workspace {
+  .integrity-troubleshooter-workspace,
+  .integrity-result-panels {
     grid-template-columns: minmax(0, 1fr);
   }
 }

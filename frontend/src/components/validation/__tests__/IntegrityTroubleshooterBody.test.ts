@@ -177,7 +177,6 @@ describe('IntegrityTroubleshooterBody', () => {
       local_entity: 'orders',
       metadata: { fk_index: 0, fk_signature: 'saved-signature', orphan_count: 2 },
     })
-    expect(wrapper.text()).toContain('2 unmatched values')
     expect(wrapper.find('[data-stat="recorded"] .integrity-finding-stat-value').text()).toBe('2')
     expect(wrapper.find('[data-stat="current"] .integrity-finding-stat-value').text()).toBe('2')
     expect(wrapper.find('button[aria-label="About integrity counts"]').exists()).toBe(true)
@@ -352,6 +351,30 @@ describe('IntegrityTroubleshooterBody', () => {
     expect(rows[1]?.text()).toBe('MISSING-B3')
   })
 
+  it('places both result grids side by side in one row', async () => {
+    inspect().mockReset()
+    queueResponses(response(), response({ selected: selectedRows() }))
+
+    const wrapper = mountBody()
+    await flushPromises()
+    await wrapper.find('section[aria-label="Unmatched values"] .grid-row').trigger('click')
+    await flushPromises()
+
+    const panels = wrapper.find('.integrity-result-panels')
+    expect(panels.exists()).toBe(true)
+    const sections = panels.findAll(':scope > section')
+    expect(sections.map((section) => section.attributes('aria-label'))).toEqual([
+      'Unmatched values',
+      'Selected value rows',
+    ])
+    // Both grids use the same fixed height now that they share one row.
+    const grids = wrapper.findAllComponents(TroubleshooterDataGridStub)
+    expect(grids).toHaveLength(2)
+    for (const grid of grids) {
+      expect(grid.props('height')).toBe('320px')
+    }
+  })
+
   it('exports every unmatched key to CSV with configured key names as columns', async () => {
     const wrapper = mountBody()
     await flushPromises()
@@ -446,8 +469,10 @@ describe('IntegrityTroubleshooterBody', () => {
     await flushPromises()
 
     const section = wrapper.find('section[aria-label="Selected value rows"]')
-    expect(section.text()).toContain('Unmatched key: MISSING-A')
-    expect(section.text()).toContain('40 local rows use this key.')
+    // The heading alone introduces the rows; the key and row count are not repeated.
+    expect(section.find('h3').text()).toBe('Affected local rows')
+    expect(section.text()).not.toContain('Unmatched key:')
+    expect(section.text()).not.toContain('local rows use this key')
     expect(section.text()).toContain('Only the first 2 columns are shown.')
     expect(section.find('.grid-header').text()).toContain('customer_code')
     expect(section.findAll('.grid-row')).toHaveLength(20)
@@ -470,7 +495,6 @@ describe('IntegrityTroubleshooterBody', () => {
 
     const section = wrapper.find('section[aria-label="Selected value rows"]')
     expect(section.findAll('.grid-row')).toHaveLength(2_000)
-    expect(section.text()).toContain('10,000 local rows use this key.')
     expect(wrapper.find('button[aria-label="Next rows page"]').exists()).toBe(false)
     expect(wrapper.find('button[aria-label="Previous rows page"]').exists()).toBe(false)
   })
