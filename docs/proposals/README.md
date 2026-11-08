@@ -7,7 +7,6 @@ This index covers proposals and initiative records that need attention or provid
 | Proposal | Status | Decision or scope |
 |---|---|---|
 | [Linked Art Export from Shape Shifter](LINKED_ART_EXPORT/LINKED_ART_EXPORT.md) | Proposed change request — draft for review | Evaluate SEAD-to-Linked Art output through relational transformations and a registered output dispatcher before deciding on production support. |
-| [Branch-Scoped Consumers For Mixed-Branch Parents](BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md) | Proposed follow-up | Let downstream entities select which branch of a mixed parent they consume. |
 | [Output Dataset Expectations](OUTPUT_DATASET_EXPECTATIONS/OUTPUT_DATASET_EXPECTATIONS.md) | Approved change request | Check row counts, distinct business keys, and expected group counts on complete transformed output. |
 | [Report Target Model Coverage Against SEAD](SEAD_TARGET_MODEL_COVERAGE_BOUNDARY.md) | Proposed change request | Let each target model declare its SEAD coverage source and measure coverage with a CLI against the pinned snapshot or live SEAD; no separate manifest. |
 | [Publish Container Images From CI To GHCR And Deploy By Pull](GHCR_IMAGE_RELEASE.md) | Proposed change request | Build images in GitHub Actions, publish to GHCR, and deploy by digest-pinned pull instead of host-side builds and release archives. |
@@ -35,6 +34,7 @@ These proposals are deferred or not yet approved. See each document for its deta
 | [SEAD Change Request Ingester Post-MVP](CHANGE_REQUEST_INGESTER_POST_MVP/README.md) | Deferred capability proposals for the change request ingester; no combined delivery is accepted. |
 | [Advanced FK Validation Modes](future/ADVANCED_FK_VALIDATION_MODES.md) | Direct, transitive, and path-based foreign-key validation. |
 | [App-Managed Team Membership](future/APP_MANAGED_TEAM_MEMBERSHIP.md) | Manage team membership in the authorization database. |
+| [Branch-Scoped Consumers For Mixed-Branch Parents](future/BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md) | Let downstream entities select which branch of a mixed parent they consume. |
 | [Authorization Schema Migration Registry](future/AUTHORIZATION_SCHEMA_MIGRATION_REGISTRY.md) | Version and register authorization database migrations. |
 | [BugsCEP Importer Migration Runtime Decision Spike](future/BUGSCEP_IMPORTER_MIGRATION_IMPLEMENTATION_DECISION/BUGSCEP_IMPORTER_MIGRATION_IMPLEMENTATION_DECISION.md) | Test candidate runtime paths against the completed policy contract before choosing one. |
 | [Create Entity From Query Tester](future/CREATE_ENTITY_FROM_QUERY_TESTER.md) | Add a Create Entity action in Query Tester with create-mode prefill and an authorization-aware project selector. |
