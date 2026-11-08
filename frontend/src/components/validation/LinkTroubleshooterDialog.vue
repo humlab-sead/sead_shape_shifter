@@ -312,11 +312,13 @@
 
               <section aria-label="Exception rows">
                 <div class="affected-row-toolbar d-flex flex-wrap align-center ga-2 mb-3">
-                  <div class="d-flex flex-wrap ga-2" role="group" aria-label="Affected row category">
+                  <div class="d-flex flex-wrap ga-1" role="group" aria-label="Affected row category">
                     <v-btn
                       data-group="unmatched"
                       size="small"
-                      :variant="group === 'unmatched' ? 'flat' : 'outlined'"
+                      variant="text"
+                      class="affected-row-tab"
+                      :class="{ 'affected-row-tab--active': group === 'unmatched' }"
                       :aria-pressed="group === 'unmatched'"
                       @click="selectGroup('unmatched')"
                     >
@@ -325,7 +327,9 @@
                     <v-btn
                       data-group="multiply_matched"
                       size="small"
-                      :variant="group === 'multiply_matched' ? 'flat' : 'outlined'"
+                      variant="text"
+                      class="affected-row-tab"
+                      :class="{ 'affected-row-tab--active': group === 'multiply_matched' }"
                       :aria-pressed="group === 'multiply_matched'"
                       @click="selectGroup('multiply_matched')"
                     >
@@ -348,10 +352,6 @@
                   No affected rows are available for this selection.
                 </div>
                 <template v-else>
-                  <p class="text-body-2 mb-2">
-                    Showing {{ formatCount(gridRows.length) }} of {{ formatCount(rowTotalCount) }} affected source
-                    rows<span v-if="pageCount > 1"> · Page {{ page }} of {{ pageCount }}</span>
-                  </p>
                   <v-alert v-if="rowBrowseCapReached" type="info" variant="tonal" density="compact" class="mb-2">
                     Only the first {{ formatCount(rowBrowseCap) }} affected source rows are browsable.
                   </v-alert>
@@ -368,7 +368,9 @@
                     :loading="rowsLoading"
                     height="360px"
                   />
-                  <div class="d-flex justify-end mt-2">
+                  <!-- The pager is the only page indicator left, so it appears
+                  only when there is more than one page to choose from. -->
+                  <div v-if="pageCount > 1" class="d-flex justify-end mt-2">
                     <v-pagination
                       :model-value="page"
                       :length="pageCount"
@@ -1037,6 +1039,31 @@ function formatDelta(configured: number | null | undefined, trialValue: number |
 
 .page-size-select {
   max-width: 180px;
+}
+
+/*
+ * The affected-row categories read as tabs: unselected labels carry no outline or
+ * fill, and the selected one is underlined. A bordered unselected label looked
+ * highlighted and competed with the selected one.
+ */
+.affected-row-tab {
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  padding-inline: 0.5rem;
+  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity));
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.affected-row-tab :deep(.v-btn__overlay),
+.affected-row-tab :deep(.v-btn__underlay) {
+  display: none;
+}
+
+.affected-row-tab--active {
+  border-bottom-color: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-primary));
+  font-weight: 600;
 }
 
 @media (max-width: 900px) {
