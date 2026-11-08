@@ -297,6 +297,8 @@ function integrityResponse(overrides: Partial<IntegrityTroubleshootResponse> = {
     },
     selected: null,
     ...overrides,
+    context_id: overrides.context_id ?? null,
+    expires_at: overrides.expires_at ?? null,
   }
 }
 

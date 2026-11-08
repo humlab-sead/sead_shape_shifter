@@ -6,10 +6,15 @@ import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import IntegrityTroubleshooterBody from '../IntegrityTroubleshooterBody.vue'
 import { integrityTroubleshooterApi } from '@/api/integrityTroubleshooter'
-import type { IntegrityTroubleshootRequest, IntegrityTroubleshootResponse, ValidationError } from '@/types'
+import type {
+  IntegrityTroubleshootPageRequest,
+  IntegrityTroubleshootRequest,
+  IntegrityTroubleshootResponse,
+  ValidationError,
+} from '@/types'
 
 vi.mock('@/api/integrityTroubleshooter', () => ({
-  integrityTroubleshooterApi: { inspect: vi.fn() },
+  integrityTroubleshooterApi: { inspect: vi.fn(), page: vi.fn(), close: vi.fn() },
 }))
 
 const vuetify = createVuetify({ components, directives })
@@ -46,7 +51,10 @@ const TroubleshooterDataGridStub = defineComponent({
 })
 
 const requests: IntegrityTroubleshootRequest[] = []
+const pageRequests: IntegrityTroubleshootPageRequest[] = []
 const inspect = () => vi.mocked(integrityTroubleshooterApi.inspect)
+const readPage = () => vi.mocked(integrityTroubleshooterApi.page)
+const close = () => vi.mocked(integrityTroubleshooterApi.close)
 
 function warning(overrides: Partial<ValidationError> = {}): ValidationError {
   return {
@@ -65,6 +73,8 @@ function response(overrides: Partial<IntegrityTroubleshootResponse> = {}): Integ
     reason: 'reproduced',
     message: 'The current full-data unmatched count matches the warning.',
     source: 'current full normalization',
+    context_id: 'context-one',
+    expires_at: '2026-01-01T00:15:00Z',
     relationship: {
       local_entity: 'orders',
       remote_entity: 'customers',
@@ -112,14 +122,24 @@ function selectedRows(overrides: Partial<SelectedRows> = {}): SelectedRows {
   }
 }
 
-/** Queue one recorded response per inspection request, in call order. */
+/** Queue one response per inspection or page request, in call order. */
 function queueResponses(...responses: IntegrityTroubleshootResponse[]): void {
-  for (const value of responses) {
-    inspect().mockImplementationOnce(async (_projectName, request) => {
-      requests.push(request)
-      return value
-    })
+  const queuedResponses = [...responses]
+  const takeResponse = (): IntegrityTroubleshootResponse => {
+    const value = queuedResponses.shift()
+    if (!value) {
+      throw new Error('No integrity troubleshooter response was queued')
+    }
+    return value
   }
+  inspect().mockImplementation(async (_projectName, request) => {
+    requests.push(request)
+    return takeResponse()
+  })
+  readPage().mockImplementation(async (_projectName, _contextId, request) => {
+    pageRequests.push(request)
+    return takeResponse()
+  })
 }
 
 function mountBody(message: ValidationError = warning()) {
@@ -145,7 +165,11 @@ function mountBody(message: ValidationError = warning()) {
 describe('IntegrityTroubleshooterBody', () => {
   beforeEach(() => {
     requests.length = 0
+    pageRequests.length = 0
     inspect().mockReset()
+    readPage().mockReset()
+    close().mockReset()
+    close().mockResolvedValue(undefined)
     queueResponses(response())
   })
 
@@ -187,6 +211,57 @@ describe('IntegrityTroubleshooterBody', () => {
 
     expect(wrapper.find('.integrity-loading').text()).toContain('current data')
     expect(wrapper.text()).not.toContain('Inspected data source')
+  })
+
+  it('keeps the existing rows visible while a context page loads', async () => {
+    inspect().mockReset()
+    readPage().mockReset()
+    const firstRows = Array.from({ length: 100 }, (_, index) => ({
+      customer_code: `MISSING-${index}`,
+      name: `Row ${index}`,
+    }))
+    const nextRows = Array.from({ length: 100 }, (_, index) => ({
+      customer_code: `MISSING-${index + 100}`,
+      name: `Row ${index + 100}`,
+    }))
+    let resolvePage: ((value: IntegrityTroubleshootResponse) => void) | undefined
+    inspect().mockResolvedValue(
+      response({
+        selected: selectedRows({ total_row_count: 250, returned_row_count: 100, rows: firstRows }),
+      })
+    )
+    readPage().mockImplementationOnce(async (_projectName, _contextId, request) => {
+      pageRequests.push(request)
+      return new Promise<IntegrityTroubleshootResponse>((resolve) => {
+        resolvePage = resolve
+      })
+    })
+
+    const wrapper = mountBody()
+    await flushPromises()
+    await wrapper.find('button[aria-label="Next rows page"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('.integrity-page-loading').exists()).toBe(true)
+    expect(wrapper.find('section[aria-label="Selected value rows"] .grid-row').text()).toContain('MISSING-0')
+    expect(inspect()).toHaveBeenCalledTimes(1)
+    expect(pageRequests).toEqual([{ page: 1, row_offset: 100, row_limit: 100 }])
+
+    resolvePage?.(
+      response({
+        selected: selectedRows({
+          total_row_count: 250,
+          returned_row_count: 100,
+          offset: 100,
+          rows: nextRows,
+        }),
+      })
+    )
+    await flushPromises()
+
+    expect(wrapper.find('.integrity-page-loading').exists()).toBe(false)
+    expect(wrapper.find('section[aria-label="Selected value rows"] .grid-row').text()).toContain('MISSING-100')
+    expect(inspect()).toHaveBeenCalledTimes(1)
   })
 
   it('compares recorded and current unmatched counts in separate cards', async () => {
@@ -325,10 +400,7 @@ describe('IntegrityTroubleshooterBody', () => {
     await wrapper.find('button[aria-label="Next page"]').trigger('click')
     await flushPromises()
 
-    expect(requests[1]).toEqual({
-      issue_type: 'FK_DATA_INTEGRITY',
-      local_entity: 'orders',
-      metadata: { fk_index: 0, fk_signature: 'saved-signature', orphan_count: 2 },
+    expect(pageRequests[0]).toEqual({
       page: 2,
       row_offset: 0,
       row_limit: 100,
@@ -378,15 +450,12 @@ describe('IntegrityTroubleshooterBody', () => {
 
     await wrapper.find('button[aria-label="Next page"]').trigger('click')
     await flushPromises()
-    expect(requests[1]?.page).toBe(2)
+    expect(pageRequests[0]?.page).toBe(2)
 
     await wrapper.find('section[aria-label="Unmatched values"] .grid-row').trigger('click')
     await flushPromises()
 
-    expect(requests[2]).toEqual({
-      issue_type: 'FK_DATA_INTEGRITY',
-      local_entity: 'orders',
-      metadata: { fk_index: 0, fk_signature: 'saved-signature', orphan_count: 2 },
+    expect(pageRequests[1]).toEqual({
       page: 2,
       row_offset: 0,
       row_limit: 100,
@@ -423,6 +492,89 @@ describe('IntegrityTroubleshooterBody', () => {
     expect(section.findAll('.grid-row')).toHaveLength(20)
     // Only response-provided columns are rendered.
     expect(section.find('.grid-header').text()).not.toContain('system_id')
+  })
+
+  it('pages selected rows through the shared browse cap', async () => {
+    inspect().mockReset()
+    const firstPageRows = Array.from({ length: 100 }, (_, index) => ({
+      customer_code: `MISSING-${index}`,
+      name: `Row ${index}`,
+    }))
+    const secondPageRows = Array.from({ length: 100 }, (_, index) => ({
+      customer_code: `MISSING-${index + 100}`,
+      name: `Row ${index + 100}`,
+    }))
+    const values = {
+      page: 1,
+      page_size: 50,
+      distinct_value_count: 1,
+      returned_value_count: 1,
+      has_next: false,
+      values: [{ key_values: ['MISSING-A'], local_row_count: 12_000, token: 'token-a' }],
+    }
+    queueResponses(
+      response({ values }),
+      response({
+        values,
+        selected: selectedRows({
+          total_row_count: 12_000,
+          returned_row_count: 100,
+          browse_cap_reached: true,
+          rows: firstPageRows,
+        }),
+      }),
+      response({
+        values,
+        selected: selectedRows({
+          total_row_count: 12_000,
+          returned_row_count: 100,
+          offset: 100,
+          browse_cap_reached: true,
+          rows: secondPageRows,
+        }),
+      })
+    )
+
+    const wrapper = mountBody()
+    await flushPromises()
+    await wrapper.find('section[aria-label="Unmatched values"] .grid-row').trigger('click')
+    await flushPromises()
+
+    const section = wrapper.find('section[aria-label="Selected value rows"]')
+    expect(section.text()).toContain('Only the first 10,000 local rows for this key are browsable.')
+    await wrapper.find('button[aria-label="Next rows page"]').trigger('click')
+    await flushPromises()
+
+    expect(requests).toHaveLength(1)
+    expect(pageRequests[1]).toEqual({
+      page: 1,
+      row_offset: 100,
+      row_limit: 100,
+      selected_value_token: 'token-a',
+    })
+    expect(pageRequests).toHaveLength(2)
+    expect(wrapper.find('section[aria-label="Selected value rows"] .grid-row').text()).toContain('MISSING-100')
+  })
+
+  it('reopens the inspection once when its page context expires', async () => {
+    inspect().mockReset()
+    readPage().mockReset()
+    inspect()
+      .mockResolvedValueOnce(response())
+      .mockResolvedValueOnce(response({ selected: selectedRows() }))
+    readPage().mockRejectedValueOnce({
+      response: { status: 410, data: { detail: { reason: 'context_expired' } } },
+    })
+
+    const wrapper = mountBody()
+    await flushPromises()
+    await wrapper.find('section[aria-label="Unmatched values"] .grid-row').trigger('click')
+    await flushPromises()
+
+    expect(inspect()).toHaveBeenCalledTimes(2)
+    expect(readPage()).toHaveBeenCalledTimes(1)
+    expect(inspect().mock.calls[1]?.[1].selected_value_token).toBe('token-a')
+    expect(wrapper.find('section[aria-label="Selected value rows"]').exists()).toBe(true)
   })
 
   it('shows the refusal when the selected value is no longer unmatched', async () => {

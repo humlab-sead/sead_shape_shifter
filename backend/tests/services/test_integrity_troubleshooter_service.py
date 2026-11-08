@@ -16,6 +16,10 @@ from backend.app.core.config import Settings
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.integrity_troubleshooter import ROW_PAGE_SIZE, decode_key_token, encode_key_token
 from backend.app.models.project import Project
+from backend.app.services.integrity_troubleshooter_context_store import (
+    INTEGRITY_TROUBLESHOOTER_CONTEXT_TTL,
+    IntegrityTroubleshooterContextStore,
+)
 from backend.app.services.integrity_troubleshooter_service import (
     COLUMN_LIMIT,
     VALUE_PAGE_SIZE,
@@ -746,12 +750,111 @@ async def test_inspection_writes_nothing_to_shared_caches_or_the_project():
 
 
 @pytest.mark.asyncio
+async def test_context_pages_reuse_the_normalized_snapshot_and_expire(monkeypatch):
+    """Value and row pages use one owner-scoped snapshot until close or expiry."""
+    api_project = build_api_project(BASE_CFG)
+    saved_project = build_saved_project(BASE_CFG)
+    clock_value = datetime(2026, 1, 1)
+    store = IntegrityTroubleshooterContextStore(clock=lambda: clock_value)
+    service = IntegrityTroubleshooterService(
+        project_service=StubProjectService(api_project),  # type: ignore[arg-type]
+        context_store=store,
+    )
+    source = FrameSource(local=local_frame(["A"] * 250), remote=remote_frame(["C1"]))
+    normalize_calls = 0
+
+    async def fake_frames(_saved_project: ShapeShiftProject, _fk: ForeignKeyConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
+        nonlocal normalize_calls
+        normalize_calls += 1
+        return source.local.copy(), source.remote.copy()
+
+    monkeypatch.setattr(service, "_normalize_frames", fake_frames)
+    metadata = metadata_for(saved_project, count=1)
+
+    opened = await service.inspect(
+        project_name=PROJECT_NAME,
+        issue_type="FK_DATA_INTEGRITY",
+        local_entity="orders",
+        metadata=metadata,
+        owner_principal_id="alice",
+        project_locator=PROJECT_NAME,
+    )
+
+    assert opened.context_id is not None
+    assert opened.expires_at is not None
+    assert opened.values is not None and opened.values.values[0].key_values == ["A"]
+
+    first_page = await service.read_context(
+        context_id=opened.context_id,
+        owner_principal_id="alice",
+        project_locator=PROJECT_NAME,
+        selected_value_token=encode_key_token(("A",)),
+        row_offset=0,
+        row_limit=100,
+    )
+    second_page = await service.read_context(
+        context_id=opened.context_id,
+        owner_principal_id="alice",
+        project_locator=PROJECT_NAME,
+        selected_value_token=encode_key_token(("A",)),
+        row_offset=100,
+        row_limit=100,
+    )
+    foreign_lookup = await service.read_context(
+        context_id=opened.context_id,
+        owner_principal_id="mallory",
+        project_locator=PROJECT_NAME,
+    )
+
+    assert first_page.response is not None and second_page.response is not None
+    assert first_page.response.context_id == opened.context_id
+    assert first_page.response.selected is not None
+    assert first_page.response.selected.rows[0]["order_code"] == "O000"
+    assert second_page.response.selected is not None
+    assert second_page.response.selected.rows[0]["order_code"] == "O100"
+    assert foreign_lookup.state == "unavailable"
+    assert normalize_calls == 1
+
+    assert await service.close_context(
+        context_id=opened.context_id,
+        owner_principal_id="alice",
+        project_locator=PROJECT_NAME,
+    )
+    assert (
+        await service.read_context(
+            context_id=opened.context_id,
+            owner_principal_id="alice",
+            project_locator=PROJECT_NAME,
+        )
+    ).state == "unavailable"
+
+    expired_context = await service.inspect(
+        project_name=PROJECT_NAME,
+        issue_type="FK_DATA_INTEGRITY",
+        local_entity="orders",
+        metadata=metadata,
+        owner_principal_id="alice",
+        project_locator=PROJECT_NAME,
+    )
+    assert expired_context.context_id is not None
+    clock_value += INTEGRITY_TROUBLESHOOTER_CONTEXT_TTL
+    expired_page = await service.read_context(
+        context_id=expired_context.context_id,
+        owner_principal_id="alice",
+        project_locator=PROJECT_NAME,
+    )
+
+    assert expired_page.state == "expired"
+    assert normalize_calls == 2
+
+
+@pytest.mark.asyncio
 async def test_large_row_result_stays_browsable_and_read_only(monkeypatch):
     """A large affected row set is browsed in bounded windows and writes nothing."""
     api_project = build_api_project(BASE_CFG)
     api_snapshot = api_project.model_dump()
     saved_project = build_saved_project(BASE_CFG)
-    total_rows = 2_500
+    total_rows = 12_000
     row_limit = 500
     service = service_for(api_project)
     patch_frames(
@@ -774,15 +877,18 @@ async def test_large_row_result_stays_browsable_and_read_only(monkeypatch):
         )
 
     first = await page(0)
-    middle = await page(2_000)
-    beyond = await page(2_500)
+    middle = await page(9_500)
+    beyond = await page(10_000)
 
     assert first.selected is not None and middle.selected is not None and beyond.selected is not None
     assert first.selected.total_row_count == total_rows
     assert first.selected.returned_row_count == row_limit
     assert first.selected.rows[0]["order_code"] == "O000"
+    assert first.selected.browse_cap == 10_000
+    assert first.selected.browse_cap_reached is True
     assert middle.selected.returned_row_count == row_limit
-    assert middle.selected.rows[0]["order_code"] == "O2000"
+    assert middle.selected.offset == 9_500
+    assert middle.selected.rows[0]["order_code"] == "O9500"
     assert beyond.selected.returned_row_count == 0
-    assert first.selected.browse_cap_reached is False
+    assert beyond.selected.offset == 10_000
     assert api_project.model_dump() == api_snapshot

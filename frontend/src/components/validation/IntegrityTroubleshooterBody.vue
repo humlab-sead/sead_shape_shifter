@@ -1,11 +1,14 @@
 <template>
   <div class="integrity-troubleshooter-body">
-    <div v-if="loading" class="mb-4 integrity-loading">
+    <div v-if="loading && !result" class="mb-4 integrity-loading">
       <v-progress-linear indeterminate color="primary" class="mb-1" />
       <p class="text-caption text-medium-emphasis mb-0">
-        Reading the link from current data. The link is re-run and its unmatched values recomputed every time this
-        dialog opens or its page changes.
+        Reading the link from current data. The link is re-run when this dialog opens; later pages use the same
+        inspection snapshot.
       </p>
+    </div>
+    <div v-else-if="loading" class="mb-2 integrity-page-loading" aria-label="Loading inspection page">
+      <v-progress-linear indeterminate color="primary" />
     </div>
 
     <v-alert v-if="error" type="error" variant="tonal" class="mb-4">
@@ -147,7 +150,12 @@
               >
                 Only the first {{ result.selected.columns.length }} columns are shown.
               </v-alert>
-              <TroubleshooterDataGrid :columns="selectedColumns" :rows="result.selected.rows" height="320px" />
+              <TroubleshooterDataGrid
+                :columns="selectedColumns"
+                :rows="result.selected.rows"
+                :loading="loading"
+                height="320px"
+              />
               <div v-if="selectedRowPageCount > 1" class="d-flex justify-end mt-2">
                 <v-btn
                   size="small"
@@ -219,6 +227,7 @@ const emit = defineEmits<{
 const loading = ref(false)
 const error = ref<FormattedError | null>(null)
 const result = ref<IntegrityTroubleshootResponse | null>(null)
+const contextId = ref<string | null>(null)
 const page = ref(1)
 const selectedToken = ref<string | null>(null)
 const rowOffset = ref(0)
@@ -281,6 +290,9 @@ const selectedColumns = computed<TroubleshooterGridColumn[]>(() =>
 watch(
   () => [props.projectName, props.message] as const,
   () => {
+    closeContext(contextId.value)
+    contextId.value = null
+    result.value = null
     page.value = 1
     selectedToken.value = null
     rowOffset.value = 0
@@ -292,6 +304,8 @@ watch(
 // Closing the dialog unmounts this body; a late response must not be applied.
 onBeforeUnmount(() => {
   requestVersion += 1
+  closeContext(contextId.value)
+  contextId.value = null
 })
 
 // Grid rows carry the token, so selecting a value does not depend on its
@@ -329,6 +343,9 @@ function focusUnmatchedValues(): void {
 async function sendRequest(): Promise<void> {
   const identity: IntegrityTroubleshootRequest | null = toIntegrityTroubleshootRequest(props.message)
   if (!identity) {
+    requestVersion += 1
+    closeContext(contextId.value)
+    contextId.value = null
     result.value = null
     error.value = null
     return
@@ -342,32 +359,76 @@ async function sendRequest(): Promise<void> {
     ...(selectedToken.value === null ? {} : { selected_value_token: selectedToken.value }),
   }
 
+  const pageRequest = {
+    page: page.value,
+    row_offset: rowOffset.value,
+    row_limit: rowLimit.value,
+    ...(selectedToken.value === null ? {} : { selected_value_token: selectedToken.value }),
+  }
+  const currentContextId: string | null = contextId.value
   const version = ++requestVersion
   loading.value = true
   error.value = null
-  result.value = null
+  if (currentContextId === null) {
+    result.value = null
+  }
 
   try {
-    const response = await integrityTroubleshooterApi.inspect(props.projectName, request)
+    const response =
+      currentContextId === null
+        ? await integrityTroubleshooterApi.inspect(props.projectName, request)
+        : await integrityTroubleshooterApi.page(props.projectName, currentContextId, pageRequest)
     if (version !== requestVersion) {
+      if (currentContextId === null) {
+        closeContext(response.context_id)
+      }
       return
     }
 
     result.value = response
+    contextId.value = response.context_id
     emit('relationship', response.relationship)
   } catch (caughtError: unknown) {
     if (version !== requestVersion) {
       return
     }
 
+    if (currentContextId !== null && isContextExpired(caughtError)) {
+      contextId.value = null
+      await sendRequest()
+      return
+    }
+
     error.value = formatErrorMessage(caughtError)
-    result.value = null
+    if (currentContextId === null) {
+      result.value = null
+    }
     console.error('Integrity troubleshooter request failed:', caughtError)
   } finally {
     if (version === requestVersion) {
       loading.value = false
     }
   }
+}
+
+function closeContext(value: string | null): void {
+  if (value === null) {
+    return
+  }
+
+  void integrityTroubleshooterApi.close(props.projectName, value).catch((caughtError: unknown) => {
+    console.error('Integrity troubleshooter context cleanup failed:', caughtError)
+  })
+}
+
+function isContextExpired(caughtError: unknown): boolean {
+  const response = (caughtError as { response?: { status?: number; data?: unknown } } | null)?.response
+  if (!response || response.status !== 410) {
+    return false
+  }
+
+  const detail = (response.data as { detail?: { error_type?: unknown; reason?: unknown } } | null)?.detail
+  return detail?.reason === 'context_expired' || detail?.error_type === 'IntegrityTroubleshooterContextExpired'
 }
 
 function formatValue(value: unknown): string {

@@ -21,6 +21,13 @@ export interface IntegrityTroubleshootRequest {
   row_limit?: number
 }
 
+export interface IntegrityTroubleshootPageRequest {
+  page?: number
+  selected_value_token?: string | null
+  row_offset?: number
+  row_limit?: number
+}
+
 export interface IntegrityTroubleshootKeys {
   local_keys: string[]
   remote_keys: string[]
@@ -70,6 +77,8 @@ export interface IntegrityTroubleshootResponse {
   reason: string
   message: string
   source: string
+  context_id: string | null
+  expires_at: string | null
   relationship: IntegrityTroubleshootRelationship | null
   configured_keys: IntegrityTroubleshootKeys | null
   recorded_orphan_count: number | null
