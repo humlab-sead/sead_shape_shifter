@@ -73,10 +73,9 @@
                   </v-btn>
                 </template>
                 <div class="text-body-2">
-                  <p class="mb-1">The recorded count comes from the validation warning.</p>
                   <p class="mb-0">
-                    The current count is recalculated from current data. The list below shows every unmatched key value
-                    and how many local rows use each one.
+                    The recorded count comes from the validation warning. The list below shows every unmatched key value
+                    in current data and how many local rows use each one.
                   </p>
                 </div>
               </v-tooltip>
@@ -85,10 +84,6 @@
               <div class="integrity-finding-stat" data-stat="recorded">
                 <div class="integrity-finding-stat-value">{{ formatCount(result.recorded_orphan_count) }}</div>
                 <div class="text-body-2 text-medium-emphasis">Recorded unmatched values</div>
-              </div>
-              <div class="integrity-finding-stat" data-stat="current">
-                <div class="integrity-finding-stat-value">{{ formatCount(result.current_orphan_count) }}</div>
-                <div class="text-body-2 text-medium-emphasis">Current unmatched values</div>
               </div>
             </div>
           </section>
@@ -430,7 +425,7 @@ function formatCodeLabel(value: string): string {
 
 .integrity-finding-stats {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.75rem;
 }
 
@@ -498,12 +493,6 @@ function formatCodeLabel(value: string): string {
 @media (max-width: 900px) {
   .integrity-troubleshooter-workspace,
   .integrity-result-panels {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-@media (max-width: 600px) {
-  .integrity-finding-stats {
     grid-template-columns: minmax(0, 1fr);
   }
 }

@@ -178,7 +178,9 @@ describe('IntegrityTroubleshooterBody', () => {
       metadata: { fk_index: 0, fk_signature: 'saved-signature', orphan_count: 2 },
     })
     expect(wrapper.find('[data-stat="recorded"] .integrity-finding-stat-value').text()).toBe('2')
-    expect(wrapper.find('[data-stat="current"] .integrity-finding-stat-value').text()).toBe('2')
+    // The recalculated count is not shown; the unmatched value list carries it.
+    expect(wrapper.find('[data-stat="current"]').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('Current unmatched values')
     expect(wrapper.find('button[aria-label="About integrity counts"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="tooltip"]').text()).toContain('recorded count comes from the validation warning')
     const keyPairs = wrapper.find('section[aria-label="Configured keys"]')
@@ -262,7 +264,7 @@ describe('IntegrityTroubleshooterBody', () => {
     expect(inspect()).toHaveBeenCalledTimes(1)
   })
 
-  it('compares recorded and current unmatched counts in separate cards', async () => {
+  it('keeps the recorded count and explains a changed count in the status banner', async () => {
     inspect().mockReset()
     queueResponses(response({ status: 'not_reproduced', reason: 'count_changed', current_orphan_count: 5 }))
 
@@ -270,7 +272,7 @@ describe('IntegrityTroubleshooterBody', () => {
     await flushPromises()
 
     expect(wrapper.find('[data-stat="recorded"] .integrity-finding-stat-value').text()).toBe('2')
-    expect(wrapper.find('[data-stat="current"] .integrity-finding-stat-value').text()).toBe('5')
+    expect(wrapper.find('[data-stat="current"]').exists()).toBe(false)
     expect(wrapper.find('section[aria-label="Unmatched value counts"]').exists()).toBe(false)
     expect(wrapper.text()).toContain('count_changed')
     expect(wrapper.text()).toContain('Count changed')
