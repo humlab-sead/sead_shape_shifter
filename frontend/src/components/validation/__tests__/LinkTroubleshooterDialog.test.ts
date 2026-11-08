@@ -573,6 +573,60 @@ describe('LinkTroubleshooterDialog', () => {
     expect(multiplyMatched.attributes('aria-pressed')).toBe('false')
   })
 
+  it('keeps the grid painted when switching groups instead of flashing a loading overlay', async () => {
+    const wrapper = mountDialog(
+      makeContext({
+        detail: makeDetail({
+          unmatched: makeGroup({ total_count: 51, returned_count: 51 }),
+          multiply_matched: makeGroup({ total_count: 51, returned_count: 51 }),
+        }),
+      })
+    )
+    await flushPromises()
+
+    setBrowseRows([makeRow(0, ['A']), makeRow(1, ['B'])], 51)
+    await nextTick()
+
+    // A row read for the newly selected group is in flight.
+    state.rowsLoading.value = true
+    await wrapper.find('button[data-group="multiply_matched"]').trigger('click')
+    await nextTick()
+
+    // Rows are still on screen, so no overlay is painted over them.
+    const grid = wrapper.findComponent(TroubleshooterDataGridStub)
+    expect(grid.props('loading')).toBe(false)
+    expect(grid.findAll('.grid-row')).toHaveLength(2)
+
+    // The overlay is reserved for a selection that has nothing to show yet.
+    setBrowseRows([], 51)
+    await nextTick()
+    expect(wrapper.findComponent(TroubleshooterDataGridStub).props('loading')).toBe(true)
+  })
+
+  it('takes the page count from the group total so the pager does not resize mid-read', async () => {
+    const wrapper = mountDialog(
+      makeContext({
+        detail: makeDetail({
+          unmatched: makeGroup({ total_count: 40, returned_count: 40 }),
+          multiply_matched: makeGroup({ total_count: 250, returned_count: 100 }),
+        }),
+      })
+    )
+    await flushPromises()
+
+    setBrowseRows([makeRow(0, ['A'])], 40)
+    await nextTick()
+    expect(wrapper.find('button[aria-label="Next page"]').exists()).toBe(false)
+
+    // The other group has three pages of 100. The response has not arrived yet,
+    // so the count must come from the already-known group total.
+    state.rowsLoading.value = true
+    await wrapper.find('button[data-group="multiply_matched"]').trigger('click')
+    await nextTick()
+
+    expect(wrapper.find('button[aria-label="Next page"]').exists()).toBe(true)
+  })
+
   it('resizes the dialog with pointer and keyboard controls', async () => {
     const wrapper = mountDialog()
     await flushPromises()
@@ -832,7 +886,7 @@ describe('LinkTroubleshooterDialog', () => {
     state.refreshed.value = true
     await nextTick()
 
-    expect(wrapper.text()).toContain('The retained inputs expired and were reproduced again from current data.')
+    expect(wrapper.text()).toContain('The retained inputs were stale and were reproduced again from current data.')
     expect(wrapper.text()).toContain('Run a new trial')
   })
 

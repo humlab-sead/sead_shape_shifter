@@ -64,8 +64,8 @@ async def read_integrity_troubleshooter_page(
         project_locator=authorized_project.resource.locator,
         selected_value_token=request.selected_value_token,
     )
-    if result.state == "expired":
-        _raise_context_expired()
+    if result.state != "found":
+        _raise_context_stale()
     if result.response is None:
         raise HTTPException(status_code=404, detail="Resource not found")
     return result.response
@@ -89,13 +89,19 @@ async def close_integrity_troubleshooter_context(
         raise HTTPException(status_code=404, detail="Resource not found")
 
 
-def _raise_context_expired() -> NoReturn:
-    """Raise the explicit expiry result shared by integrity context routes."""
+def _raise_context_stale() -> NoReturn:
+    """Raise the shared stale-context result for integrity context routes.
+
+    An inspection that expired and was already removed by the periodic sweep
+    is indistinguishable from one that never existed for this owner, so both
+    report the same recoverable result. The response for an unknown, an
+    expired, and another user's identifier is identical.
+    """
     raise HTTPException(
         status_code=410,
         detail={
             "error_type": "IntegrityTroubleshooterContextExpired",
-            "message": "The integrity inspection expired. Reopen the troubleshooter to read current data.",
+            "message": "The integrity inspection is stale. Reopen the troubleshooter to read current data.",
             "reason": "context_expired",
             "recoverable": True,
         },
