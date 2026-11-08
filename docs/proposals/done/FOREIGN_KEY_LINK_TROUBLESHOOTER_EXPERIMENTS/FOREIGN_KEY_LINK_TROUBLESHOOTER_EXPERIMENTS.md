@@ -2,10 +2,11 @@
 
 ## Status
 
-- Approved follow-up change request; not implemented
+- **Implemented** through Phase 3 (2026-11-08); Phases 1-3 complete with passing focused test suites. Release and upgrade notes for the breaking API contract await the change PR.
 - Scope: fixed-input snapshots with trial keys, inner/left joins, limited constraints, refresh, and reset
 - Goal: let users understand how link settings affect rows and validation without changing the saved project
-- Extends: [Foreign-Key Link Troubleshooter](../done/FOREIGN_KEY_LINK_TROUBLESHOOTER/FOREIGN_KEY_LINK_TROUBLESHOOTER.md). Its original acceptance criteria remain unchanged.
+- Remaining follow-up: right, outer, and cross joins remain unsupported; release/upgrade notes for the context-only API cutover await the change PR.
+- Extends: [Foreign-Key Link Troubleshooter](../../done/FOREIGN_KEY_LINK_TROUBLESHOOTER/FOREIGN_KEY_LINK_TROUBLESHOOTER.md). Its original acceptance criteria remain unchanged.
 - Delivery: [Foreign-Key Link Troubleshooter Experiments Phase Plan](./FOREIGN_KEY_LINK_TROUBLESHOOTER_EXPERIMENTS_PHASE_PLAN.md).
 
 ## Summary
@@ -40,11 +41,11 @@ A troubleshooting view should explain why rows are wrong. Listing every A row bu
 
 ## Current Behavior
 
-The [baseline service](../../../backend/app/services/link_baseline_service.py) already retains the inputs the comparison needs: the pre-link local frame as A and the processed remote frame as B. The [trial service](../../../backend/app/services/link_trial_service.py) already re-links deep copies of those frames with a modified FK configuration, so changing keys recomputes only the join and never re-normalizes.
+The [baseline service](../../../../backend/app/services/link_baseline_service.py) already retains the inputs the comparison needs: the pre-link local frame as A and the processed remote frame as B. The [trial service](../../../../backend/app/services/link_trial_service.py) already re-links deep copies of those frames with a modified FK configuration, so changing keys recomputes only the join and never re-normalizes.
 
-That retention ends with the request. The [coordinating service](../../../backend/app/services/link_troubleshooter_service.py) rebuilds the baseline on every call, including paging and row-filter changes, so the next page repeats the replay. The request model carries `page`, `page_size`, and `row_filter`, and the response returns one server-sliced page.
+That retention ends with the request. The [coordinating service](../../../../backend/app/services/link_troubleshooter_service.py) rebuilds the baseline on every call, including paging and row-filter changes, so the next page repeats the replay. The request model carries `page`, `page_size`, and `row_filter`, and the response returns one server-sliced page.
 
-The [client composable](../../../frontend/src/composables/useLinkTroubleshooter.ts) clears the result on each request. Its existing `reset()` clears the whole dialog context; it is not a user-facing restoration of baseline settings and results.
+The [client composable](../../../../frontend/src/composables/useLinkTroubleshooter.ts) clears the result on each request. Its existing `reset()` clears the whole dialog context; it is not a user-facing restoration of baseline settings and results.
 
 ## Proposed Design
 

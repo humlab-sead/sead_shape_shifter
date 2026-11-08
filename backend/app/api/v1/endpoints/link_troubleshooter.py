@@ -117,8 +117,8 @@ async def read_link_experiment_exception_rows(
         limit=request.limit,
         trial_request=request.trial,
     )
-    if result.state == "expired":
-        _raise_context_expired()
+    if result.state != "found":
+        _raise_context_stale()
     if result.page is None:
         raise HTTPException(status_code=404, detail=_NOT_FOUND_DETAIL)
     return result.page
@@ -142,13 +142,19 @@ async def close_link_experiment_context(
         raise HTTPException(status_code=404, detail=_NOT_FOUND_DETAIL)
 
 
-def _raise_context_expired() -> NoReturn:
-    """Raise the explicit expiry outcome shared by context routes."""
+def _raise_context_stale() -> NoReturn:
+    """Raise the shared stale-context outcome for context routes.
+
+    A context that expired and was already removed by the periodic sweep is
+    indistinguishable from one that never existed for this owner, so both
+    report the same recoverable outcome. The response for an unknown, an
+    expired, and another user's identifier is identical.
+    """
     raise HTTPException(
         status_code=410,
         detail={
             "error_type": "LinkExperimentContextExpired",
-            "message": "The retained link inputs expired. Reopen the troubleshooter to reproduce the warning again.",
+            "message": "The retained link data is stale. Reopen the troubleshooter to reproduce the warning again.",
             "reason": "context_expired",
             "recoverable": True,
         },
@@ -157,8 +163,8 @@ def _raise_context_expired() -> NoReturn:
 
 def _context_response_or_error(result: LinkExperimentContextResult) -> LinkExperimentContextResponse:
     """Return the context response or the matching non-success outcome."""
-    if result.state == "expired":
-        _raise_context_expired()
+    if result.state != "found":
+        _raise_context_stale()
     if result.response is None:
         raise HTTPException(status_code=404, detail=_NOT_FOUND_DETAIL)
     return result.response
@@ -166,8 +172,8 @@ def _context_response_or_error(result: LinkExperimentContextResult) -> LinkExper
 
 def _trial_response_or_error(result: LinkExperimentTrialResult) -> LinkExperimentTrialResponse:
     """Return the context trial response or the matching non-success outcome."""
-    if result.state == "expired":
-        _raise_context_expired()
+    if result.state != "found":
+        _raise_context_stale()
     if result.response is None:
         raise HTTPException(status_code=404, detail=_NOT_FOUND_DETAIL)
     return result.response

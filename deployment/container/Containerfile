@@ -24,11 +24,16 @@
 #                   --build-arg CACHE_BUST=$(git ls-remote https://github.com/humlab-sead/sead_shape_shifter.git refs/heads/main | cut -f1) \
 #                   -t shape-shifter:latest .
 #
+# Caching:
+# - Use podman build --layers --jobs=4 to cache layers and parallelize stages.
+# - Set CACHE_BUST to the remote commit when building a moving Git branch.
+# - Keep build storage between builds; do not use --no-cache for normal rebuilds.
+#
 # UCanAccess (MS Access support) is downloaded and pinned at build time, so no
 # JARs need to travel with the deployment bundle or build context.
 # ==============================================================================
 
-# Global build arguments (available to all stages)
+# Global build arguments (redeclare inside a stage when used outside FROM)
 ARG PYTHON_VERSION=3.13
 ARG NODE_VERSION=20
 ARG ALPINE_VERSION=3.19
@@ -39,21 +44,23 @@ ARG SOURCE=workdir
 # ------------------------------------------------------------------------------
 # Stage 0: Resolve application source
 # ------------------------------------------------------------------------------
-ARG ALPINE_VERSION
 FROM alpine:${ALPINE_VERSION} AS source-github
+
+WORKDIR /source
+
+# Git installation must survive changes to the repository/ref/cache-bust value.
+RUN apk add --no-cache git
 
 ARG GIT_REPO=https://github.com/humlab-sead/sead_shape_shifter.git
 ARG GIT_REF=main
 ARG CACHE_BUST=1
 
-WORKDIR /source
-
 RUN echo "Cloning application from GitHub: ${GIT_REPO} (ref: ${GIT_REF})..." && \
     echo "Cache bust value: ${CACHE_BUST}" && \
-    apk add --no-cache git && \
     git clone --depth 1 --branch "${GIT_REF}" "${GIT_REPO}" /source && \
     cd /source && \
-    echo "Cloned commit: $(git rev-parse HEAD)"
+    echo "Cloned commit: $(git rev-parse HEAD)" && \
+    rm -rf /source/.git
 
 FROM alpine:${ALPINE_VERSION} AS source-workdir
 
@@ -90,14 +97,12 @@ RUN apk add --no-cache curl unzip && \
     mv "UCanAccess-${UCANACCESS_VERSION}.bin"/* . && \
     rmdir "UCanAccess-${UCANACCESS_VERSION}.bin"
 
-ARG SOURCE=workdir
 FROM source-${SOURCE} AS source
 
 
 # ------------------------------------------------------------------------------
 # Stage 1: Build frontend
 # ------------------------------------------------------------------------------
-ARG NODE_VERSION
 FROM node:${NODE_VERSION}-alpine AS frontend-builder
 
 WORKDIR /app/frontend
@@ -116,8 +121,9 @@ COPY --from=source /source/frontend/package.json ./package.json
 COPY --from=source /source/frontend/pnpm-lock.yaml ./pnpm-lock.yaml
 COPY --from=source /source/frontend/pnpm-workspace.yaml ./pnpm-workspace.yaml
 
-# Install dependencies
-RUN pnpm install --frozen-lockfile
+# Preserve downloaded packages even when dependency metadata changes.
+RUN --mount=type=cache,id=shapeshifter-pnpm,target=/pnpm/store,sharing=locked \
+    pnpm install --frozen-lockfile --store-dir=/pnpm/store
 
 # Copy frontend source after dependencies are installed.
 COPY --from=source /source/frontend ./
@@ -143,11 +149,11 @@ RUN pnpm run build:skip-check
 # ------------------------------------------------------------------------------
 # Stage 2: Python dependencies
 # ------------------------------------------------------------------------------
-ARG PYTHON_VERSION
 FROM python:${PYTHON_VERSION}-slim AS python-builder
 
 WORKDIR /app
-ENV UV_PROJECT_ENVIRONMENT=/opt/venv
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
+    UV_LINK_MODE=copy
 
 # Install uv for fast Python package installation
 RUN pip install --no-cache-dir uv
@@ -156,36 +162,19 @@ RUN pip install --no-cache-dir uv
 # Python dependency reinstall.
 COPY --from=source /source/pyproject.toml ./pyproject.toml
 COPY --from=source /source/uv.lock ./uv.lock
-COPY --from=source /source/README.md ./README.md
 
-# Install only locked runtime dependencies into a dedicated virtual environment.
-RUN uv sync --frozen --no-dev --extra api --no-install-project
+# The project itself is not installed, so its README/source are not needed.
+# Keep downloaded wheels across dependency-layer rebuilds.
+RUN --mount=type=cache,id=shapeshifter-uv,target=/root/.cache/uv,sharing=locked \
+    uv sync --frozen --no-dev --extra api --no-install-project
 
 
 # ------------------------------------------------------------------------------
 # Stage 3: Production runtime
 # ------------------------------------------------------------------------------
-ARG PYTHON_VERSION
 FROM python:${PYTHON_VERSION}-slim
 
 WORKDIR /app
-
-# Release identity. A deployed image is matched to the tested source commit by
-# both the label below and the immutable content digest. SOURCE_COMMIT is
-# resolved by scripts/build.sh, because the build context excludes .git and the
-# commit therefore cannot be read from inside the build.
-ARG SOURCE=workdir
-ARG SOURCE_COMMIT=unknown
-ARG GIT_REPO=https://github.com/humlab-sead/sead_shape_shifter.git
-ARG GIT_REF=unknown
-ARG BUILD_DATE=unknown
-
-LABEL org.opencontainers.image.title="shape-shifter" \
-      org.opencontainers.image.source="${GIT_REPO}" \
-      org.opencontainers.image.revision="${SOURCE_COMMIT}" \
-      org.opencontainers.image.version="${GIT_REF}" \
-      org.opencontainers.image.created="${BUILD_DATE}" \
-      sead.shapeshifter.source="${SOURCE}"
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -208,8 +197,19 @@ RUN GROUP_NAME=$(getent group ${USER_GID} | cut -d: -f1) && \
     fi && \
     useradd -o --uid ${USER_UID} -g ${USER_GID} --home-dir=/app --shell=/bin/bash shapeshifter
 
+# Create only the writable runtime directories with the correct ownership.
+RUN mkdir -p /app/projects /app/shared /app/logs /app/output /app/backups /app/tmp /app/state && \
+    chown ${USER_UID}:${USER_GID} /app/projects /app/shared /app/logs /app/output /app/backups /app/tmp /app/state && \
+    chmod 775 /app/projects /app/shared /app/logs /app/output /app/backups /app/tmp /app/state
+
+# Copy UCanAccess JARs downloaded during the build.
+COPY --from=ucanaccess /ucanaccess ./lib/ucanaccess
+
 # Copy the dedicated Python environment from the builder
 COPY --from=python-builder /opt/venv /opt/venv
+
+# Copy built frontend from frontend-builder
+COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
 # Copy application source from the selected source resolver
 COPY --from=source /source/src ./src/
@@ -217,17 +217,6 @@ COPY --from=source /source/backend ./backend/
 COPY --from=source /source/docs ./docs/
 COPY --from=source /source/scripts ./scripts/
 COPY --from=source /source/ingesters ./ingesters/
-
-# Copy UCanAccess JARs downloaded during the build.
-COPY --from=ucanaccess /ucanaccess ./lib/ucanaccess
-
-# Copy built frontend from frontend-builder
-COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
-
-# Create only the writable runtime directories with the correct ownership.
-RUN mkdir -p /app/projects /app/shared /app/logs /app/output /app/backups /app/tmp /app/state && \
-    chown ${USER_UID}:${USER_GID} /app/projects /app/shared /app/logs /app/output /app/backups /app/tmp /app/state && \
-    chmod 775 /app/projects /app/shared /app/logs /app/output /app/backups /app/tmp /app/state
 
 # Set environment variables
 ENV PATH=/opt/venv/bin:$PATH \
@@ -254,3 +243,20 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 # edits handled by one worker would be invisible to another and silently lost.
 # Implement shared state (for example Redis) before increasing the worker count.
 CMD ["python", "-m", "uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8012", "--workers", "1", "--timeout-keep-alive", "120"]
+
+# Release identity. A deployed image is matched to the tested source commit by
+# both the label below and the immutable content digest. SOURCE_COMMIT is
+# resolved by scripts/build.sh. Keep these ARG declarations and labels last:
+# changing a release identity must not invalidate package installation or copies.
+ARG SOURCE=workdir
+ARG SOURCE_COMMIT=unknown
+ARG GIT_REPO=https://github.com/humlab-sead/sead_shape_shifter.git
+ARG GIT_REF=unknown
+ARG BUILD_DATE=unknown
+
+LABEL org.opencontainers.image.title="shape-shifter" \
+      org.opencontainers.image.source="${GIT_REPO}" \
+      org.opencontainers.image.revision="${SOURCE_COMMIT}" \
+      org.opencontainers.image.version="${GIT_REF}" \
+      org.opencontainers.image.created="${BUILD_DATE}" \
+      sead.shapeshifter.source="${SOURCE}"

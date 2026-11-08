@@ -32,6 +32,18 @@ class DataValidationStatus(str, Enum):
     SKIPPED = "skipped"
 
 
+DataValidatorKey = Literal["column_exists", "natural_key_uniqueness", "non_empty_result"]
+"""Data checks a caller may switch on or off for one run.
+
+These are the selectable checks offered with the data-validation options. Checks
+that are not listed here, such as foreign-key integrity, always run so a run
+cannot silently drop them.
+"""
+
+DATA_VALIDATOR_KEYS: tuple[DataValidatorKey, ...] = ("column_exists", "natural_key_uniqueness", "non_empty_result")
+"""Every selectable data check, in the order the options present them."""
+
+
 class EntityDataValidationStatus(str, Enum):
     """Execution status for one entity's data-validation checks."""
 

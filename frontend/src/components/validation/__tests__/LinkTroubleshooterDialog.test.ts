@@ -101,7 +101,7 @@ const state: ReturnType<typeof useLinkTroubleshooter> = {
   side: ref<'baseline' | 'trial'>('baseline'),
   rows: ref<LinkTroubleshootExceptionRow[]>([]),
   rowTotalCount: ref(0),
-  rowBrowseCap: ref(10_000),
+  rowBrowseCap: ref(25_000),
   rowBrowseCapReached: ref(false),
   rowStatusMessage: ref<string | null>(null),
   rowsLoading: ref(false),
@@ -288,15 +288,13 @@ function integrityResponse(overrides: Partial<IntegrityTroubleshootResponse> = {
     recorded_orphan_count: 2,
     current_orphan_count: 2,
     values: {
-      page: 1,
-      page_size: 50,
       distinct_value_count: 1,
-      returned_value_count: 1,
-      has_next: false,
       values: [{ key_values: ['MISSING-A'], local_row_count: 1, token: 'token-a' }],
     },
     selected: null,
     ...overrides,
+    context_id: overrides.context_id ?? null,
+    expires_at: overrides.expires_at ?? null,
   }
 }
 
@@ -529,17 +527,104 @@ describe('LinkTroubleshooterDialog', () => {
     expect(tooltipText.join(' ')).toContain('Allow missing join keys: inherited')
     expect(tooltipText.join(' ')).toContain('Strict null checks are enforced')
     expect(tooltipText.join(' ')).toContain('Totals cover the full link input.')
+    expect(tooltipText.join(' ')).toContain('The configured inner join removes unmatched source rows.')
     expect(wrapper.find('button[aria-label="About result totals"]').exists()).toBe(true)
     expect(wrapper.findAll('p').some((paragraph) => paragraph.text() === 'Totals cover the full link input.')).toBe(
       false
     )
-    const joinNote = wrapper.find('.join-note')
-    const affectedRowToolbar = wrapper.find('.affected-row-toolbar')
-    expect(joinNote.text()).toBe('The configured inner join removes unmatched source rows.')
-    expect(affectedRowToolbar.text().indexOf(joinNote.text())).toBeLessThan(
-      affectedRowToolbar.text().indexOf('Unmatched')
-    )
+    // The join note sits in the result tooltip, not in the affected-row toolbar.
+    expect(wrapper.find('.affected-row-toolbar .join-note').exists()).toBe(false)
     expect(wrapper.findAll('button').some((button) => button.text().trim() === 'Save')).toBe(false)
+  })
+
+  it('keeps the rows-on-page control beside the group buttons and offers All', async () => {
+    const wrapper = mountDialog()
+    await flushPromises()
+
+    const toolbar = wrapper.find('.affected-row-toolbar')
+    expect(toolbar.find('button[data-group="unmatched"]').exists()).toBe(true)
+    expect(toolbar.find('button[data-group="multiply_matched"]').exists()).toBe(true)
+    expect(toolbar.find('select[aria-label="Rows per page"]').exists()).toBe(true)
+
+    const options = toolbar.findAll('select[aria-label="Rows per page"] option')
+    expect(options.map((option) => option.text().trim())).toEqual(['25', '50', '100', '200', 'All'])
+
+    await selectOption(wrapper, 'Rows per page', 25_000)
+
+    expect(state.pageSize.value).toBe(25_000)
+  })
+
+  it('presents the affected-row categories as tabs with only the selection underlined', async () => {
+    const wrapper = mountDialog()
+    await flushPromises()
+
+    const unmatched = wrapper.find('button[data-group="unmatched"]')
+    const multiplyMatched = wrapper.find('button[data-group="multiply_matched"]')
+
+    // Both labels are plain tab-style buttons; neither gets an outline.
+    expect(unmatched.classes()).toContain('affected-row-tab')
+    expect(multiplyMatched.classes()).toContain('affected-row-tab')
+    expect(unmatched.attributes('variant')).toBeUndefined()
+
+    // Only the current category carries the active marker.
+    expect(unmatched.classes()).toContain('affected-row-tab--active')
+    expect(multiplyMatched.classes()).not.toContain('affected-row-tab--active')
+    expect(unmatched.attributes('aria-pressed')).toBe('true')
+    expect(multiplyMatched.attributes('aria-pressed')).toBe('false')
+  })
+
+  it('keeps the grid painted when switching groups instead of flashing a loading overlay', async () => {
+    const wrapper = mountDialog(
+      makeContext({
+        detail: makeDetail({
+          unmatched: makeGroup({ total_count: 51, returned_count: 51 }),
+          multiply_matched: makeGroup({ total_count: 51, returned_count: 51 }),
+        }),
+      })
+    )
+    await flushPromises()
+
+    setBrowseRows([makeRow(0, ['A']), makeRow(1, ['B'])], 51)
+    await nextTick()
+
+    // A row read for the newly selected group is in flight.
+    state.rowsLoading.value = true
+    await wrapper.find('button[data-group="multiply_matched"]').trigger('click')
+    await nextTick()
+
+    // Rows are still on screen, so no overlay is painted over them.
+    const grid = wrapper.findComponent(TroubleshooterDataGridStub)
+    expect(grid.props('loading')).toBe(false)
+    expect(grid.findAll('.grid-row')).toHaveLength(2)
+
+    // The overlay is reserved for a selection that has nothing to show yet.
+    setBrowseRows([], 51)
+    await nextTick()
+    expect(wrapper.findComponent(TroubleshooterDataGridStub).props('loading')).toBe(true)
+  })
+
+  it('takes the page count from the group total so the pager does not resize mid-read', async () => {
+    const wrapper = mountDialog(
+      makeContext({
+        detail: makeDetail({
+          unmatched: makeGroup({ total_count: 40, returned_count: 40 }),
+          multiply_matched: makeGroup({ total_count: 250, returned_count: 100 }),
+        }),
+      })
+    )
+    await flushPromises()
+
+    setBrowseRows([makeRow(0, ['A'])], 40)
+    await nextTick()
+    expect(wrapper.find('button[aria-label="Next page"]').exists()).toBe(false)
+
+    // The other group has three pages of 100. The response has not arrived yet,
+    // so the count must come from the already-known group total.
+    state.rowsLoading.value = true
+    await wrapper.find('button[data-group="multiply_matched"]').trigger('click')
+    await nextTick()
+
+    expect(wrapper.find('button[aria-label="Next page"]').exists()).toBe(true)
   })
 
   it('resizes the dialog with pointer and keyboard controls', async () => {
@@ -700,6 +785,9 @@ describe('LinkTroubleshooterDialog', () => {
 
     await selectSide(wrapper, 'trial')
     await wrapper.find('button[data-group="multiply_matched"]').trigger('click')
+    // Give the group more rows than one page so the pager is rendered.
+    setBrowseRows([], 51)
+    await nextTick()
     await selectOption(wrapper, 'Rows per page', 25)
     await wrapper.find('button[aria-label="Next page"]').trigger('click')
     await flushPromises()
@@ -715,7 +803,10 @@ describe('LinkTroubleshooterDialog', () => {
     setBrowseRows([makeRow(4, ['LONG']), makeRow(5, ['MISSING'])], 150)
     await nextTick()
 
-    expect(wrapper.text()).toContain('Showing 2 of 150 affected source rows · Page 1 of 2')
+    // The group tab already states the full count, so the toolbar carries no
+    // separate "showing N of M" line.
+    expect(wrapper.find('.affected-row-toolbar').text()).toContain('Unmatched · 150')
+    expect(wrapper.text()).not.toContain('affected source rows · Page')
 
     const section = wrapper.find('section[aria-label="Exception rows"]')
     expect(section.find('.grid-header').text()).toContain('Input row')
@@ -795,7 +886,7 @@ describe('LinkTroubleshooterDialog', () => {
     state.refreshed.value = true
     await nextTick()
 
-    expect(wrapper.text()).toContain('The retained inputs expired and were reproduced again from current data.')
+    expect(wrapper.text()).toContain('The retained inputs were stale and were reproduced again from current data.')
     expect(wrapper.text()).toContain('Run a new trial')
   })
 
@@ -859,11 +950,40 @@ describe('LinkTroubleshooterDialog', () => {
     expect(openRequests).toHaveLength(0)
     expect(mockOpen).not.toHaveBeenCalled()
     expect(mockClose).toHaveBeenCalled()
-    expect(wrapper.text()).toContain('Showing 1 of 1 distinct values · Page 1')
+    expect(wrapper.text()).toContain('Unmatched values')
+    expect(wrapper.text()).toContain('MISSING-A')
     expect(wrapper.text()).toContain('orders → customers')
     expect(wrapper.find('select[aria-label="A key"]').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('Run trial')
     expect(wrapper.text()).not.toContain('Trial key pairs')
+  })
+
+  it('summarizes the integrity relationship and enabled rules under the heading', async () => {
+    vi.mocked(integrityTroubleshooterApi.inspect).mockResolvedValue(
+      integrityResponse({
+        relationship: {
+          local_entity: 'orders',
+          remote_entity: 'customers',
+          fk_index: 0,
+          join_type: 'inner',
+          constraints: {
+            cardinality: 'many_to_one',
+            allow_row_decrease: false,
+            require_unique_right: true,
+          },
+        },
+      })
+    )
+    const wrapper = mountDialog(makeContext(), integrityMessage())
+    await flushPromises()
+
+    const heading = wrapper.find('.link-troubleshooter-heading')
+    expect(heading.text()).toContain('orders → customers')
+    expect(heading.text()).toContain('Many-to-one · Require unique right')
+    expect(heading.text()).not.toContain('Allow row decrease')
+    expect(wrapper.text()).not.toContain('Configured relationship')
+    expect(wrapper.text()).not.toContain('Configured link rules')
+    expect(wrapper.findAll('.v-chip')).toHaveLength(0)
   })
 
   it('explains a malformed integrity warning without sending either request', async () => {
@@ -889,7 +1009,7 @@ describe('LinkTroubleshooterDialog', () => {
     expect(openRequests).toHaveLength(1)
     expect(mockClose).toHaveBeenCalled()
     expect(wrapper.text()).not.toContain('Trial key pairs')
-    expect(wrapper.text()).toContain('Showing 1 of 1 distinct values · Page 1')
+    expect(wrapper.text()).toContain('Unmatched values')
   })
 
   it('clears state and releases the context when the dialog closes', async () => {
