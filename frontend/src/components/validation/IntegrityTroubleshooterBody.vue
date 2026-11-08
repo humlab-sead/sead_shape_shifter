@@ -90,7 +90,19 @@
           </section>
 
           <section v-if="result.values" class="mb-5" aria-label="Unmatched values">
-            <h3 class="text-subtitle-1 mb-2">Unmatched values</h3>
+            <div class="d-flex flex-wrap align-center justify-space-between ga-2 mb-2">
+              <h3 class="text-subtitle-1 mb-0">Unmatched values</h3>
+              <v-btn
+                v-if="result.values.values.length > 0"
+                size="small"
+                variant="text"
+                prepend-icon="mdi-download"
+                :disabled="loading"
+                @click="exportUnmatchedValues"
+              >
+                Export unmatched keys
+              </v-btn>
+            </div>
             <div class="text-caption text-medium-emphasis mb-3">
               {{ formatCount(result.values.values.length) }} unmatched
               {{ result.values.values.length === 1 ? 'value' : 'values' }}
@@ -165,6 +177,7 @@ import type {
   ValidationError,
 } from '@/types'
 import { formatErrorMessage } from '@/utils/errors'
+import { downloadCsv, toCsv } from '@/utils/csv'
 import { toIntegrityTroubleshootRequest } from '@/utils/linkTroubleshooter'
 import TroubleshooterDataGrid, { type TroubleshooterGridColumn } from './TroubleshooterDataGrid.vue'
 
@@ -215,6 +228,19 @@ const selectedColumns = computed<TroubleshooterGridColumn[]>(() =>
   (result.value?.selected?.columns ?? []).map((column) => ({ field: column, header: column }))
 )
 
+// One CSV column per key part, so a composite key stays addressable instead of
+// being flattened into one joined cell. Configured local key names label the
+// columns; a wider key falls back to a positional name.
+const unmatchedKeyColumns = computed<string[]>(() => {
+  const configuredKeys = result.value?.configured_keys?.local_keys ?? []
+  const width = (result.value?.values?.values ?? []).reduce(
+    (widest, value) => Math.max(widest, value.key_values.length),
+    0
+  )
+
+  return Array.from({ length: width }, (_, index) => configuredKeys[index] ?? `key_${index + 1}`)
+})
+
 watch(
   () => [props.projectName, props.message] as const,
   () => {
@@ -243,6 +269,31 @@ function selectValueRow(row: Record<string, unknown>): void {
   }
   selectedToken.value = token
   void sendRequest()
+}
+
+// Offer the complete unmatched key set as a CSV file. The response already
+// holds every value, so no request is needed.
+function exportUnmatchedValues(): void {
+  const values = result.value?.values?.values ?? []
+  if (values.length === 0) {
+    return
+  }
+
+  const keyColumns = unmatchedKeyColumns.value
+  const headers = [...keyColumns, 'Local rows']
+  const rows = values.map((value) => [
+    ...keyColumns.map((_, index) => value.key_values[index] ?? null),
+    value.local_row_count,
+  ])
+
+  downloadCsv(unmatchedValuesFilename(), toCsv(headers, rows))
+}
+
+function unmatchedValuesFilename(): string {
+  const entity = (result.value?.relationship?.local_entity || props.message.entity || 'entity')
+    .replace(/[^a-z0-9_-]+/gi, '-')
+    .toLowerCase()
+  return `${entity}_unmatched_keys_${Date.now()}.csv`
 }
 
 async function sendRequest(): Promise<void> {
