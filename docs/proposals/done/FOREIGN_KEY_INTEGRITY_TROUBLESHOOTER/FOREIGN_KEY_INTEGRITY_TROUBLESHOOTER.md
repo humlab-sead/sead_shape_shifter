@@ -7,7 +7,7 @@
 - Goal: let users see the values and local rows behind a "not found in" count, and know which saved link produced it
 - Validation: delivered in the three planned phases. The validator records `orphan_count` and saved-link identity in issue metadata; `resolve_integrity_issue` refuses malformed or changed links; `IntegrityTroubleshooterService` recomputes distinct unmatched values and bounded local rows behind an authorized endpoint; the shared `LinkTroubleshooterDialog` shows a read-only integrity body. Tests cover the validator, resolver, orchestrator, mapper, service, endpoint, and frontend body.
 - Extends: [Foreign-Key Link Troubleshooter](../../done/FOREIGN_KEY_LINK_TROUBLESHOOTER/FOREIGN_KEY_LINK_TROUBLESHOOTER.md), which is approved and implemented for row-count warnings
-- Separate from: [Foreign-Key Link Troubleshooter Experiments](../../FOREIGN_KEY_LINK_TROUBLESHOOTER_EXPERIMENTS/FOREIGN_KEY_LINK_TROUBLESHOOTER_EXPERIMENTS.md), which decides how trial settings are compared against a fixed baseline
+- Separate from: [Foreign-Key Link Troubleshooter Experiments](../../done/FOREIGN_KEY_LINK_TROUBLESHOOTER_EXPERIMENTS/FOREIGN_KEY_LINK_TROUBLESHOOTER_EXPERIMENTS.md), which decides how trial settings are compared against a fixed baseline
 
 ## Summary
 
