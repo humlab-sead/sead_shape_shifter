@@ -245,7 +245,10 @@
                         <v-icon icon="mdi-help-circle-outline" size="small" />
                       </v-btn>
                     </template>
-                    <div class="text-body-2">Totals cover the full link input.</div>
+                    <div class="text-body-2">
+                      <div class="mb-1">Totals cover the full link input.</div>
+                      <div v-if="joinNote" class="join-note">{{ joinNote }}</div>
+                    </div>
                   </v-tooltip>
                 </div>
                 <div class="d-flex flex-wrap ga-2" role="group" aria-label="Result source">
@@ -309,7 +312,6 @@
 
               <section aria-label="Exception rows">
                 <div class="affected-row-toolbar d-flex flex-wrap align-center ga-2 mb-3">
-                  <p v-if="joinNote" class="join-note text-body-2 text-medium-emphasis mb-0">{{ joinNote }}</p>
                   <div class="d-flex flex-wrap ga-2" role="group" aria-label="Affected row category">
                     <v-btn
                       data-group="unmatched"
@@ -330,9 +332,9 @@
                       Multiple matches · {{ formatCount(activeDetail?.multiply_matched?.total_count) }}
                     </v-btn>
                   </div>
-                </div>
-                <div v-if="activeGroup" class="mb-3">
+                  <v-spacer />
                   <v-select
+                    v-if="activeGroup"
                     v-model="pageSize"
                     :items="pageSizeOptions"
                     label="Rows per page"
@@ -347,8 +349,8 @@
                 </div>
                 <template v-else>
                   <p class="text-body-2 mb-2">
-                    Showing {{ formatCount(gridRows.length) }} of {{ formatCount(rowTotalCount) }} affected source rows
-                    · Page {{ page }} of {{ pageCount }}
+                    Showing {{ formatCount(gridRows.length) }} of {{ formatCount(rowTotalCount) }} affected source
+                    rows<span v-if="pageCount > 1"> · Page {{ page }} of {{ pageCount }}</span>
                   </p>
                   <v-alert v-if="rowBrowseCapReached" type="info" variant="tonal" density="compact" class="mb-2">
                     Only the first {{ formatCount(rowBrowseCap) }} affected source rows are browsable.
@@ -449,6 +451,7 @@ import type {
   LinkTroubleshootRequestedSetting,
   ValidationError,
 } from '@/types'
+import { EXCEPTION_ROW_PAGE_LIMIT } from '@/types'
 import {
   INTEGRITY_ISSUE_CODE,
   integrityTroubleshootRefusal,
@@ -663,7 +666,12 @@ const activeGroup = computed(() => {
 const activeKeyNames = computed<string[]>(() =>
   side.value === 'trial' ? trialLocalKeys.value : (result.value?.configured_keys?.local_keys ?? [])
 )
-const pageCount = computed(() => Math.max(1, Math.ceil(rowTotalCount.value / pageSize.value)))
+// Paging is bounded by the browsable rows, so a result larger than the browse
+// cap does not offer empty pages past the cap.
+const pageCount = computed(() => {
+  const browsableRows = rowBrowseCap.value > 0 ? Math.min(rowTotalCount.value, rowBrowseCap.value) : rowTotalCount.value
+  return Math.max(1, Math.ceil(browsableRows / pageSize.value))
+})
 watch([side, group, pageSize, trial], () => {
   page.value = 1
 })
@@ -707,7 +715,14 @@ const nullOptionItems = [
   { title: 'Yes', value: true },
   { title: 'No', value: false },
 ]
-const pageSizeOptions = [25, 50, 100, 200]
+const pageSizeOptions = [
+  { title: '25', value: 25 },
+  { title: '50', value: 50 },
+  { title: '100', value: 100 },
+  { title: '200', value: 200 },
+  // The limit matches the browse cap, so All reads every retained row at once.
+  { title: 'All', value: EXCEPTION_ROW_PAGE_LIMIT },
+]
 
 watch(
   () => [props.modelValue, props.message] as const,

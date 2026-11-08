@@ -146,7 +146,7 @@ def exception_rows_page() -> LinkExceptionRowsPage:
         offset=100,
         limit=100,
         total_count=250,
-        browse_cap=10_000,
+        browse_cap=25_000,
         browse_cap_reached=False,
         returned_count=1,
         rows=[
@@ -480,7 +480,7 @@ async def test_exception_rows_route_reports_expiry_explicitly(project_client, mo
         {"side": "baseline", "group": "other"},
         {"side": "baseline", "group": "unmatched", "offset": -1},
         {"side": "baseline", "group": "unmatched", "limit": 0},
-        {"side": "baseline", "group": "unmatched", "limit": 501},
+        {"side": "baseline", "group": "unmatched", "limit": 25_001},
         {"side": "baseline", "group": "unmatched", "unknown": True},
     ],
 )

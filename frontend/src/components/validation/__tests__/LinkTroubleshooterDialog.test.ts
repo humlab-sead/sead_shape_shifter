@@ -101,7 +101,7 @@ const state: ReturnType<typeof useLinkTroubleshooter> = {
   side: ref<'baseline' | 'trial'>('baseline'),
   rows: ref<LinkTroubleshootExceptionRow[]>([]),
   rowTotalCount: ref(0),
-  rowBrowseCap: ref(10_000),
+  rowBrowseCap: ref(25_000),
   rowBrowseCapReached: ref(false),
   rowStatusMessage: ref<string | null>(null),
   rowsLoading: ref(false),
@@ -527,17 +527,31 @@ describe('LinkTroubleshooterDialog', () => {
     expect(tooltipText.join(' ')).toContain('Allow missing join keys: inherited')
     expect(tooltipText.join(' ')).toContain('Strict null checks are enforced')
     expect(tooltipText.join(' ')).toContain('Totals cover the full link input.')
+    expect(tooltipText.join(' ')).toContain('The configured inner join removes unmatched source rows.')
     expect(wrapper.find('button[aria-label="About result totals"]').exists()).toBe(true)
     expect(wrapper.findAll('p').some((paragraph) => paragraph.text() === 'Totals cover the full link input.')).toBe(
       false
     )
-    const joinNote = wrapper.find('.join-note')
-    const affectedRowToolbar = wrapper.find('.affected-row-toolbar')
-    expect(joinNote.text()).toBe('The configured inner join removes unmatched source rows.')
-    expect(affectedRowToolbar.text().indexOf(joinNote.text())).toBeLessThan(
-      affectedRowToolbar.text().indexOf('Unmatched')
-    )
+    // The join note sits in the result tooltip, not in the affected-row toolbar.
+    expect(wrapper.find('.affected-row-toolbar .join-note').exists()).toBe(false)
     expect(wrapper.findAll('button').some((button) => button.text().trim() === 'Save')).toBe(false)
+  })
+
+  it('keeps the rows-on-page control beside the group buttons and offers All', async () => {
+    const wrapper = mountDialog()
+    await flushPromises()
+
+    const toolbar = wrapper.find('.affected-row-toolbar')
+    expect(toolbar.find('button[data-group="unmatched"]').exists()).toBe(true)
+    expect(toolbar.find('button[data-group="multiply_matched"]').exists()).toBe(true)
+    expect(toolbar.find('select[aria-label="Rows per page"]').exists()).toBe(true)
+
+    const options = toolbar.findAll('select[aria-label="Rows per page"] option')
+    expect(options.map((option) => option.text().trim())).toEqual(['25', '50', '100', '200', 'All'])
+
+    await selectOption(wrapper, 'Rows per page', 25_000)
+
+    expect(state.pageSize.value).toBe(25_000)
   })
 
   it('resizes the dialog with pointer and keyboard controls', async () => {

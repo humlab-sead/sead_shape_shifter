@@ -573,7 +573,7 @@ async def test_read_exception_rows_slices_the_retained_baseline_page() -> None:
     assert result.page is not None
     assert result.page.status == "available"
     assert result.page.total_count == 150
-    assert result.page.browse_cap == 10_000
+    assert result.page.browse_cap == 25_000
     assert result.page.browse_cap_reached is False
     assert result.page.returned_count == 50
     assert [row.input_position for row in result.page.rows] == list(range(100, 150))
@@ -582,7 +582,7 @@ async def test_read_exception_rows_slices_the_retained_baseline_page() -> None:
 @pytest.mark.asyncio
 async def test_read_exception_rows_reports_when_the_browse_cap_is_reached() -> None:
     """The browse cap is reported even though only the capped rows are retained."""
-    groups = retained_exception_groups(unmatched_total=20_000, retained_rows=5)
+    groups = retained_exception_groups(unmatched_total=30_000, retained_rows=5)
     service, _, _, _, _ = context_service(baseline=make_baseline(), trials=[trial_with_groups(groups)])
     opened = await open_default_context(service)
 
@@ -597,7 +597,7 @@ async def test_read_exception_rows_reports_when_the_browse_cap_is_reached() -> N
     )
 
     assert result.page is not None
-    assert result.page.total_count == 20_000
+    assert result.page.total_count == 30_000
     assert result.page.browse_cap_reached is True
     assert result.page.returned_count == 5
 
@@ -657,8 +657,8 @@ async def test_read_exception_rows_recomputes_the_trial_side() -> None:
 @pytest.mark.asyncio
 async def test_read_exception_rows_stops_at_the_default_browse_cap() -> None:
     """A large affected set keeps its full count but only the browse cap is browsable."""
-    cap = 10_000
-    groups = retained_exception_groups(unmatched_total=12_000, retained_rows=cap)
+    cap = 25_000
+    groups = retained_exception_groups(unmatched_total=30_000, retained_rows=cap)
     service, _, _, _, _ = context_service(baseline=make_baseline(), trials=[trial_with_groups(groups)])
     opened = await open_default_context(service)
 
@@ -668,16 +668,16 @@ async def test_read_exception_rows_stops_at_the_default_browse_cap() -> None:
         project_locator="project-a",
         side="baseline",
         group="unmatched",
-        offset=9_800,
+        offset=24_800,
         limit=500,
     )
 
     assert result.page is not None
-    assert result.page.total_count == 12_000
+    assert result.page.total_count == 30_000
     assert result.page.browse_cap == cap
     assert result.page.browse_cap_reached is True
     assert result.page.returned_count == 200
-    assert [row.input_position for row in result.page.rows] == list(range(9_800, cap))
+    assert [row.input_position for row in result.page.rows] == list(range(24_800, cap))
 
 
 @pytest.mark.asyncio
