@@ -33,7 +33,7 @@ Three spec forms per column (evaluated in order, most specific first):
 3. **Interpolated string** — string containing `{col_name}` placeholders
 4. **Constant** — any other value
 
-- DSL functions: `concat`, `upper`, `lower`, `trim`, `substr`, `coalesce` — no others.
+- DSL functions: `concat`, `upper`, `lower`, `trim`, `substr`, `coalesce`, `map_value` — no others.
 - Deferred evaluation: if a referenced column doesn't exist yet, the entry is returned as deferred and retried after FK linking. Do not raise on missing columns during first pass.
 - Escaped braces `{{ }}` produce literal `{ }` — do not treat them as column references.
 - `collect_source_dependencies()` returns the set of columns required — use this to detect forward references.
@@ -58,7 +58,7 @@ Three spec forms per column (evaluated in order, most specific first):
 - Referencing a post-link column in a filter.
 - Treating interpolated strings and DSL formulas as the same — `=` prefix is the discriminator.
 - Forgetting deferred evaluation: raising on a missing column in `extra_columns` instead of deferring.
-- Using DSL functions not in the allowlist (`concat`, `upper`, `lower`, `trim`, `substr`, `coalesce`).
+- Using DSL functions not in the allowlist (`concat`, `upper`, `lower`, `trim`, `substr`, `coalesce`, `map_value`).
 - Assuming `value_vars` columns exist before `extra_columns` runs — they may be defined as `extra_columns` themselves.
 
 ## Testing Expectations

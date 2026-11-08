@@ -832,7 +832,7 @@ This is the canonical mechanism for four common cases:
 - **Copy** when you just need another column name for an existing value
 - **Constant** when every row should receive the same value, `null`, number, or boolean
 - **Interpolation** when you are assembling a label, synthetic identifier, or display string from several columns
-- **Formula** when interpolation is not enough and you need a small expression such as `upper(...)`, `trim(...)`, `substr(...)`, `coalesce(...)`, `replace(...)`, `regex_extract(...)`, or `to_decimal(...)`
+- **Formula** when interpolation is not enough and you need a small expression such as `upper(...)`, `trim(...)`, `substr(...)`, `coalesce(...)`, `map_value(...)`, `replace(...)`, `regex_extract(...)`, or `to_decimal(...)`
 
 Quick examples:
 
@@ -900,6 +900,25 @@ entities:
 ```
 
 This is the right fit when the derived value depends on cleanup, fallback handling, or small string operations.
+
+**Example: Exact Categorical Mappings**
+
+Use `map_value` to map whole input values to typed literals. It does not replace substrings.
+
+```yaml
+entities:
+  sample:
+    type: data
+    table: tbl_sample
+    columns: [sample_type]
+    extra_columns:
+      sample_type_id: "=map_value(sample_type, 'artificial', 1, 'natural', 2)"
+      sample_type_id_with_fallback: "=map_value(sample_type, 'artificial', 1, 'natural', 2, 0)"
+```
+
+Provide one or more key/value pairs. Mapping keys, mapped values, and an optional final fallback must be literals; mapped values and fallbacks keep their types. Append the fallback after the last complete pair. Calls without a fallback have an odd number of total arguments; calls with a fallback have an even number. Null inputs pass through as null. An unmapped non-null input raises an evaluation error unless a fallback is supplied. Null mapping keys are not allowed.
+
+When the result is used for a foreign-key link, the existing FK linker still creates and validates that relationship. `map_value` only produces the value used by the link.
 
 **Authoring Notes:**
 

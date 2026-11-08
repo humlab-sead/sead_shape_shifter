@@ -24,8 +24,20 @@ export interface ExtraColumnSuggestion {
 // Column placeholders such as {Ökogruppe} may start with a Unicode letter (the `u` flag enables \p{L}/\p{N}).
 const INTERPOLATION_PATTERN = /(?<!\{)\{([\p{L}_][\p{L}\p{N}_]*)\}(?!\})/gu
 const FORMULA_REFERENCE_PATTERN = /\b([a-zA-Z_][\w]*)\b/g
-const DSL_FUNCTIONS = new Set(['concat', 'upper', 'lower', 'trim', 'substr', 'coalesce', 'null', 'true', 'false'])
-const FORMULA_SNIPPETS = ['concat()', 'upper()', 'lower()', 'trim()', 'substr()', 'coalesce()'] as const
+const FORMULA_STRING_LITERAL_PATTERN = /'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"/g
+const DSL_FUNCTIONS = new Set([
+  'concat',
+  'upper',
+  'lower',
+  'trim',
+  'substr',
+  'coalesce',
+  'map_value',
+  'null',
+  'true',
+  'false',
+])
+const FORMULA_SNIPPETS = ['concat()', 'upper()', 'lower()', 'trim()', 'substr()', 'coalesce()', 'map_value()'] as const
 const INTEGER_LITERAL_PATTERN = /^[+-]?\d+$/
 const FLOAT_LITERAL_PATTERN = /^[+-]?(?:\d+\.\d*|\.\d+)$/
 
@@ -37,7 +49,10 @@ export function extractInterpolationReferences(expression: string): string[] {
 }
 
 export function extractFormulaReferences(expression: string): string[] {
-  const formulaBody = expression.startsWith('=') ? expression.slice(1) : expression
+  const formulaBody = (expression.startsWith('=') ? expression.slice(1) : expression).replace(
+    FORMULA_STRING_LITERAL_PATTERN,
+    ''
+  )
   const matches = Array.from(formulaBody.matchAll(FORMULA_REFERENCE_PATTERN))
     .map((match) => match[1])
     .filter((value): value is string => typeof value === 'string' && value.length > 0)
