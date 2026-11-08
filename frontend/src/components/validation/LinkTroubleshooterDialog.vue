@@ -31,7 +31,7 @@
           v-if="modelValue && isIntegrityIssue && !localMessage"
           :project-name="projectName"
           :message="message"
-          @remote-entity="integrityRemoteEntity = $event"
+          @relationship="integrityRelationship = $event"
         />
 
         <div v-if="!isIntegrityIssue && loading" class="mb-4 troubleshooter-loading">
@@ -443,6 +443,7 @@ import {
   type LinkExceptionSide,
 } from '@/composables/useLinkTroubleshooter'
 import type {
+  IntegrityTroubleshootRelationship,
   LinkTroubleshootJoinTypeSetting,
   LinkTroubleshootKeyValue,
   LinkTroubleshootRequestedSetting,
@@ -485,7 +486,7 @@ const emit = defineEmits<{
   (event: 'update:modelValue', value: boolean): void
 }>()
 const localMessage = ref<string | null>(null)
-const integrityRemoteEntity = ref<string | null>(null)
+const integrityRelationship = ref<IntegrityTroubleshootRelationship | null>(null)
 const dialogSize = ref<{ width: number; height: number } | null>(null)
 const resizeStart = ref<DialogResizeStart | null>(null)
 
@@ -540,12 +541,12 @@ const result = context
 
 const isIntegrityIssue = computed(() => props.message.code === INTEGRITY_ISSUE_CODE)
 
-const localEntityName = computed(() => result.value?.relationship?.local_entity || props.message.entity || 'A')
+const activeRelationship = computed(() => result.value?.relationship ?? integrityRelationship.value)
+const localEntityName = computed(() => activeRelationship.value?.local_entity || props.message.entity || 'A')
 const remoteEntityName = computed(() => {
   const metadataRemote = props.message.metadata?.remote_entity
   return (
-    result.value?.relationship?.remote_entity ||
-    integrityRemoteEntity.value ||
+    activeRelationship.value?.remote_entity ||
     (typeof metadataRemote === 'string' && metadataRemote.trim().length > 0 ? metadataRemote : 'B')
   )
 })
@@ -566,7 +567,7 @@ function textifyFlag(name: string): string {
 // Configured link facts under the heading: cardinality, linking pass, then the
 // constraint flags that are set to true. Unset flags are left out.
 const relationshipSummary = computed<string>(() => {
-  const relationship = result.value?.relationship
+  const relationship = activeRelationship.value
   if (!relationship) {
     return ''
   }
@@ -575,7 +576,7 @@ const relationshipSummary = computed<string>(() => {
   if (typeof cardinality === 'string' && cardinality.trim().length > 0) {
     parts.push(textifyValue(cardinality.trim()))
   }
-  if (relationship.link_pass) {
+  if ('link_pass' in relationship && typeof relationship.link_pass === 'string' && relationship.link_pass) {
     parts.push(textifyFlag(relationship.link_pass))
   }
   for (const [key, value] of Object.entries(relationship.constraints)) {
@@ -711,7 +712,7 @@ const pageSizeOptions = [25, 50, 100, 200]
 watch(
   () => [props.modelValue, props.message] as const,
   async ([isOpen, message]) => {
-    integrityRemoteEntity.value = null
+    integrityRelationship.value = null
     if (!isOpen) {
       stopDialogResize()
       localMessage.value = null
