@@ -304,6 +304,29 @@ class TestForeignKeyDataSpecification:
         assert result is True
         assert spec.deferred is True
 
+    def test_defers_local_key_formula_until_its_unnest_input_exists(self, mock_project, table_store):
+        """A missing local key formula is deferred when it depends on an unnest output."""
+        local_table = mock_project.get_table("local_entity")
+        local_table.keys_columns_and_fks = ["local_id", "local_name", "generated_key"]
+        local_table.extra_columns = {"generated_key": "=concat(unnest_col, '_key')"}
+
+        fk_cfg = ForeignKeyConfig(
+            local_entity="local_entity",
+            fk_cfg={
+                "entity": "remote_entity",
+                "how": "left",
+                "local_keys": ["generated_key"],
+                "remote_keys": ["remote_id"],
+            },
+        )
+
+        spec = ForeignKeyDataSpecification(table_store, mock_project)
+        result = spec.is_satisfied_by(fk_cfg=fk_cfg)
+
+        assert result is True
+        assert spec.deferred is True
+        assert not spec.has_errors(), spec.get_report()
+
     def test_deferred_when_pending_fields(self, mock_project):
         """Test validation is deferred when there are pending unnest fields."""
         # Create table store where local entity is missing unnest column
