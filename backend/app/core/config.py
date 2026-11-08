@@ -92,9 +92,8 @@ class Settings(BaseSettings):
     SIMS_CONTRACT_REGISTRATION_TOKEN: str | None = None  # X-SIMS-Caller-Token; unset keeps registration closed
     LINK_TRIAL_MAX_OUTPUT_ROWS: int = Field(default=1_000_000, ge=1)
     LINK_EXPERIMENT_MAX_MEMORY_MB: int = Field(default=100, ge=1)
-    # Maximum affected source rows browsable in one troubleshooter result set.
-    # Both the row-count and integrity flows use this same browse cap.
-    LINK_TROUBLESHOOT_BROWSE_ROW_CAP: int = Field(default=10_000, ge=1, le=10_000)
+    # Maximum affected source rows browsable in one Link Troubleshooter result set.
+    LINK_TROUBLESHOOT_BROWSE_ROW_CAP: int = Field(default=25_000, ge=1, le=25_000)
 
     # Data source policy
     DATA_SOURCE_ALLOWED_ENV_VAR_PREFIXES: str = Field(default="SEAD_,SHAPE_SHIFTER_")
