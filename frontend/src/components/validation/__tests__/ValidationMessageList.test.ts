@@ -297,4 +297,49 @@ describe('ValidationMessageList', () => {
     expect(wrapper.find('.link-troubleshooter-action').exists()).toBe(false)
     expect(wrapper.find('.integrity-troubleshoot-refusal').exists()).toBe(false)
   })
+
+  it('offers column settings for a missing direct-FK output column', async () => {
+    const message: ValidationError = {
+      severity: 'error',
+      entity: 'sample',
+      field: 'dataset_id',
+      code: 'DIRECT_FK_OUTPUT_COLUMN_MISSING',
+      message: "Entity 'sample' must output target FK column 'dataset_id'.",
+    }
+    const wrapper = mountList([message])
+
+    await itemAt(wrapper, 0).trigger('click')
+    const action = wrapper.find('.direct-fk-column-action')
+    expect(action.exists()).toBe(true)
+    expect(action.text()).toContain('Open column settings')
+
+    await action.trigger('click')
+
+    expect(wrapper.emitted('open-entity')?.[0]).toEqual(['sample', { field: 'columns', column: 'dataset_id' }])
+    expect(expandButtonAt(wrapper, 0).attributes('aria-expanded')).toBe('true')
+  })
+
+  it('omits column settings for other issues', async () => {
+    const wrapper = mountList()
+
+    await itemAt(wrapper, 0).trigger('click')
+
+    expect(wrapper.find('.direct-fk-column-action').exists()).toBe(false)
+  })
+
+  it('opens column settings without a column name when the issue has no field', async () => {
+    const message: ValidationError = {
+      severity: 'error',
+      entity: 'sample',
+      field: null,
+      code: 'DIRECT_FK_OUTPUT_COLUMN_MISSING',
+      message: "Entity 'sample' must output a target FK column.",
+    }
+    const wrapper = mountList([message])
+
+    await itemAt(wrapper, 0).trigger('click')
+    await wrapper.find('.direct-fk-column-action').trigger('click')
+
+    expect(wrapper.emitted('open-entity')?.[0]).toEqual(['sample', { field: 'columns', column: null }])
+  })
 })
