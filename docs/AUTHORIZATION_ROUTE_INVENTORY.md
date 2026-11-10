@@ -77,6 +77,7 @@ Every row above except the health check requires an authenticated principal thro
 | `GET`    | `/api/v1/projects/{name}/target-model-yaml`          | `project:read`                               |
 | `PUT`    | `/api/v1/projects/{name}/target-model-yaml`          | `project:edit`                               |
 | `GET`    | `/api/v1/projects/{name}/target-model-entities`      | `project:read`                               |
+| `GET`    | `/api/v1/projects/{name}/target-model-direct-foreign-keys/{entity_name}` | `project:read`                               |
 | `GET`    | `/api/v1/projects/{name}/target-model-docs`          | `project:read`                               |
 | `GET`    | `/api/v1/projects/{name}/target-models`              | `project:read`                               |
 | `GET`    | `/api/v1/projects/{name}/layout`                     | `project:read`                               |

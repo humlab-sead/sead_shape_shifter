@@ -27,6 +27,7 @@ from backend.app.models.project import (
     Project,
     ProjectFileInfo,
     ProjectMetadata,
+    TargetModelDirectForeignKeysResponse,
     TargetModelEntityOptionsResponse,
     TargetModelFileOption,
 )
@@ -762,6 +763,21 @@ async def get_project_target_model_entities(
     """Return missing target-model entities for an authorized project."""
     service = TargetModelEntityOptionsService()
     return service.get_entity_options(authorized_project.resource.locator)
+
+
+@router.get(
+    "/projects/{name}/target-model-direct-foreign-keys/{entity_name}",
+    response_model=TargetModelDirectForeignKeysResponse,
+)
+@handle_endpoint_errors
+async def get_project_target_model_direct_foreign_keys(
+    name: str,  # pylint: disable=unused-argument
+    entity_name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
+) -> TargetModelDirectForeignKeysResponse:
+    """Return direct target-model foreign keys eligible for direct target IDs."""
+    service = TargetModelEntityOptionsService()
+    return service.get_direct_foreign_keys(authorized_project.resource.locator, entity_name)
 
 
 def _resolve_target_model_path(project: Project, project_name: str, *, allow_shared_read: bool = False) -> Path:
