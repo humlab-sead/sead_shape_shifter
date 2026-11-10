@@ -8,6 +8,8 @@
 # state in plain text files. It then checks that:
 #   - adopt writes one resource plus one owner grant and verifies them;
 #   - adopt honours --dry-run and rejects missing or unsupported arguments;
+#   - copy duplicates a project folder and adopts it for the requested owner;
+#   - copy honours --dry-run, confirmation, and adoption failures;
 #   - move renames the folder and keeps the resource UUID and its grants;
 #   - move honours --dry-run, confirmation, and --yes;
 #   - move restores the folder when the authorization change fails;
@@ -95,6 +97,10 @@ case "$cmd" in
 import-manifest)
   manifest="${1:-}"
   [[ -f "$manifest" ]] || { echo "import-manifest: no manifest" >&2; exit 1; }
+  if [[ "${STUB_IMPORT_FAIL:-0}" == "1" ]]; then
+    echo "import-manifest: simulated failure" >&2
+    exit 1
+  fi
   locator="$(grep -o '"locator": "[^"]*"' "$manifest" | head -n1 | sed 's/.*"locator": "//; s/"$//')"
   subject="$(grep -o '"subject_id": "[^"]*"' "$manifest" | head -n1 | sed 's/.*"subject_id": "//; s/"$//')"
   role="$(grep -o '"role": "[^"]*"' "$manifest" | head -n1 | sed 's/.*"role": "//; s/"$//')"
@@ -229,6 +235,84 @@ assert_contains "$g_last_output" "--project is required." "adopt without --proje
 run_project adopt --project P --owner dave --role editor
 assert_eq "1" "$g_last_status" "adopt refuses a non-owner role"
 assert_contains "$g_last_output" "Only 'owner' is supported" "adopt explains the role restriction"
+
+echo
+echo "== copy duplicates the folder and adopts it for the requested owner =="
+make_project_folder COPY_SOURCE
+mkdir -p "$g_projects/COPY_SOURCE/files"
+printf 'copy fixture\n' > "$g_projects/COPY_SOURCE/files/sample.txt"
+run_project copy --project COPY_SOURCE --to arbodat/COPY_TARGET --owner grace --yes
+assert_eq "0" "$g_last_status" "copy exits 0"
+assert_dir "$g_projects/COPY_SOURCE" "copy keeps the source folder"
+assert_dir "$g_projects/arbodat/COPY_TARGET" "copy creates the target folder"
+if [[ -f "$g_projects/arbodat/COPY_TARGET/files/sample.txt" ]] \
+  && [[ "$(cat "$g_projects/arbodat/COPY_TARGET/files/sample.txt")" == "copy fixture" ]]; then
+  pass "copy includes nested project files"
+else
+  fail "copy did not include nested project files"
+fi
+if cmp -s "$g_projects/COPY_SOURCE/shapeshifter.yml" "$g_projects/arbodat/COPY_TARGET/shapeshifter.yml"; then
+  pass "copy preserves the source project YAML unchanged"
+else
+  fail "copy changed the source project YAML"
+fi
+copy_id="$(resource_id_for arbodat:COPY_TARGET)"
+assert_eq "grace" "$(awk -F'\t' -v id="$copy_id" '$2 == id {print $1}' "$g_state/grants")" "adopt grants owner to the requested principal"
+assert_contains "$g_last_output" "Done. grace now owns project 'arbodat:COPY_TARGET'." "copy reports adoption success"
+
+echo
+echo "== copy --dry-run changes nothing =="
+make_project_folder DRY_COPY_SOURCE
+before_resources="$(resource_count)"
+run_project copy --project DRY_COPY_SOURCE --to DRY_COPY_TARGET --owner heidi --dry-run
+assert_eq "0" "$g_last_status" "copy --dry-run exits 0"
+assert_contains "$g_last_output" "Dry run: no changes made" "copy --dry-run announces the dry run"
+assert_dir "$g_projects/DRY_COPY_SOURCE" "copy --dry-run keeps the source folder"
+assert_no_dir "$g_projects/DRY_COPY_TARGET" "copy --dry-run creates no target folder"
+assert_eq "$before_resources" "$(resource_count)" "copy --dry-run creates no authorization resource"
+
+echo
+echo "== copy confirms before changing anything =="
+make_project_folder DECLINED_SOURCE
+PROJECT_STDIN="n"
+run_project copy --project DECLINED_SOURCE --to DECLINED_TARGET --owner ivan
+PROJECT_STDIN=""
+assert_eq "0" "$g_last_status" "a declined copy exits 0"
+assert_contains "$g_last_output" "Copy cancelled." "a declined copy reports the cancellation"
+assert_no_dir "$g_projects/DECLINED_TARGET" "a declined copy creates no target folder"
+
+echo
+echo "== a failed adoption leaves the copied folder available for recovery =="
+make_project_folder ORPHAN_SOURCE
+PROJECT_ENV=(STUB_IMPORT_FAIL=1)
+run_project copy --project ORPHAN_SOURCE --to ORPHAN_TARGET --owner judy --yes
+PROJECT_ENV=()
+assert_eq "1" "$g_last_status" "a failed adoption exits non-zero"
+assert_dir "$g_projects/ORPHAN_TARGET" "a failed adoption keeps the copied folder"
+assert_contains "$g_last_output" "Check authorization state before retrying" "a failed adoption explains the recovery path"
+
+echo
+echo "== copy rejects missing, existing, and unsafe paths =="
+run_project copy --project NO_COPY_SOURCE --to NO_COPY_TARGET --owner kate --yes
+assert_eq "1" "$g_last_status" "copy fails when the source folder is missing"
+
+make_project_folder EXISTING_TARGET
+run_project copy --project COPY_SOURCE --to EXISTING_TARGET --owner kate --yes
+assert_eq "1" "$g_last_status" "copy refuses an existing target folder"
+
+run_project copy --project COPY_SOURCE --to ../escape --owner kate --yes
+assert_eq "1" "$g_last_status" "copy refuses a parent-traversal target"
+assert_contains "$g_last_output" "Invalid project name or path" "copy explains the invalid path"
+
+run_project copy --project COPY_SOURCE --to COPY_SOURCE/child --owner kate --yes
+assert_eq "1" "$g_last_status" "copy refuses a target inside the source folder"
+
+echo
+echo "== copy refuses a target with an existing authorization resource =="
+printf 'CONFLICT_TARGET\tres-conflict\n' >> "$g_state/resources"
+run_project copy --project COPY_SOURCE --to CONFLICT_TARGET --owner kate --yes
+assert_eq "1" "$g_last_status" "copy refuses an existing target authorization resource"
+assert_no_dir "$g_projects/CONFLICT_TARGET" "authorization conflict creates no target folder"
 
 echo
 echo "== move renames the folder and keeps the resource and grants =="
