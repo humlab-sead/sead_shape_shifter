@@ -775,6 +775,7 @@ class PandasStringBackend:
                 mapped_value = mapping[item]
             except (KeyError, TypeError):
                 if not has_fallback:
+                    # pylint: disable=raise-missing-from
                     raise DSLEvaluationError(f"map_value has no mapping for value {item!r}; provide a fallback as the final argument")
                 mapped_value = fallback
             result.append(mapped_value)
@@ -954,7 +955,7 @@ class PandasStringBackend:
             values = [item for item in row.tolist() if not pd.isna(item)]
             return None if not values else sep.join(values)
 
-        return frame.apply(_join, axis=1).astype("string")
+        return frame.apply(_join, axis=1).astype("string")  # type: ignore
 
 
 # ============================================================================
