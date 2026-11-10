@@ -244,6 +244,22 @@ ownership. Create and maintain those accounts with the commands in
 `container/scripts/authorization.sh --help`; the account name is the principal ID
 the application records.
 
+### Copy a project and transfer its owner
+
+Run `scripts/project.sh copy` from the deployment's `~/container/scripts/`
+directory. It copies the project directory, then runs `project.sh adopt` to
+create the authorization resource and grant ownership to the requested
+principal.
+
+```bash
+scripts/project.sh copy --project X --to X-copy --owner B
+```
+
+The command prompts before copying; pass `--yes` to skip confirmation. The
+copied files, including `shapeshifter.yml` metadata, are unchanged. If adoption
+fails, the copied directory remains so an operator can inspect it and recover
+without losing the copy.
+
 ---
 
 ## Host services from the container
