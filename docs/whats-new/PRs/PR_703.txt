@@ -1,0 +1,34 @@
+title: docs(proposals): add backup proposal and advisor phase plan
+description:
+## Summary
+
+Adds a new proposal, docs/proposals/GIT_BACKED_PROJECT_BACKUP.md, describing an opt-in per-project
+git repository backup backend behind a BackupBackend interface, with the existing file-copy backup
+kept as the default, and indexes it in docs/proposals/README.md. The proposal defines tracked files,
+operation-boundary commits, delete/copy/archive handling, endpoint extensions, configuration
+settings, risks, and acceptance criteria; it is a draft for review and implements no code.
+
+Revises the AI Project Advisor proposal (November 8, 2026) to bind results to the inputs actually
+checked via per-result provenance and input-compatibility checks, constrain claim support labels
+with deterministic checks, identify existing integrity/link services for reuse, and require
+demonstrated full-operation execution limits before enabling Tier 2 probes. Adds a new phase plan,
+SHAPESHIFTER_PROJECT_AI_ADVISOR_PHASE_PLAN.md, that sequences delivery into seven phases from
+grounding contracts through approved apply, with acceptance criteria and validation milestones per
+phase.
+
+The only code change is in src/transforms/dsl.py: a # pylint: disable=raise-missing-from comment and
+a # type: ignore marker, with no behavioral change.
+
+## User-facing release note
+
+None - no user-visible change.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+Not verified: validation results unavailable. No CI check results were available for this pull
+request. The only code change consists of lint and type-checker suppression comments in
+src/transforms/dsl.py, which do not alter runtime behavior.
