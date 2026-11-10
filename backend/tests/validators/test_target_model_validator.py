@@ -406,6 +406,33 @@ class TestValidationErrorShape:
             assert err.auto_fixable is False
             assert err.suggestion is None
 
+    def test_missing_direct_fk_output_column_reports_entity_and_column(self):
+        """A declared public_id value source without a produced column keeps entity and column in the API model."""
+        project = _make_project(
+            {
+                "sample": {
+                    "system_id": "system_id",
+                    "columns": ["sample_name"],
+                    "foreign_key_value_sources": {"dataset": "public_id"},
+                    "data": {"type": "fixed", "values": []},
+                }
+            }
+        )
+        target_model_data = _minimal_target_model(
+            entities={
+                "sample": {"foreign_keys": [{"entity": "dataset"}]},
+                "dataset": {"public_id": "dataset_id", "target_table": "public.dataset"},
+            }
+        )
+
+        errors = TargetModelValidator().validate(target_model_data, project)
+
+        error = next(err for err in errors if err.code == "DIRECT_FK_OUTPUT_COLUMN_MISSING")
+        assert error.entity == "sample"
+        assert error.field == "dataset_id"
+        assert error.category == ValidationCategory.CONFORMANCE
+        assert error.severity == "error"
+
     def test_spec_errors_have_correct_metadata(self):
         """Spec validation errors should use conformance metadata and keep their specific code."""
         project = _make_project({})

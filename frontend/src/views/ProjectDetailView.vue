@@ -163,6 +163,7 @@
             <entity-list-card
               :project-name="projectName"
               :entity-to-edit="entityToEdit"
+              :entity-edit-focus="entityEditFocus"
               @entity-updated="handleEntityUpdated"
               @entity-edit-request-consumed="handleEntityEditRequestConsumed"
             />
@@ -990,7 +991,7 @@ import { getTaskStatusNodeClasses, shouldShowNodeForTaskFilter } from '@/utils/t
 import { useEntityStore } from '@/stores/entity'
 import { useTaskStatusStore } from '@/stores/taskStatus'
 import { getErrorMessage } from '@/utils/errors'
-import type { CustomGraphLayout, ValidationError, ValidationResult } from '@/types'
+import type { CustomGraphLayout, ValidationEntityFocus, ValidationError, ValidationResult } from '@/types'
 import type { GraphColorByMode } from '@/utils/taskGraph'
 import type { TaskFilter } from '@/components/dependencies/TaskFilterDropdown.vue'
 import EntityListCard from '@/components/entities/EntityListCard.vue'
@@ -1115,6 +1116,7 @@ const fixPreview = ref<any>(null)
 const fixPreviewLoading = ref(false)
 const fixPreviewError = ref<string | null>(null)
 const entityToEdit = ref<string | null>(null)
+const entityEditFocus = ref<ValidationEntityFocus | null>(null)
 const createTodoEntityName = ref('')
 const createTodoNote = ref('')
 const createTodoSaving = ref(false)
@@ -1695,11 +1697,15 @@ function handleEditEntity(entityName: string) {
   // Switch to entities tab and trigger entity editor
   activeTab.value = 'entities'
   showDetailsDrawer.value = false
+  entityEditFocus.value = null
   entityToEdit.value = entityName
 }
 
-function handleOpenValidationEntity(entityName: string) {
+function handleOpenValidationEntity(entityName: string, focus?: ValidationEntityFocus) {
+  // Start from the plain entity edit request, then add the focus so a manual
+  // edit still opens without guidance.
   handleEditEntity(entityName)
+  entityEditFocus.value = focus ?? null
 }
 
 function handleTroubleshoot(message: ValidationError) {
@@ -1711,6 +1717,7 @@ function handleEntityEditRequestConsumed(entityName: string) {
   if (entityToEdit.value === entityName) {
     entityToEdit.value = null
   }
+  entityEditFocus.value = null
 }
 
 async function handleOverlayEntitySaved(_entityName: string, mappingPending = false) {

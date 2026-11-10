@@ -20,8 +20,12 @@ vi.mock('@/composables', () => ({
 
 const EntityFormDialogStub = {
   name: 'EntityFormDialog',
-  props: ['modelValue', 'entity'],
-  template: `<div class="entity-form-dialog-stub" :data-open="String(modelValue)" :data-entity="entity?.name || ''" />`,
+  props: ['modelValue', 'entity', 'initialFocus'],
+  emits: ['update:modelValue', 'saved'],
+  template: `<div class="entity-form-dialog-stub" :data-open="String(modelValue)" :data-entity="entity?.name || ''"><button
+    class="close-entity-dialog"
+    @click="$emit('update:modelValue', false)"
+  /></div>`,
 }
 
 const DeleteConfirmationDialogStub = {
@@ -131,5 +135,53 @@ describe('EntityListCard', () => {
     await nextTick()
 
     expect(wrapper.emitted('entity-edit-request-consumed')).toEqual([['sample_type'], ['sample_type']])
+  })
+
+  it('passes an edit focus request to the dialog', async () => {
+    entities.value = [createEntity('sample_type')]
+
+    const wrapper = shallowMount(EntityListCard, {
+      props: {
+        projectName: 'demo',
+        entityToEdit: 'sample_type',
+        entityEditFocus: { field: 'columns', column: 'dataset_id' },
+      },
+      global: {
+        renderStubDefaultSlot: true,
+        stubs: globalStubs,
+      },
+    })
+
+    await nextTick()
+
+    const dialog = wrapper.findComponent({ name: 'EntityFormDialog' })
+    expect(dialog.props('initialFocus')).toEqual({ field: 'columns', column: 'dataset_id' })
+  })
+
+  it('clears the focus request when the dialog closes', async () => {
+    entities.value = [createEntity('sample_type')]
+
+    const wrapper = shallowMount(EntityListCard, {
+      props: {
+        projectName: 'demo',
+        entityToEdit: 'sample_type',
+        entityEditFocus: { field: 'columns', column: 'dataset_id' },
+      },
+      global: {
+        renderStubDefaultSlot: true,
+        stubs: globalStubs,
+      },
+    })
+
+    await nextTick()
+    expect(wrapper.findComponent({ name: 'EntityFormDialog' }).props('initialFocus')).toEqual({
+      field: 'columns',
+      column: 'dataset_id',
+    })
+
+    await wrapper.get('.close-entity-dialog').trigger('click')
+    await nextTick()
+
+    expect(wrapper.findComponent({ name: 'EntityFormDialog' }).props('initialFocus')).toBeNull()
   })
 })
