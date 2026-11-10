@@ -364,6 +364,7 @@ import { useNotification } from '@/composables/useNotification'
 import {
   groupByEntityScope,
   type EntityDataValidationStatus,
+  type ValidationEntityFocus,
   type ValidationError,
   type ValidationResult,
 } from '@/types'
@@ -389,7 +390,7 @@ interface Emits {
   (e: 'validate'): void
   (e: 'validate-data', config?: ValidationConfig): void
   (e: 'validate-target-model'): void
-  (e: 'open-entity', entityName: string): void
+  (e: 'open-entity', entityName: string, focus?: ValidationEntityFocus): void
   (e: 'troubleshoot', message: ValidationError): void
 }
 
@@ -523,7 +524,12 @@ function handleDataValidationRun(config: ValidationConfig) {
   emit('validate-data', config)
 }
 
-function handleOpenEntity(entityName: string) {
+function handleOpenEntity(entityName: string, focus?: ValidationEntityFocus) {
+  if (focus) {
+    emit('open-entity', entityName, focus)
+    return
+  }
+
   emit('open-entity', entityName)
 }
 

@@ -40,6 +40,29 @@ function mountValidationPanel(validationResult: ValidationResult | null) {
 }
 
 describe('ValidationPanel', () => {
+  it('forwards the column focus from a direct-FK issue', async () => {
+    const message = {
+      severity: 'error' as const,
+      entity: 'sample',
+      field: 'dataset_id',
+      code: 'DIRECT_FK_OUTPUT_COLUMN_MISSING',
+      message: "Entity 'sample' must output target FK column 'dataset_id'.",
+    }
+    const wrapper = mountValidationPanel({
+      is_valid: false,
+      errors: [message],
+      warnings: [],
+      info: [],
+      error_count: 1,
+      warning_count: 0,
+    })
+
+    await wrapper.find('tbody > tr.v-data-table__tr').trigger('click')
+    await wrapper.find('.direct-fk-column-action').trigger('click')
+
+    expect(wrapper.emitted('open-entity')?.[0]).toEqual(['sample', { field: 'columns', column: 'dataset_id' }])
+  })
+
   it('forwards troubleshooter actions from validation messages', async () => {
     const warning = {
       severity: 'warning' as const,

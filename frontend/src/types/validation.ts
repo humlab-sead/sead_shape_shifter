@@ -15,6 +15,17 @@ export interface EntityDataValidationResult {
   reason?: string | null
 }
 
+/**
+ * Requests a specific part of the entity editor when a validation issue is opened.
+ *
+ * `field` names the editor section and `column` optionally names the column to explain.
+ * Keep `field` a single-member union so new focus targets are added deliberately.
+ */
+export interface ValidationEntityFocus {
+  field: 'columns'
+  column?: string | null
+}
+
 export interface ValidationError {
   severity: ValidationSeverity
   entity?: string | null

@@ -298,6 +298,13 @@ Here, `location.location_type_id` contains existing SEAD `location_type_id` valu
 - Missing values follow the target-model FK rules, including `required`, `required_when`, and `nullable`. Rows excluded from the package do not need a direct-ID lookup.
 - The package manifest lists direct-ID FKs under `direct_target_id_foreign_keys`. Supplied FK values do not become mapping-sidecar links.
 
+In the entity editor, open the **Basic** tab and use **Direct target IDs** to set these entries without editing YAML.
+
+- Selecting a target writes `foreign_key_value_sources.<target>: public_id`; clearing it removes only that entry. The control never creates a project `foreign_keys` link or dependency, and it lists every direct target-model FK the target model declares, whether or not the source currently outputs the ID column.
+- A choice whose target already has a project `foreign_keys` link is disabled until that link is removed. With no target model configured, the control stays disabled.
+- Entries set to `system_id`, targets the model does not declare, and unrecognized values stay visible under **Preserved value sources** with an explanation; changing or removing them requires YAML editing.
+- When the source does not output the target ID column, validation reports `DIRECT_FK_OUTPUT_COLUMN_MISSING` naming the entity and the column, and the expanded issue offers **Open column settings** to open the entity's column fields.
+
 The declaration is not a shared target-model setting and does not waive a target entity's independent `required: true` project requirement.
 
 #### `surrogate_id` (Deprecated - Use `public_id`)

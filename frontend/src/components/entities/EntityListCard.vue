@@ -127,6 +127,7 @@
       :project-name="projectName"
       :entity="selectedEntity"
       :mode="dialogMode"
+      :initial-focus="pendingEditFocus"
       @saved="handleEntitySaved"
     />
 
@@ -149,12 +150,14 @@
 import { ref, computed, watch } from 'vue'
 import { useEntities } from '@/composables'
 import type { EntityResponse } from '@/api/entities'
+import type { ValidationEntityFocus } from '@/types'
 import EntityFormDialog from './EntityFormDialog.vue'
 import DeleteConfirmationDialog from '@/components/common/DeleteConfirmationDialog.vue'
 
 interface Props {
   projectName: string
   entityToEdit?: string | null
+  entityEditFocus?: ValidationEntityFocus | null
 }
 
 interface Emits {
@@ -183,6 +186,9 @@ const showSuccessSnackbar = ref(false)
 const successMessage = ref('')
 
 const pendingEntityToEdit = ref<string | null>(null)
+// Edit focus for the next dialog opening. Captured when an edit request opens the
+// dialog and cleared on close so a manual edit never shows stale guidance.
+const pendingEditFocus = ref<ValidationEntityFocus | null>(null)
 
 watch(
   () => props.entityToEdit,
@@ -206,11 +212,18 @@ watch(
     }
 
     handleEditEntity(entity)
+    pendingEditFocus.value = props.entityEditFocus ?? null
     pendingEntityToEdit.value = null
     emit('entity-edit-request-consumed', entityName)
   },
   { immediate: true }
 )
+
+watch(showFormDialog, (open) => {
+  if (!open) {
+    pendingEditFocus.value = null
+  }
+})
 
 // Computed
 const entityTypes = computed(() => {
@@ -272,12 +285,14 @@ function getStoragePath(entity: EntityResponse): string {
 }
 
 function handleSelectEntity(entity: EntityResponse) {
+  pendingEditFocus.value = null
   selectedEntity.value = entity
   dialogMode.value = 'edit'
   showFormDialog.value = true
 }
 
 function handleEditEntity(entity: EntityResponse) {
+  pendingEditFocus.value = null
   selectedEntity.value = entity
   dialogMode.value = 'edit'
   showFormDialog.value = true

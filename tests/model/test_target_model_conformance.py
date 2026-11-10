@@ -1161,6 +1161,26 @@ def test_invalid_direct_public_id_fk_reports_specific_code(target_entities: dict
         assert "MISSING_REQUIRED_FOREIGN_KEY_TARGET" in codes
 
 
+def test_direct_public_id_missing_output_column_reports_entity_and_column() -> None:
+    target_model = _minimal_target_model(
+        {
+            "sample": {"foreign_keys": [{"entity": "dataset"}]},
+            "dataset": {"public_id": "dataset_id", "target_table": "public.dataset"},
+        }
+    )
+    project = _minimal_project({"sample": {"columns": ["sample_name"], "foreign_key_value_sources": {"dataset": "public_id"}}})
+
+    issues = [
+        issue
+        for issue in TargetModelConformanceValidator().validate(target_model, project)
+        if issue.code == "DIRECT_FK_OUTPUT_COLUMN_MISSING"
+    ]
+
+    assert len(issues) == 1
+    assert issues[0].entity == "sample"
+    assert issues[0].column == "dataset_id"
+
+
 def test_direct_public_id_column_dropped_by_unnest_is_rejected() -> None:
     target_model = _minimal_target_model(
         {
