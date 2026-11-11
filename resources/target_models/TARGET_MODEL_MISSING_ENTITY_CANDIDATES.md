@@ -18,17 +18,17 @@ declared exclusions, gives **40 unmapped tables**:
 - 9 are new, because the `sead_staging` surface is wider than the 137-table schema
   dump the original 42-gap count used. These are subsystem tables the dump omitted:
 
-| Candidate entity | Table | Note |
-|---|---|---|
-| `ceramic` | `tbl_ceramics` | Ceramics subsystem fact table |
-| `ceramic_lookup` | `tbl_ceramics_lookup` | Ceramics subsystem lookup |
-| `ceramic_measurement` | `tbl_ceramics_measurements` | Ceramics subsystem child fact |
-| `dendro` | `tbl_dendro` | Dendrochronology subsystem fact |
-| `dendro_date` | `tbl_dendro_dates` | Dendrochronology subsystem fact |
-| `dendro_date_note` | `tbl_dendro_date_notes` | Dendrochronology subsystem child |
-| `dendro_lookup` | `tbl_dendro_lookup` | Dendrochronology subsystem lookup |
-| `image_type` | `tbl_image_types` | Classifier for the excluded `%images` tables; decide scope with the image exclusion |
-| `property_type_group` | `tbl_property_type_groups` | **Done (2026-11-10):** modelled as `property_type_group`; `property_type` declares the required FK |
+| Candidate entity      | Table                       | Note                                                                                               |
+|-----------------------|-----------------------------|----------------------------------------------------------------------------------------------------|
+| `ceramic`             | `tbl_ceramics`              | Ceramics subsystem fact table                                                                      |
+| `ceramic_lookup`      | `tbl_ceramics_lookup`       | Ceramics subsystem lookup                                                                          |
+| `ceramic_measurement` | `tbl_ceramics_measurements` | Ceramics subsystem child fact                                                                      |
+| `dendro`              | `tbl_dendro`                | Dendrochronology subsystem fact                                                                    |
+| `dendro_date`         | `tbl_dendro_dates`          | Dendrochronology subsystem fact                                                                    |
+| `dendro_date_note`    | `tbl_dendro_date_notes`     | Dendrochronology subsystem child                                                                   |
+| `dendro_lookup`       | `tbl_dendro_lookup`         | Dendrochronology subsystem lookup                                                                  |
+| `image_type`          | `tbl_image_types`           | Classifier for the excluded `%images` tables; decide scope with the image exclusion                |
+| `property_type_group` | `tbl_property_type_groups`  | **Done (2026-11-10):** modelled as `property_type_group`; `property_type` declares the required FK |
 
 The 9 new tables are subsystem or classifier tables outside the original
 clearinghouse scope. Treat them as Tier 3 (scope decision needed) unless a project
