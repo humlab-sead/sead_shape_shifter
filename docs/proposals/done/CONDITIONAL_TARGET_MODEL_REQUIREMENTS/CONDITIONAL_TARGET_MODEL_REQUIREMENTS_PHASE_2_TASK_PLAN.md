@@ -19,7 +19,7 @@
 
 ## Repository Findings
 
-**Repository basis:** Branch `conditional-target-model-requirements`, commit `e15f73a9`, planned 2026-10-14. Uncommitted changes were considered: `resources/target_models/sead_superset_model.yml`, `entities.csv`, `entities.xlsx`, and `resources/target_models/TARGET_MODEL_REVIEW_20261013.md` are existing user changes and are outside this phase.
+**Repository basis:** Branch `conditional-target-model-requirements`, commit `e15f73a9`, planned 2026-10-14. Uncommitted changes were considered: `resources/target_models/sead_superset_model.yml`, `entities.csv`, `entities.xlsx`, and `resources/target_models/TARGET_MODEL_REVIEW.md` are existing user changes and are outside this phase.
 
 | Verified source | Finding | Planning implication |
 | --- | --- | --- |
