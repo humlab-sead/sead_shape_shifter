@@ -537,6 +537,11 @@ release-notes-ai:
 	@echo "Generating release notes for version $(VERSION) with AI..."
 	@uv run python scripts/generate_whats_new.py --version $(VERSION)
 
+# Create a draft dev-to-staging promotion PR and prepare its description.
+.PHONY: promote-dev-to-staging
+promote-dev-to-staging:
+	@scripts/promote_dev_to_staging.sh prepare
+
 # Fast-track: stage every pending change, let Copilot draft the commit subject and the PR
 # description, and merge into dev. The commit type comes from the drafted subject, so review
 # `make push-chore-pr-dry` first when the change is not purely housekeeping.
