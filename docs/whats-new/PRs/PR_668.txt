@@ -1,0 +1,66 @@
+title: Derive reconciliation types and properties from the service manifest
+description:
+## Summary
+
+Reconciliation specifications are now driven by the reconciliation service's OpenRefine manifest
+instead of hard-coded client lists, implementing the Manifest-Driven Reconciliation Inputs proposal.
+
+ - Backend: ReconciliationService.ensure_reconciliation_eligibility validates the service manifest
+(defaultTypes, reconciliation.supportedTypes, extend.property_settings) before batch matching or
+candidate suggestions, rejecting unsupported types and saved property IDs with ValidationError (HTTP
+400) and unavailable or malformed manifests with the new ReconciliationManifestError (HTTP 503).
+Matching routes no longer persist threshold-updated catalogs before the eligibility check, and
+ReconciliationClient.get_service_manifest now caches manifests per service URL for 30 seconds.
+ - Frontend: a new reconciliationManifest.ts parser validates the manifest and derives supported
+types (from reconciliation.supportedTypes, with defaultTypes supplying display names only) and
+per-type properties (from extend.property_settings by exact entity_types membership). The
+specification editor drops its hard-coded per-type property map and stale type fallback, preserves
+saved types and mapping keys through load, save, type changes, YAML round trips, and manifest
+outages, and marks values unsupported or unverifiable. The specification list and reconcile view
+show supported/unsupported/unknown status and block candidate search when compatibility is not
+verified.
+ - Tests: new backend integration workflows for feature_type (zero-property), location
+(property-bearing), and a grouped site/feature_type/location parity test, plus extended service,
+decision-route, client-cache, and frontend Vitest suites.
+ - Docs: new proposal and phase plans under docs/proposals/MANIFEST_DRIVEN_RECONCILIATION_INPUTS/, a
+"Configure a Reconciliation Specification" procedure in docs/DEVELOPMENT.md, manifest-rule
+corrections in the reconciliation setup guide, and removal of the superseded Reconciliation
+Entity-Type Expansion proposal.
+
+## User-facing release note
+
+Reconciliation types and their properties are now read from the reconciliation service manifest, so
+a new entity type can be configured without a Shape Shifter code change. Saved specifications that
+use a type or property the service no longer declares stay visible but are clearly marked
+unsupported and blocked from candidate matching until removed or remapped, instead of silently
+attempting matching.
+
+## Upgrade notes
+
+ - Existing specifications whose property_mappings reference properties no longer declared for the
+selected remote type remain saved but block candidate matching until the operator removes or remaps
+them in the editor.
+ - API consumers: the matching and suggestion endpoints can now return 400 (unsupported type or
+property mapping) and 503 (manifest unavailable or invalid, error code
+RECONCILIATION_MANIFEST_ERROR) where requests previously proceeded to the service.
+ - The reconciliation service must publish reconciliation.supportedTypes and a valid
+extend.property_settings array; the Authority Service-side contract change is tracked separately and
+is not part of this repository's diff. No data migrations are included.
+
+## Validation
+
+ - CI on the merged pull request reported only the Container Release workflow's validate and publish
+checks, both SKIPPED; no CI test-suite results are available.
+ - The phase task plans added in this PR record the following author-run results (not CI-confirmed):
+  - Vitest: 37 tests passed across four reconciliation frontend test files (Phase 2); the new
+SpecificationEditor.test.ts and parser tests passed (18 tests across two files, Phase 4).
+  - pytest: test_feature_type_reconciliation_workflow.py 1 passed;
+test_location_reconciliation_workflow.py 1 passed; grouped parity 3 parametrized cases passed;
+grouped regression across eight files: 154 passed in 3.39s (exit 0); Phase 2 backend
+service/decision/specification regression passed.
+  - Quality checks: black/isort clean on changed backend files; frontend build passed; ESLint 0
+errors (13 warnings); vue-tsc --noEmit exit 0; make check-doc-links passed.
+ - Known not run: the database-backed
+backend/tests/integration/test_site_reconciliation_end_to_end.py (requires a disposable database and
+live Authority Service), the interactive Reconcile → Configuration guide walkthrough (requires a
+running stack), and the full test suite.

@@ -1,0 +1,47 @@
+title: Speed up string concat and interpolation; add normalization profiler
+description:
+## Summary
+
+This PR optimizes two hot text-transform paths and adds a profiling tool to measure normalization
+performance.
+
+ - ExtraColumnEvaluator.evaluate_interpolation (src/transforms/extra_columns.py) no longer applies a
+row-wise df.apply callback. It now converts each referenced column once (string coercion, nulls to
+empty strings), then concatenates literal template segments and column Series in template order.
+Escaped {{/}} braces are unescaped only in literal segments, so matching marker text in source
+values is left untouched, and an empty DataFrame returns an empty Series.
+ - PandasStringBackend._fn_concat (src/transforms/dsl.py) replaces the sequential str.cat loop with
+a single str.cat against a DataFrame built from the remaining arguments, plus a shortcut for the
+single-argument case.
+ - _fn_regex_extract validates the requested group against the compiled pattern's group count up
+front (raising DSLEvaluationError before evaluation instead of per row) and simplifies the per-value
+extraction.
+ - New script scripts/profile_normalization.py profiles normalization for a project (default
+copy_strucke_MS): it reports per-entity wall time and output table size, prints cProfile
+cumulative/self-time reports, and can save a .prof file for snakeviz. It reads source data only and
+does not write normalized output; environment files load with the same precedence as
+profile_validation.py. scripts/README.md documents usage and notes that cProfile cumulative times
+can include async wait time.
+ - Tests cover multi-argument concat with nulls and a duplicate index, and interpolation behavior
+for literal-only templates, categorical and all-null columns, repeated columns, mixed value types,
+duplicate indexes, and brace-marker values.
+
+## User-facing release note
+
+Text interpolation and concatenation in extra-column formulas are now computed column-wise instead
+of row-by-row, which should make normalization of text-heavy projects faster. A new
+scripts/profile_normalization.py tool reports per-entity times and the most expensive functions so
+slow normalization runs can be diagnosed.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+ - The pull request was merged into dev (merge commit b1d1b02).
+ - The only CI results available in the provided evidence are the Container Release workflow checks
+validate and publish, both of which were SKIPPED; they do not exercise the changed code.
+ - No test-suite results were included in the available evidence, so execution and outcomes of the
+added and existing tests in tests/transforms/test_dsl.py and tests/transforms/test_extra_columns.py
+are unknown.

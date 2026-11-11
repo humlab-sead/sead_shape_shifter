@@ -1,0 +1,31 @@
+title: chore: promote staging into main
+description:
+<!-- promotion-pr -->
+## Summary
+
+Promotes `staging` into `main`.
+
+This pull request introduces no change of its own. It carries the pull requests listed below and adds no separate release note.
+
+## Included PRs
+
+- [#615](https://github.com/humlab-sead/sead_shape_shifter/pull/615) chore: promote dev into staging
+- [#625](https://github.com/humlab-sead/sead_shape_shifter/pull/625) chore: promote dev into staging
+- [#627](https://github.com/humlab-sead/sead_shape_shifter/pull/627) chore: promote dev into staging
+- [#636](https://github.com/humlab-sead/sead_shape_shifter/pull/636) Promote dev to staging
+- [#637](https://github.com/humlab-sead/sead_shape_shifter/pull/637) Promote dev to staging
+- [#639](https://github.com/humlab-sead/sead_shape_shifter/pull/639) Promote dev to staging
+- [#646](https://github.com/humlab-sead/sead_shape_shifter/pull/646) Promote dev to staging
+- [#648](https://github.com/humlab-sead/sead_shape_shifter/pull/648) Merge main into staging: reconcile pull request template
+
+## User-facing release note
+
+None - no user-visible change.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+Not verified: validation results are recorded on the included pull requests.

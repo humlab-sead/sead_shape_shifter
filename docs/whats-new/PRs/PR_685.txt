@@ -1,0 +1,45 @@
+title: Rework link troubleshooter summary and saved-relationship display
+description:
+## Summary
+
+The Link Troubleshooter dialog's finding summary now leads with the unmatched source-row count (e.g.
+"N source rows have no match in <entity>") followed by a one-sentence description of the saved
+join's effect, including the effective join type, input/output row counts, and whether the join
+keeps or removes the unmatched rows. This replaces the previous report-style summary with its
+separate inspect buttons.
+
+Other layout changes in the same dialog:
+
+ - The saved-link relationship (cardinality, linking pass, and only the constraint flags set to
+true) is condensed into a single line under the dialog heading; the separate "Saved relationship"
+section with entity/join chips and the expandable saved-link rules was removed.
+ - Duplicate "Inspect unmatched" and "Inspect multiple matches" buttons were removed from the
+summary along with their selectBaselineGroup handler; exception-group selection remains available in
+the results area.
+ - Trial key selects use per-pair aria-labels (e.g. "Key pair 1 local key (orders)") instead of
+visible labels that duplicated the column headings.
+ - The advanced null-key options ("Allow missing join keys", "Match null join-key parts") moved
+their explanations and resolved-policy status into help tooltips instead of inline caption text.
+
+Tests were updated accordingly: a new test covers the relationship summary line (cardinality, pass,
+and only set flags), assertions were switched to the new aria-labels and tooltip content, and the
+removed inspect-button navigation test was deleted.
+
+## User-facing release note
+
+The Link Troubleshooter now states up front how many source rows have no match and explains in one
+sentence what the saved join does with them, with the saved-link details condensed to a single line
+and null-key options explained in help tooltips.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+ - CI on this PR shows only the Container Release workflow checks validate and publish; both
+concluded SKIPPED.
+ - The updated frontend unit tests in
+frontend/src/components/validation/__tests__/LinkTroubleshooterDialog.test.ts were revised to match
+the new UI, but no test-execution results are available in the provided evidence, so their outcome
+is unknown.

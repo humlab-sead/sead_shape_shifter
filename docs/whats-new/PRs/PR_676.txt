@@ -1,0 +1,59 @@
+title: Default data validation to complete mode and refine link troubleshooter
+description:
+## Summary
+
+Data validation now defaults to complete mode instead of sample. The validation_mode parameter of
+the data-validation endpoint and ValidationService.validate_project_data changed its default from
+SAMPLE to COMPLETE, and the frontend (config dialog, useDataValidation, project detail view) now
+sends complete by default. Sample truncation (up to 1000 rows per entity) could name parent values
+as missing that exist outside the sample, so complete mode reports foreign-key integrity against
+full data. The task-completion gate in TaskService keeps an explicit SAMPLE check because complete
+validation normalizes the whole project.
+
+Because the troubleshooter replays the saved link on complete data, the "Troubleshoot link" action
+is now gated off for sample-mode results: ValidationPanel passes the result's validation mode down
+to ValidationMessageList, and new isSampleDataValidation / sampleDataTroubleshootRefusal helpers
+show an inline explanation instead of the action.
+
+A new distinctSuggestion utility hides suggestions that merely repeat the message text, applied in
+ValidationMessageList and ValidationSuggestion; the redundant suggestion was removed from
+ForeignKeyIntegrityValidator. Message rows also lost their tooltips in favor of an expandable detail
+view.
+
+In the troubleshooter dialogs, hand-built <v-table> markup was replaced with <v-data-table>
+(non-sortable headers, fixed backend page order). The green "reproduced" status banner was removed —
+reproduction is the expected outcome — and a warning banner now appears only when reproduction
+fails. A loading caption replaces the standing inspected-source line, and the link trial table opens
+on unmatched rows by default (rowFilter default changed from all to unmatched).
+
+Documentation was updated accordingly (DESIGN.md, USER_GUIDE.md, user-guide appendix), and the FK
+link troubleshooter experiments proposal was revised for client-side paging over bounded exception
+groups, an in-process context store matching the single-worker deployment, and a revised request
+contract without paging fields.
+
+## User-facing release note
+
+Data validation now runs in complete mode by default, so foreign-key warnings are checked against
+full data instead of a 1000-row sample, and link troubleshooting is unavailable for sample results
+with guidance to re-run complete validation. Troubleshooter dialogs open on unmatched rows and no
+longer show a success banner when the warning reproduces as expected.
+
+## Upgrade notes
+
+The default validation_mode on the data-validation endpoint changed from sample to complete. API
+callers that relied on the previous default should pass validation_mode=sample explicitly to retain
+the old behavior. The task-status gate continues to use sample mode internally and requires no
+caller change.
+
+## Validation
+
+ - Unit tests were added or updated in this diff covering the distinctSuggestion utility (new
+validationSuggestion.test.ts), the sample-data troubleshooting gate (linkTroubleshooter.test.ts,
+ValidationMessageList.test.ts, ValidationPanel.test.ts), the troubleshooter table rendering and
+removed status banner (IntegrityTroubleshooterBody.test.ts, LinkTroubleshooterDialog.test.ts), and
+the default row-filter change (useLinkTroubleshooter.test.ts). Their execution results are not shown
+in the available evidence.
+ - CI on the pull request ran only the Container Release workflow: the validate and publish checks
+both concluded SKIPPED. No test-suite results were reported by CI.
+ - The pull request was merged into dev (merge commit 99c4da2). Backend test execution for the
+default-mode change is unknown from the available evidence.

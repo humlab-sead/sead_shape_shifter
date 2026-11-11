@@ -1,0 +1,51 @@
+title: fix(paths): keep directive resolution and materialization portable
+description:
+## Summary
+
+Fixes three path-handling defects that broke project loading and materialization portability:
+
+ - Directive expansion from .env: Settings now exports the resolver-approved directory variables
+(APPLICATION_ROOT, GLOBAL_DATA_DIR, GLOBAL_DATA_SOURCE_DIR, GLOBAL_TARGET_MODEL_DIR) to os.environ
+at startup and fails fast if any resolves to an empty value. Previously, pydantic-settings read .env
+without exporting it, so the Core directive resolver expanded ${GLOBAL_DATA_SOURCE_DIR} (and
+similar) to an empty string, turning directives like @include:
+${GLOBAL_DATA_SOURCE_DIR}/sead-options.yml into root-absolute paths that failed containment.
+resolve_directives in src/configuration/resolve.py also now loads the given env_filename into
+os.environ (existing process variables keep priority) so ${VAR} references can expand values that
+only live in the file.
+ - Symlink diagnostics: resolve_contained_path now logs a warning naming the symlink and its target
+when a path resolves through a symlink inside the managed root, explaining why a path that looks
+local was rejected when it escapes the root. Containment behavior itself is unchanged.
+ - Portable materialization state: Materialization now snapshots the API-form entity config
+(relative filename + location, list-form foreign_keys) into materialized.source_state before
+overwriting the entity, instead of the resolved Core config. Project YAML therefore never freezes
+environment-absolute paths such as /app/projects/..., and unmaterialization restores a config that
+round-trips through to_core_dict. The resolved Core config remains only as a fallback.
+ProjectMapper.to_core additionally passes runtime_root (the application root) so relative env-var
+values anchor to it.
+
+Tests were added for the environment export, symlink warnings (escaping, contained, and no-symlink
+cases), and the API-form source_state snapshot.
+
+## User-facing release note
+
+Configuration directives such as @include: ${GLOBAL_DATA_SOURCE_DIR}/sead-options.yml now expand
+correctly when the directory is configured only in .env, and file paths that resolve through a
+symlink now log a warning naming the symlink and its target, making path-containment rejections
+easier to diagnose.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+ - Reported by the PR author (execution not independently confirmed): uv run pytest
+tests/test_path_resolution.py backend/tests/test_config.py
+backend/tests/services/test_materialization_service.py — 251+ passed.
+ - Reported by the PR author (execution not independently confirmed): uv run pytest backend/tests —
+only pre-existing route-inventory failures (link-troubleshooter), no new failures.
+ - CI: the Container Release workflow checks (validate, publish) were SKIPPED for this pull request;
+no other CI results are available.
+ - No linked issue context was available; the pull request body references issue #652, but it was 
+not inspected.

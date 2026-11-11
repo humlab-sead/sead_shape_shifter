@@ -1,8 +1,16 @@
 import { ref } from 'vue'
 import MarkdownIt from 'markdown-it'
+import { whatsNewApi, type WhatsNewManifestItem, type WhatsNewManifestResponse } from '@/api/whats-new'
 
 const md = new MarkdownIt({
   html: true,
+  linkify: true,
+  typographer: true,
+  breaks: false,
+})
+
+const pendingMd = new MarkdownIt({
+  html: false,
   linkify: true,
   typographer: true,
   breaks: false,
@@ -24,20 +32,14 @@ export interface WhatsNewNote {
   sections: WhatsNewSection[]
 }
 
-export interface WhatsNewManifestItem {
-  version: string
-  title: string
-  date: string | null
-  path: string
-}
-
-interface WhatsNewManifestResponse {
-  latest_version: string | null
-  items: WhatsNewManifestItem[]
+export interface PendingWhatsNewNote {
+  markdown: string
+  html: string
 }
 
 const noteCache = new Map<string, Promise<WhatsNewNote>>()
 let manifestCache: Promise<WhatsNewManifestResponse> | null = null
+let pendingNoteCache: Promise<PendingWhatsNewNote> | null = null
 
 function parseSections(markdown: string): WhatsNewSection[] {
   const sections: WhatsNewSection[] = []
@@ -86,12 +88,7 @@ function parseNote(markdown: string, version: string): WhatsNewNote {
 }
 
 async function fetchManifest(): Promise<WhatsNewManifestResponse> {
-  const response = await fetch('/api/v1/whats-new')
-  if (!response.ok) {
-    throw new Error(`Failed to load release notes manifest: ${response.statusText}`)
-  }
-
-  return response.json() as Promise<WhatsNewManifestResponse>
+  return whatsNewApi.getManifest()
 }
 
 function getOrLoadManifest(): Promise<WhatsNewManifestResponse> {
@@ -103,17 +100,21 @@ function getOrLoadManifest(): Promise<WhatsNewManifestResponse> {
 }
 
 async function fetchNote(version: string): Promise<WhatsNewNote> {
-  const response = await fetch(`/api/v1/whats-new/${version}/content`)
-  if (!response.ok) {
-    throw new Error(`Failed to load release notes for v${version}: ${response.statusText}`)
-  }
-
-  const markdown = await response.text()
+  const markdown = await whatsNewApi.getNote(version)
   if (markdown.startsWith('<!DOCTYPE html>')) {
     throw new Error(`Received HTML instead of markdown for release note v${version}`)
   }
 
   return parseNote(markdown, version)
+}
+
+async function fetchPendingNote(): Promise<PendingWhatsNewNote> {
+  const markdown = await whatsNewApi.getPendingContent()
+  if (markdown.startsWith('<!DOCTYPE html>')) {
+    throw new Error('Received HTML instead of markdown for pending release notes')
+  }
+
+  return { markdown, html: pendingMd.render(markdown) }
 }
 
 function getOrLoadNote(version: string): Promise<WhatsNewNote> {
@@ -127,8 +128,17 @@ function getOrLoadNote(version: string): Promise<WhatsNewNote> {
   return pending
 }
 
+function getOrLoadPendingNote(): Promise<PendingWhatsNewNote> {
+  if (!pendingNoteCache) {
+    pendingNoteCache = fetchPendingNote()
+  }
+
+  return pendingNoteCache
+}
+
 export function useWhatsNew() {
   const latestNote = ref<WhatsNewNote | null>(null)
+  const pendingNote = ref<PendingWhatsNewNote | null>(null)
   const notes = ref<WhatsNewNote[]>([])
   const manifest = ref<WhatsNewManifestItem[]>([])
   const latestVersion = ref<string | null>(null)
@@ -167,7 +177,11 @@ export function useWhatsNew() {
       const manifestResponse = await getOrLoadManifest()
       manifest.value = manifestResponse.items
       latestVersion.value = manifestResponse.latest_version
-      notes.value = await Promise.all(manifestResponse.items.map((item) => getOrLoadNote(item.version)))
+      const notesPromise = Promise.all(manifestResponse.items.map((item) => getOrLoadNote(item.version)))
+      const pendingNotePromise = manifestResponse.pending_available ? getOrLoadPendingNote() : Promise.resolve(null)
+      const [loadedNotes, loadedPendingNote] = await Promise.all([notesPromise, pendingNotePromise])
+      notes.value = loadedNotes
+      pendingNote.value = loadedPendingNote
       latestNote.value = notes.value[0] ?? null
       return notes.value
     } catch (err: any) {
@@ -180,6 +194,7 @@ export function useWhatsNew() {
 
   return {
     latestNote,
+    pendingNote,
     notes,
     manifest,
     latestVersion,
