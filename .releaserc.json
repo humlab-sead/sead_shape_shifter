@@ -45,7 +45,7 @@
     [
       "@semantic-release/git",
       {
-        "assets": ["CHANGELOG.md", "pyproject.toml", "backend/app/__init__.py", "docs/whats-new/v*.md"],
+        "assets": ["CHANGELOG.md", "pyproject.toml", "backend/app/__init__.py", "docs/whats-new/v*.md", "docs/whats-new/PENDING.md"],
         "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
       }
     ],
