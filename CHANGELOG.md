@@ -1,3 +1,11 @@
+## [2.7.1](https://github.com/humlab-sead/sead_shape_shifter/compare/v2.7.0...v2.7.1) (2026-11-11)
+
+
+### Bug Fixes
+
+* **release:** commit the regenerated pending release snapshot ([62ba039](https://github.com/humlab-sead/sead_shape_shifter/commit/62ba039e89b2d515a4350464a01fe44e3c975672))
+* **release:** resolve patch release headings in the changelog ([f068415](https://github.com/humlab-sead/sead_shape_shifter/commit/f0684151737d2f33d3ea72c6dad6c59a5bd07711))
+
 # [2.7.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v2.6.0...v2.7.0) (2026-11-11)
 
 
