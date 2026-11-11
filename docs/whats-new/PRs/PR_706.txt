@@ -1,0 +1,48 @@
+title: Suppress reconciliation-pending status for valid direct-ID conditional
+description:
+## Summary
+
+ConditionalForeignKeyConformanceValidator.validate_global in src/target_model/conformance.py now
+skips the CONDITIONAL_FK_AWAITING_RECONCILIATION info issue when
+is_valid_direct_public_id_foreign_key(...) confirms that a conditional foreign key is a valid direct
+target-ID declaration. A valid direct-ID FK is already satisfied without a project lookup entity or
+Core link, so reporting reconciliation as pending was misleading. The exemption is per foreign key:
+local/default conditional FKs still await reconciliation, invalid direct-ID declarations keep their
+errors (e.g. DIRECT_FK_TARGET_TABLE_MISSING), a second source using a different mode for the same
+target keeps its own conditional status, globally required target entities remain required, and
+DIRECT_FK_TARGET_CHECK_PENDING is unchanged.
+
+The PR adds four conformance regression tests covering these cases and a PostgreSQL integration test
+verifying that required_when still demands a direct-ID value on a selected insert and rejects
+target IDs absent from the target table. Proposal and phase-plan documents are updated to record the
+2026-11-11 approval and completed Phase 1 tasks, and scripts/README.md documents the loopback-only
+disposable PostgreSQL container (spinup_disposable_postgres.py, make pg-disposable-*) used by the
+integration test.
+
+## User-facing release note
+
+Conditional foreign keys that use an existing target ID directly are no longer reported as awaiting
+reconciliation in project conformance, so valid declarations pass cleanly while genuinely unresolved
+foreign keys and missing or invalid direct IDs are still flagged.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+Results recorded in the Phase 1 task plan (updated in this PR) on 2026-11-11:
+
+ - rtk uv run pytest tests/model/test_target_model_conformance.py -q -k 'conditional_foreign_key or
+direct_public_id_fk' — passed: 17 passed with the filter (13 baseline + 4 new); full file 57 passed;
+broader run of tests/model/ plus the projection suite: 300 passed, exit 0.
+ - rtk uv run pytest backend/tests/ingesters/test_sead_change_request_target_projection.py -q —
+passed: 22 passed, exit 0.
+ - rtk uv run pytest backend/tests/ingesters/test_sead_change_request_direct_fk_postgres.py -q with
+SEAD_DISPOSABLE_POSTGRES_* loopback settings against a disposable podman PostgreSQL container (make
+pg-disposable-up) — passed: 2 passed, exit 0.
+ - The plan also records pylint 10/10 and Black/isort clean; these commands were not independently
+reproduced here.
+
+On GitHub, the only checks in the rollup were the Container Release workflow's validate and publish
+jobs, both SKIPPED; no other CI results are available for this PR.

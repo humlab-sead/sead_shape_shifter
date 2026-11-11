@@ -19,95 +19,109 @@
               <div class="text-caption mt-1">{{ error }}</div>
             </v-alert>
 
-            <template v-else-if="latestNote">
-              <section class="hero-shell mb-6">
-                <v-card class="latest-note-card" variant="flat">
-                  <v-card-text class="pa-6 pa-md-8">
-                    <div class="d-flex flex-wrap align-center ga-2 mb-4">
-                      <v-chip size="small" color="primary" variant="flat">Latest Release</v-chip>
-                      <v-chip size="small" variant="outlined">v{{ latestNote.version }}</v-chip>
-                      <v-chip v-if="latestNote.date" size="small" variant="outlined">{{ latestNote.date }}</v-chip>
-                    </div>
-                    <div class="text-h4 mb-3 hero-title">{{ latestNote.title }}</div>
-                    <div class="text-body-1 hero-copy mb-6">
-                      User-visible improvements, workflow refinements, and fixes collected into a readable release
-                      archive.
-                    </div>
+            <template v-else>
+              <v-card v-if="pendingNote" class="pending-release-card mb-6" elevation="0" variant="tonal">
+                <v-card-text class="pa-4">
+                  <div class="d-flex align-center ga-2 mb-3">
+                    <v-chip size="small" color="warning" variant="flat">Pending</v-chip>
+                    <span class="text-body-2 text-medium-emphasis">Merged changes not yet included in a release.</span>
+                  </div>
+                  <div class="markdown-content" v-html="pendingNote.html"></div>
+                </v-card-text>
+              </v-card>
 
-                    <v-row>
-                      <v-col cols="12" md="7">
-                        <div class="text-overline mb-2 text-medium-emphasis">Highlights</div>
-                        <v-list bg-color="transparent" density="comfortable" class="pa-0">
-                          <v-list-item
-                            v-for="highlight in latestNote.highlights.slice(0, 5)"
-                            :key="highlight"
-                            class="px-0"
-                          >
-                            <template #prepend>
-                              <v-icon size="small" color="primary">mdi-sparkles</v-icon>
-                            </template>
-                            <v-list-item-title class="text-body-2 whitespace-normal">{{ highlight }}</v-list-item-title>
-                          </v-list-item>
-                        </v-list>
-                      </v-col>
-                      <v-col cols="12" md="5">
-                        <div class="stats-grid">
-                          <div class="stat-card">
-                            <div class="stat-value">{{ notes.length }}</div>
-                            <div class="stat-label">Tracked releases</div>
-                          </div>
-                          <div class="stat-card">
-                            <div class="stat-value">{{ latestNote.sections.length }}</div>
-                            <div class="stat-label">Sections in latest note</div>
-                          </div>
-                        </div>
-                      </v-col>
-                    </v-row>
-                  </v-card-text>
-                </v-card>
-              </section>
+              <template v-if="latestNote">
+                <section class="hero-shell mb-6">
+                  <v-card class="latest-note-card" variant="flat">
+                    <v-card-text class="pa-6 pa-md-8">
+                      <div class="d-flex flex-wrap align-center ga-2 mb-4">
+                        <v-chip size="small" color="primary" variant="flat">Latest Release</v-chip>
+                        <v-chip size="small" variant="outlined">v{{ latestNote.version }}</v-chip>
+                        <v-chip v-if="latestNote.date" size="small" variant="outlined">{{ latestNote.date }}</v-chip>
+                      </div>
+                      <div class="text-h4 mb-3 hero-title">{{ latestNote.title }}</div>
+                      <div class="text-body-1 hero-copy mb-6">
+                        User-visible improvements, workflow refinements, and fixes collected into a readable release
+                        archive.
+                      </div>
 
-              <div class="d-flex align-center justify-space-between mb-3 flex-wrap ga-2">
-                <div>
-                  <div class="text-h6">Release Archive</div>
-                  <div class="text-body-2 text-medium-emphasis">
-                    Browse the generated notes for each published version.
+                      <v-row>
+                        <v-col cols="12" md="7">
+                          <div class="text-overline mb-2 text-medium-emphasis">Highlights</div>
+                          <v-list bg-color="transparent" density="comfortable" class="pa-0">
+                            <v-list-item
+                              v-for="highlight in latestNote.highlights.slice(0, 5)"
+                              :key="highlight"
+                              class="px-0"
+                            >
+                              <template #prepend>
+                                <v-icon size="small" color="primary">mdi-sparkles</v-icon>
+                              </template>
+                              <v-list-item-title class="text-body-2 whitespace-normal">{{
+                                highlight
+                              }}</v-list-item-title>
+                            </v-list-item>
+                          </v-list>
+                        </v-col>
+                        <v-col cols="12" md="5">
+                          <div class="stats-grid">
+                            <div class="stat-card">
+                              <div class="stat-value">{{ notes.length }}</div>
+                              <div class="stat-label">Tracked releases</div>
+                            </div>
+                            <div class="stat-card">
+                              <div class="stat-value">{{ latestNote.sections.length }}</div>
+                              <div class="stat-label">Sections in latest note</div>
+                            </div>
+                          </div>
+                        </v-col>
+                      </v-row>
+                    </v-card-text>
+                  </v-card>
+                </section>
+
+                <div class="d-flex align-center justify-space-between mb-3 flex-wrap ga-2">
+                  <div>
+                    <div class="text-h6">Release Archive</div>
+                    <div class="text-body-2 text-medium-emphasis">
+                      Browse the generated notes for each published version.
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <v-expansion-panels v-model="expandedPanels" multiple variant="accordion">
-                <v-expansion-panel v-for="(note, index) in notes" :key="note.version" :value="index">
-                  <v-expansion-panel-title>
-                    <div class="d-flex flex-column archive-header">
-                      <div class="d-flex align-center flex-wrap ga-2">
-                        <span class="font-weight-medium">v{{ note.version }}</span>
-                        <v-chip v-if="note.date" size="x-small" variant="outlined">{{ note.date }}</v-chip>
-                        <v-chip size="x-small" variant="tonal">{{ note.highlights.length }} highlights</v-chip>
+                <v-expansion-panels v-model="expandedPanels" multiple variant="accordion">
+                  <v-expansion-panel v-for="(note, index) in notes" :key="note.version" :value="index">
+                    <v-expansion-panel-title>
+                      <div class="d-flex flex-column archive-header">
+                        <div class="d-flex align-center flex-wrap ga-2">
+                          <span class="font-weight-medium">v{{ note.version }}</span>
+                          <v-chip v-if="note.date" size="x-small" variant="outlined">{{ note.date }}</v-chip>
+                          <v-chip size="x-small" variant="tonal">{{ note.highlights.length }} highlights</v-chip>
+                        </div>
+                        <div v-if="note.highlights[0]" class="text-caption text-medium-emphasis mt-1">
+                          {{ note.highlights[0] }}
+                        </div>
                       </div>
-                      <div v-if="note.highlights[0]" class="text-caption text-medium-emphasis mt-1">
-                        {{ note.highlights[0] }}
+                    </v-expansion-panel-title>
+                    <v-expansion-panel-text>
+                      <div class="d-flex flex-wrap ga-2 mb-4" v-if="note.sections.length > 0">
+                        <v-chip v-for="section in note.sections" :key="section.title" size="small" variant="outlined">
+                          {{ section.title }} · {{ section.items.length }}
+                        </v-chip>
                       </div>
-                    </div>
-                  </v-expansion-panel-title>
-                  <v-expansion-panel-text>
-                    <div class="d-flex flex-wrap ga-2 mb-4" v-if="note.sections.length > 0">
-                      <v-chip v-for="section in note.sections" :key="section.title" size="small" variant="outlined">
-                        {{ section.title }} · {{ section.items.length }}
-                      </v-chip>
-                    </div>
-                    <div class="markdown-content" v-html="note.html"></div>
-                  </v-expansion-panel-text>
-                </v-expansion-panel>
-              </v-expansion-panels>
+                      <div class="markdown-content" v-html="note.html"></div>
+                    </v-expansion-panel-text>
+                  </v-expansion-panel>
+                </v-expansion-panels>
+              </template>
+
+              <v-alert v-else-if="!pendingNote" type="warning" variant="tonal" class="mb-4">
+                <div class="font-weight-bold">No release notes available</div>
+                <div class="text-caption mt-1">
+                  The release notes archive is currently empty or unavailable from the backend manifest.
+                </div>
+              </v-alert>
             </template>
-
-            <v-alert v-else type="warning" variant="tonal" class="mb-4">
-              <div class="font-weight-bold">No release notes available</div>
-              <div class="text-caption mt-1">
-                The release notes archive is currently empty or unavailable from the backend manifest.
-              </div>
-            </v-alert>
           </v-card-text>
         </v-card>
       </v-col>
@@ -120,7 +134,7 @@ import { onMounted, ref } from 'vue'
 import { useWhatsNew } from '@/composables/useWhatsNew'
 
 const expandedPanels = ref<number[]>([0])
-const { latestNote, notes, loading, error, loadAllNotes } = useWhatsNew()
+const { latestNote, pendingNote, notes, loading, error, loadAllNotes } = useWhatsNew()
 
 onMounted(async () => {
   try {

@@ -6,7 +6,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
 
 import pytest
 
@@ -152,12 +152,27 @@ def test_promotion_pending_entry_lists_the_pull_requests_it_carries():
         base_ref_name="staging",
         head_ref_name="dev",
     )
-    context = generator.ReleaseContext("2.5.0", dt.date(2026, 10, 27), "2.4.0")
+    pending = generator.build_pending_notes([promotion])
 
-    content = generator.build_heuristic_notes(context, "humlab-sead/sead_shape_shifter", [], [promotion])
+    assert "# Pending Release" in pending
+    assert "- Promotes: #41, #42." in pending
 
-    assert "## Pending Release" in content
-    assert "- Promotes: #41, #42." in content
+
+def test_empty_pending_snapshot_has_a_clear_status():
+    generator = load_generator_module()
+
+    pending = generator.build_pending_notes([])
+
+    assert "No PRs are currently pending release." in pending
+
+
+def test_pending_snapshot_uses_a_static_unversioned_path(tmp_path: Path):
+    generator = load_generator_module()
+
+    pending_path = generator.write_pending_notes(tmp_path, [])
+
+    assert pending_path == tmp_path / "docs" / "whats-new" / "PENDING.md"
+    assert "No PRs are currently pending release." in pending_path.read_text(encoding="utf-8")
 
 
 def test_release_window_reads_the_previous_release_from_the_changelog(tmp_path: Path):
@@ -245,20 +260,12 @@ def test_pending_release_keeps_titles_dates_and_authored_notes():
         "2026-10-28T19:35:16Z",
         "## User-facing release note\n\nUsers can preview cached columns.\n\n## Upgrade notes\n\nNone - no user action required.\n",
     )
-    context = generator.ReleaseContext("2.5.0", dt.date(2026, 10, 27), "2.4.0")
+    pending = generator.build_pending_notes([pending_pr])
 
-    content = generator.build_heuristic_notes(
-        context,
-        "humlab-sead/sead_shape_shifter",
-        [],
-        [pending_pr],
-    )
-
-    assert "## Pending Release" in content
-    assert "[PR #42](https://github.com/humlab-sead/sead_shape_shifter/pull/42)" in content
-    assert "merged 2026-10-28" in content
-    assert "Users can preview cached columns." in content
-    assert "None - no user action required." not in content
+    assert "[PR #42](https://github.com/humlab-sead/sead_shape_shifter/pull/42)" in pending
+    assert "merged 2026-10-28" in pending
+    assert "Users can preview cached columns." in pending
+    assert "None - no user action required." not in pending
 
 
 def test_heuristic_release_content_uses_pr_notes_not_changelog_details():
@@ -272,23 +279,72 @@ def test_heuristic_release_content_uses_pr_notes_not_changelog_details():
     notes = generator.get_pull_request_notes([pull_request])
     context = generator.ReleaseContext("2.5.0", dt.date(2026, 10, 27), "2.4.0")
 
-    content = generator.build_heuristic_notes(context, "humlab-sead/sead_shape_shifter", notes, None)
+    content = generator.build_heuristic_notes(context, "humlab-sead/sead_shape_shifter", notes)
 
+    assert "Pending Release" not in content
     assert "Users can preview cached entity columns." in content
     assert "No upgrade actions were noted" in content
     assert "add abundance entity mapping" not in content
 
 
-def test_latest_version_check_uses_version_when_release_dates_match(tmp_path: Path):
+def test_main_refreshes_pending_snapshot_when_generating_an_older_release(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
     generator = load_generator_module()
-    changelog_path = tmp_path / "CHANGELOG.md"
-    changelog_path.write_text(
-        "# [2.5.1](https://example.test/2.5.1) (2026-10-27)\n\n# [2.5.0](https://example.test/2.5.0) (2026-10-27)\n",
-        encoding="utf-8",
+    context = generator.ReleaseContext("2.5.0", dt.date(2026, 10, 27), "2.4.0")
+    released = make_pull_request(
+        generator,
+        51,
+        "2026-10-26T15:00:00Z",
+        "## User-facing release note\n\nUsers can review released changes.\n",
+        merge_commit_oid="released-oid",
     )
+    pending = make_pull_request(
+        generator,
+        52,
+        "2026-10-28T15:00:00Z",
+        "## User-facing release note\n\nUsers can review pending changes.\n",
+        merge_commit_oid="pending-oid",
+    )
+    output_path = tmp_path / "v2.5.0.md"
+    monkeypatch.setattr(
+        generator,
+        "parse_args",
+        lambda: SimpleNamespace(
+            repo_root=tmp_path,
+            version="2.5.0",
+            source_branches="dev",
+            github_repository="humlab-sead/sead_shape_shifter",
+            current_ref=None,
+            previous_tag=None,
+            force_heuristic=True,
+            output=output_path,
+            update_github_release=False,
+        ),
+    )
+    monkeypatch.setattr(generator, "read_release_context", lambda *_args: context)
+    monkeypatch.setattr(
+        generator,
+        "resolve_release_window",
+        lambda *_args: generator.ReleaseWindow(
+            "v2.5.0",
+            "v2.4.0",
+            frozenset({"released-oid"}),
+            frozenset(),
+        ),
+    )
+    monkeypatch.setattr(generator, "list_merged_pull_requests", lambda *_args: [released, pending])
+    monkeypatch.setattr(generator, "resolve_main_commits", lambda *_args: {"released-oid"})
+    monkeypatch.setattr(generator, "maybe_generate_ai_notes", lambda _context, _notes, draft, _force: (draft, "heuristic"))
 
-    assert generator.is_latest_changelog_version(changelog_path, "2.5.1")
-    assert not generator.is_latest_changelog_version(changelog_path, "2.5.0")
+    assert generator.main() == 0
+
+    versioned_notes = output_path.read_text(encoding="utf-8")
+    pending_notes = (tmp_path / "docs" / "whats-new" / "PENDING.md").read_text(encoding="utf-8")
+    assert "Users can review released changes." in versioned_notes
+    assert "Users can review pending changes." not in versioned_notes
+    assert "Users can review pending changes." in pending_notes
 
 
 def test_load_local_env_reads_shared_provider_settings_and_preserves_exported_values(
@@ -399,3 +455,63 @@ def test_ai_notes_use_heuristics_when_provider_configuration_is_absent(monkeypat
 
     assert content == "heuristic draft"
     assert mode == "heuristic"
+
+
+def test_ai_notes_reject_pending_release_section(monkeypatch: pytest.MonkeyPatch) -> None:
+    generator = load_generator_module()
+    monkeypatch.setenv("REPO_SCRIPTS_DEFAULT_MODEL", "configured-model")
+    monkeypatch.setenv("REPO_SCRIPTS_DEFAULT_PROVIDER_TYPE", "openai")
+    monkeypatch.setenv("REPO_SCRIPTS_DEFAULT_PROVIDER_BASE_URL", "https://example.test/v1")
+    monkeypatch.setenv("REPO_SCRIPTS_DEFAULT_PROVIDER_KEY", "configured-key")
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return None
+
+        def read(self) -> bytes:
+            response = {
+                "choices": [
+                    {
+                        "message": {
+                            "content": (
+                                "# What's New in v2.5.0\n\n## Changes\n\n- Shipped change.\n\n"
+                                "## Upgrade Notes\n\n- None.\n\n## Pending Release\n\n- PR #42\n"
+                            )
+                        }
+                    }
+                ]
+            }
+            return json.dumps(response).encode("utf-8")
+
+    monkeypatch.setattr(generator.request, "urlopen", lambda *_args, **_kwargs: FakeResponse())
+    context = generator.ReleaseContext("2.5.0", dt.date(2026, 11, 2), "2.4.0")
+
+    content, mode = generator.maybe_generate_ai_notes(context, [], "shipped-only heuristic", False)
+
+    assert content == "shipped-only heuristic"
+    assert mode == "heuristic"
+
+
+@pytest.mark.parametrize(
+    "heading",
+    ["# [2.7.0](https://example/compare/v2.6.0...v2.7.0) (2026-11-11)", "## [2.7.1](https://example/compare/v2.7.0...v2.7.1) (2026-11-11)"],
+    ids=["minor-major-heading", "patch-heading"],
+)
+def test_read_release_context_accepts_every_changelog_heading_level(tmp_path: Path, heading: str) -> None:
+    """A patch release uses a level-2 heading, so both levels must resolve."""
+    generator = load_generator_module()
+    version = "2.7.0" if heading.startswith("# ") else "2.7.1"
+    changelog = tmp_path / "CHANGELOG.md"
+    changelog.write_text(
+        f"{heading}\n\n### Bug Fixes\n\n* a fix\n\n# [2.6.0](https://example/compare/v2.5.0...v2.6.0) (2026-10-27)\n\n* older\n",
+        encoding="utf-8",
+    )
+
+    context = generator.read_release_context(changelog, version)
+
+    assert context.version == version
+    assert context.release_date == dt.date(2026, 11, 11)
+    assert context.previous_version == "2.6.0"

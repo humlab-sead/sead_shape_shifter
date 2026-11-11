@@ -1,0 +1,74 @@
+title: Add Foreign-Key Integrity Troubleshooter phases 1-3
+description:
+## Summary
+
+Implements phases 1–3 of the Foreign-Key Integrity Troubleshooter proposal: a read-only inspection
+path for FK_DATA_INTEGRITY warnings, kept separate from the shipped row-count link troubleshooter.
+
+ - Phase 1 — saved-link identity: ForeignKeyIntegrityValidator now records the distinct orphan_count
+in the issue metadata, and DataValidationOrchestrator attaches the saved link's fk_index and
+fk_signature to each integrity warning. src/transforms/link_resolution.py gains
+resolve_integrity_issue, which shares the saved-FK lookup with the row-count resolver but applies no
+join-type restriction; row-count resolution and its gates are unchanged.
+ - Phase 2 — backend inspection: New protected endpoint POST
+/api/v1/projects/{project_name}/integrity-troubleshooter (project-read authorized) backed by
+IntegrityTroubleshooterService. It recomputes the warning from a private, read-only full
+normalization run (fresh ShapeShifter/TableStore, no shared-cache or project writes), reports
+reproduced / not_reproduced / ineligible with named reasons, and returns deterministic pages of up
+to 50 distinct unmatched key values with per-value local row counts, plus up to 20 bounded local
+rows for a value selected via a stateless, type-preserving key token. A shared pure comparison
+helper (compare_foreign_key_values, to_key_scalar) in src/validators/data_validators.py keeps the
+inspection's null and deduplication rules identical to the validator's.
+ - Phase 3 — frontend: New IntegrityTroubleshooterBody.vue read-only view rendered inside the shared
+LinkTroubleshooterDialog for integrity warnings (status, reason, source, relationship, configured
+keys, recorded vs current counts, value paging, token-based row selection, truncation and refusal
+states). ValidationMessageList offers the action for structurally valid integrity warnings and
+explains refusals for malformed metadata; the row-count candidate check, request, and trial UI are
+untouched.
+ - Docs: The proposal moved into its own folder with a new phase plan and three completed phase task
+plans; docs/proposals/README.md link updated.
+
+## User-facing release note
+
+Users can now click "Troubleshoot link" on a foreign-key integrity warning to see the current
+unmatched values behind it, how many local rows each value affects, and a bounded sample of the
+local rows for a selected value, without any risk of changing the project. Warnings that cannot be
+inspected (for example, older warnings without saved-link identity) explain why instead of offering
+the action.
+
+## Upgrade notes
+
+None - no user action required. The new endpoint, response models, frontend types, and
+FK_DATA_INTEGRITY issue metadata (orphan_count, fk_index, fk_signature) are additive; no migrations
+or configuration changes are included. Existing warnings without the new metadata remain ineligible
+for inspection by design.
+
+## Validation
+
+No test workflow ran in CI for this pull request: the only status checks are the Container Release
+validate and publish jobs, both SKIPPED. I did not run tests in this environment (no shell access
+available here).
+
+The phase task plans added in this PR record the following targeted checks as run and passing on
+2026-11-06 (author-documented results in the diff, not CI-verified):
+
+ - Phase 1: rtk uv run pytest -o addopts='' -p no:xdist -q tests/validators/test_data_validators.py
+backend/tests/validators/test_data_validation_orchestrator.py
+tests/transforms/test_link_resolution.py backend/tests/mappers/test_validation_mapper.py
+backend/tests/services/test_link_baseline_service.py::test_unsupported_join_is_ineligible — pass,
+109 tests (21 new).
+ - Phase 1: rtk npm --prefix frontend run test:run -- src/utils/__tests__/linkTroubleshooter.test.ts
+— pass, 7 tests; pyright 0 errors, Black and isort clean on the changed Python files.
+ - Phase 2: uv run pytest -n 0 backend/tests/services/test_integrity_troubleshooter_service.py -q —
+pass, 20 tests; uv run pytest -n 0 backend/tests/api/v1/test_integrity_troubleshooter.py -q — pass,
+10 tests; row-count and Phase 1 regression suites — pass; black --check, ruff check, and pyright
+clean on changed modules.
+ - Phase 3: frontend targeted run — pass, 8 files / 80 tests, including the new
+integrityTroubleshooter.test.ts (3 tests), IntegrityTroubleshooterBody.test.ts (11 tests), and
+existing dialog (15 tests) and list (15 tests) suites; vue-tsc --noEmit, ESLint, and Prettier clean
+on the 13 changed frontend files; pytest -n 0 backend/tests/api/v1/test_integrity_troubleshooter.py
+backend/tests/services/test_integrity_troubleshooter_service.py
+backend/tests/api/v1/test_link_troubleshooter.py -q — pass, 42 tests.
+
+Full-suite results and any browser-level verification are unknown; no evidence of them is available
+in this pull request.

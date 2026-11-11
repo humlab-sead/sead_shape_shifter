@@ -1,0 +1,23 @@
+title: Merge main into staging: bring 2.6.0 release commits forward
+description:
+## Summary
+
+Merges the main-only commits — the 2.6.0 release tag commits — back into staging so that the staging
+into main promotion (#647) can merge cleanly. The diff against staging adds the 2.6.0 changelog 
+entry to CHANGELOG.md and raises the version from 2.5.0 to 2.6.0 in backend/app/__init__.py and
+pyproject.toml. Per the PR author, the add/add conflict in .github/pull_request_template.md was
+resolved in favour of the newer staging version, so that file shows no net change in the diff.
+
+## User-facing release note
+
+None - no user-visible change.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+ - "Code changes carry pull request provenance" (Promotion Guard workflow): passed (SUCCESS).
+ - "validate" and "publish" (Container Release workflow): skipped (SKIPPED); no test-suite results
+are available for this pull request.

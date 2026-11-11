@@ -1,0 +1,57 @@
+title: Add read-only foreign-key link troubleshooter with baseline and trials
+description:
+## Summary
+
+Adds a read-only troubleshooter that lets an authorized user diagnose a foreign-key
+row_count_mismatch linking warning without changing the project.
+
+ - Core (src/): every row_count_mismatch warning now records fk_index, fk_signature (a SHA-256
+digest over the settings that change how the link merges), and link_pass in its issue metadata.
+ForeignKeyConfig gains an optional list position and identity signature; the normalizer tags each
+linking call (initial, after_unnest, deferred_retry) via a new _link_entity helper. A new pure
+resolver, src/transforms/link_resolution.py::resolve_row_count_issue, maps a warning to exactly one
+saved FK or returns a named "no action" reason (missing metadata, out-of-range index, signature
+mismatch after edits, or unsupported right/outer/cross joins).
+ - Backend: new endpoint POST /api/v1/projects/{project_name}/link-troubleshooter (project read
+authorization; 404 for denied or missing projects). LinkBaselineService replays the production
+pipeline on a temporary entity configuration to reproduce the warning and reports explicit
+reproduced/not-reproduced/ineligible states; LinkTrialService runs read-only alternative-key-pair
+trials through the production linker, with preflight row-count estimates bounded by the new
+LINK_TRIAL_MAX_OUTPUT_ROWS setting (over-limit work returns an explicit incomplete result with no
+totals). LinkTroubleshooterService orchestrates baseline plus configured-key and requested-key
+trials, and a mapper returns a bounded, paginated response (page cap 500) with per-A-row match
+diagnostics.
+ - Frontend: a "Troubleshoot link" action appears on candidate warnings in the validation panel and
+opens a new LinkTroubleshooterDialog with locked A/B entities, join type, and constraints, editable
+trial key pairs, baseline-vs-trial totals, and server-paged A-row details with
+unmatched/multiply-matched filters; trial state is discarded on close.
+ - Configuration and docs: new SHAPE_SHIFTER_LINK_TRIAL_MAX_OUTPUT_ROWS setting (default 1,000,000)
+documented in docs/OPERATIONS.md; the proposal is marked approved with new phase and task plans; a
+lint-changed Makefile target was added.
+
+## User-facing release note
+
+Users can now open a supported foreign-key row-count warning from the validation panel and click
+"Troubleshoot link" to reproduce the warning, compare alternative join key pairs, and see which rows
+failed to match or matched multiple rows — all read-only, with no changes saved to the project.
+
+## Upgrade notes
+
+None - no user action required. The new SHAPE_SHIFTER_LINK_TRIAL_MAX_OUTPUT_ROWS environment
+variable is optional and defaults to 1,000,000; row-count warnings carry additional metadata keys
+(fk_index, fk_signature, link_pass), which is additive for API consumers.
+
+## Validation
+
+ - CI on the pull request shows only the Container Release workflow, whose validate and publish jobs
+were SKIPPED; no CI test results are available for this change.
+ - The Phase 4 task plan added in this PR records the author's execution results: combined backend
+run of the new mapper, service, and route tests (131 tests, exit 0); frontend tests via pnpm --dir
+frontend test:run (11 tests in helper/API/composable files, 27 tests in dialog/panel files, reported
+passing); pnpm --dir frontend build and eslint reported passing; Black, isort, and Pyright reported
+passing, with Pylint reporting one pre-existing R0916 diagnostic in unchanged code;
+scripts/check_doc_links.sh reported passing. Earlier phase plans record similar focused pytest runs
+as passing.
+ - The manual live-project user flow (V-11) is explicitly recorded as not run.
+ - These test outcomes are author-reported in the merged documentation and were not independently
+re-executed when preparing this description.

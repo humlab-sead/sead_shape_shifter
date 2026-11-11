@@ -1,0 +1,36 @@
+title: Add dev-to-staging promotion script
+description:
+## Summary
+
+Adds scripts/promote_dev_to_staging.sh, a two-command helper that automates the dev-to-staging
+promotion workflow:
+
+ - prepare validates the environment (authenticated gh, repository .venv, origin pointing at
+humlab-sead/sead_shape_shifter), fetches the branches, aborts if an open dev-to-staging PR already
+exists, runs scripts/verify_promotion_provenance.sh against origin/staging...origin/dev, creates a
+draft promotion PR with the promotion-template body, and generates the local description draft via
+scripts/update_pr_descriptions.py --draft.
+ - publish <number> re-checks the PR state (open, draft, correct base/head), re-verifies provenance,
+publishes the reviewed description from docs/whats-new/PRs/PR_<number>.txt with --publish, and
+marks the PR ready for review.
+
+The script does not merge the PR; the README instructs merging with gh pr merge <number> --merge
+after reviews and checks pass. Usage, requirements, and the regenerate-draft command are documented
+in a new "Promoting dev to staging" section of scripts/README.md.
+
+## User-facing release note
+
+Maintainers can now prepare and publish a dev-to-staging promotion pull request with
+scripts/promote_dev_to_staging.sh prepare and publish <pull-request-number>, which handles
+provenance verification, draft PR creation, and description generation.
+
+## Upgrade notes
+
+None - no user action required. The new script requires authenticated gh access and the repository
+.venv when it is used, but nothing else changes.
+
+## Validation
+
+No tests were run locally and no test files accompany the change. In CI, the validate and publish
+jobs of the "Container Release" workflow completed with conclusion SKIPPED for this pull request, so
+no checks executed against it. Script behavior was not verified by execution.
