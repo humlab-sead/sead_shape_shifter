@@ -92,6 +92,30 @@ The `generate_whats_new.py` script builds the release-note file from the authore
 
 Promotion pull requests carry the `<!-- promotion-pr -->` marker and contribute no notes of their own, so promoted changes are never reported twice. For the latest version in `CHANGELOG.md`, the generator also adds a `Pending Release` snapshot of merged pull requests that have not reached `main`, including their authored notes and the pull requests each promotion carries. It uses `gh pr list` and `git rev-list`, so `gh` must be authenticated and full history and tags must be available. See [the What's New workflow](../docs/whats-new/README.md).
 
+Generate a release draft manually with:
+
+```bash
+python3 scripts/generate_whats_new.py --version X.Y.Z
+```
+
+Use `--current-ref`, `--previous-tag`, or `--source-branches` when you need a custom release window.
+
+The release-note generators and standard PR-description drafting can use shared provider settings from the repository-root `.env` or process environment:
+
+- `REPO_SCRIPTS_DEFAULT_MODEL`
+- `REPO_SCRIPTS_DEFAULT_PROVIDER_TYPE`
+- `REPO_SCRIPTS_DEFAULT_PROVIDER_BASE_URL`
+- `REPO_SCRIPTS_DEFAULT_PROVIDER_KEY`
+- `RELEASE_NOTES_API_TIMEOUT` (default: 60 seconds; release-note generators only)
+
+Use provider type `openai` or `openai-compatible` and an API-root base URL, such as one ending in `/v1`. The generators append `/chat/completions`. There are no built-in provider defaults; incomplete or unsupported settings produce a warning and a non-AI draft. `COPILOT_PROVIDER_*` environment variables override the shared `.env` settings. Standard PR drafting requires these settings; promotion PRs do not need a model. The script does not read VS Code's secret store.
+
+For a changelog-based draft and Copilot CLI prompt:
+
+```bash
+python3 scripts/prepare_copilot_release_notes.py --version X.Y.Z
+```
+
 ## `update_pr_descriptions.py`
 
 ### Usage
