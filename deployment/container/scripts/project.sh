@@ -1,15 +1,18 @@
 #!/usr/bin/env bash
 # Administer Shape Shifter project folders and their authorization records.
 #
-# Usage: project.sh <adopt|move> [options]
+# Usage: project.sh <adopt|copy|move> [options]
 #
-# One entry point for the two project operations, so the shared project-path and
-# authorization helpers live in one place. Each action keeps its own validation
-# and safeguards:
+# One entry point for project folder and authorization operations, so the shared
+# project-path and authorization helpers live in one place. Each action keeps
+# its own validation and safeguards:
 #
 #   adopt   Writes one minimal manifest (a project resource plus one owner grant)
 #           for a folder that was copied into the projects directory, imports it
 #           through the supported authorization.sh wrapper, and verifies it.
+#
+#   copy    Copies a project directory, then runs adopt to register the copy and
+#           grant its owner access.
 #
 #   move    Moves a project folder and updates its authorization locator in
 #           place, keeping the resource UUID and its grants. It preflights the
@@ -17,8 +20,7 @@
 #           confirmation, and restores the folder if the authorization change
 #           fails.
 #
-# Both actions talk to the running container through authorization.sh in this
-# directory.
+# Authorization changes go through authorization.sh in this directory.
 set -euo pipefail
 
 SCRIPT_DIR="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -32,14 +34,16 @@ PROJECTS_DIR="${CONTAINER_DATA_DIR}/projects"
 
 usage() {
     cat <<'EOF'
-Usage: project.sh <adopt|move> [options]
+Usage: project.sh <adopt|copy|move> [options]
 
 Actions:
   adopt   Create a project resource and owner grant for a folder that was
           copied into the projects directory.
+  copy    Copy a project directory, then adopt the copy for its owner.
   move    Move a project folder and update its authorization locator in place.
 
-Run 'project.sh adopt --help' or 'project.sh move --help' for action options.
+Run 'project.sh adopt --help', 'project.sh copy --help', or
+'project.sh move --help' for action options.
 EOF
 }
 
@@ -54,11 +58,10 @@ to_locator() {
 }
 
 # Convert a name or path to a relative filesystem path with the "/" separator.
-# Rejects empty values, absolute paths, and any ".." component so a move cannot
-# escape the projects directory.
+# Rejects invalid separators, absolute paths, and any ".." component.
 to_relative_path() {
     local value="${1//:/\/}"
-    if [[ -z "$value" || "$value" == /* || "$value" == *..* ]]; then
+    if [[ -z "$value" || "$value" == /* || "$value" == *..* || "$value" == *\\* || "$value" == */ || "$value" == *//* ]]; then
         fail "Invalid project name or path: '$1'"
     fi
     printf '%s' "$value"
@@ -174,6 +177,146 @@ JSON
         || { echo "  ERROR: no grant found for principal '${OWNER}'" >&2; exit 1; }
 
     echo "Done. $OWNER now owns project '${LOCATOR}'."
+}
+
+# ---------------------------------------------------------------------------
+# copy
+# ---------------------------------------------------------------------------
+
+copy_usage() {
+    cat <<'EOF'
+Usage: project.sh copy --project <name-or-path> --to <name-or-path> \
+  --owner <principal> [options]
+
+Copy a project directory, then run project.sh adopt to create the authorization
+resource and grant owner access to the requested principal.
+
+Required:
+  --project NAME   Source project name or path under the projects directory.
+  --to NAME        Copy destination name or path under the projects directory.
+  --owner USER     Case-sensitive principal ID to grant owner.
+
+Options:
+  --dry-run        Print the copy and adoption plan without changing anything.
+  --yes, -y        Do not prompt before copying.
+  -h, --help       Show this help.
+
+Names may use "/" or ":" for nested project paths. The copied project files, including shapeshifter.yml metadata, are copied
+unchanged.
+EOF
+}
+
+run_copy() {
+    local PROJECT="" TARGET="" OWNER="" DRY_RUN=false ASSUME_YES=false
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --project)
+                [[ $# -ge 2 ]] || fail "--project requires a value."
+                PROJECT="$2"; shift 2 ;;
+            --to)
+                [[ $# -ge 2 ]] || fail "--to requires a value."
+                TARGET="$2"; shift 2 ;;
+            --owner)
+                [[ $# -ge 2 ]] || fail "--owner requires a value."
+                OWNER="$2"; shift 2 ;;
+            --dry-run)
+                DRY_RUN=true; shift ;;
+            --yes|-y)
+                ASSUME_YES=true; shift ;;
+            -h|--help)
+                copy_usage; exit 0 ;;
+            *)
+                echo "Unknown argument: $1" >&2; copy_usage >&2; exit 1 ;;
+        esac
+    done
+
+    [[ -n "$PROJECT" ]] || { echo "--project is required." >&2; copy_usage >&2; exit 1; }
+    [[ -n "$TARGET" ]] || { echo "--to is required." >&2; copy_usage >&2; exit 1; }
+    [[ -n "$OWNER" ]] || { echo "--owner is required." >&2; copy_usage >&2; exit 1; }
+
+    local LOCATOR_FROM LOCATOR_TO SOURCE_REL TARGET_REL SOURCE_PATH TARGET_PATH
+    local PROJECTS_ROOT SOURCE_CANONICAL TARGET_CANONICAL TARGET_PARENT
+    local RESOURCES_BEFORE STAGING_PARENT STAGING_PATH confirmation
+    LOCATOR_FROM="$(to_locator "$PROJECT")"
+    LOCATOR_TO="$(to_locator "$TARGET")"
+    [[ "$LOCATOR_FROM" != "$LOCATOR_TO" ]] || fail "--project and --to must differ."
+
+    SOURCE_REL="$(to_relative_path "$PROJECT")"
+    TARGET_REL="$(to_relative_path "$TARGET")"
+    SOURCE_PATH="$PROJECTS_DIR/$SOURCE_REL"
+    TARGET_PATH="$PROJECTS_DIR/$TARGET_REL"
+
+    [[ -d "$SOURCE_PATH" ]] || fail "Project folder not found: $SOURCE_PATH"
+    [[ ! -L "$SOURCE_PATH" ]] || fail "Source project folder cannot be a symbolic link: $SOURCE_PATH"
+    [[ -f "$SOURCE_PATH/shapeshifter.yml" ]] || fail "Not a project folder (no shapeshifter.yml): $SOURCE_PATH"
+    if [[ -e "$TARGET_PATH" || -L "$TARGET_PATH" ]]; then
+        fail "Target already exists: $TARGET_PATH"
+    fi
+
+    command -v realpath >/dev/null || fail "realpath is required."
+    PROJECTS_ROOT="$(realpath -e -- "$PROJECTS_DIR")" || fail "Projects directory not found: $PROJECTS_DIR"
+    SOURCE_CANONICAL="$(realpath -e -- "$SOURCE_PATH")" || fail "Cannot resolve source project path: $SOURCE_PATH"
+    TARGET_CANONICAL="$(realpath -m -- "$TARGET_PATH")" || fail "Cannot resolve target project path: $TARGET_PATH"
+    case "$SOURCE_CANONICAL" in
+        "$PROJECTS_ROOT"/*) ;;
+        *) fail "Source project path is outside the projects directory: $SOURCE_PATH" ;;
+    esac
+    case "$TARGET_CANONICAL" in
+        "$PROJECTS_ROOT"/*) ;;
+        *) fail "Target project path is outside the projects directory: $TARGET_PATH" ;;
+    esac
+    [[ "$TARGET_CANONICAL" != "$SOURCE_CANONICAL" ]] || fail "Source and target resolve to the same folder."
+    case "$TARGET_CANONICAL/" in
+        "$SOURCE_CANONICAL"/*) fail "Target is inside the source folder: $TARGET_PATH" ;;
+    esac
+
+    if ! RESOURCES_BEFORE="$(authorization_resources)"; then
+        fail "Could not read project authorization resources."
+    fi
+    if printf '%s\n' "$RESOURCES_BEFORE" | grep -F "project:${LOCATOR_TO} " >/dev/null; then
+        fail "A project authorization resource already uses locator: project:${LOCATOR_TO}"
+    fi
+
+    echo "Copy plan:"
+    echo "  folder: $SOURCE_PATH"
+    echo "       -> $TARGET_PATH"
+    echo "  owner:  $OWNER"
+    echo "  files, including shapeshifter.yml metadata, will be copied unchanged."
+    echo
+
+    if [[ "$DRY_RUN" == true ]]; then
+        echo "Dry run: no changes made. Would copy the directory, then run:"
+        echo "  $SCRIPT_DIR/project.sh adopt --project $TARGET --owner $OWNER"
+        exit 0
+    fi
+
+    if [[ "$ASSUME_YES" != true ]]; then
+        if ! read -r -p "Copy project '${LOCATOR_FROM}' to '${LOCATOR_TO}' and grant owner to '${OWNER}'? [y/N] " confirmation; then
+            fail "Confirmation input unavailable; pass --yes to run non-interactively."
+        fi
+        [[ "$confirmation" =~ ^[Yy]$ ]] || { echo "Copy cancelled."; exit 0; }
+    fi
+
+    TARGET_PARENT="$(dirname "$TARGET_PATH")"
+    mkdir -p -- "$TARGET_PARENT" || fail "Could not create target parent directory: $TARGET_PARENT"
+    if ! STAGING_PARENT="$(mktemp -d "$TARGET_PARENT/.project-copy.XXXXXX")"; then
+        fail "Could not create a temporary copy directory under: $TARGET_PARENT"
+    fi
+    STAGING_PATH="$STAGING_PARENT/$(basename "$TARGET_PATH")"
+    if ! cp -a -- "$SOURCE_PATH" "$STAGING_PATH"; then
+        rm -rf -- "$STAGING_PARENT"
+        fail "Project directory copy failed; no target folder was created."
+    fi
+    if ! mv -T -- "$STAGING_PATH" "$TARGET_PATH"; then
+        rm -rf -- "$STAGING_PARENT"
+        fail "Could not move the copied project into place: $TARGET_PATH"
+    fi
+    rmdir -- "$STAGING_PARENT" || fail "Project was copied, but its temporary directory could not be removed."
+
+    if ! "$SCRIPT_DIR/project.sh" adopt --project "$TARGET" --owner "$OWNER"; then
+        fail "Project files remain at '$TARGET_PATH', but adoption failed. Check authorization state before retrying."
+    fi
+    echo "Done. Project copied to '${LOCATOR_TO}'."
 }
 
 # ---------------------------------------------------------------------------
@@ -327,6 +470,10 @@ case "$action" in
 adopt)
     shift
     run_adopt "$@"
+    ;;
+copy)
+    shift
+    run_copy "$@"
     ;;
 move)
     shift

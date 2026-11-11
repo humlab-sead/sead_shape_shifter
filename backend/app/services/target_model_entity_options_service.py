@@ -1,4 +1,4 @@
-"""Service for projecting missing target-model entities into read-only options."""
+"""Service for projecting target-model entities and relationships into read-only options."""
 
 from __future__ import annotations
 
@@ -10,6 +10,8 @@ from loguru import logger
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.project import (
     Project,
+    TargetModelDirectForeignKeyOption,
+    TargetModelDirectForeignKeysResponse,
     TargetModelEntityOption,
     TargetModelEntityOptionsResponse,
     TargetModelRequiredLink,
@@ -20,8 +22,12 @@ from src.model import ShapeShiftProject
 from src.target_model import EntitySpec, TargetModel, TargetModelSpecValidator
 
 
+class _TargetModelResolutionError(Exception):
+    """Raised when a configured target model cannot be loaded or is invalid."""
+
+
 class TargetModelEntityOptionsService:
-    """Build read-only target entity options for a project."""
+    """Build read-only target-model options for a project."""
 
     def __init__(self, project_service: ProjectService | None = None) -> None:
         self.project_service = project_service or get_project_service()
@@ -33,24 +39,9 @@ class TargetModelEntityOptionsService:
             return TargetModelEntityOptionsResponse(configured=False, entities=[])
 
         try:
-            core_project: ShapeShiftProject = ProjectMapper.to_core(api_project)
-            target_model_data: Any = core_project.metadata.target_model
-            if not isinstance(target_model_data, dict):
-                raise ValueError("Resolved target model must be a mapping")
-
-            target_model = TargetModel.model_validate(target_model_data)
-            spec_issues = TargetModelSpecValidator().validate(target_model)
-        except (FileNotFoundError, OSError, UnicodeError, yaml.YAMLError, ValueError, TypeError) as exc:
-            logger.warning("Could not resolve or parse target model for project '{}': {}", project_name, exc)
+            target_model = self._resolve_target_model(api_project, project_name)
+        except _TargetModelResolutionError as exc:
             raise BadRequestError("The configured target model could not be loaded or is invalid") from exc
-
-        if spec_issues:
-            logger.warning(
-                "Target model for project '{}' failed specification validation: {}",
-                project_name,
-                [issue.message for issue in spec_issues],
-            )
-            raise BadRequestError("The configured target model could not be loaded or is invalid")
 
         project_entity_names: set[str] = set(api_project.entities)
         options = [
@@ -60,6 +51,82 @@ class TargetModelEntityOptionsService:
         ]
         options.sort(key=lambda option: (not option.required, option.name))
         return TargetModelEntityOptionsResponse(configured=True, entities=options)
+
+    def get_direct_foreign_keys(self, project_name: str, entity_name: str) -> TargetModelDirectForeignKeysResponse:
+        """Return direct target-model foreign keys eligible for a direct target ID.
+
+        This is read-only. It does not create project foreign keys, dependencies, or
+        any other project state, and it does not check whether the source currently
+        produces the target ID column.
+        """
+        api_project: Project = self.project_service.load_project(project_name)
+        if api_project.metadata is None or api_project.metadata.target_model is None:
+            return TargetModelDirectForeignKeysResponse(state="not_configured")
+
+        try:
+            target_model = self._resolve_target_model(api_project, project_name)
+        except _TargetModelResolutionError:
+            return TargetModelDirectForeignKeysResponse(state="unresolvable")
+
+        return TargetModelDirectForeignKeysResponse(
+            state="resolved",
+            relationships=self._direct_foreign_keys(target_model, entity_name),
+        )
+
+    def _resolve_target_model(self, api_project: Project, project_name: str) -> TargetModel:
+        """Resolve and validate the project's configured target model.
+
+        Raises:
+            _TargetModelResolutionError: if the model cannot be loaded, parsed, or validated.
+        """
+        try:
+            core_project: ShapeShiftProject = ProjectMapper.to_core(api_project)
+            target_model_data: Any = core_project.metadata.target_model
+            if not isinstance(target_model_data, dict):
+                raise ValueError("Resolved target model must be a mapping")
+
+            target_model = TargetModel.model_validate(target_model_data)
+            spec_issues = TargetModelSpecValidator().validate(target_model)
+        except (FileNotFoundError, OSError, UnicodeError, yaml.YAMLError, ValueError, TypeError) as exc:
+            logger.warning("Could not resolve or parse target model for project '{}': {}", project_name, exc)
+            raise _TargetModelResolutionError() from exc
+
+        if spec_issues:
+            logger.warning(
+                "Target model for project '{}' failed specification validation: {}",
+                project_name,
+                [issue.message for issue in spec_issues],
+            )
+            raise _TargetModelResolutionError()
+
+        return target_model
+
+    @staticmethod
+    def _direct_foreign_keys(target_model: TargetModel, entity_name: str) -> list[TargetModelDirectForeignKeyOption]:
+        """Return eligible direct target-model foreign keys for one entity, sorted by target entity."""
+        entity_spec: EntitySpec | None = target_model.entities.get(entity_name)
+        if entity_spec is None:
+            return []
+
+        relationships: dict[str, TargetModelDirectForeignKeyOption] = {}
+        for foreign_key in entity_spec.foreign_keys:
+            if foreign_key.via is not None:
+                continue
+
+            target_spec = target_model.entities.get(foreign_key.entity)
+            if target_spec is None or target_spec.public_id is None or target_spec.target_table is None:
+                continue
+
+            relationships.setdefault(
+                foreign_key.entity,
+                TargetModelDirectForeignKeyOption(
+                    target_entity=foreign_key.entity,
+                    public_id=target_spec.public_id,
+                    target_table=target_spec.target_table,
+                ),
+            )
+
+        return [relationships[name] for name in sorted(relationships)]
 
     @staticmethod
     def _project_entity_option(

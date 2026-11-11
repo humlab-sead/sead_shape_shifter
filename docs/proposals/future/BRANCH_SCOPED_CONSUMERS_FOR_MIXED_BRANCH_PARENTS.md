@@ -2,7 +2,7 @@
 
 ## Status
 
-- **Proposed follow-up**
+- Proposed future change
 - **Scope**: project YAML authoring for mixed-branch parent entities
 - **Goal**: let downstream entities declare which branch of a mixed parent they consume
 

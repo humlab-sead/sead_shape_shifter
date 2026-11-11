@@ -78,7 +78,7 @@ function onSelectChange(event: Event): void {
 <style scoped>
 .column-type-header {
   display: grid;
-  gap: 4px;
+  gap: 8px;
   width: 100%;
   min-width: 0;
   padding: 2px 0;

@@ -94,7 +94,7 @@
               <p class="text-body-2 mb-0 validation-message-full-text">{{ item.message }}</p>
             </div>
 
-            <div class="d-flex flex-wrap ga-x-6 ga-y-2 mb-3">
+            <div class="d-flex flex-wrap gc-6 gr-2 mb-3">
               <div v-if="item.priority">
                 <span class="text-caption text-medium-emphasis">Priority</span>
                 <div class="text-body-2">{{ item.priority }}</div>
@@ -142,6 +142,17 @@
             >
               {{ troubleshootRefusal(item) }}
             </p>
+
+            <v-btn
+              v-if="columnSettingsFocus(item)"
+              class="direct-fk-column-action mt-3"
+              size="small"
+              variant="outlined"
+              prepend-icon="mdi-table-cog"
+              @click.stop="handleOpenColumnSettings(item)"
+            >
+              Open column settings
+            </v-btn>
           </div>
         </td>
       </tr>
@@ -151,7 +162,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import type { DataValidationMode, ValidationError, ValidationSeverity } from '@/types'
+import type { DataValidationMode, ValidationEntityFocus, ValidationError, ValidationSeverity } from '@/types'
 import {
   integrityTroubleshootRefusal,
   isIntegrityTroubleshootCandidate,
@@ -172,7 +183,7 @@ interface ValidationTableMessage extends ValidationError {
 }
 
 interface Emits {
-  (e: 'open-entity', entityName: string): void
+  (e: 'open-entity', entityName: string, focus?: ValidationEntityFocus): void
   (e: 'troubleshoot', message: ValidationError): void
 }
 
@@ -229,6 +240,25 @@ function handleOpenEntity(entityName: string | null | undefined) {
   }
 
   emit('open-entity', entityName)
+}
+
+// A direct target-ID declaration without a produced column is fixable in the
+// entity's column settings, so offer that path for exactly that issue.
+function columnSettingsFocus(item: ValidationTableMessage): ValidationEntityFocus | null {
+  if (item.code !== 'DIRECT_FK_OUTPUT_COLUMN_MISSING' || !item.entity) {
+    return null
+  }
+
+  return { field: 'columns', column: item.field ?? null }
+}
+
+function handleOpenColumnSettings(item: ValidationTableMessage) {
+  const focus = columnSettingsFocus(item)
+  if (!focus || !item.entity) {
+    return
+  }
+
+  emit('open-entity', item.entity, focus)
 }
 
 function handleTroubleshoot(item: ValidationTableMessage) {

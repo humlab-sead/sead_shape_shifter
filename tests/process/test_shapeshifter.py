@@ -1143,6 +1143,58 @@ class TestShapeShifter:
         pd.testing.assert_frame_equal(result, expected)
 
     @pytest.mark.asyncio
+    async def test_normalize_evaluates_unnest_dependent_fk_key_before_linking(self):
+        """Link local keys created by deferred formulas after unnesting."""
+        survey_df = pd.DataFrame({"row_id": [1], "material": ["clay"], "texture": ["peat"]})
+        project = ShapeShiftProject(
+            cfg={
+                "entities": {
+                    "property_type": {
+                        "type": "fixed",
+                        "public_id": "property_type_id",
+                        "keys": ["property_type_name"],
+                        "columns": ["property_type_name"],
+                        "values": [["material"], ["texture"]],
+                    },
+                    "site_property": {
+                        "type": "entity",
+                        "source": "survey",
+                        "public_id": "site_property_id",
+                        "keys": [],
+                        "columns": ["row_id", "material", "texture"],
+                        "foreign_keys": [
+                            {
+                                "entity": "property_type",
+                                "local_keys": ["property_type_lookup_key"],
+                                "remote_keys": ["property_type_name"],
+                                "how": "inner",
+                            }
+                        ],
+                        "unnest": {
+                            "id_vars": ["row_id"],
+                            "value_vars": ["material", "texture"],
+                            "var_name": "property_type",
+                            "value_name": "property_value",
+                        },
+                        "extra_columns": {
+                            "property_type_lookup_key": "=concat(property_type, '')",
+                            "property_type_label": "{property_type_id}:{property_type}",
+                        },
+                    },
+                }
+            }
+        )
+
+        normalizer = ShapeShifter(project=project, default_entity="survey", table_store=TableStore({"survey": survey_df}))
+
+        await normalizer.normalize()
+
+        result = normalizer.table_store["site_property"].sort_values("property_type").reset_index(drop=True)
+        assert result["property_type_id"].tolist() == [1, 2]
+        assert result["property_type_label"].tolist() == ["1:material", "2:texture"]
+        assert not normalizer.unresolved_extra_columns
+
+    @pytest.mark.asyncio
     async def test_normalize_does_not_restore_extra_columns_consumed_by_unnest(self):
         """Unnest should remove value variables while still resolving deferred extra columns."""
         survey_df = pd.DataFrame({"row_id": [1, 2]})

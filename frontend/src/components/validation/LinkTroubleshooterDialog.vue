@@ -31,7 +31,7 @@
           v-if="modelValue && isIntegrityIssue && !localMessage"
           :project-name="projectName"
           :message="message"
-          @remote-entity="integrityRemoteEntity = $event"
+          @relationship="integrityRelationship = $event"
         />
 
         <div v-if="!isIntegrityIssue && loading" class="mb-4 troubleshooter-loading">
@@ -43,7 +43,7 @@
         </div>
 
         <v-alert v-if="!isIntegrityIssue && refreshed" type="info" variant="tonal" class="mb-4">
-          The retained inputs expired and were reproduced again from current data. Run a new trial to compare the
+          The retained inputs were stale and were reproduced again from current data. Run a new trial to compare the
           refreshed baseline.
         </v-alert>
 
@@ -114,6 +114,8 @@
                       >Add key pair</v-btn
                     >
                   </div>
+
+                  <v-divider class="mb-3" />
 
                   <div class="d-flex flex-wrap align-center ga-3 mb-2">
                     <v-select
@@ -245,7 +247,10 @@
                         <v-icon icon="mdi-help-circle-outline" size="small" />
                       </v-btn>
                     </template>
-                    <div class="text-body-2">Totals cover the full link input.</div>
+                    <div class="text-body-2">
+                      <div class="mb-1">Totals cover the full link input.</div>
+                      <div v-if="joinNote" class="join-note">{{ joinNote }}</div>
+                    </div>
                   </v-tooltip>
                 </div>
                 <div class="d-flex flex-wrap ga-2" role="group" aria-label="Result source">
@@ -309,12 +314,13 @@
 
               <section aria-label="Exception rows">
                 <div class="affected-row-toolbar d-flex flex-wrap align-center ga-2 mb-3">
-                  <p v-if="joinNote" class="join-note text-body-2 text-medium-emphasis mb-0">{{ joinNote }}</p>
-                  <div class="d-flex flex-wrap ga-2" role="group" aria-label="Affected row category">
+                  <div class="d-flex flex-wrap ga-1" role="group" aria-label="Affected row category">
                     <v-btn
                       data-group="unmatched"
                       size="small"
-                      :variant="group === 'unmatched' ? 'flat' : 'outlined'"
+                      variant="text"
+                      class="affected-row-tab"
+                      :class="{ 'affected-row-tab--active': group === 'unmatched' }"
                       :aria-pressed="group === 'unmatched'"
                       @click="selectGroup('unmatched')"
                     >
@@ -323,16 +329,18 @@
                     <v-btn
                       data-group="multiply_matched"
                       size="small"
-                      :variant="group === 'multiply_matched' ? 'flat' : 'outlined'"
+                      variant="text"
+                      class="affected-row-tab"
+                      :class="{ 'affected-row-tab--active': group === 'multiply_matched' }"
                       :aria-pressed="group === 'multiply_matched'"
                       @click="selectGroup('multiply_matched')"
                     >
                       Multiple matches · {{ formatCount(activeDetail?.multiply_matched?.total_count) }}
                     </v-btn>
                   </div>
-                </div>
-                <div v-if="activeGroup" class="mb-3">
+                  <v-spacer />
                   <v-select
+                    v-if="activeGroup"
                     v-model="pageSize"
                     :items="pageSizeOptions"
                     label="Rows per page"
@@ -346,10 +354,6 @@
                   No affected rows are available for this selection.
                 </div>
                 <template v-else>
-                  <p class="text-body-2 mb-2">
-                    Showing {{ formatCount(gridRows.length) }} of {{ formatCount(rowTotalCount) }} affected source rows
-                    · Page {{ page }} of {{ pageCount }}
-                  </p>
                   <v-alert v-if="rowBrowseCapReached" type="info" variant="tonal" density="compact" class="mb-2">
                     Only the first {{ formatCount(rowBrowseCap) }} affected source rows are browsable.
                   </v-alert>
@@ -363,10 +367,12 @@
                   <TroubleshooterDataGrid
                     :columns="exceptionColumns"
                     :rows="gridRows"
-                    :loading="rowsLoading"
+                    :loading="gridLoading"
                     height="360px"
                   />
-                  <div class="d-flex justify-end mt-2">
+                  <!-- The pager is the only page indicator left, so it appears
+                  only when there is more than one page to choose from. -->
+                  <div v-if="pageCount > 1" class="d-flex justify-end mt-2">
                     <v-pagination
                       :model-value="page"
                       :length="pageCount"
@@ -443,11 +449,13 @@ import {
   type LinkExceptionSide,
 } from '@/composables/useLinkTroubleshooter'
 import type {
+  IntegrityTroubleshootRelationship,
   LinkTroubleshootJoinTypeSetting,
   LinkTroubleshootKeyValue,
   LinkTroubleshootRequestedSetting,
   ValidationError,
 } from '@/types'
+import { EXCEPTION_ROW_PAGE_LIMIT } from '@/types'
 import {
   INTEGRITY_ISSUE_CODE,
   integrityTroubleshootRefusal,
@@ -485,7 +493,7 @@ const emit = defineEmits<{
   (event: 'update:modelValue', value: boolean): void
 }>()
 const localMessage = ref<string | null>(null)
-const integrityRemoteEntity = ref<string | null>(null)
+const integrityRelationship = ref<IntegrityTroubleshootRelationship | null>(null)
 const dialogSize = ref<{ width: number; height: number } | null>(null)
 const resizeStart = ref<DialogResizeStart | null>(null)
 
@@ -540,12 +548,12 @@ const result = context
 
 const isIntegrityIssue = computed(() => props.message.code === INTEGRITY_ISSUE_CODE)
 
-const localEntityName = computed(() => result.value?.relationship?.local_entity || props.message.entity || 'A')
+const activeRelationship = computed(() => result.value?.relationship ?? integrityRelationship.value)
+const localEntityName = computed(() => activeRelationship.value?.local_entity || props.message.entity || 'A')
 const remoteEntityName = computed(() => {
   const metadataRemote = props.message.metadata?.remote_entity
   return (
-    result.value?.relationship?.remote_entity ||
-    integrityRemoteEntity.value ||
+    activeRelationship.value?.remote_entity ||
     (typeof metadataRemote === 'string' && metadataRemote.trim().length > 0 ? metadataRemote : 'B')
   )
 })
@@ -566,7 +574,7 @@ function textifyFlag(name: string): string {
 // Configured link facts under the heading: cardinality, linking pass, then the
 // constraint flags that are set to true. Unset flags are left out.
 const relationshipSummary = computed<string>(() => {
-  const relationship = result.value?.relationship
+  const relationship = activeRelationship.value
   if (!relationship) {
     return ''
   }
@@ -575,7 +583,7 @@ const relationshipSummary = computed<string>(() => {
   if (typeof cardinality === 'string' && cardinality.trim().length > 0) {
     parts.push(textifyValue(cardinality.trim()))
   }
-  if (relationship.link_pass) {
+  if ('link_pass' in relationship && typeof relationship.link_pass === 'string' && relationship.link_pass) {
     parts.push(textifyFlag(relationship.link_pass))
   }
   for (const [key, value] of Object.entries(relationship.constraints)) {
@@ -662,7 +670,21 @@ const activeGroup = computed(() => {
 const activeKeyNames = computed<string[]>(() =>
   side.value === 'trial' ? trialLocalKeys.value : (result.value?.configured_keys?.local_keys ?? [])
 )
-const pageCount = computed(() => Math.max(1, Math.ceil(rowTotalCount.value / pageSize.value)))
+// The group total is already known from the retained snapshot, so the pager takes
+// its length from the detail rather than waiting for the row response. Otherwise
+// the pager changes length mid-read and the footer jumps on every switch.
+const groupTotalCount = computed(() => activeGroup.value?.total_count ?? rowTotalCount.value)
+// Paging is bounded by the browsable rows, so a result larger than the browse
+// cap does not offer empty pages past the cap.
+const pageCount = computed(() => {
+  const browsableRows =
+    rowBrowseCap.value > 0 ? Math.min(groupTotalCount.value, rowBrowseCap.value) : groupTotalCount.value
+  return Math.max(1, Math.ceil(browsableRows / pageSize.value))
+})
+// The row read answers from the retained snapshot, so it is short. Painting a
+// loading overlay over the grid on every group or page change only flickers; the
+// overlay is reserved for a selection that has nothing to show yet.
+const gridLoading = computed(() => rowsLoading.value && rows.value.length === 0)
 watch([side, group, pageSize, trial], () => {
   page.value = 1
 })
@@ -706,12 +728,19 @@ const nullOptionItems = [
   { title: 'Yes', value: true },
   { title: 'No', value: false },
 ]
-const pageSizeOptions = [25, 50, 100, 200]
+const pageSizeOptions = [
+  { title: '25', value: 25 },
+  { title: '50', value: 50 },
+  { title: '100', value: 100 },
+  { title: '200', value: 200 },
+  // The limit matches the browse cap, so All reads every retained row at once.
+  { title: 'All', value: EXCEPTION_ROW_PAGE_LIMIT },
+]
 
 watch(
   () => [props.modelValue, props.message] as const,
   async ([isOpen, message]) => {
-    integrityRemoteEntity.value = null
+    integrityRelationship.value = null
     if (!isOpen) {
       stopDialogResize()
       localMessage.value = null
@@ -1021,6 +1050,31 @@ function formatDelta(configured: number | null | undefined, trialValue: number |
 
 .page-size-select {
   max-width: 180px;
+}
+
+/*
+ * The affected-row categories read as tabs: unselected labels carry no outline or
+ * fill, and the selected one is underlined. A bordered unselected label looked
+ * highlighted and competed with the selected one.
+ */
+.affected-row-tab {
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  padding-inline: 0.5rem;
+  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity));
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.affected-row-tab :deep(.v-btn__overlay),
+.affected-row-tab :deep(.v-btn__underlay) {
+  display: none;
+}
+
+.affected-row-tab--active {
+  border-bottom-color: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-primary));
+  font-weight: 600;
 }
 
 @media (max-width: 900px) {

@@ -1,0 +1,23 @@
+title: build(make): add promote-dev-to-staging target
+description:
+## Summary
+
+Adds a promote-dev-to-staging Makefile target that wraps scripts/promote_dev_to_staging.sh prepare,
+so creating a draft dev-to-staging promotion pull request and preparing its description from branch
+history can be done with make promote-dev-to-staging. The script itself is unchanged;
+scripts/README.md is updated to document the new target alongside the direct script invocation.
+
+## User-facing release note
+
+None - no user-visible change.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+ - No CI status checks are recorded for this pull request, so automated check results are
+unavailable.
+ - The change is limited to a Makefile target and documentation; no test or lint results for this
+branch could be verified from the available evidence.

@@ -58,8 +58,13 @@ def _create_disposable_schema(parameters: dict[str, Any], schema_name: str) -> N
             )
 
 
-def _target_model(schema_name: str) -> dict[str, Any]:
+def _target_model(schema_name: str, conditional: bool = False) -> dict[str, Any]:
     """Return a target model whose public-ID tables are in the disposable schema."""
+    location_foreign_key: dict[str, Any] = (
+        {"entity": "location_type", "required_when": {"has_new_rows": "location"}}
+        if conditional
+        else {"entity": "location_type", "required": True}
+    )
     return {
         "model": {"name": "Disposable Direct FK Model", "version": "0.1.0"},
         "constraints": [],
@@ -74,7 +79,7 @@ def _target_model(schema_name: str) -> dict[str, Any]:
                 "public_id": "location_id",
                 "target_table": f"{schema_name}.tbl_locations",
                 "columns": {"location_type_id": {"type": "integer", "nullable": False}},
-                "foreign_keys": [{"entity": "location_type", "required": True}],
+                "foreign_keys": [location_foreign_key],
             },
         },
     }
@@ -85,6 +90,7 @@ def _ingester(
     target_id: int,
     output_folder: Path,
     checker: object,
+    conditional: bool = False,
 ) -> tuple[SeadChangeRequestIngester, dict[str, pd.DataFrame]]:
     """Build one ingester with a direct ID and preassigned row identity."""
     tables = {"location": pd.DataFrame({"location_id": [None], "location_type_id": [target_id]})}
@@ -95,7 +101,7 @@ def _ingester(
         user="disposable",
         output_folder=str(output_folder),
         extra={
-            "target_model": _target_model(schema_name),
+            "target_model": _target_model(schema_name, conditional=conditional),
             "foreign_key_value_sources": {"location": {"location_type": "public_id"}},
             "submission_context": {
                 "submission_name": "phase3-direct-fk",
@@ -179,6 +185,43 @@ async def test_direct_fk_uses_real_postgres_lookup_before_package_acceptance(tmp
         assert unavailable_result.success is False
         assert "lookup unavailable" in (unavailable_result.error_details or "")
         assert not (tmp_path / "unavailable").exists() or not list((tmp_path / "unavailable").iterdir())
+    finally:
+        with psycopg.connect(**parameters, autocommit=True) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(sql.SQL("DROP SCHEMA IF EXISTS {} CASCADE").format(schema))
+
+
+@pytest.mark.asyncio
+async def test_conditional_direct_fk_requires_value_on_selected_insert_and_checks_target_id(tmp_path: Path) -> None:
+    """A conditional direct-ID FK still requires a value on an inserted row and rejects absent target IDs."""
+    parameters = _connection_parameters()
+    schema_name = f"shifter_cond_fk_{uuid4().hex[:12]}"
+    schema = sql.Identifier(schema_name)
+    checker = SeadChangeRequestTargetCollisionChecker(**parameters)
+
+    try:
+        _create_disposable_schema(parameters, schema_name)
+
+        valid, valid_tables = _ingester(schema_name, 42, tmp_path / "conditional-valid", checker, conditional=True)
+        valid_validation = await valid.validate_tables(valid_tables)
+        valid_result = await valid.ingest_tables(valid_tables)
+        assert valid_validation.is_valid is True
+        assert valid_result.success is True
+
+        absent, absent_tables = _ingester(schema_name, 99999, tmp_path / "conditional-absent", checker, conditional=True)
+        absent_validation = await absent.validate_tables(absent_tables)
+        absent_result = await absent.ingest_tables(absent_tables)
+        assert absent_validation.is_valid is False
+        assert "value 99999" in absent_validation.errors[0]
+        assert absent_result.success is False
+        assert "value 99999" in (absent_result.error_details or "")
+
+        missing_frame = pd.DataFrame({"location_id": [None], "location_type_id": [None]})
+        missing, missing_tables = _ingester(schema_name, 42, tmp_path / "conditional-missing", checker, conditional=True)
+        missing_tables["location"] = missing_frame
+        missing_validation = await missing.validate_tables(missing_tables)
+        assert missing_validation.is_valid is False
+        assert any("missing direct FK value" in error for error in missing_validation.errors)
     finally:
         with psycopg.connect(**parameters, autocommit=True) as connection:
             with connection.cursor() as cursor:

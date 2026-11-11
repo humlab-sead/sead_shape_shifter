@@ -658,11 +658,13 @@ Checks:
 
 Checks actual processed data.
 
-Available validators:
+Selectable checks:
 
 - Column Exists
 - Natural Key Uniqueness
-- Non-Empty Result
+- Warn on Empty Results — warns when an entity returns no data
+
+Clear a check to skip it for that run. Foreign-key checks always run.
 
 ---
 
@@ -1097,6 +1099,18 @@ Benefits include:
 - improved validation
 - stronger conformance checking
 - future compatibility
+
+---
+
+## Direct Target IDs
+
+Use **Direct target IDs** when your source already contains the target database ID for a direct target-model relationship. The entity editor shows this control on the **Basic** tab and lists every direct relationship the target model declares for the entity. With no target model configured, the control stays disabled.
+
+Selecting a target stores a `public_id` value source for it; clearing the selection removes only that entry. The control creates no project Foreign Keys or dependencies, and a choice whose target already has a project Foreign Key is disabled until that link is removed.
+
+Entries set to `system_id`, targets the target model does not declare, and unrecognized values appear under **Preserved value sources** with an explanation. They are kept as written; change or remove them in the YAML tab.
+
+If the entity does not output the selected target ID column, validation names the entity and the missing column. In the expanded issue, **Open column settings** opens the entity's column fields so you can add the column or remove the selection. Field rules are in [CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md).
 
 ---
 

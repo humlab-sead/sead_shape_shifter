@@ -27,6 +27,10 @@ from backend.app.services.link_experiment_context_store import (
     LinkExperimentContextStore,
     init_link_experiment_context_store,
 )
+from backend.app.services.integrity_troubleshooter_context_store import (
+    IntegrityTroubleshooterContextStore,
+    init_integrity_troubleshooter_context_store,
+)
 from backend.app.services.project_service import ProjectService
 from backend.app.utils.public_errors import public_error_detail
 from backend.app.utils.safe_logging import sanitize_log_value
@@ -112,6 +116,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:  # pylint: disable=unused-ar
     # deployment requirement already recorded for ApplicationState.
     experiment_context_store: LinkExperimentContextStore = init_link_experiment_context_store()
     await experiment_context_store.start()
+    integrity_context_store: IntegrityTroubleshooterContextStore = init_integrity_troubleshooter_context_store()
+    await integrity_context_store.start()
 
     _log_development_authorization_bootstrap_hint()
 
@@ -131,6 +137,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:  # pylint: disable=unused-ar
     yield
 
     # Cleanup
+    await integrity_context_store.stop()
     await experiment_context_store.stop()
     await app_state.stop()
     logger.info("Shutting down Shape Shifter Project Editor API")

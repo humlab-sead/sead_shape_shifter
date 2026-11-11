@@ -67,6 +67,19 @@ export interface TargetModelEntityOptionsResponse {
   entities: TargetModelEntityOption[]
 }
 
+export type TargetModelDirectForeignKeysState = 'not_configured' | 'unresolvable' | 'resolved'
+
+export interface TargetModelDirectForeignKeyOption {
+  target_entity: string
+  public_id: string
+  target_table: string
+}
+
+export interface TargetModelDirectForeignKeysResponse {
+  state: TargetModelDirectForeignKeysState
+  relationships: TargetModelDirectForeignKeyOption[]
+}
+
 /**
  * Project API service
  */
@@ -312,6 +325,19 @@ export const projectsApi = {
     return apiRequest<TargetModelEntityOptionsResponse>({
       method: 'GET',
       url: `/projects/${name}/target-model-entities`,
+    })
+  },
+
+  /**
+   * Get direct target-model foreign keys eligible for a direct target ID
+   */
+  getTargetModelDirectForeignKeys: async (
+    name: string,
+    entityName: string
+  ): Promise<TargetModelDirectForeignKeysResponse> => {
+    return apiRequest<TargetModelDirectForeignKeysResponse>({
+      method: 'GET',
+      url: `/projects/${name}/target-model-direct-foreign-keys/${encodeURIComponent(entityName)}`,
     })
   },
 

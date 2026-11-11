@@ -49,8 +49,8 @@
                   <div>
                     <div class="font-weight-medium">Sample Data (Fast)</div>
                     <div class="text-caption text-grey">
-                      Validate using preview samples (up to 1000 rows per entity). Foreign-key checks can
-                      report parent values as missing that exist outside the sample.
+                      Validate using preview samples (up to 1000 rows per entity). Foreign-key checks can report parent
+                      values as missing that exist outside the sample.
                     </div>
                   </div>
                 </template>
@@ -113,15 +113,15 @@
 
             <v-checkbox
               v-model="enabledValidators"
-              label="Non-Empty Result"
+              label="Warn on Empty Results"
               value="non_empty_result"
               density="compact"
               hide-details
             >
               <template #label>
                 <div>
-                  <div class="font-weight-medium">Non-Empty Result</div>
-                  <div class="text-caption text-grey">Warn when entities return no data</div>
+                  <div class="font-weight-medium">Warn on Empty Results</div>
+                  <div class="text-caption text-grey">Warn when an entity returns no data</div>
                 </div>
               </template>
             </v-checkbox>
@@ -184,6 +184,9 @@ function handleReset() {
 function handleRun() {
   const config: ValidationConfig = {
     validationMode: validationMode.value,
+    // Send the exact selection so unchecking a check is honoured; an empty list
+    // means none of the selectable checks run.
+    validators: [...enabledValidators.value],
   }
 
   if (selectedEntities.value.length > 0) {
@@ -192,10 +195,6 @@ function handleRun() {
 
   if (sampleSize.value !== 1000) {
     config.sampleSize = sampleSize.value
-  }
-
-  if (enabledValidators.value.length < 3) {
-    config.validators = enabledValidators.value
   }
 
   emit('run', config)
