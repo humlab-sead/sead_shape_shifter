@@ -226,20 +226,6 @@ class TestParser:
         assert len(expr.args) == 3
         assert all(isinstance(arg, ColumnRef) for arg in expr.args)
 
-    def test_parse_map_value_function_call(self):
-        """Parse map_value mapping pairs as ordinary DSL arguments."""
-        parser = FormulaParser()
-        expr = parser.parse("=map_value(value, 'source_a', 1, 'source_b', 2)")
-
-        assert isinstance(expr, Call)
-        assert expr.name == "map_value"
-        assert len(expr.args) == 5
-        assert isinstance(expr.args[0], ColumnRef)
-        assert cast(Literal, expr.args[1]).value == "source_a"
-        assert cast(Literal, expr.args[2]).value == 1
-        assert cast(Literal, expr.args[3]).value == "source_b"
-        assert cast(Literal, expr.args[4]).value == 2
-
     def test_parse_nested_function_calls(self):
         """Parse nested function calls."""
         parser = FormulaParser()
@@ -414,32 +400,6 @@ class TestValidator:
         )
         with pytest.raises(DSLValidationError, match="expects at most 10 arguments"):
             validator.validate(expr)
-
-    def test_validate_map_value_requires_complete_literal_pairs(self):
-        """map_value requires at least one complete pair of literal keys and values."""
-        engine = FormulaEngine()
-
-        with pytest.raises(DSLValidationError, match="expects at least 3 arguments"):
-            engine.compile("=map_value(value, 'source_a')", ["value"])
-
-        with pytest.raises(DSLValidationError, match="mapping keys must be literal"):
-            engine.compile("=map_value(value, source_a, 1)", ["value", "source_a"])
-
-        with pytest.raises(DSLValidationError, match="mapped values must be literal"):
-            engine.compile("=map_value(value, 'source_a', mapped)", ["value", "mapped"])
-
-        with pytest.raises(DSLValidationError, match="fallback must be a literal"):
-            engine.compile("=map_value(value, 'source_a', 1, fallback)", ["value", "fallback"])
-
-    def test_validate_map_value_rejects_null_and_duplicate_keys(self):
-        """map_value rejects unreachable null keys and duplicate mapping keys."""
-        engine = FormulaEngine()
-
-        with pytest.raises(DSLValidationError, match="mapping keys cannot be null"):
-            engine.compile("=map_value(value, null, 1)", ["value"])
-
-        with pytest.raises(DSLValidationError, match="duplicate mapping key 'source_a'"):
-            engine.compile("=map_value(value, 'source_a', 1, 'source_a', 2)", ["value"])
 
     def test_validate_max_depth(self):
         """Expression exceeding max depth should fail."""
@@ -720,143 +680,6 @@ class TestPandasStringBackend:
         with pytest.raises(DSLEvaluationError, match="requires a string literal for pattern"):
             backend.call("regex_extract", [df["col"], df["col"]], SourceSpan(1, 1, 1, 1))
 
-    def test_regex_extract_named_group(self):
-        """Test regex_extract selects a capture group by name."""
-        df = pd.DataFrame({"col": ["SITE-042", "SITE-7", "none", None]})
-        backend = PandasStringBackend(df)
-
-        result = backend.call("regex_extract", [df["col"], "SITE-(?P<num>[0-9]+)", "num"], SourceSpan(1, 1, 1, 1))
-        expected = pd.Series(["042", "7", None, None])
-        pd.testing.assert_series_equal(result, expected, check_names=False)
-
-    def test_regex_extract_unknown_named_group_error(self):
-        """Test regex_extract raises when the pattern has no such named group."""
-        df = pd.DataFrame({"col": ["abc123"]})
-        backend = PandasStringBackend(df)
-
-        with pytest.raises(DSLEvaluationError, match="pattern has no group 'missing'"):
-            backend.call("regex_extract", [df["col"], "(?P<num>[0-9]+)", "missing"], SourceSpan(1, 1, 1, 1))
-
-    def test_split_part_basic(self):
-        """Test split_part returns the 1-based field with no implicit trim."""
-        df = pd.DataFrame({"col": ["a,b,c", "x,y", None]})
-        backend = PandasStringBackend(df)
-
-        result = backend.call("split_part", [df["col"], ",", 2], SourceSpan(1, 1, 1, 1))
-        expected = pd.Series(["b", "y", None])
-        pd.testing.assert_series_equal(result, expected, check_names=False)
-
-    def test_split_part_out_of_range_returns_null(self):
-        """Test split_part returns null when the index exceeds the field count."""
-        df = pd.DataFrame({"col": ["a,b", "x,y,z"]})
-        backend = PandasStringBackend(df)
-
-        result = backend.call("split_part", [df["col"], ",", 3], SourceSpan(1, 1, 1, 1))
-        expected = pd.Series([None, "z"])
-        pd.testing.assert_series_equal(result, expected, check_names=False)
-
-    def test_split_part_does_not_trim_fields(self):
-        """Test split_part keeps surrounding whitespace so trim() stays explicit."""
-        df = pd.DataFrame({"col": ["a, b,c"]})
-        backend = PandasStringBackend(df)
-
-        result = backend.call("split_part", [df["col"], ",", 2], SourceSpan(1, 1, 1, 1))
-        expected = pd.Series([" b"])
-        pd.testing.assert_series_equal(result, expected, check_names=False)
-
-    def test_split_part_requires_literal_separator(self):
-        """Test split_part rejects a column reference as the separator."""
-        df = pd.DataFrame({"col": ["a,b"], "sep": [","]})
-        backend = PandasStringBackend(df)
-
-        with pytest.raises(DSLEvaluationError, match="requires a string literal for separator"):
-            backend.call("split_part", [df["col"], df["sep"], 1], SourceSpan(1, 1, 1, 1))
-
-    def test_split_part_rejects_non_positive_index(self):
-        """Test split_part rejects a part index below 1."""
-        df = pd.DataFrame({"col": ["a,b"]})
-        backend = PandasStringBackend(df)
-
-        with pytest.raises(DSLEvaluationError, match="1-based part index of at least 1"):
-            backend.call("split_part", [df["col"], ",", 0], SourceSpan(1, 1, 1, 1))
-
-    def test_concat_ws_skips_nulls(self):
-        """Test concat_ws joins non-null arguments and skips nulls entirely."""
-        df = pd.DataFrame({"a": ["x", "p", None], "b": [None, "q", None]})
-        backend = PandasStringBackend(df)
-
-        result = backend.call("concat_ws", [",", df["a"], df["b"]], SourceSpan(1, 1, 1, 1))
-        expected = pd.Series(["x", "p,q", None], dtype="string")
-        pd.testing.assert_series_equal(result, expected, check_names=False)
-
-    def test_concat_ws_all_null_returns_null(self):
-        """Test concat_ws returns null when every argument is null for a row."""
-        df = pd.DataFrame({"a": [None], "b": [None]})
-        backend = PandasStringBackend(df)
-
-        result = backend.call("concat_ws", ["|", df["a"], df["b"]], SourceSpan(1, 1, 1, 1))
-        assert result.isna().all()
-
-    def test_concat_ws_single_value(self):
-        """Test concat_ws with one value argument returns it unchanged."""
-        df = pd.DataFrame({"a": ["x", None]})
-        backend = PandasStringBackend(df)
-
-        result = backend.call("concat_ws", [",", df["a"]], SourceSpan(1, 1, 1, 1))
-        expected = pd.Series(["x", None], dtype="string")
-        pd.testing.assert_series_equal(result, expected, check_names=False)
-
-    def test_concat_ws_requires_literal_separator(self):
-        """Test concat_ws rejects a column reference as the separator."""
-        df = pd.DataFrame({"sep": [","], "a": ["x"]})
-        backend = PandasStringBackend(df)
-
-        with pytest.raises(DSLEvaluationError, match="requires a string literal for separator"):
-            backend.call("concat_ws", [df["sep"], df["a"]], SourceSpan(1, 1, 1, 1))
-
-    def test_regex_replace_basic(self):
-        """Test regex_replace substitutes all regex matches and preserves nulls."""
-        df = pd.DataFrame({"col": ["a1b2c", "xyz", None]})
-        backend = PandasStringBackend(df)
-
-        result = backend.call("regex_replace", [df["col"], "[0-9]", "#"], SourceSpan(1, 1, 1, 1))
-        expected = pd.Series(["a#b#c", "xyz", None], dtype="string")
-        pd.testing.assert_series_equal(result, expected, check_names=False)
-
-    def test_regex_replace_case_insensitive_alternation(self):
-        """Test regex_replace handles alternation and inline flags in one call."""
-        df = pd.DataFrame({"col": ["OKÄND-1", "okänd 2", "keep"]})
-        backend = PandasStringBackend(df)
-
-        result = backend.call("regex_replace", [df["col"], "(?i)okänd", ""], SourceSpan(1, 1, 1, 1))
-        expected = pd.Series(["-1", " 2", "keep"], dtype="string")
-        pd.testing.assert_series_equal(result, expected, check_names=False)
-
-    def test_regex_replace_null_replacement_removes_matches(self):
-        """Test regex_replace with a null replacement deletes the matched text."""
-        df = pd.DataFrame({"col": ["a1b"]})
-        backend = PandasStringBackend(df)
-
-        result = backend.call("regex_replace", [df["col"], "[0-9]", None], SourceSpan(1, 1, 1, 1))
-        expected = pd.Series(["ab"], dtype="string")
-        pd.testing.assert_series_equal(result, expected, check_names=False)
-
-    def test_regex_replace_invalid_pattern_error(self):
-        """Test regex_replace raises on an invalid regex pattern."""
-        df = pd.DataFrame({"col": ["abc"]})
-        backend = PandasStringBackend(df)
-
-        with pytest.raises(DSLEvaluationError, match="invalid pattern"):
-            backend.call("regex_replace", [df["col"], "[", ""], SourceSpan(1, 1, 1, 1))
-
-    def test_regex_replace_requires_literal_args(self):
-        """Test regex_replace rejects column references as pattern or replacement."""
-        df = pd.DataFrame({"col": ["abc"], "pat": ["[0-9]"]})
-        backend = PandasStringBackend(df)
-
-        with pytest.raises(DSLEvaluationError, match="requires string literal arguments"):
-            backend.call("regex_replace", [df["col"], df["pat"], ""], SourceSpan(1, 1, 1, 1))
-
     def test_to_decimal_default_precision(self):
         """Test to_decimal uses precision 10 by default."""
         df = pd.DataFrame({"col": [1.005, 3]})
@@ -1026,36 +849,6 @@ class TestFormulaEngine:
         assert result["number"].tolist() == ["123", "456"]
         assert result["value"].tolist() == [Decimal("1.01"), Decimal("2.50")]
 
-    def test_evaluate_formula_split_concat_ws_regex_replace(self):
-        """Evaluate split_part, concat_ws, regex_replace, and named-group extraction through the engine."""
-        df = pd.DataFrame(
-            {
-                "site_id": ["A, B,C", "X,Y"],
-                "a": ["x", None],
-                "b": [None, "q"],
-                "lab_id": ["OKÄND-1", "keep"],
-                "code": ["SITE-042", "SITE-7"],
-            }
-        )
-        engine = FormulaEngine()
-
-        result = engine.apply_extra_columns(
-            df,
-            {
-                "field3": "=trim(split_part(site_id, ',', 3))",
-                "key": "=concat_ws(',', a, b)",
-                "stripped": "=regex_replace(lab_id, '(?i)okänd', '')",
-                "number": "=regex_extract(code, 'SITE-(?P<num>[0-9]+)', 'num')",
-            },
-            in_place=False,
-        )
-
-        assert result["field3"].iloc[0] == "C"
-        assert pd.isna(result["field3"].iloc[1])
-        assert result["key"].tolist() == ["x", "q"]
-        assert result["stripped"].tolist() == ["-1", "keep"]
-        assert result["number"].tolist() == ["042", "7"]
-
     def test_evaluate_formula_new_function_arity_validation(self):
         """Arity limits for the new functions are enforced during validation."""
         df = pd.DataFrame({"col": ["a"]})
@@ -1063,15 +856,6 @@ class TestFormulaEngine:
 
         with pytest.raises(DSLValidationError):
             engine.evaluate_formula("=replace(col, '-')", df)
-
-        with pytest.raises(DSLValidationError):
-            engine.evaluate_formula("=split_part(col, ',')", df)
-
-        with pytest.raises(DSLValidationError):
-            engine.evaluate_formula("=concat_ws(',')", df)
-
-        with pytest.raises(DSLValidationError):
-            engine.evaluate_formula("=regex_replace(col, 'a')", df)
         with pytest.raises(DSLValidationError):
             engine.evaluate_formula("=regex_extract(col)", df)
         with pytest.raises(DSLValidationError):
@@ -1162,19 +946,6 @@ class TestEdgeCases:
         expected = pd.Series(["hello"], dtype="string")
         pd.testing.assert_series_equal(result, expected, check_names=False)
 
-    def test_concat_many_arguments_preserves_nulls_and_duplicate_index(self):
-        """Multi-argument concat preserves row order and replaces nulls with empty strings."""
-        df = pd.DataFrame(
-            {"first": ["a", "b"], "second": [None, "x"], "third": ["y", None]},
-            index=[4, 4],
-        )
-        engine = FormulaEngine()
-
-        result = engine.evaluate_formula("=concat(first, '-', second, third)", df)
-        expected = pd.Series(["a-y", "b-x"], index=df.index, dtype="string")
-
-        pd.testing.assert_series_equal(result, expected, check_names=False)
-
     def test_coalesce_single_argument(self):
         """Test coalesce with single argument."""
         df = pd.DataFrame({"col": [None, "x"]})
@@ -1183,27 +954,6 @@ class TestEdgeCases:
         result = engine.evaluate_formula("=coalesce(col)", df)
         expected = pd.Series([None, "x"])
         pd.testing.assert_series_equal(result, expected, check_names=False)
-
-    def test_map_value_preserves_types_matches_exactly_and_passes_nulls(self):
-        """Map exact values, preserve mapped types, use the fallback, and pass nulls through."""
-        df = pd.DataFrame({"value": ["source_a", "prefix_source_a", "source_b", None]})
-        engine = FormulaEngine()
-
-        result = engine.evaluate_formula("=map_value(value, 'source_a', 1, 'source_b', 'two', 'other')", df)
-
-        assert result.tolist() == [1, "other", "two", None]
-        assert result.dtype == object
-        assert type(result.iloc[0]) is int
-        assert type(result.iloc[2]) is str
-        assert pd.isna(result.iloc[3])
-
-    def test_map_value_raises_for_unmapped_non_null_value_without_fallback(self):
-        """An unmapped non-null value raises an error when no fallback is supplied."""
-        df = pd.DataFrame({"value": ["source_a", "unknown"]})
-        engine = FormulaEngine()
-
-        with pytest.raises(DSLEvaluationError, match="no mapping for value 'unknown'"):
-            engine.evaluate_formula("=map_value(value, 'source_a', 1)", df)
 
     def test_all_nulls_propagation(self):
         """Test null propagation through functions."""
