@@ -105,7 +105,7 @@ def test_sead_superset_spec_loads_and_validates() -> None:
 
     assert target_model.model.name == "SEAD Clearinghouse Extended"
     assert target_model.model.format_version == "1"
-    assert len(target_model.entities) == 102
+    assert len(target_model.entities) == 113
     assert submission.identity_tracking == "tracked"
     assert submission.reconciliation == "allocate"
     assert submission.public_id_generation is None

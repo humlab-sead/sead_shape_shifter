@@ -1,0 +1,757 @@
+table_schema,table_name,column_name,ordinal_position,data_type,numeric_precision,numeric_scale,character_maximum_length,is_nullable,is_pk,is_fk,fk_table_name,fk_column_name
+public,tbl_abundance_elements,abundance_element_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_abundance_elements,record_type_id,2,integer,32,0,NULL,YES,NO,YES,tbl_record_types,record_type_id
+public,tbl_abundance_elements,element_name,3,character varying,NULL,NULL,100,NO,NO,NO,NULL,NULL
+public,tbl_abundance_elements,element_description,4,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_abundance_ident_levels,abundance_ident_level_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_abundance_ident_levels,abundance_id,2,bigint,64,0,NULL,NO,NO,YES,tbl_abundances,abundance_id
+public,tbl_abundance_ident_levels,identification_level_id,3,integer,32,0,NULL,NO,NO,YES,tbl_identification_levels,identification_level_id
+public,tbl_abundance_modifications,abundance_modification_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_abundance_modifications,abundance_id,2,integer,32,0,NULL,NO,NO,YES,tbl_abundances,abundance_id
+public,tbl_abundance_modifications,modification_type_id,3,integer,32,0,NULL,NO,NO,YES,tbl_modification_types,modification_type_id
+public,tbl_abundance_properties,abundance_property_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_abundance_properties,abundance_id,2,integer,32,0,NULL,NO,NO,YES,tbl_abundances,abundance_id
+public,tbl_abundance_properties,property_type_id,3,integer,32,0,NULL,NO,NO,YES,tbl_property_types,property_type_id
+public,tbl_abundance_properties,property_value,4,text,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_abundances,abundance_id,1,bigint,64,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_abundances,taxon_id,2,integer,32,0,NULL,NO,NO,YES,tbl_taxa_tree_master,taxon_id
+public,tbl_abundances,analysis_entity_id,3,bigint,64,0,NULL,NO,NO,YES,tbl_analysis_entities,analysis_entity_id
+public,tbl_abundances,abundance_element_id,4,integer,32,0,NULL,YES,NO,YES,tbl_abundance_elements,abundance_element_id
+public,tbl_abundances,abundance,5,integer,32,0,NULL,NO,NO,NO,NULL,NULL
+public,tbl_activity_types,activity_type_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_activity_types,activity_type,2,character varying,NULL,NULL,50,YES,NO,NO,NULL,NULL
+public,tbl_activity_types,description,3,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_age_types,age_type_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_age_types,age_type,2,character varying,NULL,NULL,150,NO,NO,NO,NULL,NULL
+public,tbl_age_types,description,3,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_alt_ref_types,alt_ref_type_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_alt_ref_types,alt_ref_type,2,character varying,NULL,NULL,50,NO,NO,NO,NULL,NULL
+public,tbl_alt_ref_types,description,4,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_analysis_boolean_values,analysis_boolean_value_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_analysis_boolean_values,analysis_value_id,2,bigint,64,0,NULL,NO,NO,YES,tbl_analysis_values,analysis_value_id
+public,tbl_analysis_boolean_values,qualifier,3,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_analysis_boolean_values,value,4,boolean,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_analysis_categorical_values,analysis_categorical_value_id,1,bigint,64,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_analysis_categorical_values,analysis_value_id,2,bigint,64,0,NULL,NO,NO,YES,tbl_analysis_values,analysis_value_id
+public,tbl_analysis_categorical_values,value_type_item_id,3,integer,32,0,NULL,NO,NO,YES,tbl_value_type_items,value_type_item_id
+public,tbl_analysis_categorical_values,value,4,numeric,20,10,NULL,YES,NO,NO,NULL,NULL
+public,tbl_analysis_categorical_values,is_variant,5,boolean,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_analysis_dating_ranges,analysis_dating_range_id,1,bigint,64,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_analysis_dating_ranges,analysis_value_id,2,bigint,64,0,NULL,NO,NO,YES,tbl_analysis_values,analysis_value_id
+public,tbl_analysis_dating_ranges,low_value,3,integer,32,0,NULL,YES,NO,NO,NULL,NULL
+public,tbl_analysis_dating_ranges,high_value,4,integer,32,0,NULL,YES,NO,NO,NULL,NULL
+public,tbl_analysis_dating_ranges,low_is_uncertain,5,boolean,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_analysis_dating_ranges,high_is_uncertain,6,boolean,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_analysis_dating_ranges,low_qualifier,7,text,NULL,NULL,NULL,YES,NO,YES,tbl_value_qualifier_symbols,symbol
+public,tbl_analysis_dating_ranges,high_qualifier,8,text,NULL,NULL,NULL,YES,NO,YES,tbl_value_qualifier_symbols,symbol
+public,tbl_analysis_dating_ranges,age_type_id,9,integer,32,0,NULL,NO,NO,YES,tbl_age_types,age_type_id
+public,tbl_analysis_dating_ranges,season_id,10,integer,32,0,NULL,YES,NO,YES,tbl_seasons,season_id
+public,tbl_analysis_dating_ranges,dating_uncertainty_id,11,integer,32,0,NULL,YES,NO,YES,tbl_dating_uncertainty,dating_uncertainty_id
+public,tbl_analysis_dating_ranges,is_variant,12,boolean,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_analysis_entities,analysis_entity_id,1,bigint,64,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_analysis_entities,physical_sample_id,2,integer,32,0,NULL,YES,NO,YES,tbl_physical_samples,physical_sample_id
+public,tbl_analysis_entities,dataset_id,3,integer,32,0,NULL,YES,NO,YES,tbl_datasets,dataset_id
+public,tbl_analysis_entity_ages,analysis_entity_age_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_analysis_entity_ages,age,2,numeric,20,5,NULL,YES,NO,NO,NULL,NULL
+public,tbl_analysis_entity_ages,age_older,3,numeric,20,5,NULL,YES,NO,NO,NULL,NULL
+public,tbl_analysis_entity_ages,age_younger,4,numeric,20,5,NULL,YES,NO,NO,NULL,NULL
+public,tbl_analysis_entity_ages,analysis_entity_id,5,bigint,64,0,NULL,YES,NO,YES,tbl_analysis_entities,analysis_entity_id
+public,tbl_analysis_entity_ages,chronology_id,6,integer,32,0,NULL,YES,NO,YES,tbl_chronologies,chronology_id
+public,tbl_analysis_entity_ages,dating_specifier,8,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_analysis_entity_ages,age_range,9,int4range,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_analysis_entity_dimensions,analysis_entity_dimension_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_analysis_entity_dimensions,analysis_entity_id,2,bigint,64,0,NULL,NO,NO,YES,tbl_analysis_entities,analysis_entity_id
+public,tbl_analysis_entity_dimensions,dimension_id,3,integer,32,0,NULL,NO,NO,YES,tbl_dimensions,dimension_id
+public,tbl_analysis_entity_dimensions,dimension_value,4,numeric,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_analysis_entity_prep_methods,analysis_entity_prep_method_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_analysis_entity_prep_methods,analysis_entity_id,2,bigint,64,0,NULL,NO,NO,YES,tbl_analysis_entities,analysis_entity_id
+public,tbl_analysis_entity_prep_methods,method_id,3,integer,32,0,NULL,NO,NO,YES,tbl_methods,method_id
+public,tbl_analysis_identifiers,analysis_identifier_id,1,bigint,64,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_analysis_identifiers,analysis_value_id,2,bigint,64,0,NULL,NO,NO,YES,tbl_analysis_values,analysis_value_id
+public,tbl_analysis_identifiers,value,3,text,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_analysis_integer_ranges,analysis_integer_range_id,1,bigint,64,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_analysis_integer_ranges,analysis_value_id,2,bigint,64,0,NULL,NO,NO,YES,tbl_analysis_values,analysis_value_id
+public,tbl_analysis_integer_ranges,low_value,3,integer,32,0,NULL,YES,NO,NO,NULL,NULL
+public,tbl_analysis_integer_ranges,high_value,4,integer,32,0,NULL,YES,NO,NO,NULL,NULL
+public,tbl_analysis_integer_ranges,low_is_uncertain,5,boolean,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_analysis_integer_ranges,high_is_uncertain,6,boolean,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_analysis_integer_ranges,low_qualifier,7,text,NULL,NULL,NULL,YES,NO,YES,tbl_value_qualifier_symbols,symbol
+public,tbl_analysis_integer_ranges,high_qualifier,8,text,NULL,NULL,NULL,YES,NO,YES,tbl_value_qualifier_symbols,symbol
+public,tbl_analysis_integer_ranges,is_variant,9,boolean,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_analysis_integer_values,analysis_integer_value_id,1,bigint,64,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_analysis_integer_values,analysis_value_id,2,bigint,64,0,NULL,NO,NO,YES,tbl_analysis_values,analysis_value_id
+public,tbl_analysis_integer_values,qualifier,3,text,NULL,NULL,NULL,YES,NO,YES,tbl_value_qualifier_symbols,symbol
+public,tbl_analysis_integer_values,value,4,integer,32,0,NULL,YES,NO,NO,NULL,NULL
+public,tbl_analysis_integer_values,is_variant,5,boolean,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_analysis_notes,analysis_note_id,1,bigint,64,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_analysis_notes,analysis_value_id,2,bigint,64,0,NULL,NO,NO,YES,tbl_analysis_values,analysis_value_id
+public,tbl_analysis_notes,value,3,text,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_analysis_numerical_ranges,analysis_numerical_range_id,1,bigint,64,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_analysis_numerical_ranges,analysis_value_id,2,bigint,64,0,NULL,NO,NO,YES,tbl_analysis_values,analysis_value_id
+public,tbl_analysis_numerical_ranges,value,3,numrange,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_analysis_numerical_ranges,low_is_uncertain,4,boolean,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_analysis_numerical_ranges,high_is_uncertain,5,boolean,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_analysis_numerical_ranges,low_qualifier,6,text,NULL,NULL,NULL,YES,NO,YES,tbl_value_qualifier_symbols,symbol
+public,tbl_analysis_numerical_ranges,high_qualifier,7,text,NULL,NULL,NULL,YES,NO,YES,tbl_value_qualifier_symbols,symbol
+public,tbl_analysis_numerical_ranges,is_variant,8,boolean,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_analysis_numerical_values,analysis_numerical_value_id,1,bigint,64,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_analysis_numerical_values,analysis_value_id,2,bigint,64,0,NULL,NO,NO,YES,tbl_analysis_values,analysis_value_id
+public,tbl_analysis_numerical_values,qualifier,3,text,NULL,NULL,NULL,YES,NO,YES,tbl_value_qualifier_symbols,symbol
+public,tbl_analysis_numerical_values,value,4,numeric,20,10,NULL,YES,NO,NO,NULL,NULL
+public,tbl_analysis_numerical_values,is_variant,5,boolean,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_analysis_taxon_counts,analysis_taxon_count_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_analysis_taxon_counts,analysis_value_id,2,bigint,64,0,NULL,NO,NO,YES,tbl_analysis_values,analysis_value_id
+public,tbl_analysis_taxon_counts,taxon_id,3,integer,32,0,NULL,NO,NO,YES,tbl_taxa_tree_master,taxon_id
+public,tbl_analysis_taxon_counts,value,4,numeric,20,10,NULL,NO,NO,NO,NULL,NULL
+public,tbl_analysis_value_dimensions,analysis_value_dimension_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_analysis_value_dimensions,analysis_value_id,2,bigint,64,0,NULL,NO,NO,YES,tbl_analysis_values,analysis_value_id
+public,tbl_analysis_value_dimensions,dimension_id,3,integer,32,0,NULL,NO,NO,YES,tbl_dimensions,dimension_id
+public,tbl_analysis_value_dimensions,value,4,numeric,20,10,NULL,NO,NO,NO,NULL,NULL
+public,tbl_analysis_values,analysis_value_id,1,bigint,64,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_analysis_values,value_class_id,2,integer,32,0,NULL,NO,NO,YES,tbl_value_classes,value_class_id
+public,tbl_analysis_values,analysis_entity_id,3,bigint,64,0,NULL,NO,NO,YES,tbl_analysis_entities,analysis_entity_id
+public,tbl_analysis_values,analysis_value,4,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_analysis_values,boolean_value,5,boolean,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_analysis_values,is_boolean,6,boolean,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_analysis_values,is_uncertain,7,boolean,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_analysis_values,is_undefined,8,boolean,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_analysis_values,is_not_analyzed,9,boolean,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_analysis_values,is_indeterminable,10,boolean,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_analysis_values,is_anomaly,11,boolean,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_biblio,biblio_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_biblio,bugs_reference,6,character varying,NULL,NULL,60,YES,NO,NO,NULL,NULL
+public,tbl_biblio,doi,10,character varying,NULL,NULL,255,YES,NO,NO,NULL,NULL
+public,tbl_biblio,isbn,12,character varying,NULL,NULL,128,YES,NO,NO,NULL,NULL
+public,tbl_biblio,notes,14,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_biblio,title,20,character varying,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_biblio,year,22,character varying,NULL,NULL,255,YES,NO,NO,NULL,NULL
+public,tbl_biblio,authors,23,character varying,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_biblio,full_reference,24,text,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_biblio,url,25,character varying,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_biblio,biblio_uuid,26,uuid,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_ceramics,ceramics_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_ceramics,analysis_entity_id,2,integer,32,0,NULL,NO,NO,YES,tbl_analysis_entities,analysis_entity_id
+public,tbl_ceramics,measurement_value,3,character varying,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_ceramics,ceramics_lookup_id,5,integer,32,0,NULL,NO,NO,YES,tbl_ceramics_lookup,ceramics_lookup_id
+public,tbl_ceramics_lookup,ceramics_lookup_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_ceramics_lookup,method_id,2,integer,32,0,NULL,NO,NO,YES,tbl_methods,method_id
+public,tbl_ceramics_lookup,description,3,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_ceramics_lookup,name,4,character varying,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_ceramics_measurements,ceramics_measurement_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_ceramics_measurements,method_id,3,integer,32,0,NULL,YES,NO,YES,tbl_methods,method_id
+public,tbl_chronologies,chronology_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_chronologies,age_model,2,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_chronologies,relative_age_type_id,3,integer,32,0,NULL,YES,NO,NO,NULL,NULL
+public,tbl_chronologies,chronology_name,4,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_chronologies,contact_id,5,integer,32,0,NULL,YES,NO,YES,tbl_contacts,contact_id
+public,tbl_chronologies,date_prepared,6,timestamp without time zone,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_chronologies,notes,8,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_colours,colour_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_colours,colour_name,2,character varying,NULL,NULL,30,NO,NO,NO,NULL,NULL
+public,tbl_colours,method_id,4,integer,32,0,NULL,NO,NO,YES,tbl_methods,method_id
+public,tbl_colours,rgb,5,integer,32,0,NULL,YES,NO,NO,NULL,NULL
+public,tbl_contact_types,contact_type_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_contact_types,contact_type_name,2,character varying,NULL,NULL,150,NO,NO,NO,NULL,NULL
+public,tbl_contact_types,description,4,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_contacts,contact_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_contacts,address_1,2,character varying,NULL,NULL,255,YES,NO,NO,NULL,NULL
+public,tbl_contacts,address_2,3,character varying,NULL,NULL,255,YES,NO,NO,NULL,NULL
+public,tbl_contacts,location_id,4,integer,32,0,NULL,YES,NO,NO,NULL,NULL
+public,tbl_contacts,email,5,character varying,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_contacts,first_name,6,character varying,NULL,NULL,50,YES,NO,NO,NULL,NULL
+public,tbl_contacts,last_name,7,character varying,NULL,NULL,100,YES,NO,NO,NULL,NULL
+public,tbl_contacts,phone_number,8,character varying,NULL,NULL,50,YES,NO,NO,NULL,NULL
+public,tbl_contacts,url,9,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_coordinate_method_dimensions,coordinate_method_dimension_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_coordinate_method_dimensions,dimension_id,2,integer,32,0,NULL,NO,NO,YES,tbl_dimensions,dimension_id
+public,tbl_coordinate_method_dimensions,method_id,3,integer,32,0,NULL,NO,NO,YES,tbl_methods,method_id
+public,tbl_coordinate_method_dimensions,limit_upper,4,numeric,18,10,NULL,YES,NO,NO,NULL,NULL
+public,tbl_coordinate_method_dimensions,limit_lower,5,numeric,18,10,NULL,YES,NO,NO,NULL,NULL
+public,tbl_data_providers,data_provider_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_data_providers,data_provider_code,2,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_data_providers,data_provider_uuid,3,uuid,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_data_providers,data_provider_name,4,text,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_data_providers,notes,5,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_data_providers,contact_id,6,integer,32,0,NULL,YES,NO,YES,tbl_contacts,contact_id
+public,tbl_data_providers,biblio_id,7,integer,32,0,NULL,YES,NO,YES,tbl_biblio,biblio_id
+public,tbl_data_providers,url,8,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_data_type_groups,data_type_group_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_data_type_groups,data_type_group_name,2,character varying,NULL,NULL,25,YES,NO,NO,NULL,NULL
+public,tbl_data_type_groups,description,4,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_data_types,data_type_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_data_types,data_type_group_id,2,integer,32,0,NULL,NO,NO,YES,tbl_data_type_groups,data_type_group_id
+public,tbl_data_types,data_type_name,3,character varying,NULL,NULL,25,YES,NO,NO,NULL,NULL
+public,tbl_data_types,definition,5,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_dataset_contacts,dataset_contact_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_dataset_contacts,contact_id,2,integer,32,0,NULL,NO,NO,YES,tbl_contacts,contact_id
+public,tbl_dataset_contacts,contact_type_id,3,integer,32,0,NULL,NO,NO,YES,tbl_contact_types,contact_type_id
+public,tbl_dataset_contacts,dataset_id,4,integer,32,0,NULL,NO,NO,YES,tbl_datasets,dataset_id
+public,tbl_dataset_contacts,event_date,6,date,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_dataset_masters,master_set_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_dataset_masters,contact_id,2,integer,32,0,NULL,YES,NO,YES,tbl_contacts,contact_id
+public,tbl_dataset_masters,biblio_id,3,integer,32,0,NULL,YES,NO,YES,tbl_biblio,biblio_id
+public,tbl_dataset_masters,master_name,4,character varying,NULL,NULL,100,YES,NO,NO,NULL,NULL
+public,tbl_dataset_masters,master_notes,5,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_dataset_masters,url,6,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_dataset_masters,master_set_uuid,8,uuid,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_dataset_methods,dataset_method_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_dataset_methods,dataset_id,2,integer,32,0,NULL,NO,NO,YES,tbl_datasets,dataset_id
+public,tbl_dataset_methods,method_id,3,integer,32,0,NULL,NO,NO,YES,tbl_methods,method_id
+public,tbl_dataset_submission_types,submission_type_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_dataset_submission_types,submission_type,2,character varying,NULL,NULL,60,NO,NO,NO,NULL,NULL
+public,tbl_dataset_submission_types,description,3,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_dataset_submissions,dataset_submission_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_dataset_submissions,dataset_id,2,integer,32,0,NULL,NO,NO,YES,tbl_datasets,dataset_id
+public,tbl_dataset_submissions,submission_type_id,3,integer,32,0,NULL,NO,NO,YES,tbl_dataset_submission_types,submission_type_id
+public,tbl_dataset_submissions,contact_id,4,integer,32,0,NULL,NO,NO,YES,tbl_contacts,contact_id
+public,tbl_dataset_submissions,date_submitted,5,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_dataset_submissions,notes,6,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_datasets,dataset_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_datasets,master_set_id,2,integer,32,0,NULL,YES,NO,YES,tbl_dataset_masters,master_set_id
+public,tbl_datasets,data_type_id,3,integer,32,0,NULL,NO,NO,YES,tbl_data_types,data_type_id
+public,tbl_datasets,method_id,4,integer,32,0,NULL,YES,NO,YES,tbl_methods,method_id
+public,tbl_datasets,biblio_id,5,integer,32,0,NULL,YES,NO,YES,tbl_biblio,biblio_id
+public,tbl_datasets,updated_dataset_id,6,integer,32,0,NULL,YES,NO,YES,tbl_datasets,dataset_id
+public,tbl_datasets,project_id,7,integer,32,0,NULL,YES,NO,YES,tbl_projects,project_id
+public,tbl_datasets,dataset_name,8,character varying,NULL,NULL,50,NO,NO,NO,NULL,NULL
+public,tbl_datasets,dataset_uuid,10,uuid,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_datasets,submission_id,11,integer,32,0,NULL,YES,NO,YES,tbl_submissions,submission_id
+public,tbl_dating_labs,dating_lab_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_dating_labs,contact_id,2,integer,32,0,NULL,YES,NO,YES,tbl_contacts,contact_id
+public,tbl_dating_labs,international_lab_id,3,character varying,NULL,NULL,10,NO,NO,NO,NULL,NULL
+public,tbl_dating_labs,lab_name,4,character varying,NULL,NULL,100,YES,NO,NO,NULL,NULL
+public,tbl_dating_labs,country_id,5,integer,32,0,NULL,YES,NO,NO,NULL,NULL
+public,tbl_dating_material,dating_material_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_dating_material,geochron_id,2,integer,32,0,NULL,NO,NO,YES,tbl_geochronology,geochron_id
+public,tbl_dating_material,taxon_id,3,integer,32,0,NULL,YES,NO,YES,tbl_taxa_tree_master,taxon_id
+public,tbl_dating_material,material_dated,4,character varying,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_dating_material,description,5,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_dating_material,abundance_element_id,6,integer,32,0,NULL,YES,NO,YES,tbl_abundance_elements,abundance_element_id
+public,tbl_dating_uncertainty,dating_uncertainty_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_dating_uncertainty,description,3,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_dating_uncertainty,uncertainty,4,character varying,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_dendro,dendro_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_dendro,analysis_entity_id,2,integer,32,0,NULL,NO,NO,YES,tbl_analysis_entities,analysis_entity_id
+public,tbl_dendro,measurement_value,3,character varying,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_dendro,dendro_lookup_id,5,integer,32,0,NULL,NO,NO,YES,tbl_dendro_lookup,dendro_lookup_id
+public,tbl_dendro_date_notes,dendro_date_note_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_dendro_date_notes,dendro_date_id,2,integer,32,0,NULL,NO,NO,YES,tbl_dendro_dates,dendro_date_id
+public,tbl_dendro_date_notes,note,3,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_dendro_dates,dendro_date_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_dendro_dates,season_id,2,integer,32,0,NULL,YES,NO,NO,NULL,NULL
+public,tbl_dendro_dates,dating_uncertainty_id,3,integer,32,0,NULL,YES,NO,YES,tbl_dating_uncertainty,dating_uncertainty_id
+public,tbl_dendro_dates,dendro_lookup_id,4,integer,32,0,NULL,NO,NO,YES,tbl_dendro_lookup,dendro_lookup_id
+public,tbl_dendro_dates,age_type_id,5,integer,32,0,NULL,NO,NO,YES,tbl_age_types,age_type_id
+public,tbl_dendro_dates,analysis_entity_id,6,integer,32,0,NULL,NO,NO,YES,tbl_analysis_entities,analysis_entity_id
+public,tbl_dendro_dates,age_older,7,integer,32,0,NULL,YES,NO,NO,NULL,NULL
+public,tbl_dendro_dates,age_younger,8,integer,32,0,NULL,YES,NO,NO,NULL,NULL
+public,tbl_dendro_dates,age_range,10,int4range,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_dendro_lookup,dendro_lookup_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_dendro_lookup,method_id,2,integer,32,0,NULL,YES,NO,YES,tbl_methods,method_id
+public,tbl_dendro_lookup,name,3,character varying,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_dendro_lookup,description,4,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_dimensions,dimension_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_dimensions,dimension_abbrev,3,character varying,NULL,NULL,40,YES,NO,NO,NULL,NULL
+public,tbl_dimensions,dimension_description,4,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_dimensions,dimension_name,5,character varying,NULL,NULL,50,NO,NO,NO,NULL,NULL
+public,tbl_dimensions,unit_id,6,integer,32,0,NULL,YES,NO,YES,tbl_units,unit_id
+public,tbl_dimensions,method_group_id,7,integer,32,0,NULL,YES,NO,YES,tbl_method_groups,method_group_id
+public,tbl_ecocode_definitions,ecocode_definition_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_ecocode_definitions,abbreviation,2,character varying,NULL,NULL,10,YES,NO,NO,NULL,NULL
+public,tbl_ecocode_definitions,definition,4,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_ecocode_definitions,ecocode_group_id,5,integer,32,0,NULL,YES,NO,YES,tbl_ecocode_groups,ecocode_group_id
+public,tbl_ecocode_definitions,name,6,character varying,NULL,NULL,150,YES,NO,NO,NULL,NULL
+public,tbl_ecocode_definitions,notes,7,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_ecocode_definitions,sort_order,8,smallint,16,0,NULL,YES,NO,NO,NULL,NULL
+public,tbl_ecocode_groups,ecocode_group_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_ecocode_groups,definition,3,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_ecocode_groups,ecocode_system_id,4,integer,32,0,NULL,YES,NO,YES,tbl_ecocode_systems,ecocode_system_id
+public,tbl_ecocode_groups,name,5,character varying,NULL,NULL,200,YES,NO,NO,NULL,NULL
+public,tbl_ecocode_groups,abbreviation,6,character varying,NULL,NULL,255,YES,NO,NO,NULL,NULL
+public,tbl_ecocode_systems,ecocode_system_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_ecocode_systems,biblio_id,2,integer,32,0,NULL,YES,NO,YES,tbl_biblio,biblio_id
+public,tbl_ecocode_systems,definition,4,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_ecocode_systems,name,5,character varying,NULL,NULL,50,YES,NO,NO,NULL,NULL
+public,tbl_ecocode_systems,notes,6,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_ecocode_systems,ecocode_system_uuid,7,uuid,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_ecocodes,ecocode_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_ecocodes,ecocode_definition_id,3,integer,32,0,NULL,YES,NO,YES,tbl_ecocode_definitions,ecocode_definition_id
+public,tbl_ecocodes,taxon_id,4,integer,32,0,NULL,YES,NO,YES,tbl_taxa_tree_master,taxon_id
+public,tbl_feature_properties,feature_property_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_feature_properties,feature_id,2,integer,32,0,NULL,NO,NO,YES,tbl_features,feature_id
+public,tbl_feature_properties,property_type_id,3,integer,32,0,NULL,NO,NO,YES,tbl_property_types,property_type_id
+public,tbl_feature_properties,property_value,4,text,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_feature_types,feature_type_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_feature_types,feature_type_name,2,character varying,NULL,NULL,128,YES,NO,NO,NULL,NULL
+public,tbl_feature_types,feature_type_description,3,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_features,feature_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_features,feature_type_id,2,integer,32,0,NULL,NO,NO,YES,tbl_feature_types,feature_type_id
+public,tbl_features,feature_name,3,character varying,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_features,feature_description,4,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_geochron_refs,geochron_ref_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_geochron_refs,geochron_id,2,integer,32,0,NULL,NO,NO,YES,tbl_geochronology,geochron_id
+public,tbl_geochron_refs,biblio_id,3,integer,32,0,NULL,NO,NO,YES,tbl_biblio,biblio_id
+public,tbl_geochronology,geochron_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_geochronology,analysis_entity_id,2,bigint,64,0,NULL,NO,NO,YES,tbl_analysis_entities,analysis_entity_id
+public,tbl_geochronology,dating_lab_id,3,integer,32,0,NULL,YES,NO,YES,tbl_dating_labs,dating_lab_id
+public,tbl_geochronology,lab_number,4,character varying,NULL,NULL,40,YES,NO,NO,NULL,NULL
+public,tbl_geochronology,age,5,numeric,20,5,NULL,YES,NO,NO,NULL,NULL
+public,tbl_geochronology,error_older,6,numeric,20,5,NULL,YES,NO,NO,NULL,NULL
+public,tbl_geochronology,error_younger,7,numeric,20,5,NULL,YES,NO,NO,NULL,NULL
+public,tbl_geochronology,delta_13c,8,numeric,10,5,NULL,YES,NO,NO,NULL,NULL
+public,tbl_geochronology,notes,9,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_geochronology,dating_uncertainty_id,11,integer,32,0,NULL,YES,NO,YES,tbl_dating_uncertainty,dating_uncertainty_id
+public,tbl_geochronology,geochron_uuid,12,uuid,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_horizons,horizon_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_horizons,description,3,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_horizons,horizon_name,4,character varying,NULL,NULL,15,NO,NO,NO,NULL,NULL
+public,tbl_horizons,method_id,5,integer,32,0,NULL,NO,NO,YES,tbl_methods,method_id
+public,tbl_identification_levels,identification_level_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_identification_levels,identification_level_abbrev,2,character varying,NULL,NULL,50,YES,NO,NO,NULL,NULL
+public,tbl_identification_levels,identification_level_name,3,character varying,NULL,NULL,50,YES,NO,NO,NULL,NULL
+public,tbl_identification_levels,notes,4,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_image_types,image_type_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_image_types,description,3,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_image_types,image_type,4,character varying,NULL,NULL,40,NO,NO,NO,NULL,NULL
+public,tbl_imported_taxa_replacements,imported_taxa_replacement_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_imported_taxa_replacements,imported_name_replaced,3,character varying,NULL,NULL,100,NO,NO,NO,NULL,NULL
+public,tbl_imported_taxa_replacements,taxon_id,4,integer,32,0,NULL,NO,NO,YES,tbl_taxa_tree_master,taxon_id
+public,tbl_languages,language_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_languages,language_name_english,3,character varying,NULL,NULL,100,YES,NO,NO,NULL,NULL
+public,tbl_languages,language_name_native,4,character varying,NULL,NULL,100,YES,NO,NO,NULL,NULL
+public,tbl_lithology,lithology_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_lithology,depth_bottom,3,numeric,20,5,NULL,YES,NO,NO,NULL,NULL
+public,tbl_lithology,depth_top,4,numeric,20,5,NULL,NO,NO,NO,NULL,NULL
+public,tbl_lithology,description,5,text,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_lithology,lower_boundary,6,character varying,NULL,NULL,255,YES,NO,NO,NULL,NULL
+public,tbl_lithology,sample_group_id,7,integer,32,0,NULL,NO,NO,YES,tbl_sample_groups,sample_group_id
+public,tbl_location_types,location_type_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_location_types,description,3,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_location_types,location_type,4,character varying,NULL,NULL,40,YES,NO,NO,NULL,NULL
+public,tbl_locations,location_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_locations,location_name,2,character varying,NULL,NULL,255,NO,NO,NO,NULL,NULL
+public,tbl_locations,location_type_id,3,integer,32,0,NULL,NO,NO,YES,tbl_location_types,location_type_id
+public,tbl_locations,default_lat_dd,4,numeric,18,10,NULL,YES,NO,NO,NULL,NULL
+public,tbl_locations,default_long_dd,5,numeric,18,10,NULL,YES,NO,NO,NULL,NULL
+public,tbl_measured_value_dimensions,measured_value_dimension_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_measured_value_dimensions,dimension_id,3,integer,32,0,NULL,NO,NO,YES,tbl_dimensions,dimension_id
+public,tbl_measured_value_dimensions,dimension_value,4,numeric,18,10,NULL,NO,NO,NO,NULL,NULL
+public,tbl_measured_value_dimensions,measured_value_id,5,bigint,64,0,NULL,NO,NO,YES,tbl_measured_values,measured_value_id
+public,tbl_measured_values,measured_value_id,1,bigint,64,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_measured_values,analysis_entity_id,2,bigint,64,0,NULL,NO,NO,YES,tbl_analysis_entities,analysis_entity_id
+public,tbl_measured_values,measured_value,4,numeric,20,10,NULL,NO,NO,NO,NULL,NULL
+public,tbl_method_groups,method_group_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_method_groups,description,3,text,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_method_groups,group_name,4,character varying,NULL,NULL,100,NO,NO,NO,NULL,NULL
+public,tbl_methods,method_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_methods,biblio_id,2,integer,32,0,NULL,YES,NO,YES,tbl_biblio,biblio_id
+public,tbl_methods,description,4,text,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_methods,method_abbrev_or_alt_name,5,character varying,NULL,NULL,50,YES,NO,NO,NULL,NULL
+public,tbl_methods,method_group_id,6,integer,32,0,NULL,NO,NO,YES,tbl_method_groups,method_group_id
+public,tbl_methods,method_name,7,character varying,NULL,NULL,50,NO,NO,NO,NULL,NULL
+public,tbl_methods,record_type_id,8,integer,32,0,NULL,YES,NO,YES,tbl_record_types,record_type_id
+public,tbl_methods,unit_id,9,integer,32,0,NULL,YES,NO,YES,tbl_units,unit_id
+public,tbl_methods,method_uuid,10,uuid,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_modification_types,modification_type_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_modification_types,modification_type_name,2,character varying,NULL,NULL,128,YES,NO,NO,NULL,NULL
+public,tbl_modification_types,modification_type_description,3,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_physical_sample_features,physical_sample_feature_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_physical_sample_features,feature_id,3,integer,32,0,NULL,NO,NO,YES,tbl_features,feature_id
+public,tbl_physical_sample_features,physical_sample_id,4,integer,32,0,NULL,NO,NO,YES,tbl_physical_samples,physical_sample_id
+public,tbl_physical_samples,physical_sample_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_physical_samples,sample_group_id,2,integer,32,0,NULL,NO,NO,YES,tbl_sample_groups,sample_group_id
+public,tbl_physical_samples,alt_ref_type_id,3,integer,32,0,NULL,YES,NO,YES,tbl_alt_ref_types,alt_ref_type_id
+public,tbl_physical_samples,sample_type_id,4,integer,32,0,NULL,NO,NO,YES,tbl_sample_types,sample_type_id
+public,tbl_physical_samples,sample_name,5,character varying,NULL,NULL,50,NO,NO,NO,NULL,NULL
+public,tbl_physical_samples,date_sampled,7,character varying,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_project_stages,project_stage_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_project_stages,stage_name,2,character varying,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_project_stages,description,3,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_project_types,project_type_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_project_types,project_type_name,2,character varying,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_project_types,description,3,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_projects,project_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_projects,project_type_id,2,integer,32,0,NULL,YES,NO,YES,tbl_project_types,project_type_id
+public,tbl_projects,project_stage_id,3,integer,32,0,NULL,YES,NO,YES,tbl_project_stages,project_stage_id
+public,tbl_projects,project_name,4,character varying,NULL,NULL,150,YES,NO,NO,NULL,NULL
+public,tbl_projects,project_abbrev_name,5,character varying,NULL,NULL,25,YES,NO,NO,NULL,NULL
+public,tbl_projects,description,6,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_property_type_groups,property_type_group_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_property_type_groups,property_type_group,2,text,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_property_type_groups,property_type_group_abbrev,3,text,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_property_type_groups,description,4,text,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_property_types,property_type_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_property_types,uuid,2,uuid,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_property_types,property_scope,3,text,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_property_types,property_type_name,4,text,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_property_types,description,5,text,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_property_types,property_type_group_id,6,integer,32,0,NULL,NO,NO,YES,tbl_property_type_groups,property_type_group_id
+public,tbl_property_types,value_type_id,7,integer,32,0,NULL,YES,NO,YES,tbl_value_types,value_type_id
+public,tbl_property_types,value_class_id,8,integer,32,0,NULL,YES,NO,YES,tbl_value_classes,value_class_id
+public,tbl_rdb,rdb_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_rdb,location_id,2,integer,32,0,NULL,NO,NO,YES,tbl_locations,location_id
+public,tbl_rdb,rdb_code_id,3,integer,32,0,NULL,YES,NO,YES,tbl_rdb_codes,rdb_code_id
+public,tbl_rdb,taxon_id,4,integer,32,0,NULL,NO,NO,YES,tbl_taxa_tree_master,taxon_id
+public,tbl_rdb_codes,rdb_code_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_rdb_codes,rdb_category,3,character varying,NULL,NULL,4,YES,NO,NO,NULL,NULL
+public,tbl_rdb_codes,rdb_definition,4,character varying,NULL,NULL,200,YES,NO,NO,NULL,NULL
+public,tbl_rdb_codes,rdb_system_id,5,integer,32,0,NULL,YES,NO,YES,tbl_rdb_systems,rdb_system_id
+public,tbl_rdb_systems,rdb_system_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_rdb_systems,biblio_id,2,integer,32,0,NULL,NO,NO,YES,tbl_biblio,biblio_id
+public,tbl_rdb_systems,location_id,3,integer,32,0,NULL,NO,NO,YES,tbl_locations,location_id
+public,tbl_rdb_systems,rdb_first_published,4,smallint,16,0,NULL,YES,NO,NO,NULL,NULL
+public,tbl_rdb_systems,rdb_system,5,character varying,NULL,NULL,10,YES,NO,NO,NULL,NULL
+public,tbl_rdb_systems,rdb_system_date,6,integer,32,0,NULL,YES,NO,NO,NULL,NULL
+public,tbl_rdb_systems,rdb_version,7,character varying,NULL,NULL,10,YES,NO,NO,NULL,NULL
+public,tbl_rdb_systems,rdb_system_uuid,9,uuid,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_record_types,record_type_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_record_types,record_type_name,2,character varying,NULL,NULL,50,YES,NO,NO,NULL,NULL
+public,tbl_record_types,record_type_description,3,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_relative_age_refs,relative_age_ref_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_relative_age_refs,biblio_id,2,integer,32,0,NULL,NO,NO,YES,tbl_biblio,biblio_id
+public,tbl_relative_age_refs,relative_age_id,4,integer,32,0,NULL,NO,NO,YES,tbl_relative_ages,relative_age_id
+public,tbl_relative_age_types,relative_age_type_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_relative_age_types,age_type,2,character varying,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_relative_age_types,description,3,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_relative_ages,relative_age_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_relative_ages,relative_age_type_id,2,integer,32,0,NULL,YES,NO,YES,tbl_relative_age_types,relative_age_type_id
+public,tbl_relative_ages,relative_age_name,3,character varying,NULL,NULL,50,YES,NO,NO,NULL,NULL
+public,tbl_relative_ages,description,4,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_relative_ages,c14_age_older,5,numeric,20,5,NULL,YES,NO,NO,NULL,NULL
+public,tbl_relative_ages,c14_age_younger,6,numeric,20,5,NULL,YES,NO,NO,NULL,NULL
+public,tbl_relative_ages,cal_age_older,7,numeric,20,5,NULL,YES,NO,NO,NULL,NULL
+public,tbl_relative_ages,cal_age_younger,8,numeric,20,5,NULL,YES,NO,NO,NULL,NULL
+public,tbl_relative_ages,notes,9,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_relative_ages,location_id,11,integer,32,0,NULL,YES,NO,YES,tbl_locations,location_id
+public,tbl_relative_ages,abbreviation,12,character varying,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_relative_ages,relative_age_uuid,13,uuid,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_relative_dates,relative_date_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_relative_dates,relative_age_id,2,integer,32,0,NULL,YES,NO,YES,tbl_relative_ages,relative_age_id
+public,tbl_relative_dates,method_id,4,integer,32,0,NULL,YES,NO,YES,tbl_methods,method_id
+public,tbl_relative_dates,notes,5,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_relative_dates,dating_uncertainty_id,7,integer,32,0,NULL,YES,NO,YES,tbl_dating_uncertainty,dating_uncertainty_id
+public,tbl_relative_dates,analysis_entity_id,8,integer,32,0,NULL,NO,NO,YES,tbl_analysis_entities,analysis_entity_id
+public,tbl_sample_alt_refs,sample_alt_ref_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_sample_alt_refs,alt_ref,2,character varying,NULL,NULL,80,NO,NO,NO,NULL,NULL
+public,tbl_sample_alt_refs,alt_ref_type_id,3,integer,32,0,NULL,NO,NO,YES,tbl_alt_ref_types,alt_ref_type_id
+public,tbl_sample_alt_refs,physical_sample_id,5,integer,32,0,NULL,NO,NO,YES,tbl_physical_samples,physical_sample_id
+public,tbl_sample_colours,sample_colour_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_sample_colours,colour_id,2,integer,32,0,NULL,NO,NO,YES,tbl_colours,colour_id
+public,tbl_sample_colours,physical_sample_id,4,integer,32,0,NULL,NO,NO,YES,tbl_physical_samples,physical_sample_id
+public,tbl_sample_coordinates,sample_coordinate_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_sample_coordinates,physical_sample_id,2,integer,32,0,NULL,NO,NO,YES,tbl_physical_samples,physical_sample_id
+public,tbl_sample_coordinates,coordinate_method_dimension_id,3,integer,32,0,NULL,NO,NO,YES,tbl_coordinate_method_dimensions,coordinate_method_dimension_id
+public,tbl_sample_coordinates,measurement,4,numeric,20,10,NULL,NO,NO,NO,NULL,NULL
+public,tbl_sample_coordinates,accuracy,5,numeric,20,10,NULL,YES,NO,NO,NULL,NULL
+public,tbl_sample_description_sample_group_contexts,sample_description_sample_group_context_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_sample_description_sample_group_contexts,sampling_context_id,2,integer,32,0,NULL,YES,NO,YES,tbl_sample_group_sampling_contexts,sampling_context_id
+public,tbl_sample_description_sample_group_contexts,sample_description_type_id,3,integer,32,0,NULL,YES,NO,YES,tbl_sample_description_types,sample_description_type_id
+public,tbl_sample_description_types,sample_description_type_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_sample_description_types,type_name,2,character varying,NULL,NULL,255,YES,NO,NO,NULL,NULL
+public,tbl_sample_description_types,type_description,3,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_sample_descriptions,sample_description_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_sample_descriptions,sample_description_type_id,2,integer,32,0,NULL,NO,NO,YES,tbl_sample_description_types,sample_description_type_id
+public,tbl_sample_descriptions,physical_sample_id,3,integer,32,0,NULL,NO,NO,YES,tbl_physical_samples,physical_sample_id
+public,tbl_sample_descriptions,description,4,character varying,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_sample_dimensions,sample_dimension_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_sample_dimensions,physical_sample_id,2,integer,32,0,NULL,NO,NO,YES,tbl_physical_samples,physical_sample_id
+public,tbl_sample_dimensions,dimension_id,3,integer,32,0,NULL,NO,NO,YES,tbl_dimensions,dimension_id
+public,tbl_sample_dimensions,method_id,4,integer,32,0,NULL,NO,NO,YES,tbl_methods,method_id
+public,tbl_sample_dimensions,dimension_value,5,numeric,20,10,NULL,NO,NO,NO,NULL,NULL
+public,tbl_sample_dimensions,qualifier_id,7,integer,32,0,NULL,YES,NO,YES,tbl_value_qualifiers,qualifier_id
+public,tbl_sample_group_coordinates,sample_group_position_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_sample_group_coordinates,coordinate_method_dimension_id,2,integer,32,0,NULL,NO,NO,YES,tbl_coordinate_method_dimensions,coordinate_method_dimension_id
+public,tbl_sample_group_coordinates,sample_group_position,3,numeric,20,10,NULL,YES,NO,NO,NULL,NULL
+public,tbl_sample_group_coordinates,position_accuracy,4,character varying,NULL,NULL,128,YES,NO,NO,NULL,NULL
+public,tbl_sample_group_coordinates,sample_group_id,5,integer,32,0,NULL,NO,NO,YES,tbl_sample_groups,sample_group_id
+public,tbl_sample_group_description_type_sampling_contexts,sample_group_description_type_sampling_context_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_sample_group_description_type_sampling_contexts,sampling_context_id,2,integer,32,0,NULL,NO,NO,YES,tbl_sample_group_sampling_contexts,sampling_context_id
+public,tbl_sample_group_description_type_sampling_contexts,sample_group_description_type_id,3,integer,32,0,NULL,NO,NO,YES,tbl_sample_group_description_types,sample_group_description_type_id
+public,tbl_sample_group_description_types,sample_group_description_type_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_sample_group_description_types,type_name,2,character varying,NULL,NULL,255,YES,NO,NO,NULL,NULL
+public,tbl_sample_group_description_types,type_description,3,character varying,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_sample_group_descriptions,sample_group_description_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_sample_group_descriptions,group_description,2,character varying,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_sample_group_descriptions,sample_group_description_type_id,3,integer,32,0,NULL,NO,NO,YES,tbl_sample_group_description_types,sample_group_description_type_id
+public,tbl_sample_group_descriptions,sample_group_id,5,integer,32,0,NULL,YES,NO,YES,tbl_sample_groups,sample_group_id
+public,tbl_sample_group_dimensions,sample_group_dimension_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_sample_group_dimensions,dimension_id,3,integer,32,0,NULL,NO,NO,YES,tbl_dimensions,dimension_id
+public,tbl_sample_group_dimensions,dimension_value,4,numeric,20,5,NULL,NO,NO,NO,NULL,NULL
+public,tbl_sample_group_dimensions,sample_group_id,5,integer,32,0,NULL,NO,NO,YES,tbl_sample_groups,sample_group_id
+public,tbl_sample_group_dimensions,qualifier_id,6,integer,32,0,NULL,YES,NO,YES,tbl_value_qualifiers,qualifier_id
+public,tbl_sample_group_images,sample_group_image_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_sample_group_images,description,3,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_sample_group_images,image_location,4,text,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_sample_group_images,image_name,5,character varying,NULL,NULL,80,YES,NO,NO,NULL,NULL
+public,tbl_sample_group_images,image_type_id,6,integer,32,0,NULL,NO,NO,YES,tbl_image_types,image_type_id
+public,tbl_sample_group_images,sample_group_id,7,integer,32,0,NULL,NO,NO,YES,tbl_sample_groups,sample_group_id
+public,tbl_sample_group_notes,sample_group_note_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_sample_group_notes,sample_group_id,2,integer,32,0,NULL,NO,NO,YES,tbl_sample_groups,sample_group_id
+public,tbl_sample_group_notes,note,3,character varying,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_sample_group_references,sample_group_reference_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_sample_group_references,biblio_id,2,integer,32,0,NULL,NO,NO,YES,tbl_biblio,biblio_id
+public,tbl_sample_group_references,sample_group_id,4,integer,32,0,NULL,YES,NO,YES,tbl_sample_groups,sample_group_id
+public,tbl_sample_group_sampling_contexts,sampling_context_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_sample_group_sampling_contexts,sampling_context,2,character varying,NULL,NULL,80,NO,NO,NO,NULL,NULL
+public,tbl_sample_group_sampling_contexts,description,3,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_sample_group_sampling_contexts,sort_order,4,smallint,16,0,NULL,NO,NO,NO,NULL,NULL
+public,tbl_sample_groups,sample_group_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_sample_groups,site_id,2,integer,32,0,NULL,YES,NO,YES,tbl_sites,site_id
+public,tbl_sample_groups,sampling_context_id,3,integer,32,0,NULL,YES,NO,YES,tbl_sample_group_sampling_contexts,sampling_context_id
+public,tbl_sample_groups,method_id,4,integer,32,0,NULL,NO,NO,YES,tbl_methods,method_id
+public,tbl_sample_groups,sample_group_name,5,character varying,NULL,NULL,100,YES,NO,NO,NULL,NULL
+public,tbl_sample_groups,sample_group_description,6,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_sample_groups,sample_group_uuid,8,uuid,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_sample_horizons,sample_horizon_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_sample_horizons,horizon_id,3,integer,32,0,NULL,NO,NO,YES,tbl_horizons,horizon_id
+public,tbl_sample_horizons,physical_sample_id,4,integer,32,0,NULL,NO,NO,YES,tbl_physical_samples,physical_sample_id
+public,tbl_sample_images,sample_image_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_sample_images,description,3,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_sample_images,image_location,4,text,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_sample_images,image_name,5,character varying,NULL,NULL,80,YES,NO,NO,NULL,NULL
+public,tbl_sample_images,image_type_id,6,integer,32,0,NULL,NO,NO,YES,tbl_image_types,image_type_id
+public,tbl_sample_images,physical_sample_id,7,integer,32,0,NULL,NO,NO,YES,tbl_physical_samples,physical_sample_id
+public,tbl_sample_location_type_sampling_contexts,sample_location_type_sampling_context_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_sample_location_type_sampling_contexts,sampling_context_id,2,integer,32,0,NULL,NO,NO,YES,tbl_sample_group_sampling_contexts,sampling_context_id
+public,tbl_sample_location_type_sampling_contexts,sample_location_type_id,3,integer,32,0,NULL,NO,NO,YES,tbl_sample_location_types,sample_location_type_id
+public,tbl_sample_location_types,sample_location_type_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_sample_location_types,location_type,2,character varying,NULL,NULL,255,YES,NO,NO,NULL,NULL
+public,tbl_sample_location_types,location_type_description,3,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_sample_locations,sample_location_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_sample_locations,sample_location_type_id,2,integer,32,0,NULL,NO,NO,YES,tbl_sample_location_types,sample_location_type_id
+public,tbl_sample_locations,physical_sample_id,3,integer,32,0,NULL,NO,NO,YES,tbl_physical_samples,physical_sample_id
+public,tbl_sample_locations,location,4,character varying,NULL,NULL,255,YES,NO,NO,NULL,NULL
+public,tbl_sample_notes,sample_note_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_sample_notes,physical_sample_id,2,integer,32,0,NULL,NO,NO,YES,tbl_physical_samples,physical_sample_id
+public,tbl_sample_notes,note_type,3,character varying,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_sample_notes,note,4,text,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_sample_types,sample_type_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_sample_types,type_name,2,character varying,NULL,NULL,40,NO,NO,NO,NULL,NULL
+public,tbl_sample_types,description,3,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_season_types,season_type_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_season_types,description,3,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_season_types,season_type,4,character varying,NULL,NULL,30,YES,NO,NO,NULL,NULL
+public,tbl_seasons,season_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_seasons,season_name,3,character varying,NULL,NULL,20,YES,NO,NO,NULL,NULL
+public,tbl_seasons,season_type,4,character varying,NULL,NULL,30,YES,NO,NO,NULL,NULL
+public,tbl_seasons,season_type_id,5,integer,32,0,NULL,YES,NO,YES,tbl_season_types,season_type_id
+public,tbl_seasons,sort_order,6,smallint,16,0,NULL,YES,NO,NO,NULL,NULL
+public,tbl_site_images,site_image_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_site_images,contact_id,2,integer,32,0,NULL,YES,NO,YES,tbl_contacts,contact_id
+public,tbl_site_images,credit,3,character varying,NULL,NULL,100,YES,NO,NO,NULL,NULL
+public,tbl_site_images,date_taken,4,date,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_site_images,description,6,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_site_images,image_location,7,text,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_site_images,image_name,8,character varying,NULL,NULL,80,YES,NO,NO,NULL,NULL
+public,tbl_site_images,image_type_id,9,integer,32,0,NULL,NO,NO,YES,tbl_image_types,image_type_id
+public,tbl_site_images,site_id,10,integer,32,0,NULL,NO,NO,YES,tbl_sites,site_id
+public,tbl_site_locations,site_location_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_site_locations,location_id,3,integer,32,0,NULL,NO,NO,YES,tbl_locations,location_id
+public,tbl_site_locations,site_id,4,integer,32,0,NULL,NO,NO,YES,tbl_sites,site_id
+public,tbl_site_natgridrefs,site_natgridref_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_site_natgridrefs,site_id,2,integer,32,0,NULL,NO,NO,YES,tbl_sites,site_id
+public,tbl_site_natgridrefs,method_id,3,integer,32,0,NULL,NO,NO,YES,tbl_methods,method_id
+public,tbl_site_natgridrefs,natgridref,4,character varying,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_site_other_records,site_other_records_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_site_other_records,site_id,2,integer,32,0,NULL,YES,NO,YES,tbl_sites,site_id
+public,tbl_site_other_records,biblio_id,3,integer,32,0,NULL,YES,NO,YES,tbl_biblio,biblio_id
+public,tbl_site_other_records,record_type_id,4,integer,32,0,NULL,YES,NO,YES,tbl_record_types,record_type_id
+public,tbl_site_other_records,description,5,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_site_other_records,site_other_records_uuid,7,uuid,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_site_preservation_status,site_preservation_status_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_site_preservation_status,site_id,2,integer,32,0,NULL,YES,NO,YES,tbl_sites,site_id
+public,tbl_site_preservation_status,preservation_status_or_threat,3,character varying,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_site_preservation_status,description,4,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_site_preservation_status,assessment_type,5,character varying,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_site_preservation_status,assessment_author_contact_id,6,integer,32,0,NULL,YES,NO,NO,NULL,NULL
+public,tbl_site_preservation_status,evaluation_date,8,date,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_site_properties,site_property_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_site_properties,site_id,2,integer,32,0,NULL,NO,NO,YES,tbl_sites,site_id
+public,tbl_site_properties,property_type_id,3,integer,32,0,NULL,NO,NO,YES,tbl_property_types,property_type_id
+public,tbl_site_properties,property_value,4,text,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_site_references,site_reference_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_site_references,site_id,2,integer,32,0,NULL,YES,NO,YES,tbl_sites,site_id
+public,tbl_site_references,biblio_id,3,integer,32,0,NULL,NO,NO,YES,tbl_biblio,biblio_id
+public,tbl_site_site_types,site_site_type_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_site_site_types,site_id,2,integer,32,0,NULL,NO,NO,YES,tbl_sites,site_id
+public,tbl_site_site_types,site_type_id,3,integer,32,0,NULL,NO,NO,YES,tbl_site_types,site_type_id
+public,tbl_site_site_types,is_primary_type,4,boolean,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_site_site_types,confidence_code,5,smallint,16,0,NULL,YES,NO,NO,NULL,NULL
+public,tbl_site_site_types,notes,6,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_site_type_groups,site_type_group_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_site_type_groups,site_type_group_abbrev,2,character varying,NULL,NULL,40,NO,NO,NO,NULL,NULL
+public,tbl_site_type_groups,site_type_group,3,character varying,NULL,NULL,255,NO,NO,NO,NULL,NULL
+public,tbl_site_type_groups,description,4,text,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_site_type_groups,origin_code,5,character varying,NULL,NULL,40,YES,NO,NO,NULL,NULL
+public,tbl_site_type_groups,origin_description,6,text,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_site_types,site_type_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_site_types,site_type_group_id,2,integer,32,0,NULL,NO,NO,YES,tbl_site_type_groups,site_type_group_id
+public,tbl_site_types,site_type_abbrev,3,character varying,NULL,NULL,40,NO,NO,NO,NULL,NULL
+public,tbl_site_types,site_type,4,character varying,NULL,NULL,256,NO,NO,NO,NULL,NULL
+public,tbl_site_types,description,5,text,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_sites,site_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_sites,altitude,2,numeric,18,10,NULL,YES,NO,NO,NULL,NULL
+public,tbl_sites,latitude_dd,3,numeric,18,10,NULL,YES,NO,NO,NULL,NULL
+public,tbl_sites,longitude_dd,4,numeric,18,10,NULL,YES,NO,NO,NULL,NULL
+public,tbl_sites,national_site_identifier,5,character varying,NULL,NULL,255,YES,NO,NO,NULL,NULL
+public,tbl_sites,site_description,6,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_sites,site_name,7,character varying,NULL,NULL,60,YES,NO,NO,NULL,NULL
+public,tbl_sites,site_preservation_status_id,8,integer,32,0,NULL,YES,NO,YES,tbl_site_preservation_status,site_preservation_status_id
+public,tbl_sites,site_location_accuracy,9,character varying,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_sites,site_uuid,11,uuid,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_species_association_types,association_type_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_species_association_types,association_type_name,2,character varying,NULL,NULL,255,YES,NO,NO,NULL,NULL
+public,tbl_species_association_types,association_description,3,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_species_associations,species_association_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_species_associations,associated_taxon_id,2,integer,32,0,NULL,NO,NO,NO,NULL,NULL
+public,tbl_species_associations,biblio_id,3,integer,32,0,NULL,YES,NO,YES,tbl_biblio,biblio_id
+public,tbl_species_associations,taxon_id,5,integer,32,0,NULL,NO,NO,YES,tbl_taxa_tree_master,taxon_id
+public,tbl_species_associations,association_type_id,6,integer,32,0,NULL,YES,NO,YES,tbl_species_association_types,association_type_id
+public,tbl_species_associations,referencing_type,7,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_species_associations,species_association_uuid,8,uuid,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_submission_states,submission_state_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_submission_states,submission_state,2,text,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_submission_states,note,3,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_submission_task_types,submission_task_type_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_submission_task_types,action_task_name,2,text,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_submission_task_types,description,3,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_submission_tasks,submission_task_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_submission_tasks,submission_task_type_id,2,integer,32,0,NULL,NO,NO,YES,tbl_submission_task_types,submission_task_type_id
+public,tbl_submission_tasks,contact_id,3,integer,32,0,NULL,NO,NO,YES,tbl_contacts,contact_id
+public,tbl_submission_tasks,submission_id,4,integer,32,0,NULL,NO,NO,YES,tbl_submissions,submission_id
+public,tbl_submission_tasks,biblio_id,5,integer,32,0,NULL,YES,NO,YES,tbl_biblio,biblio_id
+public,tbl_submission_tasks,event_date,6,date,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_submission_tasks,notes,7,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_submissions,submission_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_submissions,submission_state_id,2,integer,32,0,NULL,YES,NO,YES,tbl_submission_states,submission_state_id
+public,tbl_submissions,biblio_id,3,integer,32,0,NULL,YES,NO,YES,tbl_biblio,biblio_id
+public,tbl_submissions,upload_date,4,date,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_submissions,submission_date,5,date,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_submissions,submission_identifier,6,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_submissions,issue_identifier,7,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_submissions,author,8,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_submissions,notes,9,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_submissions,data_provider_id,10,integer,32,0,NULL,NO,NO,YES,tbl_data_providers,data_provider_id
+public,tbl_submissions,submission_name,11,text,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_submissions,source_name,12,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_submissions,data_types,13,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_submissions,submission_uuid,14,uuid,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_taxa_common_names,taxon_common_name_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_taxa_common_names,common_name,2,character varying,NULL,NULL,255,YES,NO,NO,NULL,NULL
+public,tbl_taxa_common_names,language_id,4,integer,32,0,NULL,YES,NO,YES,tbl_languages,language_id
+public,tbl_taxa_common_names,taxon_id,5,integer,32,0,NULL,YES,NO,YES,tbl_taxa_tree_master,taxon_id
+public,tbl_taxa_images,taxa_images_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_taxa_images,image_name,2,character varying,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_taxa_images,description,3,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_taxa_images,image_location,4,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_taxa_images,image_type_id,5,integer,32,0,NULL,YES,NO,YES,tbl_image_types,image_type_id
+public,tbl_taxa_images,taxon_id,6,integer,32,0,NULL,NO,NO,YES,tbl_taxa_tree_master,taxon_id
+public,tbl_taxa_measured_attributes,measured_attribute_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_taxa_measured_attributes,attribute_measure,2,character varying,NULL,NULL,255,YES,NO,NO,NULL,NULL
+public,tbl_taxa_measured_attributes,attribute_type,3,character varying,NULL,NULL,255,YES,NO,NO,NULL,NULL
+public,tbl_taxa_measured_attributes,attribute_units,4,character varying,NULL,NULL,10,YES,NO,NO,NULL,NULL
+public,tbl_taxa_measured_attributes,data,5,numeric,18,10,NULL,YES,NO,NO,NULL,NULL
+public,tbl_taxa_measured_attributes,taxon_id,7,integer,32,0,NULL,NO,NO,YES,tbl_taxa_tree_master,taxon_id
+public,tbl_taxa_reference_specimens,taxa_reference_specimen_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_taxa_reference_specimens,taxon_id,2,integer,32,0,NULL,NO,NO,YES,tbl_taxa_tree_master,taxon_id
+public,tbl_taxa_reference_specimens,contact_id,3,integer,32,0,NULL,NO,NO,YES,tbl_contacts,contact_id
+public,tbl_taxa_reference_specimens,notes,4,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_taxa_seasonality,seasonality_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_taxa_seasonality,activity_type_id,2,integer,32,0,NULL,NO,NO,YES,tbl_activity_types,activity_type_id
+public,tbl_taxa_seasonality,season_id,3,integer,32,0,NULL,YES,NO,YES,tbl_seasons,season_id
+public,tbl_taxa_seasonality,taxon_id,4,integer,32,0,NULL,NO,NO,YES,tbl_taxa_tree_master,taxon_id
+public,tbl_taxa_seasonality,location_id,5,integer,32,0,NULL,NO,NO,YES,tbl_locations,location_id
+public,tbl_taxa_synonyms,synonym_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_taxa_synonyms,biblio_id,2,integer,32,0,NULL,NO,NO,YES,tbl_biblio,biblio_id
+public,tbl_taxa_synonyms,family_id,4,integer,32,0,NULL,YES,NO,YES,tbl_taxa_tree_families,family_id
+public,tbl_taxa_synonyms,genus_id,5,integer,32,0,NULL,YES,NO,YES,tbl_taxa_tree_genera,genus_id
+public,tbl_taxa_synonyms,notes,6,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_taxa_synonyms,taxon_id,7,integer,32,0,NULL,YES,NO,YES,tbl_taxa_tree_master,taxon_id
+public,tbl_taxa_synonyms,author_id,8,integer,32,0,NULL,YES,NO,YES,tbl_taxa_tree_authors,author_id
+public,tbl_taxa_synonyms,synonym,9,character varying,NULL,NULL,255,YES,NO,NO,NULL,NULL
+public,tbl_taxa_synonyms,reference_type,10,character varying,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_taxa_synonyms,synonym_uuid,11,uuid,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_taxa_tree_authors,author_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_taxa_tree_authors,author_name,2,character varying,NULL,NULL,100,YES,NO,NO,NULL,NULL
+public,tbl_taxa_tree_families,family_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_taxa_tree_families,family_name,3,character varying,NULL,NULL,100,YES,NO,NO,NULL,NULL
+public,tbl_taxa_tree_families,order_id,4,integer,32,0,NULL,NO,NO,YES,tbl_taxa_tree_orders,order_id
+public,tbl_taxa_tree_genera,genus_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_taxa_tree_genera,family_id,3,integer,32,0,NULL,YES,NO,YES,tbl_taxa_tree_families,family_id
+public,tbl_taxa_tree_genera,genus_name,4,character varying,NULL,NULL,100,YES,NO,NO,NULL,NULL
+public,tbl_taxa_tree_master,taxon_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_taxa_tree_master,author_id,2,integer,32,0,NULL,YES,NO,YES,tbl_taxa_tree_authors,author_id
+public,tbl_taxa_tree_master,genus_id,4,integer,32,0,NULL,YES,NO,YES,tbl_taxa_tree_genera,genus_id
+public,tbl_taxa_tree_master,species,5,character varying,NULL,NULL,255,YES,NO,NO,NULL,NULL
+public,tbl_taxa_tree_orders,order_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_taxa_tree_orders,order_name,3,character varying,NULL,NULL,50,YES,NO,NO,NULL,NULL
+public,tbl_taxa_tree_orders,record_type_id,4,integer,32,0,NULL,YES,NO,YES,tbl_record_types,record_type_id
+public,tbl_taxa_tree_orders,sort_order,5,integer,32,0,NULL,YES,NO,NO,NULL,NULL
+public,tbl_taxonomic_order,taxonomic_order_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_taxonomic_order,taxon_id,3,integer,32,0,NULL,YES,NO,YES,tbl_taxa_tree_master,taxon_id
+public,tbl_taxonomic_order,taxonomic_code,4,numeric,18,10,NULL,YES,NO,NO,NULL,NULL
+public,tbl_taxonomic_order,taxonomic_order_system_id,5,integer,32,0,NULL,YES,NO,YES,tbl_taxonomic_order_systems,taxonomic_order_system_id
+public,tbl_taxonomic_order_biblio,taxonomic_order_biblio_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_taxonomic_order_biblio,biblio_id,2,integer,32,0,NULL,YES,NO,YES,tbl_biblio,biblio_id
+public,tbl_taxonomic_order_biblio,taxonomic_order_system_id,4,integer,32,0,NULL,YES,NO,YES,tbl_taxonomic_order_systems,taxonomic_order_system_id
+public,tbl_taxonomic_order_systems,taxonomic_order_system_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_taxonomic_order_systems,system_description,3,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_taxonomic_order_systems,system_name,4,character varying,NULL,NULL,50,YES,NO,NO,NULL,NULL
+public,tbl_taxonomic_order_systems,taxonomic_order_system_uuid,5,uuid,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_taxonomy_notes,taxonomy_notes_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_taxonomy_notes,biblio_id,2,integer,32,0,NULL,NO,NO,YES,tbl_biblio,biblio_id
+public,tbl_taxonomy_notes,taxon_id,4,integer,32,0,NULL,NO,NO,YES,tbl_taxa_tree_master,taxon_id
+public,tbl_taxonomy_notes,taxonomy_notes,5,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_taxonomy_notes,taxonomy_notes_uuid,6,uuid,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_temperatures,record_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_temperatures,years_bp,2,integer,32,0,NULL,NO,NO,NO,NULL,NULL
+public,tbl_temperatures,d180_gisp2,3,numeric,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_text_biology,biology_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_text_biology,biblio_id,2,integer,32,0,NULL,NO,NO,YES,tbl_biblio,biblio_id
+public,tbl_text_biology,biology_text,3,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_text_biology,taxon_id,5,integer,32,0,NULL,NO,NO,YES,tbl_taxa_tree_master,taxon_id
+public,tbl_text_biology,biology_uuid,6,uuid,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_text_distribution,distribution_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_text_distribution,biblio_id,2,integer,32,0,NULL,NO,NO,YES,tbl_biblio,biblio_id
+public,tbl_text_distribution,distribution_text,4,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_text_distribution,taxon_id,5,integer,32,0,NULL,NO,NO,YES,tbl_taxa_tree_master,taxon_id
+public,tbl_text_distribution,distribution_uuid,6,uuid,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_text_identification_keys,key_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_text_identification_keys,biblio_id,2,integer,32,0,NULL,NO,NO,YES,tbl_biblio,biblio_id
+public,tbl_text_identification_keys,key_text,4,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_text_identification_keys,taxon_id,5,integer,32,0,NULL,NO,NO,YES,tbl_taxa_tree_master,taxon_id
+public,tbl_text_identification_keys,key_uuid,6,uuid,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_units,unit_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_units,description,3,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_units,unit_abbrev,4,character varying,NULL,NULL,15,YES,NO,NO,NULL,NULL
+public,tbl_units,unit_name,5,character varying,NULL,NULL,50,NO,NO,NO,NULL,NULL
+public,tbl_value_classes,value_class_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_value_classes,value_type_id,2,integer,32,0,NULL,NO,NO,YES,tbl_value_types,value_type_id
+public,tbl_value_classes,method_id,3,integer,32,0,NULL,NO,NO,YES,tbl_methods,method_id
+public,tbl_value_classes,parent_id,4,integer,32,0,NULL,YES,NO,YES,tbl_value_classes,value_class_id
+public,tbl_value_classes,name,5,character varying,NULL,NULL,80,NO,NO,NO,NULL,NULL
+public,tbl_value_classes,description,6,text,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_value_classes,value_class_uuid,7,uuid,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_value_qualifier_symbols,qualifier_symbol_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_value_qualifier_symbols,symbol,2,text,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_value_qualifier_symbols,cardinal_qualifier_id,3,integer,32,0,NULL,NO,NO,YES,tbl_value_qualifiers,qualifier_id
+public,tbl_value_qualifier_symbols,qualifier_uuid,4,uuid,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_value_qualifiers,qualifier_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_value_qualifiers,symbol,2,text,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_value_qualifiers,description,3,text,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_value_qualifiers,qualifier_uuid,4,uuid,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_value_type_items,value_type_item_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_value_type_items,value_type_id,2,integer,32,0,NULL,NO,NO,YES,tbl_value_types,value_type_id
+public,tbl_value_type_items,name,3,character varying,NULL,NULL,80,YES,NO,NO,NULL,NULL
+public,tbl_value_type_items,description,4,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL
+public,tbl_value_types,value_type_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_value_types,unit_id,2,integer,32,0,NULL,YES,NO,YES,tbl_units,unit_id
+public,tbl_value_types,data_type_id,3,integer,32,0,NULL,YES,NO,YES,tbl_data_types,data_type_id
+public,tbl_value_types,name,4,text,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_value_types,base_type,5,text,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_value_types,precision,6,integer,32,0,NULL,YES,NO,NO,NULL,NULL
+public,tbl_value_types,description,7,text,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_value_types,value_type_uuid,8,uuid,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_years_types,years_type_id,1,integer,32,0,NULL,NO,YES,NO,NULL,NULL
+public,tbl_years_types,name,2,character varying,NULL,NULL,NULL,NO,NO,NO,NULL,NULL
+public,tbl_years_types,description,3,text,NULL,NULL,NULL,YES,NO,NO,NULL,NULL

@@ -330,4 +330,4 @@ PY
 - [Target Model Guide](../../docs/TARGET_MODEL_GUIDE.md)
 - [Target Model Schema Reference](../../docs/TARGET_MODEL_SCHEMA_REFERENCE.md)
 - [Conditional Target Model Requirements](../../docs/proposals/done/CONDITIONAL_TARGET_MODEL_REQUIREMENTS/CONDITIONAL_TARGET_MODEL_REQUIREMENTS.md)
-- [Target Model Review 2026-10-13](TARGET_MODEL_REVIEW_20261013.md)
+- [Target Model Review 2026-10-13](TARGET_MODEL_REVIEW.md)
