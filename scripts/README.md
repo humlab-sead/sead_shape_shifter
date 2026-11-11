@@ -336,11 +336,15 @@ A pull request cannot repair an earlier direct push. Opening a pull request from
 
 ## Promoting `dev` to `staging`
 
-Use `promote_dev_to_staging.sh` to verify commit provenance, create a draft
-promotion pull request, and prepare its description from branch history:
+Use `make promote-dev-to-staging` or `promote_dev_to_staging.sh` to verify
+commit provenance, create a draft promotion pull request, and prepare its
+description from branch history:
 
 ```bash
 # Create the draft PR and generate its local description
+make promote-dev-to-staging
+
+# Or run the script directly
 scripts/promote_dev_to_staging.sh prepare
 
 # Review or edit docs/whats-new/PRs/PR_<number>.txt, then publish it
