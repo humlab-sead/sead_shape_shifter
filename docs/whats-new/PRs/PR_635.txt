@@ -1,0 +1,24 @@
+title: chore: promote whats-new-generation-fixes into dev
+description:
+<!-- promotion-pr -->
+## Summary
+
+Promotes `whats-new-generation-fixes` into `dev`.
+
+This pull request introduces no change of its own. It carries the pull requests listed below and adds no separate release note.
+
+## Included PRs
+
+None detected - list the included pull requests before merging.
+
+## User-facing release note
+
+None - no user-visible change.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+Not verified: validation results are recorded on the included pull requests.

@@ -1,0 +1,71 @@
+title: Add direct target-ID foreign key selector to entity editor
+description:
+## Summary
+
+Adds support in the entity editor for configuring direct target-model target IDs
+(foreign_key_value_sources) without editing YAML. Previously the declaration was YAML-only, and the
+entity dialog rebuilt entity configuration from explicit field lists, so adding a control without
+round-trip handling could silently drop existing entries.
+
+ - Adds a read-only backend contract, GET
+/api/v1/projects/{name}/target-model-direct-foreign-keys/{entity_name}, that returns state
+not_configured, unresolvable, or resolved plus every direct target-model foreign key for the named
+entity, sorted by target entity. It includes optional targets and targets already configured in the
+project, excludes via-bridge and targets without an identity column or table, and never inspects
+whether the source produces the ID column. The existing missing-entity picker route and payload are
+unchanged; route resolution is shared via a new _resolve_target_model helper. The new route is
+listed in the authorization route inventory and covered by the cross-resource access test.
+ - Preserves the complete foreign_key_value_sources map through YAML parsing, saved-entity
+hydration, form state, YAML generation, save, and reload. Entries are copied verbatim; empty maps
+are omitted so entities that do not use the feature serialize exactly as before.
+ - Adds a Direct target IDs multi-select to the Basic tab, loaded per entity name with debouncing.
+Selecting writes foreign_key_value_sources.<target>: public_id; clearing removes only that entry.
+Choices whose target already has a project foreign_keys link are disabled with an explanation.
+system_id, stale, and unrecognized entries stay visible under Preserved value sources and are kept
+as written.
+ - Routes a DIRECT_FK_OUTPUT_COLUMN_MISSING validation result to the affected entity's column
+settings. Tests show core conformance remains the output-column check and the backend validator
+model keeps the entity and column; the expanded issue gains an Open column settings action that
+opens the entity dialog on the Basic tab with guidance, with the focus cleared on close so manual
+edits never show stale guidance.
+ - Documents the control in docs/CONFIGURATION_GUIDE.md and docs/USER_GUIDE.md. The proposal and its
+phase plans are added under docs/proposals/DIRECT_TARGET_ID_FOREIGN_KEY_UX/ and indexed in the
+proposals README.
+
+## User-facing release note
+
+Project authors can now select direct target model IDs in the entity editor's Basic tab instead of
+editing YAML by hand. Selecting or clearing a target updates only that value source, existing
+system_id and stale entries are preserved, and validation offers an Open column settings shortcut
+when a required ID column is missing.
+
+## Upgrade notes
+
+None - no user action required. Existing projects that declare foreign_key_value_sources in YAML
+keep working unchanged, and entities without the declaration are unaffected. The new backend route
+is read-only and requires the existing project:read permission.
+
+## Validation
+
+Reported in the pull request description (commands and outcomes as stated by the author):
+
+ - Frontend entity dialog tests: 57 passed (npx vitest run
+src/components/entities/__tests__/EntityFormDialog.test.ts); the new reload test was confirmed to
+fail when the selector was temporarily changed to drop stored entries.
+ - Focused frontend suites across the dialog, entity list, YAML intelligence, project client,
+project view, and validation components: 7 files, 145 tests passed.
+ - Full frontend suite: 68 files, 1055 tests passed.
+ - vue-tsc --noEmit, Prettier, and ESLint on the changed test file: no findings.
+ - Core model, conformance, specification, and schema suites: 231 passed.
+ - Backend services, validators, mapper, and target-model API suites: 136 passed.
+ - Change-request ingester direct-FK suites: 87 passed.
+ - Real YAML-only project validation (backend/tests/data_providers/arbodat/test_validation.py): 6
+passed.
+ - Known gaps (stated by the author):
+backend/tests/ingesters/test_sead_change_request_direct_fk_postgres.py and
+test_sead_change_request_inline_staging.py are PostgreSQL integration suites and were not run; the
+full backend suite was not run.
+
+CI evidence available for this pull request shows only the Container Release workflow checks
+(validate, publish) as skipped; no other CI test results were available, so the outcomes above are
+not independently confirmed by CI.

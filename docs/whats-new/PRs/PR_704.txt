@@ -1,0 +1,48 @@
+title: Add copy action to project.sh for duplicating and adopting projects
+description:
+## Summary
+
+Adds a copy action to deployment/container/scripts/project.sh that duplicates a project directory
+into a temporary staging folder, moves it into place under the projects directory, and then runs
+adopt to create the authorization resource and grant owner access to the requested principal. The
+action supports --dry-run and an interactive confirmation prompt (skippable with --yes), validates
+paths (rejecting parent traversal, targets inside the source folder, backslashes, trailing and
+double slashes, symbolic-link sources, existing targets, and targets whose authorization locator
+already exists), and, if adoption fails after a successful copy, keeps the copied folder and prints
+recovery guidance.
+
+to_relative_path now also rejects backslashes, trailing slashes, and double slashes in addition to
+the existing empty, absolute-path, and .. checks.
+
+sync-to-deploy now rsyncs with --no-owner --no-times --checksum instead of preserving source
+ownership and timestamps: transfer decisions are based on file content rather than source
+modification times, and the post-sync chown sets target ownership. Its usage documentation was
+updated accordingly.
+
+DEPLOYMENT.md documents the new copy workflow. The DIRECT_TARGET_ID_CONDITIONAL_FK_CONFORMANCE
+proposal, its phase plan, and phase 1 task plan were added under a dedicated docs/proposals/
+subfolder and indexed in the proposals README; the proposal is documented as proposed, not
+implemented.
+
+## User-facing release note
+
+Administrators can now duplicate a project and transfer its ownership in one command: project.sh
+copy --project X --to X-copy --owner B. The command shows a copy plan, confirms before acting,
+supports --dry-run, and copies project files, including shapeshifter.yml, unchanged.
+
+## Upgrade notes
+
+No configuration changes are required. Note that sync-to-deploy now compares files by checksum and
+no longer preserves source ownership or timestamps, so the first sync after this change performs a
+full content comparison instead of relying on modification times; target ownership continues to be
+set by the post-sync chown.
+
+## Validation
+
+ - New test cases were added to deployment/container-host/tests/test_project_commands.sh covering
+successful copy with adoption, --dry-run, confirmation decline, adoption-failure recovery,
+path-safety rejections, and authorization-conflict handling. No execution results for these tests
+were available in the provided evidence.
+ - CI: the validate and publish jobs of the Container Release workflow were SKIPPED for this pull
+request; they did not run.
+ - No other validation evidence was available.
