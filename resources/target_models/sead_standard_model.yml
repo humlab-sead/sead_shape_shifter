@@ -1,7 +1,7 @@
 model:
   name: SEAD Clearinghouse Extended
   format_version: "1"
-  version: 2.1.0
+  version: 2.5.0
   description: SEAD archaeological research data model with enhanced spatial, dating, and metadata coverage
 
 entities:
@@ -83,11 +83,16 @@ entities:
       altitude:
         type: decimal
         nullable: true
+      site_preservation_status_id:
+        type: integer
+        nullable: true
     foreign_keys:
       - entity: location
         required: true
         via: site_location
       - entity: site_type
+        required: false
+      - entity: site_preservation_status
         required: false
 
   site_location:
@@ -499,6 +504,8 @@ entities:
       - [dimension_abbrev]
     foreign_keys:
       - entity: method_group
+        required: false
+      - entity: unit
         required: false
 
   coordinate_method_dimension:
@@ -941,6 +948,24 @@ entities:
       - entity: method
         required: true
 
+  record_type:
+    role: classifier
+    required: false
+    description: Controlled vocabulary describing the kind of record a classifier row represents.
+    domains: [core, abundance]
+    target_table: tbl_record_types
+    public_id: record_type_id
+    columns:
+      record_type_name:
+        required: true
+        type: string
+        nullable: true
+      record_type_description:
+        type: string
+        nullable: true
+    unique_sets:
+      - [record_type_name]
+
   method:
     role: classifier
     required: true
@@ -962,10 +987,16 @@ entities:
         required: true
         type: integer
         nullable: false
+      record_type_id:
+        type: integer
+        nullable: true
       method_abbrev_or_alt_name:
         type: string
         nullable: true
       biblio_id:
+        type: integer
+        nullable: true
+      unit_id:
         type: integer
         nullable: true
     unique_sets:
@@ -974,6 +1005,11 @@ entities:
       - entity: citation
         required: false
       - entity: method_group
+        required: false
+      - entity: record_type
+        required_when:
+          has_new_rows: method
+      - entity: unit
         required: false
 
   dataset:
@@ -1014,6 +1050,9 @@ entities:
         required: true
         type: integer
         nullable: false
+      updated_dataset_id:
+        type: integer
+        nullable: true
     unique_sets:
       - [dataset_name]
     foreign_keys:
@@ -1029,6 +1068,8 @@ entities:
         required: true
       - entity: data_type
         required: true
+      - entity: dataset
+        required: false
 
   master_dataset:
     role: lookup
@@ -1099,6 +1140,11 @@ entities:
     unique_sets:
       - [data_provider_code]
       - [data_provider_name]
+    foreign_keys:
+      - entity: contact
+        required: false
+      - entity: citation
+        required: false
 
   submission_state:
     role: classifier
@@ -1791,6 +1837,9 @@ entities:
         required: false
       - entity: dating_uncertainty
         required: false
+      - entity: season
+        required_when:
+          has_new_rows: analysis_dating_range
 
   abundance:
     role: fact
@@ -1847,6 +1896,10 @@ entities:
       element_description:
         type: string
         nullable: true
+    foreign_keys:
+      - entity: record_type
+        required_when:
+          has_new_rows: abundance_element
 
   abundance_element_group:
     role: classifier
@@ -1937,6 +1990,29 @@ entities:
       - entity: property_type
         required: true
 
+  property_type_group:
+    role: classifier
+    required: false
+    description: Grouping of related property types used by SEAD property tables.
+    domains: [abundance, spatial]
+    target_table: tbl_property_type_groups
+    public_id: property_type_group_id
+    unique_sets:
+      - [property_type_group]
+    columns:
+      property_type_group:
+        required: true
+        type: string
+        nullable: false
+      property_type_group_abbrev:
+        required: true
+        type: string
+        nullable: false
+      description:
+        required: true
+        type: string
+        nullable: false
+
   property_type:
     role: classifier
     required: false
@@ -1953,6 +2029,10 @@ entities:
         required: true
         type: string
         nullable: false
+      property_type_group_id:
+        required: true
+        type: integer
+        nullable: false
       value_type_id:
         type: integer
         nullable: true
@@ -1962,6 +2042,8 @@ entities:
     unique_sets:
       - [property_type_name]
     foreign_keys:
+      - entity: property_type_group
+        required: true
       - entity: value_type
         required: false
       - entity: value_class
@@ -2013,6 +2095,87 @@ entities:
       - entity: identification_level
         required: true
 
+  taxa_tree_order:
+    role: classifier
+    required: false
+    description: Order-level taxonomy node above family in the SEAD taxonomy hierarchy.
+    domains: [taxonomy]
+    target_table: tbl_taxa_tree_orders
+    public_id: order_id
+    unique_sets:
+      - [order_name]
+    columns:
+      order_name:
+        type: string
+        nullable: true
+      record_type_id:
+        type: integer
+        nullable: true
+      sort_order:
+        type: integer
+        nullable: true
+    foreign_keys:
+      - entity: record_type
+        required_when:
+          has_new_rows: taxa_tree_order
+
+  taxa_tree_family:
+    role: classifier
+    required: false
+    description: Family-level taxonomy node referenced by genera and taxon synonyms.
+    domains: [taxonomy]
+    target_table: tbl_taxa_tree_families
+    public_id: family_id
+    unique_sets:
+      - [family_name]
+    columns:
+      family_name:
+        type: string
+        nullable: true
+      order_id:
+        required: true
+        type: integer
+        nullable: false
+    foreign_keys:
+      - entity: taxa_tree_order
+        required_when:
+          has_new_rows: taxa_tree_family
+
+  taxa_tree_author:
+    role: classifier
+    required: false
+    description: Author or authority credited for a taxon name.
+    domains: [taxonomy]
+    target_table: tbl_taxa_tree_authors
+    public_id: author_id
+    unique_sets:
+      - [author_name]
+    columns:
+      author_name:
+        type: string
+        nullable: true
+
+  taxa_tree_genus:
+    role: classifier
+    required: false
+    description: Genus-level taxonomy node referenced by taxa and taxon synonyms.
+    domains: [taxonomy]
+    target_table: tbl_taxa_tree_genera
+    public_id: genus_id
+    unique_sets:
+      - [genus_name]
+    columns:
+      family_id:
+        type: integer
+        nullable: true
+      genus_name:
+        type: string
+        nullable: true
+    foreign_keys:
+      - entity: taxa_tree_family
+        required_when:
+          has_new_rows: taxa_tree_genus
+
   taxa:
     role: classifier
     required: false
@@ -2035,6 +2198,13 @@ entities:
       author_id:
         type: integer
         nullable: true
+    foreign_keys:
+      - entity: taxa_tree_genus
+        required_when:
+          has_new_rows: taxa
+      - entity: taxa_tree_author
+        required_when:
+          has_new_rows: taxa
 
   taxa_common_names:
     role: lookup
@@ -2061,6 +2231,9 @@ entities:
     foreign_keys:
       - entity: taxa
         required: true
+      - entity: language
+        required_when:
+          has_new_rows: taxa_common_names
 
   taxa_synonyms:
     role: lookup
@@ -2110,6 +2283,15 @@ entities:
         required: true
       - entity: taxa
         required: false
+      - entity: taxa_tree_genus
+        required_when:
+          has_new_rows: taxa_synonyms
+      - entity: taxa_tree_family
+        required_when:
+          has_new_rows: taxa_synonyms
+      - entity: taxa_tree_author
+        required_when:
+          has_new_rows: taxa_synonyms
 
   taxa_measured_attributes:
     role: fact
@@ -2414,6 +2596,51 @@ entities:
 
   # PHASE 1 ADDITIONS - Dating Domain
 
+  season_type:
+    role: classifier
+    required: false
+    description: Controlled vocabulary for the kind of season a seasonal observation refers to.
+    domains: [dating]
+    target_table: tbl_season_types
+    public_id: season_type_id
+    columns:
+      season_type:
+        required: true
+        type: string
+        nullable: false
+      description:
+        type: string
+        nullable: true
+    unique_sets:
+      - [season_type]
+
+  season:
+    role: classifier
+    required: false
+    description: Named season referenced by dating ranges and seasonality observations.
+    domains: [dating]
+    target_table: tbl_seasons
+    public_id: season_id
+    unique_sets:
+      - [season_name]
+    columns:
+      season_name:
+        type: string
+        nullable: true
+      season_type:
+        type: string
+        nullable: true
+      season_type_id:
+        type: integer
+        nullable: true
+      sort_order:
+        type: integer
+        nullable: true
+    foreign_keys:
+      - entity: season_type
+        required_when:
+          has_new_rows: season
+
   age_type:
     role: classifier
     required: false
@@ -2508,6 +2735,13 @@ entities:
     target_table: tbl_dating_material
     public_id: dating_material_id
     columns:
+      geochron_id:
+        required: true
+        type: integer
+        nullable: false
+      taxon_id:
+        type: integer
+        nullable: true
       material_dated:
         required: true
         type: string
@@ -2521,6 +2755,10 @@ entities:
     unique_sets:
       - [material_dated]
     foreign_keys:
+      - entity: geochronology
+        required: true
+      - entity: taxa
+        required: false
       - entity: abundance_element
         required: false
 
@@ -2682,6 +2920,9 @@ entities:
       country_id:
         type: integer
         nullable: true
+    foreign_keys:
+      - entity: contact
+        required: false
 
   method_group:
     role: classifier
@@ -2832,6 +3073,41 @@ entities:
       - entity: feature_type
         required: true
 
+  site_preservation_status:
+    role: fact
+    required: false
+    description: Recorded preservation status or threat assessment for a site.
+    aggregate_parent: site
+    domains: [spatial]
+    target_table: tbl_site_preservation_status
+    public_id: site_preservation_status_id
+    columns:
+      site_id:
+        required: true
+        type: integer
+        nullable: false
+      preservation_status_or_threat:
+        type: string
+        nullable: true
+      description:
+        type: string
+        nullable: true
+      assessment_type:
+        type: string
+        nullable: true
+      assessment_author_contact_id:
+        type: integer
+        nullable: true
+      evaluation_date:
+        type: date
+        nullable: true
+    foreign_keys:
+      - entity: site
+        required_when:
+          has_new_rows: site_preservation_status
+      - entity: contact
+        required: false
+
   site_property:
     role: fact
     required: false
@@ -2943,6 +3219,41 @@ entities:
       - entity: feature
         required: true
 
+  language:
+    role: classifier
+    required: false
+    description: Language of a recorded taxon common name.
+    domains: [core, taxonomy]
+    target_table: tbl_languages
+    public_id: language_id
+    columns:
+      language_name_english:
+        type: string
+        nullable: true
+      language_name_native:
+        type: string
+        nullable: true
+    unique_sets:
+      - [language_name_english]
+
+  data_type_group:
+    role: classifier
+    required: false
+    description: Grouping of related data types used to organise analytical output.
+    domains: [core]
+    target_table: tbl_data_type_groups
+    public_id: data_type_group_id
+    columns:
+      data_type_group_name:
+        required: true
+        type: string
+        nullable: false
+      description:
+        type: string
+        nullable: true
+    unique_sets:
+      - [data_type_group_name]
+
   data_type:
     role: classifier
     required: false
@@ -2955,11 +3266,18 @@ entities:
         required: true
         type: string
         nullable: false
+      data_type_group_id:
+        type: integer
+        nullable: true
       definition:
         type: string
         nullable: true
     unique_sets:
       - [data_type_name]
+    foreign_keys:
+      - entity: data_type_group
+        required_when:
+          has_new_rows: data_type
 
   unit:
     role: classifier
