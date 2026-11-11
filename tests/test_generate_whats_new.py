@@ -493,3 +493,25 @@ def test_ai_notes_reject_pending_release_section(monkeypatch: pytest.MonkeyPatch
 
     assert content == "shipped-only heuristic"
     assert mode == "heuristic"
+
+
+@pytest.mark.parametrize(
+    "heading",
+    ["# [2.7.0](https://example/compare/v2.6.0...v2.7.0) (2026-11-11)", "## [2.7.1](https://example/compare/v2.7.0...v2.7.1) (2026-11-11)"],
+    ids=["minor-major-heading", "patch-heading"],
+)
+def test_read_release_context_accepts_every_changelog_heading_level(tmp_path: Path, heading: str) -> None:
+    """A patch release uses a level-2 heading, so both levels must resolve."""
+    generator = load_generator_module()
+    version = "2.7.0" if heading.startswith("# ") else "2.7.1"
+    changelog = tmp_path / "CHANGELOG.md"
+    changelog.write_text(
+        f"{heading}\n\n### Bug Fixes\n\n* a fix\n\n# [2.6.0](https://example/compare/v2.5.0...v2.6.0) (2026-10-27)\n\n* older\n",
+        encoding="utf-8",
+    )
+
+    context = generator.read_release_context(changelog, version)
+
+    assert context.version == version
+    assert context.release_date == dt.date(2026, 11, 11)
+    assert context.previous_version == "2.6.0"
