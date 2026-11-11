@@ -3,18 +3,18 @@
 ## Phase Summary
 
 - **Phase:** Phase 1 — Correct conditional conformance
-- **Readiness:** Blocked. The source proposal is still marked **Proposed change request**, and the phase plan requires its approval before implementation planning.
+- **Readiness:** Validated and executed 2026-11-11. The source proposal was approved on 2026-11-11, removing the blocking decision. `T1.1`, `T1.2`, and `T1.3` are complete with passing validation (`V-1`, `V-2`, and `V-3` all pass).
 - **Goal:** Suppress the reconciliation-pending result only for valid conditional direct target-ID FKs, preserving independent requirements and direct-ID validation.
 - **Source proposal:** [Direct Target-ID Conditional FK Conformance](DIRECT_TARGET_ID_CONDITIONAL_FK_CONFORMANCE.md)
 - **Source phase plan:** [Direct Target-ID Conditional FK Conformance Phase Plan](DIRECT_TARGET_ID_CONDITIONAL_FK_CONFORMANCE_PHASE_PLAN.md)
-- **Dependency:** Approval of the source proposal. Do not begin implementation or mark this plan Validated before approval.
+- **Dependency:** Approval of the source proposal. Received 2026-11-11.
 
 Phase acceptance criteria:
 
-- [ ] `PH1-AC-1` (from `P-AC-1`): A valid conditional direct-ID FK retains the target-check status but has no reconciliation-pending status or lookup requirement from that relationship.
-- [ ] `PH1-AC-2` (from `P-AC-2`): Local/default conditional FKs still await reconciliation, and invalid direct-ID declarations retain their errors.
-- [ ] `PH1-AC-3` (from `P-AC-3`): A second FK to the same target retains its own conditional status, and globally required target entities remain required.
-- [ ] `PH1-AC-4` (from `P-AC-4`): Selected inserts still require conditional direct-ID values and reject IDs absent from the target database.
+- [x] `PH1-AC-1` (from `P-AC-1`): A valid conditional direct-ID FK retains the target-check status but has no reconciliation-pending status or lookup requirement from that relationship.
+- [x] `PH1-AC-2` (from `P-AC-2`): Local/default conditional FKs still await reconciliation, and invalid direct-ID declarations retain their errors.
+- [x] `PH1-AC-3` (from `P-AC-3`): A second FK to the same target retains its own conditional status, and globally required target entities remain required.
+- [x] `PH1-AC-4` (from `P-AC-4`): Selected inserts still require conditional direct-ID values and reject IDs absent from the target database. (Demonstrated 2026-11-11 by `V-3`.)
 
 ## Repository Findings
 
@@ -55,23 +55,23 @@ Phase acceptance criteria:
 
 **Affected code:** `src/target_model/conformance.py::ConditionalForeignKeyConformanceValidator.validate_global` and the existing conformance and direct-ID integration test files listed above.
 
-**Dependencies:** Proposal approval; all tasks remain blocked until that decision is made.
+**Dependencies:** Proposal approval; received 2026-11-11.
 
 **Tasks:**
 
-* [ ] `T1.1` **Change:** Skip `CONDITIONAL_FK_AWAITING_RECONCILIATION` for a conditional FK only when `is_valid_direct_public_id_foreign_key(...)` confirms that exact source-target relationship.
+* [x] `T1.1` **Change:** Skip `CONDITIONAL_FK_AWAITING_RECONCILIATION` for a conditional FK only when `is_valid_direct_public_id_foreign_key(...)` confirms that exact source-target relationship.
   * **Target:** `src/target_model/conformance.py::ConditionalForeignKeyConformanceValidator.validate_global`.
   * **Current → required:** Every conditional FK on a present source reports awaiting reconciliation; a valid direct-ID FK should not, while all other conditional FKs should.
   * **Implementation:** Evaluate the existing helper for each conditional FK before appending the issue. Keep the exception per FK. Do not suppress invalid declaration errors or checks for other target requirements.
   * **Constraints:** Keep `DIRECT_FK_TARGET_CHECK_PENDING`, `required_when` timing, and all change-request behavior unchanged.
   * **Validation:** `V-1`.
-* [ ] `T1.2` **Change:** Update and extend conformance regressions for conditional direct-ID relationships.
+* [x] `T1.2` **Change:** Update and extend conformance regressions for conditional direct-ID relationships.
   * **Target:** `tests/model/test_target_model_conformance.py`.
   * **Current → required:** The direct-ID test currently expects both pending statuses; it should retain only the target-check status for that valid conditional FK.
   * **Implementation:** Cover a valid conditional direct ID, a local/default conditional FK, an invalid direct-ID declaration, two sources using different modes for the same target, and a globally required target.
   * **Constraints:** Keep tests constructed with the existing inline target-model and project helpers.
   * **Validation:** `V-1`.
-* [ ] `T1.3` **Change:** Add regression coverage that `required_when` still requires a direct-ID value on a selected insert and that a nonexistent supplied target ID is rejected.
+* [x] `T1.3` **Change:** Add regression coverage that `required_when` still requires a direct-ID value on a selected insert and that a nonexistent supplied target ID is rejected. *(Completed 2026-11-11: `test_conditional_direct_fk_requires_value_on_selected_insert_and_checks_target_id` added with conditional helpers; validated by `V-3` against a disposable PostgreSQL container.)*
   * **Target:** `backend/tests/ingesters/test_sead_change_request_direct_fk_postgres.py`.
   * **Current → required:** Its existing integration case checks direct IDs with static `required: true`; conditional direct-ID insert requirements must also remain covered.
   * **Implementation:** Add a conditional FK case using the existing disposable-database test setup and a row selected for insertion. Assert that a missing required value and a nonexistent target ID are rejected.
@@ -93,9 +93,9 @@ Phase acceptance criteria:
 
 | ID | Check and target | Command or method | Covers | Expected result | Baseline |
 |---|---|---|---|---|---|
-| `V-1` | Focused project conformance regressions in `tests/model/test_target_model_conformance.py`, including the existing conditional and direct-public-ID tests and new cases from `T1.2`. | `rtk uv run pytest tests/model/test_target_model_conformance.py -q -k 'conditional_foreign_key or direct_public_id_fk'` | `PH1-AC-1`, `PH1-AC-2`, `PH1-AC-3` | Tests pass with the revised direct-ID expectation and retained independent errors. | **Pass:** 13 passed on the current worktree. |
-| `V-2` | Projection regressions in `backend/tests/ingesters/test_sead_change_request_target_projection.py`, including `test_direct_foreign_key_keeps_the_target_id_without_a_parent_table` and `test_direct_conditional_fk_skips_projection_diagnostics_for_unselected_malformed_rows`. | `rtk uv run pytest backend/tests/ingesters/test_sead_change_request_target_projection.py -q` | Preserved direct-ID projection behavior | Tests pass; direct IDs remain unchanged by the conformance-only change. | **Pass:** 22 passed. |
-| `V-3` | Direct-ID validation and packaging in `backend/tests/ingesters/test_sead_change_request_direct_fk_postgres.py`, including the conditional insert case added by `T1.3`. | `rtk uv run pytest backend/tests/ingesters/test_sead_change_request_direct_fk_postgres.py -q` with the test's `SEAD_DISPOSABLE_POSTGRES_*` loopback settings | `PH1-AC-4` | A selected conditional insert without a required value and an ID absent from the target table are rejected; valid IDs remain accepted. | **Not run:** This test creates and drops a PostgreSQL schema; no disposable database run was authorized during planning. |
+| `V-1` | Focused project conformance regressions in `tests/model/test_target_model_conformance.py`, including the existing conditional and direct-public-ID tests and new cases from `T1.2`. | `rtk uv run pytest tests/model/test_target_model_conformance.py -q -k 'conditional_foreign_key or direct_public_id_fk'` | `PH1-AC-1`, `PH1-AC-2`, `PH1-AC-3` | Tests pass with the revised direct-ID expectation and retained independent errors. | **Pass:** 2026-11-11 run: 17 passed with the `-k` filter (13 baseline + 4 new cases); full file 57 passed; broader run of `tests/model/` plus the projection suite: 300 passed, exit 0. Planning baseline was 13 passed. |
+| `V-2` | Projection regressions in `backend/tests/ingesters/test_sead_change_request_target_projection.py`, including `test_direct_foreign_key_keeps_the_target_id_without_a_parent_table` and `test_direct_conditional_fk_skips_projection_diagnostics_for_unselected_malformed_rows`. | `rtk uv run pytest backend/tests/ingesters/test_sead_change_request_target_projection.py -q` | Preserved direct-ID projection behavior | Tests pass; direct IDs remain unchanged by the conformance-only change. | **Pass:** 2026-11-11 run: 22 passed, exit 0. Matches planning baseline. |
+| `V-3` | Direct-ID validation and packaging in `backend/tests/ingesters/test_sead_change_request_direct_fk_postgres.py`, including the conditional insert case added by `T1.3`. | `rtk uv run pytest backend/tests/ingesters/test_sead_change_request_direct_fk_postgres.py -q` with the test's `SEAD_DISPOSABLE_POSTGRES_*` loopback settings | `PH1-AC-4` | A selected conditional insert without a required value and an ID absent from the target table are rejected; valid IDs remain accepted. | **Pass:** 2026-11-11 run against a disposable PostgreSQL container (`make pg-disposable-up`, loopback only): 2 passed, exit 0. Planning baseline was 2 skipped. |
 
 ## Deliverables
 
@@ -109,18 +109,18 @@ Phase acceptance criteria:
 
 | Area | Status | Dependencies | Notes |
 |---|---|---|---|
-| Area 1 | Blocked | Approval of the source proposal | No implementation work may start before approval. |
+| Area 1 | Complete | None | `T1.1`, `T1.2`, and `T1.3` complete and validated 2026-11-11 (`V-1`, `V-2`, `V-3` pass; pylint 10/10; Black/isort clean). `V-3` ran against a podman disposable PostgreSQL container (`make pg-disposable-up`/`pg-disposable-down`). |
 
 ## Definition Of Done
 
-- [ ] The source proposal is approved and the plan is no longer blocked.
-- [ ] Every phase acceptance criterion has implementation and validation evidence.
-- [ ] All work areas and deliverables are complete.
-- [ ] Required tests pass, including the conditional direct-ID PostgreSQL regression when the disposable database is available.
-- [ ] Existing local-link, global-target, and direct-ID behavior is regression-tested.
-- [ ] No unresolved decision affects implementation, correctness, or validation.
+- [x] The source proposal is approved and the plan is no longer blocked. (Approved 2026-11-11.)
+- [x] Every phase acceptance criterion has implementation and validation evidence. (`PH1-AC-1`..`PH1-AC-4` demonstrated by `V-1`, `V-2`, and `V-3` on 2026-11-11.)
+- [x] All work areas and deliverables are complete. (`T1.1`, `T1.2`, and `T1.3` complete 2026-11-11.)
+- [x] Required tests pass, including the conditional direct-ID PostgreSQL regression when the disposable database is available. (`V-1`, `V-2`, and `V-3` pass 2026-11-11.)
+- [x] Existing local-link, global-target, and direct-ID behavior is regression-tested. (2026-11-11: `V-1` retained cases plus 300-test broader run pass.)
+- [x] No unresolved decision affects implementation, correctness, or validation. (`V-3` ran 2026-11-11 against a disposable database provisioned with `make pg-disposable-up`.)
 
 ## Risks And Open Questions
 
-- **Blocking decision:** The source proposal is still marked proposed. Approval is required before implementation planning can become Validated or work can begin.
-- **Disposable database:** `V-3` requires loopback `SEAD_DISPOSABLE_POSTGRES_*` settings and creates then drops a schema. Run it only against the intended disposable database.
+- ~~**Blocking decision:** The source proposal is still marked proposed.~~ Resolved: the proposal was approved on 2026-11-11.
+- ~~**Disposable database:** `V-3` requires loopback `SEAD_DISPOSABLE_POSTGRES_*` settings and creates then drops a schema. Run it only against the intended disposable database.~~ Resolved: `scripts/spinup_disposable_postgres.py` (with `make pg-disposable-up`/`pg-disposable-env`/`pg-disposable-status`/`pg-disposable-down`) provisions a loopback-only podman PostgreSQL container; `V-3` ran against it on 2026-11-11 and passed.
