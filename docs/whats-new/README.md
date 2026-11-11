@@ -30,20 +30,50 @@ Do not use this directory for:
 
 ## Maintaining Release Notes
 
-Changes reach `main` through three stages: a feature branch into `dev`, `dev` into `staging`, and `staging` into `main`. A release note for version `Rn` describes everything that shipped between release `R(n-1)` and release `Rn`.
+Changes reach `main` through `dev`, `staging`, and `main`. A release note covers pull requests present in the current release ref but absent from the previous release ref. The generator reads pull request descriptions, so record direct commits against a following pull request.
 
-Commits that reach a base branch without a pull request carry no release note. The generator reports pull requests only, so a direct push is absent from the release note even though it ships. See [Recording Commits Without a Pull Request](#recording-commits-without-a-pull-request) for recording them against the pull request that followed.
+```mermaid
+flowchart LR
+    change["Change PR<br/>Write release and upgrade notes"]
+    promotion["Promotion PR<br/>List carried PRs"]
+    included["Use notes from included PRs"]
+    direct["Direct commit"]
+    record["Record against the next PR<br/>with --include-orphaned"]
+    notes["PR notes provide release content"]
+    generate["Generate release draft"]
+    shipped["Shipped since previous ref"]
+    pending["Pending Release<br/>Not yet on main"]
+    review["Review and edit"]
+    publish["Update GitHub Release notes"]
 
-1. **Write a note in the change PR.** Complete the `User-facing release note` and `Upgrade notes` sections in [the PR template](../../.github/pull_request_template.md) on the pull request that changes behavior, which is normally the pull request into `dev`. Use one or two plain-language sentences for visible changes. If a PR has no user-visible change or needs no user action, use the exact `None` text in the template.
-2. **Promote without repeating notes.** A `dev` into `staging` or `staging` into `main` pull request is a promotion. Use [the promotion template](../../.github/promotion_pr_template.md), keep the `<!-- promotion-pr -->` marker, and list the pull requests it carries under `Included PRs`. Promotion pull requests use the `None` fallbacks for their own note sections; the generator reads notes from the listed pull requests instead, so promoted changes are not reported twice.
-3. **Generate the release draft.** During a release, semantic-release runs `scripts/generate_whats_new.py` for the new version. The generator lists merged pull requests whose base branch is `dev`, `staging`, or `main`, then keeps the ones whose merge commit is reachable from the release ref but not from the previous release. Selection therefore follows branch promotion rather than merge dates, so a change merged into `dev` before a release but promoted into `staging` after it is attributed to the release that shipped it. `CHANGELOG.md` supplies the version dates and the previous version; its commit summaries are not used as user-facing content. The generator also adds a `Pending Release` snapshot of pull requests that have not reached `main` yet, including their authored notes and, for promotions, the pull requests they carry. If an AI API key is configured, the generator can consolidate duplicate PR notes; otherwise it preserves the authored notes in the draft.
-4. **Review the generated note.** Check that every distinct user-visible change and required upgrade action is represented, and confirm the pending items are not presented as released changes. The generator requires the GitHub CLI to be installed and authenticated so it can read PR descriptions, and it requires local git history and tags because it compares commit ancestry.
-5. **Keep the file and release body in sync.** After editing `docs/whats-new/vX.Y.Z.md`, update the GitHub Release body with `gh release edit vX.Y.Z --notes-file docs/whats-new/vX.Y.Z.md`.
-6. **Refresh the pending snapshot when needed.** After more PRs merge into `dev` or `staging`, rerun the generator for the latest version. Generation replaces the file, so review and reapply any manual edits afterward.
+    change --> notes
+    promotion --> included --> notes
+    direct --> record --> notes
+    notes --> generate
+    generate --> shipped
+    generate --> pending
+    shipped --> review
+    pending --> review
+    review --> publish
 
-The release hooks live in `.releaserc.json`. semantic-release runs the generator from `prepareCmd`, which executes before the release tag exists, so the generator falls back to `HEAD` when the `vX.Y.Z` tag is absent. The generator uses heuristic output when no AI API key is configured and falls back to authored notes if AI generation fails. The `gh` CLI must be installed and authenticated. The previous `scripts/generate_user_release_notes.py` remains available for changelog-derived drafts.
+    classDef author fill:#eaf2ff,stroke:#6383b4,color:#1f2c3d;
+    classDef generated fill:#e8f4ec,stroke:#57916b,color:#203526;
+    classDef reviewstep fill:#fff6dd,stroke:#c5a64a,color:#3d351f;
 
-The release window can be overridden when the defaults do not fit:
+    class change,promotion,included,direct,record,notes author;
+    class generate,shipped,pending generated;
+    class review,publish reviewstep;
+```
+
+1. **Write notes on the change PR.** Complete `User-facing release note` and `Upgrade notes` in [the PR template](../../.github/pull_request_template.md). Use one or two plain-language sentences. Use the template's exact `None` text when there is no user-visible change or upgrade action.
+2. **List changes on promotion PRs.** For `dev` to `staging` or `staging` to `main`, use [the promotion template](../../.github/promotion_pr_template.md), keep its `<!-- promotion-pr -->` marker, and list carried PRs under `Included PRs`. Use the `None` fallbacks for the promotion's own notes; the generator reads notes from the included PRs.
+3. **Generate and review the release draft.** During release, semantic-release runs `scripts/generate_whats_new.py`. It includes merged PRs targeting `dev`, `staging`, or `main` whose merge commits appear in the current release ref but not the previous one. For the latest version, it also lists PRs not yet on `main` under `Pending Release`. `CHANGELOG.md` supplies version and date context; PR descriptions supply release-note content. With complete AI settings, the generator can consolidate duplicate notes; otherwise it uses the authored notes in a structured draft.
+4. **Publish the reviewed notes.** Edit `docs/whats-new/vX.Y.Z.md`, then update the GitHub Release body with `gh release edit vX.Y.Z --notes-file docs/whats-new/vX.Y.Z.md`.
+5. **Refresh pending items when needed.** If more PRs merge into `dev` or `staging`, rerun the generator for the latest version. It replaces the file, so reapply any manual edits.
+
+The release hook runs before the new tag exists, so the generator uses `HEAD` until the tag is available. It needs the authenticated `gh` CLI and local Git history to compare release refs. AI generation is optional; when it is unavailable or fails, the generator uses the PR-note draft. The older `scripts/generate_user_release_notes.py` remains available for changelog-based drafts.
+
+### Choose a release window
 
 ```bash
 # Compare a specific pair of refs
@@ -62,11 +92,11 @@ The What's New generators read these shared settings from the repository-root `.
 - `REPO_SCRIPTS_DEFAULT_PROVIDER_KEY`
 - `RELEASE_NOTES_API_TIMEOUT` to adjust request timeout in seconds (default: 60)
 
-For `generate_whats_new.py` and `generate_user_release_notes.py`, the provider type must be `openai` or `openai-compatible`. The base URL should be the API root, such as a URL ending in `/v1`; the generator appends `/chat/completions`. The scripts do not supply a default model, endpoint, provider type, or key. They use heuristic notes when AI settings are absent, and warn and fall back when settings are incomplete or the provider type is unsupported. Exported `COPILOT_PROVIDER_*` values override the shared `.env` settings.
+For `generate_whats_new.py` and `generate_user_release_notes.py`, use provider type `openai` or `openai-compatible` and an API-root base URL, such as one ending in `/v1`. The generator appends `/chat/completions`. There are no built-in provider defaults; incomplete or unsupported settings produce a warning and a non-AI draft. `COPILOT_PROVIDER_*` environment variables override the shared `.env` settings.
 
 ## Copilot CLI Drafting
 
-If you prefer Copilot CLI for the human-in-the-loop drafting step, use:
+Use this when you want to refine a release draft from `CHANGELOG.md` with Copilot CLI:
 
 ```bash
 python3 scripts/prepare_copilot_release_notes.py --version X.Y.Z
@@ -75,27 +105,24 @@ python3 scripts/prepare_copilot_release_notes.py --version X.Y.Z
 python3 scripts/prepare_copilot_release_notes.py --list-versions
 ```
 
-This does two things:
-
-1. Generates a draft release note file.
-2. Prints and saves a ready-to-paste Copilot CLI prompt with filtered, user-visible changelog context.
+The script creates a draft release note and prints and saves a ready-to-paste prompt.
 
 By default it writes:
 
 - `docs/whats-new/vX.Y.Z.md`
 - `tmp/copilot-release-notes-vX.Y.Z.prompt.md`
 
-The prompt uses changelog content, not PR-body note sections. Review the resulting release note against the merged PRs before publishing or editing the GitHub Release.
+The prompt uses filtered changelog content, not PR-body notes. Compare the result with merged PRs before publishing or editing the GitHub Release.
 
 ## PR Description Drafts
 
-Generate editable PR descriptions with:
+Use these commands to draft PR descriptions, edit them locally, and publish them:
 
 ```bash
 .venv/bin/python scripts/update_pr_descriptions.py 620-627 --draft
 ```
 
-The command writes one file per PR to `docs/whats-new/PRs/PR_<number>.txt`. Each file starts with the title on one line, followed by `description:` and the complete Markdown body:
+The command writes one file per PR to `docs/whats-new/PRs/PR_<number>.txt`, containing the title and complete Markdown body:
 
 ```text
 title: Add a project validation check
@@ -104,29 +131,29 @@ description:
 ...
 ```
 
-Draft generation requires a model, provider type, provider URL, and API key. Set `REPO_SCRIPTS_DEFAULT_MODEL`, `REPO_SCRIPTS_DEFAULT_PROVIDER_TYPE`, `REPO_SCRIPTS_DEFAULT_PROVIDER_BASE_URL`, and `REPO_SCRIPTS_DEFAULT_PROVIDER_KEY` in the repository-root `.env`, or provide equivalent `COPILOT_PROVIDER_*` environment variables. `--model` can supply the model identifier. The script has no built-in model, endpoint, provider type, or key defaults, and it does not read VS Code's secret store.
+Drafting a standard PR requires a model, provider type, provider URL, and API key. Configure the shared settings above or use equivalent `COPILOT_PROVIDER_*` environment variables. Pass `--model` to select the model. The script does not read VS Code's secret store.
 
-Promotion pull requests are drafted without a model. When a pull request targets `main` from `staging`, or targets `staging` from `dev`, the script writes a promotion description that lists the pull requests merged into the source branch and absent from the target branch. The comparison uses the promotion pull request's own base and merge commits, so a historical promotion lists what it actually carried. Override detection with an explicit list when branch history is unavailable:
+Promotion PRs need no model. The script lists PRs carried from `dev` to `staging` or from `staging` to `main`. If branch history is unavailable, provide the list explicitly:
 
 ```bash
 .venv/bin/python scripts/update_pr_descriptions.py 627 --draft --included-prs 621,626
 ```
 
-Review and edit these files, then publish the saved contents with:
+Review and edit the files, then publish them:
 
 ```bash
 .venv/bin/python scripts/update_pr_descriptions.py 620-627 --publish
 ```
 
-Draft generation skips existing files without querying Copilot unless `--force` is provided. It writes each successful draft immediately and continues after individual PR failures; failed PRs are reported and make the command exit nonzero. Publishing validates every requested file before updating any PR and does not regenerate descriptions.
+Drafting skips existing files unless `--force` is set. Successful drafts are saved immediately; failed PRs are reported. Publishing validates every requested file before updating any PR, then replaces each PR's title and body with the saved draft. It does not regenerate descriptions.
 
-Use `--verbose` with `--draft` to print the raw Copilot response when response parsing or validation fails. The configured API key is redacted from this output.
+Use `--verbose` to inspect a Copilot response that fails parsing or validation; the API key is redacted. The script repairs invalid titles with a warning, so review any title changes before publishing.
 
-A failed draft names the single problem it found and quotes the offending value, so `--verbose` is only needed when the model's overall response is in question. The title must be one line of at most 71 characters with no trailing period, matching the rule in [the PR-description instructions](../../.github/pr-description-instructions.md). When a model writes a preamble before the title, the last line before the body separator is used as the title, so a narrated response still produces a usable draft.
+A title must be one line, no longer than 71 characters, and have no trailing period; see [the PR-description instructions](../../.github/pr-description-instructions.md).
 
-A title that only breaks the length or punctuation rule is repaired rather than rejected, because the body costs the most to generate and a rejected title would discard it. Trailing punctuation is removed, and an over-long title is shortened at a clause boundary, or at the last whole word when no boundary fits. Each repair prints a warning naming the original and the replacement, so a shortened title is visible and can be replaced with a hand-written one before publishing. The advice to keep titles short still applies: a repaired title is usable, not ideal.
+Use `--attempts` to change retries for malformed model responses (default: 2). A successful response is not requested again.
 
-Terminal escape sequences are removed from every response before a draft is written. The Copilot CLI renders the model's final message as terminal Markdown, so links arrive wrapped in OSC 8 hyperlink escapes such as `ESC ] 8 ; id=… ; URL BEL` and colours arrive as CSI escapes. Those sequences are meaningless in a draft file and would render as noise on GitHub. The same removal runs when a draft file is read, so a file written by an older run is cleaned on its next publication.
+Use `--clean-drafts` to remove terminal escape sequences from existing files without publishing. Unparseable files are left untouched.
 
 Repair existing draft files in place with:
 
@@ -134,34 +161,25 @@ Repair existing draft files in place with:
 .venv/bin/python scripts/update_pr_descriptions.py 528-546 --clean-drafts
 ```
 
-That mode rewrites each draft without escape sequences, reports what changed, and leaves an unparseable file untouched rather than overwriting a hand-edited one. It never publishes.
+This reports which files changed and does not overwrite unparseable drafts.
 
-Large pull requests are diffed from local git objects rather than through `gh pr diff`, which refuses any pull request that changes more than 300 files. Generated `graphify-out/` output inflates that count heavily — one pull request reported 670 changed files, 634 of them under `graphify-out/`, so excluding generated paths at the source reduced a 62 MB diff to 184 KB across 36 real files. The local diff is used when both the base and head commits are present in the clone; otherwise the script falls back to `gh pr diff`, and if that also fails it sends the changed paths so a draft is still produced. The input file records which source was used under a `Diff source` heading.
-
-A model occasionally returns a response that cannot be parsed and a good one on the next attempt, so drafting retries. `--attempts` controls how many times the model is asked (default 2), and a successful response is never re-requested.
+For large PRs, the script uses local Git history when available, falls back to `gh pr diff`, and then to changed paths. The draft records which input it used.
 
 ## Recording Commits Without a Pull Request
 
-Commits pushed straight to a base branch have no pull request to describe them, so add `--include-orphaned` to record them against the pull request that followed:
+Use this when a direct commit should be documented with the next PR:
 
 ```bash
 .venv/bin/python scripts/update_pr_descriptions.py 620-634 --draft --include-orphaned
 ```
 
-The script compares the previous merged pull request into the same base branch with the pull request being drafted, then lists the commits on that branch's first-parent chain that no merged pull request carried. The result is appended as a `Detected orphaned commits` section. The section is omitted when nothing is listed, and it is replaced rather than duplicated when a draft is regenerated. The oldest pull request into a branch has no earlier pull request to compare against, so its draft reports no commits.
+The command adds a `Detected orphaned commits` section with first-parent commits not carried by a merged PR since the previous merged PR into the same branch. It omits the section when there is nothing to report. Use it as context and include any user-visible effect in the PR's `User-facing release note`.
 
-Housekeeping commits are filtered out of the list by default. A commit counts as housekeeping when any of these applies:
-
-- Its subject is machine-written: `chore(release): X.Y.Z [skip ci]`, `feat(release): add vX.Y.Z release notes…`, or `chore: updated graphify graph`.
-- Every changed path is inside `graphify-out/`, which holds generated output.
-- Every changed path is inside `docs/`, so the commit changes documentation only.
-- Every changed path is inside `.github/` or `.vscode/`, or is `sead_shape_shifter.code-workspace`, so the commit changes contributor configuration.
-
-One path outside those locations keeps the commit, because the commit then carries a real change. The filtering is never silent: the section names the filtered counts, and the command reports the totals on standard error. Pass `--show-all-orphaned` to list every detected commit instead.
+By default, the script filters release and graphify updates and commits that only change documentation or contributor configuration. It reports filtered counts. Use `--show-all-orphaned` to include every detected commit.
 
 ## Drafting Every Pull Request
 
-Historically generated PR descriptions can be regenerated for a whole repository with one command:
+Use this to backfill drafts across the repository:
 
 ```bash
 # Show what would be drafted without writing anything
@@ -174,9 +192,9 @@ Historically generated PR descriptions can be regenerated for a whole repository
 .venv/bin/python scripts/draft_all_pr_descriptions.py --force --newest-first --batch-size 10
 ```
 
-The script enumerates pull requests with `gh pr list` and drives `scripts/update_pr_descriptions.py` with `--draft --include-orphaned`. Existing draft files are kept unless `--force` is given, so an interrupted run resumes where it stopped and a later run retries only the missing drafts. It confirms the Copilot configuration before drafting; pass `--no-preflight` when every pull request in the set is a promotion, which needs no model.
+The script lists pull requests with `gh` and drafts them with `--include-orphaned`. It defaults to merged PRs and skips existing files, so rerunning it retries only missing drafts. Use `--force` to redraft, `--limit` to cap the run, and `--batch-size` to control each invocation. Pass `--no-preflight` when every PR is a promotion.
 
-The script relays the target script's output as it runs and ends with a summary of drafted, failed, and skipped pull requests. It never publishes: review `docs/whats-new/PRs/`, then publish with `scripts/update_pr_descriptions.py --publish`.
+It reports drafted, failed, and skipped PRs but never publishes. Review `docs/whats-new/PRs/`, then publish with `scripts/update_pr_descriptions.py --publish`.
 
 ## Writing Guidelines
 
