@@ -1,6 +1,6 @@
 # Direct Target-ID Conditional FK Conformance Phase Plan
 
-Source: [Direct Target-ID Conditional FK Conformance](DIRECT_TARGET_ID_CONDITIONAL_FK_CONFORMANCE.md) (proposed change request).
+Source: [Direct Target-ID Conditional FK Conformance](DIRECT_TARGET_ID_CONDITIONAL_FK_CONFORMANCE.md) (approved change request, 2026-11-11).
 
 ## Summary
 
@@ -16,7 +16,7 @@ This plan covers the conditional conformance result and regression validation. I
 
 ## Current Position
 
-- The source proposal is proposed, not implemented.
+- The source proposal is approved, not implemented.
 - Conformance reports `CONDITIONAL_FK_AWAITING_RECONCILIATION` for every conditional FK on a present source; it already distinguishes valid direct-ID declarations and reports `DIRECT_FK_TARGET_CHECK_PENDING`.
 - Change-request validation already checks required direct-ID values on selected inserts and verifies supplied target IDs.
 
@@ -60,7 +60,7 @@ Report reconciliation as pending only for conditional relationships that still n
 
 **Readiness**
 
-Requires approval of the source proposal before implementation planning.
+Ready. The source proposal was approved on 2026-11-11, satisfying the approval dependency.
 
 ## Validation Strategy
 

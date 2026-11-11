@@ -2,7 +2,7 @@
 
 ## Status
 
-- Proposed change request
+- Approved change request (2026-11-11)
 - Scope: project-only conformance for `required_when.has_new_rows` on direct target-ID foreign keys
 - Goal: do not report reconciliation as necessary to establish a lookup entity requirement when the FK uses an existing target ID.
 

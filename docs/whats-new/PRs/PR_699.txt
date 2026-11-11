@@ -1,0 +1,42 @@
+title: Add map_value DSL function for exact categorical value mapping
+description:
+## Summary
+
+Adds a map_value DSL function that maps whole input values to typed literal values with an optional
+trailing fallback, e.g. =map_value(sample_type, 'artificial', 1, 'natural', 2, 0). Null inputs pass
+through as null; an unmapped non-null input raises an evaluation error unless a fallback is
+supplied. Mapping keys, mapped values, and the fallback must be literals, null mapping keys are
+rejected (nulls pass through), and duplicate keys are rejected at validation time. Mapped values and
+fallbacks keep their original types.
+
+ - Backend (src/transforms/dsl.py): new _split_map_value_arguments helper (odd argument count = no
+fallback, even = fallback), _validate_map_value validator rules, _fn_map_value evaluator registered
+in the pandas backend dispatch, and a map_value entry in DEFAULT_FUNCTIONS (min 3 args).
+ - Frontend (extraColumnsEditorUtils.ts): map_value added to the DSL function allowlist and formula
+snippets; reference extraction now strips quoted string literals so mapping keys are not mistaken
+for column references.
+ - Documentation and agent instructions (docs/CONFIGURATION_GUIDE.md, src/AGENTS.md, transforms
+instructions, extra_columns.py docstring) updated with the new function and a categorical-mapping
+example, noting that FK linking of mapped key columns is unchanged.
+
+## User-facing release note
+
+A new map_value DSL function lets you map exact input values to typed literals (e.g. 'artificial' →
+1, 'natural' → 2), with an optional fallback for unmapped values. Null inputs pass through
+unchanged.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+ - New tests were added in this PR: backend parsing, validation (literal constraints, null keys,
+duplicate keys, arity), and evaluation tests (type preservation, null passthrough, fallback,
+unmapped-value error) in tests/transforms/test_dsl.py; an extra-columns integration test in
+tests/transforms/test_extra_columns_dsl_integration.py; and frontend assertions for reference
+extraction and suggestions in
+frontend/src/components/entities/__tests__/extraColumnsEditorUtils.test.ts. Their execution results
+are unknown from the available evidence.
+ - The only CI checks recorded on the pull request (validate and publish in the Container Release
+workflow) concluded as SKIPPED; no test-suite results are available.

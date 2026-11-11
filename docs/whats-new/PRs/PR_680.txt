@@ -1,0 +1,25 @@
+title: chore: promote dev into staging
+description:
+<!-- promotion-pr -->
+## Summary
+
+Promotes `dev` into `staging`.
+
+This pull request introduces no change of its own. It carries the pull requests listed below and adds no separate release note.
+
+## Included PRs
+
+- [#678](https://github.com/humlab-sead/sead_shape_shifter/pull/678) Use retained snapshots for link troubleshooting experiments
+- [#679](https://github.com/humlab-sead/sead_shape_shifter/pull/679) test(api): expect 405 for removed link troubleshooter route
+
+## User-facing release note
+
+None - no user-visible change.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+Not verified: validation results are recorded on the included pull requests.

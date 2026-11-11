@@ -1,0 +1,31 @@
+title: Add FK Link Troubleshooter experiments proposal and fix proposal paths
+description:
+## Summary
+
+Adds a proposed follow-up change request, docs/proposals/FOREIGN_KEY_LINK_TROUBLESHOOTER_EXPERIMENTS
+/FOREIGN_KEY_LINK_TROUBLESHOOTER_EXPERIMENTS.md, extending the approved Foreign-Key Link
+Troubleshooter. The proposal (explicitly marked as not implemented) describes fixed-input
+experiments: a temporary server-side context retains an immutable baseline and runs trials that
+change ordered key pairs, switch between inner and left joins, and control only allow_null_keys and
+null_keys_equal, then compares baseline and trial totals and findings, shows bounded
+unmatched/multiply-matched A rows, and restores the baseline immediately via reset.
+
+Also moves the Reconciliation Entity-Type Expansion proposal into its own directory
+(RECONCILIATION_ENTITY_TYPE_EXPANSION/) and corrects the relative links to DEVELOPMENT.md and the
+Reconciliation MVP proposal that broke as a result. The proposals index (docs/proposals/README.md)
+is updated to list the new proposal and point to the new location of the moved one.
+
+## User-facing release note
+
+None - no user-visible change.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+Documentation-only change (3 files: one added proposal, one index update, one renamed proposal with
+path fixes). The only CI checks reported for this pull request — validate and publish in the
+Container Release workflow — were skipped, not run. No test results are available; no other
+validation evidence was provided.

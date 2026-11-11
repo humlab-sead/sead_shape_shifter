@@ -1,0 +1,28 @@
+title: chore: promote dev into staging
+description:
+<!-- promotion-pr -->
+## Summary
+
+Promotes `dev` into `staging`.
+
+This pull request introduces no change of its own. It carries the pull requests listed below and adds no separate release note.
+
+## Included PRs
+
+- [#640](https://github.com/humlab-sead/sead_shape_shifter/pull/640) Document the promotion guard script
+- [#642](https://github.com/humlab-sead/sead_shape_shifter/pull/642) chore(deps): upgrade dev tooling and adapt code to new checks
+- [#643](https://github.com/humlab-sead/sead_shape_shifter/pull/643) feat(workflow): add script and skill for change pull requests
+- [#644](https://github.com/humlab-sead/sead_shape_shifter/pull/644) feat(scripts): commit description draft to PR branch
+- [#645](https://github.com/humlab-sead/sead_shape_shifter/pull/645) Add foreign-key link troubleshooter functionality
+
+## User-facing release note
+
+None - no user-visible change.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+Not verified: validation results are recorded on the included pull requests.
