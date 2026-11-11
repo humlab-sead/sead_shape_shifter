@@ -17,9 +17,14 @@ from pathlib import Path
 from urllib import error, request
 
 CHANGELOG_VERSION_PATTERN = re.compile(
-    r"^# \[(?P<version>[^\]]+)\]\([^\n]+\) \((?P<date>\d{4}-\d{2}-\d{2})\)$",
+    r"^#{1,2} \[(?P<version>[^\]]+)\]\([^\n]+\) \((?P<date>\d{4}-\d{2}-\d{2})\)$",
     re.MULTILINE,
 )
+"""Matches a changelog release heading.
+
+conventional-changelog writes minor and major releases as a level-1 heading and
+patch releases as a level-2 heading, so both levels must match.
+"""
 LOCAL_ENV_KEYS = {
     "REPO_SCRIPTS_DEFAULT_MODEL",
     "REPO_SCRIPTS_DEFAULT_PROVIDER_TYPE",
