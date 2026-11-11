@@ -51,6 +51,7 @@ These files live under `instructions/features/` and cover specific subsystems.
 | `instructions/readme.instructions.md`        | Editing `README.md`                                          |
 | `instructions/design.instructions.md`        | Editing `docs/DESIGN.md` or architecture documentation       |
 | `instructions/glossary.instructions.md`      | Editing `docs/GLOSSARY.md`                                   |
+| `instructions/whats-new-release-notes.instructions.md` | Editing versioned What's New release notes                  |
 
 ### Planning and workflow
 

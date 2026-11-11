@@ -1,0 +1,34 @@
+title: chore: promote dev into staging
+description:
+<!-- promotion-pr -->
+## Summary
+
+Promotes `dev` into `staging`.
+
+This pull request introduces no change of its own. It carries the pull requests listed below and adds no separate release note.
+
+## Included PRs
+
+- [#696](https://github.com/humlab-sead/sead_shape_shifter/pull/696) fix: link troubleshooters UX improvements.
+- [#697](https://github.com/humlab-sead/sead_shape_shifter/pull/697) Evaluate deferred extra columns before post-unnest FK linking
+- [#699](https://github.com/humlab-sead/sead_shape_shifter/pull/699) Add map_value DSL function for exact categorical value mapping
+- [#701](https://github.com/humlab-sead/sead_shape_shifter/pull/701) Add DSL functions: split_part, concat_ws, regex_replace, named groups
+- [#702](https://github.com/humlab-sead/sead_shape_shifter/pull/702) Add direct target-ID foreign key selector to entity editor
+- [#703](https://github.com/humlab-sead/sead_shape_shifter/pull/703) docs(proposals): add backup proposal and advisor phase plan
+- [#704](https://github.com/humlab-sead/sead_shape_shifter/pull/704) Add copy action to project.sh for duplicating and adopting projects
+- [#705](https://github.com/humlab-sead/sead_shape_shifter/pull/705) Add disposable PostgreSQL container management for integration tests
+- [#706](https://github.com/humlab-sead/sead_shape_shifter/pull/706) Implement conditional direct-ID foreign key validation
+- [#707](https://github.com/humlab-sead/sead_shape_shifter/pull/707) style(frontend): increase fixed values grid header gap to 8px
+- [#708](https://github.com/humlab-sead/sead_shape_shifter/pull/708) build(make): add promote-dev-to-staging target
+
+## User-facing release note
+
+None - no user-visible change.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+Not verified: validation results are recorded on the included pull requests.

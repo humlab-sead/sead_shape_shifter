@@ -1,0 +1,27 @@
+title: Show remote entity from warning metadata in troubleshooter header
+description:
+## Summary
+
+The link troubleshooter dialog header previously displayed "Unknown entity" for the remote entity
+while the initial API request was still loading, because it only read from the response payload. The
+header now falls back to props.message.metadata.remote_entity — carried by the validation warning —
+when the response has not arrived yet, so the entity pair renders correctly from the moment the
+dialog opens. A unit test was added to cover the fallback path during a pending request.
+
+## User-facing release note
+
+The link troubleshooter dialog now shows the correct entity pair (e.g. "orders → customers")
+immediately when opened, instead of briefly displaying "Unknown entity" while data loads.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+ - A unit test (shows the entity pair from the warning metadata while the first request loads) was
+added to frontend/src/components/validation/__tests__/LinkTroubleshooterDialog.test.ts covering the
+new fallback path. Execution results for this and the rest of the frontend test suite are
+unavailable from the available evidence.
+ - CI: the validate and publish checks in the "Container Release" workflow were SKIPPED for this
+pull request; no other status-check results are available.

@@ -1,0 +1,41 @@
+title: Scope warm cache by project and entities; purge failed entity data
+description:
+## Summary
+
+Hardens the ShapeShiftService warm-result cache and ShapeShifter.normalize() error handling so stale
+or partial normalization data can no longer be served.
+
+ - ShapeShiftService now records the project name (_warm_project_name) alongside the warm table
+store. Both the warm-preview fast path and _reusable_warm_result() reject warm data that belongs to
+a different project at the same version number.
+ - _reusable_warm_result() additionally requires the requested entity names to be a subset of the
+warm table store, so a subset normalization (e.g. a single entity) can no longer satisfy a later
+request for the full project; the full project is renormalized instead.
+ - In ShapeShifter.normalize(), when an entity raises after already storing a table, the entity is
+now removed from table_store (table_store.pop(entity, None)) before being recorded in
+incomplete_entities. This applies on both the continue_on_error and abort paths, so a partially
+produced entity is not exposed to caches or to dependent entities.
+ - docs/AUTHORIZATION_ROUTE_INVENTORY.md gains the POST
+/api/v1/projects/{project_name}/link-troubleshooter route (project:read).
+
+## User-facing release note
+
+Preview and validation results are no longer reused from the wrong project or from a partial run,
+and an entity that fails during normalization no longer appears with half-built data. Results that
+were previously cached incorrectly are now recomputed.
+
+## Upgrade notes
+
+None - no user action required.
+
+## Validation
+
+ - New and updated unit tests were added in backend/tests/services/test_shapeshift_service.py (warm
+preview ignored for another project at the same version; normalize_project does not reuse results
+across projects; recomputation when the warm result covers only a requested subset) and
+tests/process/test_shapeshifter.py (failed entity removed from the table store and dependents
+skipped with continue_on_error=True). No test-execution results are available to confirm pass or
+fail status.
+ - CI on the pull request: the Container Release workflow checks validate and publish completed with
+conclusion SKIPPED.
+ - No other validation evidence was available in the provided context.

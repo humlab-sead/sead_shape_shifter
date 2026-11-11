@@ -96,4 +96,4 @@ These rules apply to all documents in `docs/`.
 | `docs/images/`    | Diagrams and screenshots referenced by other docs. |
 | `docs/templates/` | Document templates for new contributors. |
 | `docs/testing/`   | Supplementary testing notes and test data documentation. |
-| `docs/whats-new/` | Release notes and change summaries. |
+| `docs/whats-new/` | Release-note contributor workflow; read `.github/instructions/whats-new-release-notes.instructions.md` when editing versioned notes. |
