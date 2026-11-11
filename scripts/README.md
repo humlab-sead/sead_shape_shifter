@@ -2,6 +2,28 @@
 
 This directory contains CLI scripts for Shape Shifter workflows.
 
+## Disposable PostgreSQL Container
+
+`spinup_disposable_postgres.py` starts a throwaway PostgreSQL container with podman
+for the loopback integration tests that read `SEAD_DISPOSABLE_POSTGRES_*`. The
+container binds to loopback only, holds no real data, and the tests create and drop
+their own schemas in it.
+
+```bash
+# Start (or reuse) the container and print the export lines
+uv run python scripts/spinup_disposable_postgres.py up
+
+# Print only the export lines, for eval
+eval "$(uv run python scripts/spinup_disposable_postgres.py env)"
+
+# Check container readiness, then remove the container and its data
+uv run python scripts/spinup_disposable_postgres.py status
+uv run python scripts/spinup_disposable_postgres.py down
+```
+
+The same actions are available as Make targets: `make pg-disposable-up`,
+`pg-disposable-env`, `pg-disposable-status`, and `pg-disposable-down`.
+
 ## Profiling Project Normalization
 
 `profile_normalization.py` profiles normalization for `data/projects/copy_strucke_MS`
